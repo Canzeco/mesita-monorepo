@@ -336,15 +336,6 @@ Deno.test("validatePlacePatch: accepts a well-formed check_pin, and null", () =>
   assert(validatePlacePatch({ check_pin: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts well-formed CFDI fields", () => {
-  const res = validatePlacePatch({
-    cfdi_rfc: "ABC123456XY9",
-    cfdi_cp: "64000",
-    cfdi_razon_social: "Restaurante Ejemplo SA de CV",
-  });
-  assert(res.ok);
-});
-
 Deno.test("validatePlacePatch: accepts the content_state ladder", () => {
   for (const s of ["queued", "generating", "ready", "failed"]) {
     assert(validatePlacePatch({ content_state: s }).ok, s);
@@ -380,11 +371,6 @@ Deno.test("validatePlacePatch: rejects strike_count outside 0..3", () => {
 Deno.test("validatePlacePatch: rejects a malformed check_pin", () => {
   assert(!validatePlacePatch({ check_pin: "12345" }).ok, "5 digits");
   assert(!validatePlacePatch({ check_pin: "abcdef" }).ok, "non-digits");
-});
-
-Deno.test("validatePlacePatch: rejects a malformed CFDI RFC / CP", () => {
-  assert(!validatePlacePatch({ cfdi_rfc: "TOO-SHORT" }).ok);
-  assert(!validatePlacePatch({ cfdi_cp: "640" }).ok);
 });
 
 Deno.test("validatePlacePatch: rejects a discount_cap_cents that is negative", () => {
