@@ -2,7 +2,7 @@
 <!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno task sync-rules) -->
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-3d8a9bf37a5281d79b1fde154ad09ba1) §0. **Rules = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** Linear is the ledger, not a source of truth. **Rules beat Docs.** Changing Rules → PADLC. Code → SADLC. Docs → KADLC. PADLC / SADLC / KADLC = Protocols / Software / Knowledge Agentic Development Life Cycle. Mixed completes every Integrate. Fetch this Rules URL only. Rules Don’t Read is archive.
+**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-3d8a9bf37a5281d79b1fde154ad09ba1) §0. **Rules = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** Linear is the ledger, not a source of truth. **Rules beat Docs.** Changing Rules → RADLC. Code → SADLC. Docs → KADLC. RADLC / SADLC / KADLC = Rules / Software / Knowledge Agentic Development Life Cycle. Mixed completes every Integrate. Fetch this Rules URL only. Rules Don’t Read is archive.
 
 **The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-validate,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen. Package-specific rules: that package's `CLAUDE.md`.
 
