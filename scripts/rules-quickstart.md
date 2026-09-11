@@ -1,35 +1,31 @@
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8) §0. **Rules = the law:** 🤖 **ASDM Rules** — the protocol (model, invariants `I-1`…`I-10`, loop, platform table) · 🏛️ **Product Rules** = WHAT Mesita is · ⚙️ **Development Rules** = tooling gotchas + the knowledge chain. **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain: Apps, Atlas, Intake, Discovery, Passport, Rewards, Visits, Orders, Reservations, Events, Checkout, Credits, Vocabulary, Design. **Rules beat Docs.**
+**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-3d8a9bf37a5281d79b1fde154ad09ba1) §0. **Rules = the law** (how change is allowed). **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain. **Code = this repo.** Linear is the ledger, not a source of truth. **Rules beat Docs.** Changing Rules → RDLC. Code → SDLC. Docs → KDLC. Mixed completes every Integrate. Fetch this Rules URL only. Rules Don’t Read is archive.
 
-**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-validate,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen — never work in them. Package-specific rules: that package's `CLAUDE.md`.
+**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-validate,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen. Package-specific rules: that package's `CLAUDE.md`.
 
-**The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY; **Linear documents and Claude Artifacts are prohibited**. **git/GitHub** carries the work — branches and squash PRs; `Closes MESITA-<id>` is the join.
+**The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY; Linear documents and Claude Artifacts are prohibited. **git/GitHub** carries the work — branches and squash PRs; `Closes MESITA-<id>` is the join.
 
-**The model.** Issue = intent. Claim = In Progress + one claim line, the only lock. Workspace = a checkout a live claim names (worktree + branch, or a cloud clone): one per code issue, none for a non-code issue. PR = one per workspace, joined by `Closes`. Session = a visit. Lobby = a checkout with no live claim: the shared `main` checkout, or your launch worktree between claims.
+**The lock.** Every repo, Notion, or cloud (schema/EF) write has an issue (I-1). Claim = In Progress + one claim line (I-6). Workspace = a checkout a live claim names: one per code issue, none for Rules/Docs-only.
 
-**Boot card.** Needs `deno` and `gh auth`. `deno task boot` → pick → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in, a cloud clone included; plain `add` resumes a live workspace) → enter it (Claude Code `EnterWorktree`, Cursor opens it, Codex `cd`), In Progress, paste the printed claim line → work → `deno task worktree pr` · `gh pr ready` · `gh pr merge --squash` → `deno task worktree remove MESITA-<id>` from a lobby (`leave` keeps your launch worktree) → terminal status, Docs mirrored.
+**The loop.** `deno task boot` → pick unblocked, footprint-disjoint → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in) → enter the path → In Progress + the printed claim line → Docs first, small commits, push early → `deno task worktree pr` then `gh pr ready` then `gh pr merge --squash` with `Closes MESITA-<id>` → `deno task worktree remove` from a lobby → rewrite Docs. Never push to `main`. Never write in the shared checkout (I-4).
 
-**The invariants** (ASDM §B).
-- I-1 Every repo or cloud write has an issue, in a project.
-- I-2 `main` only by squash PR; every PR passes all six required checks.
-- I-3 One code issue = one branch = one worktree = one PR; a second issue, a second workspace.
+**The invariants**
+- I-1 Every repo, Notion, or cloud (schema/EF) write has an issue, in a project. Pure Q&A needs none.
+- I-2 `main` only by squash PR; every PR passes every check the ruleset requires on that PR.
+- I-3 One code issue = one workspace (claimed checkout) = one PR.
 - I-4 The shared checkout holds no work of its own; `repair-lobby` fixes it, `scripts/preflight.sh` refuses the write.
-- I-5 The backend is a singleton: cloud == repo, same session.
+- I-5 Backend is a singleton: cloud == repo, same session.
 - I-6 Claims are the only lock; stale after 24h idle, then `takeover:`.
-- I-7 Reversible → decide, `decision:`, ship; `needs-human` only when physically blocked.
-- I-8 Read the domain's Docs page before; mirror after.
+- I-7 Reversible → `decision:`, ship; `needs-human` = secret, irreversible money, or constitution waiting on Pato.
+- I-8 Read the domain's Docs page before writing code; rewrite it after what shipped.
 - I-9 Finish clean at landing; verify by observed state.
 - I-10 Landed = a merged PR for the tip; only landed, clean, inactive workspaces are swept.
 
-**The loop.** BOOT (`deno task boot`, one Linear read) · PICK (unblocked, footprint-disjoint) · ISOLATE (`worktree add`, enter the path) · CLAIM (In Progress + the line) · WORK (Docs first, small commits, push early) · SHIP (`worktree pr`, ready, merge yourself, verify) · LEAVE (`worktree remove` from a lobby) · FINISH (statuses, Docs, decisions). Platform table: ASDM §D.
+**ALWAYS:** reply in English · clients call Edge Functions, never the DB · no local web dev servers (web: Vercel after merge; mobile: `npx expo export --platform web`) · admin-console configs bind · generated files are never hand-edited · the repo holds no knowledge markdown.
 
-**The backend is a singleton.** One Supabase project, ONE live schema and EF set, branching unused; a merge to main auto-deploys every EF, so mirror every cloud change into `supabase/` the same session (Development Rules §B).
+**Generated output is never hand-edited.** `AGENTS.md` ← sibling `CLAUDE.md` (`deno task sync-rules`) · brand outputs ← `assets/brand/brand.json`. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`.
 
-**ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` · no local web dev servers: web verifies on Vercel, mobile via `npx expo export --platform web` · admin-console configs bind every EF, app and agent (General · Intake · Discovery · Visits · Orders · Reservations · Rewards); unenforced config = bug; routes never follow a label.
-
-**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · every brand output ← `assets/brand/brand.json` (`deno task sync-brand`); both CI-gated. **The repo holds no other markdown:** knowledge → Notion · task context → Linear · code notes → code comments. **Docs are rewritten, not amended**; word budgets CI-enforced (Development Rules §C).
-
-**NEVER ask.** Reversible → decide, log a `decision:` comment, ship (I-7).
+**NEVER ask.** Reversible → decide, log `decision:`, ship (I-7).
 
 **Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory.
