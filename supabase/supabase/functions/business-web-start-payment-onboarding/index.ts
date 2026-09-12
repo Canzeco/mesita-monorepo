@@ -47,7 +47,11 @@ import {
   isAbsoluteHttpsUrl,
 } from "../_shared/stripe-connect.ts";
 import {
-  resolveConnectPrefill,
+  completePrefillWithLlm,
+  deterministicConnectPrefill,
+  llmBusinessProfilePatch,
+  needsLlmDescription,
+  needsLlmMcc,
   type PlacePrefillRow,
 } from "../_shared/stripe-connect-prefill.ts";
 import {
@@ -347,29 +351,33 @@ Deno.serve(async (req) => {
   const { data: placeRows, error: placesErr } = await admin
     .from("places")
     .select(
-      "place_profiles!inner(name, category, category_label, family_keys, description, website_url, instagram_url, phone, email)",
+      "id, place_profiles!inner(name, category, category_label, family_keys, description, website_url, instagram_url, phone, email)",
     )
-    .eq("organization_id", orgId);
+    .eq("organization_id", orgId)
+    .order("id");
   if (placesErr) {
     console.error("[start-payment-onboarding] place prefill read:", placesErr);
   }
   type ProfileEmbed = PlacePrefillRow | PlacePrefillRow[];
-  const places: PlacePrefillRow[] = ((placeRows ?? []) as { place_profiles: ProfileEmbed }[])
+  const places: PlacePrefillRow[] = ((placeRows ?? []) as {
+    id: string;
+    place_profiles: ProfileEmbed;
+  }[])
     .map((row) => {
       const profile = Array.isArray(row.place_profiles)
         ? row.place_profiles[0]
         : row.place_profiles;
-      return profile ?? {};
+      return { id: row.id, ...(profile ?? {}) };
     });
-  const prefill = await resolveConnectPrefill({
-    org: {
-      name: (org?.name ?? "").trim(),
-      legalName,
-      rfc: org?.rfc ?? null,
-    },
-    places,
-    openaiKey: Deno.env.get("OPENAI_KEY"),
-  });
+  // CREATE is Atlas-only. Stripe keys idempotency on org+country; an LLM
+  // fail-open or a shuffled places read would change the body, 409 the
+  // replay, and leave the first connected account orphaned.
+  const orgPrefill = {
+    name: (org?.name ?? "").trim(),
+    legalName,
+    rfc: org?.rfc ?? null,
+  };
+  const prefill = deterministicConnectPrefill(orgPrefill, places);
 
   let account: Stripe.Account;
   try {
@@ -392,6 +400,32 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);
     return stripeFailure(err);
+  }
+
+  const needMcc = needsLlmMcc(places);
+  const needDescription = needsLlmDescription(places);
+  if (needMcc || needDescription) {
+    try {
+      const llm = await completePrefillWithLlm({
+        places,
+        needMcc,
+        needDescription,
+        openaiKey: Deno.env.get("OPENAI_KEY"),
+      });
+      const patch = llmBusinessProfilePatch(
+        prefill.businessProfile,
+        llm,
+        needMcc,
+        needDescription,
+      );
+      if (patch) {
+        account = await stripe.accounts.update(account.id, {
+          business_profile: patch,
+        });
+      }
+    } catch (llmErr) {
+      console.error("[start-payment-onboarding] llm prefill update:", llmErr);
+    }
   }
 
   const snapshot = accountSnapshotFromStripe(account, livemode);

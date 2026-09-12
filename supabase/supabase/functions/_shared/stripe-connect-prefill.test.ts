@@ -6,12 +6,14 @@ import {
   asHttpsUrl,
   completePrefillWithLlm,
   deterministicConnectPrefill,
+  llmBusinessProfilePatch,
   mccFromPlace,
   mccFromPlaces,
   needsLlmDescription,
   needsLlmMcc,
   parseLlmPrefill,
   rfcIfValid,
+  sortPlacesForPrefill,
   trimProductDescription,
 } from "./stripe-connect-prefill.ts";
 
@@ -189,4 +191,45 @@ Deno.test("LLM uses the allowlisted MCC the model returns", async () => {
   });
   assertEquals(out.mcc, CONNECT_MCCS.bars);
   assert(out.product_description?.includes("mezcal"));
+});
+
+Deno.test("firstOf is stable across shuffled place rows (Stripe create idempotency)", () => {
+  const a = { id: "aaa", website_url: "https://first.mx", category: "mexican" };
+  const b = { id: "bbb", website_url: "https://second.mx", category: "bar" };
+  assertEquals(
+    deterministicConnectPrefill({ name: "Org", legalName: "", rfc: null }, [b, a])
+      .businessProfile.url,
+    deterministicConnectPrefill({ name: "Org", legalName: "", rfc: null }, [a, b])
+      .businessProfile.url,
+  );
+  assertEquals(sortPlacesForPrefill([b, a]).map((p) => p.id), ["aaa", "bbb"]);
+});
+
+Deno.test("LLM leftovers are an update patch, never a different create body", () => {
+  const base = deterministicConnectPrefill(
+    { name: "Mystery", legalName: "", rfc: null },
+    [{ id: "p1", category: "undefined" }],
+  );
+  assertEquals(base.businessProfile.mcc, DEFAULT_CONNECT_MCC);
+  assertEquals(
+    llmBusinessProfilePatch(
+      base.businessProfile,
+      { mcc: CONNECT_MCCS.bars, product_description: "A cocktail bar in Condesa with a late kitchen." },
+      true,
+      true,
+    ),
+    {
+      mcc: CONNECT_MCCS.bars,
+      product_description: "A cocktail bar in Condesa with a late kitchen.",
+    },
+  );
+  assertEquals(
+    llmBusinessProfilePatch(
+      base.businessProfile,
+      { mcc: null, product_description: null },
+      true,
+      true,
+    ),
+    null,
+  );
 });

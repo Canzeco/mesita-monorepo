@@ -110,6 +110,7 @@ const CATEGORY_MCC: Record<string, string> = {
 };
 
 export type PlacePrefillRow = {
+  id?: string | null;
   name?: string | null;
   category?: string | null;
   category_label?: string | null;
@@ -246,10 +247,20 @@ function firstOf<T>(
   return null;
 }
 
+/** Stable order so firstOf (url/email/phone/copy) does not ride PostgREST shuffle. */
+export function sortPlacesForPrefill(places: PlacePrefillRow[]): PlacePrefillRow[] {
+  return [...places].sort((a, b) => {
+    const byId = (a.id ?? "").localeCompare(b.id ?? "");
+    if (byId !== 0) return byId;
+    return (a.name ?? "").localeCompare(b.name ?? "");
+  });
+}
+
 export function deterministicConnectPrefill(
   org: OrgPrefillRow,
   places: PlacePrefillRow[],
 ): ConnectPrefill {
+  places = sortPlacesForPrefill(places);
   const url = firstOf(places, (p) => asHttpsUrl(p.website_url)) ??
     firstOf(places, (p) => asHttpsUrl(p.instagram_url));
   const email = firstOf(places, (p) => asEmail(p.email));
@@ -388,6 +399,25 @@ export async function completePrefillWithLlm(opts: {
   }
 }
 
+/**
+ * Fields the LLM may PATCH onto an already-created Account. Never sent on
+ * accounts.create — Stripe idempotency is org+country, so a fail-open or a
+ * different model sentence would 409 the replay and orphan the first account.
+ */
+export function llmBusinessProfilePatch(
+  base: ConnectBusinessProfilePrefill,
+  llm: { mcc: string | null; product_description: string | null },
+  needMcc: boolean,
+  needDescription: boolean,
+): ConnectBusinessProfilePrefill | null {
+  const patch: ConnectBusinessProfilePrefill = {};
+  if (needMcc && llm.mcc && llm.mcc !== base.mcc) patch.mcc = llm.mcc;
+  if (needDescription && llm.product_description) {
+    patch.product_description = llm.product_description;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
 export async function resolveConnectPrefill(opts: {
   org: OrgPrefillRow;
   places: PlacePrefillRow[];
@@ -405,10 +435,12 @@ export async function resolveConnectPrefill(opts: {
     openaiKey: opts.openaiKey,
     fetchImpl: opts.fetchImpl,
   });
-  const profile = { ...base.businessProfile };
-  if (needMcc && llm.mcc) profile.mcc = llm.mcc;
-  if (needDescription && llm.product_description) {
-    profile.product_description = llm.product_description;
-  }
-  return { ...base, businessProfile: profile };
+  const patch = llmBusinessProfilePatch(
+    base.businessProfile,
+    llm,
+    needMcc,
+    needDescription,
+  );
+  if (!patch) return base;
+  return { ...base, businessProfile: { ...base.businessProfile, ...patch } };
 }
