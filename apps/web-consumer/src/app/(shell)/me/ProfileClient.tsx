@@ -10,8 +10,6 @@ import {
   Footprints,
   Gift,
   IdCard,
-  Instagram,
-  Medal,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -56,11 +54,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { PassportBar } from "./PassportBar";
 
-// The Me surface — the passport header, then eight pairs:
+// The Me surface — the passport header, then seven pairs:
 //
 //   passport       identity + the two axes; the bar IS a door (MESITA-1652)
 //   2              Profile · Passport
-//   2              Instagram · Class
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
@@ -74,15 +71,13 @@ import { PassportBar } from "./PassportBar";
 // different OBJECT — a document, with a photo, twice the height of a cell —
 // not by the rows underneath it changing shape (MESITA-1639).
 //
-// INSTAGRAM AND CLASS HAVE THREE PATHS, AND THAT IS DELIBERATE. Each is a
-// header chip (MESITA-1652), a cell in the pair below (Pato, 2026-09-08), and
-// a row inside `PassportModal`. MESITA-1650 removed the cells for exactly
-// this duplication and Pato re-drew the grid with them back in after seeing
-// the shipped screen. The redundancy is the point of the reversal, not an
-// oversight: Instagram is the only reach door in the app, and the Class
-// ladder carries the ONLY entrance for a 10-digit invite PIN (Docs › Passport
-// §C). Never make the last of those paths inert without adding another
-// first.
+// INSTAGRAM AND CLASS HAVE TWO PATHS, AND BOTH MUST STAY. Each is a header
+// chip (MESITA-1652) and a row inside `PassportModal`. The Me cells came back
+// in MESITA-1682 as a third path and left again (MESITA-1787, Pato: "Move
+// instagram and class into Passport. Yes. but keep them in the header.").
+// Never make either remaining path inert without adding another first:
+// Instagram is the only reach door, and the Class ladder carries the ONLY
+// entrance for a 10-digit invite PIN (Docs › Passport §C).
 //
 // NOTHING ON THIS PAGE PRINTS A NUMBER any more, which is why the mount does
 // ONE EF read. The four-up carries no summary line, so the metrics call that
@@ -257,14 +252,14 @@ export function ProfileClient({
               Instagram, phone — so the first cell is the one that EDITS it,
               and Passport is the document you open to read it back.
 
-              PASSPORT NO LONGER SAYS "Class and Instagram". Both are cells in
-              the row directly below; naming them here would print the same
-              two words twice inside one screen. What is left in the sheet and
-              nowhere else is just the number (MESITA-1688 dropped the privacy
-              switch this comment used to also name — profile_public defaults
-              true for every account and Settings owns the toggle
+              PASSPORT SAYS "Class and Instagram" because that is what the
+              cell owns now that the axes left the grid (MESITA-1787). The
+              member number is still the one fact nowhere else in the app
+              prints, and it lives inside the sheet. MESITA-1688 dropped the
+              privacy switch this comment used to also name — profile_public
+              defaults true for every account and Settings owns the toggle
               exclusively, so restating it here or in the sheet was the same
-              two-surfaces-disagree risk this page otherwise guards against). */}
+              two-surfaces-disagree risk this page otherwise guards against. */}
           <DestGrid>
             <DestTile
               Icon={UserRound}
@@ -275,7 +270,7 @@ export function ProfileClient({
             <DestTile
               Icon={IdCard}
               title="Passport"
-              summary="Your member number"
+              summary="Class and Instagram"
               // Mirrors the Profile tile's own guard right above (MESITA-1688).
               // Without it, a tap between mount and the profile fetch
               // resolving opens the sheet on profile: null — graceful
@@ -285,32 +280,14 @@ export function ProfileClient({
             />
           </DestGrid>
 
-          {/* THE AXES ARE CELLS AGAIN (Pato, 2026-09-08). They were rows in
-              the passport sheet (4 taps to an invite PIN), then cells here
-              (MESITA-1650), then header chips only (MESITA-1652). The chips
-              STAY — 1 tap from anywhere, because the bar never scrolls away —
-              so this adds a path rather than moving one, and nothing can be
-              stranded by it.
+          {/* THE AXES ARE NOT CELLS (MESITA-1787). They were, then they
+              weren't, then they were again (MESITA-1682). Pato moved them
+              into Passport and kept the header chips, so the grid no longer
+              restates the two facts already on the bar. The sheet still
+              carries both as doors — Instagram is the only reach door and
+              the Class ladder is the only invite-PIN entrance.
 
-              EACH CELL STATES ITS OWN VALUE, not a static label: the pair
-              reads as two facts you can act on, which is what earns it a row
-              beside Wallet and Plan rather than reading as two more doors. */}
-          <DestGrid>
-            <DestTile
-              Icon={Instagram}
-              title="Instagram"
-              summary={igSummary}
-              onClick={() => setVerifyOpen(true)}
-            />
-            <DestTile
-              Icon={Medal}
-              title="Class"
-              summary={classLabel}
-              onClick={() => setClassOpen(true)}
-            />
-          </DestGrid>
-
-          {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
+              ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
               drawer, all the same `DestTile`. The header bell, the count band
               and the "Everything else" heading are gone: the page used to
               stack four cell shapes and three fills, and two of those were
