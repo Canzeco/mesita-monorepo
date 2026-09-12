@@ -54,14 +54,20 @@ const ALERTS_NAV: NavItem[] = [
   CREDIT_LIABILITY_PARENT,
 ];
 
-// Manage — the records of real things, widest scope first: the backend itself,
-// then the places Mesita lists. Not Configurations; nothing here is a policy
-// blob. Places is plain "Places" now: the per-place editor left the admin
-// console with MESITA-1588 (it lives in the business console, ported with
-// MESITA-1537), so there is no second surface for a Multiple/Single qualifier
-// to tell it apart from. Invitations left the rail with MESITA-1783; the
-// page still lives at /invitations.
+// Manage — the records of real things. Admins first (Pato, 2026-09-12):
+// who may operate the console is a record, not a policy blob, and a
+// one-item heading is a subsection we do not want. Label only: the row
+// lists WHO has access, so it is a plural noun. Route, actions and EF
+// names stay `admin-config` / `admin-web-*` — a rename stops at the
+// label. Then widest scope: the backend itself, the places Mesita
+// lists. Not Configurations; nothing here is a policy blob. Places is
+// plain "Places" now: the per-place editor left the admin console with
+// MESITA-1588 (it lives in the business console, ported with MESITA-1537),
+// so there is no second surface for a Multiple/Single qualifier to tell
+// it apart from. Invitations left the rail with MESITA-1783; the page
+// still lives at /invitations.
 const MANAGE_NAV: NavItem[] = [
+  { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
   DB_PARENT,
   { href: "/manage-multiple", label: "Places", Icon: Building2 },
 ];
@@ -86,18 +92,6 @@ const MANAGE_NAV: NavItem[] = [
 // Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
 // because it IS the chat engine. It has no editor at all — it runs on in-code
 // defaults, so there is no Chat tab and nothing to give a rail row to.
-// Access — who may enter the console at all. Its own group (Pato, 2026-08-21)
-// because it is not a policy blob: every other Configurations row tunes how
-// the PRODUCT behaves, while this one decides who gets to tune them. It sits
-// below Configurations rather than beside Account: an operator opens it a few
-// times a year, and the rail should lead with what they use daily.
-//
-// Label only: the row lists WHO has access, so it is a plural noun. Route,
-// actions and EF names stay `admin-config` / `admin-web-*` — a rename stops
-// at the label.
-const ACCESS_NAV: NavItem[] = [
-  { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
-];
 
 /**
  * THE CONFIG PAGE SET IS CODE-DEFINED. This array is the SoT — never mirror
@@ -151,7 +145,6 @@ const SIDEBAR_SECTIONS: {
   { id: "alerts", label: "Alerts", items: ALERTS_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
-  { id: "access", label: "Access", items: ACCESS_NAV },
   { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 
