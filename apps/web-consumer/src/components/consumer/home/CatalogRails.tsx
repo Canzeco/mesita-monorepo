@@ -38,7 +38,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Compass, SlidersHorizontal } from "lucide-react";
 import { apiListCatalog, type CatalogRail, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { useUserLocation } from "@/lib/use-user-location";
+import {
+  useLocateUser,
+  useUserLocation,
+  useUserLocationLocating,
+} from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -64,6 +68,8 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
+  const locating = useUserLocationLocating();
+  const locate = useLocateUser();
   const { savedIds, setSaved } = useSavedPlaces();
   const [rails, setRails] = useState<CatalogRail[] | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -146,10 +152,11 @@ export function CatalogRails() {
     >
       <DiscoveryFilters
         onClose={() => setFiltersOpen(false)}
-        categoryOptions={[]}
         // PLACES MATCHING, not filters applied — the other meaning of `count`.
         count={rails === null ? null : placesShown}
         hasLocation={coords !== null}
+        locating={locating}
+        onLocate={locate}
       />
     </LocalSheet>
   );

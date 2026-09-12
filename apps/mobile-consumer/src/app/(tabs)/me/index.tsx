@@ -6,8 +6,6 @@ import {
   Footprints,
   Gift,
   IdCard,
-  AtSign,
-  Medal,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -39,8 +37,9 @@ import {
 } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same eight pairs
-// as web. Parked cells stay Soon. No Stripe checkout (Apple review).
+// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same seven pairs
+// as web (MESITA-1787 moved Instagram/Class into Passport + header). Parked
+// cells stay Soon. No Stripe checkout (Apple review).
 
 export default function MeHub() {
   const { profile, consumerClass, stats } = useAuth();
@@ -62,11 +61,6 @@ export default function MeHub() {
     CLASSES.find((c) => c.id === effective.key)?.label ?? 'Bronze';
   const handle = effective.handle ?? profile?.instagram_handle ?? null;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
-  const igSummary = igConnected
-    ? handle
-      ? `@${handle}`
-      : 'Connected'
-    : 'Connect it';
 
   useEffect(() => {
     let cancelled = false;
@@ -131,22 +125,8 @@ export default function MeHub() {
             <DestTile
               Icon={IdCard}
               title="Passport"
-              summary="Your member number"
+              summary="Class and Instagram"
               href={pages.passport}
-            />
-          </DestGrid>
-          <DestGrid>
-            <DestTile
-              Icon={AtSign}
-              title="Instagram"
-              summary={igSummary}
-              href={pages.instagram}
-            />
-            <DestTile
-              Icon={Medal}
-              title="Class"
-              summary={classLabel}
-              href={pages.class}
             />
           </DestGrid>
           <DestGrid>

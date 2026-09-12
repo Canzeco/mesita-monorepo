@@ -20,6 +20,7 @@ describe("middleware contract", () => {
     // would have gated the whole app, /signin included. The screen reads the
     // Stripe account, the members and the legal identity, so it belongs here.
     expect(shouldGate(SHELL_ROUTES.organization)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.organizationNew)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
     // Place — the fourth screen. It reads one org's holdings, so it sits
@@ -132,8 +133,7 @@ describe("the shell never re-couples to the overview EF", () => {
     // count ever drops to zero the rule above has silently stopped looking.
     const shell = path.resolve(__dirname, "..", "app", "(shell)");
     const serverFiles = walk(shell).filter(
-      (f) =>
-        /\.tsx$/.test(f) && !isClientComponent(readFileSync(f, "utf8")),
+      (f) => /\.tsx$/.test(f) && !isClientComponent(readFileSync(f, "utf8")),
     );
     expect(serverFiles.length).toBeGreaterThan(0);
   });

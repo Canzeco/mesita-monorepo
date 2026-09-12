@@ -12,7 +12,6 @@ import * as uiClasses from "./ui-classes";
 import { STATES_HEAD_STICKY, SHELL_BLEED, SHELL_GUTTER } from "./ui-classes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
 import { ownedFromParam, placeHref, placesHref } from "./console-routes";
-import { parsePortfolioOpen, serializePortfolioOpen } from "./sidebar-prefs";
 
 const SRC = path.resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
@@ -33,7 +32,10 @@ describe("gutter and bleed are exact negatives", () => {
     // wrong on every desktop.
     const pairs = SHELL_GUTTER.split(" ").map((c) => {
       const [prefix, util] = c.includes(":") ? c.split(":") : ["", c];
-      return { prefix, want: `${prefix ? `${prefix}:` : ""}-${util.replace("px-", "mx-")}` };
+      return {
+        prefix,
+        want: `${prefix ? `${prefix}:` : ""}-${util.replace("px-", "mx-")}`,
+      };
     });
     for (const { want } of pairs) {
       expect(SHELL_BLEED.split(" ")).toContain(want);
@@ -81,7 +83,9 @@ describe("the place screen has a heading, not a second bar", () => {
 
   it("the three superseded components are deleted, not orphaned", () => {
     for (const f of ["PlaceBar.tsx", "PlaceTabs.tsx", "GuardedPlaceTabs.tsx"]) {
-      expect(existsSync(path.join(SRC, "components", "console", f))).toBe(false);
+      expect(existsSync(path.join(SRC, "components", "console", f))).toBe(
+        false,
+      );
     }
   });
 
@@ -141,7 +145,9 @@ describe("the unsaved-edits guard reaches the rail", () => {
     expect(readCode("components/console/Sidebar.tsx")).toContain(
       "guardNav?.(href(SHELL_ROUTES.organization), e)",
     );
-    expect(readCode("components/console/AppShell.tsx")).toContain("guardNav?.(");
+    expect(readCode("components/console/AppShell.tsx")).toContain(
+      "guardNav?.(",
+    );
   });
 
   it("the provider wraps the shell, so the topbar can see the guard", () => {
@@ -155,18 +161,16 @@ describe("the unsaved-edits guard reaches the rail", () => {
   it("every rail row routes through the guard when one exists", () => {
     const rail = readCode("components/console/Sidebar.tsx");
     const rows = rail.match(/<NavRow/g) ?? [];
-    expect(rows.length).toBeGreaterThan(3);
+    expect(rows.length).toBe(3);
     expect((rail.match(/onGuardedNavigate=/g) ?? []).length).toBe(rows.length);
   });
 });
 
-// MESITA-1779. The rail is flat: five things at one x, two kinds of toggle
-// (ORG PLACES, and each place), and an open place told apart by its GROUND.
-// This block replaces the MESITA-1734 box rules and keeps the one rule that
-// has outlived every redesign of this rail: nothing indents. Pato rejected a
-// tree twice (1714, 1715); the ground groups without an inset and, since the
-// 2026-09-12 board, without a border either.
-describe("the rail is flat: toggles group it, insets and borders never do", () => {
+// MESITA-1793. The rail is three collections: Account · Organizations ·
+// Places. Nested 1779 place rows, the Org Places toggle, All Places and the
+// rail switcher all leave. The one rule that has outlived every redesign:
+// nothing indents. Pato rejected a tree twice (1714, 1715).
+describe("the rail is three collections", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
   it("indents NOTHING, and draws no tree line or bullet", () => {
@@ -180,101 +184,61 @@ describe("the rail is flat: toggles group it, insets and borders never do", () =
     expect(r).not.toMatch(/rounded-full["\s]*\/>/);
   });
 
-  it("an open place is a ground, never a bordered box", () => {
-    // The 1734 box drew `border-sidebar-border border` around the well. The
-    // ground alone is the container now, and its 2px padding is paid for by a
-    // -2px margin so the rows inside keep the x of the rows outside.
-    const r = rail();
-    expect(r).toContain("WELL_BG");
-    const at = r.indexOf("open && cn(WELL_BG");
-    expect(at).toBeGreaterThan(-1);
-    const wrapper = r.slice(at, r.indexOf(")", at));
-    expect(wrapper).not.toContain("border");
-    expect(wrapper).toContain("-mx-0.5 p-0.5");
-  });
-
-  it("ORG PLACES is a toggle — a button, never a link to a filtered list", () => {
-    const r = rail();
-    expect(r).toMatch(/<SectionToggle\s+label="Org Places"\s+count=\{places\.length\}/);
-    expect(r).not.toContain('placesHref("org")');
-    // The toggle is a disclosure with a name that says what it hides.
-    const toggle = r.slice(r.indexOf("function SectionToggle"), r.indexOf("function PlaceRow"));
-    expect(toggle).toContain('type="button"');
-    expect(toggle).toContain("aria-expanded={open}");
-    expect(toggle).toContain("aria-controls={open ? controls : undefined}");
-    expect(toggle).toMatch(/aria-label=\{`\$\{verb\} \$\{label\} \(\$\{count\}\)`\}/);
-    expect(toggle).not.toContain("href");
-    // It wears the eyebrow's own class, so it cannot read as a row you are at.
-    expect(toggle).toContain("TINY_LABEL_CLASS");
-  });
-
-  it("the portfolio arrives with the organization: no fetch, no retry, no empty frame", () => {
-    // The rail used to list its places through a server action after
-    // hydration, one round trip after the frame — or never, behind a Retry.
-    const r = rail();
-    expect(r).toContain("const places = activeOrg?.places ?? [];");
-    expect(r).not.toContain("listRailPlacesAction");
-    expect(r).not.toContain("Retry");
-    expect(r).not.toContain("failed");
-    expect(readCode("app/(shell)/actions/places.ts")).not.toContain("listRailPlacesAction");
-    // ONE call feeds the switcher and the rail, and the layout hands both down.
-    const layout = readCode("app/(shell)/layout.tsx");
-    expect(layout).toContain("apiConsoleViewer(supabase)");
-    expect(layout).toContain("isSuperAdmin={viewer.isSuperAdmin}");
-    expect(layout).toContain("places: o.places,");
-  });
-
-  it("every held place opens to its views without being visited", () => {
-    // The chevron on a place you were not on used to open an EMPTY box: the
-    // views were known only for the place whose layout had published them.
-    const r = rail();
-    expect(r).toContain("tabsForAccess({");
-    expect(r).toContain("held: true,");
-    expect(r).toContain("role: activeOrg?.myRole ?? null,");
-    // The place you are ON still shows the server's answer.
-    expect(r).toContain("openPlace?.id === id ? openPlace.tabs : derivedTabs");
-    expect(r).not.toContain("disabled");
-  });
-
-  it("the tab matrix is ONE function, read by the rail and the place layout alike", () => {
-    expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
-    expect(readCode("lib/place-tabs.ts")).toContain("export function tabsForAccess(");
-  });
-
-  it("Account is the FIRST row, and the switcher stands between it and Organization", () => {
-    // Pato listed Account first (2026-09-12). MESITA-1716's objection — that
-    // beside Organization it reads as a pair — is answered by structure: the
-    // switcher sits between the two, so they never share a group edge.
+  it("is Account · Organizations · Places, and nothing nested", () => {
     const r = rail();
     const at = (needle: string) => r.indexOf(needle);
     expect(at('label="Account"')).toBeGreaterThan(at("<nav"));
-    expect(at('label="Account"')).toBeLessThan(at('label="Organization"'));
-    expect(at('aria-label="Switch organization"')).toBeLessThan(at("<nav"));
-    expect(r).toContain("Icon={UserRound}");
-    // The 1734 identity chip beside the wordmark is gone.
-    expect(r).not.toContain('aria-label="Account"');
+    expect(at('label="Account"')).toBeLessThan(at('label="Organizations"'));
+    expect(at('label="Organizations"')).toBeLessThan(at('label="Places"'));
+    expect(at('label="Places"')).toBeLessThan(at("</nav>"));
+    expect(r).not.toContain("SectionToggle");
+    expect(r).not.toContain("PlaceRow");
+    expect(r).not.toContain("WELL_BG");
+    expect(r).not.toContain("listed.map(renderPlace)");
+    expect(r).not.toContain('label="All Places"');
+    expect(r).not.toContain('label="Org Places"');
+    expect(r).not.toContain('label="Organization"');
+    expect(r).not.toContain("No organization");
+    expect(r).not.toContain("<select");
   });
 
-  it("orders the nav Account → Organization → places → All Places", () => {
+  it("Places uses Store, and no two rows share an icon", () => {
     const r = rail();
-    const at = (needle: string) => r.indexOf(needle);
-    expect(at('label="Account"')).toBeLessThan(at('label="Organization"'));
-    expect(at('label="Organization"')).toBeLessThan(at("listed.map(renderPlace)"));
-    expect(at("listed.map(renderPlace)")).toBeLessThan(at('label="All Places"'));
-    expect(at('label="All Places"')).toBeLessThan(at("</nav>"));
-  });
-
-  it("All Places is separated from the places by a rule", () => {
-    // A run of places followed by an uncontained row of the same width reads
-    // as one group, and All Places is a link to a list rather than one of the
-    // places above it.
-    const r = rail();
-    const at = (needle: string) => r.indexOf(needle);
-    expect(at("listed.map(renderPlace)")).toBeLessThan(
-      at("border-sidebar-border mx-2 mt-3 mb-1 border-t"),
+    const icons = (r.match(/Icon=\{(\w+)\}/g) ?? []).map((m) =>
+      m.replace(/Icon=\{|\}/g, ""),
     );
-    expect(at("border-sidebar-border mx-2 mt-3 mb-1 border-t")).toBeLessThan(
-      at('label="All Places"'),
+    expect(new Set(icons)).toEqual(
+      new Set(["UserRound", "Building2", "Store"]),
+    );
+  });
+
+  it("Organizations is active on the collection AND the ceremony", () => {
+    const r = rail();
+    expect(r).toContain("pathname === SHELL_ROUTES.organization ||");
+    expect(r).toContain("pathname.startsWith(`${SHELL_ROUTES.organization}/`)");
+  });
+
+  it("Places is active on the list AND a place console", () => {
+    const r = rail();
+    expect(r).toContain("pathname === SHELL_ROUTES.places ||");
+    expect(r).toContain("pathname.startsWith(`${SHELL_ROUTES.places}/`)");
+  });
+
+  it("Create organization is never a rail href, and never carries ?org=", () => {
+    const r = rail();
+    expect(r).not.toContain("SHELL_ROUTES.organizationNew");
+    const page = readCode("app/(shell)/organization/page.tsx");
+    expect(page).toContain("SHELL_ROUTES.organizationNew");
+    expect(page).not.toContain("withOrg(SHELL_ROUTES.organizationNew");
+    expect(page).not.toContain("CreateOrganizationForm");
+  });
+
+  it("the collection is never a form", () => {
+    expect(read("app/(shell)/organization/page.tsx")).not.toContain(
+      "CreateOrganizationForm",
+    );
+    expect(read("app/(shell)/organization/new/page.tsx")).toContain(
+      "CreateOrganizationForm",
     );
   });
 
@@ -295,170 +259,66 @@ describe("the rail is flat: toggles group it, insets and borders never do", () =
     expect(footer).not.toContain("<NavRow");
   });
 
-  it("gives every place its own photo, never the shared glyph", () => {
-    expect(rail()).toContain("thumb={placeThumbUrl(place.photoUrl, THUMB_PX)}");
-  });
-
-  it("NEVER points an img at the full-resolution original", () => {
-    // photoUrl is an 8MB-ceiling original in place-images. placeThumbUrl
-    // rewrites it to the /render/image/ transform (MESITA-1553), and the rail
-    // renders on EVERY screen in the console.
-    const r = rail();
-    expect(r).toContain("placeThumbUrl(");
-    expect(r).not.toMatch(/src=\{[^}]*photoUrl[^}]*\}/);
-  });
-
-  it("falls back to a glyph when a place has no photo yet", () => {
-    const r = rail();
-    expect(r).toContain("thumb ? (");
-    expect(r).toContain("<Icon className=");
-  });
-
-  it("the photo is decorative — the label already names the place", () => {
-    expect(rail()).toContain('alt=""');
-    expect(rail()).toContain('loading="lazy"');
-  });
-
-  it("MANY places can be open at once, and the set outlives a reload", () => {
-    const r = rail();
-    expect(r).toContain("useState<Set<string>>");
-    expect(r).toContain("openIds.has(place.id)");
-    // On a cookie, not localStorage: the server layout reads it during render,
-    // so the column paints at its final HEIGHT on the first frame.
-    expect(r).toContain("RAIL_OPEN_PLACES_COOKIE");
-    expect(r).not.toContain("localStorage");
-    expect(readCode("app/(shell)/layout.tsx")).toContain("parseOpenPlaceIds");
-  });
-
-  it("ORG PLACES remembers being shut on its own cookie, and is open by default", () => {
-    const r = rail();
-    expect(r).toContain("RAIL_PORTFOLIO_COOKIE");
-    expect(r).toContain("useState(defaultPortfolioOpen)");
-    expect(readCode("app/(shell)/layout.tsx")).toContain("parsePortfolioOpen(");
-    // Open is the ABSENT cookie; only shut is ever stored, and garbage opens.
-    expect(parsePortfolioOpen(undefined)).toBe(true);
-    expect(parsePortfolioOpen("")).toBe(true);
-    expect(parsePortfolioOpen("garbage")).toBe(true);
-    expect(parsePortfolioOpen("0")).toBe(false);
-    expect(serializePortfolioOpen(true)).toBe("");
-    expect(serializePortfolioOpen(false)).toBe("0");
-  });
-
-  it("a SHUT portfolio keeps the current place in view", () => {
-    // Hiding every place would hide the pill and aria-current with it.
-    const r = rail();
-    expect(r).toContain("places.filter((p) => p.id === openPlaceId)");
-    expect(r).toContain("listed.map(renderPlace)");
-  });
-
-  it("arriving at a place opens it once, and never re-opens it", () => {
-    const r = rail();
-    expect(r).toContain("autoOpened");
-    expect(r).toContain("useRef<string | null>(null)");
-    expect(r).toContain("if (autoOpened.current === openPlaceId) return;");
-  });
-
-  it("the toggles NEVER route through the unsaved-edits guard", () => {
-    // Toggling navigates nowhere and therefore discards nothing. Guarding it
-    // would offer to throw away work in exchange for nothing.
-    const r = rail();
-    const buttons = r.split("onClick={onToggle}").slice(1);
-    expect(buttons.length).toBe(2); // the section toggle and the place chevron
-    for (const b of buttons) {
-      const body = b.slice(0, b.indexOf("</button>"));
-      expect(body).not.toContain("onGuardedNavigate");
-      expect(body).not.toContain("guardNav");
-    }
-    // Every LINK out of the rail still answers to it.
-    expect(r).toContain("onGuardedNavigate");
-  });
-
-  it("renders no place section until there is a place in it", () => {
-    expect(r_hasGuard(rail())).toBe(true);
-  });
-
-  it("paints exactly one filled pill for one location", () => {
-    const r = rail();
-    expect(r).toContain("active={false}");
-    expect(r).toContain("heading={open || headerIsActive}");
-    expect(r).toContain("ROW_HEADING");
-    const h = r.slice(r.indexOf("const ROW_HEADING"));
-    expect(h.slice(0, h.indexOf(";"))).not.toContain("bg-foreground");
-  });
-
-  it("a SHUT place holding the current route keeps the marker", () => {
-    const r = rail();
-    expect(r).toContain("const headerIsActive = ownsRoute && !open;");
-    expect(r).toContain("headerIsActive && ROW_ACTIVE");
-    expect(r).toContain("PLACE_TAB_LABEL[activeTab]");
-    expect(r).toContain("const showViews = open && tabs.length > 0;");
-  });
-
-  it("the disclosures are disclosures, not tablists", () => {
-    const r = rail();
-    expect(r).toContain("aria-expanded={open}");
-    expect(r).toContain("aria-controls={showViews ? viewsId : undefined}");
-    expect(r).toMatch(/aria-label=\{`\$\{open \? "Collapse" : "Expand"\} \$\{place\.name\}`\}/);
-    expect(r).not.toContain('role="tablist"');
-    expect(r).not.toContain('role="tab"');
-  });
-
-  it("has NO toggles when the rail is collapsed", () => {
-    // 64px cannot hold a name and a chevron, and a toggle with nothing to hide
-    // is ornament. Collapsed, the rail is the flat icon column.
-    const r = rail();
-    const branch = r.slice(r.indexOf("if (collapsed) {"));
-    expect(branch.slice(0, branch.indexOf("return (\n      <PlaceRow"))).not.toContain(
-      "<PlaceRow",
+  it("the tab matrix is ONE function, read by the place layout", () => {
+    expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
+    expect(readCode("lib/place-tabs.ts")).toContain(
+      "export function tabsForAccess(",
     );
-    expect(r).toContain('<SectionBreak label="Org Places" collapsed />');
+    expect(rail()).not.toContain("tabsForAccess");
   });
 
-  it("no two DIFFERENT rows share an icon", () => {
-    // Account and Profile both used to be UserRound, and Organization and Org
-    // Places both used to be Building2 — which is how a menu starts reading as
-    // mush. Counted as a SET: a place row has two call sites (the row and the
-    // collapsed fallback) and both must use `Store`.
-    const r = rail();
-    const icons = (r.match(/Icon=\{(\w+)\}/g) ?? []).map((m) =>
-      m.replace(/Icon=\{|\}/g, ""),
+  it("the header switcher appears only at two-plus organizations", () => {
+    const hdr = readCode("components/console/ConsoleHeader.tsx");
+    expect(hdr).toContain("organizations.length > 1");
+    expect(hdr).toContain('aria-label="Switch organization"');
+    expect(hdr).not.toContain("window.location");
+    expect(rail()).not.toContain('aria-label="Switch organization"');
+  });
+
+  it("a claim or release still refreshes through the server tree", () => {
+    expect(readCode("components/console/PlaceHoldButton.tsx")).toContain(
+      "router.refresh()",
     );
-    expect(new Set(icons)).toEqual(
-      new Set(["UserRound", "Building2", "Store", "Layers"]),
+    expect(readCode("components/console/OpenPlace.tsx")).not.toContain(
+      "portfolioVersion",
     );
-    const table = r.slice(r.indexOf("const TAB_ICON"));
-    const tabIcons = (table.slice(0, table.indexOf("};")).match(/:\s*(\w+),/g) ?? [])
-      .map((m) => m.replace(/[:,\s]/g, ""));
-    expect(tabIcons).toHaveLength(PLACE_TABS.length);
-    expect(new Set(tabIcons).size).toBe(tabIcons.length);
-    for (const icon of tabIcons) expect(new Set(icons).has(icon)).toBe(false);
-  });
-
-  it("view rows prefetch their whole route on hover", () => {
-    // The tab body waits on an Edge Function (~550ms p50). Hovering the row
-    // starts that wait before the click does; the skeleton covers the rest.
-    const r = rail();
-    expect(r).toContain("unstable_dynamicOnHover");
-    expect((r.match(/^\s*hoverPrefetch$/gm) ?? []).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("switching organizations navigates instead of reloading the document", () => {
-    const r = rail();
-    expect(r).toContain("router.push(switchHref(e.target.value))");
-    expect(r).not.toContain("window.location");
-  });
-
-  it("a claim or release refreshes the rail through the server tree", () => {
-    // The rail draws its places from the layout's props now, so the signal is
-    // a router refresh from the button that moved the place — not a client
-    // refetch keyed on a context counter.
-    expect(readCode("components/console/PlaceHoldButton.tsx")).toContain("router.refresh()");
-    expect(readCode("components/console/OpenPlace.tsx")).not.toContain("portfolioVersion");
-    expect(rail()).not.toContain("portfolioVersion");
   });
 
   it("focus travels on the brand's ring, not the browser's", () => {
     expect(rail()).toContain("focus-visible:ring-sidebar-ring");
+  });
+
+  it("the layout does not thread places into the rail", () => {
+    const layout = readCode("app/(shell)/layout.tsx");
+    expect(layout).toContain("apiConsoleViewer(supabase)");
+    expect(layout).not.toContain("isSuperAdmin={viewer.isSuperAdmin}");
+    expect(layout).not.toContain("places: o.places");
+    expect(layout).not.toContain("defaultOpenPlaceIds");
+    expect(layout).not.toContain("defaultPortfolioOpen");
+  });
+});
+
+describe("crumbsFor names the three collections", () => {
+  const crumbs = () => readCode("components/console/ConsoleHeader.tsx");
+
+  it("Create is Organizations / Create, never an empty trail", () => {
+    const s = crumbs();
+    expect(s).toContain("pathname === SHELL_ROUTES.organizationNew");
+    expect(s).toContain('return ["Organizations", "Create"]');
+  });
+
+  it("the collection is Organizations, Places never take a filter crumb", () => {
+    const s = crumbs();
+    expect(s).toContain('return ["Organizations"]');
+    expect(s).toContain(
+      'if (pathname === SHELL_ROUTES.places) return ["Places"]',
+    );
+    expect(s).not.toContain('"Org Places"');
+    expect(s).not.toContain('"Public Places"');
+  });
+
+  it("a place console is Places / name", () => {
+    expect(crumbs()).toContain('return ["Places", openPlace?.name ?? "Place"]');
   });
 });
 
@@ -504,7 +364,7 @@ describe("every place view has its own loading boundary", () => {
     // cause the very shift the boundary exists to prevent — the same rule
     // `places/[id]/loading.tsx` follows.
     const s = readCode("components/console/PlaceViewSkeleton.tsx");
-    expect(s).toContain("aria-hidden=\"true\"");
+    expect(s).toContain('aria-hidden="true"');
     expect(s).toContain("sr-only");
     // And the pulse stops for anyone who asked motion to stop.
     expect(s).toContain("motion-reduce:animate-none");
@@ -532,15 +392,10 @@ describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", ()
   it("nested configs still hide with CSS, never unmount", () => {
     const s = read("components/place-manage/sections/PromosSection.tsx");
     expect(s).toContain("shouldRenderConfig");
-    expect(s).toContain("dirtyLabels.includes(\"Orders\")");
-    expect(s).toContain("dirtyLabels.includes(\"Reservations\")");
+    expect(s).toContain('dirtyLabels.includes("Orders")');
+    expect(s).toContain('dirtyLabels.includes("Reservations")');
   });
 });
-
-/** The place section must be conditional on the list being non-empty. */
-function r_hasGuard(src: string): boolean {
-  return /\{places\.length > 0 &&/.test(src);
-}
 
 // MESITA-1637, moved by MESITA-1710. The console is driven in a chromeless
 // desktop window, so the address bar is not on screen and nothing else in the
@@ -564,7 +419,10 @@ describe("the console header names the route", () => {
 
   it("cannot grow the header — a place route carries a uuid", () => {
     const el = hdr().slice(hdr().indexOf("<Link\n        href={route}"));
-    const cls = el.slice(el.indexOf("className="), el.indexOf(">\n        {route}"));
+    const cls = el.slice(
+      el.indexOf("className="),
+      el.indexOf(">\n        {route}"),
+    );
     expect(cls).toContain("truncate");
     expect(cls).toMatch(/max-w-\[/);
     expect(cls).toContain("shrink-0");

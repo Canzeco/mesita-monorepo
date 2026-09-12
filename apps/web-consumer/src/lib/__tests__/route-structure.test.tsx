@@ -552,8 +552,8 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders sixteen cells as eight pairs, no tail", () => {
-    // Eight pairs, no four-up and no tail (MESITA-1639). MESITA-1636 broke the
+  it("renders fourteen cells as seven pairs, no tail", () => {
+    // Seven pairs, no four-up and no tail (MESITA-1639). MESITA-1636 broke the
     // rhythm with a four-up so the column would not read as undifferentiated,
     // and paid for it in the only four cells on the page with no summary. The
     // passport leads by being a different OBJECT — a document with a photo,
@@ -562,12 +562,10 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // PROFILE LEADS ITS PAIR (Pato, 2026-09-08), reversing MESITA-1648: the
     // header states the identity, so the first cell is the one that edits it.
     //
-    // INSTAGRAM AND CLASS ARE CELLS AGAIN (Pato, 2026-09-08). They were cells
-    // (MESITA-1650), then header chips only (MESITA-1652) on the argument
-    // that a chip is 1 tap from anywhere while a cell must be scrolled to.
-    // The chips STAY, so this pair is a third path alongside them and the
-    // PassportModal rows — deliberate duplication, re-drawn by Pato after
-    // seeing the shipped screen.
+    // INSTAGRAM AND CLASS LEFT THE GRID (MESITA-1787). They were cells
+    // (MESITA-1650), then header chips only (MESITA-1652), then cells again
+    // (MESITA-1682). Pato moved them into Passport and kept the header chips,
+    // so two paths remain: chip and PassportModal row. The chips STAY.
     //
     // Still absent, each for its own reason: Metrics and Contact moved into
     // Settings; Cards is the same `CardsModal` Pay's Wallet already opens,
@@ -575,8 +573,6 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Passport",
-      "Instagram",
-      "Class",
       "Wallet",
       "Plan",
       "Notifications",
@@ -608,11 +604,11 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
   });
 
   it("every row is a pair, and the last is a deliberate full-width cell", () => {
-    // Eight `DestGrid`s of two. Counting grids and spans SEPARATELY on
+    // Seven `DestGrid`s of two. Counting grids and spans SEPARATELY on
     // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
-    // would go on being true of any row width. Eight again now that the
-    // Instagram/Class pair is back as cells beside the header chips.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(8);
+    // would go on being true of any row width. Seven now that Instagram
+    // and Class live in Passport, not as a pair beside the header chips.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(7);
     // About was the only spanning cell and it folded into Help (MESITA-1650),
     // so every row is now a pair and nothing spans.
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);

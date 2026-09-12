@@ -158,7 +158,7 @@ export function IntakeClient({
     <>
       <SectionStrip />
 
-      <div className="flex flex-col gap-4 pb-4">
+      <div className="flex flex-col gap-4 pb-24">
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
@@ -570,10 +570,10 @@ export function IntakeClient({
 
       {/* STICKY, NOT FIXED — same reason as SectionStrip: a `fixed` footer is
           measured against the window, so it ran under the desktop rail and
-          sat on the phone's home indicator. As the last child of the page it
-          pins to the bottom of the scrolling column and needs no `pb-24`
-          spacer above it. The row stacks under `sm`: label over buttons
-          rather than three items fighting for 343px. */}
+          sat on the phone's home indicator. Sticky still overlays the bottom
+          of the column, so the modules keep `pb-24` or Vote threshold (and
+          Functions) sit under Save Intake. The row stacks under `sm`: label
+          over buttons rather than three items fighting for 343px. */}
       <div className="border-border bg-card/90 pb-safe sticky bottom-0 z-20 -mx-4 border-t backdrop-blur sm:-mx-6 sm:pb-0 lg:-mx-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
           <div className="min-w-0">

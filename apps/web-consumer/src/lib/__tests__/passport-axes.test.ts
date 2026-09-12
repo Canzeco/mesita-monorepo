@@ -174,25 +174,22 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(read(SHEET)).not.toContain("privacy_public");
   });
 
-  it("prints BOTH axes, and so does the cell pair beside it", () => {
-    // MESITA-1650 took these off the card because the cells 150px below said
-    // the same two things; MESITA-1652 then deleted the cells, leaving the bar
-    // as the only place either fact appeared, and this test pinned that.
-    //
-    // Pato re-drew the grid with the pair back in (2026-09-08), so the
-    // duplication is deliberate again and the assertion inverts: what matters
-    // is that BOTH surfaces carry both axes, because each is a door that the
-    // other cannot replace — the chip never scrolls away, the cell is where
-    // the eye goes. A change that silently drops either has to come here.
+  it("prints BOTH axes on the bar, and they are NOT grid cells", () => {
+    // MESITA-1787 (Pato: keep them in the header, move them into Passport).
+    // The chips stay — 1 tap from anywhere, because the bar never scrolls
+    // away. The Me cells that restated the same two facts (MESITA-1682) are
+    // gone; the Passport sheet is the second path. A change that silently
+    // drops either chip, or puts the cells back, has to come here.
     expect(bar).toContain("classLabel");
     expect(bar).toContain("instagramSummary");
-    const client = read(CLIENT);
-    expect(client).toContain('title="Instagram"');
-    expect(client).toContain('title="Class"');
-    // The cells state VALUES, not static labels, off the same two sources the
-    // chips read — so the pair cannot drift into saying something else.
-    expect(client).toContain("summary={igSummary}");
-    expect(client).toContain("summary={classLabel}");
+    const client = codeOnly(read(CLIENT));
+    expect(client).not.toContain('title="Instagram"');
+    expect(client).not.toContain('title="Class"');
+    expect(client).not.toContain("summary={igSummary}");
+    expect(client).not.toContain("summary={classLabel}");
+    // The chips still read those values; only the cells dropped them.
+    expect(client).toContain("instagramSummary={igSummary}");
+    expect(client).toContain("classLabel={classLabel}");
   });
 
   it("no longer shares a height with the tab bar, and says so", () => {

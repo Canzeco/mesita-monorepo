@@ -1,16 +1,16 @@
-// Organization — the legal person. Five boxes and a Places row, funnel-first:
-// the Stripe account (state + CTA + legal identity), the members, what it
-// holds, then the three money products as honest Soon strips. Composition
-// and order live in OrgScreenSections; this file authenticates, fetches, and
-// degrades.
+// Organizations — the collection (MESITA-1793). Zero is an empty state
+// with a Create button, never a form. One org is today's five boxes. Two
+// or more is the list, then the selected org's boxes.
 //
 // State is Not connected / Connected: an organization's own state is about
 // money, not about places. Listed and Verified describe one address and live
 // on the place, never here.
+import Link from "next/link";
+import { Building2 } from "lucide-react";
 import { redirect } from "next/navigation";
-import { Section } from "@/components/shared/Section";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { OrgStateBadge } from "@/components/console/badges";
-import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
+import { OrgList } from "@/components/console/OrgList";
 import { OrgScreenSections } from "@/components/console/OrgScreenSections";
 import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
@@ -24,10 +24,22 @@ import {
 } from "@/lib/api/organizations";
 import { resolveActiveOrg } from "@/lib/active-organization";
 import { SHELL_ROUTES } from "@/lib/console-routes";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 import { PageErrorState } from "@/components/business/PageErrorState";
 
 export const dynamic = "force-dynamic";
+
+function CreateAnotherLink() {
+  return (
+    <Link
+      href={SHELL_ROUTES.organizationNew}
+      className="text-muted-foreground hover:text-foreground self-start text-[13px] underline underline-offset-4 transition"
+    >
+      Create another organization
+    </Link>
+  );
+}
 
 export default async function OrganizationPage({
   searchParams,
@@ -65,15 +77,21 @@ export default async function OrganizationPage({
     return (
       <>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Create your organization
+          Organizations
         </h1>
-        <p className="text-muted-foreground -mt-2 text-sm">
-          It holds the places you claim, and the account that gets paid. Just
-          the name to start — legal details wait until a place goes partner.
-        </p>
-        <Section title="New organization">
-          <CreateOrganizationForm />
-        </Section>
+        <EmptyState
+          icon={<Building2 className="text-muted-foreground h-5 w-5" />}
+          title="No organizations yet"
+          description="An organization holds the places you claim, and the account that gets paid."
+          action={
+            <Link
+              href={SHELL_ROUTES.organizationNew}
+              className={CTA_BUTTON_CLASS}
+            >
+              Create organization
+            </Link>
+          }
+        />
       </>
     );
   }
@@ -110,22 +128,40 @@ export default async function OrganizationPage({
     );
   }
 
+  const connect = typeof sp.connect === "string" ? sp.connect : undefined;
+  const many = orgs.length > 1;
+
   return (
     <>
-      <div className="flex items-center gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {org.name}
-        </h1>
-        <OrgStateBadge
-          state={account?.charges_enabled ? "connected" : "not_connected"}
-        />
-      </div>
+      {many ? (
+        <>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            Organizations
+          </h1>
+          <OrgList organizations={orgs} activeId={org.id} />
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-xl font-semibold tracking-tight">
+              {org.name}
+            </h2>
+            <OrgStateBadge
+              state={account?.charges_enabled ? "connected" : "not_connected"}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {org.name}
+          </h1>
+          <OrgStateBadge
+            state={account?.charges_enabled ? "connected" : "not_connected"}
+          />
+        </div>
+      )}
 
       {/* Above everything: the answer to "did that work?" comes before the
           screen it is about (MESITA-1645). */}
-      <ConnectReturnNotice
-        connect={typeof sp.connect === "string" ? sp.connect : undefined}
-      />
+      <ConnectReturnNotice connect={connect} />
       <OrgScreenSections
         org={org}
         myManagerId={user.id}
@@ -135,6 +171,7 @@ export default async function OrganizationPage({
         pendingInvites={pendingInvites}
         membersError={membersError}
       />
+      <CreateAnotherLink />
     </>
   );
 }
