@@ -9,14 +9,17 @@ const supersAllOff = (): Record<SuperParamKey, boolean> =>
     boolean
   >;
 import {
+  admitGuestMinReviews,
   admitMapCatalog,
   admitSwipeCatalog,
+  clearsMinReviews,
   enabledNearbyTypes,
   evaluatePlaceForMap,
   googleHitClearsMapFloors,
   listedClearsMapPopularity,
   listedMapFilters,
   mapShouldFillGoogle,
+  parseMapMinReviews,
   primaryTypeClearsMapTypes,
 } from "./map-engine.ts";
 import type { NearbyHit } from "./nearby-places.ts";
@@ -218,4 +221,26 @@ Deno.test("Atlas leftover slugs admit via Super membership, not Google type", ()
   assertEquals(primaryTypeClearsMapTypes("board_game_cafe", MAP), true);
   assertEquals(primaryTypeClearsMapTypes("hotel", MAP), false);
   assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);
+});
+
+Deno.test("guest Popularity snaps to 0/10/100/1000/10000 and unknown fails a floor", () => {
+  assertEquals(parseMapMinReviews(undefined), 0);
+  assertEquals(parseMapMinReviews(-1), 0);
+  assertEquals(parseMapMinReviews(10), 10);
+  assertEquals(parseMapMinReviews(55), 100);
+  assertEquals(clearsMinReviews(null, 0), true);
+  assertEquals(clearsMinReviews(null, 10), false);
+  assertEquals(clearsMinReviews(9, 10), false);
+  assertEquals(clearsMinReviews(10, 10), true);
+  const listed = [
+    { google_review_count: 3 },
+    { google_review_count: 100 },
+  ];
+  const google = [hit({ reviewCount: 4 }), hit({ reviewCount: 200 })];
+  const got = admitGuestMinReviews(listed, google, 10);
+  assertEquals(got.listed.map((r) => r.google_review_count), [100]);
+  assertEquals(got.google.map((h) => h.reviewCount), [200]);
+  const passthrough = admitGuestMinReviews(listed, google, 0);
+  assertEquals(passthrough.listed.length, 2);
+  assertEquals(passthrough.google.length, 2);
 });

@@ -3,6 +3,8 @@
 // ONE shared discovery-filter store for Feed and Scroll (MESITA-1792).
 // Super Category · Places scope · Google review floor. Location is GPS,
 // not persisted here. Module-level state + useSyncExternalStore.
+// Search map Places + Super Category + Popularity live in
+// use-map-filters (MESITA-1790) — Map-only, a different store.
 
 import { useSyncExternalStore } from "react";
 import {

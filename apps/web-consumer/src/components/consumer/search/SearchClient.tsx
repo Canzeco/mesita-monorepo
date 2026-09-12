@@ -36,9 +36,8 @@
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: the search bar, full width, then the results dropdown
-//     directly beneath it. There is no Filters control: the ring, the Super
-//     Categories and How many are all operator config (MESITA-1699).
+//   • Top overlay: the search bar + Filters disc (Super Category, Places
+//     scope, Popularity). How many is operator `map.pinCount`.
 //   • Bottom overlay: the catalog rail around the camera, hidden while
 //     querying. Closest first. A guest pan auto-reloads after reloadMinKm
 //     AND reloadMinSec.
@@ -65,6 +64,12 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { useSearchScope } from "@/lib/use-search-scope";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import {
+  mapFilterCount,
+  placeSearchScope,
+} from "@/lib/map-filters-engine";
+import { useMapFilters } from "@/lib/use-map-filters";
 import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
@@ -79,9 +84,11 @@ import {
 } from "./SearchMap";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
+import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import { SearchRailOverlay } from "./search-catalog-overlays";
+import { SearchMapFilters } from "./SearchMapFilters";
 import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
@@ -180,16 +187,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  // NO GUEST FILTERS ON SEARCH (Pato, 2026-09-08: "remove filters from
-  // search. like those filters are controlled in admin console, not in
-  // consumer app"). The sheet's three controls each have an operator owner
-  // now — Super Category is `map.supers`, the ring is `map.googleFill`, How
-  // many is `map.pinCount` — so this component asks the EF for a set and
-  // paints it. It never narrows one.
-  //
-  // That retires the client-side cut too. `applyMapFilters` re-filtered rows
-  // the EF had already selected, so two places could disagree about what
-  // belongs on the map. There is one selector now, and it is the server.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Filters disc, top right (Pato, 2026-09-12). Super Category, Places
+  // scope and Popularity ride this store and the nearby call. How many
+  // is operator `map.pinCount`. The server is the one selector — this
+  // component never recuts the catalog.
+  const filters = useMapFilters();
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : userLocation;
   const center = location;
@@ -218,6 +221,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, distanceCenter]);
+  const scopeCounts = useMemo(() => {
+    let partners = 0;
+    let mesita = 0;
+    let google = 0;
+    for (const place of nearby) {
+      const ring = placeSearchScope(place);
+      if (!ring) continue;
+      if (ring === "partners") partners += 1;
+      if (ring === "partners" || ring === "mesita") mesita += 1;
+      google += 1;
+    }
+    return { partners, mesita, google };
+  }, [nearby]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //
@@ -380,11 +396,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       setCatalogLoading(true);
       setFetchError(null);
       try {
-        // How many, the ring and the Super Categories are ALL the
-        // operator's now (MESITA-1699). This call carries a centre and
-        // nothing else; `consumer-web-list-places` reads `map.pinCount`,
-        // `map.googleFill` and `map.supers` off the blob.
-        const result = await apiFetchNearbyCatalog(supabase, nextCenter);
+        const result = await apiFetchNearbyCatalog(
+          supabase,
+          nextCenter,
+          filters.placesScope,
+          filters.familyKeys,
+          filters.minReviews,
+        );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
         lastFetchedAtMs.current = Date.now();
@@ -408,7 +426,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [supabase],
+    [filters.placesScope, filters.familyKeys, filters.minReviews, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -484,6 +502,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
+
+  // Places scope, Super Category and Popularity all change the Nearby
+  // engine. How many stays the operator's pinCount. The query bar never
+  // reads these filters.
+  useEffect(() => {
+    if (!lastFetchedCenter.current || !lastBoxRef.current) return;
+    clearPendingReload();
+    void loadViewport(lastBoxRef.current);
+  }, [clearPendingReload, filters.placesScope, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 
@@ -828,23 +855,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — the query bar, full width.
+      {/* Floating top overlay — query bar + Filters disc, top right.
 
-          THE BAR IS THE WHOLE ROW AGAIN (Pato, 2026-09-08). Filters spent a
-          week migrating around this screen — bottom overlay, corner disc, then
-          a labelled third of the row — and the answer turned out to be that
-          the controls were never the guest's. With them gone the row has one
-          job, and the map keeps the width that argument was always about. */}
+          A CIRCLE, NOT A THIRD OF THE ROW. The disc spends no width the
+          query needs and matches the loading silhouette. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
-        <SearchBar
-          query={query}
-          showClear={query.length > 0}
-          onQueryChange={updateQuery}
-          onFocus={() => setBarFocused(true)}
-          onBlur={() => setBarFocused(false)}
-          onClear={() => updateQuery("")}
-          placeholder="Search places by name…"
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={updateQuery}
+              onFocus={() => setBarFocused(true)}
+              onBlur={() => setBarFocused(false)}
+              onClear={() => updateQuery("")}
+              placeholder="Search places by name…"
+            />
+          </div>
+          <SearchFilterRow
+            count={mapFilterCount(filters)}
+            onOpenFilters={() => setFiltersOpen(true)}
+          />
+        </div>
 
         {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
             way the old standalone Search page stacked them: header band, then
@@ -912,6 +944,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       {/* From-Google preview + Add. NOT search chrome: the catalog carries
           Google-only places (grey pins), so a pin or rail-card tap reaches
           this through handleOpenPlace. It outlived the search bar. */}
+      <LocalSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        ariaLabel="Filters"
+      >
+        <SearchMapFilters
+          onClose={() => setFiltersOpen(false)}
+          count={catalogLoading ? null : catalog.length}
+          scopeCounts={scopeCounts}
+        />
+      </LocalSheet>
+
       <GooglePlaceSheet
         open={previewOpen}
         prediction={preview}

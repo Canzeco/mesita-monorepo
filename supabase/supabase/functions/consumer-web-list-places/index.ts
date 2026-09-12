@@ -24,13 +24,14 @@
 //     and enrichment gates every Mesita ring, so a partner has to be
 //     enriched to sit inside the enriched one.
 //
-//     WEB SEARCH NOW POSTS NEITHER scope NOR limit NOR familyKeys
-//     (MESITA-1699): the guest Filters sheet is deleted, so `map.pinCount`
-//     is the cap, `map.googleFill` decides Google, and `map.supers` picks
-//     the batteries. A `google: true` call with no scope therefore resolves
-//     to the GOOGLE ring — the widest — because the operator, not the
-//     guest, is the one who says whether Google rows may appear, and
-//     googleFill is where that is said.
+//     WEB SEARCH POSTS scope + familyKeys + minReviews (MESITA-1790).
+//     How many stays operator `map.pinCount`. `map.googleFill` still
+//     decides whether Nearby may be billed. Guest Super pills outrank
+//     `map.supers` for Nearby batteries. Popularity (`minReviews`) is a
+//     Discovery-mode cut after the catalog is assembled — not a Nearby
+//     API param. A `google: true` call with no scope still resolves to the
+//     GOOGLE ring so a silent older client keeps its operator-widest
+//     default; a live Filters sheet always names the ring.
 //
 //     A call WITHOUT `google: true` keeps the old default: absent or
 //     unknown resolves to "mesita", the widest Mesita ring. Mobile Search
@@ -59,7 +60,7 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { familiesForGoogleType } from "../_shared/sourcing.ts";
 import { nearbyTypesForSupers } from "../_shared/google-type-super.ts";
-import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
+import { familiesForPlace, readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import {
   loadDiscoveryConfig,
 } from "../_shared/discovery-config.ts";
@@ -71,10 +72,12 @@ import {
   clearsGeneralGate,
 } from "../_shared/discovery-general-gate.ts";
 import {
+  admitGuestMinReviews,
   admitMapCatalog,
   enabledNearbyTypes,
   listedMapFilters,
   mapShouldFillGoogle,
+  parseMapMinReviews,
 } from "../_shared/map-engine.ts";
 import {
   applyBboxPredicate,
@@ -152,7 +155,8 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     created_at: new Date(0).toISOString(),
     google_stars_overall: hit.rating,
     google_rating: hit.rating,
-    google_review_count: null,
+    google_review_count: hit.reviewCount,
+    google_count: hit.reviewCount,
     zone: null,
     city: null,
     content_state: "ready",
@@ -188,6 +192,8 @@ type ListBody = {
   /** Legacy ordinal wire (pre-2026-09-05 clients). */
   searchPower?: number;
   familyKeys?: unknown;
+  /** Guest Popularity stop. Discovery-mode, not a Nearby API param. */
+  minReviews?: unknown;
   lat?: number;
   lng?: number;
   radiusKm?: number;
@@ -241,6 +247,7 @@ Deno.serve(async (req) => {
   let clientGoogle = false;
   let placesScope: PlacesScope = PLACES_SCOPE_DEFAULT;
   let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
+  let guestMinReviews = 0;
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
@@ -257,6 +264,7 @@ Deno.serve(async (req) => {
       body.searchPower !== undefined;
     placesScope = parsePlacesScope(body.placesScope ?? body.searchPower);
     guestSupers = readGuestFamilyKeys(body.familyKeys);
+    guestMinReviews = parseMapMinReviews(body.minReviews);
     if (nearbyDecision.mode === "none") {
       bboxDecision = decideBbox(body as Record<string, unknown>);
     }
@@ -292,8 +300,9 @@ Deno.serve(async (req) => {
   // set. Pay / Home GET and bbox callers keep global filters only. Google
   // fill is client opt-in AND operator googleFill AND at least one Super on.
   // HOW MANY PINS is `map.pinCount`; HOW MANY GOOGLE ROWS WE BUY is
-  // `map.googlePull` (MESITA-1695). Two questions, two knobs, one owner —
-  // the operator, since MESITA-1699 took the guest's Filters sheet away.
+  // `map.googlePull` (MESITA-1695). Two questions, two knobs. Guest
+  // Popularity (`minReviews`) is a Discovery-mode floor on top, never a
+  // Nearby API param.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
@@ -348,6 +357,20 @@ Deno.serve(async (req) => {
   // bbox callers keep `discovery_config.filters` exactly as before
   // (the same line `listedMapFilters` draws two statements up).
   if (isNearby) filtered = applyGeneralGateQuery(filtered, cfg.general);
+  // Guest Popularity: same SQL gte the General gate uses, so a capped
+  // pool is not thinned after the fact. Unknown (null) does not clear.
+  if (isNearby && guestMinReviews > 0) {
+    filtered = filtered.gte("google_review_count", guestMinReviews);
+  }
+  // Guest Super Category: same reason as Popularity. family_keys is
+  // total on the row; overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT
+  // with the wrong supers and drop closer matches. The JS familiesForPlace
+  // pass still runs for Atlas-inferred rows whose stored keys lag.
+  if (isNearby && guestSupers.length > 0) {
+    filtered = (filtered as typeof filtered & {
+      overlaps: (col: string, val: string[]) => typeof filtered;
+    }).overlaps("family_keys", [...guestSupers]);
+  }
   if (nearbyDecision.mode === "ok") {
     filtered = applyBboxPredicate(
       filtered,
@@ -377,9 +400,18 @@ Deno.serve(async (req) => {
     let mesitaRows = scanRows.filter((row) =>
       keepListedForScope(row, placesScope)
     );
+    if (guestSupers.length > 0) {
+      mesitaRows = mesitaRows.filter((row) =>
+        guestSupers.some((key) => familiesForPlace(row).includes(key))
+      );
+    }
 
     if (!googleFill) {
-      const admitted = admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity);
+      const admitted = admitGuestMinReviews(
+        admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity).listed,
+        [],
+        guestMinReviews,
+      );
       const inRadius = admitted.listed.filter((row) =>
         haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <= nearbyRadiusKm
       );
@@ -442,10 +474,21 @@ Deno.serve(async (req) => {
     ];
     if (missing.length > 0) {
       const extraSelect = supabase.from("profiles").select(selectCols);
-      const extraFiltered = applyGeneralGateQuery(
+      let extraFiltered = applyGeneralGateQuery(
         applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
         cfg.general,
       );
+      if (guestMinReviews > 0) {
+        extraFiltered = extraFiltered.gte(
+          "google_review_count",
+          guestMinReviews,
+        );
+      }
+      if (guestSupers.length > 0) {
+        extraFiltered = (extraFiltered as typeof extraFiltered & {
+          overlaps: (col: string, val: string[]) => typeof extraFiltered;
+        }).overlaps("family_keys", [...guestSupers]);
+      }
       const extra = await (extraFiltered as unknown as {
         in: (
           col: string,
@@ -457,6 +500,12 @@ Deno.serve(async (req) => {
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
           if (!keepListedForScope(row, placesScope)) continue;
+          if (
+            guestSupers.length > 0 &&
+            !guestSupers.some((key) => familiesForPlace(row).includes(key))
+          ) {
+            continue;
+          }
           seen.add(row.id);
           mesitaRows = [...mesitaRows, row];
         }
@@ -465,11 +514,16 @@ Deno.serve(async (req) => {
     // The Google side of the same gate. Nearby now carries businessStatus +
     // userRatingCount on its field mask, so the wipe is provable here rather
     // than deferred to a Details call the map lane never makes.
-    const admitted = admitMapCatalog(
+    const mapped = admitMapCatalog(
       mesitaRows,
       googleHits.filter((hit) => clearsGeneralGate(cfg.general, hit)),
       cfg.map,
       cfg.params.popularity,
+    );
+    const admitted = admitGuestMinReviews(
+      mapped.listed,
+      mapped.google,
+      guestMinReviews,
     );
     const googleForMerge = wantGoogleNearby ? admitted.google : [];
     // reorderListedLanes runs Places Lineup, which scores mesita_level —

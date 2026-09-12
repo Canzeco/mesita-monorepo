@@ -247,7 +247,9 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   assertEquals(src.includes("slotPromoted"), false);
   assertEquals(src.includes("name_embedding"), false);
   assertEquals(src.includes("embedding,"), false);
-  const googleBranch = src.slice(src.indexOf("const admitted = admitMapCatalog("));
+  // Guest Popularity wraps admitMapCatalog, so the google-fill binding is
+  // `mapped` (then `admitGuestMinReviews`). Listed-only still inlines it.
+  const googleBranch = src.slice(src.indexOf("const mapped = admitMapCatalog("));
   assertEquals(googleBranch.includes("reorderListedLanes"), true);
   // MESITA-1601: Lineup scores mesita_level, which needs the Intake
   // high-water side-read merged onto the row before ranking — the branch

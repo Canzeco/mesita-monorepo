@@ -69,6 +69,53 @@ export function listedMapFilters(
   };
 }
 
+/**
+ * Guest Popularity — Map mode only (MESITA-1790). A Discovery-mode
+ * artificial filter: Google review-count floor applied AFTER the catalog
+ * is assembled, never as a Nearby API param. Stops match the Filters
+ * sheet. 0 = no extra guest cut; operator floors still bind underneath.
+ */
+export const MAP_MIN_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
+export type MapMinReviews = (typeof MAP_MIN_REVIEW_STOPS)[number];
+
+export function parseMapMinReviews(value: unknown): MapMinReviews {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  let best: MapMinReviews = MAP_MIN_REVIEW_STOPS[MAP_MIN_REVIEW_STOPS.length - 1];
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const stop of MAP_MIN_REVIEW_STOPS) {
+    const d = Math.abs(stop - n);
+    if (d < bestD || (d === bestD && stop > best)) {
+      best = stop;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** Unknown does not clear a floor that is on — same reading as General. */
+export function clearsMinReviews(
+  count: number | null | undefined,
+  min: number,
+): boolean {
+  if (!(min > 0)) return true;
+  return typeof count === "number" && Number.isFinite(count) && count >= min;
+}
+
+export function admitGuestMinReviews<T extends ListedMapRow>(
+  listed: T[],
+  google: NearbyHit[],
+  minReviews: number,
+): { listed: T[]; google: NearbyHit[] } {
+  if (!(minReviews > 0)) return { listed, google };
+  return {
+    listed: listed.filter((row) =>
+      clearsMinReviews(row.google_review_count, minReviews)
+    ),
+    google: google.filter((hit) => clearsMinReviews(hit.reviewCount, minReviews)),
+  };
+}
+
 /** The Supers the operator left on, in param order. */
 export function enabledMapSupers(map: MapConfig): SuperParamKey[] {
   return SUPER_PARAM_KEYS.filter((key) => map.supers[key]);

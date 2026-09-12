@@ -22,13 +22,10 @@
 // are called `count` in their respective components, which is exactly why this
 // is written down.
 //
-// THE TRIGGER IS FULL WIDTH, and it is the only guest filter control left in
-// the app. It was written against Search's own `SearchFilterRow` — same 44px
-// height, border, `shadow-elev`, blur and primary-filled applied state, but
-// full width rather than that file's `basis-1/3`, a fraction that only made
-// sense sharing a row with Search's bar. MESITA-1699 then deleted Search's
-// filters outright (scope, category and result limit became operator config),
-// so the comparison is history now and this is simply the shape.
+// THE TRIGGER IS FULL WIDTH. It was written against Search's Filters disc —
+// same 44px height, border, `shadow-elev`, blur and primary-filled applied
+// state, but full width rather than a corner control. Search's sheet is
+// Super Category · Places · Popularity; this one is Feed's DiscoveryFilters.
 //
 // It sits OUTSIDE the scroller: a filter control that scrolls away is
 // unreachable at the moment a guest most wants it, which is the same mistake
