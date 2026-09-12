@@ -65,6 +65,39 @@ export const DEFAULT_PACKAGE_WORD_BUDGET = 450;
 // both. It carries pointers, the claim line and the door — never knowledge.
 export const CHAT_INSTRUCTIONS_WORD_BUDGET = 250;
 
+// ── GitHub cards (Markdowns › GitHub cards, MESITA-1775) ───────────────────
+// `.github/` is allowlisted wholesale (MD_ALLOW_DIRS), so these files were
+// allowed and therefore never measured — the same hole skills used to be.
+// The allowlist decides what may exist; these ceilings decide how big each
+// GitHub card may get. Ceilings are the Markdowns Planned row (CONTRIBUTING
+// is Linear Done, not on that table at ship time). Raising one is a visible
+// line here. An unlisted `.github/*.md` fails until it gets a row.
+export const GITHUB_DIR = ".github/";
+export const GITHUB_CARD_BUDGETS: Record<string, number> = {
+  ".github/README.md": 150,
+  ".github/SECURITY.md": 100,
+  ".github/CONTRIBUTING.md": 100,
+  ".github/PULL_REQUEST_TEMPLATE.md": 60,
+};
+
+export function isGithubMarkdown(path: string): boolean {
+  return path.startsWith(GITHUB_DIR) && /\.(md|MD|mdx|mdc)$/.test(path);
+}
+
+export function githubCardBudgetCheck(path: string, words: number): BudgetCheck {
+  const budget = GITHUB_CARD_BUDGETS[path];
+  if (budget === undefined) {
+    return { label: path, words, budget: 0, over: true };
+  }
+  return { label: path, words, budget, over: words > budget };
+}
+
+export function unbudgetedGithubCardMessage(path: string): string {
+  return `UNBUDGETED GITHUB CARD: ${path} — add a GITHUB_CARD_BUDGETS line ` +
+    `(Markdowns › GitHub cards); an unmeasured .github markdown file is the ` +
+    `same hole skills used to be.`;
+}
+
 // ── Skill budgets (Rules §0) ────────────────────────────────────────────────
 // `.claude/` is allowlisted wholesale (MD_ALLOW_DIRS below), so every file in
 // it was allowlisted and therefore never measured. That made the repo's single
@@ -468,6 +501,21 @@ async function main(): Promise<void> {
         let words = 0;
         for (const p of paths) words += countWords(await Deno.readTextFile(join(repoRoot, p)));
         const b = skillBudgetCheck(name, words);
+        if (b.over) {
+          console.error(overBudgetMessage(b));
+          failed++;
+        }
+      }
+
+      // GitHub cards: same hole — `.github/` is allowlisted wholesale.
+      for (const path of tracked.filter(isGithubMarkdown)) {
+        if (!(path in GITHUB_CARD_BUDGETS)) {
+          console.error(unbudgetedGithubCardMessage(path));
+          failed++;
+          continue;
+        }
+        const words = countWords(await Deno.readTextFile(join(repoRoot, path)));
+        const b = githubCardBudgetCheck(path, words);
         if (b.over) {
           console.error(overBudgetMessage(b));
           failed++;
