@@ -22,10 +22,11 @@
 // are called `count` in their respective components, which is exactly why this
 // is written down.
 //
-// THE TRIGGER IS FULL WIDTH. It was written against Search's Filters disc —
-// same 44px height, border, `shadow-elev`, blur and primary-filled applied
-// state, but full width rather than a corner control. Search's sheet is
-// Super Category · Places · Popularity; this one is Feed's DiscoveryFilters.
+// THE TRIGGER IS FULL WIDTH. It was written against Search's Filters
+// control — same 44px height, border, `shadow-elev`, blur and
+// primary-filled applied state, but full width rather than a third of
+// the map's chrome row. Search's sheet is Super Category · Places ·
+// Popularity; this one is Feed's DiscoveryFilters.
 //
 // It sits OUTSIDE the scroller: a filter control that scrolls away is
 // unreachable at the moment a guest most wants it, which is the same mistake
@@ -121,7 +122,9 @@ export function CatalogRails() {
         type="button"
         onClick={() => setFiltersOpen(true)}
         aria-label={
-          appliedCount > 0 ? `Filters, ${appliedCount} applied` : "Filter places"
+          appliedCount > 0
+            ? `Filters, ${appliedCount} applied`
+            : "Filter places"
         }
         aria-haspopup="dialog"
         aria-pressed={appliedCount > 0}
@@ -132,7 +135,11 @@ export function CatalogRails() {
             : "border-border bg-card/95 text-foreground",
         )}
       >
-        <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <SlidersHorizontal
+          className="h-4 w-4 shrink-0"
+          strokeWidth={2.25}
+          aria-hidden
+        />
         <span className="truncate">Filters</span>
         {appliedCount > 0 && (
           <span className="tabular-nums">· {appliedCount}</span>
