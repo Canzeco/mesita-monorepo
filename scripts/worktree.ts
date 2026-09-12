@@ -366,9 +366,18 @@ export async function mainWorktree(env: Env): Promise<{ main: string; rows: Row[
   return { main: rows[0].path, rows };
 }
 
-/** The claim a checkout carries: the config key, else the id its branch names (harness or hand-made branches). */
+/** Live claim only: the config key. A leftover branch id is not a live claim (boot, preflight). */
+async function liveClaimOf(env: Env, row: Row): Promise<string | null> {
+  return await worktreeConfig(env, row.path, "mesita.issue");
+}
+
+/**
+ * The claim a checkout carries: the live config, else the id its branch names (harness or
+ * hand-made branches). The fallback lets `add` re-attach a loose branch; it is not a live
+ * claim — boot must not say "claimed by" from it (MESITA-1761).
+ */
 async function claimOf(env: Env, row: Row): Promise<string | null> {
-  return await worktreeConfig(env, row.path, "mesita.issue") ?? issueFromBranch(row.branch);
+  return await liveClaimOf(env, row) ?? issueFromBranch(row.branch);
 }
 
 // ── preflight (the gate) ────────────────────────────────────────────────────
@@ -1196,15 +1205,17 @@ export async function boot(env: Env): Promise<string[]> {
   }
   // A legacy worktree still lives inside the shared checkout, so the shared row prefix-matches it: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
-  const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
+  const liveClaim = here && here.path !== main ? await liveClaimOf(env, here) : null;
+  const namedIssue = here && here.path !== main ? issueFromBranch(here.branch) : null;
   // An empty claim's tip is origin/main, which classifies "on-main": claimed, no work yet — not landed.
-  const hereClass = here && here.path !== main && hereIssue ? (await classifyLanded(env, main, here.head, here.branch)).landed : null;
+  const hereClass = here && here.path !== main && liveClaim ? (await classifyLanded(env, main, here.head, here.branch)).landed : null;
   const hereLanded = hereClass !== null && isLanded(hereClass) && hereClass.kind !== "on-main";
   if (!here) lines.push(`where: ${cwd} (outside the fleet)`);
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
-  else if (hereIssue && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${hereIssue} landed, a lobby once its claim is cleared: deno task worktree leave ${hereIssue}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
-  else if (hereIssue && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}: no work yet`);
-  else if (hereIssue) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
+  else if (liveClaim && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${liveClaim} landed, a lobby once its claim is cleared: deno task worktree leave ${liveClaim}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
+  else if (liveClaim && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${liveClaim} on ${here.branch ?? "(detached)"}: no work yet`);
+  else if (liveClaim) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${liveClaim} on ${here.branch ?? "(detached)"}`);
+  else if (namedIssue) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: a lobby on a branch that still names ${namedIssue} (landed / no work yet): adopt it for the next issue`);
   else lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
