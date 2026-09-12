@@ -36,8 +36,9 @@
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: the search bar + Filters disc (Super Category, Places
-//     scope, Popularity). How many is operator `map.pinCount`.
+//   • Top overlay: the search bar (two thirds) + labelled Filters (one
+//     third: Super Category, Places scope, Popularity). How many is
+//     operator `map.pinCount`.
 //   • Bottom overlay: the catalog rail around the camera, hidden while
 //     querying. Closest first. A guest pan auto-reloads after reloadMinKm
 //     AND reloadMinSec.
@@ -65,10 +66,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { useSearchScope } from "@/lib/use-search-scope";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import {
-  mapFilterCount,
-  placeSearchScope,
-} from "@/lib/map-filters-engine";
+import { mapFilterCount, placeSearchScope } from "@/lib/map-filters-engine";
 import { useMapFilters } from "@/lib/use-map-filters";
 import {
   buildSearchMapPins,
@@ -188,10 +186,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // Filters disc, top right (Pato, 2026-09-12). Super Category, Places
-  // scope and Popularity ride this store and the nearby call. How many
-  // is operator `map.pinCount`. The server is the one selector — this
-  // component never recuts the catalog.
+  // Filters, a labelled third of the top row (Pato, 2026-09-12 then
+  // MESITA-1797). Super Category, Places scope and Popularity ride this
+  // store and the nearby call. How many is operator `map.pinCount`.
+  // The server is the one selector — this component never recuts the catalog.
   const filters = useMapFilters();
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : userLocation;
@@ -855,10 +853,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — query bar + Filters disc, top right.
-
-          A CIRCLE, NOT A THIRD OF THE ROW. The disc spends no width the
-          query needs and matches the loading silhouette. */}
+      {/* Floating top overlay — query bar (two thirds) + labelled Filters
+          (one third). The pair that keeps Filters visible: `min-w-0 flex-1`
+          on the bar, `basis-1/3 shrink-0` on the control. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <div className="min-w-0 flex-1">
