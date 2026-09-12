@@ -774,6 +774,9 @@ Deno.test("boot names the worktree it runs from, not the shared checkout that co
   await write(join(f.main, "scripts", "rules-quickstart.md"), "# q\nmirrors Rules §0 (`stamp: v9 2026-01-01`).\n");
   const stamped = (await boot(makeEnv(f))).join("\n");
   assertStringIncludes(stamped, "rules: quickstart stamp v9 2026-01-01 — compare with Rules §0's Mirror line");
+  await write(join(w.path, "scripts", "rules-quickstart.md"), "# q\n(`stamp: v8 2025-12-31`)\n");
+  const fromWorktree = (await boot(makeEnv(f, { cwd: w.path }))).join("\n");
+  assertStringIncludes(fromWorktree, "rules: quickstart stamp v8 2025-12-31", "the checkout that boots is the one measured, not the lobby");
 });
 
 Deno.test("hostHash is pinned in the home directory and survives a hostname change", async () => {
