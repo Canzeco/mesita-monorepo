@@ -27,6 +27,9 @@ export const GOOGLE_PLACES_TEXT_SEARCH_URL =
 export const GOOGLE_PLACES_NEARBY_SEARCH_URL =
   "https://places.googleapis.com/v1/places:searchNearby";
 export const GOOGLE_PLACES_NEARBY_URL = GOOGLE_PLACES_NEARBY_SEARCH_URL;
+/** Legacy Nearby — the only Google surface that still paginates (20 × 3 = 60). */
+export const GOOGLE_PLACES_NEARBY_LEGACY_URL =
+  "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
 export const GOOGLE_PLACES_DETAILS_BASE =
   "https://places.googleapis.com/v1/places";
 
