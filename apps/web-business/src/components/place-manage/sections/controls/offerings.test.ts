@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { offeringRows, type LadderInput } from "./offerings";
+import {
+  guestSummary,
+  offeringRows,
+  paintRows,
+  topPrerequisite,
+  type LadderInput,
+} from "./offerings";
 
 const BASE: LadderInput = {
   member: true,
@@ -101,5 +107,71 @@ describe("T3 — an unread fact is never rendered as false", () => {
     const row = rowFor({ ...BASE, rails: { ...BASE.rails, reservations: null } }, "reservations");
     if (row.state.kind !== "not_mine") throw new Error("expected not_mine");
     expect(row.state.on).toBeNull();
+  });
+});
+
+describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
+  it("names the live reservation and says nothing else is live", () => {
+    const rows = offeringRows({
+      ...BASE,
+      rails: { ...BASE.rails, reservations: true },
+    });
+    expect(guestSummary(rows)).toBe(
+      "Right now, guests can book a table. Nothing else is live.",
+    );
+  });
+
+  it("says nothing is live when every guest rail is off", () => {
+    expect(guestSummary(offeringRows(BASE))).toBe(
+      "Right now, nothing is live for guests.",
+    );
+  });
+
+  it("drops partnership and stripe from the painted list", () => {
+    const keys = paintRows(offeringRows(BASE)).map((r) => r.key);
+    expect(keys).not.toContain("partnership");
+    expect(keys).not.toContain("stripe");
+  });
+
+  it("sorts a disagreement above rows that agree", () => {
+    const rows = paintRows(
+      offeringRows({
+        ...BASE,
+        member: false,
+        visitRewardsLevel: 2,
+        rails: { ...BASE.rails, reservations: true },
+      }),
+    );
+    expect(rows[0].key).toBe("visit_rewards");
+    expect(rows[0].disagreement).not.toBeNull();
+  });
+
+  it("offers join as the one prerequisite when the place is not a partner", () => {
+    const prereq = topPrerequisite({ ...BASE, member: false });
+    expect(prereq?.action).toBe("join");
+    expect(prereq?.text).toContain("free");
+  });
+
+  it("offers Organization for Stripe once the place is a partner without Connect", () => {
+    const prereq = topPrerequisite({
+      ...BASE,
+      member: true,
+      connect: { kind: "none" },
+      connectLoading: false,
+    });
+    expect(prereq?.action).toBe("organization");
+  });
+
+  it("does not grow a disagreement line when asked and guests-get agree", () => {
+    const row = rowFor(BASE, "pickup");
+    expect(row.disagreement).toBeNull();
+  });
+
+  it("names a ghost-partner hold as the visit-rewards disagreement", () => {
+    const row = rowFor(
+      { ...BASE, visitRewardsLevel: 2, rewardLaneHeld: true },
+      "visit_rewards",
+    );
+    expect(row.disagreement?.fix).toBe("restore");
   });
 });
