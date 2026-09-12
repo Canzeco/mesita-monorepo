@@ -39,7 +39,7 @@ fi
 fi
 
 # Types are copied into each app package that keeps a generated
-# `database.types.ts` (web-admin / web-landing / web-check / mobile do not).
+# `database.types.ts` (web-admin / web-landing / web-validate / mobile do not).
 # See regen-types.sh — same step, callable on its own after a cloud-side
 # migration that didn't go through this script (e.g. Supabase MCP
 # `apply_migration`), so types don't drift between deploys (MESITA-1546).
