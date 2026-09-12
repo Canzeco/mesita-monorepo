@@ -404,36 +404,41 @@ describe("Tiers HTML prices visits only", () => {
   });
 });
 
-describe("Rewards Config is one page", () => {
-  it("has two super boxes then Save, and no tab nav", () => {
-    const shell = readFileSync(join(__dirname, "layout.tsx"), "utf8");
+describe("Visits Rewards lives on Visits", () => {
+  it("has two super boxes then Save, titled Visits Rewards, and no tab nav", () => {
+    const form = readFileSync(join(__dirname, "VisitsRewardsForm.tsx"), "utf8");
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
+    const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
-    expect(shell).not.toContain("ConfigTabNav");
-    // Chrome comes from the shared kit, never a route-local shim, and the
-    // title is the rail label — the eyebrow already says Product · Rewards.
-    expect(shell).toContain("ConfigPageLayout");
-    expect(shell).toContain('title="Rewards"');
-    expect(shell).not.toContain('title="Rewards Config"');
+    const visits = readFileSync(
+      join(__dirname, "../visits-config/page.tsx"),
+      "utf8",
+    );
+    const sidebar = readFileSync(
+      join(__dirname, "../../../components/Sidebar.tsx"),
+      "utf8",
+    );
+    expect(layout).not.toContain("ConfigTabNav");
+    expect(layout).not.toContain("ConfigPageLayout");
     expect(existsSync(join(__dirname, "PromosLayoutShell.tsx"))).toBe(false);
-    // The scope line is stated ONCE, by the layout — no box repeats it.
-    expect(shell).toContain("Visit rewards only");
-    expect(page).not.toContain("Visit rewards only");
+    expect(page).toContain('permanentRedirect("/visits-config")');
+    expect(nav).toContain('label: "Visits Rewards"');
+    expect(nav).toContain('href: "/visits-config"');
     expect(nav).not.toContain("PROMOS_SUBROUTES");
-    expect(page).toContain('title="Strategies"');
-    expect(page).toContain('title="Discount Cap"');
-    expect(page).toContain("TiersClient");
-    expect(page).toContain("DiscountCapClient");
-    expect(page).toContain("PromosSaveFooter");
-    expect(page.indexOf("Strategies")).toBeLessThan(
-      page.indexOf("Discount Cap"),
+    expect(form).toContain('title="Visits Rewards"');
+    expect(form).toContain('title="Discount Cap"');
+    expect(form).toContain("TiersClient");
+    expect(form).toContain("DiscountCapClient");
+    expect(form).toContain("PromosSaveFooter");
+    expect(form.indexOf("Visits Rewards")).toBeLessThan(
+      form.indexOf("Discount Cap"),
     );
-    // Save is LAST on the page now that nothing follows it. Compare against
-    // the JSX usage, not the bare name — the import list carries every name at
-    // the top of the file and would make any ordering assertion trivially true.
-    expect(page.indexOf("Discount Cap")).toBeLessThan(
-      page.indexOf("<PromosSaveFooter />"),
+    expect(form.indexOf("Discount Cap")).toBeLessThan(
+      form.indexOf("<PromosSaveFooter />"),
     );
+    expect(visits).toContain("VisitsRewardsForm");
+    expect(visits).toContain("PromosState");
+    expect(sidebar).not.toContain("REWARDS_PARENT");
 
     // The Expected Distribution box is GONE (MESITA-1705) — the assumptions
     // simulator AND the Calculator that lived inside it. Absence guards, not
@@ -441,35 +446,34 @@ describe("Rewards Config is one page", () => {
     // and not readFileSync on purpose: a readFileSync on a deleted component
     // ENOENTs the whole test file rather than failing one assertion, which is
     // exactly the trap this rewrite walked into.
-    // STRUCTURAL, never bare substrings: page.tsx's own comment records why
-    // the box was removed and names all three components, so
-    // `not.toContain("PromosCalculator")` fails on the sentence explaining the
-    // decision — and the cheapest way to green it would be deleting that
-    // sentence. Same trap passport-axes.test.ts documents. Assert on imports
-    // and JSX instead.
-    expect(page).not.toContain('title="Expected Distribution"');
+    // STRUCTURAL, never bare substrings: VisitsRewardsForm's own comment
+    // records why the box was removed, so `not.toContain("PromosCalculator")`
+    // fails on the sentence explaining the decision — and the cheapest way
+    // to green it would be deleting that sentence. Same trap
+    // passport-axes.test.ts documents. Assert on imports and JSX instead.
+    expect(form).not.toContain('title="Expected Distribution"');
     for (const gone of [
       "PromosDistributionClient",
       "PromosCalculator",
       "ResolvedLedger",
     ]) {
-      expect(page).not.toContain(`from "./${gone}"`);
-      expect(page).not.toContain(`<${gone} `);
-      expect(page).not.toContain(`<${gone}/>`);
-      expect(page).not.toContain(`<${gone} />`);
+      expect(form).not.toContain(`from "./${gone}"`);
+      expect(form).not.toContain(`<${gone} `);
+      expect(form).not.toContain(`<${gone}/>`);
+      expect(form).not.toContain(`<${gone} />`);
     }
     expect(existsSync(join(__dirname, "ResolvedLedger.tsx"))).toBe(false);
     expect(existsSync(join(__dirname, "PromosCalculator.tsx"))).toBe(false);
     expect(existsSync(join(__dirname, "PromosDistributionClient.tsx"))).toBe(false);
     expect(existsSync(join(__dirname, "distribution-model.ts"))).toBe(false);
 
-    // The redirect stays: old bookmarks land on the page, not a 404.
+    // Old bookmarks land on Visits, not a 404.
     const tiers = readFileSync(join(__dirname, "tiers/page.tsx"), "utf8");
     const dist = readFileSync(
       join(__dirname, "distribution/page.tsx"),
       "utf8",
     );
-    expect(tiers).toContain('redirect("/rewards-config")');
-    expect(dist).toContain('redirect("/rewards-config")');
+    expect(tiers).toContain('permanentRedirect("/visits-config")');
+    expect(dist).toContain('permanentRedirect("/visits-config")');
   });
 });

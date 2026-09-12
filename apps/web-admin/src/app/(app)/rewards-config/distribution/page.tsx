@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-// Bookmarks to the old Distribution tab land on the one Rewards Config page.
-export default function PromosDistributionRedirect() {
-  redirect("/rewards-config");
+// Bookmarks to the old Distribution tab land on Visits, where Visits Rewards lives.
+export default function PromosDistributionRedirect(): never {
+  permanentRedirect("/visits-config");
 }

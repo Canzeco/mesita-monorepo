@@ -34,7 +34,7 @@ import {
 // The PLAN group (Free / Premium) was deleted with the plan axis. Pinned
 // rungs (Bronze) are an em dash — "0%" is a real rate and would read as one.
 //
-// Rewards Config prices VISITS only. Orders and prepaid are not reward
+// Visits Rewards prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
 // Save round-trips it without knobs. Dominant stays in the blob for leftover
 // rows and is not a column here.

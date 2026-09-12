@@ -1,17 +1,13 @@
 import { Gift } from "lucide-react";
 
-// Rewards Config — one page: visit knobs, then the cap, then Save. No orders
-// or prepaid knobs. No sub-tabs. (The visit-spread simulator that used to
-// close the page was removed in MESITA-1705.)
-//
-// decision: Pato live 2026-09-02 (MESITA-1416) — the row is Rewards. "promo"
-// left admin copy on 2026-08-30 and this rail row was the last surface still
-// carrying it; the route has been /rewards-config all along, so the rename
-// CLOSES a label/route gap rather than opening one. Copy only: the route, the
-// `promos_config` blob, the `admin-web-*-rewards-config` EFs and the component
-// names stay frozen, same as every rename before it.
+// Kept for bookmarks: /rewards-config permanently redirects to Visits.
+// Visits Rewards (Pato, 2026-09-12) prices THE TICKET only — not orders,
+// not prepaid. Not a sidebar row: rates a visit pays live on Visits, own
+// blob (`promos_config`), own Save. Folder, EFs and this constant stay
+// rewards-config / REWARDS_PARENT — a rename never reaches a URL, a
+// column or an EF name.
 export const REWARDS_PARENT = {
-  href: "/rewards-config",
-  label: "Rewards",
+  href: "/visits-config",
+  label: "Visits Rewards",
   Icon: Gift,
 } as const;

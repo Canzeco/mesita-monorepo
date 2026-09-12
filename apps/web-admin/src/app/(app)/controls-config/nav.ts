@@ -18,7 +18,7 @@ import { Coins } from "lucide-react";
 // and nothing else. Naming it for its one subject is the opposite of the
 // collision the Wallet split prevents.
 //
-// LAST in Configurations, after Rewards. Every row above it configures an ENGINE
+// LAST in Configurations, after Visits. Every row above it configures an ENGINE
 // that runs a guest journey; this one configures the INSTRUMENT the journey
 // leaves behind, which only exists once one of them has run.
 //

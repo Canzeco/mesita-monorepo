@@ -6,8 +6,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { SaveRow } from "@/components/admin-ui/config";
 import { usePromosState } from "./PromosState";
 
-// ONE Save for the whole document. Sits after the visit knobs. Distribution
-// below is assumptions-only and never writes the blob.
+// ONE Save for the Visits Rewards document. Sits after the visit knobs.
 
 export function PromosSaveFooter() {
   const {
@@ -25,8 +24,7 @@ export function PromosSaveFooter() {
     <div className="mt-6">
       <div className="flex items-start justify-between gap-3">
         <p className="text-muted-foreground text-xs">
-          Base + class + plan, plus what the guest earned. Three visit boxes,
-          one Save.
+          Base + class + actions, plus what the guest earned. One Save.
         </p>
         <button
           type="button"
@@ -45,7 +43,7 @@ export function PromosSaveFooter() {
         onClick={save}
         loadError={
           loadBlocked
-            ? (error ?? "Failed to load Rewards config")
+            ? (error ?? "Failed to load Visits Rewards config")
             : ladderError
               ? "Fix the ladder above before saving"
               : null
