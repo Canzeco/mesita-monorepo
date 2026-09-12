@@ -227,6 +227,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "admin-web-set-place-verified/index.ts",
   "business-web-confirm-reservation/index.ts",
   "business-web-get-overview/index.ts",
+  "business-web-get-payment-account/index.ts", // pay-readiness intent bit (MESITA-1740)
   "business-web-update-place/place-social-refresh.ts",
   "consumer-web-apply-ticket-credits/index.ts",
   "consumer-web-confirm-reservation/index.ts",
@@ -271,6 +272,7 @@ const PROFILES_READ_ALLOWLIST = [
   "business-web-request-manual-review/index.ts",
   "business-web-send-email-otp/index.ts",
   "business-web-send-phone-otp/index.ts",
+  "business-web-set-partnership/index.ts", // post-write place projection (MESITA-1740)
   "business-web-suggest-promo/index.ts",
   "consumer-mcp/index.ts",
   "consumer-web-create-ticket/index.ts",
@@ -309,10 +311,12 @@ const PLACES_READ_ALLOWLIST = [
   "admin-web-set-plan/index.ts",
   "business-web-change-subscription/index.ts",
   "business-web-get-overview/index.ts",
+  "business-web-get-payment-account/index.ts", // org_id for the Connect mirror (MESITA-1740)
   "business-web-get-place/index.ts",
   "business-web-list-organizations/index.ts",
   "business-web-list-places/index.ts",
   "business-web-release-place/index.ts",
+  "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
   "business-web-update-place/index.ts",
   "business-web-verify-place/index.ts",
   "consumer-web-apply-ticket-credits/index.ts",
