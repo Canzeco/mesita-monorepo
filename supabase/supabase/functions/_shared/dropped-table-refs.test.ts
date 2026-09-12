@@ -15,27 +15,90 @@
 // which pgTAP is positioned to do since it already replays from scratch. That
 // is worth building (MESITA-1602 describes it) but it is not what a live
 // outage needs first, and a half-right schema parser that false-positives
-// would block the whole fleet. This list is small, exact, and cannot
-// misfire.
+// would block the whole fleet. This list is exact, and cannot misfire.
 //
 // MESITA-1590 landed: `projects` -> `places` and its six children -> `place_*`.
 // `places` came OUT of this list here for exactly the reason the note above
 // predicted — it is a real table again, under new ownership — and the seven
 // names it just vacated go IN, so this guard keeps catching the MESITA-1602
 // failure class against the new names instead of quietly going blind.
+//
+// MESITA-1719: the seven were a floor, not the set. The criterion below is
+// every public relation that migrations created, renamed-from, or dropped
+// and that is not in live `pg_class` (tables + views — PostgREST `.from()`
+// 42P01s both). Derived 2026-09-12 from repo migrations vs the cloud catalog.
+// Recycled names (`places`, `managers`) stay out: they are live again.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
 /** Renamed or dropped, and NOT currently recreated under the same name. */
 const DROPPED_TABLES = [
-  "projects",
-  "project_members",
+  "account_invites",
+  "accounts",
+  "app_settings",
+  "bench_restaurants",
+  "bench_results",
+  "business_invites",
+  "business_plans",
+  "businesses",
+  "cashback_ledger",
+  "consumer_mcp_tokens",
+  "consumer_pay_notifications",
+  "coupons",
+  "guest_make_goods",
+  "guests",
+  "manager_invites",
+  "membership_strikes",
+  "membership_tiers",
+  "place_payment_accounts",
+  "plans",
+  "playground_reservations",
   "project_invites",
+  "project_members",
   "project_plans",
+  "project_roles",
   "project_strikes",
   "project_subscriptions",
   "project_verifications",
+  "projects",
+  "projects_view",
+  "refund_requests",
+  "reservations",
+  "reward_rules",
+  "saved_places",
+  "saved_venues",
+  "scheduled_project_creations",
+  "scheduled_unit_creations",
+  "staff_invites",
+  "staff_whatsapp_messages",
+  "staff_whatsapp_sessions",
+  "tickets",
+  "units",
+  "venue_categories",
+  "venue_media_assets",
+  "venue_members",
+  "venue_roles",
+  "venue_tags",
+  "venue_verifications",
+  "venues",
 ] as const;
+
+/** Ordinary words a new call site could reach for — the MESITA-1719 holes. */
+const MUST_COVER = [
+  "guests",
+  "reservations",
+  "tickets",
+  "units",
+  "venue_categories",
+  "venue_media_assets",
+  "venue_members",
+  "venue_roles",
+  "venue_tags",
+  "venues",
+] as const;
+
+/** Recycled: vacated once, then recreated. Must never re-enter the list. */
+const LIVE_AGAIN = ["managers", "places"] as const;
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url).pathname;
 
@@ -59,6 +122,26 @@ function walk(dir: string): string[] {
   }
   return found;
 }
+
+Deno.test("DROPPED_TABLES is the unique sorted retired-name set", () => {
+  const sorted = [...DROPPED_TABLES].sort();
+  assertEquals([...DROPPED_TABLES], sorted);
+  assertEquals(new Set(DROPPED_TABLES).size, DROPPED_TABLES.length);
+});
+
+Deno.test("DROPPED_TABLES covers the names the 7-name list missed", () => {
+  const names = new Set<string>(DROPPED_TABLES);
+  const missing = MUST_COVER.filter((n) => !names.has(n));
+  assertEquals(missing, [], `DROPPED_TABLES is missing: ${missing.join(", ")}`);
+  const recycled = LIVE_AGAIN.filter((n) => names.has(n));
+  assertEquals(
+    recycled,
+    [],
+    `these names are live again and must stay out of DROPPED_TABLES: ${
+      recycled.join(", ")
+    }`,
+  );
+});
 
 Deno.test("no Edge Function queries a table the schema no longer has", () => {
   const offenders: string[] = [];

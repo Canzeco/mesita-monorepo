@@ -61,18 +61,16 @@ report) so knowledge never competes with the P0 backend checks for the 25-minute
 
 The singleton rule is the one that silently breaks. Check it first.
 
-1.1 **Edge Functions inventory.** `list_edge_functions` vs `supabase/supabase/functions/*`
-    (136 in repo at time of writing). Report: in repo not deployed · deployed not in repo
-    (ghosts) · name mismatches.
+1.1 **Edge Functions inventory.** `list_edge_functions` vs `supabase/supabase/functions/*`.
+    Report: in repo not deployed · deployed not in repo (ghosts) · name mismatches.
 1.2 **EF body drift.** For every EF, `get_edge_function` vs the repo source. Flag any where
     cloud ≠ repo. Two known killers: (a) a deploy that shipped a **stub** over real code,
     (b) a deploy from clean main that **reverted cloud-only** edits (EFs bundle their own
     `_shared/*`). Both look fine in the dashboard.
-1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (250 files).
+1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*`.
     Flag: file with no ledger row (unapplied) · ledger row with no file (applied off-repo,
-    the dangerous one) · version ordering anomalies. Note what this check CANNOT see: a
-    ledger row proves a version was STAMPED, never that its SQL ran. Whether the statements
-    actually landed is 3.11.
+    the dangerous one) · version ordering anomalies. A ledger row proves a version was
+    STAMPED, never that its SQL ran. Whether the statements actually landed is 3.11.
 1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
     reconstruct. Any object in the DB that no migration creates = drift.
 1.5 **`admin_reset_database` / `admin_reset_preserve` coverage.** Survivors are DATA in
@@ -90,12 +88,10 @@ The singleton rule is the one that silently breaks. Check it first.
 1.6 **Client-readable views must actually READ.** A `security_invoker` view is only as
     readable as its BODY: the invoking role is re-checked against every relation and
     column the body touches, so one appended column can 42501 a view whose own grants
-    never changed. `profiles` was dead for every guest for a day this way (MESITA-1704)
-    while the flag check below and 2.3 both read healthy — one checks the option, the
-    other only looks for `anon` having *more* than intended, and this failure is `anon`
-    having *less* than required. Catalog-derived, so it stays SELECT-only. **Any row is
-    a P0** — that view is dead for that role, and Postgres names the first relation that
-    fails, never the column:
+    never changed. `profiles` died this way (MESITA-1704) while the flag check and 2.3
+    both read healthy — they catch `anon` having *more* than intended, this catches
+    *less*. Catalog-derived, SELECT-only. **Any row is a P0** (Postgres names the first
+    failing relation, never the column):
 
     ```sql
     select role_name, v.relname as view, d.refobjid::regclass::text as base, a.attname
@@ -215,20 +211,11 @@ from code, never from this file:** `CONFIGURATIONS_NAV` in
 `apps/web-admin/src/components/Sidebar.tsx` is the SoT, and it is exported for
 exactly this reason (MESITA-1225).
 
-A prose copy of this list has gone stale every time one existed — in both
-directions at once, naming redirects as pages and pages that never existed. A
-stale copy sends the doctor hunting phantoms while silently skipping rows that
-are really there, which is worse than no list.
-
-Not config pages, do not audit as one: any route whose page body is a
-`permanentRedirect` shim — grep for it rather than trusting a list. Today that
-covers `/adea-config` and `/db-config` (renamed routes → enricher-config,
-manage-database) plus `/models-config` and `/verification-config` (folded into
-`/general-config`) and `/ojo-config` (folded into `/visits-config`).
-The `/aura-*` route tree is gone — Aura is a retired class, so a reference to it
-is stale doc, not a missing page. `agents_config` is EF-managed with no page yet.
-`scoring_config` belonged to the deleted Lineup engine (MESITA-1048) — if it
-still has no reader, that is a 4.3 dead-knob finding, not a page to check.
+Never copy the list here. Not config pages: any route whose body is a
+`permanentRedirect` (grep, do not list). Known shims: `/adea-config`, `/db-config`,
+`/models-config`, `/verification-config`, `/ojo-config`. `/aura-*` is retired (stale
+doc, not a missing page). `agents_config` is EF-managed with no page yet.
+`scoring_config` was Lineup (MESITA-1048) — no reader is a 4.3 finding, not a page.
 
 **Ojo is the one that must not be skipped**, and it no longer has a rail row —
 its knobs render inside **Visits** (`/visits-config`; blob still `ojo_config`),
@@ -252,10 +239,9 @@ reads to an operator as a control that does something.
 
 5.1 **EF naming.** `<caller>-<verb>-<name>`; caller prefix ∈ the registered set
     (`admin` · `business` · `consumer` · `staff` · `check` · `eleven` · `stripe` ·
-    `supabase` · `_shared`; retired: `twilio`). Current census: admin 41 · business 33 ·
-    consumer 36 (35 `consumer-web` + 1 `consumer-mcp`) · check 3 · eleven 9 · supabase 12 ·
-    stripe 1 · staff 1 — report drift from that shape. Reservationist ships as `eleven-a{1–4}` / `eleven-agent`, not
-    `reservationist-agent`.
+    `supabase` · `_shared`; retired: `twilio`). Count prefixes from
+    `supabase/supabase/functions/*` — do not keep a census here. Reservationist ships as
+    `eleven-a{1–4}` / `eleven-agent`, not `reservationist-agent`.
 5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
 5.3 **Clients never touch the DB.** Grep app code for direct `supabase.from(` / `.rpc(`
     outside sanctioned layers. Include stale-table names (`businesses` / `units` / `venues` →
@@ -283,8 +269,9 @@ reads to an operator as a control that does something.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
 6.7 **Git surface.** Open PRs older than 7 days, branches whose issue is already closed,
     and the fleet: run `deno task worktree sweep` (dry-run) from the shared checkout and
-    report its table and its *sweepable* rows; the doctor **never deletes**. A one-entry
-    `git worktree list` is no fleet on this host: `SKIPPED`, never OK.
+    report its table, *sweepable* rows, and `json:` (8.1 reads that object). The doctor
+    **never deletes**. A one-entry `git worktree list` is no fleet on this host:
+    `SKIPPED`, never OK.
 6.8 **CI budget.** Actions minutes headroom, red workflows on main. `main-protection`
     requires `closes.yml`; the five gates (`deno lint · test` · `deno check` ·
     `pgTAP · schema invariants` · `instruction files in sync` · `brand assets in sync`)
@@ -308,16 +295,18 @@ reads to an operator as a control that does something.
 
 ## Scope 8 — Ledger hygiene (Linear) · P3
 
-8.1 The workspace invariants (Rules I-3, I-4, I-6, I-10), from the 6.7 sweep table: one
-    claim line and one workspace per In Progress code issue; no workspace with two live
-    claims; every workspace passing `deno task worktree preflight <path>`; the shared checkout holding no work
-    of its own (HEAD, index and working tree all at origin/main); claims stale after 24h
-    without activity; claims whose branch or worktree is gone. Six counts every run,
-    trended: landed-but-present workspaces, empty lanes, two-issue lanes, PRs merged
-    without `Closes`, shared checkout failing I-4, stale branches with no PR.
+8.1 Workspace invariants (I-3, I-4, I-6, I-10). Read 6.7's `json:` — never recount by
+    hand. Shape: `{ fleet, noId, remoteLanded, staleClaim }`. Trend those three plus three
+    fleet-derived: landed-but-present (a row whose `landed` names a PR/tree/merge-tree),
+    empty (`issue` null, not the lobby), I-4 (`path` `.` and `clean: false`). `origin-json`
+    rows carry the same three as booleans so a non-zero count lists the branches.
 8.2 Merged PRs whose `Closes MESITA-…` issue is not in a terminal status.
-8.3 Branches/PRs with no issue · issues with no project.
+8.3 Header completeness. Every open issue: a Domain label (Rules · Code · Docs · Mixed),
+    a `Footprint:` line, and a `Done:` line. Missing any, or no project, is a finding.
 8.4 Issues whose premise is already false — closed-by-reality work still open.
+8.5 Origin vs Linear. Cross `origin-json` `issue` ids with Linear In Progress
+    (`state=started`). FINDING: In Progress with no origin claim branch, and an origin
+    claim whose issue is not In Progress (`on-main` the same day as `add` is not).
 
 ## Scope 9 — Knowledge congruence (Notion == reality) · P2 · **weekly, separate run**
 
@@ -333,12 +322,10 @@ compare the claim to the code, the way Scope 1 compares EF inventories.
 whether it is already known: an open Linear issue naming it · a doc that declares its own
 drift (a `SPEC vs SHIPPED` paragraph) · a documented freeze (`apps/mobile-consumer` is
 frozen; web decides and mobile is recopied later). Known → record `TRACKED (MESITA-…)`,
-never `FINDING`. Re-reporting deliberate, settled state every week is how a report earns
-being ignored — and a doc that accurately declares its own drift is doing its job, not
-failing. **Quote both disagreeing values with `file:line` before promoting anything;** a
-grep count is not a finding. Verified 2026-08-22: reading `_shared/pulse-pieces.ts` against
-✨ Intake §A produces a real disagreement whose correct verdict is TRACKED (MESITA-1172),
-and reporting it as drift would be a false P1 on the doc that called it first.
+never `FINDING`. Re-reporting settled state is how a report earns being ignored; a doc
+that declares its own drift is doing its job. **Quote both values with `file:line`;** a
+grep count is not a finding. Example: `_shared/pulse-pieces.ts` vs Intake §A is TRACKED
+(MESITA-1172).
 
 9.1 **Docs tree shape.** Every domain link on 📚 Docs resolves · exactly one page per domain
     (the tree is FLAT, one level, forever) · no page carrying a domain's title that the index
@@ -362,19 +349,21 @@ and reporting it as drift would be a false P1 on the doc that called it first.
     Vocabulary — repo-wide banned-word sweep · Design `assets/brand/`, `**/globals.css`,
     `src/components/brand/*` · Functions — deliberately empty, skip it, do not "fix" it.
 
-9.3 **The quickstart mirror — the one repo copy of Notion, and the only ungated hop.**
-    Rules §0's Mirror line and `scripts/rules-quickstart.md` both carry `stamp: v<N> <date>`;
-    `sync-rules --check` refuses a quickstart without one, and `deno task boot` prints it.
-    Compare the two stamps first: equal = OK with no prose read; unequal = drift — read both
-    texts and put **the exact corrected text** in the Linear issue so the fix is a paste, not
-    a decode. (Describing a fix is allowed by Hard rule 1; applying it is not.) Either side can
-    be the stale one; the side edited later is usually the truth.
+9.3 **Stamp compare.** Rules §0 Mirror line vs `scripts/rules-quickstart.md`: both carry
+    `stamp: v<N> <date>`; `boot` prints the quickstart's. Equal = OK, no prose read. Unequal
+    = drift — put **the exact corrected text** in the Linear issue (a paste, not a decode).
+    Do not apply it. Either side can be stale.
 
 9.4 **Vocabulary.** Sweep the banned list in 📚 Docs › Vocabulary across the repo AND the Docs
     pages themselves. One house word used for two things is how nomenclature rots.
-    **Exclude `supabase/supabase/migrations/**`** — an applied migration is frozen history and
-    is never rewritten, so its vocabulary is not live vocabulary (56 `cashback` hits live there
-    and none are findings).
+    **Exclude `supabase/supabase/migrations/**`** — an applied migration is frozen history
+    (56 `cashback` hits there, none are findings).
+
+9.5 **Mirror.** Last 7 days of merged PRs whose body has `Docs:`. `Docs: none — <why>` is
+    OK. `Docs: notion:<32hex>`: `notion-fetch` that page; `page_last_edited_at` predating the
+    merge = FINDING "Mirror missing". `Docs: handoff notion:<id>` is the Work-agent rewrite
+    still owed — TRACKED, not Mirror missing. A Linear `handoff:` comment older than 7 days
+    is a finding.
 
 
 ---

@@ -19,28 +19,10 @@ import { type OfferingRow } from "./offerings";
 // A row is NEVER merely disabled. Locked names its prerequisite, blocked
 // quotes Stripe, soon says there is no engine — because a greyed-out switch
 // with no reason is the exact defect this tab shipped with.
-
-function PointsCell({ row, className }: { row: OfferingRow; className?: string }) {
-  const label = row.points == null ? "—" : row.earned ? `+${row.points}` : "—";
-  return (
-    <span
-      className={cx(
-        "type-label shrink-0 font-semibold tabular-nums",
-        row.earned ? "text-foreground" : "text-muted-foreground",
-        className,
-      )}
-      // The meter is the sum of these; an em dash means "cannot score", which
-      // is different from "scores zero right now".
-      aria-label={
-        row.points == null
-          ? `${row.label} does not count toward the offerings score`
-          : `${row.label} scores ${row.earned ? row.points : 0}`
-      }
-    >
-      {label}
-    </span>
-  );
-}
+//
+// Disagreement (MESITA-1739) is a THIRD FULL-WIDTH LINE, never a second
+// value in the control column: that column stays one control so aria-checked
+// stays one bit, and so a lock chip and a switch stay on the same axis.
 
 function Track({ on, busy }: { on: boolean; busy: boolean }) {
   return (
@@ -63,8 +45,8 @@ function Track({ on, busy }: { on: boolean; busy: boolean }) {
   );
 }
 
-/** Label + detail + the mobile points cell. Shared by every row variant so a
- *  switch row and a static row line up on the same grid. */
+/** Label + detail. Shared by every row variant so a switch row and a static
+ *  row line up on the same grid. */
 function Body({ row }: { row: OfferingRow }) {
   return (
     <span className="min-w-0 flex-1 text-left">
@@ -72,9 +54,6 @@ function Body({ row }: { row: OfferingRow }) {
       <span className="text-muted-foreground mt-0.5 block line-clamp-2 text-xs leading-snug">
         {row.detail}
       </span>
-      {/* Under `sm` the points cell moves beneath the label so the switch
-          keeps its right-hand column instead of crushing the detail line. */}
-      <PointsCell row={row} className="mt-1 block sm:hidden" />
     </span>
   );
 }
@@ -93,7 +72,7 @@ function Reason({
       className={cx(
         "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-label font-semibold",
         tone === "warn"
-          ? "bg-amber-500/12 text-amber-800"
+          ? "bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200"
           : "text-muted-foreground bg-muted",
       )}
     >
@@ -110,6 +89,7 @@ export function LadderRow({
   error = null,
   onToggle,
   control,
+  disagreementAction,
   children,
 }: {
   row: OfferingRow;
@@ -122,6 +102,9 @@ export function LadderRow({
   onToggle?: (next: boolean) => void;
   /** A row that owns a different control: tiles, a pill, an action button. */
   control?: ReactNode;
+  /** The disagreement line's fix, when it is a link. Rows in agreement pass
+   *  nothing — they grow no third line. */
+  disagreementAction?: ReactNode;
   /** Nested config. Always MOUNTED — see shouldRenderConfig. */
   children?: ReactNode;
 }) {
@@ -160,7 +143,6 @@ export function LadderRow({
   const inner = (
     <>
       <Body row={row} />
-      <PointsCell row={row} className="hidden w-6 text-right sm:block" />
       {/* ONE CONTROL COLUMN. Every rung's control — switch, pill, lock chip —
           right-aligns to the same axis, so scanning the right edge reads as a
           single column instead of a ragged one. Fixed width, not `ml-auto`:
@@ -205,6 +187,13 @@ export function LadderRow({
         >
           {inner}
         </div>
+      )}
+
+      {row.disagreement && (
+        <p className="text-muted-foreground pb-2.5 text-xs leading-snug">
+          {row.disagreement.reason}
+          {disagreementAction ? <> {disagreementAction}</> : null}
+        </p>
       )}
 
       {/* Always-mounted live region: one that mounts together with its message

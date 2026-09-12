@@ -66,7 +66,7 @@ function LifecycleBanner({
           <span className="font-display font-semibold tracking-tight">
             Partner live
           </span>
-          <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
+          <span className={warn ? "text-amber-800 dark:text-amber-200" : "text-muted-foreground"}>
             {warn
               ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits the partnership.`
               : "All three steps done — joined, strategy set, checks honored."}
@@ -328,8 +328,8 @@ export function MembershipStatePill({ state }: { state: MembershipPillState }) {
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-meta font-bold tracking-wide uppercase",
         state === "forfeited" && "bg-destructive/10 text-destructive",
-        amber && "bg-amber-500/12 text-amber-800",
-        liveish && "bg-emerald-500/12 text-emerald-700",
+        amber && "bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200",
+        liveish && "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
         state === "not_member" && "bg-muted text-muted-foreground",
       )}
     >

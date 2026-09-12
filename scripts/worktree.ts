@@ -366,9 +366,18 @@ export async function mainWorktree(env: Env): Promise<{ main: string; rows: Row[
   return { main: rows[0].path, rows };
 }
 
-/** The claim a checkout carries: the config key, else the id its branch names (harness or hand-made branches). */
+/** Live claim only: the config key. A leftover branch id is not a live claim (boot, preflight). */
+async function liveClaimOf(env: Env, row: Row): Promise<string | null> {
+  return await worktreeConfig(env, row.path, "mesita.issue");
+}
+
+/**
+ * The claim a checkout carries: the live config, else the id its branch names (harness or
+ * hand-made branches). The fallback lets `add` re-attach a loose branch; it is not a live
+ * claim — boot must not say "claimed by" from it (MESITA-1761).
+ */
 async function claimOf(env: Env, row: Row): Promise<string | null> {
-  return await worktreeConfig(env, row.path, "mesita.issue") ?? issueFromBranch(row.branch);
+  return await liveClaimOf(env, row) ?? issueFromBranch(row.branch);
 }
 
 // ── preflight (the gate) ────────────────────────────────────────────────────
@@ -545,8 +554,8 @@ export function table(main: string, fleet: Fleet[], now: Date): string {
   return lines.join("\n");
 }
 
-export function toJson(main: string, fleet: Fleet[]): string {
-  return JSON.stringify(fleet.map((f) => ({
+export function fleetRows(main: string, fleet: Fleet[]): Record<string, unknown>[] {
+  return fleet.map((f) => ({
     path: showPath(main, f.row.path) || ".",
     branch: f.row.branch,
     landed: describeLanded(f.landed),
@@ -558,7 +567,16 @@ export function toJson(main: string, fleet: Fleet[]): string {
     host: f.host,
     decision: f.decision,
     reason: f.reason,
-  })));
+  }));
+}
+
+/** Doctor 8.1 reads this object — never a hand count. Counts come from origin; fleet stays the row list. */
+export function toJson(
+  main: string,
+  fleet: Fleet[],
+  counts: { noId: number; remoteLanded: number; staleClaim: number } = { noId: 0, remoteLanded: 0, staleClaim: 0 },
+): string {
+  return JSON.stringify({ fleet: fleetRows(main, fleet), ...counts });
 }
 
 // ── repair-lobby (I-4) ──────────────────────────────────────────────────────
@@ -1064,7 +1082,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   } else {
     lines.push("dry run: nothing changed; rerun with --apply to remove what is marked remove or delete");
   }
-  return { lines, fleet, json: toJson(main, fleet), loose, origin };
+  return { lines, fleet, json: toJson(main, fleet, sweepCounts(origin, now)), loose, origin };
 }
 
 export async function looseBranches(env: Env, main: string, rows: Row[]): Promise<{ branch: string; tip: string; landed: Landed }[]> {
@@ -1092,7 +1110,7 @@ export function parseOriginRefs(text: string): OriginRef[] {
     const [ref, tip, date] = line.trim().split(/\s+/);
     if (!ref || !tip) continue;
     const branch = ref.replace(/^origin\//, "");
-    if (branch === "HEAD" || branch === "main") continue;
+    if (!branch || branch === "HEAD" || branch === "main" || branch === "origin") continue;
     const d = date ? new Date(date) : null;
     out.push({ branch, tip, date: d && !isNaN(d.getTime()) ? d : null });
   }
@@ -1136,6 +1154,28 @@ export function originTable(claims: OriginClaim[], now: Date, leaseMs: number = 
     lines.push(`origin/${c.branch} | ${c.issue ?? "-"} | ${age} | ${describeLanded(c.landed)} | ${d.decision}: ${d.reason}`);
   }
   return lines.join("\n");
+}
+
+/** Flags the doctor reads off each origin-json row (MESITA-1754). `on-main` is a live claim with no work, not remote-landed. */
+export function originFlags(c: OriginClaim, now: Date, leaseMs: number = LEASE_MS): { noId: boolean; remoteLanded: boolean; staleClaim: boolean } {
+  const idle = c.date ? now.getTime() - c.date.getTime() >= leaseMs : false;
+  const kind = c.landed?.kind;
+  return {
+    noId: !c.issue,
+    remoteLanded: kind === "exact" || kind === "tree" || kind === "merge-tree",
+    staleClaim: Boolean(c.issue) && idle && !c.here && kind !== "on-main",
+  };
+}
+
+export function sweepCounts(origin: OriginClaim[], now: Date, leaseMs: number = LEASE_MS): { noId: number; remoteLanded: number; staleClaim: number } {
+  let noId = 0, remoteLanded = 0, staleClaim = 0;
+  for (const c of origin) {
+    const f = originFlags(c, now, leaseMs);
+    if (f.noId) noId++;
+    if (f.remoteLanded) remoteLanded++;
+    if (f.staleClaim) staleClaim++;
+  }
+  return { noId, remoteLanded, staleClaim };
 }
 
 /** The §0 stamp the quickstart carries (Rules §0, Mirror line); boot prints it so a session compares it with Rules in one read. */
@@ -1196,15 +1236,17 @@ export async function boot(env: Env): Promise<string[]> {
   }
   // A legacy worktree still lives inside the shared checkout, so the shared row prefix-matches it: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
-  const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
+  const liveClaim = here && here.path !== main ? await liveClaimOf(env, here) : null;
+  const namedIssue = here && here.path !== main ? issueFromBranch(here.branch) : null;
   // An empty claim's tip is origin/main, which classifies "on-main": claimed, no work yet — not landed.
-  const hereClass = here && here.path !== main && hereIssue ? (await classifyLanded(env, main, here.head, here.branch)).landed : null;
+  const hereClass = here && here.path !== main && liveClaim ? (await classifyLanded(env, main, here.head, here.branch)).landed : null;
   const hereLanded = hereClass !== null && isLanded(hereClass) && hereClass.kind !== "on-main";
   if (!here) lines.push(`where: ${cwd} (outside the fleet)`);
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
-  else if (hereIssue && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${hereIssue} landed, a lobby once its claim is cleared: deno task worktree leave ${hereIssue}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
-  else if (hereIssue && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}: no work yet`);
-  else if (hereIssue) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
+  else if (liveClaim && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${liveClaim} landed, a lobby once its claim is cleared: deno task worktree leave ${liveClaim}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
+  else if (liveClaim && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${liveClaim} on ${here.branch ?? "(detached)"}: no work yet`);
+  else if (liveClaim) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${liveClaim} on ${here.branch ?? "(detached)"}`);
+  else if (namedIssue) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: a lobby on a branch that still names ${namedIssue} (landed / no work yet): adopt it for the next issue`);
   else lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
@@ -1304,7 +1346,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         const r = await sweep(env, { apply: rest.includes("--apply") });
         for (const l of r.lines) env.log(l);
         env.log(`json: ${r.json}`);
-        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...decideRemote(c, env.now()) })))}`);
+        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...originFlags(c, env.now()), ...decideRemote(c, env.now()) })))}`);
         return 0;
       }
       case "repair-lobby": {

@@ -45,6 +45,8 @@ import {
   repairLobby,
   showPath,
   sweep,
+  sweepCounts,
+  originFlags,
   validateId,
   validateSlug,
   withJoin,
@@ -807,6 +809,12 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   assertStringIncludes(left, "left worktrees/MESITA-1-one");
   assertEquals((await git(path, "config", "--worktree", "--get", "mesita.issue").catch(() => "")).trim(), "");
   assert(!(await git(f.main, "worktree", "list", "--porcelain")).includes("locked"), "leave unlocks");
+  const afterLeave = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(afterLeave, "a lobby on a branch that still names MESITA-1 (landed / no work yet): adopt it for the next issue");
+  assert(!/claimed by MESITA-1/.test(afterLeave), "a cleared claim is not a live claim");
+  const gate = await preflight(makeEnv(f, { cwd: path }), path);
+  assertEquals(gate.ok, false);
+  assertStringIncludes(gate.line, "UNCLAIMED WORKTREE");
   const adopted = (await add(env, { id: "MESITA-2", slug: "two", adopt: path })).join("\n");
   assertStringIncludes(adopted, "renamed branch claude/MESITA-1-one → claude/MESITA-2-two");
   assertStringIncludes(adopted, "branch=claude/MESITA-2-two");
@@ -818,11 +826,32 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   assertStringIncludes(again, "renamed branch claude/MESITA-2-two → claude/MESITA-3-three");
 });
 
+Deno.test("after leave, boot treats a leftover branch-id as a lobby, not a live claim (MESITA-1761)", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-60", slug: "left" });
+  const path = await Deno.realPath(join(fleetDirOf(f.main), "MESITA-60-left"));
+  const left = (await leave(env, "MESITA-60")).join("\n");
+  assertStringIncludes(left, "left worktrees/MESITA-60-left");
+  const booted = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(booted, "a lobby on a branch that still names MESITA-60 (landed / no work yet): adopt it for the next issue");
+  assert(!booted.includes("claimed by"), "boot agrees with preflight: not a live claim");
+  const gate = await preflight(makeEnv(f, { cwd: path }), path);
+  assertEquals(gate.ok, false);
+  assertStringIncludes(gate.line, "UNCLAIMED WORKTREE");
+  // The branch-name fallback still lets add re-attach the loose branch.
+  const resumed = (await add(env, { id: "MESITA-60" })).join("\n");
+  assertStringIncludes(resumed, "resumed worktrees/MESITA-60-left on claude/MESITA-60-left");
+  const reclaimed = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(reclaimed, "claimed by MESITA-60 on claude/MESITA-60-left: no work yet");
+});
+
 // ── Origin claims (I-6) ─────────────────────────────────────────────────────
 
 Deno.test("parseOriginRefs drops main and HEAD; decideRemote deletes only a landed, idle, id-carrying branch nobody checks out here", () => {
   const refs = parseOriginRefs([
     "origin/HEAD abc 2026-09-12T10:00:00+00:00",
+    "origin abc 2026-09-12T10:00:00+00:00",
     "origin/main abc 2026-09-12T10:00:00+00:00",
     "origin/claude/MESITA-7-x def 2026-09-10T10:00:00+00:00",
     "origin/claude/home-soon-96e9 123 not-a-date",
@@ -883,6 +912,22 @@ Deno.test("sweep deletes a landed origin branch past the lease with a backup ref
   assert(!heads.includes("claude/MESITA-50-remote-landed"), "the landed origin branch is gone");
   assert(heads.includes("claude/home-soon-96e9") && heads.includes("claude/MESITA-51-fresh"), "id-less and fresh claims stay");
   assertStringIncludes(await git(f.main, "for-each-ref", "--format=%(refname)", "refs/swept/"), "/origin/claude/MESITA-50-remote-landed");
+  const counts = JSON.parse(dry.json) as { noId: number; remoteLanded: number; staleClaim: number; fleet: unknown[] };
+  assertEquals(counts.noId, dry.origin.filter((c) => !c.issue).length);
+  assert(dry.origin.some((c) => c.branch.endsWith("home-soon-96e9") && !c.issue));
+  assertEquals(counts.remoteLanded, 1);
+  assertEquals(counts.staleClaim, 1);
+  assert(Array.isArray(counts.fleet));
+});
+
+Deno.test("originFlags: noId vs remoteLanded vs staleClaim are the three doctor 8.1 counts", () => {
+  const now = new Date("2026-09-12T00:00:00Z");
+  const base = { branch: "x", tip: "abc", date: new Date("2026-09-10T00:00:00Z"), here: false };
+  assertEquals(originFlags({ ...base, issue: null, landed: { kind: "exact", pr: 1 } }, now), { noId: true, remoteLanded: true, staleClaim: false });
+  assertEquals(originFlags({ ...base, issue: "MESITA-1", landed: { kind: "exact", pr: 1 } }, now), { noId: false, remoteLanded: true, staleClaim: true });
+  assertEquals(originFlags({ ...base, issue: "MESITA-1", landed: { kind: "on-main" }, here: true }, now), { noId: false, remoteLanded: false, staleClaim: false });
+  assertEquals(originFlags({ ...base, issue: "MESITA-1", landed: { kind: "unlanded" } }, now), { noId: false, remoteLanded: false, staleClaim: true });
+  assertEquals(sweepCounts([{ ...base, issue: null, landed: { kind: "exact", pr: 1 } }, { ...base, issue: "MESITA-1", landed: { kind: "unlanded" } }], now), { noId: 1, remoteLanded: 1, staleClaim: 1 });
 });
 
 // ── The platform contract (SADLC adapters, item 4) ───────────────────────────
