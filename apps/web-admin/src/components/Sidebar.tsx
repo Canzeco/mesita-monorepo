@@ -20,7 +20,6 @@ import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
-import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
 import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 
@@ -81,13 +80,16 @@ const MANAGE_NAV: NavItem[] = [
 //             ownership gets sealed (Verification)
 //   demand    a guest's night: how they find a place (Discovery) → how they
 //             book it (Reservations) → the journey once they sit down (Visits,
-//             the local context) → or ordering without going at all (Orders,
-//             the remote one) → what either context pays them (Rewards)
+//             the local context — Bill · Sync · Report · Visits Rewards ·
+//             Ojo) → or ordering without going at all (Orders, the remote
+//             one; its rates stay parked)
 //   proof     who reads the screenshot (Ojo) — composed onto Visits, not a
 //             rail row; blob stays ojo_config
 //
 // Ojo is not a sidebar row: it is the proof reader for THE TICKET, so its
-// knobs live on Visits. Orders still runs ahead of a reader (Soon).
+// knobs live on Visits. Visits Rewards is the same shape (MESITA-1784):
+// rates a visit pays, not a rail row; /rewards-config redirects here.
+// Orders still runs ahead of a reader (Soon).
 //
 // Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
 // because it IS the chat engine. It has no editor at all — it runs on in-code
@@ -111,6 +113,7 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   // General absorbed Models and Verification (MESITA-1175): a page whose
   // whole content is three controls does not earn a rail row. Ojo's policy
   // lives on Visits (who reads the proof); /ojo-config redirects there.
+  // Visits Rewards is the same: /rewards-config redirects to Visits.
   // Models and Verification routes still redirect into General.
   { href: "/general-config", label: "General", Icon: Settings2 },
   // INTAKE is one row for the Intaker: Models · Create · Enrich ·
@@ -121,7 +124,6 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   VISITS_PARENT,
   ORDERS_PARENT,
   RESERVATIONS_PARENT,
-  REWARDS_PARENT,
   CONTROLS_PARENT,
 ];
 

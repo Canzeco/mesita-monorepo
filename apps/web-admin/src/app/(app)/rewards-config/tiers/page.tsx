@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-// Bookmarks to the old Tiers tab land on the one Rewards Config page.
-export default function PromosTiersRedirect() {
-  redirect("/rewards-config");
+// Bookmarks to the old Tiers tab land on Visits, where Visits Rewards lives.
+export default function PromosTiersRedirect(): never {
+  permanentRedirect("/visits-config");
 }
