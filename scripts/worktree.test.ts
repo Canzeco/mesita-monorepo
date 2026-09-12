@@ -807,6 +807,12 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   assertStringIncludes(left, "left worktrees/MESITA-1-one");
   assertEquals((await git(path, "config", "--worktree", "--get", "mesita.issue").catch(() => "")).trim(), "");
   assert(!(await git(f.main, "worktree", "list", "--porcelain")).includes("locked"), "leave unlocks");
+  const afterLeave = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(afterLeave, "a lobby on a branch that still names MESITA-1 (landed / no work yet): adopt it for the next issue");
+  assert(!/claimed by MESITA-1/.test(afterLeave), "a cleared claim is not a live claim");
+  const gate = await preflight(makeEnv(f, { cwd: path }), path);
+  assertEquals(gate.ok, false);
+  assertStringIncludes(gate.line, "UNCLAIMED WORKTREE");
   const adopted = (await add(env, { id: "MESITA-2", slug: "two", adopt: path })).join("\n");
   assertStringIncludes(adopted, "renamed branch claude/MESITA-1-one → claude/MESITA-2-two");
   assertStringIncludes(adopted, "branch=claude/MESITA-2-two");
@@ -816,6 +822,26 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   const again = (await add(env, { id: "MESITA-3", slug: "three", adopt: path })).join("\n");
   assertStringIncludes(again, "cleared MESITA-2: its work landed");
   assertStringIncludes(again, "renamed branch claude/MESITA-2-two → claude/MESITA-3-three");
+});
+
+Deno.test("after leave, boot treats a leftover branch-id as a lobby, not a live claim (MESITA-1761)", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-60", slug: "left" });
+  const path = await Deno.realPath(join(fleetDirOf(f.main), "MESITA-60-left"));
+  const left = (await leave(env, "MESITA-60")).join("\n");
+  assertStringIncludes(left, "left worktrees/MESITA-60-left");
+  const booted = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(booted, "a lobby on a branch that still names MESITA-60 (landed / no work yet): adopt it for the next issue");
+  assert(!booted.includes("claimed by"), "boot agrees with preflight: not a live claim");
+  const gate = await preflight(makeEnv(f, { cwd: path }), path);
+  assertEquals(gate.ok, false);
+  assertStringIncludes(gate.line, "UNCLAIMED WORKTREE");
+  // The branch-name fallback still lets add re-attach the loose branch.
+  const resumed = (await add(env, { id: "MESITA-60" })).join("\n");
+  assertStringIncludes(resumed, "resumed worktrees/MESITA-60-left on claude/MESITA-60-left");
+  const reclaimed = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(reclaimed, "claimed by MESITA-60 on claude/MESITA-60-left: no work yet");
 });
 
 // ── Origin claims (I-6) ─────────────────────────────────────────────────────
