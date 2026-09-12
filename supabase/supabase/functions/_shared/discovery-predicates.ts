@@ -43,6 +43,12 @@ import { familiesForPlace } from "./place-taxonomy.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { haversineKm } from "./geo.ts";
 import { isOpenAt, isOpenNow } from "./local-time.ts";
+import {
+  isMesitaPartnerRow,
+  parsePlacesScope,
+  type MesitaNearbyRow,
+  type PlacesScope,
+} from "./nearby-places.ts";
 
 /** Sunday-first, matching JS `getDay()` and the browser's `DiscoveryWhen`. */
 const DAY_KEYS = [
@@ -63,10 +69,31 @@ export type DeckWhen =
   | { mode: "now" }
   | { mode: "at"; day: number; hour: number };
 
+export const DECK_REVIEW_STOPS = [0, 10, 100, 1000, 10000] as const;
+
+function clampReviewFloor(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  let best = 0;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const stop of DECK_REVIEW_STOPS) {
+    const d = Math.abs(stop - n);
+    if (d < bestD || (d === bestD && stop > best)) {
+      best = stop;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 /**
- * The guest's four predicates on the wire. Every field is optional: a client
+ * The guest's predicates on the wire. Every field is optional: a client
  * that sends none (or no `predicates` at all) gets the whole pool, which is the
  * pre-MESITA-1153 behaviour and what every deployed Expo binary does.
+ *
+ * Web (MESITA-1792) sends Super Category, Places scope, and Google review floor.
+ * The retired visit/when/distance fields still cut when a deployed Expo binary
+ * posts them.
  */
 export type DeckPredicates = {
   context: DeckContext;
@@ -74,6 +101,8 @@ export type DeckPredicates = {
   categories: string[];
   maxKm: number | null;
   when: DeckWhen;
+  placesScope: PlacesScope;
+  minReviews: number;
 };
 
 export const NO_DECK_PREDICATES: DeckPredicates = {
@@ -82,6 +111,8 @@ export const NO_DECK_PREDICATES: DeckPredicates = {
   categories: [],
   maxKm: null,
   when: { mode: "anytime" },
+  placesScope: "mesita",
+  minReviews: 0,
 };
 
 function stringList(raw: unknown): string[] {
@@ -128,6 +159,8 @@ export function readDeckPredicates(raw: unknown): DeckPredicates {
     categories: stringList(f.categories),
     maxKm,
     when: readWhen(f.when),
+    placesScope: parsePlacesScope(f.placesScope),
+    minReviews: clampReviewFloor(f.minReviews),
   };
 }
 
@@ -138,7 +171,9 @@ export function hasDeckPredicates(p: DeckPredicates): boolean {
     p.familyKeys.length > 0 ||
     p.categories.length > 0 ||
     p.maxKm !== null ||
-    p.when.mode !== "anytime"
+    p.when.mode !== "anytime" ||
+    p.placesScope !== "mesita" ||
+    p.minReviews > 0
   );
 }
 
@@ -165,6 +200,19 @@ function matches(
     const families = familiesForPlace(row) as string[];
     const familyHit = p.familyKeys.some((k) => families.includes(k));
     if (!categoryHit && !familyHit) return false;
+  }
+
+  if (p.placesScope === "partners" && !isMesitaPartnerRow(row as MesitaNearbyRow)) {
+    return false;
+  }
+
+  if (p.minReviews > 0) {
+    const count = typeof row.google_review_count === "number"
+      ? row.google_review_count
+      : typeof row.google_count === "number"
+      ? row.google_count
+      : null;
+    if (typeof count !== "number" || count < p.minReviews) return false;
   }
 
   // Distance tolerance. With no center we cannot evaluate it at all, so the

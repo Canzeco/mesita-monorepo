@@ -41,34 +41,20 @@ import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { useActiveOrg, type RailOrg } from "@/lib/use-active-org";
+import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export function AppShell({
   organizations,
-  isSuperAdmin,
   defaultCollapsed = false,
-  defaultOpenPlaceIds,
-  defaultPortfolioOpen = true,
   children,
 }: {
-  /** Each organization with the viewer's role and the places it holds: the
-   *  rail draws the portfolio from these, on the first frame (MESITA-1779). */
-  organizations: RailOrg[];
-  /** Decides whether a place's Admin view exists for this viewer. */
-  isSuperAdmin: boolean;
+  organizations: ChromeOrg[];
   /** Read from the cookie by the server layout, so the rail paints at its
    *  final width on the first frame. */
   defaultCollapsed?: boolean;
-  /** Same trick, same reason, for which places are open — and it matters
-   *  more, because those are rows of HEIGHT rather than one width
-   *  (MESITA-1734). Passed through to both Sidebar instances so the drawer and
-   *  the rail agree about what is open. */
-  defaultOpenPlaceIds?: string[];
-  /** And for the ORG PLACES toggle above them (MESITA-1779). */
-  defaultPortfolioOpen?: boolean;
   children: React.ReactNode;
 }) {
   // Every href in this frame carries the active organization, resolved the one
@@ -111,7 +97,10 @@ export function AppShell({
       const active = document.activeElement;
       // Also catches focus that is already outside the drawer entirely, which
       // is the state a mid-navigation re-render can leave behind.
-      if (e.shiftKey && (active === first || !drawerRef.current.contains(active))) {
+      if (
+        e.shiftKey &&
+        (active === first || !drawerRef.current.contains(active))
+      ) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && active === last) {
@@ -144,24 +133,21 @@ export function AppShell({
 
   return (
     <div className="fixed inset-0 flex overflow-clip">
-        {/* Desktop rail — visible lg+. The column owns the width; the rail fills it. */}
-        <div
-          className={
-            "hidden shrink-0 transition-[width] duration-200 ease-out lg:flex " +
-            (collapsed ? "w-16" : "w-60")
-          }
-        >
-          <Sidebar
-            organizations={organizations}
-            isSuperAdmin={isSuperAdmin}
-            collapsed={collapsed}
-            onToggleCollapse={toggleCollapsed}
-            defaultOpenPlaceIds={defaultOpenPlaceIds}
-            defaultPortfolioOpen={defaultPortfolioOpen}
-          />
-        </div>
+      {/* Desktop rail — visible lg+. The column owns the width; the rail fills it. */}
+      <div
+        className={
+          "hidden shrink-0 transition-[width] duration-200 ease-out lg:flex " +
+          (collapsed ? "w-16" : "w-60")
+        }
+      >
+        <Sidebar
+          organizations={organizations}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapsed}
+        />
+      </div>
 
-        {/* Drawer — below lg.
+      {/* Drawer — below lg.
             `inert` while closed, and that is not decoration. The panel stays
             MOUNTED so it can animate, and a closed one is hidden only by a
             translate — which removes it from view but not from the tab order.
@@ -170,83 +156,77 @@ export function AppShell({
             invalid here: it is illegal to hide a subtree that still contains
             focusable nodes. `inert` fixes both at once, so aria-hidden rides
             along only as an older-browser fallback. */}
+      <div
+        className={
+          "fixed inset-0 z-50 lg:hidden " +
+          (open ? "pointer-events-auto" : "pointer-events-none")
+        }
+        inert={!open}
+        aria-hidden={!open}
+      >
         <div
           className={
-            "fixed inset-0 z-50 lg:hidden " +
-            (open ? "pointer-events-auto" : "pointer-events-none")
+            "bg-foreground/40 absolute inset-0 backdrop-blur-sm transition-opacity duration-200 " +
+            (open ? "opacity-100" : "opacity-0")
           }
-          inert={!open}
-          aria-hidden={!open}
+          onClick={close}
+        />
+        <div
+          ref={drawerRef}
+          className={
+            // w-60 matches the expanded rail — anything wider and the rail
+            // underfills the panel.
+            "relative h-full w-60 max-w-[85vw] shadow-lg transition-transform duration-200 ease-out " +
+            (open ? "translate-x-0" : "-translate-x-full")
+          }
+          role="dialog"
+          aria-modal="true"
+          aria-label="Console navigation"
         >
-          <div
-            className={
-              "bg-foreground/40 absolute inset-0 backdrop-blur-sm transition-opacity duration-200 " +
-              (open ? "opacity-100" : "opacity-0")
-            }
-            onClick={close}
-          />
-          <div
-            ref={drawerRef}
-            className={
-              // w-60 matches the expanded rail — anything wider and the rail
-              // underfills the panel.
-              "relative h-full w-60 max-w-[85vw] shadow-lg transition-transform duration-200 ease-out " +
-              (open ? "translate-x-0" : "-translate-x-full")
-            }
-            role="dialog"
-            aria-modal="true"
-            aria-label="Console navigation"
-          >
-            <Sidebar
-              organizations={organizations}
-              isSuperAdmin={isSuperAdmin}
-              onNavigate={close}
-              defaultOpenPlaceIds={defaultOpenPlaceIds}
-              defaultPortfolioOpen={defaultPortfolioOpen}
-            />
-            {open && (
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Close menu"
-                className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* Mobile topbar — hidden lg+ */}
-          <header className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-4 py-2.5 lg:hidden">
+          <Sidebar organizations={organizations} onNavigate={close} />
+          {open && (
             <button
               type="button"
-              onClick={() => setOpen(true)}
-              aria-label="Open menu"
-              aria-expanded={open}
-              className="border-border text-foreground hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition"
+              onClick={close}
+              aria-label="Close menu"
+              className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition"
             >
-              <Menu className="h-4 w-4" />
+              <X className="h-4 w-4" />
             </button>
-            <Link
-              href={withOrg(SHELL_ROUTES.organization, activeOrgId)}
-              onClick={(e) =>
-                guardNav?.(withOrg(SHELL_ROUTES.organization, activeOrgId), e)
-              }
-              className="inline-flex items-center gap-2 truncate"
-            >
-              <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-              <span className={TINY_LABEL_CLASS}>business</span>
-            </Link>
-          </header>
-
-          <ConsoleHeader organizations={organizations} />
-
-          <main className="flex-1 overflow-x-hidden overflow-y-auto">
-            {children}
-          </main>
+          )}
         </div>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* Mobile topbar — hidden lg+ */}
+        <header className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-4 py-2.5 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={open}
+            className="border-border text-foreground hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          <Link
+            href={withOrg(SHELL_ROUTES.organization, activeOrgId)}
+            onClick={(e) =>
+              guardNav?.(withOrg(SHELL_ROUTES.organization, activeOrgId), e)
+            }
+            className="inline-flex items-center gap-2 truncate"
+          >
+            <MesitaLogo variant="horizontal" className="h-5 w-auto" />
+            <span className={TINY_LABEL_CLASS}>business</span>
+          </Link>
+        </header>
+
+        <ConsoleHeader organizations={organizations} />
+
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

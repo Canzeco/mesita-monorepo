@@ -1,21 +1,41 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Compass } from "lucide-react";
+import { Compass, SlidersHorizontal } from "lucide-react";
 
 import { apiRecommendDeck, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { useUserLocation } from "@/lib/use-user-location";
+import {
+  useLocateUser,
+  useUserLocation,
+  useUserLocationLocating,
+} from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { isPromoting } from "@/lib/promo-rates";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { EmptyState } from "@/components/shared";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { trackEvent } from "@/lib/analytics/track";
 import { GoSheet } from "@/components/consumer/place-detail/GoSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
+import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import {
+  applyDiscoveryFilters,
+  countAppliedDiscoveryFilters,
+  hasDiscoveryPredicates,
+} from "@/lib/discovery-filters-engine";
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from "@/lib/use-discovery-filters";
+import {
+  UNFILTERED_DECK_KEY,
+  deckRequestKey,
+  toDeckRequest,
+} from "@/lib/discovery-filters-wire";
 import { ScrollCard } from "./scroll-card";
 import { ScrollHint } from "./scroll-hint";
 import {
@@ -23,9 +43,10 @@ import {
   writeScrollPosition,
 } from "./scroll-position";
 
-// SCROLL — Home's lead mode (MESITA-1697). One place per screen, vertical,
-// no filters and no parameters. It replaces the card-stack deck; the CARD is
-// unchanged (`PlaceSwipeCardFace`), only the way you get to the next one.
+// SCROLL — Home's lead mode (MESITA-1697). One place per screen, vertical.
+// Filters match the map (MESITA-1792): Super Category, Places scope, Google
+// review floor, plus connect location. The CARD is unchanged
+// (`PlaceSwipeCardFace`), only the way you get to the next one.
 //
 // TWO AXES, TWO MEANINGS. Vertical moves to the next place, horizontal pages
 // that place's photos via the carousel already on the card face. In the stack
@@ -62,8 +83,13 @@ export function ScrollDeck({
 }) {
   const supabase = useBrowserSupabase();
   const center = useUserLocation();
+  const locating = useUserLocationLocating();
+  const locate = useLocateUser();
   const scrollerRef = useRef<HTMLUListElement | null>(null);
   const { savedIds, hydrated, setSaved } = useSavedPlaces();
+  const filters = useDiscoveryFilters();
+  const appliedCount = countAppliedDiscoveryFilters(filters);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // ONE PAIR OF SHEETS FOR THE WHOLE LIST, not one per card. GoSheet pulls the
   // guest's tickets when it mounts, so fifty of them would be fifty ticket
@@ -82,14 +108,25 @@ export function ScrollDeck({
   // across would have shipped a Home with location silently removed from the
   // blend, on the same day the copy stopped claiming signals it does not have.
   const [geoDeck, setGeoDeck] = useState<Place[] | null>(null);
-  const geoKeyRef = useRef<string | null>(null);
-  const geoKey = center ? `${center.lat.toFixed(3)},${center.lng.toFixed(3)}` : "";
+  const requestKeyRef = useRef<string | null>(null);
+  const requestKey = deckRequestKey(filters, center);
 
   useEffect(() => {
-    if (!center || geoKeyRef.current === geoKey) return;
-    geoKeyRef.current = geoKey;
+    if (requestKeyRef.current === requestKey) return;
+    requestKeyRef.current = requestKey;
     let cancelled = false;
-    apiRecommendDeck(supabase, { limit: 50, lat: center.lat, lng: center.lng })
+    if (requestKey === UNFILTERED_DECK_KEY) {
+      const raf = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setGeoDeck(null);
+      });
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(raf);
+      };
+    }
+    const req = toDeckRequest(filters, center, 50);
+    apiRecommendDeck(supabase, req)
       .then((result) => {
         if (cancelled) return;
         setGeoDeck(result.deck.map((p) => enrichPlaceOverview(p)));
@@ -105,7 +142,7 @@ export function ScrollDeck({
     return () => {
       cancelled = true;
     };
-  }, [center, geoKey, supabase]);
+  }, [center, filters, requestKey, supabase]);
 
   // LISTED MESITA PLACES ONLY. This guard is the deck component's own half of
   // a Discovery quality floor that `swipe-mesita-listed.test.ts` pins across
@@ -113,13 +150,17 @@ export function ScrollDeck({
   // because the geo re-fetch above bypasses that boundary entirely.
   const rows = useMemo(() => {
     const source = geoDeck ?? places;
-    const listed = source.filter(
-      (place) => !place.googleOnly && !place.from_google,
-    );
-    return [...listed]
+    const listed = source.filter((place) => {
+      if (place.googleOnly || place.from_google) {
+        return filters.placesScope === "google";
+      }
+      return true;
+    });
+    const ranked = [...listed]
       .sort((a, b) => (isPromoting(a) ? 0 : 1) - (isPromoting(b) ? 0 : 1))
       .map((p) => withUserDistance(p, center));
-  }, [geoDeck, places, center]);
+    return applyDiscoveryFilters(ranked, filters);
+  }, [geoDeck, places, center, filters]);
 
   // THE DECK IS ALWAYS 50, CYCLED FROM WHATEVER IS REAL (Pato, live: "the deck
   // must be 50 items. then it repeats. if n is one, fill the 50 items deck with
@@ -178,19 +219,77 @@ export function ScrollDeck({
     };
   }, []);
 
+  const filtersSheet = (
+    <LocalSheet
+      open={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      ariaLabel="Filters"
+    >
+      <DiscoveryFilters
+        onClose={() => setFiltersOpen(false)}
+        count={rows.length === 0 ? 0 : rows.length}
+        hasLocation={center !== null}
+        locating={locating}
+        onLocate={locate}
+      />
+    </LocalSheet>
+  );
+
+  const filtersDisc = (
+    <button
+      type="button"
+      onClick={() => setFiltersOpen(true)}
+      aria-label={
+        appliedCount > 0 ? `Filters, ${appliedCount} applied` : "Filter places"
+      }
+      aria-haspopup="dialog"
+      aria-pressed={appliedCount > 0}
+      className={cn(
+        "shadow-elev absolute top-3 right-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.98]",
+        appliedCount > 0
+          ? "border-primary bg-primary text-primary-foreground shadow-glow"
+          : "border-border bg-card/95 text-foreground",
+      )}
+    >
+      <SlidersHorizontal className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+      {appliedCount > 0 && (
+        <span className="bg-foreground text-background type-meta absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold tabular-nums">
+          {appliedCount}
+        </span>
+      )}
+    </button>
+  );
+
   // TWO DIFFERENT FAILURES, TWO DIFFERENT SCREENS. A deck that came back empty
   // means the catalog is still filling; a deck that FAILED means we could not
   // ask. Telling a guest the catalog is empty when the request 502'd sends them
   // away from a screen that a retry would have fixed — and it is the exact
   // conflation the mock strip used to paper over.
   if (deck.length === 0) {
-    return fetchError ? (
-      <EmptyState
-        icon={Compass}
-        title="Couldn't load tonight's places"
-        description="The request didn't come back. Pull the tab again in a moment."
-      />
-    ) : (
+    if (fetchError) {
+      return (
+        <EmptyState
+          icon={Compass}
+          title="Couldn't load tonight's places"
+          description="The request didn't come back. Pull the tab again in a moment."
+        />
+      );
+    }
+    if (hasDiscoveryPredicates(filters)) {
+      return (
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          {filtersDisc}
+          {filtersSheet}
+          <EmptyState
+            icon={SlidersHorizontal}
+            title="No places match these filters"
+            description="Nothing in tonight's catalog fits. Widen a filter and the cards come back."
+            action={{ label: "Clear filters", onClick: resetDiscoveryFilters }}
+          />
+        </div>
+      );
+    }
+    return (
       <EmptyState
         icon={Compass}
         title="No places yet"
@@ -213,6 +312,9 @@ export function ScrollDeck({
           NO `gap` EITHER: with full-height snap items a gap is a strip you can
           come to rest on, showing two half cards. The spacing lives inside the
           card instead. */}
+      {filtersDisc}
+      {filtersSheet}
+
       <ul
         ref={scrollerRef}
         aria-label="Places"

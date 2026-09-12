@@ -46,13 +46,17 @@ describe("the add door is shut", () => {
     //
     // So the rule guards the DOOR instead of the prop: whatever the empty
     // state offers, it may only point back into the list.
-    const emptyState = PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
+    const emptyState =
+      PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
     expect(emptyState).not.toBe("");
     for (const href of emptyState.match(/href=\{[^}]*\}/g) ?? []) {
       expect(href).toMatch(/placesHref\(/);
     }
     // No create verb anywhere on the screen, in any prop.
+    // No create verb anywhere on the screen, in any prop. Claim lives on
+    // the row (`PlaceHoldButton`), never as a page-level CTA (MESITA-1793).
     expect(PLACES_PAGE).not.toMatch(/Add a place|Create place|New place/i);
+    expect(PLACES_PAGE).not.toMatch(/Claim a place|Claim places/i);
   });
 
   it("an empty catalogue outranks the filter", () => {
@@ -62,12 +66,17 @@ describe("the add door is shut", () => {
     // catalogue holds nothing at all: a filter taking credit for an absence
     // it did not cause. And an empty catalogue gets NO action — there is
     // nowhere to send anyone (MESITA-1664).
-    const emptyState = PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
+    const emptyState =
+      PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
+    expect(emptyState).not.toBe("");
+    expect(emptyState).toContain("places.length === 0 ? null");
     for (const prop of ["title", "description", "action"]) {
       const branch = emptyState.slice(emptyState.indexOf(`${prop}={`));
       expect(branch.indexOf("places.length === 0")).toBeGreaterThanOrEqual(0);
       expect(branch.indexOf("places.length === 0")).toBeLessThan(
-        branch.indexOf("owned ===") === -1 ? Infinity : branch.indexOf("owned ==="),
+        branch.indexOf("owned ===") === -1
+          ? Infinity
+          : branch.indexOf("owned ==="),
       );
     }
   });
@@ -81,6 +90,12 @@ describe("the add door is shut", () => {
     expect(PLACES_PAGE).not.toContain("Search by name");
     expect(PLACES_PAGE).not.toContain("<form");
     expect(PLACES_PAGE).not.toMatch(/apiListConsolePlaces\([\s\S]*?query:/);
+  });
+
+  it("NoOrganization sends you to the ceremony, not the collection", () => {
+    const src = read("components/console/NoOrganization.tsx");
+    expect(src).toContain("SHELL_ROUTES.organizationNew");
+    expect(src).not.toContain("SHELL_ROUTES.organization}");
   });
 
   it("/add renders a redirect and reads no data", () => {
@@ -113,7 +128,9 @@ describe("verify is offered only where it can work", () => {
     // undefined `verified` (the deploy window, where a new row meets an old
     // EF) must show no control rather than a wrong one, which is why the
     // check is `!== true` and not a falsy test.
-    expect(PLACES_PAGE).toContain("place.owned === true && place.verified !== true");
+    expect(PLACES_PAGE).toContain(
+      "place.owned === true && place.verified !== true",
+    );
     expect(PLACES_PAGE).toContain("PlaceVerifyButton");
   });
 });

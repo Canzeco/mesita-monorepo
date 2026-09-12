@@ -131,9 +131,9 @@ describe("Scroll rides the shared deck", () => {
     expect(scroll).not.toContain("apiListCatalog");
   });
 
-  it("re-fetches only to add coordinates the boundary never sent", () => {
+  it("re-fetches when coordinates or filters would change the server's answer", () => {
     expect(scroll).toContain("apiRecommendDeck");
-    expect(scroll).toContain("lat: center.lat");
+    expect(scroll).toContain("toDeckRequest");
   });
 });
 
