@@ -1101,7 +1101,7 @@ export function parseOriginRefs(text: string): OriginRef[] {
     const [ref, tip, date] = line.trim().split(/\s+/);
     if (!ref || !tip) continue;
     const branch = ref.replace(/^origin\//, "");
-    if (branch === "HEAD" || branch === "main") continue;
+    if (!branch || branch === "HEAD" || branch === "main" || branch === "origin") continue;
     const d = date ? new Date(date) : null;
     out.push({ branch, tip, date: d && !isNaN(d.getTime()) ? d : null });
   }

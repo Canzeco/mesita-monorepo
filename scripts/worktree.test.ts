@@ -825,6 +825,7 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
 Deno.test("parseOriginRefs drops main and HEAD; decideRemote deletes only a landed, idle, id-carrying branch nobody checks out here", () => {
   const refs = parseOriginRefs([
     "origin/HEAD abc 2026-09-12T10:00:00+00:00",
+    "origin abc 2026-09-12T10:00:00+00:00",
     "origin/main abc 2026-09-12T10:00:00+00:00",
     "origin/claude/MESITA-7-x def 2026-09-10T10:00:00+00:00",
     "origin/claude/home-soon-96e9 123 not-a-date",
@@ -886,7 +887,8 @@ Deno.test("sweep deletes a landed origin branch past the lease with a backup ref
   assert(heads.includes("claude/home-soon-96e9") && heads.includes("claude/MESITA-51-fresh"), "id-less and fresh claims stay");
   assertStringIncludes(await git(f.main, "for-each-ref", "--format=%(refname)", "refs/swept/"), "/origin/claude/MESITA-50-remote-landed");
   const counts = JSON.parse(dry.json) as { noId: number; remoteLanded: number; staleClaim: number; fleet: unknown[] };
-  assertEquals(counts.noId, 1);
+  assertEquals(counts.noId, dry.origin.filter((c) => !c.issue).length);
+  assert(dry.origin.some((c) => c.branch.endsWith("home-soon-96e9") && !c.issue));
   assertEquals(counts.remoteLanded, 1);
   assertEquals(counts.staleClaim, 1);
   assert(Array.isArray(counts.fleet));
