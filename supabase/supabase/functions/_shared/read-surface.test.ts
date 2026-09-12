@@ -481,7 +481,6 @@ const SWALLOWED_TODAY = [
   "_shared/ticket-check.ts",
   "business-web-confirm-reservation/index.ts",
   "business-web-get-overview/index.ts",
-  "business-web-list-organizations/index.ts",
   "business-web-release-place/index.ts",
   "business-web-update-place/place-social-refresh.ts",
   "consumer-mcp/index.ts",
