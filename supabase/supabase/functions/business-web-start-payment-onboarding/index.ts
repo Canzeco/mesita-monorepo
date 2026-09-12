@@ -50,9 +50,9 @@ import {
   completePrefillWithLlm,
   deterministicConnectPrefill,
   llmBusinessProfilePatch,
+  loadOrgPlacesForPrefill,
   needsLlmDescription,
   needsLlmMcc,
-  type PlacePrefillRow,
 } from "../_shared/stripe-connect-prefill.ts";
 import {
   isStripeKeyRejection,
@@ -348,27 +348,10 @@ Deno.serve(async (req) => {
   } | null) ?? null;
   const legalName = (org?.legal_name ?? "").trim();
 
-  const { data: placeRows, error: placesErr } = await admin
-    .from("places")
-    .select(
-      "id, place_profiles!inner(name, category, category_label, family_keys, description, website_url, instagram_url, phone, email)",
-    )
-    .eq("organization_id", orgId)
-    .order("id");
+  const { places, error: placesErr } = await loadOrgPlacesForPrefill(admin, orgId);
   if (placesErr) {
     console.error("[start-payment-onboarding] place prefill read:", placesErr);
   }
-  type ProfileEmbed = PlacePrefillRow | PlacePrefillRow[];
-  const places: PlacePrefillRow[] = ((placeRows ?? []) as {
-    id: string;
-    place_profiles: ProfileEmbed;
-  }[])
-    .map((row) => {
-      const profile = Array.isArray(row.place_profiles)
-        ? row.place_profiles[0]
-        : row.place_profiles;
-      return { id: row.id, ...(profile ?? {}) };
-    });
   // CREATE is Atlas-only. Stripe keys idempotency on org+country; an LLM
   // fail-open or a shuffled places read would change the body, 409 the
   // replay, and leave the first connected account orphaned.

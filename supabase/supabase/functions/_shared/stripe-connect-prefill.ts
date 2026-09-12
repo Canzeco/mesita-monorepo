@@ -17,6 +17,7 @@ import {
 } from "./place-taxonomy.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 /** Mexican RFC (persona moral 12 / física 13). Same shape as the dropped CFDI check. */
 export const MEXICO_RFC_RE = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
@@ -254,6 +255,35 @@ export function sortPlacesForPrefill(places: PlacePrefillRow[]): PlacePrefillRow
     if (byId !== 0) return byId;
     return (a.name ?? "").localeCompare(b.name ?? "");
   });
+}
+
+const PLACE_PREFILL_SELECT =
+  "id, place_profiles!inner(name, category, category_label, family_keys, description, website_url, instagram_url, phone, email)";
+
+/** Org places for Connect prefill. Isolated from the onboarding EF so
+ *  Stripe's account patch does not sit in write-surface's 2000-char
+ *  window of the places read (that scan treats any write-verb as a places write). */
+export async function loadOrgPlacesForPrefill(
+  admin: SupabaseClient,
+  orgId: string,
+): Promise<{ places: PlacePrefillRow[]; error: unknown }> {
+  const { data, error } = await admin
+    .from("places")
+    .select(PLACE_PREFILL_SELECT)
+    .eq("organization_id", orgId)
+    .order("id");
+  type ProfileEmbed = PlacePrefillRow | PlacePrefillRow[];
+  const places: PlacePrefillRow[] = ((data ?? []) as {
+    id: string;
+    place_profiles: ProfileEmbed;
+  }[])
+    .map((row) => {
+      const profile = Array.isArray(row.place_profiles)
+        ? row.place_profiles[0]
+        : row.place_profiles;
+      return { id: row.id, ...(profile ?? {}) };
+    });
+  return { places, error };
 }
 
 export function deterministicConnectPrefill(

@@ -301,6 +301,7 @@ const PLACES_READ_ALLOWLIST = [
   "_shared/org-membership.ts",
   "_shared/place-claim.ts",
   "_shared/reservation-places.ts",
+  "_shared/stripe-connect-prefill.ts", // org places → Connect MCC/url/description; place_profiles has no organization_id (MESITA-1795)
   "_shared/ticket-check.ts",
   "admin-web-decide-place-claim/index.ts",
   "admin-web-delete-place/index.ts",
@@ -317,7 +318,6 @@ const PLACES_READ_ALLOWLIST = [
   "business-web-list-places/index.ts",
   "business-web-release-place/index.ts",
   "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
-  "business-web-start-payment-onboarding/index.ts", // org places → Connect MCC/url/description; place_profiles has no organization_id (MESITA-1795)
   "business-web-update-place/index.ts",
   "business-web-verify-place/index.ts",
   "consumer-web-apply-ticket-credits/index.ts",
