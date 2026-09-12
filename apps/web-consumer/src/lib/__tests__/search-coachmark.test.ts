@@ -66,23 +66,20 @@ describe("search coachmark localStorage flag", () => {
 
   afterEach(() => {
     store.clear();
-    // @ts-expect-error test stub
-    delete globalThis.window;
+    Reflect.deleteProperty(globalThis, "window");
   });
 
-  function installStorage() {
-    const localStorage = {
+  function setWindow(localStorage: Pick<Storage, "getItem" | "setItem">) {
+    Object.assign(globalThis, { window: { localStorage } });
+  }
+
+  it("starts unseen and writes the MESITA-1610 key", () => {
+    setWindow({
       getItem: (k: string) => store.get(k) ?? null,
       setItem: (k: string, v: string) => {
         store.set(k, v);
       },
-    };
-    // @ts-expect-error test stub — helpers read window.localStorage
-    globalThis.window = { localStorage };
-  }
-
-  it("starts unseen and writes the MESITA-1610 key", () => {
-    installStorage();
+    });
     expect(readSearchCoachmarkSeen()).toBe(false);
     writeSearchCoachmarkSeen();
     expect(readSearchCoachmarkSeen()).toBe(true);
@@ -90,17 +87,14 @@ describe("search coachmark localStorage flag", () => {
   });
 
   it("treats blocked storage as unseen, never throws", () => {
-    // @ts-expect-error test stub
-    globalThis.window = {
-      localStorage: {
-        getItem: () => {
-          throw new Error("blocked");
-        },
-        setItem: () => {
-          throw new Error("blocked");
-        },
+    setWindow({
+      getItem: () => {
+        throw new Error("blocked");
       },
-    };
+      setItem: () => {
+        throw new Error("blocked");
+      },
+    });
     expect(readSearchCoachmarkSeen()).toBe(false);
     expect(() => writeSearchCoachmarkSeen()).not.toThrow();
   });
