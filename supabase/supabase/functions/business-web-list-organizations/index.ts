@@ -78,32 +78,51 @@ Deno.serve(async (req) => {
 
   // Every held place in one round trip, then grouped in memory — cheaper
   // than a query per organization, and it is the same read the count used
-  // to be.
+  // to be. `name` and `photos` live on place_profiles (generated display
+  // name, MESITA-1593); selecting them off `places` 42703s
+  // (MESITA-1781). Same embed business-web-list-places uses. Sort in
+  // memory: `.order("name")` on `places` is the same missing column.
+  type Profile = { name: string; photos: string[] | null };
   type PlaceRow = {
     id: string;
     organization_id: string;
-    name: string;
-    photos: string[] | null;
+    // Generated types type a 1:1 embed as an array; live PostgREST
+    // returns an object. Accept both, same as business-web-list-places
+    // going through `unknown`.
+    place_profiles: Profile | Profile[];
   };
   type RailPlace = { id: string; name: string; photoUrl: string | null };
   const byOrg = new Map<string, RailPlace[]>();
   if (ids.length) {
     const { data: places, error: placesErr } = await admin
       .from("places")
-      .select("id, organization_id, name, photos")
-      .in("organization_id", ids)
-      .order("name", { ascending: true });
+      .select("id, organization_id, place_profiles!inner(name, photos)")
+      .in("organization_id", ids);
     if (placesErr) return json({ ok: false, error: placesErr.message }, 500);
-    for (const p of (places ?? []) as PlaceRow[]) {
-      const bucket = byOrg.get(p.organization_id) ?? [];
-      bucket.push({
-        id: p.id,
-        name: p.name,
-        photoUrl: Array.isArray(p.photos) && p.photos.length > 0
-          ? p.photos[0]
-          : null,
-      });
-      byOrg.set(p.organization_id, bucket);
+    const railRows = ((places ?? []) as unknown as PlaceRow[])
+      .map((p) => {
+        const profile = Array.isArray(p.place_profiles)
+          ? p.place_profiles[0]
+          : p.place_profiles;
+        return {
+          organizationId: p.organization_id,
+          place: {
+            id: p.id,
+            name: profile?.name ?? "",
+            photoUrl: Array.isArray(profile?.photos) &&
+                profile.photos.length > 0
+              ? profile.photos[0]
+              : null,
+          } satisfies RailPlace,
+        };
+      })
+      .sort((a, b) =>
+        (a.place.name ?? "").localeCompare(b.place.name ?? "")
+      );
+    for (const r of railRows) {
+      const bucket = byOrg.get(r.organizationId) ?? [];
+      bucket.push(r.place);
+      byOrg.set(r.organizationId, bucket);
     }
   }
 
