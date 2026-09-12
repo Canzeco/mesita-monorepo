@@ -554,8 +554,8 @@ export function table(main: string, fleet: Fleet[], now: Date): string {
   return lines.join("\n");
 }
 
-export function toJson(main: string, fleet: Fleet[]): string {
-  return JSON.stringify(fleet.map((f) => ({
+export function fleetRows(main: string, fleet: Fleet[]): Record<string, unknown>[] {
+  return fleet.map((f) => ({
     path: showPath(main, f.row.path) || ".",
     branch: f.row.branch,
     landed: describeLanded(f.landed),
@@ -567,7 +567,16 @@ export function toJson(main: string, fleet: Fleet[]): string {
     host: f.host,
     decision: f.decision,
     reason: f.reason,
-  })));
+  }));
+}
+
+/** Doctor 8.1 reads this object — never a hand count. Counts come from origin; fleet stays the row list. */
+export function toJson(
+  main: string,
+  fleet: Fleet[],
+  counts: { noId: number; remoteLanded: number; staleClaim: number } = { noId: 0, remoteLanded: 0, staleClaim: 0 },
+): string {
+  return JSON.stringify({ fleet: fleetRows(main, fleet), ...counts });
 }
 
 // ── repair-lobby (I-4) ──────────────────────────────────────────────────────
@@ -1073,7 +1082,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   } else {
     lines.push("dry run: nothing changed; rerun with --apply to remove what is marked remove or delete");
   }
-  return { lines, fleet, json: toJson(main, fleet), loose, origin };
+  return { lines, fleet, json: toJson(main, fleet, sweepCounts(origin, now)), loose, origin };
 }
 
 export async function looseBranches(env: Env, main: string, rows: Row[]): Promise<{ branch: string; tip: string; landed: Landed }[]> {
@@ -1101,7 +1110,7 @@ export function parseOriginRefs(text: string): OriginRef[] {
     const [ref, tip, date] = line.trim().split(/\s+/);
     if (!ref || !tip) continue;
     const branch = ref.replace(/^origin\//, "");
-    if (branch === "HEAD" || branch === "main") continue;
+    if (!branch || branch === "HEAD" || branch === "main" || branch === "origin") continue;
     const d = date ? new Date(date) : null;
     out.push({ branch, tip, date: d && !isNaN(d.getTime()) ? d : null });
   }
@@ -1145,6 +1154,28 @@ export function originTable(claims: OriginClaim[], now: Date, leaseMs: number = 
     lines.push(`origin/${c.branch} | ${c.issue ?? "-"} | ${age} | ${describeLanded(c.landed)} | ${d.decision}: ${d.reason}`);
   }
   return lines.join("\n");
+}
+
+/** Flags the doctor reads off each origin-json row (MESITA-1754). `on-main` is a live claim with no work, not remote-landed. */
+export function originFlags(c: OriginClaim, now: Date, leaseMs: number = LEASE_MS): { noId: boolean; remoteLanded: boolean; staleClaim: boolean } {
+  const idle = c.date ? now.getTime() - c.date.getTime() >= leaseMs : false;
+  const kind = c.landed?.kind;
+  return {
+    noId: !c.issue,
+    remoteLanded: kind === "exact" || kind === "tree" || kind === "merge-tree",
+    staleClaim: Boolean(c.issue) && idle && !c.here && kind !== "on-main",
+  };
+}
+
+export function sweepCounts(origin: OriginClaim[], now: Date, leaseMs: number = LEASE_MS): { noId: number; remoteLanded: number; staleClaim: number } {
+  let noId = 0, remoteLanded = 0, staleClaim = 0;
+  for (const c of origin) {
+    const f = originFlags(c, now, leaseMs);
+    if (f.noId) noId++;
+    if (f.remoteLanded) remoteLanded++;
+    if (f.staleClaim) staleClaim++;
+  }
+  return { noId, remoteLanded, staleClaim };
 }
 
 /** The §0 stamp the quickstart carries (Rules §0, Mirror line); boot prints it so a session compares it with Rules in one read. */
@@ -1315,7 +1346,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         const r = await sweep(env, { apply: rest.includes("--apply") });
         for (const l of r.lines) env.log(l);
         env.log(`json: ${r.json}`);
-        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...decideRemote(c, env.now()) })))}`);
+        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...originFlags(c, env.now()), ...decideRemote(c, env.now()) })))}`);
         return 0;
       }
       case "repair-lobby": {
