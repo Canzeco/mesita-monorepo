@@ -14,14 +14,17 @@ const INSTAGRAM_URL = 'https://instagram.com/mesita.ai';
 export function ContactSheet({
   visible,
   onClose,
+  asRoute = false,
 }: {
   visible: boolean;
   onClose: () => void;
+  asRoute?: boolean;
 }) {
   return (
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
+      asRoute={asRoute}
       title="Contact us"
       subtitle="We usually reply within a day"
     >

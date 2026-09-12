@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, FlaskConical, Loader2, Sparkles } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Button } from "@/components/ui/button";
 import { PlanPreviewToggle } from "@/components/consumer/me/demo/PlanPreviewToggle";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -11,8 +11,8 @@ import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
 import { useConsumerClass } from "@/lib/class-context";
 import { PLANS, PREMIUM_PLAN_ICON } from "@/lib/consumer-data";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { trackEvent } from "@/lib/analytics/track";
 import { toast } from "@/lib/toast";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
 // The plan surface (decision: Pato, MESITA-1129) — a sheet on Me, built to the
@@ -57,17 +57,15 @@ const PERKS: { label: string; soon?: boolean }[] = [
   { label: "AI connector", soon: true },
 ];
 
-export function PlanModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function PlanModal() {
   const supabase = useBrowserSupabase();
   const { plan, renewsAt } = useConsumerClass();
   const [loading, setLoading] = useState(false);
   const [emulating, setEmulating] = useState(false);
+
+  useEffect(() => {
+    trackEvent(supabase, "plan_open", { source: "me" });
+  }, [supabase]);
 
   const premium = PLANS.find((p) => p.id === "premium")!;
   const isPremium = plan === "premium";
@@ -130,19 +128,15 @@ export function PlanModal({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Your plan">
-      <div className={SHEET_BODY_CLASS}>
-        <div className="mb-4 flex items-center gap-3">
-          <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-            <PREMIUM_PLAN_ICON className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Your plan</h2>
-            <p className="text-muted-foreground text-xs">
-              A subscription, not a class. Cancel anytime.
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Your plan">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+          <PREMIUM_PLAN_ICON className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          A subscription, not a class. Cancel anytime.
+        </p>
+      </div>
 
         <div className="flex flex-col gap-4">
           {/* Demo state is declared before the surface it changes — same box,
@@ -291,7 +285,6 @@ export function PlanModal({
             clears.
           </p>
         </div>
-      </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }

@@ -15,13 +15,14 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MESITA_PRIVACY_EMAIL,
 } from "@/lib/mesita-contact";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { APP_VERSION } from "@/lib/app-version";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
 import {
   RowDivider,
   SettingsActionRow,
@@ -33,9 +34,11 @@ import {
   ToggleRow,
 } from "@/components/consumer/me/settings-rows";
 import {
+  apiFetchConsumerProfile,
   apiUpdateConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -76,33 +79,32 @@ const CITY_OPTIONS = [
   { value: "tij", label: "Tijuana" },
 ] as const;
 
-export function SettingsModal({
-  open,
-  onClose,
-  onDeleteAccount,
-  onOpenMetrics,
-  onOpenContact,
-  profile,
-  onProfileChange,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onDeleteAccount: () => void;
-  /** Both hand off to a sheet at the SAME z-layer, so Settings closes first —
-   *  two LocalSheets stacked would put a scrim over the one in front. */
-  onOpenMetrics: () => void;
-  onOpenContact: () => void;
-  profile: ConsumerProfile | null;
-  onProfileChange: (next: ConsumerProfile) => void;
-}) {
+export function SettingsModal() {
   const supabase = useBrowserSupabase();
+  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   // Optimistic override while a privacy write is in flight; otherwise the
-  // profile prop is the source of truth (no setState-in-effect sync).
+  // fetched profile is the source of truth (no setState-in-effect sync).
   const [privacyDraft, setPrivacyDraft] = useState<{
     privateAccount: boolean;
     showStories: boolean;
   } | null>(null);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { consumer } = await apiFetchConsumerProfile(supabase);
+        if (!cancelled) setProfile(consumer);
+      } catch (e) {
+        if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   const privateAccount =
     privacyDraft?.privateAccount ?? profile?.privacy_public === false;
@@ -120,7 +122,7 @@ export function SettingsModal({
     setSavingPrivacy(true);
     try {
       const updated = await apiUpdateConsumerProfile(supabase, patch);
-      onProfileChange(updated);
+      setProfile(updated);
       setPrivacyDraft(null);
     } catch (e) {
       setPrivacyDraft(null);
@@ -156,19 +158,15 @@ export function SettingsModal({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Settings">
-      <div className={SHEET_BODY_CLASS}>
-        <div className="flex items-center gap-3">
-          <span className="bg-foreground/[0.06] text-foreground/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-            <SettingsIcon className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Settings</h2>
-            <p className="text-muted-foreground text-xs">
-              Preferences on this device
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Settings">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="bg-foreground/[0.06] text-foreground/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+          <SettingsIcon className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          Preferences on this device
+        </p>
+      </div>
 
         <div className="mt-5 flex flex-col gap-6">
           <SettingsGroup title="Alerts">
@@ -261,26 +259,20 @@ export function SettingsModal({
               deleted: HelpModal has no contact or support reference of any
               kind, so this is the only door to a human in the product. */}
           <SettingsGroup title="Your account">
-            <SettingsActionRow
+            <SettingsLinkRow
               Icon={BarChart3}
               tint="muted"
+              href={CONSUMER_ROUTES.mePages.settingsMetrics}
               label="Metrics"
               sub="Saved, visits, reviews"
-              onClick={() => {
-                onClose();
-                onOpenMetrics();
-              }}
             />
             <RowDivider />
-            <SettingsActionRow
+            <SettingsLinkRow
               Icon={MessageSquare}
               tint="muted"
+              href={CONSUMER_ROUTES.mePages.settingsContact}
               label="Contact"
               sub="Talk to us"
-              onClick={() => {
-                onClose();
-                onOpenContact();
-              }}
             />
           </SettingsGroup>
 
@@ -301,10 +293,7 @@ export function SettingsModal({
               label="Delete account"
               sub="Permanently delete your account"
               destructive
-              onClick={() => {
-                onClose();
-                onDeleteAccount();
-              }}
+              onClick={() => setDeleteOpen(true)}
             />
           </SettingsGroup>
 
@@ -319,10 +308,13 @@ export function SettingsModal({
           </SettingsGroup>
 
           <p className="text-muted-foreground type-label text-center">
-            Mesita · v2.4.1
+            Mesita · {APP_VERSION}
           </p>
         </div>
-      </div>
-    </LocalSheet>
+      <DeleteAccountSheet
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+      />
+    </MeScreen>
   );
 }

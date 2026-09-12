@@ -4,10 +4,10 @@
 // value order. Places Visited and Rewards Claimed share one EF source so
 // they can never diverge. Money tiles use formatCurrency (MXN).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { BarChart3 } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   apiFetchConsumerMetrics,
   formatCurrency,
@@ -42,55 +42,35 @@ function formatTileValue(metrics: ConsumerMetrics, tile: Tile): string {
   return String(metrics[tile.key]);
 }
 
-export function MetricsModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function MetricsModal() {
   const supabase = useBrowserSupabase();
   const [metrics, setMetrics] = useState<ConsumerMetrics | null>(null);
-  // Render-free latch (a ref, so the effect never sets state synchronously):
-  // first open triggers the fetch, reopening reuses the result, an error
-  // re-arms it so the next open retries.
-  const requestedRef = useRef(false);
 
   useEffect(() => {
-    if (!open || requestedRef.current) return;
-    requestedRef.current = true;
     let cancelled = false;
     (async () => {
       try {
         const data = await apiFetchConsumerMetrics(supabase);
         if (!cancelled) setMetrics(data);
       } catch (e) {
-        if (cancelled) return;
-        toast(errMsg(e, "Couldn't load your metrics."));
-        requestedRef.current = false;
+        if (!cancelled) toast(errMsg(e, "Couldn't load your metrics."));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, supabase]);
+  }, [supabase]);
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Metrics">
-      <div className="space-y-4 px-5 pt-4 pb-8">
-        <div className="flex items-center gap-2.5">
-          <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
-            <BarChart3 className="size-[18px]" strokeWidth={2.25} aria-hidden />
-          </span>
-          <div>
-            <h2 className="text-foreground text-lg leading-tight font-bold tracking-tight">
-              Metrics
-            </h2>
-            <p className="text-muted-foreground text-xs">
-              Your Mesita, in numbers
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Metrics">
+      <div className="mb-4 flex items-center gap-2.5">
+        <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
+          <BarChart3 className="size-[18px]" strokeWidth={2.25} aria-hidden />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          Your Mesita, in numbers
+        </p>
+      </div>
 
         <div className="grid grid-cols-2 gap-2.5">
           {TILES.map((tile) => (
@@ -111,7 +91,6 @@ export function MetricsModal({
             </div>
           ))}
         </div>
-      </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }

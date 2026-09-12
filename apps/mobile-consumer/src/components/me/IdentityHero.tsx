@@ -1,13 +1,15 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
 import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
 // ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) — web parity.
@@ -84,6 +86,7 @@ export function IdentityHero({
   savedCents: number | null;
   visits: number | null;
 }) {
+  const router = useRouter();
   const isElevated = isElevatedClass(classKey);
   const elevatedRing =
     classKey === 'aura'
@@ -123,6 +126,8 @@ export function IdentityHero({
     key: string;
     content: ReactNode;
     tone?: 'muted' | 'secondary';
+    href?: string;
+    accessibilityLabel?: string;
   }[] = [
     {
       key: 'identity',
@@ -167,6 +172,8 @@ export function IdentityHero({
     {
       key: 'instagram',
       tone: igConnected ? 'secondary' : 'muted',
+      href: CONSUMER_ROUTES.mePages.instagram,
+      accessibilityLabel: `Instagram: ${igLine}`,
       content: (
         <Text
           className={
@@ -183,6 +190,8 @@ export function IdentityHero({
     },
     {
       key: 'class',
+      href: CONSUMER_ROUTES.mePages.class,
+      accessibilityLabel: `Class: ${classLabel}`,
       content: (
         <View className="flex-row items-center gap-1.5">
           <ClassIcon color="#260409B3" size={14} strokeWidth={2.25} />
@@ -341,19 +350,35 @@ export function IdentityHero({
           accessibilityLabel="Your identity"
           className="mt-4 w-full overflow-hidden rounded-xl border border-border/80 bg-white/55"
         >
-          {rows.map((row, i) => (
-            <View
-              key={row.key}
-              className={
-                i < rows.length - 1
-                  ? 'items-center justify-center border-b border-border/70 px-3'
-                  : 'items-center justify-center px-3'
-              }
-              style={{ height: ROW_HEIGHT }}
-            >
-              {row.content}
-            </View>
-          ))}
+          {rows.map((row, i) => {
+            const rowClass =
+              i < rows.length - 1
+                ? 'items-center justify-center border-b border-border/70 px-3'
+                : 'items-center justify-center px-3';
+            if (row.href) {
+              return (
+                <Pressable
+                  key={row.key}
+                  onPress={() => router.push(row.href!)}
+                  accessibilityRole="button"
+                  accessibilityLabel={row.accessibilityLabel}
+                  className={rowClass}
+                  style={{ height: ROW_HEIGHT }}
+                >
+                  {row.content}
+                </Pressable>
+              );
+            }
+            return (
+              <View
+                key={row.key}
+                className={rowClass}
+                style={{ height: ROW_HEIGHT }}
+              >
+                {row.content}
+              </View>
+            );
+          })}
         </View>
       </View>
     </View>

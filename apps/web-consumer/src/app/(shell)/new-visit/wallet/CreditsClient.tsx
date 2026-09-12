@@ -23,6 +23,7 @@ import {
   walletBalancePath,
 } from "@/lib/consumer-route-contract";
 import { trackEvent } from "@/lib/analytics/track";
+import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // The Pay tab's second section, at /new-visit/wallet.
@@ -139,6 +140,13 @@ export function CreditsClient() {
   useEffect(() => {
     trackEvent(supabase, "wallet_open", { from: "pay_section_nav" });
   }, [supabase]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cards = params.get("cards");
+    if (cards === "added") toast.success("Card saved.");
+    else if (cards === "cancelled") toast("Card setup cancelled.");
+  }, []);
 
   const openBalanceCard = (balance: CreditOrgBalance) => {
     trackEvent(supabase, "balance_card_tap", {

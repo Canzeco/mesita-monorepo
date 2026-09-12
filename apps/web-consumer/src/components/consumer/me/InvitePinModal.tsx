@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BadgeCheck, KeyRound } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PIN_LENGTH, PinField } from "@/components/consumer/PinField";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInviteCode } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { classProperLabel, identityForClassKey } from "@/lib/consumer-data";
-import { cn, errMsg } from "@/lib/utils";
-import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { errMsg } from "@/lib/utils";
 
 // The invitation PIN sheet (MESITA-1168) — the TRANSFERABLE door.
 //
@@ -34,13 +33,7 @@ import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 // this screen cannot be used to discover which 10-digit strings are real. Do
 // not "improve" the copy by distinguishing them.
 
-export function InvitePinModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function InvitePinModal() {
   const supabase = useBrowserSupabase();
   const [digits, setDigits] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -67,19 +60,15 @@ export function InvitePinModal({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Invitation PIN">
-      <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
-        <div className="mb-4 flex items-center gap-3">
-          <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
-            <KeyRound className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Invitation PIN</h2>
-            <p className="text-muted-foreground text-xs">
-              Ten digits. It names your class outright.
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Invitation PIN">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
+          <KeyRound className="h-5 w-5" aria-hidden />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          Ten digits. It names your class outright.
+        </p>
+      </div>
 
         <section className="border-border bg-card rounded-2xl border p-4">
           <PinField
@@ -110,7 +99,6 @@ export function InvitePinModal({
         <p className="text-muted-foreground type-label mt-3 text-center leading-snug">
           Invitations come from Mesita and its partners. A PIN works once.
         </p>
-      </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }

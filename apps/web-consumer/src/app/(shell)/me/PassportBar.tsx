@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { ChevronRight, Instagram, Phone } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { CLASS_MARK_ICON, classFillClass, classWashClass } from "@/lib/consumer-data";
 import { CLASS_TEXT } from "@/lib/class-styles";
 import { useConsumerClass } from "@/lib/class-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 
@@ -104,8 +106,6 @@ export function PassportBar({
   loading,
   classLabel,
   instagramSummary,
-  onOpenClass,
-  onOpenInstagram,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
@@ -114,8 +114,6 @@ export function PassportBar({
   /** "@handle", "Connected", or "Connect it" — Me owns the precedence rule
    *  (a fresh connect beats a stale profile row). */
   instagramSummary: string;
-  onOpenClass: () => void;
-  onOpenInstagram: () => void;
 }) {
   const { key } = useConsumerClass();
   const classTextClass = CLASS_TEXT[key];
@@ -204,9 +202,8 @@ export function PassportBar({
               <span className={CHIP_CLASS}>
                 <span className="truncate">{name}</span>
               </span>
-              <button
-                type="button"
-                onClick={onOpenClass}
+              <Link
+                href={CONSUMER_ROUTES.mePages.class}
                 aria-label={`Class: ${classLabel}`}
                 className={cn(
                   CHIP_CLASS,
@@ -218,7 +215,7 @@ export function PassportBar({
                 <CLASS_MARK_ICON className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{classLabel}</span>
                 <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
-              </button>
+              </Link>
               {/* THE LOGIN PHONE (Pato, MESITA-1657: "they made login with
                   phone number"). This chip was parked as WhatsApp, and
                   MESITA-1655 argued against printing the phone because the
@@ -248,9 +245,8 @@ export function PassportBar({
                   and the ring stay aria-hidden. The Instagram glyph below
                   carries its OWN brand gradient (MESITA-1688) — a different
                   axis than class, not gated by the metal-fill rule. */}
-              <button
-                type="button"
-                onClick={onOpenInstagram}
+              <Link
+                href={CONSUMER_ROUTES.mePages.instagram}
                 aria-label={`Instagram: ${instagramSummary}`}
                 className={cn(CHIP_CLASS, TAP_TARGET_CLASS, "hover:bg-muted transition")}
               >
@@ -265,7 +261,7 @@ export function PassportBar({
                 </span>
                 <span className="truncate">{instagramSummary}</span>
                 <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
-              </button>
+              </Link>
             </div>
           </>
         )}

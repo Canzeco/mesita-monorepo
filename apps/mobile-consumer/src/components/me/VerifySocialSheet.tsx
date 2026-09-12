@@ -26,9 +26,10 @@ const WHY_LINES = [
 type Props = {
   visible: boolean;
   onClose: () => void;
+  asRoute?: boolean;
 };
 
-export function VerifySocialSheet({ visible, onClose }: Props) {
+export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) {
   const { refreshProfile } = useAuth();
   const [override, setMockClass] = useMockClass();
   const [handle, setHandle] = useState('');
@@ -73,6 +74,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
+      asRoute={asRoute}
       title="Instagram"
       subtitle="Connect Instagram for better Rewards."
     >

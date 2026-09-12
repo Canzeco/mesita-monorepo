@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronRight, Copy, IdCard } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   CLASSES,
@@ -12,11 +14,16 @@ import {
   classFillClass,
   classWashClass,
 } from "@/lib/consumer-data";
-import type { ConsumerProfile } from "@/lib/api/profile";
-import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import {
+  apiFetchConsumerProfile,
+  type ConsumerProfile,
+} from "@/lib/api/profile";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ageFromBirthday,
   cn,
+  errMsg,
   formatCompactCount,
   formatSex,
   phoneCountry,
@@ -26,42 +33,26 @@ import { toast } from "@/lib/toast";
 // The passport, as the DOCUMENT it is named after (decision: Pato, this
 // session) — the Me card is the cover, this is the data page.
 //
-// The card at the top of Me states the same identity at a glance and taps
-// into the surfaces that OWN each axis. This sheet owns nothing. It restates
-// that identity as fields, in one column, and adds the one fact the guest
-// cannot see anywhere else in the app: their member number. `consumers.code`
-// is fetched on every profile read and, until now, was rendered on no
-// consumer surface at all — it is the number support and staff have when the
-// guest has only a phone in their hand.
+// FULL PAGE, NOT A SHEET (Pato, MESITA-1789). The hub used to wrap this in a
+// LocalSheet. Each Me box is a route now; Back returns to /me, not a stacked
+// overlay. The page fetches its own profile so a cold load of /me/passport
+// works without the hub still being mounted.
 //
 // NO PLAN FIELD (decision: Pato, MESITA-1619). The card and the document are
 // one Passport and print one thing: what is earned and public. The plan is
 // what you pay — Docs › Passport §B, "It never prints on the Passport" — and
-// it keeps its own primary box on Me. A sheet that still listed it would have
-// preserved MESITA-1464's contradiction one layer down.
-//
-// EVERY FIELD HERE IS ALREADY IN HAND. The sheet takes the profile the page
-// fetched and the class context the shell seeded, so opening it costs no EF
-// call and it can never disagree with the card above it.
+// it keeps its own primary box on Me.
 //
 // NO PRIVACY FIELD EITHER (MESITA-1688, Pato: "all are public by default").
 // `profile_public` defaults `true` for every account
 // (20260705080000_consumer_profile_visibility.sql) and Settings › Privacy
-// already owns the toggle exclusively — restating "Public"/"Private" here was
-// exactly the two-surfaces-can-disagree risk this file otherwise guards
-// against, just not yet turned on itself. Gone, not demoted, same as NO PLAN
-// FIELD above.
-
-// TWO ROWS HERE ARE DOORS, AND THEY ARE THE ONLY ONES (MESITA-1646). The
-// card above is display-only now, so Class and Instagram are reachable from
-// nowhere else in the app: Instagram is the only reach door, and the Class
-// ladder carries "Join with Invitation", which Docs › Passport §C calls the
-// ONLY entrance for a 10-digit invite PIN. Do not make either inert without
-// giving its surface another way in FIRST.
+// already owns the toggle exclusively.
 //
-// PROFILE IS NOT A DOOR HERE. It is a cell on Me, one tap away, and a second
-// door to a promoted surface is what MESITA-1609 established as removed, not
-// demoted. It stays a display field.
+// TWO ROWS HERE ARE DOORS, AND THEY ARE THE ONLY ONES (MESITA-1646 /
+// MESITA-1789). Class and Instagram navigate to /me/class and /me/instagram.
+// Number copies in place — it is not a view. PROFILE IS NOT A DOOR HERE. It
+// is a cell on Me, one tap away.
+
 function Field({
   label,
   value,
@@ -69,34 +60,22 @@ function Field({
   valueClassName,
   note,
   trailing,
-  onClick,
+  href,
 }: {
   label: string;
   value: string;
-  /** Renders instead of the plain-text value span when present (the Class
-   *  row's colour badge, MESITA-1688). `value` still gets passed for the
-   *  <Tag>'s own text content otherwise, so it's never truly unused. */
-  valueNode?: React.ReactNode;
-  /** Extra classes merged onto the default value span — for a row that needs
-   *  different weight without a full valueNode override (the Number row's
-   *  typography, MESITA-1688). Ignored when valueNode is set. */
+  valueNode?: ReactNode;
   valueClassName?: string;
   note?: string | null;
-  trailing?: React.ReactNode;
-  /** Turns the row into a button with a chevron. Hands off at the SAME
-   *  z-layer, so the caller closes this sheet before opening the next —
-   *  two LocalSheets must never stack. */
-  onClick?: () => void;
+  trailing?: ReactNode;
+  href?: string;
 }) {
-  const Tag = onClick ? "button" : "div";
-  return (
-    <Tag
-      {...(onClick ? { type: "button" as const, onClick } : {})}
-      className={cn(
-        "border-border/60 flex w-full items-center gap-3 border-t px-4 py-3 text-left first:border-t-0",
-        onClick && "hover:bg-muted/50 transition",
-      )}
-    >
+  const className = cn(
+    "border-border/60 flex w-full items-center gap-3 border-t px-4 py-3 text-left first:border-t-0",
+    href && "hover:bg-muted/50 transition",
+  );
+  const body = (
+    <>
       <span className="text-muted-foreground type-meta w-24 shrink-0 font-bold tracking-[0.12em] uppercase">
         {label}
       </span>
@@ -118,33 +97,40 @@ function Field({
         )}
       </span>
       {trailing}
-      {onClick && (
+      {href ? (
         <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
-      )}
-    </Tag>
+      ) : null}
+    </>
   );
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {body}
+      </Link>
+    );
+  }
+  return <div className={className}>{body}</div>;
 }
 
-export function PassportModal({
-  open,
-  onClose,
-  profile,
-  onOpenInstagram,
-  onOpenClass,
-}: {
-  open: boolean;
-  onClose: () => void;
-  profile: ConsumerProfile | null;
-  /** The two doors the card gave up (MESITA-1646). Each closes this sheet
-   *  first — one LocalSheet layer. */
-  onOpenInstagram: () => void;
-  onOpenClass: () => void;
-}) {
-  function handOff(run: () => void) {
-    onClose();
-    run();
-  }
+export function PassportModal() {
+  const supabase = useBrowserSupabase();
+  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { consumer } = await apiFetchConsumerProfile(supabase);
+        if (!cancelled) setProfile(consumer);
+      } catch (e) {
+        if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -169,8 +155,6 @@ export function PassportModal({
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
 
-  // The EF assigns and repairs the canonical 0000-0000 form on every profile
-  // read, so it is printed as it arrives — no second formatter to drift.
   const code = profile?.code ?? null;
 
   async function copyCode() {
@@ -184,32 +168,23 @@ export function PassportModal({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Your passport">
-      <div className={SHEET_BODY_CLASS}>
-        <div className="mb-4 flex items-center gap-3">
-          <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-            <IdCard className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Your passport</h2>
-            <p className="text-muted-foreground text-xs">
-              Who you are at Mesita, on one page.
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Your passport">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+          <IdCard className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          Who you are at Mesita, on one page.
+        </p>
+      </div>
 
-        <section className="border-border bg-card overflow-hidden rounded-2xl border">
-          {/* The wash (MESITA-1688) — same treatment as the bar above it,
-              replacing the old flat band here: the metal felt across the
-              card's top rather than a hard-edged strip. Colour-only, so it's
-              hidden from assistive tech; the Class field below states the
-              rung in words. */}
-          <div className="relative">
-            <div
-              className={cn("pointer-events-none absolute inset-0", classWashClass(key))}
-              aria-hidden
-            />
-            <div className="relative flex items-center gap-4 p-4">
+      <section className="border-border bg-card overflow-hidden rounded-2xl border">
+        <div className="relative">
+          <div
+            className={cn("pointer-events-none absolute inset-0", classWashClass(key))}
+            aria-hidden
+          />
+          <div className="relative flex items-center gap-4 p-4">
             <div
               className={cn(
                 "shrink-0 rounded-full p-[2.5px]",
@@ -234,94 +209,80 @@ export function PassportModal({
               </div>
             </div>
             <div className="flex min-w-0 flex-col gap-1">
-              <h3 className="font-display truncate text-lg leading-tight font-semibold tracking-tight">
+              <h2 className="font-display truncate text-lg leading-tight font-semibold tracking-tight">
                 {name}
-              </h3>
+              </h2>
               {detailLine && (
                 <p className="text-muted-foreground truncate text-xs">
                   {detailLine}
                 </p>
               )}
             </div>
-            </div>
           </div>
+        </div>
 
-          <div className="border-border/60 border-t">
-            <Field
-              label="Number"
-              value={code ?? "—"}
-              // The one fact the guest can't see anywhere else in the app
-              // (see the header comment) deserves to look like a serial
-              // number, not another list row (MESITA-1688 — outside review
-              // finding: this was the modal's whole reason to exist, styled
-              // identically to "Profile → Name, phone, birthday, photo",
-              // which isn't even data).
-              valueClassName="font-display text-base tabular-nums"
-              note={
-                code
-                  ? "Assigned once. Yours for good."
-                  : "Assigned on your next profile load."
-              }
-              trailing={
-                code ? (
-                  <button
-                    type="button"
-                    onClick={copyCode}
-                    aria-label="Copy member number"
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted -mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                ) : undefined
-              }
-            />
-            <Field
-              label="Profile"
-              value={name}
-              note="Name, phone, birthday, photo"
-            />
-            <Field
-              label="Class"
-              value={classLabel}
-              // Class is the headline of the identity (Docs › Passport §D's
-              // reading order), but read the same weight as the three purely
-              // informational rows above it — nothing led (MESITA-1688).
-              // classBadgeClass is safe on the SHEET even though the BAR's
-              // chip stays plain: this is a spacious, single-purpose,
-              // full-width row, not the cramped 62px 2-up grid the "third
-              // metal surface" rejection (MESITA-1655/56/57) was about.
-              valueNode={
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
-                    classBadgeClass(key),
-                  )}
+        <div className="border-border/60 border-t">
+          <Field
+            label="Number"
+            value={code ?? "—"}
+            valueClassName="font-display text-base tabular-nums"
+            note={
+              code
+                ? "Assigned once. Yours for good."
+                : "Assigned on your next profile load."
+            }
+            trailing={
+              code ? (
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  aria-label="Copy member number"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted -mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
                 >
-                  {classLabel}
-                </span>
-              }
-              note={cls?.reward ?? null}
-              onClick={() => handOff(onOpenClass)}
-            />
-            <Field
-              label="Instagram"
-              value={
-                igConnected
-                  ? handle
-                    ? `@${handle}`
-                    : "Connected"
-                  : "Not connected"
-              }
-              note={
-                igConnected
-                  ? `${formatCompactCount(followers)} followers`
-                  : "Connect it to climb a class"
-              }
-              onClick={() => handOff(onOpenInstagram)}
-            />
-          </div>
-        </section>
-      </div>
-    </LocalSheet>
+                  <Copy className="h-4 w-4" />
+                </button>
+              ) : undefined
+            }
+          />
+          <Field
+            label="Profile"
+            value={name}
+            note="Name, phone, birthday, photo"
+          />
+          <Field
+            label="Class"
+            value={classLabel}
+            valueNode={
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
+                  classBadgeClass(key),
+                )}
+              >
+                {classLabel}
+              </span>
+            }
+            note={cls?.reward ?? null}
+            href={CONSUMER_ROUTES.mePages.class}
+          />
+          <Field
+            label="Instagram"
+            value={
+              igConnected
+                ? handle
+                  ? `@${handle}`
+                  : "Connected"
+                : "Not connected"
+            }
+            note={
+              igConnected
+                ? `${formatCompactCount(followers)} followers`
+                : "Connect it to climb a class"
+            }
+            href={CONSUMER_ROUTES.mePages.instagram}
+          />
+        </div>
+      </section>
+    </MeScreen>
   );
 }

@@ -168,6 +168,16 @@ export function apiClaimInstagram(input: {
   );
 }
 
+export function apiClaimInviteCode(input: { code: string }): Promise<{
+  classKey: string;
+}> {
+  return invokeEF<{ classKey: string }>(
+    supabase,
+    'consumer-web-claim-invite-code',
+    input,
+  );
+}
+
 // consumer-web-delete-account — irreversible. Caller must local sign-out after.
 export async function apiDeleteConsumerAccount(): Promise<void> {
   await invokeEF<{ id: string }>(supabase, 'consumer-web-delete-account', {});

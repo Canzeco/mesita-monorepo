@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useStoredFlag, useStoredString } from "@/lib/local-store";
@@ -189,18 +190,28 @@ export function SettingsLinkRow({
   sub?: string;
   external?: boolean;
 }) {
-  return (
-    <a
-      href={href}
-      {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
-    >
+  const className =
+    "hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition";
+  const inner = (
+    <>
       <IconCircle tint={tint}>
         <Icon className="h-[18px] w-[18px]" />
       </IconCircle>
       <RowText label={label} sub={sub} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-    </a>
+    </>
+  );
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={className}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
   );
 }
 
