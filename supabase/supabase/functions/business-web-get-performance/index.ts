@@ -41,7 +41,7 @@
 // Admin Performance aligned to the same close predicate in MESITA-890.
 //
 // Body:     { placeId: string, feedLimit?: number, reviewLimit?: number }
-// Response: { ok: true, summary, content, feed }
+// Response: { ok: true, summary, content, feed, reservations, reservationTotal, lines, generatedAt }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
@@ -53,6 +53,8 @@ import {
 } from "../_shared/auth.ts";
 import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 import { isActionVerified } from "../_shared/rewards-config.ts";
+import { consumerFromNumber, reservationFromNumber } from "../_shared/elevenlabs.ts";
+import { one } from "../_shared/postgrest.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const DEFAULT_FEED_LIMIT = 40;
@@ -184,6 +186,7 @@ Deno.serve(async (req) => {
     reviewsRes,
     savesFeedRes,
     ticketsFeedRes,
+    resvCountRes,
     resvRes,
   ] = await Promise.all([
     admin
@@ -249,7 +252,14 @@ Deno.serve(async (req) => {
       .limit(FEED_TICKET_PAGE),
     admin
       .from("reservation_tickets")
-      .select("id, state, party_size, reserved_at, created_at")
+      .select("id", { count: "exact", head: true })
+      .eq("place_id", projectId),
+    admin
+      .from("reservation_tickets")
+      .select(
+        "id, state, party_size, reserved_at, created_at, is_test, " +
+          "consumer:consumers(first_name, instagram_handle)",
+      )
       .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
@@ -267,6 +277,7 @@ Deno.serve(async (req) => {
     ["ticket_reviews", reviewsRes],
     ["favorites", savesFeedRes],
     ["tickets_feed", ticketsFeedRes],
+    ["reservation_count", resvCountRes],
     ["reservations", resvRes],
   ] as const) {
     if (r.error) return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
@@ -306,12 +317,16 @@ Deno.serve(async (req) => {
   let repeatGuests = 0;
   for (const n of visitsByConsumer.values()) if (n > 1) repeatGuests += 1;
 
+  const saved = savedCountRes.count ?? 0;
+  const visits = visitsCountRes.count ?? 0;
+  const honored = honoredCountRes.count ?? 0;
+
   const summary = {
     // The funnel, starting where real data starts (see the header note).
-    saved: savedCountRes.count ?? 0,
+    saved,
     ticketsOpened: ticketsCountRes.count ?? 0,
-    visits: visitsCountRes.count ?? 0,
-    honored: honoredCountRes.count ?? 0,
+    visits,
+    honored,
     cancelled: cancelledCountRes.count ?? 0,
     guests: visitsByConsumer.size,
     repeatGuests,
@@ -323,6 +338,9 @@ Deno.serve(async (req) => {
     // says so rather than presenting it as confirmed.
     consumerReportedCount: consumerBilledCount,
     avgTicketCents: billedCount > 0 ? Math.round(influencedCents / billedCount) : null,
+    visitRate: saved > 0 ? Math.round((visits / saved) * 100) : null,
+    closeRate: visits > 0 ? Math.round((honored / visits) * 100) : null,
+    reservations: resvCountRes.count ?? 0,
     // "Redemption by segment", reported by ACTION — never by class.
     byAction: {
       welcome: closed.filter((t) => (visitsByConsumer.get(t.consumer_id) ?? 0) === 1)
@@ -425,12 +443,17 @@ Deno.serve(async (req) => {
     });
   }
   for (
-    const r of (resvRes.data ?? []) as Array<{
+    const r of (resvRes.data ?? []) as unknown as Array<{
       id: string;
       state: string;
       party_size: number | null;
       reserved_at: string | null;
       created_at: string;
+      is_test?: boolean | null;
+      consumer: { first_name: string | null; instagram_handle: string | null } | Array<{
+        first_name: string | null;
+        instagram_handle: string | null;
+      }> | null;
     }>
   ) {
     feed.push({
@@ -447,10 +470,46 @@ Deno.serve(async (req) => {
 
   feed.sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
 
+  type GuestShape = {
+    first_name: string | null;
+    instagram_handle: string | null;
+  };
+  function guestName(c: GuestShape | null): string {
+    if (!c) return "Guest";
+    const first = c.first_name?.trim();
+    if (first) return first;
+    const ig = c.instagram_handle?.trim();
+    if (ig) return `@${ig.replace(/^@/, "")}`;
+    return "Guest";
+  }
+  const reservations = ((resvRes.data ?? []) as unknown as Array<{
+    id: string;
+    reserved_at: string | null;
+    party_size: number | null;
+    state: string | null;
+    is_test: boolean | null;
+    created_at: string;
+    consumer: GuestShape | GuestShape[] | null;
+  }>).map((r) => ({
+    id: r.id,
+    reservedAt: r.reserved_at,
+    partySize: r.party_size,
+    state: r.state,
+    isTest: r.is_test === true,
+    guest: guestName(one(r.consumer)),
+  }));
+
   return json({
     ok: true,
     summary,
     content,
     feed: feed.slice(0, feedLimit),
+    reservations,
+    reservationTotal: resvCountRes.count ?? 0,
+    lines: {
+      guest: consumerFromNumber(),
+      place: reservationFromNumber(),
+    },
+    generatedAt: new Date().toISOString(),
   });
 });

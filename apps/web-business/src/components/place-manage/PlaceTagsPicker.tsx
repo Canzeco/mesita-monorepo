@@ -10,9 +10,9 @@ import {
 
 // Atlas-catalog multi-select modal for place tags.
 //
-// Catalog is loaded via server action → admin-web-get-atlas-fields (same EF
-// Atlas Config uses). This page never imports from /atlas-config and never
-// reads place_tags from the client.
+// Catalog is loaded via server action → business-web-get-atlas-fields (same
+// catalog Atlas Config uses). This page never imports from /atlas-config
+// and never reads place_tags from the client.
 
 export function PlaceTagsPicker({
   value,

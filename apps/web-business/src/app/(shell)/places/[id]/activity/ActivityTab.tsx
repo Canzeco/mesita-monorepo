@@ -1,15 +1,11 @@
 "use client";
 
-// Activity — admin's Activity feed, shipped LIVE here rather than parked.
-// In the operator console this tab sits behind a Soon gate because the feed
-// reads as empty scaffolding across 20k places; on a place's own screen it
-// is the tab they open most, so it ships with real numbers and an honest
-// zero state.
-//
-// Report triage stays operator-only (allowTriage): a place that could
-// dismiss guest reports about itself would neutralise the strike ladder.
+// Activity — the place's own numbers and receipts. Reads
+// `business-web-get-performance` (membership-scoped). Report triage is
+// Mesita's call, never the place's — a place that could dismiss guest
+// reports about itself would neutralize the strike ladder (MESITA-1740).
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { getPlaceActivity, type PlaceActivity } from "@/components/place-manage/actions";
 import { EventSuperBoxes } from "@/components/place-manage/sections/EventSuperBoxes";
 import { PerformanceHeadline } from "@/components/place-manage/sections/PerformanceHeadline";
@@ -19,27 +15,30 @@ import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 import { Spinner } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 
-export function ActivityTab({ allowTriage }: { allowTriage: boolean }) {
+export function ActivityTab() {
   const { place } = usePlaceContext();
   const [activity, setActivity] = useState<PlaceActivity | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, startRefresh] = useTransition();
 
-  useEffect(() => {
-    let alive = true;
-    getPlaceActivity(place.id, { limit: 50 }).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setActivity(r.data);
+  const load = useCallback(() => {
+    startRefresh(() => {
+      void getPlaceActivity(place.id, { limit: 50 }).then((r) => {
+        if (!r.ok) {
+          setError(r.error);
+          return;
+        }
+        setError(null);
+        setActivity(r.data);
+      });
     });
-    return () => {
-      alive = false;
-    };
   }, [place.id]);
 
-  if (error) {
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (error && !activity) {
     return (
       <ErrorNote message="Couldn't load this place's numbers. Reload to try again." />
     );
@@ -53,7 +52,10 @@ export function ActivityTab({ allowTriage }: { allowTriage: boolean }) {
       <EventSuperBoxes
         place={place}
         stats={activity.stats}
-        allowTriage={allowTriage}
+        feed={activity.feed}
+        generatedAt={activity.generatedAt}
+        pending={pending}
+        onRefresh={load}
       />
       <ReservationsList activity={activity} />
     </div>
