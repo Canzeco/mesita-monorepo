@@ -9,14 +9,16 @@
 // written; both were renamed and the comment was not — MESITA-1718.)
 //
 // so the embed fails at runtime with "Could not find a relationship between
-// 'reservations' and 'place_profiles' in the schema cache" (hit live 2026-07-27 the
-// moment the consumer Reservations tab was ungated). `slug` isn't on `place_profiles`
-// either — it lives on `places`. Both facts make the one-query embed a trap;
-// this helper does the explicit lookup instead, exactly like the call engine
-// (supabase-edgefunc-reservation-call) already does for a single row.
+// 'reservation_tickets' and 'place_profiles' in the schema cache" (hit live
+// 2026-07-27 the moment the consumer Reservations tab was ungated — the error
+// named `reservations` then; the table is `reservation_tickets` now). `slug`
+// isn't on `place_profiles` either — it lives on `places`. Both facts make the
+// one-query embed a trap; this helper does the explicit lookup instead, exactly
+// like the call engine (supabase-edgefunc-reservation-call) already does for a
+// single row.
 //
 // One extra query per list: the place entity embedded with its profile — that
-// direction DOES have a usable FK. Callers select `project_id` on their rows and get
+// direction DOES have a usable FK. Callers select `place_id` on their rows and get
 // back the same flat `place` shape clients already speak.
 //
 // NOT reservation-only despite the filename: EVERY table that points at

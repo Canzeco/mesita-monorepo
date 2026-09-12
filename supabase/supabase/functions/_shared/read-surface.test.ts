@@ -1,52 +1,45 @@
-// MESITA-1718 — a raw read of a doored table may not throw its error away.
+// MESITA-1718 — two ratchets on READS of doored tables.
 //
 // `write-surface.test.ts` ratchets WRITERS onto the six document doors.
 // Nothing did the same for READS, and MESITA-1712 is what that costs:
 // `stripe-webhook-handle-event/ticket-payment-intent.ts` selected the retired
-// column `project_id` off `visit_tickets`, PostgREST answered 42703 for the
-// whole query — and the call destructured `{ data }` alone, so the error
-// vanished. A null row then read exactly like "already closed by the
-// synchronous path". The Mesita Pay reliability backstop silently never
-// fired, the webhook answered 200, and a ticket stranded in `paying` by a
-// crashed charge stayed there.
+// column `project_id` off `visit_tickets` with a raw `.from().select()`,
+// PostgREST answered 42703 for the whole query — and the call destructured
+// `{ data }` alone, so the error vanished. A null row then read exactly like
+// "already closed by the synchronous path". The Mesita Pay reliability
+// backstop silently never fired.
 //
-// WHY THIS RULE AND NOT "NO RAW READS AT ALL". The issue proposed allowlisting
-// every `admin.from(T).select(...)` on a doored table. Run cold that is 151
-// files across the seven tables — 55 on the two ticket tables alone — and an
-// allowlist that long is the artifact `GRANDFATHERED_VIOLATIONS` in
-// `ef-caller-acl.test.ts` already became: a wall of names nobody re-reads, so
-// nothing shrinks and the ratchet stops meaning anything.
+// Belt 1 — THE DOOR ALLOWLIST (this issue's Shape). Mirror findWriters: every
+// `.from(T).select(...)` where T has a document door is frozen. A new file
+// that reads a doored table raw fails CI until someone either goes through
+// the door or justifies the exception. The list only shrinks. This is the
+// general form: it does not care which column was renamed, only that a raw
+// read of a doored table is a new exception someone has to justify.
+// `renamed-column-refs.test.ts` pins the two names that are retired TODAY
+// and goes blind the moment the next rename lands.
 //
-// It would also be guarding a shim rather than a mechanism. The remap the
-// doors apply (`remapPlaceIdSelect` / `fromPlaceIdRow`) translates the RETIRED
-// spellings `project_id` and `ticket_code` into the live ones — backward
-// compatibility for callers that have not been updated. MESITA-1712 swept all
-// 98 of them, so no caller says the old names any more and the translation is
-// a no-op for every live call site. Going through a door does not protect you
-// from the NEXT rename; it protects you from the last one.
+// The `project_id → place_id` remap lives ONLY inside ticket-doc.ts and
+// reservation-doc.ts. A handful of readers do `fromPlaceIdRow` by hand
+// (`ticket-check.ts`, `agent-tools.ts`, `consumer-web-get-ticket`) and are
+// named on those allowlists. Everyone else on the list is today's honest
+// baseline, not a claim they have been migrated.
 //
-// What generalises is the second half of that bug, and it is the half with no
-// guard: the read had no error check, so a query that failed for ANY reason —
-// a renamed column, a dropped one, a typo, an RLS change, a network blip —
-// was indistinguishable from a query that found nothing.
+// Belt 2 — SWALLOWED ERRORS. Being on the right side of the remap and being
+// able to see your own failure are different properties. `ticket-check.ts`
+// remaps by hand and still destructures `{ data }` alone, so a failed
+// lookup behind Mesita Validate's staff page says the code is not a ticket.
+// 31 files, list only shrinks. The scan flags only the destructure that
+// omits `error`; `const r = await …` and the builder shape are not guessed.
 //
-// That is a live hazard today, not a hypothetical one, and the clearest case
-// is a file MESITA-1718 itself lists as one of the CORRECT readers:
-// `_shared/ticket-check.ts:89` `loadTicketByCheckCode`. It does remap by hand
-// — that is why the issue named it — and it destructures `{ data }` alone. It
-// is the lookup behind Mesita Validate's staff ticket page, so a failed query
-// there returns null and the page says the code is not a ticket.
-//
-// Being on the right side of the remap and being able to see your own failure
-// are two different properties, and only one of them had anyone watching.
-//
-// 26 exceptions, each a real one, and the list only shrinks.
+// Scan helpers duplicated from write-surface.test.ts on purpose — that
+// file's internals are regression-pinned; extracting a shared scan module
+// is separate follow-up work.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 
-/** The six document doors' tables, plus the `profiles` view every place read
+/** The document doors' tables, plus the `profiles` view every place read
  *  lands on. A door exists for these, which is what makes a raw read here a
  *  decision rather than the only option. */
 const DOORED_TABLES = [
@@ -54,14 +47,14 @@ const DOORED_TABLES = [
   "reservation_tickets",
   "place_profiles",
   "profiles",
+  "places",
   "consumers",
   "organization_payment_accounts",
   "organization_guest_customers",
 ] as const;
 
 /** The doors themselves, and the compat shim. They read these tables because
- *  that is their job, and they are the code every allowlisted caller is being
- *  measured against. */
+ *  that is their job. */
 const DOORS = [
   "_shared/ticket-doc.ts",
   "_shared/reservation-doc.ts",
@@ -103,6 +96,296 @@ async function tsSources(): Promise<Array<{ path: string; text: string }>> {
 function stripLineComments(src: string): string {
   return src.split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
 }
+
+/** Files that call `.select(` within a 2000-char forward window of `.from(T)`
+ *  — same windowing as write-surface.test.ts findWriters. Deliberately
+ *  imprecise: a write that returns columns via `.update().select()` counts,
+ *  which is correct (it is still a raw `.from(T)`). */
+async function findReaders(table: string): Promise<string[]> {
+  const tablePattern = new RegExp(`\\.from\\(\\s*["']${table}["']\\s*\\)`, "g");
+  const found = new Set<string>();
+  for (const { path, text } of await tsSources()) {
+    const src = stripLineComments(text);
+    for (const m of src.matchAll(tablePattern)) {
+      const window = src.slice(m.index ?? 0, (m.index ?? 0) + 2000);
+      if (/\.select\s*\(/.test(window)) found.add(path);
+    }
+  }
+  return [...found].sort();
+}
+
+function assertRatchet(table: string, found: string[], allowlist: string[]) {
+  const extra = found.filter((f) => !allowlist.includes(f));
+  const stale = allowlist.filter((f) => !found.includes(f));
+  assertEquals(
+    extra,
+    [],
+    `new raw reader(s) of ${table}: ${extra.join(", ")}\n\n` +
+      `Go through the document door, or add the file to the allowlist with a ` +
+      `comment saying why. A raw \`.from("${table}").select(...)\` does not ` +
+      `run remapPlaceIdSelect / fromPlaceIdRow — that is how MESITA-1712 ` +
+      `selected a retired column and heard nothing.`,
+  );
+  assertEquals(
+    stale,
+    [],
+    `allowlist names a file that no longer reads ${table}: ${stale.join(", ")}\n\n` +
+      `Delete these lines. An allowlist that only ever grows is the thing ` +
+      `write-surface.test.ts already refuses to become.`,
+  );
+}
+
+// ── Belt 1: raw readers of doored tables. Bootstrapped 2026-09-12 from a
+// real findReaders() run on this branch, not hand-transcribed. ───────────
+
+const VISIT_TICKET_READ_ALLOWLIST = [
+  "_shared/membership.ts",
+  "_shared/ojo-engine.ts",
+  "_shared/ticket-check.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
+  "_shared/ticket-doc.ts", // THE ticket door (writeTicket)
+  "_shared/ticket-informal.ts",
+  "_shared/ticket-reprice.ts",
+  "_shared/ticket-review-notify.ts",
+  "admin-web-get-place-activity/index.ts",
+  "business-web-cancel-ticket/index.ts",
+  "business-web-get-overview/index.ts",
+  "business-web-get-performance/index.ts",
+  "business-web-list-tickets/index.ts",
+  "business-web-mark-ticket-paid/index.ts",
+  "business-web-record-strike/index.ts",
+  "business-web-suggest-promo/index.ts",
+  "consumer-web-apply-ticket-credits/index.ts",
+  "consumer-web-cancel-ticket/index.ts",
+  "consumer-web-create-ticket/index.ts",
+  "consumer-web-get-metrics/index.ts",
+  "consumer-web-get-place-activity/index.ts",
+  "consumer-web-get-profile/index.ts",
+  "consumer-web-get-ticket/index.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
+  "consumer-web-list-pay-notifications/index.ts",
+  "consumer-web-list-tickets/index.ts",
+  "consumer-web-report-ticket/index.ts",
+  "consumer-web-select-ticket-payment/index.ts",
+  "consumer-web-submit-review/index.ts",
+  "consumer-web-submit-story/index.ts",
+  "consumer-web-submit-ticket-bill/index.ts",
+  "consumer-web-submit-ticket-review/index.ts",
+  "consumer-web-submit-ticket-total/index.ts",
+  "stripe-webhook-handle-event/ticket-payment-intent.ts",
+  "validate-web-approve-ticket/index.ts",
+  "validate-web-poll-ticket/index.ts",
+  "validate-web-request-fix/index.ts",
+  "validate-web-validate-ticket/index.ts",
+];
+
+Deno.test("TICKET READ: no new raw reader of visit_tickets outside the allowlist", async () => {
+  assertRatchet("visit_tickets", await findReaders("visit_tickets"), VISIT_TICKET_READ_ALLOWLIST);
+});
+
+const RESERVATION_TICKET_READ_ALLOWLIST = [
+  "_shared/agent-tools.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
+  "_shared/config-section-reservations.ts",
+  "_shared/reservation-doc.ts", // THE reservation door (writeReservation)
+  "admin-web-get-place-activity/index.ts",
+  "business-web-confirm-reservation/index.ts",
+  "business-web-get-performance/index.ts",
+  "consumer-mcp/index.ts",
+  "consumer-mcp/profile-tool.ts",
+  "consumer-web-cancel-reservation/index.ts",
+  "consumer-web-confirm-reservation/index.ts",
+  "consumer-web-create-reservation/index.ts",
+  "consumer-web-get-metrics/index.ts",
+  "consumer-web-get-place-activity/index.ts",
+  "consumer-web-get-profile/index.ts",
+  "consumer-web-list-reservations/index.ts",
+  "consumer-web-update-reservation/index.ts",
+  "eleven-agent-get-reservation/index.ts",
+  "supabase-cron-reservation-retries/index.ts",
+  "supabase-edgefunc-reservation-call/index.ts",
+];
+
+Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside the allowlist", async () => {
+  assertRatchet(
+    "reservation_tickets",
+    await findReaders("reservation_tickets"),
+    RESERVATION_TICKET_READ_ALLOWLIST,
+  );
+});
+
+const PLACE_PROFILE_READ_ALLOWLIST = [
+  "_shared/agent-tools.ts",
+  "_shared/credits-readiness.ts",
+  "_shared/discovery-place.ts",
+  "_shared/mesita-name-door.ts",
+  "_shared/mesita-pay-readiness.ts",
+  "_shared/pulse-report.ts",
+  "admin-web-enrich-place/index.ts",
+  "admin-web-get-place-enrichment/index.ts",
+  "admin-web-get-place-payment-account/index.ts",
+  "admin-web-list-notifications/notification-state.ts",
+  "admin-web-search-places/index.ts",
+  "admin-web-set-place-enrichment/index.ts",
+  "admin-web-set-place-verified/index.ts",
+  "business-web-confirm-reservation/index.ts",
+  "business-web-get-overview/index.ts",
+  "business-web-update-place/place-social-refresh.ts",
+  "consumer-web-apply-ticket-credits/index.ts",
+  "consumer-web-confirm-reservation/index.ts",
+  "consumer-web-list-credit-places/index.ts",
+  "eleven-a1-report-outcome/index.ts",
+  "eleven-a2-confirm-reservation/index.ts",
+  "eleven-a4-cancel-reservation/index.ts",
+  "eleven-a4-find-reservation/index.ts",
+  "eleven-a4-verify-caller/index.ts",
+  "eleven-agent-get-reservation/index.ts",
+  "supabase-cron-enrich-place-contents/index.ts",
+  "supabase-cron-enrich-place-research/index.ts",
+  "supabase-edgefunc-reservation-call/index.ts",
+];
+
+Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the allowlist", async () => {
+  assertRatchet("place_profiles", await findReaders("place_profiles"), PLACE_PROFILE_READ_ALLOWLIST);
+});
+
+const PROFILES_READ_ALLOWLIST = [
+  "_shared/consumer-search-lane.ts",
+  "_shared/create-place.ts",
+  "_shared/ojo-engine.ts",
+  "_shared/place-embeddings.ts",
+  "_shared/place-pool.ts",
+  "_shared/place-requests.ts",
+  "_shared/place-slug.ts",
+  "_shared/save-place.ts",
+  "_shared/suggest-places.ts",
+  "_shared/ticket-reprice.ts",
+  "_shared/ticket-review-notify.ts",
+  "admin-web-delete-place/index.ts",
+  "admin-web-find-place/index.ts",
+  "admin-web-list-notifications/index.ts",
+  "admin-web-list-notifications/notification-state.ts",
+  "admin-web-search-places/index.ts",
+  "admin-web-set-place-active/index.ts",
+  "admin-web-set-place-listed/index.ts",
+  "admin-web-set-plan/index.ts",
+  "business-web-find-place/index.ts",
+  "business-web-get-overview/index.ts",
+  "business-web-request-manual-review/index.ts",
+  "business-web-send-email-otp/index.ts",
+  "business-web-send-phone-otp/index.ts",
+  "business-web-suggest-promo/index.ts",
+  "consumer-mcp/index.ts",
+  "consumer-web-create-ticket/index.ts",
+  "consumer-web-get-place-activity/index.ts",
+  "consumer-web-get-place/index.ts",
+  "consumer-web-list-catalog/index.ts",
+  "consumer-web-list-pay-notifications/index.ts",
+  "consumer-web-list-places/index.ts",
+  "consumer-web-recommend-swipe/index.ts",
+  "consumer-web-submit-review/index.ts",
+  "consumer-web-submit-story/index.ts",
+  "supabase-edgefunc-discover-places/index.ts",
+  "supabase-edgefunc-search-places/index.ts",
+  "validate-web-get-ticket/index.ts",
+];
+
+Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
+  assertRatchet("profiles", await findReaders("profiles"), PROFILES_READ_ALLOWLIST);
+});
+
+const PLACES_READ_ALLOWLIST = [
+  "_shared/auth-membership.ts",
+  "_shared/credits-readiness.ts",
+  "_shared/membership-enforcement.ts",
+  "_shared/mesita-pay-readiness.ts",
+  "_shared/org-membership.ts",
+  "_shared/place-claim.ts",
+  "_shared/reservation-places.ts",
+  "_shared/ticket-check.ts",
+  "admin-web-decide-place-claim/index.ts",
+  "admin-web-delete-place/index.ts",
+  "admin-web-get-place-enrichment/index.ts",
+  "admin-web-get-place-payment-account/index.ts",
+  "admin-web-list-place-claims/index.ts",
+  "admin-web-set-place-listed/index.ts",
+  "admin-web-set-plan/index.ts",
+  "business-web-change-subscription/index.ts",
+  "business-web-get-overview/index.ts",
+  "business-web-get-place/index.ts",
+  "business-web-list-organizations/index.ts",
+  "business-web-list-places/index.ts",
+  "business-web-release-place/index.ts",
+  "business-web-update-place/index.ts",
+  "business-web-verify-place/index.ts",
+  "consumer-web-apply-ticket-credits/index.ts",
+  "consumer-web-create-reservation/index.ts",
+  "consumer-web-get-discount-quote/index.ts",
+  "consumer-web-list-credit-places/index.ts",
+  "stripe-webhook-handle-event/index.ts",
+];
+
+Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", async () => {
+  assertRatchet("places", await findReaders("places"), PLACES_READ_ALLOWLIST);
+});
+
+const CONSUMER_READ_ALLOWLIST = [
+  "_shared/class-doors.ts",
+  "_shared/consumer-doc.ts", // THE consumer door
+  "_shared/delete-history-free.ts",
+  "_shared/stripe-billing.ts",
+  "_shared/ticket-reprice.ts",
+  "admin-web-grant-class/index.ts",
+  "consumer-mcp/index.ts",
+  "consumer-mcp/profile-tool.ts",
+  "consumer-web-create-connector/index.ts",
+  "consumer-web-create-reservation/index.ts",
+  "consumer-web-create-ticket/index.ts",
+  "consumer-web-get-discount-quote/index.ts",
+  "consumer-web-get-profile/index.ts",
+  "consumer-web-signin-phone/index.ts",
+  "consumer-web-submit-story/index.ts",
+  "consumer-web-update-profile/index.ts",
+  "eleven-a3-verify-caller/index.ts",
+  "eleven-agent-get-reservation/index.ts",
+  "supabase-edgefunc-get-consumer-context/index.ts",
+  "validate-web-get-ticket/index.ts",
+];
+
+Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {
+  assertRatchet("consumers", await findReaders("consumers"), CONSUMER_READ_ALLOWLIST);
+});
+
+const PAYMENT_ACCOUNT_READ_ALLOWLIST = [
+  "_shared/credits-readiness.ts",
+  "_shared/mesita-pay-readiness.ts",
+  "_shared/payment-account-doc.ts", // THE payment-account door
+  "admin-web-get-place-payment-account/index.ts",
+  "admin-web-refund-credit-lot/index.ts",
+  "business-web-get-payment-account/index.ts",
+  "business-web-get-payment-dashboard-link/index.ts",
+  "business-web-start-payment-onboarding/index.ts",
+  "consumer-web-list-credit-places/index.ts",
+];
+
+Deno.test("PAYMENT ACCOUNT READ: no new raw reader of organization_payment_accounts outside the allowlist", async () => {
+  assertRatchet(
+    "organization_payment_accounts",
+    await findReaders("organization_payment_accounts"),
+    PAYMENT_ACCOUNT_READ_ALLOWLIST,
+  );
+});
+
+const GUEST_CUSTOMER_READ_ALLOWLIST = [
+  "_shared/organization-guest-customer-doc.ts", // THE guest-customer door — sole reader today
+];
+
+Deno.test("GUEST CUSTOMER READ: no new raw reader of organization_guest_customers outside the allowlist", async () => {
+  assertRatchet(
+    "organization_guest_customers",
+    await findReaders("organization_guest_customers"),
+    GUEST_CUSTOMER_READ_ALLOWLIST,
+  );
+});
+
+// ── Belt 2: a raw read of a doored table may not throw its error away ────
 
 /**
  * Files where a raw read of a doored table is destructured WITHOUT `error`.
@@ -169,9 +452,10 @@ async function findSwallowedReads(): Promise<string[]> {
 }
 
 /**
- * Every raw read whose failure is currently invisible, 2026-09-10. Bootstrapped
- * from a real `findSwallowedReads()` run — NOT hand-listed, so it is the true
- * set rather than the set someone remembered.
+ * Every raw read whose failure is currently invisible. Bootstrapped from a
+ * real `findSwallowedReads()` run — NOT hand-listed, so it is the true set
+ * rather than the set someone remembered. Rebased 2026-09-12 onto main;
+ * five files landed after the 2026-09-10 scan and join the list.
  *
  * This list may only SHRINK. Fixing one is usually two words (`{ data }` →
  * `{ data, error }`) plus deciding what the failure should do, and that second
@@ -185,11 +469,16 @@ const SWALLOWED_TODAY = [
   "_shared/config-section-reservations.ts",
   "_shared/create-place.ts",
   "_shared/membership.ts",
+  "_shared/org-membership.ts",
   "_shared/place-slug.ts",
+  "_shared/reservation-places.ts",
   "_shared/save-place.ts",
   "_shared/stripe-billing.ts",
   "_shared/ticket-check.ts",
   "business-web-confirm-reservation/index.ts",
+  "business-web-get-overview/index.ts",
+  "business-web-list-organizations/index.ts",
+  "business-web-release-place/index.ts",
   "business-web-update-place/place-social-refresh.ts",
   "consumer-mcp/index.ts",
   "consumer-mcp/profile-tool.ts",
@@ -223,7 +512,7 @@ Deno.test("READ SURFACE: no NEW raw read of a doored table discards its error", 
   );
 });
 
-Deno.test("READ SURFACE: the list shrinks — a fixed reader leaves it", async () => {
+Deno.test("READ SURFACE: the swallowed list shrinks — a fixed reader leaves it", async () => {
   const swallowed = await findSwallowedReads();
   const stale = SWALLOWED_TODAY.filter((p) => !swallowed.includes(p));
   assertEquals(
@@ -235,10 +524,10 @@ Deno.test("READ SURFACE: the list shrinks — a fixed reader leaves it", async (
   );
 });
 
-Deno.test("READ SURFACE: the doors themselves are excluded, and still exist", async () => {
-  // If a door is renamed or deleted, DOORS goes stale and every read inside it
-  // starts counting as a raw read — which would look like 40 new violations
-  // rather than the one structural change it is.
+Deno.test("READ SURFACE: the doors themselves still exist", async () => {
+  // If a door is renamed or deleted, DOORS goes stale and swallowed-read
+  // scans start counting its internals as raw reads — which would look like
+  // dozens of new violations rather than the one structural change it is.
   for (const door of DOORS) {
     const url = new URL(door, FUNCTIONS_DIR);
     const stat = await Deno.stat(url).catch(() => null);
