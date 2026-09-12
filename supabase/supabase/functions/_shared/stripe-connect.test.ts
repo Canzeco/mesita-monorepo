@@ -425,9 +425,6 @@ Deno.test("the onboarding HANDLER prefills from org places before accounts.creat
   const src = await Deno.readTextFile(
     new URL("../business-web-start-payment-onboarding/index.ts", import.meta.url),
   );
-  const createIdx = src.indexOf("account = await stripe.accounts.create");
-  const updateIdx = src.indexOf("stripe.accounts.update");
-  assert(createIdx > 0, "onboarding EF must call accounts.create");
   assert(
     src.includes("deterministicConnectPrefill"),
     "onboarding EF must send Atlas prefill on accounts.create",
@@ -437,8 +434,8 @@ Deno.test("the onboarding HANDLER prefills from org places before accounts.creat
     "onboarding EF must pass the prefill into connectAccountCreateParams",
   );
   assert(
-    src.includes("completePrefillWithLlm") && updateIdx > createIdx,
-    "LLM leftovers patch via accounts.update AFTER create, so the idempotent body stays stable",
+    !src.includes("completePrefillWithLlm") && !src.includes("stripe.accounts.update"),
+    "LLM must not sit between accounts.create and the mirror write — a concurrent retry would del the account",
   );
 });
 

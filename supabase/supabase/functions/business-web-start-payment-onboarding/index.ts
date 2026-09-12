@@ -47,12 +47,8 @@ import {
   isAbsoluteHttpsUrl,
 } from "../_shared/stripe-connect.ts";
 import {
-  completePrefillWithLlm,
   deterministicConnectPrefill,
-  llmBusinessProfilePatch,
   loadOrgPlacesForPrefill,
-  needsLlmDescription,
-  needsLlmMcc,
 } from "../_shared/stripe-connect-prefill.ts";
 import {
   isStripeKeyRejection,
@@ -383,32 +379,6 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);
     return stripeFailure(err);
-  }
-
-  const needMcc = needsLlmMcc(places);
-  const needDescription = needsLlmDescription(places);
-  if (needMcc || needDescription) {
-    try {
-      const llm = await completePrefillWithLlm({
-        places,
-        needMcc,
-        needDescription,
-        openaiKey: Deno.env.get("OPENAI_KEY"),
-      });
-      const patch = llmBusinessProfilePatch(
-        prefill.businessProfile,
-        llm,
-        needMcc,
-        needDescription,
-      );
-      if (patch) {
-        account = await stripe.accounts.update(account.id, {
-          business_profile: patch,
-        });
-      }
-    } catch (llmErr) {
-      console.error("[start-payment-onboarding] llm prefill update:", llmErr);
-    }
   }
 
   const snapshot = accountSnapshotFromStripe(account, livemode);
