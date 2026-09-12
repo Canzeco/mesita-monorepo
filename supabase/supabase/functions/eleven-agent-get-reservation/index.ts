@@ -130,7 +130,7 @@ async function searchReservations(
   }
   if (rows.length === 0) return [];
 
-  // reservations.project_id has no PostgREST FK hint to places — batch the
+  // reservation_tickets.place_id has no PostgREST FK hint to places — batch the
   // place names separately (same workaround as the engine).
   const placeIds = [...new Set(rows.map((r) => r.place_id))];
   const { data: places } = await admin
