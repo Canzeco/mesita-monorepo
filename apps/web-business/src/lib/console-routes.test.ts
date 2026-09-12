@@ -34,12 +34,19 @@ describe("the four screens Pato specified", () => {
   // Was five until MESITA-1614. Org Places and Public Places merged: the
   // split was a filter wearing the costume of a screen, and the fact it
   // filtered on — Owned — is a column now.
-  it("SHELL_ROUTES is the three that need no id", () => {
+  it("SHELL_ROUTES is the addresses that need no id", () => {
     expect(Object.keys(SHELL_ROUTES)).toEqual([
       "account",
       "organization",
+      "organizationNew",
       "places",
     ]);
+  });
+  it("Create organization is a real route file, with its own loading boundary", () => {
+    expect(existsSync(routeFile(SHELL_ROUTES.organizationNew))).toBe(true);
+    expect(
+      existsSync(path.join(SHELL_DIR, "organization", "new", "loading.tsx")),
+    ).toBe(true);
   });
   it("Place is the fourth, and the shell owns it", () => {
     // placeHref is Profile's address: opening a place means landing on its
@@ -150,8 +157,8 @@ describe("the merged list (MESITA-1614)", () => {
   });
 });
 
-// MESITA-1710. `Org Places` and `Public Places` are back as LABELS in the rail
-// and are still not screens: they are saved filters on the one merged list.
+// MESITA-1710 / MESITA-1793. `Org Places` and `Public Places` remain URL
+// filters on the one merged list, and they are not screens and not rail rows.
 // These pin the distinction, because the cheap mistake is to let one of them
 // grow a route again and quietly reverse MESITA-1614.
 describe("the rail's two Places children are filters, not routes", () => {

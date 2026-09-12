@@ -133,11 +133,7 @@ export default async function PlacesPage({
     <>
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {owned === "org"
-            ? "Org Places"
-            : owned === "public"
-              ? "Public Places"
-              : "Places"}
+          Places
         </h1>
         <p className="text-muted-foreground text-[13px]">
           {owned === "org" ? (

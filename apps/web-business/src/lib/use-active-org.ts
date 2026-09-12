@@ -24,10 +24,10 @@ import type { Organization } from "@/lib/api/organizations";
 
 export type ChromeOrg = Pick<Organization, "id" | "name">;
 
-/** What the RAIL needs of an organization: the chrome pair plus the viewer's
- *  role (which of a place's views they may open) and the places it holds
- *  (MESITA-1779). A RailOrg is a ChromeOrg, so the header and the resolver
- *  below take it unchanged. */
+/** What the RAIL used to need of an organization (MESITA-1779). The rail
+ *  is three collections now (MESITA-1793) and no longer lists places; the
+ *  header switcher only needs ChromeOrg. Kept so a caller holding the wider
+ *  shape still type-checks against the resolver. */
 export type RailOrg = Pick<Organization, "id" | "name" | "myRole" | "places">;
 
 /** The rule, without React, so it can be tested as the rule it is. Mirrors
@@ -44,10 +44,15 @@ export function resolveChromeOrg<T extends ChromeOrg>(
   );
 }
 
-export function useActiveOrg<T extends ChromeOrg>(organizations: T[]): {
+export function useActiveOrg<T extends ChromeOrg>(
+  organizations: T[],
+): {
   activeOrg: T | null;
   activeOrgId: string | null;
 } {
-  const activeOrg = resolveChromeOrg(organizations, useSearchParams().get("org"));
+  const activeOrg = resolveChromeOrg(
+    organizations,
+    useSearchParams().get("org"),
+  );
   return { activeOrg, activeOrgId: activeOrg?.id ?? null };
 }
