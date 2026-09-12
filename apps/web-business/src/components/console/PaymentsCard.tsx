@@ -71,13 +71,11 @@ export function ConnectStripeForm({
   action,
   pending,
   error,
-  hasLegalName,
 }: {
   orgId: string;
   action: (formData: FormData) => void;
   pending: boolean;
   error: string | null;
-  hasLegalName: boolean;
 }) {
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -124,12 +122,8 @@ export function ConnectStripeForm({
         {pending ? "Opening Stripe..." : "Continue to Stripe"}
       </button>
       <p className="text-muted-foreground text-[12px] leading-relaxed">
-        Stripe asks for the rest — RFC, address, bank account — in its own
-        onboarding.
-        {/* "below" was true when this line sat on the card; from inside a
-            modal it points at nothing the reader can see. Name the group. */}
-        {!hasLegalName &&
-          " Add your legal name under Legal identity and it comes prefilled."}
+        Stripe asks for the rest — legal name, RFC, address, bank account — in
+        its own onboarding.
       </p>
     </form>
   );
@@ -140,16 +134,11 @@ export function PaymentsCard({
   account,
   orphaned,
   isOwner,
-  hasLegalName = true,
 }: {
   orgId: string;
   account: PaymentAccount | null;
   orphaned: boolean;
   isOwner: boolean;
-  /** Cashes the identity-fold promise: when false and no account exists, the
-   *  muted line under the connect form adds a nudge toward the legal-identity
-   *  group. Never blocks connecting — the only gate is country + entity. */
-  hasLegalName?: boolean;
 }) {
   const [connectState, connectAction, connecting] = useActionState(
     connectPaymentsAction,
@@ -240,7 +229,6 @@ export function PaymentsCard({
                     action={connectAction}
                     pending={connecting}
                     error={connectState.error}
-                    hasLegalName={hasLegalName}
                   />
                 </Modal>
               )}

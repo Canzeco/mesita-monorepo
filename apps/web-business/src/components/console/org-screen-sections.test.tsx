@@ -14,7 +14,6 @@ import { ConnectStripeForm } from "./PaymentsCard";
 import type {
   Organization,
   OrgMember,
-  PaymentAccount,
   PendingOrgInvite,
 } from "@/lib/api/organizations";
 
@@ -43,7 +42,6 @@ function connectForm(over: Partial<Parameters<typeof ConnectStripeForm>[0]> = {}
       action={() => {}}
       pending={false}
       error={null}
-      hasLegalName={false}
       {...over}
     />,
   );
@@ -133,14 +131,9 @@ describe("the five-box composition", () => {
     expect(html).not.toContain("Pending invites");
   });
 
-  it("cashes the prefill promise when legal name is missing and no account exists", () => {
-    const html = connectForm({ hasLegalName: false });
-    expect(html).toContain("comes prefilled");
-    // …and drops the nudge once the org HAS a legal name: the line still
-    // names what Stripe collects, but stops pointing at a filled-in field.
-    const named = connectForm({ hasLegalName: true });
-    expect(named).toContain("RFC, address, bank account");
-    expect(named).not.toContain("comes prefilled");
+  it("names what Stripe collects in the connect modal", () => {
+    const html = connectForm();
+    expect(html).toContain("legal name, RFC, address, bank account");
   });
 
   it("offers ONE control on the card, and asks its questions in the modal", () => {
@@ -151,7 +144,7 @@ describe("the five-box composition", () => {
     expect(html).toContain("Connect Stripe");
     expect(html).not.toContain("<select");
     // A closed modal has no DOM — the questions cannot leak back onto the card.
-    expect(html).not.toContain("RFC, address, bank account");
+    expect(html).not.toContain("legal name, RFC, address, bank account");
   });
 
   it("gates connect on country AND legal entity, and sends the rest to Stripe", () => {
@@ -167,26 +160,15 @@ describe("the five-box composition", () => {
     expect(html).toMatch(/name="entityType"[^>]*required/);
     expect(html).toContain('<option value="" disabled="" selected="">');
     // The console asks two questions and names Stripe as the owner of the rest.
-    expect(html).toContain("RFC, address, bank account");
+    expect(html).toContain("legal name, RFC, address, bank account");
     // Resume carries no entity gate — that account already has its answer.
     expect(html).toContain('name="intent" value="create"');
   });
 
-  it("keeps the pre-connect caption and swaps it once an account exists", () => {
-    expect(render()).toContain("saved for facturación");
-    const withAccount: PaymentAccount = {
-      organization_id: "org-1",
-      stripe_account_id: "acct_1",
-      livemode: false,
-      charges_enabled: false,
-      details_submitted: false,
-      payouts_enabled: false,
-      requirements_due: [],
-      disabled_reason: null,
-      country: "MX",
-    };
-    const html = render({ account: withAccount });
-    expect(html).toContain("master for legal identity");
-    expect(html).not.toContain("saved for facturación");
+  it("does not preview legal identity on the Stripe Account card", () => {
+    const html = render();
+    expect(html).not.toContain("Legal identity");
+    expect(html).not.toContain("Legal name");
+    expect(html).not.toContain("Add details");
   });
 });

@@ -15,7 +15,6 @@ import Link from "next/link";
 import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
 import { MembersCard } from "@/components/console/MembersCard";
-import { OrgIdentityCard } from "@/components/console/OrgIdentityCard";
 import { PaymentsCard } from "@/components/console/PaymentsCard";
 import { SoonStrip } from "@/components/console/SoonStrip";
 import type {
@@ -79,23 +78,12 @@ export function OrgScreenSections({
         title="Stripe Account"
         description="The account this organization gets paid through."
       >
-        <div className="flex flex-col gap-4">
-          <PaymentsCard
-            orgId={org.id}
-            account={account}
-            orphaned={orphaned}
-            isOwner={isOwner}
-            hasLegalName={Boolean(org.legalName)}
-          />
-          <OrgIdentityCard
-            orgId={org.id}
-            legalName={org.legalName}
-            rfc={org.rfc}
-            currency={org.currency}
-            isOwner={isOwner}
-            hasAccount={account !== null}
-          />
-        </div>
+        <PaymentsCard
+          orgId={org.id}
+          account={account}
+          orphaned={orphaned}
+          isOwner={isOwner}
+        />
       </Section>
 
       <MembersCard
