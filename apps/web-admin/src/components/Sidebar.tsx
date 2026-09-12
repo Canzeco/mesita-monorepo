@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BadgeCheck,
   Building2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -18,7 +17,6 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { INTAKE_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { INVITATIONS_PARENT } from "@/app/(app)/invitations/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
@@ -53,24 +51,19 @@ const PRIMARY_NAV: NavItem[] = [
 
 const ALERTS_NAV: NavItem[] = [
   { href: "/global-performance", label: "Global Monitor", Icon: Radar },
-  { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
   CREDIT_LIABILITY_PARENT,
 ];
 
 // Manage — the records of real things, widest scope first: the backend itself,
-// then the places Mesita lists, then the one guest-side record an operator
-// writes by hand. Not Configurations; nothing here is a policy blob. Places
-// is plain "Places" now: the per-place editor left the admin console with
-// MESITA-1588 (it lives in the business console, ported with MESITA-1537), so
-// there is no second surface for a Multiple/Single qualifier to tell it apart
-// from. Invitations
-// is last because it is the narrowest: not consumers at large — every other
-// class is earned — but the single INVITATION DOOR, which by definition only
-// opens by hand (MESITA-972, MESITA-1160).
+// then the places Mesita lists. Not Configurations; nothing here is a policy
+// blob. Places is plain "Places" now: the per-place editor left the admin
+// console with MESITA-1588 (it lives in the business console, ported with
+// MESITA-1537), so there is no second surface for a Multiple/Single qualifier
+// to tell it apart from. Invitations left the rail with MESITA-1783; the
+// page still lives at /invitations.
 const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   { href: "/manage-multiple", label: "Places", Icon: Building2 },
-  INVITATIONS_PARENT,
 ];
 
 // Configurations — ordered as the product flows, not alphabetically or by age.
