@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
+import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import { buildSearchMapPins, locationTypeLabel } from "@/lib/search-membership";
 import {
   EmptySearchPrompt,
@@ -247,7 +248,55 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map's top row is the query bar plus a Filters disc", () => {
+describe("SearchFilterRow", () => {
+  // A THIRD OF THE ROW, LABELLED (Pato, MESITA-1797: "must be one third"),
+  // restoring MESITA-1627 after MESITA-1790's disc overwrote it.
+  it("takes a third of the row, labelled, and goes primary-filled when on", () => {
+    const rest = renderToStaticMarkup(
+      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
+    );
+    expect(rest).toContain("lucide-sliders-horizontal");
+    expect(rest).toContain("Filter places");
+    expect(rest).toMatch(/>\s*Filters\s*</);
+    expect(rest).toContain("basis-1/3");
+    expect(rest).not.toContain("h-11 w-11");
+    expect(rest).toContain("h-11");
+    expect(rest).toContain("rounded-full");
+    expect(rest).toContain("border-border");
+    expect(rest).toContain("bg-card/95");
+    expect(rest).toContain("shadow-elev");
+    expect(rest).not.toContain("bg-primary ");
+    expect(rest).not.toContain("Restaurants");
+    expect(rest).not.toContain("Bars");
+    expect(rest).not.toContain("Now");
+    expect(rest).not.toContain("Visit");
+
+    const on = renderToStaticMarkup(
+      <SearchFilterRow count={3} onOpenFilters={() => {}} />,
+    );
+    expect(on).toContain("3 applied");
+    expect(on).toContain("bg-primary");
+    expect(on).toContain(">3<");
+    expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
+    expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
+  });
+
+  // THE ANTI-DISAPPEARING PAIR. Flex resolves an overflowing row by shrinking
+  // whichever child can shrink. Drop `shrink-0` here and the bar squeezes
+  // this control toward zero width while it is still in the DOM.
+  it("cannot be squeezed out by the bar beside it", () => {
+    const rest = renderToStaticMarkup(
+      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
+    );
+    expect(rest).toContain("shrink-0");
+
+    const src = read("SearchClient.tsx");
+    expect(src).toContain('<div className="min-w-0 flex-1">');
+    expect(src).toContain('<div className="flex min-w-0 items-center gap-2">');
+  });
+});
+
+describe("Search map's top row is the query bar plus labelled Filters", () => {
   it("puts Filters at the top right, with no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
@@ -276,8 +325,10 @@ describe("Search map's top row is the query bar plus a Filters disc", () => {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
     for (const present of ["map-filters-engine.ts", "use-map-filters.ts"]) {
-      expect(existsSync(join(SEARCH_DIR, "../../../lib", present)), present)
-        .toBe(true);
+      expect(
+        existsSync(join(SEARCH_DIR, "../../../lib", present)),
+        present,
+      ).toBe(true);
     }
     expect(overlays).not.toContain("SlidersHorizontal");
     expect(overlays).not.toContain("onResetFilters");
@@ -285,8 +336,9 @@ describe("Search map's top row is the query bar plus a Filters disc", () => {
     expect(overlays).not.toContain("Adjust");
     expect(src).not.toContain("useDiscoveryFilters");
     expect(src).not.toContain("DiscoveryFilters");
-    expect(existsSync(join(SEARCH_DIR, "../../../lib/use-discovery-filters.ts")))
-      .toBe(true);
+    expect(
+      existsSync(join(SEARCH_DIR, "../../../lib/use-discovery-filters.ts")),
+    ).toBe(true);
     const suggestArgs = [
       ...src.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
     ].map((m) => m[1]);
@@ -295,9 +347,10 @@ describe("Search map's top row is the query bar plus a Filters disc", () => {
     expect(suggestArgs.join("\n")).toContain('"deep"');
     for (const args of suggestArgs) expect(args).not.toContain("filters");
     expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
-    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
-      "flex items-center gap-2",
-    );
+    const loading = read("../../../app/(shell)/search/loading.tsx");
+    expect(loading).toContain("flex min-w-0 items-center gap-2");
+    expect(loading).toContain("basis-1/3");
+    expect(loading).not.toContain("h-12 w-12");
   });
 
   it("recenters the map on the location param, not only the device", () => {
@@ -658,7 +711,6 @@ describe("Search catalog reload UI", () => {
     expect(html).not.toContain("Adjust");
     expect(html).not.toContain("filters");
   });
-
 });
 
 describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () => {
