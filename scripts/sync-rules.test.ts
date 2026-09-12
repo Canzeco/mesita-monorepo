@@ -14,6 +14,7 @@ import { dirname, fromFileUrl, join } from "@std/path";
 import {
   budgetsFor,
   buildAllowedFiles,
+  CHAT_INSTRUCTIONS_WORD_BUDGET,
   countWords,
   DEFAULT_PACKAGE_WORD_BUDGET,
   DEFAULT_SKILL_WORD_BUDGET,
@@ -269,6 +270,7 @@ const ALLOWED = buildAllowedFiles(TARGETS, repoRoot);
 
 Deno.test("buildAllowedFiles covers the quickstart source and every generated pair", () => {
   assert(ALLOWED.has("scripts/rules-quickstart.md"));
+  assert(ALLOWED.has("scripts/chat-instructions.md"));
   assert(ALLOWED.has("CLAUDE.md"));
   assert(ALLOWED.has("AGENTS.md"));
   for (const { dir } of TARGETS) {
@@ -424,6 +426,15 @@ Deno.test("the shipped quickstart is within budget", async () => {
   assert(
     words <= QUICKSTART_WORD_BUDGET,
     `scripts/rules-quickstart.md is ${words} words > ${QUICKSTART_WORD_BUDGET}`,
+  );
+});
+
+Deno.test("the shipped chat boot card is within budget", async () => {
+  const card = await Deno.readTextFile(join(repoRoot, "scripts", "chat-instructions.md"));
+  const words = countWords(card);
+  assert(
+    words <= CHAT_INSTRUCTIONS_WORD_BUDGET,
+    `scripts/chat-instructions.md is ${words} words > ${CHAT_INSTRUCTIONS_WORD_BUDGET}`,
   );
 });
 

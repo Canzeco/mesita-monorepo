@@ -58,6 +58,13 @@ export const AGENTS_NOTICE =
 export const QUICKSTART_WORD_BUDGET = 700;
 export const DEFAULT_PACKAGE_WORD_BUDGET = 450;
 
+// ── Chat boot card budget (MESITA-1762) ─────────────────────────────────────
+// scripts/chat-instructions.md is pasted verbatim into a chat project's
+// Instructions box (claude.ai, Claude desktop Chat/Cowork, ChatGPT). It is a
+// redundant copy on purpose: the box has no diff and no check, this file has
+// both. It carries pointers, the claim line and the door — never knowledge.
+export const CHAT_INSTRUCTIONS_WORD_BUDGET = 250;
+
 // ── Skill budgets (Rules §0) ────────────────────────────────────────────────
 // `.claude/` is allowlisted wholesale (MD_ALLOW_DIRS below), so every file in
 // it was allowlisted and therefore never measured. That made the repo's single
@@ -122,7 +129,8 @@ export function missingStampMessage(): string {
 // The repo holds NO knowledge markdown: knowledge lives in Notion (the Docs
 // tree), task/commit context lives in Linear, code explanation lives in code
 // comments. The ONLY tracked files allowed are the instruction pairs, this
-// script's quickstart source, and agent tooling config. Anything else fails CI.
+// script's quickstart source, the chat boot card (scripts/chat-instructions.md,
+// MESITA-1762), and agent tooling config. Anything else fails CI.
 //
 // `.mdc` is scanned because Cursor reads `.cursor/rules/*.mdc` as rules (SADLC
 // adapters, the Cursor rows) — an unscanned dialect is a rule channel outside the allowlist, which is
@@ -226,6 +234,7 @@ export const TARGETS: Target[] = [
 export function buildAllowedFiles(targets: Target[], root: string): Set<string> {
   return new Set<string>([
     "scripts/rules-quickstart.md",
+    "scripts/chat-instructions.md",
     ...targets.flatMap(({ dir }) => {
       const rel = dir === root ? "" : dir.slice(root.length + 1) + "/";
       return [`${rel}CLAUDE.md`, `${rel}AGENTS.md`];
@@ -420,6 +429,21 @@ async function main(): Promise<void> {
         label: "scripts/rules-quickstart.md",
         words: quickstartWords,
         budget: QUICKSTART_WORD_BUDGET,
+        over: true,
+      }),
+    );
+    failed++;
+  }
+
+  const chatWords = countWords(
+    await Deno.readTextFile(join(repoRoot, "scripts", "chat-instructions.md")),
+  );
+  if (chatWords > CHAT_INSTRUCTIONS_WORD_BUDGET) {
+    console.error(
+      overBudgetMessage({
+        label: "scripts/chat-instructions.md",
+        words: chatWords,
+        budget: CHAT_INSTRUCTIONS_WORD_BUDGET,
         over: true,
       }),
     );
