@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BadgeCheck, Instagram } from "lucide-react";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
@@ -15,11 +16,7 @@ import { REACH_ENTRY_CLASS, identityForClassKey } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { InstagramEmulator } from "@/components/consumer/me/demo/InstagramEmulator";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
-import {
-  INSTAGRAM_ICON_GRADIENT_CLASS,
-  SHEET_TITLE_CLASS,
-  SHEET_BODY_CLASS,
-} from "@/lib/ui-classes";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 // Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
 // Bar AND rung both come off REACH_ENTRY_CLASS, so the sentence can never
@@ -34,13 +31,8 @@ const WHY_LINES = [
   `Post Stories on your visits for even better Rewards.`,
 ] as const;
 
-export function InstagramModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function InstagramModal() {
+  const router = useRouter();
   const supabase = useBrowserSupabase();
   const { origin } = useConsumerClass();
   const connected = origin === "instagram";
@@ -48,7 +40,7 @@ export function InstagramModal({
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   // A CONNECTED GUEST IS NOT A PROSPECT (decision: Pato, 2026-08-22). The
-  // sheet used to render the pitch AND the whole DM-the-bot form under the
+  // page used to render the pitch AND the whole DM-the-bot form under the
   // card that already said "connected" — three headings all saying connect,
   // and a form for a job that is done. Connected collapses to the account
   // card; switching accounts is a real but rare need, so it gets one quiet
@@ -77,7 +69,7 @@ export function InstagramModal({
       }
       toast("Connected — Rewards unlocked.");
       setVerifying(false);
-      onClose();
+      router.back();
     } catch (e) {
       toast(errMsg(e, "Couldn’t verify — try again."));
       setVerifying(false);
@@ -85,24 +77,20 @@ export function InstagramModal({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Instagram">
-      <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
-        <div className="mb-4 flex items-center gap-3">
-          <span
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
-              INSTAGRAM_ICON_GRADIENT_CLASS,
-            )}
-          >
-            <Instagram className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Instagram</h2>
-            <p className="text-muted-foreground text-xs">
-              Connect Instagram for better Rewards.
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Instagram">
+      <div className="mb-4 flex items-center gap-3">
+        <span
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
+            INSTAGRAM_ICON_GRADIENT_CLASS,
+          )}
+        >
+          <Instagram className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          Connect Instagram for better Rewards.
+        </p>
+      </div>
 
         <div className="flex flex-col gap-3">
           <InstagramEmulator />
@@ -140,8 +128,7 @@ export function InstagramModal({
             </button>
           )}
         </div>
-      </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }
 

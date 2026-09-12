@@ -22,7 +22,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   CLASS_FLOOR,
@@ -159,29 +159,19 @@ export function HelpRungList({ classKey }: { classKey: string }) {
   );
 }
 
-export function HelpModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function HelpModal() {
   const { key: classKey } = useConsumerClass();
 
   return (
-    <LocalSheet
-      open={open}
-      onClose={onClose}
-      ariaLabel="Help — how rewards work"
-    >
-      <div className="space-y-4 px-5 pt-4 pb-8">
+    <MeScreen title="How rewards work">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
             <Info className="size-[18px]" />
           </span>
-          <h2 className="text-foreground text-lg font-bold tracking-tight">
-            How rewards work
-          </h2>
+          <p className="text-muted-foreground text-xs">
+            Instant discounts, class, and the actions that stack.
+          </p>
         </div>
 
         <div className="flex items-start gap-3">
@@ -261,6 +251,6 @@ export function HelpModal({
           Mesita · {APP_VERSION}
         </p>
       </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Bell,
   CalendarCheck,
@@ -19,25 +18,6 @@ import {
   Users,
   Wallet as WalletIcon,
 } from "lucide-react";
-import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
-import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
-import { InvitePinModal } from "@/components/consumer/me/InvitePinModal";
-import { InstagramModal } from "@/components/consumer/me/InstagramModal";
-import { ShareModal } from "@/components/consumer/me/ShareModal";
-import { ClassModal } from "@/components/consumer/me/ClassModal";
-import { SettingsModal } from "@/components/consumer/me/SettingsModal";
-import { ContactModal } from "@/components/consumer/me/ContactModal";
-import { HelpModal } from "@/components/consumer/me/HelpModal";
-import { MetricsModal } from "@/components/consumer/me/MetricsModal";
-import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
-import { CardsModal } from "@/components/consumer/me/CardsModal";
-import {
-  AlertsModal,
-  BookingsModal,
-  VisitsModal,
-} from "@/components/consumer/me/ActivityModals";
-import { PassportModal } from "@/components/consumer/me/PassportModal";
-import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -50,7 +30,6 @@ import {
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
-import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
@@ -68,53 +47,21 @@ import { PassportBar } from "./PassportBar";
 //   2              Settings · Help
 //   2              Integrations · Friends
 //
-// WHY EVERY ROW BELOW IS A PAIR. MESITA-1636 varied the widths so the column
-// would not read as undifferentiated, and paid for it with a four-up whose
-// cells were too narrow to carry a summary. The passport leads by being a
-// different OBJECT — a document, with a photo, twice the height of a cell —
-// not by the rows underneath it changing shape (MESITA-1639).
+// EVERY LIVE CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub
+// stacked history as overlays. DestTiles now Link to /me/<box>. Parked cells
+// stay Soon and inert. Number copy stays in-place on the passport page.
+// SearchResultsPanel is a different product rule and is not this surface.
 //
 // INSTAGRAM AND CLASS HAVE THREE PATHS, AND THAT IS DELIBERATE. Each is a
 // header chip (MESITA-1652), a cell in the pair below (Pato, 2026-09-08), and
-// a row inside `PassportModal`. MESITA-1650 removed the cells for exactly
-// this duplication and Pato re-drew the grid with them back in after seeing
-// the shipped screen. The redundancy is the point of the reversal, not an
-// oversight: Instagram is the only reach door in the app, and the Class
-// ladder carries the ONLY entrance for a 10-digit invite PIN (Docs › Passport
-// §C). Never make the last of those paths inert without adding another
-// first.
+// a row inside `PassportModal`. Never make the last of those paths inert
+// without adding another first.
 //
-// NOTHING ON THIS PAGE PRINTS A NUMBER any more, which is why the mount does
-// ONE EF read. The four-up carries no summary line, so the metrics call that
-// used to ride along for Visits and Bookings was fetching data nobody
-// displayed; MetricsModal fetches its own when it opens.
-//
-// ALERTS CARRIES NO COUNT for a different reason: there is no read/unread
-// tracking anywhere in this codebase (checked again here — no column, no EF,
-// no client state), so a badge would be invented rather than merely absent.
-//
-// NO CARDS CELL. `new-visit/wallet/CreditsClient` opens the SAME `CardsModal`
-// this page does, and Wallet is a cell here whose summary is already "Credits
-// and cards" — a second door is what this page keeps removing. `CardsModal`
-// stays mounted regardless: `/me?cards=` is Stripe's return URL.
-//
-// Flat page at /me; `openSettings` opens Settings on arrival for the legacy
-// /me/settings deep link.
-export function ProfileClient({
-  openSettings = false,
-  openCards = false,
-}: {
-  openSettings?: boolean;
-  /** Seeded from `/me?cards=…` — the return trip from Stripe's hosted setup
-   *  page reopens Cards on arrival. A prop, never an effect: React 19's
-   *  set-state-in-effect lint is live here. */
-  openCards?: boolean;
-}) {
-  const router = useRouter();
+// NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
+// /new-visit/wallet so Stripe's return still lands on the list.
+
+export function ProfileClient() {
   const supabase = useBrowserSupabase();
-  // The passport owns the whole identity read now (MESITA-1633) — class,
-  // Instagram and profile are its three sub-cells. All this page still needs
-  // is which plan, for the Plan cell's summary.
   const {
     plan,
     key: classKey,
@@ -122,25 +69,9 @@ export function ProfileClient({
     handle: classHandle,
   } = useConsumerClass();
 
-  // One consumer-web-get-profile read per visit; the (shell) layout already
-  // guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
-  // kept mounted so its exit animation plays. The legacy /me/settings deep link
-  // opens the Settings box — seeded from the prop so there is no
-  // setState-in-effect.
-  const [shareOpen, setShareOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [classOpen, setClassOpen] = useState(false);
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [invitePinOpen, setInvitePinOpen] = useState(false);
-
-  // The two axis cells state their own values. Prefer the CONTEXT handle so a
-  // fresh Instagram connect wins over a stale profile row — the same
-  // precedence the passport card used before the axes moved down here.
   const classLabel = CLASSES.find((c) => c.id === classKey)?.label ?? "Bronze";
   const igHandle = classHandle ?? profile?.instagram_handle ?? null;
   const igSummary =
@@ -149,29 +80,11 @@ export function ProfileClient({
         ? `@${igHandle}`
         : "Connected"
       : "Connect it";
-  const [settingsOpen, setSettingsOpen] = useState(openSettings);
-  const [contactOpen, setContactOpen] = useState(false);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [cardsOpen, setCardsOpen] = useState(openCards);
-  const [planOpen, setPlanOpen] = useState(false);
-  const [passportOpen, setPassportOpen] = useState(false);
-  // Activity's three sections, one sheet each (MESITA-1626) — the `/inbox`
-  // container they used to share is gone.
-  const [alertsOpen, setAlertsOpen] = useState(false);
-  const [visitsOpen, setVisitsOpen] = useState(false);
-  const [bookingsOpen, setBookingsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        // ONE EF read on mount. `apiFetchConsumerMetrics` used to ride along
-        // for the Visits and Bookings counts; the four-up carries no summary
-        // line (MESITA-1636), so nothing on this page prints a number any
-        // more and the second round trip was pure waste. MetricsModal fetches
-        // its own when it opens, which is the only place those numbers show.
         const { consumer } = await apiFetchConsumerProfile(supabase);
         if (cancelled) return;
         setProfile(consumer);
@@ -186,10 +99,6 @@ export function ProfileClient({
     };
   }, [supabase]);
 
-  // Post-checkout / Instagram-verify landing. The subscribe + verify flows
-  // redirect here with a state query; confirm it with a toast (the full page
-  // load already re-seeded the real membership upstream). Read straight off
-  // the URL so the page carries no prerender-bailout requirement.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const state = params.get("subscription");
@@ -201,191 +110,97 @@ export function ProfileClient({
     if (params.get("instagram") === "success") {
       toast.success("Connected — Rewards unlocked. Your class updated.");
     }
+    const invite = params.get("invite");
+    if (invite) {
+      toast.success(`You're ${invite} now.`);
+    }
   }, []);
 
-  // Instagram connect is triggered from two boxes (Instagram, Class) — close
-  // the Class sheet first so two LocalSheets never stack at z-[130].
-  function openVerify() {
-    setClassOpen(false);
-    setVerifyOpen(true);
-  }
-
-  // The long-form summaries that lived here are gone with the rows that read
-  // them (MESITA-1628). A grid cell has ~90px of text width at 320px, so the
-  // page needs SHORT copy, not a different formatting of the long copy — and
-  // the sheets each compute their own from the same context. `formatCurrency`
-  // and `formatPhoneDisplay` left with them.
-
-  // GRID COPY IS ≤3 WORDS (MESITA-1628). A 2-up cell is ~167px at 375px and
-  // the glyph gutter takes 38px of it; the long-form summaries above are for
-  // sheets, which have the whole width to spend.
   const planTile =
     plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
-  // A primary door to the plan sheet (MESITA-1619; place detail's Premium
-  // row opened a second one, MESITA-1620). Instrumented because the Passport
-  // tile it replaces carried no event at all: without this the change is
-  // unmeasurable in both directions, and "conversion moved" would be
-  // unattributable to the surface that moved it. `plan_open` is paired by
-  // hand into consumer-web-track-event's allowlist — nothing enforces that at
-  // compile time, so `analytics-events-paired.test.ts` does. `source` tells
-  // the two doors apart in the one event they share.
-  function openPlan() {
-    trackEvent(supabase, "plan_open", { source: "me" });
-    setPlanOpen(true);
-  }
 
   return (
     <div className="flex h-full flex-col">
-      {/* OUTSIDE THE SCROLLER (Pato, MESITA-1652). A sibling above it, so the
-          bar is fixed by flex rather than by `sticky top-0` — full width for
-          free, and no fight with the scroller's own px-4 gutter or z-index.
-          It carries the two doors that used to be cells; see PassportBar. */}
       <PassportBar
         profile={profile}
         loading={loading}
         classLabel={classLabel}
         instagramSummary={igSummary}
-        onOpenClass={() => setClassOpen(true)}
-        onOpenInstagram={() => setVerifyOpen(true)}
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648. That
-              issue put Passport first because it "sits directly under the
-              card, so naming it first continues what the card just said". The
-              header now states the identity in full — photo, name, class,
-              Instagram, phone — so the first cell is the one that EDITS it,
-              and Passport is the document you open to read it back.
-
-              PASSPORT NO LONGER SAYS "Class and Instagram". Both are cells in
-              the row directly below; naming them here would print the same
-              two words twice inside one screen. What is left in the sheet and
-              nowhere else is just the number (MESITA-1688 dropped the privacy
-              switch this comment used to also name — profile_public defaults
-              true for every account and Settings owns the toggle
-              exclusively, so restating it here or in the sheet was the same
-              two-surfaces-disagree risk this page otherwise guards against). */}
           <DestGrid>
             <DestTile
               Icon={UserRound}
               title="Profile"
               summary="Name, photo, birthday"
-              onClick={() => profile && setEditOpen(true)}
+              href={CONSUMER_ROUTES.mePages.profile}
             />
             <DestTile
               Icon={IdCard}
               title="Passport"
               summary="Your member number"
-              // Mirrors the Profile tile's own guard right above (MESITA-1688).
-              // Without it, a tap between mount and the profile fetch
-              // resolving opens the sheet on profile: null — graceful
-              // fallbacks exist ("Mesita member", "—") but it's a flash of
-              // wrong-looking content, not a real loading state.
-              onClick={() => profile && setPassportOpen(true)}
+              href={CONSUMER_ROUTES.mePages.passport}
             />
           </DestGrid>
 
-          {/* THE AXES ARE CELLS AGAIN (Pato, 2026-09-08). They were rows in
-              the passport sheet (4 taps to an invite PIN), then cells here
-              (MESITA-1650), then header chips only (MESITA-1652). The chips
-              STAY — 1 tap from anywhere, because the bar never scrolls away —
-              so this adds a path rather than moving one, and nothing can be
-              stranded by it.
-
-              EACH CELL STATES ITS OWN VALUE, not a static label: the pair
-              reads as two facts you can act on, which is what earns it a row
-              beside Wallet and Plan rather than reading as two more doors. */}
           <DestGrid>
             <DestTile
               Icon={Instagram}
               title="Instagram"
               summary={igSummary}
-              onClick={() => setVerifyOpen(true)}
+              href={CONSUMER_ROUTES.mePages.instagram}
             />
             <DestTile
               Icon={Medal}
               title="Class"
               summary={classLabel}
-              onClick={() => setClassOpen(true)}
+              href={CONSUMER_ROUTES.mePages.class}
             />
           </DestGrid>
 
-          {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
-              drawer, all the same `DestTile`. The header bell, the count band
-              and the "Everything else" heading are gone: the page used to
-              stack four cell shapes and three fills, and two of those were
-              2-up white cards that looked identical while belonging to
-              different groups.
-
-              A COUNT IS A SUMMARY LINE NOW, not its own material. Visits and
-              Bookings read "12 visits" / "None yet" where every other cell
-              reads its own short summary, so the band had nothing left to be.
-
-              ALERTS IS A CELL AND THERE IS NO BELL. Having both was two doors
-              to one sheet, the drift Wallet, Plan and Passport each cost us
-              to remove. It still carries no unread count — none exists in
-              this codebase — so it says what it is, not how many. */}
           <DestGrid>
             <DestTile
               Icon={WalletIcon}
               title="Wallet"
               summary="Credits and cards"
-              onClick={() => router.push(CONSUMER_ROUTES.newVisit.wallet)}
+              href={CONSUMER_ROUTES.newVisit.wallet}
             />
             <DestTile
               Icon={PREMIUM_PLAN_ICON}
               title="Plan"
               summary={loading ? "…" : planTile}
-              onClick={openPlan}
+              href={CONSUMER_ROUTES.mePages.plan}
             />
           </DestGrid>
 
-          {/* Activity, TWO PAIRS AND FULL SIZE (decision: Pato, MESITA-1639).
-              It was one four-across `compact` row, and four cells at 375px are
-              80px wide — no room for a second line, so these were the only
-              four cells on Me that never said what they hold. The row a guest
-              most needs to read was the row that explained nothing, and it
-              read as a different material from everything around it. Two
-              ordinary pairs cost one row of height and buy four summaries. */}
           <DestGrid>
             <DestTile
               Icon={Bell}
               title="Notifications"
               summary="Visits and bookings"
-              onClick={() => setAlertsOpen(true)}
+              href={CONSUMER_ROUTES.mePages.notifications}
             />
             <DestTile
               Icon={Footprints}
               title="Visits"
               summary="Tickets and QRs"
-              onClick={() => setVisitsOpen(true)}
+              href={CONSUMER_ROUTES.mePages.visits}
             />
           </DestGrid>
 
           <DestGrid>
-            {/* Parked, so the Soon pill takes the summary slot. */}
             <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
-            {/* THE RENAME STOPS AT THE LABEL (Pato, MESITA-1640), the rule
-                CLAUDE.md already states for Pay. `bookingsOpen`,
-                `BookingsModal` and /reservation/[id] are untouched. */}
             <DestTile
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
-              onClick={() => setBookingsOpen(true)}
+              href={CONSUMER_ROUTES.mePages.reservations}
             />
           </DestGrid>
 
           <DestGrid>
-            {/* PARKED. Share's sheet exists and stays wired so un-parking is
-                a `soon` removal alone; Gift has no sheet at all yet. */}
-            <DestTile
-              Icon={Share2}
-              title="Share"
-              summary=""
-              soon
-              onClick={() => setShareOpen(true)}
-            />
+            <DestTile Icon={Share2} title="Share" summary="" soon />
             <DestTile Icon={Gift} title="Gift" summary="" soon />
           </DestGrid>
 
@@ -394,126 +209,22 @@ export function ProfileClient({
               Icon={SettingsIcon}
               title="Settings"
               summary="Privacy, language"
-              onClick={() => setSettingsOpen(true)}
+              href={CONSUMER_ROUTES.mePages.settings}
             />
             <DestTile
               Icon={CircleHelp}
               title="Help"
               summary="How rewards work"
-              onClick={() => setHelpOpen(true)}
+              href={CONSUMER_ROUTES.mePages.help}
             />
           </DestGrid>
 
-          {/* Both parked, so this is a dead ROW (MESITA-1641), and it sits
-              BELOW Settings and Help (MESITA-1642). That was the argument for
-              the ordering all along — the two most-reached cells in the tail
-              must not be pushed under a pair that opens nothing — and for one
-              release this row was above them anyway. */}
           <DestGrid>
-            <DestTile
-              Icon={Bot}
-              title="Integrations"
-              summary=""
-              soon
-              onClick={() => setAiOpen(true)}
-            />
-            {/* No friends surface exists — the nearest thing is a Contacts
-                toggle in Settings ("Find friends already on Mesita"). Visible
-                and inert beats a cell that opens nothing. */}
+            <DestTile Icon={Bot} title="Integrations" summary="" soon />
             <DestTile Icon={Users} title="Friends" summary="" soon />
           </DestGrid>
         </div>
       </div>
-
-      {/* All modals kept mounted; LocalSheet plays the exit animation before
-          going inert. */}
-      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
-      <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
-      <AiConnectModal open={aiOpen} onClose={() => setAiOpen(false)} />
-      <ClassModal
-        open={classOpen}
-        onClose={() => setClassOpen(false)}
-        onConnectInstagram={openVerify}
-        // Close the ladder before opening the PIN sheet. Local sheets are one
-        // layer (z-130 in the overlay standard), so stacking two would put a
-        // scrim over the thing the guest is trying to type into.
-        onRedeemInvite={() => {
-          setClassOpen(false);
-          setInvitePinOpen(true);
-        }}
-      />
-      <InstagramModal open={verifyOpen} onClose={() => setVerifyOpen(false)} />
-      {/* Reached ONLY through the Class sheet's "Join with Invitation"
-          (decision: Pato, 2026-08-22). The standalone Invitations row this
-          modal once had was cut: the ladder now names the invitation twin on
-          every rung, so a separate row restated a door the Class surface
-          already owns. */}
-      <InvitePinModal
-        open={invitePinOpen}
-        onClose={() => setInvitePinOpen(false)}
-      />
-      {profile && (
-        <EditProfileSheet
-          profile={profile}
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          onSaved={(updated) => setProfile(updated)}
-        />
-      )}
-      {/* Settings absorbed Metrics, Contact and Sign out (MESITA-1634). Each
-          hands off to a sheet at the SAME z-layer, so Settings closes first —
-          two LocalSheets must never stack. */}
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onDeleteAccount={() => setDeleteOpen(true)}
-        onOpenMetrics={() => setMetricsOpen(true)}
-        onOpenContact={() => setContactOpen(true)}
-        profile={profile}
-        onProfileChange={setProfile}
-      />
-      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
-      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <MetricsModal open={metricsOpen} onClose={() => setMetricsOpen(false)} />
-      <DeleteAccountSheet
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-      />
-      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
-      {/* One sheet per box. `userId` is the consumers row id — both bodies
-          treat it as an on/off flag and read the session inside their EF, so
-          the sheets render an honest zero state until the profile lands
-          rather than firing a request they cannot attribute. */}
-      <AlertsModal
-        open={alertsOpen}
-        onClose={() => setAlertsOpen(false)}
-        userId={profile?.id ?? ""}
-      />
-      <VisitsModal
-        open={visitsOpen}
-        onClose={() => setVisitsOpen(false)}
-        userId={profile?.id ?? ""}
-      />
-      <BookingsModal
-        open={bookingsOpen}
-        onClose={() => setBookingsOpen(false)}
-      />
-      <PassportModal
-        open={passportOpen}
-        onClose={() => setPassportOpen(false)}
-        profile={profile}
-        // The two doors the card gave up (MESITA-1646). Instagram is the only
-        // reach door and the Class ladder is the only entrance for an invite
-        // PIN, so these are not conveniences — without them those surfaces
-        // are unreachable. Profile is NOT here: it is a grid cell now, and a
-        // second door to a surface one tap away is MESITA-1609's rule.
-        //
-        // No onOpenSettings any more (MESITA-1688): the sheet's Public/
-        // Private box it opened Settings from is gone, and nothing else on
-        // this sheet needs a door to Settings.
-        onOpenInstagram={() => setVerifyOpen(true)}
-        onOpenClass={() => setClassOpen(true)}
-      />
     </div>
   );
 }

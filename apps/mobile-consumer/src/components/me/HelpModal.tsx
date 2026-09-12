@@ -63,16 +63,18 @@ function ExplainRow({
 export function HelpModal({
   visible,
   onClose,
+  asRoute = false,
 }: {
   visible: boolean;
   onClose: () => void;
+  asRoute?: boolean;
 }) {
   const { consumerClass } = useAuth();
   const key = consumerClass?.class ?? 'standard';
   const mine = segmentKeyForClass(key);
 
   return (
-    <FullScreenSheet visible={visible} onClose={onClose} title="Help"
+    <FullScreenSheet visible={visible} onClose={onClose} asRoute={asRoute} title="Help"
       subtitle="How rewards work">
       <ScrollView
         className="flex-1"

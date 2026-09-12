@@ -508,22 +508,20 @@ describe("T5b — Home's mode rail", () => {
 //
 // The same class of bug still exists one layer over — a box wired to the wrong
 // sheet, or a sheet dropped in a refactor — so the pin moves rather than dies.
-describe("T6 — Activity's three sections are sheets on Me", () => {
+describe("T6 — Activity's three sections are pages on Me", () => {
   const ME = readFileSync(
     join(SHELL, "me", "ProfileClient.tsx"),
     "utf8",
   );
 
-  it("renders one sheet per box: Alerts · Visits · Bookings", () => {
-    const rendered = [
-      ...ME.matchAll(/<(AlertsModal|VisitsModal|BookingsModal)\b/g),
-    ].map((m) => m[1]);
-    expect(rendered).toEqual(["AlertsModal", "VisitsModal", "BookingsModal"]);
+  it("routes each box to its own /me page: notifications · visits · reservations", () => {
+    expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
+    expect(ME).toContain("CONSUMER_ROUTES.mePages.visits");
+    expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
+    expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
   it("no box routes into a container any more", () => {
-    // The three boxes used to `router.push` into /inbox/*. If one comes back,
-    // the guest leaves Me for a page whose section nav no longer exists.
     expect(ME).not.toContain("CONSUMER_ROUTES.inbox");
   });
 
@@ -649,12 +647,9 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(src).not.toContain("grid-cols-4");
   });
 
-  it("no Cards cell — Wallet already opens that exact sheet", () => {
-    // `new-visit/wallet/CreditsClient` imports the SAME CardsModal, and
-    // Wallet is a cell here whose summary is already "Credits and cards".
-    // The modal STAYS mounted on Me though: `/me?cards=` is Stripe's return.
+  it("no Cards cell — Wallet already lists cards inline", () => {
     expect(gridTitles(ME)).not.toContain("Cards");
-    expect(ME).toContain("<CardsModal");
+    expect(ME).not.toContain("<CardsModal");
   });
 
   it("the More drawer is gone from the codebase", () => {
@@ -765,7 +760,7 @@ describe("T7 — every former Wallet url still resolves after the move", () => {
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
     // container; Bookings is a sheet on Me now, so Me is where they go.
     ["/saved", "/me"],
-    ["/saved/reservations", "/me"],
+    ["/saved/reservations", "/me/reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])("keeps the Saved-era redirect %s → %s (MESITA-1585)", async (source, destination) => {

@@ -23,8 +23,10 @@ const ELEVATED_PERKS = [
 
 export function WaysToClimb({
   onConnectInstagram,
+  onRedeemInvite,
 }: {
   onConnectInstagram: () => void;
+  onRedeemInvite?: () => void;
 }) {
   const premium = CLASSES.find((c) => c.id === 'premium')!;
   const influencer = CLASSES.find((c) => c.id === 'influencer')!;
@@ -93,12 +95,14 @@ export function WaysToClimb({
       reached: classKey === 'aura',
       reachedLabel: 'Active',
       action: {
-        label: 'Request invite',
+        label: 'Join with Invitation',
         secondary: true,
-        onPress: () =>
-          toast(
-            'Invitation requests open soon — Mesita curates Aura personally.',
-          ),
+        onPress:
+          onRedeemInvite ??
+          (() =>
+            toast(
+              'Invitation requests open soon — Mesita curates Aura personally.',
+            )),
       },
     },
   ];

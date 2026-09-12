@@ -91,7 +91,7 @@ const codeOnly = (source: string) =>
 describe("the Passport is the page HEADER, and it is the door", () => {
   const bar = read(BAR);
 
-  it("carries BOTH doors, as real buttons", () => {
+  it("carries BOTH doors, as real links", () => {
     // MESITA-1652 REVERSES MESITA-1646's "no tap target of any kind". The
     // gate asked this question directly, because Instagram is the only reach
     // door in the app and the Class ladder carries "Join with Invitation" —
@@ -99,10 +99,11 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     // PIN. A display-only header plus deleted cells would have stranded both
     // silently. The bar is fixed, so these are 1 tap from anywhere on the
     // page; the cells they replace had to be scrolled to.
-    expect([...bar.matchAll(/<button\b/g)]).toHaveLength(2);
-    for (const door of ["onOpenInstagram", "onOpenClass"]) {
-      expect(bar).toContain(door);
-    }
+    // MESITA-1789: the chips navigate to /me/class and /me/instagram, not
+    // stacked sheets.
+    expect([...bar.matchAll(/<Link\b/g)]).toHaveLength(2);
+    expect(bar).toContain("CONSUMER_ROUTES.mePages.class");
+    expect(bar).toContain("CONSUMER_ROUTES.mePages.instagram");
     // ...and still no plan door. NO PLAN is the older law and it survives.
     for (const prop of ["onOpenPassport", "onOpenProfile", "onOpenPlan"]) {
       expect(bar).not.toContain(prop);
@@ -119,7 +120,10 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(bar).not.toMatch(/coming soon/i);
     expect(codeOnly(bar)).not.toMatch(/\bsoon\b/i);
     // Two live doors, and only two: the phone and the name are display.
-    expect([...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)]).toHaveLength(2);
+    // MESITA-1789: doors are Links to /me/class and /me/instagram, not
+    // onClick handlers that opened sheets.
+    expect([...bar.matchAll(/<Link\b/g)]).toHaveLength(2);
+    expect(codeOnly(bar)).not.toMatch(/onClick=\{onOpen/);
   });
 
   it("the phone is DISPLAY, and formatted by the shared helper", () => {
@@ -223,15 +227,12 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     // ROW and does not survive the 2x2 — so the pin moves rather than being
     // deleted. Order stays pinned because it has now been called three times
     // on this header and nothing else would catch a silent reflow.
-    const handlers = [...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)].map(
+    const hrefs = [...bar.matchAll(/href=\{CONSUMER_ROUTES\.mePages\.(\w+)\}/g)].map(
       (m) => m[1],
     );
-    expect(handlers).toEqual(["onOpenClass", "onOpenInstagram"]);
-    // ...and the name leads, ahead of both live chips. Scoped to the GRID:
-    // `onOpenClass` also appears in the prop list far above the render, so a
-    // whole-file indexOf compares against the declaration, not the chip.
+    expect(hrefs).toEqual(["class", "instagram"]);
     const grid = bar.slice(bar.indexOf('className="grid w-full grid-cols-2'));
-    expect(grid.indexOf("{name}")).toBeLessThan(grid.indexOf("onOpenClass"));
+    expect(grid.indexOf("{name}")).toBeLessThan(grid.indexOf("mePages.class"));
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {
@@ -326,19 +327,20 @@ describe("the Passport sheet is the same document as the bar", () => {
   });
 
   it("carries the two doors the card gave up, and only those two", () => {
-    // The bar now carries these two as chips (MESITA-1652), so the sheet is
+    // The bar now carries these two as chips (MESITA-1652), so the page is
     // the SECOND path, exactly as it was while the cells existed. Keeping it
     // matters: Instagram is the only reach door and the Class ladder holds
     // "Join with Invitation", Docs › Passport §C's only entrance for a
     // 10-digit PIN. Two paths beat one for the doors that cannot be lost.
-    for (const door of ["onOpenInstagram", "onOpenClass"]) {
-      expect(sheet).toContain(door);
-    }
+    expect(sheet).toContain("CONSUMER_ROUTES.mePages.class");
+    expect(sheet).toContain("CONSUMER_ROUTES.mePages.instagram");
     // Profile is NOT a door here — it is a cell on Me, one tap away, and a
     // second door to a promoted surface is MESITA-1609's removed-not-demoted.
     expect(sheet).not.toContain("onOpenProfile");
-    // Each hands off rather than stacking — one LocalSheet layer (z-130).
-    expect(sheet).toContain("function handOff");
+    expect(sheet).not.toContain("CONSUMER_ROUTES.mePages.profile");
+    // Destinations are routes, never stacked sheets (MESITA-1789).
+    expect(sheet).not.toContain("function handOff");
+    expect(codeOnly(sheet)).not.toContain("LocalSheet");
   });
 });
 
@@ -351,22 +353,15 @@ describe("the plan keeps one door, and only one", () => {
 
   it("Me carries the Plan box itself", () => {
     expect(client).toContain('title="Plan"');
-    expect(client).toContain("onClick={openPlan}");
-    expect(client).toMatch(/<PlanModal\b/);
+    expect(client).toContain("CONSUMER_ROUTES.mePages.plan");
+    expect(client).not.toMatch(/<PlanModal\b/);
   });
 
   it("nothing carries a second door to the plan or the passport", () => {
-    // Wallet's precedent (MESITA-1609): a box promoted to primary loses its
-    // More row, "removed, not demoted", because a second door is redundant
-    // with the one the promotion exists to shorten. That rule outlived the
-    // drawer itself — More held only Gift and Share by MESITA-1635 and was
-    // deleted, so the invariant is now simply ONE door each, page-wide.
     expect(client).not.toContain("MoreModal");
-    expect([...client.matchAll(/onClick=\{openPlan\}/g)]).toHaveLength(1);
-    // The bar carries the two AXIS doors (MESITA-1652) and no others; the
-    // Passport CELL is still the only way into the document itself.
+    expect([...client.matchAll(/mePages\.plan/g)]).toHaveLength(1);
     expect(client).not.toContain("onOpenPassport");
-    expect([...client.matchAll(/setPassportOpen\(true\)/g)]).toHaveLength(1);
+    expect([...client.matchAll(/mePages\.passport/g)]).toHaveLength(1);
   });
 });
 

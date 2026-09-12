@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // ─── Modular boxes ─────────────────────────────────────────────────────────
@@ -175,6 +176,7 @@ export function DestTile({
   Icon,
   title,
   summary,
+  href,
   onClick,
   disabled,
   soon = false,
@@ -184,6 +186,8 @@ export function DestTile({
   title: string;
   /** THREE WORDS OR FEWER — see the note above. */
   summary: string;
+  /** Live cells are routes (MESITA-1789). Parked cells omit this. */
+  href?: string;
   onClick?: () => void;
   disabled?: boolean;
   /** Parked: visible, inert, honest. Same contract the band used to carry. */
@@ -193,19 +197,13 @@ export function DestTile({
   full?: boolean;
 }) {
   const inert = disabled || soon;
-  return (
-    <button
-      type="button"
-      onClick={soon ? undefined : onClick}
-      disabled={inert}
-      aria-disabled={inert}
-      title={soon ? "Coming soon" : undefined}
-      className={cn(
-        "border-border bg-card shadow-rest relative flex min-h-[92px] w-full flex-col justify-between overflow-hidden rounded-2xl border p-3.5 text-left transition",
-        full && "col-span-2",
-        inert ? "opacity-60" : "hover:bg-muted/40 active:scale-[0.98]",
-      )}
-    >
+  const className = cn(
+    "border-border bg-card shadow-rest relative flex min-h-[92px] w-full flex-col justify-between overflow-hidden rounded-2xl border p-3.5 text-left transition",
+    full && "col-span-2",
+    inert ? "opacity-60" : "hover:bg-muted/40 active:scale-[0.98]",
+  );
+  const inner = (
+    <>
       <span className="min-w-0">
         {/* The gutter is reserved on the SUMMARY only. The corner glyph is
             `bottom-2 h-10`, so in a 92px cell it occupies y 44-84 while the
@@ -233,6 +231,25 @@ export function DestTile({
         className="text-foreground pointer-events-none absolute right-2.5 bottom-2 h-10 w-10 opacity-[0.22]"
         aria-hidden
       />
-    </button>
+    </>
+  );
+  if (inert || !href) {
+    return (
+      <button
+        type="button"
+        onClick={soon ? undefined : onClick}
+        disabled={inert}
+        aria-disabled={inert}
+        title={soon ? "Coming soon" : undefined}
+        className={className}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {inner}
+    </Link>
   );
 }

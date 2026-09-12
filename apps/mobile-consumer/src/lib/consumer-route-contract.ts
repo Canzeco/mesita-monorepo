@@ -150,17 +150,29 @@ export const CONSUMER_ROUTES = {
   // This value is the correct, working one.
   inboxDefault: '/(tabs)/inbox',
   me: '/(tabs)/me',
+  // Every live DestTile on /me (MESITA-1789) — full pages, not sheets.
+  // Expo group is stripped in the public URL, so these match web's /me/<box>.
+  mePages: {
+    passport: '/(tabs)/me/passport',
+    profile: '/(tabs)/me/profile',
+    class: '/(tabs)/me/class',
+    classInvite: '/(tabs)/me/class/invite',
+    instagram: '/(tabs)/me/instagram',
+    plan: '/(tabs)/me/plan',
+    settings: '/(tabs)/me/settings',
+    settingsMetrics: '/(tabs)/me/settings/metrics',
+    settingsContact: '/(tabs)/me/settings/contact',
+    help: '/(tabs)/me/help',
+    notifications: '/(tabs)/me/notifications',
+    visits: '/(tabs)/me/visits',
+    reservations: '/(tabs)/me/reservations',
+  },
   // Premium checkout deliberately has NO mobile route (Apple review — the
   // sole sanctioned web/mobile divergence): subscribing happens on web, at
-  // https://consumer.mesita.ai/me — the Plan box opens the checkout sheet.
-  // /subscribe/premium was that URL until MESITA-1129 and still 308s to /me,
-  // so an older build's link-out keeps working; new links should use /me.
+  // https://consumer.mesita.ai/me/plan. Premium status still renders here.
   legacy: {
     profile: '/profile',
     invite: '/invite',
-    meClass: '/me/class',
-    meSettings: '/me/settings',
-    mePlan: '/me/plan',
     notifications: '/notifications',
     inboxMine: '/inbox/my-activity',
     inboxGlobal: '/inbox/global-activity',

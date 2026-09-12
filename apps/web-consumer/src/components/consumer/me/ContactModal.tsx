@@ -1,8 +1,7 @@
 "use client";
 
 import { HelpCircle, Instagram, Mail } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   MESITA_INSTAGRAM_HANDLE,
   MESITA_INSTAGRAM_URL,
@@ -17,27 +16,17 @@ import {
 // Contact sheet opened from the Me page's Contact box — the direct lines to
 // Mesita: support email, help, and Instagram DMs.
 
-export function ContactModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function ContactModal() {
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Contact Mesita">
-      <div className={SHEET_BODY_CLASS}>
-        <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
-            <Mail className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Contact us</h2>
-            <p className="text-muted-foreground text-xs">
-              We usually reply within a day
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Contact us">
+      <div className="flex items-center gap-3">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
+          <Mail className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          We usually reply within a day
+        </p>
+      </div>
 
         <div className="mt-5">
           <SettingsGroup>
@@ -91,7 +80,6 @@ export function ContactModal({
             </a>
           </SettingsGroup>
         </div>
-      </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }

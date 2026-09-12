@@ -224,26 +224,33 @@ export const CONSUMER_ROUTES = {
   giftClaim: {
     prefix: "/gift/",
   },
-  // ACTIVITY IS NOT A SURFACE ANY MORE (MESITA-1626). MESITA-1609 took it off
-  // the bottom bar and left a container with no tab, reachable only from three
-  // Me boxes that each deep-linked straight past its own section nav — so the
-  // first thing the guest saw after choosing a section was a row asking them
-  // to choose again. Its three sections are sheets on Me now, and a sheet has
-  // no URL, so there are no keys here to point at: every /inbox address 308s
-  // to /me in next.config.ts.
-  //
-  // The CONCEPT survives unchanged — Alerts · Visits · Bookings, in that
-  // order, Alerts leading because it is the only one that can carry something
-  // you have not seen. What died is the routing, not the idea. If Activity
-  // ever needs linkable URLs again (a push notification deep-linking to one
-  // alert, say), it comes back as @modal-intercepted routes off /me rather
-  // than as a container of its own.
-  // The Me tab is a single flat page — identity hero + modular boxes that open
-  // as modals — everything except Wallet, which routes out to Pay's own
-  // Wallet section rather than growing a second copy of it (MESITA-1626).
-  // There are NO nested tab routes for /me itself; the surface stays flat. Legacy /me/class, /me/settings and /me/plan redirect here.
-  // Promoting those to real @modal-intercepted routes is the next stage.
+  // ACTIVITY IS NOT A CONTAINER ANY MORE (MESITA-1626). MESITA-1609 took it
+  // off the bottom bar; MESITA-1789 gave each Me box its own full page so a
+  // tap is a route, not a LocalSheet. /inbox/* still 308s onto Me (the hub);
+  // the three live Activity cells deep-link to mePages.notifications / visits
+  // / reservations. They are NOT @modal intercepts — same reversal Wallet
+  // already made for Buy/Gift/Redeem (isModalContractPath stays place +
+  // reservation detail only).
   me: "/me",
+  // Every live DestTile on /me, and every door inside Passport / Class /
+  // Settings. Hub stays `/me`. These are real pages under (shell)/me/<box>.
+  // /me/class, /me/settings and /me/plan used to 308 onto the hub (MESITA-188);
+  // they are canonical again, not legacy.
+  mePages: {
+    passport: "/me/passport",
+    profile: "/me/profile",
+    class: "/me/class",
+    classInvite: "/me/class/invite",
+    instagram: "/me/instagram",
+    plan: "/me/plan",
+    settings: "/me/settings",
+    settingsMetrics: "/me/settings/metrics",
+    settingsContact: "/me/settings/contact",
+    help: "/me/help",
+    notifications: "/me/notifications",
+    visits: "/me/visits",
+    reservations: "/me/reservations",
+  },
   legacy: {
     profile: "/profile",
     // Premium checkout was a page until the plan became a sheet on Me
@@ -304,9 +311,6 @@ export const CONSUMER_ROUTES = {
     // the word "ticket" in the consumer URL space.
     rewards: "/rewards",
     rewardsTicketPrefix: "/rewards/ticket/",
-    meClass: "/me/class",
-    meSettings: "/me/settings",
-    mePlan: "/me/plan",
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",
     inboxGlobal: "/inbox/global-activity",
