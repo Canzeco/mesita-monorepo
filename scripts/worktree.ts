@@ -1090,6 +1090,17 @@ export function originTable(claims: OriginClaim[], now: Date, leaseMs: number = 
   return lines.join("\n");
 }
 
+/** The §0 stamp the quickstart carries (Rules §0, Mirror line); boot prints it so a session compares it with Rules in one read. */
+export async function quickstartStamp(main: string): Promise<string | null> {
+  try {
+    const text = await Deno.readTextFile(join(main, "scripts", "rules-quickstart.md"));
+    const m = text.match(/`stamp: v(\d+) (\d{4}-\d{2}-\d{2})`/);
+    return m ? `v${m[1]} ${m[2]}` : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The claim line a workspace carries, recomposed from its config keys so boot can reprint it for the ledger. */
 export async function claimLineOf(env: Env, main: string, row: Row): Promise<string | null> {
   const issue = await worktreeConfig(env, row.path, "mesita.issue");
@@ -1123,6 +1134,7 @@ export async function boot(env: Env): Promise<string[]> {
     if (issue) lines.push(`where: cloud clone on ${clone.branch ?? "(detached)"} claimed by ${issue}${session ? ` (session ${session})` : ""}: resume it`);
     else lines.push(`where: cloud clone on ${clone.branch ?? "(detached)"} with no claim: the first code issue claims it with deno task worktree add MESITA-<id> <slug> --adopt . (never a nested worktree); non-code work claims nothing`);
     lines.push(`host: ${env.host} (this container; the claim line's host=)`);
+    lines.push(`rules: quickstart stamp ${await quickstartStamp(main) ?? "MISSING"} — compare with Rules §0's Mirror line; unequal is drift`);
     lines.push(`gate: ${await installHook(env, main)}`);
     lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
     lines.push("fleet: none here (a cloud clone is one workspace; sweep and repair-lobby run on the fleet's host)");
@@ -1147,6 +1159,7 @@ export async function boot(env: Env): Promise<string[]> {
   else if (hereIssue) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
   else lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
+  lines.push(`rules: quickstart stamp ${await quickstartStamp(main) ?? "MISSING"} — compare with Rules §0's Mirror line; unequal is drift`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
   lines.push(`gate: ${await installHook(env, main)}`);
   lines.push(`preflight: ${(await preflight(env, cwd)).line}`);

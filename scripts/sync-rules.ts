@@ -98,6 +98,26 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+// ── The §0 stamp (Rules §0, Mirror line) ────────────────────────────────────
+// Rules §0 and the quickstart are mirrors by hand — no Notion token exists — and paraphrases,
+// so no diff can compare them. Both carry `stamp: v<N> <date>`: equal stamps mean the copy is
+// current, unequal stamps are drift, and every session that fetches Rules sees both. A
+// quickstart with no stamp, or with two, fails the check.
+export const RULES_STAMP_RE = /`stamp: v(\d+) (\d{4}-\d{2}-\d{2})`/g;
+
+export function findStamp(text: string): { version: number; date: string; raw: string } | null {
+  const all = [...text.matchAll(RULES_STAMP_RE)];
+  if (all.length !== 1) return null;
+  const [raw, version, date] = all[0];
+  return { version: Number(version), date, raw };
+}
+
+export function missingStampMessage(): string {
+  return "NO STAMP: scripts/rules-quickstart.md carries no single `stamp: v<N> <date>` — " +
+    "Rules §0's Mirror line and the quickstart carry the same stamp so drift is visible without a Notion token — " +
+    "copy the stamp from Rules §0 (bump it there first when §0 changed) and rerun (Rules §0).";
+}
+
 // ── Markdown allowlist (Rules §0) ───────────────────────────────────────────
 // The repo holds NO knowledge markdown: knowledge lives in Notion (the Docs
 // tree), task/commit context lives in Linear, code explanation lives in code
@@ -327,6 +347,11 @@ async function main(): Promise<void> {
   const block = `${START}\n${canonical}\n${END}`;
 
   let updated = 0, drifted = 0, failed = 0;
+
+  if (!findStamp(canonical)) {
+    console.error(missingStampMessage());
+    failed++;
+  }
 
   async function reconcile(path: string, next: string, label: string): Promise<void> {
     let current: string | null;
