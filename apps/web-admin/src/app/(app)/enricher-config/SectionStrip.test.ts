@@ -20,11 +20,17 @@ describe("Intake section strip is wayfinding, not tabs", () => {
     expect(strip).not.toContain("fixed inset-x-0 top-0");
   });
 
-  it("does not treat translate-y-full as enough to hide the bar", () => {
-    // After the sticky+h-0 move, -translate-y-full alone parks the bar in
-    // the PageHeader margin and it still reads as tabs (MESITA-1786).
-    expect(strip).toMatch(/shown\s*\n\s*\? "translate-y-0"/);
-    expect(strip).toContain('pointer-events-none -translate-y-full opacity-0');
+  it("hides by fading in place, never translating into the title margin", () => {
+    // Tailwind v4 `translate-y-*` sets CSS `translate`, so a
+    // `transition-[transform,opacity]` hide jumped into the PageHeader
+    // margin then faded (MESITA-1791).
+    expect(strip).toContain("transition-opacity");
+    expect(strip).toContain('(shown ? "" : "pointer-events-none opacity-0")');
+    const hideClass = strip.match(
+      /shown \? "" : "([^"]+)"/,
+    )?.[1];
+    expect(hideClass).toBe("pointer-events-none opacity-0");
+    expect(hideClass).not.toMatch(/translate/);
   });
 });
 
