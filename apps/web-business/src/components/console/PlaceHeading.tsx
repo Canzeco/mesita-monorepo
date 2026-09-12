@@ -29,10 +29,13 @@ export function PlaceHeading({
   name,
   verified,
   listed,
+  partner = false,
 }: {
   name: string;
   verified: boolean;
   listed: boolean;
+  /** Partnership is a place fact, not Listed/Verified — chip beside them. */
+  partner?: boolean;
 }) {
   const pathname = usePathname();
   // Same reader the rail uses (MESITA-1732). This was the second independent
@@ -56,6 +59,12 @@ export function PlaceHeading({
           <PlaceStateBadge state="verified" />
         ) : listed ? (
           <PlaceStateBadge state="listed" />
+        ) : null}
+        {partner ? (
+          <span className="border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-500 dark:bg-violet-400" />
+            Partner
+          </span>
         ) : null}
       </div>
       {/* Which view you are in. The rail says it too, but the rail is a menu

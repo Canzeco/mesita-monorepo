@@ -51,9 +51,9 @@ const CAP = Object.fromEntries(
 // screen's own Stripe Account section exists. This ladder's `stripe` rung
 // only READS that shared state to gate what a specific place can do next;
 // its copy used to claim "the place owns the account", which was simply
-// wrong. Onboarding still runs from here for convenience (a manager
-// shouldn't have to leave the place they're looking at), but the account it
-// creates is the org's, same as if they'd started it from the org page.
+// wrong. Onboarding lives on Organization (PaymentsCard). A place-level
+// Connect form was a duplicate ask on a page about what guests can do
+// (MESITA-1739); the account it would create is the org's either way.
 
 /** What Stripe says about the organization's connected account (shared by
  *  every place it holds), reduced to the four states the ladder can act on.
@@ -133,6 +133,16 @@ export type RowState =
 
 export type LadderBand = "money" | "service";
 
+/** Operator asked for it, guests do not get it (or the reverse). Null when
+ *  the two agree — those rows grow no extra line. */
+export type RowDisagreement = {
+  reason: string;
+  fixLabel: string;
+  /** `organization` = Stripe on the Org screen. `join` = the one line above
+   *  the list. `null` = the fix is another row on this page. */
+  fix: "organization" | "join" | "restore" | null;
+};
+
 export type OfferingRow = {
   key: LadderRowKey;
   label: string;
@@ -144,6 +154,7 @@ export type OfferingRow = {
   points: number | null;
   /** True when `points` is a positive contribution today. */
   earned: boolean;
+  disagreement: RowDisagreement | null;
 };
 
 export type LadderInput = {
@@ -164,6 +175,9 @@ export type LadderInput = {
   /** The Connect mirror read is in flight. Independent of `connect`, which
    *  cannot distinguish "no account" from "not asked yet". */
   connectLoading?: boolean;
+  /** Ghost-partner hold (MESITA-1311): Visit Rewards is on but guests get
+   *  nothing until restore. */
+  rewardLaneHeld?: boolean;
 };
 
 const NEEDS_PARTNER = "Needs the partnership";
@@ -221,7 +235,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
         ? { kind: "locked", needs: NEEDS_STRIPE }
         : railState(rails.mesita_pay);
 
-  return [
+  const rows: Omit<OfferingRow, "disagreement">[] = [
     {
       key: "partnership",
       label: "Mesita Partnership",
@@ -347,11 +361,166 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       earned: false,
     },
   ];
+  return rows.map((row) => ({ ...row, disagreement: disagreementOf(row, input) }));
+}
+
+/** Guest-facing phrase for the summary line. Partnership and Stripe are
+ *  not things a guest does; Sell Prepays has no engine. */
+const GUEST_PHRASE: Partial<Record<LadderRowKey, string>> = {
+  reservations: "book a table",
+  pickup: "order pickup",
+  delivery: "order delivery",
+  mesita_pay: "pay by card",
+  visit_rewards: "earn visit rewards",
+  accept_prepays: "redeem prepays",
+};
+
+function operatorAsked(row: Omit<OfferingRow, "disagreement">, input: LadderInput): boolean {
+  switch (row.key) {
+    case "partnership":
+      return input.member;
+    case "stripe":
+      return input.connect.kind !== "none";
+    case "mesita_pay":
+      return input.rails.mesita_pay;
+    case "visit_rewards":
+      return input.visitRewardsLevel > 0;
+    case "accept_prepays":
+      return input.rails.credits;
+    case "sell_prepays":
+      return false;
+    case "pickup":
+      return input.rails.pickup;
+    case "delivery":
+      return input.rails.delivery;
+    case "reservations":
+      return input.rails.reservations === true;
+  }
+}
+
+function guestsGet(row: Omit<OfferingRow, "disagreement">, input: LadderInput): boolean {
+  if (row.state.kind === "checking") return false;
+  switch (row.key) {
+    case "partnership":
+    case "stripe":
+    case "sell_prepays":
+      return false;
+    case "visit_rewards":
+      return input.member && input.visitRewardsLevel > 0 && !input.rewardLaneHeld;
+    case "mesita_pay":
+      return row.state.kind === "on";
+    case "reservations":
+      return row.state.kind === "not_mine" && row.state.on === true;
+    default:
+      return row.state.kind === "on";
+  }
+}
+
+function disagreementOf(
+  row: Omit<OfferingRow, "disagreement">,
+  input: LadderInput,
+): RowDisagreement | null {
+  if (row.state.kind === "checking") return null;
+  const asked = operatorAsked(row, input);
+  const live = guestsGet(row, input);
+  if (asked === live) return null;
+  if (asked && !live) {
+    if (row.key === "visit_rewards" && input.rewardLaneHeld) {
+      return {
+        reason: "Visit Rewards is on, but a guest report is holding the lane.",
+        fixLabel: "Restore",
+        fix: "restore",
+      };
+    }
+    if (row.state.kind === "locked") {
+      const needsPartner = row.state.needs === NEEDS_PARTNER;
+      const needsStripe = row.state.needs === NEEDS_STRIPE;
+      return {
+        reason: `You asked for ${row.label}, but guests do not get it yet — ${row.state.needs.toLowerCase()}.`,
+        fixLabel: needsPartner ? "Join above" : needsStripe ? "Organization" : row.state.needs,
+        fix: needsPartner ? "join" : needsStripe ? "organization" : null,
+      };
+    }
+    if (row.state.kind === "blocked") {
+      return {
+        reason: `You asked for ${row.label}, but Stripe turned it off.`,
+        fixLabel: "Organization",
+        fix: "organization",
+      };
+    }
+    return {
+      reason: `You asked for ${row.label}, but guests do not get it yet.`,
+      fixLabel: "",
+      fix: null,
+    };
+  }
+  // Guests get it; the console does not show it as on. The 1735 class of bug.
+  return {
+    reason: `Guests can already use ${row.label.toLowerCase()}, but this row does not show it on.`,
+    fixLabel: "",
+    fix: null,
+  };
+}
+
+/** One sentence for first paint. Empty live set is the real empty state. */
+export function guestSummary(rows: readonly OfferingRow[]): string {
+  const phrases = rows
+    .filter((r) => {
+      if (!GUEST_PHRASE[r.key]) return false;
+      if (r.disagreement) return false;
+      if (r.key === "reservations") return r.state.kind === "not_mine" && r.state.on === true;
+      return r.state.kind === "on";
+    })
+    .map((r) => GUEST_PHRASE[r.key]!);
+  if (phrases.length === 0) return "Right now, nothing is live for guests.";
+  if (phrases.length === 1) {
+    return `Right now, guests can ${phrases[0]}. Nothing else is live.`;
+  }
+  if (phrases.length === 2) {
+    return `Right now, guests can ${phrases[0]} and ${phrases[1]}.`;
+  }
+  const last = phrases[phrases.length - 1];
+  return `Right now, guests can ${phrases.slice(0, -1).join(", ")}, and ${last}.`;
+}
+
+/** Partnership and Stripe are not guest capabilities — they leave this list
+ *  (chip / Org / one line). Disagreements sort first; then writable; then
+ *  "Not yours to set". */
+export function paintRows(rows: readonly OfferingRow[]): OfferingRow[] {
+  const guest = rows.filter((r) => r.key !== "partnership" && r.key !== "stripe");
+  const rank = (r: OfferingRow) => {
+    if (r.disagreement) return 0;
+    if (r.state.kind === "not_mine" || r.state.kind === "soon") return 2;
+    return 1;
+  };
+  return [...guest].sort((a, b) => rank(a) - rank(b));
+}
+
+export type TopPrerequisite =
+  | { action: "join"; text: string }
+  | { action: "organization"; text: string };
+
+/** The one prerequisite that unlocks the most rows. One line, not a card. */
+export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
+  if (!input.member) {
+    return {
+      action: "join",
+      text: "Joining Partnership is free — it unlocks Visit Rewards, Mesita Pay and Accept Prepays.",
+    };
+  }
+  if (input.connectLoading) return null;
+  if (input.connect.kind !== "ready") {
+    return {
+      action: "organization",
+      text: "Connect Stripe on Organization so guests can pay by card here.",
+    };
+  }
+  return null;
 }
 
 /** Sum of what the rows say they are worth. MUST equal `promotionScore` for
- *  the same input — the header meter and the points column are one claim, and
- *  `ladderScoreMatchesPromotionScore` proves it rather than trusting it. */
+ *  the same input — the header meter used to show this, and
+ *  `ladderScoreMatchesPromotionScore` still proves the numbers agree. */
 export function ladderScore(rows: readonly OfferingRow[]): number {
   return rows.reduce((n, r) => n + (r.earned && r.points ? r.points : 0), 0);
 }

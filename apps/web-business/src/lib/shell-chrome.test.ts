@@ -75,6 +75,7 @@ describe("the place screen has a heading, not a second bar", () => {
     // font-sans is explicit because globals.css puts every bare h1 on the
     // display face, and this is identity, not a page title.
     expect(h).toContain("font-sans");
+    expect(h).toContain("Partner");
   });
 
   it("the three superseded components are deleted, not orphaned", () => {
@@ -537,6 +538,32 @@ describe("every place view has its own loading boundary", () => {
     expect(s).toContain("sr-only");
     // And the pulse stops for anyone who asked motion to stop.
     expect(s).toContain("motion-reduce:animate-none");
+  });
+});
+
+describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", () => {
+  it("the loading skeleton is rows, not Profile's photo band", () => {
+    const s = read("app/(shell)/places/[id]/capabilities/loading.tsx");
+    expect(s).not.toContain("h-[420px]");
+    expect(s).not.toContain("PlaceViewSkeleton");
+    expect(s).toContain("Loading capabilities");
+    expect(s).toContain("length: 7");
+  });
+
+  it("the page does not open on a 0-of-7 meter", () => {
+    const s = readCode("components/place-manage/sections/PromosSection.tsx");
+    expect(s).not.toContain("PROMOTION_SCORE_MAX");
+    expect(s).not.toContain("of {PROMOTION_SCORE_MAX}");
+    expect(s).not.toContain("Join Partnership");
+    expect(s).not.toContain("Connect Stripe");
+    expect(s).toContain("guestSummary");
+  });
+
+  it("nested configs still hide with CSS, never unmount", () => {
+    const s = read("components/place-manage/sections/PromosSection.tsx");
+    expect(s).toContain("shouldRenderConfig");
+    expect(s).toContain("dirtyLabels.includes(\"Orders\")");
+    expect(s).toContain("dirtyLabels.includes(\"Reservations\")");
   });
 });
 
