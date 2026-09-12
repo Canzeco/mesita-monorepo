@@ -127,6 +127,42 @@ Deno.test("accounts.create params carry the frozen controller and capabilities",
   assertEquals((params as Record<string, unknown>).type, undefined);
 });
 
+Deno.test("accounts.create params carry MCC/url/RFC so hosted onboarding is not Software", () => {
+  const params = connectAccountCreateParams({
+    orgId: "org-1",
+    country: "MX",
+    entityType: "company",
+    legalName: "Cabaret Social Room SA de CV",
+    email: "hola@cabaret.mx",
+    taxId: "CSR010101ABC",
+    businessProfile: {
+      mcc: "5812",
+      url: "https://cabaret.mx/",
+      product_description: "Late-night Mexican restaurant and cocktail bar in Roma Norte.",
+      name: "Cabaret",
+      support_phone: "+52 55 1234 5678",
+      support_email: "hola@cabaret.mx",
+    },
+  });
+  assertEquals(params.business_profile?.mcc, "5812");
+  assertEquals(params.business_profile?.url, "https://cabaret.mx/");
+  assertEquals(params.company?.tax_id, "CSR010101ABC");
+  assertEquals(params.email, "hola@cabaret.mx");
+  assertEquals(params.individual, undefined);
+});
+
+Deno.test("an individual's RFC is not sent — Stripe v17 has no individual.tax_id", () => {
+  const params = connectAccountCreateParams({
+    orgId: "org-1",
+    country: "MX",
+    entityType: "individual",
+    legalName: "Someone",
+    taxId: "XAXX010101000",
+  });
+  assertEquals(params.company, undefined);
+  assertEquals(params.individual, undefined);
+});
+
 Deno.test("an individual gets no company.name — Stripe ignores it there", () => {
   const params = connectAccountCreateParams({
     orgId: "org-1",
@@ -382,6 +418,24 @@ Deno.test("the onboarding HANDLER builds its client from the Connect version, no
   assert(
     !ctor[0].includes("STRIPE_API_VERSION"),
     "onboarding EF must NOT use the GA pin: it 400s the Express + Stripe-losses controller",
+  );
+});
+
+Deno.test("the onboarding HANDLER prefills from org places before accounts.create", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../business-web-start-payment-onboarding/index.ts", import.meta.url),
+  );
+  assert(
+    src.includes("deterministicConnectPrefill"),
+    "onboarding EF must send Atlas prefill on accounts.create",
+  );
+  assert(
+    /businessProfile:\s*prefill\.businessProfile/.test(src),
+    "onboarding EF must pass the prefill into connectAccountCreateParams",
+  );
+  assert(
+    !src.includes("completePrefillWithLlm") && !src.includes("stripe.accounts.update"),
+    "LLM must not sit between accounts.create and the mirror write — a concurrent retry would del the account",
   );
 });
 

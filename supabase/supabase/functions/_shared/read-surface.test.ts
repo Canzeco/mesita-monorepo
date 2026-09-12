@@ -301,6 +301,7 @@ const PLACES_READ_ALLOWLIST = [
   "_shared/org-membership.ts",
   "_shared/place-claim.ts",
   "_shared/reservation-places.ts",
+  "_shared/stripe-connect-prefill.ts", // org places → Connect MCC/url/description; place_profiles has no organization_id (MESITA-1795)
   "_shared/ticket-check.ts",
   "admin-web-decide-place-claim/index.ts",
   "admin-web-delete-place/index.ts",

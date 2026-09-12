@@ -47,6 +47,10 @@ import {
   isAbsoluteHttpsUrl,
 } from "../_shared/stripe-connect.ts";
 import {
+  deterministicConnectPrefill,
+  loadOrgPlacesForPrefill,
+} from "../_shared/stripe-connect-prefill.ts";
+import {
   isStripeKeyRejection,
   resolveStripeSecret,
   stripeSecretKeyProblem,
@@ -325,16 +329,34 @@ Deno.serve(async (req) => {
   }
 
   // "create", "replace", or a 404ed "use": provision a fresh account.
-  // The organization's legal name prefills Stripe onboarding (company.name —
-  // ignored by Stripe if the person later picks individual). Null omits the
-  // field and Stripe simply asks; the create never blocks on it.
+  // Prefill MUST land on accounts.create: Express + requirement_collection
+  // stripe locks KYC after the first Account Link, which is why Software
+  // showed up for restaurants — we never sent MCC, Stripe used Canzeco's.
   const { data: orgRow } = await admin
     .from("organizations")
-    .select("legal_name")
+    .select("name, legal_name, rfc")
     .eq("id", orgId)
     .maybeSingle();
-  const legalName =
-    ((orgRow as { legal_name?: string | null } | null)?.legal_name ?? "").trim();
+  const org = (orgRow as {
+    name?: string | null;
+    legal_name?: string | null;
+    rfc?: string | null;
+  } | null) ?? null;
+  const legalName = (org?.legal_name ?? "").trim();
+
+  const { places, error: placesErr } = await loadOrgPlacesForPrefill(admin, orgId);
+  if (placesErr) {
+    console.error("[start-payment-onboarding] place prefill read:", placesErr);
+  }
+  // CREATE is Atlas-only. Stripe keys idempotency on org+country; an LLM
+  // fail-open or a shuffled places read would change the body, 409 the
+  // replay, and leave the first connected account orphaned.
+  const orgPrefill = {
+    name: (org?.name ?? "").trim(),
+    legalName,
+    rfc: org?.rfc ?? null,
+  };
+  const prefill = deterministicConnectPrefill(orgPrefill, places);
 
   let account: Stripe.Account;
   try {
@@ -343,7 +365,15 @@ Deno.serve(async (req) => {
     // is what stops a lost response from minting a SECOND permanent connected
     // account on the owner's next press.
     account = await stripe.accounts.create(
-      connectAccountCreateParams({ orgId, country, entityType, legalName }),
+      connectAccountCreateParams({
+        orgId,
+        country,
+        entityType,
+        legalName,
+        email: prefill.email,
+        taxId: prefill.taxId,
+        businessProfile: prefill.businessProfile,
+      }),
       { idempotencyKey: connectAccountIdempotencyKey(orgId, country) },
     );
   } catch (err) {
