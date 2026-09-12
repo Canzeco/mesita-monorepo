@@ -194,11 +194,10 @@ export type MapConfig = {
    */
   pinCount: number;
   /**
-   * How many places ONE Nearby pull asks Google for: 20, 40 or 60
-   * (`GOOGLE_PULL_STOPS`). Google caps a single Nearby Search (New) request at
-   * 20 with no page token, so 40 and 60 are 2 and 3 BILLED requests, split by
-   * Super battery and deduped by placeId. This is the operator's spend knob;
-   * the guest's How many still caps the pins that get painted.
+   * Max places one Nearby pull asks Google for: 20, 40 or 60 (`GOOGLE_PULL_STOPS`).
+   * Google bills in pages of 20; 40 and 60 are 2 and 3 billed requests over the
+   * same query (Legacy next_page_token). Pull 20 stays one Nearby Search (New)
+   * POST. Operator spend knob; `pinCount` caps painted pins.
    */
   googlePull: number;
 };
