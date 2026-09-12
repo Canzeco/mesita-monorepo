@@ -20,6 +20,7 @@ import {
   END,
   findForbiddenAssets,
   findMarkerSpan,
+  findStamp,
   findStrayMarkdown,
   FORBIDDEN_ASSET_EXTS,
   FORBIDDEN_ASSET_GLOBS,
@@ -27,6 +28,7 @@ import {
   groupSkillDocs,
   MD_ALLOW_DIRS,
   MD_SCAN_GLOBS,
+  missingStampMessage,
   overBudgetMessage,
   parseLsFiles,
   QUICKSTART_WORD_BUDGET,
@@ -397,6 +399,24 @@ Deno.test("the forbidden-asset message names the file and the issue", () => {
 });
 
 // ── The live repo must satisfy its own gates ─────────────────────────────────
+
+// ── The §0 stamp — the hand mirror's one machine-checkable fact ─────────────
+
+Deno.test("findStamp reads exactly one `stamp: v<N> <date>` and refuses none or two", () => {
+  assertEquals(findStamp("mirrors Rules §0 (`stamp: v2 2026-09-12`; unequal stamps are drift)"), { version: 2, date: "2026-09-12", raw: "`stamp: v2 2026-09-12`" });
+  assertEquals(findStamp("no stamp here"), null);
+  assertEquals(findStamp("`stamp: v1 2026-09-12` and again `stamp: v2 2026-09-13`"), null, "two stamps say nothing");
+  assertEquals(findStamp("stamp: v2 2026-09-12"), null, "the stamp is code-formatted, as the Mirror line writes it");
+});
+
+Deno.test("the shipped quickstart carries the stamp, and the message names the fix", async () => {
+  const text = await Deno.readTextFile(join(repoRoot, "scripts", "rules-quickstart.md"));
+  const stamp = findStamp(text);
+  assert(stamp !== null && stamp.version >= 2, "the quickstart shipped with stamp v2 on 2026-09-12");
+  const msg = missingStampMessage();
+  assertStringIncludes(msg, "NO STAMP");
+  assertStringIncludes(msg, "copy the stamp from Rules §0");
+});
 
 Deno.test("the shipped quickstart is within budget", async () => {
   const canonical = await Deno.readTextFile(join(repoRoot, "scripts", "rules-quickstart.md"));

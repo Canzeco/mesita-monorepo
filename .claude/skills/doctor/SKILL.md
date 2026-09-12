@@ -363,12 +363,12 @@ and reporting it as drift would be a false P1 on the doc that called it first.
     `src/components/brand/*` · Functions — deliberately empty, skip it, do not "fix" it.
 
 9.3 **The quickstart mirror — the one repo copy of Notion, and the only ungated hop.**
-    `scripts/sync-rules.ts:16` names Notion **Rules §0** the master and the copy into
-    `scripts/rules-quickstart.md` a HAND step. CI gates everything downstream of that file
-    and nothing upstream, so root `CLAUDE.md` can drift from the law with CI fully green —
-    and every agent boots off it. Compare the two. On drift, put **the exact corrected text**
-    in the Linear issue so the fix is a paste, not a decode. (Describing a fix is allowed by
-    Hard rule 1; applying it is not.) Check both directions — either side can be the stale one.
+    Rules §0's Mirror line and `scripts/rules-quickstart.md` both carry `stamp: v<N> <date>`;
+    `sync-rules --check` refuses a quickstart without one, and `deno task boot` prints it.
+    Compare the two stamps first: equal = OK with no prose read; unequal = drift — read both
+    texts and put **the exact corrected text** in the Linear issue so the fix is a paste, not
+    a decode. (Describing a fix is allowed by Hard rule 1; applying it is not.) Either side can
+    be the stale one; the side edited later is usually the truth.
 
 9.4 **Vocabulary.** Sweep the banned list in 📚 Docs › Vocabulary across the repo AND the Docs
     pages themselves. One house word used for two things is how nomenclature rots.

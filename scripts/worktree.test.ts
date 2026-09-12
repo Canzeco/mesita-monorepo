@@ -731,6 +731,10 @@ Deno.test("boot names the worktree it runs from, not the shared checkout that co
   assertStringIncludes(fromSub, `where: ${join(FLEET_DIR, "launch")} on claude/launch`);
   const fromShared = (await boot(makeEnv(f))).join("\n");
   assertStringIncludes(fromShared, "where: the shared checkout (a lobby; never claimable)");
+  assertStringIncludes(fromShared, "rules: quickstart stamp MISSING", "the fixture ships no quickstart");
+  await write(join(f.main, "scripts", "rules-quickstart.md"), "# q\nmirrors Rules §0 (`stamp: v9 2026-01-01`).\n");
+  const stamped = (await boot(makeEnv(f))).join("\n");
+  assertStringIncludes(stamped, "rules: quickstart stamp v9 2026-01-01 — compare with Rules §0's Mirror line");
 });
 
 Deno.test("hostHash is pinned in the home directory and survives a hostname change", async () => {
