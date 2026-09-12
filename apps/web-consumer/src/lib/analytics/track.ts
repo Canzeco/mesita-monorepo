@@ -31,7 +31,11 @@ export type AnalyticsEvent =
   // which is exactly how this note got written
   | "home_mode_view"
   | "home_card_open"
-  | "home_card_save";
+  | "home_card_save"
+  // MESITA-1694 — Search-tab coach mark dismiss. The localStorage flag never
+  // reaches the server, so nav_tab_tap cannot split auto-timer vs a real
+  // Search tap. Payload.reason is timer or tap. First close wins.
+  | "search_coachmark_dismiss";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a
