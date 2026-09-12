@@ -1,0 +1,6 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+# Conductor trial (MESITA-1752). No run scripts: Rules forbid local web servers.
+[scripts]
+setup = "bash scripts/preflight.sh install-hook && echo 'claim before your first write: deno task worktree add MESITA-<id> <slug> --adopt .'"
+archive = "deno task worktree leave $(git config --worktree --get mesita.issue)"
