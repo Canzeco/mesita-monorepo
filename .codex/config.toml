@@ -6,3 +6,9 @@ url = "https://mcp.linear.app/mcp"
 
 [mcp_servers.notion]
 url = "https://mcp.notion.com/mcp"
+
+# Every command Codex runs in this repo declares its platform (Rules › SADLC adapter contract):
+# `deno task worktree add` then files the worktree under ../worktrees/codex/ and the claim line
+# reads platform=codex (MESITA-1785).
+[shell_environment_policy]
+set = { MESITA_PLATFORM = "codex" }
