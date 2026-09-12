@@ -1,12 +1,12 @@
 // scripts/worktree.ts — the fleet tool behind Rules I-3, I-4, I-6, I-9 and I-10.
 //
-//   deno task boot                                   where am I, the shared-checkout checks, the fleet, my resumable workspaces
+//   deno task boot                                   where am I, the shared-checkout checks, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces
 //   deno task worktree add MESITA-<id> [slug] [--platform claude-code|codex|cursor|claude-code-cloud|cursor-cloud] [--footprint <paths>] [--adopt <path>]
 //   deno task worktree preflight [path]              may this checkout receive writes? the verdict scripts/preflight.sh gives every hook
 //   deno task worktree pr                            adopt or open the PR for this workspace; the body carries Closes MESITA-<id>
 //   deno task worktree remove MESITA-<id>            from a lobby: unlock, remove, back the branch up under refs/swept/, delete it
 //   deno task worktree leave MESITA-<id>             a launch worktree after its issue landed: unlock, clear the claim, keep the checkout and branch
-//   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces
+//   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces and deletes landed origin branches past the lease
 //   deno task worktree repair-lobby                  the shared checkout holds no work of its own (I-4), idempotent
 //
 // `add` never makes a second workspace for an issue that has one: it resumes the live one
@@ -18,6 +18,12 @@
 // nested worktree), the claim line reads worktree=cloud:<session>, and boot / sweep /
 // repair-lobby stop treating the clone as the shared checkout. Locally the main worktree
 // is the lobby and stays unclaimable.
+//
+// The pushed branch is the fleet-wide lock (I-6): `add` pushes the claim branch to origin the
+// moment it exists — empty, at origin/main, when no work has started — so every host and every
+// cloud clone sees every live claim through git, with no secret. `boot` prints that table and
+// reprints this workspace's claim line; `sweep` deletes landed origin branches past the lease and
+// reports id-less ones. Linear stays the ledger people read; the branch is what machines read.
 //
 // Claims are `git config --worktree` keys, which git refuses in a multi-worktree repo until
 // extensions.worktreeConfig is on; every command turns it on first (the one repair that
@@ -48,6 +54,7 @@ export type Env = {
   log: (line: string) => void;
   sleep: (ms: number) => Promise<void>;
   cloud: Cloud | null;
+  clipboard?: boolean; // boot copies the claim line with pbcopy when not false; tests pass false
 };
 
 export type Row = {
@@ -691,6 +698,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
       if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
     }
     await claimWorkspace(env, main, target, id, platform, footprint);
+    out.push(await pushClaim(env, target, branch));
     const worktree = target === main ? `cloud:${env.cloud?.session ?? "clone"}` : relative(main, target);
     out.push(composeClaim({ platform, host: env.host, branch: branch ?? "none", worktree, footprint }));
     out.push(await installHook(env, main));
@@ -735,11 +743,22 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
   else out.push(`seeded ${seed.copied} file(s) from .worktreeinclude`);
   await claimWorkspace(env, main, target, id, platform, footprint);
+  out.push(await pushClaim(env, target, attach ?? branch));
   out.push(composeClaim({ platform, host: env.host, branch: attach ?? branch, worktree: relative(main, target), footprint }));
   out.push(await installHook(env, main));
   await verifyClaim(env, target, out);
   out.push(enterLine(main, target, id));
   return out;
+}
+
+/** I-6: the claim becomes visible from every host the moment it exists; a failed push is reported, never fatal. */
+async function pushClaim(env: Env, path: string, branch: string | null): Promise<string> {
+  if (!branch) return "PUSH SKIPPED: a detached HEAD carries no branch to push — the claim is visible on this host only (I-6)";
+  const r = await git(env, path, "push", "--quiet", "-u", "origin", branch);
+  if (r.code !== 0) {
+    return `PUSH FAILED: ${r.stderr.trim().split("\n")[0] || `exit ${r.code}`} — the claim is visible on this host only — git push -u origin ${branch} when the network is back (I-6)`;
+  }
+  return `pushed ${branch} to origin: the claim is visible from every host (I-6)`;
 }
 
 /** I-9: the claim is verified by observed state, through the same gate every hook runs. */
@@ -876,7 +895,7 @@ export async function leave(env: Env, id: string): Promise<string[]> {
 
 // ── sweep ───────────────────────────────────────────────────────────────────
 
-export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines: string[]; fleet: Fleet[]; json: string; loose: { branch: string; tip: string; landed: Landed }[] }> {
+export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines: string[]; fleet: Fleet[]; json: string; loose: { branch: string; tip: string; landed: Landed }[]; origin: OriginClaim[] }> {
   const { main } = await mainWorktree(env);
   const lines: string[] = [];
   for (const n of await repairLobby(env, main, { apply: opts.apply })) lines.push(n);
@@ -941,13 +960,31 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
       if (removable && opts.apply) lines.push(await backupAndDelete(env, main, b.branch, b.tip, now));
     }
   }
+  // Origin: the pushed claims. A landed branch idle past the lease is deleted (its tip survives under
+  // refs/pull/N/head and a refs/swept/ backup); id-less and unlanded branches are reported, never swept.
+  const origin = await originClaims(env, main, registered, { landed: true });
+  if (origin.length) {
+    lines.push(originTable(origin, now));
+    for (const c of origin) {
+      const d = decideRemote(c, now);
+      if (d.decision !== "delete") continue;
+      if (!opts.apply) {
+        lines.push(`would delete origin/${c.branch} (${d.reason})`);
+        continue;
+      }
+      const ref = `refs/swept/${now.toISOString().slice(0, 10)}/origin/${c.branch}`;
+      await gitOk(env, main, "update-ref", ref, c.tip);
+      const del = await git(env, main, "push", "--quiet", "origin", "--delete", c.branch);
+      lines.push(del.code === 0 ? `deleted origin/${c.branch} (${d.reason}; backup ${ref}, 30 days)` : `kept origin/${c.branch}: ${del.stderr.trim()}`);
+    }
+  }
   if (opts.apply) {
     const expired = await expireSwept(env, main, now);
     if (expired) lines.push(`expired ${expired} refs/swept/ backup(s) older than 30 days`);
   } else {
     lines.push("dry run: nothing changed; rerun with --apply to remove what is marked remove or delete");
   }
-  return { lines, fleet, json: toJson(main, fleet), loose };
+  return { lines, fleet, json: toJson(main, fleet), loose, origin };
 }
 
 export async function looseBranches(env: Env, main: string, rows: Row[]): Promise<{ branch: string; tip: string; landed: Landed }[]> {
@@ -961,6 +998,83 @@ export async function looseBranches(env: Env, main: string, rows: Row[]): Promis
     out.push({ branch, tip, landed });
   }
   return out;
+}
+
+// ── Origin claims (I-6: the pushed branch is the fleet-wide lock) ───────────
+
+export type OriginRef = { branch: string; tip: string; date: Date | null };
+export type OriginClaim = OriginRef & { issue: string | null; landed: Landed | null; here: boolean };
+
+/** `git for-each-ref --format='%(refname:short) %(objectname) %(committerdate:iso-strict)' refs/remotes/origin/`, main and HEAD dropped. */
+export function parseOriginRefs(text: string): OriginRef[] {
+  const out: OriginRef[] = [];
+  for (const line of text.split("\n")) {
+    const [ref, tip, date] = line.trim().split(/\s+/);
+    if (!ref || !tip) continue;
+    const branch = ref.replace(/^origin\//, "");
+    if (branch === "HEAD" || branch === "main") continue;
+    const d = date ? new Date(date) : null;
+    out.push({ branch, tip, date: d && !isNaN(d.getTime()) ? d : null });
+  }
+  return out;
+}
+
+/** Every branch on origin but main: the id it carries, whether a worktree here checks it out, and (when asked) whether it landed. */
+export async function originClaims(env: Env, main: string, rows: Row[], opts: { landed: boolean }): Promise<OriginClaim[]> {
+  const fetch = await git(env, main, "fetch", "--quiet", "--prune", "origin");
+  if (fetch.code !== 0) {
+    throw new WtError("FETCH FAILED", fetch.stderr.trim() || "git fetch --prune origin", "offline or not authenticated, so no origin claim is visible", "retry with network, or gh auth login", "I-6");
+  }
+  const text = await gitOk(env, main, "for-each-ref", "--format=%(refname:short) %(objectname) %(committerdate:iso-strict)", "refs/remotes/origin/");
+  const attached = new Set(rows.map((r) => r.branch).filter((b): b is string => b !== null));
+  const out: OriginClaim[] = [];
+  for (const r of parseOriginRefs(text)) {
+    const landed = opts.landed ? (await classifyLanded(env, main, r.tip, r.branch)).landed : null;
+    out.push({ ...r, issue: issueFromBranch(r.branch), landed, here: attached.has(r.branch) });
+  }
+  return out;
+}
+
+/** Pure: what sweep may do to an origin branch. Only a landed, idle, id-carrying branch nobody checks out here is deleted. */
+export function decideRemote(c: OriginClaim, now: Date, leaseMs: number = LEASE_MS): { decision: "delete" | "keep"; reason: string } {
+  const keep = (reason: string) => ({ decision: "keep" as const, reason });
+  const idle = c.date ? now.getTime() - c.date.getTime() >= leaseMs : false;
+  if (c.here) return keep("checked out here");
+  if (!c.issue) return keep("NO ID: claim it (add --adopt) or handoff:, never swept");
+  if (c.landed === null) return keep("landed unknown");
+  if (c.landed.kind === "on-main") return keep("claimed, no work yet");
+  if (!isLanded(c.landed)) return keep(`${describeLanded(c.landed)}${idle ? ", idle past the lease: takeover: candidate" : ", active"}`);
+  if (!idle) return keep(`${describeLanded(c.landed)}, within the lease`);
+  return { decision: "delete", reason: describeLanded(c.landed) };
+}
+
+export function originTable(claims: OriginClaim[], now: Date, leaseMs: number = LEASE_MS): string {
+  const lines = ["origin branch | issue | tip age | landed | decision"];
+  for (const c of claims) {
+    const d = decideRemote(c, now, leaseMs);
+    const age = c.landed?.kind === "on-main" ? "no work yet" : c.date ? `${Math.round((now.getTime() - c.date.getTime()) / 3_600_000)}h` : "?";
+    lines.push(`origin/${c.branch} | ${c.issue ?? "-"} | ${age} | ${describeLanded(c.landed)} | ${d.decision}: ${d.reason}`);
+  }
+  return lines.join("\n");
+}
+
+/** The claim line a workspace carries, recomposed from its config keys so boot can reprint it for the ledger. */
+export async function claimLineOf(env: Env, main: string, row: Row): Promise<string | null> {
+  const issue = await worktreeConfig(env, row.path, "mesita.issue");
+  if (!issue) return null;
+  const platform = await worktreeConfig(env, row.path, "mesita.platform") ?? "claude-code";
+  const host = await worktreeConfig(env, row.path, "mesita.host") ?? env.host;
+  const footprint = await worktreeConfig(env, row.path, "mesita.footprint") ?? "none";
+  const session = await worktreeConfig(env, row.path, "mesita.session");
+  const worktree = row.path === main ? `cloud:${session ?? "clone"}` : relative(main, row.path);
+  return composeClaim({ platform, host, branch: row.branch ?? "none", worktree, footprint });
+}
+
+/** macOS pbcopy through bash (the one non-git runner this script is granted); silently false elsewhere. */
+async function copyToClipboard(env: Env, text: string): Promise<boolean> {
+  if (env.clipboard === false) return false;
+  const r = await env.runner("bash", ["-c", 'command -v pbcopy >/dev/null 2>&1 && printf "%s" "$1" | pbcopy', "_", text]);
+  return r.code === 0;
 }
 
 // ── boot ────────────────────────────────────────────────────────────────────
@@ -980,6 +1094,11 @@ export async function boot(env: Env): Promise<string[]> {
     lines.push(`gate: ${await installHook(env, main)}`);
     lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
     lines.push("fleet: none here (a cloud clone is one workspace; sweep and repair-lobby run on the fleet's host)");
+    const origin = await originClaims(env, main, rows, { landed: false });
+    lines.push(originTable(origin, env.now()));
+    lines.push(`origin: ${origin.length} branch(es), ${origin.filter((c) => c.issue).length} claim(s) — a pushed branch is the fleet-wide lock (I-6); Linear is what people read`);
+    const line = await claimLineOf(env, main, clone);
+    if (line) lines.push(`claim: ${line}`);
     lines.push("next: one Linear read for live claims, then PICK");
     return lines;
   }
@@ -1002,6 +1121,14 @@ export async function boot(env: Env): Promise<string[]> {
   lines.push(mine.length ? `resumable on this host: ${mine.map((f) => `${f.issue} at ${relative(main, f.row.path)} (deno task worktree add ${f.issue} resumes it)`).join("; ")}` : "resumable on this host: none");
   const sweepable = fleet.filter((f) => f.decision === "remove").length;
   lines.push(`sweepable: ${sweepable} (deno task worktree sweep --apply from the shared checkout)`);
+  const origin = await originClaims(env, main, rows, { landed: true });
+  lines.push(originTable(origin, env.now()));
+  const claims = origin.filter((c) => c.issue).length;
+  lines.push(`origin: ${origin.length} branch(es), ${claims} claim(s), ${origin.length - claims} without an id — a pushed branch is the fleet-wide lock (I-6); Linear is what people read`);
+  if (here && here.path !== main) {
+    const line = await claimLineOf(env, main, here);
+    if (line) lines.push(`claim: ${line}${(await copyToClipboard(env, line)) ? " (copied to the clipboard)" : ""}`);
+  }
   lines.push("next: one Linear read for live claims, then PICK");
   return lines;
 }
@@ -1080,6 +1207,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         const r = await sweep(env, { apply: rest.includes("--apply") });
         for (const l of r.lines) env.log(l);
         env.log(`json: ${r.json}`);
+        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...decideRemote(c, env.now()) })))}`);
         return 0;
       }
       case "repair-lobby": {
