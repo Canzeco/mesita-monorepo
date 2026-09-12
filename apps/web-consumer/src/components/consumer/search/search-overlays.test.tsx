@@ -173,12 +173,13 @@ describe("SearchScopeSheet country pills", () => {
 describe("Search map catalog auto-reloads after distance and time", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
-    // MESITA-1699: the call carries a CENTRE AND NOTHING ELSE. How many, the
-    // ring and the Super Categories are operator config, so a cap named here
-    // would be a second answer to a question the blob already answers.
+    // How many stays operator pinCount. The guest posts Places scope,
+    // Super Category and Popularity; a guest cap here would be a second
+    // answer to pinCount.
     expect(read("SearchClient.tsx")).not.toContain("resultLimit");
-    expect(read("SearchClient.tsx")).not.toContain("placesScope");
-    expect(read("SearchClient.tsx")).not.toContain("familyKeys");
+    expect(read("SearchClient.tsx")).toContain("placesScope");
+    expect(read("SearchClient.tsx")).toContain("familyKeys");
+    expect(read("SearchClient.tsx")).toContain("minReviews");
     expect(read("SearchClient.tsx")).not.toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
     expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
@@ -246,70 +247,49 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map's top row is the query bar, and nothing else", () => {
-  it("has no Filters control, no sheet, and no client-side cut", () => {
+describe("Search map's top row is the query bar plus a Filters disc", () => {
+  it("puts Filters at the top right, with no client-side recut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
-    // GONE (Pato, 2026-09-08): "remove filters from search. like those
-    // filters are controlled in admin console, not in consumer app." The
-    // control migrated three times in a week — bottom overlay, corner disc,
-    // labelled third of the row — and the resolution was that the guest was
-    // never the one asking.
-    expect(src).not.toContain("SearchFilterRow");
-    expect(src).not.toContain("SearchMapFilters");
-    expect(src).not.toContain("useMapFilters");
-    expect(src).not.toContain("MAP_FILTER_DEFAULTS");
-    expect(src).not.toContain("resetMapFilters");
-    expect(src).not.toContain("mapFilterCount");
-    // The client-side cut goes with it. Two selectors for one map is how the
-    // EF and the browser end up disagreeing about what belongs on it.
-    //
-    // Assert on the CALLS, not the words: the comment above the catalog memo
-    // names both retired helpers to say why they went, and a bare
-    // not.toContain would forbid explaining the change in the file it changed.
+    expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("SearchMapFilters");
+    expect(src).toContain("useMapFilters");
+    expect(src).toContain("mapFilterCount");
+    expect(src).toContain("flex min-w-0 items-center gap-2");
+    expect(src).toContain("<SearchBar");
+    // The SERVER is the one selector — SearchClient posts the three
+    // params and paints what comes back. applyMapFilters is the nested-
+    // set law the sheet counts against, not a second cut of the catalog.
     expect(src).not.toMatch(/applyMapFilters\(/);
     expect(src).not.toMatch(/takeMapResultLimit\(/);
-    expect(src).not.toMatch(/from "@\/lib\/map-filters-engine"/);
-    // The bar owns the row outright now — no flex row wrapping two controls.
-    expect(src).toContain("<SearchBar");
-    expect(src).not.toContain("flex min-w-0 items-center gap-2");
-    // Every file behind the sheet is deleted, not merely unreferenced: a
-    // sessionStorage store nobody renders is a filter nobody can clear.
-    for (const gone of [
+    expect(src).toMatch(/from "@\/lib\/map-filters-engine"/);
+    for (const present of [
       "SearchFilterRow.tsx",
       "SearchMapFilters.tsx",
       "SearchPlacesScope.tsx",
-      "SearchResultLimit.tsx",
-      "SearchCategoryRow.tsx",
+      "SearchPopularity.tsx",
     ]) {
+      expect(existsSync(join(SEARCH_DIR, present)), present).toBe(true);
+    }
+    for (const gone of ["SearchResultLimit.tsx", "SearchCategoryRow.tsx"]) {
       expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
     }
-    for (const gone of ["map-filters-engine.ts", "use-map-filters.ts"]) {
-      expect(existsSync(join(SEARCH_DIR, "../../../lib", gone)), gone).toBe(
-        false,
-      );
+    for (const present of ["map-filters-engine.ts", "use-map-filters.ts"]) {
+      expect(existsSync(join(SEARCH_DIR, "../../../lib", present)), present)
+        .toBe(true);
     }
-    // The bottom overlay keeps its empty state but loses the reset, which
-    // only ever existed to undo a control the guest no longer has.
     expect(overlays).not.toContain("SlidersHorizontal");
-    expect(overlays).not.toContain("filterCount");
     expect(overlays).not.toContain("onResetFilters");
-    // The button, not the phrase — the comment above the empty state names
-    // what was removed and why, which is the point of leaving a comment.
     expect(overlays).not.toMatch(/>\s*Reset filters\s*</);
     expect(overlays).not.toContain("Adjust");
-    // SWIPE'S SHEET IS A DIFFERENT SHEET and is untouched: four guest
-    // predicates on the deck, its own store, never this surface.
     expect(src).not.toContain("useDiscoveryFilters");
     expect(src).not.toContain("DiscoveryFilters");
     expect(existsSync(join(SEARCH_DIR, "../../../lib/use-discovery-filters.ts")))
       .toBe(true);
-    // Map filters never leaked into autocomplete, and now there is nothing
-    // left to leak — but keep asserting on the suggest call's arguments.
     const suggestArgs = [
       ...src.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
     ].map((m) => m[1]);
-    expect(suggestArgs).toHaveLength(2); // one Fast, one Deep
+    expect(suggestArgs).toHaveLength(2);
     expect(suggestArgs.join("\n")).toContain('"fast"');
     expect(suggestArgs.join("\n")).toContain('"deep"');
     for (const args of suggestArgs) expect(args).not.toContain("filters");

@@ -6,9 +6,9 @@ import { countryBarChip } from "@/lib/search-scope";
 import { cn } from "@/lib/utils";
 
 // Shared by Search and Visit (the wallet's place list, MESITA-1071).
-// Query field only. Search's Places scope + Super Category live in the
-// Filters sheet, opened beside the bar. Visit omits
-// that.
+// Query field only. Search's Places scope + Super Category + Popularity
+// live in the Filters sheet, opened as a disc beside the bar. Visit
+// omits that.
 // `onOpenScope` stays as an optional far-right control for hosts that
 // still want country + location on the pill.
 type SearchBarProps = {

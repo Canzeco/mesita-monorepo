@@ -85,14 +85,10 @@ export function SearchRailOverlay({
 }) {
   if (!idle) return null;
 
-  // NO FILTERS ANYWHERE ON SEARCH (Pato, 2026-09-08). The pill lived down
-  // here for four days, then as a disc on the bar row, then as a labelled
-  // third of it — and then the controls turned out to belong to the operator,
-  // so the whole sheet went (MESITA-1699).
-  //
-  // Reset filters went with it. It was the empty state's one-tap way out of a
-  // cut the guest made; a guest who cannot cut anything cannot undo one, and
-  // an empty map is now a fact about the catalog or about `map.pinCount`.
+  // Filters live on the top-right disc. Reset on this empty state was
+  // the one-tap way out of a cut the guest made; the sheet's own Reset
+  // is that now. An empty map is a fact about the catalog, pinCount, or
+  // the guest's Popularity floor.
 
   if (overspan) {
     return (

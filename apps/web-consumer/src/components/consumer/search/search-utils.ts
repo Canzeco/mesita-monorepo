@@ -125,11 +125,11 @@ function samePlaceRow(a: Place, b: Place): boolean {
 }
 
 /**
- * The chosen result is card ONE, whatever `applyMapFilters` and the How
- * many cap said — the bar does not apply the map's filters, so they never
- * veto a pick. Dedupe decides the total: the anchor already inside the N
- * keeps N unique (the catalog's own richer row wins the slot); outside it
- * the guest sees N + 1 — 21 is correct, not a bug (Pato).
+ * The chosen result is card ONE, whatever the operator cap said — the
+ * bar does not apply the map's filters, so they never veto a pick. Dedupe
+ * decides the total: the anchor already inside the N keeps N unique
+ * (the catalog's own richer row wins the slot); outside it the guest sees
+ * N + 1 — 21 is correct, not a bug (Pato).
  */
 export function prependAnchorPlace(
   places: Place[],
