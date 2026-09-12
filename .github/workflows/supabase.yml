@@ -204,9 +204,12 @@ jobs:
   # pays for it.
   #
   # MESITA-1191 D3b: this job is NOT `supabase db lint` on a shadow DB. That
-  # would reverse the settled CI-cost posture. Stale PL/pgSQL is caught by
-  # doctor 2.10 (plpgsql_check + the grep that covers EXECUTE / LANGUAGE sql /
-  # cron.job.command) plus a same-session rebuild in the rename migration.
+  # would reverse the settled CI-cost posture. plpgsql_check + the generic
+  # OLD_NAME grep (EXECUTE strings, non-public schemas, cron.job.command)
+  # stay doctor 2.10 — a daily sweep, not a shadow-DB lint. MESITA-1720 is
+  # the PR-gate half for the class of bug that actually shipped: pgTAP reads
+  # public pg_proc.prosrc for retired column names (project_id / ticket_code),
+  # which covers LANGUAGE sql and EXECUTE text inside those bodies.
   #
   # MESITA-1296: when these jobs report, main-protection should require
   # `deno lint · test`, `deno check`, `pgTAP · schema invariants`, plus
