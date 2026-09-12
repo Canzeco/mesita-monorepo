@@ -15,6 +15,12 @@ import { invokeEF } from "./_invoke";
 
 export type OrgRole = "owner" | "editor" | "viewer";
 
+/** A held place as the rail draws it: id, name, and the first photo
+ *  (MESITA-1779). `photoUrl` is a FULL-RESOLUTION ORIGINAL — the rail renders
+ *  it through `placeThumbUrl()`, never straight into an <img> (the
+ *  MESITA-1553 mistake, and the rail is on every screen in the console). */
+export type RailPlace = { id: string; name: string; photoUrl: string | null };
+
 export type Organization = {
   id: string;
   name: string;
@@ -23,6 +29,18 @@ export type Organization = {
   currency: string;
   myRole: OrgRole;
   placeCount: number;
+  /** The places this organization holds, by name. Rides the org list so the
+   *  rail has its portfolio on the first frame instead of one round trip
+   *  later (MESITA-1779). */
+  places: RailPlace[];
+};
+
+/** Everything the console shell learns about the caller in ONE call: the
+ *  organizations they belong to (each with its places) and whether they are a
+ *  super-admin, which decides whether the Admin view exists for them. */
+export type ConsoleViewer = {
+  organizations: Organization[];
+  isSuperAdmin: boolean;
 };
 
 export type ConsolePlace = {
@@ -99,16 +117,31 @@ export type ConsolePlace = {
  *  Keyed on `client`, which is now itself request-cached in lib/supabase/server,
  *  so every caller in one request presents the same instance and shares the
  *  entry. */
-export const apiListOrganizations = cache(async function apiListOrganizations(
+export const apiConsoleViewer = cache(async function apiConsoleViewer(
   client: SupabaseClient,
-): Promise<Organization[]> {
-  const { organizations } = await invokeEF<{ organizations: Organization[] }>(
+): Promise<ConsoleViewer> {
+  const { organizations, isSuperAdmin } = await invokeEF<ConsoleViewer>(
     client,
     "business-web-list-organizations",
     {},
     "Couldn't load your organizations.",
   );
-  return organizations ?? [];
+  return {
+    organizations: (organizations ?? []).map((o) => ({
+      ...o,
+      places: o.places ?? [],
+    })),
+    isSuperAdmin: isSuperAdmin === true,
+  };
+});
+
+/** The organizations alone — what every page body asks for. Reads through
+ *  the request-cached viewer, so the shell's call and a page's call in the
+ *  same render are still ONE Edge Function round trip (MESITA-1779). */
+export const apiListOrganizations = cache(async function apiListOrganizations(
+  client: SupabaseClient,
+): Promise<Organization[]> {
+  return (await apiConsoleViewer(client)).organizations;
 });
 
 export async function apiCreateOrganization(

@@ -37,6 +37,41 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   admin: "Admin",
 };
 
+/** What the rail and the place layout know about a viewer on a place. `role`
+ *  is the viewer's role in the organization that holds it; null when nobody
+ *  holds it (a pool place). */
+export type ViewerAccess = {
+  /** An organization holds this place and the viewer is in it. */
+  held: boolean;
+  role: "owner" | "editor" | "viewer" | null;
+  isSuperAdmin: boolean;
+};
+
+/** Which tabs a viewer may open on a place — THE matrix, in one place.
+ *
+ *  pool place            → Profile only (it carries Claim)
+ *  held · org viewer     → Profile + Activity (read surfaces)
+ *  held · owner/editor   → Profile + Capabilities + Activity
+ *  super-admin           → + Admin (operator internals)
+ *
+ *  Two callers, one rule (MESITA-1779). The place layout resolves it
+ *  server-side for the place you are ON (`visibleTabs` in lib/place-view.ts
+ *  delegates here). The rail applies it to every place the organization
+ *  holds, from the viewer's org role and super-admin flag, so a place opens
+ *  to its views WITHOUT being visited — a toggle that opened onto nothing was
+ *  what "the buttons are not working" meant. Held by the active org means the
+ *  viewer is a member, so `held` is true for every rail place; the published
+ *  set still wins on the place itself, where the server has the last word. */
+export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
+  if (!access.held) return ["profile"];
+  const tabs: PlaceTab[] =
+    access.role === "viewer"
+      ? ["profile", "activity"]
+      : ["profile", "capabilities", "activity"];
+  if (access.isSuperAdmin) tabs.push("admin");
+  return tabs;
+}
+
 /**
  * A tab's href, carrying the active organization.
  *

@@ -20,11 +20,13 @@ import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import {
   RAIL_OPEN_PLACES_COOKIE,
+  RAIL_PORTFOLIO_COOKIE,
   SIDEBAR_COLLAPSED_COOKIE,
   parseOpenPlaceIds,
+  parsePortfolioOpen,
 } from "@/lib/sidebar-prefs";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
-import { apiListOrganizations } from "@/lib/api/organizations";
+import { apiConsoleViewer, type ConsoleViewer } from "@/lib/api/organizations";
 
 export const metadata: Metadata = {
   title: "Console",
@@ -40,34 +42,40 @@ export default async function ShellLayout({
 }) {
   const supabase = await createServerSupabase();
 
-  // The user check and the org list are independent: both need the client,
-  // neither needs the other's answer. Awaiting them on consecutive lines cost
-  // a full round trip on EVERY navigation in the console, because this layout
-  // is force-dynamic and re-renders each time (MESITA-1729).
-  //
-  // The signed-out path now pays for an org list it will not use. That is the
-  // right trade: middleware already turns most signed-out traffic away before
-  // it reaches here, and the redirect below still fires first.
-  //
-  // A failure in the org list must not blank the console: the rail degrades to
-  // no switcher and each page reports its own error.
-  const [user, organizations] = await Promise.all([
-    getServerUser(),
-    apiListOrganizations(supabase).catch((err) => {
-      console.error("[console] business-web-list-organizations:", err);
-      return [] as Awaited<ReturnType<typeof apiListOrganizations>>;
-    }),
-  ]);
+  // The user check FIRST, then the viewer. MESITA-1729 ran the two in
+  // parallel because `getServerUser` was a network call; since MESITA-1731 it
+  // reads the identity the proxy forwarded, so awaiting it costs nothing on
+  // the path every real request takes — and the signed-out hit on `/` (a
+  // crawler, an expired session) no longer pays an Edge Function call that
+  // can only answer 401 and log an error before the redirect (MESITA-1779).
+  const user = await getServerUser();
   if (!user) redirect("/signin");
 
-  // Both rail preferences come off the same cookie jar read. Reading them
-  // HERE rather than in an effect is what keeps the rail from painting once
-  // and then rearranging itself: the width and the open boxes are both
-  // settled before the first frame (MESITA-1734).
+  // ONE call feeds the switcher AND the rail: every organization with the
+  // places it holds, plus whether the caller is a super-admin (MESITA-1779).
+  // The rail used to fetch its places a second time after hydration.
+  //
+  // A failure must not blank the console: the rail degrades to no switcher
+  // and no portfolio, and each page reports its own error.
+  const viewer: ConsoleViewer = await apiConsoleViewer(supabase).catch(
+    (err) => {
+      console.error("[console] business-web-list-organizations:", err);
+      return { organizations: [], isSuperAdmin: false };
+    },
+  );
+  const organizations = viewer.organizations;
+
+  // All three rail preferences come off the same cookie jar read. Reading
+  // them HERE rather than in an effect is what keeps the rail from painting
+  // once and then rearranging itself: the width, the open places and the
+  // portfolio toggle are all settled before the first frame (MESITA-1734).
   const jar = await cookies();
   const collapsed = jar.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
   const openPlaceIds = parseOpenPlaceIds(
     jar.get(RAIL_OPEN_PLACES_COOKIE)?.value,
+  );
+  const portfolioOpen = parsePortfolioOpen(
+    jar.get(RAIL_PORTFOLIO_COOKIE)?.value,
   );
 
   return (
@@ -81,9 +89,16 @@ export default async function ShellLayout({
           a hook cannot see a provider its own component renders. */}
       <OpenPlaceProvider>
         <AppShell
-          organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
+          organizations={organizations.map((o) => ({
+            id: o.id,
+            name: o.name,
+            myRole: o.myRole,
+            places: o.places,
+          }))}
+          isSuperAdmin={viewer.isSuperAdmin}
           defaultCollapsed={collapsed}
           defaultOpenPlaceIds={openPlaceIds}
+          defaultPortfolioOpen={portfolioOpen}
         >
         {/* FLUID: no max-width (MESITA-1558). Two things depend on that and
             neither is cosmetic — a full-bleed child cancels SHELL_GUTTER with

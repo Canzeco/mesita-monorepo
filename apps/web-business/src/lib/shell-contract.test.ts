@@ -147,6 +147,7 @@ const org = (id: string, myRole: Organization["myRole"]): Organization => ({
   currency: "MXN",
   myRole,
   placeCount: 0,
+  places: [],
 });
 
 describe("resolveActiveOrg", () => {

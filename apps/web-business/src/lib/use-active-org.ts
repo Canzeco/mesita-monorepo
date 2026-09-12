@@ -24,12 +24,19 @@ import type { Organization } from "@/lib/api/organizations";
 
 export type ChromeOrg = Pick<Organization, "id" | "name">;
 
+/** What the RAIL needs of an organization: the chrome pair plus the viewer's
+ *  role (which of a place's views they may open) and the places it holds
+ *  (MESITA-1779). A RailOrg is a ChromeOrg, so the header and the resolver
+ *  below take it unchanged. */
+export type RailOrg = Pick<Organization, "id" | "name" | "myRole" | "places">;
+
 /** The rule, without React, so it can be tested as the rule it is. Mirrors
- *  `resolveActiveOrg`, which every page applies server-side. */
-export function resolveChromeOrg(
-  organizations: ChromeOrg[],
+ *  `resolveActiveOrg`, which every page applies server-side. Generic so a
+ *  caller holding RailOrgs gets a RailOrg back, not the narrower pair. */
+export function resolveChromeOrg<T extends ChromeOrg>(
+  organizations: T[],
   requested: string | null,
-): ChromeOrg | null {
+): T | null {
   return (
     (requested ? organizations.find((o) => o.id === requested) : undefined) ??
     organizations[0] ??
@@ -37,8 +44,8 @@ export function resolveChromeOrg(
   );
 }
 
-export function useActiveOrg(organizations: ChromeOrg[]): {
-  activeOrg: ChromeOrg | null;
+export function useActiveOrg<T extends ChromeOrg>(organizations: T[]): {
+  activeOrg: T | null;
   activeOrgId: string | null;
 } {
   const activeOrg = resolveChromeOrg(organizations, useSearchParams().get("org"));

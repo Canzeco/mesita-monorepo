@@ -26,6 +26,7 @@ const ORG: Organization = {
   currency: "MXN",
   myRole: "owner",
   placeCount: 0,
+  places: [],
 };
 
 const MEMBERS: OrgMember[] = [
