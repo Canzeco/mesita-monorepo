@@ -2,8 +2,10 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  BarChart3,
   Camera,
   Download,
+  MessageSquare,
   Trash2,
   Users,
 } from 'lucide-react-native';
@@ -37,6 +39,7 @@ import {
   validateAvatarBytes,
 } from '@/lib/avatar-upload';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
 import { ageFromBirthday, errMsg, MIN_SIGNUP_AGE } from '@/lib/utils';
@@ -65,10 +68,12 @@ export function PersonalDetailsSheet({
   visible,
   onClose,
   onSaved,
+  asRoute = false,
 }: {
   visible: boolean;
   onClose: () => void;
   onSaved: () => void;
+  asRoute?: boolean;
 }) {
   const { profile, session } = useAuth();
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
@@ -183,6 +188,7 @@ export function PersonalDetailsSheet({
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
+      asRoute={asRoute}
       title="Personal details"
       subtitle="How you appear across Mesita"
     >
@@ -313,10 +319,12 @@ export function SettingsSheet({
   visible,
   onClose,
   onDeleteAccount,
+  asRoute = false,
 }: {
   visible: boolean;
   onClose: () => void;
   onDeleteAccount: () => void;
+  asRoute?: boolean;
 }) {
   const { profile, refreshProfile } = useAuth();
   const [push, setPush] = useStoredFlag(PREF_KEYS.push, true);
@@ -384,6 +392,7 @@ export function SettingsSheet({
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
+      asRoute={asRoute}
       title="Settings"
       subtitle="Preferences on this device"
     >
@@ -443,6 +452,21 @@ export function SettingsSheet({
         options={CITY_OPTIONS}
         onChange={setCity}
       />
+      <SectionLabel>Your account</SectionLabel>
+      <BoxRow
+        Icon={BarChart3}
+        tint="muted"
+        title="Metrics"
+        summary="Saved, visits, reviews"
+        href={CONSUMER_ROUTES.mePages.settingsMetrics}
+      />
+      <BoxRow
+        Icon={MessageSquare}
+        tint="muted"
+        title="Contact"
+        summary="Talk to us"
+        href={CONSUMER_ROUTES.mePages.settingsContact}
+      />
       <SectionLabel>Legal</SectionLabel>
       <LinkRow
         title="Terms of use"
@@ -472,9 +496,8 @@ export function SettingsSheet({
         title="Delete account"
         summary="Permanently delete your account"
         onPress={() => {
-          onClose();
-          // Defer so Settings sheet unmounts before Delete mounts.
-          setTimeout(onDeleteAccount, 50);
+          if (!asRoute) onClose();
+          setTimeout(onDeleteAccount, asRoute ? 0 : 50);
         }}
       />
     </FullScreenSheet>

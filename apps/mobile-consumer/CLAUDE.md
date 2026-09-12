@@ -4,12 +4,7 @@
 
 Expo SDK 57 · React Native · Expo Router · NativeWind — the mobile port of `apps/web-consumer`.
 
-## FROZEN — do not change this package (Pato, 2026-08-20)
-**No features, no fixes, no redesigns here.** Web-consumer is where the product is still being decided; mobile gets rebuilt by COPYING web once web is done, so anything shipped here first is work that copy overwrites. A task landing in this package stops and says so.
-
-**The only writes allowed are the three mirrors web's own tests pin** — they exist to keep WEB green, not to advance mobile: `src/lib/ticket-journey.ts` (byte-identical) · `src/lib/consumer-route-contract.ts` · `src/lib/api/tickets.ts` (`ACTIVE_TICKET_STATES`). Re-copy those in the same PR as the web change that moved them. Everything else web changes — tokens, `ef.ts`, screens — waits for the copy pass.
-
-**Parity is the target of that copy pass**, not of every PR: IA, screens, visual language, tokens and parked-vs-live all end up matching `apps/web-consumer`, whose **[`CLAUDE.md`](../web-consumer/CLAUDE.md) is this package's product law** — read it, never restate it. The rest of this file is the package as it stands.
+The 2026-08-20 freeze is lifted (Pato, MESITA-1789): Me boxes are full-page routes, and web/mobile IA cannot diverge. Product law still lives in web-consumer [`CLAUDE.md`](../web-consumer/CLAUDE.md) — read it, never restate it.
 
 ## ALWAYS
 - Clients call **Edge Functions only**, never the DB. [src/lib/ef.ts](src/lib/ef.ts) is ported verbatim from `apps/web-consumer/src/lib/api/_invoke.ts`.

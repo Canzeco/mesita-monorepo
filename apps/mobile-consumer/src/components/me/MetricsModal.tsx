@@ -39,9 +39,11 @@ function formatTileValue(metrics: ConsumerMetrics, tile: Tile): string {
 export function MetricsModal({
   visible,
   onClose,
+  asRoute = false,
 }: {
   visible: boolean;
   onClose: () => void;
+  asRoute?: boolean;
 }) {
   const [metrics, setMetrics] = useState<ConsumerMetrics | null>(null);
   const requestedRef = useRef(false);
@@ -67,6 +69,7 @@ export function MetricsModal({
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
+      asRoute={asRoute}
       title="Metrics"
       subtitle="Your Mesita, in numbers"
     >

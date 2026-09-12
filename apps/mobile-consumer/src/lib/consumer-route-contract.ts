@@ -8,16 +8,6 @@ import type { Href } from 'expo-router';
 // ef.ts / tokens). Any change to routes or helpers on either side MUST update
 // both files in the same PR — web/mobile IA parity is a product rule.
 //
-// MOBILE IS FROZEN (Pato, 2026-08-20). This file is one of only three mobile
-// writes the freeze still allows (the others: ticket-journey.ts byte-identical,
-// api/tickets.ts ACTIVE_TICKET_STATES) — kept in lockstep so it never drifts
-// from web's own pinned test (consumer-route-contract.test.ts). The freeze
-// forbids restructuring mobile's actual screens or tab bar, so below: every
-// key a live mobile call site depends on keeps its CURRENT name and value;
-// only the parts nothing outside this file reads are renamed to mirror web's
-// current shape. Where mobile genuinely has not done the underlying screen
-// work web already shipped, that gap is called out below, not hidden.
-//
 // Expo Router ↔ web href map (agents):
 //   web /discover[/catalog|search|swipe|chat|favs]  (was /home + /search,
 //       merged 2026-09-01, MESITA-1400)      →  Expo /(tabs)/home +
@@ -150,17 +140,29 @@ export const CONSUMER_ROUTES = {
   // This value is the correct, working one.
   inboxDefault: '/(tabs)/inbox',
   me: '/(tabs)/me',
+  // Every live DestTile on /me (MESITA-1789) — full pages, not sheets.
+  // Expo group is stripped in the public URL, so these match web's /me/<box>.
+  mePages: {
+    passport: '/(tabs)/me/passport',
+    profile: '/(tabs)/me/profile',
+    class: '/(tabs)/me/class',
+    classInvite: '/(tabs)/me/class/invite',
+    instagram: '/(tabs)/me/instagram',
+    plan: '/(tabs)/me/plan',
+    settings: '/(tabs)/me/settings',
+    settingsMetrics: '/(tabs)/me/settings/metrics',
+    settingsContact: '/(tabs)/me/settings/contact',
+    help: '/(tabs)/me/help',
+    notifications: '/(tabs)/me/notifications',
+    visits: '/(tabs)/me/visits',
+    reservations: '/(tabs)/me/reservations',
+  },
   // Premium checkout deliberately has NO mobile route (Apple review — the
   // sole sanctioned web/mobile divergence): subscribing happens on web, at
-  // https://consumer.mesita.ai/me — the Plan box opens the checkout sheet.
-  // /subscribe/premium was that URL until MESITA-1129 and still 308s to /me,
-  // so an older build's link-out keeps working; new links should use /me.
+  // https://consumer.mesita.ai/me/plan. Premium status still renders here.
   legacy: {
     profile: '/profile',
     invite: '/invite',
-    meClass: '/me/class',
-    meSettings: '/me/settings',
-    mePlan: '/me/plan',
     notifications: '/notifications',
     inboxMine: '/inbox/my-activity',
     inboxGlobal: '/inbox/global-activity',

@@ -1,3 +1,4 @@
+import { useRouter, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
 import { ChevronRight } from 'lucide-react-native';
@@ -164,6 +165,7 @@ export function BoxRow({
   tint,
   title,
   summary,
+  href,
   onPress,
   disabled,
   soon,
@@ -172,17 +174,22 @@ export function BoxRow({
   tint: BoxTint;
   title: string;
   summary: string;
-  onPress: () => void;
+  href?: Href;
+  onPress?: () => void;
   disabled?: boolean;
   soon?: boolean;
 }) {
+  const router = useRouter();
   return (
     <BoxShell
       iconTint={tint}
       icon={<Icon color={ICON_COLOR[tint]} size={22} />}
       title={title}
       summary={summary}
-      onPress={onPress}
+      onPress={() => {
+        if (href) router.push(href);
+        else onPress?.();
+      }}
       disabled={disabled}
       soon={soon}
     />

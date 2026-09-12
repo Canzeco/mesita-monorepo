@@ -49,8 +49,8 @@ const nextConfig: NextConfig = {
       // bare prefix and the /subscribe/premium URL forward — the latter was
       // the LIVE url and is what any external link (an iOS link-out, a
       // receipt email) would still carry.
-      { source: "/subscribe", destination: "/me", permanent: true },
-      { source: "/subscribe/:plan", destination: "/me", permanent: true },
+      { source: "/subscribe", destination: "/me/plan", permanent: true },
+      { source: "/subscribe/:plan", destination: "/me/plan", permanent: true },
       { source: "/rewards", destination: "/new-visit", permanent: true },
       { source: "/pay", destination: "/new-visit", permanent: true },
       { source: "/pay/:tab", destination: "/new-visit", permanent: true },
@@ -140,7 +140,7 @@ const nextConfig: NextConfig = {
       // The contract still lists these legacy sources; without entries they 404ed
       // (MESITA-1585). One hop each, straight to the canonical surface.
       { source: "/saved", destination: "/me", permanent: true },
-      { source: "/saved/reservations", destination: "/me", permanent: true },
+      { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
@@ -154,14 +154,14 @@ const nextConfig: NextConfig = {
       { source: "/credits", destination: "/new-visit/wallet", permanent: true },
       { source: "/inbox/credits", destination: "/new-visit/wallet", permanent: true },
       { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
-      { source: "/profile", destination: "/me", permanent: true },
-      { source: "/notifications", destination: "/me", permanent: true },
+      { source: "/profile", destination: "/me/profile", permanent: true },
+      { source: "/notifications", destination: "/me/notifications", permanent: true },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). Its three sections are
-      // sheets on Me now, and a sheet has no URL, so every /inbox address —
-      // the sections, the legacy aliases (/inbox/mine, /inbox/global and their
-      // pre-rename twins), and bare /inbox — lands on Me in ONE hop. Ordering
-      // matters: /inbox/credits sits ABOVE this and still points at Wallet,
-      // because Next takes the first match and Credits never belonged to
+      // pages under /me now (MESITA-1789), and /inbox still 308s onto the hub
+      // in ONE hop — a bookmark of the container is not a bookmark of one
+      // section. Ordering matters: /inbox/credits sits ABOVE this and still
+      // points at Wallet, because Next takes the first match and Credits never
+      // belonged to Activity.
       // Activity anyway (it is an instrument, not an event).
       { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },

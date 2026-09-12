@@ -108,4 +108,4 @@ export function classProperLabel(classKey: string): string {
 // Web handoff only (Apple posture: no in-app checkout). Keep in lock-step
 // with consumer-route-contract /subscribe/premium.
 export const PREMIUM_SUBSCRIBE_URL =
-  'https://consumer.mesita.ai/subscribe/premium';
+  'https://consumer.mesita.ai/me/plan';

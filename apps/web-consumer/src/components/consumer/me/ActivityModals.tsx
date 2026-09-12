@@ -1,17 +1,19 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Bell, CalendarCheck, QrCode } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { NotificationsClient } from "@/components/consumer/NotificationsClient";
 import { ReservationsList } from "@/components/consumer/reservations-list";
 import { VisitsList } from "@/components/consumer/me/VisitsList";
 import { EmptyState } from "@/components/shared";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 
-// Activity's three sections, as three sheets on Me (MESITA-1626).
+// Activity's three sections, as three full pages on Me (MESITA-1626,
+// MESITA-1789).
 //
 // They were three nested routes under `/inbox` with a shared pill nav, which
 // is what MESITA-1609 left behind when it took Activity off the bottom bar:
@@ -20,70 +22,64 @@ import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 // guest had already chosen the section by tapping the box, and then landed on
 // a page whose first element asked them to choose again.
 //
-// So the container is gone and each box owns a sheet. `/inbox/*` 308s to Me.
+// MESITA-1626 made each box a sheet. MESITA-1789 makes each box a route:
+// /me/notifications, /me/visits, /me/reservations. `/inbox/*` still 308s to
+// the hub. They are NOT @modal intercepts.
 //
 // NOTHING HERE FETCHES DIFFERENTLY. All three bodies are the same components
-// the routes rendered; only the frame changed. The two that used to be server
-// components were server-gated for a `userId` prop that neither consumer
-// actually reads — `useConsumerTickets` calls `apiListConsumerTickets(supabase)`
-// and only uses the id as a poll on/off flag, and `fetchConsumerNotifications`
-// names its second parameter `_consumerId`. Both authenticate from the session
-// inside their Edge Function, which is why these work as client sheets behind
-// `(shell)`'s auth wall with no gate of their own.
+// the routes rendered; only the frame changed. `useConsumerTickets` calls
+// `apiListConsumerTickets(supabase)` and only uses the id as a poll on/off
+// flag, and `fetchConsumerNotifications` names its second parameter
+// `_consumerId`. Both authenticate from the session inside their Edge
+// Function.
 //
-// THE BODY SLOT IS A FLEX COLUMN, NOT A BLOCK. This is the one thing to get
-// right and the old `inbox/layout.tsx` carries the scar tissue explaining why:
-// every body here asks to grow (`EmptyState` is `flex-1 justify-center`,
-// `NotificationsClient` and `VisitsList` are `h-full overflow-y-auto`), and a
-// child of a block box silently collapses to content height. That shipped
-// twice — zero states pinned to the top of a 700px empty frame, and a feed
-// that could not scroll inside its own frame because a content-height box has
-// nothing to overflow. `min-h-0` is load-bearing too: without it a flex child
-// refuses to shrink below its content and the scroll moves to the sheet.
+// THE BODY SLOT IS A FLEX COLUMN, NOT A BLOCK. MeScreen's `flush` mode is
+// the same contract the sheet had: grow, min-h-0, scroll inside the feed.
 
-function ActivitySheet({
-  open,
-  onClose,
+function ActivityPage({
   title,
   blurb,
   children,
 }: {
-  open: boolean;
-  onClose: () => void;
   title: string;
   blurb: string;
   children: ReactNode;
 }) {
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel={title}>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="shrink-0 px-5 pt-5 pb-3">
-          <h2 className={SHEET_TITLE_CLASS}>{title}</h2>
-          <p className="text-muted-foreground mt-0.5 text-xs">{blurb}</p>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-      </div>
-    </LocalSheet>
+    <MeScreen title={title} flush>
+      <p className="text-muted-foreground shrink-0 px-5 pt-4 pb-3 text-xs">
+        {blurb}
+      </p>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+    </MeScreen>
   );
 }
 
+function useMeUserId(): string {
+  const supabase = useBrowserSupabase();
+  const [userId, setUserId] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { consumer } = await apiFetchConsumerProfile(supabase);
+        if (!cancelled) setUserId(consumer.id);
+      } catch {
+        // Empty id keeps the honest zero state until a retry lands.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+  return userId;
+}
+
 /** Alerts — your own activity feed. Global activity is the Social feed's job. */
-export function AlertsModal({
-  open,
-  onClose,
-  userId,
-}: {
-  open: boolean;
-  onClose: () => void;
-  userId: string;
-}) {
+export function AlertsModal() {
+  const userId = useMeUserId();
   return (
-    <ActivitySheet
-      open={open}
-      onClose={onClose}
-      title="Notifications"
-      blurb="Notifications and updates"
-    >
+    <ActivityPage title="Notifications" blurb="Notifications and updates">
       {userId ? (
         <NotificationsClient userId={userId} />
       ) : (
@@ -93,24 +89,15 @@ export function AlertsModal({
           description="Updates about your visits and reservations land here."
         />
       )}
-    </ActivitySheet>
+    </ActivityPage>
   );
 }
 
 /** Visits — every ticket you hold. Tapping one leaves for THE TICKET. */
-export function VisitsModal({
-  open,
-  onClose,
-  userId,
-}: {
-  open: boolean;
-  onClose: () => void;
-  userId: string;
-}) {
+export function VisitsModal() {
+  const userId = useMeUserId();
   return (
-    <ActivitySheet
-      open={open}
-      onClose={onClose}
+    <ActivityPage
       title="Visits"
       blurb="Live ones first, then everything you've closed"
     >
@@ -124,25 +111,14 @@ export function VisitsModal({
           action={{ label: "Start a visit", href: CONSUMER_ROUTES.newVisit.root }}
         />
       )}
-    </ActivitySheet>
+    </ActivityPage>
   );
 }
 
 /** Bookings — ONE feed: what's coming, then what already happened. */
-export function BookingsModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function BookingsModal() {
   return (
-    <ActivitySheet
-      open={open}
-      onClose={onClose}
-      title="Reservations"
-      blurb="Upcoming first, then past"
-    >
+    <ActivityPage title="Reservations" blurb="Upcoming first, then past">
       {/* ONE feed, no Upcoming/History control (Pato, 2026-08-17). The list
           orders it — what's next, then what happened — so the split survives
           as ORDER rather than as a second row of chrome. */}
@@ -160,6 +136,6 @@ export function BookingsModal({
           />
         }
       />
-    </ActivitySheet>
+    </ActivityPage>
   );
 }

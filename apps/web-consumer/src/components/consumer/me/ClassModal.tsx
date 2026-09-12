@@ -1,14 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { Instagram, KeyRound, TriangleAlert } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ClassLadder } from "@/components/consumer/me/class/ClassLadder";
 import { ClassPreviewToggle } from "@/components/consumer/me/demo/ClassPreviewToggle";
 import { ClassOriginSummary } from "@/components/consumer/me/class/ClassOriginSummary";
+import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { useConsumerClass } from "@/lib/class-context";
 import { CLASS_MARK_ICON } from "@/lib/consumer-data";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // The class surface (decision: Pato, MESITA-1124) — header, one ladder, two
 // buttons. That is the whole screen.
@@ -25,17 +26,7 @@ import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 // gone. A metal is now the only coloured thing a guest can see here, so it
 // cannot be mistaken for decoration.
 
-export function ClassModal({
-  open,
-  onClose,
-  onConnectInstagram,
-  onRedeemInvite,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConnectInstagram: () => void;
-  onRedeemInvite: () => void;
-}) {
+export function ClassModal() {
   const {
     origin,
     followers,
@@ -45,19 +36,15 @@ export function ClassModal({
   } = useConsumerClass();
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Your class">
-      <div className={SHEET_BODY_CLASS}>
-        <div className="mb-4 flex items-center gap-3">
-          <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-            <CLASS_MARK_ICON className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
-            <p className="text-muted-foreground text-xs">
-              Followers lift you automatically. An invite is by hand.
-            </p>
-          </div>
-        </div>
+    <MeScreen title="Your class">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+          <CLASS_MARK_ICON className="h-5 w-5" />
+        </span>
+        <p className="text-muted-foreground text-xs">
+          Followers lift you automatically. An invite is by hand.
+        </p>
+      </div>
 
         <div className="flex flex-col gap-4">
           {/* Demo state is declared before the surface it changes — same box,
@@ -84,7 +71,7 @@ export function ClassModal({
                 </p>
                 <p className="text-muted-foreground mt-1.5 text-xs leading-snug">
                   Your class is safe — we just couldn&apos;t read it right now.
-                  Reopen this sheet to try again.
+                  Come back to this page to try again.
                 </p>
               </div>
             </div>
@@ -127,29 +114,26 @@ export function ClassModal({
               They never gate on current class, so the footer can't change
               shape under the guest. */}
           <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onConnectInstagram}
+            <Link
+              href={CONSUMER_ROUTES.mePages.instagram}
               className="bg-foreground text-background type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl px-2 font-semibold transition active:scale-[0.99]"
             >
               <Instagram className="h-4 w-4 shrink-0" />
               <span className="truncate">Join with Instagram</span>
-            </button>
+            </Link>
             {/* Was a toast that said invitations are by hand and then did
                 nothing. There is a real door now (MESITA-1168): Mesita hands a
                 partner a batch of PINs, the partner gives them out, the holder
                 redeems one here. */}
-            <button
-              type="button"
-              onClick={onRedeemInvite}
+            <Link
+              href={CONSUMER_ROUTES.mePages.classInvite}
               className="border-border bg-card hover:bg-muted type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 font-semibold transition active:scale-[0.99]"
             >
               <KeyRound className="h-4 w-4 shrink-0" />
               <span className="truncate">Join with Invitation</span>
-            </button>
+            </Link>
           </div>
         </div>
-      </div>
-    </LocalSheet>
+    </MeScreen>
   );
 }

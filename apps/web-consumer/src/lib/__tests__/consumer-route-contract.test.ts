@@ -103,6 +103,21 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // pointed at. Wallet left for Pay (a wallet holds instruments, Activity
       // holds events) and Alerts leads the row now.
       me: "/me",
+      mePages: {
+        passport: "/me/passport",
+        profile: "/me/profile",
+        class: "/me/class",
+        classInvite: "/me/class/invite",
+        instagram: "/me/instagram",
+        plan: "/me/plan",
+        settings: "/me/settings",
+        settingsMetrics: "/me/settings/metrics",
+        settingsContact: "/me/settings/contact",
+        help: "/me/help",
+        notifications: "/me/notifications",
+        visits: "/me/visits",
+        reservations: "/me/reservations",
+      },
       legacy: {
         profile: "/profile",
         subscribe: "/subscribe/premium",
@@ -124,9 +139,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverCatalog: "/discover/catalog",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
-        meClass: "/me/class",
-        meSettings: "/me/settings",
-        mePlan: "/me/plan",
         // Wallet's address for the day it was a top-level tab (09-05 -> 09-06).
         wallet: "/wallet",
         notifications: "/notifications",
@@ -165,8 +177,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
   });
 
-  // ACTIVITY HAS NO ROUTES LEFT (MESITA-1626). Its three sections are sheets
-  // on Me, and a sheet has no URL, so the `inbox` object and `inboxDefault`
+  // ACTIVITY HAS NO CONTAINER LEFT (MESITA-1626). Its three sections are
+  // pages under /me (MESITA-1789). The `inbox` object and `inboxDefault`
   // are gone rather than kept as dead keys pointing at deleted pages.
   //
   // What used to live here: a pin on the section ORDER, and a pin that bare
@@ -268,6 +280,12 @@ describe("path helpers", () => {
       expect(isModalContractPath(href), href).toBe(false);
     }
   });
+
+  it("keeps every Me box page out of the modal contract", () => {
+    for (const href of Object.values(CONSUMER_ROUTES.mePages)) {
+      expect(isModalContractPath(href), href).toBe(false);
+    }
+  });
 });
 
 describe("isModalContractPath (intercepted detail overlays)", () => {
@@ -290,6 +308,10 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/visit/t1",
     "/home/chat",
     "/me",
+    "/me/passport",
+    "/me/profile",
+    "/me/class",
+    "/me/plan",
     "/inbox/mine",
     "/subscribe/premium",
   ];
@@ -323,8 +345,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // here. /rewards was the LIVE url until routing v2, so it needs the
       // forwarding address most — everything below used to chain through it.
       // The plan is a sheet on Me now, not a page (MESITA-1129).
-      { source: "/subscribe", destination: "/me", permanent: true },
-      { source: "/subscribe/:plan", destination: "/me", permanent: true },
+      { source: "/subscribe", destination: "/me/plan", permanent: true },
+      { source: "/subscribe/:plan", destination: "/me/plan", permanent: true },
       { source: "/rewards", destination: "/new-visit", permanent: true },
       { source: "/pay", destination: "/new-visit", permanent: true },
       { source: "/pay/:tab", destination: "/new-visit", permanent: true },
@@ -397,7 +419,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
-      { source: "/saved/reservations", destination: "/me", permanent: true },
+      { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
@@ -412,8 +434,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
-      { source: "/profile", destination: "/me", permanent: true },
-      { source: "/notifications", destination: "/me", permanent: true },
+      { source: "/profile", destination: "/me/profile", permanent: true },
+      { source: "/notifications", destination: "/me/notifications", permanent: true },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626) — its sections are
       // sheets on Me and a sheet has no URL, so every remaining /inbox
       // address lands on Me in ONE hop. These sit BELOW /inbox/credits on

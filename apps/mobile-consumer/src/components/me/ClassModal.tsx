@@ -1,9 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { CLASS_MARK_ICON } from '@/lib/consumer-classes';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { ClassPreviewToggle } from './class/ClassPreviewToggle';
 import { ClassRail } from './class/ClassRail';
 import { CurrentClassCard } from './class/CurrentClassCard';
@@ -14,17 +16,21 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onConnectInstagram: () => void;
+  asRoute?: boolean;
 };
 
 export function ClassModal({
   visible,
   onClose,
   onConnectInstagram,
+  asRoute = false,
 }: Props) {
+  const router = useRouter();
   return (
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
+      asRoute={asRoute}
       title="Your class"
       subtitle="Reach, subscribe, or get invited — rewards climb with you."
     >
@@ -55,7 +61,12 @@ export function ClassModal({
       <SectionEyebrow>You</SectionEyebrow>
       <CurrentClassCard />
       <SectionEyebrow>Classes</SectionEyebrow>
-      <WaysToClimb onConnectInstagram={onConnectInstagram} />
+      <WaysToClimb
+        onConnectInstagram={onConnectInstagram}
+        onRedeemInvite={() =>
+          router.push(CONSUMER_ROUTES.mePages.classInvite)
+        }
+      />
       <ClassPreviewToggle />
     </FullScreenSheet>
   );
