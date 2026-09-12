@@ -59,4 +59,12 @@ describe("analytics events are paired across the package boundary", () => {
     expect(clientEvents()).toContain("plan_open");
     expect(edgeAllowlist()).toContain("plan_open");
   });
+
+  it("search_coachmark_dismiss is on both sides", () => {
+    // MESITA-1694. The localStorage flag is client-only; dropping this
+    // event makes the timer-vs-tap split look like a product result of
+    // zero forever.
+    expect(clientEvents()).toContain("search_coachmark_dismiss");
+    expect(edgeAllowlist()).toContain("search_coachmark_dismiss");
+  });
 });

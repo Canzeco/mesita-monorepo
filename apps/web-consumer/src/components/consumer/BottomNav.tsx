@@ -4,7 +4,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
@@ -15,6 +15,12 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 import { trackEvent } from "@/lib/analytics/track";
+import {
+  SEARCH_COACHMARK_AUTO_DISMISS_MS,
+  readSearchCoachmarkSeen,
+  shouldRecordSearchCoachmarkDismiss,
+  writeSearchCoachmarkSeen,
+} from "@/lib/analytics/search-coachmark";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 // FOUR top-level surfaces, in this order (Pato, MESITA-1609):
@@ -184,28 +190,6 @@ const ITEMS: Item[] = [
   },
 ];
 
-const SEARCH_COACHMARK_STORAGE_KEY = "mesita:search-tab-coachmark-seen";
-const SEARCH_COACHMARK_AUTO_DISMISS_MS = 5500;
-
-/** Same one-shot shape as SwipeDeck's tutorial flag (readTutorialSeen) — a
- * new key, no legacy value to migrate. */
-function readSearchCoachmarkSeen(): boolean {
-  try {
-    return window.localStorage.getItem(SEARCH_COACHMARK_STORAGE_KEY) != null;
-  } catch {
-    /* private mode / blocked storage */
-  }
-  return false;
-}
-
-function writeSearchCoachmarkSeen(): void {
-  try {
-    window.localStorage.setItem(SEARCH_COACHMARK_STORAGE_KEY, "1");
-  } catch {
-    /* best-effort */
-  }
-}
-
 // Points at the Search tab for guests whose muscle memory taps the old
 // leftmost-tab-opens-the-map position — Home lives there now (MESITA-1609,
 // fast-follow MESITA-1610). `pointer-events-none` on purpose: dismissal comes
@@ -232,11 +216,14 @@ export function BottomNav({ userId }: { userId?: string }) {
   const pathname = usePathname();
   const [soonItem, setSoonItem] = useState<Item | null>(null);
   const [showSearchCoachmark, setShowSearchCoachmark] = useState(false);
+  const recordedCoachmarkDismissRef = useRef(false);
   const getSupabase = useLazyBrowserSupabase();
 
   // First-launch hint, one shot per browser — identical shape to SwipeDeck's
   // tutorial overlay effect: schedule the show on a frame so hydration stays
   // clean, auto-dismiss on a timer, and write the flag either way it closes.
+  // MESITA-1694: first close also fires search_coachmark_dismiss so the
+  // timer-vs-tap split is a query, not an inference from nav_tab_tap.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (readSearchCoachmarkSeen()) return;
@@ -244,19 +231,42 @@ export function BottomNav({ userId }: { userId?: string }) {
       setShowSearchCoachmark(true);
     });
     const t = window.setTimeout(() => {
+      if (
+        !shouldRecordSearchCoachmarkDismiss({
+          alreadyRecorded: recordedCoachmarkDismissRef.current,
+          showing: true,
+          reason: "timer",
+        })
+      ) {
+        return;
+      }
+      recordedCoachmarkDismissRef.current = true;
       setShowSearchCoachmark(false);
       writeSearchCoachmarkSeen();
+      trackEvent(getSupabase(), "search_coachmark_dismiss", {
+        reason: "timer",
+      });
     }, SEARCH_COACHMARK_AUTO_DISMISS_MS);
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(t);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- getSupabase identity changes every render and must not reset the timer
 
   const dismissSearchCoachmark = () => {
-    if (!showSearchCoachmark) return;
+    if (
+      !shouldRecordSearchCoachmarkDismiss({
+        alreadyRecorded: recordedCoachmarkDismissRef.current,
+        showing: showSearchCoachmark,
+        reason: "tap",
+      })
+    ) {
+      return;
+    }
+    recordedCoachmarkDismissRef.current = true;
     setShowSearchCoachmark(false);
     writeSearchCoachmarkSeen();
+    trackEvent(getSupabase(), "search_coachmark_dismiss", { reason: "tap" });
   };
 
   return (
