@@ -796,6 +796,7 @@ Deno.test("add pushes the claim branch so every host sees the lock; boot reads i
   assert(heads.includes("claude/MESITA-40-forty"), "the empty claim branch sits on origin");
   const path = await Deno.realPath(join(f.main, FLEET_DIR, "MESITA-40-forty"));
   const booted = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(booted, "where: workspace .claude/worktrees/MESITA-40-forty claimed by MESITA-40 on claude/MESITA-40-forty: no work yet");
   assertStringIncludes(booted, "origin/claude/MESITA-40-forty | MESITA-40 | no work yet | on-main | keep: checked out here");
   assertStringIncludes(booted, "claim: claimed platform=claude-code host=t3st branch=claude/MESITA-40-forty worktree=.claude/worktrees/MESITA-40-forty footprint=none");
   // A second checkout of the same origin — another host — sees the claim without any ledger read.
