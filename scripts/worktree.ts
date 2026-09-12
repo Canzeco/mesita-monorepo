@@ -3,7 +3,8 @@
 //   deno task boot                                   where am I, the shared-checkout checks, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces
 //   deno task worktree add MESITA-<id> [slug] [--platform <token>] [--footprint <paths>] [--adopt <path>]
 //   deno task worktree preflight [path]              may this checkout receive writes? the verdict scripts/preflight.sh gives every hook
-//   deno task worktree pr                            adopt or open the PR for this workspace; the body carries Closes MESITA-<id>
+//   deno task worktree pr [--docs <value>]           adopt or open the PR for this workspace; the body carries Closes MESITA-<id> and a Docs: line
+//                                                    (--docs notion:<id>[,…] | none:<why> | handoff:notion:<id>; default: the notion ids in the claim's footprint)
 //   deno task worktree remove MESITA-<id>            from a lobby: unlock, remove, back the branch up under refs/swept/, delete it
 //   deno task worktree leave MESITA-<id>             a launch worktree after its issue landed: unlock, clear the claim, keep the checkout and branch
 //   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces and deletes landed origin branches past the lease
@@ -806,12 +807,43 @@ export function withCloses(body: string, id: string): string {
   return new RegExp(`Closes ${id}\\b`).test(body) ? body : `Closes ${id}\n\n${body}`.trim();
 }
 
-export async function pr(env: Env): Promise<string[]> {
+const NOTION_ID_RE = /^notion:[0-9a-f]{32}$/;
+
+/**
+ * I-8 made observable: the PR body names the Docs page(s) the footprint touched, says `none — <why>`
+ * when no product knowledge changed, or `handoff notion:<id>` when a Work agent must rewrite it.
+ * closes.yml requires the line. Default: every `notion:<32hex>` in the claim's footprint; without
+ * one, the author has to say so with --docs, so a PR never carries an unthinking `none`.
+ */
+export function docsLineFrom(footprint: string, docs?: string): string {
+  if (docs !== undefined) {
+    const d = docs.trim();
+    const ids = d.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length && ids.every((s) => NOTION_ID_RE.test(s))) return `Docs: ${ids.join(",")}`;
+    const none = d.match(/^none\s*[:—-]\s*(.+)$/);
+    if (none) return `Docs: none — ${none[1].trim()}`;
+    const handoff = d.match(/^handoff\s*[:\s]\s*(notion:[0-9a-f]{32})$/);
+    if (handoff) return `Docs: handoff ${handoff[1]}`;
+    throw new WtError("INVALID DOCS", d, "the Docs line is notion:<32hex>[,…], none:<why>, or handoff:notion:<32hex>", "pass --docs with one of those shapes", "I-8");
+  }
+  const ids = footprint.split(",").map((s) => s.trim()).filter((s) => NOTION_ID_RE.test(s));
+  if (ids.length) return `Docs: ${ids.join(",")}`;
+  throw new WtError("NO DOCS LINE", footprint || "none", "the claim's footprint names no Docs page, and I-8 asks which page was read and will be rewritten", "rerun with --docs notion:<id>[,…] (the pages touched), --docs none:<why> (no product knowledge changed), or --docs handoff:notion:<id> (a Work agent rewrites it)", "I-8");
+}
+
+/** Closes and Docs, added when absent; an existing `Docs:` line is the author's and stays. */
+export function withJoin(body: string, id: string, docsLine: string): string {
+  const closed = withCloses(body, id);
+  return /^Docs: /m.test(closed) ? closed : `${closed.split("\n")[0]}\n${docsLine}\n${closed.split("\n").slice(1).join("\n")}`.trim();
+}
+
+export async function pr(env: Env, opts: { docs?: string } = {}): Promise<string[]> {
   const { main } = await mainWorktree(env);
   const cwd = await realpath(env.cwd);
   const branch = (await gitOk(env, cwd, "rev-parse", "--abbrev-ref", "HEAD")).trim();
   const issue = await worktreeConfig(env, cwd, "mesita.issue") ?? issueFromBranch(branch);
   if (!issue) throw new WtError("NO ISSUE", showPath(main, cwd) || ".", "this checkout is not a workspace", "deno task worktree add MESITA-<id>, or --adopt this path", "I-3");
+  const docsLine = docsLineFrom(await worktreeConfig(env, cwd, "mesita.footprint") ?? "none", opts.docs);
   const listed = await env.runner("gh", ["pr", "list", "--head", branch, "--state", "open", "--json", "number,body,isDraft"], { cwd });
   if (listed.code !== 0) throw new GhError(listed.stderr.trim() || `gh exit ${listed.code}`);
   let open: { number: number; body: string; isDraft: boolean }[] = [];
@@ -831,17 +863,17 @@ export async function pr(env: Env): Promise<string[]> {
   }
   if (open.length > 0) {
     const p = open[0];
-    const body = withCloses(p.body ?? "", issue);
+    const body = withJoin(p.body ?? "", issue, docsLine);
     if (body !== (p.body ?? "")) {
       const ed = await env.runner("gh", ["pr", "edit", String(p.number), "--body", body], { cwd });
       if (ed.code !== 0) throw new GhError(ed.stderr.trim());
     }
-    return [`adopted PR #${p.number} on ${branch}${p.isDraft ? " (draft: run gh pr ready before merging)" : ""}; body carries Closes ${issue}`];
+    return [`adopted PR #${p.number} on ${branch}${p.isDraft ? " (draft: run gh pr ready before merging)" : ""}; body carries Closes ${issue} and ${docsLine}`];
   }
   const subject = (await gitOk(env, cwd, "log", "-1", "--format=%s")).trim();
-  const created = await env.runner("gh", ["pr", "create", "--head", branch, "--title", subject, "--body", withCloses("", issue)], { cwd });
+  const created = await env.runner("gh", ["pr", "create", "--head", branch, "--title", subject, "--body", withJoin("", issue, docsLine)], { cwd });
   if (created.code !== 0) throw new GhError(created.stderr.trim());
-  return [`opened ${created.stdout.trim()} on ${branch}; body carries Closes ${issue}`];
+  return [`opened ${created.stdout.trim()} on ${branch}; body carries Closes ${issue} and ${docsLine}`];
 }
 
 // ── remove (LEAVE) ──────────────────────────────────────────────────────────
@@ -1243,7 +1275,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         return v.ok ? 0 : 1;
       }
       case "pr":
-        for (const l of await pr(env)) env.log(l);
+        for (const l of await pr(env, { docs: flag(rest, "--docs") })) env.log(l);
         return 0;
       case "remove":
         for (const l of await remove(env, rest[0] ?? "")) env.log(l);
@@ -1264,7 +1296,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         return 0;
       }
       default:
-        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | preflight [path] | pr | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
+        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | preflight [path] | pr [--docs v] | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
         return 2;
     }
   } catch (e) {

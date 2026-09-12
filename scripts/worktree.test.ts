@@ -20,6 +20,7 @@ import {
   decideRemote,
   declaredPlatform,
   defaultRunner,
+  docsLineFrom,
   ensureWorktreeConfig,
   type Env,
   type Exec,
@@ -45,6 +46,7 @@ import {
   sweep,
   validateId,
   validateSlug,
+  withJoin,
   WtError,
 } from "./worktree.ts";
 
@@ -674,7 +676,7 @@ Deno.test("repair-lobby resets a stranded shared checkout, stashes edits, backs 
 
 // ── pr (SHIP) ───────────────────────────────────────────────────────────────
 
-Deno.test("pr adopts an open PR and adds Closes, or creates one with the join in the body", async () => {
+Deno.test("pr adopts an open PR and adds Closes and Docs, or creates one with both in the body; no Docs page and no --docs is refused", async () => {
   const f = await makeFixture();
   const env = makeEnv(f);
   await add(env, { id: "MESITA-30", slug: "thirty" });
@@ -685,22 +687,59 @@ Deno.test("pr adopts an open PR and adds Closes, or creates one with the join in
     if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
     return undefined;
   };
-  const adopted = await pr(makeEnv(f, { cwd: path }));
+  // The claim's footprint names no Docs page: the author has to say so.
+  await assertRejects(() => pr(makeEnv(f, { cwd: path })), WtError, "NO DOCS LINE");
+  const adopted = await pr(makeEnv(f, { cwd: path }), { docs: "none: tooling only, no product knowledge changed" });
   assertStringIncludes(adopted.join("\n"), "adopted PR #44");
+  assertStringIncludes(adopted.join("\n"), "Docs: none — tooling only, no product knowledge changed");
   const edit = f.calls.find((c) => c[0] === "pr" && c[1] === "edit")!;
-  assertStringIncludes(edit[edit.indexOf("--body") + 1], "Closes MESITA-30");
+  const editedBody = edit[edit.indexOf("--body") + 1];
+  assertStringIncludes(editedBody, "Closes MESITA-30");
+  assertStringIncludes(editedBody, "\nDocs: none — tooling only, no product knowledge changed\n");
+  assertStringIncludes(editedBody, "harness body");
   f.calls.length = 0;
   f.ghOverride = (args) => {
     if (args[0] === "pr" && args[1] === "list") return { code: 0, stdout: "[]", stderr: "" };
     if (args[0] === "pr" && args[1] === "create") return { code: 0, stdout: "https://github.com/x/y/pull/45", stderr: "" };
     return undefined;
   };
-  const created = await pr(makeEnv(f, { cwd: path }));
+  const created = await pr(makeEnv(f, { cwd: path }), { docs: "handoff:notion:3bfa9bf37a52816eaa9dc2d7b8b74525" });
   assertStringIncludes(created.join("\n"), "opened https://github.com/x/y/pull/45");
   const create = f.calls.find((c) => c[0] === "pr" && c[1] === "create")!;
   assertEquals(create[create.indexOf("--title") + 1], "thirty subject");
-  assertStringIncludes(create[create.indexOf("--body") + 1], "Closes MESITA-30");
+  assertEquals(create[create.indexOf("--body") + 1], "Closes MESITA-30\nDocs: handoff notion:3bfa9bf37a52816eaa9dc2d7b8b74525");
+  // A footprint that names Docs pages composes the line by itself.
+  await add(env, { id: "MESITA-31", slug: "docs", footprint: "apps/web-consumer/src,notion:3bfa9bf37a52816eaa9dc2d7b8b74525,notion:3bfa9bf37a5281078acdc6b9e61b0cf2" });
+  const docsPath = join(f.main, FLEET_DIR, "MESITA-31-docs");
+  await commitFile(docsPath, "d.txt", "d\n", "docs subject");
+  f.calls.length = 0;
+  const auto = await pr(makeEnv(f, { cwd: docsPath }));
+  assertStringIncludes(auto.join("\n"), "Docs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525,notion:3bfa9bf37a5281078acdc6b9e61b0cf2");
   await assertRejects(() => pr(makeEnv(f, { cwd: f.main })), WtError, "NO ISSUE");
+});
+
+Deno.test("docsLineFrom accepts the three shapes, refuses the rest, and withJoin keeps an author's own Docs line", () => {
+  assertEquals(docsLineFrom("scripts/,notion:3bfa9bf37a52816eaa9dc2d7b8b74525"), "Docs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525");
+  assertEquals(docsLineFrom("none", "notion:3bfa9bf37a52816eaa9dc2d7b8b74525, notion:3bfa9bf37a5281078acdc6b9e61b0cf2"), "Docs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525,notion:3bfa9bf37a5281078acdc6b9e61b0cf2");
+  assertEquals(docsLineFrom("none", "none — a rename stopped at the label"), "Docs: none — a rename stopped at the label");
+  assertEquals(docsLineFrom("none", "none: tooling"), "Docs: none — tooling");
+  assertEquals(docsLineFrom("none", "handoff:notion:3bfa9bf37a52816eaa9dc2d7b8b74525"), "Docs: handoff notion:3bfa9bf37a52816eaa9dc2d7b8b74525");
+  for (const bad of ["notion:short", "none", "handoff:apps", "whatever"]) {
+    try {
+      docsLineFrom("none", bad);
+      throw new Error("unreachable");
+    } catch (e) {
+      assert(e instanceof WtError && e.what === "INVALID DOCS", `${bad}: ${e}`);
+    }
+  }
+  try {
+    docsLineFrom("scripts/worktree.ts");
+    throw new Error("unreachable");
+  } catch (e) {
+    assert(e instanceof WtError && e.what === "NO DOCS LINE", String(e));
+  }
+  assertEquals(withJoin("", "MESITA-1", "Docs: none — x"), "Closes MESITA-1\nDocs: none — x");
+  assertEquals(withJoin("Closes MESITA-1\nDocs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525\n\nbody", "MESITA-1", "Docs: none — x"), "Closes MESITA-1\nDocs: notion:3bfa9bf37a52816eaa9dc2d7b8b74525\n\nbody", "the author's line stays");
 });
 
 // ── clean ───────────────────────────────────────────────────────────────────
