@@ -98,7 +98,14 @@ export const SWEPT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // refs/swept/ live 30 day
 export const PRUNABLE_REFUSAL = 3; // more than this many prunable entries = the repo moved
 export const HISTORY_DEPTH = 20;
 export const ANCESTOR_BOUND = 1000;
-export const FLEET_DIR = ".claude/worktrees";
+// The fleet lives BESIDE the checkout, not inside it (MESITA-1770): `<parent of main>/worktrees`,
+// visible in Finder and shared by every code surface that opens a fleet worktree (Claude Code,
+// Codex, Cursor). The legacy location inside the repo is still scanned by sweep until it drains.
+export const FLEET_DIR = "worktrees";
+export const LEGACY_FLEET_DIR = ".claude/worktrees";
+export function fleetDirOf(main: string): string {
+  return join(dirname(main), FLEET_DIR);
+}
 export const LOCK_PREFIX = "mesita claim=";
 export const DRAFT_WAIT_MS = 60_000;
 export const DRAFT_POLL_MS = 10_000;
@@ -145,10 +152,17 @@ export function cloudFromEnv(get: (key: string) => string | undefined): Cloud | 
   return null;
 }
 
-/** A path as boot and the claim line print it: fleet-relative when inside the main checkout, absolute when outside (a Cursor or Conductor worktree). */
+/**
+ * A path as boot and the claim line print it: relative to the Mesita folder (the checkout's
+ * parent) — `worktrees/<name>` for a fleet worktree, `.claude/worktrees/<name>` for a legacy
+ * one still inside the checkout — and absolute anywhere else (a Cursor-mode or Conductor worktree).
+ */
 export function showPath(main: string, path: string): string {
-  const rel = relative(main, path);
-  return rel === "" ? "." : rel.startsWith("..") ? path : rel;
+  const inMain = relative(main, path);
+  if (inMain === "") return ".";
+  if (!inMain.startsWith("..")) return inMain;
+  const inFleet = relative(fleetDirOf(main), path);
+  return inFleet === "" || inFleet.startsWith("..") ? path : join(FLEET_DIR, inFleet);
 }
 
 /** The write gate every hook shares; this script delegates to it rather than restating the rule. */
@@ -744,7 +758,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   const slug = validateSlug(args.slug ?? "work");
   const name = `${id}-${slug}`;
   const branch = `${prefix}/${name}`;
-  const target = join(main, FLEET_DIR, name);
+  const target = join(fleetDirOf(main), name);
   const check = await git(env, main, "check-ref-format", "--branch", branch);
   if (check.code !== 0) throw new WtError("INVALID SLUG", branch, "git rejects the branch name", "shorten or simplify the slug", "I-3");
   const fetch = await git(env, main, "fetch", "--quiet", "origin", "main");
@@ -761,6 +775,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   if (pathExists) {
     throw new WtError("EXISTS", showPath(main, target), "a directory sits where the workspace would go, and it is not a registered worktree", "move it away, or git worktree repair it, then rerun", "I-3");
   }
+  await Deno.mkdir(fleetDirOf(main), { recursive: true });
   const attach = loose ?? (branchExists ? branch : null);
   const addRes = attach
     ? await git(env, main, "worktree", "add", target, attach)
@@ -964,9 +979,9 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   const lines: string[] = [];
   for (const n of await repairLobby(env, main, { apply: opts.apply })) lines.push(n);
   // Orphans present on disk but unregistered: repair before anything prunes.
-  const fleetDir = join(main, FLEET_DIR);
   let registered = await listFleet(env, main);
   const known = new Set(registered.map((r) => r.path));
+  for (const fleetDir of [fleetDirOf(main), join(main, LEGACY_FLEET_DIR)]) {
   try {
     for await (const e of Deno.readDir(fleetDir)) {
       if (!e.isDirectory) continue;
@@ -980,6 +995,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
       }
     }
   } catch { /* no fleet dir yet */ }
+  }
   registered = await listFleet(env, main);
   const prunable = registered.filter((r) => r.prunable);
   if (prunable.length > PRUNABLE_REFUSAL) {
@@ -1178,7 +1194,7 @@ export async function boot(env: Env): Promise<string[]> {
     lines.push("next: one Linear read for live claims, then PICK");
     return lines;
   }
-  // The fleet lives inside the shared checkout, so the shared row prefix-matches every worktree: the most specific path wins.
+  // A legacy worktree still lives inside the shared checkout, so the shared row prefix-matches it: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
   const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
   // An empty claim's tip is origin/main, which classifies "on-main": claimed, no work yet — not landed.
