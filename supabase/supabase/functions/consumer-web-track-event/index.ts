@@ -37,6 +37,9 @@ const ALLOWED_EVENTS = new Set([
   "home_mode_view",
   "home_card_open",
   "home_card_save",
+  // MESITA-1694 — Search-tab coach mark dismiss. Mirrored in web-consumer's
+  // AnalyticsEvent union. Payload.reason is timer or tap.
+  "search_coachmark_dismiss",
 ]);
 
 type Body = { event?: string; payload?: Record<string, unknown> };

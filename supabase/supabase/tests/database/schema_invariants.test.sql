@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(95);
+select plan(96);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -533,6 +533,27 @@ select is_empty(
        and a.attnum > 0 and not a.attisdropped
        and c.relkind in ('r', 'p', 'v', 'm', 'f')$$,
   'no public relation still has a project_id column (views and matviews included: the 20260825 rename only touched base tables, so a view is where it would come back)'
+);
+
+-- MESITA-1720. The catalogue pins above (project_id here, ticket_code in
+-- Attics) cannot see a function body. ALTER RENAME does not rewrite
+-- PL/pgSQL or LANGUAGE sql, which is how 20260906000000 shipped
+-- jsonb_build_object('project_id', v_row.place_id) inside
+-- run_place_enrichment_stages — live until a later migration fixed it by
+-- hand. Scan prosrc (the body), never pg_get_functiondef: the definer text
+-- includes the signature, and two functions deliberately keep the argument
+-- name p_project_id (42P13 refuses to rename it without DROP, which would
+-- cascade onto storage RLS). \y is a word boundary and _ is a word char, so
+-- p_project_id does not match; a body that still names the retired COLUMN
+-- is never excused.
+select is_empty(
+  $$select n.nspname || '.' || p.proname
+         || '(' || pg_get_function_identity_arguments(p.oid) || ')' as fn
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.prosrc ~* '\y(project_id|ticket_code)\y'$$,
+  'no public function body names retired columns project_id or ticket_code (ALTER RENAME does not rewrite plpgsql; this is how the enrichment dispatcher shipped a dead wire key)'
 );
 
 select ok(

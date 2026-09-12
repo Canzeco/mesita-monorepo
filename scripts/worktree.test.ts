@@ -27,6 +27,7 @@ import {
   findWorkspace,
   FLEET_DIR,
   fleetDirOf,
+  platformDirOf,
   GhError,
   hostHash,
   isClean,
@@ -45,6 +46,8 @@ import {
   repairLobby,
   showPath,
   sweep,
+  sweepCounts,
+  originFlags,
   validateId,
   validateSlug,
   withJoin,
@@ -254,7 +257,7 @@ Deno.test("add creates a claimed, seeded, locked workspace under the main worktr
   assertEquals((await defaultRunner("git", ["config", "--get", "extensions.worktreeConfig"], { cwd: f.main })).code, 1, "a real clone starts without the extension");
   const out = await add(env, { id: "MESITA-7", slug: "seven", footprint: "scripts/" });
   assertEquals(await git(f.main, "config", "--get", "extensions.worktreeConfig"), "true", "add turns the extension on, or the claim step is fatal");
-  const path = join(fleetDirOf(f.main), "MESITA-7-seven");
+  const path = join(platformDirOf(f.main, "claude-code"), "MESITA-7-seven");
   assertEquals(await git(path, "rev-parse", "--abbrev-ref", "HEAD"), "claude/MESITA-7-seven");
   assertEquals(await Deno.readTextFile(join(path, "apps/web/.env.local")), "SECRET=1\n");
   assertEquals(await git(path, "config", "--worktree", "--get", "mesita.issue"), "MESITA-7");
@@ -263,7 +266,7 @@ Deno.test("add creates a claimed, seeded, locked workspace under the main worktr
   const row = list.find((r) => r.path.endsWith("MESITA-7-seven"))!;
   assert(row.locked && parseLock(row.lockReason).ours);
   const text = out.join("\n");
-  assertStringIncludes(text, "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=worktrees/MESITA-7-seven footprint=scripts/");
+  assertStringIncludes(text, "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=worktrees/claude-code/MESITA-7-seven footprint=scripts/");
   assertStringIncludes(text, "seeded 1 file(s)");
   assertStringIncludes(text, "ok: workspace", "the claim is verified through the gate (I-9)");
   assertStringIncludes(text, "Cursor: open that worktree; Codex: cd", "the enter step names every platform, not only EnterWorktree");
@@ -288,8 +291,8 @@ Deno.test("add resumes the live workspace an issue already has, under any slug, 
   const env = makeEnv(f);
   await add(env, { id: "MESITA-7", slug: "seven", footprint: "apps/web/" });
   const again = (await add(env, { id: "MESITA-7", slug: "other" })).join("\n");
-  assertStringIncludes(again, "resumed worktrees/MESITA-7-seven on claude/MESITA-7-seven: MESITA-7 already has this workspace");
-  assertStringIncludes(again, "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=worktrees/MESITA-7-seven footprint=apps/web/", "a resume keeps the claim's footprint");
+  assertStringIncludes(again, "resumed worktrees/claude-code/MESITA-7-seven on claude/MESITA-7-seven: MESITA-7 already has this workspace");
+  assertStringIncludes(again, "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=worktrees/claude-code/MESITA-7-seven footprint=apps/web/", "a resume keeps the claim's footprint");
   const rows = parseWorktreeList(await git(f.main, "worktree", "list", "--porcelain", "-z"));
   assertEquals(rows.filter((r) => r.branch?.includes("MESITA-7")).length, 1, "one workspace per issue");
   assertEquals((await defaultRunner("git", ["rev-parse", "--verify", "--quiet", "refs/heads/claude/MESITA-7-other"], { cwd: f.main })).code, 1, "no second branch");
@@ -306,9 +309,9 @@ Deno.test("add re-attaches a loose branch that carries the id instead of cutting
   const old = await rawWorktree(f, "old", "claude/MESITA-8-old");
   await git(f.main, "worktree", "remove", old.path);
   const out = (await add(env, { id: "MESITA-8", slug: "new" })).join("\n");
-  assertStringIncludes(out, "re-attached branch claude/MESITA-8-old at worktrees/MESITA-8-new");
-  assertStringIncludes(out, "branch=claude/MESITA-8-old worktree=worktrees/MESITA-8-new");
-  const path = join(fleetDirOf(f.main), "MESITA-8-new");
+  assertStringIncludes(out, "re-attached branch claude/MESITA-8-old at worktrees/claude-code/MESITA-8-new");
+  assertStringIncludes(out, "branch=claude/MESITA-8-old worktree=worktrees/claude-code/MESITA-8-new");
+  const path = join(platformDirOf(f.main, "claude-code"), "MESITA-8-new");
   assertEquals(await git(path, "rev-parse", "HEAD"), old.tip, "the branch and its commits came back");
   assertEquals(await git(path, "config", "--worktree", "--get", "mesita.issue"), "MESITA-8");
   assertEquals((await defaultRunner("git", ["rev-parse", "--verify", "--quiet", "refs/heads/claude/MESITA-8-new"], { cwd: f.main })).code, 1);
@@ -336,7 +339,7 @@ Deno.test("add anchors on the main worktree even when run from a linked worktree
   const env = makeEnv(f, { cwd: w.path });
   await add(env, { id: "MESITA-9", slug: "nine" });
   const rows = parseWorktreeList(await git(f.main, "worktree", "list", "--porcelain", "-z"));
-  assert(rows.some((r) => r.path.endsWith(join(FLEET_DIR, "MESITA-9-nine"))));
+  assert(rows.some((r) => r.path.endsWith(join(FLEET_DIR, "claude-code", "MESITA-9-nine"))));
   assert(!rows.some((r) => r.path.includes("lane/.claude")));
   const adopted = await add(env, { id: "MESITA-10", adopt: w.path });
   assertStringIncludes(adopted.join("\n"), "renamed branch claude/lane → claude/MESITA-10-lane");
@@ -433,7 +436,7 @@ Deno.test("the pre-commit hook add installs refuses a commit in the shared check
   assertStringIncludes(lobby.stderr, "PREFLIGHT REFUSED commit");
   assertStringIncludes(lobby.stderr, "SHARED CHECKOUT");
   await git(f.main, "reset", "-q");
-  const ws = await gatedCommit(join(fleetDirOf(f.main), "MESITA-60-sixty"), "ok.txt", "work in the workspace");
+  const ws = await gatedCommit(join(platformDirOf(f.main, "claude-code"), "MESITA-60-sixty"), "ok.txt", "work in the workspace");
   assertEquals(ws.code, 0, ws.stderr);
   const foreign = await rawWorktree(f, "foreign", "claude/foreign-9f9f9f", { commit: false });
   const unclaimed = await gatedCommit(foreign.path, "x.txt", "work in an unclaimed worktree");
@@ -612,7 +615,7 @@ Deno.test("remove refuses from inside the target, on ambiguity and on unlanded w
   const f = await makeFixture();
   const env = makeEnv(f);
   await add(env, { id: "MESITA-20", slug: "twenty" });
-  const path = join(fleetDirOf(f.main), "MESITA-20-twenty");
+  const path = join(platformDirOf(f.main, "claude-code"), "MESITA-20-twenty");
   const tip = await commitFile(path, "t.txt", "t\n", "twenty");
   await assertRejects(() => remove(makeEnv(f, { cwd: path }), "MESITA-20"), WtError, "INSIDE TARGET");
   await assertRejects(() => remove(env, "MESITA-20"), WtError, "UNLANDED");
@@ -622,7 +625,7 @@ Deno.test("remove refuses from inside the target, on ambiguity and on unlanded w
   await assertRejects(() => remove(env, "MESITA-20"), WtError, "AMBIGUOUS");
   await git(other.path, "config", "--worktree", "--unset", "mesita.issue");
   const out = await remove(env, "MESITA-20");
-  assertStringIncludes(out.join("\n"), "removed worktrees/MESITA-20-twenty");
+  assertStringIncludes(out.join("\n"), "removed worktrees/claude-code/MESITA-20-twenty");
   assertStringIncludes(out.join("\n"), "deleted branch claude/MESITA-20-twenty (backup refs/swept/");
   assertEquals((await defaultRunner("git", ["rev-parse", "--verify", "--quiet", "refs/heads/claude/MESITA-20-twenty"], { cwd: f.main })).code, 1);
   await assertRejects(() => remove(env, "MESITA-21"), WtError, "NO ISSUE");
@@ -681,7 +684,7 @@ Deno.test("pr adopts an open PR and adds Closes and Docs, or creates one with bo
   const f = await makeFixture();
   const env = makeEnv(f);
   await add(env, { id: "MESITA-30", slug: "thirty" });
-  const path = join(fleetDirOf(f.main), "MESITA-30-thirty");
+  const path = join(platformDirOf(f.main, "claude-code"), "MESITA-30-thirty");
   await commitFile(path, "p.txt", "p\n", "thirty subject");
   f.ghOverride = (args) => {
     if (args[0] === "pr" && args[1] === "list" && args.includes("open")) return { code: 0, stdout: JSON.stringify([{ number: 44, body: "harness body", isDraft: true }]), stderr: "" };
@@ -711,7 +714,7 @@ Deno.test("pr adopts an open PR and adds Closes and Docs, or creates one with bo
   assertEquals(create[create.indexOf("--body") + 1], "Closes MESITA-30\nDocs: handoff notion:3bfa9bf37a52816eaa9dc2d7b8b74525");
   // A footprint that names Docs pages composes the line by itself.
   await add(env, { id: "MESITA-31", slug: "docs", footprint: "apps/web-consumer/src,notion:3bfa9bf37a52816eaa9dc2d7b8b74525,notion:3bfa9bf37a5281078acdc6b9e61b0cf2" });
-  const docsPath = join(fleetDirOf(f.main), "MESITA-31-docs");
+  const docsPath = join(platformDirOf(f.main, "claude-code"), "MESITA-31-docs");
   await commitFile(docsPath, "d.txt", "d\n", "docs subject");
   f.calls.length = 0;
   const auto = await pr(makeEnv(f, { cwd: docsPath }));
@@ -796,7 +799,7 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   const f = await makeFixture();
   const env = makeEnv(f);
   await add(env, { id: "MESITA-1", slug: "one" });
-  const path = await Deno.realPath(join(fleetDirOf(f.main), "MESITA-1-one"));
+  const path = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-1-one"));
   const tip = await commitFile(path, "a.txt", "a\n", "work");
   await assertRejects(() => leave(env, "MESITA-1"), WtError, "UNLANDED");
   await assertRejects(() => add(env, { id: "MESITA-2", slug: "two", adopt: path }), WtError, "NOT A LOBBY");
@@ -804,9 +807,15 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   const where = (await boot(makeEnv(f, { cwd: path }))).join("\n");
   assertStringIncludes(where, "MESITA-1 landed, a lobby once its claim is cleared");
   const left = (await leave(env, "MESITA-1")).join("\n");
-  assertStringIncludes(left, "left worktrees/MESITA-1-one");
+  assertStringIncludes(left, "left worktrees/claude-code/MESITA-1-one");
   assertEquals((await git(path, "config", "--worktree", "--get", "mesita.issue").catch(() => "")).trim(), "");
   assert(!(await git(f.main, "worktree", "list", "--porcelain")).includes("locked"), "leave unlocks");
+  const afterLeave = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(afterLeave, "a lobby on a branch that still names MESITA-1 (landed / no work yet): adopt it for the next issue");
+  assert(!/claimed by MESITA-1/.test(afterLeave), "a cleared claim is not a live claim");
+  const gate = await preflight(makeEnv(f, { cwd: path }), path);
+  assertEquals(gate.ok, false);
+  assertStringIncludes(gate.line, "UNCLAIMED WORKTREE");
   const adopted = (await add(env, { id: "MESITA-2", slug: "two", adopt: path })).join("\n");
   assertStringIncludes(adopted, "renamed branch claude/MESITA-1-one → claude/MESITA-2-two");
   assertStringIncludes(adopted, "branch=claude/MESITA-2-two");
@@ -818,11 +827,32 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   assertStringIncludes(again, "renamed branch claude/MESITA-2-two → claude/MESITA-3-three");
 });
 
+Deno.test("after leave, boot treats a leftover branch-id as a lobby, not a live claim (MESITA-1761)", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-60", slug: "left" });
+  const path = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-60-left"));
+  const left = (await leave(env, "MESITA-60")).join("\n");
+  assertStringIncludes(left, "left worktrees/claude-code/MESITA-60-left");
+  const booted = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(booted, "a lobby on a branch that still names MESITA-60 (landed / no work yet): adopt it for the next issue");
+  assert(!booted.includes("claimed by"), "boot agrees with preflight: not a live claim");
+  const gate = await preflight(makeEnv(f, { cwd: path }), path);
+  assertEquals(gate.ok, false);
+  assertStringIncludes(gate.line, "UNCLAIMED WORKTREE");
+  // The branch-name fallback still lets add re-attach the loose branch.
+  const resumed = (await add(env, { id: "MESITA-60" })).join("\n");
+  assertStringIncludes(resumed, "resumed worktrees/claude-code/MESITA-60-left on claude/MESITA-60-left");
+  const reclaimed = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(reclaimed, "claimed by MESITA-60 on claude/MESITA-60-left: no work yet");
+});
+
 // ── Origin claims (I-6) ─────────────────────────────────────────────────────
 
 Deno.test("parseOriginRefs drops main and HEAD; decideRemote deletes only a landed, idle, id-carrying branch nobody checks out here", () => {
   const refs = parseOriginRefs([
     "origin/HEAD abc 2026-09-12T10:00:00+00:00",
+    "origin abc 2026-09-12T10:00:00+00:00",
     "origin/main abc 2026-09-12T10:00:00+00:00",
     "origin/claude/MESITA-7-x def 2026-09-10T10:00:00+00:00",
     "origin/claude/home-soon-96e9 123 not-a-date",
@@ -847,11 +877,11 @@ Deno.test("add pushes the claim branch so every host sees the lock; boot reads i
   assertStringIncludes(out, "pushed claude/MESITA-40-forty to origin");
   const heads = await git(f.tmp, "--git-dir", f.originPath, "for-each-ref", "--format=%(refname:short)", "refs/heads/");
   assert(heads.includes("claude/MESITA-40-forty"), "the empty claim branch sits on origin");
-  const path = await Deno.realPath(join(fleetDirOf(f.main), "MESITA-40-forty"));
+  const path = await Deno.realPath(join(platformDirOf(f.main, "claude-code"), "MESITA-40-forty"));
   const booted = (await boot(makeEnv(f, { cwd: path }))).join("\n");
-  assertStringIncludes(booted, "where: workspace worktrees/MESITA-40-forty claimed by MESITA-40 on claude/MESITA-40-forty: no work yet");
+  assertStringIncludes(booted, "where: workspace worktrees/claude-code/MESITA-40-forty claimed by MESITA-40 on claude/MESITA-40-forty: no work yet");
   assertStringIncludes(booted, "origin/claude/MESITA-40-forty | MESITA-40 | no work yet | on-main | keep: checked out here");
-  assertStringIncludes(booted, "claim: claimed platform=claude-code host=t3st branch=claude/MESITA-40-forty worktree=worktrees/MESITA-40-forty footprint=none");
+  assertStringIncludes(booted, "claim: claimed platform=claude-code host=t3st branch=claude/MESITA-40-forty worktree=worktrees/claude-code/MESITA-40-forty footprint=none");
   // A second checkout of the same origin — another host — sees the claim without any ledger read.
   const other = await makeClone(f, "main");
   const seen = (await boot(makeEnv(f, { cwd: other }))).join("\n");
@@ -883,6 +913,22 @@ Deno.test("sweep deletes a landed origin branch past the lease with a backup ref
   assert(!heads.includes("claude/MESITA-50-remote-landed"), "the landed origin branch is gone");
   assert(heads.includes("claude/home-soon-96e9") && heads.includes("claude/MESITA-51-fresh"), "id-less and fresh claims stay");
   assertStringIncludes(await git(f.main, "for-each-ref", "--format=%(refname)", "refs/swept/"), "/origin/claude/MESITA-50-remote-landed");
+  const counts = JSON.parse(dry.json) as { noId: number; remoteLanded: number; staleClaim: number; fleet: unknown[] };
+  assertEquals(counts.noId, dry.origin.filter((c) => !c.issue).length);
+  assert(dry.origin.some((c) => c.branch.endsWith("home-soon-96e9") && !c.issue));
+  assertEquals(counts.remoteLanded, 1);
+  assertEquals(counts.staleClaim, 1);
+  assert(Array.isArray(counts.fleet));
+});
+
+Deno.test("originFlags: noId vs remoteLanded vs staleClaim are the three doctor 8.1 counts", () => {
+  const now = new Date("2026-09-12T00:00:00Z");
+  const base = { branch: "x", tip: "abc", date: new Date("2026-09-10T00:00:00Z"), here: false };
+  assertEquals(originFlags({ ...base, issue: null, landed: { kind: "exact", pr: 1 } }, now), { noId: true, remoteLanded: true, staleClaim: false });
+  assertEquals(originFlags({ ...base, issue: "MESITA-1", landed: { kind: "exact", pr: 1 } }, now), { noId: false, remoteLanded: true, staleClaim: true });
+  assertEquals(originFlags({ ...base, issue: "MESITA-1", landed: { kind: "on-main" }, here: true }, now), { noId: false, remoteLanded: false, staleClaim: false });
+  assertEquals(originFlags({ ...base, issue: "MESITA-1", landed: { kind: "unlanded" } }, now), { noId: false, remoteLanded: false, staleClaim: true });
+  assertEquals(sweepCounts([{ ...base, issue: null, landed: { kind: "exact", pr: 1 } }, { ...base, issue: "MESITA-1", landed: { kind: "unlanded" } }], now), { noId: 1, remoteLanded: 1, staleClaim: 1 });
 });
 
 // ── The platform contract (SADLC adapters, item 4) ───────────────────────────
@@ -910,6 +956,7 @@ Deno.test("MESITA_PLATFORM declares the interface: a *-cloud token is cloud mode
   assertEquals(showPath("/a/b", "/a/b"), ".");
   assertEquals(showPath("/a/b", "/a/x/y"), "/a/x/y");
   assertEquals(showPath("/a/b", "/a/worktrees/c"), "worktrees/c", "a fleet worktree prints fleet-relative");
+  assertEquals(showPath("/a/b", "/a/worktrees/codex/c"), "worktrees/codex/c", "a platform folder is part of the printed path");
   assertEquals(showPath("/a/b", "/a/b/.claude/worktrees/d"), ".claude/worktrees/d", "a legacy worktree still prints repo-relative");
 });
 
@@ -930,6 +977,20 @@ Deno.test("an undeclared cloud interface claims its clone with its own token and
   const local = makeEnv(f);
   local.platform = "opencode";
   const made = (await add(local, { id: "MESITA-91", slug: "oc" })).join("\n");
-  assertStringIncludes(made, "claimed platform=opencode host=t3st branch=agent/MESITA-91-oc worktree=worktrees/MESITA-91-oc");
+  assertStringIncludes(made, "claimed platform=opencode host=t3st branch=agent/MESITA-91-oc worktree=worktrees/opencode/MESITA-91-oc");
   await assertRejects(() => add(makeEnv(f), { id: "MESITA-92", slug: "bad", platform: "Bad Token" }), WtError, "INVALID PLATFORM");
+});
+
+Deno.test("sweep: a platform folder and a Finder alias at the fleet root are never orphans; a stray directory inside a platform folder is", async () => {
+  const f = await makeFixture();
+  await Deno.mkdir(platformDirOf(f.main, "claude-code"), { recursive: true });
+  await Deno.symlink(await Deno.makeTempDir(), join(fleetDirOf(f.main), "conductor"));
+  await Deno.mkdir(join(platformDirOf(f.main, "codex"), "ghost"), { recursive: true });
+  const straggler = await rawWorktree(f, "straggler", "claude/straggler");
+  const res = await sweep(makeEnv(f), { apply: false });
+  const flagged = res.lines.filter((l) => /ORPHAN|repaired/.test(l)).join("\n");
+  assert(!/claude-code\b|conductor/.test(flagged), `platform folder and alias are not orphans:\n${flagged}`);
+  assertStringIncludes(flagged, "ORPHAN: worktrees/codex/ghost");
+  assertStringIncludes(res.json, `"path":"worktrees/straggler"`, "a registered worktree at the fleet root stays in the table");
+  assert(await Deno.stat(platformDirOf(f.main, "claude-code")), "the empty platform folder survives");
 });

@@ -98,13 +98,19 @@ export const SWEPT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // refs/swept/ live 30 day
 export const PRUNABLE_REFUSAL = 3; // more than this many prunable entries = the repo moved
 export const HISTORY_DEPTH = 20;
 export const ANCESTOR_BOUND = 1000;
-// The fleet lives BESIDE the checkout, not inside it (MESITA-1770): `<parent of main>/worktrees`,
-// visible in Finder and shared by every code surface that opens a fleet worktree (Claude Code,
-// Codex, Cursor). The legacy location inside the repo is still scanned by sweep until it drains.
+// The fleet lives BESIDE the checkout, not inside it (MESITA-1770), one folder per code surface
+// (MESITA-1777): `<parent of main>/worktrees/<platform>/<name>`, the platform being the token of the
+// claim (claude-code, codex, cursor, …). Visible in Finder; a surface that keeps its own worktrees
+// elsewhere (Conductor) is aliased beside the platform folders. Worktrees still at the fleet root
+// or in the legacy location inside the repo are scanned by sweep until they drain.
 export const FLEET_DIR = "worktrees";
 export const LEGACY_FLEET_DIR = ".claude/worktrees";
 export function fleetDirOf(main: string): string {
   return join(dirname(main), FLEET_DIR);
+}
+/** Where `add` files a worktree: `<fleet>/<platform>/`. */
+export function platformDirOf(main: string, platform: string): string {
+  return join(fleetDirOf(main), platform);
 }
 export const LOCK_PREFIX = "mesita claim=";
 export const DRAFT_WAIT_MS = 60_000;
@@ -320,6 +326,16 @@ async function gitOk(env: Env, cwd: string, ...args: string[]): Promise<string> 
   return r.stdout;
 }
 
+/** True when a path exists (a `.git` link marks a worktree directory). */
+async function exists(p: string): Promise<boolean> {
+  try {
+    await Deno.stat(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function realpath(p: string): Promise<string> {
   try {
     return await Deno.realPath(p);
@@ -366,9 +382,18 @@ export async function mainWorktree(env: Env): Promise<{ main: string; rows: Row[
   return { main: rows[0].path, rows };
 }
 
-/** The claim a checkout carries: the config key, else the id its branch names (harness or hand-made branches). */
+/** Live claim only: the config key. A leftover branch id is not a live claim (boot, preflight). */
+async function liveClaimOf(env: Env, row: Row): Promise<string | null> {
+  return await worktreeConfig(env, row.path, "mesita.issue");
+}
+
+/**
+ * The claim a checkout carries: the live config, else the id its branch names (harness or
+ * hand-made branches). The fallback lets `add` re-attach a loose branch; it is not a live
+ * claim — boot must not say "claimed by" from it (MESITA-1761).
+ */
 async function claimOf(env: Env, row: Row): Promise<string | null> {
-  return await worktreeConfig(env, row.path, "mesita.issue") ?? issueFromBranch(row.branch);
+  return await liveClaimOf(env, row) ?? issueFromBranch(row.branch);
 }
 
 // ── preflight (the gate) ────────────────────────────────────────────────────
@@ -545,8 +570,8 @@ export function table(main: string, fleet: Fleet[], now: Date): string {
   return lines.join("\n");
 }
 
-export function toJson(main: string, fleet: Fleet[]): string {
-  return JSON.stringify(fleet.map((f) => ({
+export function fleetRows(main: string, fleet: Fleet[]): Record<string, unknown>[] {
+  return fleet.map((f) => ({
     path: showPath(main, f.row.path) || ".",
     branch: f.row.branch,
     landed: describeLanded(f.landed),
@@ -558,7 +583,16 @@ export function toJson(main: string, fleet: Fleet[]): string {
     host: f.host,
     decision: f.decision,
     reason: f.reason,
-  })));
+  }));
+}
+
+/** Doctor 8.1 reads this object — never a hand count. Counts come from origin; fleet stays the row list. */
+export function toJson(
+  main: string,
+  fleet: Fleet[],
+  counts: { noId: number; remoteLanded: number; staleClaim: number } = { noId: 0, remoteLanded: 0, staleClaim: 0 },
+): string {
+  return JSON.stringify({ fleet: fleetRows(main, fleet), ...counts });
 }
 
 // ── repair-lobby (I-4) ──────────────────────────────────────────────────────
@@ -758,7 +792,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   const slug = validateSlug(args.slug ?? "work");
   const name = `${id}-${slug}`;
   const branch = `${prefix}/${name}`;
-  const target = join(fleetDirOf(main), name);
+  const target = join(platformDirOf(main, platform), name);
   const check = await git(env, main, "check-ref-format", "--branch", branch);
   if (check.code !== 0) throw new WtError("INVALID SLUG", branch, "git rejects the branch name", "shorten or simplify the slug", "I-3");
   const fetch = await git(env, main, "fetch", "--quiet", "origin", "main");
@@ -775,7 +809,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   if (pathExists) {
     throw new WtError("EXISTS", showPath(main, target), "a directory sits where the workspace would go, and it is not a registered worktree", "move it away, or git worktree repair it, then rerun", "I-3");
   }
-  await Deno.mkdir(fleetDirOf(main), { recursive: true });
+  await Deno.mkdir(platformDirOf(main, platform), { recursive: true });
   const attach = loose ?? (branchExists ? branch : null);
   const addRes = attach
     ? await git(env, main, "worktree", "add", target, attach)
@@ -978,23 +1012,33 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   const { main } = await mainWorktree(env);
   const lines: string[] = [];
   for (const n of await repairLobby(env, main, { apply: opts.apply })) lines.push(n);
-  // Orphans present on disk but unregistered: repair before anything prunes.
+  // Orphans present on disk but unregistered: repair before anything prunes. The fleet root holds
+  // one folder per platform (an unregistered directory without a .git link), registered stragglers
+  // from before MESITA-1777, and Finder aliases (symlinks, never directories here); the legacy
+  // folder inside the checkout is flat.
   let registered = await listFleet(env, main);
   const known = new Set(registered.map((r) => r.path));
-  for (const fleetDir of [fleetDirOf(main), join(main, LEGACY_FLEET_DIR)]) {
-  try {
-    for await (const e of Deno.readDir(fleetDir)) {
-      if (!e.isDirectory) continue;
-      const p = await realpath(join(fleetDir, e.name));
-      if (known.has(p)) continue;
-      const rep = await git(env, main, "worktree", "repair", p);
-      if (rep.code === 0 && rep.stderr.trim() === "" || (await listFleet(env, main)).some((r) => r.path === p)) {
-        lines.push(`repaired ${showPath(main, p)}`);
-      } else {
-        lines.push(`ORPHAN: ${showPath(main, p)} — its admin entry is gone, git worktree repair cannot re-register it — compare it against its branch tip by hand (read-tree recipe) before deleting; the sweep never touches it (I-10)`);
+  const unregistered: string[] = [];
+  const scan = async (dir: string, platformLevel: boolean) => {
+    try {
+      for await (const e of Deno.readDir(dir)) {
+        if (!e.isDirectory) continue;
+        const p = await realpath(join(dir, e.name));
+        if (known.has(p)) continue;
+        if (platformLevel && !(await exists(join(p, ".git")))) await scan(p, false);
+        else unregistered.push(p);
       }
+    } catch { /* no such folder yet */ }
+  };
+  await scan(fleetDirOf(main), true);
+  await scan(join(main, LEGACY_FLEET_DIR), false);
+  for (const p of unregistered) {
+    const rep = await git(env, main, "worktree", "repair", p);
+    if (rep.code === 0 && rep.stderr.trim() === "" || (await listFleet(env, main)).some((r) => r.path === p)) {
+      lines.push(`repaired ${showPath(main, p)}`);
+    } else {
+      lines.push(`ORPHAN: ${showPath(main, p)} — its admin entry is gone, git worktree repair cannot re-register it — compare it against its branch tip by hand (read-tree recipe) before deleting; the sweep never touches it (I-10)`);
     }
-  } catch { /* no fleet dir yet */ }
   }
   registered = await listFleet(env, main);
   const prunable = registered.filter((r) => r.prunable);
@@ -1064,7 +1108,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   } else {
     lines.push("dry run: nothing changed; rerun with --apply to remove what is marked remove or delete");
   }
-  return { lines, fleet, json: toJson(main, fleet), loose, origin };
+  return { lines, fleet, json: toJson(main, fleet, sweepCounts(origin, now)), loose, origin };
 }
 
 export async function looseBranches(env: Env, main: string, rows: Row[]): Promise<{ branch: string; tip: string; landed: Landed }[]> {
@@ -1092,7 +1136,7 @@ export function parseOriginRefs(text: string): OriginRef[] {
     const [ref, tip, date] = line.trim().split(/\s+/);
     if (!ref || !tip) continue;
     const branch = ref.replace(/^origin\//, "");
-    if (branch === "HEAD" || branch === "main") continue;
+    if (!branch || branch === "HEAD" || branch === "main" || branch === "origin") continue;
     const d = date ? new Date(date) : null;
     out.push({ branch, tip, date: d && !isNaN(d.getTime()) ? d : null });
   }
@@ -1136,6 +1180,28 @@ export function originTable(claims: OriginClaim[], now: Date, leaseMs: number = 
     lines.push(`origin/${c.branch} | ${c.issue ?? "-"} | ${age} | ${describeLanded(c.landed)} | ${d.decision}: ${d.reason}`);
   }
   return lines.join("\n");
+}
+
+/** Flags the doctor reads off each origin-json row (MESITA-1754). `on-main` is a live claim with no work, not remote-landed. */
+export function originFlags(c: OriginClaim, now: Date, leaseMs: number = LEASE_MS): { noId: boolean; remoteLanded: boolean; staleClaim: boolean } {
+  const idle = c.date ? now.getTime() - c.date.getTime() >= leaseMs : false;
+  const kind = c.landed?.kind;
+  return {
+    noId: !c.issue,
+    remoteLanded: kind === "exact" || kind === "tree" || kind === "merge-tree",
+    staleClaim: Boolean(c.issue) && idle && !c.here && kind !== "on-main",
+  };
+}
+
+export function sweepCounts(origin: OriginClaim[], now: Date, leaseMs: number = LEASE_MS): { noId: number; remoteLanded: number; staleClaim: number } {
+  let noId = 0, remoteLanded = 0, staleClaim = 0;
+  for (const c of origin) {
+    const f = originFlags(c, now, leaseMs);
+    if (f.noId) noId++;
+    if (f.remoteLanded) remoteLanded++;
+    if (f.staleClaim) staleClaim++;
+  }
+  return { noId, remoteLanded, staleClaim };
 }
 
 /** The §0 stamp the quickstart carries (Rules §0, Mirror line); boot prints it so a session compares it with Rules in one read. */
@@ -1196,15 +1262,17 @@ export async function boot(env: Env): Promise<string[]> {
   }
   // A legacy worktree still lives inside the shared checkout, so the shared row prefix-matches it: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
-  const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
+  const liveClaim = here && here.path !== main ? await liveClaimOf(env, here) : null;
+  const namedIssue = here && here.path !== main ? issueFromBranch(here.branch) : null;
   // An empty claim's tip is origin/main, which classifies "on-main": claimed, no work yet — not landed.
-  const hereClass = here && here.path !== main && hereIssue ? (await classifyLanded(env, main, here.head, here.branch)).landed : null;
+  const hereClass = here && here.path !== main && liveClaim ? (await classifyLanded(env, main, here.head, here.branch)).landed : null;
   const hereLanded = hereClass !== null && isLanded(hereClass) && hereClass.kind !== "on-main";
   if (!here) lines.push(`where: ${cwd} (outside the fleet)`);
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
-  else if (hereIssue && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${hereIssue} landed, a lobby once its claim is cleared: deno task worktree leave ${hereIssue}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
-  else if (hereIssue && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}: no work yet`);
-  else if (hereIssue) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
+  else if (liveClaim && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${liveClaim} landed, a lobby once its claim is cleared: deno task worktree leave ${liveClaim}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
+  else if (liveClaim && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${liveClaim} on ${here.branch ?? "(detached)"}: no work yet`);
+  else if (liveClaim) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${liveClaim} on ${here.branch ?? "(detached)"}`);
+  else if (namedIssue) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: a lobby on a branch that still names ${namedIssue} (landed / no work yet): adopt it for the next issue`);
   else lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
@@ -1304,7 +1372,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         const r = await sweep(env, { apply: rest.includes("--apply") });
         for (const l of r.lines) env.log(l);
         env.log(`json: ${r.json}`);
-        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...decideRemote(c, env.now()) })))}`);
+        env.log(`origin-json: ${JSON.stringify(r.origin.map((c) => ({ branch: c.branch, issue: c.issue, tip: c.tip, date: c.date?.toISOString() ?? null, landed: describeLanded(c.landed), here: c.here, ...originFlags(c, env.now()), ...decideRemote(c, env.now()) })))}`);
         return 0;
       }
       case "repair-lobby": {

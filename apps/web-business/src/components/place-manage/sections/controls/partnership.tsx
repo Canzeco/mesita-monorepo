@@ -66,7 +66,7 @@ function LifecycleBanner({
           <span className="font-display font-semibold tracking-tight">
             Partner live
           </span>
-          <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
+          <span className={warn ? "text-amber-800 dark:text-amber-200" : "text-muted-foreground"}>
             {warn
               ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits the partnership.`
               : "All three steps done — joined, strategy set, checks honored."}
@@ -185,9 +185,6 @@ export function PartnershipBody({
   member,
   joinBusy,
   joinError,
-  restoreBusy,
-  restoreError,
-  onRestoreClick,
   onJoinClick,
   onDropClick,
 }: {
@@ -197,9 +194,6 @@ export function PartnershipBody({
   member: boolean;
   joinBusy: boolean;
   joinError: string | null;
-  restoreBusy: boolean;
-  restoreError: string | null;
-  onRestoreClick: () => void;
   onJoinClick: () => void;
   onDropClick: () => void;
 }) {
@@ -257,23 +251,10 @@ export function PartnershipBody({
         )}
 
         {underReview && (
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={onRestoreClick}
-              disabled={restoreBusy}
-              className="border-border bg-card hover:bg-muted/60 inline-flex h-9 w-fit items-center rounded-full border px-4 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-60"
-            >
-              {restoreBusy ? "Restoring…" : "Restore Visit Rewards"}
-            </button>
-            <p className="text-muted-foreground type-meta leading-snug">
-              Ends the review — the lane reopens to whatever the strike
-              ladder already says.
-            </p>
-            <div aria-live="polite">
-              {restoreError && <ErrorNote message={restoreError} />}
-            </div>
-          </div>
+          <p className="text-muted-foreground type-meta leading-snug">
+            Mesita is reviewing this place. Visit Rewards stay on hold
+            until that review ends — an operator cannot lift their own hold.
+          </p>
         )}
 
         {showJoin && (
@@ -305,7 +286,7 @@ export function PartnershipBody({
   );
 }
 
-/** Free join — writes plan via admin-web-set-plan. No charge, ever. */
+/** Free join — writes plan via business-web-set-partnership. No charge, ever. */
 function JoinPartnershipButton({
   busy,
   forfeited,
@@ -347,8 +328,8 @@ export function MembershipStatePill({ state }: { state: MembershipPillState }) {
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-meta font-bold tracking-wide uppercase",
         state === "forfeited" && "bg-destructive/10 text-destructive",
-        amber && "bg-amber-500/12 text-amber-800",
-        liveish && "bg-emerald-500/12 text-emerald-700",
+        amber && "bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200",
+        liveish && "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
         state === "not_member" && "bg-muted text-muted-foreground",
       )}
     >

@@ -11,6 +11,7 @@ import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView, placeTabHref, visibleTabs } from "@/lib/place-view";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PublishOpenPlace } from "@/components/console/OpenPlace";
+import { isMemberPlan } from "@/components/place-manage/sections/promo-state";
 import { PlaceManageShell } from "./PlaceManageShell";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +82,7 @@ export default async function PlaceLayout({
       name={view.place.name}
       verified={view.place.verified}
       listed={view.place.listed}
+      partner={manage ? isMemberPlan(manage.place.plan) : false}
     />
   );
 

@@ -26,7 +26,10 @@ import {
   FORBIDDEN_ASSET_EXTS,
   FORBIDDEN_ASSET_GLOBS,
   forbiddenAssetMessage,
+  GITHUB_CARD_BUDGETS,
+  githubCardBudgetCheck,
   groupSkillDocs,
+  isGithubMarkdown,
   MD_ALLOW_DIRS,
   MD_SCAN_GLOBS,
   missingStampMessage,
@@ -40,6 +43,7 @@ import {
   SKILLS_DIR,
   START,
   TARGETS,
+  unbudgetedGithubCardMessage,
   type Target,
 } from "./sync-rules.ts";
 
@@ -261,6 +265,43 @@ Deno.test("every shipped skill is within budget", async () => {
   for (const [name, words] of shipped) {
     const b = skillBudgetCheck(name, words);
     assert(!b.over, overBudgetMessage(b));
+  }
+});
+
+// ── GitHub cards (MESITA-1775) ─────────────────────────────────────────────
+
+Deno.test("isGithubMarkdown is root .github/ only, markdown extensions only", () => {
+  assertEquals(isGithubMarkdown(".github/README.md"), true);
+  assertEquals(isGithubMarkdown(".github/PULL_REQUEST_TEMPLATE.md"), true);
+  assertEquals(isGithubMarkdown(".github/workflows/rules.yml"), false);
+  assertEquals(isGithubMarkdown("apps/web-admin/.github/README.md"), false);
+  assertEquals(isGithubMarkdown("README.md"), false);
+});
+
+Deno.test("githubCardBudgetCheck uses the named ceiling and trips one word over", () => {
+  assertEquals(githubCardBudgetCheck(".github/README.md", 150).over, false);
+  assertEquals(githubCardBudgetCheck(".github/README.md", 151).over, true);
+  assertEquals(githubCardBudgetCheck(".github/SECURITY.md", 100).over, false);
+  assertEquals(githubCardBudgetCheck(".github/PULL_REQUEST_TEMPLATE.md", 61).over, true);
+  assertEquals(githubCardBudgetCheck(".github/UNKNOWN.md", 1).over, true);
+  assertEquals(githubCardBudgetCheck(".github/UNKNOWN.md", 1).budget, 0);
+});
+
+Deno.test("unbudgetedGithubCardMessage names the file and the table", () => {
+  const msg = unbudgetedGithubCardMessage(".github/copilot-instructions.md");
+  assertStringIncludes(msg, "UNBUDGETED GITHUB CARD");
+  assertStringIncludes(msg, ".github/copilot-instructions.md");
+  assertStringIncludes(msg, "GITHUB_CARD_BUDGETS");
+});
+
+Deno.test("every GITHUB_CARD_BUDGETS path is a shipped file within its ceiling", async () => {
+  for (const [path, budget] of Object.entries(GITHUB_CARD_BUDGETS)) {
+    const text = await Deno.readTextFile(join(repoRoot, path));
+    const words = countWords(text);
+    assert(
+      words <= budget,
+      overBudgetMessage({ label: path, words, budget, over: true }),
+    );
   }
 });
 

@@ -32,14 +32,12 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
 
 /**
  * Which app directories a given `<actor>-web-*` prefix may be called from.
- * `web-check` is `apps/web-validate`'s live legacy duplicate (same backend,
- * same Supabase project — its own CLAUDE.md says so) and is NOT drift.
  */
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
   business: ["web-business", "mobile-business"],
   consumer: ["web-consumer", "mobile-consumer"],
-  validate: ["web-validate", "web-check"],
+  validate: ["web-validate"],
   // The public gift-landing page (MESITA-1677) — a stranger with a code, no
   // account, lives as a top-level route in web-consumer (outside its own
   // (shell) auth wall), not a separate app the way web-validate is. Same
@@ -67,21 +65,15 @@ const GRANDFATHERED_VIOLATIONS = new Set([
   "admin-web-decide-verification:web-business",
   "admin-web-enrich-place:web-business",
   "admin-web-find-place:web-business",
-  "admin-web-get-atlas-fields:web-business",
-  "admin-web-get-place-activity:web-business",
   "admin-web-get-place-enrichment:web-business",
-  "admin-web-get-place-payment-account:web-business",
   "admin-web-get-place-verification:web-business",
-  "admin-web-list-notifications:web-business",
   "admin-web-list-verifications:web-business",
   "admin-web-reset-database:web-consumer",
-  "admin-web-review-ticket-report:web-business",
   "admin-web-search-places:web-business",
   "admin-web-set-place-active:web-business",
   "admin-web-set-place-enrichment:web-business",
   "admin-web-set-place-listed:web-business",
   "admin-web-set-place-verified:web-business",
-  "admin-web-set-plan:web-business",
   "admin-web-suggest-places:web-business",
   "consumer-web-create-reservation:web-admin",
 ]);

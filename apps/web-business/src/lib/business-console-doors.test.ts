@@ -21,9 +21,8 @@
 // holds it, and keeps the ones some other module in the closure actually
 // imports by name. A door nobody imports is not reachable.
 //
-// A RATCHET, and an audit record: the six below are the complete set as of
-// 2026-09-10, each with the verdict from that audit. Fixing one deletes its
-// entry. Adding one fails.
+// A RATCHET: OPERATOR_REACHABLE_ADMIN_DOORS is empty as of MESITA-1740.
+// Adding a door fails; a leftover listed name also fails.
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -194,49 +193,12 @@ function reachableAdminDoors(): Map<string, Set<string>> {
 }
 
 /**
- * The complete set an operator can still reach, 2026-09-10, with the verdict
- * from the MESITA-1736 audit. Two kinds, and the difference is the whole
- * point of auditing rather than twinning everything:
- *
- *   TWIN     — the operator legitimately does this to their own place, so the
- *              door needs a `business-web-*` sibling (the shape this issue
- *              shipped for the rails).
- *   UNGATE   — the door is correctly super-admin; it is the SURFACE that is
- *              wrong, and the fix is to stop rendering it to an operator.
+ * The complete set an operator can still reach. Empty as of MESITA-1740:
+ * every previously audited door was either wired to a `business-web-*`
+ * twin, replaced by a narrow partnership door, or ungated off the
+ * operator's screen. Adding one fails; a leftover listed name also fails.
  */
-const OPERATOR_REACHABLE_ADMIN_DOORS: Record<string, string> = {
-  "admin-web-get-atlas-fields":
-    "TWIN. Category/tag vocabulary and field limits for the Profile editor — " +
-    "nothing place-specific, nothing private, and the editor cannot render " +
-    "without it. Needs a business door or a shared vocabulary read.",
-  "admin-web-get-place-activity":
-    "TWIN, and the twin already exists: business-web-get-performance is " +
-    "membership-scoped and computes influenced spend with the same formula " +
-    "(that EF's own header says so). The Activity tab should read it.",
-  "admin-web-get-place-enrichment":
-    "UNGATE. The Intaker inspector — vision analysis text, SERP summary, " +
-    "pipeline stage. place-view.ts calls exactly this operator internals and " +
-    "keeps it on the Admin tab; PlaceSection reading it on Profile is the bug.",
-  "admin-web-list-notifications":
-    "TWIN, same twin as the activity read: the Activity tab's event feed " +
-    "(EventSuperBoxes) is the place's own history, and " +
-    "business-web-get-performance already returns a per-place `feed` band. " +
-    "Today an operator's feed calls a super-admin door and comes back empty.",
-  "admin-web-get-place-payment-account":
-    "TWIN, mostly existing: business-web-get-payment-account already reads " +
-    "the org's Connect mirror for any member. It lacks the pay-readiness " +
-    "verdict (intent / global_rail / capability) this call renders.",
-  "admin-web-review-ticket-report":
-    "UNGATE. Confirming a guest's ghost-partner report, and clearing the " +
-    "hold it sets, is Mesita adjudicating the operator. An operator must not " +
-    "be able to dismiss a report filed against their own place.",
-  "admin-web-set-plan":
-    "NARROW DOOR. places.plan is entitlement, and pro is what makes a place " +
-    "Verified — business-web-update-place rejects `plan` outright so a client " +
-    "cannot grant itself that. A plain twin reopens it. The Capabilities tab " +
-    "needs the free partnership join only, so the door should permit that " +
-    "transition and nothing else.",
-};
+const OPERATOR_REACHABLE_ADMIN_DOORS: Record<string, string> = {};
 
 describe("the operator's console reaches operator doors", () => {
   it("the capability switches write through a door an operator can open", () => {

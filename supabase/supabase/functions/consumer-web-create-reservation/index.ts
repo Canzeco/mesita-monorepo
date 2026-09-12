@@ -77,12 +77,16 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   // ── The place must still exist ──────────────────────────────────────────
-  // Clients can hold a project_id that has since been deleted — the swipe deck
+  // Clients can hold a place id that has since been deleted — the swipe deck
   // persists its card list in sessionStorage, and an admin reset re-creates
   // places under FRESH uuids. Without this check the insert reaches Postgres
   // and the raw FK message ("violates foreign key constraint
-  // reservations_project_id_fkey") is what the guest reads. Fail clean, and
-  // give the client a code it can act on.
+  // reservation_tickets_place_id_fkey") is what the guest reads. Fail clean,
+  // and give the client a code it can act on.
+  //
+  // The constraint was `reservations_project_id_fkey` when this was written;
+  // the rename carried it too, so the old name is a message no guest can see
+  // any more (MESITA-1718, verified against the live catalog).
   const { data: placeRow, error: placeErr } = await admin
     .from("places")
     .select("id, content_state")
@@ -165,11 +169,14 @@ Deno.serve(async (req) => {
   let reservation: { id: string } & Record<string, unknown> | null = null;
   let insertError: { message: string } | null = null;
   for (let i = 0; i < 3 && !reservation; i++) {
-    // NO `place:place_profiles(...)` embed here — reservations→place_profiles is a two-hop FK
-    // (reservations.project_id → places.id → place_profiles.id), so PostgREST fails
-    // with "Could not find a relationship between 'reservations' and 'place_profiles'
-    // in the schema cache". Select project_id and stitch via attachPlaces,
-    // exactly like the list EFs (#518/#523).
+    // NO `place:place_profiles(...)` embed here — the FK chain is two hops
+    // (reservation_tickets.place_id → places.id → place_profiles.id), so PostgREST
+    // fails with "Could not find a relationship between 'reservation_tickets' and
+    // 'place_profiles' in the schema cache". Select place_id and stitch via
+    // attachPlaces, exactly like the list EFs (#518/#523).
+    //
+    // The table was `reservations` and the column `project_id` when this was
+    // written; both were renamed and the comment was not (MESITA-1718).
     const ins = await writeReservation(admin, {
       mode: "insert",
       patch: {

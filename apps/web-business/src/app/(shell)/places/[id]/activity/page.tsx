@@ -14,5 +14,5 @@ export default async function PlaceActivityPage({
   // this re-checks. The read is request-cached, so it costs nothing.
   const manage = await getManagePlace(id);
   if (!manage) notFound();
-  return <ActivityTab allowTriage={manage.isSuperAdmin} />;
+  return <ActivityTab />;
 }

@@ -319,7 +319,7 @@ verify_jwt = true
 # limiting, uniform 404s). See _shared/ticket-check.ts.
 
 # MESITA-1117: the 7 check-web-* twins are deleted. Staff callers
-# (apps/web-check · apps/web-validate) hit these validate-web-* names.
+# (apps/web-validate) hit these validate-web-* names.
 [functions.validate-web-get-ticket]
 verify_jwt = false
 
@@ -478,6 +478,16 @@ verify_jwt = true
 # the guests produced, and the per-place feed. Membership-scoped, and never
 # selects a consumer's class (blended-rate privacy).
 [functions.business-web-get-performance]
+verify_jwt = true
+
+# Profile editor vocabulary (MESITA-1740): Super Categories, categories,
+# tags, facets, field limits. Twin of admin-web-get-atlas-fields.
+[functions.business-web-get-atlas-fields]
+verify_jwt = true
+
+# Free partnership join / drop / strategy switch (MESITA-1740). Narrow
+# door: never takes a plan field, so a client cannot grant itself Verified.
+[functions.business-web-set-partnership]
 verify_jwt = true
 
 # MESITA-892: Memo-backed next-promo suggestions on Performance (advisory;

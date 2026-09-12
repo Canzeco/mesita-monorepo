@@ -20,10 +20,10 @@ type PlaceState =
   | "pending_verification";
 
 type FiscalType = "formal" | "informal";
-// Place plan keys (public.membership enum): Free + Verified (`pro`,
-// MX$1,000/year Promos v4 membership) + legacy `ultra`. Plan changes are
-// billing, not profile: the admin grants it through admin-web-set-plan (see
-// setPlacePlan in place-manage/actions.ts) — never through this file.
+// Place plan keys (public.membership enum): Free + Verified (`pro`) +
+// legacy ultra. Plan changes are billing, not profile: operators join
+// through business-web-set-partnership; the admin entitlement door stays
+// separate. Never through this file.
 export type PlacePlan = "free" | "pro" | "ultra";
 
 // Weekly opening hours — JSONB column on places. Lowercase English day keys,
