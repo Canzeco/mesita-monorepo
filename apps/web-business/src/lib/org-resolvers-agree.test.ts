@@ -30,6 +30,7 @@ const org = (id: string): Organization => ({
   currency: "MXN",
   myRole: "owner",
   placeCount: 0,
+  places: [],
 });
 
 /** What `useSearchParams().get("org")` returns for a given `searchParams` value. */

@@ -24,6 +24,27 @@ export const RAIL_OPEN_PLACES_COOKIE = "business_rail_open_places";
 // once anyway. Oldest entries fall off first — see `serializeOpenPlaceIds`.
 export const RAIL_OPEN_PLACES_MAX = 12;
 
+// WHETHER THE WHOLE PORTFOLIO IS SHUT (MESITA-1779). ORG PLACES is a toggle
+// of its own, above the per-place ones. Same cookie reasoning: the server
+// layout reads it so the column paints at its final height on the first
+// frame. Open is the default and is written as an ABSENT cookie, so an
+// operator who never touched the toggle costs no header at all; only "0"
+// (shut) is ever stored.
+export const RAIL_PORTFOLIO_COOKIE = "business_rail_portfolio";
+
+/** Whether ORG PLACES is open, from the raw cookie value. Anything but the
+ *  literal "0" — absent, empty, garbage — means open, because a rail that
+ *  hides the portfolio on a malformed cookie is worse than one that shows it. */
+export function parsePortfolioOpen(raw: string | null | undefined): boolean {
+  return raw !== "0";
+}
+
+/** The cookie value for a portfolio state. Open serialises to "" so the
+ *  caller can expire the cookie instead of storing a default. */
+export function serializePortfolioOpen(open: boolean): string {
+  return open ? "" : "0";
+}
+
 const SEPARATOR = ".";
 
 /** A place id, as this cookie is willing to store one.

@@ -22,7 +22,7 @@ export {
   placeTabHref,
   type PlaceTab,
 } from "@/lib/place-tabs";
-import type { PlaceTab } from "@/lib/place-tabs";
+import { tabsForAccess, type PlaceTab } from "@/lib/place-tabs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   apiGetConsolePlace,
@@ -47,21 +47,18 @@ export const getManagePlace = cache(
   },
 );
 
-/** Which tabs this caller may see on this place.
- *  pool place            → Profile only (it carries Claim)
- *  held · org viewer     → Profile + Activity (read surfaces)
- *  held · member/direct  → Profile + Capabilities + Activity
- *  super-admin           → + Admin (operator internals)
- *  held by another org   → never reaches here; get-place answers 404. */
+/** Which tabs this caller may see on this place — the server's reading of
+ *  the ONE matrix in lib/place-tabs (`tabsForAccess`), which the rail applies
+ *  to every held place from the viewer's org role (MESITA-1779). A pool place
+ *  has no manage payload and gets Profile alone; a place held by another org
+ *  never reaches here, because get-place answers 404. */
 export function visibleTabs(
   view: ConsolePlaceView,
   manage: { isSuperAdmin: boolean } | null,
 ): PlaceTab[] {
-  if (!manage) return ["profile"];
-  const viewer = view.holder?.myRole === "viewer";
-  const tabs: PlaceTab[] = viewer
-    ? ["profile", "activity"]
-    : ["profile", "capabilities", "activity"];
-  if (manage.isSuperAdmin) tabs.push("admin");
-  return tabs;
+  return tabsForAccess({
+    held: manage !== null,
+    role: view.holder?.myRole ?? null,
+    isSuperAdmin: manage?.isSuperAdmin ?? false,
+  });
 }

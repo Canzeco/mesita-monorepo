@@ -41,26 +41,34 @@ import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
+import { useActiveOrg, type RailOrg } from "@/lib/use-active-org";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export function AppShell({
   organizations,
+  isSuperAdmin,
   defaultCollapsed = false,
   defaultOpenPlaceIds,
+  defaultPortfolioOpen = true,
   children,
 }: {
-  organizations: ChromeOrg[];
+  /** Each organization with the viewer's role and the places it holds: the
+   *  rail draws the portfolio from these, on the first frame (MESITA-1779). */
+  organizations: RailOrg[];
+  /** Decides whether a place's Admin view exists for this viewer. */
+  isSuperAdmin: boolean;
   /** Read from the cookie by the server layout, so the rail paints at its
    *  final width on the first frame. */
   defaultCollapsed?: boolean;
-  /** Same trick, same reason, for which place boxes are open — and it matters
+  /** Same trick, same reason, for which places are open — and it matters
    *  more, because those are rows of HEIGHT rather than one width
    *  (MESITA-1734). Passed through to both Sidebar instances so the drawer and
    *  the rail agree about what is open. */
   defaultOpenPlaceIds?: string[];
+  /** And for the ORG PLACES toggle above them (MESITA-1779). */
+  defaultPortfolioOpen?: boolean;
   children: React.ReactNode;
 }) {
   // Every href in this frame carries the active organization, resolved the one
@@ -145,9 +153,11 @@ export function AppShell({
         >
           <Sidebar
             organizations={organizations}
+            isSuperAdmin={isSuperAdmin}
             collapsed={collapsed}
             onToggleCollapse={toggleCollapsed}
             defaultOpenPlaceIds={defaultOpenPlaceIds}
+            defaultPortfolioOpen={defaultPortfolioOpen}
           />
         </div>
 
@@ -189,8 +199,10 @@ export function AppShell({
           >
             <Sidebar
               organizations={organizations}
+              isSuperAdmin={isSuperAdmin}
               onNavigate={close}
               defaultOpenPlaceIds={defaultOpenPlaceIds}
+              defaultPortfolioOpen={defaultPortfolioOpen}
             />
             {open && (
               <button

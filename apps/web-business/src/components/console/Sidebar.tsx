@@ -3,88 +3,76 @@
 // The whole navigation: one lateral rail. Client because active state needs
 // usePathname and every href carries the active organization.
 //
-// THE RAIL LISTS THE PLACES THEMSELVES (MESITA-1715). It used to hold a link
-// called Org Places pointing at a filtered list. Pato: "list of org places
-// here." A menu whose rows are the actual things beats a menu whose rows are
-// links to lists of them — one click instead of two, and the portfolio is
-// visible without navigating to see it.
+// THE RAIL LISTS THE PLACES THEMSELVES (MESITA-1715). A menu whose rows are
+// the actual things beats a menu whose rows are links to lists of them — one
+// click instead of two, and the portfolio is visible without navigating.
 //
-// ORDER, top to bottom: the wordmark (with Account riding its right edge),
-// the organization switcher, Organization, the org's places as boxes, a
-// hairline, All Places — then the footer, which holds Collapse alone.
+// ORDER, top to bottom (MESITA-1779, Pato's list): the wordmark, the
+// organization switcher, then five things at ONE x — Account · Organization ·
+// ORG PLACES (a toggle) · each place (a toggle) with its views beneath it ·
+// a hairline · All Places — and the footer, which holds Collapse alone.
 //
-// ACCOUNT IS AT THE TOP, AND IT IS NOT A ROW (MESITA-1734, reworking 1716).
-// Pato: "Account must be at the top." 1716 had pushed it to the footer for a
-// real reason — beside Organization it read as a PAIR, and the two are not
-// one: Organization is the entity whose data is on screen, Account is who is
-// looking at it. Moving the same row back up would rebuild that pair exactly.
+// ACCOUNT IS A ROW AGAIN. MESITA-1716 moved it to the footer so it would not
+// read as a PAIR with Organization, and MESITA-1734 brought it back up as an
+// avatar chip for the same reason. Pato listed it first (2026-09-12), so it
+// is the first row — and the pair objection is answered by structure rather
+// than by shape: the switcher sits between Account (who is looking) and
+// Organization (what is on screen), so the two never share a group edge.
 //
-// So it moves up as a DIFFERENT KIND OF OBJECT: a 24px round identity button
-// on the wordmark's right edge. Top of the column, zero rows consumed, and
-// nothing about it rhymes with a nav row — so it cannot pair with one. It also
-// stays out of the way of prominence: on a console an operator lives in all
-// day, their own identity is the least informative pixel on screen, and a
-// full-width identity row at the top would outrank both the organization and
-// the places it is supposed to sit above.
+// FLAT, WITH TOGGLES. Nothing in this file indents — no inset, no tree line,
+// no bullet, no `pl-8` — and `shell-chrome.test.ts` forbids all of them. An
+// open place is told apart by its GROUND: the wrapper takes WELL_BG (the
+// measured mix of the hover tint and the rail) with NO border, and its
+// 2px inner padding is cancelled by a -2px margin so every row inside keeps
+// the x of every row outside. MESITA-1734 drew a border around that well;
+// Pato picked the borderless ground on the 2026-09-12 board, so the border is
+// gone and the test now forbids it too.
 //
-// A GLYPH, NOT A PHOTO, for now: the rail is handed `organizations` and
-// nothing about the viewer, so an avatar image would mean threading the user
-// through `(shell)/layout.tsx` for 24 pixels. When that thread exists, this is
-// the element that wears it.
+// THE PORTFOLIO ARRIVES WITH THE ORGANIZATION. The rail used to fetch its
+// places after hydration through a server action onto the states-matrix EF
+// (p50 399 ms), so the portfolio popped in one round trip after the frame —
+// or showed a Retry link when that call failed. `business-web-list-organizations`
+// now ships each org's places and the viewer's super-admin flag; the server
+// layout hands both here as props, and the first frame is the final frame.
 //
-// PLACES ARE BOXES, AND A BOX IS NOT A TREE (MESITA-1734). MESITA-1714 and
-// 1715 made this rail flat and Pato rejected the nested version on sight,
-// twice. That rejection was about INDENTATION as the grouping mechanism, and
-// it was right: the active row is almost always a leaf, so grouping by indent
-// puts the most important row on screen at the deepest inset and inverts
-// hierarchy.
+// EVERY PLACE OPENS TO ITS VIEWS. A place's four views used to render only
+// for the place whose layout had published them, so the chevron on any OTHER
+// place opened an empty box — which is what "the buttons are not working"
+// meant. The views are now derived for every held place from the viewer's
+// org role and super-admin flag (`tabsForAccess`, the same matrix the place
+// layout applies server-side). The place you are ON still shows its
+// published set, because there the server has the last word.
 //
-// A box does not indent. It groups by common region — a shared edge and
-// ground — so the four view rows inside a place box sit at the SAME left
-// inset as every row outside it. Same grouping goal, none of the indent cost.
-// `inset`/`pl-8` is gone from this file entirely and `shell-chrome.test.ts`
-// still forbids it: containers group, insets never do.
+// EXACTLY ONE FILLED PILL, IN EVERY STATE. Per-place toggles decouple open
+// state from ROUTE state: collapse the place holding the current route and
+// the pill — plus `aria-current="page"` — would vanish into a hidden subtree.
+// A shut place that owns the route therefore carries the marker on its own
+// header, with the view's name trailing. The same trap sits one level up:
+// shut ORG PLACES while inside one of its places and the section keeps
+// listing THAT place alone, so "you are here" survives every permutation.
 //
-// EXACTLY ONE FILLED PILL, IN EVERY STATE. Per-place toggles decouple box
-// state from ROUTE state, and that is the trap: collapse the box holding the
-// current route and the pill — plus `aria-current="page"` — disappear into a
-// hidden subtree, so sighted and screen-reader users lose "you are here"
-// identically. A collapsed box whose place owns the current route therefore
-// carries the marker on its own header, with the view's name as a trailing
-// label. Open the box and the pill hands off to the view row inside.
+// TWO TARGETS IN A PLACE'S HEADER (MESITA-1734 DQ-1). The name navigates —
+// one click to a place. The chevron toggles and navigates nowhere, so it
+// NEVER routes through the unsaved-edits guard: toggling discards nothing.
 //
-// TWO TARGETS IN THE HEADER (Pato, MESITA-1734 DQ-1). The name navigates —
-// one click to a place, exactly as before. The chevron toggles and navigates
-// nowhere, so it NEVER routes through the unsaved-edits guard: toggling a box
-// discards nothing, and offering "discard your edits" for it would be an
-// offer to throw work away for nothing.
+// NO TOGGLES WHEN COLLAPSED. At `w-16` there is no room for a name and a
+// chevron, and a toggle with nothing to hide is ornament. The collapsed rail
+// is the flat icon column: every place as a thumb, the current place's views
+// beneath it.
 //
-// NO BOXES WHEN COLLAPSED. At `w-16` there is no room for a container, a
-// thumb, a name and a chevron, and a container with nothing to contain is
-// ornament. The collapsed rail keeps the flat icon rows it has always had.
-//
-// THERE IS NO PUBLIC PLACES ROW. Org places are a SUBSET of All Places, and a
-// subset earns a row. Public is the COMPLEMENT — All minus Org — which is
-// exactly the fact the Owned column already carries on every row of the list.
-// Giving a complement a row makes a filter look like a place, which is the
-// mistake MESITA-1614 unwound. `?owned=public` still resolves, so a bookmark
-// keeps working; it stopped being a destination, not a capability.
-//
-// EVERY PLACE WEARS ITS OWN PHOTO. A portfolio of six identical Store glyphs
-// is six copies of one row with different words on them; an owner knows their
-// places by sight before they know them by name. Always through
-// `placeThumbUrl()` — `photoUrl` is a full-resolution original, and pointing
-// an <img> at one is the mistake MESITA-1553 fixed on the list rows. The rail
-// is on every screen, so it would be a worse mistake here.
+// FASTER CLICKS. View rows prefetch their FULL route on hover
+// (`unstable_dynamicOnHover`), so by the time the click lands the tab body is
+// usually already here; the `loading.tsx` skeleton covers the rest. The org
+// switcher navigates instead of reloading the whole document.
 //
 // LIGHT, not admin's dark slab. Every text token is a semantic pair with a
-// measured ratio, never an opacity fraction — admin's rail ships three AA
-// failures that way. The open box's well is a NEW ground, so its ratio is
-// measured against the well and not inherited from `--sidebar`; see WELL_BG.
+// measured ratio, never an opacity fraction. The well is a NEW ground, so
+// `muted-foreground` on it is ~5.9:1 (measured 2026-09-10), not the rail's
+// 6.31:1 — re-measure before darkening WELL_BG.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
   Building2,
@@ -93,7 +81,6 @@ import {
   Layers,
   PanelLeftClose,
   PanelLeftOpen,
-  RotateCw,
   Shield,
   SlidersHorizontal,
   Store,
@@ -102,15 +89,8 @@ import {
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import {
-  useOpenPlace,
-  useOpenPlaceGuard,
-  usePortfolioVersion,
-} from "@/components/console/OpenPlace";
-import {
-  listRailPlacesAction,
-  type RailPlace,
-} from "@/app/(shell)/actions/places";
+import { useOpenPlace, useOpenPlaceGuard } from "@/components/console/OpenPlace";
+import type { RailPlace } from "@/lib/api/organizations";
 import {
   SHELL_ROUTES,
   ownedFromParam,
@@ -119,31 +99,50 @@ import {
   placesHref,
   withOrg,
 } from "@/lib/console-routes";
-import { PLACE_TAB_LABEL, placeTabFromPathname, placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import {
+  PLACE_TAB_LABEL,
+  placeTabFromPathname,
+  placeTabHref,
+  tabsForAccess,
+  type PlaceTab,
+} from "@/lib/place-tabs";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import {
   RAIL_OPEN_PLACES_COOKIE,
+  RAIL_PORTFOLIO_COOKIE,
   serializeOpenPlaceIds,
+  serializePortfolioOpen,
 } from "@/lib/sidebar-prefs";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
+import { useActiveOrg, type RailOrg } from "@/lib/use-active-org";
 
 type SidebarProps = {
-  organizations: ChromeOrg[];
+  /** Each organization with the viewer's role and the places it holds. */
+  organizations: RailOrg[];
+  /** Whether the Admin view exists for this viewer, on every place. */
+  isSuperAdmin: boolean;
   /** Closes the mobile drawer on navigation. Absent on the desktop rail. */
   onNavigate?: () => void;
   /** Icon-only rail. Desktop instance only — the drawer is always full. */
   collapsed?: boolean;
   /** Absent on the drawer instance, which has no collapsed state to toggle. */
   onToggleCollapse?: () => void;
-  /** Which place boxes were open when the operator last left, read from the
+  /** Which places were open when the operator last left, read from the
    *  cookie by the server layout so the column paints at its final height on
    *  the first frame. */
   defaultOpenPlaceIds?: string[];
+  /** Whether ORG PLACES was open, same cookie trick. */
+  defaultPortfolioOpen?: boolean;
 };
 
-const ROW_BASE =
-  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px]";
+// Focus travels through this rail on Tab, so the ring is the brand's, not the
+// browser's: a themed ring is the cheapest tell that a surface was designed.
+const FOCUS_RING =
+  "outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+const ROW_BASE = cn(
+  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px]",
+  FOCUS_RING,
+);
 const ROW_REST =
   "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground";
 // The active row is a SOLID ink pill, not a tint. It is the one place in the
@@ -154,25 +153,15 @@ const ROW_ACTIVE = "bg-foreground text-background font-semibold";
 // without a fill. Exactly one filled pill on screen at a time.
 const ROW_HEADING = "text-foreground font-semibold hover:bg-sidebar-accent";
 
-// The open box's ground.
+// The open place's ground.
 //
 // A 50/50 mix of the hover tint and the rail, which lands at roughly
 // oklch(0.965) — measurably darker than `--sidebar` (0.98) and measurably
 // LIGHTER than `--sidebar-accent` (0.95), so a row inside the well still has
 // somewhere to hover to. Both facts are load-bearing: identical to the rail
 // and the well is invisible, identical to the hover and every row inside it
-// looks permanently hovered.
-//
-// CONTRAST IS RE-MEASURED, NOT INHERITED. `muted-foreground` (oklch 0.48) is
-// documented at 6.31:1 against `--sidebar`; against this well it is ~5.9:1.
-// Still comfortably past AA, but the number is different, and the rail's rule
-// is that every text token is a semantic pair with a MEASURED ratio. Darken
-// this mix and re-measure before shipping it.
-//
-// The tint is not what makes it a container — the hairline is. That is why
-// the tint can stay this quiet: `CLAUDE.md` says business surfaces are calm
-// and high-density, and a well loud enough to read as a card on its own would
-// turn a portfolio into the dashboard-card mosaic this design avoids.
+// looks permanently hovered. No border: the ground alone is the container,
+// and it appears only where there is something to contain.
 const WELL_BG =
   "bg-[color-mix(in_oklab,var(--color-sidebar-accent)_50%,var(--color-sidebar))]";
 
@@ -201,6 +190,9 @@ function NavRow({
   /** A place's own photo, already thumbnailed. Replaces the glyph when there
    *  is one; `Icon` is the fallback for a place with no photo yet. */
   thumb,
+  /** Prefetch the whole route on hover, not just its loading boundary. On
+   *  for the view rows, whose bodies wait on an Edge Function otherwise. */
+  hoverPrefetch = false,
   onNavigate,
   onGuardedNavigate,
   title,
@@ -213,6 +205,7 @@ function NavRow({
   collapsed: boolean;
   heading?: boolean;
   thumb?: string | null;
+  hoverPrefetch?: boolean;
   onNavigate?: () => void;
   onGuardedNavigate?: (href: string, e: { preventDefault: () => void }) => boolean;
   title?: string;
@@ -221,6 +214,10 @@ function NavRow({
   return (
     <Link
       href={href}
+      // The app-dir Link (what `next/link` resolves to inside app/) takes
+      // `unstable_dynamicOnHover`; the public typing is still the pages one,
+      // so the prop rides a spread rather than a cast on the whole element.
+      {...(hoverPrefetch ? { unstable_dynamicOnHover: true } : {})}
       onClick={(e) => {
         // NEVER guard the row you are already on. That click navigates
         // nowhere, so offering "discard your edits and leave" for it is an
@@ -262,8 +259,8 @@ function NavRow({
   );
 }
 
-/** Groups without indenting. Collapsed there is no room for words, so the
- *  grouping survives as a rule — the same trade web-admin's rail makes. */
+/** Groups without indenting, where there is nothing to toggle: the foreign
+ *  place's own label, and the collapsed rail's rule (no room for words). */
 function SectionBreak({
   label,
   collapsed,
@@ -284,7 +281,59 @@ function SectionBreak({
 }
 
 /**
- * One place, as a module you open and close.
+ * The eyebrow, made a disclosure: ORG PLACES with its count and a chevron.
+ *
+ * A <button>, never a link — the places themselves are the destinations, and
+ * `placesHref("org")` stays banned from this rail (MESITA-1715). Not a NavRow
+ * either: it carries no glyph and sits in the eyebrow's size and tracking, so
+ * it cannot be mistaken for a row you can be "at". Full width, so the whole
+ * line is the target and not just the chevron.
+ */
+function SectionToggle({
+  label,
+  count,
+  open,
+  onToggle,
+  controls,
+}: {
+  label: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  /** The id of the list this toggle shows and hides. */
+  controls: string;
+}) {
+  const verb = open ? "Collapse" : "Expand";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={open ? controls : undefined}
+      aria-label={`${verb} ${label} (${count})`}
+      title={`${verb} ${label}`}
+      className={cn(
+        "group mt-2.5 flex w-full min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-left transition lg:min-h-0 lg:h-7",
+        "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
+        FOCUS_RING,
+      )}
+    >
+      <span className={cn(TINY_LABEL_CLASS, "truncate group-hover:text-foreground")}>
+        {label}
+      </span>
+      <span className="shrink-0 text-[10px] font-medium">· {count}</span>
+      <ChevronRight
+        className={cn(
+          "ml-auto h-3.5 w-3.5 shrink-0 transition-transform duration-150 ease-out",
+          open && "rotate-90",
+        )}
+      />
+    </button>
+  );
+}
+
+/**
+ * One place: a header row you open and close, and its views beneath it.
  *
  * Composed from `NavRow` rather than rebuilt: the rail must keep exactly one
  * way to draw a row, or it grows two row systems that drift apart forever.
@@ -295,7 +344,7 @@ function SectionBreak({
  * When the header carries the active pill the WRAPPER takes the fill, so the
  * two controls read as the one pill they visually are.
  */
-function PlaceBox({
+function PlaceRow({
   place,
   tabs,
   open,
@@ -306,10 +355,9 @@ function PlaceBox({
   onNavigate,
   onGuardedNavigate,
 }: {
-  place: { id: string; name: string; photoUrl?: string | null };
-  /** Exactly the views this viewer may open. Empty until the place layout
-   *  publishes them, which is why a box for a place you are not on shows a
-   *  header and nothing else. */
+  place: RailPlace;
+  /** Exactly the views this viewer may open here: derived for a held place,
+   *  published by the layout for the place you are on. */
   tabs: PlaceTab[];
   open: boolean;
   onToggle: () => void;
@@ -324,7 +372,7 @@ function PlaceBox({
   const href = withOrg(placeHref(place.id), organizationId);
   const thumb = placeThumbUrl(place.photoUrl, THUMB_PX);
 
-  // The pill is on the HEADER only when the box is shut on the route we are
+  // The pill is on the HEADER only when the place is shut on the route we are
   // looking at. Open, it belongs to the view row inside — painting both would
   // put two solid rows and two `aria-current` markers on screen for one
   // location, and "you are here" stops meaning one row.
@@ -334,9 +382,10 @@ function PlaceBox({
   return (
     <div
       className={cn(
-        "rounded-xl transition-colors",
-        // The hairline is what makes it a container; the tint only supports it.
-        open && cn(WELL_BG, "border-sidebar-border border"),
+        "flex flex-col gap-0.5 rounded-xl transition-colors",
+        // The ground is the container. The negative margin pays for the
+        // padding exactly, so the rows inside keep the x of the rows outside.
+        open && cn(WELL_BG, "-mx-0.5 p-0.5"),
       )}
     >
       <div
@@ -364,14 +413,11 @@ function PlaceBox({
             headerIsActive && "text-background hover:bg-transparent",
           )}
         />
-        {/* The view you are on, named on the shut box that holds it. Without
+        {/* The view you are on, named on the shut place that holds it. Without
             this the header says WHICH place is current but not which view, so
-            collapsing a box would quietly cost you half your orientation. */}
-        {/* SIZE AND WEIGHT, NEVER AN ALPHA. `text-background/80` would be a
-            contrast ratio nobody computed, which is exactly how admin's rail
-            shipped three AA failures — `AppShell.test.ts` bans the whole
-            family. The label steps back by being 11px medium beside a 13px
-            semibold name, on the same measured token. */}
+            collapsing a place would quietly cost you half your orientation.
+            SIZE AND WEIGHT, NEVER AN ALPHA: 11px medium beside a 13px semibold
+            name, on the same measured token. */}
         {headerIsActive && activeTab && (
           <span className="text-background shrink-0 truncate text-[11px] font-medium">
             {PLACE_TAB_LABEL[activeTab]}
@@ -392,6 +438,7 @@ function PlaceBox({
             // not. Below `lg` this leaves the name roughly 150px before it
             // truncates, which is the accepted cost of two targets in one row.
             "flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl transition lg:min-h-0 lg:h-7 lg:w-7",
+            FOCUS_RING,
             headerIsActive
               ? "text-background hover:bg-background/15"
               : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
@@ -400,9 +447,7 @@ function PlaceBox({
           <ChevronRight
             className={cn(
               // The one authored motion moment in this rail, and it is
-              // transform-only so it costs no layout. `motion-reduce` keeps
-              // the rotation (it moves nothing on the page) but the height
-              // easing below is dropped.
+              // transform-only so it costs no layout.
               "h-4 w-4 transition-transform duration-150 ease-out lg:h-3.5 lg:w-3.5",
               open && "rotate-90",
             )}
@@ -411,7 +456,7 @@ function PlaceBox({
       </div>
 
       {showViews && (
-        <div id={viewsId} className="flex flex-col gap-0.5 px-1 pb-1">
+        <div id={viewsId} className="flex flex-col gap-0.5">
           {tabs.map((tab) => (
             <NavRow
               key={tab}
@@ -421,6 +466,7 @@ function PlaceBox({
               active={activeTab === tab}
               collapsed={false}
               title={place.name}
+              hoverPrefetch
               onNavigate={onNavigate}
               onGuardedNavigate={onGuardedNavigate}
             />
@@ -431,15 +477,20 @@ function PlaceBox({
   );
 }
 
+const PORTFOLIO_ID = "rail-portfolio";
+
 export function Sidebar({
   organizations,
+  isSuperAdmin,
   onNavigate,
   collapsed = false,
   onToggleCollapse,
   defaultOpenPlaceIds = [],
+  defaultPortfolioOpen = true,
 }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   // ONE resolver for every piece of chrome — see lib/use-active-org.ts.
   const { activeOrg, activeOrgId } = useActiveOrg(organizations);
@@ -449,81 +500,60 @@ export function Sidebar({
   const guardNav = useOpenPlaceGuard();
   const openPlaceId = placeIdFromPathname(pathname);
   const onPlacesList = pathname === SHELL_ROUTES.places;
-  const portfolioVersion = usePortfolioVersion();
 
-  // The org's places, fetched through a server action rather than by the shell
-  // layout — a layout cannot read searchParams, so it could only ever have
-  // guessed `organizations[0]`, which is the bug that made the breadcrumb lie.
-  //
-  // The answer is stored WITH the organization it answered for, and read back
-  // only when those still match. That makes the org switcher safe by
-  // construction rather than by a cleanup flag: a slow reply for the previous
-  // organization cannot paint over the current one, and there is no state to
-  // clear when the active org goes away.
-  const [fetched, setFetched] = useState<{
-    orgId: string;
-    rows: RailPlace[];
-    failed: boolean;
-  } | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  useEffect(() => {
-    if (!activeOrgId) return;
-    let live = true;
-    listRailPlacesAction(activeOrgId).then((result) => {
-      if (live) {
-        setFetched({
-          orgId: activeOrgId,
-          rows: result.places,
-          failed: result.failed,
-        });
-      }
-    });
-    return () => {
-      live = false;
-    };
-    // portfolioVersion is the claim/release signal — see PlaceHoldButton.
-  }, [activeOrgId, portfolioVersion, reloadKey]);
-  const loaded = fetched?.orgId === activeOrgId;
-  const places = loaded ? fetched.rows : [];
-  const failed = loaded && fetched.failed;
+  // THE PORTFOLIO IS A PROP. It rides the organization list the server layout
+  // already fetches, so there is nothing to load, nothing to fail, and no
+  // frame where the column is shorter than it will be.
+  const places = activeOrg?.places ?? [];
 
-  // WHICH BOXES ARE OPEN. Seeded from the cookie so the first painted frame is
-  // already the right height, then owned here.
+  // WHICH PLACES ARE OPEN. Seeded from the cookie so the first painted frame
+  // is already the right height, then owned here.
   const [openIds, setOpenIds] = useState<Set<string>>(
     () => new Set(defaultOpenPlaceIds),
   );
 
-  const persist = useCallback((next: Set<string>) => {
+  const persistOpen = useCallback((next: Set<string>) => {
     // A year-long cookie rather than localStorage, for the same reason the
     // collapsed width uses one: the server layout reads it during render.
     document.cookie = `${RAIL_OPEN_PLACES_COOKIE}=${serializeOpenPlaceIds(next)}; path=/; max-age=31536000; samesite=lax`;
   }, []);
 
-  const toggleBox = useCallback(
+  const togglePlace = useCallback(
     (id: string) => {
       setOpenIds((prev) => {
         const next = new Set(prev);
         // Delete-then-add on reopen, so insertion order tracks recency and the
-        // cookie's tail-keeping drops the box touched longest ago.
+        // cookie's tail-keeping drops the place touched longest ago.
         if (next.has(id)) next.delete(id);
         else {
           next.delete(id);
           next.add(id);
         }
-        persist(next);
+        persistOpen(next);
         return next;
       });
     },
-    [persist],
+    [persistOpen],
   );
+
+  // WHETHER ORG PLACES IS OPEN. Open is the default and is stored as an
+  // ABSENT cookie (max-age=0 expires it), so only a shut portfolio costs a
+  // header on every request.
+  const [portfolioOpen, setPortfolioOpen] = useState(defaultPortfolioOpen);
+  const togglePortfolio = useCallback(() => {
+    setPortfolioOpen((prev) => {
+      const next = !prev;
+      document.cookie = `${RAIL_PORTFOLIO_COOKIE}=${serializePortfolioOpen(next)}; path=/; max-age=${next ? 0 : 31536000}; samesite=lax`;
+      return next;
+    });
+  }, []);
 
   // THE PLACE YOU NAVIGATE TO OPENS ITSELF, ONCE.
   //
-  // Before boxes, arriving at a place always revealed its views; losing that
-  // would make the rail worse for the sake of the new control. So arriving
-  // opens the box — but only on the transition INTO that place, tracked by a
-  // ref. Without the ref this effect would re-open the box on the very next
-  // render after the operator collapsed it, and the chevron would look broken.
+  // Arriving at a place reveals its views — but only on the transition INTO
+  // that place, tracked by a ref. Without the ref this effect would re-open
+  // the place on the very next render after the operator collapsed it, and
+  // the chevron would look broken.
   const autoOpened = useRef<string | null>(null);
   useEffect(() => {
     if (!openPlaceId) {
@@ -536,10 +566,10 @@ export function Sidebar({
       if (prev.has(openPlaceId)) return prev;
       const next = new Set(prev);
       next.add(openPlaceId);
-      persist(next);
+      persistOpen(next);
       return next;
     });
-  }, [openPlaceId, persist]);
+  }, [openPlaceId, persistOpen]);
 
   const href = (to: string) => withOrg(to, activeOrgId);
 
@@ -554,28 +584,33 @@ export function Sidebar({
   // A place you have open that this org does not hold — you reached it from
   // All Places. It is not in the list, so it gets its own break rather than
   // being silently missing from a rail that is showing you its views.
-  //
-  // GATED ON `loaded`. While the list is in flight `places` is empty, so an
-  // owned place would read as foreign, render its own standalone section, and
-  // then jump into the portfolio the moment the fetch lands — a visible
-  // shuffle on every place-page load. Unknown is not the same as foreign.
   const openIsForeign =
-    loaded &&
     openPlace != null &&
     openPlace.id === openPlaceId &&
     !places.some((p) => p.id === openPlace.id);
 
-  // The views a given place can show. Only the place you are ON has published
-  // them, so every other box is a header alone — which is correct: the rail
-  // cannot know a viewer's permissions for a place they have not opened, and
-  // guessing four rows that might 403 is worse than showing none.
+  // THE VIEWS OF EVERY HELD PLACE, without visiting any of them: the org role
+  // and the super-admin flag decide, through the one matrix the place layout
+  // applies server-side. Held by the active org means this viewer is a
+  // member, so `held` is true for every place in the list.
+  const derivedTabs = useMemo(
+    () =>
+      tabsForAccess({
+        held: true,
+        role: activeOrg?.myRole ?? null,
+        isSuperAdmin,
+      }),
+    [activeOrg?.myRole, isSuperAdmin],
+  );
+  // The place you are ON shows what its layout PUBLISHED — the server's
+  // answer, which also covers a foreign place the derivation cannot.
   const tabsFor = useCallback(
     (id: string): PlaceTab[] =>
-      openPlace?.id === id ? openPlace.tabs : [],
-    [openPlace],
+      openPlace?.id === id ? openPlace.tabs : derivedTabs,
+    [openPlace, derivedTabs],
   );
 
-  const boxProps = useMemo(
+  const rowProps = useMemo(
     () => ({
       organizationId: activeOrgId,
       onNavigate,
@@ -591,13 +626,19 @@ export function Sidebar({
     return `${pathname}?${params.toString()}`;
   };
 
-  // COLLAPSED IS THE OLD RAIL. `w-16` cannot hold a container, a thumb, a name
-  // and a chevron, so there are no boxes here at all — the places are flat
-  // icon rows and the place you are on shows its views beneath it, exactly as
-  // this rail behaved before MESITA-1734.
-  const renderPlace = (place: RailPlace | { id: string; name: string; photoUrl?: string | null }) => {
+  // A SHUT PORTFOLIO STILL SHOWS WHERE YOU ARE. Hiding every place would hide
+  // the pill and `aria-current` with it, so the place that owns the route
+  // stays listed on its own; every other place is what the toggle hides.
+  const listed = portfolioOpen
+    ? places
+    : places.filter((p) => p.id === openPlaceId);
+
+  // COLLAPSED IS THE ICON COLUMN. `w-16` cannot hold a name and a chevron, so
+  // there are no toggles here at all — every place is a thumb row and the
+  // place you are on shows its views beneath it.
+  const renderPlace = (place: RailPlace) => {
     if (collapsed) {
-      const tabs = tabsFor(place.id);
+      const tabs = openPlaceId === place.id ? tabsFor(place.id) : [];
       return (
         <div key={place.id} className="contents">
           <NavRow
@@ -621,6 +662,7 @@ export function Sidebar({
               active={activeTab === tab}
               collapsed
               title={place.name}
+              hoverPrefetch
               onNavigate={onNavigate}
               onGuardedNavigate={guardNav ?? undefined}
             />
@@ -629,25 +671,25 @@ export function Sidebar({
       );
     }
     return (
-      <PlaceBox
+      <PlaceRow
         key={place.id}
         place={place}
         tabs={tabsFor(place.id)}
         open={openIds.has(place.id)}
-        onToggle={() => toggleBox(place.id)}
+        onToggle={() => togglePlace(place.id)}
         ownsRoute={openPlaceId === place.id && activeTab !== null}
-        {...boxProps}
+        {...rowProps}
       />
     );
   };
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3">
-      {/* THE TOP LINE: the product on the left, who you are on the right. */}
+      {/* THE TOP LINE: the product. Who you are is the first row below. */}
       <div
         className={cn(
-          "flex shrink-0 items-center gap-2",
-          collapsed ? "flex-col" : "px-1.5",
+          "flex shrink-0 items-center",
+          collapsed ? "justify-center" : "px-1.5",
         )}
       >
         <Link
@@ -663,8 +705,9 @@ export function Sidebar({
           aria-label="Mesita business console"
           title={collapsed ? "Mesita business" : undefined}
           className={cn(
-            "inline-flex min-w-0 items-center",
-            collapsed ? "justify-center" : "flex-1 gap-2",
+            "inline-flex min-w-0 items-center rounded-md",
+            FOCUS_RING,
+            collapsed ? "justify-center" : "gap-2",
           )}
         >
           {collapsed ? (
@@ -679,39 +722,15 @@ export function Sidebar({
             </>
           )}
         </Link>
-
-        {/* ACCOUNT. An avatar, not a row — see the docblock. It rides the
-            wordmark's right edge expanded, and drops under the mark when the
-            rail is 64px wide and there is no "right edge" to ride. */}
-        <Link
-          href={href(SHELL_ROUTES.account)}
-          onClick={(e) => {
-            guardNav?.(href(SHELL_ROUTES.account), e);
-            onNavigate?.();
-          }}
-          aria-current={pathname === SHELL_ROUTES.account ? "page" : undefined}
-          aria-label="Account"
-          title="Account"
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition",
-            // ROW_ACTIVE, not a second spelling of it. The rail has exactly one
-            // definition of "filled", and re-typing the pair here is how a
-            // second one starts — the same reason the collapsed cookie name
-            // stopped being a literal in AppShell.
-            pathname === SHELL_ROUTES.account
-              ? ROW_ACTIVE
-              : "border-sidebar-border text-muted-foreground hover:border-foreground/40 hover:text-foreground border",
-            collapsed && "mt-3",
-          )}
-        >
-          <UserRound className="h-3.5 w-3.5" />
-        </Link>
       </div>
 
       {/* WHICH ORGANIZATION. It scopes every row below it, so it sits above
           them. A <select> rather than a menu: keyboard- and screen-reader-
           native, and the rail has no room to reinvent one. One organization
-          renders as a LABEL — in a rail the name is half the orientation. */}
+          renders as a LABEL — in a rail the name is half the orientation.
+          Switching NAVIGATES: every page re-reads `?org=` on the server and
+          the rail re-resolves from the same props, so a whole-document reload
+          would only throw away the shell it is about to draw again. */}
       {!collapsed && (
         <div className="mt-3.5 shrink-0">
           {organizations.length > 1 ? (
@@ -719,9 +738,12 @@ export function Sidebar({
               aria-label="Switch organization"
               value={activeOrgId ?? ""}
               onChange={(e) => {
-                window.location.href = switchHref(e.target.value);
+                router.push(switchHref(e.target.value));
               }}
-              className="border-sidebar-border bg-background text-foreground h-9 w-full truncate rounded-xl border px-2.5 text-[13px] font-semibold"
+              className={cn(
+                "border-sidebar-border bg-background text-foreground h-9 w-full truncate rounded-xl border px-2.5 text-[13px] font-semibold",
+                FOCUS_RING,
+              )}
             >
               {organizations.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -745,6 +767,15 @@ export function Sidebar({
         className="mt-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
       >
         <NavRow
+          href={href(SHELL_ROUTES.account)}
+          label="Account"
+          Icon={UserRound}
+          active={pathname === SHELL_ROUTES.account}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
+        />
+        <NavRow
           href={href(SHELL_ROUTES.organization)}
           label="Organization"
           Icon={Building2}
@@ -754,65 +785,48 @@ export function Sidebar({
           onGuardedNavigate={guardNav ?? undefined}
         />
 
-        {/* THE PORTFOLIO. No label and no rule until there is something under
+        {/* THE PORTFOLIO. No toggle and no rule until there is something under
             them: an empty section is a promise the rail cannot keep, and a
             brand-new organization holds nothing. */}
-        {places.length > 0 && (
-          <>
-            <SectionBreak label="Org Places" collapsed={collapsed} />
-            <div className="flex flex-col gap-1">{places.map(renderPlace)}</div>
-          </>
-        )}
-
-        {/* THE LIST FAILED, AND SAYS SO (MESITA-1734). This used to render
-            identically to an organization holding no places — silently, and
-            permanently, because nothing retries a resolved promise. Retry
-            re-runs the action rather than reloading the console. */}
-        {failed && !collapsed && (
-          <div className="mt-3 px-2.5">
-            <p className="text-muted-foreground text-[12px]">
-              Couldn&apos;t load places.
-            </p>
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="text-foreground mt-1 inline-flex items-center gap-1.5 text-[12px] font-semibold underline underline-offset-2"
-            >
-              <RotateCw className="h-3 w-3" />
-              Retry
-            </button>
-          </div>
-        )}
-        {failed && collapsed && (
-          <button
-            type="button"
-            onClick={() => setReloadKey((k) => k + 1)}
-            aria-label="Retry loading places"
-            title="Couldn't load places — retry"
-            className={cn(ROW_BASE, ROW_REST, "justify-center px-0 py-2")}
-          >
-            <RotateCw className="h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5" />
-          </button>
-        )}
+        {places.length > 0 &&
+          (collapsed ? (
+            <>
+              <SectionBreak label="Org Places" collapsed />
+              {places.map(renderPlace)}
+            </>
+          ) : (
+            <>
+              <SectionToggle
+                label="Org Places"
+                count={places.length}
+                open={portfolioOpen}
+                onToggle={togglePortfolio}
+                controls={PORTFOLIO_ID}
+              />
+              {listed.length > 0 && (
+                <div id={PORTFOLIO_ID} className="flex flex-col gap-0.5">
+                  {listed.map(renderPlace)}
+                </div>
+              )}
+            </>
+          ))}
 
         {/* Opened from All Places and held by someone else, or by nobody. It
             is not in the portfolio, so it says so by standing apart. */}
         {openIsForeign && openPlace && (
           <>
             <SectionBreak label={openPlace.name} collapsed={collapsed} />
-            {renderPlace(openPlace)}
+            {/* The layout publishes a name, not a photo, so a foreign place
+                wears the Store glyph — it is a visitor here, not a portfolio
+                row, and the break above already names it. */}
+            {renderPlace({ id: openPlace.id, name: openPlace.name, photoUrl: null })}
           </>
         )}
 
-        {/* Closes the places area. A place list belongs with place lists — it
-            used to sit in the footer beside Account, which put a catalogue
-            and an identity in one group.
-
-            THE HAIRLINE IS LOAD-BEARING (MESITA-1734): a stack of containers
-            followed by an uncontained row of the same width reads as one
-            group, and All Places is a link to a list, not one of the places
-            above it. Containment says "these are places"; the rule says "this
-            is not one of them." */}
+        {/* Closes the places area. THE HAIRLINE IS LOAD-BEARING: a run of
+            places followed by an uncontained row of the same width reads as
+            one group, and All Places is a link to a list, not one of the
+            places above it. The rule says "this is not one of them." */}
         <div className="border-sidebar-border mx-2 mt-3 mb-1 border-t" />
         <NavRow
           href={href(placesHref())}
@@ -825,9 +839,8 @@ export function Sidebar({
         />
       </nav>
 
-      {/* THE FOOTER IS THE RAIL'S OWN CONTROL, AND ONLY THAT. Account left it
-          for the top (MESITA-1734); what remains is the one button that acts
-          on the rail rather than navigating anywhere. */}
+      {/* THE FOOTER IS THE RAIL'S OWN CONTROL, AND ONLY THAT: the one button
+          that acts on the rail rather than navigating anywhere. */}
       {onToggleCollapse && (
         <div className="border-sidebar-border mt-2 shrink-0 border-t pt-2">
           <button
