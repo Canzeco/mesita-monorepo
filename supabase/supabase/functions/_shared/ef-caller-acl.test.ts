@@ -32,14 +32,12 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
 
 /**
  * Which app directories a given `<actor>-web-*` prefix may be called from.
- * `web-check` is `apps/web-validate`'s live legacy duplicate (same backend,
- * same Supabase project — its own CLAUDE.md says so) and is NOT drift.
  */
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
   business: ["web-business", "mobile-business"],
   consumer: ["web-consumer", "mobile-consumer"],
-  validate: ["web-validate", "web-check"],
+  validate: ["web-validate"],
   // The public gift-landing page (MESITA-1677) — a stranger with a code, no
   // account, lives as a top-level route in web-consumer (outside its own
   // (shell) auth wall), not a separate app the way web-validate is. Same
