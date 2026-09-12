@@ -13,7 +13,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 
 1. **READ-ONLY.** No `INSERT`/`UPDATE`/`DELETE`/DDL, no EF deploys, no migrations, no
    `supabase db push`, no writes to `app_config`, no config edits, no code fixes, no
-   `main` pushes, **no repo files — the repo carries no reports** (Development Rules §C markdown law).
+   `main` pushes, **no repo files — the repo carries no reports** (Rules §0 markdown law).
    If a fix is obvious, describe it in the report — do not apply it.
    The only writes you are allowed: Linear issues and comments — **Linear documents
    are PROHIBITED** (the ledger is issues + comments only; Pato, 2026-08-16).
@@ -37,7 +37,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 - Linear: team Mesita (`MESITA-`).
 - Vercel MCP: 5 projects (web-admin, web-business, web-consumer, web-landing, web-check).
 - GitHub via `gh`.
-- Notion MCP: 📜 **Rules** (§0 + the three law pages) and 📚 **Docs** (14 flat domain
+- Notion MCP: 📜 **Rules** (§0–§3 + SADLC · KADLC) and 📚 **Docs** (14 flat domain
   pages). **Scope 9 only.** No connector → Scope 9 is `SKIPPED (connector unavailable)`,
   never `OK` — a scope that reads as healthy because it never ran is the bug it exists to catch.
 
@@ -306,9 +306,9 @@ reads to an operator as a control that does something.
     Firecrawl, Perplexity, Apify, Twilio, Stripe, ElevenLabs. Credit exhaustion presents as
     a data-quality bug, so it belongs in a health check, not a billing check.
 
-## Scope 8 — Ledger hygiene (Linear/ASDM) · P3
+## Scope 8 — Ledger hygiene (Linear) · P3
 
-8.1 The workspace invariants (ASDM I-3, I-4, I-6, I-10), from the 6.7 sweep table: one
+8.1 The workspace invariants (Rules I-3, I-4, I-6, I-10), from the 6.7 sweep table: one
     claim line and one workspace per In Progress code issue; no workspace with two live
     claims; every workspace passing `deno task worktree preflight <path>`; the shared checkout holding no work
     of its own (HEAD, index and working tree all at origin/main); claims stale after 24h
@@ -394,7 +394,7 @@ and reporting it as drift would be a false P1 on the doc that called it first.
 6. Publish the report as a Linear **issue** titled `Doctor — YYYY-MM-DD` (team Mesita,
    project Ops & maintenance, body = the report — shape below) and set it **Done in the
    same call** — it is a record, not work. Never a Linear document (prohibited) and never
-   a repo file (Development Rules §C markdown law).
+   a repo file (Rules §0 markdown law).
 7. Linear: one issue per **NEW P0/P1**, titled `doctor: <one-line symptom>`, body = the
    finding block verbatim. **Dedupe** — if an open issue already covers it, comment the new
    occurrence count instead of opening a second one. P2/P3 stay in the report only until

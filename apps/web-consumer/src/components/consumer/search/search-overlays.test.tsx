@@ -37,7 +37,7 @@ function read(name: string): string {
   return readFileSync(join(SEARCH_DIR, name), "utf8");
 }
 
-// Design §D + Product Rules §C: Search is the map plus a results panel whose
+// Docs › Design §D + Docs › Apps §A: Search is the map plus a results panel whose
 // HEIGHT FITS CONTENT. A fixed tall empty panel (h-[70%] and friends) is the
 // named regression — short lists must leave the map visible below.
 

@@ -24,7 +24,7 @@
 //      (requireMembership). An admin-shaped feed leaking a competitor's rows
 //      would be a data breach between businesses.
 //   2. NEVER expose a consumer's class or entry door — blended-rate privacy
-//      (Product Rules §A). Nothing here selects class_key, and the feed
+//      (Rules §2). Nothing here selects class_key, and the feed
 //      carries a first name at most. The issue's "redemption by segment" is
 //      therefore reported BY ACTION (welcome / story / review), never by
 //      class: the honest cut that doesn't leak who was Premium.

@@ -52,7 +52,7 @@ async function* walk(
       yield* walk(child);
     } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
       // RELATIVE to the functions dir, never absolute (MESITA-1075). The
-      // Intaker scan below filters on /enrich/, and ASDM puts every agent in
+      // Intaker scan below filters on /enrich/, and Rules §0 puts every agent in
       // `.claude/worktrees/<ISSUE-ID>-<slug>/` — so an absolute path inside any
       // worktree whose slug contains "enrich" matched EVERY file, and this guard
       // reported innocent operator-initiated writers as offenders. It cried wolf
@@ -108,7 +108,7 @@ Deno.test("no Edge Function writes place_profiles.name (it is a generated column
 // ── the guard above only works if `path` is RELATIVE (MESITA-1075) ──────────
 //
 // This is the regression pin. Reverting walk() to `child.pathname` puts the
-// checkout's own directory name inside every path, and ASDM runs agents from
+// checkout's own directory name inside every path, and Rules §0 runs agents from
 // `.claude/worktrees/<ISSUE-ID>-<slug>/` — so any issue whose slug contains
 // "enrich" (a whole subsystem's worth) silently widens the Intaker scan to
 // EVERY edge function. The observed damage was two innocent files reported as

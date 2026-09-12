@@ -1,9 +1,9 @@
 name: rules
 
 # Any markdown change anywhere triggers this workflow: sync-rules:check also
-# enforces the Development Rules §C markdown allowlist (knowledge → Notion,
+# enforces the Rules §0 markdown allowlist (knowledge → Notion,
 # task context → Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling
-# config) and the §C word budgets.
+# config) and the word budgets.
 #
 # The image formats trigger it too: sync-rules:check rejects any tracked
 # .icns/.jxl/.heif/.heic file, the one premise the dismissed image-size
@@ -135,7 +135,7 @@ jobs:
 
       # One checkout covers the whole monorepo — the old per-repo --only
       # self-scoping (and its "cross-repo enforcement stays manual" caveat)
-      # is gone with ASDM v5 (MESITA-456).
+      # is gone since MESITA-456.
       - name: Check
         if: needs.changes.outputs.changed == 'true'
         run: deno task sync-rules:check

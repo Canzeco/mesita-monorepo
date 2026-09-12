@@ -147,8 +147,8 @@ jobs:
           fi
 
   # The instruction-file sync check (scripts/sync-rules.ts --check) lives in
-  # the root `rules` workflow (.github/workflows/rules.yml) since ASDM v5
-  # (MESITA-456) — one checkout now covers the whole monorepo.
+  # the root `rules` workflow (.github/workflows/rules.yml) since
+  # MESITA-456 — one checkout now covers the whole monorepo.
 
   # Full type-check of every edge function against its remote (jsr/npm/https)
   # imports.

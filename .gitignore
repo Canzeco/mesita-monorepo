@@ -23,5 +23,5 @@ node_modules/
 .cursor/skills/gstack/design
 .cursor/skills/gstack/VERSION
 
-# Claude Code worktree fleet (ASDM I-3): never tracked, seeded from .worktreeinclude
+# Claude Code worktree fleet (Rules I-3): never tracked, seeded from .worktreeinclude
 .claude/worktrees/

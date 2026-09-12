@@ -1,4 +1,4 @@
-// scripts/worktree.ts — the fleet tool behind ASDM I-3, I-4, I-6, I-9 and I-10.
+// scripts/worktree.ts — the fleet tool behind Rules I-3, I-4, I-6, I-9 and I-10.
 //
 //   deno task boot                                   where am I, the shared-checkout checks, the fleet, my resumable workspaces
 //   deno task worktree add MESITA-<id> [slug] [--platform claude-code|codex|cursor|claude-code-cloud|cursor-cloud] [--footprint <paths>] [--adopt <path>]

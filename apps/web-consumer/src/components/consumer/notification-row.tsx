@@ -16,7 +16,7 @@ function KindIcon({ kind, className }: { kind: string; className?: string }) {
 
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const p = n.bill;
-  // redeem_cents is always 0 — ignore it in UI (Product Rules §A).
+  // redeem_cents is always 0 — ignore it in UI (Rules §2).
   const reward = p.total_reward_cents ?? p.discount_cents ?? 0;
 
   return (

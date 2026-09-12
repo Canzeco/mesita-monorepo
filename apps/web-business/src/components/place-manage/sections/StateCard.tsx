@@ -89,7 +89,7 @@ import {
 //              (active, lead) is what the consumer RLS policy
 //              places_select_public_visible gates on — its content_state
 //              leg is a tautology (all four labels of the enum are allowed),
-//              so state alone decides. Product Rules §B is right that Listed
+//              so state alone decides. Docs › Atlas is right that Listed
 //              is not a RUNG — nothing progresses through it — but it is not a
 //              constant either: Unlist writes `paused` and every guest surface
 //              stops resolving it. Read it from `state`, never from a merged

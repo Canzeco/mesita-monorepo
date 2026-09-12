@@ -11,7 +11,7 @@
 //      never a beacon at each success line. These functions spend real money
 //      and every added statement is a chance to change control flow.
 //
-//   2. `completed` means THE EFFECT LANDED. Development Rules say to judge
+//   2. `completed` means THE EFFECT LANDED. Rules I-9 says to judge
 //      enrichment by DB effects and never by green beacons, so every caller
 //      passes an observed value (`basics.hours`, a `sources.X.ok`, a persisted
 //      description). A literal `true` here rebuilds the exact failure mode that
