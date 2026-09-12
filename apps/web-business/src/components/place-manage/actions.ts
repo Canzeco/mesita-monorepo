@@ -18,10 +18,9 @@ import type { PlanKey } from "@/lib/business/plans";
 //
 // The rule, from this package's CLAUDE.md: everything the console does goes
 // through `business-web-*`; `admin-web-*` belongs to the Admin tab, which
-// `places/[id]/admin/page.tsx` refuses to a non-super-admin. Each `admin-web-*`
-// call still in here is a surface an operator can reach and cannot use.
-// `lib/business-console-doors.test.ts` names the remaining set with a verdict
-// each, fails on a new one, and fails again when a fixed one is left listed.
+// `places/[id]/admin/page.tsx` refuses to a non-super-admin.
+// `lib/business-console-doors.test.ts` fails on a new operator-reachable
+// admin door, and fails again when a listed one is left after it is fixed.
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off
@@ -456,50 +455,27 @@ export async function updatePlace(
 }
 
 // Plan is billing, not profile: business-web-update-place rejects any body
-// carrying a `plan` key. The admin grants it through its own door instead —
-// no Stripe, no money (admin-web-set-plan).
-//
-// `rates` rides along on purpose (MESITA-818/912). The partnership and the
-// strategy that justifies it are one decision, and sending them together
-// makes it ONE atomic write. Join may land on Zero (paid plan + null rates) —
-// the old 409 `no_strategy` guard is retired; a 0% Mesita Partner is
-// prevented by the shared listing_type derivation in the EF instead.
+// carrying a `plan` key. The operator's door is `business-web-set-partnership`
+// (MESITA-1740): join writes plan=pro internally, drop writes free, and
+// a client-chosen `plan` is refused. `rates` ride along on purpose
+// (MESITA-818/912) — the partnership and the strategy that justifies it are
+// one atomic write.
 export async function setPlacePlan(
   placeId: string,
   plan: PlanKey,
   rates?: Record<string, number | null>,
 ): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-plan", {
-    placeId,
-    plan,
-    ...(rates ?? {}),
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.place };
-}
-
-// Ghost-partner hold triage (MESITA-1311). Confirming a guest report marks
-// it reviewed AND sets places.reward_lane_pending_review_at, which closes
-// the reward lane (pending_review) until restore clears it. A report is
-// evidence, never an auto-strike — this is the deliberate human call.
-export type ReviewReportResult = {
-  /** ISO timestamp of the hold now on the place; null after dismiss/restore. */
-  hold: string | null;
-  placeId?: string;
-  report?: { id: string; state: string };
-};
-
-export async function reviewTicketReport(
-  input:
-    | { action: "confirm" | "dismiss"; reportId: string }
-    | { action: "restore"; placeId: string },
-): Promise<Result<ReviewReportResult>> {
-  const r = await efInvoke<ReviewReportResult>(
-    "admin-web-review-ticket-report",
-    input,
+  const action = plan === "free" ? "drop" : "join";
+  const r = await efInvoke<{ place: AdminPlace }>(
+    "business-web-set-partnership",
+    {
+      placeId,
+      action,
+      ...(rates ?? {}),
+    },
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+  return { ok: true, data: r.data.place };
 }
 
 /** The four rail toggles' post-write truth, from business-web-set-place-rails. */
@@ -698,7 +674,7 @@ export async function getPlacePaymentAccount(
       capability?: boolean;
       all?: boolean;
     };
-  }>("admin-web-get-place-payment-account", {
+  }>("business-web-get-payment-account", {
     placeId,
     refresh: opts.refresh === true,
   });
@@ -789,20 +765,19 @@ export async function setPlaceVerified(
   };
 }
 
-/** Rates-only strategy switch — no plan write (MESITA-912).
- *  Plan-less body on admin-web-set-plan. This call site is a tracked,
- *  known exception to the EF-name-is-the-ACL convention (MESITA-1600,
- *  ef-caller-acl.test.ts's GRANDFATHERED_VIOLATIONS) — the name still says
- *  admin-only, but the auth guard (super_admins) is what actually enforces
- *  it, so a stray call from here is gated, not a hole. */
+/** Rates-only strategy switch — no plan write (MESITA-912). */
 export async function setPlaceStrategy(
   placeId: string,
   rates: Record<string, number | null>,
 ): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-plan", {
-    placeId,
-    ...rates,
-  });
+  const r = await efInvoke<{ place: AdminPlace }>(
+    "business-web-set-partnership",
+    {
+      placeId,
+      action: "strategy",
+      ...rates,
+    },
+  );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
 }
@@ -840,6 +815,13 @@ type PlaceReservation = {
   guest: string;
 };
 
+export type PlaceFeedItem = {
+  id: string;
+  type: string;
+  occurredAt: string;
+  meta: Record<string, unknown>;
+};
+
 export type PlaceActivity = {
   stats: PlaceStats;
   reservations: PlaceReservation[];
@@ -847,50 +829,74 @@ export type PlaceActivity = {
   /** The only way to change a booking — a3 answers guests, a4 answers places. */
   lines: { guest: string; place: string };
   generatedAt: string;
+  feed: PlaceFeedItem[];
 };
 
 export async function getPlaceActivity(
   placeId: string,
   opts?: { limit?: number },
 ): Promise<Result<PlaceActivity>> {
-  // EF returns `closed` (canonical) and may still echo `paid` as a compat alias.
-  type EfStats = PlaceStats & { paid?: number };
-  const r = await efInvoke<Omit<PlaceActivity, "stats"> & { stats: EfStats }>(
-    "admin-web-get-place-activity",
-    { placeId, limit: opts?.limit },
-  );
+  const r = await efInvoke<{
+    summary?: {
+      saved?: number;
+      ticketsOpened?: number;
+      visits?: number;
+      honored?: number;
+      reservations?: number;
+      influencedCents?: number;
+      discountCents?: number;
+      billedCount?: number;
+      consumerReportedCount?: number;
+      avgTicketCents?: number | null;
+      visitRate?: number | null;
+      closeRate?: number | null;
+    };
+    feed?: PlaceFeedItem[];
+    reservations?: PlaceReservation[];
+    reservationTotal?: number;
+    lines?: { guest?: string; place?: string };
+    generatedAt?: string;
+  }>("business-web-get-performance", {
+    placeId,
+    feedLimit: opts?.limit,
+  });
   if (!r.ok) return { ok: false, error: r.error };
-  const s = r.data.stats;
-  const closed = typeof s.closed === "number" ? s.closed : (s.paid ?? 0);
+  const s = r.data.summary ?? {};
+  const saved = s.saved ?? 0;
+  const visits = s.visits ?? 0;
+  const closed = s.honored ?? 0;
   return {
     ok: true,
     data: {
-      ...r.data,
       stats: {
-        saves: s.saves,
-        tickets: s.tickets,
-        visits: s.visits,
+        saves: saved,
+        tickets: s.ticketsOpened ?? 0,
+        visits,
         closed,
-        reservations: s.reservations,
-        influencedCents: s.influencedCents,
-        discountCents: s.discountCents,
-        billedCount: typeof s.billedCount === "number" ? s.billedCount : 0,
-        consumerReportedCount:
-          typeof s.consumerReportedCount === "number"
-            ? s.consumerReportedCount
-            : 0,
-        avgTicketCents: s.avgTicketCents,
-        visitRate: s.visitRate,
-        closeRate: s.closeRate,
+        reservations: s.reservations ?? 0,
+        influencedCents: s.influencedCents ?? 0,
+        discountCents: s.discountCents ?? 0,
+        billedCount: s.billedCount ?? 0,
+        consumerReportedCount: s.consumerReportedCount ?? 0,
+        avgTicketCents: s.avgTicketCents ?? null,
+        visitRate: s.visitRate ?? (saved > 0 ? Math.round((visits / saved) * 100) : null),
+        closeRate: visits > 0 ? (s.closeRate ?? Math.round((closed / visits) * 100)) : null,
       },
+      reservations: r.data.reservations ?? [],
+      reservationTotal: r.data.reservationTotal ?? 0,
+      lines: {
+        guest: r.data.lines?.guest ?? "",
+        place: r.data.lines?.place ?? "",
+      },
+      generatedAt: r.data.generatedAt ?? new Date().toISOString(),
+      feed: r.data.feed ?? [],
     },
   };
 }
 
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
-// Same backend source Atlas Config reads (`admin-web-get-atlas-fields` →
-// public.place_tags). Manage Single Place calls this EF via its own server
-// action — it does NOT import from /atlas-config or talk to that page.
+// Same catalog Atlas Config reads, through the operator door
+// (`business-web-get-atlas-fields` → public.place_tags).
 
 export type PlaceTagOption = {
   slug: string;
@@ -967,7 +973,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
     categories: PlaceCategoryOption[];
     superCategories?: PlaceSuperCategoryOption[];
     fieldLimits?: Record<string, { max: number; note: string }>;
-  }>("admin-web-get-atlas-fields", {});
+  }>("business-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
   const fieldLimits = readPlaceFieldLimits(r.data.fieldLimits);
   return {

@@ -14,7 +14,6 @@ import { planForSubscription } from "@/lib/business/plans";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
-  reviewTicketReport,
   setPlacePlan,
   setPlaceRails,
   setPlaceStrategy,
@@ -98,23 +97,6 @@ export function PromosSection({
       alive = false;
     };
   }, [place.id]);
-
-  const [restoreBusy, setRestoreBusy] = useState(false);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
-
-  const commitRestore = async () => {
-    if (restoreBusy) return;
-    setRestoreBusy(true);
-    setRestoreError(null);
-    const r = await reviewTicketReport({ action: "restore", placeId: v.id });
-    setRestoreBusy(false);
-    if (!r.ok) {
-      console.error("[controls] reviewTicketReport restore failed:", r.error);
-      setRestoreError(controlWriteFailure("restore Visit Rewards"));
-      return;
-    }
-    applyPlace({ ...v, reward_lane_pending_review_at: null });
-  };
 
   const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
@@ -278,14 +260,9 @@ export function PromosSection({
     }
     if (d.fix === "restore") {
       return (
-        <button
-          type="button"
-          onClick={() => void commitRestore()}
-          disabled={restoreBusy}
-          className="text-foreground font-semibold underline underline-offset-4"
-        >
-          {restoreBusy ? "Restoring…" : d.fixLabel}
-        </button>
+        <span className="text-muted-foreground text-sm leading-snug">
+          Mesita is reviewing this place
+        </span>
       );
     }
     return null;
@@ -475,9 +452,6 @@ export function PromosSection({
               member={member}
               joinBusy={joinBusy}
               joinError={joinError}
-              restoreBusy={restoreBusy}
-              restoreError={restoreError}
-              onRestoreClick={() => void commitRestore()}
               onJoinClick={() => void commitJoinPartnership()}
               onDropClick={() => {
                 setDropError(null);

@@ -17,7 +17,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  getPlaceEnrichment,
   listPlaceTagCatalog,
   type AdminPlace,
   type PlaceFieldLimits,
@@ -161,7 +160,7 @@ type Form = {
   hours: Record<Day, DayHours>;
 };
 
-// Fallback only until admin-web-get-atlas-fields returns; never the source of truth.
+// Fallback until business-web-get-atlas-fields returns; never the source of truth.
 const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 2000,
@@ -423,15 +422,14 @@ export function PlaceSection({
   const removePhoto = (idx: number) =>
     setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-place Intaker inspector data — per-photo metadata (source + vision
-  // analysis) for the ⓘ dialog, keyed by image URL. Loads once; the live
-  // enriching state (and its poll) lives on the Admin tab's Metadata card.
-  const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
+  // Per-photo Intaker analysis lives on the Admin tab. The ⓘ dialog on
+  // Profile only has gallery order — vision text and SERP are operator
+  // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    // Field limits come from the same EF Atlas Config uses — never hardcode.
+    // Field limits come from the same catalog Atlas Config uses — never hardcode.
     listPlaceTagCatalog().then((r) => {
       if (!alive || !r.ok) return;
       setLimits(r.data.fieldLimits);
@@ -441,10 +439,6 @@ export function PlaceSection({
         description: f.description.slice(0, r.data.fieldLimits.descriptionMax),
         tags: f.tags.slice(0, r.data.fieldLimits.tagsPerPlaceMax),
       }));
-    });
-    getPlaceEnrichment(place.id).then((r) => {
-      if (!alive) return;
-      setMedia(r.ok ? r.data.media : {});
     });
     return () => {
       alive = false;
@@ -795,7 +789,7 @@ export function PlaceSection({
       {metaFor !== null && (
         <MediaMetaDialog
           url={metaFor}
-          meta={media[metaFor] ?? null}
+          meta={null}
           position={form.photos.indexOf(metaFor) + 1}
           total={form.photos.length}
           onClose={() => setMetaFor(null)}
@@ -1028,14 +1022,9 @@ function sourceMetaRows(
   return rows;
 }
 
-// Intaker inspector: shows one image's metadata — source, gallery order, save
-// state, the pre-analysis source signals (likes/comments/dims/…), and the
-// vision analysis text — in a small modal.
-//
-// This is Mesita-internal data but it deliberately stays on Place rather than
-// moving to the Admin tab: it is a read-only lens on the tile you are curating,
-// reachable only by clicking that tile, and hosting it on Admin would mean
-// duplicating the whole gallery there to have something to click.
+// Gallery order for the tile you are curating. Intaker analysis text
+// lives on the Admin tab — a restaurant reading vision copy as if it
+// were theirs is the bug MESITA-1740 named.
 function MediaMetaDialog({
   url,
   meta,

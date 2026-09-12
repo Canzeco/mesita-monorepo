@@ -5,6 +5,11 @@
 // may SEE the state — viewers included; the actions (onboard, dashboard)
 // stay owner-only in their own EFs.
 //
+// With `placeId`, also returns the pay-readiness verdict the Capabilities
+// rung renders (intent / global_rail / capability) — the only piece
+// `admin-web-get-place-payment-account` had that this door lacked
+// (MESITA-1740). Org-id callers keep the previous shape.
+//
 // Refresh-through by default: the platform Stripe account has no webhook
 // endpoint yet (MESITA-1531), so `account.updated` never arrives on its own.
 // Until it does, this read IS the sync moment — a real-universe row is
@@ -13,8 +18,19 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import {
+  corsPreflight,
+  json,
+  readJsonOr,
+  readPlaceIdAlias,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
+import {
+  adminClient,
+  getAuthedUser,
+  readEFEnv,
+  requireMembership,
+} from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
@@ -24,11 +40,13 @@ import {
   keyIsLive,
 } from "../_shared/stripe-connect.ts";
 import {
+  isConnectChargeReady,
   type PaymentAccountRow,
   writePaymentAccount,
 } from "../_shared/payment-account-doc.ts";
+import { loadVisitsConfig } from "../_shared/visits-config.ts";
 
-type Body = { orgId?: string; refresh?: boolean };
+type Body = { orgId?: string; placeId?: string; projectId?: string; refresh?: boolean };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -41,22 +59,49 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const body = await readJsonOr<Body>(req, {});
-  const orgId = (body.orgId ?? "").trim();
-  if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  const orgIdFromBody = (body.orgId ?? "").trim();
+  if (!placeId && !orgIdFromBody) {
+    return json({ ok: false, error: "orgId or placeId is required" }, 400);
+  }
 
   const admin = adminClient(envRes.env);
-  const roleRes = await requireOrgRole(admin, authRes.user, orgId, [
-    "owner",
-    "editor",
-    "viewer",
-  ]);
-  if (!roleRes.ok) return roleRes.response;
+  let orgId = orgIdFromBody;
+  let myRole: string | null = null;
+  let placeIntent: boolean | null = null;
 
-  const rowRes = await admin
-    .from("organization_payment_accounts")
-    .select()
-    .eq("organization_id", orgId)
-    .maybeSingle();
+  if (placeId) {
+    const memberRes = await requireMembership(admin, authRes.user, placeId);
+    if (!memberRes.ok) return memberRes.response;
+    myRole = memberRes.membership.role;
+    const orgRes = await admin
+      .from("places")
+      .select("organization_id")
+      .eq("id", placeId)
+      .maybeSingle();
+    if (orgRes.error) {
+      return json({ ok: false, error: `org_read: ${orgRes.error.message}` }, 500);
+    }
+    orgId =
+      (orgRes.data as { organization_id?: string | null } | null)
+        ?.organization_id ?? "";
+  } else {
+    const roleRes = await requireOrgRole(admin, authRes.user, orgId, [
+      "owner",
+      "editor",
+      "viewer",
+    ]);
+    if (!roleRes.ok) return roleRes.response;
+    myRole = roleRes.role;
+  }
+
+  const rowRes = orgId
+    ? await admin
+      .from("organization_payment_accounts")
+      .select()
+      .eq("organization_id", orgId)
+      .maybeSingle()
+    : { data: null, error: null };
   if (rowRes.error) {
     return json({ ok: false, error: `account_read: ${rowRes.error.message}` }, 500);
   }
@@ -65,7 +110,7 @@ Deno.serve(async (req) => {
 
   const stripeKey = stripeSecretKey();
   const wantsRefresh = body.refresh !== false;
-  const refreshable = wantsRefresh && row !== null && stripeKey &&
+  const refreshable = wantsRefresh && row !== null && stripeKey && orgId &&
     !isMockConnectAccountId(row.stripe_account_id) &&
     row.livemode === keyIsLive(stripeKey);
   if (refreshable) {
@@ -92,5 +137,33 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, account: row, orphaned, myRole: roleRes.role });
+  if (!placeId) {
+    return json({ ok: true, account: row, orphaned, myRole });
+  }
+
+  const placeRes = await admin
+    .from("place_profiles")
+    .select("mesita_pay_enabled")
+    .eq("id", placeId)
+    .maybeSingle();
+  placeIntent =
+    (placeRes.data as { mesita_pay_enabled?: unknown } | null)
+      ?.mesita_pay_enabled === true;
+  const visits = await loadVisitsConfig(admin);
+  const globalRail = visits.payCard === true;
+  const capability = isConnectChargeReady(row);
+
+  return json({
+    ok: true,
+    account: row,
+    orphaned,
+    myRole,
+    ready: capability,
+    pay_ready: {
+      intent: placeIntent,
+      global_rail: globalRail,
+      capability,
+      all: placeIntent && globalRail && capability,
+    },
+  });
 });

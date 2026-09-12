@@ -11,7 +11,7 @@ import { formatPesosCompact } from "@/lib/format";
 // then the Saved → Visited → Closed funnel with the two conversions that say
 // whether Mesita is actually producing visits and closes.
 //
-// Numbers come from real aggregates (admin-web-get-place-activity → stats),
+// Numbers come from real aggregates (business-web-get-performance → stats),
 // never from a page of the event feed — see that EF's header for why.
 //
 // Funnel form: one narrowing quantity, so Saved and Visited share ONE hue

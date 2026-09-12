@@ -2,28 +2,25 @@
 
 import {
   forwardRef,
-  useCallback,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
-  useTransition,
 } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { formatAbsoluteUtc, timeAgo } from "@/lib/format";
-import {
-  listNotifications,
-  type NotificationItem,
-  type NotificationType,
-  type NotificationsPayload,
-} from "../notifications/actions";
 import { MetaRow } from "../notifications/NotificationMeta";
 import {
   TYPE_CONFIG,
   UNKNOWN_TYPE_CONFIG,
 } from "../notifications/notification-config";
-import { reviewTicketReport, type AdminPlace, type PlaceStats } from "../actions";
+import type { NotificationItem, NotificationType } from "../notifications/actions";
+import {
+  type AdminPlace,
+  type PlaceFeedItem,
+  type PlaceStats,
+} from "../actions";
 import { formatPesosCompact } from "@/lib/format";
 
 // Performance → Event Super Boxes (collapse-empty horizontal rails).
@@ -99,6 +96,26 @@ const BOXES: BoxDef[] = [
 ];
 
 const SUPER_TYPES: NotificationType[] = BOXES.map((b) => b.type);
+
+function categoryOf(type: string): NotificationItem["category"] {
+  if (type.startsWith("reservations.")) return "reservations";
+  if (type.startsWith("consumer.")) return "consumer";
+  if (type.startsWith("atlas.")) return "atlas";
+  return "rewards";
+}
+
+function asNotification(item: PlaceFeedItem): NotificationItem {
+  return {
+    id: item.id,
+    category: categoryOf(item.type),
+    type: item.type as NotificationType,
+    occurredAt: item.occurredAt,
+    place: null,
+    actor: null,
+    detail: null,
+    meta: item.meta ?? {},
+  };
+}
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -249,22 +266,21 @@ const RAIL_SCROLL =
 export function EventSuperBoxes({
   place,
   stats,
-  allowTriage = false,
+  feed,
+  generatedAt,
+  pending = false,
+  onRefresh,
 }: {
   place: AdminPlace;
   stats: PlaceStats;
-  /** Ghost-partner triage (Confirm / Dismiss) is MESITA's call, never the
-   *  place's — a place that can dismiss reports about itself neutralises the
-   *  strike ladder. Off unless the viewer is an operator. */
-  allowTriage?: boolean;
+  feed: PlaceFeedItem[];
+  generatedAt: string;
+  pending?: boolean;
+  onRefresh: () => void;
 }) {
-  const [feed, setFeed] = useState<NotificationsPayload | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startRefresh] = useTransition();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const inFlightRef = useRef(false);
 
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -276,51 +292,13 @@ export function EventSuperBoxes({
     };
   }, []);
 
-  const refresh = useCallback(() => {
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    setError(null);
-    startRefresh(async () => {
-      const r = await listNotifications("all", {
-        placeId: place.id,
-        types: SUPER_TYPES,
-        limit: 150,
-      });
-      inFlightRef.current = false;
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setFeed(r.data);
-    });
-  }, [place.id]);
-
-  useEffect(() => {
-    let alive = true;
-    listNotifications("all", {
-      placeId: place.id,
-      types: SUPER_TYPES,
-      limit: 150,
-    }).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setFeed(r.data);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [place.id]);
-
   useEffect(() => {
     const iv = setInterval(() => {
       if (document.hidden) return;
-      refresh();
+      onRefresh();
     }, AUTO_REFRESH_MS);
     return () => clearInterval(iv);
-  }, [refresh]);
+  }, [onRefresh]);
 
   useEffect(() => {
     if (!expandedId) return;
@@ -340,7 +318,8 @@ export function EventSuperBoxes({
   const byType = useMemo(() => {
     const map = new Map<NotificationType, NotificationItem[]>();
     for (const t of SUPER_TYPES) map.set(t, []);
-    for (const n of feed?.notifications ?? []) {
+    for (const raw of feed) {
+      const n = asNotification(raw);
       const list = map.get(n.type);
       if (list) list.push(n);
     }
@@ -357,11 +336,11 @@ export function EventSuperBoxes({
       reports: 0,
     };
     for (const b of BOXES) {
-      const fc = feed?.counts[b.type] ?? byType.get(b.type)?.length ?? 0;
+      const fc = byType.get(b.type)?.length ?? 0;
       out[b.key] = countFor(b.key, stats, place, fc);
     }
     return out;
-  }, [stats, place, feed, byType]);
+  }, [stats, place, byType]);
 
   const ordered = useMemo(() => {
     const reports = BOXES.find((b) => b.key === "reports")!;
@@ -372,11 +351,7 @@ export function EventSuperBoxes({
   const allZero = BOXES.every((b) => totals[b.key] === 0);
 
   const updatedLabel =
-    feed == null || now === null
-      ? feed
-        ? formatAbsoluteUtc(feed.generatedAt)
-        : null
-      : timeAgo(feed.generatedAt, now);
+    now === null ? formatAbsoluteUtc(generatedAt) : timeAgo(generatedAt, now);
 
   return (
     <section aria-label="Event receipts" className="flex flex-col gap-4">
@@ -388,7 +363,7 @@ export function EventSuperBoxes({
           {updatedLabel && <span>Updated {updatedLabel}</span>}
           <button
             type="button"
-            onClick={refresh}
+            onClick={onRefresh}
             disabled={pending}
             className="hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50"
           >
@@ -396,23 +371,6 @@ export function EventSuperBoxes({
           </button>
         </div>
       </div>
-
-      {error && (
-        <div className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-3 rounded-xl border p-3 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Couldn&apos;t load event receipts.</p>
-            <p className="mt-1 opacity-90">{error}</p>
-            <button
-              type="button"
-              onClick={refresh}
-              className="mt-2 text-xs font-semibold underline underline-offset-2"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      )}
 
       {allZero ? (
         <p className="text-muted-foreground border-border rounded-xl border border-dashed px-4 py-5 text-sm">
@@ -473,71 +431,61 @@ export function EventSuperBoxes({
                 </span>
               </div>
 
-              {!feed ? (
-                <div className={RAIL_SCROLL} aria-busy="true">
-                  <div className="bg-muted/50 border-border h-[5.5rem] w-[10.5rem] shrink-0 animate-pulse rounded-2xl border" />
-                  <div className="bg-muted/40 border-border h-[5.5rem] w-[9.75rem] shrink-0 animate-pulse rounded-2xl border" />
-                  <div className="bg-muted/40 border-border h-[5.5rem] w-[9.75rem] shrink-0 animate-pulse rounded-2xl border" />
-                </div>
-              ) : (
-                <ul
-                  className={RAIL_SCROLL}
-                  role="list"
-                  tabIndex={0}
-                  aria-label={`${box.label} events`}
-                  onKeyDown={(e) => {
-                    const rail = e.currentTarget;
-                    if (e.key === "ArrowRight") {
-                      e.preventDefault();
-                      rail.scrollBy({ left: 180, behavior: "smooth" });
-                    } else if (e.key === "ArrowLeft") {
-                      e.preventDefault();
-                      rail.scrollBy({ left: -180, behavior: "smooth" });
-                    }
-                  }}
-                >
-                  <li role="listitem" className="shrink-0 snap-start">
-                    <AnalyticsTile
-                      label={box.label}
-                      primary={analyticsPrimary(box.key, stats, place, total)}
-                      hint={analyticsHint(box.key, place, total)}
-                      secondary={analyticsSecondary(box.key, stats, total)}
-                      urgent={urgent}
+              <ul
+                className={RAIL_SCROLL}
+                role="list"
+                tabIndex={0}
+                aria-label={`${box.label} events`}
+                onKeyDown={(e) => {
+                  const rail = e.currentTarget;
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    rail.scrollBy({ left: 180, behavior: "smooth" });
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    rail.scrollBy({ left: -180, behavior: "smooth" });
+                  }
+                }}
+              >
+                <li role="listitem" className="shrink-0 snap-start">
+                  <AnalyticsTile
+                    label={box.label}
+                    primary={analyticsPrimary(box.key, stats, place, total)}
+                    hint={analyticsHint(box.key, place, total)}
+                    secondary={analyticsSecondary(box.key, stats, total)}
+                    urgent={urgent}
+                  />
+                </li>
+                {visible.map((item) => (
+                  <li key={item.id} role="listitem" className="shrink-0 snap-start">
+                    <EventCard
+                      item={item}
+                      now={now}
+                      selected={expandedId === item.id}
+                      onToggle={() =>
+                        setExpandedId((id) =>
+                          id === item.id ? null : item.id,
+                        )
+                      }
                     />
                   </li>
-                  {visible.map((item) => (
-                    <li key={item.id} role="listitem" className="shrink-0 snap-start">
-                      <EventCard
-                        item={item}
-                        now={now}
-                        selected={expandedId === item.id}
-                        onToggle={() =>
-                          setExpandedId((id) =>
-                            id === item.id ? null : item.id,
-                          )
-                        }
-                      />
-                    </li>
-                  ))}
-                  {truncated && (
-                    <li
-                      role="listitem"
-                      className="text-muted-foreground border-border bg-muted/30 flex h-[5.5rem] w-[7.5rem] shrink-0 snap-start items-center justify-center rounded-2xl border border-dashed px-3 text-center text-xs"
-                    >
-                      Showing {Math.min(CARD_LIMIT, visible.length)} of{" "}
-                      {compact(showOf)}
-                    </li>
-                  )}
-                </ul>
-              )}
+                ))}
+                {truncated && (
+                  <li
+                    role="listitem"
+                    className="text-muted-foreground border-border bg-muted/30 flex h-[5.5rem] w-[7.5rem] shrink-0 snap-start items-center justify-center rounded-2xl border border-dashed px-3 text-center text-xs"
+                  >
+                    Showing {Math.min(CARD_LIMIT, visible.length)} of{" "}
+                    {compact(showOf)}
+                  </li>
+                )}
+              </ul>
 
               {expandedItem && (
                 <ExpandPanel
                   ref={panelRef}
                   item={expandedItem}
                   onClose={() => setExpandedId(null)}
-                  onTriaged={refresh}
-                  allowTriage={allowTriage}
                 />
               )}
             </div>
@@ -646,10 +594,8 @@ const ExpandPanel = forwardRef<
   {
     item: NotificationItem;
     onClose: () => void;
-    onTriaged?: () => void;
-    allowTriage?: boolean;
   }
->(function ExpandPanel({ item, onClose, onTriaged, allowTriage }, ref) {
+>(function ExpandPanel({ item, onClose }, ref) {
   const cfg = TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG;
   const labelId = useId();
 
@@ -692,102 +638,12 @@ const ExpandPanel = forwardRef<
       <div className="mt-2">
         <MetaRow item={item} />
       </div>
-      {item.type === "rewards.ticket_reported" &&
-        (allowTriage ? (
-          <ReportTriageRow item={item} onTriaged={onTriaged} />
-        ) : (
-          <p className="text-muted-foreground mt-3 text-xs">
-            Mesita reviews guest reports.
-          </p>
-        ))}
+      {item.type === "rewards.ticket_reported" && (
+        <p className="text-muted-foreground mt-3 text-xs">
+          Mesita reviews guest reports.
+        </p>
+      )}
     </div>
   );
 });
 
-// Ghost-partner hold triage (MESITA-1311). A report is EVIDENCE, never an
-// auto-strike — this is where the human call happens. Confirm marks the
-// report reviewed AND puts the place's Visit Rewards on hold
-// (pending_review closes the lane until Restore in the Partnership box);
-// Dismiss just closes the report.
-function ReportTriageRow({
-  item,
-  onTriaged,
-}: {
-  item: NotificationItem;
-  onTriaged?: () => void;
-}) {
-  const [busy, setBusy] = useState<"confirm" | "dismiss" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [outcome, setOutcome] = useState<string | null>(null);
-
-  const reportId =
-    typeof item.meta.reportId === "string" ? item.meta.reportId : null;
-  const state = typeof item.meta.state === "string" ? item.meta.state : null;
-
-  if (!reportId) {
-    // An older feed payload without the id — nothing to drive.
-    return (
-      <p className="text-muted-foreground mt-3 type-label">
-        Refresh the feed to triage this report.
-      </p>
-    );
-  }
-
-  if (outcome) {
-    return <p className="text-muted-foreground mt-3 type-label">{outcome}</p>;
-  }
-
-  if (state !== "open") {
-    return (
-      <p className="text-muted-foreground mt-3 type-label">
-        Already {state} — the trail lives on the report row.
-      </p>
-    );
-  }
-
-  const triage = async (action: "confirm" | "dismiss") => {
-    if (busy) return;
-    setBusy(action);
-    setError(null);
-    const r = await reviewTicketReport({ action, reportId });
-    setBusy(null);
-    if (!r.ok) {
-      setError(r.error);
-      return;
-    }
-    setOutcome(
-      action === "confirm"
-        ? "Confirmed — Visit Rewards are on hold. Restore lives in the Partnership box."
-        : "Dismissed — no place state changed.",
-    );
-    onTriaged?.();
-  };
-
-  return (
-    <div className="mt-3 flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void triage("confirm")}
-          disabled={busy !== null}
-          className="bg-destructive/10 text-destructive hover:bg-destructive/15 inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-60"
-        >
-          {busy === "confirm" ? "Confirming…" : "Confirm — hold Visit Rewards"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void triage("dismiss")}
-          disabled={busy !== null}
-          className="border-border bg-card hover:bg-muted/60 inline-flex h-8 items-center rounded-full border px-3 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-60"
-        >
-          {busy === "dismiss" ? "Dismissing…" : "Dismiss report"}
-        </button>
-      </div>
-      <div aria-live="polite">
-        {error && (
-          <p className="text-destructive type-label">{error}</p>
-        )}
-      </div>
-    </div>
-  );
-}

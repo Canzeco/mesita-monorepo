@@ -2,6 +2,8 @@
 //
 // Read-only Intaker vocabulary for the admin console: Super Categories,
 // place categories, tag catalog, tag facets, and enforced field length limits.
+// Twin of `business-web-get-atlas-fields`; both are a guard plus
+// `_shared/atlas-fields.ts` (MESITA-1740).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
@@ -11,12 +13,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import {
-  fetchPlaceCategories,
-  fetchPlaceSuperCategories,
-} from "../_shared/categories.ts";
-import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
-import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
+import { loadAtlasFields } from "../_shared/atlas-fields.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -32,24 +29,6 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const [categories, superCategories, tags] = await Promise.all([
-    fetchPlaceCategories(admin),
-    fetchPlaceSuperCategories(admin),
-    fetchPlaceTags(admin),
-  ]);
-
-  return json({
-    ok: true,
-    categories,
-    superCategories,
-    tags,
-    facets: TAG_FACETS,
-    fieldLimits: ENRICH_FIELD_LIMITS,
-    counts: {
-      categories: categories.length,
-      superCategories: superCategories.length,
-      tags: tags.length,
-      facets: TAG_FACETS.length,
-    },
-  });
+  const payload = await loadAtlasFields(admin);
+  return json({ ok: true, ...payload });
 });

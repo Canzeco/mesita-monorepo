@@ -1,11 +1,6 @@
-"use server";
-
-import { efInvoke } from "@/lib/supabase-ef";
-
-// Notification feed types — mirror of the admin-list-notifications EF
-// envelope. The shape is category-agnostic on purpose: future categories
-// (billing, verifications, consumers…) reuse the same item shape and the
-// client renders title/icon from `type`.
+// Event-receipt item shape. The operator Activity tab maps
+// `business-web-get-performance`'s feed into this (MESITA-1740); the
+// super-admin monitor still reads the admin list door.
 
 type NotificationCategory = "atlas" | "consumer" | "rewards" | "reservations";
 
@@ -19,7 +14,6 @@ export type NotificationType =
   | "rewards.ticket_visit"
   | "rewards.ticket_closed"
   | "rewards.review_submitted"
-  // v3c (MESITA-851): a guest filed a complaint about a visit.
   | "rewards.ticket_reported"
   | "reservations.reservation_created";
 
@@ -42,41 +36,3 @@ export type NotificationItem = {
   detail: string | null;
   meta: Record<string, unknown>;
 };
-
-export type NotificationsPayload = {
-  notifications: NotificationItem[];
-  counts: Record<string, number>;
-  categories: NotificationCategory[];
-  total: number;
-  generatedAt: string;
-};
-
-type NotificationsResult =
-  | { ok: true; data: NotificationsPayload }
-  | { ok: false; error: string };
-
-// Optional server-side narrowing supported by the EF. `limit` caps the feed
-// size (step events are chatty, so we fetch a bigger window by default).
-type ListNotificationsOptions = {
-  types?: NotificationType[];
-  placeId?: string;
-  q?: string;
-  limit?: number;
-};
-
-const DEFAULT_LIMIT = 150;
-
-export async function listNotifications(
-  category: NotificationCategory | "all" = "all",
-  opts: ListNotificationsOptions = {},
-): Promise<NotificationsResult> {
-  const r = await efInvoke<NotificationsPayload>("admin-web-list-notifications", {
-    category,
-    limit: opts.limit ?? DEFAULT_LIMIT,
-    ...(opts.types && opts.types.length > 0 ? { types: opts.types } : {}),
-    ...(opts.placeId ? { placeId: opts.placeId } : {}),
-    ...(opts.q ? { q: opts.q } : {}),
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}

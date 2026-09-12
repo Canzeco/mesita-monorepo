@@ -131,7 +131,7 @@ export const ENGINELESS_STATE_FACT_KEYS: readonly GeneralStateKey[] = [
 /**
  * Facts the NOTIFICATION stamper does not write (MESITA-1608).
  *
- * `admin-web-list-notifications` puts a `stateFacts` blob on each item, and
+ * The admin notifications door puts a stateFacts blob on each item, and
  * the feed reads facts straight out of it. Owned is not in that blob: it is a
  * join fact (`places.organization_id`), not something an enrichment event
  * observes, and nothing stamps it.
