@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 
 // Wayfinding for four modules. The strip does not exist until the first
-// module scrolls away — it is a way back, not chrome. Function hashes still
-// work from Create/Enrich step chips; they are not repeated here.
+// module scrolls away — it is a way back, not chrome. Sliding it with
+// `-translate-y-full` alone is not enough: the sticky+h-0 wrapper sits
+// under PageHeader, so that translate parks the bar in the title margin
+// and it still reads as tabs. Opacity + pointer-events hide it. Function
+// hashes still work from Create/Enrich step chips; they are not repeated
+// here.
 const LINKS: { id: string; label: string }[] = [
   { id: "s-models", label: "Models" },
   { id: "s-create", label: "Create" },
@@ -19,9 +23,13 @@ export function SectionStrip() {
   useEffect(() => {
     const first = document.getElementById("s-models");
     if (!first) return;
+    // `main` is the only scroller (AppShell). The viewport is the wrong
+    // root: Models can still intersect the window while it has already
+    // left the column, and the other way around on a tall header.
+    const root = first.closest("main");
     const gate = new IntersectionObserver(
       ([e]) => setShown(!e.isIntersecting),
-      { threshold: 0 },
+      { root, threshold: 0 },
     );
     gate.observe(first);
 
@@ -29,7 +37,7 @@ export function SectionStrip() {
       (entries) => {
         for (const e of entries) if (e.isIntersecting) setHere(e.target.id);
       },
-      { rootMargin: "-45% 0px -50% 0px" },
+      { root, rootMargin: "-45% 0px -50% 0px" },
     );
     for (const l of LINKS) {
       const el = document.getElementById(l.id);
@@ -53,9 +61,13 @@ export function SectionStrip() {
     <div className="sticky top-0 z-20 -mx-4 h-0 sm:-mx-6 lg:-mx-8">
       <nav
         aria-label="Sections"
+        aria-hidden={!shown}
+        inert={!shown}
         className={
-          "border-border bg-card/90 absolute inset-x-0 top-0 border-b backdrop-blur transition-transform " +
-          (shown ? "translate-y-0" : "-translate-y-full")
+          "border-border bg-card/90 absolute inset-x-0 top-0 border-b backdrop-blur transition-[transform,opacity] " +
+          (shown
+            ? "translate-y-0"
+            : "pointer-events-none -translate-y-full opacity-0")
         }
       >
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 overflow-x-auto scrollbar-none px-4 py-2 sm:px-6">
