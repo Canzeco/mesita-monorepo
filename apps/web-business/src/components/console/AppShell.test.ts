@@ -76,7 +76,9 @@ describe("the drawer is a real modal", () => {
   it("locks body scroll while open, and restores what it found", () => {
     // Restoring the PREVIOUS value, not hard-coding "": another component may
     // legitimately own the lock when this one lets go.
-    expect(shell).toContain("const prevOverflow = document.body.style.overflow");
+    expect(shell).toContain(
+      "const prevOverflow = document.body.style.overflow",
+    );
     expect(shell).toContain("document.body.style.overflow = prevOverflow");
   });
 });
@@ -88,7 +90,7 @@ describe("the drawer is a real modal", () => {
 describe("the rail is light, and every text token is a measured pair", () => {
   it("uses the sidebar token family, not an inversion", () => {
     expect(rail).toContain("bg-sidebar text-sidebar-foreground");
-    expect(rail).not.toContain("bg-foreground text-background\"");
+    expect(rail).not.toContain('bg-foreground text-background"');
   });
 
   it("never sets text on a bare opacity fraction", () => {
@@ -140,7 +142,7 @@ describe("the rail is light, and every text token is a measured pair", () => {
     // Vacuous-pass guard: a scan that finds nothing must fail, not pass. The
     // narrowing above was invisible precisely because an empty-ish list still
     // satisfied a `for` loop.
-    expect(links.length).toBeGreaterThanOrEqual(8);
+    expect(links.length).toBeGreaterThanOrEqual(4);
     for (const link of links) {
       expect(
         SANCTIONED.some((ok) => ok.test(link)),

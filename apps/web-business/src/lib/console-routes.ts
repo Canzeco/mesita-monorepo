@@ -2,7 +2,9 @@
 // a test asserts each entry maps to a route file on disk.
 //
 // FOUR SCREENS (Pato, 2026-09-07 — was five, 2026-09-05): Account ·
-// Organization · Places · Place. Ascending scope, then the one address.
+// Organizations · Places · Place. Ascending scope, then the one address.
+// Create organization is its own address (`/organization/new`, MESITA-1793),
+// never a form on the collection.
 //
 // Org Places and Public Places MERGED (MESITA-1614). The split was a filter
 // wearing the costume of a screen: both listed places, both used the same row,
@@ -14,7 +16,7 @@
 // `/pool` is a permanent redirect here — see next.config.ts.
 //
 // Place is the only screen that needs an id, so it is the only one absent
-// from SHELL_ROUTES: `placeHref()` builds it. It nests UNDER Org Places
+// from SHELL_ROUTES: `placeHref()` builds it. It nests UNDER Places
 // (`/places/<id>`) because that is where you arrive from. The old `(console)`
 // tree that used to squat on `/place/<id>` is deleted (MESITA-1564); that path
 // is now a permanent redirect here — see `next.config.ts`.
@@ -33,6 +35,7 @@
 export const SHELL_ROUTES = {
   account: "/account",
   organization: "/organization",
+  organizationNew: "/organization/new",
   places: "/places",
 } as const;
 

@@ -13,7 +13,11 @@ import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView } from "@/lib/place-view";
 import { apiListOrganizations } from "@/lib/api/organizations";
-import { canClaim, canRelease, resolveActiveOrg } from "@/lib/active-organization";
+import {
+  canClaim,
+  canRelease,
+  resolveActiveOrg,
+} from "@/lib/active-organization";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { ProfileTab } from "./ProfileTab";
 
@@ -53,7 +57,7 @@ export default async function PlaceProfilePage({
         className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 text-[13px]"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        {holder ? "Org Places" : "Public Places"}
+        Places
       </Link>
 
       <PlaceGallery

@@ -14,7 +14,7 @@ export function NoOrganization() {
       title="No organization yet"
       description="Places are held by an organization. Create one and you can claim places into it."
       action={
-        <Link href={SHELL_ROUTES.organization} className={CTA_BUTTON_CLASS}>
+        <Link href={SHELL_ROUTES.organizationNew} className={CTA_BUTTON_CLASS}>
           Create an organization
         </Link>
       }

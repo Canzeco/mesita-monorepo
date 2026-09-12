@@ -44,19 +44,29 @@ export async function createOrganizationAction(
 ): Promise<CreateOrgState> {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Name is required." };
+  if (name.length > 120) return { error: "Name is too long." };
 
   const supabase = await createServerSupabase();
+  // try/catch ONLY around the Edge Function. `redirect()` throws NEXT_REDIRECT
+  // and must not sit inside this catch — errMsg would swallow it and the form
+  // would show a nonsense error instead of leaving (MESITA-1793).
+  let created: Awaited<ReturnType<typeof apiCreateOrganization>> | undefined;
   try {
     // Name only, on purpose: legal name and RFC are not creation facts —
     // they matter the day the organization partners a place or gets paid,
     // and they land on the Organization screen's Identity card instead.
-    await apiCreateOrganization(supabase, { name });
+    created = await apiCreateOrganization(supabase, { name });
   } catch (e) {
     return { error: errMsg(e, "Couldn't create that organization.") };
   }
+  if (!created?.id) {
+    return { error: "Created organization is missing an id." };
+  }
   // The nav's switcher and every org-scoped list change at once.
   revalidatePath("/", "layout");
-  return { error: null };
+  redirect(
+    `${SHELL_ROUTES.organization}?org=${encodeURIComponent(created.id)}`,
+  );
 }
 
 export async function updateOrganizationAction(
@@ -71,10 +81,16 @@ export async function updateOrganizationAction(
     await apiUpdateOrganization(supabase, {
       orgId,
       legalName: String(formData.get("legalName") ?? "").trim() || null,
-      rfc: String(formData.get("rfc") ?? "").trim().toUpperCase() || null,
+      rfc:
+        String(formData.get("rfc") ?? "")
+          .trim()
+          .toUpperCase() || null,
     });
   } catch (e) {
-    return { error: errMsg(e, "Couldn't save the legal details."), saved: false };
+    return {
+      error: errMsg(e, "Couldn't save the legal details."),
+      saved: false,
+    };
   }
   revalidatePath("/", "layout");
   return { error: null, saved: true };
@@ -90,7 +106,9 @@ export async function connectPaymentsAction(
   formData: FormData,
 ): Promise<PaymentsActionState> {
   const orgId = String(formData.get("orgId") ?? "").trim();
-  const country = String(formData.get("country") ?? "MX").trim().toUpperCase();
+  const country = String(formData.get("country") ?? "MX")
+    .trim()
+    .toUpperCase();
   const entityType = String(formData.get("entityType") ?? "").trim();
   if (!orgId) return { error: "Missing organization.", note: null };
   // The pre-onboarding gate, enforced server-side too: `required` on the
@@ -115,7 +133,8 @@ export async function connectPaymentsAction(
   const origin = await consoleOrigin();
   if (!origin) {
     return {
-      error: "Couldn't work out where to send you back to. Reload and try again.",
+      error:
+        "Couldn't work out where to send you back to. Reload and try again.",
       note: null,
     };
   }
@@ -135,7 +154,10 @@ export async function connectPaymentsAction(
       ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {
-    return { error: errMsg(e, "Couldn't start payment onboarding."), note: null };
+    return {
+      error: errMsg(e, "Couldn't start payment onboarding."),
+      note: null,
+    };
   }
   if (url) redirect(url);
   revalidatePath("/", "layout");
@@ -161,7 +183,10 @@ export async function openPaymentsDashboardAction(
   try {
     url = await apiGetPaymentDashboardLink(supabase, orgId);
   } catch (e) {
-    return { error: errMsg(e, "Couldn't open the payments dashboard."), note: null };
+    return {
+      error: errMsg(e, "Couldn't open the payments dashboard."),
+      note: null,
+    };
   }
   if (url) redirect(url);
   return { error: null, note: "This account has no Stripe dashboard (mock)." };
@@ -194,7 +219,8 @@ export async function addOrgMemberAction(
   const email = String(formData.get("email") ?? "").trim();
   const roleRaw = String(formData.get("role") ?? "editor");
   const role: OrgRole = isOrgRole(roleRaw) ? roleRaw : "editor";
-  if (!orgId) return { error: "Missing organization.", email, added: false, mode: null };
+  if (!orgId)
+    return { error: "Missing organization.", email, added: false, mode: null };
   if (!email) {
     return { error: "An email is required.", email, added: false, mode: null };
   }
@@ -216,8 +242,8 @@ export async function addOrgMemberAction(
     mode = res.mode;
   } catch (e) {
     const code = (e as { code?: string | null })?.code ?? null;
-    const copy = (code && ADD_MEMBER_COPY[code]) ??
-      errMsg(e, "Couldn't add that member.");
+    const copy =
+      (code && ADD_MEMBER_COPY[code]) ?? errMsg(e, "Couldn't add that member.");
     return { error: copy, email, added: false, mode: null };
   }
   revalidatePath("/", "layout");
@@ -246,7 +272,8 @@ export async function removeOrgMemberAction(
   } catch (e) {
     const code = (e as { code?: string | null })?.code ?? null;
     return {
-      error: (code && MEMBER_ACTION_COPY[code]) ??
+      error:
+        (code && MEMBER_ACTION_COPY[code]) ??
         errMsg(e, "Couldn't remove that member."),
     };
   }
@@ -270,7 +297,8 @@ export async function updateOrgMemberRoleAction(
   } catch (e) {
     const code = (e as { code?: string | null })?.code ?? null;
     return {
-      error: (code && MEMBER_ACTION_COPY[code]) ??
+      error:
+        (code && MEMBER_ACTION_COPY[code]) ??
         errMsg(e, "Couldn't update that member's role."),
     };
   }
