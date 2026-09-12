@@ -38,6 +38,7 @@ describe("Scroll admits listed Mesita Map types only", () => {
     const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
     expect(boundary).toContain("!p.googleOnly && !p.from_google");
     const deck = read("components/consumer/home/scroll/ScrollDeck.tsx");
-    expect(deck).toContain("!place.googleOnly && !place.from_google");
+    expect(deck).toContain("place.googleOnly || place.from_google");
+    expect(deck).toContain('filters.placesScope === "google"');
   });
 });

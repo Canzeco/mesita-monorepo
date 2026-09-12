@@ -244,3 +244,35 @@ Deno.test("the cut is what makes a narrow filter searchable, not thinning", () =
     0,
   );
 });
+
+Deno.test("Places scope partners keeps only paying places", () => {
+  const rows = [
+    place({ id: "partner", partner: true, plan: "pro" }),
+    place({ id: "listed", partner: false, plan: "free" }),
+  ];
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ placesScope: "partners" }),
+      null,
+    ).map((r) => r.id),
+    ["partner"],
+  );
+  assertEquals(hasDeckPredicates(readDeckPredicates({ placesScope: "mesita" })), false);
+});
+
+Deno.test("Google review floor drops places below the stop and places with no count", () => {
+  const rows = [
+    place({ id: "hot", google_review_count: 400 }),
+    place({ id: "quiet", google_review_count: 8 }),
+    place({ id: "unknown" }),
+  ];
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ minReviews: 100 }),
+      null,
+    ).map((r) => r.id),
+    ["hot"],
+  );
+});
