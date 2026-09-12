@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 
 // Wayfinding for four modules. The strip does not exist until the first
-// module scrolls away — it is a way back, not chrome. Sliding it with
-// `-translate-y-full` alone is not enough: the sticky+h-0 wrapper sits
-// under PageHeader, so that translate parks the bar in the title margin
-// and it still reads as tabs. Opacity + pointer-events hide it. Function
-// hashes still work from Create/Enrich step chips; they are not repeated
-// here.
+// module scrolls away — it is a way back, not chrome. Do not hide with
+// `-translate-y-full`: the sticky+h-0 wrapper sits under PageHeader, so
+// that translate parks the bar in the title margin. Tailwind v4
+// `translate-y-*` also sets CSS `translate`, not `transform`, so
+// `transition-[transform,opacity]` would jump it into the margin and
+// then fade — a flash of the fake tabs (MESITA-1791). Fade opacity in
+// place. Function hashes still work from Create/Enrich step chips.
 const LINKS: { id: string; label: string }[] = [
   { id: "s-models", label: "Models" },
   { id: "s-create", label: "Create" },
@@ -55,19 +56,17 @@ export function SectionStrip() {
     // outranks it at z-30, hiding the strip outright) and over the desktop
     // rail. A zero-height sticky wrapper pins it to the top of the scrolling
     // main column instead — correct on both — while the bar inside stays
-    // absolutely positioned so it still costs no layout height and can slide
-    // away when the first module is on screen. `-mx-*` cancels the page
-    // gutters so it spans the column edge to edge, as before.
+    // absolutely positioned so it still costs no layout height. Hide is
+    // opacity, not a slide: translating up lands in the title margin. `-mx-*`
+    // cancels the page gutters so it spans the column edge to edge, as before.
     <div className="sticky top-0 z-20 -mx-4 h-0 sm:-mx-6 lg:-mx-8">
       <nav
         aria-label="Sections"
         aria-hidden={!shown}
         inert={!shown}
         className={
-          "border-border bg-card/90 absolute inset-x-0 top-0 border-b backdrop-blur transition-[transform,opacity] " +
-          (shown
-            ? "translate-y-0"
-            : "pointer-events-none -translate-y-full opacity-0")
+          "border-border bg-card/90 absolute inset-x-0 top-0 border-b backdrop-blur transition-opacity " +
+          (shown ? "" : "pointer-events-none opacity-0")
         }
       >
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 overflow-x-auto scrollbar-none px-4 py-2 sm:px-6">
