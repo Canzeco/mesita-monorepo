@@ -98,13 +98,19 @@ export const SWEPT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // refs/swept/ live 30 day
 export const PRUNABLE_REFUSAL = 3; // more than this many prunable entries = the repo moved
 export const HISTORY_DEPTH = 20;
 export const ANCESTOR_BOUND = 1000;
-// The fleet lives BESIDE the checkout, not inside it (MESITA-1770): `<parent of main>/worktrees`,
-// visible in Finder and shared by every code surface that opens a fleet worktree (Claude Code,
-// Codex, Cursor). The legacy location inside the repo is still scanned by sweep until it drains.
+// The fleet lives BESIDE the checkout, not inside it (MESITA-1770), one folder per code surface
+// (MESITA-1777): `<parent of main>/worktrees/<platform>/<name>`, the platform being the token of the
+// claim (claude-code, codex, cursor, …). Visible in Finder; a surface that keeps its own worktrees
+// elsewhere (Conductor) is aliased beside the platform folders. Worktrees still at the fleet root
+// or in the legacy location inside the repo are scanned by sweep until they drain.
 export const FLEET_DIR = "worktrees";
 export const LEGACY_FLEET_DIR = ".claude/worktrees";
 export function fleetDirOf(main: string): string {
   return join(dirname(main), FLEET_DIR);
+}
+/** Where `add` files a worktree: `<fleet>/<platform>/`. */
+export function platformDirOf(main: string, platform: string): string {
+  return join(fleetDirOf(main), platform);
 }
 export const LOCK_PREFIX = "mesita claim=";
 export const DRAFT_WAIT_MS = 60_000;
@@ -318,6 +324,16 @@ async function gitOk(env: Env, cwd: string, ...args: string[]): Promise<string> 
   const r = await git(env, cwd, ...args);
   if (r.code !== 0) throw new WtError("GIT FAILED", `git ${args.join(" ")}`, r.stderr.trim() || `exit ${r.code}`, "fix the git state named above and rerun", "I-3");
   return r.stdout;
+}
+
+/** True when a path exists (a `.git` link marks a worktree directory). */
+async function exists(p: string): Promise<boolean> {
+  try {
+    await Deno.stat(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function realpath(p: string): Promise<string> {
@@ -776,7 +792,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   const slug = validateSlug(args.slug ?? "work");
   const name = `${id}-${slug}`;
   const branch = `${prefix}/${name}`;
-  const target = join(fleetDirOf(main), name);
+  const target = join(platformDirOf(main, platform), name);
   const check = await git(env, main, "check-ref-format", "--branch", branch);
   if (check.code !== 0) throw new WtError("INVALID SLUG", branch, "git rejects the branch name", "shorten or simplify the slug", "I-3");
   const fetch = await git(env, main, "fetch", "--quiet", "origin", "main");
@@ -793,7 +809,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   if (pathExists) {
     throw new WtError("EXISTS", showPath(main, target), "a directory sits where the workspace would go, and it is not a registered worktree", "move it away, or git worktree repair it, then rerun", "I-3");
   }
-  await Deno.mkdir(fleetDirOf(main), { recursive: true });
+  await Deno.mkdir(platformDirOf(main, platform), { recursive: true });
   const attach = loose ?? (branchExists ? branch : null);
   const addRes = attach
     ? await git(env, main, "worktree", "add", target, attach)
@@ -996,23 +1012,33 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   const { main } = await mainWorktree(env);
   const lines: string[] = [];
   for (const n of await repairLobby(env, main, { apply: opts.apply })) lines.push(n);
-  // Orphans present on disk but unregistered: repair before anything prunes.
+  // Orphans present on disk but unregistered: repair before anything prunes. The fleet root holds
+  // one folder per platform (an unregistered directory without a .git link), registered stragglers
+  // from before MESITA-1777, and Finder aliases (symlinks, never directories here); the legacy
+  // folder inside the checkout is flat.
   let registered = await listFleet(env, main);
   const known = new Set(registered.map((r) => r.path));
-  for (const fleetDir of [fleetDirOf(main), join(main, LEGACY_FLEET_DIR)]) {
-  try {
-    for await (const e of Deno.readDir(fleetDir)) {
-      if (!e.isDirectory) continue;
-      const p = await realpath(join(fleetDir, e.name));
-      if (known.has(p)) continue;
-      const rep = await git(env, main, "worktree", "repair", p);
-      if (rep.code === 0 && rep.stderr.trim() === "" || (await listFleet(env, main)).some((r) => r.path === p)) {
-        lines.push(`repaired ${showPath(main, p)}`);
-      } else {
-        lines.push(`ORPHAN: ${showPath(main, p)} — its admin entry is gone, git worktree repair cannot re-register it — compare it against its branch tip by hand (read-tree recipe) before deleting; the sweep never touches it (I-10)`);
+  const unregistered: string[] = [];
+  const scan = async (dir: string, platformLevel: boolean) => {
+    try {
+      for await (const e of Deno.readDir(dir)) {
+        if (!e.isDirectory) continue;
+        const p = await realpath(join(dir, e.name));
+        if (known.has(p)) continue;
+        if (platformLevel && !(await exists(join(p, ".git")))) await scan(p, false);
+        else unregistered.push(p);
       }
+    } catch { /* no such folder yet */ }
+  };
+  await scan(fleetDirOf(main), true);
+  await scan(join(main, LEGACY_FLEET_DIR), false);
+  for (const p of unregistered) {
+    const rep = await git(env, main, "worktree", "repair", p);
+    if (rep.code === 0 && rep.stderr.trim() === "" || (await listFleet(env, main)).some((r) => r.path === p)) {
+      lines.push(`repaired ${showPath(main, p)}`);
+    } else {
+      lines.push(`ORPHAN: ${showPath(main, p)} — its admin entry is gone, git worktree repair cannot re-register it — compare it against its branch tip by hand (read-tree recipe) before deleting; the sweep never touches it (I-10)`);
     }
-  } catch { /* no fleet dir yet */ }
   }
   registered = await listFleet(env, main);
   const prunable = registered.filter((r) => r.prunable);
