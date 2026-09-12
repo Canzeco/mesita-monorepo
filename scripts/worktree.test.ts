@@ -17,6 +17,7 @@ import {
   cloudFromEnv,
   composeClaim,
   decide,
+  decideRemote,
   defaultRunner,
   ensureWorktreeConfig,
   type Env,
@@ -31,6 +32,7 @@ import {
   lockReason,
   parseClaim,
   parseLock,
+  parseOriginRefs,
   parseWorktreeList,
   pr,
   preflight,
@@ -146,6 +148,7 @@ function makeEnv(f: Fixture, opts: { cwd?: string; now?: () => Date; host?: stri
     lines,
     sleep: () => Promise.resolve(),
     cloud: opts.cloud ?? null,
+    clipboard: false,
   };
 }
 
@@ -760,4 +763,71 @@ Deno.test("leave clears a landed claim and keeps the checkout; adopt over a land
   const again = (await add(env, { id: "MESITA-3", slug: "three", adopt: path })).join("\n");
   assertStringIncludes(again, "cleared MESITA-2: its work landed");
   assertStringIncludes(again, "renamed branch claude/MESITA-2-two → claude/MESITA-3-three");
+});
+
+// ── Origin claims (I-6) ─────────────────────────────────────────────────────
+
+Deno.test("parseOriginRefs drops main and HEAD; decideRemote deletes only a landed, idle, id-carrying branch nobody checks out here", () => {
+  const refs = parseOriginRefs([
+    "origin/HEAD abc 2026-09-12T10:00:00+00:00",
+    "origin/main abc 2026-09-12T10:00:00+00:00",
+    "origin/claude/MESITA-7-x def 2026-09-10T10:00:00+00:00",
+    "origin/claude/home-soon-96e9 123 not-a-date",
+  ].join("\n"));
+  assertEquals(refs.map((r) => r.branch), ["claude/MESITA-7-x", "claude/home-soon-96e9"]);
+  assertEquals(refs[1].date, null);
+  const now = new Date("2026-09-12T10:00:00Z");
+  const old = new Date("2026-09-10T10:00:00Z");
+  const base = { branch: "claude/MESITA-7-x", tip: "def", date: old, issue: "MESITA-7", here: false };
+  assertEquals(decideRemote({ ...base, landed: { kind: "exact", pr: 1 } }, now).decision, "delete");
+  assertEquals(decideRemote({ ...base, landed: { kind: "exact", pr: 1 }, here: true }, now).reason, "checked out here");
+  assertEquals(decideRemote({ ...base, landed: { kind: "exact", pr: 1 }, date: now }, now).decision, "keep");
+  assertEquals(decideRemote({ ...base, landed: { kind: "on-main" } }, now).reason, "claimed, no work yet");
+  assertStringIncludes(decideRemote({ ...base, landed: { kind: "unlanded" } }, now).reason, "takeover: candidate");
+  assertStringIncludes(decideRemote({ ...base, issue: null, landed: { kind: "exact", pr: 1 } }, now).reason, "NO ID");
+  assertEquals(decideRemote({ ...base, landed: null }, now).reason, "landed unknown");
+});
+
+Deno.test("add pushes the claim branch so every host sees the lock; boot reads it back from origin and reprints the claim line", async () => {
+  const f = await makeFixture();
+  const out = (await add(makeEnv(f), { id: "MESITA-40", slug: "forty" })).join("\n");
+  assertStringIncludes(out, "pushed claude/MESITA-40-forty to origin");
+  const heads = await git(f.tmp, "--git-dir", f.originPath, "for-each-ref", "--format=%(refname:short)", "refs/heads/");
+  assert(heads.includes("claude/MESITA-40-forty"), "the empty claim branch sits on origin");
+  const path = await Deno.realPath(join(f.main, FLEET_DIR, "MESITA-40-forty"));
+  const booted = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(booted, "where: workspace .claude/worktrees/MESITA-40-forty claimed by MESITA-40 on claude/MESITA-40-forty: no work yet");
+  assertStringIncludes(booted, "origin/claude/MESITA-40-forty | MESITA-40 | no work yet | on-main | keep: checked out here");
+  assertStringIncludes(booted, "claim: claimed platform=claude-code host=t3st branch=claude/MESITA-40-forty worktree=.claude/worktrees/MESITA-40-forty footprint=none");
+  // A second checkout of the same origin — another host — sees the claim without any ledger read.
+  const other = await makeClone(f, "main");
+  const seen = (await boot(makeEnv(f, { cwd: other }))).join("\n");
+  assertStringIncludes(seen, "origin/claude/MESITA-40-forty | MESITA-40 | no work yet | on-main | keep: claimed, no work yet");
+  assertStringIncludes(seen, "1 claim(s)");
+});
+
+Deno.test("sweep deletes a landed origin branch past the lease with a backup ref, keeps a fresh claim, and reports an id-less branch", async () => {
+  const f = await makeFixture();
+  const landed = await rawWorktree(f, "rl", "claude/MESITA-50-remote-landed");
+  f.prsByOid.set(landed.tip, [{ number: 11, merged: true, headRefOid: landed.tip }]);
+  await git(landed.path, "push", "-q", "-u", "origin", "claude/MESITA-50-remote-landed");
+  await git(f.main, "worktree", "remove", landed.path);
+  const noid = await rawWorktree(f, "ni", "claude/home-soon-96e9");
+  await git(noid.path, "push", "-q", "-u", "origin", "claude/home-soon-96e9");
+  await git(f.main, "worktree", "remove", noid.path);
+  await git(f.main, "push", "-q", "origin", "main:refs/heads/claude/MESITA-51-fresh");
+  const dry = await sweep(makeEnv(f, { now: later(48) }), { apply: false });
+  const dryText = dry.lines.join("\n");
+  assertStringIncludes(dryText, "would delete origin/claude/MESITA-50-remote-landed (landed #11)");
+  assertStringIncludes(dryText, "origin/claude/home-soon-96e9 | - |");
+  assertStringIncludes(dryText, "NO ID");
+  assertStringIncludes(dryText, "origin/claude/MESITA-51-fresh | MESITA-51 | no work yet | on-main | keep: claimed, no work yet");
+  let heads = await git(f.tmp, "--git-dir", f.originPath, "for-each-ref", "--format=%(refname:short)", "refs/heads/");
+  assert(heads.includes("claude/MESITA-50-remote-landed"), "dry run deletes nothing on origin");
+  const applied = await sweep(makeEnv(f, { now: later(48) }), { apply: true });
+  assertStringIncludes(applied.lines.join("\n"), "deleted origin/claude/MESITA-50-remote-landed (landed #11; backup refs/swept/");
+  heads = await git(f.tmp, "--git-dir", f.originPath, "for-each-ref", "--format=%(refname:short)", "refs/heads/");
+  assert(!heads.includes("claude/MESITA-50-remote-landed"), "the landed origin branch is gone");
+  assert(heads.includes("claude/home-soon-96e9") && heads.includes("claude/MESITA-51-fresh"), "id-less and fresh claims stay");
+  assertStringIncludes(await git(f.main, "for-each-ref", "--format=%(refname)", "refs/swept/"), "/origin/claude/MESITA-50-remote-landed");
 });
