@@ -18,7 +18,7 @@ describe("middleware contract", () => {
     // Organization is in this list for the first time (MESITA-1727). While its
     // address was `/` it could not be: these are PREFIX matches, so listing `/`
     // would have gated the whole app, /signin included. The screen reads the
-    // Stripe account, the members and the legal identity, so it belongs here.
+    // Stripe account, the members, so it belongs here.
     expect(shouldGate(SHELL_ROUTES.organization)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.organizationNew)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
