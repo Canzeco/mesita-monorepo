@@ -8,16 +8,6 @@ import type { Href } from 'expo-router';
 // ef.ts / tokens). Any change to routes or helpers on either side MUST update
 // both files in the same PR — web/mobile IA parity is a product rule.
 //
-// MOBILE IS FROZEN (Pato, 2026-08-20). This file is one of only three mobile
-// writes the freeze still allows (the others: ticket-journey.ts byte-identical,
-// api/tickets.ts ACTIVE_TICKET_STATES) — kept in lockstep so it never drifts
-// from web's own pinned test (consumer-route-contract.test.ts). The freeze
-// forbids restructuring mobile's actual screens or tab bar, so below: every
-// key a live mobile call site depends on keeps its CURRENT name and value;
-// only the parts nothing outside this file reads are renamed to mirror web's
-// current shape. Where mobile genuinely has not done the underlying screen
-// work web already shipped, that gap is called out below, not hidden.
-//
 // Expo Router ↔ web href map (agents):
 //   web /discover[/catalog|search|swipe|chat|favs]  (was /home + /search,
 //       merged 2026-09-01, MESITA-1400)      →  Expo /(tabs)/home +
