@@ -38,6 +38,7 @@
 // beat destination charges for Mesita.
 
 import type Stripe from "npm:stripe@17";
+import type { ConnectBusinessProfilePrefill } from "./stripe-connect-prefill.ts";
 
 /** The Express-dashboard "platform" controller. Frozen by stripe-connect.test.ts. */
 export const MESITA_CONNECT_CONTROLLER = {
@@ -206,6 +207,8 @@ export type ConnectAccountSnapshot = {
  * `stripe-connect.test.ts` can assert the shape Stripe will actually receive,
  * offline, on every CI run.
  */
+export type { ConnectBusinessProfilePrefill };
+
 export type ConnectAccountCreateInput = {
   orgId: string;
   country: string;
@@ -213,23 +216,55 @@ export type ConnectAccountCreateInput = {
   entityType: MesitaConnectEntityType | null;
   /** The organization's legal name, for company prefill. Empty string = none. */
   legalName: string;
+  /** Account email — Stripe's login + receipts, from a place email when we have one. */
+  email?: string;
+  /** Mexican RFC, only when shaped. Lands on company.tax_id (persona moral). */
+  taxId?: string;
+  /** Hosted onboarding Business details (MCC / url / description). Empty keys omitted. */
+  businessProfile?: ConnectBusinessProfilePrefill;
 };
+
+function companyParams(
+  input: ConnectAccountCreateInput,
+): Stripe.AccountCreateParams.Company | undefined {
+  if (input.entityType === "individual") return undefined;
+  const company: Stripe.AccountCreateParams.Company = {};
+  if (input.legalName) company.name = input.legalName;
+  if (input.taxId) company.tax_id = input.taxId;
+  return Object.keys(company).length > 0 ? company : undefined;
+}
+
+function businessProfileParams(
+  profile: ConnectBusinessProfilePrefill | undefined,
+): Stripe.AccountCreateParams.BusinessProfile | undefined {
+  if (!profile) return undefined;
+  const out: Stripe.AccountCreateParams.BusinessProfile = {};
+  if (profile.mcc) out.mcc = profile.mcc;
+  if (profile.url) out.url = profile.url;
+  if (profile.product_description) {
+    out.product_description = profile.product_description;
+  }
+  if (profile.name) out.name = profile.name;
+  if (profile.support_phone) out.support_phone = profile.support_phone;
+  if (profile.support_email) out.support_email = profile.support_email;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 export function connectAccountCreateParams(
   input: ConnectAccountCreateInput,
 ): Stripe.AccountCreateParams {
-  const { orgId, country, entityType, legalName } = input;
+  const { orgId, country, entityType } = input;
+  const company = companyParams(input);
+  const businessProfile = businessProfileParams(input.businessProfile);
   return {
     country,
     controller: MESITA_CONNECT_CONTROLLER,
     capabilities: MESITA_CONNECT_CAPABILITIES,
     metadata: { organization_id: orgId },
     ...(entityType ? { business_type: entityType } : {}),
-    // company.name is meaningless for an individual — Stripe ignores it — so
-    // once the fork is known, send it only where it lands.
-    ...(legalName && entityType !== "individual"
-      ? { company: { name: legalName } }
-      : {}),
+    ...(company ? { company } : {}),
+    ...(input.email ? { email: input.email } : {}),
+    ...(businessProfile ? { business_profile: businessProfile } : {}),
   };
 }
 
