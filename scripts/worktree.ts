@@ -1191,8 +1191,9 @@ export async function boot(env: Env): Promise<string[]> {
   else if (hereIssue) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
   else lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
-  lines.push(`rules: quickstart stamp ${await quickstartStamp(main) ?? "MISSING"} — compare with Rules §0's Mirror line; unequal is drift`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
+  // The checkout that boots is the one measured, after the lobby is at origin/main — never the lobby's stale copy.
+  lines.push(`rules: quickstart stamp ${await quickstartStamp(here?.path ?? main) ?? "MISSING"} — compare with Rules §0's Mirror line; unequal is drift`);
   lines.push(`gate: ${await installHook(env, main)}`);
   lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
   const fleet = await inspect(env, main, await listFleet(env, main), { landed: true });
