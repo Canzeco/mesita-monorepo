@@ -951,7 +951,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       >
         <SearchMapFilters
           onClose={() => setFiltersOpen(false)}
-          count={catalog.length}
+          count={catalogLoading ? null : catalog.length}
           scopeCounts={scopeCounts}
         />
       </LocalSheet>

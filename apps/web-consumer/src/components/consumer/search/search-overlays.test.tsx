@@ -253,6 +253,7 @@ describe("Search map's top row is the query bar plus a Filters disc", () => {
     const overlays = read("search-catalog-overlays.tsx");
     expect(src).toContain("SearchFilterRow");
     expect(src).toContain("SearchMapFilters");
+    expect(src).toContain("catalogLoading ? null : catalog.length");
     expect(src).toContain("useMapFilters");
     expect(src).toContain("mapFilterCount");
     expect(src).toContain("flex min-w-0 items-center gap-2");

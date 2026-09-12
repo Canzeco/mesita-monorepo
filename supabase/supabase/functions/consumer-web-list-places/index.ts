@@ -362,6 +362,15 @@ Deno.serve(async (req) => {
   if (isNearby && guestMinReviews > 0) {
     filtered = filtered.gte("google_review_count", guestMinReviews);
   }
+  // Guest Super Category: same reason as Popularity. family_keys is
+  // total on the row; overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT
+  // with the wrong supers and drop closer matches. The JS familiesForPlace
+  // pass still runs for Atlas-inferred rows whose stored keys lag.
+  if (isNearby && guestSupers.length > 0) {
+    filtered = (filtered as typeof filtered & {
+      overlaps: (col: string, val: string[]) => typeof filtered;
+    }).overlaps("family_keys", [...guestSupers]);
+  }
   if (nearbyDecision.mode === "ok") {
     filtered = applyBboxPredicate(
       filtered,
@@ -474,6 +483,11 @@ Deno.serve(async (req) => {
           "google_review_count",
           guestMinReviews,
         );
+      }
+      if (guestSupers.length > 0) {
+        extraFiltered = (extraFiltered as typeof extraFiltered & {
+          overlaps: (col: string, val: string[]) => typeof extraFiltered;
+        }).overlaps("family_keys", [...guestSupers]);
       }
       const extra = await (extraFiltered as unknown as {
         in: (
