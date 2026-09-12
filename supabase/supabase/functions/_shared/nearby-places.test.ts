@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
+  __setLegacyPageTokenDelayForTests,
   CATALOG_NEARBY_HARD_MAX,
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
@@ -16,7 +17,6 @@ import {
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
-  sliceNearbyTypes,
   type NearbyHit,
   type NearbyLaneCaps,
 } from "./nearby-places.ts";
@@ -766,11 +766,10 @@ Deno.test("nearby helpers: known-gid drop still works", () => {
 });
 
 
-// MESITA-1695: the operator picks 20 / 40 / 60 on Search Sources. Google caps
-// ONE Nearby Search (New) at 20 and offers no page token, so the only way to
-// 40 or 60 is more requests — which is the whole reason the console says the
-// stop costs 1, 2 or 3 billed calls instead of showing three equal buttons.
-Deno.test("nearbyCallCount: a stop is a request count, and never exceeds 3", () => {
+// MESITA-1695 / MESITA-1796: the operator picks 20 / 40 / 60 as max Google
+// input. Google bills Nearby in pages of 20; 40 and 60 are 2 and 3 billed
+// calls over the same query (Legacy next_page_token), not type-slice fan-out.
+Deno.test("nearbyCallCount: a stop is a page count, and never exceeds 3", () => {
   assertEquals(nearbyCallCount(undefined), 1);
   assertEquals(nearbyCallCount(20), 1);
   assertEquals(nearbyCallCount(40), 2);
@@ -781,52 +780,44 @@ Deno.test("nearbyCallCount: a stop is a request count, and never exceeds 3", () 
   assertEquals(nearbyCallCount(-5), 1);
 });
 
-Deno.test("sliceNearbyTypes: disjoint, complete, and never more slices than types", () => {
-  const types = ["restaurant", "cafe", "bakery", "bar", "night_club"];
-  const two = sliceNearbyTypes(types, 2);
-  assertEquals(two.length, 2);
-  // Round-robin, so each slice spans Supers instead of taking a prefix.
-  assertEquals(two.flat().sort(), [...types].sort());
-  assertEquals(new Set(two.flat()).size, types.length);
-  // A single-Super battery cannot be split: one type cannot be asked twice
-  // for two different answers, so the pull silently stays one call.
-  assertEquals(sliceNearbyTypes(["restaurant"], 3), [["restaurant"]]);
-  assertEquals(sliceNearbyTypes(types, 1), [types]);
-});
-
-Deno.test("searchNearbyPlaces: pull 60 fires three calls and dedupes the union", async () => {
+Deno.test("searchNearbyPlaces: pull 60 paginates Legacy and dedupes the union", async () => {
   __resetNearbyGoogleCacheForTests();
-  const bodies: { includedPrimaryTypes: string[] }[] = [];
+  let n = 0;
   const orig = globalThis.fetch;
-  globalThis.fetch = (_url: string | URL | Request, init?: RequestInit) => {
-    bodies.push(JSON.parse(String(init?.body ?? "{}")));
-    // Every slice returns the SAME place, so a naive concat would report it
-    // three times and the map would paint one pin as three.
-    return Promise.resolve(
-      new Response(OK_BODY, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+  globalThis.fetch = (input: string | URL | Request) => {
+    n++;
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url.includes("nearbysearch/json")) {
+      const page = url.includes("pagetoken=page2") ? 2 : url.includes("pagetoken=page1") ? 1 : 0;
+      const placeId = page === 0 ? "ChIJ-ok" : page === 1 ? "ChIJ-p1" : "ChIJ-p2";
+      return Promise.resolve(
+        new Response(JSON.stringify({
+          status: "OK",
+          results: [{
+            place_id: placeId,
+            name: `Place ${page}`,
+            vicinity: "1 Main",
+            geometry: { location: { lat: 25.67 + page * 0.001, lng: -100.3 } },
+            types: ["restaurant"],
+          }],
+          next_page_token: page < 2 ? `page${page + 1}` : undefined,
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.resolve(new Response("unexpected", { status: 500 }));
   };
   try {
+    __setLegacyPageTokenDelayForTests(0);
     const hits = await searchNearbyPlaces("k", CENTER, {
       types: ["restaurant", "cafe", "bakery"],
       pull: 60,
     });
-    assertEquals(bodies.length, 3);
-    assertEquals(hits.length, 1);
-    assertEquals(hits[0].placeId, "ChIJ-ok");
-    // Disjoint slices: the union is the battery, with nothing asked twice.
-    const asked = bodies.flatMap((b) => b.includedPrimaryTypes);
-    assertEquals(asked.sort(), ["bakery", "cafe", "restaurant"]);
-    // Each request still asks Google for its own maximum.
-    for (const b of bodies) {
-      assertEquals(
-        (b as unknown as { maxResultCount: number }).maxResultCount,
-        GOOGLE_NEARBY_MAX,
-      );
-    }
+    assertEquals(n, 3);
+    assertEquals(hits.length, 3);
+    assertEquals(hits.map((h) => h.placeId), ["ChIJ-ok", "ChIJ-p1", "ChIJ-p2"]);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -875,39 +866,49 @@ Deno.test("lanesForPlacesScope: the Google lane cap follows the operator pull", 
 });
 
 
-// MESITA-1700, both halves. The fan-out inherited two guards written for
-// "one pull = one call" and neither followed it across the slice loop. Both
-// were dormant at a 20 pull, which is what the live blob folds to — and both
-// armed on one click of 40 or 60 in the console.
+const LEGACY_OK_BODY = (placeId = "ChIJ-ok", next?: string) =>
+  JSON.stringify({
+    status: "OK",
+    results: [{
+      place_id: placeId,
+      name: "Ok Cafe",
+      vicinity: "1 Main",
+      geometry: { location: { lat: 25.67, lng: -100.3 } },
+      types: ["restaurant"],
+    }],
+    next_page_token: next,
+  });
 
+// MESITA-1700, both halves. Pagination must not cache a short answer, and the
+// quota ledger counts billed pages, not pulls.
 Deno.test("searchNearbyPlaces: a partial pull is NOT cached", async () => {
   __resetNearbyGoogleCacheForTests();
   let n = 0;
   const orig = globalThis.fetch;
-  // Middle slice fails; the other two return the same single place.
-  globalThis.fetch = () => {
+  globalThis.fetch = (input: string | URL | Request) => {
     n++;
-    if (n === 2) return Promise.resolve(new Response("boom", { status: 500 }));
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.includes("nearbysearch/json")) {
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    }
+    const page = url.includes("pagetoken=page1") ? 1 : 0;
+    if (page === 1) return Promise.resolve(new Response("boom", { status: 500 }));
     return Promise.resolve(
-      new Response(OK_BODY, {
+      new Response(LEGACY_OK_BODY(`ChIJ-${page}`, "page1"), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
     );
   };
   try {
+    __setLegacyPageTokenDelayForTests(0);
     const types = ["restaurant", "cafe", "bakery"];
     const first = await searchNearbyPlaces("k", CENTER, { types, pull: 60 });
-    assertEquals(n, 3);
-    // The caller still gets what the working slices returned — a thin map
-    // beats a blank one.
+    assertEquals(n, 2);
     assertEquals(first.length, 1);
-    // But the cell is NOT an answer, so nothing is frozen into it for 15s.
     assertEquals(peekCachedNearbyPlaces(CENTER, types, 60), null);
-    // A retry therefore reaches Google again instead of being served the
-    // short list the failure produced.
     await searchNearbyPlaces("k", CENTER, { types, pull: 60 });
-    assertEquals(n, 6);
+    assertEquals(n, 4);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -919,19 +920,22 @@ Deno.test("searchNearbyPlaces: the quota is charged per BILLED CALL", async () =
   let calls = 0;
   let charges = 0;
   const orig = globalThis.fetch;
-  globalThis.fetch = () => {
+  globalThis.fetch = (input: string | URL | Request) => {
     calls++;
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.includes("nearbysearch/json")) {
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    }
+    const next = calls < 3 ? `page${calls}` : undefined;
     return Promise.resolve(
-      new Response(OK_BODY, {
+      new Response(LEGACY_OK_BODY(`ChIJ-${calls}`, next), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
     );
   };
   try {
-    // consumer-web-list-places is verify_jwt = false, so this ledger is the
-    // public abuse guard on a paid API. One row per pull would have let 45
-    // authorised attempts buy 135 billed requests.
+    __setLegacyPageTokenDelayForTests(0);
     await searchNearbyPlaces("k", CENTER, {
       types: ["restaurant", "cafe", "bakery"],
       pull: 60,
@@ -953,27 +957,30 @@ Deno.test("searchNearbyPlaces: a mid-pull quota denial truncates, keeps, and doe
   let calls = 0;
   let charges = 0;
   const orig = globalThis.fetch;
-  globalThis.fetch = () => {
+  globalThis.fetch = (input: string | URL | Request) => {
     calls++;
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (!url.includes("nearbysearch/json")) {
+      return Promise.resolve(new Response("unexpected", { status: 500 }));
+    }
     return Promise.resolve(
-      new Response(OK_BODY, {
+      new Response(LEGACY_OK_BODY("ChIJ-ok", "page1"), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
     );
   };
   try {
+    __setLegacyPageTokenDelayForTests(0);
     const types = ["restaurant", "cafe", "bakery"];
     const hits = await searchNearbyPlaces("k", CENTER, {
       types,
       pull: 60,
-      // Allow the first request, deny the second. The guest keeps slice one.
       beforeFanout: () => Promise.resolve(++charges === 1),
     });
     assertEquals(calls, 1);
     assertEquals(charges, 2);
     assertEquals(hits.length, 1);
-    // Denied partway is still an incomplete answer.
     assertEquals(peekCachedNearbyPlaces(CENTER, types, 60), null);
   } finally {
     globalThis.fetch = orig;

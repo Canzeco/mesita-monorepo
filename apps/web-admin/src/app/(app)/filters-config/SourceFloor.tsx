@@ -309,16 +309,14 @@ export function MapFloorOwner({
 }
 
 /**
- * Google Nearby owns the PULL — how many rows one map load buys from Google.
+ * Google Nearby owns the PULL — max places one map load asks Google for.
  *
- * This is the only knob on Search Sources that costs money by itself. Google
- * caps ONE Nearby Search (New) at 20 with no page token, so 40 and 60 are 2
- * and 3 billed requests over disjoint slices of the battery. The box says so
- * rather than presenting three equal-looking stops.
+ * Google bills Nearby in pages of 20. The operator picks 20, 40, or 60 as the
+ * max input — not a loop until that many match. Forty and sixty are two and
+ * three billed requests over the same query (Legacy next_page_token).
  *
  * It is NOT the guest's How many. That one caps the pins painted on the map
- * and stays on the Filters sheet; this one caps what we are willing to pay
- * Google for before any of that happens.
+ * (`map.pinCount` on the Map mode box).
  */
 export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
   const ed = useFloorEditor(
@@ -336,17 +334,17 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
     <FloorFrame label="How many Google pulls">
       {ed.error ? <ErrorNote message={ed.error} /> : null}
       <p className="text-muted-foreground mt-3 type-meta">
-        How many places one map load buys from Google. Google caps a single
-        Nearby Search at {GOOGLE_PULL_STOPS[0]} and offers no next page, so 40
-        and 60 are 2 and 3 <span className="text-foreground font-semibold">billed</span>{" "}
-        requests over disjoint slices of the battery, deduped by place id.
+        Max places one map load asks Google for. Nearby returns{" "}
+        {GOOGLE_PULL_STOPS[0]} per billed call; 40 and 60 are 2 and 3{" "}
+        <span className="text-foreground font-semibold">billed</span> pages over
+        the same query (pagination), not a loop until that many match.
       </p>
       <p className="text-muted-foreground mt-2 type-meta">
-        Each request asks for its own slice and returns ITS OWN closest{" "}
-        {GOOGLE_PULL_STOPS[0]}, so raising this widens across{" "}
-        <span className="text-foreground font-semibold">categories</span>, not
-        further out from the camera. It also spends one per-IP quota unit per
-        request, so 60 reaches the abuse ceiling three times as fast.
+        Pull {GOOGLE_PULL_STOPS[0]} is one Nearby Search (New) POST with every
+        enabled type. Pull 40 or 60 paginates Legacy Nearby with{" "}
+        <span className="text-foreground font-semibold">next_page_token</span>,
+        then filters to the Super battery and distance-sorts. Each page spends
+        one per-IP quota unit.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {GOOGLE_PULL_STOPS.map((stop) => {
@@ -377,7 +375,7 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
       </p>
       <FloorTail
         updatedAt={ed.updatedAt}
-        note="A pull can only split as far as the battery allows: with one Super on there is nothing to slice, so it stays 20 whatever is picked here. A pull that cannot finish every slice still returns what it got, but is never cached. How many pins is on the Map box."
+        note="A pull that cannot finish every page still returns what it got, but is never cached. How many pins is on the Map box."
         pending={ed.pending}
         dirty={ed.dirty}
         ok={ed.ok}

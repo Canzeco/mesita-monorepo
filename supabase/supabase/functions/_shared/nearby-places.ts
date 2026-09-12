@@ -17,6 +17,7 @@
 // maxes a Nearby call at 20; type batteries ride that one call.
 
 import {
+  GOOGLE_PLACES_NEARBY_LEGACY_URL,
   GOOGLE_PLACES_NEARBY_URL,
   classifyGoogleError,
 } from "./google-places.ts";
@@ -29,8 +30,12 @@ import {
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import { NEARBY_TYPE_KEYS, type NearbyTypeKey } from "./discovery-config.ts";
 
-/** Google maxes one Nearby call at 20 — the API's cap, not a policy. */
+/** Google bills Nearby in pages of 20. Legacy paginates with next_page_token
+ *  (3 pages = 60); New caps one POST at maxResultCount 20 with no page token. */
 export const GOOGLE_NEARBY_MAX = 20;
+/** Legacy pagetoken is invalid until Google finishes indexing the prior page. */
+const LEGACY_PAGE_TOKEN_DELAY_MS = 2_000;
+let legacyPageTokenDelayMs = LEGACY_PAGE_TOKEN_DELAY_MS;
 /** The guest's largest How many stop. Every lane cap clamps to it. */
 export const CATALOG_NEARBY_HARD_MAX = 60;
 export const MESITA_NEARBY_MAX = CATALOG_NEARBY_HARD_MAX;
@@ -140,6 +145,93 @@ async function searchNearbyOnce(
   return { ok: true, hits };
 }
 
+type LegacyNearbyPage =
+  | { ok: true; hits: NearbyHit[]; nextPageToken?: string }
+  | { ok: false };
+
+function primaryTypeFromLegacy(
+  types: string[] | undefined,
+  allowed: readonly string[],
+): string | null {
+  if (!types?.length) return null;
+  const allowedSet = new Set(allowed);
+  for (const t of types) {
+    if (allowedSet.has(t)) return t;
+  }
+  return null;
+}
+
+function legacyResultMatchesTypes(
+  types: string[] | undefined,
+  allowed: readonly string[],
+): boolean {
+  return primaryTypeFromLegacy(types, allowed) !== null;
+}
+
+async function searchNearbyLegacyPage(
+  apiKey: string,
+  center: { lat: number; lng: number },
+  radiusM: number,
+  allowedTypes: readonly string[],
+  pageToken?: string,
+): Promise<LegacyNearbyPage> {
+  const params = new URLSearchParams({ key: apiKey });
+  if (pageToken) {
+    params.set("pagetoken", pageToken);
+  } else {
+    params.set("location", `${center.lat},${center.lng}`);
+    params.set("radius", String(Math.min(50_000, Math.max(50, radiusM))));
+  }
+  const r = await fetch(`${GOOGLE_PLACES_NEARBY_LEGACY_URL}?${params}`);
+  if (!r.ok) {
+    const text = await r.text();
+    const code = classifyGoogleError(r.status, text);
+    console.error("[nearby] Google legacy nearby failed", code, r.status);
+    return { ok: false };
+  }
+  const data = (await r.json()) as {
+    status?: string;
+    results?: Array<{
+      place_id?: string;
+      name?: string;
+      vicinity?: string;
+      geometry?: { location?: { lat?: number; lng?: number } };
+      rating?: number;
+      user_ratings_total?: number;
+      business_status?: string;
+      types?: string[];
+    }>;
+    next_page_token?: string;
+  };
+  if (data.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+    console.error("[nearby] Google legacy nearby status", data.status);
+    return { ok: false };
+  }
+  const hits = (data.results ?? [])
+    .filter((p) => legacyResultMatchesTypes(p.types, allowedTypes))
+    .map((p) => {
+      const lat = p.geometry?.location?.lat;
+      const lng = p.geometry?.location?.lng;
+      return {
+        placeId: p.place_id ?? "",
+        name: p.name ?? "",
+        address: p.vicinity ?? "",
+        lat: typeof lat === "number" ? lat : null,
+        lng: typeof lng === "number" ? lng : null,
+        rating: typeof p.rating === "number" ? p.rating : null,
+        primaryType: primaryTypeFromLegacy(p.types, allowedTypes),
+        businessStatus: typeof p.business_status === "string"
+          ? p.business_status
+          : null,
+        reviewCount: typeof p.user_ratings_total === "number"
+          ? p.user_ratings_total
+          : null,
+      };
+    })
+    .filter((p) => p.placeId && p.name);
+  return { ok: true, hits, nextPageToken: data.next_page_token };
+}
+
 const nearbyCache = new Map<string, { at: number; hits: NearbyHit[] }>();
 const nearbyInflight = new Map<string, Promise<NearbyHit[]>>();
 /** Per-isolate cap on Google Nearby calls (one Search per cache-miss cell).
@@ -157,6 +249,12 @@ export function __resetNearbyGoogleCacheForTests(): void {
   nearbyCache.clear();
   nearbyInflight.clear();
   googleFanoutAt = [];
+  legacyPageTokenDelayMs = LEGACY_PAGE_TOKEN_DELAY_MS;
+}
+
+/** Tests only — skip the Legacy pagetoken settle delay. */
+export function __setLegacyPageTokenDelayForTests(ms: number): void {
+  legacyPageTokenDelayMs = ms;
 }
 
 /** Warm 15s cell hit, or null. List-places uses this so a cache hit does not
@@ -177,10 +275,10 @@ export function peekCachedNearbyPlaces(
 export type SearchNearbyOpts = {
   radiusM?: number;
   /**
-   * How many places to pull: 20, 40 or 60 (`discovery_config.map.googlePull`).
-   * Google caps ONE Nearby Search (New) at 20 and offers no page token, so 40
-   * and 60 are 2 and 3 BILLED requests over disjoint slices of the battery,
-   * deduped by placeId. Omit = 20 = one call, today's behaviour.
+   * Max places to pull from Google: 20, 40 or 60 (`discovery_config.map.googlePull`).
+   * Google bills Nearby in pages of 20; 40 and 60 are 2 and 3 billed requests
+   * over the same query (Legacy next_page_token). Not a loop until N match, and
+   * not disjoint type slices. Omit = 20 = one New POST.
    */
   pull?: number;
   /** Nearby primary types. Omit = the five F&B batteries. Empty = no
@@ -215,28 +313,10 @@ function nearbyCellKey(
   }:p${pull}`;
 }
 
-/** Requests one pull costs. 20 → 1, 40 → 2, 60 → 3; never more than 3. */
+/** Billed Nearby pages one pull buys. 20 → 1, 40 → 2, 60 → 3; never more than 3. */
 export function nearbyCallCount(pull: number | undefined): number {
   const n = Math.ceil((Number(pull) || GOOGLE_NEARBY_MAX) / GOOGLE_NEARBY_MAX);
   return Math.min(3, Math.max(1, n));
-}
-
-/**
- * Split the battery into `calls` disjoint slices, round-robin so each slice
- * spans Supers rather than taking the first N types. A battery with fewer
- * types than calls yields fewer slices — one type cannot be searched twice for
- * two different answers, so a single-Super pull is 20 no matter what the
- * operator picked. The console says so on the box.
- */
-export function sliceNearbyTypes(
-  types: readonly string[],
-  calls: number,
-): string[][] {
-  const groups = Math.min(Math.max(1, calls), types.length);
-  if (groups <= 1) return [[...types]];
-  const out: string[][] = Array.from({ length: groups }, () => []);
-  types.forEach((t, i) => out[i % groups].push(t));
-  return out;
 }
 
 const SUPER_SEARCH_TYPE_SET = new Set<string>(
@@ -248,29 +328,31 @@ function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
   return types.filter((t) => SUPER_SEARCH_TYPE_SET.has(t));
 }
 
-/** Closest Google places around `center`. One Nearby Search (New) with
- *  the enabled primary types, max 20, DISTANCE rank. Same ~1 km
- *  cell reuses a successful 15s result so a pan-idle does not spend a
- *  billed call twice. HTTP / parse failures are returned (Mesita still
- *  shows) but never cached. Concurrent same-cell pans share one in-flight
- *  call. Each isolate also caps cache-miss calls (20 / 60s). Shared IP
- *  quota is `beforeFanout` (nearby-google-quota.ts), charged once per BILLED
- *  REQUEST — a 40 or 60 pull is 2 or 3 of them. A pull that does not complete
- *  every slice still RETURNS what it got, but is never cached. */
+/** Closest Google places around `center`. Pull 20 = one Nearby Search (New)
+ *  POST with every enabled primary type, maxResultCount 20, DISTANCE rank.
+ *  Pull 40/60 = Legacy pagination on the same location/radius query — 20 per
+ *  billed page, filtered to the enabled battery, distance-sorted. Same ~1 km
+ *  cell reuses a successful 15s result. HTTP / parse failures are returned
+ *  (Mesita still shows) but never cached. Concurrent same-cell pans share one
+ *  in-flight call. Each isolate also caps cache-miss calls (20 / 60s). Shared
+ *  IP quota is `beforeFanout` (nearby-google-quota.ts), charged once per BILLED
+ *  REQUEST. A pull that does not complete every page still RETURNS what it got,
+ *  but is never cached. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
   opts: SearchNearbyOpts | number = {},
 ): Promise<NearbyHit[]> {
   const parsed = typeof opts === "number"
-    ? { radiusM: opts, beforeFanout: undefined, types: undefined }
+    ? { radiusM: opts, beforeFanout: undefined, types: undefined, pull: undefined }
     : opts;
   const radius = parsed.radiusM ?? GOOGLE_NEARBY_RADIUS_M;
   const beforeFanout = parsed.beforeFanout;
   const types = resolveNearbyTypes(parsed.types);
   if (types.length === 0) return [];
-  const calls = nearbyCallCount(parsed.pull);
-  const key = nearbyCellKey(center, types, parsed.pull ?? GOOGLE_NEARBY_MAX);
+  const pull = parsed.pull ?? GOOGLE_NEARBY_MAX;
+  const pages = nearbyCallCount(pull);
+  const key = nearbyCellKey(center, types, pull);
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
@@ -290,38 +372,78 @@ export async function searchNearbyPlaces(
       resolveRun([]);
       return [];
     }
-    const slices = sliceNearbyTypes(types, calls);
-    const seen = new Set<string>();
-    const hits: NearbyHit[] = [];
-    // EVERY slice has to land for this cell to be an answer. `complete` goes
-    // false on a Google failure, a quota denial, or an isolate-budget skip —
-    // all three leave a SHORT list, and a short list cached is a map missing
-    // places for 15s with nothing to say it is missing them (MESITA-1700).
     let complete = true;
-    for (const slice of slices) {
+    const seen = new Set<string>();
+    let hits: NearbyHit[] = [];
+    let pageToken: string | undefined;
+
+    for (let page = 0; page < pages && hits.length < pull; page++) {
       pruneGoogleFanout(Date.now());
       if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
         console.warn("[nearby] isolate Google fan-out budget exhausted");
         complete = false;
         break;
       }
-      // The ledger is charged per REQUEST, because Google bills per request.
       if (beforeFanout && !(await beforeFanout())) {
         complete = false;
         break;
       }
       googleFanoutAt.push(Date.now());
-      const batch = await searchNearbyOnce(apiKey, center, radius, slice);
+
+      if (pages <= 1) {
+        const batch = await searchNearbyOnce(
+          apiKey,
+          center,
+          radius,
+          [...types],
+        );
+        if (!batch.ok) {
+          complete = false;
+          break;
+        }
+        for (const hit of batch.hits) {
+          if (seen.has(hit.placeId)) continue;
+          seen.add(hit.placeId);
+          hits.push(hit);
+        }
+        break;
+      }
+
+      if (page > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, legacyPageTokenDelayMs)
+        );
+      }
+      const batch = await searchNearbyLegacyPage(
+        apiKey,
+        center,
+        radius,
+        types,
+        pageToken,
+      );
       if (!batch.ok) {
         complete = false;
-        continue;
+        break;
       }
       for (const hit of batch.hits) {
         if (seen.has(hit.placeId)) continue;
         seen.add(hit.placeId);
         hits.push(hit);
+        if (hits.length >= pull) break;
       }
+      pageToken = batch.nextPageToken;
+      if (!pageToken) break;
     }
+
+    if (pages > 1) {
+      hits.sort(
+        (a, b) =>
+          haversineKm(center.lat, center.lng, a.lat, a.lng) -
+          haversineKm(center.lat, center.lng, b.lat, b.lng),
+      );
+      hits = hits.slice(0, pull);
+    }
+
     if (complete) nearbyCache.set(key, { at: Date.now(), hits });
     resolveRun(hits);
     return hits;
