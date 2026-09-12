@@ -61,7 +61,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 // label names a DESTINATION; the class is state, and state belongs on the Me
 // page where it can be read and acted on, not stamped into the chrome of every
 // screen. MESITA-1119's mockup (Agents tab + class-suffixed Me) is superseded
-// by Product Rules §C — still true, unaffected by the Home/Search/Activity
+// by Rules §2 and Docs › Apps §A — still true, unaffected by the Home/Search/Activity
 // moves above. `route-structure.test.tsx` pins the plain labels, in order,
 // and their count.
 

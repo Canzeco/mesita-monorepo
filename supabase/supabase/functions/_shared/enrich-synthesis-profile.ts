@@ -88,7 +88,7 @@ export function applyProfileToUpdate(
   update: Record<string, unknown>,
   parsed: ProfileResult,
 ): void {
-  // Zone + city are Google-native (Product Rules §A): the Google spine seeds
+  // Zone + city are Google-native (Docs › Atlas §A): the Google spine seeds
   // them onto `update` before synthesis runs. Synthesis is only a FALLBACK for
   // when Google carried none — never let the LLM overwrite a native value.
   const zone = asProfileText(parsed.zone);

@@ -1,12 +1,12 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write
 // sync-rules.ts — regenerate the agent-instruction files across the monorepo
 // from ONE canonical source (scripts/rules-quickstart.md), and enforce the two
-// laws that keep them from rotting (Development Rules §C): the markdown
+// laws that keep them from rotting (Rules §0): the markdown
 // allowlist and the word budgets. It also carries one repo-wide file-extension
 // guard that shares the same `git ls-files` machinery: FORBIDDEN_ASSET_EXTS
 // (MESITA-1077).
 //
-// CONTRACT (monorepo form, ASDM v6 — 2026-07-11 / MESITA-456 + MESITA-462):
+// CONTRACT (monorepo form — 2026-07-11 / MESITA-456 + MESITA-462):
 //   Root CLAUDE.md    = generated quickstart block (between the markers below)
 //                       + hand-written "## This repo …" tail below the END marker.
 //   Package CLAUDE.md = hand-written package rules ONLY. The quickstart lives at
@@ -36,7 +36,7 @@ export const END = "<!-- RULES-QUICKSTART:END -->";
 export const AGENTS_NOTICE =
   "<!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->";
 
-// ── Word budgets (Development Rules §C — docs are rewritten, not amended) ───
+// ── Word budgets (KADLC — docs are rewritten, not amended) ──────────────────
 // Instruction files die of accretion: each session appends a clause and agents
 // replicate the mutations at machine speed. The budget is the forcing function:
 // over it, the fix is a from-scratch rewrite (present law only, no history),
@@ -58,7 +58,7 @@ export const AGENTS_NOTICE =
 export const QUICKSTART_WORD_BUDGET = 700;
 export const DEFAULT_PACKAGE_WORD_BUDGET = 450;
 
-// ── Skill budgets (Development Rules §C) ────────────────────────────────────
+// ── Skill budgets (Rules §0) ────────────────────────────────────────────────
 // `.claude/` is allowlisted wholesale (MD_ALLOW_DIRS below), so every file in
 // it was allowlisted and therefore never measured. That made the repo's single
 // largest knowledge file — .claude/skills/doctor/SKILL.md — the one surface the
@@ -98,14 +98,14 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-// ── Markdown allowlist (Development Rules §C) ───────────────────────────────
-// The repo holds NO knowledge markdown: knowledge lives in Notion (the Rules
+// ── Markdown allowlist (Rules §0) ───────────────────────────────────────────
+// The repo holds NO knowledge markdown: knowledge lives in Notion (the Docs
 // tree), task/commit context lives in Linear, code explanation lives in code
 // comments. The ONLY tracked files allowed are the instruction pairs, this
 // script's quickstart source, and agent tooling config. Anything else fails CI.
 //
-// `.mdc` is scanned because Cursor reads `.cursor/rules/*.mdc` as rules (ASDM
-// §D, the Cursor rows) — an unscanned dialect is a rule channel outside the allowlist, which is
+// `.mdc` is scanned because Cursor reads `.cursor/rules/*.mdc` as rules (SADLC
+// adapters, the Cursor rows) — an unscanned dialect is a rule channel outside the allowlist, which is
 // how a stray package rule once lived in the repo unnoticed.
 //
 // KEEP IN SYNC with the `paths:` filters in .github/workflows/rules.yml — YAML
@@ -306,7 +306,7 @@ export function skillBudgetCheck(name: string, words: number): BudgetCheck {
 
 export function overBudgetMessage({ label, words, budget }: BudgetCheck): string {
   return `OVER BUDGET: ${label} — ${words} words > ${budget} — ` +
-    `rewrite it from scratch (Development Rules §C: present law only, ` +
+    `rewrite it from scratch (present law only, ` +
     `no history trails); don't trim around the edges.`;
 }
 
@@ -429,8 +429,8 @@ async function main(): Promise<void> {
       for (const f of strays) {
         console.error(
           `STRAY MARKDOWN: ${f} — the repo holds no knowledge/docs markdown. ` +
-            `Knowledge → Notion Rules tree; task context → Linear; code notes → code comments; ` +
-            `package rules → that package's CLAUDE.md (Development Rules §C).`,
+            `Knowledge → Notion Docs; task context → Linear; code notes → code comments; ` +
+            `package rules → that package's CLAUDE.md (Rules §0).`,
         );
       }
       failed += strays.length;

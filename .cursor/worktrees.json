@@ -1,7 +1,7 @@
 {
   "setup-worktree-unix": [
     "git -C \"$ROOT_WORKTREE_PATH\" ls-files -o -i --exclude-from=.worktreeinclude -z | while IFS= read -r -d '' f; do test -f \"$ROOT_WORKTREE_PATH/$f\" && mkdir -p \"$(dirname \"$f\")\" && cp \"$ROOT_WORKTREE_PATH/$f\" \"$f\" || true; done",
-    "echo 'mesita: seeded from .worktreeinclude; before the first write claim this worktree: deno task worktree add MESITA-<id> <slug> --adopt . (ASDM I-3)'"
+    "echo 'mesita: seeded from .worktreeinclude; before the first write claim this worktree: deno task worktree add MESITA-<id> <slug> --adopt . (Rules I-3)'"
   ],
   "setup-worktree-windows": [
     "if exist \"%ROOT_WORKTREE_PATH%\\apps\\web-admin\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\web-admin\\.env.local\" apps\\web-admin\\.env.local",

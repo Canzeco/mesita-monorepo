@@ -341,7 +341,7 @@ describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
     expect(labels).not.toContain("Discover");
   });
 
-  // Unaffected by this PR — Product Rules §C still holds, MESITA-1119's other
+  // Unaffected by this PR — Docs › Apps §A still holds, MESITA-1119's other
   // finding (a class-suffixed Me label, an Agents tab) is not what this PR
   // touches.
   it("does not stamp class into Me and does not add an Agents tab", async () => {

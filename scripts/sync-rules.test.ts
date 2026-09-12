@@ -1,6 +1,6 @@
 // sync-rules.test.ts — the gate that guards the gates.
 //
-// scripts/sync-rules.ts enforces the two Development Rules §C laws (markdown
+// scripts/sync-rules.ts enforces the two Rules §0 laws (markdown
 // allowlist, word budgets) plus the generated-file contract. A gate that
 // silently stops biting still reports green, so every branch is exercised
 // here — including the negative cases that prove a violation is actually
@@ -320,7 +320,7 @@ Deno.test("findStrayMarkdown treats a package CLAUDE.md of an unregistered packa
 
 // ── The cross-file coupling that YAML cannot import ──────────────────────────
 
-Deno.test("MD_SCAN_GLOBS scans .mdc — Cursor reads it as rules (ASDM §D)", () => {
+Deno.test("MD_SCAN_GLOBS scans .mdc — Cursor reads it as rules (SADLC adapters)", () => {
   assert(MD_SCAN_GLOBS.includes("*.mdc"));
 });
 

@@ -22,8 +22,8 @@
 // trip on save — they are not questions until a reader exists.
 //
 // NOT here, deliberately: the tip is always computed on the PRE-DISCOUNT bill
-// and the floor never adjudicates a proof. Those are invariants (Product Rules
-// §A), and an invariant with a toggle is not an invariant.
+// and the floor never adjudicates a proof. Those are invariants (Docs ›
+// Visits), and an invariant with a toggle is not an invariant.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { num, bool } from "./config-coerce.ts";

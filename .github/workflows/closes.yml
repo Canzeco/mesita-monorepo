@@ -1,7 +1,7 @@
 name: closes
 
-# Every PR carries the Linear join (ASDM I-1, I-3): `Closes MESITA-<id>` in the body,
-# and the head branch carries the same id (ASDM I-6). Unfiltered on purpose: a
+# Every PR carries the Linear join (Rules I-1, I-3): `Closes MESITA-<id>` in the body,
+# and the head branch carries the same id (Rules I-6). Unfiltered on purpose: a
 # required check that a path filter skips blocks the PR as "Expected" forever. A
 # harness draft opens without the line and `deno task worktree pr` adds it later,
 # which is why `edited` is in the event list. The body is read through env, never
@@ -25,12 +25,12 @@ jobs:
           HEAD: ${{ github.head_ref }}
         run: |
           if ! printf '%s' "$BODY" | grep -Eq 'Closes MESITA-[0-9]+'; then
-            echo "::error::CLOSES MISSING: the PR body has no 'Closes MESITA-<id>' line — the join is the only link between intent and work — run deno task worktree pr, or add the line by hand (ASDM I-3)"
+            echo "::error::CLOSES MISSING: the PR body has no 'Closes MESITA-<id>' line — the join is the only link between intent and work — run deno task worktree pr, or add the line by hand (Rules I-3)"
             exit 1
           fi
           ID=$(printf '%s' "$BODY" | grep -Eo 'Closes MESITA-[0-9]+' | head -1 | grep -Eo '[0-9]+')
           if ! printf '%s' "$HEAD" | grep -Eq "MESITA-${ID}([^0-9]|$)"; then
-            echo "::error::BRANCH ID MISMATCH: head branch '$HEAD' does not carry MESITA-${ID} — the branch name is the machine-readable claim — git branch -m <prefix>/MESITA-${ID}-<slug> and push (ASDM I-6)"
+            echo "::error::BRANCH ID MISMATCH: head branch '$HEAD' does not carry MESITA-${ID} — the branch name is the machine-readable claim — git branch -m <prefix>/MESITA-${ID}-<slug> and push (Rules I-6)"
             exit 1
           fi
           echo "ok: Closes MESITA-${ID} on ${HEAD}"
