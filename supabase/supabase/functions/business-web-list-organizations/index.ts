@@ -86,7 +86,10 @@ Deno.serve(async (req) => {
   type PlaceRow = {
     id: string;
     organization_id: string;
-    place_profiles: Profile;
+    // Generated types type a 1:1 embed as an array; live PostgREST
+    // returns an object. Accept both, same as business-web-list-places
+    // going through `unknown`.
+    place_profiles: Profile | Profile[];
   };
   type RailPlace = { id: string; name: string; photoUrl: string | null };
   const byOrg = new Map<string, RailPlace[]>();
@@ -96,18 +99,23 @@ Deno.serve(async (req) => {
       .select("id, organization_id, place_profiles!inner(name, photos)")
       .in("organization_id", ids);
     if (placesErr) return json({ ok: false, error: placesErr.message }, 500);
-    const railRows = ((places ?? []) as PlaceRow[])
-      .map((p) => ({
-        organizationId: p.organization_id,
-        place: {
-          id: p.id,
-          name: p.place_profiles.name,
-          photoUrl: Array.isArray(p.place_profiles.photos) &&
-              p.place_profiles.photos.length > 0
-            ? p.place_profiles.photos[0]
-            : null,
-        } satisfies RailPlace,
-      }))
+    const railRows = ((places ?? []) as unknown as PlaceRow[])
+      .map((p) => {
+        const profile = Array.isArray(p.place_profiles)
+          ? p.place_profiles[0]
+          : p.place_profiles;
+        return {
+          organizationId: p.organization_id,
+          place: {
+            id: p.id,
+            name: profile?.name ?? "",
+            photoUrl: Array.isArray(profile?.photos) &&
+                profile.photos.length > 0
+              ? profile.photos[0]
+              : null,
+          } satisfies RailPlace,
+        };
+      })
       .sort((a, b) =>
         (a.place.name ?? "").localeCompare(b.place.name ?? "")
       );
