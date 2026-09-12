@@ -165,7 +165,7 @@ type RecommendDeckInput = {
   lng?: number;
   radiusKm?: number;
   limit?: number;
-  /** The guest's four discovery predicates — see lib/discovery-filters-wire. */
+  /** The guest's discovery predicates — see lib/discovery-filters-wire. */
   predicates?: DiscoveryPredicatesWire;
 };
 type RecommendDeckResponse = {
