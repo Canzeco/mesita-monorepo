@@ -61,11 +61,16 @@ main_worktree() {
 # here means "no claim", never a guess.
 claim() { git -C "$1" config --worktree --get "$2" 2>/dev/null || true; }
 
-# MESITA_CLOUD=1|0 is an explicit override (scripts/worktree.ts passes it); otherwise the harness env decides.
+# MESITA_CLOUD=1|0 is an explicit override (scripts/worktree.ts passes it); otherwise the interface's
+# own declaration decides: MESITA_PLATFORM=<token>-cloud (the SADLC adapter contract), or Claude
+# Code's CLAUDE_CODE_REMOTE=true.
 in_cloud() {
   case "${MESITA_CLOUD:-}" in
     1) return 0 ;;
     0) return 1 ;;
+  esac
+  case "${MESITA_PLATFORM:-}" in
+    *-cloud) return 0 ;;
   esac
   [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]
 }

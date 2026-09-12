@@ -1,7 +1,7 @@
 // scripts/worktree.ts — the fleet tool behind Rules I-3, I-4, I-6, I-9 and I-10.
 //
 //   deno task boot                                   where am I, the shared-checkout checks, the fleet, the origin claims (every host's pushed branches), my claim line, my resumable workspaces
-//   deno task worktree add MESITA-<id> [slug] [--platform claude-code|codex|cursor|claude-code-cloud|cursor-cloud] [--footprint <paths>] [--adopt <path>]
+//   deno task worktree add MESITA-<id> [slug] [--platform <token>] [--footprint <paths>] [--adopt <path>]
 //   deno task worktree preflight [path]              may this checkout receive writes? the verdict scripts/preflight.sh gives every hook
 //   deno task worktree pr                            adopt or open the PR for this workspace; the body carries Closes MESITA-<id>
 //   deno task worktree remove MESITA-<id>            from a lobby: unlock, remove, back the branch up under refs/swept/, delete it
@@ -13,11 +13,14 @@
 // (any slug, any registered path), re-attaches a loose branch that carries the id, and
 // refuses `--adopt` of another path while the issue lives elsewhere (I-3).
 //
-// Cloud mode (CLAUDE_CODE_REMOTE=true, or --platform *-cloud): the fresh clone IS the
-// workspace, so `add MESITA-<id> <slug> --adopt .` claims the main worktree itself (never a
-// nested worktree), the claim line reads worktree=cloud:<session>, and boot / sweep /
-// repair-lobby stop treating the clone as the shared checkout. Locally the main worktree
-// is the lobby and stays unclaimable.
+// Platform tokens (the SADLC adapter contract, item 4): an interface declares itself with the
+// MESITA_PLATFORM env var (MESITA_SESSION in the cloud), or with --platform, which wins. Known
+// tokens pick their branch prefix; any other well-formed token gets the prefix `agent`, so a
+// new interface needs no line of code here. A `*-cloud` token means the fresh clone IS the
+// workspace: `add MESITA-<id> <slug> --adopt .` claims the main worktree itself (never a nested
+// worktree), the claim line reads worktree=cloud:<session>, and boot / sweep / repair-lobby stop
+// treating the clone as the shared checkout. CLAUDE_CODE_REMOTE=true still means
+// claude-code-cloud. Locally the main worktree is the lobby and stays unclaimable.
 //
 // The pushed branch is the fleet-wide lock (I-6): `add` pushes the claim branch to origin the
 // moment it exists — empty, at origin/main, when no work has started — so every host and every
@@ -54,6 +57,7 @@ export type Env = {
   log: (line: string) => void;
   sleep: (ms: number) => Promise<void>;
   cloud: Cloud | null;
+  platform?: string | null; // MESITA_PLATFORM as declared by the interface; the default for add without --platform
   clipboard?: boolean; // boot copies the claim line with pbcopy when not false; tests pass false
 };
 
@@ -106,15 +110,44 @@ export const PLATFORM_PREFIX: Record<string, string> = {
   "cursor-cloud": "cursor",
 };
 
+export const PLATFORM_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 /** A `*-cloud` token is the only claim the main worktree may carry: the clone is the workspace. */
 export function isCloudPlatform(platform: string): boolean {
   return platform.endsWith("-cloud");
 }
 
-/** Claude Code on the web sets CLAUDE_CODE_REMOTE; Cursor cloud declares itself with --platform cursor-cloud. */
+/** The branch prefix a token earns: known tokens keep theirs, any other well-formed token is `agent`. */
+export function prefixFor(platform: string): string {
+  const known = PLATFORM_PREFIX[platform];
+  if (known) return known;
+  if (!PLATFORM_RE.test(platform)) {
+    throw new WtError("INVALID PLATFORM", platform, `a token is lowercase letters, digits and single dashes; known: ${Object.keys(PLATFORM_PREFIX).join(", ")}; any other token gets the agent/ prefix, and a *-cloud token claims the clone`, "pass --platform <token> or set MESITA_PLATFORM", "I-6");
+  }
+  return "agent";
+}
+
+/** The interface's own declaration (MESITA_PLATFORM), if any; add's default when --platform is absent. */
+export function declaredPlatform(get: (key: string) => string | undefined): string | null {
+  const p = get("MESITA_PLATFORM")?.trim();
+  return p ? p : null;
+}
+
+/**
+ * Cloud mode: MESITA_PLATFORM=<token>-cloud (with MESITA_SESSION) is the contract any interface
+ * meets; CLAUDE_CODE_REMOTE=true still means claude-code-cloud. A declared token wins.
+ */
 export function cloudFromEnv(get: (key: string) => string | undefined): Cloud | null {
+  const declared = declaredPlatform(get);
+  if (declared && isCloudPlatform(declared)) return { platform: declared, session: get("MESITA_SESSION")?.trim() || null };
   if (get("CLAUDE_CODE_REMOTE") === "true") return { platform: "claude-code-cloud", session: get("CLAUDE_CODE_REMOTE_SESSION_ID") ?? null };
   return null;
+}
+
+/** A path as boot and the claim line print it: fleet-relative when inside the main checkout, absolute when outside (a Cursor or Conductor worktree). */
+export function showPath(main: string, path: string): string {
+  const rel = relative(main, path);
+  return rel === "" ? "." : rel.startsWith("..") ? path : rel;
 }
 
 /** The write gate every hook shares; this script delegates to it rather than restating the rule. */
@@ -489,7 +522,7 @@ export async function inspect(env: Env, main: string, rows: Row[], opts: { lande
 export function table(main: string, fleet: Fleet[], now: Date): string {
   const lines = ["path | branch | landed | clean | activity | lock | issue | decision"];
   for (const f of fleet) {
-    const rel = f.row.path === main ? "(shared checkout)" : relative(main, f.row.path);
+    const rel = f.row.path === main ? "(shared checkout)" : showPath(main, f.row.path);
     const age = f.activity ? `${Math.round((now.getTime() - f.activity.getTime()) / 3_600_000)}h` : "?";
     const lock = f.row.locked ? (f.lock.ours ? "ours" : "other") : "-";
     lines.push(`${rel} | ${f.row.branch ?? "(detached)"} | ${describeLanded(f.landed)} | ${f.clean === null ? "?" : f.clean ? "yes" : "NO"} | ${age} | ${lock} | ${f.issue ?? "-"} | ${f.decision}: ${f.reason}`);
@@ -499,7 +532,7 @@ export function table(main: string, fleet: Fleet[], now: Date): string {
 
 export function toJson(main: string, fleet: Fleet[]): string {
   return JSON.stringify(fleet.map((f) => ({
-    path: relative(main, f.row.path) || ".",
+    path: showPath(main, f.row.path) || ".",
     branch: f.row.branch,
     landed: describeLanded(f.landed),
     clean: f.clean,
@@ -629,14 +662,13 @@ async function looseBranchOf(env: Env, main: string, rows: Row[], id: string): P
 }
 
 function enterLine(main: string, target: string, id: string): string {
-  return `next: enter ${relative(main, target)} (Claude Code: EnterWorktree path=${target}; Cursor: open that worktree; Codex: cd ${target}), move ${id} to In Progress, paste the claim line`;
+  return `next: enter ${showPath(main, target)} (Claude Code: EnterWorktree path=${target}; Cursor: open that worktree; Codex: cd ${target}), move ${id} to In Progress, paste the claim line`;
 }
 
 export async function add(env: Env, args: { id: string; slug?: string; platform?: string; footprint?: string; adopt?: string }): Promise<string[]> {
   const id = validateId(args.id);
-  const platform = args.platform ?? env.cloud?.platform ?? "claude-code";
-  const prefix = PLATFORM_PREFIX[platform];
-  if (!prefix) throw new WtError("INVALID PLATFORM", platform, `known tokens: ${Object.keys(PLATFORM_PREFIX).join(", ")}`, "pass --platform <token>", "I-6");
+  const platform = args.platform ?? env.cloud?.platform ?? env.platform ?? "claude-code";
+  const prefix = prefixFor(platform);
   const { main, rows } = await mainWorktree(env);
   const out: string[] = [];
 
@@ -644,13 +676,13 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   const live = await findWorkspace(env, main, rows, id);
   let adopt = args.adopt ? await realpath(resolve(env.cwd, args.adopt)) : undefined;
   if (live && adopt && adopt !== live.path) {
-    throw new WtError("CLAIMED", `${id} lives at ${relative(main, live.path) || "."} on ${live.branch ?? "(detached)"}`, "an issue has one workspace", `resume it: deno task worktree add ${id} (no --adopt), or remove it first`, "I-3");
+    throw new WtError("CLAIMED", `${id} lives at ${showPath(main, live.path) || "."} on ${live.branch ?? "(detached)"}`, "an issue has one workspace", `resume it: deno task worktree add ${id} (no --adopt), or remove it first`, "I-3");
   }
   // A resume keeps the footprint the claim was made with unless a new one is passed.
   let footprint = args.footprint ?? "";
   if (live && !adopt) {
     adopt = live.path;
-    out.push(`resumed ${relative(main, live.path) || "."} on ${live.branch ?? "(detached)"}: ${id} already has this workspace`);
+    out.push(`resumed ${showPath(main, live.path) || "."} on ${live.branch ?? "(detached)"}: ${id} already has this workspace`);
     if (!footprint) footprint = (await worktreeConfig(env, live.path, "mesita.footprint") ?? "").replace(/^none$/, "");
   }
 
@@ -661,10 +693,10 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
     if (target === main) {
       // The main worktree is the shared checkout everywhere but the cloud, where the fresh clone is the workspace.
       if (!isCloudPlatform(platform)) {
-        throw new WtError("NOT ADOPTABLE", relative(main, target) || ".", "the shared checkout is a lobby, never a workspace (I-4); only a cloud clone claims its main worktree", "locally: deno task worktree add without --adopt; in the cloud: --platform claude-code-cloud (set by CLAUDE_CODE_REMOTE) or cursor-cloud", "I-4");
+        throw new WtError("NOT ADOPTABLE", showPath(main, target) || ".", "the shared checkout is a lobby, never a workspace (I-4); only a cloud clone claims its main worktree", "locally: deno task worktree add without --adopt; in the cloud: --platform claude-code-cloud (set by CLAUDE_CODE_REMOTE) or cursor-cloud", "I-4");
       }
       if (row.branch === "main") {
-        throw new WtError("NOT ADOPTABLE", relative(main, target) || ".", "a clone sitting on main is the shared checkout, not a cloud workspace (I-4)", "git switch -c <prefix>/MESITA-<id>-<slug> first, then --adopt .", "I-4");
+        throw new WtError("NOT ADOPTABLE", showPath(main, target) || ".", "a clone sitting on main is the shared checkout, not a cloud workspace (I-4)", "git switch -c <prefix>/MESITA-<id>-<slug> first, then --adopt .", "I-4");
       }
     }
     const existing = await worktreeConfig(env, target, "mesita.issue");
@@ -676,7 +708,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
       const { landed } = await classifyLanded(env, main, row.head, row.branch);
       const merged = isLanded(landed) && landed!.kind !== "on-main";
       if (!merged || !(await isClean(env, target))) {
-        throw new WtError("NOT A LOBBY", `${relative(main, target)} is claimed by ${existing} (${describeLanded(landed)})`, "one live claim per workspace", "add a new workspace for the second issue; a merged PR for the old claim is what lets adopt clear it, or leave it yourself", "I-3");
+        throw new WtError("NOT A LOBBY", `${showPath(main, target)} is claimed by ${existing} (${describeLanded(landed)})`, "one live claim per workspace", "add a new workspace for the second issue; a merged PR for the old claim is what lets adopt clear it, or leave it yourself", "I-3");
       }
       if (row.locked) await git(env, main, "worktree", "unlock", target);
       await clearClaim(env, target);
@@ -699,7 +731,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
     }
     await claimWorkspace(env, main, target, id, platform, footprint);
     out.push(await pushClaim(env, target, branch));
-    const worktree = target === main ? `cloud:${env.cloud?.session ?? "clone"}` : relative(main, target);
+    const worktree = target === main ? `cloud:${env.cloud?.session ?? "clone"}` : showPath(main, target);
     out.push(composeClaim({ platform, host: env.host, branch: branch ?? "none", worktree, footprint }));
     out.push(await installHook(env, main));
     await verifyClaim(env, target, out);
@@ -726,7 +758,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
     pathExists = true;
   } catch { /* absent, good */ }
   if (pathExists) {
-    throw new WtError("EXISTS", relative(main, target), "a directory sits where the workspace would go, and it is not a registered worktree", "move it away, or git worktree repair it, then rerun", "I-3");
+    throw new WtError("EXISTS", showPath(main, target), "a directory sits where the workspace would go, and it is not a registered worktree", "move it away, or git worktree repair it, then rerun", "I-3");
   }
   const attach = loose ?? (branchExists ? branch : null);
   const addRes = attach
@@ -738,13 +770,13 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
     }
     throw new WtError("GIT FAILED", "git worktree add", addRes.stderr.trim(), "fix the state named above and rerun", "I-3");
   }
-  if (attach) out.push(`re-attached branch ${attach} at ${relative(main, target)}: ${id} already had a branch, so no second one was cut`);
+  if (attach) out.push(`re-attached branch ${attach} at ${showPath(main, target)}: ${id} already had a branch, so no second one was cut`);
   const seed = await seedFrom(env, main, target);
   if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
   else out.push(`seeded ${seed.copied} file(s) from .worktreeinclude`);
   await claimWorkspace(env, main, target, id, platform, footprint);
   out.push(await pushClaim(env, target, attach ?? branch));
-  out.push(composeClaim({ platform, host: env.host, branch: attach ?? branch, worktree: relative(main, target), footprint }));
+  out.push(composeClaim({ platform, host: env.host, branch: attach ?? branch, worktree: showPath(main, target), footprint }));
   out.push(await installHook(env, main));
   await verifyClaim(env, target, out);
   out.push(enterLine(main, target, id));
@@ -779,7 +811,7 @@ export async function pr(env: Env): Promise<string[]> {
   const cwd = await realpath(env.cwd);
   const branch = (await gitOk(env, cwd, "rev-parse", "--abbrev-ref", "HEAD")).trim();
   const issue = await worktreeConfig(env, cwd, "mesita.issue") ?? issueFromBranch(branch);
-  if (!issue) throw new WtError("NO ISSUE", relative(main, cwd) || ".", "this checkout is not a workspace", "deno task worktree add MESITA-<id>, or --adopt this path", "I-3");
+  if (!issue) throw new WtError("NO ISSUE", showPath(main, cwd) || ".", "this checkout is not a workspace", "deno task worktree add MESITA-<id>, or --adopt this path", "I-3");
   const listed = await env.runner("gh", ["pr", "list", "--head", branch, "--state", "open", "--json", "number,body,isDraft"], { cwd });
   if (listed.code !== 0) throw new GhError(listed.stderr.trim() || `gh exit ${listed.code}`);
   let open: { number: number; body: string; isDraft: boolean }[] = [];
@@ -849,19 +881,19 @@ export async function remove(env: Env, id: string): Promise<string[]> {
   }
   if (matches.length === 0) throw new WtError("NO ISSUE", id, "no workspace carries this claim", "check deno task boot for the fleet", "I-3");
   if (matches.length > 1) {
-    throw new WtError("AMBIGUOUS", matches.map((m) => relative(main, m.path)).join(", "), "two workspaces carry one claim", "adopt the right one and remove the other by hand", "I-3");
+    throw new WtError("AMBIGUOUS", matches.map((m) => showPath(main, m.path)).join(", "), "two workspaces carry one claim", "adopt the right one and remove the other by hand", "I-3");
   }
   const row = matches[0];
   if (cwd === row.path || cwd.startsWith(row.path + "/")) {
-    throw new WtError("INSIDE TARGET", relative(main, row.path), "a workspace cannot remove its own cwd (git would succeed and strand the session)", `cd ${main} first, then rerun`, "I-9");
+    throw new WtError("INSIDE TARGET", showPath(main, row.path), "a workspace cannot remove its own cwd (git would succeed and strand the session)", `cd ${main} first, then rerun`, "I-9");
   }
   const { landed } = await classifyLanded(env, main, row.head, row.branch);
   if (!isLanded(landed)) throw new WtError("UNLANDED", `${row.branch ?? row.head.slice(0, 9)} is ${describeLanded(landed)}`, "only landed work is removed", "ship it, or file a handoff: comment and keep it", "I-10");
-  if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", relative(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
+  if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", showPath(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
   if (row.locked) await git(env, main, "worktree", "unlock", row.path);
   const rm = await git(env, main, "worktree", "remove", row.path);
   if (rm.code !== 0) throw new WtError("GIT FAILED", "git worktree remove", rm.stderr.trim(), "close programs holding files there and rerun", "I-9");
-  const out = [`removed ${relative(main, row.path)}`];
+  const out = [`removed ${showPath(main, row.path)}`];
   if (row.branch) out.push(await backupAndDelete(env, main, row.branch, row.head, env.now()));
   return out;
 }
@@ -883,14 +915,14 @@ export async function leave(env: Env, id: string): Promise<string[]> {
     if (issue === id) matches.push(r);
   }
   if (matches.length === 0) throw new WtError("NO ISSUE", id, "no workspace carries this claim", "check deno task boot for the fleet", "I-3");
-  if (matches.length > 1) throw new WtError("AMBIGUOUS", matches.map((m) => relative(main, m.path)).join(", "), "two workspaces carry one claim", "remove the wrong one first", "I-3");
+  if (matches.length > 1) throw new WtError("AMBIGUOUS", matches.map((m) => showPath(main, m.path)).join(", "), "two workspaces carry one claim", "remove the wrong one first", "I-3");
   const row = matches[0];
   const { landed } = await classifyLanded(env, main, row.head, row.branch);
   if (!isLanded(landed)) throw new WtError("UNLANDED", `${row.branch ?? row.head.slice(0, 9)} is ${describeLanded(landed)}`, "a claim is cleared only after its work landed", "ship it, or file a handoff: comment and keep the claim", "I-10");
-  if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", relative(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
+  if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", showPath(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
   if (row.locked) await git(env, main, "worktree", "unlock", row.path);
   await clearClaim(env, row.path);
-  return [`left ${relative(main, row.path)}: a lobby again on ${row.branch ?? "(detached)"} (${describeLanded(landed)}); the checkout and branch stay`];
+  return [`left ${showPath(main, row.path)}: a lobby again on ${row.branch ?? "(detached)"} (${describeLanded(landed)}); the checkout and branch stay`];
 }
 
 // ── sweep ───────────────────────────────────────────────────────────────────
@@ -910,9 +942,9 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
       if (known.has(p)) continue;
       const rep = await git(env, main, "worktree", "repair", p);
       if (rep.code === 0 && rep.stderr.trim() === "" || (await listFleet(env, main)).some((r) => r.path === p)) {
-        lines.push(`repaired ${relative(main, p)}`);
+        lines.push(`repaired ${showPath(main, p)}`);
       } else {
-        lines.push(`ORPHAN: ${relative(main, p)} — its admin entry is gone, git worktree repair cannot re-register it — compare it against its branch tip by hand (read-tree recipe) before deleting; the sweep never touches it (I-10)`);
+        lines.push(`ORPHAN: ${showPath(main, p)} — its admin entry is gone, git worktree repair cannot re-register it — compare it against its branch tip by hand (read-tree recipe) before deleting; the sweep never touches it (I-10)`);
       }
     }
   } catch { /* no fleet dir yet */ }
@@ -922,7 +954,7 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
     throw new WtError("REPO MOVED?", `${prunable.length} prunable entries`, "that many stale registrations at once means the repo or its worktrees moved", "git worktree repair the moved paths first, then rerun", "I-10");
   }
   for (const r of prunable) {
-    lines.push(`${opts.apply ? "pruned" : "would prune"} stale registration ${relative(main, r.path)}`);
+    lines.push(`${opts.apply ? "pruned" : "would prune"} stale registration ${showPath(main, r.path)}`);
     if (opts.apply) {
       if (r.locked) await git(env, main, "worktree", "unlock", r.path);
     }
@@ -937,16 +969,16 @@ export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines
   for (const f of fleet) {
     if (f.decision !== "remove") continue;
     if (!opts.apply) {
-      lines.push(`would remove ${relative(main, f.row.path)} (${f.reason})`);
+      lines.push(`would remove ${showPath(main, f.row.path)} (${f.reason})`);
       continue;
     }
     if (f.row.locked) await git(env, main, "worktree", "unlock", f.row.path);
     const rm = await git(env, main, "worktree", "remove", f.row.path);
     if (rm.code !== 0) {
-      lines.push(`kept ${relative(main, f.row.path)}: ${rm.stderr.trim()}`);
+      lines.push(`kept ${showPath(main, f.row.path)}: ${rm.stderr.trim()}`);
       continue;
     }
-    lines.push(`removed ${relative(main, f.row.path)} (${f.reason})`);
+    lines.push(`removed ${showPath(main, f.row.path)} (${f.reason})`);
     if (f.row.branch) lines.push(await backupAndDelete(env, main, f.row.branch, f.row.head, now));
   }
   // Loose branches: local heads no worktree checks out. Landed ones are deleted with a
@@ -1066,7 +1098,7 @@ export async function claimLineOf(env: Env, main: string, row: Row): Promise<str
   const host = await worktreeConfig(env, row.path, "mesita.host") ?? env.host;
   const footprint = await worktreeConfig(env, row.path, "mesita.footprint") ?? "none";
   const session = await worktreeConfig(env, row.path, "mesita.session");
-  const worktree = row.path === main ? `cloud:${session ?? "clone"}` : relative(main, row.path);
+  const worktree = row.path === main ? `cloud:${session ?? "clone"}` : showPath(main, row.path);
   return composeClaim({ platform, host, branch: row.branch ?? "none", worktree, footprint });
 }
 
@@ -1110,10 +1142,10 @@ export async function boot(env: Env): Promise<string[]> {
   const hereLanded = hereClass !== null && isLanded(hereClass) && hereClass.kind !== "on-main";
   if (!here) lines.push(`where: ${cwd} (outside the fleet)`);
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
-  else if (hereIssue && hereLanded) lines.push(`where: ${relative(main, here.path)} on ${here.branch ?? "(detached)"}: ${hereIssue} landed, a lobby once its claim is cleared: deno task worktree leave ${hereIssue}, or deno task worktree add MESITA-<id> --adopt ${relative(main, here.path)} for the next issue`);
-  else if (hereIssue && hereClass?.kind === "on-main") lines.push(`where: workspace ${relative(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}: no work yet`);
-  else if (hereIssue) lines.push(`where: workspace ${relative(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
-  else lines.push(`where: ${relative(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${relative(main, here.path)}`);
+  else if (hereIssue && hereLanded) lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"}: ${hereIssue} landed, a lobby once its claim is cleared: deno task worktree leave ${hereIssue}, or deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)} for the next issue`);
+  else if (hereIssue && hereClass?.kind === "on-main") lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}: no work yet`);
+  else if (hereIssue) lines.push(`where: workspace ${showPath(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
+  else lines.push(`where: ${showPath(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${showPath(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
   lines.push(`gate: ${await installHook(env, main)}`);
@@ -1121,7 +1153,7 @@ export async function boot(env: Env): Promise<string[]> {
   const fleet = await inspect(env, main, await listFleet(env, main), { landed: true });
   lines.push(table(main, fleet, env.now()));
   const mine = fleet.filter((f) => f.issue && f.host === env.host && f.row.path !== main);
-  lines.push(mine.length ? `resumable on this host: ${mine.map((f) => `${f.issue} at ${relative(main, f.row.path)} (deno task worktree add ${f.issue} resumes it)`).join("; ")}` : "resumable on this host: none");
+  lines.push(mine.length ? `resumable on this host: ${mine.map((f) => `${f.issue} at ${showPath(main, f.row.path)} (deno task worktree add ${f.issue} resumes it)`).join("; ")}` : "resumable on this host: none");
   const sweepable = fleet.filter((f) => f.decision === "remove").length;
   lines.push(`sweepable: ${sweepable} (deno task worktree sweep --apply from the shared checkout)`);
   const origin = await originClaims(env, main, rows, { landed: true });
@@ -1237,6 +1269,13 @@ export async function main(argv: string[], env: Env): Promise<number> {
 }
 
 if (import.meta.main) {
+  const getEnv = (k: string): string | undefined => {
+    try {
+      return Deno.env.get(k);
+    } catch {
+      return undefined; // not in --allow-env: local, by definition
+    }
+  };
   const env: Env = {
     runner: defaultRunner,
     now: () => new Date(),
@@ -1244,13 +1283,8 @@ if (import.meta.main) {
     cwd: Deno.cwd(),
     log: (l) => console.log(l),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
-    cloud: cloudFromEnv((k) => {
-      try {
-        return Deno.env.get(k);
-      } catch {
-        return undefined; // not in --allow-env: local, by definition
-      }
-    }),
+    cloud: cloudFromEnv(getEnv),
+    platform: declaredPlatform(getEnv),
   };
   Deno.exit(await main(Deno.args, env));
 }

@@ -18,6 +18,7 @@ import {
   composeClaim,
   decide,
   decideRemote,
+  declaredPlatform,
   defaultRunner,
   ensureWorktreeConfig,
   type Env,
@@ -37,8 +38,10 @@ import {
   pr,
   preflight,
   PREFLIGHT_SH,
+  prefixFor,
   remove,
   repairLobby,
+  showPath,
   sweep,
   validateId,
   validateSlug,
@@ -262,7 +265,8 @@ Deno.test("add creates a claimed, seeded, locked workspace under the main worktr
   assertStringIncludes(text, "ok: workspace", "the claim is verified through the gate (I-9)");
   assertStringIncludes(text, "Cursor: open that worktree; Codex: cd", "the enter step names every platform, not only EnterWorktree");
   await assertRejects(() => add(env, { id: "bad" }), WtError, "INVALID ID");
-  await assertRejects(() => add(env, { id: "MESITA-8", platform: "vim" }), WtError, "INVALID PLATFORM");
+  // Any well-formed token is a platform now (agent/ prefix); only an ill-formed one is refused.
+  await assertRejects(() => add(env, { id: "MESITA-8", platform: "VIM!" }), WtError, "INVALID PLATFORM");
 });
 
 Deno.test("ensureWorktreeConfig is idempotent and carries core.worktree into the main worktree's own file", async () => {
@@ -314,7 +318,9 @@ Deno.test("adopt takes any registered worktree (Cursor worktree mode lives outsi
   await git(f.main, "worktree", "add", "-q", cursorPath, "-b", "cursor/lane", "origin/main");
   const out = (await add(env, { id: "MESITA-12", adopt: cursorPath, platform: "cursor" })).join("\n");
   assertStringIncludes(out, "renamed branch cursor/lane → cursor/MESITA-12-lane");
-  assertStringIncludes(out, "claimed platform=cursor host=t3st branch=cursor/MESITA-12-lane worktree=../cursor-lane");
+  // Outside the fleet dir the claim and the enter line print the absolute path, never ../cursor-lane.
+  assertStringIncludes(out, `claimed platform=cursor host=t3st branch=cursor/MESITA-12-lane worktree=${cursorPath}`);
+  assertStringIncludes(out, `next: enter ${cursorPath} (`);
   assertEquals(await git(cursorPath, "config", "--worktree", "--get", "mesita.issue"), "MESITA-12");
   assertEquals(await Deno.readTextFile(join(cursorPath, "apps/web/.env.local")), "SECRET=1\n", "seeded from .worktreeinclude like any workspace");
   await assertRejects(() => add(env, { id: "MESITA-13", adopt: f.main }), WtError, "NOT ADOPTABLE");
@@ -830,4 +836,51 @@ Deno.test("sweep deletes a landed origin branch past the lease with a backup ref
   assert(!heads.includes("claude/MESITA-50-remote-landed"), "the landed origin branch is gone");
   assert(heads.includes("claude/home-soon-96e9") && heads.includes("claude/MESITA-51-fresh"), "id-less and fresh claims stay");
   assertStringIncludes(await git(f.main, "for-each-ref", "--format=%(refname)", "refs/swept/"), "/origin/claude/MESITA-50-remote-landed");
+});
+
+// ── The platform contract (SADLC adapters, item 4) ───────────────────────────
+
+Deno.test("MESITA_PLATFORM declares the interface: a *-cloud token is cloud mode, a declared token wins, unknown tokens earn the agent prefix", () => {
+  const env = (vars: Record<string, string>) => (k: string) => vars[k];
+  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "oz-cloud", MESITA_SESSION: "run_1" })), { platform: "oz-cloud", session: "run_1" });
+  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "oz-cloud" })), { platform: "oz-cloud", session: null });
+  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "codex" })), null, "a local token is not cloud mode");
+  assertEquals(cloudFromEnv(env({ MESITA_PLATFORM: "cursor-cloud", CLAUDE_CODE_REMOTE: "true" }))?.platform, "cursor-cloud", "the declared token wins");
+  assertEquals(cloudFromEnv(env({ CLAUDE_CODE_REMOTE: "true", CLAUDE_CODE_REMOTE_SESSION_ID: "cse_1" })), { platform: "claude-code-cloud", session: "cse_1" });
+  assertEquals(declaredPlatform(env({ MESITA_PLATFORM: " opencode " })), "opencode");
+  assertEquals(declaredPlatform(env({})), null);
+  assertEquals(prefixFor("cursor"), "cursor");
+  assertEquals(prefixFor("claude-code-cloud"), "claude");
+  assertEquals(prefixFor("oz-cloud"), "agent");
+  assertEquals(prefixFor("opencode"), "agent");
+  try {
+    prefixFor("Bad Token");
+    throw new Error("unreachable");
+  } catch (e) {
+    assert(e instanceof WtError && e.what === "INVALID PLATFORM", String(e));
+  }
+  assertEquals(showPath("/a/b", "/a/b/c/d"), "c/d");
+  assertEquals(showPath("/a/b", "/a/b"), ".");
+  assertEquals(showPath("/a/b", "/a/x/y"), "/a/x/y");
+});
+
+Deno.test("an undeclared cloud interface claims its clone with its own token and the agent prefix, and the write gate accepts it from MESITA_PLATFORM alone", async () => {
+  const f = await makeFixture();
+  const clone = await makeClone(f, "claude/random-task-9z9z9z");
+  const refused = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { MESITA_PLATFORM: "oz-cloud", MESITA_SESSION: "run_7" });
+  assertEquals(refused.code, 2);
+  assertStringIncludes(refused.stderr, "UNCLAIMED CLONE");
+  const env = makeEnv(f, { cwd: clone, cloud: { platform: "oz-cloud", session: "run_7" } });
+  const out = (await add(env, { id: "MESITA-90", slug: "oz", adopt: "." })).join("\n");
+  assertStringIncludes(out, "renamed branch claude/random-task-9z9z9z → agent/MESITA-90-oz");
+  assertStringIncludes(out, "claimed platform=oz-cloud host=t3st branch=agent/MESITA-90-oz worktree=cloud:run_7 footprint=none");
+  assertStringIncludes(out, "ok: cloud clone");
+  const allowed = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { MESITA_PLATFORM: "oz-cloud" });
+  assertEquals(allowed.code, 0, allowed.stderr);
+  // A local interface that only declares itself: no --platform, still the agent prefix.
+  const local = makeEnv(f);
+  local.platform = "opencode";
+  const made = (await add(local, { id: "MESITA-91", slug: "oc" })).join("\n");
+  assertStringIncludes(made, "claimed platform=opencode host=t3st branch=agent/MESITA-91-oc worktree=.claude/worktrees/MESITA-91-oc");
+  await assertRejects(() => add(makeEnv(f), { id: "MESITA-92", slug: "bad", platform: "Bad Token" }), WtError, "INVALID PLATFORM");
 });
