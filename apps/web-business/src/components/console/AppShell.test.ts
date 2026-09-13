@@ -101,7 +101,9 @@ describe("the rail is light, and every text token is a measured pair", () => {
   });
 
   it("the active row is a solid fill, so `you are here` survives a glance", () => {
-    expect(rail).toContain('ROW_ACTIVE = "bg-foreground text-background');
+    // On the dark rail (MESITA-1831) the fill is the off-white sidebar
+    // foreground with ink text — the brightest thing in the column.
+    expect(rail).toContain('ROW_ACTIVE = "bg-sidebar-foreground text-sidebar');
   });
 
   it("marks the active row for assistive tech, not just visually", () => {
