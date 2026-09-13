@@ -50,14 +50,16 @@ import {
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
 import { clampFunnel, intakeSaveBlocked, type IntakeSettings } from "./intake-guards";
+import {
+  VerificationConfigClient,
+} from "../verification-config/VerificationConfigClient";
+import type { VerificationConfig } from "../verification-config/actions";
 
 export type { IntakeSettings };
 
-// THE INTAKE PAGE. Four modules, Discovery-shaped. Models · Create ·
-// Enrich · Functions. One page, no tabs. Search eligibility lives on
-// Discovery › Map — not here.
-//
-// One Save, one write door (atlas_*). NO TRIGGER GRID.
+// THE INTAKE PAGE. Models · Create · Enrich · Functions · Verification.
+// Discovery-shaped. One Intake Save for atlas_*; Verification keeps its own
+// per-switch save. Search eligibility lives on Discovery › Map — not here.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
@@ -74,6 +76,9 @@ export function IntakeClient({
   settingsUpdatedAt,
   settingsLoadError,
   prompts,
+  verificationConfig,
+  verificationUpdatedAt,
+  verificationLoadError,
 }: {
   initialSettings: IntakeSettings;
   settingsUpdatedAt: string | null;
@@ -84,6 +89,9 @@ export function IntakeClient({
    * be worse than an absent one.
    */
   prompts: IntakePrompt[];
+  verificationConfig: VerificationConfig;
+  verificationUpdatedAt: string | null;
+  verificationLoadError: string | null;
 }) {
   const promptFor = (key: string) => prompts.find((p) => p.key === key);
   const [settings, setSettings] = useState(initialSettings);
@@ -565,6 +573,14 @@ export function IntakeClient({
               </FunctionModule>
             </div>
           </SectionCard>
+        </div>
+
+        <div id="s-verification" className="scroll-mt-16">
+          <VerificationConfigClient
+            initialConfig={verificationConfig}
+            initialUpdatedAt={verificationUpdatedAt}
+            loadError={verificationLoadError}
+          />
         </div>
       </div>
 
