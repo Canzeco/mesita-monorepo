@@ -103,19 +103,25 @@ export function MesitaReviewsList({ placeId }: { placeId: string }) {
   const [reviews, setReviews] = useState<MesitaPlaceReview[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [moreError, setMoreError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [pending, start] = useTransition();
 
   const load = useCallback(
     (offset: number, append: boolean) => {
+      if (append) setMoreError(null);
       start(() => {
         void getPlaceReviews(placeId, { limit: PAGE_SIZE, offset }).then((r) => {
           if (!r.ok) {
-            setError(r.error);
-            setLoaded(true);
+            if (append) {
+              setMoreError(r.error);
+            } else {
+              setError(r.error);
+            }
             return;
           }
           setError(null);
+          setMoreError(null);
           setTotal(r.data.total);
           setReviews((prev) =>
             append ? [...prev, ...r.data.reviews] : r.data.reviews,
@@ -183,6 +189,9 @@ export function MesitaReviewsList({ placeId }: { placeId: string }) {
           </button>
         ) : null}
       </div>
+      {moreError ? (
+        <ErrorNote message="Couldn't load more reviews. Try again." />
+      ) : null}
     </section>
   );
 }
