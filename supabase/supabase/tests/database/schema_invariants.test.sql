@@ -261,6 +261,17 @@ select throws_ok(
   'an empty reservation_channel is refused by the schema (so "unanswered" can only be NULL)'
 );
 
+-- MESITA-1799: a newly discovered place nobody has answered for offers Reserve.
+insert into public.place_profiles (id, google_name)
+values ('00000000-0000-4000-8000-0000000f0f11', 'Default On');
+
+select is(
+  (select reservations_enabled from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000f0f11'),
+  true,
+  'a newly discovered place offers Reserve by default (MESITA-1799)'
+);
+
 rollback to savepoint before_reservations_probe;
 
 -- ━━━ Wave 0 — place secrets stay off the publishable key ━━━━━━━━━━━━━━━━━━━
