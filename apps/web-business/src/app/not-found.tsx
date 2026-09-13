@@ -16,21 +16,21 @@ export default function NotFound() {
           That page moved
         </h1>
         <p className="text-muted-foreground max-w-sm text-sm">
-          The console was reorganized. Pick a place from the catalog, or head to
-          your organization.
+          The console was reorganized. Open it and you land where you were
+          last, or head to your account.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Link href="/places" className={CTA_BUTTON_CLASS}>
-          Browse places
+        <Link href={SHELL_ROUTES.root} className={CTA_BUTTON_CLASS}>
+          Open the console
         </Link>
         <Link
-          href={SHELL_ROUTES.organization}
+          href={SHELL_ROUTES.account}
           className={cn(
             "border-border text-foreground rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:opacity-80",
           )}
         >
-          Organization
+          Account
         </Link>
       </div>
     </div>

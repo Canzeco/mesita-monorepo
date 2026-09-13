@@ -8,7 +8,7 @@ export default function ShellError() {
     <PageErrorState
       heading="Something broke"
       message="The console hit an error rendering this page."
-      retryHref={SHELL_ROUTES.organization}
+      retryHref={SHELL_ROUTES.root}
     />
   );
 }

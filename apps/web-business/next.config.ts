@@ -26,9 +26,40 @@ const nextConfig: NextConfig = {
       { source: "/place/:id/:rest*", destination: "/places/:id/profile", permanent: true },
       // Account settings moved to the shell's own screen.
       { source: "/settings", destination: "/account", permanent: true },
-      // Org Places and Public Places merged into one list (MESITA-1614).
-      // Owned is a column now, not a screen.
-      { source: "/pool", destination: "/places", permanent: true },
+      // THE ORGANIZATION MOVED INTO THE PATH (MESITA-1807). `?org=<id>` used
+      // to name it on every console URL; the id is captured off the query
+      // and becomes the segment. Stripe stores an Account Link's return_url
+      // when the link is minted, so `/organization?org=&connect=return` links
+      // minted before this shipped still arrive here — the rest of the query
+      // rides through to `/orgs/<id>`, whose Overview hands `?connect=` on to
+      // Payments. The no-org forms go to `/`, the resolver. The `has` rules
+      // must stay ABOVE their bare twins: first match wins.
+      {
+        source: "/organization",
+        has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
+        destination: "/orgs/:org",
+        permanent: true,
+      },
+      { source: "/organization", destination: "/", permanent: true },
+      { source: "/organization/new", destination: "/orgs/new", permanent: true },
+      {
+        source: "/places",
+        has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
+        destination: "/orgs/:org/places",
+        permanent: true,
+      },
+      { source: "/places", destination: "/", permanent: true },
+      {
+        source: "/places/new",
+        has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
+        destination: "/orgs/:org/places/new",
+        permanent: true,
+      },
+      { source: "/places/new", destination: "/", permanent: true },
+      // Org Places and Public Places merged into one list (MESITA-1614), and
+      // the list moved under its organization (MESITA-1807): the resolver
+      // knows which one.
+      { source: "/pool", destination: "/", permanent: true },
     ];
   },
   images: {

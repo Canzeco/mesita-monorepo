@@ -39,11 +39,7 @@ function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
 
 function render(over: Partial<Parameters<typeof PlaceStatesTable>[0]> = {}) {
   return renderToStaticMarkup(
-    <PlaceStatesTable
-      places={[place()]}
-      organizationId="org-1"
-      {...over}
-    />,
+    <PlaceStatesTable places={[place()]} {...over} />,
   );
 }
 
@@ -134,7 +130,7 @@ describe("cell values", () => {
       claimedAt: null,
     };
     const html = renderToStaticMarkup(
-      <PlaceStatesTable places={[bare]} organizationId="org-1" />,
+      <PlaceStatesTable places={[bare]} />,
     );
     expect(html).toContain("Old Payload");
     // Nine general columns, none of them answerable.

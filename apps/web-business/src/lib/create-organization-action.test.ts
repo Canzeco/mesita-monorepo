@@ -54,10 +54,11 @@ describe("createOrganizationAction", () => {
     expect(code.indexOf("revalidatePath")).toBeLessThan(
       code.indexOf("redirect("),
     );
-    expect(code).toContain("encodeURIComponent(created.id)");
+    // The new organization's own address (MESITA-1807); orgHref encodes it.
+    expect(code).toContain("redirect(orgHref(created.id))");
   });
 
-  it("names a missing id instead of redirecting to ?org=", () => {
+  it("names a missing id instead of redirecting to a bad address", () => {
     expect(fn).toContain("if (!created?.id)");
     expect(fn).toContain("Created organization is missing an id.");
   });
@@ -66,7 +67,7 @@ describe("createOrganizationAction", () => {
 describe("the ceremony page", () => {
   it("has a form-shaped loading boundary, not the dashboard cards", () => {
     const loading = readFileSync(
-      path.join(SRC, "app", "(shell)", "organization", "new", "loading.tsx"),
+      path.join(SRC, "app", "(shell)", "orgs", "new", "loading.tsx"),
       "utf8",
     );
     expect(loading).not.toContain("h-[132px]");
@@ -75,10 +76,20 @@ describe("the ceremony page", () => {
 
   it("sends a signed-out visitor back here after sign-in", () => {
     const page = readFileSync(
-      path.join(SRC, "app", "(shell)", "organization", "new", "page.tsx"),
+      path.join(SRC, "app", "(shell)", "orgs", "new", "page.tsx"),
       "utf8",
     );
-    expect(page).toContain('redirect("/signin?next=/organization/new")');
+    expect(page).toContain('redirect("/signin?next=/orgs/new")');
     expect(page).not.toContain("<Section");
+  });
+
+  it("the Stripe return links name the Payments page", () => {
+    // Stripe stores these when the Account Link is minted, so they must be
+    // the page where the return notice lives (MESITA-1807).
+    expect(ACTION).toContain('orgHref(orgId, "payments")}?connect=return');
+    expect(ACTION).toContain('orgHref(orgId, "payments")}?connect=refresh');
+    // Code only: the prose above the mint explains the old relative URL.
+    const code = ACTION.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toContain("?org=");
   });
 });

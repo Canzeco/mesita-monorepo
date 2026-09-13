@@ -30,6 +30,12 @@
 // switch at `sm`. Two breakpoints left 640-1024px — laptop-adjacent tablets —
 // showing a mobile topbar AND a bar offset for a desktop bar that was not
 // there. Everything here switches at `lg` or not at all.
+//
+// ONE SCOPE (MESITA-1807). The rail's organization and place are resolved
+// here, once, from the pathname and the viewer payload, and handed to both
+// rail instances and the header — so three pieces of chrome cannot disagree
+// about whose console this is. The same resolution is what the two rail
+// cookies remember, so the next fresh request paints the same boxes.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -38,29 +44,52 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { Sidebar } from "@/components/console/Sidebar";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
-import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
+import { SHELL_ROUTES, orgHref, placeHref } from "@/lib/console-routes";
+import {
+  RAIL_COOKIE_ATTRS,
+  RAIL_ORG_COOKIE,
+  RAIL_PLACE_COOKIE,
+  SIDEBAR_COLLAPSED_COOKIE,
+} from "@/lib/sidebar-prefs";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
+import type { RailOrg } from "@/lib/rail-scope";
+import { useRailScope } from "@/lib/use-rail-scope";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export function AppShell({
   organizations,
+  isSuperAdmin,
+  viewerError,
+  accountLabel,
+  rememberedPlaceId,
+  rememberedOrgId,
   defaultCollapsed = false,
   children,
 }: {
-  organizations: ChromeOrg[];
+  organizations: readonly RailOrg[];
+  isSuperAdmin: boolean;
+  viewerError: boolean;
+  accountLabel: string;
+  /** The rail cookies, read by the server layout: right on the first frame
+   *  only — a shared layout does not re-run on client navigations, which is
+   *  why the session's own memory (OpenPlaceProvider) beats them. */
+  rememberedPlaceId: string | null;
+  rememberedOrgId: string | null;
   /** Read from the cookie by the server layout, so the rail paints at its
    *  final width on the first frame. */
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
-  // Every href in this frame carries the active organization, resolved the one
-  // way — dropping it on a single link is enough to switch a multi-org
-  // operator's context out from under them.
-  const { activeOrgId } = useActiveOrg(organizations);
+  const scope = useRailScope({ organizations, rememberedPlaceId, rememberedOrgId });
+  // Where the wordmark lands: the same answer `/` gives, resolved here so the
+  // click costs no redirect hop.
+  const landingHref = scope.place
+    ? placeHref(scope.place.id)
+    : scope.org
+      ? orgHref(scope.org.id)
+      : SHELL_ROUTES.orgNew;
   // The mobile wordmark is a route out of the place screen exactly like the
   // rail's rows are, so it answers to the same guard. OpenPlaceProvider is
   // mounted by the LAYOUT rather than here, so this hook can see it.
@@ -72,17 +101,37 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const drawerRef = useRef<HTMLDivElement>(null);
 
+  // Remember the scope for the next fresh request. The place only when it is
+  // the one actually open — the rail's fallback pick is not a visit.
+  const orgId = scope.org?.id ?? null;
+  const visitedPlaceId = scope.placeIsCurrent ? (scope.place?.id ?? null) : null;
+  useEffect(() => {
+    if (orgId) {
+      document.cookie = `${RAIL_ORG_COOKIE}=${orgId}; ${RAIL_COOKIE_ATTRS}`;
+    }
+    if (visitedPlaceId) {
+      document.cookie = `${RAIL_PLACE_COOKIE}=${visitedPlaceId}; ${RAIL_COOKIE_ATTRS}`;
+    }
+  }, [orgId, visitedPlaceId]);
+
   // Lock body scroll, close on Esc, and TRAP TAB.
   //
   // The trap is the one thing admin's shell does not do, and it is not a nicety
   // — without it Tab walks straight out of the drawer and into the page behind
   // the scrim, where a sighted keyboard user then operates controls they cannot
   // see and a screen-reader user is read a page that is visually dismissed.
+  //
+  // `defaultPrevented` FIRST. A rail picker's menu is portaled to `body`,
+  // outside this drawer, and Radix handles Escape (and Tab) on a document
+  // CAPTURE listener that runs before this one and calls preventDefault().
+  // Without the guard one Esc closes the menu AND the drawer, and Tab inside
+  // an open menu is fought over.
   useEffect(() => {
     if (!open) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       if (e.key === "Escape") {
         setOpen(false);
         return;
@@ -125,10 +174,16 @@ export function AppShell({
     setCollapsed(next);
     // A year-long cookie rather than localStorage: the server layout reads it
     // during render, so a reload comes back at the width you left it.
-    // Through the constant, not the literal it used to inline — the layout
-    // already imports the same name, and two spellings of one cookie is how
-    // they drift.
-    document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
+    document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; ${RAIL_COOKIE_ATTRS}`;
+  };
+
+  const railProps = {
+    scope,
+    organizations,
+    isSuperAdmin,
+    viewerError,
+    accountLabel,
+    landingHref,
   };
 
   return (
@@ -141,7 +196,7 @@ export function AppShell({
         }
       >
         <Sidebar
-          organizations={organizations}
+          {...railProps}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapsed}
         />
@@ -183,7 +238,7 @@ export function AppShell({
           aria-modal="true"
           aria-label="Console navigation"
         >
-          <Sidebar organizations={organizations} onNavigate={close} />
+          <Sidebar {...railProps} onNavigate={close} />
           {open && (
             <button
               type="button"
@@ -210,10 +265,8 @@ export function AppShell({
             <Menu className="h-4 w-4" />
           </button>
           <Link
-            href={withOrg(SHELL_ROUTES.organization, activeOrgId)}
-            onClick={(e) =>
-              guardNav?.(withOrg(SHELL_ROUTES.organization, activeOrgId), e)
-            }
+            href={landingHref}
+            onClick={(e) => guardNav?.(landingHref, e)}
             className="inline-flex items-center gap-2 truncate"
           >
             <MesitaLogo variant="horizontal" className="h-5 w-auto" />
@@ -221,7 +274,7 @@ export function AppShell({
           </Link>
         </header>
 
-        <ConsoleHeader organizations={organizations} />
+        <ConsoleHeader scope={scope} />
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
           {children}

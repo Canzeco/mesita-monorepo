@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiAcceptOrgInvite } from "@/lib/api/organizations";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { SHELL_ROUTES, orgHref } from "@/lib/console-routes";
 import { errMsg } from "@/lib/utils";
 
 // Organization-invite accept page (MESITA-1550) — a sibling of
@@ -57,7 +57,7 @@ export function AcceptOrgInviteClient() {
         setOrganizationId(res.organizationId);
         setState("success");
         window.setTimeout(() => {
-          router.replace(withOrg(SHELL_ROUTES.organization, res.organizationId));
+          router.replace(orgHref(res.organizationId));
         }, 1200);
       } catch (err) {
         if (cancelled) return;
@@ -99,9 +99,7 @@ export function AcceptOrgInviteClient() {
   }
 
   if (state === "success") {
-    const href = organizationId
-      ? withOrg(SHELL_ROUTES.organization, organizationId)
-      : SHELL_ROUTES.organization;
+    const href = organizationId ? orgHref(organizationId) : SHELL_ROUTES.root;
     return (
       <div className="flex flex-col items-center gap-3 text-center">
         <CheckCircle2 className="text-whatsapp-deep h-10 w-10" />

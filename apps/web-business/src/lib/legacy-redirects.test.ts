@@ -1,22 +1,37 @@
-// Every URL the legacy console owned must still land somewhere real.
+// Every URL the console ever owned must still land somewhere real.
 //
-// MESITA-1564 deleted `app/(console)` — 11 place routes plus /settings. Those
-// URLs are in operators' bookmarks and in old emails, so the deletion is only
-// safe if next.config.ts catches every one. This test is the proof: it walks
-// the route shapes the old console could emit and asserts each resolves.
+// MESITA-1564 deleted `app/(console)` — 11 place routes plus /settings.
+// MESITA-1807 moved the organization into the path, retiring `/organization`,
+// `/organization/new`, the bare `/places` list and `/places/new`, all of which
+// carried the organization as `?org=`. Those URLs are in operators' bookmarks,
+// in old emails, and — for `/organization?org=&connect=return` — stored on
+// Stripe's side as the return_url of Account Links minted before the move. So
+// the deletions are only safe if next.config.ts catches every one. This test
+// is the proof: it walks the shapes the old console could emit and asserts
+// each resolves the way Next will resolve it.
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
 
-type Rule = { source: string; destination: string; permanent?: boolean };
+type Has = { type: string; key: string; value?: string };
+type Rule = {
+  source: string;
+  destination: string;
+  permanent?: boolean;
+  has?: Has[];
+};
 
 async function rules(): Promise<Rule[]> {
   const r = await nextConfig.redirects?.();
   return (r ?? []) as Rule[];
 }
 
-/** Resolve `pathname` through the rule list the way Next does: first match
- *  wins, `:param` binds one segment, `:rest*` binds the remainder. */
-function resolve(pathname: string, all: Rule[]): string | null {
+/** Resolve a URL through the rule list the way Next does: first match wins,
+ *  `:param` binds one segment, `:rest*` binds the remainder, and a `has`
+ *  query rule must match too — its named capture is usable in the
+ *  destination. Unmatched query params ride through to the destination. */
+function resolve(url: string, all: Rule[]): string | null {
+  const [pathname, search = ""] = url.split("?");
+  const query = new URLSearchParams(search);
   for (const rule of all) {
     const names: string[] = [];
     const pattern = rule.source
@@ -36,11 +51,36 @@ function resolve(pathname: string, all: Rule[]): string | null {
       .join("/");
     const m = pathname.match(new RegExp(`^/${pattern}/?$`));
     if (!m) continue;
-    let out = rule.destination;
+    const params: Record<string, string> = {};
     names.forEach((n, i) => {
-      out = out.replace(`:${n}*`, m[i + 1] ?? "").replace(`:${n}`, m[i + 1] ?? "");
+      params[n] = m[i + 1] ?? "";
     });
-    return out;
+    let hasMatched = true;
+    for (const h of rule.has ?? []) {
+      if (h.type !== "query") throw new Error(`unexpected has type ${h.type}`);
+      const v = query.get(h.key);
+      if (v === null) {
+        hasMatched = false;
+        break;
+      }
+      if (h.value) {
+        const hm = v.match(new RegExp(`^${h.value}$`));
+        if (!hm) {
+          hasMatched = false;
+          break;
+        }
+        Object.assign(params, hm.groups ?? {});
+      }
+    }
+    if (!hasMatched) continue;
+    let out = rule.destination;
+    for (const [n, v] of Object.entries(params)) {
+      out = out.replace(`:${n}*`, v).replace(`:${n}`, v);
+    }
+    const rest = new URLSearchParams(search);
+    for (const h of rule.has ?? []) rest.delete(h.key);
+    const q = rest.toString();
+    return q ? `${out}?${q}` : out;
   }
   return null;
 }
@@ -81,7 +121,6 @@ describe("the legacy console's URLs all still resolve", () => {
   });
 
   it("/unit/* is repointed, not left chaining through a deleted route", async () => {
-    // It used to forward to /place/*, which this PR removed.
     const all = await rules();
     expect(resolve("/unit/abc", all)).toBe("/places/abc/profile");
     expect(resolve("/unit/abc/place/preview", all)).toBe("/places/abc/profile");
@@ -90,8 +129,79 @@ describe("the legacy console's URLs all still resolve", () => {
   it("/settings lands on the shell's Account screen", async () => {
     expect(resolve("/settings", await rules())).toBe("/account");
   });
+});
 
-  it("every redirect is permanent — these moves are not coming back", async () => {
+// MESITA-1807. The organization moved from `?org=` into the path.
+describe("the ?org= addresses forward into the path", () => {
+  it("/organization?org=<id> is that organization's Overview", async () => {
+    expect(resolve("/organization?org=org-9", await rules())).toBe(
+      "/orgs/org-9",
+    );
+  });
+
+  it("a Stripe return link minted before the move keeps its query", async () => {
+    // Stripe stored `/organization?org=<id>&connect=return` when the Account
+    // Link was minted. `org` becomes the segment; `connect` rides through to
+    // Overview, which hands it on to Payments.
+    expect(
+      resolve("/organization?org=org-9&connect=return", await rules()),
+    ).toBe("/orgs/org-9?connect=return");
+  });
+
+  it("/organization with no org is the resolver", async () => {
+    expect(resolve("/organization", await rules())).toBe("/");
+  });
+
+  it("/organization/new is the ceremony's new address", async () => {
+    expect(resolve("/organization/new", await rules())).toBe("/orgs/new");
+  });
+
+  it("/places?org=<id> is that organization's list, filter intact", async () => {
+    const all = await rules();
+    expect(resolve("/places?org=org-9", all)).toBe("/orgs/org-9/places");
+    expect(resolve("/places?owned=org&org=org-9", all)).toBe(
+      "/orgs/org-9/places?owned=org",
+    );
+  });
+
+  it("/places/new?org=<id> is that organization's claim ceremony", async () => {
+    expect(resolve("/places/new?org=org-9", await rules())).toBe(
+      "/orgs/org-9/places/new",
+    );
+  });
+
+  it("the no-org list and claim forms are the resolver", async () => {
+    const all = await rules();
+    expect(resolve("/places", all)).toBe("/");
+    expect(resolve("/places/new", all)).toBe("/");
+  });
+
+  it("/pool is the resolver too — the list lives under its organization", async () => {
+    expect(resolve("/pool", await rules())).toBe("/");
+  });
+
+  it("a place route is NOT caught by the list's forward", async () => {
+    // `/places` and `/places/new` are exact sources; `/places/<id>/…` is the
+    // live place console and must fall through to it.
+    const all = await rules();
+    expect(resolve("/places/abc", all)).toBeNull();
+    expect(resolve("/places/abc/profile", all)).toBeNull();
+  });
+
+  it("the has-rules sit ABOVE their bare twins — first match wins", async () => {
+    const all = await rules();
+    for (const source of ["/organization", "/places", "/places/new"]) {
+      const withHas = all.findIndex((r) => r.source === source && r.has);
+      const bare = all.findIndex((r) => r.source === source && !r.has);
+      expect(withHas).toBeGreaterThan(-1);
+      expect(bare).toBeGreaterThan(-1);
+      expect(withHas).toBeLessThan(bare);
+    }
+  });
+});
+
+describe("every redirect is permanent, and forwards somewhere this repo serves", () => {
+  it("permanent — these moves are not coming back", async () => {
     for (const rule of await rules()) expect(rule.permanent).toBe(true);
   });
 
@@ -99,6 +209,8 @@ describe("the legacy console's URLs all still resolve", () => {
     for (const rule of await rules()) {
       expect(rule.destination.startsWith("/place/")).toBe(false);
       expect(rule.destination).not.toBe("/settings");
+      expect(rule.destination).not.toBe("/places");
+      expect(rule.destination.startsWith("/organization")).toBe(false);
     }
   });
 });

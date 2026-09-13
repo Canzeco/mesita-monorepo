@@ -34,7 +34,7 @@ export default async function SignInPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/places");
+  if (user) redirect("/");
 
   const nextRaw = typeof sp.next === "string" ? sp.next : null;
   const next =

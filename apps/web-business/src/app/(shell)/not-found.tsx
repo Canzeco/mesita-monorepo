@@ -5,8 +5,8 @@ export default function ShellNotFound() {
   return (
     <PageErrorState
       heading="Not found"
-      message="That place or page doesn't exist in this organization. Switch organizations from the switcher at the top of the menu if you were looking at the other one."
-      retryHref={SHELL_ROUTES.organization}
+      message="That organization, place or page doesn't exist for you. Switch organizations from the Organization box in the menu if you were looking at the other one."
+      retryHref={SHELL_ROUTES.root}
     />
   );
 }

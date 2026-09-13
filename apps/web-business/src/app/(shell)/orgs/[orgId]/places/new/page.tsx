@@ -1,66 +1,35 @@
-// Claim a place — the ceremony (MESITA-1800). The collection is never
-// a create form: businesses do not mint places (MESITA-1664). This page
-// is the catalogue's unclaimed half, with Claim on the row.
+// Claim a place — the ceremony (MESITA-1800), under its organization
+// (MESITA-1807). The collection is never a create form: businesses do not
+// mint places (MESITA-1664). This page is the catalogue's unclaimed half,
+// with Claim on the row.
 import { Store } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { PlaceStatesTable } from "@/components/console/PlaceStatesTable";
-import { NoOrganization } from "@/components/console/NoOrganization";
-import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiListConsolePlaces,
-  apiListOrganizations,
   type ConsolePlace,
 } from "@/lib/api/organizations";
-import { canClaim, resolveActiveOrg } from "@/lib/active-organization";
-import { SHELL_ROUTES, placeHref, withOrg } from "@/lib/console-routes";
+import { canClaim } from "@/lib/active-organization";
+import { orgPlacesHref, orgPlacesNewHref, placeHref } from "@/lib/console-routes";
+import { requireOrg } from "@/lib/org-scope";
 import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewPlacePage({
-  searchParams,
+export default async function ClaimPlacePage({
+  params,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  params: Promise<{ orgId: string }>;
 }) {
-  const sp = await searchParams;
+  const { orgId } = await params;
   const supabase = await createServerSupabase();
-  const user = await getServerUser();
-  if (!user) redirect("/signin?next=/places/new");
-
-  let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
-  let orgsError = false;
-  try {
-    orgs = await apiListOrganizations(supabase);
-  } catch (e) {
-    orgsError = true;
-    console.error("[places/new] business-web-list-organizations:", e);
-  }
-  const org = resolveActiveOrg(orgs, sp.org);
-  if (orgsError || !org) {
-    return (
-      <>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Claim a place
-        </h1>
-        {orgsError ? (
-          <PageErrorState
-            heading="Couldn't load your organizations"
-            message="The console could not read which organizations you belong to. Reload to try again."
-            retryHref={SHELL_ROUTES.placesNew}
-          />
-        ) : (
-          <NoOrganization />
-        )}
-      </>
-    );
-  }
-
-  const cancelHref = withOrg(SHELL_ROUTES.places, org.id);
+  const org = await requireOrg(supabase, orgId);
+  const cancelHref = orgPlacesHref(org.id);
 
   let places: ConsolePlace[] = [];
   let error: string | null = null;
@@ -89,7 +58,7 @@ export default async function NewPlacePage({
         <PageErrorState
           heading="Couldn't load places"
           message={error}
-          retryHref={withOrg(SHELL_ROUTES.placesNew, org.id)}
+          retryHref={orgPlacesNewHref(org.id)}
         />
       ) : claimable.length === 0 ? (
         <EmptyState
@@ -113,13 +82,12 @@ export default async function NewPlacePage({
       ) : (
         <PlaceStatesTable
           places={claimable}
-          organizationId={org.id}
           actionsByPlaceId={Object.fromEntries(
             claimable.map((place) => [
               place.id,
               <span key={place.id} className="inline-flex items-center gap-2">
                 <Link
-                  href={withOrg(placeHref(place.id), org.id)}
+                  href={placeHref(place.id)}
                   className={GHOST_PILL_BUTTON_CLASS}
                 >
                   Open

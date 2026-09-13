@@ -28,7 +28,7 @@ function codeOnly(src: string): string {
     .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "");
 }
 
-const PLACES_PAGE = codeOnly(read("app/(shell)/places/page.tsx"));
+const PLACES_PAGE = codeOnly(read("app/(shell)/orgs/[orgId]/places/page.tsx"));
 
 describe("the add door is shut", () => {
   it("the places screen links nowhere near /add", () => {
@@ -50,7 +50,7 @@ describe("the add door is shut", () => {
       PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
     expect(emptyState).not.toBe("");
     for (const href of emptyState.match(/href=\{[^}]*\}/g) ?? []) {
-      expect(href).toMatch(/placesHref\(/);
+      expect(href).toMatch(/orgPlacesHref\(/);
     }
     // No create verb anywhere on the screen, in any prop.
     // No create verb anywhere on the screen, in any prop. Claim lives on
@@ -92,15 +92,9 @@ describe("the add door is shut", () => {
     expect(PLACES_PAGE).not.toMatch(/apiListConsolePlaces\([\s\S]*?query:/);
   });
 
-  it("NoOrganization sends you to the ceremony, not the collection", () => {
-    const src = read("components/console/NoOrganization.tsx");
-    expect(src).toContain("SHELL_ROUTES.organizationNew");
-    expect(src).not.toContain("SHELL_ROUTES.organization}");
-  });
-
   it("/add renders a redirect and reads no data", () => {
     const page = read("app/add/page.tsx");
-    expect(page).toContain('redirect("/places")');
+    expect(page).toContain('redirect("/")');
     // A redirect that first awaits a session or an EF is a page pretending to
     // be a route. It would reintroduce the load it exists to remove.
     const code = codeOnly(page);
@@ -115,8 +109,8 @@ describe("the add door is shut", () => {
     expect(PROTECTED_PREFIXES).toContain("/places");
   });
 
-  it("/places/new is claim-from-catalogue, never mint", () => {
-    const page = codeOnly(read("app/(shell)/places/new/page.tsx"));
+  it("the claim ceremony is claim-from-catalogue, never mint", () => {
+    const page = codeOnly(read("app/(shell)/orgs/[orgId]/places/new/page.tsx"));
     expect(page).not.toContain('"/add"');
     expect(page).not.toMatch(/Add a place|Create place|New place/i);
     expect(page).toContain("Claim a place");

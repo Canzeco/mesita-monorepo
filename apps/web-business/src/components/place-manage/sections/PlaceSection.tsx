@@ -25,7 +25,6 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { PlaceSuperCategoryField } from "../PlaceSuperCategoryField";
-import { ReviewsSummary } from "./ReviewsSummary";
 import {
   OpenLink,
   PhoneField,
@@ -784,7 +783,6 @@ export function PlaceSection({
       {/* Reviews closes the masonry (Pato live 2026-09-01): every card above
           is something an operator sets, this one is the only thing the world
           says back. Read-only, so it sits after the editable set. */}
-      <ReviewsSummary place={place} />
 
       {metaFor !== null && (
         <MediaMetaDialog

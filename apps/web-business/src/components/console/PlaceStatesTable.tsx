@@ -58,7 +58,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { CountCell, StateCell } from "@/components/console/StateCell";
-import { placeHref, withOrg } from "@/lib/console-routes";
+import { placeHref } from "@/lib/console-routes";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import { generalHeaderFacts } from "@/components/place-manage/place-header-state";
 import { intakeFunctionRows } from "@/components/place-manage/sections/state-enrichment";
@@ -255,11 +255,9 @@ function factsFor(place: ConsolePlace) {
 
 export function PlaceStatesTable({
   places,
-  organizationId,
   actionsByPlaceId,
 }: {
   places: ConsolePlace[];
-  organizationId: string;
   /** The action cell, INJECTED as already-rendered nodes rather than a
    *  function — this component is now a Client Component (the intake toggle
    *  needs `useState`), and a function prop cannot cross the server/client
@@ -418,7 +416,6 @@ export function PlaceStatesTable({
               <PlaceStatesRow
                 key={place.id}
                 place={place}
-                organizationId={organizationId}
                 showActions={showActions}
                 showIntake={showIntake}
                 action={actionsByPlaceId?.[place.id]}
@@ -433,18 +430,16 @@ export function PlaceStatesTable({
 
 function PlaceStatesRow({
   place,
-  organizationId,
   showActions,
   showIntake,
   action,
 }: {
   place: ConsolePlace;
-  organizationId: string;
   showActions: boolean;
   showIntake: boolean;
   action: React.ReactNode;
 }) {
-  const href = withOrg(placeHref(place.id), organizationId);
+  const href = placeHref(place.id);
   const facts = factsFor(place);
   const intakeRows = showIntake
     ? intakeFunctionRows(

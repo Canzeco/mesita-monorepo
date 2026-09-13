@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { type ReactNode } from "react";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, SlidersHorizontal } from "lucide-react";
@@ -10,7 +9,8 @@ import {
   strategyForPlace,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { useOpenPlace } from "@/components/console/OpenPlace";
+import { SHELL_ROUTES, orgHref as orgPageHref } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
   setPlaceRails,
@@ -66,8 +66,13 @@ export function PromosSection({
 }) {
   const [v, setV] = useState(place);
   const { dirtyLabels } = usePlaceContext();
-  const orgId = useSearchParams().get("org");
-  const orgHref = withOrg(SHELL_ROUTES.organization, orgId);
+  // "Organization for Stripe" is a door to the holder's Payments page. The
+  // holder is published by the place layout (MESITA-1807); before it lands,
+  // the root resolver answers for it.
+  const holderOrgId = useOpenPlace()?.holderOrgId ?? null;
+  const orgHref = holderOrgId
+    ? orgPageHref(holderOrgId, "payments")
+    : SHELL_ROUTES.root;
 
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
