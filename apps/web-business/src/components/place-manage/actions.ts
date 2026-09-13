@@ -894,6 +894,45 @@ export async function getPlaceActivity(
   };
 }
 
+export type MesitaPlaceReview = {
+  id: string;
+  food: number;
+  service: number;
+  ambience: number;
+  value: number | null;
+  overall: number | null;
+  comments: string | null;
+  createdAt: string;
+  ticketId: string;
+  guestName: string;
+  /** check.mesita.ai link — editor/owner only; viewers get null from the EF. */
+  visitUrl: string | null;
+};
+
+export async function getPlaceReviews(
+  placeId: string,
+  opts?: { limit?: number; offset?: number },
+): Promise<
+  Result<{ reviews: MesitaPlaceReview[]; total: number }>
+> {
+  const r = await efInvoke<{
+    reviews?: MesitaPlaceReview[];
+    total?: number;
+  }>("business-web-list-reviews", {
+    placeId,
+    limit: opts?.limit,
+    offset: opts?.offset,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      reviews: r.data.reviews ?? [],
+      total: r.data.total ?? 0,
+    },
+  };
+}
+
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
 // Same catalog Atlas Config reads, through the operator door
 // (`business-web-get-atlas-fields` → public.place_tags).
