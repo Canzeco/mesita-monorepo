@@ -46,18 +46,12 @@ Deno.serve(async (req) => {
 
   const firstName = clean(body.first_name, 60);
   const lastName = clean(body.last_name, 60);
-  // Derive full_name from first + last when either was sent. Falls
-  // back to body.full_name for legacy clients that still pass it.
-  const fullName =
-    body.first_name !== undefined || body.last_name !== undefined
-      ? [firstName, lastName].filter(Boolean).join(" ") || null
-      : clean(body.full_name, 120);
   const country = clean(body.country, 64);
   const phone = clean(body.phone, 32);
   const sexRaw = clean(body.sex, 16);
   const birthdayRaw = clean(body.birthday, 32);
 
-  // Name is written as a pair — never half of one (see parseName).
+  // Either half may be written alone, but never blanked (see parseName).
   const nameRes = parseName(body, firstName, lastName);
   if (!nameRes.ok) return nameRes.response;
 
@@ -77,9 +71,11 @@ Deno.serve(async (req) => {
 
   // Ensure a consumer row exists. If not, create it with a generated code so
   // the validator can scan the QR immediately after onboarding.
+  // first_name/last_name ride along because full_name is derived from BOTH
+  // and a caller may send only one of them (MESITA-1806).
   const existing = await admin
     .from("consumers")
-    .select("id, code, deleted_at")
+    .select("id, code, deleted_at, first_name, last_name")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
@@ -103,6 +99,21 @@ Deno.serve(async (req) => {
       }
     }
   }
+
+  // full_name is the MERGED join, not the join of what this request carried:
+  // onboarding sends first_name alone and the reservation sheet sends
+  // last_name alone, so joining only the body would blank the other half on
+  // the exact write that is supposed to complete the booking name. An absent
+  // half falls back to what is already stored (null on a row created above).
+  // Legacy clients that still send full_name keep their own value.
+  const storedFirst = (existing.data?.first_name as string | null) ?? null;
+  const storedLast = (existing.data?.last_name as string | null) ?? null;
+  const mergedFirst = body.first_name !== undefined ? firstName : storedFirst;
+  const mergedLast = body.last_name !== undefined ? lastName : storedLast;
+  const fullName =
+    body.first_name !== undefined || body.last_name !== undefined
+      ? [mergedFirst, mergedLast].filter(Boolean).join(" ") || null
+      : clean(body.full_name, 120);
 
   const built = buildProfilePatch(body, {
     firstName,

@@ -14,7 +14,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile, type ConsumerClass } from "@/lib/api/profile";
 import { ClassProvider } from "@/lib/class-context";
 import { DiscountQuotesProvider } from "@/lib/discount-quotes";
-import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
+import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
 
@@ -91,7 +91,10 @@ export default async function ConsumerShellLayout({
   try {
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
-    needsOnboarding = !isConsumerOnboarded(profile);
+    // The SIGNUP gate only — first name + birthday (MESITA-1806). A missing
+    // last name no longer ejects anyone to /onboard; the reservation sheet
+    // asks for it at the one moment it is load-bearing.
+    needsOnboarding = !consumerCanBrowse(profile);
     consumerClass = c;
     instagramHandle = profile.instagram_handle?.trim() || null;
     // Identity for the whole shell (MESITA-1029 S1): THE TICKET's pass bar

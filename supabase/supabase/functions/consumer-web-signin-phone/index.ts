@@ -133,13 +133,17 @@ Deno.serve(async (req) => {
     ok: true,
     role,
     consumer: consumerRow,
-    // Routing hint for post-signin. Same predicate as the client guards
-    // (web lib/consumer-onboarding.ts, mobile lib/api/auth.ts isOnboarded):
-    // first + last name (reservations are booked under the guest's full
-    // name), birthday (age gate) and sex. It used to check only the name
-    // halves, so a legacy row without a birthday was routed straight to the
-    // app and then bounced back to /onboard by the (shell) gate.
-    onboarded: !!consumerRow?.first_name && !!consumerRow?.last_name &&
-      !!consumerRow?.birthday && !!consumerRow?.sex,
+    // Routing hint for post-signin. This is the BROWSE gate and nothing more
+    // — the same predicate the client guards use (web
+    // lib/consumer-onboarding.ts `consumerCanBrowse`, mobile lib/api/auth.ts
+    // `isOnboarded`): first name + birthday (MESITA-1806).
+    //
+    // It must stay in lock-step with the (shell) gate, in BOTH directions.
+    // Too loose and a row is routed into the app and bounced straight back to
+    // /onboard; too strict — which is what checking last_name and sex here
+    // would now be — and a guest who is perfectly able to browse is sent to
+    // re-enter data nothing is waiting on. Last name is the RESERVATION's
+    // gate, enforced by consumer-web-create-reservation.
+    onboarded: !!consumerRow?.first_name && !!consumerRow?.birthday,
   });
 });

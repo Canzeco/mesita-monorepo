@@ -25,6 +25,9 @@ import {
   type ReservationSlot,
   type WeeklyHours,
 } from '@/lib/reservation-slots';
+import { apiUpdateConsumerProfile, needsLastName as profileNeedsLastName } from '@/lib/api/auth';
+import { EFError } from '@/lib/ef';
+import { useAuth } from '@/providers/auth';
 import { errMsg, guestNoun } from '@/lib/utils';
 import {
   isSlotPast,
@@ -147,6 +150,18 @@ export function ReservationSheet({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  // THE LAST NAME (MESITA-1806), mirroring web's ReservationSheet. Onboarding
+  // stopped asking — four fields in front of a stranger who hasn't seen a
+  // place yet is how you lose them — so this sheet asks, where the guest can
+  // see why: the place books the table under their full name. The profile is
+  // already in the auth provider, so there is nothing extra to fetch.
+  const { profile, refreshProfile } = useAuth();
+  const [lastName, setLastName] = useState('');
+  // Latched true by the EF's own 409 as well, for a client cached from before
+  // the field existed.
+  const [forceLastName, setForceLastName] = useState(false);
+  const needsLastName = forceLastName || profileNeedsLastName(profile);
+
   // Duplicate guard: the caller's live booking at THIS place, if any.
   const [checking, setChecking] = useState(false);
   const [existing, setExisting] = useState<EFReservationRow | null>(null);
@@ -227,9 +242,24 @@ export function ReservationSheet({
 
   async function submit() {
     if (!date || !time || submitting || checking || awaitingChoice) return;
+    // Rescheduling moves a table already booked under a name, so it never has
+    // to ask for one.
+    const trimmedLastName = lastName.trim();
+    if (needsLastName && !rescheduling && !trimmedLastName) {
+      setError("Add your last name — it's the name your table is under.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
+      // Persist the name BEFORE the booking: the EF reads consumers.last_name
+      // to build what it tells the place, so a name sent alongside would land
+      // too late to reach the call.
+      if (needsLastName && !rescheduling && trimmedLastName) {
+        await apiUpdateConsumerProfile({ last_name: trimmedLastName });
+        await refreshProfile();
+        setForceLastName(false);
+      }
       const reservedAt = `${date}T${time}:00${MX_OFFSET}`;
       if (rescheduling) {
         await apiUpdateReservation({
@@ -249,6 +279,15 @@ export function ReservationSheet({
       }
       setDone(true);
     } catch (e) {
+      // The server runs the SAME gate and it is the one that counts: a client
+      // cached from before this shipped has no field to type into. Surfacing
+      // it on the 409 turns a dead end into the same one-field ask.
+      if (e instanceof EFError && e.code === 'last_name_required') {
+        setForceLastName(true);
+        setError("Add your last name — it's the name your table is under.");
+        setSubmitting(false);
+        return;
+      }
       setError(errMsg(e, "Couldn't request the reservation."));
     } finally {
       setSubmitting(false);
@@ -441,6 +480,22 @@ export function ReservationSheet({
           </View>
 
           {/* Notes */}
+          {needsLastName && !rescheduling ? (
+            <View>
+              <TextField
+                label="Last name"
+                autoComplete="family-name"
+                autoCapitalize="words"
+                maxLength={60}
+                value={lastName}
+                onChangeText={setLastName}
+              />
+              <Text className="mt-2 text-[11px] text-muted-foreground">
+                This is the name your table is booked under.
+              </Text>
+            </View>
+          ) : null}
+
           <TextField
             label="Notes for the place (optional)"
             value={notes}

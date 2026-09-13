@@ -6,7 +6,7 @@ import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { OnboardForm, type OnboardInitialValues } from "./OnboardForm";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
+import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { safeNextPath, withNext } from "@/lib/auth-redirect";
 import { errMsg } from "@/lib/utils";
 
@@ -14,9 +14,14 @@ import { errMsg } from "@/lib/utils";
 // signed-out users from /profile and friends, but onboard sits
 // between sign-up and the actual app, so it has its own checks:
 //
-//   - signed out          → / (with next=/onboard)
-//   - already onboarded   → /home/swipe (don't re-collect data)
-//   - signed in, no name  → render the form
+//   - signed out           → / (with next=/onboard)
+//   - already past the gate → /discover (don't re-collect data)
+//   - signed in, no name    → render the form
+//
+// The gate is `consumerCanBrowse`: FIRST NAME + BIRTHDAY, nothing else
+// (MESITA-1806). Last name is asked by the reservation sheet, sex on
+// /me/profile — neither belongs in front of a stranger who hasn't seen a
+// place yet.
 export const dynamic = "force-dynamic";
 
 export default async function ConsumerOnboardPage({
@@ -34,13 +39,14 @@ export default async function ConsumerOnboardPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(withNext("/", withNext(CONSUMER_ROUTES.onboard, nextTarget)));
 
-  // Completeness predicate is `isConsumerOnboarded` — the same one the
-  // (shell) layout gates on. If we only checked full_name here, a
-  // partially-onboarded user would loop: onboard → home/swipe (full_name
-  // truthy) → shell sees missing birthday/sex → bounces back to onboard.
-  // Consumers onboarded before the last-name requirement land back here
-  // once (full_name is first-name-only for them, and reservations need
-  // both); `initial` prefills what they already gave us.
+  // Completeness predicate is `consumerCanBrowse` — the SAME one the (shell)
+  // layout gates on. Two copies of "complete enough" is how a user ends up
+  // ping-ponging: onboard sends them on, the shell disagrees and sends them
+  // back. One predicate, both call sites.
+  //
+  // Legacy rows are fine here: a first-name-only profile passes this gate and
+  // browses, and hits the last-name field once, at its next booking.
+  // `initial` prefills whatever they already gave us.
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the try/catch —
   // otherwise the catch swallows the redirect and logs it as an error (and
   // the already-onboarded user gets stuck on the form).
@@ -48,13 +54,11 @@ export default async function ConsumerOnboardPage({
   let initial: OnboardInitialValues | undefined;
   try {
     const { consumer: profile } = await apiFetchConsumerProfile(supabase);
-    onboarded = isConsumerOnboarded(profile);
+    onboarded = consumerCanBrowse(profile);
     initial = {
       // Legacy rows predate the first/last split: full_name holds whatever
       // the old single field captured (usually just the first name).
       firstName: profile.first_name ?? profile.full_name ?? "",
-      lastName: profile.last_name ?? "",
-      sex: profile.sex ?? "",
       birthday: profile.birthday ?? "",
     };
   } catch (err) {
@@ -100,7 +104,7 @@ export default async function ConsumerOnboardPage({
             Tell us about you
           </h1>
           <p className="text-muted-foreground mt-1.5 text-sm">
-            A few details to personalize Mesita.
+            Two things, then you&apos;re in.
           </p>
         </div>
 

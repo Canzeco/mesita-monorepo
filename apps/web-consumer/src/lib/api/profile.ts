@@ -119,15 +119,17 @@ export async function apiFetchConsumerMetrics(
 }
 
 type ConsumerOnboardingInput = {
-  // First + last name are both required everywhere the consumer writes their
-  // name: the EF joins them into full_name, which is the name the reservation
-  // agent books the table under. The EF rejects one without the other.
-  first_name: string;
-  last_name: string;
+  // Each half of the name is written INDEPENDENTLY (MESITA-1806): onboarding
+  // sends first_name, the reservation sheet sends last_name, and the
+  // Edit-profile sheet sends both. The EF merges an absent half from the
+  // stored row before rebuilding full_name — what it still refuses is a half
+  // sent BLANK, which would leave a consumer no place can be told to expect.
+  first_name?: string;
+  last_name?: string;
   // Male/Female only (MESITA-727). Optional so callers that don't edit sex
   // (e.g. the Edit-profile sheet) omit it — the EF patches only present keys.
   sex?: "male" | "female";
-  birthday: string; // YYYY-MM-DD
+  birthday?: string; // YYYY-MM-DD
   // Optional — phone is the auth identity and lives on auth.user.phone.
   // Set at sign-in; consumer-update-profile mirrors it into consumers.phone
   // on first call. Not editable from the profile sheet.

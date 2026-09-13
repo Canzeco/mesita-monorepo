@@ -76,28 +76,40 @@ export type ParseNameResult =
   | { ok: true }
   | { ok: false; response: Response };
 
-// A consumer's name is written as a pair or not at all. Reservations are
-// placed with the place under the guest's full name (host systems key on
-// "last name + party size"), and full_name here is derived from first +
-// last — so a write that carries one half without the other would leave a
-// consumer who can't be booked. Patches that don't touch the name at all
-// (visibility flags, birthday-only, legacy full_name) pass straight through.
+// Each half of the name is written INDEPENDENTLY (MESITA-1806). It used to be
+// all-or-nothing, because full_name is derived from first + last and a write
+// carrying one half would have blanked the other — but onboarding now collects
+// only the first name and the reservation sheet sends only the last, so the
+// pair rule would reject both of the two writes that matter. The derivation is
+// safe because index.ts merges each absent half from the stored row before
+// rebuilding full_name.
+//
+// What survives is the rule that actually protects the booking name: a half
+// that IS sent must carry a real value. Clearing your first name to "" would
+// leave a consumer no place can be told to expect, so an explicit blank is
+// still a 400 — as distinct from simply not sending that key, which patches
+// nothing. Patches that don't touch the name at all (visibility flags,
+// birthday-only, legacy full_name) pass straight through.
 export function parseName(
   body: UpdateProfileBody,
   firstName: string | null,
   lastName: string | null,
 ): ParseNameResult {
-  const touchesName =
-    body.first_name !== undefined || body.last_name !== undefined;
-  if (!touchesName) return { ok: true };
-  if (!firstName || !lastName) {
-    return {
-      ok: false,
-      response: json(
-        { ok: false, error: "first_name and last_name are both required" },
-        400,
-      ),
-    };
+  const halves = [
+    ["first_name", body.first_name, firstName],
+    ["last_name", body.last_name, lastName],
+  ] as const;
+  for (const [key, sent, cleaned] of halves) {
+    if (sent === undefined) continue;
+    if (!cleaned) {
+      return {
+        ok: false,
+        response: json(
+          { ok: false, error: `${key} can't be blank` },
+          400,
+        ),
+      };
+    }
   }
   return { ok: true };
 }
@@ -188,8 +200,9 @@ export type ProfilePatchResult =
   | { ok: false; response: Response };
 
 // Build a patch with only the fields the caller actually sent. Avoids
-// null-clobbering values they didn't intend to touch. When the client
-// sends the name pair, full_name is also updated to the joined version so
+// null-clobbering values they didn't intend to touch. When the client sends
+// EITHER half of the name, full_name is also updated — `fields.fullName` is
+// the MERGED join (index.ts fills the absent half from the stored row), so
 // downstream readers (reservation agent, staff lookup) keep working.
 export function buildProfilePatch(
   body: UpdateProfileBody,

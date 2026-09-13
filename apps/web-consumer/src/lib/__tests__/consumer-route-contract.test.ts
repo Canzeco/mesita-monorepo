@@ -17,7 +17,11 @@ import {
   safeNextPath,
   withNext,
 } from "@/lib/auth-redirect";
-import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
+import {
+  consumerCanBook,
+  consumerCanBrowse,
+  consumerNeedsLastName,
+} from "@/lib/consumer-onboarding";
 import nextConfig from "../../../next.config";
 
 // Routing is contract, not implementation detail: five tabs, flat /me,
@@ -592,7 +596,7 @@ describe("?next= threading (safeNextPath / withNext)", () => {
   });
 });
 
-describe("isConsumerOnboarded (one predicate, three call sites)", () => {
+describe("consumer onboarding gates (two predicates, four call sites)", () => {
   const complete = {
     first_name: "Ana",
     last_name: "Ruiz",
@@ -600,16 +604,48 @@ describe("isConsumerOnboarded (one predicate, three call sites)", () => {
     sex: "female",
   };
 
-  it("requires all four fields", () => {
-    expect(isConsumerOnboarded(complete)).toBe(true);
-    for (const key of Object.keys(complete) as (keyof typeof complete)[]) {
-      expect(isConsumerOnboarded({ ...complete, [key]: null })).toBe(false);
-      expect(isConsumerOnboarded({ ...complete, [key]: "" })).toBe(false);
+  // The SIGNUP gate. Mirrored by consumer-web-signin-phone's `onboarded`
+  // routing hint — if these two disagree, a guest ping-pongs between the app
+  // and /onboard.
+  it("browse needs the first name and the birthday, and nothing else", () => {
+    expect(consumerCanBrowse(complete)).toBe(true);
+    for (const key of ["first_name", "birthday"] as const) {
+      expect(consumerCanBrowse({ ...complete, [key]: null })).toBe(false);
+      expect(consumerCanBrowse({ ...complete, [key]: "" })).toBe(false);
     }
+    // The two fields that LEFT the gate (MESITA-1806). A profile missing
+    // either still browses: last name is the reservation's gate, and sex is
+    // segmentation nothing downstream reads to work.
+    expect(consumerCanBrowse({ ...complete, last_name: null })).toBe(true);
+    expect(consumerCanBrowse({ ...complete, sex: null })).toBe(true);
+    expect(
+      consumerCanBrowse({ first_name: "Ana", birthday: "1995-04-02" }),
+    ).toBe(true);
   });
 
-  it("treats a missing profile as not onboarded", () => {
-    expect(isConsumerOnboarded(null)).toBe(false);
-    expect(isConsumerOnboarded(undefined)).toBe(false);
+  // The BOOKING gate. Mirrored by consumer-web-create-reservation, which is
+  // the half that actually enforces it.
+  it("booking needs the last name on top of browsing", () => {
+    expect(consumerCanBook(complete)).toBe(true);
+    expect(consumerCanBook({ ...complete, last_name: null })).toBe(false);
+    expect(consumerCanBook({ ...complete, last_name: "" })).toBe(false);
+    // Still just segmentation — never a reason to refuse a table.
+    expect(consumerCanBook({ ...complete, sex: null })).toBe(true);
+    // Booking is strictly narrower than browsing.
+    expect(consumerCanBook({ ...complete, first_name: null })).toBe(false);
+  });
+
+  // What ReservationSheet renders its one extra field from.
+  it("flags the last name as the only field a booking surface asks for", () => {
+    expect(consumerNeedsLastName(complete)).toBe(false);
+    expect(consumerNeedsLastName({ ...complete, last_name: null })).toBe(true);
+    expect(consumerNeedsLastName({ ...complete, last_name: "" })).toBe(true);
+  });
+
+  it("treats a missing profile as past neither gate", () => {
+    expect(consumerCanBrowse(null)).toBe(false);
+    expect(consumerCanBrowse(undefined)).toBe(false);
+    expect(consumerCanBook(null)).toBe(false);
+    expect(consumerCanBook(undefined)).toBe(false);
   });
 });
