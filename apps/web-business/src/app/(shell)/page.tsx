@@ -14,8 +14,8 @@
 // THE QUERY STRING TRAVELS — and `?connect=` short-circuits. Stripe stores
 // an Account Link's return_url when the link is minted, so a link created
 // before MESITA-1727 shipped still points at `/?org=<id>&connect=return`.
-// A place Profile has no return notice; Payments does. So a `?connect=`
-// arrival goes to that organization's Payments with the rest of the query,
+// A place Profile has no return notice; the organization page does. So a
+// `?connect=` arrival goes to that organization with the rest of the query,
 // before any place is considered. `org` is consumed here and dropped from
 // what is forwarded; everything else rides along untouched.
 import { cookies } from "next/headers";
@@ -61,7 +61,7 @@ export default async function ConsoleRootPage({
     const org =
       findOrg(organizations, requested) ??
       preferredOrg(organizations, rememberedOrgId);
-    if (org) redirect(withQuery(orgHref(org.id, "payments"), rest));
+    if (org) redirect(withQuery(orgHref(org.id), rest));
   }
 
   const landing = resolveLanding({

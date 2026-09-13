@@ -48,7 +48,10 @@ export function crumbsFor(
   if (pathname === SHELL_ROUTES.orgNew) return ["Create organization"];
   const page = orgPageFromPathname(pathname);
   if (page) {
-    const trail = [names.orgName ?? "Organization", ORG_PAGE_LABEL[page]];
+    // The organization's own page is the organization: no second crumb
+    // restating it (MESITA-1810). Its list, and the claim step under the list.
+    const trail = [names.orgName ?? "Organization"];
+    if (page !== "overview") trail.push(ORG_PAGE_LABEL[page]);
     if (/\/places\/new\/?$/.test(pathname)) trail.push("Claim");
     return trail;
   }

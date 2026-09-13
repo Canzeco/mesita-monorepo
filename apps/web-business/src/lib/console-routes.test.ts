@@ -55,13 +55,20 @@ describe("SHELL_ROUTES are the addresses that need no id", () => {
 describe("the organization's pages (MESITA-1807)", () => {
   const ID: Record<string, string> = { "org-x": "[orgId]" };
 
-  it("Overview is the bare /orgs/<id>; the subpages hang beneath it", () => {
+  it("the organization is the bare /orgs/<id>; the list hangs beneath it", () => {
+    // ONE page (MESITA-1810): Stripe, Partner, Members and Places are boxes
+    // on it, not routes. The old subpages must not come back.
+    expect(ORG_PAGES).toEqual(["overview", "places"]);
+    expect(ORG_PAGE_LABEL.overview).toBe("Organization");
     expect(orgHref("org-x")).toBe("/orgs/org-x");
     expect(orgHref("org-x", "overview")).toBe("/orgs/org-x");
-    expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
-    expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
     expect(orgPlacesNewHref("org-x")).toBe("/orgs/org-x/places/new");
+    for (const gone of ["payments", "members", "overview"]) {
+      expect(
+        existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", gone, "page.tsx")),
+      ).toBe(false);
+    }
   });
 
   it("every page maps to a route file with its own loading boundary", () => {
@@ -118,18 +125,17 @@ describe("the organization's pages (MESITA-1807)", () => {
 
   it("names the page a pathname is on, and lights Places for the claim step", () => {
     expect(orgPageFromPathname(orgHref("org-x"))).toBe("overview");
-    expect(orgPageFromPathname(orgHref("org-x", "payments"))).toBe("payments");
-    expect(orgPageFromPathname(orgHref("org-x", "members"))).toBe("members");
     expect(orgPageFromPathname(orgHref("org-x", "places"))).toBe("places");
     expect(orgPageFromPathname(orgPlacesNewHref("org-x"))).toBe("places");
     expect(orgPageFromPathname("/orgs/org-x/places/")).toBe("places");
   });
 
-  it("is null off the organization, on the ceremony, and on an unknown segment", () => {
+  it("is null off the organization, on the ceremony, and on a segment that is not a page", () => {
     expect(orgPageFromPathname(SHELL_ROUTES.orgNew)).toBeNull();
     expect(orgPageFromPathname(placeHref("p-1"))).toBeNull();
     expect(orgPageFromPathname("/orgs/org-x/billing")).toBeNull();
-    expect(orgPageFromPathname("/orgs/org-x/payments/extra")).toBeNull();
+    expect(orgPageFromPathname("/orgs/org-x/payments")).toBeNull();
+    expect(orgPageFromPathname("/orgs/org-x/members")).toBeNull();
     expect(orgPageFromPathname("/orgs/org-x/places/p-1")).toBeNull();
   });
 });

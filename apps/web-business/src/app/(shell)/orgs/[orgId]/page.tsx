@@ -1,83 +1,29 @@
-// Overview — the organization's own page (MESITA-1807).
+// The organization's page (MESITA-1807, one page again since MESITA-1810):
+// the name and its state, then the boxes — Stripe Account, Partner, Members,
+// Places, and the three future boxes as Soon strips. Stripe sends the owner
+// back here: the Account Link's return_url is minted against this address,
+// and `/` forwards the links minted against the older ones.
 //
-// The name paints first; where things stand streams in beneath it, because
-// the connect state costs a payment-account read (p50 around a second) and
-// the title should not wait for it. The Soon strips need nothing.
-//
-// `?connect=` is not this page's to answer: Stripe return links minted
-// before MESITA-1807 still point here (and at `/`), and the notice lives on
-// Payments — so a `?connect=` arrival is forwarded there with its query, and
-// only after the organization resolved, so a member removed from their org
-// cannot loop between two redirects.
-import { Suspense } from "react";
+// State is Not connected / Connected: an organization's own state is about
+// money, not about places. Listed and Verified describe one address and live
+// on the place, never here.
 import { redirect } from "next/navigation";
-import { OrgSoon, OrgStanding } from "@/components/console/OrgOverview";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { OrgStateBadge } from "@/components/console/badges";
+import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
+import { OrgScreenSections } from "@/components/console/OrgScreenSections";
+import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import {
   apiGetPaymentAccount,
   apiListOrgMembers,
-  type Organization,
+  type OrgMember,
   type PaymentAccount,
+  type PendingOrgInvite,
 } from "@/lib/api/organizations";
-import { orgHref, withQuery } from "@/lib/console-routes";
 import { requireOrg } from "@/lib/org-scope";
 
 export const dynamic = "force-dynamic";
 
-async function Standing({ org }: { org: Organization }) {
-  const supabase = await createServerSupabase();
-  // Two independent reads, two independent degrades. The account read is the
-  // Stripe sync moment while the webhook endpoint is missing (MESITA-1531);
-  // its failure renders Not connected. The members read NEVER degrades to a
-  // count of zero — zero members is impossible (the creator is owner), so a
-  // zero would be a lie; the row says it could not read them.
-  const [accountRes, membersRes] = await Promise.allSettled([
-    apiGetPaymentAccount(supabase, org.id),
-    apiListOrgMembers(supabase, org.id),
-  ]);
-  let account: PaymentAccount | null = null;
-  if (accountRes.status === "fulfilled") {
-    account = accountRes.value.account;
-  } else {
-    console.error(
-      "[orgs/overview] business-web-get-payment-account:",
-      accountRes.reason,
-    );
-  }
-  let memberCount = 0;
-  let pendingCount = 0;
-  let membersError: string | null = null;
-  if (membersRes.status === "fulfilled") {
-    memberCount = membersRes.value.members.length;
-    pendingCount = membersRes.value.pendingInvites.length;
-  } else {
-    membersError = "Couldn't load members.";
-    console.error(
-      "[orgs/overview] business-web-list-org-members:",
-      membersRes.reason,
-    );
-  }
-  return (
-    <OrgStanding
-      org={org}
-      account={account}
-      memberCount={memberCount}
-      pendingCount={pendingCount}
-      membersError={membersError}
-    />
-  );
-}
-
-function StandingSkeleton() {
-  return (
-    <div
-      aria-hidden="true"
-      className="bg-muted h-[196px] animate-pulse rounded-2xl motion-reduce:animate-none"
-    />
-  );
-}
-
-export default async function OrganizationOverviewPage({
+export default async function OrganizationPage({
   params,
   searchParams,
 }: {
@@ -86,20 +32,69 @@ export default async function OrganizationOverviewPage({
 }) {
   const [{ orgId }, sp] = await Promise.all([params, searchParams]);
   const supabase = await createServerSupabase();
+  // getServerUser, not supabase.auth.getUser: the shell layout above already
+  // validated this session, and cache() hands back that answer.
+  const user = await getServerUser();
+  if (!user) redirect("/signin");
   const org = await requireOrg(supabase, orgId);
-  if (typeof sp.connect === "string") {
-    redirect(withQuery(orgHref(org.id, "payments"), sp));
+
+  // Two independent reads, two independent degrades. The account read is the
+  // Stripe sync moment while the webhook endpoint is missing (MESITA-1531);
+  // its failure renders "none" and the card's actions report their own
+  // errors. The members read NEVER degrades to an empty list — zero members
+  // is impossible (the creator is owner), so an empty render would be a lie.
+  let account: PaymentAccount | null = null;
+  let orphaned = false;
+  let members: OrgMember[] = [];
+  let pendingInvites: PendingOrgInvite[] = [];
+  let membersError: string | null = null;
+  const [accountRes, membersRes] = await Promise.allSettled([
+    apiGetPaymentAccount(supabase, org.id),
+    apiListOrgMembers(supabase, org.id),
+  ]);
+  if (accountRes.status === "fulfilled") {
+    ({ account, orphaned } = accountRes.value);
+  } else {
+    console.error(
+      "[organization] business-web-get-payment-account:",
+      accountRes.reason,
+    );
   }
+  if (membersRes.status === "fulfilled") {
+    ({ members, pendingInvites } = membersRes.value);
+  } else {
+    membersError = "Couldn't load members.";
+    console.error(
+      "[organization] business-web-list-org-members:",
+      membersRes.reason,
+    );
+  }
+
+  const connect = typeof sp.connect === "string" ? sp.connect : undefined;
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">
-        {org.name}
-      </h1>
-      <Suspense fallback={<StandingSkeleton />}>
-        <Standing org={org} />
-      </Suspense>
-      <OrgSoon />
+      <div className="flex items-center gap-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {org.name}
+        </h1>
+        <OrgStateBadge
+          state={account?.charges_enabled ? "connected" : "not_connected"}
+        />
+      </div>
+
+      {/* Above everything: the answer to "did that work?" comes before the
+          screen it is about (MESITA-1645). */}
+      <ConnectReturnNotice connect={connect} />
+      <OrgScreenSections
+        org={org}
+        myManagerId={user.id}
+        account={account}
+        orphaned={orphaned}
+        members={members}
+        pendingInvites={pendingInvites}
+        membersError={membersError}
+      />
     </>
   );
 }

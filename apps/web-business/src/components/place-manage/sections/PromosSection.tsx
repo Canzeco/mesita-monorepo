@@ -66,13 +66,11 @@ export function PromosSection({
 }) {
   const [v, setV] = useState(place);
   const { dirtyLabels } = usePlaceContext();
-  // "Organization for Stripe" is a door to the holder's Payments page. The
-  // holder is published by the place layout (MESITA-1807); before it lands,
-  // the root resolver answers for it.
+  // "Organization for Stripe" is a door to the holder's organization page,
+  // where the Stripe Account box lives. The holder is published by the place
+  // layout (MESITA-1807); before it lands, the root resolver answers for it.
   const holderOrgId = useOpenPlace()?.holderOrgId ?? null;
-  const orgHref = holderOrgId
-    ? orgPageHref(holderOrgId, "payments")
-    : SHELL_ROUTES.root;
+  const orgHref = holderOrgId ? orgPageHref(holderOrgId) : SHELL_ROUTES.root;
 
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);

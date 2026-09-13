@@ -80,9 +80,7 @@ const hrefs = (html: string) =>
 describe("exactly one pill, on every route", () => {
   const ROUTES: [string, string][] = [
     [SHELL_ROUTES.account, "pato@canzeco.com"],
-    [orgHref("org-a"), "Overview"],
-    [orgHref("org-a", "payments"), "Payments"],
-    [orgHref("org-a", "members"), "Members"],
+    [orgHref("org-a"), "Organization"],
     [orgHref("org-a", "places"), "Places"],
     [orgPlacesNewHref("org-a"), "Places"],
     [placeHref("p-1"), "Profile"],
@@ -122,16 +120,15 @@ describe("the three boxes", () => {
     expect(at('aria-label="Organization"')).toBeLessThan(at('aria-label="Place"'));
   });
 
-  it("the Organization box links every page of the organization, and the Place box every view", () => {
+  it("the Organization box links the organization and its list, and the Place box every view", () => {
     const html = render(orgHref("org-a"));
-    for (const href of [
-      orgHref("org-a"),
-      orgHref("org-a", "payments"),
-      orgHref("org-a", "members"),
-      orgPlacesHref("org-a"),
-    ]) {
+    for (const href of [orgHref("org-a"), orgPlacesHref("org-a")]) {
       expect(hrefs(html)).toContain(href);
     }
+    // ONE organization page (MESITA-1810): no Payments or Members rows.
+    expect(html).not.toContain(">Payments<");
+    expect(html).not.toContain(">Members<");
+    expect(html).not.toContain(">Overview<");
     // The place shown is the organization's first when none is remembered.
     for (const tab of ["profile", "reviews", "activity", "capabilities"] as const) {
       expect(hrefs(html)).toContain(placeTabHref("p-1", tab));
@@ -140,7 +137,7 @@ describe("the three boxes", () => {
   });
 
   it("remembers the place you were last in while you are on an organization page", () => {
-    const html = render(orgHref("org-a", "payments"), { rememberedPlaceId: "p-2" });
+    const html = render(orgHref("org-a"), { rememberedPlaceId: "p-2" });
     expect(html).toContain("Strana Polanco");
     expect(hrefs(html)).toContain(placeTabHref("p-2", "activity"));
     expect(hrefs(html)).not.toContain(placeTabHref("p-1", "activity"));
@@ -209,7 +206,7 @@ describe("the states a 10/10 has to answer", () => {
     expect(html).not.toMatch(/aria-hidden="true"[^>]*>Organization</);
     expect(html).not.toContain('aria-label="Create organization"');
     expect(html).not.toContain('aria-label="Claim a place"');
-    expect(html).toContain('title="Payments"');
+    expect(html).toContain('title="Places"');
     expect(html).toContain('title="Switch organization: Strana Group"');
     expect(pills(html)).toHaveLength(1);
   });

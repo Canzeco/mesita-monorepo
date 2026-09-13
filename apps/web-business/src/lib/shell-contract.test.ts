@@ -24,7 +24,7 @@ describe("middleware contract", () => {
     // Every organization page and the ceremony sit under /orgs (MESITA-1807);
     // the place console stays under /places; Account is its own.
     expect(shouldGate(orgHref("abc"))).toBe(true);
-    expect(shouldGate(orgHref("abc", "payments"))).toBe(true);
+    expect(shouldGate(orgHref("abc", "places"))).toBe(true);
     expect(shouldGate(orgPlacesNewHref("abc"))).toBe(true);
     expect(shouldGate(SHELL_ROUTES.orgNew)).toBe(true);
     expect(shouldGate("/places/abc")).toBe(true);

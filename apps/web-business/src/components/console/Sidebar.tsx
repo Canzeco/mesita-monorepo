@@ -12,10 +12,8 @@
 //   [ ○ pato@canzeco.com          ]  the box is the group's accessible name
 //   ORGANIZATION
 //   [ [S] Strana Group      ⇅  + ]   picker: chip + name + ChevronsUpDown,
-//   [ ▦ Overview                 ]   a Plus beside it = Create organization
-//   [ ▭ Payments                 ]
-//   [ ⚇ Members                  ]
-//   [ ⌂ Places                   ]
+//   [ ▤ Organization             ]   a Plus beside it = Create organization
+//   [ ⌂ Places                   ]   (one org page — MESITA-1810; the list)
 //   PLACE
 //   [ [img] Strana Del Valle ⇅ + ]   picker; Plus = Claim a place
 //   [ ▢ Profile                  ]
@@ -50,10 +48,9 @@ import { useState, useTransition } from "react";
 import {
   Activity,
   AlertCircle,
+  Building2,
   ChevronsUpDown,
-  CreditCard,
   FileText,
-  LayoutDashboard,
   Layers,
   PanelLeftClose,
   PanelLeftOpen,
@@ -63,7 +60,6 @@ import {
   Star,
   Store,
   UserRound,
-  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -152,10 +148,10 @@ const HOVER_PREFETCH = { unstable_dynamicOnHover: true } as object;
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
+// The organization is ONE page (MESITA-1810): Stripe, Partner, Members and
+// Places boxes on `/orgs/<id>`; the list is its one subpage.
 const ORG_ROWS: { page: OrgPage; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { page: "overview", Icon: LayoutDashboard },
-  { page: "payments", Icon: CreditCard },
-  { page: "members", Icon: Users },
+  { page: "overview", Icon: Building2 },
   { page: "places", Icon: Store },
 ];
 
