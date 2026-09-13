@@ -11,7 +11,6 @@ import {
   updateModelsConfig,
 } from "./actions";
 import {
-  DEFAULT_INTAKER_MODEL_SETTINGS,
   INTAKER_PERPLEXITY_PRESETS,
   OPENAI_CHAT_MODELS,
   PERPLEXITY_OPTIONS,
