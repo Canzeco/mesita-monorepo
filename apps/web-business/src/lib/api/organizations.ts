@@ -29,6 +29,11 @@ export type Organization = {
   currency: string;
   myRole: OrgRole;
   placeCount: number;
+  /** Org-level Partner switch (MESITA-1798). UNDEFINED when the payload
+   *  predates the EF — absent is not false. */
+  partnered?: boolean;
+  /** Org Mesita Pay package. Rides Partner; UNDEFINED on a stale payload. */
+  mesitaPayEnabled?: boolean;
   /** The places this organization holds, by name. Rides the org list so the
    *  rail has its portfolio on the first frame instead of one round trip
    *  later (MESITA-1779). */
@@ -362,6 +367,24 @@ export async function apiGetPaymentDashboardLink(
     "Couldn't open the payments dashboard.",
   );
   return url ?? null;
+}
+
+export async function apiSetOrgPartnership(
+  client: SupabaseClient,
+  orgId: string,
+  partnered: boolean,
+): Promise<{
+  partnered: boolean;
+  mesitaPayEnabled: boolean;
+  placesJoined: number;
+  placesDropped: number;
+}> {
+  return invokeEF(
+    client,
+    "business-web-set-org-partnership",
+    { orgId, partnered },
+    "Couldn't update Partner.",
+  );
 }
 
 /** scope "all" and "org" both need organizationId and are membership reads;

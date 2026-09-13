@@ -1,8 +1,6 @@
-// Pins the five-box composition — the product decision the autoplan gate
-// approved (2026-09-06). The order lives in ORG_SCREEN_ORDER and in the
-// rendered output; both are asserted so neither can drift alone. Rendered
-// with renderToStaticMarkup against stub props: the page assembles data,
-// OrgScreenSections owns composition, and this file needs no server mocks.
+// Pins the Organization screen composition. MESITA-1798 added Partner
+// immediately after Stripe Account. The order lives in ORG_SCREEN_ORDER
+// and in the rendered output; both are asserted so neither can drift alone.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -14,6 +12,7 @@ import { ConnectStripeForm } from "./PaymentsCard";
 import type {
   Organization,
   OrgMember,
+  PaymentAccount,
   PendingOrgInvite,
 } from "@/lib/api/organizations";
 
@@ -62,10 +61,11 @@ function render(over: Partial<Parameters<typeof OrgScreenSections>[0]> = {}) {
   );
 }
 
-describe("the five-box composition", () => {
+describe("the Organization screen composition", () => {
   it("pins the approved order constant", () => {
     expect(ORG_SCREEN_ORDER).toEqual([
       "stripe",
+      "partner",
       "members",
       "places",
       "credits",
@@ -78,6 +78,7 @@ describe("the five-box composition", () => {
     const html = render();
     const positions = [
       "Stripe Account",
+      "Partner",
       "Members",
       "Places",
       SOON_STRIPS.credits.title,
@@ -86,6 +87,60 @@ describe("the five-box composition", () => {
     ].map((t) => html.indexOf(t));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
+  it("labels the Partner switch Partner, never Not Partner or Patner", () => {
+    const html = render();
+    expect(html).toContain("Partner");
+    expect(html).not.toContain("Not Partner");
+    expect(html).not.toContain("Patner");
+  });
+
+  it("locks Partner until Stripe is charge-ready", () => {
+    const html = render();
+    expect(html).toContain("Needs a Ready Stripe account");
+    expect(html).not.toContain('role="switch"');
+  });
+
+  it("offers the Partner switch once Stripe is Ready", () => {
+    const account: PaymentAccount = {
+      organization_id: "org-1",
+      stripe_account_id: "acct_1",
+      livemode: false,
+      charges_enabled: true,
+      details_submitted: true,
+      payouts_enabled: true,
+      requirements_due: [],
+      disabled_reason: null,
+      country: "MX",
+    };
+    const html = render({ account });
+    expect(html).toContain('role="switch"');
+    expect(html).toContain('aria-label="Partner"');
+    expect(html).not.toContain("Needs a Ready Stripe account");
+    expect(html).not.toContain("Not Partner");
+    expect(html).not.toContain("Patner");
+  });
+
+  it("names Mesita Pay, Visit Rewards and Accept Prepays when Partner is on", () => {
+    const account: PaymentAccount = {
+      organization_id: "org-1",
+      stripe_account_id: "acct_1",
+      livemode: false,
+      charges_enabled: true,
+      details_submitted: true,
+      payouts_enabled: true,
+      requirements_due: [],
+      disabled_reason: null,
+      country: "MX",
+    };
+    const html = render({
+      account,
+      org: { ...ORG, partnered: true, mesitaPayEnabled: true },
+    });
+    expect(html).toContain("Mesita Pay");
+    expect(html).toContain("Visit Rewards");
+    expect(html).toContain("Accept Prepays");
   });
 
   it("keeps the Soon strips honest: dashed, one line, no knobs", () => {

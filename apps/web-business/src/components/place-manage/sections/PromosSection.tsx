@@ -10,11 +10,9 @@ import {
   strategyForPlace,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { planForSubscription } from "@/lib/business/plans";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
-  setPlacePlan,
   setPlaceRails,
   setPlaceStrategy,
   type AdminPlace,
@@ -24,7 +22,7 @@ import { OrdersCard } from "./OrdersCard";
 import { ReservationsCard } from "./ReservationsCard";
 import { TeamSection } from "./TeamSection";
 import { VisitsCard } from "./VisitsCard";
-import { ConfirmDialog, GroupLabel, SectionCard } from "@/components/admin-ui/manage";
+import { GroupLabel, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import { usePlaceContext } from "../PlaceContext";
 import {
@@ -56,8 +54,8 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // prerequisite that unlocks the most rows, then the rows. The 0–7 meter
 // left — ProfileCompleteness owns the meter where it belongs, and a
 // coincidence with §11.2's seven capabilities is still a coincidence.
-// Partnership is a PlaceHeading chip + one line; Stripe onboards on
-// Organization. Nested configs stay MOUNTED (shouldRenderConfig).
+// Partnership is a PlaceHeading chip + one line; Partner and Stripe
+// live on Organization. Nested configs stay MOUNTED (shouldRenderConfig).
 
 export function PromosSection({
   place,
@@ -74,11 +72,6 @@ export function PromosSection({
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
-  const [joinBusy, setJoinBusy] = useState(false);
-  const [joinError, setJoinError] = useState<string | null>(null);
-  const [dropOpen, setDropOpen] = useState(false);
-  const [dropBusy, setDropBusy] = useState(false);
-  const [dropError, setDropError] = useState<string | null>(null);
   const [railBusy, setRailBusy] = useState<keyof PlaceRails | null>(null);
   const [rowError, setRowError] = useState<
     { key: LadderRowKey; message: string } | null
@@ -135,37 +128,6 @@ export function PromosSection({
   const revertPlace = (prev: AdminPlace) => {
     setV(prev);
     onSaved(prev);
-  };
-
-  const commitJoinPartnership = async () => {
-    if (joinBusy || (member && !forfeited)) return;
-    const rates = strategySwitchPatch(ZERO_STRATEGY_ID, v, storedStrategy);
-    setJoinBusy(true);
-    setJoinError(null);
-    const r = await setPlacePlan(v.id, planForSubscription("pro_discount"), rates);
-    setJoinBusy(false);
-    if (!r.ok) {
-      console.error("[controls] setPlacePlan join failed:", r.error);
-      setJoinError(controlWriteFailure("join the partnership"));
-      return;
-    }
-    applyPlace(r.data);
-  };
-
-  const commitDrop = async () => {
-    if (dropBusy || !member) return;
-    const rates = strategySwitchPatch(ZERO_STRATEGY_ID, v, storedStrategy);
-    setDropBusy(true);
-    setDropError(null);
-    const r = await setPlacePlan(v.id, planForSubscription("free"), rates);
-    setDropBusy(false);
-    if (!r.ok) {
-      console.error("[controls] setPlacePlan drop failed:", r.error);
-      setDropError(controlWriteFailure("drop the partnership"));
-      return;
-    }
-    applyPlace(r.data);
-    setDropOpen(false);
   };
 
   const commitSwitch = (target: StrategyId) => {
@@ -244,18 +206,6 @@ export function PromosSection({
         >
           {d.fixLabel}
         </Link>
-      );
-    }
-    if (d.fix === "join") {
-      return (
-        <button
-          type="button"
-          onClick={() => void commitJoinPartnership()}
-          disabled={joinBusy}
-          className="text-foreground font-semibold underline underline-offset-4"
-        >
-          {d.fixLabel}
-        </button>
       );
     }
     if (d.fix === "restore") {
@@ -397,19 +347,6 @@ export function PromosSection({
         <p id="zone-offerings" className="text-foreground text-sm leading-snug">
           {summary}
         </p>
-        {prereq?.action === "join" && (
-          <p className="text-muted-foreground mt-2 text-sm leading-snug">
-            {prereq.text}{" "}
-            <button
-              type="button"
-              onClick={() => void commitJoinPartnership()}
-              disabled={joinBusy}
-              className="text-foreground font-semibold underline underline-offset-4"
-            >
-              {joinBusy ? "Joining…" : forfeited ? "Re-join" : "Join"}
-            </button>
-          </p>
-        )}
         {prereq?.action === "organization" && (
           <p className="text-muted-foreground mt-2 text-sm leading-snug">
             {prereq.text}{" "}
@@ -421,14 +358,6 @@ export function PromosSection({
             </Link>
           </p>
         )}
-        <div aria-live="polite">
-          {joinError && (
-            <div className="mt-2">
-              <ErrorNote message={joinError} />
-            </div>
-          )}
-        </div>
-
         <div className="mt-4 flex flex-col">
           {writable.map((r) => rowNode(r.key))}
           {notYours.length > 0 && (
@@ -450,13 +379,7 @@ export function PromosSection({
               pillState={pillState}
               storedStrategy={storedStrategy}
               member={member}
-              joinBusy={joinBusy}
-              joinError={joinError}
-              onJoinClick={() => void commitJoinPartnership()}
-              onDropClick={() => {
-                setDropError(null);
-                setDropOpen(true);
-              }}
+              orgHref={orgHref}
             />
           </div>
         )}
@@ -509,23 +432,6 @@ export function PromosSection({
       <div aria-live="polite">
         {switchError && <ErrorNote message={switchError} />}
       </div>
-
-      <ConfirmDialog
-        open={dropOpen}
-        danger
-        busy={dropBusy}
-        error={dropError}
-        title="Drop partnership?"
-        body="Ends the partnership and clears activation — re-joining restarts pending activation. Strikes and any active pause carry over if the place re-joins."
-        confirmLabel="Drop partnership"
-        onConfirm={() => void commitDrop()}
-        onCancel={() => {
-          if (!dropBusy) {
-            setDropOpen(false);
-            setDropError(null);
-          }
-        }}
-      />
     </div>
   );
 }
