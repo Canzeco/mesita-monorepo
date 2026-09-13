@@ -16,18 +16,29 @@ import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { ageFromBirthday, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
+// Mirrors web's CONSUMER_SEXES (lib/consumer-onboarding.ts). Hand-copied
+// rather than imported: the packages are independent install roots with no
+// shared module, which is the same reason isOnboarded is hand-mirrored.
+const SEXES = [
+  { value: 'female', label: 'Female' },
+  { value: 'male', label: 'Male' },
+] as const;
+
 export default function Onboard() {
   const router = useRouter();
   const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
-  // TWO fields, mirroring web's OnboardForm (MESITA-1806). Last name is still
-  // required to BOOK — the place books the table under the guest's full name
-  // — but it is asked by the reservation flow, where the guest can see why,
-  // not here in front of someone who hasn't seen a place yet. Sex is
-  // segmentation and moved to the profile screen.
+  // THREE fields, mirroring web's OnboardForm (MESITA-1829): first name,
+  // birthday, sex. Sex is REQUIRED here as it is on web — the Passport
+  // document prints `age · sex · country` and nothing else collects it. Last
+  // name is still asked by the reservation flow instead, where the guest can
+  // see why the place needs it.
   //
   // Prefilled so a half-onboarded consumer fills the one missing field.
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
+  const [sex, setSex] = useState<'male' | 'female' | ''>(
+    profile?.sex === 'male' || profile?.sex === 'female' ? profile.sex : '',
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +46,8 @@ export default function Onboard() {
   // Age gate — 13 or below is restricted (MESITA-727).
   const age = ageFromBirthday(birthday.trim());
   const underage = age !== null && age < MIN_SIGNUP_AGE;
-  const canSubmit = firstName.trim().length > 0 && validBirthday && !underage;
+  const canSubmit =
+    firstName.trim().length > 0 && validBirthday && !underage && sex !== '';
 
   const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
@@ -50,6 +62,7 @@ export default function Onboard() {
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
         birthday: birthday.trim(),
+        ...(sex === 'male' || sex === 'female' ? { sex } : {}),
       });
       await refreshProfile();
       router.replace('/');
@@ -102,13 +115,13 @@ export default function Onboard() {
           className="font-display font-semibold text-foreground"
           style={{ fontSize: 28, letterSpacing: -0.42 }}
         >
-          Welcome to Mesita
+          Last step before you&apos;re in.
         </Text>
         <Text
           className="mt-2 text-muted-foreground"
           style={{ fontSize: 14 }}
         >
-          A few details and your table is ready.
+          Three answers. Takes about fifteen seconds.
         </Text>
 
         <View
@@ -133,10 +146,10 @@ export default function Onboard() {
           />
 
           <Text
-            className="font-semibold text-muted-foreground"
-            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
+            className="font-semibold text-foreground"
+            style={{ marginTop: 20, marginBottom: 8, fontSize: 14 }}
           >
-            BIRTHDAY
+            Your birthday
           </Text>
           <BirthdayPicker value={birthday} onChange={setBirthday} />
 
@@ -147,7 +160,56 @@ export default function Onboard() {
             >
               You must be at least {MIN_SIGNUP_AGE} to use Mesita.
             </Text>
-          ) : null}
+          ) : (
+            <Text
+              className="mt-2 text-muted-foreground"
+              style={{ fontSize: 11, lineHeight: 15 }}
+            >
+              Private. It checks you&apos;re {MIN_SIGNUP_AGE} or over, and sets
+              the age on your Passport.
+            </Text>
+          )}
+
+          {/* Two options and no third: `consumers_sex_check` allows male and
+              female only (narrowed by 20260825003000), so this list is the
+              whole vocabulary. radiogroup rather than two buttons so
+              TalkBack/VoiceOver announce it as one exclusive choice. */}
+          <Text
+            className="font-semibold text-foreground"
+            style={{ marginTop: 20, marginBottom: 8, fontSize: 14 }}
+          >
+            Sex
+          </Text>
+          <View
+            accessibilityRole="radiogroup"
+            style={{ flexDirection: 'row', gap: 8 }}
+          >
+            {SEXES.map((option) => {
+              const on = sex === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setSex(option.value)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={option.label}
+                  className={
+                    on
+                      ? 'flex-1 items-center justify-center rounded-full border border-foreground bg-foreground'
+                      : 'flex-1 items-center justify-center rounded-full border border-border bg-card'
+                  }
+                  style={{ height: 44 }}
+                >
+                  <Text
+                    className={on ? 'text-background' : 'text-foreground'}
+                    style={{ fontSize: 14, fontWeight: '600' }}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           <View style={{ marginTop: 24 }}>
             <Button
@@ -169,9 +231,8 @@ export default function Onboard() {
             className="text-muted-foreground"
             style={{ marginTop: 12, textAlign: 'center', fontSize: 11, lineHeight: 15 }}
           >
-            We use these to personalize recommendations. Only your name is
-            shared with a place — it&apos;s the name your reservation is booked
-            under.
+            Only your name is shared with a place — it&apos;s the name your
+            reservation is booked under.
           </Text>
         </View>
       </KeyboardAvoidingView>

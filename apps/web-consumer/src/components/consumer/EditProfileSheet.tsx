@@ -31,7 +31,12 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // their phone (not email), so email isn't shown or edited here.
 //
 // Phone is auth identity (set at sign-in) and is not editable here — only
-// first name, last name, sex and birthday, the same set onboarding collects.
+// first name, last name, sex and birthday. That is onboarding's set PLUS the
+// last name, which the reservation flow collects rather than /onboard. The
+// claim that it was "the same set onboarding collects" was true until
+// MESITA-1806 dropped sex from signup and stayed in this comment for the
+// whole time the Passport was printing a field nothing asked for
+// (MESITA-1829). Re-derive it here if the gate moves again.
 // Both name halves are required and always sent together: the EF re-derives
 // full_name from them, and that's the name reservations are booked under.
 //

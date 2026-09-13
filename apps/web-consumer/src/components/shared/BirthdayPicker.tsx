@@ -1,19 +1,28 @@
 "use client";
 
-// Friendly birthday picker — three dropdowns (Day / Month / Year) instead
-// of the native <input type="date">, whose "dd/mm/yyyy" placeholder and
-// tiny calendar popover feel clumsy on mobile. Reads and writes the same
-// canonical "YYYY-MM-DD" string the EF expects, so it's a drop-in swap
-// wherever a birthday was collected.
+// Birthday as three TAP-TO-SET PARTS, not three dropdowns (MESITA-1829).
 //
-// The three parts live in local state (not derived from the composed
-// string) so a partial selection sticks — picking Day first must not snap
-// back just because Month/Year aren't chosen yet. onChange fires the full
-// "YYYY-MM-DD" once all three are set, and "" while incomplete, so the
-// required-field gates upstream stay honest.
+// It used to be Day / Month / Year <select>s. The design review measured that
+// as the slowest control on the onboarding screen: three popovers to open, and
+// the Year list needs ~30 entries of scroll to reach a plausible birth year on
+// a phone. Day and Year are now numeric inputs — the phone raises a keypad and
+// the guest types "14" and "1998" — while Month stays a native <select>,
+// because twelve NAMED options is the one part a list genuinely beats typing
+// (and it sidesteps "is 03 March or the 3rd?" entirely).
+//
+// The original comment rejected <input type="date"> for its "dd/mm/yyyy"
+// placeholder and a calendar popover that opens on the CURRENT month for a
+// date thirty years back. That rejection still stands; this is not a return
+// to it.
+//
+// EVERYTHING BELOW THE CONTROL IS UNCHANGED, on purpose. Same local Parts
+// state (so a partial selection sticks), same leap-year `daysInMonth`, same
+// clamp on update, same canonical "YYYY-MM-DD" out of compose() and "" while
+// incomplete. It stays a drop-in wherever a birthday is collected — onboard
+// and the Edit-profile sheet both pass value/onChange and neither knows the
+// control changed.
 
-import { useMemo, useState } from "react";
-import { INPUT_CLASS } from "@/lib/ui-classes";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const MONTHS = [
@@ -32,7 +41,7 @@ const MONTHS = [
 ];
 
 // Days in a given 1-based month, leap-year aware. Called with the current
-// year/month so February and the 30/31-day months never offer a bad day.
+// year/month so February and the 30/31-day months never keep a bad day.
 function daysInMonth(year: number, month1: number): number {
   if (!year || !month1) return 31;
   return new Date(year, month1, 0).getDate();
@@ -48,14 +57,33 @@ function parse(value: string): Parts {
 
 function compose(parts: Parts): string {
   if (!parts.year || !parts.month || !parts.day) return "";
+  // THE YEAR IS TYPED NOW, so `parts.year` legitimately holds a half-finished
+  // run of digits while someone is mid-keystroke. Guarding here rather than in
+  // the onChange handler is the point: every caller composes through this one
+  // function, so a partial "19" can never escape as "19-03-14" no matter which
+  // part moved last. Out-of-range years compose to "" for the same reason the
+  // old dropdown only offered 101 of them — a future year is not a birthday.
+  if (!/^\d{4}$/.test(parts.year)) return "";
+  const thisYear = new Date().getFullYear();
+  const year = Number(parts.year);
+  if (year > thisYear || year < thisYear - 100) return "";
   // Clamp the day if a month/year change shortened the month (e.g. 31 →
   // Feb) so we never emit an impossible date.
-  const maxDay = daysInMonth(Number(parts.year), Number(parts.month));
+  const maxDay = daysInMonth(year, Number(parts.month));
   const day = Math.min(Number(parts.day), maxDay);
   const mm = String(Number(parts.month)).padStart(2, "0");
   const dd = String(day).padStart(2, "0");
   return `${parts.year}-${mm}-${dd}`;
 }
+
+/** One part of the date. The caption is a real <label>, never a placeholder —
+ *  it has to stay readable once the box holds a value (Docs › Design §D). */
+const PART_CLASS =
+  "border-border bg-card focus-within:border-foreground/40 flex h-[52px] flex-col items-center justify-center rounded-xl border transition";
+const PART_CAPTION_CLASS =
+  "text-muted-foreground type-meta font-semibold tracking-[0.1em] uppercase";
+const PART_VALUE_CLASS =
+  "w-full bg-transparent text-center text-base font-semibold tabular-nums outline-none";
 
 export function BirthdayPicker({
   value,
@@ -67,6 +95,8 @@ export function BirthdayPicker({
   className?: string;
 }) {
   const [parts, setParts] = useState<Parts>(() => parse(value));
+  const monthRef = useRef<HTMLSelectElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
 
   // Re-seed from the prop when it changes to a complete date the local
   // state doesn't already represent (e.g. profile loads async in the Edit
@@ -81,9 +111,9 @@ export function BirthdayPicker({
 
   function update(next: Parts) {
     // Clamp the stored day when a month/year change shortens the month
-    // (e.g. day 31 then February) so the Day dropdown visibly reflects the
-    // day that actually gets saved, instead of going blank on a now-invalid
-    // value while compose() silently clamps behind it.
+    // (e.g. day 31 then February) so the Day box visibly reflects the day
+    // that actually gets saved, instead of showing an impossible value while
+    // compose() silently clamps behind it.
     const maxDay = daysInMonth(Number(next.year), Number(next.month));
     const clamped =
       next.day && Number(next.day) > maxDay
@@ -93,62 +123,77 @@ export function BirthdayPicker({
     onChange(compose(clamped));
   }
 
-  // Oldest plausible birth year → 100 years back. `new Date().getFullYear()`
-  // runs in the browser (client component), so it tracks the real clock.
-  const years = useMemo(() => {
-    const now = new Date().getFullYear();
-    return Array.from({ length: 101 }, (_, i) => now - i);
-  }, []);
+  /** Day accepts 1-31 and AUTO-ADVANCES to Month — at two digits, or at one
+   *  digit that cannot be the start of a valid day (4-9). Saves a tap without
+   *  ever trapping someone typing "1" on the way to "14". */
+  function onDay(raw: string) {
+    const digits = raw.replace(/\D/g, "").slice(0, 2);
+    if (digits === "") return update({ ...parts, day: "" });
+    const n = Number(digits);
+    if (n > 31) return;
+    update({ ...parts, day: digits });
+    if (digits.length === 2 || n > 3) monthRef.current?.focus();
+  }
 
-  const dayCount = daysInMonth(Number(parts.year), Number(parts.month));
-  const days = useMemo(
-    () => Array.from({ length: dayCount }, (_, i) => i + 1),
-    [dayCount],
-  );
-
-  const selectClass = cn(INPUT_CLASS, "appearance-none px-2.5");
+  /** Year keeps whatever digits are typed so the box shows them; compose()
+   *  decides whether they amount to a date yet. */
+  function onYear(raw: string) {
+    update({ ...parts, year: raw.replace(/\D/g, "").slice(0, 4) });
+  }
 
   return (
-    <div className={cn("grid grid-cols-[1fr_1.5fr_1.1fr] gap-2", className)}>
-      <select
-        aria-label="Birth day"
-        className={selectClass}
-        value={parts.day}
-        onChange={(e) => update({ ...parts, day: e.target.value })}
-      >
-        <option value="">Day</option>
-        {days.map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Birth month"
-        className={selectClass}
-        value={parts.month}
-        onChange={(e) => update({ ...parts, month: e.target.value })}
-      >
-        <option value="">Month</option>
-        {MONTHS.map((name, i) => (
-          <option key={name} value={i + 1}>
-            {name}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Birth year"
-        className={selectClass}
-        value={parts.year}
-        onChange={(e) => update({ ...parts, year: e.target.value })}
-      >
-        <option value="">Year</option>
-        {years.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </select>
+    <div className={cn("grid grid-cols-[1fr_1.6fr_1.2fr] gap-2", className)}>
+      <label className={PART_CLASS}>
+        <input
+          inputMode="numeric"
+          autoComplete="bday-day"
+          aria-label="Birth day"
+          placeholder="DD"
+          className={PART_VALUE_CLASS}
+          value={parts.day}
+          onChange={(e) => onDay(e.target.value)}
+        />
+        <span className={PART_CAPTION_CLASS}>Day</span>
+      </label>
+
+      <label className={PART_CLASS}>
+        <select
+          ref={monthRef}
+          aria-label="Birth month"
+          className={cn(
+            PART_VALUE_CLASS,
+            "appearance-none px-1",
+            !parts.month && "text-muted-foreground",
+          )}
+          value={parts.month}
+          onChange={(e) => {
+            update({ ...parts, month: e.target.value });
+            if (e.target.value && !parts.year) yearRef.current?.focus();
+          }}
+        >
+          <option value="">Month</option>
+          {MONTHS.map((name, i) => (
+            <option key={name} value={i + 1}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <span className={PART_CAPTION_CLASS}>Month</span>
+      </label>
+
+      <label className={PART_CLASS}>
+        <input
+          ref={yearRef}
+          inputMode="numeric"
+          autoComplete="bday-year"
+          aria-label="Birth year"
+          placeholder="YYYY"
+          className={PART_VALUE_CLASS}
+          value={parts.year}
+          onChange={(e) => onYear(e.target.value)}
+        />
+        <span className={PART_CAPTION_CLASS}>Year</span>
+      </label>
     </div>
   );
 }

@@ -136,14 +136,22 @@ Deno.serve(async (req) => {
     // Routing hint for post-signin. This is the BROWSE gate and nothing more
     // — the same predicate the client guards use (web
     // lib/consumer-onboarding.ts `consumerCanBrowse`, mobile lib/api/auth.ts
-    // `isOnboarded`): first name + birthday (MESITA-1806).
+    // `isOnboarded`): first name + birthday + sex (MESITA-1829).
     //
     // It must stay in lock-step with the (shell) gate, in BOTH directions.
     // Too loose and a row is routed into the app and bounced straight back to
-    // /onboard; too strict — which is what checking last_name and sex here
-    // would now be — and a guest who is perfectly able to browse is sent to
-    // re-enter data nothing is waiting on. Last name is the RESERVATION's
-    // gate, enforced by consumer-web-create-reservation.
-    onboarded: !!consumerRow?.first_name && !!consumerRow?.birthday,
+    // /onboard; too strict and a guest who is perfectly able to browse is
+    // sent to re-enter data nothing is waiting on. SEX MOVED SIDES: it was
+    // named here as an example of "too strict" under MESITA-1806, and is now
+    // part of the gate, so this line moves with the other three or the guest
+    // ping-pongs. Last name did NOT move — it is the RESERVATION's gate,
+    // enforced by consumer-web-create-reservation.
+    //
+    // `sex` is checked against the two values the column's own constraint
+    // allows rather than for mere presence, so a legacy row holding anything
+    // else is routed to /onboard to fix it instead of into a Passport that
+    // cannot print it.
+    onboarded: !!consumerRow?.first_name && !!consumerRow?.birthday &&
+      (consumerRow?.sex === "male" || consumerRow?.sex === "female"),
   });
 });

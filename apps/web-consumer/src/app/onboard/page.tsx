@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
-import { MesitaMark } from "@/components/brand/MesitaMark";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -18,10 +17,9 @@ import { errMsg } from "@/lib/utils";
 //   - already past the gate → /discover (don't re-collect data)
 //   - signed in, no name    → render the form
 //
-// The gate is `consumerCanBrowse`: FIRST NAME + BIRTHDAY, nothing else
-// (MESITA-1806). Last name is asked by the reservation sheet, sex on
-// /me/profile — neither belongs in front of a stranger who hasn't seen a
-// place yet.
+// The gate is `consumerCanBrowse`: FIRST NAME + BIRTHDAY + SEX (MESITA-1829 —
+// sex came back because the Passport was already printing it). Last name is
+// still asked by the reservation sheet instead, where the guest can see why.
 export const dynamic = "force-dynamic";
 
 export default async function ConsumerOnboardPage({
@@ -44,9 +42,12 @@ export default async function ConsumerOnboardPage({
   // ping-ponging: onboard sends them on, the shell disagrees and sends them
   // back. One predicate, both call sites.
   //
-  // Legacy rows are fine here: a first-name-only profile passes this gate and
-  // browses, and hits the last-name field once, at its next booking.
-  // `initial` prefills whatever they already gave us.
+  // A row missing ANY of the three comes back here once and fills the gap —
+  // `initial` prefills the rest so it is one field, not the whole form again.
+  // That is a behaviour change from MESITA-1806, when a first-name-only row
+  // sailed through: adding sex to the predicate re-onboards anyone without it.
+  // Checked against live data before shipping (1 consumer, sex already set, 0
+  // affected); it is the cost of the field being required at all.
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the try/catch —
   // otherwise the catch swallows the redirect and logs it as an error (and
   // the already-onboarded user gets stuck on the form).
@@ -60,6 +61,7 @@ export default async function ConsumerOnboardPage({
       // the old single field captured (usually just the first name).
       firstName: profile.first_name ?? profile.full_name ?? "",
       birthday: profile.birthday ?? "",
+      sex: profile.sex ?? "",
     };
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
@@ -79,36 +81,40 @@ export default async function ConsumerOnboardPage({
 
   return (
     <MobileFrame>
-      <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-6 pb-8">
-        <div className="border-border bg-card mb-6 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5">
-          <div className="min-w-0">
-            <p className="text-muted-foreground type-meta font-semibold tracking-[0.12em] uppercase">
-              Signed in as
-            </p>
-            <p className="truncate text-sm font-medium">
-              {identity ?? "Your account"}
-            </p>
-          </div>
+      <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-8 pb-8">
+        {/* THE HEADLINE IS THE FIRST THING NOW (design review, defect 1).
+            "SIGNED IN AS +52…" used to own this slot in a bordered card with
+            its own button, which put account-recovery chrome above the brand
+            and above the only sentence that tells a guest what is happening.
+            It is a footnote under the button now — still reachable for the
+            person who signed in as the wrong account, no longer the first
+            thing read by the many who did not.
+
+            NO LOGO TILE (defect 8). A 48px pink-gradient square with
+            `shadow-glow`, floating alone above the headline, was decoration
+            wearing the brand: the guest just came through a Mesita OTP and
+            the wordmark is not in question. The display face carries it. */}
+        <header className="mb-8">
+          <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
+            Last step before
+            <br />
+            you&apos;re in.
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Three answers. Takes about fifteen seconds.
+          </p>
+        </header>
+
+        <OnboardForm initial={initial} next={nextTarget} />
+
+        <div className="text-muted-foreground mt-5 flex items-center justify-between gap-3 text-xs">
+          <span className="truncate">{identity ?? "Your account"}</span>
           <SignOutButton
             redirectTo="/"
             label="Not you?"
-            className="border-border bg-background text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+            className="text-muted-foreground hover:text-foreground inline-flex min-h-11 shrink-0 items-center font-medium underline underline-offset-2 transition"
           />
         </div>
-
-        <div className="mb-6">
-          <div className="bg-pink-gradient shadow-glow mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
-            <MesitaMark className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
-            Tell us about you
-          </h1>
-          <p className="text-muted-foreground mt-1.5 text-sm">
-            Two things, then you&apos;re in.
-          </p>
-        </div>
-
-        <OnboardForm initial={initial} next={nextTarget} />
       </div>
     </MobileFrame>
   );

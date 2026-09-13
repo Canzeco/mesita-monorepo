@@ -607,19 +607,24 @@ describe("consumer onboarding gates (two predicates, four call sites)", () => {
   // The SIGNUP gate. Mirrored by consumer-web-signin-phone's `onboarded`
   // routing hint — if these two disagree, a guest ping-pongs between the app
   // and /onboard.
-  it("browse needs the first name and the birthday, and nothing else", () => {
+  it("browse needs the first name, the birthday and the sex", () => {
     expect(consumerCanBrowse(complete)).toBe(true);
-    for (const key of ["first_name", "birthday"] as const) {
+    for (const key of ["first_name", "birthday", "sex"] as const) {
       expect(consumerCanBrowse({ ...complete, [key]: null })).toBe(false);
       expect(consumerCanBrowse({ ...complete, [key]: "" })).toBe(false);
     }
-    // The two fields that LEFT the gate (MESITA-1806). A profile missing
-    // either still browses: last name is the reservation's gate, and sex is
-    // segmentation nothing downstream reads to work.
+    // SEX CAME BACK (MESITA-1829). It left under MESITA-1806 as "segmentation
+    // nothing downstream reads to work", and this test asserted that — while
+    // the Passport was printing `age · sex · country` the whole time. The
+    // ONE field still outside the gate is the last name, which the
+    // reservation flow asks for where the guest can see why.
     expect(consumerCanBrowse({ ...complete, last_name: null })).toBe(true);
-    expect(consumerCanBrowse({ ...complete, sex: null })).toBe(true);
     expect(
-      consumerCanBrowse({ first_name: "Ana", birthday: "1995-04-02" }),
+      consumerCanBrowse({
+        first_name: "Ana",
+        birthday: "1995-04-02",
+        sex: "female",
+      }),
     ).toBe(true);
   });
 
@@ -629,9 +634,9 @@ describe("consumer onboarding gates (two predicates, four call sites)", () => {
     expect(consumerCanBook(complete)).toBe(true);
     expect(consumerCanBook({ ...complete, last_name: null })).toBe(false);
     expect(consumerCanBook({ ...complete, last_name: "" })).toBe(false);
-    // Still just segmentation — never a reason to refuse a table.
-    expect(consumerCanBook({ ...complete, sex: null })).toBe(true);
-    // Booking is strictly narrower than browsing.
+    // Booking is strictly narrower than browsing, so everything the signup
+    // gate requires it requires too — sex included now (MESITA-1829).
+    expect(consumerCanBook({ ...complete, sex: null })).toBe(false);
     expect(consumerCanBook({ ...complete, first_name: null })).toBe(false);
   });
 
