@@ -905,6 +905,7 @@ export type MesitaPlaceReview = {
   createdAt: string;
   ticketId: string;
   guestName: string;
+  /** check.mesita.ai link — editor/owner only; viewers get null from the EF. */
   visitUrl: string | null;
 };
 
