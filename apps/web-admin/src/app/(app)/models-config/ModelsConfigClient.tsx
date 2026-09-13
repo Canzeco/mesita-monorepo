@@ -1,20 +1,26 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Cpu } from "lucide-react";
+import { Cpu, Sparkles } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { SaveRow, SectionCard } from "@/components/admin-ui/config";
-import { getModelsConfig, updateModelsConfig } from "./actions";
+import { QualityPicker, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import {
+  getIntakerModelSettings,
+  getModelsConfig,
+  updateIntakerModelSettings,
+  updateModelsConfig,
+} from "./actions";
+import {
+  DEFAULT_INTAKER_MODEL_SETTINGS,
+  INTAKER_PERPLEXITY_PRESETS,
   OPENAI_CHAT_MODELS,
   PERPLEXITY_OPTIONS,
+  type IntakerModelSettings,
   type ModelsConfig,
 } from "./types";
 
-// Models — one box, four live picks (MESITA-1176 cut the empty Intaker /
-// Embeddings cards; Ojo's vision model joined the same row). Every knob
-// here is live. SoT for app_config.models_config. Failed GET blocks Save
-// (MESITA-737) — never persist DEFAULTS over a live blob.
+// Models — platform-wide picks. models_config blob (supabase, memo, ojo) plus
+// Intaker atlas_* quality tiers (MESITA-1811). Failed GET blocks Save (MESITA-737).
 
 function Select({
   value,
@@ -45,33 +51,63 @@ function Select({
   );
 }
 
+function intakerDirty(a: IntakerModelSettings, b: IntakerModelSettings): boolean {
+  return (
+    a.synthesisQuality !== b.synthesisQuality ||
+    a.visionQuality !== b.visionQuality ||
+    a.perplexityPreset !== b.perplexityPreset
+  );
+}
+
 export function ModelsConfigClient({
   initialConfig,
+  initialIntaker,
   loadError,
+  intakerLoadError,
 }: {
   initialConfig: ModelsConfig;
+  initialIntaker: IntakerModelSettings;
   loadError: string | null;
+  intakerLoadError: string | null;
 }) {
   const [cfg, setCfg] = useState<ModelsConfig>(initialConfig);
   const [saved, setSaved] = useState<ModelsConfig>(initialConfig);
+  const [intaker, setIntaker] = useState<IntakerModelSettings>(initialIntaker);
+  const [savedIntaker, setSavedIntaker] =
+    useState<IntakerModelSettings>(initialIntaker);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
+  const [error, setError] = useState<string | null>(
+    loadError ?? intakerLoadError,
+  );
+  const [loadBlocked, setLoadBlocked] = useState(
+    !!loadError || !!intakerLoadError,
+  );
   const [ok, setOk] = useState(false);
 
-  // Re-fetch on mount so client-side nav shows the live blob.
+  // Re-fetch on mount so client-side nav shows the live blobs.
   useEffect(() => {
     let active = true;
     (async () => {
-      const r = await getModelsConfig();
+      const [modelsR, intakerR] = await Promise.all([
+        getModelsConfig(),
+        getIntakerModelSettings(),
+      ]);
       if (!active) return;
-      if (r.ok) {
-        setCfg(r.data);
-        setSaved(r.data);
+      if (modelsR.ok && intakerR.ok) {
+        setCfg(modelsR.data);
+        setSaved(modelsR.data);
+        setIntaker(intakerR.data);
+        setSavedIntaker(intakerR.data);
         setError(null);
         setLoadBlocked(false);
       } else {
-        setError(r.error);
+        setError(
+          !modelsR.ok
+            ? modelsR.error
+            : !intakerR.ok
+              ? intakerR.error
+              : "Failed to load Models config",
+        );
         setLoadBlocked(true);
       }
     })();
@@ -85,7 +121,8 @@ export function ModelsConfigClient({
     cfg.supabase.model !== saved.supabase.model ||
     cfg.memo.model !== saved.memo.model ||
     cfg.memo.perplexity !== saved.memo.perplexity ||
-    cfg.ojo.model !== saved.ojo.model;
+    cfg.ojo.model !== saved.ojo.model ||
+    intakerDirty(intaker, savedIntaker);
 
   const setSupabaseModel = (model: string) => {
     setOk(false);
@@ -107,92 +144,165 @@ export function ModelsConfigClient({
     setCfg((c) => ({ ...c, ojo: { model } }));
   };
 
+  const patchIntaker = (next: Partial<IntakerModelSettings>) => {
+    setOk(false);
+    setIntaker((s) => ({ ...s, ...next }));
+  };
+
   const save = () => {
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateModelsConfig(cfg);
-      if (r.ok) {
-        setSaved(r.data);
-        setCfg(r.data);
-        setOk(true);
-      } else {
-        setError(r.error);
+      const intakerR = await updateIntakerModelSettings(intaker);
+      if (!intakerR.ok) {
+        setError(intakerR.error);
+        return;
       }
+      const modelsR = await updateModelsConfig(cfg);
+      if (!modelsR.ok) {
+        setError(modelsR.error);
+        return;
+      }
+      setSaved(modelsR.data);
+      setCfg(modelsR.data);
+      setSavedIntaker(intakerR.data);
+      setIntaker(intakerR.data);
+      setOk(true);
     });
   };
 
   return (
-    <SectionCard
-      icon={<Cpu className="h-4 w-4" />}
-      title="Models"
-      subtitle="Which model each subsystem thinks with. Every pick here is read at run time — changing one changes token spend."
-    >
-      {error && <ErrorNote message={error} />}
+    <div className="flex flex-col gap-4">
+      <SectionCard
+        icon={<Cpu className="h-4 w-4" />}
+        title="Platform"
+        subtitle="Which model each subsystem thinks with. Every pick here is read at run time — changing one changes token spend."
+      >
+        {error && <ErrorNote message={error} />}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
-        <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground type-eyebrow">
-            Edge Functions
-          </span>
-          <Select
-            value={cfg.supabase.model}
-            options={OPENAI_CHAT_MODELS}
-            disabled={busy}
-            onChange={setSupabaseModel}
-            labelFor={(id) => id}
-          />
-        </label>
-        <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground type-eyebrow">
-            Memo · OpenAI
-          </span>
-          <Select
-            value={cfg.memo.model}
-            options={OPENAI_CHAT_MODELS}
-            disabled={busy}
-            onChange={setMemoModel}
-            labelFor={(id) => id}
-          />
-        </label>
-        <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground type-eyebrow">
-            Memo · Perplexity
-          </span>
-          <Select
-            value={cfg.memo.perplexity}
-            options={PERPLEXITY_OPTIONS}
-            disabled={busy}
-            onChange={setMemoPerplexity}
-          />
-        </label>
-        <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground type-eyebrow">
-            Ojo · Vision
-          </span>
-          <Select
-            value={cfg.ojo.model}
-            options={OPENAI_CHAT_MODELS}
-            disabled={busy}
-            onChange={setOjoModel}
-            labelFor={(id) => id}
-          />
-        </label>
-      </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">
+              Edge Functions
+            </span>
+            <Select
+              value={cfg.supabase.model}
+              options={OPENAI_CHAT_MODELS}
+              disabled={busy}
+              onChange={setSupabaseModel}
+              labelFor={(id) => id}
+            />
+          </label>
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">
+              Memo · OpenAI
+            </span>
+            <Select
+              value={cfg.memo.model}
+              options={OPENAI_CHAT_MODELS}
+              disabled={busy}
+              onChange={setMemoModel}
+              labelFor={(id) => id}
+            />
+          </label>
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">
+              Memo · Perplexity
+            </span>
+            <Select
+              value={cfg.memo.perplexity}
+              options={PERPLEXITY_OPTIONS}
+              disabled={busy}
+              onChange={setMemoPerplexity}
+            />
+          </label>
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">
+              Ojo · Vision
+            </span>
+            <Select
+              value={cfg.ojo.model}
+              options={OPENAI_CHAT_MODELS}
+              disabled={busy}
+              onChange={setOjoModel}
+              labelFor={(id) => id}
+            />
+          </label>
+        </div>
 
-      <p className="text-muted-foreground mt-3 type-label leading-relaxed">
-        Intaker quality tiers and the embedding model live on Intake; the
-        embedding model is fixed by design — changing it re-vectors the catalog.
-        Ojo&apos;s enabled, threshold and fail-action policy lives on Visits.
-      </p>
+        <p className="text-muted-foreground mt-3 type-label leading-relaxed">
+          Ojo&apos;s enabled, threshold and fail-action policy lives on Visits.
+        </p>
+      </SectionCard>
+
+      <SectionCard
+        icon={<Sparkles className="text-secondary h-4 w-4" />}
+        title="Intaker"
+        subtitle="Text, image and search quality tiers for the enrichment pipeline. Embeddings is locked."
+      >
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">Text</span>
+            <QualityPicker
+              value={intaker.synthesisQuality}
+              onChange={(v) => patchIntaker({ synthesisQuality: v })}
+            />
+            <span className="text-muted-foreground type-label">
+              9 · Description, image-rank
+            </span>
+          </label>
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">Image</span>
+            <QualityPicker
+              value={intaker.visionQuality}
+              onChange={(v) => patchIntaker({ visionQuality: v })}
+            />
+            <span className="text-muted-foreground type-label">6 · Images</span>
+          </label>
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">Search</span>
+            <select
+              value={intaker.perplexityPreset}
+              disabled={busy}
+              aria-label="Search model preset"
+              onChange={(e) =>
+                patchIntaker({
+                  perplexityPreset: e.target.value as IntakerModelSettings["perplexityPreset"],
+                })
+              }
+              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-sm font-medium outline-none disabled:opacity-50"
+            >
+              {INTAKER_PERPLEXITY_PRESETS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-muted-foreground type-label">
+              3 · Serp · 4 · Links
+            </span>
+          </label>
+          <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-muted-foreground type-eyebrow">
+              Embeddings
+            </span>
+            <span className="text-sm font-medium">text-embedding-3-small</span>
+            <span className="text-muted-foreground type-label">
+              locked · 10 · Embedding
+            </span>
+          </div>
+        </div>
+      </SectionCard>
 
       <SaveRow
         pending={pending}
         dirty={dirty}
         ok={ok}
         onClick={save}
-        loadError={loadBlocked ? (error ?? "Failed to load Models config") : null}
+        loadError={
+          loadBlocked ? (error ?? "Failed to load Models config") : null
+        }
       />
-    </SectionCard>
+    </div>
   );
 }

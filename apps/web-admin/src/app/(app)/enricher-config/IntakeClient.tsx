@@ -22,7 +22,6 @@ import Link from "next/link";
 import {
   Collapsible,
   NumberField,
-  QualityPicker,
   SectionCard,
   TextAreaField,
 } from "@/components/admin-ui/config";
@@ -36,7 +35,6 @@ import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import {
   updateAtlasConfig,
   type IntakePrompt,
-  type PerplexityPreset,
 } from "./actions";
 import {
   Fields,
@@ -50,6 +48,7 @@ import {
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
 import { clampFunnel, intakeSaveBlocked, type IntakeSettings } from "./intake-guards";
+import { MODELS_PARENT } from "../models-config/nav";
 import {
   VerificationConfigClient,
 } from "../verification-config/VerificationConfigClient";
@@ -57,19 +56,17 @@ import type { VerificationConfig } from "../verification-config/actions";
 
 export type { IntakeSettings };
 
-// THE INTAKE PAGE. Models · Create · Enrich · Functions · Verification.
+// THE INTAKE PAGE. Models (read-only) · Create · Enrich · Functions · Verification.
 // Discovery-shaped. One Intake Save for atlas_*; Verification keeps its own
 // per-switch save. Search eligibility lives on Discovery › Map — not here.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
-const PERPLEXITY_OPTIONS: readonly { value: PerplexityPreset; label: string }[] =
-  [
-    { value: "fast-search", label: "fast-search" },
-    { value: "pro-search", label: "pro-search" },
-    { value: "deep-research", label: "deep-research" },
-    { value: "advanced-deep-research", label: "advanced-deep-research" },
-  ];
+const QUALITY_LABEL: Record<IntakeSettings["synthesisQuality"], string> = {
+  economy: "economy",
+  standard: "standard",
+  high: "high",
+};
 
 export function IntakeClient({
   initialSettings,
@@ -130,9 +127,6 @@ export function IntakeClient({
         analyzeInstagramImages: settings.analyzeInstagramImages,
         imageAnalysisPrompt: settings.imageAnalysisPrompt,
         imageSortingPrompt: settings.imageSortingPrompt,
-        synthesisQuality: settings.synthesisQuality,
-        visionQuality: settings.visionQuality,
-        perplexityPreset: settings.perplexityPreset,
         discoverWebsiteN: settings.discoverWebsiteN,
         discoverInstagramN: settings.discoverInstagramN,
         discoverFacebookN: settings.discoverFacebookN,
@@ -171,51 +165,43 @@ export function IntakeClient({
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
             title="Models"
-            subtitle="Shared spend. Embeddings is locked."
+            subtitle="Read-only reference — configure on Models."
           >
             <div className="mt-4">
               <ModelRow
                 label="Text"
                 hint="9 · Description, image-rank"
               >
-                <QualityPicker
-                  value={settings.synthesisQuality}
-                  onChange={(v) => patch({ synthesisQuality: v })}
-                />
+                <span className="text-sm font-medium">
+                  {QUALITY_LABEL[settings.synthesisQuality]}
+                </span>
               </ModelRow>
               <ModelRow label="Image" hint="6 · Images">
-                <QualityPicker
-                  value={settings.visionQuality}
-                  onChange={(v) => patch({ visionQuality: v })}
-                />
+                <span className="text-sm font-medium">
+                  {QUALITY_LABEL[settings.visionQuality]}
+                </span>
               </ModelRow>
               <ModelRow
                 label="Search"
                 hint="3 · Serp · 4 · Links"
               >
-                <select
-                  value={settings.perplexityPreset}
-                  disabled={pending}
-                  aria-label="Search model preset"
-                  onChange={(e) =>
-                    patch({
-                      perplexityPreset: e.target.value as PerplexityPreset,
-                    })
-                  }
-                  className="border-border bg-card focus:border-foreground h-8 w-full max-w-xs rounded-lg border px-2 text-xs font-semibold outline-none disabled:opacity-50"
-                >
-                  {PERPLEXITY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-sm font-medium">
+                  {settings.perplexityPreset}
+                </span>
               </ModelRow>
               <ModelRow label="Embeddings" hint="locked · Embedding">
                 <span className="text-sm">text-embedding-3-small</span>
               </ModelRow>
+              <p className="text-muted-foreground mt-3 text-sm">
+                <Link
+                  href={MODELS_PARENT.href}
+                  className="text-foreground font-semibold underline underline-offset-2"
+                >
+                  Configure on Models ›
+                </Link>
+              </p>
               {settingsStamp && (
-                <p className="text-muted-foreground mt-3 text-xs">
+                <p className="text-muted-foreground mt-2 text-xs">
                   Intaker settings last changed {formatShortDate(settingsStamp)}
                 </p>
               )}
