@@ -11,11 +11,13 @@ import {
 import { formatCurrency } from "@/lib/api/profile";
 import type { CreditLot, CreditOrgBalance } from "@/lib/api/credits";
 import {
+  balanceFace,
   formatActivation,
   formatExpiry,
   formatWhen,
   headlineCents,
   orgBalanceState,
+  spendableAtCopy,
 } from "@/lib/credits";
 import { useCreditBalances } from "@/lib/use-credit-balances";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -25,7 +27,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // THE ID IN THE URL IS AN ORGANIZATION ID, not a per-lot id — a balance IS
 // an organization's aggregate (credit_lots is org-scoped, MESITA-1671), the
 // same unit the list screen renders one card per. `walletBalancePath` did
-// not change; what it addresses did.
+// not change; what it addresses did. THE TITLE IS NOT ALWAYS THE ORGANIZATION
+// (MESITA-1816): a one-place organization's balance is titled with the place
+// and says "spendable at" that place; the organization is named only when
+// it holds two or more — see `balanceFace` in lib/credits.ts.
 //
 // IT IS ALSO THE ONLY TERM LEFT THAT CAN CLOSE THE SPEND CONTROLS — this line
 // survives from the pre-1674 file almost verbatim, and the state it describes
@@ -91,7 +96,7 @@ function BalanceBody({ balance, nowMs }: { balance: CreditOrgBalance; nowMs: num
             ? "These Credits can no longer be spent"
             : state === "pending" && hoursLeft !== null
               ? `Activates in ${formatActivation(hoursLeft)}`
-              : "Spendable at any of this organization's places"}
+              : spendableAtCopy(balance)}
         </div>
       </div>
 
@@ -112,7 +117,11 @@ function BalanceBody({ balance, nowMs }: { balance: CreditOrgBalance; nowMs: num
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground text-xs">Spendable at</dt>
             <dd className="text-sm font-semibold">
-              {balance.organizationName} — any of its places
+              {balance.placeCount === 1 && balance.place
+                ? balance.place.name
+                : balance.placeCount >= 2
+                  ? `${balance.organizationName} — any of its ${balance.placeCount} places`
+                  : balance.organizationName}
             </dd>
           </div>
           {daysLeft !== null && (
@@ -161,7 +170,7 @@ export function BalanceClient({ organizationId }: { organizationId: string }) {
   }, [credits, balance]);
 
   const stillSearching = !balance && (credits.loading || credits.hasMore || credits.loadingMore);
-  const title = balance ? balance.organizationName : "Balance";
+  const title = balance ? balanceFace(balance).name : "Balance";
 
   return (
     <WalletScreen title={title}>

@@ -80,9 +80,20 @@ export type CreditLot = {
   expired: boolean;
 };
 
+/** The one place a single-place organization holds (MESITA-1816). */
+export type CreditBalancePlace = {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+};
+
 export type CreditOrgBalance = {
   organizationId: string;
   organizationName: string;
+  /** Places the organization holds today; 0 is possible. */
+  placeCount: number;
+  /** The organization's ONE place when placeCount === 1, else null. */
+  place: CreditBalancePlace | null;
   currency: string;
   totalCents: number;
   spendableCents: number;

@@ -12,6 +12,15 @@
 // BALANCE IS STILL DERIVED, NEVER CACHED. Same rule the schema comment on
 // credit_lots makes: nothing here is written back. `remainingCents` is
 // computed fresh from paid/bonus/spent every time this module runs.
+//
+// THE ORGANIZATION IS THE MONEY BOUNDARY, NOT ALWAYS THE FACE (MESITA-1816).
+// Pato, 2026-09-13: "too complex for one organization to manage multiple
+// places too. It's just too enterprise." The ledger stays org-scoped — the
+// organization is who owes the guest — but while it holds exactly ONE place
+// the guest never needs the word: every balance carries `placeCount` and,
+// at one, that `place` (name and its own photo), so the Wallet can title the
+// card with the place and show the place's art. At two or more the card is
+// the organization's, as before.
 
 export type CreditLotRow = {
   id: string;
@@ -41,9 +50,21 @@ export type CreditLotSummary = {
   expired: boolean;
 };
 
+/** The one place a single-place organization holds, for the card's face. */
+export type CreditBalancePlace = {
+  id: string;
+  name: string;
+  /** `photos[0]`, ONE string — the same rule business-web-list-places states. Null when the place has none. */
+  photoUrl: string | null;
+};
+
 export type CreditOrgBalance = {
   organizationId: string;
   organizationName: string;
+  /** How many places the organization holds today. 0 is possible (a place released after the purchase) and renders as the organization. */
+  placeCount: number;
+  /** The organization's ONE place when placeCount === 1, else null. The Wallet wears it as the balance's face (MESITA-1816). */
+  place: CreditBalancePlace | null;
   currency: string;
   /** Sum of remainingCents across every lot — spendable, pending or expired. An org with only dead lots still reports what was there, the same continuity the old per-place BalanceCard kept. */
   totalCents: number;
@@ -80,11 +101,16 @@ export function summarizeLot(row: CreditLotRow, nowMs: number): CreditLotSummary
   };
 }
 
+/** Every place an organization holds, name-sorted; the caller builds it from
+ *  one `places` read across all the organizations on the page. */
+export type OrgPlaces = ReadonlyMap<string, readonly CreditBalancePlace[]>;
+
 export function groupCreditLotsByOrganization(
   rows: CreditLotRow[],
   orgNames: ReadonlyMap<string, string>,
   acceptsMore: ReadonlySet<string>,
   nowMs: number,
+  orgPlaces: OrgPlaces = new Map(),
 ): CreditOrgBalance[] {
   const byOrg = new Map<string, CreditLotSummary[]>();
   const currencyByOrg = new Map<string, string>();
@@ -117,9 +143,12 @@ export function groupCreditLotsByOrganization(
         nearestExpiryMs = Math.min(nearestExpiryMs, Date.parse(lot.expiresAt));
       }
     }
+    const places = orgPlaces.get(organizationId) ?? [];
     out.push({
       organizationId,
       organizationName: orgNames.get(organizationId) ?? "A Mesita organization",
+      placeCount: places.length,
+      place: places.length === 1 ? places[0] : null,
       currency: currencyByOrg.get(organizationId) ?? "MXN",
       totalCents,
       spendableCents,

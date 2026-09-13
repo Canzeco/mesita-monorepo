@@ -82,6 +82,50 @@ export function formatWhen(atMs: number): string {
   }).format(new Date(atMs));
 }
 
+// ── Whose face a balance wears (MESITA-1816) ──────────────────────────────
+// THE ORGANIZATION IS THE MONEY BOUNDARY, NOT ALWAYS THE FACE. Pato,
+// 2026-09-13: "too complex for one organization to manage multiple places
+// too. It's just too enterprise." The ledger stays org-scoped, but while an
+// organization holds exactly ONE place the guest never meets the word: the
+// card is titled with the place, wears the place's own photo, and says
+// "spendable at Taquería X". At two or more places — or none, a place
+// released after the purchase — the card is the organization's, as before.
+
+export type BalanceFace = {
+  /** What the card and the balance screen are titled. */
+  name: string;
+  /** The place's own `photos[0]`; null for an organization (no art of its own) or a photo-less place. */
+  photoUrl: string | null;
+  /** True when the face is the organization's one place. */
+  isPlace: boolean;
+};
+
+export function balanceFace(
+  o: {
+    organizationName: string;
+    placeCount: number;
+    place: { name: string; photoUrl: string | null } | null;
+  },
+): BalanceFace {
+  if (o.placeCount === 1 && o.place) {
+    return { name: o.place.name, photoUrl: o.place.photoUrl, isPlace: true };
+  }
+  return { name: o.organizationName, photoUrl: null, isPlace: false };
+}
+
+/** "Spendable at Taquería X" · "Spendable at any of Grupo X's 3 places" ·
+ *  the organization alone when it holds nothing today. */
+export function spendableAtCopy(
+  o: { organizationName: string; placeCount: number; place: { name: string } | null },
+): string {
+  const face = balanceFace({ ...o, place: o.place ? { ...o.place, photoUrl: null } : null });
+  if (face.isPlace) return `Spendable at ${face.name}`;
+  if (o.placeCount >= 2) {
+    return `Spendable at any of ${o.organizationName}'s ${o.placeCount} places`;
+  }
+  return `Spendable at ${o.organizationName}`;
+}
+
 // ── The three states a real, org-scoped balance can be in ──────────────────
 // Credits used to open in exactly two — Available and Expired — because the
 // buy path never applied the hold it still carries in the schema (BalanceClient

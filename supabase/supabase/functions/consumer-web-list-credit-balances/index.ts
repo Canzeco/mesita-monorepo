@@ -21,6 +21,14 @@
 // carries `serverNowMs` so the client's countdowns anchor to the SAME clock
 // this pending/expired split was computed against, never the guest's own.
 //
+// THE ORGANIZATION IS THE MONEY BOUNDARY, NOT ALWAYS THE FACE (MESITA-1816).
+// Every balance also carries `placeCount` and, at exactly one, that `place`
+// (name + its own `photos[0]`), so the Wallet can wear the place instead of
+// an organization the guest never chose to think about. One `places` read
+// across every organization on the page — the same embed
+// business-web-list-organizations uses (`name`/`photos` live on
+// place_profiles; selecting them off `places` 42703s, MESITA-1781).
+//
 // NO SPEND HERE. This is read-only; spend-at-the-table (MESITA-1678) is a
 // separate, still-unbuilt engine (blocked on who funds the bonus). A balance
 // this EF reports is exactly what credit_ledger already agrees it is —
@@ -28,6 +36,7 @@
 //
 // Body:     { cursor?: string, limit?: number }
 // Response: { ok: true, organizations: CreditOrgBalance[], nextCursor: string | null, serverNowMs: number }
+//   CreditOrgBalance carries placeCount and place (MESITA-1816) — see _shared/credits-balances.ts.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -41,6 +50,7 @@ import { loadVisitsConfig } from "../_shared/visits-config.ts";
 import { organizationsAcceptingCredits } from "../_shared/credits-readiness.ts";
 import {
   clampLimit,
+  type CreditBalancePlace,
   type CreditLotRow,
   groupCreditLotsByOrganization,
   paginateOrgBalances,
@@ -127,8 +137,12 @@ Deno.serve(async (req) => {
 
   const organizationIds = [...new Set(rows.map((r) => r.organizationId))];
 
-  const [orgsRes, visitsConfig] = await Promise.all([
+  const [orgsRes, placesRes, visitsConfig] = await Promise.all([
     admin.from("organizations").select("id, name").in("id", organizationIds),
+    admin
+      .from("places")
+      .select("id, organization_id, place_profiles!inner(name, photos)")
+      .in("organization_id", organizationIds),
     loadVisitsConfig(admin),
   ]);
   if (orgsRes.error) {
@@ -136,6 +150,39 @@ Deno.serve(async (req) => {
       { ok: false, error: `credit_balances_orgs: ${orgsRes.error.message}` },
       500,
     );
+  }
+  if (placesRes.error) {
+    return json(
+      { ok: false, error: `credit_balances_places: ${placesRes.error.message}` },
+      500,
+    );
+  }
+  // Generated types type a 1:1 embed as an array; live PostgREST returns an
+  // object. Accept both, as business-web-list-organizations does.
+  type Profile = { name: string; photos: string[] | null };
+  type PlaceRow = {
+    id: string;
+    organization_id: string;
+    place_profiles: Profile | Profile[];
+  };
+  const orgPlaces = new Map<string, CreditBalancePlace[]>();
+  for (const p of (placesRes.data ?? []) as unknown as PlaceRow[]) {
+    const profile = Array.isArray(p.place_profiles)
+      ? p.place_profiles[0]
+      : p.place_profiles;
+    const place: CreditBalancePlace = {
+      id: p.id,
+      name: profile?.name ?? "",
+      photoUrl: Array.isArray(profile?.photos) && profile.photos.length > 0
+        ? profile.photos[0]
+        : null,
+    };
+    const bucket = orgPlaces.get(p.organization_id) ?? [];
+    bucket.push(place);
+    orgPlaces.set(p.organization_id, bucket);
+  }
+  for (const bucket of orgPlaces.values()) {
+    bucket.sort((a, b) => a.name.localeCompare(b.name));
   }
   const orgNames = new Map(
     ((orgsRes.data ?? []) as { id: string; name: string }[]).map((
@@ -154,6 +201,7 @@ Deno.serve(async (req) => {
     orgNames,
     acceptsMore,
     nowMs,
+    orgPlaces,
   );
   const ranked = rankOrgBalances(grouped);
   const { page, nextCursor } = paginateOrgBalances(ranked, cursor, limit);
