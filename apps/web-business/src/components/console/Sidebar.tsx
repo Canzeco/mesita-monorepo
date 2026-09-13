@@ -15,7 +15,7 @@
 //   [ ▤ Organization             ]   a Plus beside it = Create organization
 //   [ ⌂ Places                   ]   (one org page — MESITA-1810; the list)
 //   PLACE
-//   [ [img] Strana Del Valle ⇅ + ]   picker; Plus = Claim a place
+//   [ [img] Strana Del Valle ⇅ + ]   picker; Plus = Add place
 //   [ ▢ Profile                  ]
 //   [ ★ Reviews                  ]
 //   [ ~ Activity          ▮pill  ]   exactly ONE filled pill, always
@@ -662,7 +662,7 @@ export function Sidebar({
               // leading nowhere would be a promise the rail cannot keep.
               <NavRow
                 href={orgPlacesNewHref(org.id)}
-                label="Claim a place"
+                label="Add place"
                 Icon={Plus}
                 active={false}
                 collapsed={collapsed}
@@ -716,7 +716,7 @@ export function Sidebar({
                     />
                     <MenuLink
                       href={orgPlacesNewHref(org.id)}
-                      label="Claim a place"
+                      label="Add place"
                       Icon={Plus}
                       onNavigate={onNavigate}
                       onGuardedNavigate={guardNav ?? undefined}
@@ -724,7 +724,7 @@ export function Sidebar({
                   </Picker>
                   <CeremonyPlus
                     href={orgPlacesNewHref(org.id)}
-                    label="Claim a place"
+                    label="Add place"
                     active={false}
                     collapsed={collapsed}
                     onNavigate={onNavigate}

@@ -261,7 +261,7 @@ describe("the rail is three scoped boxes", () => {
     const plus = r.slice(r.indexOf("function CeremonyPlus"));
     expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain("if (collapsed) return null;");
     expect(r).toContain('label="All places"');
-    expect((r.match(/label="Claim a place"/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect((r.match(/label="Add place"/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 
   it("at exactly one entry the menu shows a label, not a one-item choice", () => {

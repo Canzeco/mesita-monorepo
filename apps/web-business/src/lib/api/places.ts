@@ -6,8 +6,6 @@
 // - Each helper here calls exactly one Edge Function and never composes
 //   multiple Edge Functions (composition belongs inside the function).
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
 import type { BusinessRole } from "./team";
 
 type PlaceListingType = "partner" | "web";
@@ -147,35 +145,9 @@ export type MyPlace = Place & {
   has_pin?: boolean;
 };
 
-// Per-row state mirrored from the lookup EF, plus a self/other split
-// for the owned case so the picker can flag "you own this" inline.
-export type PredictionState =
-  | "not_in_mesita"
-  | "web_listed"
-  | "verified_partner_other"
-  | "verified_partner_self";
-
-export type PlacePrediction = {
-  placeId: string;
-  mainText: string;
-  secondaryText: string;
-  // Drives the per-row badge in the picker.
-  state: PredictionState;
-};
-
-export async function apiPlacesAutocomplete(
-  client: SupabaseClient,
-  input: string,
-  sessionToken: string,
-): Promise<PlacePrediction[]> {
-  const trimmed = input.trim();
-  if (trimmed.length < 2) return [];
-  const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
-    client,
-    "business-web-suggest-places",
-    { input: trimmed, sessionToken },
-    "Couldn't search places right now.",
-  );
-  return predictions;
-}
+export type {
+  PlacePrediction,
+  PredictionState,
+} from "./place-search";
+export { apiPlacesAutocomplete } from "./place-search";
 

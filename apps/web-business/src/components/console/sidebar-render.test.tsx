@@ -184,10 +184,10 @@ describe("the states a 10/10 has to answer", () => {
 
   it("an organization holding no place: the Place box is the next step, never active", () => {
     const html = render(orgPlacesNewHref("org-b"));
-    expect(html).toContain("Claim a place");
+    expect(html).toContain("Add place");
     expect(hrefs(html)).toContain(orgPlacesNewHref("org-b"));
     expect(html).not.toContain('aria-label="Switch place"');
-    // The Places row is the pill on the claim step — not the Claim row.
+    // The Places row is the pill on the add step — not the Add place row.
     expect(pills(html)).toHaveLength(1);
     const pill = html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
     expect(pill).toContain(">Places<");
@@ -205,7 +205,7 @@ describe("the states a 10/10 has to answer", () => {
     const html = render(orgHref("org-a"), { collapsed: true });
     expect(html).not.toMatch(/aria-hidden="true"[^>]*>Organization</);
     expect(html).not.toContain('aria-label="Create organization"');
-    expect(html).not.toContain('aria-label="Claim a place"');
+    expect(html).not.toContain('aria-label="Add place"');
     expect(html).toContain('title="Places"');
     expect(html).toContain('title="Switch organization: Strana Group"');
     expect(pills(html)).toHaveLength(1);

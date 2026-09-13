@@ -49,10 +49,10 @@ export function crumbsFor(
   const page = orgPageFromPathname(pathname);
   if (page) {
     // The organization's own page is the organization: no second crumb
-    // restating it (MESITA-1810). Its list, and the claim step under the list.
+    // restating it (MESITA-1810). Its list, and the add step under the list.
     const trail = [names.orgName ?? "Organization"];
     if (page !== "overview") trail.push(ORG_PAGE_LABEL[page]);
-    if (/\/places\/new\/?$/.test(pathname)) trail.push("Claim");
+    if (/\/places\/new\/?$/.test(pathname)) trail.push("Add");
     return trail;
   }
   if (placeIdFromPathname(pathname)) {

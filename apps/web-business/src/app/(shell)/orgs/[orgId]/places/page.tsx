@@ -25,8 +25,18 @@ import {
   apiListConsolePlaces,
   type ConsolePlace,
 } from "@/lib/api/organizations";
-import { canClaim, canRelease, canVerify } from "@/lib/active-organization";
-import { ownedFromParam, orgPlacesHref, placeHref } from "@/lib/console-routes";
+import {
+  canAddPlace,
+  canClaim,
+  canRelease,
+  canVerify,
+} from "@/lib/active-organization";
+import {
+  ownedFromParam,
+  orgPlacesHref,
+  orgPlacesNewHref,
+  placeHref,
+} from "@/lib/console-routes";
 import { requireOrg } from "@/lib/org-scope";
 import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
@@ -65,6 +75,7 @@ export default async function OrganizationPlacesPage({
   }
 
   const held = places.filter((p) => p.owned === true).length;
+  const canAdd = canAddPlace(org.myRole);
 
   // ONE READ, then a view of it (MESITA-1710). `?owned=org` and `?owned=public`
   // are saved filters on this page, not screens, and the filter runs HERE
@@ -117,58 +128,74 @@ export default async function OrganizationPlacesPage({
           retryHref={orgPlacesHref(org.id)}
         />
       ) : visible.length === 0 ? (
-        /* TWO empty states. The first is the merge's (MESITA-1664): the
-           catalogue itself is empty — production today (0 places), so it is
-           the state everyone actually sees, and it gets no action, because
-           businesses do not put places into the catalogue any more, Mesita
-           does. Offering "Add a place" would be a button leading nowhere a
-           manager is allowed to go.
-
-           The second arrived with the filters (MESITA-1710), and it is the
-           one that would have lied: on `?owned=org` with places sitting in
-           the pool, "No places yet" is false — there ARE places, just none of
-           them yours. A filter that empties the screen has to say it was the
-           filter, and hand back the way out. */
+        /* TWO empty states. An empty catalogue outranks the filter: keying
+           off `owned` first would answer "Nothing left to claim" on
+           `?owned=public` when the catalogue holds nothing at all. Ask "is
+           there anything?" before "did I hide it?". Owner gets Add place
+           (MESITA-1813). A viewer gets an honest empty, no CTA. A filter
+           that empties a non-empty catalogue still hands back the other
+           half, plus Add place for the owner. */
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
           title={
-            // AN EMPTY CATALOGUE OUTRANKS THE FILTER. Keying off `owned`
-            // first would answer "Nothing left to claim — every place in the
-            // catalogue is already held" on `?owned=public` when the
-            // catalogue holds nothing at all: a filter explaining an absence
-            // it did not cause. Ask "is there anything?" before "did I hide
-            // it?".
             places.length === 0
-              ? "No places yet"
+              ? canAdd
+                ? "No places yet"
+                : "This organization has no places."
               : owned === "org"
                 ? `${org.name} holds none yet`
                 : "Nothing left to claim"
           }
           description={
             places.length === 0
-              ? "Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
+              ? canAdd
+                ? "Search for the place. If Mesita has it, add it to this organization. If not, create it."
+                : undefined
               : owned === "org"
                 ? "Claim one from Public Places and it lands here."
                 : "Every place in the catalogue is already held."
           }
           action={
-            // No action on an empty catalogue: there is nowhere to send anyone
-            // (MESITA-1664 — businesses do not add places, Mesita does).
-            places.length === 0 ? null : owned === "org" ? (
-              <Link
-                href={orgPlacesHref(org.id, "public")}
-                className={CTA_BUTTON_CLASS}
-              >
-                See Public Places
-              </Link>
-            ) : owned === "public" ? (
-              <Link
-                href={orgPlacesHref(org.id, "org")}
-                className={CTA_BUTTON_CLASS}
-              >
-                See Org Places
-              </Link>
-            ) : null
+            places.length === 0 ? (
+              canAdd ? (
+                <Link
+                  href={orgPlacesNewHref(org.id)}
+                  className={CTA_BUTTON_CLASS}
+                >
+                  Add place
+                </Link>
+              ) : null
+            ) : (
+              <span className="flex flex-wrap items-center justify-center gap-2">
+                {canAdd && (
+                  <Link
+                    href={orgPlacesNewHref(org.id)}
+                    className={CTA_BUTTON_CLASS}
+                  >
+                    Add place
+                  </Link>
+                )}
+                {owned === "org" ? (
+                  <Link
+                    href={orgPlacesHref(org.id, "public")}
+                    className={
+                      canAdd ? GHOST_PILL_BUTTON_CLASS : CTA_BUTTON_CLASS
+                    }
+                  >
+                    See Public Places
+                  </Link>
+                ) : owned === "public" ? (
+                  <Link
+                    href={orgPlacesHref(org.id, "org")}
+                    className={
+                      canAdd ? GHOST_PILL_BUTTON_CLASS : CTA_BUTTON_CLASS
+                    }
+                  >
+                    See Org Places
+                  </Link>
+                ) : null}
+              </span>
+            )
           }
         />
       ) : (

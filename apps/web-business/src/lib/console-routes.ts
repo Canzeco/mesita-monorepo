@@ -17,7 +17,8 @@
 //                            Pato, on seeing them split: "organization all
 //                            in the same page")
 //   /orgs/<id>/places        what it holds and what it can claim (?owned=)
-//   /orgs/<id>/places/new    Claim a place — from the catalogue, never mint
+//   /orgs/<id>/places/new    Add place — search Google; on Mesita claim
+//                            into the org; not on Mesita create then claim
 //   /places/<id>/<view>      the ONE place console, five views. Global, not
 //                            under the org: the place id names its holder.
 //
@@ -79,7 +80,7 @@ export function orgPlacesHref(
   return owned ? `${list}?owned=${owned}` : list;
 }
 
-/** Claim a place — the ceremony under the organization's list. */
+/** Add place — the ceremony under the organization's list. */
 export function orgPlacesNewHref(orgId: string): string {
   return `${orgHref(orgId, "places")}/new`;
 }
@@ -94,8 +95,8 @@ export function orgIdFromPathname(pathname: string): string | null {
 }
 
 /** Which organization page a pathname is, or null when it is not one. The
- *  claim ceremony (`/orgs/<id>/places/new`) reads as Places: it is the list's
- *  own sub-step, and the rail lights the Places row for both. */
+ *  Add place ceremony (`/orgs/<id>/places/new`) reads as Places: it is the
+ *  list's own sub-step, and the rail lights the Places row for both. */
 export function orgPageFromPathname(pathname: string): OrgPage | null {
   const match = pathname.match(
     /^\/orgs\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/,

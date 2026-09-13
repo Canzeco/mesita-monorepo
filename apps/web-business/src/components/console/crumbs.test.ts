@@ -22,11 +22,11 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/orgs/o/payments", names)).toEqual([]);
   });
 
-  it("the claim ceremony is Places / Claim", () => {
+  it("the add ceremony is Places / Add", () => {
     expect(crumbsFor(orgPlacesNewHref("o"), names)).toEqual([
       "Strana Group",
       "Places",
-      "Claim",
+      "Add",
     ]);
   });
 

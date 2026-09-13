@@ -16,7 +16,7 @@ import type {
   PaymentAccount,
   PendingOrgInvite,
 } from "@/lib/api/organizations";
-import { orgPlacesHref } from "@/lib/console-routes";
+import { orgPlacesHref, orgPlacesNewHref } from "@/lib/console-routes";
 
 const ORG: Organization = {
   id: "org-1",
@@ -104,9 +104,19 @@ describe("the Organization page composition", () => {
   });
 
   it("the Places box opens the organization's own list (MESITA-1807)", () => {
-    expect(render()).toContain(`href="${orgPlacesHref("org-1")}"`);
+    expect(render()).toContain(`href="${orgPlacesNewHref("org-1")}"`);
+    expect(render()).toContain(">Add place<");
     expect(render({ org: { ...ORG, placeCount: 2 } })).toContain(">Manage<");
+    expect(render({ org: { ...ORG, placeCount: 2 } })).toContain(
+      `href="${orgPlacesHref("org-1")}"`,
+    );
     expect(render()).not.toContain("org=");
+  });
+
+  it("a viewer with no places gets an honest empty, no Add place", () => {
+    const html = render({ org: { ...ORG, myRole: "viewer" } });
+    expect(html).toContain("This organization has no places.");
+    expect(html).not.toContain(">Add place<");
   });
 
   it("labels the Partner switch Partner, never Not Partner or Patner", () => {

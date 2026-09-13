@@ -30,7 +30,8 @@ import type {
   PaymentAccount,
   PendingOrgInvite,
 } from "@/lib/api/organizations";
-import { orgPlacesHref } from "@/lib/console-routes";
+import { orgPlacesHref, orgPlacesNewHref } from "@/lib/console-routes";
+import { canAddPlace } from "@/lib/active-organization";
 import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 /** The box order, exported so the pin test asserts the product decision. */
@@ -139,14 +140,18 @@ export function OrgScreenSections({
           // Zero is not a data point worth a row. It is a next step.
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-muted-foreground text-sm">
-              None yet. Claim one from the list and it becomes yours.
+              {canAddPlace(org.myRole)
+                ? "None yet. Search for the place. If Mesita has it, add it to this organization. If not, create it."
+                : "This organization has no places."}
             </p>
-            <Link
-              href={orgPlacesHref(org.id)}
-              className={PILL_BUTTON_CLASS}
-            >
-              Browse places
-            </Link>
+            {canAddPlace(org.myRole) ? (
+              <Link
+                href={orgPlacesNewHref(org.id)}
+                className={PILL_BUTTON_CLASS}
+              >
+                Add place
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div>
