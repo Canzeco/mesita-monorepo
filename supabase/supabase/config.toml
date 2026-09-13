@@ -490,6 +490,11 @@ verify_jwt = true
 [functions.business-web-set-partnership]
 verify_jwt = true
 
+# Org-level Partner switch (MESITA-1798). Owner-only; cascades plan=pro
+# onto every held place and writes organizations.mesita_pay_enabled.
+[functions.business-web-set-org-partnership]
+verify_jwt = true
+
 # MESITA-892: Memo-backed next-promo suggestions on Performance (advisory;
 # never writes rates; never exposes consumer class).
 [functions.business-web-suggest-promo]

@@ -314,10 +314,12 @@ const PLACES_READ_ALLOWLIST = [
   "business-web-get-overview/index.ts",
   "business-web-get-payment-account/index.ts", // org_id for the Connect mirror (MESITA-1740)
   "business-web-get-place/index.ts",
+  "business-web-claim-place/index.ts", // auto-join when the org is Partnered (MESITA-1798)
   "business-web-list-organizations/index.ts",
   "business-web-list-places/index.ts",
   "business-web-release-place/index.ts",
   "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
+  "_shared/org-partnership.ts", // cascade plan=pro/free onto held places (MESITA-1798)
   "business-web-update-place/index.ts",
   "business-web-verify-place/index.ts",
   "consumer-web-apply-ticket-credits/index.ts",
@@ -368,6 +370,7 @@ const PAYMENT_ACCOUNT_READ_ALLOWLIST = [
   "business-web-get-payment-dashboard-link/index.ts",
   "business-web-start-payment-onboarding/index.ts",
   "consumer-web-list-credit-places/index.ts",
+  "_shared/org-partnership.ts", // Stripe Ready lock on the Partner switch (MESITA-1798)
 ];
 
 Deno.test("PAYMENT ACCOUNT READ: no new raw reader of organization_payment_accounts outside the allowlist", async () => {

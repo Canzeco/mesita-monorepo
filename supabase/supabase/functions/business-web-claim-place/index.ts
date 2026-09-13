@@ -35,6 +35,7 @@ import {
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
+import { writePlacePartnership } from "../_shared/org-partnership.ts";
 import { writeApprovedVerification } from "../_shared/place-verification.ts";
 
 type Body = { placeId?: string; projectId?: string; organizationId?: string };
@@ -115,6 +116,41 @@ Deno.serve(async (req) => {
   });
   if (!verifyResult.ok) {
     console.error("[claim-place] auto-verify:", verifyResult.error);
+  }
+
+  // AUTO-JOIN ON A PARTNERED ORG (MESITA-1798). Partner is an org fact;
+  // a place claimed into one inherits plan=pro Zero. Best-effort: the
+  // claim already succeeded, and the org toggle can cascade again.
+  const { data: orgRow, error: orgReadErr } = await admin
+    .from("organizations")
+    .select("partnered")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (orgReadErr) {
+    console.error("[claim-place] auto-join org read:", orgReadErr.message);
+  } else if ((orgRow as { partnered?: boolean } | null)?.partnered === true) {
+    const { data: placeRow, error: placeReadErr } = await admin
+      .from("places")
+      .select("id, plan, listing_type, plan_forfeited_at")
+      .eq("id", placeId)
+      .maybeSingle();
+    if (placeReadErr) {
+      console.error("[claim-place] auto-join place read:", placeReadErr.message);
+    } else if (placeRow) {
+      const join = await writePlacePartnership(
+        admin,
+        placeRow as {
+          id: string;
+          plan: string | null;
+          listing_type: string | null;
+          plan_forfeited_at: string | null;
+        },
+        true,
+      );
+      if (!join.ok) {
+        console.error("[claim-place] auto-join:", join.error);
+      }
+    }
   }
 
   return json({

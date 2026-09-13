@@ -985,6 +985,7 @@ export type Database = {
           legal_name: string | null
           mesita_pay_enabled: boolean
           name: string
+          partnered: boolean
           rfc: string | null
           updated_at: string
         }
@@ -995,6 +996,7 @@ export type Database = {
           legal_name?: string | null
           mesita_pay_enabled?: boolean
           name: string
+          partnered?: boolean
           rfc?: string | null
           updated_at?: string
         }
@@ -1005,6 +1007,7 @@ export type Database = {
           legal_name?: string | null
           mesita_pay_enabled?: boolean
           name?: string
+          partnered?: boolean
           rfc?: string | null
           updated_at?: string
         }

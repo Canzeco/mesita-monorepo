@@ -55,7 +55,9 @@ Deno.serve(async (req) => {
   const [membership, isSuperAdmin] = await Promise.all([
     admin
       .from("organization_members")
-      .select("role, organizations!inner(id, name, legal_name, rfc, currency)")
+      .select(
+        "role, organizations!inner(id, name, legal_name, rfc, currency, partnered, mesita_pay_enabled)",
+      )
       .eq("manager_id", authRes.user.id)
       .order("created_at", { ascending: true }),
     checkSuperAdmin(admin, authRes.user),
@@ -71,6 +73,8 @@ Deno.serve(async (req) => {
       legal_name: string | null;
       rfc: string | null;
       currency: string;
+      partnered: boolean;
+      mesita_pay_enabled: boolean;
     };
   };
   const list = (rows ?? []) as unknown as Row[];
@@ -137,6 +141,8 @@ Deno.serve(async (req) => {
         legalName: r.organizations.legal_name,
         rfc: r.organizations.rfc,
         currency: r.organizations.currency,
+        partnered: r.organizations.partnered === true,
+        mesitaPayEnabled: r.organizations.mesita_pay_enabled === true,
         myRole: r.role,
         placeCount: places.length,
         places,
