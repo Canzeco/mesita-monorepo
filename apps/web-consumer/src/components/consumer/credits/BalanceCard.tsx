@@ -5,6 +5,7 @@ import Image from "next/image";
 import { formatCurrency } from "@/lib/api/profile";
 import type { CreditOrgBalance } from "@/lib/api/credits";
 import {
+  balanceFace,
   daysUntilExpiry,
   formatActivation,
   formatExpiry,
@@ -17,13 +18,14 @@ import { cn } from "@/lib/utils";
 // One organization's Credits balance, as a card (MESITA-1674: reads
 // consumer-web-list-credit-balances now, not a per-place browser emulator).
 //
-// ORG-SCOPED, NOT PLACE-SCOPED (MESITA-1671/1674). This card used to render
-// one PLACE's balance with that place's own `photos[0]` as its art — the
-// carve-out survived review specifically because the photo was the place's
-// own, not invented identity. An organization has no photo of its own yet
-// (`photoUrl` is always null today, on every card), so every balance renders
-// the ink fallback face. The field stays typed rather than removed: an org
-// picking up a logo later is a data change, not a component rewrite.
+// ORG-SCOPED MONEY, A PLACE'S FACE WHEN THERE IS ONE (MESITA-1671/1674/1816).
+// The balance is the organization's — one per org, however many places fund
+// it. But while the organization holds exactly ONE place the card wears that
+// place: its name as the title and its own `photos[0]` as the art. That is
+// the carve-out that survived the deck review — the photo is the place's
+// own, not invented identity — and it is exactly what an organization lacks,
+// so a two-or-more-place organization still renders the ink face under its
+// own name. `balanceFace` (lib/credits.ts) is the one reader of the rule.
 //
 // THREE STATES, NOT TWO. Credits used to open Available or Expired only,
 // because the buy path never applied the hold it still carries in the schema.
@@ -83,7 +85,8 @@ export function BalanceCard({
   style?: React.CSSProperties;
 }) {
   const [artFailed, setArtFailed] = useState(false);
-  const photoUrl: string | null = null; // No organization art source exists yet — see header note.
+  const face = balanceFace(balance);
+  const photoUrl = face.photoUrl;
   const state = orgBalanceState(balance);
   const headline = headlineCents(balance);
   const daysLeft = balance.nearestExpiryAt
@@ -102,7 +105,7 @@ export function BalanceCard({
     ? "on its way"
     : "ready to spend";
   const label =
-    `${balance.organizationName}, ${formatCurrency(headline)}, ${stateWord}` +
+    `${face.name}, ${formatCurrency(headline)}, ${stateWord}` +
     (expiringSoon && daysLeft !== null
       ? `, expires in ${formatExpiry(daysLeft)}`
       : state === "pending" && hoursLeft !== null
@@ -150,7 +153,7 @@ export function BalanceCard({
           className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-bold tracking-tight"
           style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
         >
-          {balance.organizationName}
+          {face.name}
         </span>
         {!covered ? null : (
           <span className="flex shrink-0 items-center gap-1.5">

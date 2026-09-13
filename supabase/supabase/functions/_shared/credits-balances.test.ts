@@ -44,6 +44,30 @@ Deno.test("groups lots by organization and sums remaining across them", () => {
   assertEquals(a.spendableCents, a.totalCents);
 });
 
+Deno.test("a one-place organization carries its place; two or more, or none, carry the organization alone (MESITA-1816)", () => {
+  const rows = [
+    lot({ organizationId: "org_one" }),
+    lot({ organizationId: "org_many" }),
+    lot({ organizationId: "org_none" }),
+  ];
+  const names = new Map([["org_one", "Taquería X"], ["org_many", "Grupo X"], ["org_none", "Released"]]);
+  const taqueria = { id: "p1", name: "Taquería X", photoUrl: "https://x/p1.jpg" };
+  const orgPlaces = new Map([
+    ["org_one", [taqueria]],
+    ["org_many", [taqueria, { id: "p2", name: "Taquería Y", photoUrl: null }]],
+  ]);
+  const out = groupCreditLotsByOrganization(rows, names, new Set(), T0, orgPlaces);
+  const by = (id: string) => out.find((o) => o.organizationId === id)!;
+  assertEquals(by("org_one").placeCount, 1);
+  assertEquals(by("org_one").place, taqueria);
+  assertEquals(by("org_many").placeCount, 2);
+  assertEquals(by("org_many").place, null);
+  assertEquals(by("org_none").placeCount, 0);
+  assertEquals(by("org_none").place, null);
+  // The money boundary is untouched: still one balance per organization.
+  assertEquals(out.length, 3);
+});
+
 Deno.test("a spend takes principal first, so remaining paid is exact for the bonus split", () => {
   // 100_000 paid + 5_000 bonus, 60_000 spent: principal-first means all 60_000
   // came out of the 100_000 paid half, leaving 40_000 paid + 5_000 bonus.
