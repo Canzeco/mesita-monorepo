@@ -190,12 +190,19 @@ export async function apiDeleteConsumerAccount(): Promise<void> {
 // Change one, change all: a drifting copy is how a consumer ends up
 // ping-ponging between the tabs and /onboard.
 //
-// First name + birthday, and that is all (MESITA-1806). It used to be four
-// fields, which is four fields in front of someone who hasn't seen a place
-// yet. Birthday stays because MIN_SIGNUP_AGE is a ToS floor and an age gate
-// is only worth anything at account creation.
+// First name + birthday + sex (MESITA-1829). Birthday is a ToS floor
+// (MIN_SIGNUP_AGE) and an age gate is only worth anything at account
+// creation. Sex returned to the gate because the Passport document was
+// already printing `age · sex · country` while MESITA-1806 had stopped
+// collecting it — web's consumer-onboarding.ts carries the full reasoning.
+//
+// Last name is still NOT here: it is the reservation's gate, not signup's.
 export function isOnboarded(profile: ConsumerProfile | null | undefined): boolean {
-  return Boolean(profile?.first_name && profile?.birthday);
+  return Boolean(
+    profile?.first_name &&
+      profile?.birthday &&
+      (profile?.sex === 'male' || profile?.sex === 'female'),
+  );
 }
 
 // The one field a booking surface may still have to ask for. Mirrors web's
