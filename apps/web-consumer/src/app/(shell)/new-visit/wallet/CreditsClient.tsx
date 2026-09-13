@@ -339,7 +339,7 @@ export function CreditsClient() {
               looking merely empty. An error belongs where its content would
               have been. */}
           {credits.error ? (
-            <p role="alert" className="text-destructive type-label mt-3">
+            <p role="alert" className="text-destructive type-body mt-3">
               {credits.error}
             </p>
           ) : null}

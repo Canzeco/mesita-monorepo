@@ -49,7 +49,7 @@ export function MenusBox({ place }: { place: PlaceDetail }) {
             className="h-3.5 w-3.5 shrink-0 text-amber-600"
             strokeWidth={2.25}
           />
-          <p className="type-label leading-snug font-medium text-amber-900">
+          <p className="type-body leading-snug font-medium text-amber-900">
             Reference only — current product prices may differ at the place.
           </p>
         </div>

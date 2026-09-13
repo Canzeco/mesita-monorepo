@@ -229,7 +229,7 @@ function EditProfileForm({
           </span>
         </button>
       </div>
-      <p className="text-muted-foreground type-label mt-2 text-center">
+      <p className="text-muted-foreground type-body mt-2 text-center">
         JPG, PNG, or WEBP · max 2 MB
       </p>
 

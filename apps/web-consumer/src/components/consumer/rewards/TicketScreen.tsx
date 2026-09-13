@@ -1627,7 +1627,7 @@ function RewardLanes({
                 <p className="text-foreground text-xs leading-tight font-bold">
                   Capped at MX${capPesos.toLocaleString("en-US")} off your bill
                 </p>
-                <p className="text-muted-foreground type-meta mt-0.5 leading-snug">
+                <p className="text-muted-foreground type-body mt-0.5 leading-snug">
                   This percentage is limited to this amount.
                 </p>
               </div>
@@ -1768,7 +1768,7 @@ function ElapsedWaiting({ iso }: { iso: string | null | undefined }) {
     };
   }, [iso]);
   return (
-    <p className="type-meta mt-1 text-center text-white/75">
+    <p className="type-body mt-1 text-center text-white/75">
       <span
         aria-hidden="true"
         className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-white/90 motion-reduce:animate-none"

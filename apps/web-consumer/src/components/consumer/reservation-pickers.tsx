@@ -97,7 +97,7 @@ export function ReservationDatePicker({
       <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
         Date
       </p>
-      <p className="text-muted-foreground type-label mt-1">
+      <p className="text-muted-foreground type-body mt-1">
         Up to {BOOKING_HORIZON_MONTHS} month ahead
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
@@ -174,7 +174,7 @@ export function ReservationTimePicker({
       <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
         Time
       </p>
-      <p className="text-muted-foreground type-label mt-1">
+      <p className="text-muted-foreground type-body mt-1">
         Times shown in {PLACE_TZ_LABEL}
         {dayHours ? ` · open ${dayHours}` : ""}
       </p>

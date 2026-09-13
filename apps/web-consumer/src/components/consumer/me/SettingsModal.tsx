@@ -307,7 +307,7 @@ export function SettingsModal() {
             />
           </SettingsGroup>
 
-          <p className="text-muted-foreground type-label text-center">
+          <p className="text-muted-foreground type-body text-center">
             Mesita · {APP_VERSION}
           </p>
         </div>

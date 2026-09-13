@@ -192,7 +192,7 @@ export function WalletPanelEmpty({
       ) : null}
       <p
         className={cn(
-          "text-muted-foreground type-label max-w-[34ch] leading-relaxed",
+          "text-muted-foreground type-body max-w-[34ch] leading-relaxed",
           headline && "mt-1",
         )}
       >

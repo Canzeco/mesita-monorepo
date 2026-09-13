@@ -127,7 +127,7 @@ export function OnboardForm({
             </>
           )}
         </button>
-        <p className="text-muted-foreground type-label mt-3 text-center">
+        <p className="text-muted-foreground type-body mt-3 text-center">
           Your birthday stays private — we use it to check you&apos;re old
           enough and to personalize recommendations.
         </p>
