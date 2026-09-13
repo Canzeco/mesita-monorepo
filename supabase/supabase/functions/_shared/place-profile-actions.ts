@@ -4,11 +4,10 @@
 // (paid plan + live promo lane). These two flags are persisted:
 //
 //   orders_enabled        true when the place has a menu / product catalog.
-//   reservations_enabled  LLM inference — this kind of place likely takes
-//                         reservations (fine dining yes, fast food no).
-//
-// Defaults are false at create. Contents enrichment sets both during the
-// Description step alongside category, tags, and presentation.
+//   reservations_enabled  guest Reserve CTA. Off only when the operator
+//                         picked Not (`reservation_channel = none`) or a
+//                         contents run confirmed walk-in. Default true
+//                         (MESITA-1799); missing/undefined also offers it.
 
 /** Minimal row shape for menu detection — matches places columns. */
 export type OrderCatalogFields = {
@@ -48,9 +47,9 @@ export function placeOrderActionEnabled(
   return placeHasOrderCatalog(row);
 }
 
-/** Guest Reserve CTA — LLM-set flag only; default false. */
+/** Guest Reserve CTA — off only on an explicit false (Not / walk-in). */
 export function placeReserveActionEnabled(
   row: ActionFlagFields | null | undefined,
 ): boolean {
-  return row?.reservations_enabled === true;
+  return row?.reservations_enabled !== false;
 }

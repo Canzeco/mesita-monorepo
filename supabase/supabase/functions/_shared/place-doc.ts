@@ -499,8 +499,9 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
 const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "photos", "tags", "whatsapp_pr_urls", "instagram_pr_urls",
 ]);
-// NOT NULL boolean columns, default false. orders_enabled /
-// reservations_enabled joined PLACE_PROFILE_PATCH_KEYS in #1395 but never got a
+// NOT NULL boolean columns. orders_enabled defaults false;
+// reservations_enabled defaults true (MESITA-1799). Both joined
+// PLACE_PROFILE_PATCH_KEYS in #1395 but never got a
 // checkPlaceProfileField branch — every patch carrying them fell through to
 // "unknown place field" and the WHOLE patch was rejected (latent until the
 // 2026-08-29 EF redeploy sweep put the door in front of the live contents

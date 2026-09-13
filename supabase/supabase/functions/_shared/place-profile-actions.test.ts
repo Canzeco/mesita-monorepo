@@ -27,8 +27,10 @@ Deno.test("placeOrderActionEnabled: flag or live menu", () => {
   assertEquals(placeOrderActionEnabled({ orders_enabled: false }), false);
 });
 
-Deno.test("placeReserveActionEnabled: only true when explicitly set", () => {
+Deno.test("placeReserveActionEnabled: off only on explicit false", () => {
   assertEquals(placeReserveActionEnabled({ reservations_enabled: true }), true);
   assertEquals(placeReserveActionEnabled({ reservations_enabled: false }), false);
-  assertEquals(placeReserveActionEnabled({}), false);
+  assertEquals(placeReserveActionEnabled({}), true);
+  assertEquals(placeReserveActionEnabled(null), true);
+  assertEquals(placeReserveActionEnabled({ reservations_enabled: null }), true);
 });

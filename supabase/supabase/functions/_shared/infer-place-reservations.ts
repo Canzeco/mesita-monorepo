@@ -2,7 +2,8 @@
 //
 // Answers: does this KIND of place typically take reservations?
 // Fast food, taquerías, street food → false. Sit-down restaurants, clubs
-// with tables, tasting menus → true. Default false on any error.
+// with tables, tasting menus → true. Missing key / fetch error → true
+// (MESITA-1799: fail open so a miss cannot padlock Reserve).
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 
@@ -18,12 +19,19 @@ export type ReservationInferSignals = {
   editorialSummary?: string | null;
 };
 
+/** Explicit false is a confirmed walk-in; anything else offers Reserve. */
+export function reservationsLikelyFromInference(
+  parsed: { reservations_likely?: unknown } | null | undefined,
+): boolean {
+  return parsed?.reservations_likely !== false;
+}
+
 export async function inferPlaceReservationsLikely(
   openaiKey: string | undefined,
   signals: ReservationInferSignals,
   model = DEFAULT_MODEL,
 ): Promise<boolean> {
-  if (!openaiKey) return false;
+  if (!openaiKey) return true;
 
   const lines = [
     `Name: ${signals.name}`,
@@ -63,7 +71,7 @@ export async function inferPlaceReservationsLikely(
         ],
       }),
     });
-    if (!r.ok) return false;
+    if (!r.ok) return true;
     const data = (await r.json()) as {
       choices?: { message?: { content?: string } }[];
     };
@@ -72,10 +80,10 @@ export async function inferPlaceReservationsLikely(
     try {
       parsed = JSON.parse(content) as { reservations_likely?: unknown };
     } catch {
-      return false;
+      return true;
     }
-    return parsed.reservations_likely === true;
+    return reservationsLikelyFromInference(parsed);
   } catch {
-    return false;
+    return true;
   }
 }
