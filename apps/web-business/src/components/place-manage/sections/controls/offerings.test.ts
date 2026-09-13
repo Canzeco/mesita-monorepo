@@ -146,10 +146,13 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
     expect(rows[0].disagreement).not.toBeNull();
   });
 
-  it("offers join as the one prerequisite when the place is not a partner", () => {
+  it("sends a non-partner to Organization to turn on Partner", () => {
     const prereq = topPrerequisite({ ...BASE, member: false });
-    expect(prereq?.action).toBe("join");
+    expect(prereq?.action).toBe("organization");
+    expect(prereq?.text).toContain("Partner");
     expect(prereq?.text).toContain("free");
+    expect(prereq?.text).not.toContain("Not Partner");
+    expect(prereq?.text).not.toContain("Patner");
   });
 
   it("offers Organization for Stripe once the place is a partner without Connect", () => {
@@ -173,5 +176,15 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
       "visit_rewards",
     );
     expect(row.disagreement?.fix).toBe("restore");
+  });
+
+  it("sends a locked Visit Rewards row to Organization, never Join above", () => {
+    const row = rowFor(
+      { ...BASE, member: false, visitRewardsLevel: 2 },
+      "visit_rewards",
+    );
+    expect(row.disagreement?.fix).toBe("organization");
+    expect(row.disagreement?.fixLabel).toBe("Organization");
+    expect(row.disagreement?.fixLabel).not.toContain("Join");
   });
 });

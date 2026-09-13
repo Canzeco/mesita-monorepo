@@ -39,3 +39,14 @@ Deno.test("photos are narrowed to ONE url, never the array", () => {
     "payload must not ship the array",
   );
 });
+
+Deno.test("the org list carries the Partner switch facts (MESITA-1798)", () => {
+  assert(SRC.includes("partnered: r.organizations.partnered === true"));
+  assert(
+    SRC.includes("mesitaPayEnabled: r.organizations.mesita_pay_enabled === true"),
+  );
+  assert(
+    SRC.includes("partnered, mesita_pay_enabled"),
+    "the embed must select both columns",
+  );
+});

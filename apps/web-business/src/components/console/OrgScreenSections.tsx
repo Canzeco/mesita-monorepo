@@ -1,11 +1,11 @@
-// The Organization screen's six boxes, in the ONE place their order lives.
+// The Organization screen's boxes, in the ONE place their order lives.
 //
 // Pato, 2026-09-05: "Organization must contain mainly: Members box · Stripe
 // Account box · Prepaid Credits box · Mesita Capital box · Activity box as
-// Soon." Read as an inventory; the vertical order is funnel-first (approved
-// at the autoplan gate, 2026-09-06): the live edge — Stripe state and its
-// CTA — leads, people and holdings follow, the three future boxes close the
-// page as one-line Soon strips.
+// Soon." Read as an inventory. MESITA-1798 adds Partner immediately after
+// Stripe: one binary switch, same grammar as a Capabilities row. Funnel
+// first (approved at the autoplan gate, 2026-09-06): Stripe, then Partner,
+// then people and holdings, then the three future boxes as Soon strips.
 //
 // Sync and presentational on purpose: the server page assembles the props,
 // this component owns the composition, and the order test pins THIS file
@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
 import { MembersCard } from "@/components/console/MembersCard";
+import { PartnerCard } from "@/components/console/PartnerCard";
 import { PaymentsCard } from "@/components/console/PaymentsCard";
 import { SoonStrip } from "@/components/console/SoonStrip";
 import type {
@@ -29,6 +30,7 @@ import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 /** The box order, exported so the pin test asserts the product decision. */
 export const ORG_SCREEN_ORDER = [
   "stripe",
+  "partner",
   "members",
   "places",
   "credits",
@@ -72,6 +74,11 @@ export function OrgScreenSections({
   membersError: string | null;
 }) {
   const isOwner = org.myRole === "owner";
+  const stripeReady =
+    account !== null &&
+    account.charges_enabled === true &&
+    account.details_submitted === true &&
+    !orphaned;
   return (
     <>
       <Section
@@ -82,6 +89,19 @@ export function OrgScreenSections({
           orgId={org.id}
           account={account}
           orphaned={orphaned}
+          isOwner={isOwner}
+        />
+      </Section>
+
+      <Section
+        title="Partner"
+        description="One switch for this organization. Free. Unlocks Mesita Pay, Visit Rewards and Accept Prepays at every held place."
+      >
+        <PartnerCard
+          key={`${org.id}-${org.partnered === true ? "on" : "off"}`}
+          orgId={org.id}
+          partnered={org.partnered === true}
+          stripeReady={stripeReady}
           isOwner={isOwner}
         />
       </Section>

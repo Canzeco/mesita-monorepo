@@ -140,7 +140,7 @@ export type RowDisagreement = {
   fixLabel: string;
   /** `organization` = Stripe on the Org screen. `join` = the one line above
    *  the list. `null` = the fix is another row on this page. */
-  fix: "organization" | "join" | "restore" | null;
+  fix: "organization" | "restore" | null;
 };
 
 export type OfferingRow = {
@@ -437,8 +437,8 @@ function disagreementOf(
       const needsStripe = row.state.needs === NEEDS_STRIPE;
       return {
         reason: `You asked for ${row.label}, but guests do not get it yet — ${row.state.needs.toLowerCase()}.`,
-        fixLabel: needsPartner ? "Join above" : needsStripe ? "Organization" : row.state.needs,
-        fix: needsPartner ? "join" : needsStripe ? "organization" : null,
+        fixLabel: "Organization",
+        fix: needsPartner || needsStripe ? "organization" : null,
       };
     }
     if (row.state.kind === "blocked") {
@@ -497,15 +497,14 @@ export function paintRows(rows: readonly OfferingRow[]): OfferingRow[] {
 }
 
 export type TopPrerequisite =
-  | { action: "join"; text: string }
   | { action: "organization"; text: string };
 
 /** The one prerequisite that unlocks the most rows. One line, not a card. */
 export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
   if (!input.member) {
     return {
-      action: "join",
-      text: "Joining Partnership is free — it unlocks Visit Rewards, Mesita Pay and Accept Prepays.",
+      action: "organization",
+      text: "Turn on Partner on Organization — it is free, and it unlocks Visit Rewards, Mesita Pay and Accept Prepays.",
     };
   }
   if (input.connectLoading) return null;

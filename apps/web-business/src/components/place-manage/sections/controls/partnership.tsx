@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Check } from "lucide-react";
 import { STRATEGY_BY_ID, type StrategyId } from "@/lib/business/strategies";
 import { type AdminPlace } from "../../actions";
-import { ErrorNote } from "@/components/ErrorNote";
 import {
   describeMembershipState,
   lifecycleView,
@@ -82,8 +82,8 @@ function LifecycleBanner({
   // step's line renders.
   const joinDetail =
     view.join === "current"
-      ? "Join below — it's free."
-      : "Free to join — switch strategies anytime.";
+      ? "Turn on Partner on Organization — it's free."
+      : "Free — switch strategies anytime.";
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
@@ -95,7 +95,7 @@ function LifecycleBanner({
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
-        ? "Partnership forfeited after 3 strikes — Re-join Partnership below."
+        ? "Partnership forfeited after 3 strikes — turn Partner on Organization to recover."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."
@@ -183,35 +183,27 @@ export function PartnershipBody({
   pillState,
   storedStrategy,
   member,
-  joinBusy,
-  joinError,
-  onJoinClick,
-  onDropClick,
+  orgHref,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
   storedStrategy: StrategyId | null;
   member: boolean;
-  joinBusy: boolean;
-  joinError: string | null;
-  onJoinClick: () => void;
-  onDropClick: () => void;
+  orgHref: string;
 }) {
   const stateNote =
     pillState === "pending" ? null : describeMembershipState(place, pillState);
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
   const underReview = pillState === "review";
-  // The review pill masks the membership fact, so gate drop on `member`
-  // directly — a held member may still drop (the hold survives the drop).
   const canDrop = member && !forfeited;
   const showJoin = notMember || forfeited;
 
   const nextLine = notMember || underReview
     ? null
     : forfeited
-      ? "Re-join Partnership to clear the forfeit and strikes; then pick a strategy again."
-      : "Switching to Zero pauses discounts without ending the partnership. Dropping is separate.";
+      ? "Turn Partner off and on again on Organization to clear the forfeit and strikes; then pick a strategy again."
+      : "Switching to Zero pauses discounts without ending the partnership. Turning Partner off on Organization drops every held place.";
 
   return (
     <div className="flex flex-col gap-3 pb-3">
@@ -237,11 +229,11 @@ export function PartnershipBody({
         )}
 
         <p className="text-muted-foreground type-body leading-snug">
-          <span className="text-foreground font-semibold">Free to join.</span>{" "}
-          Unlocks{" "}
+          <span className="text-foreground font-semibold">Partner is free.</span>{" "}
+          The switch lives on Organization. It unlocks{" "}
           <span className="text-foreground font-semibold">Conservative</span>{" "}
           and <span className="text-foreground font-semibold">Aggressive</span>{" "}
-          after you join. Zero stays free too.
+          here. Zero stays free too.
         </p>
 
         {nextLine && (
@@ -259,56 +251,29 @@ export function PartnershipBody({
 
         {showJoin && (
           <div className="flex flex-col gap-2">
-            <JoinPartnershipButton
-              busy={joinBusy}
-              forfeited={forfeited}
-              onClick={onJoinClick}
-            />
+            <Link
+              href={orgHref}
+              className="bg-foreground text-background inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-5 type-body font-semibold transition hover:opacity-90 active:scale-[0.99]"
+            >
+              {forfeited ? "Re-join on Organization" : "Turn on Partner"}
+            </Link>
             <p className="text-muted-foreground type-meta leading-snug">
-              Free — no charge, ever.
+              Free — no charge, ever. The switch is on Organization.
             </p>
-            <div aria-live="polite">
-              {joinError && <ErrorNote message={joinError} />}
-            </div>
           </div>
         )}
 
         {canDrop && (
-          <button
-            type="button"
-            onClick={onDropClick}
+          <Link
+            href={orgHref}
             className="text-muted-foreground hover:text-destructive self-start text-xs font-semibold underline underline-offset-4 transition"
           >
-            Drop partnership
-          </button>
+            Turn off Partner on Organization
+          </Link>
         )}
     </div>
   );
 }
-
-/** Free join — writes plan via business-web-set-partnership. No charge, ever. */
-function JoinPartnershipButton({
-  busy,
-  forfeited,
-  onClick,
-}: {
-  busy: boolean;
-  forfeited: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      className="bg-foreground text-background inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-5 type-body font-semibold transition hover:opacity-90 active:scale-[0.99] disabled:opacity-60"
-    >
-      {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-      {forfeited ? "Re-join Partnership" : "Join Partnership"}
-    </button>
-  );
-}
-
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
