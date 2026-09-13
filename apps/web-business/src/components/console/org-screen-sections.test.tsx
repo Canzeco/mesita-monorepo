@@ -156,7 +156,8 @@ describe("the Organization page composition", () => {
   it("keeps the ONE Soon strip honest: dashed, one line, no knobs (MESITA-1828)", () => {
     const html = render();
     expect(html.match(/border-dashed/g)?.length).toBe(1);
-    expect(html).toContain(SOON_STRIPS.credits.line);
+    // The line carries an apostrophe, which React escapes; match its tail.
+    expect(html).toContain("outstanding liability will live here.");
     // Credits copy stays neutral — no product mechanics (founder-review law).
     expect(SOON_STRIPS.credits.line).not.toMatch(/advance|loan|rate|%/i);
   });
