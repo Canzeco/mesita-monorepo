@@ -44,6 +44,7 @@ export function crumbsFor(
     return ["Organizations", "Create"];
   }
   if (pathname === SHELL_ROUTES.organization) return ["Organizations"];
+  if (pathname === SHELL_ROUTES.placesNew) return ["Places", "Claim"];
   if (pathname === SHELL_ROUTES.places) return ["Places"];
   if (pathname.startsWith(`${SHELL_ROUTES.places}/`)) {
     return ["Places", openPlace?.name ?? "Place"];

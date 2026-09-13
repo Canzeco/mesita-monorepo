@@ -22,6 +22,7 @@ describe("middleware contract", () => {
     expect(shouldGate(SHELL_ROUTES.organization)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.organizationNew)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.placesNew)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
     // Place — the fourth screen. It reads one org's holdings, so it sits
     // behind the same wall the list does.
