@@ -37,7 +37,7 @@
 // about whose console this is. The same resolution is what the two rail
 // cookies remember, so the next fresh request paints the same boxes.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -100,6 +100,16 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const drawerRef = useRef<HTMLDivElement>(null);
+  // The drawer element as STATE, for the rail's menus to portal into
+  // (MESITA-1818): a ref alone is null on the first render and never
+  // re-renders when it fills, so the menus would portal to the body — outside
+  // the `aria-modal` boundary — for the life of the session. The callback
+  // ref sets both.
+  const [menuHost, setMenuHost] = useState<HTMLDivElement | null>(null);
+  const bindDrawer = useCallback((el: HTMLDivElement | null) => {
+    drawerRef.current = el;
+    setMenuHost(el);
+  }, []);
 
   // Remember the scope for the next fresh request. The place only when it is
   // the one actually open — the rail's fallback pick is not a visit.
@@ -121,11 +131,12 @@ export function AppShell({
   // the scrim, where a sighted keyboard user then operates controls they cannot
   // see and a screen-reader user is read a page that is visually dismissed.
   //
-  // `defaultPrevented` FIRST. A rail picker's menu is portaled to `body`,
-  // outside this drawer, and Radix handles Escape (and Tab) on a document
-  // CAPTURE listener that runs before this one and calls preventDefault().
-  // Without the guard one Esc closes the menu AND the drawer, and Tab inside
-  // an open menu is fought over.
+  // `defaultPrevented` FIRST. Radix handles Escape (and Tab) for an open
+  // switcher menu on a document CAPTURE listener that runs before this one
+  // and calls preventDefault() — wherever the menu is portaled (the drawer's
+  // menus portal INTO the drawer since MESITA-1818; the desktop rail's go to
+  // `body`). Without the guard one Esc closes the menu AND the drawer, and
+  // Tab inside an open menu is fought over. The guard stays either way.
   useEffect(() => {
     if (!open) return;
     const prevOverflow = document.body.style.overflow;
@@ -227,7 +238,7 @@ export function AppShell({
           onClick={close}
         />
         <div
-          ref={drawerRef}
+          ref={bindDrawer}
           className={
             // w-60 matches the expanded rail — anything wider and the rail
             // underfills the panel.
@@ -238,7 +249,7 @@ export function AppShell({
           aria-modal="true"
           aria-label="Console navigation"
         >
-          <Sidebar {...railProps} onNavigate={close} />
+          <Sidebar {...railProps} onNavigate={close} menuContainer={menuHost} />
           {open && (
             <button
               type="button"

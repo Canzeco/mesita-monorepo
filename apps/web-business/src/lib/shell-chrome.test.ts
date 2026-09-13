@@ -186,10 +186,11 @@ describe("the unsaved-edits guard reaches the rail", () => {
   });
 });
 
-// MESITA-1815. The rail is seven flat pages: Account · Organization (with the
-// two switchers beneath it) · Place Profile · Reviews · Activity · Settings ·
-// Admin. The one rule that has outlived every redesign: nothing indents. Pato
-// rejected a tree twice (1714, 1715), and boxes once (1815: "too enterprise").
+// MESITA-1815/1818. The rail is seven flat pages: Account · seam · org
+// switcher · Organization · seam · place switcher · Place Profile · Reviews ·
+// Activity · Settings · Admin. The one rule that has outlived every redesign:
+// nothing indents. Pato rejected a tree twice (1714, 1715), and boxes once
+// (1815: "too enterprise").
 describe("the rail is seven flat pages", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
@@ -214,15 +215,31 @@ describe("the rail is seven flat pages", () => {
     expect(r).toContain("label={placeRowLabel(tab)}");
   });
 
-  it("is Account · Organization · switchers · the views, in that order, and no Places row", () => {
+  it("is Account · seam · org switcher · Organization · seam · place switcher · the views, in that order, and no Places row", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
     const at = (needle: string) => nav.indexOf(needle);
     expect(at("href={SHELL_ROUTES.account}")).toBeGreaterThan(-1);
-    expect(at("href={SHELL_ROUTES.account}")).toBeLessThan(at("href={orgHref(org.id)}"));
-    expect(at("href={orgHref(org.id)}")).toBeLessThan(at('label="Switch organization"'));
-    expect(at('label="Switch organization"')).toBeLessThan(at('label="Switch place"'));
+    expect(at("href={SHELL_ROUTES.account}")).toBeLessThan(at('label="Switch organization"'));
+    expect(at('label="Switch organization"')).toBeLessThan(at("href={orgHref(org.id)}"));
+    expect(at("href={orgHref(org.id)}")).toBeLessThan(at('label="Switch place"'));
     expect(at('label="Switch place"')).toBeLessThan(at("placeTabs.map((tab)"));
+    // Two seams (MESITA-1818, 1A): one after Account, one after Organization.
+    expect((nav.match(/<Seam collapsed=\{collapsed\} \/>/g) ?? []).length).toBe(2);
+    // The prefix is quieted by weight, never alpha (8A); the switchers grow a
+    // chevron only at 2+ (3A); the place group dims while an org switch is
+    // pending (5A); Add place is gated by the org page's own fact (6A).
+    expect(r).toContain('<span className="font-normal">Place </span>');
+    expect(r).not.toMatch(/opacity-\d+">Place/);
+    expect(r).toContain("switchable={organizations.length >= 2}");
+    expect(r).toContain("switchable={org.places.length >= 2 || (foreign !== null && org.places.length >= 1)}");
+    // Inert, not pointer-events: a keyboard user must not navigate a stale row.
+    expect(r).toContain("inert={pendingOrg ? true : undefined}");
+    expect(r).not.toContain("pointer-events-none");
+    // ONE fact, read once, hung off by every Add place door.
+    expect(r).toContain("const canAdd = org ? canAddPlace(org.myRole) : false;");
+    expect((r.match(/canAddPlace\(/g) ?? []).length).toBe(1);
+    expect(r).toContain("{placeGroupHasRows && <Seam collapsed={collapsed} />}");
     // The list is the organization's own step: its row lights for it.
     expect(nav).toContain("active={orgPage !== null}");
     expect(nav).not.toContain("ORG_ROWS");
@@ -266,6 +283,9 @@ describe("the rail is seven flat pages", () => {
     // Hidden at w-16 — two targets do not fit — so the menu footer is the door there.
     const plus = r.slice(r.indexOf("function CeremonyPlus"));
     expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain("if (collapsed) return null;");
+    // The Plus takes the pill inside its ceremony (4A): one pill on /orgs/new.
+    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain('aria-current={active ? "page" : undefined}');
+    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain("? ROW_ACTIVE");
     expect(r).toContain('label="All places"');
     expect((r.match(/label="Add place"/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
@@ -278,7 +298,10 @@ describe("the rail is seven flat pages", () => {
 
   it("a choice shows the chosen name only after the guard let it through, and only on its own pathname", () => {
     const r = rail();
-    expect(r).toContain("choice && choice.at === pathname ? choice.id : null");
+    // The transition is the clock: a Back to the origin pathname must not
+    // re-arm the choice (MESITA-1818 review).
+    expect(r).toContain("const pendingId = isPending ? choice : null;");
+    expect(r).not.toContain("choice.at === pathname");
     expect(r).toContain("aria-busy={pending || undefined}");
     expect(r).not.toContain("useEffect");
   });
@@ -300,6 +323,27 @@ describe("the rail is seven flat pages", () => {
   it("focus travels on the brand's ring, not the browser's; menus respect reduced motion", () => {
     expect(rail()).toContain("focus-visible:ring-sidebar-ring");
     expect(rail()).toContain("motion-reduce:animate-none");
+  });
+
+  it("the drawer's menus portal into the drawer, the desktop rail's to the body (MESITA-1818, 9A)", () => {
+    const shell = readCode("components/console/AppShell.tsx");
+    expect(shell).toContain("menuContainer={menuHost}");
+    expect(shell).toContain("ref={bindDrawer}");
+    expect(shell).toContain('aria-modal="true"');
+    // Anchor on the two CODE landmarks, in order — a bare "Drawer" matches
+    // `bindDrawer` above the desktop block and slices to "", and readCode
+    // strips the comments a prose anchor would need.
+    const start = shell.indexOf('"hidden shrink-0 transition-[width]');
+    const end = shell.indexOf("inert={!open}");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const desktop = shell.slice(start, end);
+    expect(desktop).toContain("<Sidebar");
+    expect(desktop).not.toContain("menuContainer");
+    expect(readCode("components/ui/dropdown-menu.tsx")).toContain("Portal container={container}");
+    expect(rail()).toContain("container={menuContainer ?? undefined}");
+    // The drawer's menu fits the 240px panel; the desktop rail's reads wide.
+    expect(rail()).toContain('menuContainer ? "w-56" : "w-72"');
   });
 
   it("the layout hands the rail the whole viewer and the two rail cookies, raw", () => {
