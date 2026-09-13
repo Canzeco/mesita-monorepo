@@ -189,15 +189,16 @@ export function placeRowLabel(tab: PlaceTab): string {
 }
 
 /** Five rows begin with the same word, and people scan first words. The
- *  prefix is quieted by WEIGHT (400 against the noun's 500) at the row's own
- *  ink — never by alpha: 55% of muted ink over the sidebar ground is ~2.5:1,
- *  and 13px text needs 4.5:1 (MESITA-1818, 8A). Both spans take the row's
- *  hover and pill colors, so the pair never separates. */
+ *  prefix is quieted by WEIGHT (400 against the row's own 500, or 600 on the
+ *  pill) at the row's own ink — never by alpha: 55% of muted ink over the
+ *  sidebar ground is ~2.5:1, and 13px text needs 4.5:1 (MESITA-1818, 8A).
+ *  The noun carries no class of its own: it inherits the row's weight and
+ *  color, so it is 600 inside the pill like every other pill. */
 function PlaceRowLabel({ tab }: { tab: PlaceTab }) {
   return (
     <>
       <span className="font-normal">Place </span>
-      <span className="font-medium">{PLACE_TAB_LABEL[tab]}</span>
+      {PLACE_TAB_LABEL[tab]}
     </>
   );
 }
@@ -404,7 +405,10 @@ function Picker({
         side={collapsed ? "right" : "bottom"}
         sideOffset={4}
         container={menuContainer ?? undefined}
-        className="w-72 motion-reduce:animate-none"
+        // 288px on the desktop rail so sibling branches read (7A); inside the
+        // 240px drawer that would overhang the aria-modal panel by 48px onto
+        // the scrim, so the drawer's menus are 224px.
+        className={cn(menuContainer ? "w-56" : "w-72", "motion-reduce:animate-none")}
       >
         {children}
       </DropdownMenuContent>
@@ -494,17 +498,24 @@ export function Sidebar({
   // saying the old name for 300 ms reads as a click that did nothing. Set only
   // after the guard let the navigation through — a swallowed click opens the
   // discard dialog, and cancel has no callback, so an eager name would stick.
-  // The choice remembers the pathname it was made on and counts only while
-  // that is still the pathname: no effect, nothing to reset.
-  const [choice, setChoice] = useState<{ id: string; at: string } | null>(null);
-  const [, startTransition] = useTransition();
-  const pendingId = choice && choice.at === pathname ? choice.id : null;
+  // THE TRANSITION IS THE CLOCK (MESITA-1818): the choice counts only while
+  // the `router.push` it started is still in flight. The previous rule —
+  // "counts while the pathname it was made on is still the pathname" — came
+  // back to life on browser Back: the origin pathname matched again and the
+  // rail showed the other organization's name (and, once the place group
+  // dimmed on it, five dead rows) over a route that was never pending.
+  const [choice, setChoice] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const pendingId = isPending ? choice : null;
 
   const go = (href: string, id: string) => {
-    if (guardNav?.(href)) return;
-    setChoice({ id, at: pathname });
-    startTransition(() => router.push(href));
+    // Close the drawer EITHER WAY, like NavRow: the discard dialog answers
+    // on the top layer, and a drawer left open over the new page is the bug.
+    const swallowed = guardNav?.(href) ?? false;
     onNavigate?.();
+    if (swallowed) return;
+    setChoice(id);
+    startTransition(() => router.push(href));
   };
 
   const org = scope.org;
@@ -547,6 +558,13 @@ export function Sidebar({
 
   const pendingOrg = pendingId ? organizations.find((o) => o.id === pendingId) : null;
   const pendingPlace = pendingId && org ? org.places.find((p) => p.id === pendingId) : null;
+  // ONE fact, read once: the same `canAddPlace` the org page and the claim
+  // action read (owner-only). Every Add place door below hangs off it.
+  const canAdd = org ? canAddPlace(org.myRole) : false;
+  // The seam under Organization draws the place group's top edge, so it is
+  // drawn only when the group has something in it: a non-owner of an
+  // organization holding nothing would otherwise get a hairline over blank.
+  const placeGroupHasRows = placeSubjectId !== null || canAdd;
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3">
@@ -683,25 +701,27 @@ export function Sidebar({
               onNavigate={onNavigate}
               onGuardedNavigate={guardNav ?? undefined}
             />
-            <Seam collapsed={collapsed} />
+            {placeGroupHasRows && <Seam collapsed={collapsed} />}
 
             {/* THE PLACE GROUP. While an organization switch is pending the
                 chosen org's name already shows above, so everything here is
                 the OLD org's — stale for ~300ms warm, longer cold. It dims
-                and ignores clicks until the route lands (5A); the pill does
-                not move. Not motion, so reduced-motion keeps it. */}
+                and is INERT until the route lands (5A); the pill does not
+                move. `inert`, not pointer-events: a pointer rule leaves Tab +
+                Enter live, and a keyboard user could start a second
+                navigation to the OLD organization's place mid-switch. Not
+                motion, so reduced-motion keeps it. */}
             <div
-              className={cn(
-                "flex flex-col gap-0.5",
-                pendingOrg && "pointer-events-none opacity-50",
-              )}
+              inert={pendingOrg ? true : undefined}
+              aria-busy={pendingOrg ? true : undefined}
+              className={cn("flex flex-col gap-0.5", pendingOrg && "opacity-50")}
             >
               {placeSubjectId === null ? (
                 // The organization holds nothing yet: the next step, and only
                 // the next step — for the role that may take it (6A). A
                 // switcher with nothing to switch and five rows leading
                 // nowhere would be a promise the rail cannot keep.
-                canAddPlace(org.myRole) ? (
+                canAdd ? (
                   <NavRow
                     href={orgPlacesNewHref(org.id)}
                     label="Add place"
@@ -719,7 +739,7 @@ export function Sidebar({
                       label="Switch place"
                       chip={<PlaceChip place={pendingPlace ?? (foreign ? null : scope.place)} />}
                       name={pendingPlace?.name ?? foreign?.name ?? scope.place?.name ?? "Place"}
-                      switchable={org.places.length >= 2 || foreign !== null}
+                      switchable={org.places.length >= 2 || (foreign !== null && org.places.length >= 1)}
                       muted={foreign !== null && foreign.name === "Place"}
                       pending={pendingPlace !== null && pendingPlace !== undefined}
                       collapsed={collapsed}
@@ -761,7 +781,7 @@ export function Sidebar({
                         onNavigate={onNavigate}
                         onGuardedNavigate={guardNav ?? undefined}
                       />
-                      {canAddPlace(org.myRole) && (
+                      {canAdd && (
                         <MenuLink
                           href={orgPlacesNewHref(org.id)}
                           label="Add place"
@@ -771,7 +791,7 @@ export function Sidebar({
                         />
                       )}
                     </Picker>
-                    {canAddPlace(org.myRole) && (
+                    {canAdd && (
                       <CeremonyPlus
                         href={orgPlacesNewHref(org.id)}
                         label="Add place"

@@ -131,11 +131,12 @@ export function AppShell({
   // the scrim, where a sighted keyboard user then operates controls they cannot
   // see and a screen-reader user is read a page that is visually dismissed.
   //
-  // `defaultPrevented` FIRST. A rail picker's menu is portaled to `body`,
-  // outside this drawer, and Radix handles Escape (and Tab) on a document
-  // CAPTURE listener that runs before this one and calls preventDefault().
-  // Without the guard one Esc closes the menu AND the drawer, and Tab inside
-  // an open menu is fought over.
+  // `defaultPrevented` FIRST. Radix handles Escape (and Tab) for an open
+  // switcher menu on a document CAPTURE listener that runs before this one
+  // and calls preventDefault() — wherever the menu is portaled (the drawer's
+  // menus portal INTO the drawer since MESITA-1818; the desktop rail's go to
+  // `body`). Without the guard one Esc closes the menu AND the drawer, and
+  // Tab inside an open menu is fought over. The guard stays either way.
   useEffect(() => {
     if (!open) return;
     const prevOverflow = document.body.style.overflow;

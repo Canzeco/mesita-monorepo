@@ -188,6 +188,9 @@ describe("seven flat pages, each switcher above its own rows (MESITA-1815 · 181
     // Five place rows, each painted "Place " + noun (8A) — the prefix at
     // font-normal, the noun at font-medium, NEVER an alpha.
     expect((html.match(/<span class="font-normal">Place <\/span>/g) ?? []).length).toBe(5);
+    // The noun carries no weight class of its own: on the pill it is 600
+    // like every other pill's text.
+    expect(html).not.toContain('<span class="font-medium">');
     expect(navOf(html)).not.toMatch(/opacity-\d|text-[a-z-]+\/\d/);
   });
 
@@ -206,6 +209,13 @@ describe("seven flat pages, each switcher above its own rows (MESITA-1815 · 181
     expect(html).not.toContain("lucide-chevrons-up-down");
     // Two organizations: the chevron is back.
     expect(render(orgHref("org-a"))).toContain("lucide-chevrons-up-down");
+    // A pool place opened by an organization holding NO places: still nothing
+    // to switch to, so the place switcher is a name there too.
+    const empty: RailOrg[] = [{ ...ORGS[1], myRole: "owner" }];
+    const pool = render(placeHref("p-x"), { organizations: empty, rememberedOrgId: "org-b" });
+    expect(pool).toContain('aria-label="Switch place"');
+    const trigger = pool.match(/<button[^>]*aria-label="Switch place"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? "";
+    expect(trigger).not.toContain("lucide-chevrons-up-down");
   });
 
   it("the Places row is gone; the list stays a door in the place switcher", () => {
@@ -300,11 +310,12 @@ describe("the states a 10/10 has to answer", () => {
     // The Organization row is the pill on the add step — not the Add place row.
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Organization");
-    // An editor of the same empty organization sees nothing under the seam.
+    // An editor of the same empty organization has no place group at all —
+    // and no seam drawn over the blank where it would be.
     const editor: RailOrg[] = [ORGS[0], { ...ORGS[1], myRole: "editor" }];
     const h2 = render(orgHref("org-b"), { organizations: editor });
     expect(h2).not.toContain("Add place");
-    expect(seams(h2)).toHaveLength(2);
+    expect(seams(h2)).toHaveLength(1);
   });
 
   it("a pool place: named as foreign, Profile alone, still one pill", () => {
