@@ -2,7 +2,8 @@
 //
 // Pato, 2026-09-05: "Organization must contain mainly: Members box · Stripe
 // Account box · Prepaid Credits box · Mesita Capital box · Activity box as
-// Soon." Read as an inventory. MESITA-1798 adds Partner immediately after
+// Soon." Read as an inventory — then, 2026-09-13, Mesita Capital and
+// Activity taken off the page (MESITA-1828). MESITA-1798 adds Partner immediately after
 // Stripe: one binary switch, same grammar as a Capabilities row. Funnel
 // first (approved at the autoplan gate, 2026-09-06): Stripe, then Partner,
 // then people and holdings, then the three future boxes as Soon strips.
@@ -35,31 +36,22 @@ import { canAddPlace } from "@/lib/active-organization";
 import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 /** The box order, exported so the pin test asserts the product decision. */
+// ONE Soon strip (MESITA-1828). Mesita Capital and Activity were strips
+// too until Pato, 2026-09-13, on the page live: take them off. A promise
+// that is not in development on any roadmap is furniture; Prepaid Credits
+// has a schema, a ledger and a wallet behind it, so its strip stays.
 export const ORG_SCREEN_ORDER = [
   "stripe",
   "partner",
   "members",
   "places",
   "credits",
-  "capital",
-  "activity",
 ] as const;
 
-export const SOON_STRIPS: Record<
-  "credits" | "capital" | "activity",
-  { title: string; line: string }
-> = {
+export const SOON_STRIPS: Record<"credits", { title: string; line: string }> = {
   credits: {
     title: "Prepaid Credits",
     line: "The organization's Credits balance, terms, and outstanding liability will live here.",
-  },
-  capital: {
-    title: "Mesita Capital",
-    line: "Financing built on your settlement history — in development.",
-  },
-  activity: {
-    title: "Activity",
-    line: "Everything that happens in this organization — one feed.",
   },
 };
 
@@ -161,8 +153,6 @@ export function OrgScreenSections({
       </Section>
 
       <SoonStrip {...SOON_STRIPS.credits} />
-      <SoonStrip {...SOON_STRIPS.capital} />
-      <SoonStrip {...SOON_STRIPS.activity} />
     </>
   );
 }

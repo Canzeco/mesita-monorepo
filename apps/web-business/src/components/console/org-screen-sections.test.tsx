@@ -83,8 +83,6 @@ describe("the Organization page composition", () => {
       "members",
       "places",
       "credits",
-      "capital",
-      "activity",
     ]);
   });
 
@@ -96,11 +94,12 @@ describe("the Organization page composition", () => {
       "Members",
       "Places",
       SOON_STRIPS.credits.title,
-      SOON_STRIPS.capital.title,
-      SOON_STRIPS.activity.title,
     ].map((t) => html.indexOf(t));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    // Mesita Capital and Activity left the page (MESITA-1828).
+    expect(html).not.toContain("Mesita Capital");
+    expect(html).not.toContain("one feed");
   });
 
   it("the Places box opens the organization's own list (MESITA-1807)", () => {
@@ -154,13 +153,12 @@ describe("the Organization page composition", () => {
     expect(html).toContain("Accept Prepays");
   });
 
-  it("keeps the Soon strips honest: dashed, one line, no knobs", () => {
+  it("keeps the ONE Soon strip honest: dashed, one line, no knobs (MESITA-1828)", () => {
     const html = render();
-    expect(html.match(/border-dashed/g)?.length).toBe(3);
-    expect(html).toContain(SOON_STRIPS.capital.line);
-    // Capital copy stays neutral — no product mechanics (founder-review law).
-    expect(SOON_STRIPS.capital.line).not.toMatch(/advance|loan|rate|%/i);
-    expect(html).toContain(SOON_STRIPS.activity.line);
+    expect(html.match(/border-dashed/g)?.length).toBe(1);
+    expect(html).toContain(SOON_STRIPS.credits.line);
+    // Credits copy stays neutral — no product mechanics (founder-review law).
+    expect(SOON_STRIPS.credits.line).not.toMatch(/advance|loan|rate|%/i);
   });
 
   it("promotes email to the primary line when the name is null, and tags You", () => {
