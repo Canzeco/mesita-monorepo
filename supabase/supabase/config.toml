@@ -508,6 +508,9 @@ verify_jwt = true
 [functions.business-web-list-tickets]
 verify_jwt = true
 
+[functions.business-web-list-reviews]
+verify_jwt = true
+
 [functions.business-web-cancel-ticket]
 verify_jwt = true
 

@@ -4,14 +4,11 @@ import { Lock, Star } from "lucide-react";
 import type { AdminPlace } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 
-// Profile → Reviews SUMMARY (Pato live 2026-09-01).
+// Reviews SUMMARY (Pato live 2026-09-01; list restored MESITA-1802).
 //
-// A summary, deliberately not the prose. The three review cards this console
-// used to carry — the summary, the Google list, the Mesita list — were cut to
-// "the 3 review cards → 2 numbers" (Pato, MESITA-900), and per-review text is
-// NOT back: reading individual reviews is not something an operator acts on
-// from here, and Google's own are one click away on Google. What returns is
-// the aggregate a profile is judged on.
+// The aggregate tiles a place is judged on. Individual Mesita guest reviews
+// live in MesitaReviewsList below; Google reviews stay one click away on
+// Google and are not proxied here.
 //
 // FOUR tiles (Pato live 2026-09-02): Google · Mesita · Instagram · Facebook.
 // Scores are half the reputation an operator is asked about; reach is the
