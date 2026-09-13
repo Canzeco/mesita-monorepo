@@ -93,11 +93,12 @@ describe("Google review floor", () => {
     expect(clampReviewFloor(4000)).toBe(1000);
   });
 
-  it("labels the stops without numerals in the thousands", () => {
-    expect(formatReviewFloor(0)).toBe("Any");
+  it("labels the stops as a minimum review count", () => {
+    expect(formatReviewFloor(0)).toBe("0");
     expect(formatReviewFloor(10)).toBe("10+");
-    expect(formatReviewFloor(1000)).toBe("1k+");
-    expect(formatReviewFloor(10000)).toBe("10k+");
+    expect(formatReviewFloor(100)).toBe("100+");
+    expect(formatReviewFloor(1000)).toBe("1K+");
+    expect(formatReviewFloor(10000)).toBe("10K+");
   });
 
   it("drops places below the floor and places with no count", () => {

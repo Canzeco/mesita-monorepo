@@ -27,7 +27,8 @@ import { SearchPopularity } from "./SearchPopularity";
 // the places that pay us".
 //
 // Popularity is the Google review-count floor (0 / 10 / 100 / 1k / 10k).
-// Discovery-mode, not a Nearby API param.
+// Guest copy is "Minimum number of Google reviews" with 0 / 10+ / 100+ /
+// 1K+ / 10K+. Discovery-mode, not a Nearby API param.
 
 export function SearchMapFilters({
   onClose,
@@ -97,7 +98,7 @@ export function SearchMapFilters({
             />
           </FilterModule>
 
-          <FilterModule label="Popularity" dense>
+          <FilterModule label="Minimum number of Google reviews" dense>
             <SearchPopularity
               minReviews={filters.minReviews}
               onMinReviews={setMapMinReviews}

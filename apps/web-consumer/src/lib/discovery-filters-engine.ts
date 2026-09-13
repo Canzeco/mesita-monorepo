@@ -10,7 +10,8 @@
 //                      listed Mesita places, so Google == all enriched; the
 //                      ring still names the same sets the map uses.
 //   · Google reviews — review-count floor 0 / 10 / 100 / 1000 / 10000.
-//                      0 = Any. Missing count fails a floor above 0.
+//                      Guest copy: 0 / 10+ / 100+ / 1K+ / 10K+. Missing
+//                      count fails a floor above 0.
 //
 // Location is not a predicate: it only grants coordinates for ranking.
 // Predicates CUT, signals RANK, and a predicate cuts first.
@@ -63,8 +64,8 @@ export function clampReviewFloor(value: unknown): DiscoveryReviewFloor {
 }
 
 export function formatReviewFloor(n: DiscoveryReviewFloor): string {
-  if (n === 0) return "Any";
-  if (n >= 1000) return `${n / 1000}k+`;
+  if (n === 0) return "0";
+  if (n >= 1000) return `${n / 1000}K+`;
   return `${n}+`;
 }
 

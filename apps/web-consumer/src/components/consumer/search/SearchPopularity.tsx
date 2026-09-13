@@ -8,16 +8,17 @@ import {
 import { cn } from "@/lib/utils";
 
 // Popularity — exclusive 0 / 10 / 100 / 1k / 10k Google reviews.
-// Discovery-mode artificial filter (Pato, 2026-09-12): the Map mode
-// drops trash AFTER the catalog is assembled, never as a Nearby API
-// param. 0 is any. How many (pin cap) is operator config, not this.
+// Guest copy (MESITA-1805): 0 / 10+ / 100+ / 1K+ / 10K+. Discovery-mode
+// artificial filter (Pato, 2026-09-12): the Map mode drops trash AFTER the
+// catalog is assembled, never as a Nearby API param. 0 is any. How many
+// (pin cap) is operator config, not this.
 
 const STOP_LABEL: Record<MapMinReviews, string> = {
   0: "0",
-  10: "10",
-  100: "100",
-  1000: "1k",
-  10000: "10k",
+  10: "10+",
+  100: "100+",
+  1000: "1K+",
+  10000: "10K+",
 };
 
 export function SearchPopularity({
@@ -53,14 +54,9 @@ export function SearchPopularity({
 
   return (
     <div className="flex flex-col">
-      <p className="text-muted-foreground mb-1.5 type-meta">
-        {minReviews === 0
-          ? "Any Google review count."
-          : `At least ${minReviews.toLocaleString()} Google reviews.`}
-      </p>
       <div
         role="radiogroup"
-        aria-label="Popularity"
+        aria-label="Minimum number of Google reviews"
         aria-orientation="horizontal"
         onKeyDown={onKeyDown}
         className="border-border flex overflow-hidden rounded-xl border"
