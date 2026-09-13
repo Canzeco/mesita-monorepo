@@ -42,7 +42,7 @@ describe("the sheet is the map set, not the old intent stack", () => {
   it("ships Super Category, Scope, Google reviews, and location", () => {
     expect(src).toContain("Super Category");
     expect(src).toContain("Scope");
-    expect(src).toContain("Google reviews");
+    expect(src).toContain("Minimum number of Google reviews");
     expect(src).toContain("Use my location");
   });
 

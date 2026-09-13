@@ -93,13 +93,10 @@ export function DiscoveryFilters({
             />
           </FilterModule>
 
-          <FilterModule label="Google reviews" dense>
-            <p className="text-muted-foreground mb-1.5 type-meta">
-              Review count, not stars.
-            </p>
+          <FilterModule label="Minimum number of Google reviews" dense>
             <div
               role="radiogroup"
-              aria-label="Google reviews"
+              aria-label="Minimum number of Google reviews"
               aria-orientation="horizontal"
               className="border-border flex overflow-hidden rounded-xl border"
             >
@@ -114,7 +111,7 @@ export function DiscoveryFilters({
                     aria-label={
                       stop === 0
                         ? "Any number of Google reviews"
-                        : `At least ${formatReviewFloor(stop)} Google reviews`
+                        : `At least ${stop.toLocaleString()} Google reviews`
                     }
                     onClick={() => setDiscoveryMinReviews(stop)}
                     className={cn(
