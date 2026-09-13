@@ -162,7 +162,11 @@ describe("the unsaved-edits guard reaches the rail", () => {
     const rail = readCode("components/console/Sidebar.tsx");
     const rows = rail.match(/<NavRow/g) ?? [];
     expect(rows.length).toBe(3);
-    expect((rail.match(/onGuardedNavigate=/g) ?? []).length).toBe(rows.length);
+    expect(rail).toContain("if (!active) onGuardedNavigate?.(href, e);");
+    // The Plus is a separate Link, not a NavRow. It must still ask.
+    expect(rail).toContain(
+      "if (!createActive) onGuardedNavigate?.(createHref, e);",
+    );
   });
 });
 
@@ -204,9 +208,9 @@ describe("the rail is three collections", () => {
 
   it("Places uses Store, and no two rows share an icon", () => {
     const r = rail();
-    const icons = (r.match(/Icon=\{(\w+)\}/g) ?? []).map((m) =>
-      m.replace(/Icon=\{|\}/g, ""),
-    );
+    const icons = (r.match(/Icon=\{(\w+)\}/g) ?? [])
+      .map((m) => m.replace(/Icon=\{|\}/g, ""))
+      .filter((name) => name !== "Icon");
     expect(new Set(icons)).toEqual(
       new Set(["UserRound", "Building2", "Store"]),
     );
@@ -224,13 +228,23 @@ describe("the rail is three collections", () => {
     expect(r).toContain("pathname.startsWith(`${SHELL_ROUTES.places}/`)");
   });
 
-  it("Create organization is never a rail href, and never carries ?org=", () => {
+  it("Create organization is a Plus on Organizations, and never carries ?org=", () => {
     const r = rail();
-    expect(r).not.toContain("SHELL_ROUTES.organizationNew");
+    expect(r).toContain("SHELL_ROUTES.organizationNew");
+    expect(r).not.toContain("withOrg(SHELL_ROUTES.organizationNew");
+    expect(r).toContain('createLabel="Create organization"');
     const page = readCode("app/(shell)/organization/page.tsx");
     expect(page).toContain("SHELL_ROUTES.organizationNew");
     expect(page).not.toContain("withOrg(SHELL_ROUTES.organizationNew");
     expect(page).not.toContain("CreateOrganizationForm");
+  });
+
+  it("Claim place is a Plus on Places, and carries ?org=", () => {
+    const r = rail();
+    expect(r).toContain("SHELL_ROUTES.placesNew");
+    expect(r).toContain("href(SHELL_ROUTES.placesNew)");
+    expect(r).toContain('createLabel="Claim a place"');
+    expect(r).toContain("collapsed &&");
   });
 
   it("the collection is never a form", () => {
@@ -305,6 +319,12 @@ describe("crumbsFor names the three collections", () => {
     const s = crumbs();
     expect(s).toContain("pathname === SHELL_ROUTES.organizationNew");
     expect(s).toContain('return ["Organizations", "Create"]');
+  });
+
+  it("Claim is Places / Claim, never a Place id", () => {
+    const s = crumbs();
+    expect(s).toContain("pathname === SHELL_ROUTES.placesNew");
+    expect(s).toContain('return ["Places", "Claim"]');
   });
 
   it("the collection is Organizations, Places never take a filter crumb", () => {

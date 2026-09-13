@@ -40,12 +40,19 @@ describe("the four screens Pato specified", () => {
       "organization",
       "organizationNew",
       "places",
+      "placesNew",
     ]);
   });
   it("Create organization is a real route file, with its own loading boundary", () => {
     expect(existsSync(routeFile(SHELL_ROUTES.organizationNew))).toBe(true);
     expect(
       existsSync(path.join(SHELL_DIR, "organization", "new", "loading.tsx")),
+    ).toBe(true);
+  });
+  it("Claim place is a real route file, with its own loading boundary", () => {
+    expect(existsSync(routeFile(SHELL_ROUTES.placesNew))).toBe(true);
+    expect(
+      existsSync(path.join(SHELL_DIR, "places", "new", "loading.tsx")),
     ).toBe(true);
   });
   it("Place is the fourth, and the shell owns it", () => {
@@ -75,6 +82,10 @@ describe("placeIdFromPathname — the nav's Places / Place split", () => {
   it("is null on the list itself, which is a different screen", () => {
     expect(placeIdFromPathname("/places")).toBeNull();
     expect(placeIdFromPathname("/places/")).toBeNull();
+  });
+  it("is null on the claim ceremony — /places/new is not a Place id", () => {
+    expect(placeIdFromPathname("/places/new")).toBeNull();
+    expect(placeIdFromPathname(SHELL_ROUTES.placesNew)).toBeNull();
   });
   // Iterate the REAL tab set, not a hardcoded list. The previous version
   // named partnership/performance/settings — tabs #1508 replaced — and passed

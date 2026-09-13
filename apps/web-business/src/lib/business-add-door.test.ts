@@ -114,6 +114,16 @@ describe("the add door is shut", () => {
     // The wall still stands where it means something.
     expect(PROTECTED_PREFIXES).toContain("/places");
   });
+
+  it("/places/new is claim-from-catalogue, never mint", () => {
+    const page = codeOnly(read("app/(shell)/places/new/page.tsx"));
+    expect(page).not.toContain('"/add"');
+    expect(page).not.toMatch(/Add a place|Create place|New place/i);
+    expect(page).toContain("Claim a place");
+    expect(page).toContain('action="claim"');
+    expect(page).not.toContain('action="release"');
+    expect(page).not.toContain("CreatePlaceForm");
+  });
 });
 
 describe("verify is offered only where it can work", () => {

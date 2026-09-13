@@ -4,7 +4,8 @@
 // FOUR SCREENS (Pato, 2026-09-07 — was five, 2026-09-05): Account ·
 // Organizations · Places · Place. Ascending scope, then the one address.
 // Create organization is its own address (`/organization/new`, MESITA-1793),
-// never a form on the collection.
+// never a form on the collection. Claim place is `/places/new` (MESITA-1800)
+// — claim from the catalogue, never mint.
 //
 // Org Places and Public Places MERGED (MESITA-1614). The split was a filter
 // wearing the costume of a screen: both listed places, both used the same row,
@@ -37,6 +38,7 @@ export const SHELL_ROUTES = {
   organization: "/organization",
   organizationNew: "/organization/new",
   places: "/places",
+  placesNew: "/places/new",
 } as const;
 
 // ── The rail's two Places children (MESITA-1710) ──────────────────────────
@@ -96,8 +98,13 @@ export function placeIdFromPathname(pathname: string): string | null {
   // screen, so the nav must light Place on every one of them. The segment is
   // optional because the bare URL still resolves — it is a 307 onto Profile
   // (MESITA-1732) and a bookmark can still land on it.
+  //
+  // `/places/new` is the claim ceremony (MESITA-1800), not a Place id.
+  if (pathname === SHELL_ROUTES.placesNew) return null;
   const match = pathname.match(/^\/places\/([^/]+)(?:\/[^/]+)?\/?$/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (!match) return null;
+  const id = decodeURIComponent(match[1]);
+  return id === "new" ? null : id;
 }
 
 /** Re-attach a page's whole query string to another path.

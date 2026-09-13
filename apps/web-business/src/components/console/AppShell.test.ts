@@ -134,6 +134,7 @@ describe("the rail is light, and every text token is a measured pair", () => {
       /^href=\{href\(/, // the rail's helper: (to) => withOrg(to, activeOrgId)
       /^href=\{placeTabHref\(/, // carries activeOrgId as its third argument
       /^href=\{href\}$/, // NavRow's prop pass-through: built by its caller
+      /^href=\{createHref\}$/, // CollectionRow's Plus: caller builds it (bare for org, href() for claim)
     ];
     const links = [
       ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),
