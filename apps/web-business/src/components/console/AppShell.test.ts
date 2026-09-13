@@ -134,7 +134,7 @@ describe("the rail is light, and every text token is a measured pair", () => {
       /^href=\{placeTabHref\(/, // a place view
       /^href=\{landingHref\}$/, // where / would land, resolved by AppShell
       /^href=\{href\}$/, // NavRow prop pass-through: built by the caller
-      /^href=\{placeSubjectId \? placeTabHref\(placeSubjectId, tab\) : noPlaceHref\}$/, // a place row, or its door to Add place when there is none (MESITA-1822); noPlaceHref is a contract call above
+      /^href=\{row\.href\}$/, // the six rows: a table of SHELL_ROUTES / viewHref entries (MESITA-1832)
     ];
     const links = [
       ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),

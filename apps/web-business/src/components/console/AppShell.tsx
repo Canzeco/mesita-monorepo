@@ -45,7 +45,7 @@ import { Sidebar } from "@/components/console/Sidebar";
 import { RailScopeProvider } from "@/components/console/RailScopeContext";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
-import { SHELL_ROUTES, orgHref, placeHref } from "@/lib/console-routes";
+import { SHELL_ROUTES } from "@/lib/console-routes";
 import {
   RAIL_COOKIE_ATTRS,
   RAIL_ORG_COOKIE,
@@ -87,9 +87,9 @@ export function AppShell({
   // Where the wordmark lands: the same answer `/` gives, resolved here so the
   // click costs no redirect hop.
   const landingHref = scope.place
-    ? placeHref(scope.place.id)
+    ? SHELL_ROUTES.profile
     : scope.org
-      ? orgHref(scope.org.id)
+      ? SHELL_ROUTES.account
       : SHELL_ROUTES.orgNew;
   // The mobile wordmark is a route out of the place screen exactly like the
   // rail's rows are, so it answers to the same guard. OpenPlaceProvider is

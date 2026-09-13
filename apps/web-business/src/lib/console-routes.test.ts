@@ -8,11 +8,15 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  FLAT_ROUTES,
   ORG_PAGES,
   ORG_PAGE_LABEL,
   PLACES_OWNED,
   SHELL_ROUTES,
+  flatViewFromPathname,
+  isFlatRoute,
   orgHref,
+  viewHref,
   orgIdFromPathname,
   orgPageFromPathname,
   orgPlacesHref,
@@ -26,25 +30,52 @@ import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
 const SHELL_DIR = path.resolve(__dirname, "..", "app", "(shell)");
 
-/** The route file a concrete href resolves to; ids become their segment. */
+/** The route file a concrete href resolves to; ids become their segment.
+ *  The five place views live in the `(place)` route group (MESITA-1832), so
+ *  a flat view href resolves there. */
 function routeFile(href: string, dynamic: Record<string, string> = {}): string {
   const segments = href === "/" ? [] : href.split("?")[0].slice(1).split("/");
-  return path.join(
-    SHELL_DIR,
-    ...segments.map((s) => dynamic[s] ?? s),
-    "page.tsx",
-  );
+  const direct = path.join(SHELL_DIR, ...segments.map((s) => dynamic[s] ?? s), "page.tsx");
+  if (existsSync(direct)) return direct;
+  return path.join(SHELL_DIR, "(place)", ...segments.map((s) => dynamic[s] ?? s), "page.tsx");
 }
 
 describe("SHELL_ROUTES are the addresses that need no id", () => {
-  it("is root, account and the create ceremony", () => {
-    expect(Object.keys(SHELL_ROUTES)).toEqual(["root", "account", "orgNew"]);
+  it("is root, the six pages, admin, and the create ceremony (MESITA-1832)", () => {
+    expect(Object.keys(SHELL_ROUTES)).toEqual([
+      "root",
+      "account",
+      "profile",
+      "reviews",
+      "payments",
+      "activity",
+      "settings",
+      "admin",
+      "orgNew",
+    ]);
+    expect(FLAT_ROUTES).toEqual(["/account", "/profile", "/reviews", "/payments", "/activity", "/settings", "/admin"]);
+    for (const r of FLAT_ROUTES) expect(isFlatRoute(r)).toBe(true);
+    expect(isFlatRoute("/orgs/x")).toBe(false);
+    expect(isFlatRoute("/profile/")).toBe(false);
   });
   for (const [name, href] of Object.entries(SHELL_ROUTES)) {
-    it(`${name} → ${href} is a route file`, () => {
-      expect(existsSync(routeFile(href))).toBe(true);
+    it(`${name} → ${href} is a route file with its own loading boundary`, () => {
+      const file = routeFile(href);
+      expect(existsSync(file), file).toBe(true);
+      if (href !== "/") {
+        expect(existsSync(path.join(path.dirname(file), "loading.tsx")), `${href} loading`).toBe(true);
+      }
     });
   }
+  it("the place views read the flat address, and the flat reader agrees", () => {
+    for (const tab of PLACE_TABS) {
+      expect(viewHref(tab)).toBe(`/${tab}`);
+      expect(flatViewFromPathname(viewHref(tab))).toBe(tab);
+    }
+    expect(flatViewFromPathname("/payments")).toBeNull();
+    expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
+    expect(flatViewFromPathname("/profiles")).toBeNull();
+  });
   it("the create ceremony has its own loading boundary", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "new", "loading.tsx"))).toBe(
       true,
@@ -71,8 +102,13 @@ describe("the organization's pages (MESITA-1807)", () => {
     }
   });
 
-  it("every page maps to a route file with its own loading boundary", () => {
+  it("the organization is a FORWARDER, and its list a page with a loading boundary (MESITA-1832)", () => {
+    // /orgs/<id> selects the organization and lands on /payments: a route
+    // handler, not a page — Stripe's return links keep working.
+    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "route.ts"))).toBe(true);
+    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "page.tsx"))).toBe(false);
     for (const page of ORG_PAGES) {
+      if (page === "overview") continue;
       const file = routeFile(orgHref("org-x", page), ID);
       expect(existsSync(file), `${page}: ${file}`).toBe(true);
       expect(existsSync(path.join(path.dirname(file), "loading.tsx"))).toBe(
@@ -192,17 +228,17 @@ describe("ownedFromParam", () => {
   });
 });
 
-describe("the place is global, and Profile is its address", () => {
-  it("placeHref is Profile's address, and the file exists", () => {
+describe("the place addresses SELECT and FORWARD (MESITA-1832)", () => {
+  it("placeHref names the place; the address is a route handler that selects it and lands on /profile", () => {
     expect(placeHref("p-x")).toBe("/places/p-x/profile");
-    expect(
-      existsSync(path.join(SHELL_DIR, "places", "[id]", "profile", "page.tsx")),
-    ).toBe(true);
-    // The bare segment still resolves — it is the 307 onto Profile, and a
-    // bookmark taken before the move can still land on it.
-    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(
-      true,
-    );
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "[view]", "route.ts"))).toBe(true);
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "route.ts"))).toBe(true);
+    // No page lives under /places/<id> any more: the views are flat.
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(false);
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "profile"))).toBe(false);
+    for (const tab of PLACE_TABS) {
+      expect(existsSync(path.join(SHELL_DIR, "(place)", tab, "page.tsx")), tab).toBe(true);
+    }
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {

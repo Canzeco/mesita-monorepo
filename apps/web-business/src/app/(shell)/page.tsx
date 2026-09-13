@@ -27,12 +27,7 @@ import {
   preferredOrg,
   resolveLanding,
 } from "@/lib/active-organization";
-import {
-  SHELL_ROUTES,
-  orgHref,
-  placeHref,
-  withQuery,
-} from "@/lib/console-routes";
+import { SHELL_ROUTES, orgHref, withQuery } from "@/lib/console-routes";
 import {
   RAIL_ORG_COOKIE,
   RAIL_PLACE_COOKIE,
@@ -41,6 +36,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// The console's front door (MESITA-1832): the selected place's Profile, else
+// Account (an organization with no place: its next step lives there), else
+// Create organization. A `?connect=` arrival (Stripe's return link minted
+// against `/?org=…`) goes to Payments with its query. A TEMPORARY redirect,
+// never permanent: a 308 would be cached forever and the answer changes.
 export default async function ConsoleRootPage({
   searchParams,
 }: {
@@ -71,9 +71,9 @@ export default async function ConsoleRootPage({
   });
   const target =
     landing.kind === "place"
-      ? placeHref(landing.placeId)
+      ? SHELL_ROUTES.profile
       : landing.kind === "org"
-        ? orgHref(landing.orgId)
+        ? SHELL_ROUTES.account
         : SHELL_ROUTES.orgNew;
   redirect(withQuery(target, rest));
 }

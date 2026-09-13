@@ -23,7 +23,7 @@ import {
   pickPlace,
   preferredOrg,
 } from "@/lib/active-organization";
-import { orgIdFromPathname, placeIdFromPathname } from "@/lib/console-routes";
+import { flatViewFromPathname, orgIdFromPathname, placeIdFromPathname } from "@/lib/console-routes";
 
 /** What the rail needs of an organization. */
 export type RailOrg = Pick<Organization, "id" | "name" | "myRole" | "places">;
@@ -52,8 +52,28 @@ export function resolveRailScope(input: {
 }): RailScope {
   const { organizations, pathname } = input;
 
-  // A place route: the holder wins, whatever organization was remembered —
-  // a pasted link to org A's place while org B was remembered shows A.
+  // A FLAT place view (/profile, /reviews, … — MESITA-1832): the address
+  // names no place, so the place is the one the (place) layout published
+  // this session, else the remembered one — its holder wins, whatever
+  // organization was remembered. A published place no organization of mine
+  // holds is a pool place, selected as foreign.
+  if (flatViewFromPathname(pathname)) {
+    const candidate = input.lastPlaceId ?? input.rememberedPlaceId ?? null;
+    const held = findHolder(organizations, candidate);
+    if (held) {
+      return { org: held.org, place: held.place, placeIsCurrent: true, foreignPlaceId: null };
+    }
+    const org = preferredOrg(organizations, input.rememberedOrgId);
+    if (input.lastPlaceId) {
+      return { org, place: null, placeIsCurrent: false, foreignPlaceId: input.lastPlaceId };
+    }
+    const place = pickPlace(org);
+    return { org, place, placeIsCurrent: place !== null, foreignPlaceId: null };
+  }
+
+  // A place route (a forwarder in flight): the holder wins, whatever
+  // organization was remembered — a pasted link to org A's place while org B
+  // was remembered shows A.
   const pathPlaceId = placeIdFromPathname(pathname);
   if (pathPlaceId) {
     const held = findHolder(organizations, pathPlaceId);
