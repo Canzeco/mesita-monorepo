@@ -107,35 +107,41 @@ export function MesitaReviewsList({ placeId }: { placeId: string }) {
   const [loaded, setLoaded] = useState(false);
   const [pending, start] = useTransition();
 
-  const load = useCallback(
-    (offset: number, append: boolean) => {
-      if (append) setMoreError(null);
-      start(() => {
-        void getPlaceReviews(placeId, { limit: PAGE_SIZE, offset }).then((r) => {
-          if (!r.ok) {
-            if (append) {
-              setMoreError(r.error);
-            } else {
-              setError(r.error);
-            }
-            return;
-          }
-          setError(null);
-          setMoreError(null);
-          setTotal(r.data.total);
-          setReviews((prev) =>
-            append ? [...prev, ...r.data.reviews] : r.data.reviews,
-          );
-          setLoaded(true);
-        });
-      });
-    },
-    [placeId],
-  );
-
+  // Shell remounts via key={place.id} on ReviewsTab — no sync reset here
+  // (react-hooks/set-state-in-effect).
   useEffect(() => {
-    load(0, false);
-  }, [load]);
+    let alive = true;
+    getPlaceReviews(placeId, { limit: PAGE_SIZE, offset: 0 }).then((r) => {
+      if (!alive) return;
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setError(null);
+      setTotal(r.data.total);
+      setReviews(r.data.reviews);
+      setLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [placeId]);
+
+  const loadMore = useCallback(() => {
+    setMoreError(null);
+    const offset = reviews.length;
+    start(() => {
+      void getPlaceReviews(placeId, { limit: PAGE_SIZE, offset }).then((r) => {
+        if (!r.ok) {
+          setMoreError(r.error);
+          return;
+        }
+        setMoreError(null);
+        setTotal(r.data.total);
+        setReviews((prev) => [...prev, ...r.data.reviews]);
+      });
+    });
+  }, [placeId, reviews.length]);
 
   if (error && !loaded) {
     return (
@@ -181,7 +187,7 @@ export function MesitaReviewsList({ placeId }: { placeId: string }) {
         {hasMore ? (
           <button
             type="button"
-            onClick={() => load(reviews.length, true)}
+            onClick={loadMore}
             disabled={pending}
             className="text-sm font-medium underline-offset-2 hover:underline disabled:opacity-50"
           >
