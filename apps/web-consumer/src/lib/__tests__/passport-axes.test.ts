@@ -73,11 +73,6 @@ function selfClosingTag(source: string, component: string): string {
   return source.slice(start, end);
 }
 
-/** `<Field label="X">` only — `aria-label` and `ariaLabel` are excluded by the
- *  lookbehind, or the copy button's "Copy member number" reads as a field. */
-const fieldLabels = (source: string) =>
-  [...source.matchAll(/(?<![-\w])label="([^"]+)"/g)].map((m) => m[1]);
-
 const planShaped = (names: string[]) =>
   names.filter((n) => /plan/i.test(n)).sort();
 
@@ -138,7 +133,10 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(importedFrom(bar, "@/lib/utils")).toContain("formatPhoneDisplay");
     expect(bar).toContain("formatPhoneDisplay(profile?.phone)");
     const grid = bar.slice(bar.indexOf('className="grid w-full grid-cols-2'));
-    const phoneChip = grid.slice(grid.indexOf("{phoneDisplay}") - 400, grid.indexOf("{phoneDisplay}"));
+    const phoneChip = grid.slice(
+      grid.indexOf("{phoneDisplay}") - 400,
+      grid.indexOf("{phoneDisplay}"),
+    );
     expect(phoneChip).not.toContain("<button");
   });
 
@@ -224,9 +222,9 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     // ROW and does not survive the 2x2 — so the pin moves rather than being
     // deleted. Order stays pinned because it has now been called three times
     // on this header and nothing else would catch a silent reflow.
-    const hrefs = [...bar.matchAll(/href=\{CONSUMER_ROUTES\.mePages\.(\w+)\}/g)].map(
-      (m) => m[1],
-    );
+    const hrefs = [
+      ...bar.matchAll(/href=\{CONSUMER_ROUTES\.mePages\.(\w+)\}/g),
+    ].map((m) => m[1]);
     expect(hrefs).toEqual(["class", "instagram"]);
     const grid = bar.slice(bar.indexOf('className="grid w-full grid-cols-2'));
     expect(grid.indexOf("{name}")).toBeLessThan(grid.indexOf("mePages.class"));
@@ -285,10 +283,11 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     // different shape reflows the bar the moment the profile lands, which
     // reads as a broken render (MESITA-1158).
     const len = skeleton.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
-    expect(len, "the skeleton no longer maps a fixed-length array").not.toBeNull();
-    expect(Number(len![1])).toBe(
-      [...live.matchAll(/CHIP_CLASS/g)].length,
-    );
+    expect(
+      len,
+      "the skeleton no longer maps a fixed-length array",
+    ).not.toBeNull();
+    expect(Number(len![1])).toBe([...live.matchAll(/CHIP_CLASS/g)].length);
     expect(skeleton).toContain("grid-cols-2");
     expect(live).toContain("grid-cols-2");
     // Chip height agrees too — back to 36px now that the header is a hero
@@ -310,17 +309,29 @@ describe("the Passport sheet is the same document as the bar", () => {
   it("does not read the plan axis off the class context", () => {
     const bound = destructuredFrom(sheet, "useConsumerClass");
     expect(bound).toContain("key");
+    expect(bound).toContain("unknown");
     expect(bound).not.toContain("plan");
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("lists Number · Profile · Class · Instagram, in that order", () => {
-    expect(fieldLabels(sheet)).toEqual([
-      "Number",
-      "Profile",
-      "Class",
-      "Instagram",
-    ]);
+  it("is identity plus two doors — Class then Instagram, not a field list", () => {
+    // MESITA-1801: the page used to be a settings list (Number · Profile ·
+    // Class · Instagram). Identity is a document now; the only buttons are
+    // the two doors. Pin via the route hrefs and the absence of Field /
+    // Profile / happy talk — not `label="Class"`, which also hits the bar.
+    const hrefs = [
+      ...sheet.matchAll(/href=\{CONSUMER_ROUTES\.mePages\.(\w+)\}/g),
+    ].map((m) => m[1]);
+    expect(hrefs).toEqual(["class", "instagram"]);
+    expect(codeOnly(sheet)).not.toContain("function Field");
+    expect(codeOnly(sheet)).not.toContain("IdCard");
+    expect(codeOnly(sheet)).not.toMatch(/Who you are at Mesita/);
+    expect(codeOnly(sheet)).not.toContain("Name, phone, birthday, photo");
+    expect(codeOnly(sheet)).not.toMatch(/climb a class/i);
+    expect(sheet).toContain("CLASS_FLOOR");
+    expect(sheet).toContain("REACH_ENTRY_CLASS");
+    expect(sheet).toContain("REACH_ENTRY_FOLLOWERS");
+    expect(sheet).toContain("Couldn't load your class");
   });
 
   it("carries the two doors the card gave up, and only those two", () => {
