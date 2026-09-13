@@ -186,10 +186,11 @@ describe("the unsaved-edits guard reaches the rail", () => {
   });
 });
 
-// MESITA-1807. The rail is three scoped boxes: Account · Organization · Place,
-// each a picker and its pages. The one rule that has outlived every redesign:
-// nothing indents. Pato rejected a tree twice (1714, 1715).
-describe("the rail is three scoped boxes", () => {
+// MESITA-1815. The rail is seven flat pages: Account · Organization (with the
+// two switchers beneath it) · Place Profile · Reviews · Activity · Settings ·
+// Admin. The one rule that has outlived every redesign: nothing indents. Pato
+// rejected a tree twice (1714, 1715), and boxes once (1815: "too enterprise").
+describe("the rail is seven flat pages", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
   it("indents NOTHING, and draws no tree line or bullet", () => {
@@ -203,24 +204,29 @@ describe("the rail is three scoped boxes", () => {
     expect(r).not.toMatch(/rounded-full["\s]*\/>/);
   });
 
-  it("a box is a ground, not a border, and its padding is paid for by its margin", () => {
+  it("has no box and no eyebrow: the rows carry their scope word", () => {
     const r = rail();
-    expect(r).toContain("WELL_BG");
-    expect(r).toContain('"-mx-0.5 p-0.5"');
-    // No box border: the ground is the container (Pato, direction A). The
-    // only border in a Scope is the w-16 hairline between boxes.
-    const scope = r.slice(r.indexOf("function Scope"), r.indexOf("function CeremonyPlus"));
-    expect(scope).not.toMatch(/(?<!sidebar-)\bborder(?!-sidebar-border\b|-t\b)/);
+    expect(r).not.toContain("<Scope");
+    expect(r).not.toContain("WELL_BG");
+    expect(r).not.toContain('role="group"');
+    expect(r).toContain("export function placeRowLabel(tab: PlaceTab): string");
+    expect(r).toContain("return `Place ${PLACE_TAB_LABEL[tab]}`;");
+    expect(r).toContain("label={placeRowLabel(tab)}");
   });
 
-  it("is Account · Organization · Place, in that order, and nothing else at the top level", () => {
+  it("is Account · Organization · switchers · the views, in that order, and no Places row", () => {
     const r = rail();
-    const at = (needle: string) => r.indexOf(needle);
-    expect(at('<Scope label="Account"')).toBeGreaterThan(at("<nav"));
-    expect(at('<Scope label="Account"')).toBeLessThan(at('<Scope label="Organization"'));
-    expect(at('<Scope label="Organization"')).toBeLessThan(at('<Scope label="Place"'));
-    expect(at('<Scope label="Place"')).toBeLessThan(at("</nav>"));
-    expect((r.match(/<Scope label=/g) ?? []).length).toBe(3);
+    const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
+    const at = (needle: string) => nav.indexOf(needle);
+    expect(at("href={SHELL_ROUTES.account}")).toBeGreaterThan(-1);
+    expect(at("href={SHELL_ROUTES.account}")).toBeLessThan(at("href={orgHref(org.id)}"));
+    expect(at("href={orgHref(org.id)}")).toBeLessThan(at('label="Switch organization"'));
+    expect(at('label="Switch organization"')).toBeLessThan(at('label="Switch place"'));
+    expect(at('label="Switch place"')).toBeLessThan(at("placeTabs.map((tab)"));
+    // The list is the organization's own step: its row lights for it.
+    expect(nav).toContain("active={orgPage !== null}");
+    expect(nav).not.toContain("ORG_ROWS");
+    expect(nav).not.toContain('label="Places"');
     expect(r).not.toContain("<select");
     expect(r).not.toContain('label="All Places"');
     expect(r).not.toContain('label="Organizations"');
@@ -240,9 +246,9 @@ describe("the rail is three scoped boxes", () => {
     expect(r).not.toContain('CHIP = "bg-foreground');
   });
 
-  it("the org pages come from the route contract, and the place views from the ONE matrix", () => {
+  it("the org page comes from the route contract, and the place views from the ONE matrix", () => {
     const r = rail();
-    expect(r).toContain("orgHref(org.id, page)");
+    expect(r).toContain("orgHref(org.id)");
     expect(r).toContain("orgPageFromPathname(pathname)");
     expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
     expect(r).toContain("placeTabHref(placeSubjectId, tab)");
@@ -395,7 +401,7 @@ describe("every place view has its own loading boundary", () => {
     expect(s).toContain("motion-reduce:animate-none");
   });
 
-  it("Reviews guards like Capabilities: a pool place answers 404, never a throw", () => {
+  it("Reviews guards like Settings: a pool place answers 404, never a throw", () => {
     const page = readCode("app/(shell)/places/[id]/reviews/page.tsx");
     expect(page).toContain("if (!manage) notFound();");
     expect(readCode("components/place-manage/sections/PlaceSection.tsx")).not.toContain(
@@ -404,12 +410,12 @@ describe("every place view has its own loading boundary", () => {
   });
 });
 
-describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", () => {
+describe("Settings first paint is a row list, not a meter (MESITA-1739)", () => {
   it("the loading skeleton is rows, not Profile's photo band", () => {
-    const s = read("app/(shell)/places/[id]/capabilities/loading.tsx");
+    const s = read("app/(shell)/places/[id]/settings/loading.tsx");
     expect(s).not.toContain("h-[420px]");
     expect(s).not.toContain("PlaceViewSkeleton");
-    expect(s).toContain("Loading capabilities");
+    expect(s).toContain("Loading settings");
     expect(s).toContain("length: 7");
   });
 
@@ -529,7 +535,7 @@ describe("the container stays uncapped", () => {
 
 describe("tab hrefs", () => {
   it("carry no organization: the place id names its holder (MESITA-1807)", () => {
-    expect(placeTabHref("p-1", "capabilities")).toBe("/places/p-1/capabilities");
+    expect(placeTabHref("p-1", "settings")).toBe("/places/p-1/settings");
     expect(placeTabHref("p-1", "reviews")).toBe("/places/p-1/reviews");
   });
   it("agree with placeHref, which is Profile's address", () => {

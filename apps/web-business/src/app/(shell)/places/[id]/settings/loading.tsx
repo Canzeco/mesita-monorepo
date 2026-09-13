@@ -1,11 +1,11 @@
-// Capabilities is a row list under a one-line summary (MESITA-1739). Next 16
+// Settings is a row list under a one-line summary (MESITA-1739). Next 16
 // keeps the OLD screen painted when a route has no loading boundary, and the
 // inherited `places/[id]/loading.tsx` is Profile's 260px photo band plus three
 // cards — which would cause the shift this file exists to prevent.
-export default function CapabilitiesLoading() {
+export default function SettingsLoading() {
   return (
     <>
-      <span className="sr-only">Loading capabilities…</span>
+      <span className="sr-only">Loading settings…</span>
       <div aria-hidden="true" className="flex flex-col gap-3">
         <div className="bg-muted h-5 w-4/5 max-w-xl animate-pulse rounded-md motion-reduce:animate-none" />
         <div className="border-border divide-border/60 divide-y overflow-hidden rounded-2xl border">

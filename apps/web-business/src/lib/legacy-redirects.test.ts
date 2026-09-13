@@ -129,6 +129,13 @@ describe("the legacy console's URLs all still resolve", () => {
   it("/settings lands on the shell's Account screen", async () => {
     expect(resolve("/settings", await rules())).toBe("/account");
   });
+
+  it("the Capabilities view forwards to Settings (MESITA-1815), one hop", async () => {
+    const all = await rules();
+    expect(resolve("/places/abc/capabilities", all)).toBe("/places/abc/settings");
+    // The new address is a route, not a redirect — nothing chains.
+    expect(resolve("/places/abc/settings", all)).toBeNull();
+  });
 });
 
 // MESITA-1807. The organization moved from `?org=` into the path.

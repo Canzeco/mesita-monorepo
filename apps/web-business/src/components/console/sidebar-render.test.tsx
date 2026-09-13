@@ -1,10 +1,10 @@
-// The rail, RENDERED (MESITA-1807).
+// The rail, RENDERED (MESITA-1807; seven flat pages since MESITA-1815).
 //
 // Source-reading contracts cannot see two pills: two rows computing `active`
 // for one pathname pass every regex and light up together on screen. This
 // file renders the real Sidebar over a pathname matrix with a mocked router
 // and counts `aria-current="page"` — exactly one, on every route, in every
-// viewer state — and proves the boxes at zero, at one, on a pool place, and
+// viewer state — and proves the rail at zero, at one, on a pool place, and
 // at `w-16`. It is the strongest proof this app has: no browser can get past
 // the OTP wall.
 import { describe, expect, it, vi } from "vitest";
@@ -17,7 +17,7 @@ import {
   orgPlacesNewHref,
   placeHref,
 } from "@/lib/console-routes";
-import { PLACE_TABS, placeTabHref } from "@/lib/place-tabs";
+import { PLACE_TABS, PLACE_TAB_LABEL, placeTabHref } from "@/lib/place-tabs";
 
 const nav = vi.hoisted(() => ({ pathname: "/" }));
 vi.mock("next/navigation", () => ({
@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
 }));
 
-import { Sidebar } from "./Sidebar";
+import { Sidebar, placeRowLabel } from "./Sidebar";
 
 const ORGS: RailOrg[] = [
   {
@@ -81,11 +81,13 @@ describe("exactly one pill, on every route", () => {
   const ROUTES: [string, string][] = [
     [SHELL_ROUTES.account, "pato@canzeco.com"],
     [orgHref("org-a"), "Organization"],
-    [orgHref("org-a", "places"), "Places"],
-    [orgPlacesNewHref("org-a"), "Places"],
-    [placeHref("p-1"), "Profile"],
-    [placeTabHref("p-1", "activity"), "Activity"],
-    [placeTabHref("p-1", "capabilities"), "Capabilities"],
+    // The list and the Add step are the organization's own steps (MESITA-1815):
+    // no Places row, so the Organization row is the pill on both.
+    [orgHref("org-a", "places"), "Organization"],
+    [orgPlacesNewHref("org-a"), "Organization"],
+    [placeHref("p-1"), "Place Profile"],
+    [placeTabHref("p-1", "activity"), "Place Activity"],
+    [placeTabHref("p-1", "settings"), "Place Settings"],
   ];
   for (const [pathname, label] of ROUTES) {
     it(`${pathname} lights ${label} and nothing else`, () => {
@@ -111,29 +113,61 @@ describe("exactly one pill, on every route", () => {
   });
 });
 
-describe("the three boxes", () => {
-  it("are Account, Organization and Place, each a labelled group, in that order", () => {
-    const html = render(orgHref("org-a"));
+describe("seven flat pages (MESITA-1815)", () => {
+  it("are Account · Organization · Place Profile · Reviews · Activity · Settings · Admin, in that order, with no box and no eyebrow", () => {
+    const html = render(orgHref("org-a"), { isSuperAdmin: true });
     const at = (s: string) => html.indexOf(s);
-    expect(at('aria-label="Account"')).toBeGreaterThan(at("<nav"));
-    expect(at('aria-label="Account"')).toBeLessThan(at('aria-label="Organization"'));
-    expect(at('aria-label="Organization"')).toBeLessThan(at('aria-label="Place"'));
+    const order = [
+      ">pato@canzeco.com<",
+      ">Organization<",
+      'aria-label="Switch organization"',
+      'aria-label="Switch place"',
+      ">Place Profile<",
+      ">Place Reviews<",
+      ">Place Activity<",
+      ">Place Settings<",
+      ">Place Admin<",
+    ];
+    for (const needle of order) expect(at(needle), needle).toBeGreaterThan(at("<nav"));
+    for (let i = 1; i < order.length; i++) {
+      expect(at(order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(order[i]));
+    }
+    // No grouped boxes: the rows say their scope themselves.
+    expect(html).not.toContain('role="group"');
+    expect(html).not.toContain('aria-label="Place"');
+    expect(html).not.toContain('aria-label="Account"');
+    // Exactly seven pages for the owner super-admin: the email, Organization,
+    // five views. The rail is a LIST plus two switchers, nothing else.
+    const rows = html.match(/<a[^>]*href="[^"]*"[^>]*title=/g) ?? [];
+    expect(rows.length).toBeGreaterThanOrEqual(0);
+    expect((html.match(/>Place [A-Z][a-z]+</g) ?? []).length).toBe(5);
   });
 
-  it("the Organization box links the organization and its list, and the Place box every view", () => {
+  it("the Places row is gone; the list stays a door in the place switcher", () => {
     const html = render(orgHref("org-a"));
-    for (const href of [orgHref("org-a"), orgPlacesHref("org-a")]) {
-      expect(hrefs(html)).toContain(href);
-    }
+    expect(html).not.toContain(">Places<");
+    expect(hrefs(html)).not.toContain(orgPlacesHref("org-a"));
+    expect(hrefs(html)).toContain(orgHref("org-a"));
+    // The list's door is the switcher's menu (`All places`), which a closed
+    // Radix menu does not render server-side; shell-chrome.test.ts pins the
+    // MenuLink in the source.
     // ONE organization page (MESITA-1810): no Payments or Members rows.
     expect(html).not.toContain(">Payments<");
     expect(html).not.toContain(">Members<");
     expect(html).not.toContain(">Overview<");
     // The place shown is the organization's first when none is remembered.
-    for (const tab of ["profile", "reviews", "activity", "capabilities"] as const) {
+    for (const tab of ["profile", "reviews", "activity", "settings"] as const) {
       expect(hrefs(html)).toContain(placeTabHref("p-1", tab));
     }
     expect(html).not.toContain("org=");
+  });
+
+  it("the rail says the scope word; the crumb keeps the bare one", () => {
+    for (const tab of PLACE_TABS) {
+      expect(placeRowLabel(tab)).toBe(`Place ${PLACE_TAB_LABEL[tab]}`);
+    }
+    expect(PLACE_TAB_LABEL.settings).toBe("Settings");
+    expect(PLACE_TABS).not.toContain("capabilities" as never);
   });
 
   it("remembers the place you were last in while you are on an organization page", () => {
@@ -143,19 +177,19 @@ describe("the three boxes", () => {
     expect(hrefs(html)).not.toContain(placeTabHref("p-1", "activity"));
   });
 
-  it("Admin appears only for a super-admin", () => {
-    expect(render(placeHref("p-1"))).not.toContain(">Admin<");
+  it("Place Admin appears only for a super-admin", () => {
+    expect(render(placeHref("p-1"))).not.toContain(">Place Admin<");
     const html = render(placeHref("p-1"), { isSuperAdmin: true });
-    expect(html).toContain(">Admin<");
+    expect(html).toContain(">Place Admin<");
     expect(hrefs(html)).toContain(placeTabHref("p-1", "admin"));
   });
 
-  it("a viewer's place box offers the read views only", () => {
+  it("a viewer's rail offers the read views only", () => {
     const viewer: RailOrg[] = [{ ...ORGS[0], myRole: "viewer" }];
     const html = render(placeHref("p-1"), { organizations: viewer });
-    expect(html).toContain(">Reviews<");
-    expect(html).toContain(">Activity<");
-    expect(html).not.toContain(">Capabilities<");
+    expect(html).toContain(">Place Reviews<");
+    expect(html).toContain(">Place Activity<");
+    expect(html).not.toContain(">Place Settings<");
   });
 
   it("every view in the vocabulary is a row for the owner super-admin — no orphan view", () => {
@@ -167,30 +201,33 @@ describe("the three boxes", () => {
 });
 
 describe("the states a 10/10 has to answer", () => {
-  it("zero organizations: Account, a Create row, and no Place box", () => {
+  it("zero organizations: Account, a Create row, and no place rows", () => {
     const html = render(SHELL_ROUTES.orgNew, { organizations: [] });
     expect(html).toContain("Create organization");
     expect(pills(html)).toHaveLength(1);
-    expect(html).not.toContain('aria-label="Place"');
+    expect(html).not.toContain(">Place ");
     expect(html).not.toContain('aria-label="Switch organization"');
+    expect(html).not.toContain('aria-label="Switch place"');
   });
 
   it("the organizations failed to load: a muted line, NEVER the create row", () => {
     const html = render(SHELL_ROUTES.account, { organizations: [], viewerError: true });
     expect(html).toContain("Couldn&#x27;t load organizations");
     expect(html).not.toContain("Create organization");
-    expect(html).not.toContain('aria-label="Place"');
+    expect(html).not.toContain(">Place ");
+    expect(html).not.toContain('aria-label="Switch place"');
   });
 
-  it("an organization holding no place: the Place box is the next step, never active", () => {
+  it("an organization holding no place: an Add place row is the next step, never active", () => {
     const html = render(orgPlacesNewHref("org-b"));
     expect(html).toContain("Add place");
     expect(hrefs(html)).toContain(orgPlacesNewHref("org-b"));
     expect(html).not.toContain('aria-label="Switch place"');
-    // The Places row is the pill on the add step — not the Add place row.
+    expect(html).not.toContain(">Place ");
+    // The Organization row is the pill on the add step — not the Add place row.
     expect(pills(html)).toHaveLength(1);
     const pill = html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
-    expect(pill).toContain(">Places<");
+    expect(pill).toContain(">Organization<");
   });
 
   it("a pool place: named as foreign, Profile alone, still one pill", () => {
@@ -201,12 +238,12 @@ describe("the states a 10/10 has to answer", () => {
     expect(html).toContain('aria-label="Switch place"');
   });
 
-  it("collapsed: no eyebrows, no Plus, every label a title", () => {
+  it("collapsed: no Plus, every label a title", () => {
     const html = render(orgHref("org-a"), { collapsed: true });
-    expect(html).not.toMatch(/aria-hidden="true"[^>]*>Organization</);
     expect(html).not.toContain('aria-label="Create organization"');
     expect(html).not.toContain('aria-label="Add place"');
-    expect(html).toContain('title="Places"');
+    expect(html).toContain('title="Organization"');
+    expect(html).toContain('title="Place Settings"');
     expect(html).toContain('title="Switch organization: Strana Group"');
     expect(pills(html)).toHaveLength(1);
   });

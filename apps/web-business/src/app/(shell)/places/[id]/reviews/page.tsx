@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 // Reviews — the fifth view (MESITA-1807). A pool place has no manage payload
 // and no Reviews row in the matrix; typed by hand, it answers 404 rather than
-// throwing inside usePlaceContext, the same guard Capabilities carries.
+// throwing inside usePlaceContext, the same guard Settings carries.
 export default async function ReviewsPage({
   params,
 }: {
