@@ -97,6 +97,42 @@ describe("the place screen has a heading, not a second bar", () => {
   });
 });
 
+// MESITA-1804. The rail dropped the view rows in MESITA-1793 and nothing else
+// linked to the views; until the scoped rail carries them again the heading
+// does. Source contract here; the rendered row is proven in
+// components/console/place-heading.test.tsx.
+describe("the place views are linked from the heading (MESITA-1804)", () => {
+  it("the heading builds its links from the one tab vocabulary", () => {
+    const h = readCode("components/console/PlaceHeading.tsx");
+    expect(h).toContain("placeTabHref(placeId, t, org)");
+    expect(h).toContain("PLACE_TAB_LABEL[t]");
+    expect(h).toContain('aria-label="Place views"');
+    expect(h).toContain('aria-current={active ? "page" : undefined}');
+  });
+
+  it("the layout hands the heading the SAME view set it publishes to the rail", () => {
+    const l = readCode("app/(shell)/places/[id]/layout.tsx");
+    expect(l).toContain("tabs={tabs}");
+    expect(l).toContain("placeId={id}");
+    // Props, not context: a row read from OpenPlace would render empty on the
+    // server and pop in after hydration.
+    const h = readCode("components/console/PlaceHeading.tsx");
+    expect(h).not.toContain("useOpenPlace()");
+  });
+
+  it("every pill routes through the unsaved-edits guard, except the one you are on", () => {
+    const h = readCode("components/console/PlaceHeading.tsx");
+    expect(h).toContain("useOpenPlaceGuard()");
+    expect(h).toContain("if (!active) guardNav?.(href, e)");
+  });
+
+  it("the row is still not chrome: no sticky, no second h1", () => {
+    const h = readCode("components/console/PlaceHeading.tsx");
+    expect(h).not.toContain("sticky");
+    expect((read("components/console/PlaceHeading.tsx").match(/<h1/g) ?? []).length).toBe(1);
+  });
+});
+
 // MESITA-1714. The guard travels UP; the component does not come down.
 describe("the unsaved-edits guard reaches the rail", () => {
   it("only the bridge reads PlaceContext, and it renders nothing", () => {
