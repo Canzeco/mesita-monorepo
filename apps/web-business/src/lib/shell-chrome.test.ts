@@ -273,6 +273,25 @@ describe("the rail is seven rows", () => {
     expect(rail()).toContain("focus-visible:ring-sidebar-ring");
   });
 
+  it("is DARK, and paints only with sidebar tokens (MESITA-1831)", () => {
+    const css = read("app/globals.css");
+    expect(css).toContain("--sidebar: var(--dock);");
+    expect(css).toContain("--sidebar-foreground: var(--dock-foreground);");
+    expect(css).toContain("--sidebar-muted: var(--dock-muted);");
+    expect(css).toContain("--sidebar-accent: var(--dock-surface);");
+    expect(css).toContain("--sidebar-border: var(--dock-border);");
+    expect(css).toContain("--color-sidebar-muted: var(--sidebar-muted);");
+    // On the ink, a page token is ink on ink.
+    const r = rail();
+    expect(r).not.toContain("text-muted-foreground");
+    expect(r).not.toContain("bg-foreground");
+    expect(r).not.toContain("text-background");
+    expect(r).not.toContain("hover:text-foreground");
+    expect(r).toContain('"bg-sidebar-foreground text-sidebar font-semibold"');
+    expect(r).toContain("text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground");
+    expect(r).toContain('cn(TINY_LABEL_CLASS, "text-sidebar-muted")');
+  });
+
   it("the layout hands the rail the whole viewer and the two rail cookies, raw", () => {
     const layout = readCode("app/(shell)/layout.tsx");
     expect(layout).toContain("apiConsoleViewer(supabase)");

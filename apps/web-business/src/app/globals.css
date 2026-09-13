@@ -124,13 +124,22 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.98 0.01 10);
-  --sidebar-foreground: oklch(0.18 0.06 15);
+  /* THE RAIL IS DARK (MESITA-1831, Pato 2026-09-13: "more contrast, sidebar
+     menu must be dark"). The sidebar tokens are the dock tokens below — the
+     brand's warm ink, declared for the retired bottom shell and unused since
+     it left. Rows at rest are --sidebar-muted (58% white, ≈7.5:1 on the ink),
+     full white on hover (≈16:1); the pill inverts to an off-white fill with
+     ink text. The ring stays the brand pink. Nothing in the rail may paint
+     with a page token (text-muted-foreground, bg-foreground): on this ground
+     those are ink on ink. */
+  --sidebar: var(--dock);
+  --sidebar-foreground: var(--dock-foreground);
+  --sidebar-muted: var(--dock-muted);
   --sidebar-primary: oklch(0.65 0.24 5);
   --sidebar-primary-foreground: oklch(0.99 0.005 10);
-  --sidebar-accent: oklch(0.95 0.016 10);
-  --sidebar-accent-foreground: oklch(0.18 0.06 15);
-  --sidebar-border: oklch(0.9 0.02 10);
+  --sidebar-accent: var(--dock-surface);
+  --sidebar-accent-foreground: var(--dock-foreground);
+  --sidebar-border: var(--dock-border);
   --sidebar-ring: oklch(0.65 0.24 5);
 
   /* Bottom shell — high contrast against the light page body */
@@ -203,6 +212,7 @@
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);

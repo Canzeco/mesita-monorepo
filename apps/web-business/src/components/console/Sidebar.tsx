@@ -37,6 +37,13 @@
 // FLAT. Nothing in this file indents — no inset, no tree line, no bullet, no
 // `pl-8`, no box, no eyebrow, no seam — and `shell-chrome.test.ts` forbids
 // all of them. Seven rows in one column.
+//
+// DARK (MESITA-1831). The rail sits on the brand's ink (`--sidebar` is the
+// dock token, globals.css) and paints ONLY with `sidebar-*` tokens: rows at
+// rest `text-sidebar-muted` (58% white), hover `bg-sidebar-accent` (white/10)
+// + full white, the pill an off-white fill with ink text. A page token —
+// `text-muted-foreground`, `bg-foreground` — is ink on ink here, and the
+// source test refuses it.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -106,11 +113,11 @@ const ROW_BASE = cn(
   FOCUS_RING,
 );
 const ROW_REST =
-  "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground";
-// The active row is a SOLID ink pill, not a tint. It is the one place in the
-// rail where the console's foreground appears as a fill, which is what makes
-// "you are here" survive a glance down a light column.
-const ROW_ACTIVE = "bg-foreground text-background font-semibold";
+  "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground";
+// The active row is a SOLID pill, not a tint: on the dark rail it is the
+// off-white fill with ink text — the brightest thing in the column, which is
+// what makes "you are here" survive a glance down it.
+const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
 // The full route is prefetched on hover (MESITA-1779): the click then paints
 // the body at once instead of the skeleton. The prop works at runtime in
 // app/ and is missing from Link's public type, so it is spread in.
@@ -226,7 +233,7 @@ function MutedRow({
       title={collapsed ? label : undefined}
       className={cn(
         ROW_BASE,
-        "text-muted-foreground",
+        "text-sidebar-muted",
         collapsed && "justify-center px-0 py-2",
       )}
     >
@@ -318,7 +325,7 @@ export function Sidebar({
               {/* TINY_LABEL_CLASS, never a heading tag: globals.css puts every
                   bare h1/h2/h3 on the display face, so a 10px eyebrow written as
                   an <h2> would silently become a serif. */}
-              <span className={TINY_LABEL_CLASS}>business</span>
+              <span className={cn(TINY_LABEL_CLASS, "text-sidebar-muted")}>business</span>
             </>
           )}
         </Link>
