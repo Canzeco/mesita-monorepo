@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { BalanceList, CARD_PX } from "@/components/consumer/credits/BalanceList";
 import { WaysToPay } from "@/components/consumer/credits/WaysToPay";
 import {
+  WalletMoney,
   WalletPanel,
   WalletPanelEmpty,
 } from "@/components/consumer/wallet/WalletPanel";
@@ -17,6 +18,7 @@ import {
   useConsumerCards,
 } from "@/components/consumer/me/CardList";
 import type { CreditOrgBalance } from "@/lib/api/credits";
+import { formatCurrency } from "@/lib/api/profile";
 import { useCreditBalances } from "@/lib/use-credit-balances";
 import {
   CONSUMER_ROUTES,
@@ -54,6 +56,24 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // owns no section chrome any more, which is what makes a fourth section a
 // mount rather than a paste.
 //
+// AT THREE DIFFERENT RANKS (MESITA-1825, Pato: "make the design far cleaner,
+// more modular, wtdf is that" — the second time those words landed on this
+// screen). One object was read as one LOOK, so the fix for the first "wtf"
+// shipped three identical boxes with three identical whisper-legends, and
+// nothing on the screen led. Same object, three `chrome` values now:
+//
+//   Ways to pay  none    label, no box — read once, never again
+//   Cards        flat    a real section, quietly
+//   Credits      raised  the money; the only lifted surface here
+//
+// `WalletPanel` still renders the `<section>` and the heading at every rung,
+// so the bottom rung loses its box WITHOUT losing its landmark — and this file
+// still owns no chrome, which is the whole point of the prop living there.
+//
+// ORDER SURVIVED THE REDESIGN UNTOUCHED. It was put to Pato on 2026-09-13
+// with the alternative drawn, and he kept it. Rank is carried by weight
+// precisely BECAUSE it cannot be carried by position: see below.
+//
 // WAYS TO PAY IS PERMANENT NOW. It used to render only while the guest held
 // zero balances. Pato's wireframe draws it above a wallet that has them, so
 // the condition is gone — see WaysToPay's header for why the block being read
@@ -86,27 +106,31 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // The wallet is a LIST plus four doors. See newVisit.walletBuy in the route
 // contract for the reversal, and WalletScreen for the frame they share.
 
-/** ACTION BUTTONS, DELIBERATELY NOT SMALL: Pato, 2026-09-08 — "un botón un
- *  poco grande, no quiero que esté escondido", then "make the buttons larger".
+/** SECTION ACTIONS ARE LINKS, NOT PILLS (MESITA-1825 D4). MESITA-1708 D4 took
+ *  Buy out of the pill row and made it the one solid button; it did not touch
+ *  what was left, so the screen still carried four filled pink shapes in three
+ *  tints — Add, Gift, Redeem and Buy — and the eye read them as four peers.
+ *  They are not peers. Gift and Redeem are doors most guests never open, and
+ *  `--primary`'s tint on them was competing with the only button that creates
+ *  anything.
  *
- *  CARDS TAKES ONE ACTION, CREDITS TAKES THREE, and the widths were measured
- *  rather than hoped for. At `text-sm` bold with `px-4`, "Credits" plus Buy,
- *  Gift and Redeem and their gaps is ~274px inside the 335px a 375px phone
- *  leaves after the page gutter — and the panel now eats 32px more in its own
- *  padding, so the row wraps its buttons rather than clipping them. It fits
- *  only with the icons gone, which is why no section button carries a glyph,
- *  including Cards' Add, where the word already says what the button does. */
-
-// `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary` (pink-500, 3.66:1)
-// — this is text on a light surface and 500 fails AA. The token has no
-// Tailwind utility and an arbitrary `text-[...]` trips the off-scale-font-size
-// rule, so it rides an inline style. globals.css:26 documents the pair.
-// 44px tall, not 40. Three of these used to sit side by side at `py-2.5`
-// (~40px) with a 6px gutter — three adjacent targets under the touch floor,
-// which is what MESITA-1708 D5 measured. Buy has since left this row, but the
-// floor holds for the two that remain.
+ *  So the fill is gone from all three. The word stays bold and pink, which is
+ *  what still says "pressable" once the shape is gone.
+ *
+ *  THE HIT BOX DOES NOT SHRINK WITH THE SHAPE. MESITA-1708 D5 measured the
+ *  44px floor on these very buttons, and a link that looks like text is the
+ *  easiest place to lose it. `py-3` around a `text-sm` line is 44px, and the
+ *  negative margin keeps the enlarged box from pushing the word off the
+ *  header's baseline. Padding is not decoration here — deleting it breaks a
+ *  measured rule.
+ *
+ *  `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary` (pink-500, 3.66:1):
+ *  this is text on a light surface and 500 fails AA — which matters more now
+ *  that the text IS the button. The token has no Tailwind utility and an
+ *  arbitrary `text-[...]` trips the off-scale-font-size rule, so it rides an
+ *  inline style. globals.css:26 documents the pair. */
 const ADD_BUTTON_CLASS =
-  "bg-primary/10 flex shrink-0 items-center gap-1.5 rounded-full px-4 py-3 text-sm font-bold transition active:scale-[0.98] disabled:opacity-50";
+  "-mx-1 flex shrink-0 items-center gap-1 rounded-lg px-1 py-3 text-sm font-bold transition active:scale-[0.98] disabled:opacity-50";
 const ADD_BUTTON_STYLE = { color: "var(--brand-pink-text)" };
 
 /** THE ONE SOLID BUTTON ON THE SCREEN (MESITA-1708 D4). Buy used to be the
@@ -114,9 +138,15 @@ const ADD_BUTTON_STYLE = { color: "var(--brand-pink-text)" };
  *  peer: buying is the only act on this surface that creates anything, and
  *  Redeem — which most guests will never use — was carrying the same weight.
  *  `--primary` is fine as a FILL (the AA problem is pink-500 as text on white,
- *  which is why the pills opposite ride --brand-pink-text instead). */
+ *  which is why the links opposite ride --brand-pink-text instead).
+ *
+ *  FULL WIDTH (MESITA-1825). It sat left-aligned at the bottom of the third of
+ *  three equal boxes, which is the least-looked-at pixel on the screen. Now
+ *  that its panel is the only lifted one, the button spans it: one solid shape
+ *  on the whole surface, and it is the shape that starts the only thing this
+ *  screen can create. */
 const BUY_BUTTON_CLASS =
-  "bg-primary text-primary-foreground inline-flex items-center rounded-full px-5 py-3 text-sm font-bold shadow-rest transition active:scale-[0.98]";
+  "bg-primary text-primary-foreground flex w-full items-center justify-center rounded-full px-5 py-3.5 text-sm font-bold shadow-rest transition active:scale-[0.98]";
 
 /** A section header action that goes somewhere. Every one of them does now —
  *  the `SoonAction` placeholder that held Gift and Redeem for one afternoon is
@@ -173,8 +203,12 @@ export function CreditsClient() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-5">
-        {/* Always. Not "until it has been read" — see WaysToPay's header. */}
-        <WalletPanel title="Ways to pay">
+        {/* Always. Not "until it has been read" — see WaysToPay's header.
+            `chrome="none"` is the bottom rung: it keeps its label, its section
+            and its landmark, and loses the box. A block the guest reads once
+            should not spend the first viewport looking as important as the two
+            underneath it that hold their money. */}
+        <WalletPanel title="Ways to pay" chrome="none">
           <WaysToPay />
         </WalletPanel>
 
@@ -185,6 +219,7 @@ export function CreditsClient() {
               state={cards}
               label="Add"
               className={ADD_BUTTON_CLASS}
+              style={ADD_BUTTON_STYLE}
             />
           }
         >
@@ -194,6 +229,12 @@ export function CreditsClient() {
 
         <WalletPanel
           title="Credits"
+          // THE ONLY LIFTED SURFACE ON THE SCREEN (MESITA-1825). Order is
+          // locked — Credits stays third (Pato, 2026-09-13, when offered the
+          // reversal) — so rank has to come from somewhere other than
+          // position, and `shadow-rest` is it. One raised panel is a ladder;
+          // two would be back to no ladder at all.
+          chrome="raised"
           // GIFT · REDEEM in the header; BUY is not here (MESITA-1708 D4) —
           // it is the panel's own primary button, below, because it is the
           // only one of the three that creates anything. Redeem is global
@@ -216,10 +257,19 @@ export function CreditsClient() {
         >
           {credits.loading ? (
             // Sized from the card's own minimum so the skeleton cannot drift
-            // from what lands on top of it.
-            <div style={{ height: CARD_PX }}>
-              <Skeleton className="h-full w-full rounded-2xl" />
-            </div>
+            // from what lands on top of it — and, since MESITA-1825, from the
+            // MONEY LINE too. Skeletoning only the card height meant the
+            // 36px figure above it popped in from nothing on every load, which
+            // is the one element on the screen the eye is already aimed at.
+            <>
+              <div className="mb-4">
+                <Skeleton className="h-9 w-32 rounded-lg" />
+                <Skeleton className="mt-2.5 h-3 w-24 rounded" />
+              </div>
+              <div style={{ height: CARD_PX }}>
+                <Skeleton className="h-full w-full rounded-2xl" />
+              </div>
+            </>
           ) : balances.length === 0 ? (
             // `WalletPanelEmpty`, not the shared screen-scale `EmptyState` —
             // see its header. The old one nested a tinted icon tile and a
@@ -231,18 +281,31 @@ export function CreditsClient() {
             // "5% · 90 days" here would be the screen asserting terms the
             // operator can change, and adding an EF call to every wallet open
             // for one sentence is not worth it. Buy states the real terms.
-            <WalletPanelEmpty
-              headline="Prepay a place, get more than you paid"
-              description="Spend it there whenever you go. The place sets the bonus and how long it lasts."
-              action={
-                <Link
-                  href={CONSUMER_ROUTES.newVisit.walletBuy}
-                  className={BUY_BUTTON_CLASS}
-                >
-                  Buy Credits
-                </Link>
-              }
-            />
+            //
+            // THE ZERO IS THE HEADLINE (MESITA-1825). `formatCurrency(0)` is
+            // "MX$0", and printing it is the point: the screen used to open on
+            // a bold sentence and no amount anywhere, on a surface whose whole
+            // subject is an amount. A guest with nothing saved is still owed
+            // the number — "you have zero" is an answer, "no items found" is
+            // not. It is also the only figure here that is honest; see
+            // WalletMoney for why the non-empty case shows none.
+            <div className="flex flex-col gap-2.5">
+              <WalletMoney
+                amount={formatCurrency(0)}
+                caption="No balances yet"
+              />
+              <WalletPanelEmpty
+                description="Prepay a place and get more than you paid. The place sets the bonus and how long it lasts."
+                action={
+                  <Link
+                    href={CONSUMER_ROUTES.newVisit.walletBuy}
+                    className={BUY_BUTTON_CLASS}
+                  >
+                    Buy Credits
+                  </Link>
+                }
+              />
+            </div>
           ) : (
             <>
               <BalanceList
@@ -268,17 +331,20 @@ export function CreditsClient() {
               ) : null}
             </>
           )}
+
+          {/* IN THE PANEL THAT FAILED (MESITA-1825 D5). This used to be a red
+              line pinned to the bottom edge of the SCREEN, two panels away
+              from the only read that can produce it — so a failed balance
+              fetch announced itself under the tab bar while Credits sat
+              looking merely empty. An error belongs where its content would
+              have been. */}
+          {credits.error ? (
+            <p role="alert" className="text-destructive type-label mt-3">
+              {credits.error}
+            </p>
+          ) : null}
         </WalletPanel>
       </div>
-
-      {credits.error && (
-        <p
-          role="alert"
-          className="text-destructive shrink-0 px-5 pb-1 text-center text-xs"
-        >
-          {credits.error}
-        </p>
-      )}
     </div>
   );
 }

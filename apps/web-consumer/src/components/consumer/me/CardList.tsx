@@ -187,7 +187,7 @@ export function CardList({ state }: { state: ConsumerCardsState }) {
           // `CardsDisclosure` renders directly beneath this on both call
           // sites and already says it. Two sentences saying one thing, two
           // inches apart, is the copy version of the nesting above.
-          <p className="text-muted-foreground type-label py-1">
+          <p className="text-muted-foreground type-body py-1">
             No cards saved yet.
           </p>
         ) : (
@@ -220,12 +220,17 @@ export function CardList({ state }: { state: ConsumerCardsState }) {
 export function AddCardButton({
   state,
   className,
+  /** `--brand-pink-text` has no Tailwind utility and an arbitrary `text-[...]`
+   *  trips the off-scale-font-size rule, so the Wallet's header links pass the
+   *  colour as a style. See CreditsClient's ADD_BUTTON_STYLE. */
+  style,
   /** "Add a card" under a sheet's list; "Add" in a section header where the
    *  heading beside it already says what is being added. */
   label = "Add a card",
 }: {
   state: ConsumerCardsState;
   className?: string;
+  style?: React.CSSProperties;
   label?: string;
 }) {
   return (
@@ -233,6 +238,7 @@ export function AddCardButton({
       type="button"
       onClick={() => void state.add()}
       disabled={state.addBusy}
+      style={style}
       // The visible label can shorten to "Add"; the accessible name must not,
       // because a screen reader reaching this button out of context gets no
       // heading with it.
@@ -260,8 +266,18 @@ export function CardsDisclosure({
 }) {
   return (
     <p
+      // NOT CENTRED, NOT DIMMED (MESITA-1825 D6). Both were doing damage in
+      // the Wallet's Cards panel. The `/80` thinned an already-small line
+      // below the contrast every other secondary string on the screen holds,
+      // and on legal copy of all things — this is the sentence that says who
+      // holds the card number. The centring made it the only centred text on a
+      // screen left-aligned to one gutter, so the longest string in the panel
+      // was also the most conspicuously different one. It still reads as
+      // secondary, by size and by the muted token, which is how every other
+      // line here does it. The size does NOT drop further: 11px is already at
+      // this app's floor.
       className={cn(
-        "text-muted-foreground/80 type-label text-center leading-relaxed",
+        "text-muted-foreground type-label leading-relaxed",
         className,
       )}
     >
