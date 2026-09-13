@@ -1,0 +1,9 @@
+# GitHub Issues are not used on this repository (CONTRIBUTING.md). Work is tracked in Linear.
+blank_issues_enabled: false
+contact_links:
+  - name: Work is tracked in Linear
+    url: https://linear.app/canzeco/team/MESITA/active
+    about: Mesita work lives as Linear issues on team Mesita (MESITA-). GitHub Issues are not used.
+  - name: Report a security vulnerability
+    url: https://github.com/Canzeco/mesita-monorepo/security/advisories/new
+    about: Private report through GitHub; see SECURITY.md. Do not open a public issue.
