@@ -616,11 +616,27 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
         byGid.set(row.google_place_id, row);
       }
     }
-    return hits.map((hit) => {
+    const merged: Array<NearbyMerged<T>> = hits.map((hit) => {
       const row = byGid.get(hit.placeId);
       if (row) return { kind: "listed" as const, row };
       return { kind: "google" as const, hit };
     });
+    // pinCount (`mesitaCount`) caps the painted union. googlePull only limits
+    // what we buy from Google; Mesita listed rows backfill the rest.
+    const usedIds = new Set(
+      merged.flatMap((item) => item.kind === "listed" ? [item.row.id] : []),
+    );
+    const remaining = lanes.mesitaCount - merged.length;
+    if (remaining > 0) {
+      for (const row of takeClosest(
+        inMesita.filter((r) => !usedIds.has(r.id)),
+        center,
+        remaining,
+      )) {
+        merged.push({ kind: "listed" as const, row });
+      }
+    }
+    return merged;
   }
 
   return takeClosest(inMesita, center, lanes.mesitaCount).map((row) => ({

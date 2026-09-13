@@ -856,6 +856,26 @@ Deno.test("searchNearbyPlaces: the pull is part of the cache cell", async () => 
   }
 });
 
+Deno.test("mergeNearbyCatalog: Google pull backfills with Mesita up to pinCount", () => {
+  const mesitaOnly = Array.from({ length: 40 }, (_, i) => ({
+    id: `m${i}`,
+    plan: "free",
+    google_place_id: `m${i}`,
+    lat: 25.67005 + i * 0.0001,
+    lng: -100.3,
+  }));
+  const google = Array.from({ length: 20 }, (_, i) =>
+    nearbyHit(`g${i}`, 25.67005 + i * 0.0001, -100.3)
+  );
+  const got = mergeNearbyCatalog(mesitaOnly, google, CENTER, {
+    mesitaCount: 60,
+    googleCount: 20,
+  });
+  assertEquals(got.length, 60);
+  assertEquals(got.filter((x) => x.kind === "google").length, 20);
+  assertEquals(got.filter((x) => x.kind === "listed").length, 40);
+});
+
 Deno.test("lanesForPlacesScope: the Google lane cap follows the operator pull", () => {
   // The guest's How many still caps pins; the operator's pull caps what we
   // buy. 60 pins with a 20 pull is 20 Google rows, exactly as before.

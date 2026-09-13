@@ -28,11 +28,7 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from '@/lib/api/place-search';
-import {
-  apiFetchNearbyPlaces,
-  SEARCH_NEARBY_LIMIT,
-  type Place,
-} from '@/lib/api/places';
+import { apiFetchNearbyPlaces, type Place } from '@/lib/api/places';
 import { MONTERREY_CENTER } from '@/lib/map-defaults';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
@@ -142,11 +138,7 @@ export function SearchClient() {
     let cancelled = false;
     void (async () => {
       try {
-        const rows = await apiFetchNearbyPlaces(
-          supabase,
-          nearbyOrigin,
-          SEARCH_NEARBY_LIMIT,
-        );
+        const rows = await apiFetchNearbyPlaces(supabase, nearbyOrigin);
         if (!cancelled) {
           setPlaces(rows);
           setFetchError(null);

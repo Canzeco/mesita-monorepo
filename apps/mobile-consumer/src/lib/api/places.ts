@@ -102,26 +102,21 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
-export const SEARCH_NEARBY_LIMIT = 50;
-
 /**
- * Search map: nearest `limit` listed places to the pin.
+ * Search map: closest N listed places to the pin.
  *
  * Sends `placesScope` explicitly. Mobile has no Places control — it always
- * wants the whole Mesita set — and this call used to rely on the Edge
- * Function's default, which meant mobile's result set was a function of a
- * constant living in another package. It is the widest Mesita ring by
- * intent now, and says so on the wire.
+ * wants the whole Mesita set — and says so on the wire. How many is operator
+ * `map.pinCount`; this call omits `limit` so the Edge Function applies it.
  */
 export async function apiFetchNearbyPlaces(
   client: SupabaseClient,
   origin: { lat: number; lng: number },
-  limit = SEARCH_NEARBY_LIMIT,
 ): Promise<Place[]> {
   const { places } = await invokeEF<{ places: Place[] }>(
     client,
     'consumer-web-list-places',
-    { lat: origin.lat, lng: origin.lng, limit, placesScope: 'mesita' },
+    { lat: origin.lat, lng: origin.lng, placesScope: 'mesita' },
   );
   return (places ?? []).map(stripInsecurePhotos);
 }
