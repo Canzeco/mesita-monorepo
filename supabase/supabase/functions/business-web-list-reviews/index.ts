@@ -3,6 +3,10 @@
 // Authenticated. Returns Mesita guest reviews for a held place, newest first,
 // paginated. Scoped to the holding organization's membership (viewers may
 // read). Google reviews are not proxied — operators open Google directly.
+//
+// check_code is a possession token for check.mesita.ai (verify_jwt=false).
+// Same rule as business-web-list-tickets: never return it to org viewers.
+// Editors and owners get a visitUrl; viewers see reviews only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -54,7 +58,7 @@ type ReviewRow = {
   created_at: string;
   ticket_id: string;
   consumer: ConsumerJoin | ConsumerJoin[] | null;
-  ticket: TicketJoin | TicketJoin[] | null;
+  ticket?: TicketJoin | TicketJoin[] | null;
 };
 
 function asOne<T>(v: T | T[] | null): T | null {
@@ -97,14 +101,17 @@ Deno.serve(async (req) => {
   ]);
   if (!roleRes.ok) return roleRes.response;
 
+  const mayLinkVisit =
+    roleRes.role === "owner" || roleRes.role === "editor";
+
+  const select =
+    "id, food, service, ambience, value, overall, comments, created_at, ticket_id, " +
+    "consumer:consumers(first_name, last_name, full_name)" +
+    (mayLinkVisit ? ", ticket:visit_tickets(check_code)" : "");
+
   const { data, error, count } = await admin
     .from("ticket_reviews")
-    .select(
-      "id, food, service, ambience, value, overall, comments, created_at, ticket_id, " +
-        "consumer:consumers(first_name, last_name, full_name), " +
-        "ticket:visit_tickets(check_code)",
-      { count: "exact" },
-    )
+    .select(select, { count: "exact" })
     .eq("place_id", placeId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -114,8 +121,12 @@ Deno.serve(async (req) => {
   const rows = (data ?? []) as unknown as ReviewRow[];
   const reviews = rows.map((row) => {
     const consumer = asOne(row.consumer);
-    const ticket = asOne(row.ticket);
-    const code = ticket?.check_code?.trim() ?? "";
+    let visitUrl: string | null = null;
+    if (mayLinkVisit) {
+      const ticket = asOne(row.ticket ?? null);
+      const code = ticket?.check_code?.trim() ?? "";
+      visitUrl = code ? `${CHECK_URL_BASE}${code}` : null;
+    }
     return {
       id: row.id,
       food: row.food,
@@ -127,7 +138,7 @@ Deno.serve(async (req) => {
       createdAt: row.created_at,
       ticketId: row.ticket_id,
       guestName: consumer ? (consumerDisplayName(consumer) ?? "Guest") : "Guest",
-      visitUrl: code ? `${CHECK_URL_BASE}${code}` : null,
+      visitUrl,
     };
   });
 
