@@ -103,6 +103,13 @@ export function resolveLanding<T extends Portfolio>(input: {
 export function canClaim(role: Organization["myRole"]): boolean {
   return role === "owner" || role === "editor";
 }
+
+/** The Add place ceremony (create or claim-from-search) is owner-only,
+ *  matching `business-web-claim-place`. Editors still see Claim on the
+ *  list; that button 403s today and is not this door. */
+export function canAddPlace(role: Organization["myRole"]): boolean {
+  return role === "owner";
+}
 export function canRelease(role: Organization["myRole"]): boolean {
   return role === "owner";
 }

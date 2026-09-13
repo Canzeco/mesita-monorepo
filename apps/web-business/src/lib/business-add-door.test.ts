@@ -1,18 +1,14 @@
-// The business console does not add places (MESITA-1664).
+// The Add place ceremony is the door (MESITA-1813). `/add` stays a redirect.
 //
-// Pato, 2026-09-08: "for the moment don't enable managers to add places from
-// the business app. Only admins can add places... businesses can only
-// claim/verify them and own them."
-//
-// Every rule here guards a door that is closed by ABSENCE — a missing link, a
-// missing CTA, a route that only redirects. Absence is the failure mode no
-// compiler and no rendering test catches: re-adding the button compiles, type
-// checks, renders, and quietly hands managers back a power that was taken away
-// on purpose. These are the assertions that notice.
-import { readFileSync } from "node:fs";
+// Pato live, 2026-09-13: search Google; on Mesita add it; if not, create it.
+// Create and Add are owner-only. List rows still say Claim. The old wait-state
+// ("Mesita adds places to the catalogue") is the failure mode these rules
+// catch — a missing CTA compiles, typechecks, and quietly hands managers
+// nowhere to go.
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { canVerify } from "./active-organization";
+import { canAddPlace, canVerify } from "./active-organization";
 import { PROTECTED_PREFIXES } from "./supabase/middleware";
 
 const SRC = path.resolve(__dirname, "..");
@@ -28,48 +24,45 @@ function codeOnly(src: string): string {
     .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, "");
 }
 
-const PLACES_PAGE = codeOnly(read("app/(shell)/orgs/[orgId]/places/page.tsx"));
+function walk(dir: string, out: string[] = []): string[] {
+  if (!statSync(dir).isDirectory()) return out;
+  for (const entry of readdirSync(dir)) {
+    const p = path.join(dir, entry);
+    if (statSync(p).isDirectory()) walk(p, out);
+    else if (/\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p)) out.push(p);
+  }
+  return out;
+}
 
-describe("the add door is shut", () => {
+const PLACES_PAGE = codeOnly(read("app/(shell)/orgs/[orgId]/places/page.tsx"));
+const CEREMONY = codeOnly(
+  read("app/(shell)/orgs/[orgId]/places/new/page.tsx"),
+);
+const ADD_PLACE_SRC = walk(
+  path.join(SRC, "components", "add-place"),
+).map((f) => readFileSync(f, "utf8"));
+
+describe("the add door is the ceremony", () => {
   it("the places screen links nowhere near /add", () => {
     expect(PLACES_PAGE).not.toContain('"/add"');
     expect(PLACES_PAGE).not.toContain("Add a place");
   });
 
-  it("the empty state can only navigate the list — it can never create", () => {
-    // This used to ban the `action` prop outright, which was exact while the
-    // empty state had nothing to offer. The rail's filters gave it something
-    // (MESITA-1710): on `?owned=org` with a full pool, "No places yet" is a
-    // lie, so that state has to say it was the filter and hand back the way
-    // out. Banning the MECHANISM would have stopped that honest fix while
-    // still passing a page that put "Add a place" in `description`.
-    //
-    // So the rule guards the DOOR instead of the prop: whatever the empty
-    // state offers, it may only point back into the list.
+  it("an empty catalogue offers Add place to the owner, never a wait-state", () => {
     const emptyState =
       PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
     expect(emptyState).not.toBe("");
-    for (const href of emptyState.match(/href=\{[^}]*\}/g) ?? []) {
-      expect(href).toMatch(/orgPlacesHref\(/);
-    }
-    // No create verb anywhere on the screen, in any prop.
-    // No create verb anywhere on the screen, in any prop. Claim lives on
-    // the row (`PlaceHoldButton`), never as a page-level CTA (MESITA-1793).
+    expect(emptyState).toContain("orgPlacesNewHref(");
+    expect(emptyState).toContain("Add place");
+    expect(emptyState).not.toMatch(/Mesita adds places/i);
     expect(PLACES_PAGE).not.toMatch(/Add a place|Create place|New place/i);
     expect(PLACES_PAGE).not.toMatch(/Claim a place|Claim places/i);
   });
 
   it("an empty catalogue outranks the filter", () => {
-    // Live state today is 0 places, so this is the branch a person actually
-    // sees. Keying off `owned` first answers "Nothing left to claim — every
-    // place in the catalogue is already held" on `?owned=public` when the
-    // catalogue holds nothing at all: a filter taking credit for an absence
-    // it did not cause. And an empty catalogue gets NO action — there is
-    // nowhere to send anyone (MESITA-1664).
     const emptyState =
       PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
     expect(emptyState).not.toBe("");
-    expect(emptyState).toContain("places.length === 0 ? null");
     for (const prop of ["title", "description", "action"]) {
       const branch = emptyState.slice(emptyState.indexOf(`${prop}={`));
       expect(branch.indexOf("places.length === 0")).toBeGreaterThanOrEqual(0);
@@ -81,11 +74,14 @@ describe("the add door is shut", () => {
     }
   });
 
+  it("a viewer does not get the Add place CTA", () => {
+    expect(PLACES_PAGE).toContain("canAddPlace(org.myRole)");
+    expect(canAddPlace("owner")).toBe(true);
+    expect(canAddPlace("editor")).toBe(false);
+    expect(canAddPlace("viewer")).toBe(false);
+  });
+
   it("search stayed gone — the page filters by rail, never by query", () => {
-    // Search left the page entirely (Pato, 2026-09-09): the console loads
-    // every place and sorts client-side instead of filtering server-side.
-    // The rail's `?owned=` filters are a VIEW of rows already in hand, not a
-    // reason to put the server round trip back.
     expect(PLACES_PAGE).not.toContain("Clear the search");
     expect(PLACES_PAGE).not.toContain("Search by name");
     expect(PLACES_PAGE).not.toContain("<form");
@@ -95,8 +91,6 @@ describe("the add door is shut", () => {
   it("/add renders a redirect and reads no data", () => {
     const page = read("app/add/page.tsx");
     expect(page).toContain('redirect("/")');
-    // A redirect that first awaits a session or an EF is a page pretending to
-    // be a route. It would reintroduce the load it exists to remove.
     const code = codeOnly(page);
     expect(code).not.toContain("createServerSupabase");
     expect(code).not.toContain("getPlaceOverview");
@@ -105,18 +99,74 @@ describe("the add door is shut", () => {
 
   it("a bare redirect is not behind the signed-out wall", () => {
     expect(PROTECTED_PREFIXES).not.toContain("/add");
-    // The wall still stands where it means something.
     expect(PROTECTED_PREFIXES).toContain("/places");
   });
 
-  it("the claim ceremony is claim-from-catalogue, never mint", () => {
-    const page = codeOnly(read("app/(shell)/orgs/[orgId]/places/new/page.tsx"));
-    expect(page).not.toContain('"/add"');
-    expect(page).not.toMatch(/Add a place|Create place|New place/i);
-    expect(page).toContain("Claim a place");
-    expect(page).toContain('action="claim"');
-    expect(page).not.toContain('action="release"');
-    expect(page).not.toContain("CreatePlaceForm");
+  it("the ceremony searches, then Create or Add — never a claim table, never OTP", () => {
+    expect(CEREMONY).toContain("Add place");
+    expect(CEREMONY).toContain("AddPlaceForm");
+    expect(CEREMONY).toContain("canAddPlace");
+    expect(CEREMONY).not.toContain('"/add"');
+    expect(CEREMONY).not.toContain("apiListConsolePlaces");
+    expect(CEREMONY).not.toContain("PlaceHoldButton");
+    expect(CEREMONY).not.toContain("MethodsPicker");
+    expect(CEREMONY).not.toContain("CreatePlaceForm");
+  });
+
+  it("the ceremony loading boundary is form-shaped, not the list", () => {
+    const loading = read("app/(shell)/orgs/[orgId]/places/new/loading.tsx");
+    expect(loading).toContain("max-w-md");
+    expect(loading).not.toContain("h-[68px]");
+    expect(loading).not.toContain("length: 5");
+  });
+
+  it("add-place modules never remount the OTP stack", () => {
+    expect(ADD_PLACE_SRC.length).toBeGreaterThan(0);
+    const joined = ADD_PLACE_SRC.map(codeOnly).join("\n");
+    expect(joined).not.toContain("MethodsPicker");
+    expect(joined).not.toMatch(/from\s+["']@\/app\/add/);
+    expect(joined).not.toContain("shadow-elev");
+    expect(joined).not.toContain("pink-gradient");
+    expect(joined).not.toContain("rounded-[26px]");
+    expect(joined).not.toContain("rounded-[22px]");
+  });
+
+  it("create-then-claim treats a 409 as re-lookup, never as Add", () => {
+    const actions = codeOnly(read("app/(shell)/actions/places.ts"));
+    expect(actions).toContain("alreadyExists");
+    expect(actions).toContain("place_already_exists");
+    expect(actions).toContain("retryPlaceId");
+    expect(actions).toContain("createThenClaimAction");
+    expect(actions).toContain("addListedPlaceAction");
+  });
+
+  it("ceremony mutations refuse non-owners before mint or claim", () => {
+    const actions = codeOnly(read("app/(shell)/actions/places.ts"));
+    expect(actions).toContain("function requireCeremonyOwner");
+    expect(actions).toContain("canAddPlace(org.myRole)");
+    const createFn = actions.slice(
+      actions.indexOf("export async function createThenClaimAction"),
+    );
+    expect(createFn.indexOf("requireCeremonyOwner")).toBeGreaterThanOrEqual(0);
+    expect(createFn.indexOf("requireCeremonyOwner")).toBeLessThan(
+      createFn.indexOf("apiCreatePlace"),
+    );
+    const addFn = actions.slice(
+      actions.indexOf("export async function addListedPlaceAction"),
+    );
+    expect(addFn.indexOf("requireCeremonyOwner")).toBeGreaterThanOrEqual(0);
+    expect(addFn.indexOf("requireCeremonyOwner")).toBeLessThan(
+      addFn.indexOf("apiClaimPlace"),
+    );
+  });
+
+  it("a failed claim after mint keeps the error on the Add card", () => {
+    const form = codeOnly(read("components/add-place/AddPlaceForm.tsx"));
+    const apply = form.slice(form.indexOf("const applyLookup"));
+    const applyBody = apply.slice(0, apply.indexOf("const pick"));
+    expect(applyBody).not.toContain("setActionError(null)");
+    expect(form).toContain("setActionError(result.error)");
+    expect(form).toContain("retryPlaceId");
   });
 });
 
@@ -128,10 +178,6 @@ describe("verify is offered only where it can work", () => {
   });
 
   it("renders only on a held, not-yet-verified row", () => {
-    // Owned and Verified are independent facts, so the row reads BOTH. An
-    // undefined `verified` (the deploy window, where a new row meets an old
-    // EF) must show no control rather than a wrong one, which is why the
-    // check is `!== true` and not a falsy test.
     expect(PLACES_PAGE).toContain(
       "place.owned === true && place.verified !== true",
     );

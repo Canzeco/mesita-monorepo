@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, orgHref, orgPlacesNewHref } from "./console-routes";
 import { SIGNED_IN_BOUNCE, shouldGate } from "./supabase/middleware";
 import {
+  canAddPlace,
   canClaim,
   canRelease,
   findHolder,
@@ -209,6 +210,11 @@ describe("action permissions mirror the EF guards", () => {
     expect(canClaim("owner")).toBe(true);
     expect(canClaim("editor")).toBe(true);
     expect(canClaim("viewer")).toBe(false);
+  });
+  it("add place ceremony: owner only — matching claim EF and create-then-claim", () => {
+    expect(canAddPlace("owner")).toBe(true);
+    expect(canAddPlace("editor")).toBe(false);
+    expect(canAddPlace("viewer")).toBe(false);
   });
   it("release: owner only — an editor could otherwise re-claim elsewhere", () => {
     expect(canRelease("owner")).toBe(true);

@@ -115,6 +115,20 @@ function pickErrorMessage(body: Record<string, unknown> | null): string | null {
 // Local params commonly carry `projectId`; every EF payload takes the
 // canonical `placeId` (MESITA-26). Centralises the rename so call sites
 // across this directory don't each duplicate the destructure + spread.
+/** Machine code on a thrown invoke, or null. Call sites branch on
+ *  `place_already_exists` without parsing `err.message`. */
+export function efCode(err: unknown): string | null {
+  if (
+    err &&
+    typeof err === "object" &&
+    (err as { name?: string }).name === "EFError"
+  ) {
+    const code = (err as { code?: unknown }).code;
+    return typeof code === "string" && code.length > 0 ? code : null;
+  }
+  return null;
+}
+
 export function withPlaceId<T extends { projectId: string }>(
   input: T,
 ): Record<string, unknown> {
