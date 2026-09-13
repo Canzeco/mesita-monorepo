@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { Button } from '@/components/ui/Button';
-import { SexSelector, toSexValue, type SexValue } from '@/components/ui/SexSelector';
 import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { ageFromBirthday, MIN_SIGNUP_AGE } from '@/lib/utils';
@@ -20,15 +19,14 @@ import { useAuth } from '@/providers/auth';
 export default function Onboard() {
   const router = useRouter();
   const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
-  // Consumers who onboarded before the last-name requirement land back here
-  // once — prefill what they already gave us so it's a one-field ask.
-  const storedSex = toSexValue(profile?.sex);
+  // TWO fields, mirroring web's OnboardForm (MESITA-1806). Last name is still
+  // required to BOOK — the place books the table under the guest's full name
+  // — but it is asked by the reservation flow, where the guest can see why,
+  // not here in front of someone who hasn't seen a place yet. Sex is
+  // segmentation and moved to the profile screen.
+  //
+  // Prefilled so a half-onboarded consumer fills the one missing field.
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
-  // Last name is required, not cosmetic: the EF joins first + last into
-  // full_name, and that's the name the reservation agent books the table
-  // under with the place (web-consumer onboarding parity).
-  const [lastName, setLastName] = useState(profile?.last_name ?? '');
-  const [sex, setSex] = useState<SexValue | null>(storedSex);
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +35,7 @@ export default function Onboard() {
   // Age gate — 13 or below is restricted (MESITA-727).
   const age = ageFromBirthday(birthday.trim());
   const underage = age !== null && age < MIN_SIGNUP_AGE;
-  const canSubmit =
-    firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
-    sex !== null &&
-    validBirthday &&
-    !underage;
+  const canSubmit = firstName.trim().length > 0 && validBirthday && !underage;
 
   const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
@@ -51,14 +44,11 @@ export default function Onboard() {
   }
 
   const submit = async () => {
-    if (!sex) return;
     setError(null);
     setBusy(true);
     try {
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        sex,
         birthday: birthday.trim(),
       });
       await refreshProfile();
@@ -141,25 +131,6 @@ export default function Onboard() {
             value={firstName}
             onChangeText={setFirstName}
           />
-
-          <View style={{ marginTop: 16 }}>
-            <TextField
-              label="Last name"
-              autoComplete="family-name"
-              autoCapitalize="words"
-              maxLength={60}
-              value={lastName}
-              onChangeText={setLastName}
-            />
-          </View>
-
-          <Text
-            className="font-semibold text-muted-foreground"
-            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
-          >
-            SEX
-          </Text>
-          <SexSelector value={sex} onChange={setSex} />
 
           <Text
             className="font-semibold text-muted-foreground"

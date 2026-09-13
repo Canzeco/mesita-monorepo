@@ -19,6 +19,12 @@ import {
   apiUpdateReservation,
   type EFReservationRow,
 } from "@/lib/api/reservations";
+import { EFError } from "@/lib/api/_invoke";
+import { apiFetchConsumerProfile, apiUpdateConsumerProfile } from "@/lib/api/profile";
+import {
+  consumerNeedsLastName,
+  LAST_NAME_REQUIRED_CODE,
+} from "@/lib/consumer-onboarding";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
@@ -104,6 +110,15 @@ export function ReservationSheet({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  // THE LAST NAME (MESITA-1806). Onboarding stopped asking for it — four
+  // fields in front of a stranger who hasn't seen a place yet is how you lose
+  // them — so this sheet asks, at the one moment the guest can see why: the
+  // place books the table under their full name, and the host system keys on
+  // "last name + party size". Null while the profile read is in flight, so
+  // the field doesn't flash in for someone who already has one.
+  const [needsLastName, setNeedsLastName] = useState<boolean | null>(null);
+  const [lastName, setLastName] = useState("");
+
   // Duplicate guard: the caller's live booking at THIS place, if any.
   const [checking, setChecking] = useState(false);
   const [existing, setExisting] = useState<EFReservationRow | null>(null);
@@ -136,6 +151,16 @@ export function ReservationSheet({
     let cancelled = false;
     (async () => {
       setChecking(true);
+      // Fire both reads together — the profile answers "do we need a last
+      // name", the list answers "is there already a table here". Neither
+      // blocks the other.
+      const profilePromise = apiFetchConsumerProfile(supabase)
+        .then((r) => consumerNeedsLastName(r.consumer))
+        // Fail CLOSED-ish: assume nothing, leave the field hidden and let the
+        // EF's own gate turn a stale guess into the field on submit. A flaky
+        // profile read must not plant a redundant field on someone who has a
+        // last name already.
+        .catch(() => false);
       try {
         const { reservations } = await apiListReservations(supabase, {
           scope: "upcoming",
@@ -150,7 +175,11 @@ export function ReservationSheet({
         // Worst case is the pre-existing behaviour (a possible second ticket).
         if (!cancelled) setExisting(null);
       } finally {
-        if (!cancelled) setChecking(false);
+        const missing = await profilePromise;
+        if (!cancelled) {
+          setNeedsLastName(missing);
+          setChecking(false);
+        }
       }
     })();
     return () => {
@@ -184,9 +213,25 @@ export function ReservationSheet({
 
   async function submit() {
     if (!date || !time || submitting || checking || awaitingChoice) return;
+    // Rescheduling moves a table that is already booked under a name, so it
+    // never has to ask for one.
+    const trimmedLastName = lastName.trim();
+    if (needsLastName && !rescheduling && !trimmedLastName) {
+      setError("Add your last name — it's the name your table is under.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
+      // Persist the name BEFORE the booking, not alongside it: the EF reads
+      // consumers.last_name to build what it tells the place, so a name that
+      // rides in the same request would land too late to reach the call.
+      if (needsLastName && !rescheduling && trimmedLastName) {
+        await apiUpdateConsumerProfile(supabase, {
+          last_name: trimmedLastName,
+        });
+        setNeedsLastName(false);
+      }
       const reservedAt = `${date}T${time}:00${MX_OFFSET}`;
       if (rescheduling) {
         await apiUpdateReservation(supabase, {
@@ -206,6 +251,16 @@ export function ReservationSheet({
       }
       setDone(true);
     } catch (e) {
+      // The server runs the SAME gate (consumer-web-create-reservation), and
+      // it is the one that counts: a client that loaded before this shipped
+      // still has no field to type into. Surfacing the field on the 409 turns
+      // a dead end into the same one-field ask.
+      if (e instanceof EFError && e.code === LAST_NAME_REQUIRED_CODE) {
+        setNeedsLastName(true);
+        setError("Add your last name — it's the name your table is under.");
+        setSubmitting(false);
+        return;
+      }
       const msg = errMsg(e, "");
       // The card came from a cached deck whose place no longer exists (an admin
       // reset re-creates places under fresh uuids). Drop the snapshot so the
@@ -304,6 +359,26 @@ export function ReservationSheet({
               value={party}
               onChange={(u) => setParty(u)}
             />
+
+            {needsLastName && !rescheduling && (
+              <div className="mt-4">
+                <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
+                  Last name
+                </p>
+                <input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  maxLength={60}
+                  placeholder="Last name"
+                  autoComplete="family-name"
+                  aria-label="Last name"
+                  className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+                />
+                <p className="text-muted-foreground type-label mt-2">
+                  This is the name your table is booked under.
+                </p>
+              </div>
+            )}
 
             <div className="mt-4">
               <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">

@@ -15,24 +15,28 @@ import {
   PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 
-// Onboarding collects the minimum beyond the phone (already on the
-// auth.user from the OTP sign-in step): first name, last name, sex,
-// birthday.
+// Onboarding collects TWO things beyond the phone (already on the auth.user
+// from the OTP step): first name and birthday. See `consumer-onboarding.ts`
+// for why the set shrank from four (MESITA-1806) — briefly:
 //
-// Last name is REQUIRED, not cosmetic: reservations are placed with the
-// place under the guest's full name (the host system keys on "last name +
-// party size"), and the reservation agent reads consumers.full_name, which
-// this EF derives from first + last. A first-name-only profile books a
-// table nobody can find.
+//   • first name — the app greets you by it, and it is the half of the name
+//     every surface renders.
+//   • birthday   — MIN_SIGNUP_AGE is a ToS floor, and an age gate is only
+//     worth anything at account creation.
 //
-// `initial` prefills from the stored profile so a consumer who onboarded
-// before the last-name requirement only has to fill the one missing field
-// instead of re-typing everything.
+// LAST NAME IS NOT HERE, and that is not the same as "not required". It is
+// asked by ReservationSheet, at the moment the guest can see why: the place
+// books the table under their full name. Asking for it here bought nothing
+// and cost a field in front of someone who hadn't seen a place yet.
+//
+// SEX IS NOT HERE EITHER — it is segmentation, nothing downstream reads it to
+// work, and it stays editable on /me/profile.
+//
+// `initial` prefills from the stored profile so a returning half-onboarded
+// consumer fills the one missing field instead of re-typing everything.
 
 export type OnboardInitialValues = {
   firstName: string;
-  lastName: string;
-  sex: string;
   birthday: string;
 };
 
@@ -48,8 +52,6 @@ export function OnboardForm({
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const [firstName, setFirstName] = useState(initial?.firstName ?? "");
-  const [lastName, setLastName] = useState(initial?.lastName ?? "");
-  const [sex, setSex] = useState(initial?.sex ?? "");
   const [birthday, setBirthday] = useState(initial?.birthday ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,16 +62,11 @@ export function OnboardForm({
     // Read from the DOM (FormData) as the source of truth, not just React
     // state — browser autofill can populate the name input without firing
     // onChange, which previously sent a null name and bounced back to
-    // /onboard (full_name gate). DOM value wins, with state as the fallback.
+    // /onboard (the shell gate). DOM value wins, with state as the fallback.
     const fd = new FormData(e.currentTarget);
     const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
-    const last = ((fd.get("last_name") as string | null) ?? lastName).trim();
-    if (!first || !last || !sex || !birthday) {
+    if (!first || !birthday) {
       setError("Please complete all required fields");
-      return;
-    }
-    if (sex !== "male" && sex !== "female") {
-      setError("Pick a sex from the list.");
       return;
     }
     // Age gate — 13 or below is restricted (MESITA-727).
@@ -84,8 +81,6 @@ export function OnboardForm({
       try {
         await apiUpdateConsumerProfile(supabase, {
           first_name: first,
-          last_name: last,
-          sex,
           birthday,
         });
         router.push(safeNextPath(next) ?? CONSUMER_ROUTES.discoverDefault);
@@ -99,45 +94,17 @@ export function OnboardForm({
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="First name">
-          <input
-            name="first_name"
-            className={INPUT_CLASS}
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            maxLength={60}
-            placeholder="First name"
-            autoComplete="given-name"
-            required
-          />
-        </Field>
-
-        <Field label="Last name">
-          <input
-            name="last_name"
-            className={INPUT_CLASS}
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            maxLength={60}
-            placeholder="Last name"
-            autoComplete="family-name"
-            required
-          />
-        </Field>
-      </div>
-
-      <Field label="Sex">
-        <select
+      <Field label="First name">
+        <input
+          name="first_name"
           className={INPUT_CLASS}
-          value={sex}
-          onChange={(e) => setSex(e.target.value)}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          maxLength={60}
+          placeholder="First name"
+          autoComplete="given-name"
           required
-        >
-          <option value="">Select</option>
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-        </select>
+        />
       </Field>
 
       <Field label="Birthday">
@@ -161,8 +128,8 @@ export function OnboardForm({
           )}
         </button>
         <p className="text-muted-foreground type-label mt-3 text-center">
-          We use these to personalize recommendations. Only your name is shared
-          with a place — it&apos;s the name your reservation is booked under.
+          Your birthday stays private — we use it to check you&apos;re old
+          enough and to personalize recommendations.
         </p>
       </div>
     </form>

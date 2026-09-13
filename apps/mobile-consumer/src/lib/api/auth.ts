@@ -116,10 +116,10 @@ export async function apiFetchConsumerMetrics(): Promise<ConsumerMetrics> {
   return metrics;
 }
 
-// first_name + last_name are REQUIRED as a pair, not optional halves: the EF
-// joins them into full_name — the name reservations are booked under — and
-// 400s on one without the other. Typing them as required makes a half-name
-// patch a compile error here rather than a runtime rejection, matching
+// Each half of the name is written INDEPENDENTLY (MESITA-1806): onboarding
+// sends first_name, ReservationSheet sends last_name, the profile sheet sends
+// both. The EF merges an absent half from the stored row before rebuilding
+// full_name — the name reservations are booked under. Mirrors
 // ConsumerOnboardingInput in apps/web-consumer/src/lib/api/profile.ts.
 export type ConsumerProfilePatch = {
   first_name?: string;
@@ -134,8 +134,9 @@ export type ConsumerProfilePatch = {
   privacy_show_stories?: boolean;
 };
 
-// Identity writes still require first_name + last_name as a pair (EF 400s
-// otherwise). Privacy-only patches omit the name fields entirely.
+// What the EF still refuses is a half sent BLANK — that would leave a
+// consumer no place can be told to expect. Privacy-only patches omit the name
+// fields entirely.
 export function apiUpdateConsumerProfile(
   patch: ConsumerProfilePatch,
 ): Promise<{ consumer: ConsumerProfile }> {
@@ -183,20 +184,25 @@ export async function apiDeleteConsumerAccount(): Promise<void> {
   await invokeEF<{ id: string }>(supabase, 'consumer-web-delete-account', {});
 }
 
-// Same predicate as the web (shell)/layout.tsx guard. First AND last name:
-// reservations are booked with the place under the guest's full name, so a
-// first-name-only profile isn't onboarded (consumers from before that rule
-// get sent back to /onboard once).
-// The onboarded predicate — hand-mirrored from web
-// apps/web-consumer/src/lib/consumer-onboarding.ts and from the routing
-// hint in supabase/functions/consumer-web-signin-phone. Change one, change
-// all three: a drifting copy is how a consumer ends up ping-ponging
-// between the tabs and /onboard.
+// The SIGNUP gate — hand-mirrored from web
+// apps/web-consumer/src/lib/consumer-onboarding.ts (`consumerCanBrowse`) and
+// from the routing hint in supabase/functions/consumer-web-signin-phone.
+// Change one, change all: a drifting copy is how a consumer ends up
+// ping-ponging between the tabs and /onboard.
+//
+// First name + birthday, and that is all (MESITA-1806). It used to be four
+// fields, which is four fields in front of someone who hasn't seen a place
+// yet. Birthday stays because MIN_SIGNUP_AGE is a ToS floor and an age gate
+// is only worth anything at account creation.
 export function isOnboarded(profile: ConsumerProfile | null | undefined): boolean {
-  return Boolean(
-    profile?.first_name &&
-      profile?.last_name &&
-      profile?.birthday &&
-      profile?.sex,
-  );
+  return Boolean(profile?.first_name && profile?.birthday);
+}
+
+// The one field a booking surface may still have to ask for. Mirrors web's
+// `consumerNeedsLastName`. The place books the table under the guest's full
+// name and the host system keys on "last name + party size", so the
+// reservation flow collects it — and consumer-web-create-reservation is what
+// actually enforces it (409 `last_name_required`).
+export function needsLastName(profile: ConsumerProfile | null | undefined): boolean {
+  return !profile?.last_name;
 }

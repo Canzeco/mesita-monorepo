@@ -5,8 +5,10 @@ import {
   parseName,
 } from "./update-profile-fields.ts";
 
-// The name pair is the reservation's booking name — a consumer with only
-// half of it can't be booked with the place, so the EF refuses the write.
+// Each half of the name is written independently (MESITA-1806): onboarding
+// sends the first name, the reservation sheet sends the last. What the EF
+// still refuses is a half sent BLANK — that would leave a consumer no place
+// can be told to expect.
 
 Deno.test("parseName: both halves present", () => {
   const res = parseName(
@@ -17,19 +19,19 @@ Deno.test("parseName: both halves present", () => {
   assertEquals(res.ok, true);
 });
 
-Deno.test("parseName: first without last is rejected", () => {
-  const res = parseName({ first_name: "Ana" }, "Ana", null);
-  assertEquals(res.ok, false);
+Deno.test("parseName: first alone is accepted (the onboarding write)", () => {
+  assertEquals(parseName({ first_name: "Ana" }, "Ana", null).ok, true);
 });
 
-Deno.test("parseName: last without first is rejected", () => {
-  const res = parseName({ last_name: "Ruiz" }, null, "Ruiz");
-  assertEquals(res.ok, false);
+Deno.test("parseName: last alone is accepted (the reservation-sheet write)", () => {
+  assertEquals(parseName({ last_name: "Ruiz" }, null, "Ruiz").ok, true);
 });
 
-Deno.test("parseName: blank half (whitespace-only, cleaned to null) is rejected", () => {
-  const res = parseName({ first_name: "Ana", last_name: "   " }, "Ana", null);
-  assertEquals(res.ok, false);
+Deno.test("parseName: a half sent blank is still rejected", () => {
+  // Whitespace-only, cleaned to null by `clean` before it reaches here.
+  assertEquals(parseName({ first_name: "Ana", last_name: "   " }, "Ana", null).ok, false);
+  assertEquals(parseName({ first_name: "" }, null, "Ruiz").ok, false);
+  assertEquals(parseName({ last_name: "" }, "Ana", null).ok, false);
 });
 
 Deno.test("parseName: patches that don't touch the name pass through", () => {

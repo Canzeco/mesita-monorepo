@@ -114,11 +114,32 @@ Deno.serve(async (req) => {
   // without a deploy. Cancelled reservations don't count against the cap.
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("class_key, plan, deleted_at")
+    .select("class_key, plan, deleted_at, last_name")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
   if (isDeletedConsumer(consumerRow)) return accountDeletedResponse();
+
+  // ── The booking name (MESITA-1806) ──────────────────────────────────────
+  // THE gate for the last name. Onboarding stopped asking for it — it is four
+  // fields in front of someone who hasn't seen a place yet — and the
+  // reservation sheet asks instead, where the guest can see why. This is the
+  // half that actually enforces it: the client's field is a courtesy, and a
+  // client cached from before that shipped has no field at all.
+  //
+  // It is not cosmetic. supabase-edgefunc-reservation-call books the table
+  // under the full name (host systems key on "last name + party size"), and
+  // when the place calls back, eleven-agent-get-reservation finds the booking
+  // by fuzzy first/last match. A first-name-only booking is a table nobody can
+  // find. Tickets deliberately do NOT gate this way — validate-web-get-ticket
+  // falls back to the first name at the door.
+  if (!(consumerRow as { last_name?: string | null } | null)?.last_name) {
+    return json({
+      ok: false,
+      code: "last_name_required",
+      error: "Add your last name — it's the name your table is booked under.",
+    }, 409);
+  }
 
   // Admin testing switch (app_config.reservations_config.unlimitedReservations)
   // lifts the cap for EVERY consumer so a tester isn't blocked mid-run. Defaults
