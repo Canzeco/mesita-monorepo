@@ -311,9 +311,14 @@ Deno.serve(async (req) => {
   // Silence means the operator answers, and only for the web Search call.
   // `clientGoogle` is the tell: mobile Search and the Pay picker never send
   // `google: true`, so neither their cap nor their ring moves here.
-  if (clientGoogle) {
-    if (!limitFromClient) limit = clampIntRange(cfg.map.pinCount, 1, MAX_LIMIT);
-    if (!scopeFromClient) placesScope = "google";
+  // Operator `map.pinCount` caps every nearby load unless the caller names
+  // its own limit (Pay's 50-place picker). Mobile Search used to send 50
+  // and silently beat a 60 stop; web Search omits limit and already won.
+  if (isNearby && !limitFromClient) {
+    limit = clampIntRange(cfg.map.pinCount, 1, MAX_LIMIT);
+  }
+  if (clientGoogle && !scopeFromClient) {
+    placesScope = "google";
   }
   // A GUEST PILL OUTRANKS THE TYPE STRIP, deliberately (MESITA-1685). The
   // pill IS the guest's question, and `nearbyTypesForSupers` reads no config,

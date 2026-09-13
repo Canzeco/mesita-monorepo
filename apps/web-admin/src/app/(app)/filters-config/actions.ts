@@ -78,14 +78,22 @@ export async function updateDiscoveryConfig(
     // it while `applyDiscoveryFilters` enforced it on every one of those lanes.
     filters: keys.has("filters") ? config.filters : live.config.filters,
     catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
-    map: {
-      ...(keys.has("map") ? config.map : live.config.map),
-      ...(keys.has("mapSupers") ? { supers: config.map.supers } : null),
-      ...(keys.has("mapFloors")
-        ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
-        : null),
-      ...(keys.has("mapPull") ? { googlePull: config.map.googlePull } : null),
-    },
+    map: (() => {
+      const base = {
+        ...(keys.has("map") ? config.map : live.config.map),
+        ...(keys.has("mapSupers") ? { supers: config.map.supers } : null),
+        ...(keys.has("mapFloors")
+          ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
+          : null),
+        ...(keys.has("mapPull") ? { googlePull: config.map.googlePull } : null),
+      };
+      // How many pins is the union cap; Google pull is what we buy. Raising
+      // pinCount without pull left Google-only catalogs stuck at 20.
+      if (keys.has("map") && base.pinCount > base.googlePull) {
+        base.googlePull = base.pinCount;
+      }
+      return base;
+    })(),
     name: {
       fast: keys.has("nameFast") ? config.name.fast : live.config.name.fast,
       deep: keys.has("nameDeep") ? config.name.deep : live.config.name.deep,
