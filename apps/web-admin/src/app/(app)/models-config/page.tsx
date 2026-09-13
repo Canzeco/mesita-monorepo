@@ -1,8 +1,15 @@
-import { permanentRedirect } from "next/navigation";
+import { getModelsConfig } from "./actions";
+import { ModelsConfigClient } from "./ModelsConfigClient";
+import { DEFAULT_MODELS_CONFIG } from "./types";
 
-// Models folded into General (MESITA-1175). The route survives as a redirect:
-// Notion's Configs registry links it, and those links are external and
-// ungreppable.
-export default function ModelsConfigPage(): never {
-  permanentRedirect("/general-config");
+export const dynamic = "force-dynamic";
+
+export default async function ModelsConfigPage() {
+  const models = await getModelsConfig();
+  return (
+    <ModelsConfigClient
+      initialConfig={models.ok ? models.data : DEFAULT_MODELS_CONFIG}
+      loadError={models.ok ? null : models.error}
+    />
+  );
 }
