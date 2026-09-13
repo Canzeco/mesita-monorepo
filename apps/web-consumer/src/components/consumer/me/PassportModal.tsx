@@ -19,6 +19,7 @@ import {
   classBadgeClass,
   classFillClass,
   classWashClass,
+  passportDoorCaptions,
 } from "@/lib/consumer-data";
 import {
   apiFetchConsumerProfile,
@@ -51,9 +52,10 @@ import { toast } from "@/lib/toast";
 //
 // TWO TILES ARE THE ONLY BUTTONS, AND THEY ARE THE ONLY ONES. Class and
 // Instagram navigate to /me/class and /me/instagram. The ladder, Join with
-// Instagram, Join with Invitation, and the connect form stay on those pages
-// — naming both climb doors in the Class caption is enough. Inlining them
-// here would be the twice-rendered CTA ClassModal already killed.
+// Instagram, Join with Invitation, and the connect form stay on those pages.
+// Captions: Class is the perk; climb doors are named only while the guest
+// can still climb (MESITA-1819). Inlining the destinations here would be
+// the twice-rendered CTA ClassModal already killed.
 //
 // NO PLAN FIELD (decision: Pato, MESITA-1619). The card and the document are
 // one Passport and print one thing: what is earned and public. The plan is
@@ -181,13 +183,15 @@ export function PassportModal() {
   const atCeiling = !unknown && key === CLASS_CEILING.id;
   const onFloor = !unknown && key === CLASS_FLOOR.id;
 
-  const classNote = unknown
-    ? "Come back to try"
-    : onFloor && !igConnected
-      ? "Climb with Instagram or an invite"
-      : igConnected
-        ? (cls?.reward ?? null)
-        : `${cls?.reward} · Instagram or an invite`;
+  const { classNote, igNote } = passportDoorCaptions({
+    unknown,
+    onFloor,
+    atCeiling,
+    igConnected,
+    followersLabel: `${formatCompactCount(followers)} followers`,
+    reachFollowers: REACH_ENTRY_FOLLOWERS,
+    reachLabel: REACH_ENTRY_CLASS.label,
+  });
 
   const igHeadline = igConnected
     ? handle
@@ -196,11 +200,6 @@ export function PassportModal() {
     : atCeiling
       ? "Not connected"
       : "Connect it";
-  const igNote = igConnected
-    ? `${formatCompactCount(followers)} followers`
-    : atCeiling
-      ? "Connect for Stories and Rewards"
-      : `${REACH_ENTRY_FOLLOWERS.toLocaleString("en-US")}+ followers lifts you to ${REACH_ENTRY_CLASS.label}`;
 
   async function copyCode() {
     if (!code) return;

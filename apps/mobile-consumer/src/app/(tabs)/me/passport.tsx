@@ -28,8 +28,9 @@ import { useAuth } from '@/providers/auth';
 //
 // Colour means class: metal on the identity ring/wash and the Class 44px
 // glyph. Instagram's brand gradient stays inside its glyph, never a
-// full-width pink field. Copy is origin-aware — do not tell a Diamond
-// guest to climb.
+// full-width pink field. Copy is origin-aware — Class is the perk;
+// climb doors are named only while the guest can still climb
+// (MESITA-1819). Do not tell a Diamond guest to climb.
 
 const CLASS_FLOOR = CLASSES[0];
 const CLASS_CEILING = CLASSES[CLASSES.length - 1];
@@ -40,10 +41,36 @@ const REACH_ENTRY = REACH_CANDIDATES.reduce(
   REACH_CANDIDATES[0] ?? CLASSES[0],
 );
 
-function classReward(classId: string): string {
-  if (classId === CLASS_CEILING.id) return 'Highest discount';
-  if (classId === CLASS_FLOOR.id) return 'Base discount';
-  return 'Higher discount';
+/** Guest-facing captions — keep in lockstep with web `passportDoorCaptions`
+ *  (MESITA-1819). Class is the perk. Climb doors only while the guest can
+ *  still climb. Instagram is the next Instagram action. */
+function passportDoorCaptions(input: {
+  onFloor: boolean;
+  atCeiling: boolean;
+  igConnected: boolean;
+  followersLabel: string;
+  reachFollowers: number;
+  reachLabel: string;
+}): { classNote: string; igNote: string } {
+  const classNote = (() => {
+    if (input.atCeiling) return 'Highest discount at every table.';
+    if (!input.igConnected) {
+      return input.onFloor
+        ? 'Starting discount. Climb with Instagram or an invite.'
+        : 'Higher discount. Climb with Instagram or an invite.';
+    }
+    return input.onFloor
+      ? 'Starting discount at every table.'
+      : 'Higher discount at every table.';
+  })();
+
+  const igNote = input.igConnected
+    ? input.followersLabel
+    : input.atCeiling
+      ? 'Connect to share Stories and earn extra Rewards.'
+      : `${input.reachFollowers.toLocaleString('en-US')}+ followers lifts you to ${input.reachLabel}`;
+
+  return { classNote, igNote };
 }
 
 function classBadgeColors(classKey: string): readonly [string, string] {
@@ -115,12 +142,14 @@ export default function PassportPage() {
     .filter(Boolean)
     .join(' · ');
 
-  const classNote =
-    onFloor && !igConnected
-      ? 'Climb with Instagram or an invite'
-      : igConnected
-        ? classReward(effective.key)
-        : `${classReward(effective.key)} · Instagram or an invite`;
+  const { classNote, igNote } = passportDoorCaptions({
+    onFloor,
+    atCeiling,
+    igConnected,
+    followersLabel: `${formatCompactCount(effective.followers)} followers`,
+    reachFollowers: REACH_ENTRY.followerThreshold,
+    reachLabel: REACH_ENTRY.label,
+  });
 
   const igHeadline = igConnected
     ? handle
@@ -129,11 +158,6 @@ export default function PassportPage() {
     : atCeiling
       ? 'Not connected'
       : 'Connect it';
-  const igNote = igConnected
-    ? `${formatCompactCount(effective.followers)} followers`
-    : atCeiling
-      ? 'Connect for Stories and Rewards'
-      : `${REACH_ENTRY.followerThreshold.toLocaleString('en-US')}+ followers lifts you to ${REACH_ENTRY.label}`;
 
   async function copyCode() {
     if (!code) return;
