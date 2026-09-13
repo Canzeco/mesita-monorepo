@@ -128,10 +128,6 @@ export function MesitaReviewsList({ placeId }: { placeId: string }) {
   );
 
   useEffect(() => {
-    setReviews([]);
-    setTotal(0);
-    setLoaded(false);
-    setError(null);
     load(0, false);
   }, [load]);
 

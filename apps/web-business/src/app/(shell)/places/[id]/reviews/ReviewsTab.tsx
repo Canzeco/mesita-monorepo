@@ -13,7 +13,7 @@ export function ReviewsTab() {
   return (
     <div className="flex flex-col gap-4">
       <ReviewsSummary place={place} />
-      <MesitaReviewsList placeId={place.id} />
+      <MesitaReviewsList key={place.id} placeId={place.id} />
     </div>
   );
 }
