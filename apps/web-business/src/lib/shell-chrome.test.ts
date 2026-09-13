@@ -163,38 +163,33 @@ describe("the unsaved-edits guard reaches the rail", () => {
     expect(readCode("app/(shell)/layout.tsx")).toContain("<OpenPlaceProvider>");
   });
 
-  it("every way out of the rail routes through the guard when one exists", () => {
+  it("every way out of the rail and the switchers routes through the guard when one exists", () => {
     const rail = readCode("components/console/Sidebar.tsx");
-    // Rows, the ceremony Plus, the menu's footer links, and the pickers' own
-    // choices — every one asks before leaving a dirty place.
+    // Rows ask before leaving a dirty place.
     expect(rail).toContain("if (!active) onGuardedNavigate?.(href, e);");
-    const plus = rail.slice(rail.indexOf("function CeremonyPlus"));
-    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain(
-      "onGuardedNavigate?.(href, e)",
-    );
-    const menuLink = rail.slice(rail.indexOf("function MenuLink"));
-    expect(menuLink.slice(0, menuLink.indexOf("\n}\n"))).toContain(
-      "onGuardedNavigate?.(href, e)",
-    );
-    // A picker's choice: the guard decides BEFORE the pending name is shown.
-    const go = rail.slice(rail.indexOf("const go = ("));
+    // The switchers live on the organization page (MESITA-1822); their menu
+    // doors and their choices ask too — the guard decides BEFORE the pending
+    // name is shown.
+    const sw = readCode("components/console/ScopeSwitchers.tsx");
+    const menuLink = sw.slice(sw.indexOf("function MenuLink"));
+    expect(menuLink.slice(0, menuLink.indexOf("\n}\n"))).toContain("onGuardedNavigate?.(href, e)");
+    const go = sw.slice(sw.indexOf("const go = ("));
     const goBody = go.slice(0, go.indexOf("};"));
     expect(goBody.indexOf("guardNav?.(href)")).toBeGreaterThan(-1);
-    expect(goBody.indexOf("guardNav?.(href)")).toBeLessThan(
-      goBody.indexOf("setChoice("),
-    );
+    expect(goBody.indexOf("guardNav?.(href)")).toBeLessThan(goBody.indexOf("setChoice("));
   });
 });
 
-// MESITA-1815/1818. The rail is seven flat pages: Account · seam · org
-// switcher · Organization · seam · place switcher · Place Profile · Reviews ·
-// Activity · Settings · Admin. The one rule that has outlived every redesign:
-// nothing indents. Pato rejected a tree twice (1714, 1715), and boxes once
-// (1815: "too enterprise").
-describe("the rail is seven flat pages", () => {
+// MESITA-1822. The rail is SEVEN ROWS and nothing else: Account ·
+// Organization · Place Profile · Reviews · Activity · Settings · Admin. The
+// switchers ("change organization, change place") are the Organization
+// PAGE's (ScopeSwitchers.tsx). The one rule that has outlived every
+// redesign: nothing indents. Pato rejected a tree twice (1714, 1715), boxes
+// once (1815), and switchers-as-rows twice (1818, 1822).
+describe("the rail is seven rows", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
-  it("indents NOTHING, and draws no tree line or bullet", () => {
+  it("indents NOTHING, and draws no tree line, bullet, box, eyebrow or seam", () => {
     const r = rail();
     expect(r).not.toContain("paddingLeft");
     expect(r).not.toMatch(/^\s*inset$/m);
@@ -203,114 +198,68 @@ describe("the rail is seven flat pages", () => {
     expect(r).not.toContain("pl-6");
     expect(r).not.toMatch(/border-l-\d/);
     expect(r).not.toMatch(/rounded-full["\s]*\/>/);
-  });
-
-  it("has no box and no eyebrow: the rows carry their scope word", () => {
-    const r = rail();
     expect(r).not.toContain("<Scope");
+    expect(r).not.toContain("<Seam");
     expect(r).not.toContain("WELL_BG");
     expect(r).not.toContain('role="group"');
-    expect(r).toContain("export function placeRowLabel(tab: PlaceTab): string");
-    expect(r).toContain("return `Place ${PLACE_TAB_LABEL[tab]}`;");
-    expect(r).toContain("label={placeRowLabel(tab)}");
   });
 
-  it("is Account · seam · org switcher · Organization · seam · place switcher · the views, in that order, and no Places row", () => {
+  it("holds no switcher, no Plus, no chip, no menu — those are the organization page's", () => {
+    const r = rail();
+    expect(r).not.toContain("DropdownMenu");
+    expect(r).not.toContain("<Picker");
+    expect(r).not.toContain("CeremonyPlus");
+    expect(r).not.toContain("ChevronsUpDown");
+    expect(r).not.toContain("Switch organization");
+    expect(r).not.toContain("Switch place");
+    expect(r).not.toContain('label="Add place"');
+    expect(r).not.toContain('label="Places"');
+    expect(r).not.toContain("<select");
+    const sw = readCode("components/console/ScopeSwitchers.tsx");
+    expect(sw).toContain('label="Switch organization"');
+    expect(sw).toContain('label="Switch place"');
+    expect(sw).toContain("useRailScopeContext()");
+    expect(readCode("app/(shell)/orgs/[orgId]/page.tsx")).toContain("<ScopeSwitchers />");
+    expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
+  });
+
+  it("is Account · Organization · the five views, in that order, from the route contract and the ONE matrix", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
     const at = (needle: string) => nav.indexOf(needle);
     expect(at("href={SHELL_ROUTES.account}")).toBeGreaterThan(-1);
-    expect(at("href={SHELL_ROUTES.account}")).toBeLessThan(at('label="Switch organization"'));
-    expect(at('label="Switch organization"')).toBeLessThan(at("href={orgHref(org.id)}"));
-    expect(at("href={orgHref(org.id)}")).toBeLessThan(at('label="Switch place"'));
-    expect(at('label="Switch place"')).toBeLessThan(at("placeTabs.map((tab)"));
-    // Two seams (MESITA-1818, 1A): one after Account, one after Organization.
-    expect((nav.match(/<Seam collapsed=\{collapsed\} \/>/g) ?? []).length).toBe(2);
-    // The prefix is quieted by weight, never alpha (8A); the switchers grow a
-    // chevron only at 2+ (3A); the place group dims while an org switch is
-    // pending (5A); Add place is gated by the org page's own fact (6A).
-    expect(r).toContain('<span className="font-normal">Place </span>');
-    expect(r).not.toMatch(/opacity-\d+">Place/);
-    expect(r).toContain("switchable={organizations.length >= 2}");
-    expect(r).toContain("switchable={org.places.length >= 2 || (foreign !== null && org.places.length >= 1)}");
-    // Inert, not pointer-events: a keyboard user must not navigate a stale row.
-    expect(r).toContain("inert={pendingOrg ? true : undefined}");
-    expect(r).not.toContain("pointer-events-none");
-    // ONE fact, read once, hung off by every Add place door.
-    expect(r).toContain("const canAdd = org ? canAddPlace(org.myRole) : false;");
-    expect((r.match(/canAddPlace\(/g) ?? []).length).toBe(1);
-    expect(r).toContain("{placeGroupHasRows && <Seam collapsed={collapsed} />}");
-    // The list is the organization's own step: its row lights for it.
-    expect(nav).toContain("active={orgPage !== null}");
-    expect(nav).not.toContain("ORG_ROWS");
-    expect(nav).not.toContain('label="Places"');
-    expect(r).not.toContain("<select");
-    expect(r).not.toContain('label="All Places"');
-    expect(r).not.toContain('label="Organizations"');
-  });
-
-  it("the pickers are buttons that open a menu, and never take the pill", () => {
-    const r = rail();
-    expect(r).toContain("DropdownMenuTrigger");
-    expect(r).toContain('label="Switch organization"');
-    expect(r).toContain('label="Switch place"');
-    const picker = r.slice(r.indexOf("function Picker"), r.indexOf("function OrgChip"));
-    expect(picker).toContain("aria-label={label}");
-    expect(picker).not.toContain("ROW_ACTIVE");
-    expect(picker).not.toContain("aria-current");
-    // The chip is never the pill's ink pair: two solid squares at w-16.
-    expect(r).toMatch(/const CHIP =\s*"bg-sidebar-accent text-foreground/);
-    expect(r).not.toContain('CHIP = "bg-foreground');
-  });
-
-  it("the org page comes from the route contract, and the place views from the ONE matrix", () => {
-    const r = rail();
-    expect(r).toContain("orgHref(org.id)");
+    expect(at("href={SHELL_ROUTES.account}")).toBeLessThan(at("href={orgHref(org.id)}"));
+    expect(at("href={orgHref(org.id)}")).toBeLessThan(at("placeTabs.map((tab)"));
+    expect(nav).toContain("active={orgPage !== null || onOrgNew}");
     expect(r).toContain("orgPageFromPathname(pathname)");
     expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
     expect(r).toContain("placeTabHref(placeSubjectId, tab)");
     expect(r).not.toContain("?org=");
-    expect(r).not.toContain("withOrg(");
     expect(r).not.toContain("window.location");
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
   });
 
-  it("the ceremonies are one click from the rail: a Plus beside each picker, repeated in its menu", () => {
+  it("the place rows are always there: with no place they are muted doors to Add place (owner) or the list", () => {
     const r = rail();
-    expect((r.match(/<CeremonyPlus/g) ?? []).length).toBe(2);
-    expect(r).toContain("href={SHELL_ROUTES.orgNew}");
-    expect(r).toContain("href={orgPlacesNewHref(org.id)}");
-    // Hidden at w-16 — two targets do not fit — so the menu footer is the door there.
-    const plus = r.slice(r.indexOf("function CeremonyPlus"));
-    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain("if (collapsed) return null;");
-    // The Plus takes the pill inside its ceremony (4A): one pill on /orgs/new.
-    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain('aria-current={active ? "page" : undefined}');
-    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain("? ROW_ACTIVE");
-    expect(r).toContain('label="All places"');
-    expect((r.match(/label="Add place"/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(r).toContain("muted={placeSubjectId === null}");
+    expect(r).toContain("canAddPlace(org.myRole)");
+    expect(r).toContain("orgPlacesNewHref(org.id)");
+    expect(r).toContain("orgPlacesHref(org.id)");
+    // The prefix is quieted by weight, never alpha (MESITA-1818, 8A).
+    expect(r).toContain('<span className="font-normal">Place </span>');
+    expect(r).not.toMatch(/opacity-\d+">Place/);
   });
 
-  it("at exactly one entry the menu shows a label, not a one-item choice", () => {
-    const r = rail();
-    expect(r).toContain("organizations.length === 1 ? (");
-    expect(r).toContain("org.places.length === 1 && !foreign ? (");
-  });
-
-  it("a choice shows the chosen name only after the guard let it through, and only on its own pathname", () => {
-    const r = rail();
-    // The transition is the clock: a Back to the origin pathname must not
-    // re-arm the choice (MESITA-1818 review).
-    expect(r).toContain("const pendingId = isPending ? choice : null;");
-    expect(r).not.toContain("choice.at === pathname");
-    expect(r).toContain("aria-busy={pending || undefined}");
-    expect(r).not.toContain("useEffect");
-  });
-
-  it("switching a place keeps the view when it may be opened there, else Profile", () => {
-    const r = rail();
-    expect(r).toContain(
-      'const view = currentView && allowed.includes(currentView) ? currentView : "profile";',
-    );
+  it("the switchers: a name at n=1, the transition as the pending clock, a chosen name only after the guard", () => {
+    const sw = readCode("components/console/ScopeSwitchers.tsx");
+    expect(sw).toContain("switchable={organizations.length >= 2}");
+    expect(sw).toContain("switchable={org.places.length >= 2}");
+    expect(sw).toContain("const pendingId = isPending ? choice : null;");
+    expect(sw).not.toContain("choice.at === pathname");
+    expect(sw).toContain("aria-busy={pending || undefined}");
+    expect(sw).not.toContain("useEffect");
+    expect(sw).toContain("motion-reduce:animate-none");
+    expect(sw).toContain("canAddPlace(org.myRole)");
   });
 
   it("the footer holds the rail's own control and nothing else", () => {
@@ -320,30 +269,8 @@ describe("the rail is seven flat pages", () => {
     expect(footer).not.toContain("<NavRow");
   });
 
-  it("focus travels on the brand's ring, not the browser's; menus respect reduced motion", () => {
+  it("focus travels on the brand's ring, not the browser's", () => {
     expect(rail()).toContain("focus-visible:ring-sidebar-ring");
-    expect(rail()).toContain("motion-reduce:animate-none");
-  });
-
-  it("the drawer's menus portal into the drawer, the desktop rail's to the body (MESITA-1818, 9A)", () => {
-    const shell = readCode("components/console/AppShell.tsx");
-    expect(shell).toContain("menuContainer={menuHost}");
-    expect(shell).toContain("ref={bindDrawer}");
-    expect(shell).toContain('aria-modal="true"');
-    // Anchor on the two CODE landmarks, in order — a bare "Drawer" matches
-    // `bindDrawer` above the desktop block and slices to "", and readCode
-    // strips the comments a prose anchor would need.
-    const start = shell.indexOf('"hidden shrink-0 transition-[width]');
-    const end = shell.indexOf("inert={!open}");
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-    const desktop = shell.slice(start, end);
-    expect(desktop).toContain("<Sidebar");
-    expect(desktop).not.toContain("menuContainer");
-    expect(readCode("components/ui/dropdown-menu.tsx")).toContain("Portal container={container}");
-    expect(rail()).toContain("container={menuContainer ?? undefined}");
-    // The drawer's menu fits the 240px panel; the desktop rail's reads wide.
-    expect(rail()).toContain('menuContainer ? "w-56" : "w-72"');
   });
 
   it("the layout hands the rail the whole viewer and the two rail cookies, raw", () => {

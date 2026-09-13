@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { OrgStateBadge } from "@/components/console/badges";
 import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
 import { OrgScreenSections } from "@/components/console/OrgScreenSections";
+import { ScopeSwitchers } from "@/components/console/ScopeSwitchers";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import {
   apiGetPaymentAccount,
@@ -82,6 +83,11 @@ export default async function OrganizationPage({
           state={account?.charges_enabled ? "connected" : "not_connected"}
         />
       </div>
+
+      {/* "Organization. (change organization, change place)" — Pato,
+          2026-09-13. The two switchers are THIS page's, not the rail's
+          (MESITA-1822). */}
+      <ScopeSwitchers />
 
       {/* Above everything: the answer to "did that work?" comes before the
           screen it is about (MESITA-1645). */}
