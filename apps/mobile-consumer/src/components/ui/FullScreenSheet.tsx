@@ -16,8 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // for lightweight portals (MESITA-583).
 //
 // asRoute (MESITA-1789): Me boxes are real Expo routes, not Modal overlays.
-// Same chrome (title + body), Back instead of Close, no Modal wrapper so the
-// tab bar stays and history pops to the hub.
+// Same chrome (title + body), Back instead of Close, no Modal wrapper.
+// Nested Me routes hide the tab bar (MESITA-1812); history pops to the hub.
 
 function SheetChrome({
   title,

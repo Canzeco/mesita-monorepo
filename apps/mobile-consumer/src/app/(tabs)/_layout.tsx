@@ -1,8 +1,20 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useSegments } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
 import { ConsumerTabBar } from '@/components/ui/ConsumerTabBar';
+import { isMeNestedRoute } from '@/lib/tab-layout';
 import { useAuth } from '@/providers/auth';
+
+type RoutedTabBarProps = {
+  state: Parameters<typeof ConsumerTabBar>[0]['state'];
+  navigation: Parameters<typeof ConsumerTabBar>[0]['navigation'];
+};
+
+function RoutedTabBar({ state, navigation }: RoutedTabBarProps) {
+  const segments = useSegments();
+  if (isMeNestedRoute(segments)) return null;
+  return <ConsumerTabBar state={state} navigation={navigation} />;
+}
 
 // Custom tab bar ports web BottomNav (MESITA-581). Rewards + Reservations
 // stay parked behind ComingSoonModal (web BottomNav parity); route screens
@@ -39,7 +51,8 @@ export default function TabsLayout() {
         // Expo Router's navigation helpers are wider than our minimal prop
         // surface; the cast keeps ConsumerTabBar free of a hard
         // `@react-navigation/bottom-tabs` import (pnpm hoisting).
-        <ConsumerTabBar
+        // Nested /me/* routes hide the bar — see isMeNestedRoute (MESITA-1812).
+        <RoutedTabBar
           state={props.state}
           navigation={props.navigation as never}
         />
