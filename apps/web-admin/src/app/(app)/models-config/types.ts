@@ -10,11 +10,39 @@
 // embeddings / memo.* / ojo.model.
 // Intaker Perplexity is NOT read from this blob — app_config's
 // atlas_perplexity_preset is the live search preset (enricher.perplexity here
-// is staged). The synthesis / vision quality tiers are atlas_* columns too;
-// Intake (MESITA-1287) edits those three. This page does not.
+// is staged). Text / image quality tiers are atlas_* columns too; this page
+// edits those three alongside the models_config blob (MESITA-1811).
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";
+import type {
+  PerplexityPreset,
+  SynthesisQuality,
+} from "../enricher-config/actions";
+
+/** Live Intaker model picks — stored on atlas_* columns, edited on this page. */
+export type IntakerModelSettings = {
+  synthesisQuality: SynthesisQuality;
+  visionQuality: SynthesisQuality;
+  perplexityPreset: PerplexityPreset;
+};
+
+export const DEFAULT_INTAKER_MODEL_SETTINGS: IntakerModelSettings = {
+  synthesisQuality: "economy",
+  visionQuality: "economy",
+  perplexityPreset: "pro-search",
+};
+
+/** Perplexity Agent presets for Intaker Serp + Links (not Memo Sonar). */
+export const INTAKER_PERPLEXITY_PRESETS: readonly {
+  value: PerplexityPreset;
+  label: string;
+}[] = [
+  { value: "fast-search", label: "fast-search" },
+  { value: "pro-search", label: "pro-search" },
+  { value: "deep-research", label: "deep-research" },
+  { value: "advanced-deep-research", label: "advanced-deep-research" },
+];
 
 type SubsystemKey = "supabase" | "enricher" | "embeddings" | "memo" | "ojo";
 
@@ -118,8 +146,8 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
       },
     ],
     detail:
-      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Intaker reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. Intake edits the three atlas_* knobs.",
-    editableHere: false,
+      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Intaker reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. Text, image and search picks on this page write the atlas_* knobs.",
+    editableHere: true,
     owner: null,
   },
   {

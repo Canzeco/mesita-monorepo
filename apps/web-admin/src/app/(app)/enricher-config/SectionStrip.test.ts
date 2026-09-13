@@ -40,3 +40,15 @@ describe("Intake save bar leaves module space", () => {
     expect(client).not.toContain("gap-4 pb-4");
   });
 });
+
+describe("Intake Models section is read-only reference", () => {
+  it("links to Models and does not save model tiers from Intake", () => {
+    expect(client).toContain("Configure on Models ›");
+    expect(client).toContain('href={MODELS_PARENT.href}');
+    expect(client).toContain("Read-only reference — configure on Models.");
+    expect(client).not.toContain("QualityPicker");
+    expect(client).not.toContain("synthesisQuality: settings.synthesisQuality");
+    expect(client).not.toContain("visionQuality: settings.visionQuality");
+    expect(client).not.toContain("perplexityPreset: settings.perplexityPreset");
+  });
+});
