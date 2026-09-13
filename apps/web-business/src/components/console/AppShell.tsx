@@ -37,7 +37,7 @@
 // about whose console this is. The same resolution is what the two rail
 // cookies remember, so the next fresh request paints the same boxes.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -100,6 +100,16 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const drawerRef = useRef<HTMLDivElement>(null);
+  // The drawer element as STATE, for the rail's menus to portal into
+  // (MESITA-1818): a ref alone is null on the first render and never
+  // re-renders when it fills, so the menus would portal to the body — outside
+  // the `aria-modal` boundary — for the life of the session. The callback
+  // ref sets both.
+  const [menuHost, setMenuHost] = useState<HTMLDivElement | null>(null);
+  const bindDrawer = useCallback((el: HTMLDivElement | null) => {
+    drawerRef.current = el;
+    setMenuHost(el);
+  }, []);
 
   // Remember the scope for the next fresh request. The place only when it is
   // the one actually open — the rail's fallback pick is not a visit.
@@ -227,7 +237,7 @@ export function AppShell({
           onClick={close}
         />
         <div
-          ref={drawerRef}
+          ref={bindDrawer}
           className={
             // w-60 matches the expanded rail — anything wider and the rail
             // underfills the panel.
@@ -238,7 +248,7 @@ export function AppShell({
           aria-modal="true"
           aria-label="Console navigation"
         >
-          <Sidebar {...railProps} onNavigate={close} />
+          <Sidebar {...railProps} onNavigate={close} menuContainer={menuHost} />
           {open && (
             <button
               type="button"

@@ -26,10 +26,16 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  container,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
+  /** Where the menu portals. Default: the body. A menu opened from inside an
+   *  `aria-modal` surface (the console drawer, MESITA-1818) must portal INTO
+   *  that surface, or a screen reader and the focus trap cannot see it. */
+  container?: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>["container"];
+}) {
   return (
-    <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Portal container={container}>
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}

@@ -1,4 +1,5 @@
-// The rail, RENDERED (MESITA-1807; seven flat pages since MESITA-1815).
+// The rail, RENDERED (MESITA-1807; seven flat pages since MESITA-1815; each
+// switcher above its own rows, two seams, since MESITA-1818).
 //
 // Source-reading contracts cannot see two pills: two rows computing `active`
 // for one pathname pass every regex and light up together on screen. This
@@ -38,7 +39,17 @@ const ORGS: RailOrg[] = [
       { id: "p-2", name: "Strana Polanco", photoUrl: null },
     ],
   },
-  { id: "org-b", name: "Org Test", myRole: "editor", places: [] },
+  { id: "org-b", name: "Org Test", myRole: "owner", places: [] },
+];
+
+/** The majority customer: one organization holding one place. */
+const SOLO: RailOrg[] = [
+  {
+    id: "org-solo",
+    name: "Pato",
+    myRole: "owner",
+    places: [{ id: "p-solo", name: "Hoster Brewing Company", photoUrl: null }],
+  },
 ];
 
 type Over = {
@@ -76,10 +87,19 @@ function render(pathname: string, over: Over = {}): string {
 const pills = (html: string) => html.match(/aria-current="page"/g) ?? [];
 const hrefs = (html: string) =>
   (html.match(/href="([^"]*)"/g) ?? []).map((m) => m.slice(6, -1));
+/** The pill anchor's text, tags stripped — the label is two spans since 8A. */
+const pillText = (html: string) =>
+  (html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "")
+    .replace(/<[^>]+>/g, "");
+const pillTag = (html: string) =>
+  html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0] ?? "";
+const navOf = (html: string) => html.slice(html.indexOf("<nav"), html.indexOf("</nav>"));
+/** Group seams inside the nav (the footer's hairline sits outside it). */
+const seams = (html: string) => navOf(html).match(/border-sidebar-border my-1 border-t/g) ?? [];
 
 describe("exactly one pill, on every route", () => {
   const ROUTES: [string, string][] = [
-    [SHELL_ROUTES.account, "pato@canzeco.com"],
+    [SHELL_ROUTES.account, "Account"],
     [orgHref("org-a"), "Organization"],
     // The list and the Add step are the organization's own steps (MESITA-1815):
     // no Places row, so the Organization row is the pill on both.
@@ -93,13 +113,35 @@ describe("exactly one pill, on every route", () => {
     it(`${pathname} lights ${label} and nothing else`, () => {
       const html = render(pathname);
       expect(pills(html)).toHaveLength(1);
-      const pill = html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
-      expect(pill).toContain(label);
+      expect(pillText(html)).toBe(label);
     });
   }
 
-  it("the create ceremony lights no row while you have organizations", () => {
-    expect(pills(render(SHELL_ROUTES.orgNew))).toHaveLength(0);
+  it("every view in the vocabulary lights its own row, for the owner super-admin", () => {
+    for (const tab of PLACE_TABS) {
+      const html = render(placeTabHref("p-1", tab), { isSuperAdmin: true });
+      expect(pills(html)).toHaveLength(1);
+      expect(pillText(html)).toBe(placeRowLabel(tab));
+    }
+  });
+
+  it("the create ceremony lights the org Plus while you have organizations (MESITA-1818, 4A)", () => {
+    // One pill on EVERY route: Create organization is a page reached through
+    // the switcher's Plus, so the ink lands there — and never on the switcher.
+    const html = render(SHELL_ROUTES.orgNew);
+    expect(pills(html)).toHaveLength(1);
+    expect(pillTag(html)).toContain('aria-label="Create organization"');
+    expect(pillTag(html)).toContain("bg-foreground");
+    expect(html.match(/<button[^>]*aria-label="Switch organization"[^>]*>/)?.[0]).not.toContain(
+      "aria-current",
+    );
+  });
+
+  it("one pill on every address that needs no id", () => {
+    for (const href of Object.values(SHELL_ROUTES)) {
+      if (href === "/") continue; // the resolver redirects; it never renders the rail
+      expect(pills(render(href)), href).toHaveLength(1);
+    }
   });
 
   it("a picker is never the pill", () => {
@@ -113,34 +155,57 @@ describe("exactly one pill, on every route", () => {
   });
 });
 
-describe("seven flat pages (MESITA-1815)", () => {
-  it("are Account · Organization · Place Profile · Reviews · Activity · Settings · Admin, in that order, with no box and no eyebrow", () => {
+describe("seven flat pages, each switcher above its own rows (MESITA-1815 · 1818)", () => {
+  it("are Account · seam · org switcher · Organization · seam · place switcher · Profile · Reviews · Activity · Settings · Admin, in that order", () => {
     const html = render(orgHref("org-a"), { isSuperAdmin: true });
     const at = (s: string) => html.indexOf(s);
     const order = [
-      ">pato@canzeco.com<",
-      ">Organization<",
+      ">Account<",
       'aria-label="Switch organization"',
+      ">Organization<",
       'aria-label="Switch place"',
-      ">Place Profile<",
-      ">Place Reviews<",
-      ">Place Activity<",
-      ">Place Settings<",
-      ">Place Admin<",
+      ">Profile</span>",
+      ">Reviews</span>",
+      ">Activity</span>",
+      ">Settings</span>",
+      ">Admin</span>",
     ];
     for (const needle of order) expect(at(needle), needle).toBeGreaterThan(at("<nav"));
     for (let i = 1; i < order.length; i++) {
       expect(at(order[i - 1]), `${order[i - 1]} before ${order[i]}`).toBeLessThan(at(order[i]));
     }
-    // No grouped boxes: the rows say their scope themselves.
+    // Three groups, TWO seams (1A): after Account, after Organization. The
+    // seam is the box's replacement, so it draws both boundaries.
+    expect(seams(html)).toHaveLength(2);
+    const n = navOf(html);
+    expect(n.indexOf(">Account<")).toBeLessThan(n.indexOf("border-t"));
+    expect(n.lastIndexOf("border-t")).toBeGreaterThan(n.indexOf(">Organization<"));
+    expect(n.lastIndexOf("border-t")).toBeLessThan(n.indexOf('aria-label="Switch place"'));
+    // No grouped boxes, no eyebrows: the rows say their scope themselves.
     expect(html).not.toContain('role="group"');
     expect(html).not.toContain('aria-label="Place"');
     expect(html).not.toContain('aria-label="Account"');
-    // Exactly seven pages for the owner super-admin: the email, Organization,
-    // five views. The rail is a LIST plus two switchers, nothing else.
-    const rows = html.match(/<a[^>]*href="[^"]*"[^>]*title=/g) ?? [];
-    expect(rows.length).toBeGreaterThanOrEqual(0);
-    expect((html.match(/>Place [A-Z][a-z]+</g) ?? []).length).toBe(5);
+    // Five place rows, each painted "Place " + noun (8A) — the prefix at
+    // font-normal, the noun at font-medium, NEVER an alpha.
+    expect((html.match(/<span class="font-normal">Place <\/span>/g) ?? []).length).toBe(5);
+    expect(navOf(html)).not.toMatch(/opacity-\d|text-[a-z-]+\/\d/);
+  });
+
+  it("the Account row says the page; the email is its tooltip (2A)", () => {
+    const html = render(orgHref("org-a"));
+    expect(html).toContain(">Account<");
+    expect(html).toContain('title="Account · pato@canzeco.com"');
+    expect(html).not.toContain(">pato@canzeco.com<");
+  });
+
+  it("with one organization holding one place, the switchers are names: no chevron, the menu stays (3A)", () => {
+    const html = render(placeHref("p-solo"), { organizations: SOLO });
+    expect(html).toContain('aria-label="Switch organization"');
+    expect(html).toContain('aria-label="Switch place"');
+    expect(html).toContain("Hoster Brewing Company");
+    expect(html).not.toContain("lucide-chevrons-up-down");
+    // Two organizations: the chevron is back.
+    expect(render(orgHref("org-a"))).toContain("lucide-chevrons-up-down");
   });
 
   it("the Places row is gone; the list stays a door in the place switcher", () => {
@@ -178,18 +243,24 @@ describe("seven flat pages (MESITA-1815)", () => {
   });
 
   it("Place Admin appears only for a super-admin", () => {
-    expect(render(placeHref("p-1"))).not.toContain(">Place Admin<");
+    expect(render(placeHref("p-1"))).not.toContain(">Admin</span>");
     const html = render(placeHref("p-1"), { isSuperAdmin: true });
-    expect(html).toContain(">Place Admin<");
+    expect(html).toContain(">Admin</span>");
     expect(hrefs(html)).toContain(placeTabHref("p-1", "admin"));
   });
 
-  it("a viewer's rail offers the read views only", () => {
+  it("a viewer's rail offers the read views only, and no Add place door (6A)", () => {
     const viewer: RailOrg[] = [{ ...ORGS[0], myRole: "viewer" }];
     const html = render(placeHref("p-1"), { organizations: viewer });
-    expect(html).toContain(">Place Reviews<");
-    expect(html).toContain(">Place Activity<");
-    expect(html).not.toContain(">Place Settings<");
+    expect(html).toContain(">Reviews</span>");
+    expect(html).toContain(">Activity</span>");
+    expect(html).not.toContain(">Settings</span>");
+    // The same fact the org page reads (`canAddPlace`): a door the server
+    // refuses is never offered.
+    expect(html).not.toContain('aria-label="Add place"');
+    expect(hrefs(html)).not.toContain(orgPlacesNewHref("org-a"));
+    // Create organization stays open to every role.
+    expect(hrefs(html)).toContain(SHELL_ROUTES.orgNew);
   });
 
   it("every view in the vocabulary is a row for the owner super-admin — no orphan view", () => {
@@ -201,11 +272,13 @@ describe("seven flat pages (MESITA-1815)", () => {
 });
 
 describe("the states a 10/10 has to answer", () => {
-  it("zero organizations: Account, a Create row, and no place rows", () => {
+  it("zero organizations: Account, a seam, a Create row, and no place rows", () => {
     const html = render(SHELL_ROUTES.orgNew, { organizations: [] });
     expect(html).toContain("Create organization");
     expect(pills(html)).toHaveLength(1);
-    expect(html).not.toContain(">Place ");
+    expect(pillText(html)).toBe("Create organization");
+    expect(seams(html)).toHaveLength(1);
+    expect(html).not.toContain(">Place </span>");
     expect(html).not.toContain('aria-label="Switch organization"');
     expect(html).not.toContain('aria-label="Switch place"');
   });
@@ -214,20 +287,24 @@ describe("the states a 10/10 has to answer", () => {
     const html = render(SHELL_ROUTES.account, { organizations: [], viewerError: true });
     expect(html).toContain("Couldn&#x27;t load organizations");
     expect(html).not.toContain("Create organization");
-    expect(html).not.toContain(">Place ");
+    expect(html).not.toContain(">Place </span>");
     expect(html).not.toContain('aria-label="Switch place"');
   });
 
-  it("an organization holding no place: an Add place row is the next step, never active", () => {
+  it("an organization holding no place: an Add place row is the next step for its owner, never active", () => {
     const html = render(orgPlacesNewHref("org-b"));
     expect(html).toContain("Add place");
     expect(hrefs(html)).toContain(orgPlacesNewHref("org-b"));
     expect(html).not.toContain('aria-label="Switch place"');
-    expect(html).not.toContain(">Place ");
+    expect(html).not.toContain(">Place </span>");
     // The Organization row is the pill on the add step — not the Add place row.
     expect(pills(html)).toHaveLength(1);
-    const pill = html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "";
-    expect(pill).toContain(">Organization<");
+    expect(pillText(html)).toBe("Organization");
+    // An editor of the same empty organization sees nothing under the seam.
+    const editor: RailOrg[] = [ORGS[0], { ...ORGS[1], myRole: "editor" }];
+    const h2 = render(orgHref("org-b"), { organizations: editor });
+    expect(h2).not.toContain("Add place");
+    expect(seams(h2)).toHaveLength(2);
   });
 
   it("a pool place: named as foreign, Profile alone, still one pill", () => {
@@ -238,13 +315,21 @@ describe("the states a 10/10 has to answer", () => {
     expect(html).toContain('aria-label="Switch place"');
   });
 
-  it("collapsed: no Plus, every label a title", () => {
+  it("collapsed: no Plus, every label a title, both seams", () => {
     const html = render(orgHref("org-a"), { collapsed: true });
     expect(html).not.toContain('aria-label="Create organization"');
     expect(html).not.toContain('aria-label="Add place"');
     expect(html).toContain('title="Organization"');
     expect(html).toContain('title="Place Settings"');
+    expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(html).toContain('title="Switch organization: Strana Group"');
+    expect(seams(html)).toHaveLength(2);
     expect(pills(html)).toHaveLength(1);
+  });
+
+  it("collapsed on the create ceremony: no pill (the Plus is hidden; the menu footer is the door)", () => {
+    // Accepted in 4A: at w-16 there is no Plus to light. The crumb is hidden
+    // below lg too, so this is the one frame the console names nowhere.
+    expect(pills(render(SHELL_ROUTES.orgNew, { collapsed: true }))).toHaveLength(0);
   });
 });
