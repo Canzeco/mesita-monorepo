@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
-import { CapabilitiesTab } from "./CapabilitiesTab";
+import { SettingsTab } from "./SettingsTab";
 
 export const dynamic = "force-dynamic";
 
-export default async function CapabilitiesPage({
+export default async function SettingsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -12,5 +12,5 @@ export default async function CapabilitiesPage({
   const { id } = await params;
   const manage = await getManagePlace(id);
   if (!manage) notFound();
-  return <CapabilitiesTab />;
+  return <SettingsTab />;
 }

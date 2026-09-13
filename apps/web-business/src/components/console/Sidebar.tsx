@@ -1,44 +1,46 @@
 "use client";
 
-// The whole navigation: one lateral rail, THREE SCOPED BOXES (MESITA-1807).
+// The whole navigation: one lateral rail, SEVEN FLAT PAGES (MESITA-1815).
 //
-// Pato, 2026-09-12: "Account Box · Organization Box (Select Org, Org
-// Settings) · Place Box (Select Place, Place Profile, Place Reviews, Place
-// Activity, Place Capabilities, Place Admin)". Then, on the three-collection
-// rail that shipped that afternoon: "wtf is this? rethink the routing of the
-// business app, more routes."
+// Pato, 2026-09-13, on the three-box rail of MESITA-1807/1810: "it's too
+// complex for one organization to manage multiple places too. It's just too
+// enterprise." Then the shape: "Account. Organization (change organization,
+// change place). Place Profile. Place Reviews. Place Activity. Place Settings.
+// Place Admin. Better do it like this. Just seven pages. I don't care word
+// place is redundant btw."
 //
-//   ACCOUNT                          eyebrow (TINY_LABEL_CLASS), aria-hidden;
-//   [ ○ pato@canzeco.com          ]  the box is the group's accessible name
-//   ORGANIZATION
-//   [ [S] Strana Group      ⇅  + ]   picker: chip + name + ChevronsUpDown,
-//   [ ▤ Organization             ]   a Plus beside it = Create organization
-//   [ ⌂ Places                   ]   (one org page — MESITA-1810; the list)
-//   PLACE
-//   [ [img] Strana Del Valle ⇅ + ]   picker; Plus = Add place
-//   [ ▢ Profile                  ]
-//   [ ★ Reviews                  ]
-//   [ ~ Activity          ▮pill  ]   exactly ONE filled pill, always
-//   [ ≡ Capabilities             ]
-//   [ ⛨ Admin                    ]   super-admin only
+//   [ ○ pato@canzeco.com          ]  Account
+//   [ ▤ Organization              ]  the org page (its list and Add place
+//   [ [S] Strana Group      ⇅  + ]    light this row too — they are its steps)
+//   [ [img] Strana Del Valle ⇅ + ]   the two switchers, each with its Plus
+//   [ ▢ Place Profile            ]
+//   [ ★ Place Reviews            ]
+//   [ ~ Place Activity    ▮pill  ]   exactly ONE filled pill, always
+//   [ ⚙ Place Settings           ]
+//   [ ⛨ Place Admin              ]   super-admin only
 //   ─────
 //   ◧ Collapse                       the footer: the rail's own control
+//
+// NO BOXES, NO EYEBROWS. The three grounds of MESITA-1807 said "Account",
+// "Organization", "Place" above their rows; the rows now say it themselves —
+// "Place Settings", not a PLACE eyebrow over "Settings" — which is the
+// redundancy Pato waved through. The Places row is gone: the list is the
+// organization's own step, reached from its page and from the place
+// switcher's menu, and the Organization row lights while you are on it.
 //
 // THE SCOPE IS READ OFF THE PATHNAME (lib/rail-scope.ts). `/orgs/<id>/…`
 // names the organization; `/places/<id>/…` names the place, and its holder
 // is found across every organization the viewer is in; everything else falls
 // back to the organization and place remembered from the last visit. The
-// rail lists no portfolio: the picker is the list, and it scales to forty
-// places where per-place toggles (MESITA-1779) could not. The picker itself
-// never carries the pill — it is a control, not a page.
+// rail lists no portfolio: the switcher is the list, and it scales to forty
+// places where per-place toggles (MESITA-1779) could not. A switcher never
+// carries the pill — it is a control, not a page.
 //
 // FLAT. Nothing in this file indents — no inset, no tree line, no bullet, no
-// `pl-8` — and `shell-chrome.test.ts` forbids all of them. A box is a GROUND
-// (the sidebar well, no border: Pato, direction B on the MESITA-1779 board
-// and direction A on the MESITA-1807 board), and its 2px padding is paid for
-// by a -2px margin, so a row inside a box keeps the x of a row outside it.
+// `pl-8` — and `shell-chrome.test.ts` forbids all of them. The switchers sit
+// at the x of every row; they are rows.
 //
-// THE CHIP IS NOT A PILL. The picker's leading chip sits on `bg-sidebar-accent`
+// THE CHIP IS NOT A PILL. The switcher's leading chip sits on `bg-sidebar-accent`
 // with a hairline, never on the pill's ink pair: at `w-16` two solid ink
 // squares would read as two "you are here" marks.
 
@@ -55,8 +57,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  Settings2,
   Shield,
-  SlidersHorizontal,
   Star,
   Store,
   UserRound,
@@ -87,7 +89,6 @@ import {
   orgPageFromPathname,
   orgPlacesHref,
   orgPlacesNewHref,
-  type OrgPage,
 } from "@/lib/console-routes";
 import {
   PLACE_TAB_LABEL,
@@ -133,10 +134,6 @@ const ROW_REST =
 // rail where the console's foreground appears as a fill, which is what makes
 // "you are here" survive a glance down a light column.
 const ROW_ACTIVE = "bg-foreground text-background font-semibold";
-// The box: the sidebar well, no border, and its padding paid for by its
-// margin so rows inside keep the x of rows outside.
-const WELL_BG =
-  "bg-[color-mix(in_oklab,var(--sidebar-accent)_50%,var(--sidebar))]";
 const CHIP =
   "bg-sidebar-accent text-foreground ring-sidebar-border flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ring-1";
 const MENU_ITEM = "gap-2.5 rounded-lg py-1.5 text-[13px]";
@@ -148,20 +145,20 @@ const HOVER_PREFETCH = { unstable_dynamicOnHover: true } as object;
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
-// The organization is ONE page (MESITA-1810): Stripe, Partner, Members and
-// Places boxes on `/orgs/<id>`; the list is its one subpage.
-const ORG_ROWS: { page: OrgPage; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { page: "overview", Icon: Building2 },
-  { page: "places", Icon: Store },
-];
-
 const VIEW_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
   profile: FileText,
   reviews: Star,
   activity: Activity,
-  capabilities: SlidersHorizontal,
+  settings: Settings2,
   admin: Shield,
 };
+
+/** The rail's word for a view: the scope word is IN the label now that no
+ *  eyebrow carries it (Pato: "I don't care word place is redundant"). The
+ *  crumb and the heading keep the bare word — `PLACE_TAB_LABEL` is theirs. */
+export function placeRowLabel(tab: PlaceTab): string {
+  return `Place ${PLACE_TAB_LABEL[tab]}`;
+}
 
 const ROLE_LABEL = { owner: "Owner", editor: "Editor", viewer: "Viewer" } as const;
 
@@ -239,47 +236,6 @@ function MutedRow({
     >
       <Icon className={ICON} />
       <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
-    </div>
-  );
-}
-
-/** A scope: an eyebrow above, a ground beneath. The eyebrow is decor for the
- *  eye (`aria-hidden`) and the group carries the label itself, because two
- *  rail instances mount at once and an id-based label would collide, and the
- *  eyebrow is not rendered at `w-16` at all — there a hairline marks the seam,
- *  admin's rule in shape (not in color: its dark alpha vanishes on this
- *  light ground). */
-function Scope({
-  label,
-  collapsed,
-  first = false,
-  children,
-}: {
-  label: string;
-  collapsed: boolean;
-  first?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div role="group" aria-label={label} className={cn(!first && "mt-3")}>
-      {collapsed ? (
-        !first && (
-          <div aria-hidden className="border-sidebar-border mx-1.5 -mt-1 mb-2 border-t" />
-        )
-      ) : (
-        <span aria-hidden className={cn(TINY_LABEL_CLASS, "mb-1 block px-2.5")}>
-          {label}
-        </span>
-      )}
-      <div
-        className={cn(
-          "flex flex-col gap-0.5 rounded-xl",
-          WELL_BG,
-          collapsed ? "p-0.5" : "-mx-0.5 p-0.5",
-        )}
-      >
-        {children}
-      </div>
     </div>
   );
 }
@@ -561,105 +517,97 @@ export function Sidebar({
 
       <nav
         aria-label="Console"
-        className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+        className="mt-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
       >
-        <Scope label="Account" collapsed={collapsed} first>
+        <NavRow
+          href={SHELL_ROUTES.account}
+          label={accountLabel}
+          title="Account"
+          Icon={UserRound}
+          active={onAccount}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
+        />
+
+        {viewerError ? (
+          <MutedRow
+            label="Couldn't load organizations"
+            Icon={AlertCircle}
+            collapsed={collapsed}
+          />
+        ) : !org ? (
           <NavRow
-            href={SHELL_ROUTES.account}
-            label={accountLabel}
-            title="Account"
-            Icon={UserRound}
-            active={onAccount}
+            href={SHELL_ROUTES.orgNew}
+            label="Create organization"
+            Icon={Plus}
+            active={onOrgNew}
             collapsed={collapsed}
             onNavigate={onNavigate}
             onGuardedNavigate={guardNav ?? undefined}
           />
-        </Scope>
-
-        <Scope label="Organization" collapsed={collapsed}>
-          {viewerError ? (
-            <MutedRow
-              label="Couldn't load organizations"
-              Icon={AlertCircle}
-              collapsed={collapsed}
-            />
-          ) : !org ? (
+        ) : (
+          <>
+            {/* ONE organization page (MESITA-1810); its list and the Add
+                place step beneath it light this same row — they are the
+                organization's own steps, not pages of their own. */}
             <NavRow
-              href={SHELL_ROUTES.orgNew}
-              label="Create organization"
-              Icon={Plus}
-              active={onOrgNew}
+              href={orgHref(org.id)}
+              label={ORG_PAGE_LABEL.overview}
+              Icon={Building2}
+              active={orgPage !== null}
               collapsed={collapsed}
               onNavigate={onNavigate}
               onGuardedNavigate={guardNav ?? undefined}
             />
-          ) : (
-            <>
-              <div className="flex items-center gap-0.5">
-                <Picker
-                  label="Switch organization"
-                  chip={<OrgChip name={pendingOrg?.name ?? org.name} />}
-                  name={pendingOrg?.name ?? org.name}
-                  pending={pendingOrg !== null && pendingOrg !== undefined}
-                  collapsed={collapsed}
-                >
-                  {organizations.length === 1 ? (
-                    <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
-                      <OrgChip name={org.name} />
-                      <span className="truncate">{org.name}</span>
-                      <span className={MENU_META}>{orgMeta(org)}</span>
-                    </DropdownMenuLabel>
-                  ) : (
-                    <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
-                      {organizations.map((o) => (
-                        <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
-                          <OrgChip name={o.name} />
-                          <span className="truncate">{o.name}</span>
-                          <span className={MENU_META}>{orgMeta(o)}</span>
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  )}
-                  <DropdownMenuSeparator />
-                  <MenuLink
-                    href={SHELL_ROUTES.orgNew}
-                    label="Create organization"
-                    Icon={Plus}
-                    onNavigate={onNavigate}
-                    onGuardedNavigate={guardNav ?? undefined}
-                  />
-                </Picker>
-                <CeremonyPlus
+            <div className="flex items-center gap-0.5">
+              <Picker
+                label="Switch organization"
+                chip={<OrgChip name={pendingOrg?.name ?? org.name} />}
+                name={pendingOrg?.name ?? org.name}
+                pending={pendingOrg !== null && pendingOrg !== undefined}
+                collapsed={collapsed}
+              >
+                {organizations.length === 1 ? (
+                  <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
+                    <OrgChip name={org.name} />
+                    <span className="truncate">{org.name}</span>
+                    <span className={MENU_META}>{orgMeta(org)}</span>
+                  </DropdownMenuLabel>
+                ) : (
+                  <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
+                    {organizations.map((o) => (
+                      <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
+                        <OrgChip name={o.name} />
+                        <span className="truncate">{o.name}</span>
+                        <span className={MENU_META}>{orgMeta(o)}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                )}
+                <DropdownMenuSeparator />
+                <MenuLink
                   href={SHELL_ROUTES.orgNew}
                   label="Create organization"
-                  active={onOrgNew}
-                  collapsed={collapsed}
+                  Icon={Plus}
                   onNavigate={onNavigate}
                   onGuardedNavigate={guardNav ?? undefined}
                 />
-              </div>
-              {ORG_ROWS.map(({ page, Icon }) => (
-                <NavRow
-                  key={page}
-                  href={orgHref(org.id, page)}
-                  label={ORG_PAGE_LABEL[page]}
-                  Icon={Icon}
-                  active={orgPage === page}
-                  collapsed={collapsed}
-                  onNavigate={onNavigate}
-                  onGuardedNavigate={guardNav ?? undefined}
-                />
-              ))}
-            </>
-          )}
-        </Scope>
+              </Picker>
+              <CeremonyPlus
+                href={SHELL_ROUTES.orgNew}
+                label="Create organization"
+                active={onOrgNew}
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+                onGuardedNavigate={guardNav ?? undefined}
+              />
+            </div>
 
-        {org && !viewerError && (
-          <Scope label="Place" collapsed={collapsed}>
             {placeSubjectId === null ? (
               // The organization holds nothing yet: the next step, and only
-              // the next step. A picker with nothing to pick and five rows
-              // leading nowhere would be a promise the rail cannot keep.
+              // the next step. A switcher with nothing to switch and five
+              // rows leading nowhere would be a promise the rail cannot keep.
               <NavRow
                 href={orgPlacesNewHref(org.id)}
                 label="Add place"
@@ -735,7 +683,7 @@ export function Sidebar({
                   <NavRow
                     key={tab}
                     href={placeTabHref(placeSubjectId, tab)}
-                    label={PLACE_TAB_LABEL[tab]}
+                    label={placeRowLabel(tab)}
                     Icon={VIEW_ICON[tab]}
                     active={viewIsHere && currentView === tab}
                     collapsed={collapsed}
@@ -745,7 +693,7 @@ export function Sidebar({
                 ))}
               </>
             )}
-          </Scope>
+          </>
         )}
       </nav>
 

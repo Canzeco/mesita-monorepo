@@ -26,6 +26,13 @@ const nextConfig: NextConfig = {
       { source: "/place/:id/:rest*", destination: "/places/:id/profile", permanent: true },
       // Account settings moved to the shell's own screen.
       { source: "/settings", destination: "/account", permanent: true },
+      // The Capabilities view became Settings (MESITA-1815) — label and
+      // segment together, so the row and the address agree.
+      {
+        source: "/places/:id/capabilities",
+        destination: "/places/:id/settings",
+        permanent: true,
+      },
       // THE ORGANIZATION MOVED INTO THE PATH (MESITA-1807). `?org=<id>` used
       // to name it on every console URL; the id is captured off the query
       // and becomes the segment. Stripe stores an Account Link's return_url

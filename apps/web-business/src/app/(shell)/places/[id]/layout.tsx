@@ -1,5 +1,5 @@
 // The Place surface: admin's Manage Single Place, mounted in the business
-// console (MESITA-1537). Four tabs — Profile · Capabilities · Activity ·
+// console (MESITA-1537). The views — Profile · Reviews · Activity · Settings ·
 // Admin — the same components the operator console uses.
 //
 // This layout is the ONE authority: it resolves the 404 verdict, the holder,

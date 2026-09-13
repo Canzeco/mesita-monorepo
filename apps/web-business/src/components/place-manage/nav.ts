@@ -1,5 +1,5 @@
-// The Place screen's four tabs (MESITA-1537): Profile · Capabilities ·
-// Activity · Admin — the same set admin's Single Place uses, so the ported
+// The Place screen's views (MESITA-1537): Profile · Settings (Capabilities
+// until MESITA-1815) · Activity · Admin — the same set admin's Single Place uses, so the ported
 // sections keep their call shape. Business owns its OWN `soon` flags: sharing
 // admin's nav module would un-park Activity for both consoles at once.
 
@@ -9,7 +9,7 @@
 // vocabulary the chrome reads (MESITA-1558).
 export function placeSectionHref(placeId: string, section: string): string {
   const tab = section === "promos"
-    ? "capabilities"
+    ? "settings"
     : section === "place"
     ? "profile"
     : section === "performance"

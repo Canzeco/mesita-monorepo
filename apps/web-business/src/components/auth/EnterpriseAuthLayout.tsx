@@ -85,7 +85,7 @@ function LandingPane() {
           <ValueProp
             Icon={Building2}
             title="One console per place"
-            blurb="Profile, capabilities, activity, and admin — all four in one place."
+            blurb="Profile, reviews, activity, and settings — all in one place."
           />
           <ValueProp
             Icon={Users}

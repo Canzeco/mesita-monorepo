@@ -11,11 +11,15 @@
 // Keep this file free of server imports. It is the half a client component may
 // have.
 
-// THE TAB MATRIX: Profile · Reviews · Activity · Capabilities · Admin, in the
-// order the rail lists them (Pato, 2026-09-12: "Place Profile, Place Reviews,
-// Place Activity, Place Capabilities, Place Admin"). Reviews is the fifth view
+// THE TAB MATRIX: Profile · Reviews · Activity · Settings · Admin, in the
+// order the rail lists them (Pato, 2026-09-13: "Place Profile, Place Reviews,
+// Place Activity, Place Settings, Place Admin"). Reviews is the fifth view
 // (MESITA-1807): the cross-channel score tiles that used to sit on Profile,
-// with the per-review list to follow (MESITA-1802).
+// then the per-review list (MESITA-1802). Settings was Capabilities until
+// MESITA-1815 — label AND segment, so the address says what the row says;
+// `/places/<id>/capabilities` forwards from next.config.ts. The DOMAIN word
+// stays: `state-vocabulary.ts` still calls what a guest can do here a
+// capability (Notion Main §11.2); only the page is renamed.
 //
 // Profile USED to have no segment of its own: it was /places/<id>, and the
 // other views hung beneath it. That made the one view an operator is most
@@ -26,7 +30,7 @@ export const PLACE_TABS = [
   "profile",
   "reviews",
   "activity",
-  "capabilities",
+  "settings",
   "admin",
 ] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
@@ -35,7 +39,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
   reviews: "Reviews",
   activity: "Activity",
-  capabilities: "Capabilities",
+  settings: "Settings",
   admin: "Admin",
 };
 
@@ -53,7 +57,7 @@ export type ViewerAccess = {
  *
  *  pool place            → Profile only (it carries Claim)
  *  held · org viewer     → Profile + Reviews + Activity (read surfaces)
- *  held · owner/editor   → + Capabilities
+ *  held · owner/editor   → + Settings
  *  super-admin           → + Admin (operator internals)
  *
  *  Two callers, one rule (MESITA-1779). The place layout resolves it
@@ -67,7 +71,7 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   const tabs: PlaceTab[] =
     access.role === "viewer"
       ? ["profile", "reviews", "activity"]
-      : ["profile", "reviews", "activity", "capabilities"];
+      : ["profile", "reviews", "activity", "settings"];
   if (access.isSuperAdmin) tabs.push("admin");
   return tabs;
 }
