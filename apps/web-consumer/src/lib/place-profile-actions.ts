@@ -26,8 +26,9 @@ export function isOrderActionEnabled(row: ActionFlagRow | null | undefined): boo
   return hasMenuCatalog(row);
 }
 
+/** Guest Reserve CTA — off only on an explicit false (Not / walk-in). */
 export function isReserveActionEnabled(
   row: ActionFlagRow | null | undefined,
 ): boolean {
-  return row?.reservations_enabled === true;
+  return row?.reservations_enabled !== false;
 }

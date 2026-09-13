@@ -173,7 +173,7 @@ export function PlaceActionBar({
             Order
           </button>
 
-          {/* RESERVE — unlocked when Description infers reservations are typical. */}
+          {/* RESERVE — offered unless this place opted out (Not / walk-in). */}
           <button
             type="button"
             onClick={reserveEnabled ? () => setReserveOpen(true) : undefined}

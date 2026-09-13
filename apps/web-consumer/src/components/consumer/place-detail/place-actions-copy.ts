@@ -2,10 +2,10 @@
 // the pinned place-detail bar (PlaceActionBar) and the deck's Go sheet
 // (GoSheet).
 //
-// Visit is gated on `promoting` (live reward). Order and Reserve use the
-// Description → Actions flags from Intaker (`orders_enabled`,
-// `reservations_enabled`), with Order also unlocking when a menu is on file.
-// Credits has no gate at all yet — see below.
+// Visit is gated on `promoting` (live reward). Order uses `orders_enabled`
+// (locked by default; also unlocks when a menu is on file). Reserve is
+// offered unless `reservations_enabled` is explicitly false (operator Not
+// or a confirmed walk-in). Credits has no gate at all yet — see below.
 
 export const ORDER_BLOCKED = {
   aria: "Ordering isn't available at this place yet",

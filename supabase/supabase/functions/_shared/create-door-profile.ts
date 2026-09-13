@@ -24,6 +24,7 @@ import {
 import { ENRICH_DESCRIPTION_MAX, OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { loadModelsConfig } from "./models-config.ts";
+import { reservationsLikelyFromInference } from "./infer-place-reservations.ts";
 
 export type DoorProfile = {
   category: string | null;
@@ -174,7 +175,7 @@ export async function synthesizeDoorProfile(
       familyKeys,
       tags,
       description,
-      reservationsLikely: parsed.reservations_likely === true,
+      reservationsLikely: reservationsLikelyFromInference(parsed),
       mesitaNameCandidate: str(parsed.mesita_name)?.slice(0, nameMax) ?? null,
       semanticSummary: str(parsed.semantic_summary)?.slice(0, SUMMARY_MAX) ??
         null,

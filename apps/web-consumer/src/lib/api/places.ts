@@ -130,6 +130,10 @@ export type Place = {
   from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
+  /** Guest Order CTA. Absent/false until a menu is on file. */
+  orders_enabled?: boolean | null;
+  /** Guest Reserve CTA. Absent or true offers Reserve; false = Not / walk-in. */
+  reservations_enabled?: boolean | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
   //
