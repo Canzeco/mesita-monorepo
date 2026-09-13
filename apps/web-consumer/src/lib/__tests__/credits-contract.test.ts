@@ -167,10 +167,119 @@ describe("wallet block order", () => {
     // "Put in boxes, modularize" (Pato, 2026-09-08). Ways to pay was a
     // bordered card and the other two were bare headings; three blocks, two
     // chrome systems. A hand-rolled section header reappearing in this file is
-    // the regression.
+    // the regression — including the one an un-boxed section invites, which is
+    // why `chrome="none"` is a rung of the shared component and not a `<div>`
+    // written here.
+    // `code()`, not raw: this file's own header now explains that WalletPanel
+    // renders the `<section>` at every rung, and a raw match would flag the
+    // explanation instead of the code.
     expect(CLIENT).toContain("WalletPanel");
-    expect(CLIENT).not.toContain("<section");
-    expect(CLIENT).not.toContain("SectionHead");
+    expect(code(CLIENT)).not.toContain("<section");
+    expect(code(CLIENT)).not.toContain("SectionHead");
+  });
+
+  it("ranks the three blocks — one object, three chrome values", () => {
+    // MESITA-1825. ONE OBJECT IS NOT ONE LOOK. MESITA-1708 mounted all three
+    // sections in WalletPanel and the component had exactly one appearance, so
+    // the screen became three identical boxes with three identical legends —
+    // "App UI made of stacked cards instead of layout", and the second "wtf is
+    // that" in a row. Order is locked (Pato re-confirmed it 2026-09-13 with
+    // the reversal on the table), so rank CANNOT come from position; it comes
+    // from weight, and a second `raised` would flatten the ladder again.
+    const bare = code(CLIENT);
+    const at = (needle: string) => bare.indexOf(needle);
+    expect(at('chrome="none"')).toBeGreaterThan(-1);
+    expect(at('chrome="raised"')).toBeGreaterThan(-1);
+    // The unboxed rung is Ways to pay, the raised rung is Credits.
+    expect(at('chrome="none"')).toBeLessThan(at('title="Cards"'));
+    expect(at('title="Cards"')).toBeLessThan(at('chrome="raised"'));
+    // Exactly one of each: two raised panels is no hierarchy.
+    expect(bare.match(/chrome="raised"/g)).toHaveLength(1);
+    expect(bare.match(/chrome="none"/g)).toHaveLength(1);
+  });
+
+  it("keeps the landmark on the rung that lost its box", () => {
+    // Un-boxing by hand would have dropped the <section> and its accessible
+    // name with the border. WalletPanel renders both at every rung, so the
+    // element is the constant and only the chrome varies.
+    const panel = code(PANEL);
+    expect(panel).toContain("<section");
+    expect(panel).toContain("aria-label");
+    // `none` must be a real rung of the ladder, not an alias for `flat`.
+    expect(panel).toMatch(/none:\s*""/);
+  });
+
+  it("names money on the screen about money", () => {
+    // MESITA-1825. The Wallet carried no amount anywhere — not even a zero.
+    // "You have zero" is an answer; a bold sentence and no figure is not.
+    expect(code(CLIENT)).toContain("WalletMoney");
+    expect(code(CLIENT)).toContain("formatCurrency(0)");
+  });
+
+  it("computes no grand total across balances", () => {
+    // D3, and this one is arithmetic rather than taste:
+    // consumer-web-list-credit-balances returns no total and pages by keyset,
+    // so any client-side sum is wrong the moment `hasMore` is true. Credits
+    // are org-scoped besides, so a cross-org figure is money that cannot be
+    // spent as one number anywhere. WalletMoney is empty-state only.
+    const bare = code(CLIENT);
+    expect(bare).not.toMatch(/\.reduce\(/);
+    expect(bare).not.toMatch(/spendableCents\s*\+/);
+    // The figure sits in the `balances.length === 0` branch, above the Buy
+    // link that only that branch renders.
+    // `<WalletMoney`, not `WalletMoney` — the bare name matches the import at
+    // the top of the file, which is before every branch by definition.
+    const empty = bare.indexOf("balances.length === 0");
+    expect(empty).toBeGreaterThan(-1);
+    expect(bare.indexOf("<WalletMoney")).toBeGreaterThan(empty);
+  });
+
+  it("gives the section actions a 44px hit box once they stop being pills", () => {
+    // MESITA-1708 D5 measured that floor on these buttons; MESITA-1825 D4 took
+    // the fill off them. A link that looks like text is the easiest place to
+    // lose a touch target, so the padding that restores it is load-bearing and
+    // not decoration — `py-3` around `text-sm` is 44px.
+    const bare = code(CLIENT);
+    for (const constant of ["ADD_BUTTON_CLASS", "HeadAction"]) {
+      expect(bare, constant).toContain(constant);
+    }
+    expect(bare).toMatch(/const ADD_BUTTON_CLASS =[\s\S]*?py-3/);
+    // No filled pink pills left beside the one solid button.
+    expect(bare).not.toContain("bg-primary/10");
+  });
+
+  it("spans Buy across its panel", () => {
+    // MESITA-1825. It sat left-aligned at the bottom of the third of three
+    // equal boxes — the least-looked-at pixel on the screen.
+    expect(code(CLIENT)).toMatch(/const BUY_BUTTON_CLASS =[\s\S]*?w-full/);
+  });
+
+  it("puts the error in the panel that failed", () => {
+    // MESITA-1825 D5. A failed balance read used to announce itself as a red
+    // line pinned under the tab bar, two panels away from the Credits section
+    // that merely looked empty.
+    const bare = code(CLIENT);
+    const credits = bare.indexOf('title="Credits"');
+    const alert = bare.indexOf('role="alert"');
+    expect(alert).toBeGreaterThan(credits);
+    expect(alert).toBeLessThan(bare.lastIndexOf("</WalletPanel>"));
+  });
+
+  it("skeletons the money line, not only the card", () => {
+    // MESITA-1825 T5. Skeletoning only the card height meant the figure above
+    // it popped in from nothing on every load — the one element the eye is
+    // already aimed at.
+    // `height: CARD_PX`, not `CARD_PX` — the bare name matches the import line
+    // at the top, which would make this slice run backwards and always pass
+    // empty. The money skeleton is the one BEFORE the card-sized one.
+    const bare = code(CLIENT);
+    const loading = bare.indexOf("credits.loading ?");
+    const card = bare.indexOf("height: CARD_PX");
+    expect(loading).toBeGreaterThan(-1);
+    expect(card).toBeGreaterThan(loading);
+    expect(bare.slice(loading, card).match(/<Skeleton/g) ?? []).not.toHaveLength(
+      0,
+    );
   });
 
   it("keeps the display face off the panel titles", () => {
@@ -212,6 +321,18 @@ describe("wallet block order", () => {
     const head = actions.slice(0, actions.indexOf("</WalletPanel>"));
     const headActions = head.slice(0, head.indexOf("{credits.loading"));
     expect(headActions).not.toContain("walletBuy");
+  });
+
+  it("leaves the Stripe disclosure left-aligned and undimmed", () => {
+    // MESITA-1825 D6. Dimming legal copy with `/80` thinned the one sentence
+    // that says who holds the card number below the contrast every other
+    // secondary line on the screen holds; centring it made the longest string
+    // in the panel the only one not on the gutter.
+    const disclosure = code(CARD_LIST).slice(
+      code(CARD_LIST).indexOf("export function CardsDisclosure"),
+    );
+    expect(disclosure).not.toContain("text-center");
+    expect(disclosure).not.toContain("text-muted-foreground/80");
   });
 
   it("mounts the shared card list, never a second one", () => {

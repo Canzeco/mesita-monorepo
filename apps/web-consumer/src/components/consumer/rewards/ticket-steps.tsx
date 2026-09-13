@@ -45,7 +45,7 @@ export function MoneyRow({
       <span className="text-muted-foreground min-w-0 text-xs">
         <span className="block truncate">{label}</span>
         {sub ? (
-          <span className="text-muted-foreground/80 type-meta block leading-snug">
+          <span className="text-muted-foreground type-label block leading-snug">
             {sub}
           </span>
         ) : null}
@@ -181,7 +181,7 @@ export function StepBill({
             className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
           />
         </div>
-        <p className="text-muted-foreground/80 type-meta mt-1">
+        <p className="text-muted-foreground type-body mt-1">
           The printed total, before your discount.
         </p>
 

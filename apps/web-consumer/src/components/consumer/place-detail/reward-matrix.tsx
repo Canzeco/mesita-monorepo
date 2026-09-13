@@ -287,7 +287,7 @@ export function RewardTotal({
           {total}%
         </span>
       </div>
-      <p className="text-muted-foreground type-label leading-snug">
+      <p className="text-muted-foreground type-body leading-snug">
         {quote.additive
           ? "Your class plus every bonus you complete, added together"
           : "Bonuses don't stack here — you keep the single best one"}

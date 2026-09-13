@@ -168,7 +168,7 @@ export function OnboardForm({
             Your birthday
           </span>
           <BirthdayPicker value={birthday} onChange={setBirthday} />
-          <p className="text-muted-foreground type-label mt-2">
+          <p className="text-muted-foreground type-body mt-2">
             Private. It checks you&apos;re {MIN_SIGNUP_AGE} or over, and sets
             the age on your Passport.
           </p>

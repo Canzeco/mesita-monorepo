@@ -374,7 +374,7 @@ export function ReservationSheet({
                   aria-label="Last name"
                   className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
                 />
-                <p className="text-muted-foreground type-label mt-2">
+                <p className="text-muted-foreground type-body mt-2">
                   This is the name your table is booked under.
                 </p>
               </div>
@@ -445,7 +445,7 @@ export function ReservationSheet({
                 submitLabel
               )}
             </button>
-            <p className="text-muted-foreground type-label mt-2 text-center">
+            <p className="text-muted-foreground type-body mt-2 text-center">
               {guestNotify === "app"
                 ? "Mesita's AI agent calls the place to book — you'll see the answer here."
                 : "Mesita's AI agent calls the place to book — then calls you to confirm."}

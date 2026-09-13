@@ -78,7 +78,7 @@ export function PinField({
       />
       <p
         id={countId}
-        className="text-muted-foreground type-label mt-2 text-center"
+        className="text-muted-foreground type-body mt-2 text-center"
       >
         {value.length}/{length}
       </p>
@@ -86,7 +86,7 @@ export function PinField({
         <p
           id={errorId}
           role="alert"
-          className="text-destructive type-label mt-1 text-center"
+          className="text-destructive type-body mt-1 text-center"
         >
           {error}
         </p>

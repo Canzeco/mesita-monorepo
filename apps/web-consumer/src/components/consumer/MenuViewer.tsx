@@ -193,7 +193,7 @@ function MenuViewerBody({
         </div>
       ) : (
         <div className="border-border flex shrink-0 items-center justify-between gap-3 border-t px-4 py-2.5">
-          <p className="text-muted-foreground type-label leading-snug">
+          <p className="text-muted-foreground type-body leading-snug">
             Prices may differ at the place.
           </p>
           <a
