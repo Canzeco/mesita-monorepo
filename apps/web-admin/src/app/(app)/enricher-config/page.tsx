@@ -1,9 +1,13 @@
 import { getAtlasSettings } from "./actions";
 import { IntakeClient } from "./IntakeClient";
 import { type IntakeSettings } from "./intake-guards";
+import {
+  getVerificationConfig,
+  type VerificationConfig,
+} from "../verification-config/actions";
 
-// INTAKE — how a place becomes a profile. Four modules: Models · Create ·
-// Enrich · Functions. Search eligibility is Discovery › Map, not this page.
+// INTAKE — how a place becomes a profile. Models · Create · Enrich ·
+// Functions · Verification. Search eligibility is Discovery › Map, not this page.
 //
 // One GET, seeded server-side. A failed load blocks Save so client
 // defaults cannot overwrite the live singleton (MESITA-737).
@@ -31,8 +35,17 @@ const SETTINGS_FALLBACK: IntakeSettings = {
   requestThreshold: 5,
 };
 
+const VERIFICATION_FALLBACK: VerificationConfig = {
+  createPlacesAsVerified: false,
+  autoVerifyAiCall: true,
+  autoVerifyAiEmail: true,
+};
+
 export default async function IntakePage() {
-  const settings = await getAtlasSettings();
+  const [settings, verification] = await Promise.all([
+    getAtlasSettings(),
+    getVerificationConfig(),
+  ]);
 
   return (
     <IntakeClient
@@ -68,6 +81,11 @@ export default async function IntakePage() {
       // Read-only, straight from `_shared/intake-prompts.ts`. No fallback: a
       // prompt the console invented would be worse than one it cannot show.
       prompts={settings.ok ? (settings.data.intakePromptsMeta ?? []) : []}
+      verificationConfig={
+        verification.ok ? verification.config : VERIFICATION_FALLBACK
+      }
+      verificationUpdatedAt={verification.ok ? verification.updatedAt : null}
+      verificationLoadError={verification.ok ? null : verification.error}
     />
   );
 }

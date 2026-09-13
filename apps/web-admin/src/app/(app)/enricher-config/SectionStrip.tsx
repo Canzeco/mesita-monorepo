@@ -15,6 +15,7 @@ const LINKS: { id: string; label: string }[] = [
   { id: "s-create", label: "Create" },
   { id: "s-enrich", label: "Enrich" },
   { id: "s-functions", label: "Functions" },
+  { id: "s-verification", label: "Verification" },
 ];
 
 export function SectionStrip() {

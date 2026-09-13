@@ -7,7 +7,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
-  Settings2,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -22,6 +21,7 @@ import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
 import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
+import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 
 function isNavActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -73,11 +73,9 @@ const MANAGE_NAV: NavItem[] = [
 
 // Configurations — ordered as the product flows, not alphabetically or by age.
 // Two lifecycles end to end, a place's then a guest's:
-//   platform  who operates the console, then which model everything runs on
-//   supply    a place's life, all of it on ONE page: eligible to enter, then
-//             the Intaker that fills its profile (Intake; the profile SPEC is
-//             Notion Atlas Rules — nothing to configure, so no page) → how
-//             ownership gets sealed (Verification)
+//   platform  which model each subsystem thinks with (Models)
+//   supply    a place's life on Intake: the Intaker that fills its profile,
+//             plus who may prove they own a place (Verification)
 //   demand    a guest's night: how they find a place (Discovery) → how they
 //             book it (Reservations) → the journey once they sit down (Visits,
 //             the local context — Bill · Sync · Report · Visits Rewards ·
@@ -110,15 +108,12 @@ const MANAGE_NAV: NavItem[] = [
  * NAME it points here instead of enumerating.
  */
 const CONFIGURATIONS_NAV: NavItem[] = [
-  // General absorbed Models and Verification (MESITA-1175): a page whose
-  // whole content is three controls does not earn a rail row. Ojo's policy
-  // lives on Visits (who reads the proof); /ojo-config redirects there.
-  // Visits Rewards is the same: /rewards-config redirects to Visits.
-  // Models and Verification routes still redirect into General.
-  { href: "/general-config", label: "General", Icon: Settings2 },
-  // INTAKE is one row for the Intaker: Models · Create · Enrich ·
-  // Functions. Search eligibility is Discovery › Map. /sourcing-config
-  // redirects there.
+  // Models — four platform picks. /general-config redirects here (MESITA-1788).
+  // Ojo's policy lives on Visits; /ojo-config redirects there. Visits Rewards
+  // is the same: /rewards-config redirects to Visits.
+  MODELS_PARENT,
+  // Intake — Intaker modules plus Verification. /verification-config and
+  // /sourcing-config redirect here.
   INTAKE_PARENT,
   FILTERS_PARENT,
   VISITS_PARENT,

@@ -18,7 +18,7 @@ export default async function VerificationsPage() {
       <PageHeader
         eyebrow="Places · Verification queue"
         title="Place verification requests"
-        description="Claims that need a human decision. Auto-confirm policy lives on General — when auto-confirm is on for a method, successful proofs never land here."
+        description="Claims that need a human decision. Auto-confirm policy lives on Intake — when auto-confirm is on for a method, successful proofs never land here."
       />
       <div className="mt-6 sm:mt-8">
         {claimsResult.ok ? (
