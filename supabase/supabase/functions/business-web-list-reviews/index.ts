@@ -20,7 +20,8 @@ import {
 } from "../_shared/auth.ts";
 import { consumerDisplayName } from "../_shared/consumer-lookup.ts";
 import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
-import { checkUrlFor } from "../_shared/ticket-check.ts";
+
+const CHECK_URL_BASE = "https://check.mesita.ai/";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -126,7 +127,7 @@ Deno.serve(async (req) => {
       createdAt: row.created_at,
       ticketId: row.ticket_id,
       guestName: consumer ? (consumerDisplayName(consumer) ?? "Guest") : "Guest",
-      visitUrl: code ? checkUrlFor(code) : null,
+      visitUrl: code ? `${CHECK_URL_BASE}${code}` : null,
     };
   });
 
