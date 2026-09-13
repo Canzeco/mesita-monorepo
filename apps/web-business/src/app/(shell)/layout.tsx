@@ -1,17 +1,17 @@
-// The console shell. Four screens over one organization at a time.
+// The console shell. One frame over every screen.
 //
-// The layout resolves the caller's organizations once and hands the list to
-// the header, so the switcher is populated on every screen without each page
-// re-fetching it. WHICH one is active is resolved from ?org= by the header
-// (client-side) and by each page (server-side) — layouts cannot read
-// searchParams, so this file deliberately does not decide it. The header's
-// breadcrumb needs a NAME on the first frame though, so it takes the same
-// fallback every page uses: the first organization.
+// The layout resolves the caller's organizations once — each with its places
+// and the caller's role — and hands the whole viewer to the chrome. WHICH
+// organization and WHICH place are on screen is not decided here: a layout
+// cannot read the pathname, and the pathname is what names them now
+// (MESITA-1807, lib/rail-scope.ts). What this file adds is what the pathname
+// cannot carry on a fresh request: the two rail cookies (last place, last
+// organization), read raw and plausibility-checked, so the first frame paints
+// the right boxes without a round trip.
 //
 // The nav is a lateral rail as of MESITA-1710; AppShell owns the frame and is
 // the only scroller. See its docblock for why `TOPNAV_OCCUPIED_PX` no longer
-// exists. The rail itself is three collections as of MESITA-1793 — Account,
-// Organizations, Places — and does not list places.
+// exists.
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
@@ -19,7 +19,12 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/console/AppShell";
 import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
-import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
+import {
+  RAIL_ORG_COOKIE,
+  RAIL_PLACE_COOKIE,
+  SIDEBAR_COLLAPSED_COOKIE,
+  plausibleId,
+} from "@/lib/sidebar-prefs";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiConsoleViewer, type ConsoleViewer } from "@/lib/api/organizations";
 
@@ -46,23 +51,26 @@ export default async function ShellLayout({
   const user = await getServerUser();
   if (!user) redirect("/signin");
 
-  // The header switcher needs the list. A failure must not blank the
-  // console: the switcher degrades to nothing, and each page reports its
-  // own error. Places still ride this EF; we just stop threading them into
-  // the rail (MESITA-1793).
-  const viewer: ConsoleViewer = await apiConsoleViewer(supabase).catch(
-    (err) => {
-      console.error("[console] business-web-list-organizations:", err);
-      return { organizations: [], isSuperAdmin: false };
-    },
-  );
-  const organizations = viewer.organizations;
+  // A failure must not blank the console — and must not read as "you have
+  // no organizations" either (MESITA-1793's law: a fetch failure never says
+  // "create one"). The rail gets the flag and says so; each page reports its
+  // own error.
+  let viewer: ConsoleViewer = { organizations: [], isSuperAdmin: false };
+  let viewerError = false;
+  try {
+    viewer = await apiConsoleViewer(supabase);
+  } catch (err) {
+    viewerError = true;
+    console.error("[console] business-web-list-organizations:", err);
+  }
 
   const jar = await cookies();
   const collapsed = jar.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
+  const rememberedPlaceId = plausibleId(jar.get(RAIL_PLACE_COOKIE)?.value);
+  const rememberedOrgId = plausibleId(jar.get(RAIL_ORG_COOKIE)?.value);
 
   return (
-    // Suspense because the rail and the header both read searchParams.
+    // Suspense because the header reads searchParams.
     // The fallback is a bare frame rather than a spinner: the shell's job is
     // to be there instantly, and a flashing skeleton rail is worse than a
     // quiet one.
@@ -72,10 +80,17 @@ export default async function ShellLayout({
           a hook cannot see a provider its own component renders. */}
       <OpenPlaceProvider>
         <AppShell
-          organizations={organizations.map((o) => ({
+          organizations={viewer.organizations.map((o) => ({
             id: o.id,
             name: o.name,
+            myRole: o.myRole,
+            places: o.places,
           }))}
+          isSuperAdmin={viewer.isSuperAdmin}
+          viewerError={viewerError}
+          accountLabel={user.email ?? "Account"}
+          rememberedPlaceId={rememberedPlaceId}
+          rememberedOrgId={rememberedOrgId}
           defaultCollapsed={collapsed}
         >
           {/* FLUID: no max-width (MESITA-1558). Two things depend on that and

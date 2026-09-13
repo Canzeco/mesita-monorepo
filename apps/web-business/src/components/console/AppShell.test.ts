@@ -113,28 +113,25 @@ describe("the rail is light, and every text token is a measured pair", () => {
     expect(rail).toContain("lg:min-h-0");
   });
 
-  it("every chrome href carries the active organization", () => {
-    // Dropping `?org=` on ONE link is enough to switch a multi-org operator's
-    // context out from under them: the destination falls back to
-    // organizations[0] and every subsequent href follows it. The mobile
-    // wordmark is where this got missed.
+  it("every chrome href comes from console-routes, never a path built inline", () => {
+    // The organization is in the PATH now (MESITA-1807), so there is no
+    // parameter to drop — but a raw path built inline still bypasses the
+    // route contract, and `placeIdFromPathname` would still light the row
+    // correctly while the link itself 404s. Every href is a contract call, or
+    // a prop that its caller built from one.
     //
     // SCAN BOTH FILES. This assertion used to read `code(shell)` alone, so it
-    // covered AppShell's single href and none of the rail's seven — the guard
-    // sat at 1 of 8 and looked green the whole time. The rail is where the nav
+    // covered AppShell's single href and none of the rail's — the guard sat at
+    // 1 of 8 and looked green the whole time. The rail is where the nav
     // actually lives, so it was the half that mattered.
-    //
-    // The rail routes hrefs through `href()` (which applies withOrg) or through
-    // `placeTabHref(..., activeOrgId)`; AppShell applies withOrg directly. The
-    // failure being caught is a raw path built inline: it bypasses
-    // console-routes AND can drop the org, and `placeIdFromPathname` would
-    // still light the row correctly while the link itself 404s.
     const SANCTIONED = [
-      /^href=\{withOrg\(/, // applied directly
-      /^href=\{href\(/, // the rail's helper: (to) => withOrg(to, activeOrgId)
-      /^href=\{placeTabHref\(/, // carries activeOrgId as its third argument
-      /^href=\{href\}$/, // NavRow's prop pass-through: built by its caller
-      /^href=\{createHref\}$/, // CollectionRow's Plus: caller builds it (bare for org, href() for claim)
+      /^href=\{SHELL_ROUTES\./, // a fixed address
+      /^href=\{orgHref\(/, // an organization page
+      /^href=\{orgPlacesHref\(/, // the list
+      /^href=\{orgPlacesNewHref\(/, // the claim ceremony
+      /^href=\{placeTabHref\(/, // a place view
+      /^href=\{landingHref\}$/, // where / would land, resolved by AppShell
+      /^href=\{href\}$/, // NavRow / CeremonyPlus / MenuLink prop pass-through: built by the caller
     ];
     const links = [
       ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),
@@ -147,9 +144,29 @@ describe("the rail is light, and every text token is a measured pair", () => {
     for (const link of links) {
       expect(
         SANCTIONED.some((ok) => ok.test(link)),
-        `${link} does not carry the active organization`,
+        `${link} is not built from the route contract`,
       ).toBe(true);
     }
+  });
+
+  it("ignores Escape and Tab that a rail menu already handled", () => {
+    // A picker's menu is portaled to body, outside the drawer, and Radix
+    // handles Escape (and prevents Tab) on a document CAPTURE listener that
+    // runs before this window handler. Without the guard one Esc closes the
+    // menu AND the drawer.
+    expect(shell).toContain("if (e.defaultPrevented) return;");
+    expect(shell.indexOf("if (e.defaultPrevented) return;")).toBeLessThan(
+      shell.indexOf('if (e.key === "Escape")'),
+    );
+  });
+
+  it("resolves the scope once and remembers it in the two rail cookies", () => {
+    expect(shell).toContain("useRailScope(");
+    expect(shell).toContain("RAIL_ORG_COOKIE");
+    expect(shell).toContain("RAIL_PLACE_COOKIE");
+    // Only a place actually OPEN is remembered — the rail's fallback pick is
+    // not a visit.
+    expect(shell).toContain("scope.placeIsCurrent ? (scope.place?.id ?? null) : null");
   });
 
   it("labels the nav landmark", () => {

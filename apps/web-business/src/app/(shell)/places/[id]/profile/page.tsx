@@ -5,6 +5,7 @@
 // manage surface yet, so this is where Claim lives (the tab row hides
 // everything else until it is held).
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { ArrowLeft } from "lucide-react";
 import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
@@ -13,42 +14,44 @@ import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView } from "@/lib/place-view";
 import { apiListOrganizations } from "@/lib/api/organizations";
-import {
-  canClaim,
-  canRelease,
-  resolveActiveOrg,
-} from "@/lib/active-organization";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { canClaim, canRelease, preferredOrg } from "@/lib/active-organization";
+import { SHELL_ROUTES, orgPlacesHref } from "@/lib/console-routes";
+import { RAIL_ORG_COOKIE, plausibleId } from "@/lib/sidebar-prefs";
 import { ProfileTab } from "./ProfileTab";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlaceProfilePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
   const manage = await getManagePlace(id);
   if (manage) return <ProfileTab />;
 
   // ── Pool place: identity + the claim door. ──────────────────────────────
-  const sp = await searchParams;
   const supabase = await createServerSupabase();
   const view = await getPlaceView(supabase, id);
   const orgs = await apiListOrganizations(supabase).catch(() => []);
-  const activeOrg = resolveActiveOrg(orgs, sp.org);
+  // Claim writes into an organization, and a pool place names none: the one
+  // remembered from the last visit (the rail's own cookie), else the first —
+  // the same fallback the rail shows beside this page.
+  const jar = await cookies();
+  const activeOrg = preferredOrg(
+    orgs,
+    plausibleId(jar.get(RAIL_ORG_COOKIE)?.value),
+  );
   const { place, holder, claimable } = view;
 
   // One list since MESITA-1614, so held and unheld places go back to the
   // same screen. A held place carries its holder's org so Back lands on the
   // portfolio you came from rather than on whichever org happened to be active.
-  const backHref = withOrg(
-    SHELL_ROUTES.places,
-    holder?.organizationId ?? activeOrg?.id ?? null,
-  );
+  const backHref = holder
+    ? orgPlacesHref(holder.organizationId)
+    : activeOrg
+      ? orgPlacesHref(activeOrg.id)
+      : SHELL_ROUTES.root;
 
   return (
     <>

@@ -1,6 +1,5 @@
-// Nested under organization/loading.tsx. In Next 16 the parent's dashboard
-// pulse would wrap this segment, so the ceremony has to paint a FORM, not
-// two 132px cards (MESITA-1793).
+// The ceremony's boundary is form-shaped, not two dashboard cards: a title, a
+// line, one field, one button.
 export default function Loading() {
   return (
     <div className="flex max-w-md flex-col gap-4">

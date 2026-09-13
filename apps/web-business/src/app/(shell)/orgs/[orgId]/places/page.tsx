@@ -1,5 +1,6 @@
-// Places — ONE list (MESITA-1614). What this organization holds and what it
-// can claim, in one page, told apart by the Owned column.
+// Places — ONE list (MESITA-1614), under its organization (MESITA-1807).
+// What this organization holds and what it can claim, in one page, told
+// apart by the Owned column.
 //
 // It used to be two screens. That split was a filter wearing the costume of a
 // screen: both listed places, both rendered the same row, and the only
@@ -14,82 +15,34 @@
 // role does not allow it, so a viewer sees a list and no verbs.
 import { Store } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { PlaceVerifyButton } from "@/components/console/PlaceVerifyButton";
 import { PlaceStatesTable } from "@/components/console/PlaceStatesTable";
-import { NoOrganization } from "@/components/console/NoOrganization";
-import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
+import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiListConsolePlaces,
-  apiListOrganizations,
   type ConsolePlace,
 } from "@/lib/api/organizations";
-import {
-  canClaim,
-  canRelease,
-  canVerify,
-  resolveActiveOrg,
-} from "@/lib/active-organization";
-import {
-  SHELL_ROUTES,
-  ownedFromParam,
-  placeHref,
-  placesHref,
-  withOrg,
-} from "@/lib/console-routes";
+import { canClaim, canRelease, canVerify } from "@/lib/active-organization";
+import { ownedFromParam, orgPlacesHref, placeHref } from "@/lib/console-routes";
+import { requireOrg } from "@/lib/org-scope";
 import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlacesPage({
+export default async function OrganizationPlacesPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ orgId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sp = await searchParams;
-
+  const [{ orgId }, sp] = await Promise.all([params, searchParams]);
   const supabase = await createServerSupabase();
-  // getServerUser, not supabase.auth.getUser: the shell layout above already
-  // validated this JWT over the network this request, and cache() hands back
-  // that answer instead of asking again (MESITA-1729).
-  const user = await getServerUser();
-  if (!user) redirect("/signin?next=/places");
-
-  // An organizations fetch failure is an ERROR, not "None yet" — the same law
-  // account/page.tsx states and obeys. Collapsing the two sends an operator who
-  // already HAS an organization to "Create an organization", and creating a
-  // second one is not undoable from this console.
-  let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
-  let orgsError = false;
-  try {
-    orgs = await apiListOrganizations(supabase);
-  } catch (e) {
-    orgsError = true;
-    console.error("[places] business-web-list-organizations:", e);
-  }
-  const org = resolveActiveOrg(orgs, sp.org);
-  if (orgsError || !org) {
-    return (
-      <>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Places
-        </h1>
-        {orgsError ? (
-          <PageErrorState
-            heading="Couldn't load your organizations"
-            message="The console could not read which organizations you belong to. Reload to try again."
-            retryHref={SHELL_ROUTES.places}
-          />
-        ) : (
-          <NoOrganization />
-        )}
-      </>
-    );
-  }
+  const org = await requireOrg(supabase, orgId);
 
   let places: ConsolePlace[] = [];
   let error: string | null = null;
@@ -113,15 +66,11 @@ export default async function PlacesPage({
 
   const held = places.filter((p) => p.owned === true).length;
 
-  // ONE READ, then a view of it (MESITA-1710). The rail's `Org Places` and
-  // `Public Places` rows are saved filters on this page, not screens, and the
-  // filter runs HERE rather than in the EF: `scope: "all"` already returns both
-  // halves in one call with every fact attached, so a per-filter fetch would be
-  // a second round trip for rows we are already holding. MESITA-1614 stands —
-  // the split is still a filter, it just has a name in the rail now.
-  //
-  // Same argument MESITA-1711 made about sorting: work on rows the page
-  // already has does not need a round trip.
+  // ONE READ, then a view of it (MESITA-1710). `?owned=org` and `?owned=public`
+  // are saved filters on this page, not screens, and the filter runs HERE
+  // rather than in the EF: `scope: "all"` already returns both halves in one
+  // call with every fact attached, so a per-filter fetch would be a second
+  // round trip for rows we are already holding. MESITA-1614 stands.
   const owned = ownedFromParam(sp.owned);
   const visible = owned
     ? places.filter((p) =>
@@ -151,7 +100,7 @@ export default async function PlacesPage({
             <>
               {" · "}
               <Link
-                href={withOrg(placesHref(), org.id)}
+                href={orgPlacesHref(org.id)}
                 className="hover:text-foreground underline underline-offset-2"
               >
                 see all {places.length}
@@ -165,28 +114,27 @@ export default async function PlacesPage({
         <PageErrorState
           heading="Couldn't load places"
           message={error}
-          retryHref={withOrg(SHELL_ROUTES.places, org.id)}
+          retryHref={orgPlacesHref(org.id)}
         />
       ) : visible.length === 0 ? (
         /* TWO empty states. The first is the merge's (MESITA-1664): the
-           catalogue itself is empty — production today (0 places, 0
-           organizations), so it is the state everyone actually sees, and it
-           gets no action, because businesses do not put places into the
-           catalogue any more, Mesita does. Offering "Add a place" would be a
-           button leading nowhere a manager is allowed to go.
+           catalogue itself is empty — production today (0 places), so it is
+           the state everyone actually sees, and it gets no action, because
+           businesses do not put places into the catalogue any more, Mesita
+           does. Offering "Add a place" would be a button leading nowhere a
+           manager is allowed to go.
 
-           The second arrived with the rail's filters (MESITA-1710), and it is
-           the one that would have lied: on `?owned=org` with places sitting in
+           The second arrived with the filters (MESITA-1710), and it is the
+           one that would have lied: on `?owned=org` with places sitting in
            the pool, "No places yet" is false — there ARE places, just none of
            them yours. A filter that empties the screen has to say it was the
            filter, and hand back the way out. */
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
           title={
-            // AN EMPTY CATALOGUE OUTRANKS THE FILTER, and this is the case
-            // that is live right now (0 places, 0 organizations). Keying off
-            // `owned` first would answer "Nothing left to claim — every place
-            // in the catalogue is already held" on `?owned=public` when the
+            // AN EMPTY CATALOGUE OUTRANKS THE FILTER. Keying off `owned`
+            // first would answer "Nothing left to claim — every place in the
+            // catalogue is already held" on `?owned=public` when the
             // catalogue holds nothing at all: a filter explaining an absence
             // it did not cause. Ask "is there anything?" before "did I hide
             // it?".
@@ -208,14 +156,14 @@ export default async function PlacesPage({
             // (MESITA-1664 — businesses do not add places, Mesita does).
             places.length === 0 ? null : owned === "org" ? (
               <Link
-                href={withOrg(placesHref("public"), org.id)}
+                href={orgPlacesHref(org.id, "public")}
                 className={CTA_BUTTON_CLASS}
               >
                 See Public Places
               </Link>
             ) : owned === "public" ? (
               <Link
-                href={withOrg(placesHref("org"), org.id)}
+                href={orgPlacesHref(org.id, "org")}
                 className={CTA_BUTTON_CLASS}
               >
                 See Org Places
@@ -226,7 +174,6 @@ export default async function PlacesPage({
       ) : (
         <PlaceStatesTable
           places={visible}
-          organizationId={org.id}
           // PlaceStatesTable is a Client Component (the intake toggle needs
           // state), so the action cell has to arrive pre-rendered — a
           // function cannot cross the server/client boundary, but this
@@ -241,7 +188,7 @@ export default async function PlacesPage({
                     that actually changes the place's state (Claim), not the
                     one that just reads it. */}
                 <Link
-                  href={withOrg(placeHref(place.id), org.id)}
+                  href={placeHref(place.id)}
                   className={GHOST_PILL_BUTTON_CLASS}
                 >
                   Open

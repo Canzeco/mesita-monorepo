@@ -2,9 +2,15 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SHELL_ROUTES } from "./console-routes";
+import { SHELL_ROUTES, orgHref, orgPlacesNewHref } from "./console-routes";
 import { SIGNED_IN_BOUNCE, shouldGate } from "./supabase/middleware";
-import { canClaim, canRelease, resolveActiveOrg } from "./active-organization";
+import {
+  canClaim,
+  canRelease,
+  findHolder,
+  findOrg,
+  preferredOrg,
+} from "./active-organization";
 import type { Organization } from "./api/organizations";
 
 describe("middleware contract", () => {
@@ -15,24 +21,22 @@ describe("middleware contract", () => {
     expect(SIGNED_IN_BOUNCE.has("/signin")).toBe(true);
   });
   it("gates every console screen that reads real data", () => {
-    // Organization is in this list for the first time (MESITA-1727). While its
-    // address was `/` it could not be: these are PREFIX matches, so listing `/`
-    // would have gated the whole app, /signin included. The screen reads the
-    // Stripe account, the members, so it belongs here.
-    expect(shouldGate(SHELL_ROUTES.organization)).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.organizationNew)).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.placesNew)).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
-    // Place — the fourth screen. It reads one org's holdings, so it sits
-    // behind the same wall the list does.
+    // Every organization page and the ceremony sit under /orgs (MESITA-1807);
+    // the place console stays under /places; Account is its own.
+    expect(shouldGate(orgHref("abc"))).toBe(true);
+    expect(shouldGate(orgHref("abc", "payments"))).toBe(true);
+    expect(shouldGate(orgPlacesNewHref("abc"))).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.orgNew)).toBe(true);
     expect(shouldGate("/places/abc")).toBe(true);
+    expect(shouldGate("/places/abc/activity")).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
   });
   it("leaves the root ungated — it renders nothing to protect", () => {
-    // `/` forwards to the Organization screen and reads no data of its own.
-    // Gating it would bounce a signed-out visitor through sign-in only to
-    // reach a redirect. Its destination carries the wall, and so does
-    // (shell)/layout.tsx, which is the real boundary either way.
+    // `/` resolves to a place or an organization and reads no data of its
+    // own that a visitor could see. Gating it would bounce a signed-out
+    // visitor through sign-in only to reach a redirect. Its destination
+    // carries the wall, and so does (shell)/layout.tsx, which is the real
+    // boundary either way.
     expect(shouldGate("/")).toBe(false);
   });
   it("does not gate routes that no longer exist", () => {
@@ -42,9 +46,11 @@ describe("middleware contract", () => {
     // before the proxy sees them, so gating them would guard a dead path.
     expect(shouldGate("/place/abc")).toBe(false);
     expect(shouldGate("/settings")).toBe(false);
-    // MESITA-1614 merged the two lists; /pool is a redirect now, resolved
-    // before the proxy sees it, so gating it would guard a dead path.
     expect(shouldGate("/pool")).toBe(false);
+    // MESITA-1807 moved the organization into the path; the old address is a
+    // redirect now, resolved before the proxy sees it.
+    expect(shouldGate("/organization")).toBe(false);
+    expect(shouldGate("/organization/new")).toBe(false);
   });
 });
 
@@ -84,6 +90,17 @@ describe("client components never import the server data layer", () => {
       if (/from\s+["']@\/lib\/supabase/.test(src)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
+  });
+
+  it("the rail's scope rule and the place vocabulary stay server-free", () => {
+    // Both are imported by "use client" chrome; a server import in either
+    // drags the data layer into the browser bundle graph.
+    for (const rel of ["rail-scope.ts", "place-tabs.ts", "active-organization.ts", "console-routes.ts"]) {
+      const src = readFileSync(path.join(__dirname, rel), "utf8");
+      expect(src, rel).not.toMatch(/from\s+["']@\/lib\/supabase/);
+      expect(src, rel).not.toMatch(/from\s+["']@\/lib\/api\/_invoke/);
+      expect(src, rel).not.toMatch(/from\s+["']next\/headers/);
+    }
   });
 });
 
@@ -140,32 +157,50 @@ describe("the shell never re-couples to the overview EF", () => {
   });
 });
 
-const org = (id: string, myRole: Organization["myRole"]): Organization => ({
+const org = (
+  id: string,
+  myRole: Organization["myRole"],
+  places: string[] = [],
+): Organization => ({
   id,
   name: id,
   legalName: null,
   rfc: null,
   currency: "MXN",
   myRole,
-  placeCount: 0,
-  places: [],
+  placeCount: places.length,
+  places: places.map((p) => ({ id: p, name: p, photoUrl: null })),
 });
 
-describe("resolveActiveOrg", () => {
-  const orgs = [org("a", "owner"), org("b", "editor")];
-  it("honours ?org= when you belong to it", () => {
-    expect(resolveActiveOrg(orgs, "b")?.id).toBe("b");
+// NEVER AN ORACLE (MESITA-1807). The path names the organization now, and the
+// org layout answers 404 for a foreign id exactly as for a nonexistent one.
+// These pin the pure rules under it.
+describe("the organization rules", () => {
+  const orgs = [org("a", "owner", ["p-1"]), org("b", "editor")];
+
+  it("findOrg answers a membership the caller actually has", () => {
+    expect(findOrg(orgs, "b")?.id).toBe("b");
   });
-  it("falls back to the first when ?org= is absent", () => {
-    expect(resolveActiveOrg(orgs, undefined)?.id).toBe("a");
+
+  it("findOrg answers null for a foreign id AND for a nonexistent one", () => {
+    // The same answer for both, or the path becomes a membership oracle.
+    expect(findOrg(orgs, "someone-elses-org")).toBeNull();
+    expect(findOrg(orgs, "")).toBeNull();
+    expect(findOrg(orgs, null)).toBeNull();
+    expect(findOrg([], "a")).toBeNull();
   });
-  it("falls back rather than erroring on a foreign or stale id", () => {
-    // Never leak whether an id exists: an org you are not in resolves
-    // exactly like one that does not exist at all.
-    expect(resolveActiveOrg(orgs, "someone-elses-org")?.id).toBe("a");
+
+  it("preferredOrg is the remembered one when still a member, else the first", () => {
+    expect(preferredOrg(orgs, "b")?.id).toBe("b");
+    expect(preferredOrg(orgs, "someone-elses-org")?.id).toBe("a");
+    expect(preferredOrg(orgs, null)?.id).toBe("a");
+    expect(preferredOrg([], "a")).toBeNull();
   });
-  it("is null when you belong to none", () => {
-    expect(resolveActiveOrg([], "a")).toBeNull();
+
+  it("findHolder searches every organization, never only the remembered one", () => {
+    expect(findHolder(orgs, "p-1")?.org.id).toBe("a");
+    expect(findHolder(orgs, "p-x")).toBeNull();
+    expect(findHolder(orgs, null)).toBeNull();
   });
 });
 

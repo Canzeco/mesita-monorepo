@@ -1,10 +1,5 @@
-// The list renders a states matrix and issues a second query on the critical
-// path (the verification batch), so a slow response must not show console
-// chrome over a blank body — the shell's own Suspense fallback only reserves
-// the nav.
-//
-// The skeleton is the TABLE's shape, not a generic spinner: same card, same
-// bleed, same row height, so nothing jumps when the real rows land.
+// The list's skeleton: the sticky head band, then rows of thumb + name. Same
+// shape as the table, so nothing shifts when it lands.
 export default function Loading() {
   return (
     <div className="border-border bg-card -mx-4 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">

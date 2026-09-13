@@ -1,17 +1,19 @@
-// The two-row header's invariants (MESITA-1558).
+// The chrome's invariants (MESITA-1558, MESITA-1710, MESITA-1807).
 //
 // Every rule here is a pairing between two things that must agree and that no
 // compiler checks: a Tailwind literal against the constant it encodes, a
 // negative margin against the padding it cancels, a component against the
 // context it may not import. Each one, when broken, ships something that looks
-// fine on the viewport a developer checks first.
+// fine on the viewport a developer checks first. What can be proven by
+// RENDERING is proven in components/console/sidebar-render.test.tsx; these are
+// the source-level pairings.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import * as uiClasses from "./ui-classes";
 import { STATES_HEAD_STICKY, SHELL_BLEED, SHELL_GUTTER } from "./ui-classes";
-import { PLACE_TABS, placeTabHref } from "./place-tabs";
-import { ownedFromParam, placeHref, placesHref } from "./console-routes";
+import { PLACE_TABS, placeTabHref, tabsForAccess } from "./place-tabs";
+import { placeHref } from "./console-routes";
 
 const SRC = path.resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
@@ -44,10 +46,11 @@ describe("gutter and bleed are exact negatives", () => {
   });
 });
 
-// MESITA-1714. The bar is gone. Its name and its four tabs both live in the
-// rail now, so a sticky row restating them was 48px of chrome saying what the
-// column beside it already said. What survived is the h1 — as a page title in
-// the content flow, not as chrome.
+// MESITA-1714. The bar is gone. Its name and its views both live in the rail,
+// so a sticky row restating them was 48px of chrome saying what the column
+// beside it already said. What survived is the h1 — as a page title in the
+// content flow, not as chrome. (MESITA-1804's pill row lived here for a day
+// while the rail carried nothing; MESITA-1807 removed it for the same reason.)
 describe("the place screen has a heading, not a second bar", () => {
   it("PLACEBAR_STICKY_CLASS is gone, not merely unused", () => {
     // An exported sticky constant nobody reads is an invitation to wire a
@@ -67,6 +70,9 @@ describe("the place screen has a heading, not a second bar", () => {
     expect(h).not.toContain("sticky");
     expect(h).not.toContain("z-");
     expect(h).not.toContain(SHELL_BLEED);
+    // No second strip of views: the rail carries them (MESITA-1807).
+    expect(h).not.toContain("placeTabHref");
+    expect(h).not.toContain("<nav");
   });
 
   it("it is still the place screen's one h1", () => {
@@ -97,42 +103,6 @@ describe("the place screen has a heading, not a second bar", () => {
   });
 });
 
-// MESITA-1804. The rail dropped the view rows in MESITA-1793 and nothing else
-// linked to the views; until the scoped rail carries them again the heading
-// does. Source contract here; the rendered row is proven in
-// components/console/place-heading.test.tsx.
-describe("the place views are linked from the heading (MESITA-1804)", () => {
-  it("the heading builds its links from the one tab vocabulary", () => {
-    const h = readCode("components/console/PlaceHeading.tsx");
-    expect(h).toContain("placeTabHref(placeId, t, org)");
-    expect(h).toContain("PLACE_TAB_LABEL[t]");
-    expect(h).toContain('aria-label="Place views"');
-    expect(h).toContain('aria-current={active ? "page" : undefined}');
-  });
-
-  it("the layout hands the heading the SAME view set it publishes to the rail", () => {
-    const l = readCode("app/(shell)/places/[id]/layout.tsx");
-    expect(l).toContain("tabs={tabs}");
-    expect(l).toContain("placeId={id}");
-    // Props, not context: a row read from OpenPlace would render empty on the
-    // server and pop in after hydration.
-    const h = readCode("components/console/PlaceHeading.tsx");
-    expect(h).not.toContain("useOpenPlace()");
-  });
-
-  it("every pill routes through the unsaved-edits guard, except the one you are on", () => {
-    const h = readCode("components/console/PlaceHeading.tsx");
-    expect(h).toContain("useOpenPlaceGuard()");
-    expect(h).toContain("if (!active) guardNav?.(href, e)");
-  });
-
-  it("the row is still not chrome: no sticky, no second h1", () => {
-    const h = readCode("components/console/PlaceHeading.tsx");
-    expect(h).not.toContain("sticky");
-    expect((read("components/console/PlaceHeading.tsx").match(/<h1/g) ?? []).length).toBe(1);
-  });
-});
-
 // MESITA-1714. The guard travels UP; the component does not come down.
 describe("the unsaved-edits guard reaches the rail", () => {
   it("only the bridge reads PlaceContext, and it renders nothing", () => {
@@ -157,8 +127,7 @@ describe("the unsaved-edits guard reaches the rail", () => {
 
   it("never guards the row you are already on", () => {
     // That click navigates nowhere, so a discard prompt for it is an offer to
-    // throw work away for nothing. The deleted PlaceTabs skipped the guard on
-    // the active tab; losing that on the way into the rail was a regression.
+    // throw work away for nothing.
     expect(readCode("components/console/Sidebar.tsx")).toContain(
       "if (!active) onGuardedNavigate?.(href, e);",
     );
@@ -175,14 +144,14 @@ describe("the unsaved-edits guard reaches the rail", () => {
   });
 
   it("the wordmarks are guarded too — same destination, same rule", () => {
-    // Both wordmarks go to Organization, and the Organization ROW is guarded.
-    // One of them silently discarding edits while the other asks is worse than
-    // either rule applied consistently.
+    // Both wordmarks land where `/` would. One of them silently discarding
+    // edits while the other asks is worse than either rule applied
+    // consistently.
     expect(readCode("components/console/Sidebar.tsx")).toContain(
-      "guardNav?.(href(SHELL_ROUTES.organization), e)",
+      "guardNav?.(landingHref, e)",
     );
     expect(readCode("components/console/AppShell.tsx")).toContain(
-      "guardNav?.(",
+      "guardNav?.(landingHref, e)",
     );
   });
 
@@ -194,23 +163,33 @@ describe("the unsaved-edits guard reaches the rail", () => {
     expect(readCode("app/(shell)/layout.tsx")).toContain("<OpenPlaceProvider>");
   });
 
-  it("every rail row routes through the guard when one exists", () => {
+  it("every way out of the rail routes through the guard when one exists", () => {
     const rail = readCode("components/console/Sidebar.tsx");
-    const rows = rail.match(/<NavRow/g) ?? [];
-    expect(rows.length).toBe(3);
+    // Rows, the ceremony Plus, the menu's footer links, and the pickers' own
+    // choices — every one asks before leaving a dirty place.
     expect(rail).toContain("if (!active) onGuardedNavigate?.(href, e);");
-    // The Plus is a separate Link, not a NavRow. It must still ask.
-    expect(rail).toContain(
-      "if (!createActive) onGuardedNavigate?.(createHref, e);",
+    const plus = rail.slice(rail.indexOf("function CeremonyPlus"));
+    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain(
+      "onGuardedNavigate?.(href, e)",
+    );
+    const menuLink = rail.slice(rail.indexOf("function MenuLink"));
+    expect(menuLink.slice(0, menuLink.indexOf("\n}\n"))).toContain(
+      "onGuardedNavigate?.(href, e)",
+    );
+    // A picker's choice: the guard decides BEFORE the pending name is shown.
+    const go = rail.slice(rail.indexOf("const go = ("));
+    const goBody = go.slice(0, go.indexOf("};"));
+    expect(goBody.indexOf("guardNav?.(href)")).toBeGreaterThan(-1);
+    expect(goBody.indexOf("guardNav?.(href)")).toBeLessThan(
+      goBody.indexOf("setChoice("),
     );
   });
 });
 
-// MESITA-1793. The rail is three collections: Account · Organizations ·
-// Places. Nested 1779 place rows, the Org Places toggle, All Places and the
-// rail switcher all leave. The one rule that has outlived every redesign:
+// MESITA-1807. The rail is three scoped boxes: Account · Organization · Place,
+// each a picker and its pages. The one rule that has outlived every redesign:
 // nothing indents. Pato rejected a tree twice (1714, 1715).
-describe("the rail is three collections", () => {
+describe("the rail is three scoped boxes", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
   it("indents NOTHING, and draws no tree line or bullet", () => {
@@ -224,82 +203,85 @@ describe("the rail is three collections", () => {
     expect(r).not.toMatch(/rounded-full["\s]*\/>/);
   });
 
-  it("is Account · Organizations · Places, and nothing nested", () => {
+  it("a box is a ground, not a border, and its padding is paid for by its margin", () => {
+    const r = rail();
+    expect(r).toContain("WELL_BG");
+    expect(r).toContain('"-mx-0.5 p-0.5"');
+    // No box border: the ground is the container (Pato, direction A). The
+    // only border in a Scope is the w-16 hairline between boxes.
+    const scope = r.slice(r.indexOf("function Scope"), r.indexOf("function CeremonyPlus"));
+    expect(scope).not.toMatch(/(?<!sidebar-)\bborder(?!-sidebar-border\b|-t\b)/);
+  });
+
+  it("is Account · Organization · Place, in that order, and nothing else at the top level", () => {
     const r = rail();
     const at = (needle: string) => r.indexOf(needle);
-    expect(at('label="Account"')).toBeGreaterThan(at("<nav"));
-    expect(at('label="Account"')).toBeLessThan(at('label="Organizations"'));
-    expect(at('label="Organizations"')).toBeLessThan(at('label="Places"'));
-    expect(at('label="Places"')).toBeLessThan(at("</nav>"));
-    expect(r).not.toContain("SectionToggle");
-    expect(r).not.toContain("PlaceRow");
-    expect(r).not.toContain("WELL_BG");
-    expect(r).not.toContain("listed.map(renderPlace)");
-    expect(r).not.toContain('label="All Places"');
-    expect(r).not.toContain('label="Org Places"');
-    expect(r).not.toContain('label="Organization"');
-    expect(r).not.toContain("No organization");
+    expect(at('<Scope label="Account"')).toBeGreaterThan(at("<nav"));
+    expect(at('<Scope label="Account"')).toBeLessThan(at('<Scope label="Organization"'));
+    expect(at('<Scope label="Organization"')).toBeLessThan(at('<Scope label="Place"'));
+    expect(at('<Scope label="Place"')).toBeLessThan(at("</nav>"));
+    expect((r.match(/<Scope label=/g) ?? []).length).toBe(3);
     expect(r).not.toContain("<select");
+    expect(r).not.toContain('label="All Places"');
+    expect(r).not.toContain('label="Organizations"');
   });
 
-  it("Places uses Store, and no two rows share an icon", () => {
+  it("the pickers are buttons that open a menu, and never take the pill", () => {
     const r = rail();
-    const icons = (r.match(/Icon=\{(\w+)\}/g) ?? [])
-      .map((m) => m.replace(/Icon=\{|\}/g, ""))
-      .filter((name) => name !== "Icon");
-    expect(new Set(icons)).toEqual(
-      new Set(["UserRound", "Building2", "Store"]),
+    expect(r).toContain("DropdownMenuTrigger");
+    expect(r).toContain('label="Switch organization"');
+    expect(r).toContain('label="Switch place"');
+    const picker = r.slice(r.indexOf("function Picker"), r.indexOf("function OrgChip"));
+    expect(picker).toContain("aria-label={label}");
+    expect(picker).not.toContain("ROW_ACTIVE");
+    expect(picker).not.toContain("aria-current");
+    // The chip is never the pill's ink pair: two solid squares at w-16.
+    expect(r).toMatch(/const CHIP =\s*"bg-sidebar-accent text-foreground/);
+    expect(r).not.toContain('CHIP = "bg-foreground');
+  });
+
+  it("the org pages come from the route contract, and the place views from the ONE matrix", () => {
+    const r = rail();
+    expect(r).toContain("orgHref(org.id, page)");
+    expect(r).toContain("orgPageFromPathname(pathname)");
+    expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
+    expect(r).toContain("placeTabHref(placeSubjectId, tab)");
+    expect(r).not.toContain("?org=");
+    expect(r).not.toContain("withOrg(");
+    expect(r).not.toContain("window.location");
+    expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
+  });
+
+  it("the ceremonies are one click from the rail: a Plus beside each picker, repeated in its menu", () => {
+    const r = rail();
+    expect((r.match(/<CeremonyPlus/g) ?? []).length).toBe(2);
+    expect(r).toContain("href={SHELL_ROUTES.orgNew}");
+    expect(r).toContain("href={orgPlacesNewHref(org.id)}");
+    // Hidden at w-16 — two targets do not fit — so the menu footer is the door there.
+    const plus = r.slice(r.indexOf("function CeremonyPlus"));
+    expect(plus.slice(0, plus.indexOf("\n}\n"))).toContain("if (collapsed) return null;");
+    expect(r).toContain('label="All places"');
+    expect((r.match(/label="Claim a place"/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("at exactly one entry the menu shows a label, not a one-item choice", () => {
+    const r = rail();
+    expect(r).toContain("organizations.length === 1 ? (");
+    expect(r).toContain("org.places.length === 1 && !foreign ? (");
+  });
+
+  it("a choice shows the chosen name only after the guard let it through, and only on its own pathname", () => {
+    const r = rail();
+    expect(r).toContain("choice && choice.at === pathname ? choice.id : null");
+    expect(r).toContain("aria-busy={pending || undefined}");
+    expect(r).not.toContain("useEffect");
+  });
+
+  it("switching a place keeps the view when it may be opened there, else Profile", () => {
+    const r = rail();
+    expect(r).toContain(
+      'const view = currentView && allowed.includes(currentView) ? currentView : "profile";',
     );
-  });
-
-  it("Organizations is active on the collection AND the ceremony", () => {
-    const r = rail();
-    expect(r).toContain("pathname === SHELL_ROUTES.organization ||");
-    expect(r).toContain("pathname.startsWith(`${SHELL_ROUTES.organization}/`)");
-  });
-
-  it("Places is active on the list AND a place console", () => {
-    const r = rail();
-    expect(r).toContain("pathname === SHELL_ROUTES.places ||");
-    expect(r).toContain("pathname.startsWith(`${SHELL_ROUTES.places}/`)");
-  });
-
-  it("Create organization is a Plus on Organizations, and never carries ?org=", () => {
-    const r = rail();
-    expect(r).toContain("SHELL_ROUTES.organizationNew");
-    expect(r).not.toContain("withOrg(SHELL_ROUTES.organizationNew");
-    expect(r).toContain('createLabel="Create organization"');
-    const page = readCode("app/(shell)/organization/page.tsx");
-    expect(page).toContain("SHELL_ROUTES.organizationNew");
-    expect(page).not.toContain("withOrg(SHELL_ROUTES.organizationNew");
-    expect(page).not.toContain("CreateOrganizationForm");
-  });
-
-  it("Claim place is a Plus on Places, and carries ?org=", () => {
-    const r = rail();
-    expect(r).toContain("SHELL_ROUTES.placesNew");
-    expect(r).toContain("href(SHELL_ROUTES.placesNew)");
-    expect(r).toContain('createLabel="Claim a place"');
-    expect(r).toContain("collapsed &&");
-  });
-
-  it("the collection is never a form", () => {
-    expect(read("app/(shell)/organization/page.tsx")).not.toContain(
-      "CreateOrganizationForm",
-    );
-    expect(read("app/(shell)/organization/new/page.tsx")).toContain(
-      "CreateOrganizationForm",
-    );
-  });
-
-  it("has NO Public Places row — a complement is not a destination", () => {
-    expect(rail()).not.toContain('label="Public Places"');
-    expect(rail()).not.toContain('placesHref("public")');
-  });
-
-  it("still supports ?owned=public as a URL", () => {
-    expect(ownedFromParam("public")).toBe("public");
-    expect(placesHref("public")).toBe("/places?owned=public");
   });
 
   it("the footer holds the rail's own control and nothing else", () => {
@@ -309,94 +291,81 @@ describe("the rail is three collections", () => {
     expect(footer).not.toContain("<NavRow");
   });
 
-  it("the tab matrix is ONE function, read by the place layout", () => {
-    expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
-    expect(readCode("lib/place-tabs.ts")).toContain(
-      "export function tabsForAccess(",
-    );
-    expect(rail()).not.toContain("tabsForAccess");
+  it("focus travels on the brand's ring, not the browser's; menus respect reduced motion", () => {
+    expect(rail()).toContain("focus-visible:ring-sidebar-ring");
+    expect(rail()).toContain("motion-reduce:animate-none");
   });
 
-  it("the header switcher appears only at two-plus organizations", () => {
-    const hdr = readCode("components/console/ConsoleHeader.tsx");
-    expect(hdr).toContain("organizations.length > 1");
-    expect(hdr).toContain('aria-label="Switch organization"');
-    expect(hdr).not.toContain("window.location");
-    expect(rail()).not.toContain('aria-label="Switch organization"');
+  it("the layout hands the rail the whole viewer and the two rail cookies, raw", () => {
+    const layout = readCode("app/(shell)/layout.tsx");
+    expect(layout).toContain("apiConsoleViewer(supabase)");
+    expect(layout).toContain("isSuperAdmin={viewer.isSuperAdmin}");
+    expect(layout).toContain("places: o.places");
+    expect(layout).toContain("viewerError={viewerError}");
+    expect(layout).toContain("plausibleId(jar.get(RAIL_PLACE_COOKIE)?.value)");
+    expect(layout).toContain("plausibleId(jar.get(RAIL_ORG_COOKIE)?.value)");
+    // A layout cannot read the pathname, so it must not pretend to resolve.
+    expect(layout).not.toContain("resolveRailScope");
+    expect(layout).not.toContain("searchParams");
   });
 
   it("a claim or release still refreshes through the server tree", () => {
     expect(readCode("components/console/PlaceHoldButton.tsx")).toContain(
       "router.refresh()",
     );
-    expect(readCode("components/console/OpenPlace.tsx")).not.toContain(
-      "portfolioVersion",
-    );
   });
 
-  it("focus travels on the brand's ring, not the browser's", () => {
-    expect(rail()).toContain("focus-visible:ring-sidebar-ring");
-  });
-
-  it("the layout does not thread places into the rail", () => {
-    const layout = readCode("app/(shell)/layout.tsx");
-    expect(layout).toContain("apiConsoleViewer(supabase)");
-    expect(layout).not.toContain("isSuperAdmin={viewer.isSuperAdmin}");
-    expect(layout).not.toContain("places: o.places");
-    expect(layout).not.toContain("defaultOpenPlaceIds");
-    expect(layout).not.toContain("defaultPortfolioOpen");
-  });
-});
-
-describe("crumbsFor names the three collections", () => {
-  const crumbs = () => readCode("components/console/ConsoleHeader.tsx");
-
-  it("Create is Organizations / Create, never an empty trail", () => {
-    const s = crumbs();
-    expect(s).toContain("pathname === SHELL_ROUTES.organizationNew");
-    expect(s).toContain('return ["Organizations", "Create"]');
-  });
-
-  it("Claim is Places / Claim, never a Place id", () => {
-    const s = crumbs();
-    expect(s).toContain("pathname === SHELL_ROUTES.placesNew");
-    expect(s).toContain('return ["Places", "Claim"]');
-  });
-
-  it("the collection is Organizations, Places never take a filter crumb", () => {
-    const s = crumbs();
-    expect(s).toContain('return ["Organizations"]');
-    expect(s).toContain(
-      'if (pathname === SHELL_ROUTES.places) return ["Places"]',
-    );
-    expect(s).not.toContain('"Org Places"');
-    expect(s).not.toContain('"Public Places"');
-  });
-
-  it("a place console is Places / name", () => {
-    expect(crumbs()).toContain('return ["Places", openPlace?.name ?? "Place"]');
+  it("the tab matrix grants Reviews to every held role, and its union is the whole vocabulary", () => {
+    // The orphaned-view class (MESITA-1804): a tab the matrix never emits
+    // stays reachable by URL only, and every source-reading test stays green.
+    const union = new Set<string>();
+    for (const held of [true, false]) {
+      for (const role of ["owner", "editor", "viewer", null] as const) {
+        for (const isSuperAdmin of [true, false]) {
+          for (const t of tabsForAccess({ held, role, isSuperAdmin })) union.add(t);
+        }
+      }
+    }
+    expect([...union].sort()).toEqual([...PLACE_TABS].sort());
+    expect(tabsForAccess({ held: true, role: "viewer", isSuperAdmin: false })).toEqual([
+      "profile",
+      "reviews",
+      "activity",
+    ]);
+    expect(tabsForAccess({ held: false, role: null, isSuperAdmin: true })).toEqual([
+      "profile",
+    ]);
   });
 });
 
-// MESITA-1734. Boxes make this worse than it already was, which is why it is
-// pinned here and not left to review.
-//
-// In Next 16 a route with no `loading.tsx` does NOT fall back to a parent's:
-// LoadingBoundary returns a bare Fragment when `loading` is null, so the
-// suspending segment finds no boundary and the router keeps the PREVIOUS
-// screen painted (MESITA-1729 found this on Organization). Sibling tab
-// navigation does not re-run `places/[id]/layout.tsx` either, so
+describe("the header mirrors the rail", () => {
+  const hdr = () => readCode("components/console/ConsoleHeader.tsx");
+
+  it("reads the ONE scope AppShell resolved, and never a select", () => {
+    expect(hdr()).toContain("scope: RailScope");
+    expect(hdr()).not.toContain("<select");
+    expect(hdr()).not.toContain("useActiveOrg");
+    expect(readCode("components/console/AppShell.tsx")).toContain("<ConsoleHeader scope={scope} />");
+  });
+
+  it("names the pool place from the layout's publish", () => {
+    expect(hdr()).toContain("useOpenPlace()");
+    expect(hdr()).toContain("openPlace?.id === scope.foreignPlaceId");
+  });
+});
+
+// MESITA-1734. In Next 16 a route with no `loading.tsx` does NOT fall back to
+// a parent's: LoadingBoundary returns a bare Fragment when `loading` is null,
+// so the suspending segment finds no boundary and the router keeps the
+// PREVIOUS screen painted (MESITA-1729 found this on Organization). Sibling
+// tab navigation does not re-run `places/[id]/layout.tsx` either, so
 // `[id]/loading.tsx` is not the boundary for a tab click — the changed segment
 // is the tab, and every tab page awaits `getManagePlace(id)` on its own.
-//
-// The failure mode is specific to this design: the chevron opens a box, the
-// pill moves, and the content underneath stays on the previous view for the
-// duration. That reads as a broken toggle, not a slow one.
 describe("every place view has its own loading boundary", () => {
   const VIEWS = path.join(SRC, "app/(shell)/places/[id]");
 
   // A BIJECTION, not a one-way loop. Asserting only "every tab has a
-  // loading.tsx" passes just as happily when a fifth view directory appears
+  // loading.tsx" passes just as happily when a sixth view directory appears
   // with no boundary of its own; asserting only the reverse passes when a tab
   // is added and forgotten. Both directions, so neither hole is open.
   it("every known tab has one", () => {
@@ -425,6 +394,14 @@ describe("every place view has its own loading boundary", () => {
     // And the pulse stops for anyone who asked motion to stop.
     expect(s).toContain("motion-reduce:animate-none");
   });
+
+  it("Reviews guards like Capabilities: a pool place answers 404, never a throw", () => {
+    const page = readCode("app/(shell)/places/[id]/reviews/page.tsx");
+    expect(page).toContain("if (!manage) notFound();");
+    expect(readCode("components/place-manage/sections/PlaceSection.tsx")).not.toContain(
+      "ReviewsSummary",
+    );
+  });
 });
 
 describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", () => {
@@ -451,25 +428,27 @@ describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", ()
     expect(s).toContain('dirtyLabels.includes("Orders")');
     expect(s).toContain('dirtyLabels.includes("Reservations")');
   });
+
+  it("the Organization-for-Stripe door goes to the holder's Payments page", () => {
+    const s = readCode("components/place-manage/sections/PromosSection.tsx");
+    expect(s).toContain("useOpenPlace()?.holderOrgId");
+    expect(s).toContain('orgPageHref(holderOrgId, "payments")');
+    expect(s).not.toContain("useSearchParams");
+  });
 });
 
 // MESITA-1637, moved by MESITA-1710. The console is driven in a chromeless
 // desktop window, so the address bar is not on screen and nothing else in the
 // product says which route you are on. The top bar used to say it; a 240px
 // rail has no room for a uuid, so it moved to the content column's header.
-// Every rule below is the same rule, pointed at its new home.
 describe("the console header names the route", () => {
   const hdr = () => read("components/console/ConsoleHeader.tsx");
 
-  it("renders pathname AND query — ?org= is half the answer", () => {
-    // A bare /places is ambiguous the moment an account holds two orgs, which
-    // is exactly when a person needs to be told where they are.
+  it("renders pathname AND query — ?owned= and ?connect= are half the answer", () => {
     expect(hdr()).toContain("const route = q ? `${pathname}?${q}` : pathname");
   });
 
   it("is an anchor, so the browser's own copy-link works on it", () => {
-    // A <span> would be a readout you cannot do anything with, and doing
-    // something with it is most of the point.
     expect(hdr()).toMatch(/<Link\s+href=\{route\}/);
   });
 
@@ -485,8 +464,6 @@ describe("the console header names the route", () => {
   });
 
   it("takes the ml-auto, and nothing else in the row holds one", () => {
-    // Two ml-autos in one flex row is one too many: the second is inert and
-    // the layout silently depends on source order.
     expect((hdr().match(/ml-auto/g) ?? []).length).toBe(1);
   });
 
@@ -495,8 +472,6 @@ describe("the console header names the route", () => {
   });
 
   it("is a div, not a header — the rail is already the banner", () => {
-    // Two <header> elements in one document give the page two banner
-    // landmarks, and a screen reader's landmark list stops being a map.
     expect(readCode("components/console/ConsoleHeader.tsx")).not.toContain(
       "<header",
     );
@@ -508,29 +483,18 @@ describe("the console header names the route", () => {
 // 57px gap for weeks. These pin the distinction so it cannot be re-collapsed.
 describe("sticky offsets are measured against the right box", () => {
   it("main is the shell's only scroller, which is what the rule below is about", () => {
-    // The premise of the distinction: PlaceBar used to sit in this scrollport
-    // and is gone, but the table below still lives in a nested one.
     expect(read("components/console/AppShell.tsx")).toContain(
       '<main className="flex-1 overflow-x-hidden overflow-y-auto">',
     );
   });
 
   it("the table header carries NO top offset — its scrollport is the card", () => {
-    // PlaceStatesTable wraps the table in `overflow-x-auto`, and CSS forces
-    // overflow-y to auto when the other axis is not visible, so that div is
-    // the scrollport. A `top-[57px]` there is measured from inside the card,
-    // not from the page, and shifts the header down at scroll position 0 —
-    // surfacing the first row's thumbnail above the labels and clipping the
-    // rest against the card's overflow-hidden.
     expect(STATES_HEAD_STICKY).toContain("sticky top-0");
     expect(STATES_HEAD_STICKY).not.toMatch(/top-\[/);
     expect(STATES_HEAD_STICKY).not.toContain("57");
   });
 
   it("the table still wraps the table in a scroll container", () => {
-    // The premise of the rule above. If this ever stops being true, the
-    // header COULD stick to the page and the offset would become correct
-    // again — so the two facts have to be read together.
     expect(read("components/console/PlaceStatesTable.tsx")).toContain(
       "overflow-x-auto",
     );
@@ -550,66 +514,38 @@ describe("the container stays uncapped", () => {
     expect(layout).not.toMatch(/max-w-\dxl/);
   });
   it("the rail is a fixed column, never a capped one", () => {
-    // The rail's width is the SHELL's call — it animates the column between
-    // w-60 and w-16 — and the rail fills whatever it is given. A max-width on
-    // the aside itself would fight that animation and desync the two.
     const rail = read("components/console/Sidebar.tsx");
     expect(rail).not.toMatch(/max-w-\dxl/);
     expect(rail).toContain("h-full w-full");
   });
   it("the bleeding table never sets w-full — that would kill the breakout", () => {
-    // align-self: stretch only widens a flex item whose width is `auto`. This
-    // rule used to guard PlaceBar, which was the other breakout; MESITA-1714
-    // deleted it, and the trap moved with the invariant rather than dying with
-    // the component. PlaceStatesTable is the last thing in this app that
-    // cancels the gutter, which is why the pairing above is still load-bearing.
     const table = read("components/console/PlaceStatesTable.tsx");
     const at = table.indexOf("SHELL_BLEED,");
     expect(at).toBeGreaterThan(-1);
-    // The cn() call that applies the bleed, and the class string beside it.
     const block = table.slice(at - 400, at + 40);
     expect(block).not.toContain("w-full");
   });
 });
 
 describe("tab hrefs", () => {
-  it("carry the organization, so a tab click cannot move the switcher", () => {
-    expect(placeTabHref("p-1", "capabilities", "org-9")).toBe(
-      "/places/p-1/capabilities?org=org-9",
-    );
-    expect(placeTabHref("p-1", "profile", "org-9")).toBe(
-      "/places/p-1/profile?org=org-9",
-    );
+  it("carry no organization: the place id names its holder (MESITA-1807)", () => {
+    expect(placeTabHref("p-1", "capabilities")).toBe("/places/p-1/capabilities");
+    expect(placeTabHref("p-1", "reviews")).toBe("/places/p-1/reviews");
   });
   it("agree with placeHref, which is Profile's address", () => {
     // placeHref writes the segment literally, because lib/place-tabs imports
-    // withOrg from console-routes and reaching back would be a cycle. Two
-    // literals for one route is exactly the drift that made
-    // /places/<id>/profile a 404, so pin them together here instead.
+    // from console-routes and reaching back would be a cycle. Two literals for
+    // one route is exactly the drift that made /places/<id>/profile a 404, so
+    // pin them together here instead.
     expect(placeHref("p-1")).toBe(placeTabHref("p-1", "profile"));
   });
   it("never return the bare place URL — every view has its own address", () => {
-    // The regression this exists to prevent (MESITA-1732). Profile used to BE
-    // /places/<id>, so /places/<id>/profile answered 404 and the one view an
-    // operator is likeliest to send a link to was the one with no link.
     for (const tab of PLACE_TABS) {
       expect(placeTabHref("p-1", tab)).not.toBe("/places/p-1");
       expect(placeTabHref("p-1", tab)).toBe(`/places/p-1/${tab}`);
     }
   });
-  it("omit it cleanly when there is no active organization", () => {
-    expect(placeTabHref("p-1", "activity")).toBe("/places/p-1/activity");
-  });
   it("every tab maps to a route file on disk", () => {
-    // Under a permanent header a mislabelled tab is a 404 the operator stares
-    // at on every screen, not a link they might never click.
-    //
-    // This was VACUOUS for Profile until MESITA-1732. It derives the path from
-    // placeTabHref itself, and placeTabHref said Profile was the bare
-    // /places/<id> — so the loop just re-checked the bare page.tsx that already
-    // existed, and /places/<id>/profile could 404 in production with this test
-    // green. Deriving the expectation from the function under test is the whole
-    // flaw; the sibling test below closes the loop from the other direction.
     const shell = path.join(SRC, "app", "(shell)");
     for (const tab of PLACE_TABS) {
       const segs = placeTabHref("ID", tab).slice(1).split("/");
@@ -618,9 +554,8 @@ describe("tab hrefs", () => {
     }
   });
   it("every route file on disk is a tab — no orphan segment", () => {
-    // The opposite direction. Together with the loop above this is a bijection:
-    // a tab with no route fails there, a route with no tab fails here. Either
-    // alone can be satisfied while the rail and the filesystem disagree.
+    // Together with the loop above this is a bijection: a tab with no route
+    // fails there, a route with no tab fails here.
     const placeDir = path.join(SRC, "app", "(shell)", "places", "[id]");
     const segments = readdirSync(placeDir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
@@ -632,8 +567,6 @@ describe("tab hrefs", () => {
 
 describe("width buys density, not whitespace", () => {
   it("both place section grids reach three columns at xl", () => {
-    // Without this the fluid container just makes a 44px-tall input 700px
-    // wide: both grids are hard-capped at two columns otherwise.
     for (const f of [
       "components/place-manage/sections/PlaceSection.tsx",
       "components/place-manage/sections/AdminSection.tsx",

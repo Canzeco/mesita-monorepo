@@ -14,5 +14,5 @@ import { redirect } from "next/navigation";
 // turns its merge into delete-modify conflicts. They are unreachable from here
 // and come out in a follow-up once that lands.
 export default function ClosedAddPlacePage() {
-  redirect("/places");
+  redirect("/");
 }

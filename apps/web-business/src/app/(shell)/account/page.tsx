@@ -7,7 +7,7 @@ import { DataRow } from "@/components/console/badges";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
-import { SHELL_ROUTES } from "@/lib/console-routes";
+import { SHELL_ROUTES, orgHref } from "@/lib/console-routes";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +41,14 @@ export default async function AccountPage() {
             {orgsError ? (
               "—"
             ) : orgs.length === 0 ? (
-              <Link href={SHELL_ROUTES.organizationNew} className="underline">
+              <Link href={SHELL_ROUTES.orgNew} className="underline">
                 Create one
               </Link>
             ) : (
               <Link
-                href={SHELL_ROUTES.organization}
+                href={
+                  orgs.length === 1 ? orgHref(orgs[0].id) : SHELL_ROUTES.root
+                }
                 className="hover:underline"
               >
                 {orgs.length}

@@ -69,7 +69,7 @@ export default async function PlaceLayout({
     <PublishOpenPlace
       id={id}
       name={view.place.name}
-      owned={view.holder !== null}
+      holderOrgId={view.holder?.organizationId ?? null}
       tabs={tabs}
     />
   );
@@ -83,10 +83,6 @@ export default async function PlaceLayout({
       verified={view.place.verified}
       listed={view.place.listed}
       partner={manage ? isMemberPlan(manage.place.plan) : false}
-      // The view row (MESITA-1804): the heading links the views the rail no
-      // longer carries. Props, not context — see PlaceHeading's docblock.
-      placeId={id}
-      tabs={tabs}
     />
   );
 

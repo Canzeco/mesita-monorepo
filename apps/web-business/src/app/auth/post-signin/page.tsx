@@ -6,8 +6,9 @@ import { apiBusinessSigninEmail } from "@/lib/api/auth";
 //
 //   1. Call the business post-sign-in EF (stamps app_metadata.role,
 //      lazy-creates the profile row).
-//   2. Send them to the place catalog. There is no onboarding branch:
-//      managing a place never required knowing your name.
+//   2. Send them to the console root, which resolves to the place they were
+//      last in (MESITA-1807). There is no onboarding branch: managing a
+//      place never required knowing your name.
 //
 // Why a dedicated server page: it runs server-side with the session
 // cookie, so the EF call carries the freshly-issued JWT and any errors
@@ -40,5 +41,5 @@ export default async function PostSigninPage({
     console.error("[post-signin] business-web-signin-email:", err);
   }
   if (explicitNext) redirect(explicitNext);
-  redirect("/places");
+  redirect("/");
 }

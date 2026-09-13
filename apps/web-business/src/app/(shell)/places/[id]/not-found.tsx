@@ -17,7 +17,7 @@ export default function PlaceTabNotFound() {
     <PageErrorState
       heading="That tab isn't available here"
       message="This place doesn't have that section, or your role can't open it. The views in the menu are the ones you can see."
-      retryHref="/places"
+      retryHref="/"
     />
   );
 }

@@ -15,7 +15,7 @@ import {
   apiUpdateOrgMemberRole,
   type OrgRole,
 } from "@/lib/api/organizations";
-import { SHELL_ROUTES } from "@/lib/console-routes";
+import { orgHref } from "@/lib/console-routes";
 import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
 
@@ -63,11 +63,10 @@ export async function createOrganizationAction(
   if (!created?.id) {
     return { error: "Created organization is missing an id." };
   }
-  // The nav's switcher and every org-scoped list change at once.
+  // The rail's picker and every org-scoped list change at once. The new
+  // organization's own address — `orgHref` encodes the id.
   revalidatePath("/", "layout");
-  redirect(
-    `${SHELL_ROUTES.organization}?org=${encodeURIComponent(created.id)}`,
-  );
+  redirect(orgHref(created.id));
 }
 
 export async function updateOrganizationAction(
@@ -148,10 +147,10 @@ export async function connectPaymentsAction(
       orgId,
       country,
       // Stripe stores these when the Account Link is minted, so they must
-      // name the Organization screen's real address. `/` still forwards the
-      // query for links minted before MESITA-1727 shipped.
-      returnUrl: `${origin}${SHELL_ROUTES.organization}?org=${orgId}&connect=return`,
-      refreshUrl: `${origin}${SHELL_ROUTES.organization}?org=${orgId}&connect=refresh`,
+      // name the Payments page's real address (MESITA-1807). `/` and Overview
+      // still forward `?connect=` for links minted against the old ones.
+      returnUrl: `${origin}${orgHref(orgId, "payments")}?connect=return`,
+      refreshUrl: `${origin}${orgHref(orgId, "payments")}?connect=refresh`,
       ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {

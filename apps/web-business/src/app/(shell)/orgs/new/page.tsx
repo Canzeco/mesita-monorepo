@@ -1,35 +1,37 @@
-// Create organization — the ceremony (MESITA-1793). The collection is
-// never a form: typing a name on `/organization` was the cheap feeling.
+// Create organization — the ceremony (MESITA-1793, at `/orgs/new` since
+// MESITA-1807). The collection is never a form: typing a name on the
+// organization page was the cheap feeling.
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
-import { resolveActiveOrg } from "@/lib/active-organization";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { preferredOrg } from "@/lib/active-organization";
+import { SHELL_ROUTES, orgHref } from "@/lib/console-routes";
+import { RAIL_ORG_COOKIE, plausibleId } from "@/lib/sidebar-prefs";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewOrganizationPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const sp = await searchParams;
+export default async function NewOrganizationPage() {
   const supabase = await createServerSupabase();
   const user = await getServerUser();
-  if (!user) redirect("/signin?next=/organization/new");
+  if (!user) redirect("/signin?next=/orgs/new");
 
   let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
   try {
     orgs = await apiListOrganizations(supabase);
   } catch (e) {
-    console.error("[organization/new] business-web-list-organizations:", e);
+    console.error("[orgs/new] business-web-list-organizations:", e);
   }
-  const current = resolveActiveOrg(orgs, sp.org);
+  // Cancel goes back to the organization you came from — the remembered one,
+  // else the first. With none there is nothing to go back to but yourself.
+  const jar = await cookies();
+  const current = preferredOrg(
+    orgs,
+    plausibleId(jar.get(RAIL_ORG_COOKIE)?.value),
+  );
   const first = orgs.length === 0;
-  const cancelHref = current
-    ? withOrg(SHELL_ROUTES.organization, current.id)
-    : SHELL_ROUTES.organization;
+  const cancelHref = current ? orgHref(current.id) : SHELL_ROUTES.account;
 
   return (
     <>

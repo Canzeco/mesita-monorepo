@@ -1,6 +1,4 @@
-// Nested under places/loading.tsx. In Next 16 a missing loading.tsx
-// does not fall back to the parent (MESITA-1734), so the ceremony needs
-// its own table-shaped pulse.
+// The claim ceremony is the list's unclaimed half: same skeleton as the list.
 export default function Loading() {
   return (
     <div className="border-border bg-card -mx-4 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">

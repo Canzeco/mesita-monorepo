@@ -29,16 +29,15 @@ export const PROTECTED_PREFIXES = [
   // all four are behind the signed-out wall. Nothing in the shell is mock
   // any more.
   //
-  // Organization is listed for the first time (MESITA-1727). It could not be
-  // before: its address was `/`, and these are PREFIX matches, so listing `/`
-  // would have gated every route in the app including /signin. Now that the
-  // screen has a name, it gets the same edge check as its siblings — which is
-  // what made the sentence above true rather than aspirational.
+  // `/orgs` is every organization page and the create ceremony (MESITA-1807);
+  // `/organization` and the bare `/places` are next.config.ts redirects now,
+  // resolved before a request ever reaches this proxy, so gating them would
+  // guard a dead path. `/places` stays for the place console beneath it.
   //
   // `/` itself stays OUT, and stays out deliberately: it is a redirect that
   // reads nothing and renders nothing, and its destination is walled. Same
   // reasoning as `/add`.
-  "/organization",
+  "/orgs",
   "/places",
   "/account",
 ];
