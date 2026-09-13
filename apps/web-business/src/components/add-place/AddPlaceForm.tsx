@@ -106,7 +106,6 @@ export function AddPlaceForm({
 
   const applyLookup = (prediction: PlacePrediction) => {
     setLookupError(null);
-    setActionError(null);
     startLookup(async () => {
       try {
         const lookup = await apiLookupPlace(supabase, prediction.placeId);
@@ -128,6 +127,7 @@ export function AddPlaceForm({
     setPredictions([]);
     setOpen(false);
     setCard(null);
+    setActionError(null);
     applyLookup(prediction);
   };
 
@@ -149,6 +149,7 @@ export function AddPlaceForm({
         return;
       }
       if (result.alreadyExists) {
+        setActionError(null);
         applyLookup(selected);
         return;
       }

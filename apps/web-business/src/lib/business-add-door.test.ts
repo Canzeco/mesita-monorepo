@@ -139,6 +139,35 @@ describe("the add door is the ceremony", () => {
     expect(actions).toContain("createThenClaimAction");
     expect(actions).toContain("addListedPlaceAction");
   });
+
+  it("ceremony mutations refuse non-owners before mint or claim", () => {
+    const actions = codeOnly(read("app/(shell)/actions/places.ts"));
+    expect(actions).toContain("function requireCeremonyOwner");
+    expect(actions).toContain("canAddPlace(org.myRole)");
+    const createFn = actions.slice(
+      actions.indexOf("export async function createThenClaimAction"),
+    );
+    expect(createFn.indexOf("requireCeremonyOwner")).toBeGreaterThanOrEqual(0);
+    expect(createFn.indexOf("requireCeremonyOwner")).toBeLessThan(
+      createFn.indexOf("apiCreatePlace"),
+    );
+    const addFn = actions.slice(
+      actions.indexOf("export async function addListedPlaceAction"),
+    );
+    expect(addFn.indexOf("requireCeremonyOwner")).toBeGreaterThanOrEqual(0);
+    expect(addFn.indexOf("requireCeremonyOwner")).toBeLessThan(
+      addFn.indexOf("apiClaimPlace"),
+    );
+  });
+
+  it("a failed claim after mint keeps the error on the Add card", () => {
+    const form = codeOnly(read("components/add-place/AddPlaceForm.tsx"));
+    const apply = form.slice(form.indexOf("const applyLookup"));
+    const applyBody = apply.slice(0, apply.indexOf("const pick"));
+    expect(applyBody).not.toContain("setActionError(null)");
+    expect(form).toContain("setActionError(result.error)");
+    expect(form).toContain("retryPlaceId");
+  });
 });
 
 describe("verify is offered only where it can work", () => {

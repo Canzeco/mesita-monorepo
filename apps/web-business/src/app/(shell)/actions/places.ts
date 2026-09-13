@@ -6,9 +6,14 @@
 // calls the EF directly.
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiClaimPlace, apiReleasePlace } from "@/lib/api/organizations";
+import {
+  apiClaimPlace,
+  apiListOrganizations,
+  apiReleasePlace,
+} from "@/lib/api/organizations";
 import { apiCreatePlace } from "@/lib/api/place-search";
 import { apiVerifyPlace } from "@/lib/api/place-verification";
+import { canAddPlace, findOrg } from "@/lib/active-organization";
 import { efCode } from "@/lib/api/_invoke";
 import { errMsg } from "@/lib/utils";
 
@@ -101,6 +106,26 @@ function revalidateHold() {
   revalidatePath("/orgs/[orgId]", "layout");
 }
 
+const OWNER_ONLY = "Only the owner can add a place to this organization.";
+
+/** Ceremony Create/Add are owner-only. `business-web-create-place` only
+ *  checks a signed-in user, so this gate must run before mint or an editor
+ *  could leave an unowned catalogue row after a 403 claim. */
+async function requireCeremonyOwner(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+  organizationId: string,
+): Promise<string | null> {
+  let orgs;
+  try {
+    orgs = await apiListOrganizations(supabase);
+  } catch (e) {
+    return errMsg(e, "Couldn't load organizations.");
+  }
+  const org = findOrg(orgs, organizationId);
+  if (!org || !canAddPlace(org.myRole)) return OWNER_ONLY;
+  return null;
+}
+
 /** Claim a listed Mesita place into this organization (the Add card). */
 export async function addListedPlaceAction(
   placeId: string,
@@ -110,6 +135,8 @@ export async function addListedPlaceAction(
     return { error: "Missing place or organization." };
   }
   const supabase = await createServerSupabase();
+  const denied = await requireCeremonyOwner(supabase, organizationId);
+  if (denied) return { error: denied };
   try {
     await apiClaimPlace(supabase, { placeId, organizationId });
   } catch (e) {
@@ -129,6 +156,8 @@ export async function createThenClaimAction(
     return { error: "Missing place or organization." };
   }
   const supabase = await createServerSupabase();
+  const denied = await requireCeremonyOwner(supabase, organizationId);
+  if (denied) return { error: denied };
   let created: Awaited<ReturnType<typeof apiCreatePlace>>;
   try {
     created = await apiCreatePlace(supabase, googlePlaceId);
