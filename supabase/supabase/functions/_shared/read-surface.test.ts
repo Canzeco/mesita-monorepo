@@ -326,6 +326,7 @@ const PLACES_READ_ALLOWLIST = [
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-discount-quote/index.ts",
   "consumer-web-list-credit-places/index.ts",
+  "consumer-web-list-credit-balances/index.ts", // org's places for the one-place face; place_profiles has no organization_id (MESITA-1816)
   "stripe-webhook-handle-event/index.ts",
 ];
 
