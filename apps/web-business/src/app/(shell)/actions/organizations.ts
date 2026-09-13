@@ -147,10 +147,10 @@ export async function connectPaymentsAction(
       orgId,
       country,
       // Stripe stores these when the Account Link is minted, so they must
-      // name the Payments page's real address (MESITA-1807). `/` and Overview
-      // still forward `?connect=` for links minted against the old ones.
-      returnUrl: `${origin}${orgHref(orgId, "payments")}?connect=return`,
-      refreshUrl: `${origin}${orgHref(orgId, "payments")}?connect=refresh`,
+      // name the organization page's real address (MESITA-1807). `/` still
+      // forwards `?connect=` for links minted against the old ones.
+      returnUrl: `${origin}${orgHref(orgId)}?connect=return`,
+      refreshUrl: `${origin}${orgHref(orgId)}?connect=refresh`,
       ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {

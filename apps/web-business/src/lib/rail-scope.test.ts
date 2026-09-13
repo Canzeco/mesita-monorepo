@@ -55,12 +55,12 @@ describe("a place route", () => {
 
 describe("an organization route", () => {
   it("is scoped to the path's organization", () => {
-    expect(scope(orgHref("org-b", "payments")).org?.id).toBe("org-b");
+    expect(scope(orgHref("org-b", "places")).org?.id).toBe("org-b");
     expect(scope(orgPlacesNewHref("org-c")).org?.id).toBe("org-c");
   });
 
   it("shows the last place opened this session, when this organization holds it", () => {
-    const s = scope(orgHref("org-a", "payments"), {
+    const s = scope(orgHref("org-a"), {
       lastPlaceId: "p-2",
       rememberedPlaceId: "p-1",
     });

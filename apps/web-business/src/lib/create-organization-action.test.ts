@@ -83,11 +83,12 @@ describe("the ceremony page", () => {
     expect(page).not.toContain("<Section");
   });
 
-  it("the Stripe return links name the Payments page", () => {
+  it("the Stripe return links name the organization page", () => {
     // Stripe stores these when the Account Link is minted, so they must be
-    // the page where the return notice lives (MESITA-1807).
-    expect(ACTION).toContain('orgHref(orgId, "payments")}?connect=return');
-    expect(ACTION).toContain('orgHref(orgId, "payments")}?connect=refresh');
+    // the page where the return notice lives (MESITA-1807, one page again
+    // since MESITA-1810).
+    expect(ACTION).toContain("orgHref(orgId)}?connect=return");
+    expect(ACTION).toContain("orgHref(orgId)}?connect=refresh");
     // Code only: the prose above the mint explains the old relative URL.
     const code = ACTION.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(code).not.toContain("?org=");

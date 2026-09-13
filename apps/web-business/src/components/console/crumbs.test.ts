@@ -13,20 +13,13 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/orgs/new", names)).toEqual(["Create organization"]);
   });
 
-  it("an organization page is the organization, then the page", () => {
-    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group", "Overview"]);
-    expect(crumbsFor(orgHref("o", "payments"), names)).toEqual([
-      "Strana Group",
-      "Payments",
-    ]);
-    expect(crumbsFor(orgHref("o", "members"), names)).toEqual([
-      "Strana Group",
-      "Members",
-    ]);
+  it("the organization's page is the organization alone; its list is one crumb deeper", () => {
+    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group"]);
     expect(crumbsFor(orgHref("o", "places"), names)).toEqual([
       "Strana Group",
       "Places",
     ]);
+    expect(crumbsFor("/orgs/o/payments", names)).toEqual([]);
   });
 
   it("the claim ceremony is Places / Claim", () => {

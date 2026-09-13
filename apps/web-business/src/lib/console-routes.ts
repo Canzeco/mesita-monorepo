@@ -12,9 +12,10 @@
 //                            organization, else Create (a 307, never cached)
 //   /account                 the person
 //   /orgs/new                Create organization — the ceremony
-//   /orgs/<id>               Overview — the organization's own page
-//   /orgs/<id>/payments      Stripe Account and Partner
-//   /orgs/<id>/members       who is in it
+//   /orgs/<id>               the organization: Stripe Account, Partner,
+//                            Members and Places on ONE page (MESITA-1810 —
+//                            Pato, on seeing them split: "organization all
+//                            in the same page")
 //   /orgs/<id>/places        what it holds and what it can claim (?owned=)
 //   /orgs/<id>/places/new    Claim a place — from the catalogue, never mint
 //   /places/<id>/<view>      the ONE place console, five views. Global, not
@@ -31,8 +32,8 @@
 // and the no-org forms → `/`. Stripe stores an Account Link's return_url when
 // the link is MINTED, so links minted before this shipped still arrive at
 // `/organization?org=&connect=return` and at `/?org=&connect=return`; both
-// forward with the query intact, and Overview hands `?connect=` on to
-// Payments, where the notice lives.
+// forward with the query intact to the organization page, where the notice
+// lives.
 //
 // `/` is a TEMPORARY redirect, never a permanent one: a 308 would be cached by
 // browsers forever, and where `/` lands depends on which place you opened
@@ -46,24 +47,22 @@ export const SHELL_ROUTES = {
 
 // ── The organization's pages ──────────────────────────────────────────────
 //
-// Overview is the bare `/orgs/<id>`: opening an organization means landing on
-// its own page, the same way opening a place means landing on Profile. The
-// other three are its subpages; Places is where Claim lives (`/new` beneath
-// it), and the Places row in the rail lights on both.
+// The organization itself is the bare `/orgs/<id>`: opening an organization
+// means landing on its page, the same way opening a place means landing on
+// Profile. Places is its one subpage — the list, where Claim lives (`/new`
+// beneath it), and the Places row in the rail lights on both.
 
-export const ORG_PAGES = ["overview", "payments", "members", "places"] as const;
+export const ORG_PAGES = ["overview", "places"] as const;
 export type OrgPage = (typeof ORG_PAGES)[number];
 
 export const ORG_PAGE_LABEL: Record<OrgPage, string> = {
-  overview: "Overview",
-  payments: "Payments",
-  members: "Members",
+  overview: "Organization",
   places: "Places",
 };
 
 const ORGS = "/orgs";
 
-/** An organization page's address. Overview is the bare `/orgs/<id>`. */
+/** An organization page's address. The organization is the bare `/orgs/<id>`. */
 export function orgHref(orgId: string, page: OrgPage = "overview"): string {
   const base = `${ORGS}/${encodeURIComponent(orgId)}`;
   return page === "overview" ? base : `${base}/${page}`;
@@ -105,8 +104,7 @@ export function orgPageFromPathname(pathname: string): OrgPage | null {
   const [, , second, third] = match;
   if (!second) return "overview";
   if (second === "places") return third === undefined || third === "new" ? "places" : null;
-  if (third !== undefined) return null;
-  return second === "payments" || second === "members" ? second : null;
+  return null;
 }
 
 // ── The list's two filters (MESITA-1710) ──────────────────────────────────

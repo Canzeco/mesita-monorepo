@@ -68,12 +68,12 @@ describe("the root page", () => {
   );
   const code = src.replace(/^\s*\/\/.*$/gm, "");
 
-  it("answers a Stripe return on Payments before any place is considered", () => {
+  it("answers a Stripe return on the organization page before any place is considered", () => {
     expect(code.indexOf('typeof sp.connect === "string"')).toBeGreaterThan(-1);
     expect(code.indexOf('typeof sp.connect === "string"')).toBeLessThan(
       code.indexOf("resolveLanding("),
     );
-    expect(code).toContain('orgHref(org.id, "payments")');
+    expect(code).toContain("redirect(withQuery(orgHref(org.id), rest))");
   });
 
   it("forwards its whole query and consumes only org", () => {

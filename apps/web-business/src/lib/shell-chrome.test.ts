@@ -429,10 +429,10 @@ describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", ()
     expect(s).toContain('dirtyLabels.includes("Reservations")');
   });
 
-  it("the Organization-for-Stripe door goes to the holder's Payments page", () => {
+  it("the Organization-for-Stripe door goes to the holder's organization page", () => {
     const s = readCode("components/place-manage/sections/PromosSection.tsx");
     expect(s).toContain("useOpenPlace()?.holderOrgId");
-    expect(s).toContain('orgPageHref(holderOrgId, "payments")');
+    expect(s).toContain("orgPageHref(holderOrgId)");
     expect(s).not.toContain("useSearchParams");
   });
 });
