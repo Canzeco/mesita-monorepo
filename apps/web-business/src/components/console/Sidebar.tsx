@@ -1,42 +1,41 @@
 "use client";
 
-// The whole navigation: one lateral rail, SEVEN ROWS, nothing else
-// (MESITA-1822).
+// The whole navigation: one lateral rail, SIX PAGES (MESITA-1832) — seven
+// for a super-admin.
 //
-// Pato, 2026-09-13: "Sidebar menu: Account. Organization. (change
-// organization, change place) Place Profile. Place Reviews. Place Activity.
-// Place Settings. Place Admin." Two passes (1815, 1818) read the parenthesis
-// as rows under Organization and put the two switchers in the rail; on the
-// result: "still looks like fucking shit. wtf? i told you". The parenthesis
-// names what the Organization PAGE does. The switchers live there
-// (ScopeSwitchers.tsx); the rail is the seven pages, at every width, in
-// every state.
+// Pato, 2026-09-13, with a drawing of six rows: "optimize the ui as if it
+// was just for orgs that only have one place. Account must contain select
+// account, organization selector, and place selector. Place profile. Place
+// reviews. Org & place payments. Place activity. Org & place settings. Make
+// the frontend web routes /account /profile /reviews /payments /activity
+// /settings."
 //
-//   [ ○ Account                  ]  → /account (the email in the tooltip)
-//   [ ▤ Organization             ]  → /orgs/<id>; its list and Add place light it
-//   [ ▢ Place Profile            ]  → /places/<id>/profile
-//   [ ★ Place Reviews            ]     "Place " quieted by WEIGHT, never alpha
-//   [ ~ Place Activity    ▮pill  ]  exactly ONE filled pill, always
-//   [ ⚙ Place Settings           ]
-//   [ ⛨ Place Admin              ]  super-admin only
+//   [ ○ Account     ]  → /account   who you are · switch organization · switch place
+//   [ ▢ Profile     ]  → /profile   THE SELECTED PLACE's profile
+//   [ ★ Reviews     ]  → /reviews
+//   [ ▭ Payments    ]  → /payments  the organization's money (Stripe · Partner · Credits)
+//   [ ~ Activity    ]  → /activity
+//   [ ⚙ Settings    ]  → /settings  the place's switches · the organization's members
+//   [ ⛨ Admin       ]  → /admin     super-admin only
 //   ─────
-//   ◧ Collapse                      the footer: the rail's own control
+//   ◧ Collapse         the footer: the rail's own control
 //
-// THE PLACE ROWS ARE ALWAYS THERE. An organization holding no place gets the
-// same five rows, muted, each a door to Add place (owner) or to the
-// organization's list (everyone else) — never an "Add place" row in their
-// slot, never a rail that shrinks to two lines. Zero organizations: Account
-// and Create organization. A failed organizations read: Account and a muted
-// line, never the create row (MESITA-1793's law).
+// NO ID IN ANY ADDRESS. Every page is about the selected place and its
+// organization — the console's memory (lib/selected-place.ts server-side,
+// lib/rail-scope.ts here). A one-place owner never meets an id, a switcher
+// in the rail, or the word "organization" in a row. Exactly ONE filled
+// pill, always: the ceremonies (/orgs/new, the list, Add place) light the
+// row they belong to (Account).
 //
-// THE SCOPE IS READ OFF THE PATHNAME (lib/rail-scope.ts): `/orgs/<id>/…`
-// names the organization; `/places/<id>/…` names the place and its holder;
-// everything else falls back to the organization and place remembered from
-// the last visit. The rail lists no portfolio and holds no switcher.
+// NO PLACE YET: Profile · Reviews · Activity · Settings (· Admin) stay,
+// muted; each opens the page, which answers with the one next step. The
+// rail never shrinks. Zero organizations: Account and Create organization.
+// A failed organizations read: Account and a muted line, never the create
+// row (MESITA-1793's law).
 //
 // FLAT. Nothing in this file indents — no inset, no tree line, no bullet, no
 // `pl-8`, no box, no eyebrow, no seam — and `shell-chrome.test.ts` forbids
-// all of them. Seven rows in one column.
+// all of them.
 //
 // DARK (MESITA-1831). The rail sits on the brand's ink (`--sidebar` is the
 // dock token, globals.css) and paints ONLY with `sidebar-*` tokens: rows at
@@ -50,7 +49,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   AlertCircle,
-  Building2,
+  CreditCard,
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
@@ -64,22 +63,13 @@ import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
-import { canAddPlace } from "@/lib/active-organization";
 import {
-  ORG_PAGE_LABEL,
   SHELL_ROUTES,
-  orgHref,
+  flatViewFromPathname,
   orgPageFromPathname,
-  orgPlacesHref,
-  orgPlacesNewHref,
+  viewHref,
 } from "@/lib/console-routes";
-import {
-  PLACE_TAB_LABEL,
-  placeTabFromPathname,
-  placeTabHref,
-  tabsForAccess,
-  type PlaceTab,
-} from "@/lib/place-tabs";
+import { PLACE_TAB_LABEL, tabsForAccess, type PlaceTab } from "@/lib/place-tabs";
 import type { RailOrg, RailScope } from "@/lib/rail-scope";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
@@ -125,42 +115,17 @@ const HOVER_PREFETCH = { unstable_dynamicOnHover: true } as object;
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
-const VIEW_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
-  profile: FileText,
-  reviews: Star,
-  activity: Activity,
-  settings: Settings2,
-  admin: Shield,
-};
 
-/** The rail's word for a view: the scope word is IN the label now that no
- *  eyebrow carries it (Pato: "I don't care word place is redundant"). The
- *  crumb and the heading keep the bare word — `PLACE_TAB_LABEL` is theirs.
- *  This string is the accessible name (title, tests); `PlaceRowLabel` is how
- *  it is painted. */
+/** The rail's word for a view — the bare word, as in the drawing (Account ·
+ *  Profile · Reviews · Payments · Activity · Settings). `PLACE_TAB_LABEL` is
+ *  the same word; this exists so the tests and the rail share one reader. */
 export function placeRowLabel(tab: PlaceTab): string {
-  return `Place ${PLACE_TAB_LABEL[tab]}`;
-}
-
-/** Five rows begin with the same word, and people scan first words. The
- *  prefix is quieted by WEIGHT (400 against the row's own 500, or 600 on the
- *  pill) at the row's own ink — never by alpha: 55% of muted ink over the
- *  sidebar ground is ~2.5:1, and 13px text needs 4.5:1 (MESITA-1818, 8A).
- *  The noun carries no class of its own: it inherits the row's weight and
- *  color, so it is 600 inside the pill like every other pill. */
-function PlaceRowLabel({ tab }: { tab: PlaceTab }) {
-  return (
-    <>
-      <span className="font-normal">Place </span>
-      {PLACE_TAB_LABEL[tab]}
-    </>
-  );
+  return PLACE_TAB_LABEL[tab];
 }
 
 function NavRow({
   href,
   label,
-  labelNode,
   Icon,
   active,
   muted = false,
@@ -172,9 +137,6 @@ function NavRow({
   href: string;
   /** The accessible name: the tooltip at `w-16`, the sr-only text. */
   label: string;
-  /** How the label is painted when it is not just `label` (the quieted
-   *  "Place " prefix). Never changes the accessible name. */
-  labelNode?: React.ReactNode;
   Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
   /** A row whose page does not exist yet (a place view with no place): the
@@ -210,9 +172,7 @@ function NavRow({
       )}
     >
       <Icon className={ICON} />
-      <span className={collapsed ? "sr-only" : "truncate"}>
-        {collapsed ? label : (labelNode ?? label)}
-      </span>
+      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
   );
 }
@@ -260,37 +220,43 @@ export function Sidebar({
   void organizations;
 
   const org = scope.org;
-  const orgPage = orgPageFromPathname(pathname);
   const onOrgNew = pathname === SHELL_ROUTES.orgNew;
-  const onAccount = pathname === SHELL_ROUTES.account;
-  const currentView = placeTabFromPathname(pathname);
+  // Account owns its ceremonies: the create step, the organization's list
+  // and the Add place step all light Account — while there IS an Account
+  // scope to own them. With no organization the create step is its own row.
+  const onAccount =
+    pathname === SHELL_ROUTES.account ||
+    (org !== null && (onOrgNew || orgPageFromPathname(pathname) !== null));
+  const currentView = flatViewFromPathname(pathname);
 
-  // The place the five rows are about: the pathname's place when it is held,
-  // the pool place it names otherwise (name and views arrive by publish),
-  // else the place remembered for this organization — else none, and the
-  // rows are doors to making one.
-  const foreign =
-    scope.foreignPlaceId !== null
-      ? openPlace?.id === scope.foreignPlaceId
-        ? openPlace
-        : { id: scope.foreignPlaceId, name: "Place", tabs: ["profile"] as PlaceTab[] }
-      : null;
+  // Which views the selected place offers this viewer: the ONE matrix
+  // (lib/place-tabs), from the published set when the place is on screen,
+  // else from the viewer's role in the organization. A pool place: Profile
+  // alone. No place: the held set, muted — the pages answer with Add place.
+  const foreign = scope.foreignPlaceId !== null;
   const placeTabs: PlaceTab[] = foreign
-    ? foreign.tabs
+    ? (openPlace?.id === scope.foreignPlaceId ? openPlace.tabs : (["profile"] as PlaceTab[]))
     : openPlace && scope.placeIsCurrent && openPlace.id === scope.place?.id
       ? openPlace.tabs
       : org
         ? tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })
         : [];
-  const placeSubjectId = foreign?.id ?? scope.place?.id ?? null;
-  const viewIsHere = foreign !== null || scope.placeIsCurrent;
-  // No place yet: every place row is a door to the step that makes one —
-  // Add place for the owner, the organization's list for everyone else.
-  const noPlaceHref = org && canAddPlace(org.myRole)
-    ? orgPlacesNewHref(org.id)
-    : org
-      ? orgPlacesHref(org.id)
-      : SHELL_ROUTES.orgNew;
+  const noPlace = org !== null && scope.place === null && !foreign;
+
+  // The six rows, in the drawing's order; Payments is the organization's,
+  // the rest are the place's.
+  type Row = { href: string; label: string; Icon: React.ComponentType<{ className?: string }>; place?: PlaceTab };
+  const all: Row[] = [
+    { href: viewHref("profile"), label: placeRowLabel("profile"), Icon: FileText, place: "profile" },
+    { href: viewHref("reviews"), label: placeRowLabel("reviews"), Icon: Star, place: "reviews" },
+    { href: SHELL_ROUTES.payments, label: "Payments", Icon: CreditCard },
+    { href: viewHref("activity"), label: placeRowLabel("activity"), Icon: Activity, place: "activity" },
+    { href: viewHref("settings"), label: placeRowLabel("settings"), Icon: Settings2, place: "settings" },
+  ];
+  if (isSuperAdmin) {
+    all.push({ href: viewHref("admin"), label: placeRowLabel("admin"), Icon: Shield, place: "admin" });
+  }
+  const rows = all.filter((r) => !r.place || noPlace || placeTabs.includes(r.place));
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3">
@@ -363,36 +329,20 @@ export function Sidebar({
             onGuardedNavigate={guardNav ?? undefined}
           />
         ) : (
-          <>
-            {/* ONE organization page (MESITA-1810); its list, the Add place
-                step and the create ceremony beneath it light this same row —
-                they are the organization's own steps, not pages of their own.
-                The switchers live on the page (ScopeSwitchers). */}
+          rows.map((row) => (
             <NavRow
-              href={orgHref(org.id)}
-              label={ORG_PAGE_LABEL.overview}
-              Icon={Building2}
-              active={orgPage !== null || onOrgNew}
+              key={row.href}
+              href={row.href}
+              label={row.label}
+              Icon={row.Icon}
+              active={row.place ? currentView === row.place : pathname === row.href}
+              muted={row.place !== undefined && noPlace}
+              title={row.place && noPlace ? `${row.label} · add a place first` : undefined}
               collapsed={collapsed}
               onNavigate={onNavigate}
               onGuardedNavigate={guardNav ?? undefined}
             />
-            {placeTabs.map((tab) => (
-              <NavRow
-                key={tab}
-                href={placeSubjectId ? placeTabHref(placeSubjectId, tab) : noPlaceHref}
-                label={placeRowLabel(tab)}
-                labelNode={<PlaceRowLabel tab={tab} />}
-                Icon={VIEW_ICON[tab]}
-                active={placeSubjectId !== null && viewIsHere && currentView === tab}
-                muted={placeSubjectId === null}
-                title={placeSubjectId === null ? `${placeRowLabel(tab)} · add a place first` : undefined}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-                onGuardedNavigate={guardNav ?? undefined}
-              />
-            ))}
-          </>
+          ))
         )}
       </nav>
 

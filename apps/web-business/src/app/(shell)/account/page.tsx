@@ -1,8 +1,10 @@
-// Account — the signed-in human. Organizations live on Organizations
-// (MESITA-1793); this page names the person and counts the collection.
+// Account — the signed-in human, and the two switchers (MESITA-1832):
+// which organization, which place. The organization's places (the list, Add
+// place) are reached from the place switcher's menu.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
+import { ScopeSwitchers } from "@/components/console/ScopeSwitchers";
 import { DataRow } from "@/components/console/badges";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
@@ -33,6 +35,10 @@ export default async function AccountPage() {
       <h1 className="font-display text-2xl font-semibold tracking-tight">
         Account
       </h1>
+
+      {/* "Account must contain select account, organization selector, and
+          place selector" (Pato, 2026-09-13; MESITA-1832). */}
+      <ScopeSwitchers />
 
       <Section title="You" right={<SignOutButton redirectTo="/signin" />}>
         <div>

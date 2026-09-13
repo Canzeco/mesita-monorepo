@@ -120,7 +120,7 @@ describe("the unsaved-edits guard reaches the rail", () => {
     // Rendered by the shell itself rather than passed in: position-by-
     // convention is enforced by nothing, and getting it wrong throws on every
     // managed place.
-    const shell = read("app/(shell)/places/[id]/PlaceManageShell.tsx");
+    const shell = read("app/(shell)/(place)/PlaceManageShell.tsx");
     const provider = shell.slice(shell.indexOf("<PlaceProvider"));
     expect(provider).toContain("<PlaceNavBridge />");
   });
@@ -219,35 +219,57 @@ describe("the rail is seven rows", () => {
     expect(sw).toContain('label="Switch organization"');
     expect(sw).toContain('label="Switch place"');
     expect(sw).toContain("useRailScopeContext()");
-    expect(readCode("app/(shell)/orgs/[orgId]/page.tsx")).toContain("<ScopeSwitchers />");
+    expect(readCode("app/(shell)/account/page.tsx")).toContain("<ScopeSwitchers />");
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
-  it("is Account · Organization · the five views, in that order, from the route contract and the ONE matrix", () => {
+  it("is Account · Profile · Reviews · Payments · Activity · Settings (· Admin), from the route contract and the ONE matrix (MESITA-1832)", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
-    const at = (needle: string) => nav.indexOf(needle);
-    expect(at("href={SHELL_ROUTES.account}")).toBeGreaterThan(-1);
-    expect(at("href={SHELL_ROUTES.account}")).toBeLessThan(at("href={orgHref(org.id)}"));
-    expect(at("href={orgHref(org.id)}")).toBeLessThan(at("placeTabs.map((tab)"));
-    expect(nav).toContain("active={orgPage !== null || onOrgNew}");
-    expect(r).toContain("orgPageFromPathname(pathname)");
+    expect(nav).toContain("href={SHELL_ROUTES.account}");
+    expect(nav).toContain("rows.map((row)");
+    const table = r.slice(r.indexOf("const all: Row[] = ["), r.indexOf("const rows = all.filter"));
+    const at = (needle: string) => table.indexOf(needle);
+    expect(at('viewHref("profile")')).toBeGreaterThan(-1);
+    expect(at('viewHref("profile")')).toBeLessThan(at('viewHref("reviews")'));
+    expect(at('viewHref("reviews")')).toBeLessThan(at("SHELL_ROUTES.payments"));
+    expect(at("SHELL_ROUTES.payments")).toBeLessThan(at('viewHref("activity")'));
+    expect(at('viewHref("activity")')).toBeLessThan(at('viewHref("settings")'));
+    expect(table).toContain('viewHref("admin")');
+    expect(table).toContain("if (isSuperAdmin)");
+    // Account owns its ceremonies; the views light off the flat reader.
+    expect(r).toContain("orgPageFromPathname(pathname) !== null");
+    expect(r).toContain("flatViewFromPathname(pathname)");
     expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
-    expect(r).toContain("placeTabHref(placeSubjectId, tab)");
     expect(r).not.toContain("?org=");
     expect(r).not.toContain("window.location");
+    expect(r).not.toContain("placeTabHref(");
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
   });
 
-  it("the place rows are always there: with no place they are muted doors to Add place (owner) or the list", () => {
+  it("the place rows are always there: with no place they are muted, and the page answers with Add place", () => {
     const r = rail();
-    expect(r).toContain("muted={placeSubjectId === null}");
-    expect(r).toContain("canAddPlace(org.myRole)");
-    expect(r).toContain("orgPlacesNewHref(org.id)");
-    expect(r).toContain("orgPlacesHref(org.id)");
-    // The prefix is quieted by weight, never alpha (MESITA-1818, 8A).
-    expect(r).toContain('<span className="font-normal">Place </span>');
-    expect(r).not.toMatch(/opacity-\d+">Place/);
+    expect(r).toContain("muted={row.place !== undefined && noPlace}");
+    expect(r).toContain("const noPlace = org !== null && scope.place === null && !foreign;");
+    expect(readCode("app/(shell)/(place)/layout.tsx")).toContain("return <NoPlaceYet org={selection.org} />;");
+    expect(readCode("components/console/NoPlaceYet.tsx")).toContain("canAddPlace(org.myRole)");
+  });
+
+  it("the six pages are about THE SELECTED place: one server reader, and the forwarders write the cookies it reads", () => {
+    const sel = readCode("lib/selected-place.ts");
+    expect(sel).toContain("export const getSelection = cache(");
+    expect(sel).toContain("findHolder(organizations, rememberedPlaceId)");
+    expect(sel).toContain("RAIL_PLACE_COOKIE");
+    expect(readCode("app/(shell)/(place)/layout.tsx")).toContain("await getSelection()");
+    for (const f of ["places/[id]/[view]/route.ts", "places/[id]/route.ts"]) {
+      const fwd = readCode(`app/(shell)/${f}`);
+      expect(fwd).toContain("res.cookies.set(RAIL_PLACE_COOKIE, id");
+      expect(fwd).toContain("NextResponse.redirect(url, 307)");
+    }
+    const org = readCode("app/(shell)/orgs/[orgId]/route.ts");
+    expect(org).toContain("res.cookies.set(RAIL_ORG_COOKIE, orgId");
+    expect(org).toContain("SHELL_ROUTES.payments");
+    expect(org).toContain("url.search = search.toString();");
   });
 
   it("the switchers: a name at n=1, the transition as the pending clock, a chosen name only after the guard", () => {
@@ -358,7 +380,7 @@ describe("the header mirrors the rail", () => {
 // `[id]/loading.tsx` is not the boundary for a tab click — the changed segment
 // is the tab, and every tab page awaits `getManagePlace(id)` on its own.
 describe("every place view has its own loading boundary", () => {
-  const VIEWS = path.join(SRC, "app/(shell)/places/[id]");
+  const VIEWS = path.join(SRC, "app/(shell)/(place)");
 
   // A BIJECTION, not a one-way loop. Asserting only "every tab has a
   // loading.tsx" passes just as happily when a sixth view directory appears
@@ -392,7 +414,7 @@ describe("every place view has its own loading boundary", () => {
   });
 
   it("Reviews guards like Settings: a pool place answers 404, never a throw", () => {
-    const page = readCode("app/(shell)/places/[id]/reviews/page.tsx");
+    const page = readCode("app/(shell)/(place)/reviews/page.tsx");
     expect(page).toContain("if (!manage) notFound();");
     expect(readCode("components/place-manage/sections/PlaceSection.tsx")).not.toContain(
       "ReviewsSummary",
@@ -402,7 +424,7 @@ describe("every place view has its own loading boundary", () => {
 
 describe("Settings first paint is a row list, not a meter (MESITA-1739)", () => {
   it("the loading skeleton is rows, not Profile's photo band", () => {
-    const s = read("app/(shell)/places/[id]/settings/loading.tsx");
+    const s = read("app/(shell)/(place)/settings/loading.tsx");
     expect(s).not.toContain("h-[420px]");
     expect(s).not.toContain("PlaceViewSkeleton");
     expect(s).toContain("Loading settings");
@@ -542,17 +564,18 @@ describe("tab hrefs", () => {
     }
   });
   it("every tab maps to a route file on disk", () => {
+    // A tab's OLD address is a forwarder (one route handler for every view);
+    // its flat address is a page in the (place) group.
     const shell = path.join(SRC, "app", "(shell)");
+    expect(existsSync(path.join(shell, "places", "[id]", "[view]", "route.ts"))).toBe(true);
     for (const tab of PLACE_TABS) {
-      const segs = placeTabHref("ID", tab).slice(1).split("/");
-      segs[1] = "[id]";
-      expect(existsSync(path.join(shell, ...segs, "page.tsx"))).toBe(true);
+      expect(existsSync(path.join(shell, "(place)", tab, "page.tsx")), tab).toBe(true);
     }
   });
   it("every route file on disk is a tab — no orphan segment", () => {
     // Together with the loop above this is a bijection: a tab with no route
     // fails there, a route with no tab fails here.
-    const placeDir = path.join(SRC, "app", "(shell)", "places", "[id]");
+    const placeDir = path.join(SRC, "app", "(shell)", "(place)");
     const segments = readdirSync(placeDir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .filter((e) => existsSync(path.join(placeDir, e.name, "page.tsx")))

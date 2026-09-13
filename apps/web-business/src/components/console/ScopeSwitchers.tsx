@@ -1,7 +1,8 @@
 "use client";
 
-// The two switchers — change organization, change place — ON THE
-// ORGANIZATION PAGE (MESITA-1822).
+// The two switchers — change organization, change place — ON ACCOUNT
+// (MESITA-1832: "Account must contain select account, organization selector,
+// and place selector"; on the organization page from MESITA-1822 until then).
 //
 // Pato, 2026-09-13, on the rail carrying them as rows: "still looks like
 // fucking shit. wtf? i told you: Account. Organization. (change
@@ -176,7 +177,8 @@ export function ScopeSwitchers() {
     startTransition(() => router.push(href));
   };
   const pickOrg = (id: string) => {
-    if (id !== org.id) go(orgHref(id), id);
+    // The forwarder writes the org cookie and lands back on Account.
+    if (id !== org.id) go(`${orgHref(id)}?to=${SHELL_ROUTES.account}`, id);
   };
   const pickPlace = (id: string) => {
     if (id === place?.id) return;

@@ -40,11 +40,54 @@
 // browsers forever, and where `/` lands depends on which place you opened
 // last. Every legacy forward is permanent — those moves are not coming back.
 
+// THE SIX PAGES (MESITA-1832, Pato 2026-09-13: "make the frontend web
+// routes /account /profile /reviews /payments /activity /settings"), plus
+// /admin for a super-admin. No id in any of them: the page is about THE
+// SELECTED place and organization (lib/selected-place.ts server-side,
+// lib/rail-scope.ts client-side). The old addresses SELECT and FORWARD —
+// `/places/<id>/<view>` writes the place cookie and 307s to `/<view>`,
+// `/orgs/<id>` writes the org cookie and 307s to `/payments` (or `?to=`).
 export const SHELL_ROUTES = {
   root: "/",
   account: "/account",
+  profile: "/profile",
+  reviews: "/reviews",
+  payments: "/payments",
+  activity: "/activity",
+  settings: "/settings",
+  admin: "/admin",
   orgNew: "/orgs/new",
 } as const;
+
+/** The flat pages a forwarder may land on. */
+export const FLAT_ROUTES: readonly string[] = [
+  SHELL_ROUTES.account,
+  SHELL_ROUTES.profile,
+  SHELL_ROUTES.reviews,
+  SHELL_ROUTES.payments,
+  SHELL_ROUTES.activity,
+  SHELL_ROUTES.settings,
+  SHELL_ROUTES.admin,
+];
+export function isFlatRoute(pathname: string): boolean {
+  return FLAT_ROUTES.includes(pathname);
+}
+
+/** A place view's flat address: /profile, /reviews, … */
+export function viewHref(tab: "profile" | "reviews" | "activity" | "settings" | "admin"): string {
+  return `/${tab}`;
+}
+
+/** Which place view a FLAT pathname is, or null. The forwarders
+ *  (`/places/<id>/<view>`) are not views: they are in flight. */
+export function flatViewFromPathname(
+  pathname: string,
+): "profile" | "reviews" | "activity" | "settings" | "admin" | null {
+  const seg = pathname.replace(/\/$/, "");
+  const views = ["profile", "reviews", "activity", "settings", "admin"] as const;
+  for (const v of views) if (seg === `/${v}`) return v;
+  return null;
+}
 
 // ── The organization's pages ──────────────────────────────────────────────
 //

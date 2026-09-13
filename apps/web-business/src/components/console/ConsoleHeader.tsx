@@ -31,6 +31,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   ORG_PAGE_LABEL,
   SHELL_ROUTES,
+  flatViewFromPathname,
   orgPageFromPathname,
   placeIdFromPathname,
 } from "@/lib/console-routes";
@@ -46,6 +47,17 @@ export function crumbsFor(
 ): string[] {
   if (pathname === SHELL_ROUTES.account) return ["Account"];
   if (pathname === SHELL_ROUTES.orgNew) return ["Create organization"];
+  // The six pages (MESITA-1832): the organization, the place, the page.
+  if (pathname === SHELL_ROUTES.payments) {
+    return [...(names.orgName ? [names.orgName] : []), "Payments"];
+  }
+  const flat = flatViewFromPathname(pathname);
+  if (flat) {
+    const trail = names.orgName ? [names.orgName] : [];
+    if (names.placeName) trail.push(names.placeName);
+    trail.push(PLACE_TAB_LABEL[flat]);
+    return trail;
+  }
   const page = orgPageFromPathname(pathname);
   if (page) {
     // The organization's own page is the organization: no second crumb

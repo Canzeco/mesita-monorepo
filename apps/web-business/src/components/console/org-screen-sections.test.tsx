@@ -1,121 +1,51 @@
-// Pins the Organization page composition. MESITA-1798 added Partner
-// immediately after Stripe Account; MESITA-1810 put the boxes back on ONE
-// page. The order lives in ORG_SCREEN_ORDER and in the rendered output; both
-// are asserted so neither can drift alone.
+// The Payments page's composition (MESITA-1832; the Organization page's
+// until then). The order is a product decision and this file pins it.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import {
-  ORG_SCREEN_ORDER,
-  OrgScreenSections,
-  SOON_STRIPS,
-} from "./OrgScreenSections";
-import { ConnectStripeForm } from "./PaymentsCard";
-import type {
-  Organization,
-  OrgMember,
-  PaymentAccount,
-  PendingOrgInvite,
-} from "@/lib/api/organizations";
-import { orgPlacesHref, orgPlacesNewHref } from "@/lib/console-routes";
+import type { Organization, PaymentAccount } from "@/lib/api/organizations";
+import { ORG_SCREEN_ORDER, PaymentsSections, SOON_STRIPS } from "./OrgScreenSections";
 
 const ORG: Organization = {
   id: "org-1",
-  name: "Test Org",
+  name: "Org Test",
   legalName: null,
   rfc: null,
   currency: "MXN",
   myRole: "owner",
   placeCount: 0,
   places: [],
-};
-
-const MEMBERS: OrgMember[] = [
-  { managerId: "me", name: null, email: "pato@canzeco.com", role: "owner" },
-  { managerId: "m2", name: "Ana Ruiz", email: "ana@x.mx", role: "editor" },
-];
+  partnered: false,
+  mesitaPayEnabled: false,
+} as unknown as Organization;
 
 const READY: PaymentAccount = {
-  organization_id: "org-1",
   stripe_account_id: "acct_1",
-  livemode: false,
   charges_enabled: true,
   details_submitted: true,
   payouts_enabled: true,
-  requirements_due: [],
-  disabled_reason: null,
-  country: "MX",
-};
+} as unknown as PaymentAccount;
 
-/** The connect gate now lives behind the card's one button, so it is
- *  rendered directly — a closed modal has no markup to assert against. */
-function connectForm(over: Partial<Parameters<typeof ConnectStripeForm>[0]> = {}) {
+function render(over: Partial<{ org: Organization; account: PaymentAccount | null; orphaned: boolean }> = {}) {
   return renderToStaticMarkup(
-    <ConnectStripeForm
-      orgId="org-1"
-      action={() => {}}
-      pending={false}
-      error={null}
-      {...over}
-    />,
+    <PaymentsSections org={over.org ?? ORG} account={over.account ?? null} orphaned={over.orphaned ?? false} />,
   );
 }
 
-function render(over: Partial<Parameters<typeof OrgScreenSections>[0]> = {}) {
-  return renderToStaticMarkup(
-    <OrgScreenSections
-      org={ORG}
-      myManagerId="me"
-      account={null}
-      orphaned={false}
-      members={MEMBERS}
-      pendingInvites={[]}
-      membersError={null}
-      {...over}
-    />,
-  );
-}
-
-describe("the Organization page composition", () => {
+describe("the Payments page composition", () => {
   it("pins the approved order constant", () => {
-    expect(ORG_SCREEN_ORDER).toEqual([
-      "stripe",
-      "partner",
-      "members",
-      "places",
-      "credits",
-    ]);
+    expect(ORG_SCREEN_ORDER).toEqual(["stripe", "partner", "credits"]);
   });
 
-  it("renders the boxes in that order", () => {
+  it("renders the boxes in that order, and nothing that moved elsewhere", () => {
     const html = render();
-    const positions = [
-      "Stripe Account",
-      "Partner",
-      "Members",
-      "Places",
-      SOON_STRIPS.credits.title,
-    ].map((t) => html.indexOf(t));
+    const positions = ["Stripe Account", "Partner", SOON_STRIPS.credits.title].map((t) => html.indexOf(t));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
-    // Mesita Capital and Activity left the page (MESITA-1828).
+    // Members are on /settings, Places on /account (MESITA-1832).
+    expect(html).not.toContain("Members");
+    expect(html).not.toContain(">Add place<");
     expect(html).not.toContain("Mesita Capital");
     expect(html).not.toContain("one feed");
-  });
-
-  it("the Places box opens the organization's own list (MESITA-1807)", () => {
-    expect(render()).toContain(`href="${orgPlacesNewHref("org-1")}"`);
-    expect(render()).toContain(">Add place<");
-    expect(render({ org: { ...ORG, placeCount: 2 } })).toContain(">Manage<");
-    expect(render({ org: { ...ORG, placeCount: 2 } })).toContain(
-      `href="${orgPlacesHref("org-1")}"`,
-    );
-    expect(render()).not.toContain("org=");
-  });
-
-  it("a viewer with no places gets an honest empty, no Add place", () => {
-    const html = render({ org: { ...ORG, myRole: "viewer" } });
-    expect(html).toContain("This organization has no places.");
-    expect(html).not.toContain(">Add place<");
   });
 
   it("labels the Partner switch Partner, never Not Partner or Patner", () => {
@@ -136,18 +66,11 @@ describe("the Organization page composition", () => {
     expect(html).toContain('role="switch"');
     expect(html).toContain('aria-label="Partner"');
     expect(html).not.toContain("Needs a Ready Stripe account");
-    expect(html).not.toContain("Not Partner");
-    expect(html).not.toContain("Patner");
-    expect(render({ account: READY, orphaned: true })).not.toContain(
-      'role="switch"',
-    );
+    expect(render({ account: READY, orphaned: true })).not.toContain('role="switch"');
   });
 
   it("names Mesita Pay, Visit Rewards and Accept Prepays when Partner is on", () => {
-    const html = render({
-      account: READY,
-      org: { ...ORG, partnered: true, mesitaPayEnabled: true },
-    });
+    const html = render({ account: READY, org: { ...ORG, partnered: true } as Organization });
     expect(html).toContain("Mesita Pay");
     expect(html).toContain("Visit Rewards");
     expect(html).toContain("Accept Prepays");
@@ -156,82 +79,7 @@ describe("the Organization page composition", () => {
   it("keeps the ONE Soon strip honest: dashed, one line, no knobs (MESITA-1828)", () => {
     const html = render();
     expect(html.match(/border-dashed/g)?.length).toBe(1);
-    // The line carries an apostrophe, which React escapes; match its tail.
     expect(html).toContain("outstanding liability will live here.");
-    // Credits copy stays neutral — no product mechanics (founder-review law).
     expect(SOON_STRIPS.credits.line).not.toMatch(/advance|loan|rate|%/i);
-  });
-
-  it("promotes email to the primary line when the name is null, and tags You", () => {
-    const html = render();
-    expect(html).toContain("pato@canzeco.com");
-    expect(html).toContain("Ana Ruiz");
-    expect(html).toContain(">You<");
-  });
-
-  it("members failure renders the inline line, never an empty list, and hides Add", () => {
-    const html = render({ members: [], membersError: "Couldn't load members." });
-    expect(html).toContain("Couldn&#x27;t load members.");
-    expect(html).not.toContain("Add member");
-  });
-
-  it("lists pending invites separately, with their own eyebrow (MESITA-1550)", () => {
-    const invites: PendingOrgInvite[] = [
-      {
-        id: "inv-1",
-        email: "new@x.mx",
-        role: "editor",
-        createdAt: "2026-09-06T00:00:00.000Z",
-        expiresAt: "2026-09-20T00:00:00.000Z",
-      },
-    ];
-    const html = render({ pendingInvites: invites });
-    expect(html).toContain("Pending invites");
-    expect(html).toContain("new@x.mx");
-    expect(html).toContain("Invited, pending");
-  });
-
-  it("renders no pending-invites eyebrow when there are none", () => {
-    expect(render()).not.toContain("Pending invites");
-  });
-
-  it("names what Stripe collects in the connect modal", () => {
-    expect(connectForm()).toContain("legal name, RFC, address, bank account");
-  });
-
-  it("offers ONE control on the card, and asks its questions in the modal", () => {
-    // Pato, 2026-09-09: "Connect Stripe must simply be a clean box." The two
-    // selects and their caveat paragraph used to sit open on a summary card
-    // whose every other row is a label and a value.
-    const html = render();
-    expect(html).toContain("Connect Stripe");
-    expect(html).not.toContain("<select");
-    // A closed modal has no DOM — the questions cannot leak back onto the card.
-    expect(html).not.toContain("legal name, RFC, address, bank account");
-  });
-
-  it("gates connect on country AND legal entity, and sends the rest to Stripe", () => {
-    // Pato, 2026-09-06: ask country + entity type BEFORE onboarding opens;
-    // the RFC and everything after it belong to Stripe's hosted flow.
-    const html = connectForm();
-    expect(html).toContain('name="country"');
-    expect(html).toContain('name="entityType"');
-    expect(html).toContain('value="individual"');
-    expect(html).toContain('value="company"');
-    // No valid default on the entity select — a silent "individual" sends a
-    // persona moral down a branch that costs a restart, not a correction.
-    expect(html).toMatch(/name="entityType"[^>]*required/);
-    expect(html).toContain('<option value="" disabled="" selected="">');
-    // The console asks two questions and names Stripe as the owner of the rest.
-    expect(html).toContain("legal name, RFC, address, bank account");
-    // Resume carries no entity gate — that account already has its answer.
-    expect(html).toContain('name="intent" value="create"');
-  });
-
-  it("does not preview legal identity on the Stripe Account card", () => {
-    const html = render();
-    expect(html).not.toContain("Legal identity");
-    expect(html).not.toContain("Legal name");
-    expect(html).not.toContain("Add details");
   });
 });
