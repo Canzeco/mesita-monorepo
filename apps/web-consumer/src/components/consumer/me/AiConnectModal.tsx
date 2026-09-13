@@ -214,7 +214,7 @@ export function AiConnectModal({
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="border-border/60 border-b px-4 py-3">
               <p className="text-sm font-semibold">New token</p>
-              <p className="text-muted-foreground type-label">
+              <p className="text-muted-foreground type-body">
                 Copy now — Mesita won’t show the full token again
               </p>
             </div>
@@ -268,7 +268,7 @@ export function AiConnectModal({
           />
         </div>
 
-        <p className="text-muted-foreground type-label mt-4 leading-relaxed">
+        <p className="text-muted-foreground type-body mt-4 leading-relaxed">
           Tools: get profile, suggest/get places, save places, list/create
           reservations, list rewards. Revoke anytime if a client is compromised.
         </p>

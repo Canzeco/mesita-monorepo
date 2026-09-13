@@ -96,7 +96,7 @@ export function InvitePinModal() {
           </Button>
         </section>
 
-        <p className="text-muted-foreground type-label mt-3 text-center leading-snug">
+        <p className="text-muted-foreground type-body mt-3 text-center leading-snug">
           Invitations come from Mesita and its partners. A PIN works once.
         </p>
     </MeScreen>

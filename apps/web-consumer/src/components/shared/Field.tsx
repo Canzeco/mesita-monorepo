@@ -25,7 +25,7 @@ export function Field({
       </span>
       {children}
       {hint && (
-        <span className="text-muted-foreground/80 type-label mt-1 block">
+        <span className="text-muted-foreground type-body mt-1 block">
           {hint}
         </span>
       )}

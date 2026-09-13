@@ -55,7 +55,7 @@ export function ConsumerActivityList({
         })}
       </ul>
       {anonymisedNote ? (
-        <p className="text-muted-foreground type-label inline-flex items-center justify-center gap-1.5">
+        <p className="text-muted-foreground type-body inline-flex items-center justify-center gap-1.5">
           <Sparkles className="h-3 w-3" />
           Anonymised — handles, places, and amounts are shuffled.
         </p>

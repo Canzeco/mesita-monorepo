@@ -233,7 +233,7 @@ function ConnectModule({
         )}
         {verifying ? "Connecting…" : "Verify"}
       </Button>
-      <p className="text-muted-foreground type-label mt-2 text-center">
+      <p className="text-muted-foreground type-body mt-2 text-center">
         We never ask for your password.
       </p>
     </section>

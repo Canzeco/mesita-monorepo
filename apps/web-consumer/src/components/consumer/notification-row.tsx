@@ -51,7 +51,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
             Reward {formatPayMx(reward, p.currency)}
           </p>
         ) : null}
-        <p className="text-muted-foreground type-meta mt-1">
+        <p className="text-muted-foreground type-body mt-1">
           {new Date(n.created_at).toLocaleString(undefined, {
             month: "short",
             day: "numeric",

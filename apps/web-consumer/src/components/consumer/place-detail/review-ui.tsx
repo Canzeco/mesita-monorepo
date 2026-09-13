@@ -51,7 +51,7 @@ export function ExternalCard({
         )}
         {value}
       </div>
-      <p className="text-muted-foreground type-meta leading-tight">{meta}</p>
+      <p className="text-muted-foreground type-body leading-tight">{meta}</p>
     </div>
   );
 }
