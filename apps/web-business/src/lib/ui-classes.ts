@@ -116,7 +116,7 @@ export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
 // its own words, one comment up: readability is protected PER ELEMENT, not
 // by squeezing the console. `<main>`, the gutter wrapper and the rail stay
 // uncapped, and `shell-chrome.test.ts` still proves it.
-export const ACCOUNT_COLUMN_CLASS = "flex w-full max-w-xl flex-col gap-4";
+export const ACCOUNT_COLUMN_CLASS = "flex w-full max-w-2xl flex-col gap-4";
 
 // ── The wide-record table (MESITA-1608) ────────────────────────────────────
 //
