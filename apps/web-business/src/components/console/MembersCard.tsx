@@ -297,7 +297,7 @@ export function MembersCard({
   return (
     <Section
       title="Members"
-      description="Org roles govern this screen; place teams are separate."
+      description="Place teams are separate."
       right={
         isOwner && !loadError ? (
           <button

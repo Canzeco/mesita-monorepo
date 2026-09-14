@@ -36,7 +36,7 @@ vi.mock("next/navigation", () => ({
 
 import { Sidebar } from "./Sidebar";
 import { RailScopeProvider } from "./RailScopeContext";
-import { ScopeSwitchers } from "./ScopeSwitchers";
+import { OrgSwitcher } from "./OrgSwitcher";
 
 const ORGS: RailOrg[] = [
   {
@@ -105,7 +105,7 @@ function renderSwitchers(pathname: string, over: Over = {}): string {
   const { organizations, scope } = scopeFor(pathname, over);
   return renderToStaticMarkup(
     <RailScopeProvider value={{ scope, organizations, isSuperAdmin: over.isSuperAdmin ?? false }}>
-      <ScopeSwitchers />
+      <OrgSwitcher />
     </RailScopeProvider>,
   );
 }
@@ -135,7 +135,6 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // create ceremony, which has no organization to name yet.
     [SHELL_ROUTES.orgNew, "Organization"],
     [orgHref("org-a", "organization"), "Organization"],
-    [orgHref("org-a", "members"), "Organization"],
     // Places has a row of its own, and Add place is its list's own step.
     [orgHref("org-a", "places"), "Places"],
     [orgPlacesNewHref("org-a"), "Places"],
@@ -150,7 +149,6 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // …and the flat ones an operator can still type, which light the same
     // row while the forward is in flight.
     [FLAT_ROUTES.organization, "Organization"],
-    [FLAT_ROUTES.members, "Organization"],
     [FLAT_ROUTES.customers, "Customers"],
     [FLAT_ROUTES.payments, "Payments"],
     [FLAT_ROUTES.activity, "Activity"],
@@ -192,14 +190,14 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     expect(pillText(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toBe("Create organization");
   });
 
-  it("the one page with no row is still reachable, from the Organization page", () => {
-    // A page no row can light is fine; a page no SCREEN offers is lost.
+  it("the Organization page shows its people and places rather than doors to them", () => {
+    // MESITA-1847: Pato, "fuck nested things display shit there."
     const page = readFileSync(
       join(process.cwd(), "src/app/(shell)/orgs/[orgId]/organization/page.tsx"),
       "utf8",
     );
-    expect(page).toContain(`orgHref(org.id, "members")`);
-    expect(page).toContain("orgPlacesHref(org.id)");
+    expect(page).toContain("<MembersCard");
+    expect(page).toContain("orgPlacesNewHref(org.id)");
   });
 });
 
@@ -417,77 +415,59 @@ describe("the states a 10/10 has to answer", () => {
 });
 
 
-describe("the switchers live on Account (MESITA-1832)", () => {
-  it("render Organization and Place, each a menu trigger, never a pill", () => {
-    const html = renderSwitchers(SHELL_ROUTES.account, { rememberedPlaceId: "p-1" });
+describe("the organization selector lives on Organization (MESITA-1847)", () => {
+  // Pato: "organization must be selected in organization not fucking there,
+  // account is just for there." It sat on Account from MESITA-1832 on his own
+  // earlier instruction — right while the Organization page did not exist.
+  const ORG_PAGE = orgHref("org-a", "organization");
+
+  it("is ONE trigger: the organization, never a pill, and never a place", () => {
+    const html = renderSwitchers(ORG_PAGE, { rememberedPlaceId: "p-1" });
     expect(html).toContain('aria-label="Switch organization"');
-    expect(html).toContain('aria-label="Switch place"');
     expect(html).toContain(">Strana Group<");
-    expect(html).toContain(">Strana Del Valle<");
     expect(html).not.toContain("aria-current");
-    expect((html.match(/lucide-chevrons-up-down/g) ?? []).length).toBe(2);
+    expect((html.match(/lucide-chevrons-up-down/g) ?? []).length).toBe(1);
+    // THE PLACE SWITCHER IS DELETED, not moved: the Organization page lists
+    // the places themselves, and a menu whose contents are already on the
+    // page one box below is a second door to the same room.
+    expect(html).not.toContain('aria-label="Switch place"');
+    expect(html).not.toContain(">Strana Del Valle<");
+    expect((html.match(/<button/g) ?? []).length).toBe(1);
   });
 
-  it("with one organization holding one place, both are names: no chevron", () => {
-    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
+  // MESITA-1818, 3A. A switcher with nothing to switch is a NAME: no chevron
+  // at one organization, and the row still opens its menu as the door to
+  // Create organization.
+  it("with one organization it is a name, not a control", () => {
+    const html = renderSwitchers(ORG_PAGE, { organizations: SOLO });
     expect(html).toContain(">Pato<");
-    expect(html).toContain(">Hoster Brewing Company<");
     expect(html).not.toContain("lucide-chevrons-up-down");
+    // The row is still a trigger, so the menu — Create organization — is one
+    // click away. Its contents live in a portal and do not render closed, so
+    // the source test in shell-chrome.test.ts is what pins them.
+    expect(html).toContain('aria-label="Switch organization"');
   });
 
-  // MESITA-1833: the zero-places row is an EMPTY STATE, not a name. It used
-  // to render "Add a place" in the slot a name occupies and — nothing to
-  // switch — drew no chevron, so the call to action read as a disabled field.
-  it("an organization holding no place turns the place switcher into the next step", () => {
-    const html = renderSwitchers(SHELL_ROUTES.account, { rememberedOrgId: "org-b" });
-    expect(html).toContain(">Add your first place<");
-    // MESITA-1840: the dashed border went with the box. The affordance is the
-    // plus chip and the brand-pink title, on a row that is still a trigger.
-    expect(html).not.toContain("border-dashed");
-    expect(html).toContain("lucide-plus");
-    expect(html).toContain("--brand-pink-text");
-    expect(html).toContain(">Nothing to switch between yet<");
-  });
-
-  // MESITA-1834: one column, at every width. Two columns in a fluid console
-  // stretched each three-line row to ~800px, chevron a hand's width from its
-  // name. MESITA-1840 then removed the wrapper entirely: these two are rows
-  // two and three of Account's one card, and `divide-y` only draws between
-  // DIRECT children — a wrapper would swallow the hairline between them.
-  it("the switchers are one column, and render WITHOUT a wrapper", () => {
-    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
-    expect(html).not.toContain("grid-cols");
-    expect(html).not.toContain('class="flex flex-col gap-3"');
-    // Two sibling triggers, nothing around them.
-    expect((html.match(/<button/g) ?? []).length).toBe(2);
-    expect(html.startsWith("<button")).toBe(true);
-  });
-
-  // MESITA-1837 gave Account's three a single rank; MESITA-1840 merged the
-  // containers without touching it. Two of the three rows render here and the
-  // third renders on the page, so the shape stays a shared constant. If these
-  // two ever stop carrying it, the three have drifted into three ranks again
-  // — exactly the hierarchy "three big boxes" was invented to replace.
-  it("both switchers wear the shared ROW shape, at row size", () => {
-    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
-    expect((html.match(/min-h-24/g) ?? []).length).toBe(2);
-    expect((html.match(/h-11 w-11/g) ?? []).length).toBe(2);
+  // MESITA-1837 gave the console's boxes a single rank; the shape is a shared
+  // constant so the selector and Account's You row cannot drift into two.
+  it("wears the shared ROW shape, at row size, inside the shared card", () => {
+    const html = renderSwitchers(ORG_PAGE, { organizations: SOLO });
+    expect((html.match(/min-h-24/g) ?? []).length).toBe(1);
+    expect((html.match(/h-11 w-11/g) ?? []).length).toBe(1);
     expect(read_ui()).toContain("export const SCOPE_ROW_CLASS");
-    // A row carries no border or radius of its own — the card holds both.
-    expect(html).not.toContain("rounded-2xl");
+    expect(html).not.toContain("grid-cols");
   });
 
-  // The meta the dropdown computes now rides ON the trigger (MESITA-1833):
-  // the role and the holding, without opening anything.
-  it("each switcher states its scope on the trigger, not one click behind it", () => {
-    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
+  // The meta the dropdown computes rides ON the trigger (MESITA-1833): the
+  // role and the holding, without opening anything.
+  it("states its scope on the trigger, not one click behind it", () => {
+    const html = renderSwitchers(ORG_PAGE, { organizations: SOLO });
     expect(html).toContain(">Owner · 1 place<");
-    expect(html).toContain(">In Pato<");
   });
 
-  it("render nothing without an organization or outside the shell", () => {
+  it("renders nothing without an organization or outside the shell", () => {
     expect(renderSwitchers(SHELL_ROUTES.orgNew, { organizations: [] })).toBe("");
     nav.pathname = SHELL_ROUTES.account;
-    expect(renderToStaticMarkup(<ScopeSwitchers />)).toBe("");
+    expect(renderToStaticMarkup(<OrgSwitcher />)).toBe("");
   });
 });

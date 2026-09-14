@@ -39,7 +39,10 @@ describe("the Payments page composition", () => {
 
   it("renders the boxes in that order, and nothing that moved elsewhere", () => {
     const html = render();
-    const positions = ["Stripe Account", "Partner"].map((t) => html.indexOf(t));
+    // The HEADING text nodes, not the bare words: PartnerCard no longer
+    // renders "Partner" anywhere (MESITA-1847), which is what makes matching
+    // `>Partner<` exact rather than accidental.
+    const positions = [">Stripe<", ">Partner<"].map((t) => html.indexOf(t));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
     // Members and Places are the Organization page's (MESITA-1841); Mesita
@@ -48,6 +51,18 @@ describe("the Payments page composition", () => {
     expect(html).not.toContain(">Add place<");
     expect(html).not.toContain("Mesita Capital");
     expect(html).not.toContain("one feed");
+  });
+
+  // EACH BOX NAMES ITSELF ONCE (MESITA-1847). Pato: "make it less redundant."
+  // The heading said it, the description restated it, and the card inside
+  // said it a third time — "Stripe" four times and "Partner" three before any
+  // state was stated. Counting is the only guard that catches it coming back.
+  it("names Stripe once and Partner once — the headings, and nothing else", () => {
+    const html = render();
+    expect((html.match(/>Partner</g) ?? []).length).toBe(1);
+    expect((html.match(/>Stripe</g) ?? []).length).toBe(1);
+    // The row that restated its own box: gone with its label.
+    expect(html).not.toContain(">Account<");
   });
 
   // MESITA-1845: Credits had its own page for one issue and merged back here

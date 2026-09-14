@@ -10,7 +10,6 @@
 // here too.
 import { notFound, redirect } from "next/navigation";
 import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
-import { OrgStateBadge } from "@/components/console/badges";
 import { PaymentsSections } from "@/components/console/OrgScreenSections";
 import {
   apiGetPaymentAccount,
@@ -55,10 +54,12 @@ export default async function PaymentsPage({
 
   return (
     <>
-      <div className="flex items-center gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Payments</h1>
-        <OrgStateBadge state={account?.charges_enabled ? "connected" : "not_connected"} />
-      </div>
+      {/* NO BADGE BESIDE THE HEADING (MESITA-1847). It read `charges_enabled`
+          and said "Connected"; the box below says "Ready" only at charges AND
+          payouts AND details submitted. Two ladders describing one account in
+          two vocabularies on one screen, able to visibly disagree — so the
+          precise one stays and the headline one goes. */}
+      <h1 className="font-display text-2xl font-semibold tracking-tight">Payments</h1>
       <ConnectReturnNotice connect={connect} />
       <PaymentsSections org={org} account={account} orphaned={orphaned} />
     </>

@@ -37,13 +37,14 @@
 //                              `/organization`, and the one address that
 //                              catches Stripe's stored `?connect=` and hands
 //                              the whole query to Payments.
-//   /orgs/<id>/organization   THE ORGANIZATION itself — its name, Members,
-//                              Places
-//            /customers       who keeps coming back (Soon)
+//   /orgs/<id>/organization   THE ORGANIZATION itself — which one you are in,
+//                              its people, and the places it holds, all on
+//                              the page rather than behind doors
+//            /customers        who keeps coming back (Soon)
 //            /payments         Stripe · Partner · Prepaid Credits
 //            /activity         the organization's numbers, by place
-//            /members          who may sign in, and at what role
-//            /places           what it holds and can claim (?owned=)
+//            /places           the whole catalogue: the states matrix, the
+//                              ?owned= filters, Claim and Release
 //            /places/new       Add place
 //            /switch?to=       NOT a page: the org switcher's mechanism —
 //                              writes the org cookie, clears the place cookie,
@@ -57,7 +58,7 @@
 //              /admin          super-admin only
 //
 //   /profile /reviews /capabilities /rewards /admin
-//   /organization /customers /payments /activity /members
+//   /organization /customers /payments /activity
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -102,10 +103,10 @@ export const SHELL_ROUTES = {
 //
 // The organization ITSELF is `/orgs/<id>` — named `"organization"` in this
 // contract so one vocabulary covers the bare address and the segments beneath
-// it. Customers, Payments, Activity and Places are the rail's other four rows
-// (MESITA-1845); MEMBERS is the only one with an address and no row, because
-// the Organization page is its door — and it lights the Organization row,
-// which is the row you would go back through.
+// it. Customers, Payments, Activity and Places are the rail's other four
+// rows, and since MESITA-1847 there is nothing else: every organization
+// address is a rail row, because the one that was not — Members — is now
+// CONTENT on the Organization page rather than a door out of it.
 
 /** The segments BENEATH `/orgs/<id>`.
  *
@@ -118,7 +119,6 @@ export const ORG_PAGES = [
   "customers",
   "payments",
   "activity",
-  "members",
   "places",
 ] as const;
 export type OrgPage = (typeof ORG_PAGES)[number];
@@ -132,7 +132,6 @@ export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
   customers: "Customers",
   payments: "Payments",
   activity: "Activity",
-  members: "Members",
   places: "Places",
 };
 
@@ -158,12 +157,12 @@ export const ORG_RAIL_TARGETS = [
 ] as const;
 export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
 
-/** The organization addresses with NO row of their own — each reached from
- *  the Organization page, and each lighting ITS row while you are there. A
- *  page in neither list is a page nothing in the rail can light, which is the
- *  drift `sidebar-render.test.tsx` counts as a second pill or none. */
-export const ORG_DOOR_TARGETS = ["members"] as const;
-export type OrgDoorTarget = (typeof ORG_DOOR_TARGETS)[number];
+// THERE ARE NO DOORS LEFT (MESITA-1847). `members` was the last organization
+// address with no rail row, reached through a chevron on the Organization
+// page — and Pato: *"members and places in organization i mean, fuck nested
+// things display shit there."* The people are ON that page now, so the
+// address has nothing left to be, and `ORG_RAIL_TARGETS` is the whole
+// vocabulary again. `/members` and `/orgs/<id>/members` forward.
 
 const ORGS = "/orgs";
 
@@ -258,12 +257,11 @@ export const FLAT_ROUTES = {
   capabilities: "/capabilities",
   rewards: "/rewards",
   admin: "/admin",
-  // The organization's five
+  // The organization's four
   organization: "/organization",
   customers: "/customers",
   payments: "/payments",
   activity: "/activity",
-  members: "/members",
 } as const;
 
 export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];

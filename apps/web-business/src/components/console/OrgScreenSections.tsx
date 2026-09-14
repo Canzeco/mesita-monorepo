@@ -67,8 +67,7 @@ export function PaymentsSections({
   return (
     <>
       <Section
-        title="Stripe Account"
-        description="The account this organization gets paid through."
+        title="Stripe"
       >
         <PaymentsCard
           orgId={org.id}
@@ -80,7 +79,7 @@ export function PaymentsSections({
 
       <Section
         title="Partner"
-        description="One switch for this organization. Free. Unlocks Mesita Pay, Visit Rewards and Accept Prepays at every held place."
+        description="Free. Unlocks Mesita Pay, Visit Rewards and Accept Prepays at every held place."
       >
         <PartnerCard
           key={`${org.id}-${org.partnered === true ? "on" : "off"}`}

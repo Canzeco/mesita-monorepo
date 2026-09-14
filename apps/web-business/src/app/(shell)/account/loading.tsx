@@ -8,10 +8,12 @@
 // that no longer existed, so every load ended in a layout shift on swap. A
 // skeleton is a promise about what is coming.
 //
-// ONE card now (MESITA-1840), full width (MESITA-1836): three 96px rows
-// divided by the same hairline, nothing inside them. The height and the
-// dividers mirror SCOPE_CARD_CLASS + SCOPE_ROW_CLASS exactly — if those
-// change, this changes with them.
+// ONE card, ONE row (MESITA-1847): the two switcher rows left with the
+// switchers — the organization selector moved to the Organization page and
+// the place selector was deleted — so a three-row skeleton would promise two
+// rows that never arrive, which is the layout shift this file exists to
+// prevent. The height and the border mirror SCOPE_CARD_CLASS +
+// SCOPE_ROW_CLASS exactly; if those change, this changes with them.
 export default function Loading() {
   return (
     <>
@@ -20,8 +22,6 @@ export default function Loading() {
         aria-hidden="true"
         className="border-border divide-border w-full divide-y overflow-hidden rounded-2xl border"
       >
-        <div className="bg-muted h-24 animate-pulse" />
-        <div className="bg-muted h-24 animate-pulse" />
         <div className="bg-muted h-24 animate-pulse" />
       </div>
     </>

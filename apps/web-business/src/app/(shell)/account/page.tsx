@@ -1,6 +1,16 @@
-// Account — the signed-in human, and the two switchers (MESITA-1832):
-// which organization, which place. The organization's places (the list, Add
-// place) are reached from the place switcher's menu.
+// Account — THE SIGNED-IN HUMAN, and nothing else (MESITA-1847).
+//
+// Pato, 2026-09-14: *"organization must be selected in organization not
+// fucking there, account is just for there."* Both switchers lived here from
+// MESITA-1832 on his own earlier instruction, and that was right while the
+// Organization page did not exist. It exists, it is a rail row, and a selector
+// belongs on the page about the thing it selects — so the organization
+// switcher moved to `/orgs/<id>/organization` and the place switcher was
+// deleted outright, the Organization page now listing the places themselves.
+//
+// What is left is one row: who you are, how many organizations you are in,
+// and the way out. The card keeps its shape for the day a second row about
+// the PERSON earns a place in it.
 //
 // THE "YOU" CARD IS GONE (MESITA-1833). Pato, 2026-09-14: "make this prettier
 // … far prettier". It held two rows of trivia — an email and a count — inside
@@ -35,7 +45,6 @@
 // affordance was `hover:underline`, saying what the organization switcher says
 // one line below it with a name attached.
 import { redirect } from "next/navigation";
-import { ScopeSwitchers } from "@/components/console/ScopeSwitchers";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
@@ -118,10 +127,6 @@ export default async function AccountPage() {
         />
       </div>
 
-      {/* "Account must contain select account, organization selector, and
-          place selector" (Pato, 2026-09-13; MESITA-1832). Rows two and three —
-          a FRAGMENT, so `divide-y` sees them as direct children of the card. */}
-      <ScopeSwitchers />
     </div>
   );
 }

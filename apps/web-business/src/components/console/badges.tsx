@@ -8,7 +8,6 @@
 // other, so neither badge is reusable for the other.
 import { cn } from "@/lib/utils";
 import type {
-  OrganizationState,
   PaymentAccountState,
   PlaceState,
 } from "@/lib/model/types";
@@ -45,24 +44,11 @@ export function PlaceStateBadge({
   );
 }
 
-const ORG_STATE_LABEL: Record<OrganizationState, string> = {
-  not_connected: "Not connected",
-  connected: "Connected",
-};
-
-const ORG_STATE_DOT: Record<OrganizationState, string> = {
-  not_connected: "bg-muted-foreground/50",
-  connected: "bg-emerald-500",
-};
-
-export function OrgStateBadge({ state }: { state: OrganizationState }) {
-  return (
-    <span className="border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
-      <span className={cn("h-1.5 w-1.5 rounded-full", ORG_STATE_DOT[state])} />
-      {ORG_STATE_LABEL[state]}
-    </span>
-  );
-}
+// ORG_STATE_BADGE IS GONE (MESITA-1847). It read `charges_enabled` alone and
+// said "Connected", while `StatePill` on the same screen says "Ready" only at
+// charges AND payouts AND details submitted — one account, two ladders, two
+// vocabularies, free to disagree in front of the owner. The precise one stays.
+// An exported badge nobody renders is an invitation to say it twice again.
 
 /**
  * "READY", NOT "LIVE" (MESITA-1643).
