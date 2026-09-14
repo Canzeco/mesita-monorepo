@@ -130,18 +130,18 @@ const labels = (html: string) =>
 describe("exactly one pill, on every route (MESITA-1832)", () => {
   const ROUTES: [string, string][] = [
     [SHELL_ROUTES.account, "Account"],
-    // THE ORGANIZATION OWNS ITS DOORS (MESITA-1841, widened by MESITA-1844):
-    // Members, Payments and Credits have addresses and no row, so each lights
-    // the row you would go back through. So does the create ceremony.
+    // THE ORGANIZATION OWNS ITS ONE DOOR (MESITA-1845): Members has an address
+    // and no row, so it lights the row you would go back through. So does the
+    // create ceremony, which has no organization to name yet.
     [SHELL_ROUTES.orgNew, "Organization"],
     [orgHref("org-a", "organization"), "Organization"],
     [orgHref("org-a", "members"), "Organization"],
-    [orgHref("org-a", "payments"), "Organization"],
-    [orgHref("org-a", "credits"), "Organization"],
-    // Places has a row of its own now, and Add place is its list's own step.
+    // Places has a row of its own, and Add place is its list's own step.
     [orgHref("org-a", "places"), "Places"],
     [orgPlacesNewHref("org-a"), "Places"],
     // The canonical addresses the rail links to (MESITA-1839)…
+    [orgHref("org-a", "customers"), "Customers"],
+    [orgHref("org-a", "payments"), "Payments"],
     [orgHref("org-a", "activity"), "Activity"],
     [view("profile"), "Profile"],
     [view("reviews"), "Reviews"],
@@ -151,8 +151,8 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // row while the forward is in flight.
     [FLAT_ROUTES.organization, "Organization"],
     [FLAT_ROUTES.members, "Organization"],
-    [FLAT_ROUTES.payments, "Organization"],
-    [FLAT_ROUTES.credits, "Organization"],
+    [FLAT_ROUTES.customers, "Customers"],
+    [FLAT_ROUTES.payments, "Payments"],
     [FLAT_ROUTES.activity, "Activity"],
     [FLAT_ROUTES.profile, "Profile"],
     [FLAT_ROUTES.reviews, "Reviews"],
@@ -192,36 +192,36 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     expect(pillText(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toBe("Create organization");
   });
 
-  it("the two pages that lost their row are still reachable, from the Organization page", () => {
-    // A page no row can light is fine; a page no SCREEN offers is lost. The
-    // Organization page is the door for all four of its roomless addresses.
+  it("the one page with no row is still reachable, from the Organization page", () => {
+    // A page no row can light is fine; a page no SCREEN offers is lost.
     const page = readFileSync(
       join(process.cwd(), "src/app/(shell)/orgs/[orgId]/page.tsx"),
       "utf8",
     );
-    for (const target of ["members", "payments", "credits"]) {
-      expect(page, target).toContain(`orgHref(org.id, "${target}")`);
-    }
+    expect(page).toContain(`orgHref(org.id, "members")`);
     expect(page).toContain("orgPlacesHref(org.id)");
   });
 });
 
-describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
-  const FOUR = ["Account", "Organization", "Activity", "Places"];
+describe("six nouns, then the place's five, indented (MESITA-1845)", () => {
+  const SIX = ["Account", "Organization", "Customers", "Payments", "Activity", "Places"];
   const PLACE_FIVE = ["Profile", "Reviews", "Capabilities", "Rewards"];
 
-  it("are Account first, the organization's three, then the place's rows — Admin only for a super-admin", () => {
+  it("are Account first, the organization's five, then the place's rows — Admin only for a super-admin", () => {
     const html = render(view("profile"), { rememberedPlaceId: "p-1" });
-    expect(labels(html)).toEqual([...FOUR, ...PLACE_FIVE]);
-    expect(rows(html)).toHaveLength(8);
+    expect(labels(html)).toEqual([...SIX, ...PLACE_FIVE]);
+    expect(rows(html)).toHaveLength(10);
     // NO WORDMARK (MESITA-1842). Pato: "no mesita logo, fuck it."
     expect(html).not.toContain("<svg viewBox=\"0 0 293.03 100\"");
     expect(html).not.toContain(">business<");
-    // PAYMENTS AND CREDITS LEFT THE RAIL (MESITA-1844): "payments inside org."
-    expect(labels(html)).not.toContain("Payments");
+    // CREDITS MERGED INTO PAYMENTS (MESITA-1845): no row, and no address.
     expect(labels(html)).not.toContain("Credits");
+    expect(hrefs(html).some((h) => h.includes("credits"))).toBe(false);
+    // AND NO ROW SAYS "SOON". Customers renders at full strength like every
+    // other row; its page carries the badge (MESITA-1833).
+    expect(html).not.toContain("Soon");
     const admin = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
-    expect(labels(admin)).toEqual([...FOUR, ...PLACE_FIVE, "Admin"]);
+    expect(labels(admin)).toEqual([...SIX, ...PLACE_FIVE, "Admin"]);
     expect(hrefs(admin)).toContain(view("admin"));
 
     // NO ID IS VISIBLE. The hrefs carry one since MESITA-1839 — that is the
@@ -273,8 +273,10 @@ describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
   it("each row wears the mark of its subject", () => {
     const html = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     for (const mark of [
-      "lucide-user-round", // Account — the person
+      "lucide-user-round", // Account — the person, one of them
       "lucide-building2", // Organization — the company, not the storefront
+      "lucide-users", // Customers — people, plural, against Account's one
+      "lucide-wallet", // Payments — the purse, not one card
       "lucide-chart-no-axes-column", // Activity — counts over time
       "lucide-layers", // Places — a stack of them, the Organization page's own
       "lucide-store", // Profile — the place's public page
@@ -285,11 +287,10 @@ describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
     ]) {
       expect(html, mark).toContain(mark);
     }
-    // The two that left with their rows (MESITA-1844) live on the
-    // Organization page now, and must not creep back in by habit.
-    expect(html).not.toContain("lucide-wallet");
+    // Coins left the app with the Credits page (MESITA-1845) and must not
+    // creep back: there is no Credits row and no Credits address to wear it.
     expect(html).not.toContain("lucide-coins");
-    // Nor the marks their rows replaced.
+    // Nor the marks these rows replaced.
     expect(html).not.toContain("lucide-file-text");
     expect(html).not.toContain("lucide-credit-card");
     expect(html).not.toContain("lucide-settings-2");
@@ -302,6 +303,8 @@ describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
     expect(hrefs(html)).toEqual([
       SHELL_ROUTES.account,
       orgHref("org-a"),
+      orgHref("org-a", "customers"),
+      orgHref("org-a", "payments"),
       orgHref("org-a", "activity"),
       orgHref("org-a", "places"),
       view("profile"),
@@ -314,7 +317,7 @@ describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
   it("with NO place selected the place rows fall back to the flat addresses", () => {
     // An organization holding nothing has no `/places/<id>/…` to name, and a
     // row must still be a live link onto a real next step (MESITA-1833). The
-    // organization's three still name their organization — it exists.
+    // organization's five still name their organization — it exists.
     const html = render(SHELL_ROUTES.account, {
       organizations: [{ id: "org-b", name: "Org Test", myRole: "owner", places: [] }],
       rememberedOrgId: "org-b",
@@ -322,6 +325,8 @@ describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
     expect(hrefs(html)).toEqual([
       SHELL_ROUTES.account,
       orgHref("org-b"),
+      orgHref("org-b", "customers"),
+      orgHref("org-b", "payments"),
       orgHref("org-b", "activity"),
       orgHref("org-b", "places"),
       FLAT_ROUTES.profile,
@@ -344,12 +349,12 @@ describe("four nouns, then the place's five, indented (MESITA-1844)", () => {
     // Capabilities and Rewards both WRITE, so the matrix withholds both. The
     // viewer did not lose a third surface: Activity is the organization's page
     // now, and every member of the organization can open it (MESITA-1841).
-    expect(labels(html)).toEqual([...FOUR, "Profile", "Reviews"]);
+    expect(labels(html)).toEqual([...SIX, "Profile", "Reviews"]);
   });
 });
 
 describe("the states a 10/10 has to answer", () => {
-  const FOUR = ["Account", "Organization", "Activity", "Places"];
+  const SIX = ["Account", "Organization", "Customers", "Payments", "Activity", "Places"];
   const PLACE_FIVE = ["Profile", "Reviews", "Capabilities", "Rewards"];
 
   it("zero organizations: Account and Create organization, nothing else", () => {
@@ -375,30 +380,30 @@ describe("the states a 10/10 has to answer", () => {
   // this rail may paint a working row as dead.
   it("an organization holding no place: the rows STAY, at FULL STRENGTH, one pill", () => {
     const html = render(FLAT_ROUTES.profile, { rememberedOrgId: "org-b" });
-    expect(labels(html)).toEqual([...FOUR, ...PLACE_FIVE]);
+    expect(labels(html)).toEqual([...SIX, ...PLACE_FIVE]);
     expect(html).not.toContain("opacity-60");
     expect(html).not.toContain("add a place first");
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Profile");
   });
 
-  it("the majority customer: one organization, one place — the same eight rows, nothing muted", () => {
+  it("the majority customer: one organization, one place — the same ten rows, nothing muted", () => {
     const html = render(FLAT_ROUTES.reviews, { organizations: SOLO });
-    expect(labels(html)).toEqual([...FOUR, ...PLACE_FIVE]);
+    expect(labels(html)).toEqual([...SIX, ...PLACE_FIVE]);
     expect(html).not.toContain("opacity-60");
     expect(pillText(html)).toBe("Reviews");
   });
 
   it("a pool place published by the layout: Profile alone among the place rows, still one pill", () => {
     const html = render(FLAT_ROUTES.profile, { lastPlaceId: "p-x" });
-    expect(labels(html)).toEqual([...FOUR, "Profile"]);
+    expect(labels(html)).toEqual([...SIX, "Profile"]);
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Profile");
   });
 
   it("collapsed: every label a title, one pill, one seam in the whole rail", () => {
     const html = render(FLAT_ROUTES.capabilities, { collapsed: true, rememberedPlaceId: "p-1" });
-    expect(rows(html)).toHaveLength(8);
+    expect(rows(html)).toHaveLength(10);
     expect(html).toContain('title="Capabilities"');
     expect(html).toContain('title="Places"');
     expect(html).toContain('title="Account · pato@canzeco.com"');

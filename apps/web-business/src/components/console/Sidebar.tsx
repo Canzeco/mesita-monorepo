@@ -1,13 +1,15 @@
 "use client";
 
-// The whole navigation: ONE FLAT COLUMN OF FOUR NOUNS, and one indent
-// (MESITA-1844).
+// The whole navigation: ONE FLAT COLUMN OF SIX NOUNS, and one indent
+// (MESITA-1844, extended by MESITA-1845).
 //
 // Pato, 2026-09-14, after eight passes over this rail in one afternoon, drew
-// the whole thing:
+// it — then added a row and moved one back:
 //
 //   [ ○ Account      ]  → /account                  the person
 //   [ ▣ Organization ]  → /orgs/<id>                what it is, who is in it
+//   [ ⚇ Customers    ]  → /orgs/<id>/customers      who keeps coming back
+//   [ ▤ Payments     ]  → /orgs/<id>/payments       Stripe · Partner · Credits
 //   [ ▥ Activity     ]  → /orgs/<id>/activity       the numbers, by place
 //   [ ⛁ Places       ]  → /orgs/<id>/places         what it holds
 //       Profile         → /places/<id>/profile
@@ -32,12 +34,19 @@
 // doing, where it happens*, which is the order a person actually asks those
 // questions in. It lights for `/account` alone.
 //
-// PAYMENTS AND CREDITS ARE NOT HERE. Pato: *"payments inside org."* They are
-// set up once and then left alone, and the rail is for what you check; the
-// Organization page is their door, as it already was for Members. All three
-// light the ORGANIZATION row while you are on them — a page no row can light
-// is how a console ends up with zero pills, which reads exactly like a broken
-// one.
+// PAYMENTS IS BACK, one issue after MESITA-1844 took it out on *"payments
+// inside org."* Pato's next list puts it in the column again, so it is in the
+// column again. CREDITS did not come with it: asked where Credits goes, he
+// said *"merge"*, and it is the `SoonStrip` at the foot of Payments — the page
+// it was split out of in MESITA-1841. MEMBERS is now the only organization
+// address with no row of its own, and it lights ORGANIZATION, whose page is
+// its door. A page no row can light renders zero pills, which reads exactly
+// like a broken console.
+//
+// CUSTOMERS IS A LIVE ROW. Pato wrote it "(Soon)", and a Soon badge in a rail
+// is a dimmed row — the exact thing MESITA-1833 forbids, in his own words:
+// "make all this functional. not hidden shit." So the row renders at full
+// strength and its page carries the badge.
 //
 // ONE INDENT, ONE DEPTH. The place's five sit under Places because they are
 // about a place and Places is the row they belong to; the drawing's own
@@ -89,6 +98,8 @@ import {
   Star,
   Store,
   UserRound,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
@@ -162,10 +173,14 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 // THE MARKS NAME THE SUBJECT, NOT THE LABEL (MESITA-1838, MESITA-1841, and
 // MESITA-1844 for the row that arrived):
 //
-//   Account       UserRound           the person
+//   Account       UserRound           the PERSON, one of them
 //   Organization  Building2           the company, not the storefront — and
 //                                     deliberately unlike Profile's Store, so
 //                                     the two subjects never share a glyph
+//   Customers     Users               PEOPLE, plural, against Account's one —
+//                                     the pairing IS the meaning: you, and
+//                                     everyone who comes to you
+//   Payments      Wallet              the page is the purse, not one card
 //   Activity      ChartNoAxesColumn   counts over time; a heart-rate squiggle
 //                                     reads medical
 //   Places        Layers              a stack of them, and the SAME mark the
@@ -179,9 +194,9 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 //   Rewards       Gift                what a guest gets back
 //
 // Reviews (Star) and Admin (Shield) are each already the conventional mark for
-// their subject; swapping a correct icon to look busy is churn. Wallet and
-// Coins left with Payments and Credits (MESITA-1844) and now appear only on
-// the Organization page, where those two pages live.
+// their subject; swapping a correct icon to look busy is churn. Coins is gone
+// from this app entirely: Credits has no row and no page of its own any more
+// (MESITA-1845), only a dashed strip that carries no mark.
 
 /** The rail's word for a view — the bare word, as in the drawing.
  *  `PLACE_TAB_LABEL` is the same word; this exists so the tests and the rail
@@ -195,6 +210,8 @@ const ORG_ROW: Record<
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
   organization: { label: "Organization", Icon: Building2 },
+  customers: { label: "Customers", Icon: Users },
+  payments: { label: "Payments", Icon: Wallet },
   activity: { label: "Activity", Icon: ChartNoAxesColumn },
   places: { label: "Places", Icon: Layers },
 };
@@ -309,8 +326,8 @@ export function Sidebar({
   const onOrgNew = pathname === SHELL_ROUTES.orgNew;
   // WHICH ORGANIZATION ADDRESS, by either spelling: the canonical
   // `/orgs/<id>[/<page>]` or the flat resolver still in flight. Both light the
-  // same row — an operator who typed `/credits` is on the Organization row,
-  // because Credits is a page behind the Organization door.
+  // same row — an operator who typed `/members` is on the Organization row,
+  // because the Organization page is Members' door.
   const orgTarget =
     orgTargetFromPathname(pathname) ?? flatOrgTargetFromPathname(pathname);
   // ACCOUNT LIGHTS FOR ACCOUNT, AND NOTHING ELSE. Every organization ceremony
@@ -351,17 +368,13 @@ export function Sidebar({
     tab === "admin" ? isSuperAdmin : true,
   ).filter((tab) => noPlace || placeTabs.includes(tab));
 
-  // WHICH ROW A ROW LIGHTS FOR. Organization takes every address the
-  // Organization page is the door to — Members, Payments, Credits — plus the
-  // create ceremony, which has no organization yet and would otherwise light
-  // nothing. Places takes its list and the Add place ceremony beneath it.
+  // WHICH ROW A ROW LIGHTS FOR. Organization takes the one address its page
+  // is the door to — Members — plus the create ceremony, which has no
+  // organization yet and would otherwise light nothing. Places takes its list
+  // and the Add place ceremony beneath it. Every other row takes its own.
   const orgRowActive = (target: OrgRailTarget) =>
     target === "organization"
-      ? orgTarget === "organization" ||
-        orgTarget === "members" ||
-        orgTarget === "payments" ||
-        orgTarget === "credits" ||
-        onOrgNew
+      ? orgTarget === "organization" || orgTarget === "members" || onOrgNew
       : orgTarget === target;
 
   return (

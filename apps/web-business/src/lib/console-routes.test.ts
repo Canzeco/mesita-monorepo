@@ -73,6 +73,8 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // organization's. MESITA-1841 added `capabilities` (was `settings`),
     // `rewards`, `organization` and `credits`, and moved `activity` from the
     // first group to the second — it resolves an ORGANIZATION now.
+    // MESITA-1845 swaps `credits` for `customers`: Credits merged back into
+    // Payments and has no address of its own, and Customers gained a row.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
       "reviews",
@@ -80,8 +82,8 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "rewards",
       "admin",
       "organization",
+      "customers",
       "payments",
-      "credits",
       "activity",
       "members",
     ]);
@@ -146,8 +148,13 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       expect(flatOrgTargetFromPathname(`/${page}`)).toBe(page);
     }
     expect(flatOrgTargetFromPathname(FLAT_ROUTES.profile)).toBeNull();
-    expect(flatOrgTargetFromPathname(orgHref("org-x", "credits"))).toBeNull();
-    expect(flatOrgTargetFromPathname("/creditsx")).toBeNull();
+    // A canonical address is never a flat one, and a name that merely STARTS
+    // with a live one is not either.
+    expect(flatOrgTargetFromPathname(orgHref("org-x", "payments"))).toBeNull();
+    expect(flatOrgTargetFromPathname("/paymentsx")).toBeNull();
+    // `/credits` is not a flat address at all now (MESITA-1845) — the
+    // redirect table owns it.
+    expect(flatOrgTargetFromPathname("/credits")).toBeNull();
   });
 
   it("THE TWO READERS NEVER BOTH ANSWER for one address", () => {
@@ -207,19 +214,31 @@ describe("the organization's pages (MESITA-1807)", () => {
     // word twice; MESITA-1842 gave it the bare address, because the only thing
     // squatting there was a cookie-writing forwarder that now lives at
     // `/switch`.
-    expect(ORG_PAGES).toEqual(["payments", "credits", "activity", "members", "places"]);
-    expect(ORG_TARGETS).toEqual([
-      "organization",
+    expect(ORG_PAGES).toEqual([
+      "customers",
       "payments",
-      "credits",
       "activity",
       "members",
       "places",
     ]);
+    expect(ORG_TARGETS).toEqual([
+      "organization",
+      "customers",
+      "payments",
+      "activity",
+      "members",
+      "places",
+    ]);
+    // CREDITS IS NOT AN ADDRESS ANY MORE (MESITA-1845). It merged into
+    // Payments on Pato's one word, and both its spellings forward from
+    // `next.config.ts` — so a name in this contract would be a live address
+    // the redirect table shadows, which is the MESITA-1839 trap exactly.
+    expect(ORG_TARGETS).not.toContain("credits");
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("credits");
     expect(orgHref("org-x")).toBe("/orgs/org-x");
     expect(orgHref("org-x", "organization")).toBe("/orgs/org-x");
     expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
-    expect(orgHref("org-x", "credits")).toBe("/orgs/org-x/credits");
+    expect(orgHref("org-x", "customers")).toBe("/orgs/org-x/customers");
     expect(orgHref("org-x", "activity")).toBe("/orgs/org-x/activity");
     expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
@@ -238,14 +257,20 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "switch", "route.ts"))).toBe(true);
   });
 
-  it("the rail lists three of the six; the other three are doors (MESITA-1844)", () => {
-    // Members, Payments and Credits have addresses and no row: the
-    // Organization page is their door, and each lights ITS row. Every rail
-    // target is a real target, the two lists are disjoint, and together they
-    // are the whole vocabulary — a target in neither is an address nothing in
-    // the console can light or offer.
-    expect(ORG_RAIL_TARGETS).toEqual(["organization", "activity", "places"]);
-    expect(ORG_DOOR_TARGETS).toEqual(["members", "payments", "credits"]);
+  it("the rail lists five of the six; MEMBERS is the one door (MESITA-1845)", () => {
+    // Members has an address and no row: the Organization page is its door,
+    // and it lights THAT row. Every rail target is a real target, the two
+    // lists are disjoint, and together they are the whole vocabulary — a
+    // target in neither is an address nothing in the console can light or
+    // offer, which renders as a screen with no pill at all.
+    expect(ORG_RAIL_TARGETS).toEqual([
+      "organization",
+      "customers",
+      "payments",
+      "activity",
+      "places",
+    ]);
+    expect(ORG_DOOR_TARGETS).toEqual(["members"]);
     for (const t of ORG_RAIL_TARGETS) expect(ORG_TARGETS).toContain(t);
     for (const t of ORG_DOOR_TARGETS) expect(ORG_TARGETS).toContain(t);
     expect([...ORG_RAIL_TARGETS, ...ORG_DOOR_TARGETS].sort()).toEqual(

@@ -25,10 +25,12 @@
 // answers "what is this organization": its name, its members, its places, its
 // money. Nothing here switches anything.
 //
-// IT IS THE DOOR TO FOUR PAGES NOW (MESITA-1844). Payments and Credits lost
-// their rail rows — Pato: "payments inside org" — so this page is the only
-// thing that offers them, the way it already was for Members and Places. A
-// page reachable by typing its address alone is a page that gets lost.
+// IT IS THE DOOR TO MEMBERS (MESITA-1845). It briefly carried Payments and
+// Credits too, in the hour MESITA-1844 kept them out of the rail; Payments has
+// a row again and Credits has merged into it, so those doors are gone. Two
+// doors to one room is what the rail was cut down to avoid. Places keeps its
+// door as well as its row — the row is navigation, the door is this page
+// stating what the organization HOLDS, which is half of what it is.
 //
 // ONE BOX, ROWS DIVIDED BY HAIRLINES (MESITA-1840's law, which survives the
 // rail change): Members and Places are one scope read top to bottom, not two
@@ -36,7 +38,7 @@
 // (MESITA-1836).
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronRight, Coins, Layers, Plus, Users, Wallet } from "lucide-react";
+import { ChevronRight, Layers, Plus, Users } from "lucide-react";
 import { OrgStateBadge } from "@/components/console/badges";
 import {
   apiGetPaymentAccount,
@@ -169,30 +171,6 @@ export default async function OrganizationPage(props: {
           title={placesMeta}
           meta="What this organization holds, and what it can claim"
           Icon={Layers}
-        />
-        {/* THE TWO THAT LEFT THE RAIL (MESITA-1844). Pato: "payments inside
-            org." They are set up once and then left alone, so they are doors
-            here rather than rows an operator reads past every day — and a page
-            reachable only by typing its address is a page that gets lost.
-            Payments states the Stripe fact it owns; a failed read says nothing
-            rather than asserting "not connected" about an account nobody
-            managed to ask about, which is the same rule the badge above
-            follows. Credits states no balance: the Edge Function returns none,
-            the list is paginated, and any total computed here would be a
-            guess. */}
-        <DoorRow
-          href={orgHref(org.id, "payments")}
-          eyebrow="Payments"
-          title={account?.charges_enabled ? "Connected" : "Not connected"}
-          meta="Stripe, and how money reaches this organization"
-          Icon={Wallet}
-        />
-        <DoorRow
-          href={orgHref(org.id, "credits")}
-          eyebrow="Credits"
-          title="Prepaid credit"
-          meta="What guests bought here, and what is left to spend"
-          Icon={Coins}
         />
       </div>
 

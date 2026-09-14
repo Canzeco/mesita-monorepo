@@ -37,8 +37,8 @@
 //                              Places. Stripe's return_url is minted against
 //                              `/orgs/<id>?connect=`, and this page hands that
 //                              query on to Payments.
-//   /orgs/<id>/payments        Stripe · Partner
-//            /credits          Prepaid Credits
+//   /orgs/<id>/customers      who keeps coming back (Soon)
+//            /payments         Stripe · Partner · Prepaid Credits
 //            /activity         the organization's numbers, by place
 //            /members          who may sign in, and at what role
 //            /places           what it holds and can claim (?owned=)
@@ -55,7 +55,7 @@
 //              /admin          super-admin only
 //
 //   /profile /reviews /capabilities /rewards /admin
-//   /organization /payments /credits /activity /members
+//   /organization /customers /payments /activity /members
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -68,6 +68,12 @@
 // twice, and the bare address was a forwarder only because a page cannot write
 // a cookie mid-flight. Moving that one job to `/switch` freed the natural
 // address for the page it was always about.
+//
+// `/orgs/<id>/credits` IS GONE TOO (MESITA-1845), and this one MERGED rather
+// than moved: Payments has a rail row again, and Prepaid Credits is the
+// `SoonStrip` at the foot of that page, which is where it lived before
+// MESITA-1841 gave it a room of its own. Both spellings forward, TEMPORARILY —
+// a 308 would cache an answer that has already moved twice.
 //
 // `orgs/[orgId]/layout.tsx` resolves membership ONCE, server-side; a foreign
 // id and a nonexistent id both answer 404, so the path is never an oracle for
@@ -92,16 +98,22 @@ export const SHELL_ROUTES = {
 // ── The organization ──────────────────────────────────────────────────────
 //
 // The organization ITSELF is `/orgs/<id>` — named `"organization"` in this
-// contract so one vocabulary covers the bare address and the five segments
-// beneath it. Activity and Places are the rail's other two rows; Members,
-// Payments and Credits have addresses and no row (MESITA-1844), because the
-// Organization page is their door — and each lights the Organization row,
+// contract so one vocabulary covers the bare address and the segments beneath
+// it. Customers, Payments, Activity and Places are the rail's other four rows
+// (MESITA-1845); MEMBERS is the only one with an address and no row, because
+// the Organization page is its door — and it lights the Organization row,
 // which is the row you would go back through.
 
-/** The segments BENEATH `/orgs/<id>`. */
+/** The segments BENEATH `/orgs/<id>`.
+ *
+ *  `credits` IS NOT ONE (MESITA-1845). Pato, asked where Credits goes once
+ *  Payments has a rail row again: *"merge."* It was a `SoonStrip` at the foot
+ *  of Payments until MESITA-1841 spent a row on it; the row is gone and the
+ *  strip is back where it came from, so the segment forwards instead of
+ *  resolving — TEMPORARILY, because this answer has now moved twice. */
 export const ORG_PAGES = [
+  "customers",
   "payments",
-  "credits",
   "activity",
   "members",
   "places",
@@ -114,33 +126,40 @@ export type OrgTarget = (typeof ORG_TARGETS)[number];
 
 export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
   organization: "Organization",
+  customers: "Customers",
   payments: "Payments",
-  credits: "Credits",
   activity: "Activity",
   members: "Members",
   places: "Places",
 };
 
-/** The THREE the rail lists, in the drawing's order (MESITA-1844).
+/** The FIVE the rail lists, in the drawing's order (MESITA-1845).
  *
- *  PAYMENTS AND CREDITS LEFT IT. Pato, 2026-09-14: *"payments inside org."*
- *  They are pages an operator SETS UP — a Stripe account is connected once, a
- *  credit balance is topped up now and then — and the rail is for what you
- *  check. The Organization page is their door, exactly as it already was for
- *  Members and Places, and both keep every address they had. What changed is
- *  only which rows a glance down the column has to read past.
+ *  CUSTOMERS IS NEW, and it is a live row, not a dimmed one: Pato's list
+ *  writes it "(Soon)", and MESITA-1833 is his own law that the rail may never
+ *  paint a working row as dead. The Soon badge lives on the page.
  *
- *  PLACES GAINED ONE. It is the bridge between the organization and the
- *  storefronts, it is where an operator holding none meets Add place, and it
- *  is the row the place's five views now sit under. */
-export const ORG_RAIL_TARGETS = ["organization", "activity", "places"] as const;
+ *  PAYMENTS IS BACK, one issue after MESITA-1844 took it out on *"payments
+ *  inside org."* Pato's list puts it in the column again.
+ *
+ *  CREDITS IS NOT HERE, and has no address either — it merged into Payments,
+ *  which is the page it was split out of. See ORG_PAGES.
+ *
+ *  PLACES stays the row the place's five views sit under. */
+export const ORG_RAIL_TARGETS = [
+  "organization",
+  "customers",
+  "payments",
+  "activity",
+  "places",
+] as const;
 export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
 
 /** The organization addresses with NO row of their own — each reached from
  *  the Organization page, and each lighting ITS row while you are there. A
  *  page in neither list is a page nothing in the rail can light, which is the
  *  drift `sidebar-render.test.tsx` counts as a second pill or none. */
-export const ORG_DOOR_TARGETS = ["members", "payments", "credits"] as const;
+export const ORG_DOOR_TARGETS = ["members"] as const;
 export type OrgDoorTarget = (typeof ORG_DOOR_TARGETS)[number];
 
 const ORGS = "/orgs";
@@ -226,8 +245,8 @@ export const FLAT_ROUTES = {
   admin: "/admin",
   // The organization's five
   organization: "/organization",
+  customers: "/customers",
   payments: "/payments",
-  credits: "/credits",
   activity: "/activity",
   members: "/members",
 } as const;

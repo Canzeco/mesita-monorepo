@@ -81,6 +81,22 @@ const nextConfig: NextConfig = {
         destination: "/orgs/:orgId",
         permanent: true,
       },
+      // CREDITS MERGED BACK INTO PAYMENTS (MESITA-1845). It was a `SoonStrip`
+      // at the foot of Payments, MESITA-1841 gave it a room, and Pato answered
+      // the question of where it goes once Payments had a row again with one
+      // word: "merge." Both spellings forward.
+      //
+      // TEMPORARY, deliberately. Where Credits lives has now moved twice in
+      // one day, and a 308 would cache today's answer in every browser that
+      // ever followed it — which is the trap `/settings` fell into
+      // (MESITA-1839). The flat twin lands on the flat destination, which
+      // resolves the remembered organization at request time.
+      {
+        source: "/orgs/:orgId/credits",
+        destination: "/orgs/:orgId/payments",
+        permanent: false,
+      },
+      { source: "/credits", destination: "/payments", permanent: false },
       // NO BARE `/organization` RULE. It forwarded to `/` while the
       // Organization screen did not exist; MESITA-1841 made it a live flat
       // resolver, and leaving the rule would have swallowed it exactly the way

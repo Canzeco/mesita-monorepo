@@ -7,16 +7,21 @@
 // the organization's MONEY: funnel first (approved at the autoplan gate,
 // 2026-09-06) — Stripe, then Partner.
 //
-// CREDITS LEFT IN MESITA-1841. It was the page's one `SoonStrip`, and Pato's
-// 2026-09-14 drawing gives it a rail row of its own — so it is a page now
-// (`/orgs/<id>/credits`), carrying the same strip. A row whose destination is
-// a scroll position two boxes down a different page is a row that lies about
-// where it goes.
+// CREDITS LEFT IN MESITA-1841 AND CAME BACK IN MESITA-1845. It was this
+// page's one `SoonStrip`; the 2026-09-14 drawing gave it a rail row, so it
+// became a page — and when Pato's next list dropped that row he answered the
+// question of where it goes with one word: *"merge."* The strip is back, word
+// for word, and `/orgs/<id>/credits` forwards here.
+//
+// The rule that sent it away still holds and is simply not in play: a row
+// whose destination is a scroll position two boxes down a different page is a
+// row that lies about where it goes. Credits has no row to lie with now.
 //
 // Sync and presentational on purpose: the server page assembles the props,
 // this component owns the composition, and the order test pins THIS file.
 
 import { Section } from "@/components/shared/Section";
+import { SoonStrip } from "@/components/console/SoonStrip";
 import { PartnerCard } from "@/components/console/PartnerCard";
 import { PaymentsCard } from "@/components/console/PaymentsCard";
 import type { Organization, PaymentAccount } from "@/lib/api/organizations";
@@ -24,13 +29,23 @@ import type { Organization, PaymentAccount } from "@/lib/api/organizations";
 /** The box order, exported so the pin test asserts the product decision. */
 export const ORG_SCREEN_ORDER = ["stripe", "partner"] as const;
 
-/** Credits' own page renders this (MESITA-1841). It stays here because this
- *  file is where the organization's money boxes are declared, and because the
- *  strip moved without changing a word. */
-export const SOON_STRIPS: Record<"credits", { title: string; line: string }> = {
+/** The future boxes, by the page that renders them. MESITA-1841 gave Credits
+ *  a room and a rail row; MESITA-1845 merged it back into Payments on Pato's
+ *  one word — *"merge"* — so the strip is at the foot of PaymentsSections
+ *  again, exactly where it was and word for word unchanged. Customers is the
+ *  new one: a live rail row whose page says what will live there, because a
+ *  dimmed row is the thing MESITA-1833 forbids. */
+export const SOON_STRIPS: Record<
+  "credits" | "customers",
+  { title: string; line: string }
+> = {
   credits: {
     title: "Prepaid Credits",
     line: "The organization's Credits balance, terms, and outstanding liability will live here.",
+  },
+  customers: {
+    title: "Customers",
+    line: "The guests who visit and pay at this organization's places, and what they are worth.",
   },
 };
 
@@ -75,6 +90,12 @@ export function PaymentsSections({
           isOwner={isOwner}
         />
       </Section>
+
+      {/* PREPAID CREDITS, back at the foot of this page (MESITA-1845). It is
+          the third thing the organization's money is: the account it gets
+          paid through, the switch that unlocks the rungs, and the balance
+          guests hand over before they spend it. */}
+      <SoonStrip {...SOON_STRIPS.credits} />
     </>
   );
 }
