@@ -166,6 +166,30 @@ describe("six rows, in the drawing's order", () => {
     expect(html).not.toContain(">Strana Group<");
   });
 
+  // MESITA-1838: pinned so an icon swap is a deliberate edit, never a drift.
+  // Four of these named the wrong noun before ("wtf are those icons" — Pato):
+  // a document for a storefront, a card for a purse, a heart-rate line for a
+  // bar chart, sliders for a gear. Profile's Store is the same mark the place
+  // chip wears on Account, so the rail and the page say one noun one way.
+  it("each row wears the mark of its subject", () => {
+    const html = render(viewHref("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
+    for (const mark of [
+      "lucide-user-round",
+      "lucide-store",
+      "lucide-star",
+      "lucide-wallet",
+      "lucide-chart-no-axes-column",
+      "lucide-settings",
+      "lucide-shield",
+    ]) {
+      expect(html, mark).toContain(mark);
+    }
+    // The marks they replaced must not come back by habit.
+    expect(html).not.toContain("lucide-file-text");
+    expect(html).not.toContain("lucide-credit-card");
+    expect(html).not.toContain("lucide-settings-2");
+  });
+
   it("the rows are the flat addresses", () => {
     const html = render(viewHref("profile"), { rememberedPlaceId: "p-1" });
     expect(hrefs(html).slice(1, 7)).toEqual([

@@ -11,10 +11,10 @@
 // /settings."
 //
 //   [ ○ Account     ]  → /account   who you are · switch organization · switch place
-//   [ ▢ Profile     ]  → /profile   THE SELECTED PLACE's profile
+//   [ ⌂ Profile     ]  → /profile   THE SELECTED PLACE's profile
 //   [ ★ Reviews     ]  → /reviews
-//   [ ▭ Payments    ]  → /payments  the organization's money (Stripe · Partner · Credits)
-//   [ ~ Activity    ]  → /activity
+//   [ ▤ Payments    ]  → /payments  the organization's money (Stripe · Partner · Credits)
+//   [ ▥ Activity    ]  → /activity
 //   [ ⚙ Settings    ]  → /settings  the place's switches · the organization's members
 //   [ ⛨ Admin       ]  → /admin     super-admin only
 //   ─────
@@ -56,17 +56,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
   AlertCircle,
-  CreditCard,
-  FileText,
+  ChartNoAxesColumn,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Settings2,
+  Settings,
   Shield,
   Star,
+  Store,
   UserRound,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -123,6 +123,28 @@ const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
 const HOVER_PREFETCH = { unstable_dynamicOnHover: true } as object;
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
+
+// THE MARKS NAME THE SUBJECT, NOT THE LABEL (MESITA-1838). Pato, 2026-09-14:
+// "wtf are those icons. change them." Four of the seven were lucide defaults
+// chosen off the word rather than the thing, and depicted the wrong noun:
+//
+//   Profile   FileText  → Store       it is the PLACE's public page, not a
+//                                     document — and Store is already the mark
+//                                     the place chip wears on Account, so the
+//                                     rail and the page say one noun one way
+//   Payments  CreditCard→ Wallet      the page is the organization's money
+//                                     (Stripe · Partner · Credits); a card is
+//                                     one instrument, the page is the purse
+//   Activity  Activity  → ChartNoAxesColumn
+//                                     a heart-rate squiggle reads medical; the
+//                                     page is counts over time
+//   Settings  Settings2 → Settings    sliders are a filter idiom; a gear is the
+//                                     settings CONVENTION, and a nav is the
+//                                     last place to innovate for its own sake
+//
+// Account (UserRound), Reviews (Star) and Admin (Shield) did not move: each is
+// already the conventional mark for its subject, and swapping a correct icon
+// to look busy is churn.
 
 
 /** The rail's word for a view — the bare word, as in the drawing (Account ·
@@ -251,11 +273,11 @@ export function Sidebar({
   // the rest are the place's.
   type Row = { href: string; label: string; Icon: React.ComponentType<{ className?: string }>; place?: PlaceTab };
   const all: Row[] = [
-    { href: viewHref("profile"), label: placeRowLabel("profile"), Icon: FileText, place: "profile" },
+    { href: viewHref("profile"), label: placeRowLabel("profile"), Icon: Store, place: "profile" },
     { href: viewHref("reviews"), label: placeRowLabel("reviews"), Icon: Star, place: "reviews" },
-    { href: SHELL_ROUTES.payments, label: "Payments", Icon: CreditCard },
-    { href: viewHref("activity"), label: placeRowLabel("activity"), Icon: Activity, place: "activity" },
-    { href: viewHref("settings"), label: placeRowLabel("settings"), Icon: Settings2, place: "settings" },
+    { href: SHELL_ROUTES.payments, label: "Payments", Icon: Wallet },
+    { href: viewHref("activity"), label: placeRowLabel("activity"), Icon: ChartNoAxesColumn, place: "activity" },
+    { href: viewHref("settings"), label: placeRowLabel("settings"), Icon: Settings, place: "settings" },
   ];
   if (isSuperAdmin) {
     all.push({ href: viewHref("admin"), label: placeRowLabel("admin"), Icon: Shield, place: "admin" });
