@@ -24,8 +24,15 @@ const nextConfig: NextConfig = {
       { source: "/unit/:id/:rest*", destination: "/places/:id/profile", permanent: true },
       { source: "/place/:id", destination: "/places/:id/profile", permanent: true },
       { source: "/place/:id/:rest*", destination: "/places/:id/profile", permanent: true },
-      // Account settings moved to the shell's own screen.
-      { source: "/settings", destination: "/account", permanent: true },
+      // NO RULE FOR /settings. It used to forward here to `/account`, from
+      // MESITA-1564's deletion of the legacy console's own settings screen.
+      // MESITA-1832 then named a LIVE page `/settings` without noticing, and
+      // config redirects run BEFORE filesystem routes — so for a day the
+      // rail's Settings row 308'd to Account and the page it pointed at could
+      // not be reached at all (verified in production, MESITA-1839).
+      //
+      // `legacy-redirects.test.ts` now walks every live address through this
+      // table and fails if one is swallowed again.
       // The Capabilities view became Settings (MESITA-1815) — label and
       // segment together, so the row and the address agree.
       {

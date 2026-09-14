@@ -73,12 +73,19 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
+  FLAT_ROUTES,
   SHELL_ROUTES,
   flatViewFromPathname,
+  orgHref,
   orgPageFromPathname,
-  viewHref,
 } from "@/lib/console-routes";
-import { PLACE_TAB_LABEL, tabsForAccess, type PlaceTab } from "@/lib/place-tabs";
+import {
+  PLACE_TAB_LABEL,
+  placeTabFromPathname,
+  placeTabHref,
+  tabsForAccess,
+  type PlaceTab,
+} from "@/lib/place-tabs";
 import type { RailOrg, RailScope } from "@/lib/rail-scope";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
@@ -250,10 +257,20 @@ export function Sidebar({
   // Account owns its ceremonies: the create step, the organization's list
   // and the Add place step all light Account — while there IS an Account
   // scope to own them. With no organization the create step is its own row.
+  const orgPage = orgPageFromPathname(pathname);
+  // Account owns the organization's doors: the create step, the places list,
+  // Add place, and Members — which has an address of its own since
+  // MESITA-1839 but no rail row, because the rail is six rows by the drawing.
+  // It is reached from Account's organization menu, so Account is what lights.
   const onAccount =
     pathname === SHELL_ROUTES.account ||
-    (org !== null && (onOrgNew || orgPageFromPathname(pathname) !== null));
-  const currentView = flatViewFromPathname(pathname);
+    pathname === FLAT_ROUTES.members ||
+    (org !== null &&
+      (onOrgNew || orgPage === "places" || orgPage === "members"));
+  // The view you are on, whichever address you came by: the canonical
+  // `/places/<id>/<view>` or the flat resolver still in flight (MESITA-1839).
+  // Both light the same row — an operator who typed `/reviews` is on Reviews.
+  const currentView = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
 
   // Which views the selected place offers this viewer: the ONE matrix
   // (lib/place-tabs), from the published set when the place is on screen,
@@ -269,18 +286,30 @@ export function Sidebar({
         : [];
   const noPlace = org !== null && scope.place === null && !foreign;
 
+  // WHERE A ROW POINTS (MESITA-1839). The canonical address names its
+  // subject, and the shell has already resolved which subject that is — so the
+  // rail links straight there and a click costs ONE hop. The flat address is
+  // the fallback for the state where there is nothing to name yet: with no
+  // place selected, `/profile` renders the next step (Add place) instead of
+  // forwarding nowhere. Either way the row is a live link, never disabled
+  // (MESITA-1833).
+  const placeId = scope.place?.id ?? scope.foreignPlaceId ?? null;
+  const viewRow = (tab: PlaceTab) =>
+    placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab];
+  const paymentsHref = org ? orgHref(org.id, "payments") : FLAT_ROUTES.payments;
+
   // The six rows, in the drawing's order; Payments is the organization's,
   // the rest are the place's.
   type Row = { href: string; label: string; Icon: React.ComponentType<{ className?: string }>; place?: PlaceTab };
   const all: Row[] = [
-    { href: viewHref("profile"), label: placeRowLabel("profile"), Icon: Store, place: "profile" },
-    { href: viewHref("reviews"), label: placeRowLabel("reviews"), Icon: Star, place: "reviews" },
-    { href: SHELL_ROUTES.payments, label: "Payments", Icon: Wallet },
-    { href: viewHref("activity"), label: placeRowLabel("activity"), Icon: ChartNoAxesColumn, place: "activity" },
-    { href: viewHref("settings"), label: placeRowLabel("settings"), Icon: Settings, place: "settings" },
+    { href: viewRow("profile"), label: placeRowLabel("profile"), Icon: Store, place: "profile" },
+    { href: viewRow("reviews"), label: placeRowLabel("reviews"), Icon: Star, place: "reviews" },
+    { href: paymentsHref, label: "Payments", Icon: Wallet },
+    { href: viewRow("activity"), label: placeRowLabel("activity"), Icon: ChartNoAxesColumn, place: "activity" },
+    { href: viewRow("settings"), label: placeRowLabel("settings"), Icon: Settings, place: "settings" },
   ];
   if (isSuperAdmin) {
-    all.push({ href: viewHref("admin"), label: placeRowLabel("admin"), Icon: Shield, place: "admin" });
+    all.push({ href: viewRow("admin"), label: placeRowLabel("admin"), Icon: Shield, place: "admin" });
   }
   const rows = all.filter((r) => !r.place || noPlace || placeTabs.includes(r.place));
 
@@ -361,7 +390,7 @@ export function Sidebar({
               href={row.href}
               label={row.label}
               Icon={row.Icon}
-              active={row.place ? currentView === row.place : pathname === row.href}
+              active={row.place ? currentView === row.place : orgPage === "payments" || pathname === FLAT_ROUTES.payments}
               collapsed={collapsed}
               onNavigate={onNavigate}
               onGuardedNavigate={guardNav ?? undefined}

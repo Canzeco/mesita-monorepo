@@ -13,10 +13,11 @@ import {
   ORG_PAGE_LABEL,
   PLACES_OWNED,
   SHELL_ROUTES,
+  FLAT_ROUTE_LIST,
   flatViewFromPathname,
   isFlatRoute,
   orgHref,
-  viewHref,
+  orgRootHref,
   orgIdFromPathname,
   orgPageFromPathname,
   orgPlacesHref,
@@ -30,34 +31,21 @@ import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
 const SHELL_DIR = path.resolve(__dirname, "..", "app", "(shell)");
 
-/** The route file a concrete href resolves to; ids become their segment.
- *  The five place views live in the `(place)` route group (MESITA-1832), so
- *  a flat view href resolves there. */
+/** The route file a concrete href resolves to; ids become their segment. */
 function routeFile(href: string, dynamic: Record<string, string> = {}): string {
   const segments = href === "/" ? [] : href.split("?")[0].slice(1).split("/");
-  const direct = path.join(SHELL_DIR, ...segments.map((s) => dynamic[s] ?? s), "page.tsx");
-  if (existsSync(direct)) return direct;
-  return path.join(SHELL_DIR, "(place)", ...segments.map((s) => dynamic[s] ?? s), "page.tsx");
+  return path.join(SHELL_DIR, ...segments.map((s) => dynamic[s] ?? s), "page.tsx");
 }
 
-describe("SHELL_ROUTES are the addresses that need no id", () => {
-  it("is root, the six pages, admin, and the create ceremony (MESITA-1832)", () => {
-    expect(Object.keys(SHELL_ROUTES)).toEqual([
-      "root",
-      "account",
-      "profile",
-      "reviews",
-      "payments",
-      "activity",
-      "settings",
-      "admin",
-      "orgNew",
-    ]);
-    expect(FLAT_ROUTES).toEqual(["/account", "/profile", "/reviews", "/payments", "/activity", "/settings", "/admin"]);
-    for (const r of FLAT_ROUTES) expect(isFlatRoute(r)).toBe(true);
-    expect(isFlatRoute("/orgs/x")).toBe(false);
-    expect(isFlatRoute("/profile/")).toBe(false);
+describe("SHELL_ROUTES are the addresses with no scope at all", () => {
+  it("is root, the person, and the create ceremony (MESITA-1839)", () => {
+    // The six page NAMES moved to FLAT_ROUTES when they became resolvers.
+    // What is left here is the three addresses that are about nothing you
+    // can switch: where you land, who you are, and how to make a first
+    // organization.
+    expect(Object.keys(SHELL_ROUTES)).toEqual(["root", "account", "orgNew"]);
   });
+
   for (const [name, href] of Object.entries(SHELL_ROUTES)) {
     it(`${name} → ${href} is a route file with its own loading boundary`, () => {
       const file = routeFile(href);
@@ -67,15 +55,7 @@ describe("SHELL_ROUTES are the addresses that need no id", () => {
       }
     });
   }
-  it("the place views read the flat address, and the flat reader agrees", () => {
-    for (const tab of PLACE_TABS) {
-      expect(viewHref(tab)).toBe(`/${tab}`);
-      expect(flatViewFromPathname(viewHref(tab))).toBe(tab);
-    }
-    expect(flatViewFromPathname("/payments")).toBeNull();
-    expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
-    expect(flatViewFromPathname("/profiles")).toBeNull();
-  });
+
   it("the create ceremony has its own loading boundary", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "new", "loading.tsx"))).toBe(
       true,
@@ -83,23 +63,90 @@ describe("SHELL_ROUTES are the addresses that need no id", () => {
   });
 });
 
+describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
+  it("is the five place views plus the organization's two pages", () => {
+    expect(Object.keys(FLAT_ROUTES)).toEqual([
+      "profile",
+      "reviews",
+      "activity",
+      "settings",
+      "admin",
+      "payments",
+      "members",
+    ]);
+    for (const r of FLAT_ROUTE_LIST) expect(isFlatRoute(r)).toBe(true);
+    expect(isFlatRoute("/orgs/x")).toBe(false);
+    expect(isFlatRoute("/account")).toBe(false);
+    // A trailing slash is the same address; `?to=` arrives from a real browser.
+    expect(isFlatRoute("/profile/")).toBe(true);
+  });
+
+  for (const [name, href] of Object.entries(FLAT_ROUTES)) {
+    it(`${name} → ${href} is a resolver page with its own loading boundary`, () => {
+      const file = routeFile(href);
+      expect(existsSync(file), file).toBe(true);
+      expect(existsSync(path.join(path.dirname(file), "loading.tsx")), `${href} loading`).toBe(true);
+    });
+  }
+
+  it("a flat place view reads as that view, and the canonical one does not", () => {
+    for (const tab of PLACE_TABS) {
+      expect(flatViewFromPathname(FLAT_ROUTES[tab])).toBe(tab);
+    }
+    expect(flatViewFromPathname(FLAT_ROUTES.payments)).toBeNull();
+    expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
+    expect(flatViewFromPathname("/profiles")).toBeNull();
+  });
+});
+
+describe("the place is addressed by its id again (MESITA-1839)", () => {
+  const ID: Record<string, string> = { "p-1": "[id]" };
+
+  it("every view is a route file with its own loading boundary", () => {
+    for (const tab of PLACE_TABS) {
+      const file = routeFile(placeTabHref("p-1", tab), ID);
+      expect(existsSync(file), `${tab}: ${file}`).toBe(true);
+    }
+    // ONE loading boundary for the segment, which every view shares.
+    expect(
+      existsSync(path.join(SHELL_DIR, "places", "[id]", "loading.tsx")),
+    ).toBe(true);
+    expect(
+      existsSync(path.join(SHELL_DIR, "places", "[id]", "layout.tsx")),
+    ).toBe(true);
+  });
+
+  it("the bare place URL is a page that forwards, not a 404", () => {
+    expect(
+      existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx")),
+    ).toBe(true);
+  });
+
+  it("every view directory is a known view — a bijection, both ways", () => {
+    // A directory nobody linked is a page nobody can reach; a link with no
+    // directory is a 404. Assert the set, not the membership.
+    const dir = path.join(SHELL_DIR, "places", "[id]");
+    const dirs = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+    expect(dirs.sort()).toEqual([...PLACE_TABS].sort());
+  });
+});
+
 describe("the organization's pages (MESITA-1807)", () => {
   const ID: Record<string, string> = { "org-x": "[orgId]" };
 
-  it("the organization is the bare /orgs/<id>; the list hangs beneath it", () => {
-    // ONE page (MESITA-1810): Stripe, Partner, Members and Places are boxes
-    // on it, not routes. The old subpages must not come back.
-    expect(ORG_PAGES).toEqual(["overview", "places"]);
-    expect(ORG_PAGE_LABEL.overview).toBe("Organization");
-    expect(orgHref("org-x")).toBe("/orgs/org-x");
-    expect(orgHref("org-x", "overview")).toBe("/orgs/org-x");
+  it("the organization's three pages, and the bare address that forwards", () => {
+    // MESITA-1810 folded Payments and Members INTO one Organization page;
+    // MESITA-1832 dissolved that page and scattered them to flat addresses;
+    // MESITA-1839 gives each its own address under the organization that owns
+    // it. Payments is the default because it is where Stripe returns.
+    expect(ORG_PAGES).toEqual(["payments", "members", "places"]);
+    expect(orgRootHref("org-x")).toBe("/orgs/org-x");
+    expect(orgHref("org-x")).toBe("/orgs/org-x/payments");
+    expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
     expect(orgPlacesNewHref("org-x")).toBe("/orgs/org-x/places/new");
-    for (const gone of ["payments", "members", "overview"]) {
-      expect(
-        existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", gone, "page.tsx")),
-      ).toBe(false);
-    }
   });
 
   it("the organization is a FORWARDER, and its list a page with a loading boundary (MESITA-1832)", () => {
@@ -108,7 +155,6 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "route.ts"))).toBe(true);
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "page.tsx"))).toBe(false);
     for (const page of ORG_PAGES) {
-      if (page === "overview") continue;
       const file = routeFile(orgHref("org-x", page), ID);
       expect(existsSync(file), `${page}: ${file}`).toBe(true);
       expect(existsSync(path.join(path.dirname(file), "loading.tsx"))).toBe(
@@ -130,9 +176,7 @@ describe("the organization's pages (MESITA-1807)", () => {
     const dirs = readdirSync(dir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
-    expect(dirs.sort()).toEqual(
-      ORG_PAGES.filter((p) => p !== "overview").sort(),
-    );
+    expect(dirs.sort()).toEqual([...ORG_PAGES].sort());
   });
 
   it("labels every page", () => {
@@ -140,7 +184,8 @@ describe("the organization's pages (MESITA-1807)", () => {
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(orgHref("a/b")).toBe("/orgs/a%2Fb");
+    expect(orgRootHref("a/b")).toBe("/orgs/a%2Fb");
+    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/payments");
     expect(orgIdFromPathname(orgHref("a/b"))).toBe("a/b");
   });
 
@@ -160,8 +205,9 @@ describe("the organization's pages (MESITA-1807)", () => {
   });
 
   it("names the page a pathname is on, and lights Places for the claim step", () => {
-    expect(orgPageFromPathname(orgHref("org-x"))).toBe("overview");
-    expect(orgPageFromPathname(orgHref("org-x", "places"))).toBe("places");
+    for (const page of ORG_PAGES) {
+      expect(orgPageFromPathname(orgHref("org-x", page))).toBe(page);
+    }
     expect(orgPageFromPathname(orgPlacesNewHref("org-x"))).toBe("places");
     expect(orgPageFromPathname("/orgs/org-x/places/")).toBe("places");
   });
@@ -170,9 +216,13 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(orgPageFromPathname(SHELL_ROUTES.orgNew)).toBeNull();
     expect(orgPageFromPathname(placeHref("p-1"))).toBeNull();
     expect(orgPageFromPathname("/orgs/org-x/billing")).toBeNull();
-    expect(orgPageFromPathname("/orgs/org-x/payments")).toBeNull();
-    expect(orgPageFromPathname("/orgs/org-x/members")).toBeNull();
     expect(orgPageFromPathname("/orgs/org-x/places/p-1")).toBeNull();
+    // The BARE address is a forwarder in flight, not a page (MESITA-1839) —
+    // so nothing in the rail may light for it.
+    expect(orgPageFromPathname(orgRootHref("org-x"))).toBeNull();
+    expect(orgPageFromPathname("/orgs/org-x/")).toBeNull();
+    // A third segment under a page is not that page.
+    expect(orgPageFromPathname("/orgs/org-x/payments/x")).toBeNull();
   });
 });
 
@@ -228,16 +278,18 @@ describe("ownedFromParam", () => {
   });
 });
 
-describe("the place addresses SELECT and FORWARD (MESITA-1832)", () => {
-  it("placeHref names the place; the address is a route handler that selects it and lands on /profile", () => {
+describe("the place addresses are PAGES again (MESITA-1839)", () => {
+  it("placeHref is Profile's address, and every view is a real page", () => {
     expect(placeHref("p-x")).toBe("/places/p-x/profile");
-    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "[view]", "route.ts"))).toBe(true);
-    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "route.ts"))).toBe(true);
-    // No page lives under /places/<id> any more: the views are flat.
-    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(false);
-    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "profile"))).toBe(false);
+    // The two forwarders MESITA-1832 put here are gone: `[view]/route.ts`
+    // selected a place and bounced to the flat address, and the bare
+    // `route.ts` did the same. The bare URL is a page that redirects to
+    // Profile; the views are pages that render.
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "[view]"))).toBe(false);
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "route.ts"))).toBe(false);
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(true);
     for (const tab of PLACE_TABS) {
-      expect(existsSync(path.join(SHELL_DIR, "(place)", tab, "page.tsx")), tab).toBe(true);
+      expect(existsSync(path.join(SHELL_DIR, "places", "[id]", tab, "page.tsx")), tab).toBe(true);
     }
   });
 

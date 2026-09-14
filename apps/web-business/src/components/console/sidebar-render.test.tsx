@@ -12,8 +12,17 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { resolveRailScope, type RailOrg } from "@/lib/rail-scope";
-import { FLAT_ROUTES, SHELL_ROUTES, orgHref, orgPlacesNewHref, viewHref } from "@/lib/console-routes";
-import { PLACE_TABS } from "@/lib/place-tabs";
+import {
+  FLAT_ROUTES,
+  FLAT_ROUTE_LIST,
+  SHELL_ROUTES,
+  orgHref,
+  orgPlacesNewHref,
+} from "@/lib/console-routes";
+import { PLACE_TABS, placeTabHref } from "@/lib/place-tabs";
+
+/** The canonical address of a view on the fixture place the rail resolves. */
+const view = (tab: (typeof PLACE_TABS)[number]) => placeTabHref("p-1", tab);
 
 const read_ui = () =>
   readFileSync(join(process.cwd(), "src/lib/ui-classes.ts"), "utf8");
@@ -118,11 +127,22 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     [SHELL_ROUTES.orgNew, "Account"],
     [orgHref("org-a", "places"), "Account"],
     [orgPlacesNewHref("org-a"), "Account"],
-    [viewHref("profile"), "Profile"],
-    [viewHref("reviews"), "Reviews"],
-    [SHELL_ROUTES.payments, "Payments"],
-    [viewHref("activity"), "Activity"],
-    [viewHref("settings"), "Settings"],
+    [orgHref("org-a", "members"), "Account"],
+    // The canonical addresses the rail links to (MESITA-1839)…
+    [view("profile"), "Profile"],
+    [view("reviews"), "Reviews"],
+    [orgHref("org-a", "payments"), "Payments"],
+    [view("activity"), "Activity"],
+    [view("settings"), "Settings"],
+    // …and the flat ones an operator can still type, which light the same
+    // row while the forward is in flight.
+    [FLAT_ROUTES.profile, "Profile"],
+    [FLAT_ROUTES.reviews, "Reviews"],
+    [FLAT_ROUTES.payments, "Payments"],
+    [FLAT_ROUTES.activity, "Activity"],
+    [FLAT_ROUTES.settings, "Settings"],
+    // Members has an address but no row: Account owns it.
+    [FLAT_ROUTES.members, "Account"],
   ];
   for (const [pathname, label] of ROUTES) {
     it(`${pathname} lights ${label} and nothing else`, () => {
@@ -135,7 +155,7 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
   it("every view in the vocabulary lights its own row, for the owner super-admin, at both widths", () => {
     for (const tab of PLACE_TABS) {
       for (const collapsed of [false, true]) {
-        const html = render(viewHref(tab), { isSuperAdmin: true, rememberedPlaceId: "p-1", collapsed });
+        const html = render(view(tab), { isSuperAdmin: true, rememberedPlaceId: "p-1", collapsed });
         expect(pills(html), `${tab} ${collapsed}`).toHaveLength(1);
         expect(pillText(html)).toBe(tab.charAt(0).toUpperCase() + tab.slice(1));
       }
@@ -143,7 +163,7 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
   });
 
   it("one pill on every flat address", () => {
-    for (const href of FLAT_ROUTES) {
+    for (const href of FLAT_ROUTE_LIST) {
       expect(pills(render(href, { isSuperAdmin: true, rememberedPlaceId: "p-1" })), href).toHaveLength(1);
     }
   });
@@ -151,14 +171,20 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
 
 describe("six rows, in the drawing's order", () => {
   it("are Account · Profile · Reviews · Payments · Activity · Settings, and Admin only for a super-admin", () => {
-    const html = render(viewHref("profile"), { rememberedPlaceId: "p-1" });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     expect(labels(html)).toEqual(["Account", "Profile", "Reviews", "Payments", "Activity", "Settings"]);
     expect(rows(html)).toHaveLength(6);
-    const admin = render(viewHref("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
+    const admin = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     expect(labels(admin)).toEqual(["Account", "Profile", "Reviews", "Payments", "Activity", "Settings", "Admin"]);
-    expect(hrefs(admin)).toContain(viewHref("admin"));
-    // No id, no switcher, no Plus, no chip, no seam, no box in the rail.
-    expect(hrefs(html).every((h) => !h.includes("org-a") && !h.includes("p-1"))).toBe(true);
+    expect(hrefs(admin)).toContain(view("admin"));
+
+    // NO ID IS VISIBLE. The hrefs carry one since MESITA-1839 — that is the
+    // point: a rail row is the canonical address, so a click costs one hop
+    // and the URL it lands on can be sent to someone. What MESITA-1832's law
+    // protects is what the OPERATOR meets, and that is unchanged: six words,
+    // no id, no switcher, no organization in a row.
+    expect(labels(html).some((l) => l.includes("p-1") || l.includes("org-a"))).toBe(false);
+    expect(html).not.toContain(">Strana Group<");
     expect(navOf(html)).not.toContain("<button");
     expect(navOf(html)).not.toContain("border-t");
     expect(html).not.toContain('role="group"');
@@ -172,7 +198,7 @@ describe("six rows, in the drawing's order", () => {
   // bar chart, sliders for a gear. Profile's Store is the same mark the place
   // chip wears on Account, so the rail and the page say one noun one way.
   it("each row wears the mark of its subject", () => {
-    const html = render(viewHref("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     for (const mark of [
       "lucide-user-round",
       "lucide-store",
@@ -190,20 +216,37 @@ describe("six rows, in the drawing's order", () => {
     expect(html).not.toContain("lucide-settings-2");
   });
 
-  it("the rows are the flat addresses", () => {
-    const html = render(viewHref("profile"), { rememberedPlaceId: "p-1" });
+  it("the rows are the CANONICAL addresses — one hop, and shareable", () => {
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     expect(hrefs(html).slice(1, 7)).toEqual([
       SHELL_ROUTES.account,
-      viewHref("profile"),
-      viewHref("reviews"),
-      SHELL_ROUTES.payments,
-      viewHref("activity"),
-      viewHref("settings"),
+      view("profile"),
+      view("reviews"),
+      orgHref("org-a", "payments"),
+      view("activity"),
+      view("settings"),
+    ]);
+  });
+
+  it("with NO place selected the rows fall back to the flat addresses", () => {
+    // An organization holding nothing has no `/places/<id>/…` to name, and a
+    // row must still be a live link onto a real next step (MESITA-1833).
+    const html = render(SHELL_ROUTES.account, {
+      organizations: [{ id: "org-b", name: "Org Test", myRole: "owner", places: [] }],
+      rememberedOrgId: "org-b",
+    });
+    expect(hrefs(html).slice(1, 7)).toEqual([
+      SHELL_ROUTES.account,
+      FLAT_ROUTES.profile,
+      FLAT_ROUTES.reviews,
+      orgHref("org-b", "payments"),
+      FLAT_ROUTES.activity,
+      FLAT_ROUTES.settings,
     ]);
   });
 
   it("the Account row says the page; the email is its tooltip", () => {
-    const html = render(viewHref("profile"), { rememberedPlaceId: "p-1" });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     expect(html).toContain(">Account<");
     expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(html).not.toContain(">pato@canzeco.com<");
@@ -211,7 +254,7 @@ describe("six rows, in the drawing's order", () => {
 
   it("a viewer's rail drops Settings' place half? No — Settings stays (Members); the matrix drops nothing else", () => {
     const viewer: RailOrg[] = [{ ...ORGS[0], myRole: "viewer" }];
-    const html = render(viewHref("profile"), { organizations: viewer, rememberedPlaceId: "p-1" });
+    const html = render(FLAT_ROUTES.profile, { organizations: viewer, rememberedPlaceId: "p-1" });
     // A viewer may open Profile, Reviews, Activity (the read views) and
     // Payments; Settings is the place's switches, which the matrix withholds.
     expect(labels(html)).toEqual(["Account", "Profile", "Reviews", "Payments", "Activity"]);
@@ -239,7 +282,7 @@ describe("the states a 10/10 has to answer", () => {
   // an empty catalogue it was the FIRST thing a new operator saw. Nothing in
   // this rail may paint a working row as dead.
   it("an organization holding no place: the rows STAY, at FULL STRENGTH, one pill", () => {
-    const html = render(viewHref("profile"), { rememberedOrgId: "org-b" });
+    const html = render(FLAT_ROUTES.profile, { rememberedOrgId: "org-b" });
     expect(labels(html)).toEqual(["Account", "Profile", "Reviews", "Payments", "Activity", "Settings"]);
     expect(html).not.toContain("opacity-60");
     expect(html).not.toContain("add a place first");
@@ -248,21 +291,21 @@ describe("the states a 10/10 has to answer", () => {
   });
 
   it("the majority customer: one organization, one place — the same six rows, nothing muted", () => {
-    const html = render(viewHref("reviews"), { organizations: SOLO });
+    const html = render(FLAT_ROUTES.reviews, { organizations: SOLO });
     expect(labels(html)).toEqual(["Account", "Profile", "Reviews", "Payments", "Activity", "Settings"]);
     expect(html).not.toContain("opacity-60");
     expect(pillText(html)).toBe("Reviews");
   });
 
   it("a pool place published by the layout: Profile alone among the place rows, still one pill", () => {
-    const html = render(viewHref("profile"), { lastPlaceId: "p-x" });
+    const html = render(FLAT_ROUTES.profile, { lastPlaceId: "p-x" });
     expect(labels(html)).toEqual(["Account", "Profile", "Payments"]);
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Profile");
   });
 
   it("collapsed: six icons, every label a title, one pill", () => {
-    const html = render(viewHref("settings"), { collapsed: true, rememberedPlaceId: "p-1" });
+    const html = render(FLAT_ROUTES.settings, { collapsed: true, rememberedPlaceId: "p-1" });
     expect(rows(html)).toHaveLength(6);
     expect(html).toContain('title="Settings"');
     expect(html).toContain('title="Payments"');

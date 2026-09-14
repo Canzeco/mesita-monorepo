@@ -2,7 +2,12 @@
 // organization, then its page — or the place, then its view.
 import { describe, expect, it } from "vitest";
 import { crumbsFor } from "./ConsoleHeader";
-import { orgHref, orgPlacesNewHref, placeHref } from "@/lib/console-routes";
+import {
+  orgHref,
+  orgPlacesNewHref,
+  orgRootHref,
+  placeHref,
+} from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 
 const names = { orgName: "Strana Group", placeName: "Strana Del Valle" };
@@ -13,13 +18,23 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/orgs/new", names)).toEqual(["Create organization"]);
   });
 
-  it("the organization's page is the organization alone; its list is one crumb deeper", () => {
-    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group"]);
+  it("each organization page is the organization, then the page (MESITA-1839)", () => {
+    // There is no bare Organization page any more: `/orgs/<id>` is a
+    // forwarder, so it has no crumb of its own. Each of its three pages names
+    // itself under the organization.
+    expect(crumbsFor(orgHref("o", "payments"), names)).toEqual([
+      "Strana Group",
+      "Payments",
+    ]);
+    expect(crumbsFor(orgHref("o", "members"), names)).toEqual([
+      "Strana Group",
+      "Members",
+    ]);
     expect(crumbsFor(orgHref("o", "places"), names)).toEqual([
       "Strana Group",
       "Places",
     ]);
-    expect(crumbsFor("/orgs/o/payments", names)).toEqual([]);
+    expect(crumbsFor(orgRootHref("o"), names)).toEqual([]);
   });
 
   it("the add ceremony is Places / Add", () => {

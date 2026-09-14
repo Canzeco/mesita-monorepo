@@ -29,6 +29,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  FLAT_ROUTES,
   ORG_PAGE_LABEL,
   SHELL_ROUTES,
   flatViewFromPathname,
@@ -47,9 +48,11 @@ export function crumbsFor(
 ): string[] {
   if (pathname === SHELL_ROUTES.account) return ["Account"];
   if (pathname === SHELL_ROUTES.orgNew) return ["Create organization"];
-  // The six pages (MESITA-1832): the organization, the place, the page.
-  if (pathname === SHELL_ROUTES.payments) {
-    return [...(names.orgName ? [names.orgName] : []), "Payments"];
+  // The flat addresses (MESITA-1832, resolvers since MESITA-1839): they name
+  // no subject, so the crumb supplies the one the shell resolved.
+  if (pathname === FLAT_ROUTES.payments || pathname === FLAT_ROUTES.members) {
+    const page = pathname === FLAT_ROUTES.payments ? "Payments" : "Members";
+    return [...(names.orgName ? [names.orgName] : []), page];
   }
   const flat = flatViewFromPathname(pathname);
   if (flat) {
@@ -63,7 +66,7 @@ export function crumbsFor(
     // The organization's own page is the organization: no second crumb
     // restating it (MESITA-1810). Its list, and the add step under the list.
     const trail = [names.orgName ?? "Organization"];
-    if (page !== "overview") trail.push(ORG_PAGE_LABEL[page]);
+    trail.push(ORG_PAGE_LABEL[page]);
     if (/\/places\/new\/?$/.test(pathname)) trail.push("Add");
     return trail;
   }
