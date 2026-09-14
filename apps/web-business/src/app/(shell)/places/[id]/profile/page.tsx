@@ -13,7 +13,6 @@ import { PlaceGallery } from "@/components/console/PlaceGallery";
 import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView } from "@/lib/place-view";
-import { getSelection } from "@/lib/selected-place";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { canClaim, canRelease, preferredOrg } from "@/lib/active-organization";
 import { SHELL_ROUTES, orgPlacesHref } from "@/lib/console-routes";
@@ -22,10 +21,10 @@ import { ProfileTab } from "./ProfileTab";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlaceProfilePage() {
-  const { placeId } = await getSelection();
-  // The layout above answered the no-place case; a null here is unreachable.
-  const id = placeId as string;
+export default async function PlaceProfilePage(props: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await props.params;
   const manage = await getManagePlace(id);
   if (manage) return <ProfileTab />;
 

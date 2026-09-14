@@ -27,7 +27,8 @@ import {
   preferredOrg,
   resolveLanding,
 } from "@/lib/active-organization";
-import { SHELL_ROUTES, orgHref, withQuery } from "@/lib/console-routes";
+import { SHELL_ROUTES, orgRootHref, withQuery } from "@/lib/console-routes";
+import { placeTabHref } from "@/lib/place-tabs";
 import {
   RAIL_ORG_COOKIE,
   RAIL_PLACE_COOKIE,
@@ -61,7 +62,7 @@ export default async function ConsoleRootPage({
     const org =
       findOrg(organizations, requested) ??
       preferredOrg(organizations, rememberedOrgId);
-    if (org) redirect(withQuery(orgHref(org.id), rest));
+    if (org) redirect(withQuery(orgRootHref(org.id), rest));
   }
 
   const landing = resolveLanding({
@@ -69,9 +70,12 @@ export default async function ConsoleRootPage({
     rememberedPlaceId,
     rememberedOrgId: findOrg(organizations, requested)?.id ?? rememberedOrgId,
   });
+  // Straight to the canonical address (MESITA-1839). `/` has just resolved
+  // which place this is, so forwarding to the flat `/profile` would make it
+  // resolve the same thing again one hop later.
   const target =
     landing.kind === "place"
-      ? SHELL_ROUTES.profile
+      ? placeTabHref(landing.placeId, "profile")
       : landing.kind === "org"
         ? SHELL_ROUTES.account
         : SHELL_ROUTES.orgNew;

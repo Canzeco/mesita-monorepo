@@ -31,7 +31,7 @@ const SRC = path.resolve(__dirname, "..");
 const APP = path.join(SRC, "app");
 /** Super-admin gated at its own page.tsx — the one subtree where an
  *  `admin-web-*` call is the right call. */
-const ADMIN_TAB = path.join(APP, "(shell)/(place)/admin");
+const ADMIN_TAB = path.join(APP, "(shell)/places/[id]/admin");
 
 /** Comments explain WHY a door is what it is and quote the very names this
  *  scans for, so the scan reads code only — same rule as

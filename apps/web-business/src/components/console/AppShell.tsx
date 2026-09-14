@@ -46,6 +46,7 @@ import { RailScopeProvider } from "@/components/console/RailScopeContext";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
 import { SHELL_ROUTES } from "@/lib/console-routes";
+import { placeTabHref } from "@/lib/place-tabs";
 import {
   RAIL_COOKIE_ATTRS,
   RAIL_ORG_COOKIE,
@@ -87,7 +88,7 @@ export function AppShell({
   // Where the wordmark lands: the same answer `/` gives, resolved here so the
   // click costs no redirect hop.
   const landingHref = scope.place
-    ? SHELL_ROUTES.profile
+    ? placeTabHref(scope.place.id, "profile")
     : scope.org
       ? SHELL_ROUTES.account
       : SHELL_ROUTES.orgNew;

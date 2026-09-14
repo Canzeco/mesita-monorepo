@@ -39,7 +39,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ChevronsUpDown, Layers, Plus, Store } from "lucide-react";
+import { ChevronsUpDown, Layers, Plus, Store, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import { useRailScopeContext } from "@/components/console/RailScopeContext";
@@ -55,7 +55,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { RailPlace } from "@/lib/api/organizations";
 import { canAddPlace } from "@/lib/active-organization";
-import { SHELL_ROUTES, orgHref, orgPlacesHref, orgPlacesNewHref } from "@/lib/console-routes";
+import {
+  SHELL_ROUTES,
+  orgHref,
+  orgPlacesHref,
+  orgPlacesNewHref,
+  orgRootHref,
+} from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import type { RailOrg } from "@/lib/rail-scope";
@@ -241,8 +247,10 @@ export function ScopeSwitchers() {
     startTransition(() => router.push(href));
   };
   const pickOrg = (id: string) => {
-    // The forwarder writes the org cookie and lands back on Account.
-    if (id !== org.id) go(`${orgHref(id)}?to=${SHELL_ROUTES.account}`, id);
+    // The BARE `/orgs/<id>` is the forwarder: it writes the org cookie, clears
+    // the place cookie and lands back on Account. `orgHref` names a page now
+    // (MESITA-1839), and a page would ignore `?to=`.
+    if (id !== org.id) go(`${orgRootHref(id)}?to=${SHELL_ROUTES.account}`, id);
   };
   const pickPlace = (id: string) => {
     if (id === place?.id) return;
@@ -302,6 +310,13 @@ export function ScopeSwitchers() {
           </DropdownMenuRadioGroup>
         )}
         <DropdownMenuSeparator />
+        {/* THE ORGANIZATION'S OWN DOORS. Members was the bottom half of
+            `/settings` until MESITA-1839; splitting it out gave it an address
+            but no way in, and the rail is six rows by Pato's drawing. It
+            belongs here, beside Create organization: this menu is already
+            where the organization's doors live, and Account is the page that
+            answers "which organization". */}
+        <MenuLink href={orgHref(org.id, "members")} label="Members" Icon={Users} onGuardedNavigate={guardNav ?? undefined} />
         <MenuLink href={SHELL_ROUTES.orgNew} label="Create organization" Icon={Plus} onGuardedNavigate={guardNav ?? undefined} />
       </Switcher>
 

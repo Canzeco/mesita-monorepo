@@ -120,7 +120,7 @@ describe("the unsaved-edits guard reaches the rail", () => {
     // Rendered by the shell itself rather than passed in: position-by-
     // convention is enforced by nothing, and getting it wrong throws on every
     // managed place.
-    const shell = read("app/(shell)/(place)/PlaceManageShell.tsx");
+    const shell = read("app/(shell)/places/[id]/PlaceManageShell.tsx");
     const provider = shell.slice(shell.indexOf("<PlaceProvider"));
     expect(provider).toContain("<PlaceNavBridge />");
   });
@@ -230,20 +230,24 @@ describe("the rail is seven rows", () => {
     expect(nav).toContain("rows.map((row)");
     const table = r.slice(r.indexOf("const all: Row[] = ["), r.indexOf("const rows = all.filter"));
     const at = (needle: string) => table.indexOf(needle);
-    expect(at('viewHref("profile")')).toBeGreaterThan(-1);
-    expect(at('viewHref("profile")')).toBeLessThan(at('viewHref("reviews")'));
-    expect(at('viewHref("reviews")')).toBeLessThan(at("SHELL_ROUTES.payments"));
-    expect(at("SHELL_ROUTES.payments")).toBeLessThan(at('viewHref("activity")'));
-    expect(at('viewHref("activity")')).toBeLessThan(at('viewHref("settings")'));
-    expect(table).toContain('viewHref("admin")');
+    expect(at('viewRow("profile")')).toBeGreaterThan(-1);
+    expect(at('viewRow("profile")')).toBeLessThan(at('viewRow("reviews")'));
+    expect(at('viewRow("reviews")')).toBeLessThan(at("paymentsHref"));
+    expect(at("paymentsHref")).toBeLessThan(at('viewRow("activity")'));
+    expect(at('viewRow("activity")')).toBeLessThan(at('viewRow("settings")'));
+    expect(table).toContain('viewRow("admin")');
     expect(table).toContain("if (isSuperAdmin)");
-    // Account owns its ceremonies; the views light off the flat reader.
-    expect(r).toContain("orgPageFromPathname(pathname) !== null");
-    expect(r).toContain("flatViewFromPathname(pathname)");
+    // A ROW IS THE CANONICAL ADDRESS (MESITA-1839): the shell has already
+    // resolved which place and which organization, so the row links straight
+    // there and the click costs one hop. The flat address is the fallback for
+    // the state with nothing to name yet.
+    expect(r).toContain("placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab]");
+    expect(r).toContain('org ? orgHref(org.id, "payments") : FLAT_ROUTES.payments');
+    // Both readers, because either address may be on screen.
+    expect(r).toContain("placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname)");
     expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
     expect(r).not.toContain("?org=");
     expect(r).not.toContain("window.location");
-    expect(r).not.toContain("placeTabHref(");
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
   });
 
@@ -256,24 +260,37 @@ describe("the rail is seven rows", () => {
     expect(r).not.toContain("opacity-60");
     expect(r).not.toContain("add a place first");
     expect(r).toContain("const noPlace = org !== null && scope.place === null && !foreign;");
-    expect(readCode("app/(shell)/(place)/layout.tsx")).toContain("return <NoPlaceYet org={selection.org} />;");
+    // NoPlaceYet moved out of the place layout (MESITA-1839): under
+    // `/places/<id>` there is always an id, so "no place" cannot happen
+    // there. It is the flat address that has nothing to name, and answers.
+    expect(readCode("lib/flat-address.tsx")).toContain("return <NoPlaceYet org={org} />;");
     expect(readCode("components/console/NoPlaceYet.tsx")).toContain("canAddPlace(org.myRole)");
   });
 
-  it("the six pages are about THE SELECTED place: one server reader, and the forwarders write the cookies it reads", () => {
+  it("the FLAT pages resolve the remembered scope; the canonical ones read the path (MESITA-1839)", () => {
+    // The selection still exists — it is what a scope-free address resolves.
+    // What changed is who reads it: the flat resolvers, not the place layout.
     const sel = readCode("lib/selected-place.ts");
     expect(sel).toContain("export const getSelection = cache(");
     expect(sel).toContain("findHolder(organizations, rememberedPlaceId)");
     expect(sel).toContain("RAIL_PLACE_COOKIE");
-    expect(readCode("app/(shell)/(place)/layout.tsx")).toContain("await getSelection()");
-    for (const f of ["places/[id]/[view]/route.ts", "places/[id]/route.ts"]) {
-      const fwd = readCode(`app/(shell)/${f}`);
-      expect(fwd).toContain("res.cookies.set(RAIL_PLACE_COOKIE, id");
-      expect(fwd).toContain("NextResponse.redirect(url, 307)");
-    }
+
+    const flat = readCode("lib/flat-address.tsx");
+    expect(flat).toContain("await getSelection()");
+    expect(flat).toContain("redirect(withQuery(placeTabHref(placeId, tab), sp))");
+    expect(flat).toContain('redirect(withQuery(orgHref(org.id, page), sp))');
+
+    // The place layout takes its id from the PATH and never asks the cookie.
+    const layout = readCode("app/(shell)/places/[id]/layout.tsx");
+    expect(layout).toContain("const { id } = await params;");
+    expect(layout).not.toContain("getSelection");
+
+    // The organization forwarder still SELECTS on the way through: that is
+    // the switcher's whole mechanism, and why `?to=` may be a flat address.
     const org = readCode("app/(shell)/orgs/[orgId]/route.ts");
     expect(org).toContain("res.cookies.set(RAIL_ORG_COOKIE, orgId");
-    expect(org).toContain("SHELL_ROUTES.payments");
+    expect(org).toContain('res.cookies.set(RAIL_PLACE_COOKIE, ""');
+    expect(org).toContain('orgHref(orgId, "payments")');
     expect(org).toContain("url.search = search.toString();");
   });
 
@@ -385,7 +402,7 @@ describe("the header mirrors the rail", () => {
 // `[id]/loading.tsx` is not the boundary for a tab click — the changed segment
 // is the tab, and every tab page awaits `getManagePlace(id)` on its own.
 describe("every place view has its own loading boundary", () => {
-  const VIEWS = path.join(SRC, "app/(shell)/(place)");
+  const VIEWS = path.join(SRC, "app/(shell)/places/[id]");
 
   // A BIJECTION, not a one-way loop. Asserting only "every tab has a
   // loading.tsx" passes just as happily when a sixth view directory appears
@@ -419,7 +436,7 @@ describe("every place view has its own loading boundary", () => {
   });
 
   it("Reviews guards like Settings: a pool place answers 404, never a throw", () => {
-    const page = readCode("app/(shell)/(place)/reviews/page.tsx");
+    const page = readCode("app/(shell)/places/[id]/reviews/page.tsx");
     expect(page).toContain("if (!manage) notFound();");
     expect(readCode("components/place-manage/sections/PlaceSection.tsx")).not.toContain(
       "ReviewsSummary",
@@ -429,7 +446,7 @@ describe("every place view has its own loading boundary", () => {
 
 describe("Settings first paint is a row list, not a meter (MESITA-1739)", () => {
   it("the loading skeleton is rows, not Profile's photo band", () => {
-    const s = read("app/(shell)/(place)/settings/loading.tsx");
+    const s = read("app/(shell)/places/[id]/settings/loading.tsx");
     expect(s).not.toContain("h-[420px]");
     expect(s).not.toContain("PlaceViewSkeleton");
     expect(s).toContain("Loading settings");
@@ -598,18 +615,18 @@ describe("tab hrefs", () => {
     }
   });
   it("every tab maps to a route file on disk", () => {
-    // A tab's OLD address is a forwarder (one route handler for every view);
-    // its flat address is a page in the (place) group.
+    // Every view is a real page under the id that names it (MESITA-1839).
+    // The `[view]` forwarder that stood here is gone.
     const shell = path.join(SRC, "app", "(shell)");
-    expect(existsSync(path.join(shell, "places", "[id]", "[view]", "route.ts"))).toBe(true);
+    expect(existsSync(path.join(shell, "places", "[id]", "[view]"))).toBe(false);
     for (const tab of PLACE_TABS) {
-      expect(existsSync(path.join(shell, "(place)", tab, "page.tsx")), tab).toBe(true);
+      expect(existsSync(path.join(shell, "places", "[id]", tab, "page.tsx")), tab).toBe(true);
     }
   });
   it("every route file on disk is a tab — no orphan segment", () => {
     // Together with the loop above this is a bijection: a tab with no route
     // fails there, a route with no tab fails here.
-    const placeDir = path.join(SRC, "app", "(shell)", "(place)");
+    const placeDir = path.join(SRC, "app", "(shell)", "places", "[id]");
     const segments = readdirSync(placeDir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .filter((e) => existsSync(path.join(placeDir, e.name, "page.tsx")))
