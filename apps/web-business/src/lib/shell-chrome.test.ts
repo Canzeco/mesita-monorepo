@@ -247,9 +247,14 @@ describe("the rail is seven rows", () => {
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
   });
 
-  it("the place rows are always there: with no place they are muted, and the page answers with Add place", () => {
+  // MESITA-1833: they are no longer DIMMED. Every one is a live link that
+  // lands on NoPlaceYet — a real next step — so `opacity-60` and the "add a
+  // place first" tooltip were painting working rows as disabled, and with an
+  // empty catalogue that was every operator's first screen.
+  it("the place rows are always there, at full strength, and the page answers with Add place", () => {
     const r = rail();
-    expect(r).toContain("muted={row.place !== undefined && noPlace}");
+    expect(r).not.toContain("opacity-60");
+    expect(r).not.toContain("add a place first");
     expect(r).toContain("const noPlace = org !== null && scope.place === null && !foreign;");
     expect(readCode("app/(shell)/(place)/layout.tsx")).toContain("return <NoPlaceYet org={selection.org} />;");
     expect(readCode("components/console/NoPlaceYet.tsx")).toContain("canAddPlace(org.myRole)");

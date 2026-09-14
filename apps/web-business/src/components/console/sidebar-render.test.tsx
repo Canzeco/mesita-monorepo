@@ -204,12 +204,16 @@ describe("the states a 10/10 has to answer", () => {
     expect(rows(html)).toHaveLength(1);
   });
 
-  it("an organization holding no place: the rows STAY, the place ones muted, one pill", () => {
+  // MESITA-1833: they used to render at opacity-60 with an "add a place
+  // first" tooltip. Every one of them is a live link that lands on
+  // NoPlaceYet — a real next step — so the disabled look was a lie, and with
+  // an empty catalogue it was the FIRST thing a new operator saw. Nothing in
+  // this rail may paint a working row as dead.
+  it("an organization holding no place: the rows STAY, at FULL STRENGTH, one pill", () => {
     const html = render(viewHref("profile"), { rememberedOrgId: "org-b" });
     expect(labels(html)).toEqual(["Account", "Profile", "Reviews", "Payments", "Activity", "Settings"]);
-    expect((html.match(/opacity-60/g) ?? []).length).toBe(4);
-    expect(html).toContain('title="Profile · add a place first"');
-    expect(html).not.toContain('title="Payments · add a place first"');
+    expect(html).not.toContain("opacity-60");
+    expect(html).not.toContain("add a place first");
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Profile");
   });
@@ -256,8 +260,23 @@ describe("the switchers live on Account (MESITA-1832)", () => {
     expect(html).not.toContain("lucide-chevrons-up-down");
   });
 
-  it("an organization holding no place names the next step in the place switcher", () => {
-    expect(renderSwitchers(SHELL_ROUTES.account, { rememberedOrgId: "org-b" })).toContain(">Add a place<");
+  // MESITA-1833: the zero-places row is an EMPTY STATE, not a name. It used
+  // to render "Add a place" in the slot a name occupies and — nothing to
+  // switch — drew no chevron, so the call to action read as a disabled field.
+  it("an organization holding no place turns the place switcher into the next step", () => {
+    const html = renderSwitchers(SHELL_ROUTES.account, { rememberedOrgId: "org-b" });
+    expect(html).toContain(">Add your first place<");
+    expect(html).toContain("border-dashed");
+    expect(html).toContain("lucide-plus");
+    expect(html).toContain(">Nothing to switch between yet<");
+  });
+
+  // The meta the dropdown computes now rides ON the trigger (MESITA-1833):
+  // the role and the holding, without opening anything.
+  it("each switcher states its scope on the trigger, not one click behind it", () => {
+    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
+    expect(html).toContain(">Owner · 1 place<");
+    expect(html).toContain(">In Pato<");
   });
 
   it("render nothing without an organization or outside the shell", () => {
