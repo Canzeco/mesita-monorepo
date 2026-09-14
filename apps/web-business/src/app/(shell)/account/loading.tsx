@@ -3,29 +3,20 @@
 // looks ignored (MESITA-1729). See organization/loading.tsx for the mechanism.
 //
 // IT MUST DRAW THE PAGE THAT ACTUALLY LOADS (MESITA-1833). This used to be a
-// heading bar, one text line and a 132px card — the shape of a page that had
-// a "You" card and drew its switchers as chips. The real Account is an
-// identity header and two 64px selector rows, so every load ended in a layout
-// shift on swap. A skeleton is a promise about what is coming; this one broke
-// it on every visit. Same stack and same full width as the page (MESITA-1836) —
-// a skeleton on a different measure is the same broken promise.
+// heading bar, one text line and a 132px card, then an identity header over
+// two 64px rows — each time the shape of a page that no longer existed, so
+// every load ended in a layout shift on swap. A skeleton is a promise about
+// what is coming. Three boxes now (MESITA-1837), at the page's own height,
+// stacked full width (MESITA-1836): one bar per box, nothing inside them.
 
 export default function Loading() {
   return (
     <>
       <span className="sr-only">Loading account…</span>
-      <div aria-hidden="true" className="flex items-center gap-3.5">
-        <div className="bg-muted h-13 w-13 shrink-0 animate-pulse rounded-2xl" />
-        <div className="min-w-0 flex-1">
-          <div className="bg-muted h-5 w-56 max-w-full animate-pulse rounded" />
-          <div className="bg-muted mt-1.5 h-3 w-28 animate-pulse rounded" />
-        </div>
-        <div className="bg-muted h-7 w-24 shrink-0 animate-pulse rounded-full" />
-      </div>
-      <div className="border-border border-t" />
+      <div aria-hidden="true" className="bg-muted h-24 animate-pulse rounded-2xl" />
       <div aria-hidden="true" className="flex flex-col gap-3">
-        <div className="bg-muted h-16 animate-pulse rounded-2xl" />
-        <div className="bg-muted h-16 animate-pulse rounded-2xl" />
+        <div className="bg-muted h-24 animate-pulse rounded-2xl" />
+        <div className="bg-muted h-24 animate-pulse rounded-2xl" />
       </div>
     </>
   );

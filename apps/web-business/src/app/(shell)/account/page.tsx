@@ -8,11 +8,18 @@
 // naked on the background at 40px tall. The weight was exactly backwards, and
 // a card earns its border by being the interaction; here the switcher is.
 //
-// So the human is a HEADER, not a row: the monogram, the email on the display
-// face as the page's h1, one meta line, and Sign out opposite. The `<h1>` that
-// said "Account" went with the card — the rail's pill and the breadcrumb both
-// say it already, and a page that names itself three times in 200px is not
-// being clear, it is repeating.
+// THREE BIG BOXES, ONE RANK (MESITA-1837). Pato: "three big boxes." The
+// console has exactly three nouns — the person, the organization, the place —
+// and this is the one page that shows all three at once, so they share one
+// shape (SCOPE_BOX_CLASS) and one weight. MESITA-1833 made the person a
+// HEADER above the two switcher rows; that gave three different ranks to
+// three things that are each one thing, and the header read as chrome sitting
+// above the "real" content instead of as the first of three peers.
+//
+// The You box is a plain div, not a trigger: there is nothing to switch about
+// who you are. It carries the `<h1>`. The `<h1>` that said "Account" is gone —
+// the rail's pill and the breadcrumb both say it already, and a page that
+// names itself three times in 200px is not being clear, it is repeating.
 //
 // SIGN OUT IS A GHOST PILL, NOT THE DEFAULT. `SignOutButton`'s default class is
 // `w-full … py-4`, sized for the sign-in column; dropped into a header slot it
@@ -28,7 +35,13 @@ import { ScopeSwitchers } from "@/components/console/ScopeSwitchers";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
-import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import {
+  GHOST_PILL_BUTTON_CLASS,
+  SCOPE_BOX_CLASS,
+  SCOPE_CHIP_CLASS,
+  TINY_LABEL_CLASS,
+} from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -62,39 +75,38 @@ export default async function AccountPage() {
   return (
     // ONE COLUMN, FULL WIDTH (MESITA-1836). A fragment, like every other
     // console page: the shell layout's `flex w-full flex-col gap-4` IS the
-    // column, and the console is fluid by law (MESITA-1558). This page briefly
-    // capped itself; nobody asked it to.
+    // column, and the console is fluid by law (MESITA-1558).
     <>
-      <div className="flex items-center gap-3.5">
-        {/* The brand's own gradient, at the one size on this page big enough
-            to carry it. aria-hidden: the h1 beside it is the name. */}
+      <div className={SCOPE_BOX_CLASS}>
         <span
           aria-hidden
-          className="bg-brand font-display flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl text-xl font-semibold text-white"
+          className={cn(
+            SCOPE_CHIP_CLASS,
+            "bg-brand font-display flex items-center justify-center text-lg font-semibold text-white",
+          )}
         >
           {email.trim().charAt(0).toUpperCase()}
         </span>
-        <div className="min-w-0 flex-1">
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className={TINY_LABEL_CLASS}>You</span>
           {/* The email IS the heading: it keeps the landmark the removed
               "Account" h1 held, and it is the one string on this page that
               says whose console this is. */}
-          <h1 className="truncate text-xl font-semibold tracking-tight">
+          <h1 className="mt-0.5 truncate text-base font-semibold tracking-tight">
             {email}
           </h1>
-          <p className="text-muted-foreground mt-0.5 truncate text-[12px]">
+          <span className="text-muted-foreground truncate text-[12px]">
             {accountMeta(orgs.length, orgsError)}
-          </p>
-        </div>
+          </span>
+        </span>
         <SignOutButton
           redirectTo="/signin"
           className={`${GHOST_PILL_BUTTON_CLASS} shrink-0`}
         />
       </div>
 
-      <div className="border-border border-t" />
-
       {/* "Account must contain select account, organization selector, and
-          place selector" (Pato, 2026-09-13; MESITA-1832). */}
+          place selector" (Pato, 2026-09-13; MESITA-1832). Boxes two and three. */}
       <ScopeSwitchers />
     </>
   );
