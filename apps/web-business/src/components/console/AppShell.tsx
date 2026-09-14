@@ -38,22 +38,16 @@
 // cookies remember, so the next fresh request paints the same boxes.
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { Sidebar } from "@/components/console/Sidebar";
 import { RailScopeProvider } from "@/components/console/RailScopeContext";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
-import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
-import { SHELL_ROUTES } from "@/lib/console-routes";
-import { placeTabHref } from "@/lib/place-tabs";
 import {
   RAIL_COOKIE_ATTRS,
   RAIL_ORG_COOKIE,
   RAIL_PLACE_COOKIE,
   SIDEBAR_COLLAPSED_COOKIE,
 } from "@/lib/sidebar-prefs";
-import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import type { RailOrg } from "@/lib/rail-scope";
 import { useRailScope } from "@/lib/use-rail-scope";
 
@@ -85,17 +79,16 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const scope = useRailScope({ organizations, rememberedPlaceId, rememberedOrgId });
-  // Where the wordmark lands: the same answer `/` gives, resolved here so the
-  // click costs no redirect hop.
-  const landingHref = scope.place
-    ? placeTabHref(scope.place.id, "profile")
-    : scope.org
-      ? SHELL_ROUTES.account
-      : SHELL_ROUTES.orgNew;
-  // The mobile wordmark is a route out of the place screen exactly like the
-  // rail's rows are, so it answers to the same guard. OpenPlaceProvider is
-  // mounted by the LAYOUT rather than here, so this hook can see it.
-  const guardNav = useOpenPlaceGuard();
+  // THE MOBILE TOPBAR STATES THE SCOPE (MESITA-1842). Pato: "no mesita logo,
+  // fuck it." The wordmark used to sit here and in the rail; the desktop app's
+  // own title bar already says "Mesita Business", so both were a quieter second
+  // copy of something the OS renders better. What belongs in a 44px bar above
+  // a CLOSED drawer is the thing the drawer is hiding: which organization and
+  // which place every screen beneath it is about — the same sentence the
+  // rail's two group headers carry on desktop.
+  const scopeLine = [scope.org?.name, scope.place?.name]
+    .filter((n): n is string => Boolean(n))
+    .join(" · ");
   // Two independent pieces of state, easy to confuse: `open` is the mobile
   // drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
   // collapses — at that size the whole rail is already hidden by default.
@@ -186,7 +179,6 @@ export function AppShell({
     isSuperAdmin,
     viewerError,
     accountLabel,
-    landingHref,
   };
 
   return (
@@ -268,14 +260,15 @@ export function AppShell({
           >
             <Menu className="h-4 w-4" />
           </button>
-          <Link
-            href={landingHref}
-            onClick={(e) => guardNav?.(landingHref, e)}
-            className="inline-flex items-center gap-2 truncate"
-          >
-            <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-            <span className={TINY_LABEL_CLASS}>business</span>
-          </Link>
+          {/* Text, not a link: the drawer beside it IS the navigation, and a
+              second door to a page one tap away is how a bar starts competing
+              with the nav it opens. Empty until an organization resolves — a
+              bar that says "Organization · Place" states nothing. */}
+          {scopeLine && (
+            <span className="text-foreground truncate text-sm font-medium">
+              {scopeLine}
+            </span>
+          )}
         </header>
 
         <ConsoleHeader scope={scope} />

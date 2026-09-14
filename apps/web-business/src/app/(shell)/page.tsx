@@ -27,7 +27,7 @@ import {
   preferredOrg,
   resolveLanding,
 } from "@/lib/active-organization";
-import { SHELL_ROUTES, orgRootHref, withQuery } from "@/lib/console-routes";
+import { SHELL_ROUTES, orgHref, withQuery } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import {
   RAIL_ORG_COOKIE,
@@ -62,7 +62,7 @@ export default async function ConsoleRootPage({
     const org =
       findOrg(organizations, requested) ??
       preferredOrg(organizations, rememberedOrgId);
-    if (org) redirect(withQuery(orgRootHref(org.id), rest));
+    if (org) redirect(withQuery(orgHref(org.id), rest));
   }
 
   const landing = resolveLanding({

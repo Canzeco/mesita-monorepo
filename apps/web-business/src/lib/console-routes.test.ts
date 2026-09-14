@@ -10,18 +10,19 @@ import { describe, expect, it } from "vitest";
 import {
   FLAT_ROUTES,
   ORG_PAGES,
-  ORG_PAGE_LABEL,
-  ORG_RAIL_PAGES,
+  ORG_TARGET_LABEL,
+  ORG_RAIL_TARGETS,
+  ORG_TARGETS,
   PLACES_OWNED,
   SHELL_ROUTES,
   FLAT_ROUTE_LIST,
-  flatOrgPageFromPathname,
+  flatOrgTargetFromPathname,
   flatViewFromPathname,
   isFlatRoute,
   orgHref,
-  orgRootHref,
+  orgSwitchHref,
   orgIdFromPathname,
-  orgPageFromPathname,
+  orgTargetFromPathname,
   orgPlacesHref,
   orgPlacesNewHref,
   ownedFromParam,
@@ -90,13 +91,40 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     expect(isFlatRoute("/profile/")).toBe(true);
   });
 
-  for (const [name, href] of Object.entries(FLAT_ROUTES)) {
-    it(`${name} → ${href} is a resolver page with its own loading boundary`, () => {
-      const file = routeFile(href);
-      expect(existsSync(file), file).toBe(true);
-      expect(existsSync(path.join(path.dirname(file), "loading.tsx")), `${href} loading`).toBe(true);
-    });
-  }
+  // ONE ROUTE FILE FOR ALL TEN (MESITA-1842). They were ten directories
+  // holding one line each, and adding the eleventh meant remembering to create
+  // a directory, a page and a loading boundary that no compiler would miss.
+  it("all ten are served by the ONE `[flat]` segment, with its own boundary", () => {
+    const dir = path.join(SHELL_DIR, "[flat]");
+    expect(existsSync(path.join(dir, "page.tsx"))).toBe(true);
+    expect(existsSync(path.join(dir, "loading.tsx"))).toBe(true);
+    // The old ten are gone, not orphaned: a leftover directory would WIN over
+    // the dynamic segment (Next resolves static first) and serve whatever it
+    // still contained, silently, forever.
+    for (const href of FLAT_ROUTE_LIST) {
+      expect(
+        existsSync(routeFile(href)),
+        `${href} still has a directory of its own — it would shadow [flat]`,
+      ).toBe(false);
+    }
+  });
+
+  // THE HAZARD THE COLLAPSE INTRODUCES, and the only one: a dynamic segment at
+  // the root sees every name no static route claimed. Next resolves static
+  // FIRST, so a flat name that collides with a real directory is dead on
+  // arrival — and it dies quietly, because the directory still answers.
+  it("no flat name collides with a static route, in either direction", () => {
+    const statics = readdirSync(SHELL_DIR, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith("[") && !e.name.startsWith("("))
+      .map((e) => e.name);
+    for (const name of Object.keys(FLAT_ROUTES)) {
+      expect(statics, `/${name} is shadowed by a static route of the same name`).not.toContain(name);
+    }
+    // `places` is the reverse case and the reason it is NOT in the vocabulary:
+    // the place segment owns that name, so a flat `places` could never resolve.
+    expect(statics).toContain("places");
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("places");
+  });
 
   it("a flat place view reads as that view, and the canonical one does not", () => {
     for (const tab of PLACE_TABS) {
@@ -114,11 +142,11 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // (MESITA-1841).
     for (const page of ORG_PAGES) {
       if (page === "places") continue; // no flat twin: the list lives under its org
-      expect(flatOrgPageFromPathname(`/${page}`)).toBe(page);
+      expect(flatOrgTargetFromPathname(`/${page}`)).toBe(page);
     }
-    expect(flatOrgPageFromPathname(FLAT_ROUTES.profile)).toBeNull();
-    expect(flatOrgPageFromPathname(orgHref("org-x", "credits"))).toBeNull();
-    expect(flatOrgPageFromPathname("/creditsx")).toBeNull();
+    expect(flatOrgTargetFromPathname(FLAT_ROUTES.profile)).toBeNull();
+    expect(flatOrgTargetFromPathname(orgHref("org-x", "credits"))).toBeNull();
+    expect(flatOrgTargetFromPathname("/creditsx")).toBeNull();
   });
 
   it("THE TWO READERS NEVER BOTH ANSWER for one address", () => {
@@ -127,7 +155,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // and "exactly one pill" is the rule every rail test asserts.
     for (const href of FLAT_ROUTE_LIST) {
       const asView = flatViewFromPathname(href);
-      const asPage = flatOrgPageFromPathname(href);
+      const asPage = flatOrgTargetFromPathname(href);
       expect(asView === null || asPage === null, href).toBe(true);
     }
   });
@@ -170,14 +198,16 @@ describe("the place is addressed by its id again (MESITA-1839)", () => {
 describe("the organization's pages (MESITA-1807)", () => {
   const ID: Record<string, string> = { "org-x": "[orgId]" };
 
-  it("the organization's six pages, and the bare address that forwards", () => {
+  it("the organization IS `/orgs/<id>`, and says its name once", () => {
     // MESITA-1810 folded Payments and Members INTO one Organization page;
     // MESITA-1832 dissolved that page and scattered them to flat addresses;
-    // MESITA-1839 gives each its own address under the organization that owns
-    // it; MESITA-1841 brings Organization back as a page of its own and gives
-    // Credits and Activity rooms. Payments stays the DEFAULT because it is
-    // where Stripe returns — not because it is first.
-    expect(ORG_PAGES).toEqual([
+    // MESITA-1839 gave each its own address under the organization; MESITA-1841
+    // brought Organization back — at `/orgs/<id>/organization`, which says the
+    // word twice; MESITA-1842 gave it the bare address, because the only thing
+    // squatting there was a cookie-writing forwarder that now lives at
+    // `/switch`.
+    expect(ORG_PAGES).toEqual(["payments", "credits", "activity", "members", "places"]);
+    expect(ORG_TARGETS).toEqual([
       "organization",
       "payments",
       "credits",
@@ -185,35 +215,47 @@ describe("the organization's pages (MESITA-1807)", () => {
       "members",
       "places",
     ]);
-    expect(orgRootHref("org-x")).toBe("/orgs/org-x");
-    expect(orgHref("org-x")).toBe("/orgs/org-x/payments");
-    expect(orgHref("org-x", "organization")).toBe("/orgs/org-x/organization");
+    expect(orgHref("org-x")).toBe("/orgs/org-x");
+    expect(orgHref("org-x", "organization")).toBe("/orgs/org-x");
+    expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
     expect(orgHref("org-x", "credits")).toBe("/orgs/org-x/credits");
     expect(orgHref("org-x", "activity")).toBe("/orgs/org-x/activity");
     expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
     expect(orgPlacesNewHref("org-x")).toBe("/orgs/org-x/places/new");
+    // No segment repeats the noun its parent already carries.
+    for (const t of ORG_TARGETS) expect(orgHref("org-x", t)).not.toContain("/organization");
+  });
+
+  it("the switcher's forwarder has its OWN address, and it is not a target", () => {
+    // A page cannot set a cookie on the way through, which is the entire
+    // reason this address exists. Keeping it OUT of ORG_TARGETS is what stops
+    // the rail from ever lighting a row for a redirect (MESITA-1842).
+    expect(orgSwitchHref("org-x", "/profile")).toBe("/orgs/org-x/switch?to=%2Fprofile");
+    expect(ORG_TARGETS).not.toContain("switch");
+    expect(orgTargetFromPathname("/orgs/org-x/switch")).toBeNull();
+    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "switch", "route.ts"))).toBe(true);
   });
 
   it("the rail lists four of the six, in the drawing's order", () => {
     // Members and Places have addresses and no row: the Organization page is
-    // their door (MESITA-1841). Every rail page is a real page.
-    expect(ORG_RAIL_PAGES).toEqual([
+    // their door (MESITA-1841). Every rail target is a real target.
+    expect(ORG_RAIL_TARGETS).toEqual([
       "organization",
       "payments",
       "credits",
       "activity",
     ]);
-    for (const page of ORG_RAIL_PAGES) {
-      expect(ORG_PAGES).toContain(page);
-    }
+    for (const t of ORG_RAIL_TARGETS) expect(ORG_TARGETS).toContain(t);
   });
 
-  it("the organization is a FORWARDER, and its list a page with a loading boundary (MESITA-1832)", () => {
-    // /orgs/<id> selects the organization and lands on /payments: a route
-    // handler, not a page — Stripe's return links keep working.
-    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "route.ts"))).toBe(true);
-    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "page.tsx"))).toBe(false);
+  it("the organization is a PAGE, and so is every address under it (MESITA-1842)", () => {
+    // /orgs/<id> is the Organization page now, not a route handler. Stripe's
+    // stored return links keep working because a PAGE can redirect even though
+    // it cannot set a cookie — `?connect=` is handed on to Payments.
+    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "route.ts"))).toBe(false);
+    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "page.tsx"))).toBe(true);
+    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "loading.tsx"))).toBe(true);
     for (const page of ORG_PAGES) {
       const file = routeFile(orgHref("org-x", page), ID);
       expect(existsSync(file), `${page}: ${file}`).toBe(true);
@@ -232,26 +274,29 @@ describe("the organization's pages (MESITA-1807)", () => {
   it("every route directory under the organization is a known page", () => {
     // The reverse direction: a directory nobody linked is a page nobody can
     // reach, and a bijection is what keeps the rail and the filesystem in step.
+    // `switch` is the one directory that is not a target — it is the cookie
+    // forwarder, and its absence from ORG_TARGETS is deliberate.
     const dir = path.join(SHELL_DIR, "orgs", "[orgId]");
     const dirs = readdirSync(dir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
-    expect(dirs.sort()).toEqual([...ORG_PAGES].sort());
+    expect(dirs.sort()).toEqual([...ORG_PAGES, "switch"].sort());
   });
 
-  it("labels every page", () => {
-    for (const page of ORG_PAGES) expect(ORG_PAGE_LABEL[page]).toBeTruthy();
+  it("labels every target", () => {
+    for (const t of ORG_TARGETS) expect(ORG_TARGET_LABEL[t]).toBeTruthy();
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(orgRootHref("a/b")).toBe("/orgs/a%2Fb");
-    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/payments");
+    expect(orgHref("a/b")).toBe("/orgs/a%2Fb");
+    expect(orgHref("a/b", "payments")).toBe("/orgs/a%2Fb/payments");
+    expect(orgSwitchHref("a/b", "/profile")).toBe("/orgs/a%2Fb/switch?to=%2Fprofile");
     expect(orgIdFromPathname(orgHref("a/b"))).toBe("a/b");
   });
 
   it("reads the id back out of any organization pathname", () => {
-    for (const page of ORG_PAGES) {
-      expect(orgIdFromPathname(orgHref("org-x", page))).toBe("org-x");
+    for (const t of ORG_TARGETS) {
+      expect(orgIdFromPathname(orgHref("org-x", t))).toBe("org-x");
     }
     expect(orgIdFromPathname(orgPlacesNewHref("org-x"))).toBe("org-x");
     expect(orgIdFromPathname("/orgs/org-x/")).toBe("org-x");
@@ -265,24 +310,24 @@ describe("the organization's pages (MESITA-1807)", () => {
   });
 
   it("names the page a pathname is on, and lights Places for the claim step", () => {
-    for (const page of ORG_PAGES) {
-      expect(orgPageFromPathname(orgHref("org-x", page))).toBe(page);
+    for (const t of ORG_TARGETS) {
+      expect(orgTargetFromPathname(orgHref("org-x", t))).toBe(t);
     }
-    expect(orgPageFromPathname(orgPlacesNewHref("org-x"))).toBe("places");
-    expect(orgPageFromPathname("/orgs/org-x/places/")).toBe("places");
+    expect(orgTargetFromPathname(orgPlacesNewHref("org-x"))).toBe("places");
+    expect(orgTargetFromPathname("/orgs/org-x/places/")).toBe("places");
   });
 
   it("is null off the organization, on the ceremony, and on a segment that is not a page", () => {
-    expect(orgPageFromPathname(SHELL_ROUTES.orgNew)).toBeNull();
-    expect(orgPageFromPathname(placeHref("p-1"))).toBeNull();
-    expect(orgPageFromPathname("/orgs/org-x/billing")).toBeNull();
-    expect(orgPageFromPathname("/orgs/org-x/places/p-1")).toBeNull();
-    // The BARE address is a forwarder in flight, not a page (MESITA-1839) —
-    // so nothing in the rail may light for it.
-    expect(orgPageFromPathname(orgRootHref("org-x"))).toBeNull();
-    expect(orgPageFromPathname("/orgs/org-x/")).toBeNull();
+    expect(orgTargetFromPathname(SHELL_ROUTES.orgNew)).toBeNull();
+    expect(orgTargetFromPathname(placeHref("p-1"))).toBeNull();
+    expect(orgTargetFromPathname("/orgs/org-x/billing")).toBeNull();
+    expect(orgTargetFromPathname("/orgs/org-x/places/p-1")).toBeNull();
     // A third segment under a page is not that page.
-    expect(orgPageFromPathname("/orgs/org-x/payments/x")).toBeNull();
+    expect(orgTargetFromPathname("/orgs/org-x/payments/x")).toBeNull();
+    // The BARE address IS the Organization page since MESITA-1842, trailing
+    // slash included — it used to answer null, because it was a forwarder.
+    expect(orgTargetFromPathname(orgHref("org-x"))).toBe("organization");
+    expect(orgTargetFromPathname("/orgs/org-x/")).toBe("organization");
   });
 });
 

@@ -76,7 +76,7 @@ describe("the root page", () => {
     // The BARE organization address (MESITA-1839): the forwarder, which is
     // what Stripe's stored return_urls name and what selects the org before
     // landing on Payments, where the `?connect=` notice lives.
-    expect(code).toContain("redirect(withQuery(orgRootHref(org.id), rest))");
+    expect(code).toContain("redirect(withQuery(orgHref(org.id), rest))");
   });
 
   it("forwards its whole query and consumes only org", () => {

@@ -70,7 +70,15 @@ const nextConfig: NextConfig = {
       {
         source: "/organization",
         has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
-        destination: "/orgs/:org/organization",
+        destination: "/orgs/:org",
+        permanent: true,
+      },
+      // `/orgs/<id>/organization` said the word twice and lived one issue
+      // (MESITA-1841 → MESITA-1842). The bare address is the page now, so the
+      // segment forwards onto it.
+      {
+        source: "/orgs/:orgId/organization",
+        destination: "/orgs/:orgId",
         permanent: true,
       },
       // NO BARE `/organization` RULE. It forwarded to `/` while the

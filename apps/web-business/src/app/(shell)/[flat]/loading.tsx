@@ -4,6 +4,7 @@
 //
 // A flat address resolves the remembered scope over the network before it can
 // forward, so it has a wait of its own even though it renders almost nothing.
+// ONE boundary now covers every flat name (MESITA-1842).
 export default function Loading() {
   return (
     <div className="flex flex-col gap-4">
