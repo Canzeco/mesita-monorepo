@@ -27,11 +27,20 @@
 // pill, always: the ceremonies (/orgs/new, the list, Add place) light the
 // row they belong to (Account).
 //
-// NO PLACE YET: Profile · Reviews · Activity · Settings (· Admin) stay,
-// muted; each opens the page, which answers with the one next step. The
-// rail never shrinks. Zero organizations: Account and Create organization.
-// A failed organizations read: Account and a muted line, never the create
-// row (MESITA-1793's law).
+// NO PLACE YET: Profile · Reviews · Activity · Settings (· Admin) stay, AT
+// FULL STRENGTH (MESITA-1833); each opens the page, which answers with the
+// one next step. The rail never shrinks. Zero organizations: Account and
+// Create organization. A failed organizations read: Account and a muted
+// line, never the create row (MESITA-1793's law).
+//
+// THEY USED TO BE DIMMED, and the dimming was a lie. `opacity-60` plus a
+// "Profile · add a place first" tooltip painted five of seven rows as
+// disabled — while every one of them was a live link landing on NoPlaceYet,
+// which is a real next step, not a dead end. With zero places in the
+// catalogue that is the state EVERY account is in, so the first thing a new
+// operator met was a console that looked broken. Pato, 2026-09-14: "make all
+// this functional. not hidden shit." A disabled look belongs to a control
+// that does nothing; these do something.
 //
 // FLAT. Nothing in this file indents — no inset, no tree line, no bullet, no
 // `pl-8`, no box, no eyebrow, no seam — and `shell-chrome.test.ts` forbids
@@ -128,7 +137,6 @@ function NavRow({
   label,
   Icon,
   active,
-  muted = false,
   collapsed,
   onNavigate,
   onGuardedNavigate,
@@ -139,9 +147,6 @@ function NavRow({
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
-  /** A row whose page does not exist yet (a place view with no place): the
-   *  disabled look, but still a door — to the step that makes it exist. */
-  muted?: boolean;
   collapsed: boolean;
   onNavigate?: () => void;
   onGuardedNavigate?: GuardNav;
@@ -167,7 +172,6 @@ function NavRow({
       className={cn(
         ROW_BASE,
         active ? ROW_ACTIVE : ROW_REST,
-        muted && "opacity-60",
         collapsed && "justify-center px-0 py-2",
       )}
     >
@@ -232,7 +236,7 @@ export function Sidebar({
   // Which views the selected place offers this viewer: the ONE matrix
   // (lib/place-tabs), from the published set when the place is on screen,
   // else from the viewer's role in the organization. A pool place: Profile
-  // alone. No place: the held set, muted — the pages answer with Add place.
+  // alone. No place: the held set — the pages answer with Add place.
   const foreign = scope.foreignPlaceId !== null;
   const placeTabs: PlaceTab[] = foreign
     ? (openPlace?.id === scope.foreignPlaceId ? openPlace.tabs : (["profile"] as PlaceTab[]))
@@ -336,8 +340,6 @@ export function Sidebar({
               label={row.label}
               Icon={row.Icon}
               active={row.place ? currentView === row.place : pathname === row.href}
-              muted={row.place !== undefined && noPlace}
-              title={row.place && noPlace ? `${row.label} · add a place first` : undefined}
               collapsed={collapsed}
               onNavigate={onNavigate}
               onGuardedNavigate={guardNav ?? undefined}

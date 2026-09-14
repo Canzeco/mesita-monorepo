@@ -18,6 +18,21 @@
 // menu as the door. THE TRANSITION IS THE CLOCK: a choice shows the chosen
 // name only while the `router.push` it started is in flight.
 //
+// THE CHIP-SIZED TRIGGER IS GONE (MESITA-1833). Pato, 2026-09-14: "make this
+// prettier … far prettier". The two switchers were 40px bordered chips on the
+// bare background while the signed-in EMAIL sat in a card — the page's whole
+// subject rendered lighter than its trivia. Each is a full row now: 36px chip,
+// the role as an eyebrow INSIDE the row, the name at 14px semibold, and the
+// meta the menu already computes (`Owner · 1 place`) surfaced ON the trigger
+// instead of hidden one click behind it. 64px tall, which also clears the 44px
+// touch minimum the old `h-10` failed.
+//
+// A SWITCHER WITH NOTHING TO ADD IS AN EMPTY STATE. At zero places the old
+// build put "Add a place" where a NAME goes, and — nothing to switch — drew no
+// chevron, so a call to action looked like a disabled field. With an empty
+// catalogue that is the state every account is in. It is dashed, plus-chipped
+// and brand-pink now: the one shape in this file that reads as "do something".
+//
 // Reads the shell's scope through RailScopeContext — the same resolution
 // the rail and the header use — so the page and the rail cannot disagree.
 
@@ -47,12 +62,22 @@ import type { RailOrg } from "@/lib/rail-scope";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 const FOCUS_RING = "outline-none focus-visible:ring-2 focus-visible:ring-ring";
+// 64px so the row clears the 44px touch minimum with room for three lines.
 const TRIGGER = cn(
-  "border-border bg-card flex h-10 min-w-0 items-center gap-2.5 rounded-xl border px-3 text-left text-sm font-semibold transition",
+  "border-border bg-card flex min-h-16 w-full min-w-0 items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition",
   "hover:bg-muted/50 data-[state=open]:bg-muted/50",
   FOCUS_RING,
 );
+// The "nothing here yet" row: dashed against the solid live one, the same
+// idiom EmptyState uses, so the two read as one vocabulary.
+const TRIGGER_EMPTY = "border-dashed bg-transparent";
 const CHIP =
+  "bg-muted text-muted-foreground ring-border flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ring-1";
+// The organization wears the brand; the place wears its own photo. Two
+// different kinds of thing, so they never look interchangeable.
+const CHIP_ORG =
+  "bg-brand flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-display text-sm font-semibold text-white";
+const MENU_CHIP =
   "bg-muted text-foreground ring-border flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ring-1";
 const MENU_ITEM = "gap-2.5 rounded-lg py-1.5 text-[13px]";
 const MENU_STACK = "flex min-w-0 flex-1 flex-col leading-tight";
@@ -65,25 +90,44 @@ function orgMeta(org: RailOrg): string {
   return `${ROLE_LABEL[org.myRole]} · ${n === 1 ? "1 place" : `${n} places`}`;
 }
 
-function OrgChip({ name }: { name: string }) {
+function OrgChip({ name, menu = false }: { name: string; menu?: boolean }) {
   return (
-    <span aria-hidden className={CHIP}>
+    <span aria-hidden className={menu ? MENU_CHIP : CHIP_ORG}>
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );
 }
 
-function PlaceChip({ place }: { place: RailPlace | null }) {
-  const src = place ? placeThumbUrl(place.photoUrl, 20) : null;
+function PlaceChip({ place, menu = false }: { place: RailPlace | null; menu?: boolean }) {
+  const px = menu ? 20 : 36;
+  const src = place ? placeThumbUrl(place.photoUrl, px) : null;
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- a 20px thumb through the resizer; next/image's layout cost is not worth a chip
-      <img src={src} alt="" width={20} height={20} className="ring-border h-5 w-5 shrink-0 rounded-md object-cover ring-1" />
+      // eslint-disable-next-line @next/next/no-img-element -- a small thumb through the resizer; next/image's layout cost is not worth a chip
+      <img
+        src={src}
+        alt=""
+        width={px}
+        height={px}
+        className={cn(
+          "ring-border shrink-0 object-cover ring-1",
+          menu ? "h-5 w-5 rounded-md" : "h-9 w-9 rounded-xl",
+        )}
+      />
     );
   }
   return (
+    <span aria-hidden className={menu ? MENU_CHIP : CHIP}>
+      <Store className={menu ? "h-3 w-3" : "h-4 w-4"} />
+    </span>
+  );
+}
+
+/** The zero-places chip: a plus, not a storefront. Nothing to depict yet. */
+function AddChip() {
+  return (
     <span aria-hidden className={CHIP}>
-      <Store className="h-3 w-3" />
+      <Plus className="h-4 w-4" />
     </span>
   );
 }
@@ -109,45 +153,59 @@ function MenuLink({
   );
 }
 
-/** One switcher: eyebrow, then chip + name (+ chevrons at 2+). */
+/** One switcher, as a row: chip · eyebrow + name + meta · chevrons at 2+. */
 function Switcher({
   eyebrow,
   label,
   chip,
   name,
+  meta,
   switchable,
   pending,
+  empty = false,
   children,
 }: {
   eyebrow: string;
   label: string;
   chip: React.ReactNode;
   name: string;
+  /** The one line under the name — what the menu would have told you. */
+  meta: string;
   switchable: boolean;
   pending: boolean;
+  /** Nothing to switch AND nothing to switch TO: the add-one state. */
+  empty?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-xs">
-      <span className={cn(TINY_LABEL_CLASS, "px-0.5")}>{eyebrow}</span>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
-          aria-label={label}
-          aria-busy={pending || undefined}
-          title={`${label}: ${name}`}
-          className={TRIGGER}
-        >
-          {chip}
-          <span className="min-w-0 flex-1 truncate">{name}</span>
-          {switchable && (
-            <ChevronsUpDown aria-hidden className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-          )}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={4} className="w-72 motion-reduce:animate-none">
-          {children}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        aria-label={label}
+        aria-busy={pending || undefined}
+        title={`${label}: ${name}`}
+        className={cn(TRIGGER, empty && TRIGGER_EMPTY)}
+      >
+        {chip}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className={TINY_LABEL_CLASS}>{eyebrow}</span>
+          <span
+            className={cn(
+              "truncate text-sm font-semibold",
+              empty && "text-[color:var(--brand-pink-text)]",
+            )}
+          >
+            {name}
+          </span>
+          <span className="text-muted-foreground truncate text-[11px]">{meta}</span>
+        </span>
+        {switchable && (
+          <ChevronsUpDown aria-hidden className="text-muted-foreground h-4 w-4 shrink-0" />
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" sideOffset={6} className="w-72 motion-reduce:animate-none">
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -186,19 +244,34 @@ export function ScopeSwitchers() {
     go(placeTabHref(id, "profile"), id);
   };
 
+  // What each row says under its name. The organization's is the role and
+  // the holding, already computed for the menu; the place's is which
+  // organization it belongs to — the scope question this page exists to
+  // answer — or, with none, the honest reason there is no chevron.
+  const shownPlace = pendingPlace ?? place;
+  const placeEmpty = shownPlace === null && foreignName === null;
+  const placeMeta = foreignName
+    ? "Not in your organizations"
+    : shownPlace
+      ? `In ${org.name}`
+      : canAdd
+        ? "Nothing to switch between yet"
+        : "This organization holds none";
+
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
       <Switcher
         eyebrow="Organization"
         label="Switch organization"
         chip={<OrgChip name={pendingOrg?.name ?? org.name} />}
         name={pendingOrg?.name ?? org.name}
+        meta={orgMeta(pendingOrg ?? org)}
         switchable={organizations.length >= 2}
         pending={pendingOrg !== null && pendingOrg !== undefined}
       >
         {organizations.length === 1 ? (
           <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
-            <OrgChip name={org.name} />
+            <OrgChip name={org.name} menu />
             <span className={MENU_STACK}>
               <span className="truncate">{org.name}</span>
               <span className={MENU_META}>{orgMeta(org)}</span>
@@ -208,7 +281,7 @@ export function ScopeSwitchers() {
           <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
             {organizations.map((o) => (
               <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
-                <OrgChip name={o.name} />
+                <OrgChip name={o.name} menu />
                 <span className={MENU_STACK}>
                   <span className="truncate">{o.name}</span>
                   <span className={MENU_META}>{orgMeta(o)}</span>
@@ -224,21 +297,27 @@ export function ScopeSwitchers() {
       <Switcher
         eyebrow="Place"
         label="Switch place"
-        chip={<PlaceChip place={pendingPlace ?? place} />}
-        name={pendingPlace?.name ?? foreignName ?? place?.name ?? (canAdd ? "Add a place" : "No places yet")}
+        chip={placeEmpty && canAdd ? <AddChip /> : <PlaceChip place={shownPlace} />}
+        name={
+          shownPlace?.name ??
+          foreignName ??
+          (canAdd ? "Add your first place" : "No place yet")
+        }
+        meta={placeMeta}
+        empty={placeEmpty && canAdd}
         switchable={org.places.length >= 2}
         pending={pendingPlace !== null && pendingPlace !== undefined}
       >
         {org.places.length === 1 ? (
           <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
-            <PlaceChip place={org.places[0]} />
+            <PlaceChip place={org.places[0]} menu />
             <span className="truncate">{org.places[0].name}</span>
           </DropdownMenuLabel>
         ) : org.places.length > 1 ? (
           <DropdownMenuRadioGroup value={place?.id ?? ""} onValueChange={pickPlace}>
             {org.places.map((p) => (
               <DropdownMenuRadioItem key={p.id} value={p.id} className={MENU_ITEM}>
-                <PlaceChip place={p} />
+                <PlaceChip place={p} menu />
                 <span className="truncate">{p.name}</span>
               </DropdownMenuRadioItem>
             ))}
