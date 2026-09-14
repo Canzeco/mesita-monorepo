@@ -28,7 +28,7 @@ import { ScopeSwitchers } from "@/components/console/ScopeSwitchers";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
-import { ACCOUNT_COLUMN_CLASS, GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 export const dynamic = "force-dynamic";
 
@@ -60,11 +60,11 @@ export default async function AccountPage() {
   const email = user.email ?? "Your account";
 
   return (
-    // ONE COLUMN, CAPPED (MESITA-1834). Everything on this page is a control
-    // about one small thing — who you are, which organization, which place —
-    // and the console is fluid, so without a measure the identity row puts
-    // Sign out a window's width from the email it signs out of.
-    <div className={ACCOUNT_COLUMN_CLASS}>
+    // ONE COLUMN, FULL WIDTH (MESITA-1836). A fragment, like every other
+    // console page: the shell layout's `flex w-full flex-col gap-4` IS the
+    // column, and the console is fluid by law (MESITA-1558). This page briefly
+    // capped itself; nobody asked it to.
+    <>
       <div className="flex items-center gap-3.5">
         {/* The brand's own gradient, at the one size on this page big enough
             to carry it. aria-hidden: the h1 beside it is the name. */}
@@ -96,6 +96,6 @@ export default async function AccountPage() {
       {/* "Account must contain select account, organization selector, and
           place selector" (Pato, 2026-09-13; MESITA-1832). */}
       <ScopeSwitchers />
-    </div>
+    </>
   );
 }
