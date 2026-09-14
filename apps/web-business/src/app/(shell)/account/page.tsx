@@ -8,13 +8,17 @@
 // naked on the background at 40px tall. The weight was exactly backwards, and
 // a card earns its border by being the interaction; here the switcher is.
 //
-// THREE BIG BOXES, ONE RANK (MESITA-1837). Pato: "three big boxes." The
-// console has exactly three nouns — the person, the organization, the place —
-// and this is the one page that shows all three at once, so they share one
-// shape (SCOPE_BOX_CLASS) and one weight. MESITA-1833 made the person a
-// HEADER above the two switcher rows; that gave three different ranks to
-// three things that are each one thing, and the header read as chrome sitting
-// above the "real" content instead of as the first of three peers.
+// ONE BOX, THREE ROWS (MESITA-1840). Pato, on the three boxes live: "merge."
+//
+// The console has exactly three nouns — the person, the organization, the
+// place — and this is the one page that shows all three at once. MESITA-1833
+// ranked the person as a HEADER above the two switcher rows, which gave three
+// different weights to three things that are each one thing; MESITA-1837 fixed
+// the rank by making them three peer cards. The parity was right and is kept.
+// The containers were not: three bordered boxes with gaps between them say the
+// person, the organization and the place are unrelated, when they are one
+// scope read top to bottom. Now they are rows of one card, divided by
+// hairlines (SCOPE_CARD_CLASS + SCOPE_ROW_CLASS).
 //
 // The You box is a plain div, not a trigger: there is nothing to switch about
 // who you are. It carries the `<h1>`. The `<h1>` that said "Account" is gone —
@@ -37,8 +41,9 @@ import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import {
   GHOST_PILL_BUTTON_CLASS,
-  SCOPE_BOX_CLASS,
+  SCOPE_CARD_CLASS,
   SCOPE_CHIP_CLASS,
+  SCOPE_ROW_CLASS,
   TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -76,8 +81,8 @@ export default async function AccountPage() {
     // ONE COLUMN, FULL WIDTH (MESITA-1836). A fragment, like every other
     // console page: the shell layout's `flex w-full flex-col gap-4` IS the
     // column, and the console is fluid by law (MESITA-1558).
-    <>
-      <div className={SCOPE_BOX_CLASS}>
+    <div className={SCOPE_CARD_CLASS}>
+      <div className={SCOPE_ROW_CLASS}>
         <span
           aria-hidden
           className={cn(
@@ -87,8 +92,8 @@ export default async function AccountPage() {
         >
           {email.trim().charAt(0).toUpperCase()}
         </span>
-        {/* A div, not a span: this box is a div, and an <h1> is not phrasing
-            content — it may not sit inside one. The switcher boxes use spans
+        {/* A div, not a span: this row is a div, and an <h1> is not phrasing
+            content — it may not sit inside one. The switcher rows use spans
             because their wrapper is a <button>, which may hold no heading at
             all. */}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -98,7 +103,7 @@ export default async function AccountPage() {
               says whose console this is. */}
           {/* font-sans is LOAD-BEARING: globals.css puts every bare h1 on the
               display face, so without it the first of three peer titles
-              renders in Fraunces and the other two in Inter — three boxes at
+              renders in Fraunces and the other two in Inter — three rows at
               one rank, wearing two typefaces. */}
           <h1 className="mt-0.5 truncate font-sans text-base font-semibold tracking-tight">
             {email}
@@ -114,8 +119,9 @@ export default async function AccountPage() {
       </div>
 
       {/* "Account must contain select account, organization selector, and
-          place selector" (Pato, 2026-09-13; MESITA-1832). Boxes two and three. */}
+          place selector" (Pato, 2026-09-13; MESITA-1832). Rows two and three —
+          a FRAGMENT, so `divide-y` sees them as direct children of the card. */}
       <ScopeSwitchers />
-    </>
+    </div>
   );
 }

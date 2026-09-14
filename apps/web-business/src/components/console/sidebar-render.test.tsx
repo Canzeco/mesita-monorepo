@@ -338,29 +338,40 @@ describe("the switchers live on Account (MESITA-1832)", () => {
   it("an organization holding no place turns the place switcher into the next step", () => {
     const html = renderSwitchers(SHELL_ROUTES.account, { rememberedOrgId: "org-b" });
     expect(html).toContain(">Add your first place<");
-    expect(html).toContain("border-dashed");
+    // MESITA-1840: the dashed border went with the box. The affordance is the
+    // plus chip and the brand-pink title, on a row that is still a trigger.
+    expect(html).not.toContain("border-dashed");
     expect(html).toContain("lucide-plus");
+    expect(html).toContain("--brand-pink-text");
     expect(html).toContain(">Nothing to switch between yet<");
   });
 
   // MESITA-1834: one column, at every width. Two columns in a fluid console
   // stretched each three-line row to ~800px, chevron a hand's width from its
-  // name; the page caps the measure so stacking does not just widen it.
-  it("the switchers are one column, never a grid", () => {
+  // name. MESITA-1840 then removed the wrapper entirely: these two are rows
+  // two and three of Account's one card, and `divide-y` only draws between
+  // DIRECT children — a wrapper would swallow the hairline between them.
+  it("the switchers are one column, and render WITHOUT a wrapper", () => {
     const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
     expect(html).not.toContain("grid-cols");
-    expect(html).toContain('class="flex flex-col gap-3"');
+    expect(html).not.toContain('class="flex flex-col gap-3"');
+    // Two sibling triggers, nothing around them.
+    expect((html.match(/<button/g) ?? []).length).toBe(2);
+    expect(html.startsWith("<button")).toBe(true);
   });
 
-  // MESITA-1837: two of Account's three boxes render here and the third
-  // renders on the page, so the shape is a shared constant. If these two ever
-  // stop carrying it, the three have drifted into three ranks again — which
-  // is exactly the hierarchy "three big boxes" replaced.
-  it("both switchers wear the shared box shape, at box size", () => {
+  // MESITA-1837 gave Account's three a single rank; MESITA-1840 merged the
+  // containers without touching it. Two of the three rows render here and the
+  // third renders on the page, so the shape stays a shared constant. If these
+  // two ever stop carrying it, the three have drifted into three ranks again
+  // — exactly the hierarchy "three big boxes" was invented to replace.
+  it("both switchers wear the shared ROW shape, at row size", () => {
     const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
     expect((html.match(/min-h-24/g) ?? []).length).toBe(2);
     expect((html.match(/h-11 w-11/g) ?? []).length).toBe(2);
-    expect(read_ui()).toContain("export const SCOPE_BOX_CLASS");
+    expect(read_ui()).toContain("export const SCOPE_ROW_CLASS");
+    // A row carries no border or radius of its own — the card holds both.
+    expect(html).not.toContain("rounded-2xl");
   });
 
   // The meta the dropdown computes now rides ON the trigger (MESITA-1833):

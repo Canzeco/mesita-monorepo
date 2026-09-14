@@ -65,20 +65,24 @@ import {
 import { placeTabHref } from "@/lib/place-tabs";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import type { RailOrg } from "@/lib/rail-scope";
-import { SCOPE_BOX_CLASS, SCOPE_CHIP_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { SCOPE_CHIP_CLASS, SCOPE_ROW_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 const FOCUS_RING = "outline-none focus-visible:ring-2 focus-visible:ring-ring";
 // TWO OF THE THREE BOXES (MESITA-1837). The shape is shared with Account's
-// You box through SCOPE_BOX_CLASS; only the hover and the menu state belong
+// You row through SCOPE_ROW_CLASS; only the hover and the menu state belong
 // to a trigger, so only those live here.
 const TRIGGER = cn(
-  SCOPE_BOX_CLASS,
+  SCOPE_ROW_CLASS,
   "transition hover:bg-muted/50 data-[state=open]:bg-muted/50",
   FOCUS_RING,
 );
-// The "nothing here yet" row: dashed against the solid live one, the same
-// idiom EmptyState uses, so the two read as one vocabulary.
-const TRIGGER_EMPTY = "border-dashed bg-transparent";
+// THE "NOTHING HERE YET" ROW HAS NO CHROME OF ITS OWN (MESITA-1840). It used
+// to add `border-dashed bg-transparent` — the EmptyState idiom, which worked
+// while this was its own bordered BOX. Inside one card the rows carry no
+// border, so a dashed edge would read as a rendering fault rather than an
+// invitation. The affordance survives in the two louder things: the plus chip
+// in the well, and the title in brand pink — the strongest colour on the
+// page, on a row that is still a live trigger.
 const CHIP = cn(
   SCOPE_CHIP_CLASS,
   "bg-muted text-muted-foreground ring-border flex items-center justify-center text-base font-semibold ring-1",
@@ -195,7 +199,7 @@ function Switcher({
         aria-label={label}
         aria-busy={pending || undefined}
         title={`${label}: ${name}`}
-        className={cn(TRIGGER, empty && TRIGGER_EMPTY)}
+        className={TRIGGER}
       >
         {chip}
         <span className="flex min-w-0 flex-1 flex-col">
@@ -273,12 +277,15 @@ export function ScopeSwitchers() {
         : "This organization holds none";
 
   return (
-    // ONE COLUMN, at every width, FULL WIDTH (MESITA-1834, MESITA-1836).
+    // A FRAGMENT, not a wrapper (MESITA-1840). These two are rows two and
+    // three of Account's one card, and `divide-y` only draws between DIRECT
+    // children — a wrapper here would collapse them into a single child and
+    // the hairline between Organization and Place would vanish.
+    //
     // Organization above Place: the organization is what the place hangs off,
-    // so the stack reads in the order the scope resolves. No grid at any
-    // breakpoint, and nothing caps the measure — the page is a fragment in
-    // the shell's fluid column like every other console page.
-    <div className="flex flex-col gap-3">
+    // so the stack reads in the order the scope resolves. Nothing caps the
+    // measure — the console is fluid (MESITA-1836).
+    <>
       <Switcher
         eyebrow="Organization"
         label="Switch organization"
@@ -359,6 +366,6 @@ export function ScopeSwitchers() {
           <MenuLink href={orgPlacesNewHref(org.id)} label="Add place" Icon={Plus} onGuardedNavigate={guardNav ?? undefined} />
         )}
       </Switcher>
-    </div>
+    </>
   );
 }
