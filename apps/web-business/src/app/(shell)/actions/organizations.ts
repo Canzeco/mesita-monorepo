@@ -15,7 +15,7 @@ import {
   apiUpdateOrgMemberRole,
   type OrgRole,
 } from "@/lib/api/organizations";
-import { orgHref } from "@/lib/console-routes";
+import { orgHref, orgRootHref } from "@/lib/console-routes";
 import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
 
@@ -146,11 +146,13 @@ export async function connectPaymentsAction(
     ({ url, mock } = await apiStartPaymentOnboarding(supabase, {
       orgId,
       country,
-      // Stripe stores these when the Account Link is minted, so they must
-      // name the organization page's real address (MESITA-1807). `/` still
-      // forwards `?connect=` for links minted against the old ones.
-      returnUrl: `${origin}${orgHref(orgId)}?connect=return`,
-      refreshUrl: `${origin}${orgHref(orgId)}?connect=refresh`,
+      // Stripe stores these when the Account Link is minted, and they outlive
+      // every rename (MESITA-1807). They name the BARE address deliberately
+      // (MESITA-1846): that route is the one place `?connect=` is read and
+      // handed on to Payments, and it is the address least likely to move
+      // again — the page behind it has moved three times in one day.
+      returnUrl: `${origin}${orgRootHref(orgId)}?connect=return`,
+      refreshUrl: `${origin}${orgRootHref(orgId)}?connect=refresh`,
       ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {

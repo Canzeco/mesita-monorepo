@@ -180,9 +180,14 @@ describe("the ?org= addresses forward into the path", () => {
   // MESITA-1842. `/orgs/<id>/organization` shipped in MESITA-1841 and lived
   // one issue: the segment said the word its parent already carries. It
   // forwards onto the bare address, one hop, and nothing chains.
-  it("the doubled organization segment forwards onto the bare address", async () => {
+  // MESITA-1846. A rule pointing `/orgs/<id>/organization` at the bare id
+  // lived here between MESITA-1842 and now. The PAGE is back at that segment,
+  // and config redirects run BEFORE filesystem routes — so the rule's absence
+  // is the assertion: leaving it would make the rail's first row unreachable
+  // with every check green, which is `/settings` in MESITA-1839 exactly.
+  it("nothing forwards away from a live organization address", async () => {
     const all = await rules();
-    expect(resolve("/orgs/org-9/organization", all)).toBe("/orgs/org-9");
+    expect(resolve("/orgs/org-9/organization", all)).toBeNull();
     expect(resolve("/orgs/org-9", all)).toBeNull();
     expect(resolve("/orgs/org-9/payments", all)).toBeNull();
     // The switcher's own address is live and must never be forwarded.

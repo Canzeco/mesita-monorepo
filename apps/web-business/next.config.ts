@@ -73,14 +73,11 @@ const nextConfig: NextConfig = {
         destination: "/orgs/:org",
         permanent: true,
       },
-      // `/orgs/<id>/organization` said the word twice and lived one issue
-      // (MESITA-1841 → MESITA-1842). The bare address is the page now, so the
-      // segment forwards onto it.
-      {
-        source: "/orgs/:orgId/organization",
-        destination: "/orgs/:orgId",
-        permanent: true,
-      },
+      // NO `/orgs/:orgId/organization` RULE. One lived here between
+      // MESITA-1842 and MESITA-1846, forwarding onto the bare id. The page is
+      // back at that segment, and a config rule runs BEFORE filesystem routes
+      // — so leaving it would make the rail's first row unreachable with every
+      // check green, which is `/settings` in MESITA-1839 exactly.
       // CREDITS MERGED BACK INTO PAYMENTS (MESITA-1845). It was a `SoonStrip`
       // at the foot of Payments, MESITA-1841 gave it a room, and Pato answered
       // the question of where it goes once Payments had a row again with one

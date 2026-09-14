@@ -313,7 +313,7 @@ describe("the rail is six nouns and one indent", () => {
   // MEMBERS is the one organization page with no row, so the Organization
   // page is the only thing that offers it. A page nothing offers gets lost.
   it("the Organization page is Members' door, and carries no door to a row", () => {
-    const page = readCode("app/(shell)/orgs/[orgId]/page.tsx");
+    const page = readCode("app/(shell)/orgs/[orgId]/organization/page.tsx");
     expect(page).toContain('orgHref(org.id, "members")');
     expect(page).toContain("orgPlacesHref(org.id)");
     // Payments and Credits had doors here for the one issue they had no row
@@ -339,6 +339,26 @@ describe("the rail is six nouns and one indent", () => {
     expect(
       existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/customers/loading.tsx")),
     ).toBe(true);
+  });
+
+  // MESITA-1846. The bare `/orgs/<id>` is a FORWARDER: it renders nothing,
+  // reads nothing, and exists for two jobs — sending a bookmark on to the page
+  // that names itself, and catching Stripe's stored `?connect=` first. A
+  // forwarder that fetches is a round trip bought for nothing.
+  it("the bare organization address renders nothing and reads nothing", () => {
+    const root = readCode("app/(shell)/orgs/[orgId]/page.tsx");
+    expect(root).not.toContain("return (");
+    expect(root).not.toContain("apiListOrganizations");
+    expect(root).not.toContain("createServerSupabase");
+    // `?connect=` is checked BEFORE the forward, or Stripe's return lands on
+    // the organization page, which has no notice to greet it with.
+    expect(root.indexOf('sp.connect')).toBeLessThan(
+      root.indexOf('orgHref(orgId, "organization")'),
+    );
+    expect(root).toContain('orgHref(orgId, "payments")');
+    // The query travels on BOTH branches: dropping it strands an owner on a
+    // screen that knows neither which organization nor that they came back.
+    expect((root.match(/withQuery\(/g) ?? []).length).toBe(2);
   });
 
   // The room Credits had for one issue is GONE, not orphaned: a route file

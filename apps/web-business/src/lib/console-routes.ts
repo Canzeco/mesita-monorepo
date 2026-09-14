@@ -33,11 +33,13 @@
 //                              switcher. The one page with no scope.
 //   /orgs/new                  Create organization — the ceremony
 //
-//   /orgs/<id>                 THE ORGANIZATION itself — its name, Members,
-//                              Places. Stripe's return_url is minted against
-//                              `/orgs/<id>?connect=`, and this page hands that
-//                              query on to Payments.
-//   /orgs/<id>/customers      who keeps coming back (Soon)
+//   /orgs/<id>                 NOT a page (MESITA-1846): a 307 onto
+//                              `/organization`, and the one address that
+//                              catches Stripe's stored `?connect=` and hands
+//                              the whole query to Payments.
+//   /orgs/<id>/organization   THE ORGANIZATION itself — its name, Members,
+//                              Places
+//            /customers       who keeps coming back (Soon)
 //            /payments         Stripe · Partner · Prepaid Credits
 //            /activity         the organization's numbers, by place
 //            /members          who may sign in, and at what role
@@ -64,10 +66,11 @@
 //                              Next resolves static segments first, so every
 //                              real route still wins and an unknown name 404s.
 //
-// `/orgs/<id>/organization` IS GONE (MESITA-1842). The segment said the word
-// twice, and the bare address was a forwarder only because a page cannot write
-// a cookie mid-flight. Moving that one job to `/switch` freed the natural
-// address for the page it was always about.
+// `/orgs/<id>/organization` CAME BACK (MESITA-1846). MESITA-1842 deleted it
+// for saying the noun twice, which is a real smell — and the thing that beats
+// it is that the rail draws FIVE organization rows as siblings. Four named
+// addresses and one raw uuid reads, in the address bar, as four pages and one
+// container. Pato wrote the routing out himself with the segment in it.
 //
 // `/orgs/<id>/credits` IS GONE TOO (MESITA-1845), and this one MERGED rather
 // than moved: Payments has a rail row again, and Prepaid Credits is the
@@ -164,11 +167,19 @@ export type OrgDoorTarget = (typeof ORG_DOOR_TARGETS)[number];
 
 const ORGS = "/orgs";
 
-/** An organization address. The default is the organization ITSELF — the page
- *  Stripe returns to and the row the rail lights for every door beneath it. */
+/** An organization address. EVERY target is a named segment (MESITA-1846),
+ *  Organization included — the rail draws its five as siblings, so their
+ *  addresses look alike. The bare `${ORGS}/<id>` is a forwarder onto the
+ *  default, and the one thing that catches Stripe's stored `?connect=`. */
 export function orgHref(orgId: string, target: OrgTarget = "organization"): string {
-  const base = `${ORGS}/${encodeURIComponent(orgId)}`;
-  return target === "organization" ? base : `${base}/${target}`;
+  return `${ORGS}/${encodeURIComponent(orgId)}/${target}`;
+}
+
+/** The bare `/orgs/<id>`: not a page, and not a row the rail can light. It is
+ *  the organization's natural URL, where Stripe's months-old Account Links
+ *  land, and a 307 onto `orgHref(id)`. */
+export function orgRootHref(orgId: string): string {
+  return `${ORGS}/${encodeURIComponent(orgId)}`;
 }
 
 /** The switcher's mechanism: writes the org cookie, clears the place cookie,
@@ -206,9 +217,10 @@ export function orgIdFromPathname(pathname: string): string | null {
 
 /** Which organization address a pathname is, or null when it is not one.
  *
- *  The BARE `/orgs/<id>` is the Organization page itself (MESITA-1842), so it
- *  answers `"organization"` — it used to answer null, because it was a
- *  forwarder in flight and nothing in the rail could light for it.
+ *  The BARE `/orgs/<id>` answers `"organization"` even though the page moved
+ *  to `/orgs/<id>/organization` (MESITA-1846): it is a 307 in flight, and a
+ *  rail row that goes dark for that instant reads as a glitch. The same
+ *  courtesy every flat resolver already gets.
  *
  *  The Add place ceremony (`/orgs/<id>/places/new`) reads as Places: it is the
  *  list's own sub-step. `/switch` is never an address the rail lights — it is
@@ -223,7 +235,10 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
   if (second === "switch") return null;
   if (second === "places") return third === undefined || third === "new" ? "places" : null;
   if (third !== undefined) return null;
-  return (ORG_PAGES as readonly string[]).includes(second)
+  // ORG_TARGETS, not ORG_PAGES: `organization` is a segment of its own since
+  // MESITA-1846, and reading only the pages would leave the rail's first row
+  // dark on the very address it links to.
+  return (ORG_TARGETS as readonly string[]).includes(second)
     ? (second as OrgTarget)
     : null;
 }
