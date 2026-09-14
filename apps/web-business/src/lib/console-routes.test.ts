@@ -26,6 +26,7 @@ import {
   orgTargetFromPathname,
   orgPlacesHref,
   orgPlacesNewHref,
+  orgRootHref,
   ownedFromParam,
   placeHref,
   placeIdFromPathname,
@@ -235,16 +236,24 @@ describe("the organization's pages (MESITA-1807)", () => {
     // the redirect table shadows, which is the MESITA-1839 trap exactly.
     expect(ORG_TARGETS).not.toContain("credits");
     expect(Object.keys(FLAT_ROUTES)).not.toContain("credits");
-    expect(orgHref("org-x")).toBe("/orgs/org-x");
-    expect(orgHref("org-x", "organization")).toBe("/orgs/org-x");
+    // EVERY TARGET IS A NAMED SEGMENT (MESITA-1846), Organization included:
+    // the rail draws its five as siblings, so their addresses look alike. The
+    // bare id is a forwarder with its own helper, never `orgHref`'s output.
+    expect(orgHref("org-x")).toBe("/orgs/org-x/organization");
+    expect(orgHref("org-x", "organization")).toBe("/orgs/org-x/organization");
+    expect(orgRootHref("org-x")).toBe("/orgs/org-x");
     expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
     expect(orgHref("org-x", "customers")).toBe("/orgs/org-x/customers");
     expect(orgHref("org-x", "activity")).toBe("/orgs/org-x/activity");
     expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
     expect(orgPlacesNewHref("org-x")).toBe("/orgs/org-x/places/new");
-    // No segment repeats the noun its parent already carries.
-    for (const t of ORG_TARGETS) expect(orgHref("org-x", t)).not.toContain("/organization");
+    // EVERY target is exactly two segments under /orgs — one shape for five
+    // sibling rows (MESITA-1846). `organization` repeating its parent's noun
+    // is the one cost, and it is what buys the symmetry.
+    for (const t of ORG_TARGETS) {
+      expect(orgHref("org-x", t), t).toBe(`/orgs/org-x/${t}`);
+    }
   });
 
   it("the switcher's forwarder has its OWN address, and it is not a target", () => {
@@ -278,14 +287,14 @@ describe("the organization's pages (MESITA-1807)", () => {
     );
   });
 
-  it("the organization is a PAGE, and so is every address under it (MESITA-1842)", () => {
-    // /orgs/<id> is the Organization page now, not a route handler. Stripe's
-    // stored return links keep working because a PAGE can redirect even though
-    // it cannot set a cookie — `?connect=` is handed on to Payments.
+  it("every organization address is a PAGE, the bare id included (MESITA-1846)", () => {
+    // The bare `/orgs/<id>` is a page, not a route handler — a PAGE can
+    // redirect even though it cannot set a cookie, which is what lets it
+    // catch Stripe's stored `?connect=` and hand it to Payments. It needs no
+    // loading boundary of its own: it renders nothing and redirects.
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "route.ts"))).toBe(false);
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "page.tsx"))).toBe(true);
-    expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "loading.tsx"))).toBe(true);
-    for (const page of ORG_PAGES) {
+    for (const page of ORG_TARGETS) {
       const file = routeFile(orgHref("org-x", page), ID);
       expect(existsSync(file), `${page}: ${file}`).toBe(true);
       expect(existsSync(path.join(path.dirname(file), "loading.tsx"))).toBe(
@@ -309,7 +318,7 @@ describe("the organization's pages (MESITA-1807)", () => {
     const dirs = readdirSync(dir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
-    expect(dirs.sort()).toEqual([...ORG_PAGES, "switch"].sort());
+    expect(dirs.sort()).toEqual([...ORG_TARGETS, "switch"].sort());
   });
 
   it("labels every target", () => {
@@ -317,10 +326,20 @@ describe("the organization's pages (MESITA-1807)", () => {
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(orgHref("a/b")).toBe("/orgs/a%2Fb");
+    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/organization");
+    expect(orgRootHref("a/b")).toBe("/orgs/a%2Fb");
     expect(orgHref("a/b", "payments")).toBe("/orgs/a%2Fb/payments");
     expect(orgSwitchHref("a/b", "/profile")).toBe("/orgs/a%2Fb/switch?to=%2Fprofile");
     expect(orgIdFromPathname(orgHref("a/b"))).toBe("a/b");
+    expect(orgIdFromPathname(orgRootHref("a/b"))).toBe("a/b");
+  });
+
+  // Both spellings answer "organization" (MESITA-1846). The bare id is a 307
+  // in flight, and a rail row that goes dark for that instant reads as a
+  // glitch — the same courtesy every flat resolver already gets.
+  it("the bare id and the segment both light the Organization row", () => {
+    expect(orgTargetFromPathname("/orgs/org-x")).toBe("organization");
+    expect(orgTargetFromPathname("/orgs/org-x/organization")).toBe("organization");
   });
 
   it("reads the id back out of any organization pathname", () => {

@@ -195,7 +195,7 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
   it("the one page with no row is still reachable, from the Organization page", () => {
     // A page no row can light is fine; a page no SCREEN offers is lost.
     const page = readFileSync(
-      join(process.cwd(), "src/app/(shell)/orgs/[orgId]/page.tsx"),
+      join(process.cwd(), "src/app/(shell)/orgs/[orgId]/organization/page.tsx"),
       "utf8",
     );
     expect(page).toContain(`orgHref(org.id, "members")`);
