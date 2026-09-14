@@ -7,10 +7,13 @@
 // a "You" card and drew its switchers as chips. The real Account is an
 // identity header and two 64px selector rows, so every load ended in a layout
 // shift on swap. A skeleton is a promise about what is coming; this one broke
-// it on every visit.
+// it on every visit. Same measure and same stack as the page (MESITA-1834) —
+// a skeleton on a different grid is the same broken promise.
+import { ACCOUNT_COLUMN_CLASS } from "@/lib/ui-classes";
+
 export default function Loading() {
   return (
-    <>
+    <div className={ACCOUNT_COLUMN_CLASS}>
       <span className="sr-only">Loading account…</span>
       <div aria-hidden="true" className="flex items-center gap-3.5">
         <div className="bg-muted h-13 w-13 shrink-0 animate-pulse rounded-2xl" />
@@ -21,10 +24,10 @@ export default function Loading() {
         <div className="bg-muted h-7 w-24 shrink-0 animate-pulse rounded-full" />
       </div>
       <div className="border-border border-t" />
-      <div aria-hidden="true" className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+      <div aria-hidden="true" className="flex flex-col gap-3">
         <div className="bg-muted h-16 animate-pulse rounded-2xl" />
         <div className="bg-muted h-16 animate-pulse rounded-2xl" />
       </div>
-    </>
+    </div>
   );
 }

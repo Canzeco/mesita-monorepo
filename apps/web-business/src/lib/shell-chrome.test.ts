@@ -536,6 +536,21 @@ describe("the container stays uncapped", () => {
     expect(layout).toContain("flex w-full flex-col gap-4");
     expect(layout).not.toMatch(/max-w-\dxl/);
   });
+  // MESITA-1834 caps ACCOUNT's own column, and that is the sanctioned
+  // mechanism, not a crack in MESITA-1558: the cap lives on the page's
+  // element, never on the three containers above it (asserted either side of
+  // this test). A page capping itself is how readability was always meant to
+  // be protected here — see FORM_COLUMN_CLASS's own comment.
+  it("Account caps its own column, and nothing above it", () => {
+    const page = read("app/(shell)/account/page.tsx");
+    expect(page).toContain("ACCOUNT_COLUMN_CLASS");
+    expect(read("lib/ui-classes.ts")).toContain('export const ACCOUNT_COLUMN_CLASS = "flex w-full max-w-xl flex-col gap-4"');
+    // The skeleton wears the same measure, or the swap shifts the layout.
+    expect(read("app/(shell)/account/loading.tsx")).toContain("ACCOUNT_COLUMN_CLASS");
+    // One column: the switchers may not reintroduce a grid.
+    expect(read("components/console/ScopeSwitchers.tsx")).not.toMatch(/grid-cols/);
+  });
+
   it("the rail is a fixed column, never a capped one", () => {
     const rail = read("components/console/Sidebar.tsx");
     expect(rail).not.toMatch(/max-w-\dxl/);

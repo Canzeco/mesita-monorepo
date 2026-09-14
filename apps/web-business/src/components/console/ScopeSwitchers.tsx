@@ -259,7 +259,12 @@ export function ScopeSwitchers() {
         : "This organization holds none";
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+    // ONE COLUMN, at every width (MESITA-1834). Organization above Place:
+    // the organization is what the place hangs off, so the stack reads in
+    // the order the scope resolves. The page caps the measure
+    // (ACCOUNT_COLUMN_CLASS) — a stacked row in an uncapped console is a
+    // 1700px ribbon, which is the defect this replaced, widened.
+    <div className="flex flex-col gap-3">
       <Switcher
         eyebrow="Organization"
         label="Switch organization"
