@@ -1,92 +1,72 @@
 "use client";
 
-// The whole navigation: ONE FLAT COLUMN OF SIX NOUNS, and one indent
-// (MESITA-1844, extended by MESITA-1845).
+// The whole navigation: THREE SECTIONS, each headed by a SELECTOR
+// (MESITA-1848).
 //
-// Pato, 2026-09-14, after eight passes over this rail in one afternoon, drew
-// it — then added a row and moved one back:
+// Pato, 2026-09-14: *"better three sections"* —
 //
-//   [ ○ Account      ]  → /account                  the person
-//   [ ▣ Organization ]  → /orgs/<id>                what it is, who is in it
-//   [ ⚇ Customers    ]  → /orgs/<id>/customers      who keeps coming back
-//   [ ▤ Payments     ]  → /orgs/<id>/payments       Stripe · Partner · Credits
-//   [ ▥ Activity     ]  → /orgs/<id>/activity       the numbers, by place
-//   [ ⛁ Places       ]  → /orgs/<id>/places         what it holds
-//       Profile         → /places/<id>/profile
-//       Reviews         → /places/<id>/reviews
-//       Capabilities    → /places/<id>/capabilities   what a guest CAN do
-//       Rewards         → /places/<id>/rewards        what a guest EARNS
-//       Admin           → /places/<id>/admin          super-admin only
+//   [ ○ Account        ]  → /account                the person, no subitems
+//   [ ▣ Organization ⌄ ]  which one you are in
+//       Settings          → /orgs/<id>/settings
+//       Places            → /orgs/<id>/places
+//       Customers         → /orgs/<id>/customers
+//       Payments          → /orgs/<id>/payments
+//       Activity          → /orgs/<id>/activity
+//   [ ⌂ Place        ⌄ ]  which one you are managing
+//       Profile           → /places/<id>/profile
+//       Menus             → /places/<id>/menus
+//       Reviews           → /places/<id>/reviews
+//       Capabilities      → /places/<id>/capabilities
+//       Rewards           → /places/<id>/rewards
+//       Admin             → /places/<id>/admin      super-admin only
 //   ═════════════════════
-//   ◧ Collapse          the rail's own control
+//   ◧ Collapse            the rail's own control
 //
-// "KEEP IT STANDARD AND BORING." Pato, on the pass before this one: *"just
-// standard spacing and design, don't use lots of fucking different styles in
-// the same menu."* So there is ONE row shape and every row wears it — same
-// height, same padding, same icon size, same type size, same radius — and the
-// only visual difference left in the column is which row is LIT. Every
-// ornament the rail accumulated is gone with it: the wordmark (MESITA-1842),
-// the two group headers, the footer's second seam, the avatar, the chevrons.
+// THE RAIL ANSWERS "WHICH" AND "WHERE" IN ONE COLUMN. It was a flat list of
+// destinations, and a flat list cannot say which organization or which place
+// those destinations are ABOUT — so the answer lived on a page (MESITA-1822),
+// then on Account (MESITA-1832), then split in two (MESITA-1847). Heading each
+// group with its own selector puts the scope question beside the pages it
+// scopes, which is the only place it has ever belonged.
 //
-// ACCOUNT IS ROW ONE. MESITA-1842 put it in the footer on the reasoning that
-// it "is not one of the two subjects" — and there are no two subjects now.
-// The column reads top to bottom as *who you are, what you run, how it is
-// doing, where it happens*, which is the order a person actually asks those
-// questions in. It lights for `/account` alone.
+// ACCOUNT HAS NO SUBITEMS, so it is not a selector at all: there is one of
+// you, and the row is simply a link to `/account`. Giving it a chevron would
+// be a control with nothing to control.
 //
-// PAYMENTS IS BACK, one issue after MESITA-1844 took it out on *"payments
-// inside org."* Pato's next list puts it in the column again, so it is in the
-// column again. CREDITS did not come with it: asked where Credits goes, he
-// said *"merge"*, and it is the `SoonStrip` at the foot of Payments — the page
-// it was split out of in MESITA-1841. MEMBERS went the other way in
-// MESITA-1847: not a page behind a row but CONTENT on the Organization page,
-// so every organization address is a rail row again and no screen renders
-// with zero pills, which reads exactly like a broken console.
+// "KEEP IT STANDARD AND BORING." Pato, on the pass that made the rail flat:
+// *"just standard spacing and design, don't use lots of fucking different
+// styles in the same menu."* Two shapes now, and only two: a ROW (every
+// destination, and Account) and a SELECTOR (the two subjects). The selector
+// earns its difference by doing something no row does.
 //
-// CUSTOMERS IS A LIVE ROW. Pato wrote it "(Soon)", and a Soon badge in a rail
-// is a dimmed row — the exact thing MESITA-1833 forbids, in his own words:
-// "make all this functional. not hidden shit." So the row renders at full
-// strength and its page carries the badge.
-//
-// ONE INDENT, ONE DEPTH. The place's five sit under Places because they are
-// about a place and Places is the row they belong to; the drawing's own
-// asterisks say so. This overturns MESITA-1842's flat law one issue after it
-// was restored — what the law still forbids is everything that was only ever
-// decoration (a tree line, a bullet, a box, a well, a second eyebrow, a
-// `role="group"`) and a SECOND depth, which is the point a rail becomes a file
-// tree. At `w-16` nothing indents: there is no label to align to, and the
-// icons carry the whole column.
+// ONE INDENT, ONE DEPTH. Every page sits under the selector it belongs to.
+// What stays banned is everything that was only ever decoration — a tree
+// line, a bullet, a box, a well, an eyebrow, a `role="group"` — and a SECOND
+// depth, which is the point a rail becomes a file tree. At `w-16` nothing
+// indents and each selector is its chip: there is no label to align to, and
+// the accessible name rides `aria-label` at every width.
 //
 // NO ID IN ANYTHING THE OPERATOR READS. Every href carries one; none is shown.
-// A one-place owner meets no id, no switcher and no chevron. Exactly ONE
-// filled pill, always.
 //
-// NO PLACE YET: the five place rows stay, AT FULL STRENGTH (MESITA-1833); each
+// NO PLACE YET: the place rows stay, AT FULL STRENGTH (MESITA-1833); each
 // opens the page, which answers with the one next step. The rail never
 // shrinks. Zero organizations: Account and Create organization. A failed
 // organizations read: Account and a muted line, never the create row
 // (MESITA-1793's law).
-//
-// THEY USED TO BE DIMMED, and the dimming was a lie. `opacity-60` plus a
-// "Profile · add a place first" tooltip painted five of seven rows as
-// disabled — while every one of them was a live link landing on NoPlaceYet,
-// which is a real next step, not a dead end. With zero places in the
-// catalogue that is the state EVERY account is in, so the first thing a new
-// operator met was a console that looked broken. Pato, 2026-09-14: "make all
-// this functional. not hidden shit."
 //
 // DARK (MESITA-1831). The rail sits on the brand's ink (`--sidebar` is the
 // dock token, globals.css) and paints ONLY with `sidebar-*` tokens: rows at
 // rest `text-sidebar-muted` (58% white), hover `bg-sidebar-accent` (white/10)
 // + full white, the pill an off-white fill with ink text. A page token —
 // `text-muted-foreground`, `bg-foreground` — is ink on ink here, and the
-// source test refuses it.
+// source test refuses it. The selectors' MENUS are popovers over the page,
+// not part of this column, so they keep the page's own tokens.
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import {
   AlertCircle,
-  Building2,
   ChartNoAxesColumn,
   Gift,
   Layers,
@@ -96,12 +76,29 @@ import {
   Shield,
   SlidersHorizontal,
   Star,
+  Cog,
   Store,
   UserRound,
   Users,
+  UtensilsCrossed,
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  MENU_CHIP,
+  MENU_ITEM,
+  MENU_MUTED,
+  RailSelector,
+} from "@/components/console/RailSelector";
+import {
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { canAddPlace } from "@/lib/active-organization";
+import { placeThumbUrl } from "@/lib/place-thumb";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
@@ -110,6 +107,9 @@ import {
   flatOrgTargetFromPathname,
   flatViewFromPathname,
   orgHref,
+  orgPlacesHref,
+  orgPlacesNewHref,
+  orgSwitchHref,
   orgTargetFromPathname,
   type OrgRailTarget,
 } from "@/lib/console-routes";
@@ -174,9 +174,15 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 // MESITA-1844 for the row that arrived):
 //
 //   Account       UserRound           the PERSON, one of them
-//   Organization  Building2           the company, not the storefront — and
-//                                     deliberately unlike Profile's Store, so
-//                                     the two subjects never share a glyph
+//   Organization  its own initial     the selector wears a brand chip, not an
+//                                     icon: a NAME is what distinguishes one
+//                                     organization from another, and an icon
+//                                     would be identical on all of them
+//   Settings      Cog                 the organization's own record. A gear
+//                                     is right here and wrong on Capabilities,
+//                                     which is a ladder of what a guest can
+//                                     do, not a preferences screen
+//   Menus         UtensilsCrossed     what the place serves
 //   Customers     Users               PEOPLE, plural, against Account's one —
 //                                     the pairing IS the meaning: you, and
 //                                     everyone who comes to you
@@ -209,23 +215,85 @@ const ORG_ROW: Record<
   OrgRailTarget,
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  organization: { label: "Organization", Icon: Building2 },
+  settings: { label: "Settings", Icon: Cog },
+  places: { label: "Places", Icon: Layers },
   customers: { label: "Customers", Icon: Users },
   payments: { label: "Payments", Icon: Wallet },
   activity: { label: "Activity", Icon: ChartNoAxesColumn },
-  places: { label: "Places", Icon: Layers },
 };
 
 const PLACE_ROW_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
   profile: Store,
+  menus: UtensilsCrossed,
   reviews: Star,
   capabilities: SlidersHorizontal,
   rewards: Gift,
   admin: Shield,
 };
 
-/** The place's five, in the drawing's order. Admin is super-admin only. */
-const PLACE_ROWS = ["profile", "reviews", "capabilities", "rewards", "admin"] as const;
+/** The place's six, in the list's order. Admin is super-admin only. */
+const PLACE_ROWS = [
+  "profile",
+  "menus",
+  "reviews",
+  "capabilities",
+  "rewards",
+  "admin",
+] as const;
+
+/** The selector's mark: the organization wears the brand, the place wears its
+ *  own photo. Two kinds of thing, so they never look interchangeable — and at
+ *  `w-16` the chip is the ONLY thing left identifying the subject. */
+const SELECTOR_CHIP =
+  "h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-[11px] font-semibold";
+
+function OrgChip({ name, menu = false }: { name: string; menu?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={menu ? MENU_CHIP : cn(SELECTOR_CHIP, "bg-brand font-display text-white")}
+    >
+      {name.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
+
+function PlaceChip({
+  name,
+  photoUrl,
+  menu = false,
+}: {
+  name: string | null;
+  photoUrl?: string | null;
+  menu?: boolean;
+}) {
+  const px = menu ? 20 : 28;
+  const src = placeThumbUrl(photoUrl ?? null, px);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- a small thumb through the resizer; next/image's layout cost is not worth a chip
+      <img
+        src={src}
+        alt=""
+        width={px}
+        height={px}
+        className={cn(
+          "object-cover",
+          menu ? "h-5 w-5 shrink-0 rounded-md" : cn(SELECTOR_CHIP, "rounded-lg"),
+        )}
+      />
+    );
+  }
+  void name;
+  return (
+    <span
+      aria-hidden
+      className={menu ? MENU_CHIP : cn(SELECTOR_CHIP, "bg-sidebar-accent text-sidebar-muted")}
+    >
+      <Store className={menu ? "h-3 w-3" : "h-3.5 w-3.5"} />
+    </span>
+  );
+}
 
 function NavRow({
   href,
@@ -318,9 +386,15 @@ export function Sidebar({
   onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const guardNav = useOpenPlaceGuard();
   const openPlace = useOpenPlace();
-  void organizations;
+  // THE TRANSITION IS THE CLOCK (MESITA-1818): a chosen name shows only while
+  // the push it started is in flight, so the rail never claims a scope the
+  // server has not answered for yet.
+  const [choice, setChoice] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const pendingId = isPending ? choice : null;
 
   const org = scope.org;
   const onOrgNew = pathname === SHELL_ROUTES.orgNew;
@@ -374,9 +448,39 @@ export function Sidebar({
   // ceremony, which has no organization to name yet and would otherwise light
   // nothing. Places also takes the Add place ceremony beneath its list.
   const orgRowActive = (target: OrgRailTarget) =>
-    target === "organization"
-      ? orgTarget === "organization" || onOrgNew
-      : orgTarget === target;
+    target === "settings" ? orgTarget === "settings" || onOrgNew : orgTarget === target;
+
+  // Both selectors guard BEFORE they show a pending name: an operator must
+  // not see the new scope while still sitting on the old one's unsaved edits.
+  const go = (href: string, id: string) => {
+    if (guardNav?.(href)) return;
+    setChoice(id);
+    startTransition(() => router.push(href));
+  };
+  // `/orgs/<id>/switch` is the forwarder — it writes the org cookie, clears
+  // the place cookie and lands on the organization you picked. Every other
+  // organization address is a PAGE, and a page cannot set a cookie in flight.
+  const pickOrg = (id: string) => {
+    if (org && id !== org.id) go(orgSwitchHref(id, orgHref(id, "settings")), id);
+  };
+  const pickPlace = (id: string) => {
+    if (id !== scope.place?.id) go(placeTabHref(id, "profile"), id);
+  };
+
+  const pendingOrg = pendingId
+    ? (organizations.find((o) => o.id === pendingId) ?? null)
+    : null;
+  const pendingPlace =
+    pendingId && org ? (org.places.find((p) => p.id === pendingId) ?? null) : null;
+  const shownOrg = pendingOrg ?? org;
+  // A place opened from the catalogue that no organization of the viewer's
+  // holds: the pathname names it, only the layout's publish knows its name.
+  const foreignName =
+    foreign && openPlace?.id === scope.foreignPlaceId ? openPlace.name : null;
+  const shownPlace = pendingPlace ?? scope.place;
+  const placeName = shownPlace?.name ?? foreignName;
+  const canAdd = org !== null && canAddPlace(org.myRole);
+  const ROLE_LABEL = { owner: "Owner", editor: "Editor", viewer: "Viewer" } as const;
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
@@ -415,6 +519,46 @@ export function Sidebar({
           />
         ) : (
           <>
+            {/* ── THE ORGANIZATION: which one, then its pages ───────────── */}
+            <RailSelector
+              label="Switch organization"
+              name={shownOrg?.name ?? "Organization"}
+              meta={
+                shownOrg
+                  ? `${ROLE_LABEL[shownOrg.myRole]} · ${shownOrg.places.length === 1 ? "1 place" : `${shownOrg.places.length} places`}`
+                  : ""
+              }
+              chip={<OrgChip name={shownOrg?.name ?? "?"} />}
+              switchable={organizations.length >= 2}
+              pending={pendingOrg !== null}
+              collapsed={collapsed}
+            >
+              {organizations.length === 1 ? (
+                <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
+                  <OrgChip name={org.name} menu />
+                  <span className="truncate">{org.name}</span>
+                </DropdownMenuLabel>
+              ) : (
+                <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
+                  {organizations.map((o) => (
+                    <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
+                      <OrgChip name={o.name} menu />
+                      <span className="truncate">{o.name}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className={MENU_MUTED}>
+                <Link
+                  href={SHELL_ROUTES.orgNew}
+                  onClick={(e) => guardNav?.(SHELL_ROUTES.orgNew, e)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create organization
+                </Link>
+              </DropdownMenuItem>
+            </RailSelector>
             {ORG_RAIL_TARGETS.map((target) => (
               <NavRow
                 key={target}
@@ -423,10 +567,69 @@ export function Sidebar({
                 Icon={ORG_ROW[target].Icon}
                 active={orgRowActive(target)}
                 collapsed={collapsed}
+                indent
                 onNavigate={onNavigate}
                 onGuardedNavigate={guardNav ?? undefined}
               />
             ))}
+
+            {/* ── THE PLACE: which one, then its views ──────────────────── */}
+            <RailSelector
+              label="Switch place"
+              name={placeName ?? (canAdd ? "Add your first place" : "No place yet")}
+              meta={
+                foreignName
+                  ? "Not in your organizations"
+                  : placeName
+                    ? `In ${org.name}`
+                    : canAdd
+                      ? "Nothing to switch between yet"
+                      : "This organization holds none"
+              }
+              chip={<PlaceChip name={placeName} photoUrl={shownPlace?.photoUrl} />}
+              switchable={org.places.length >= 2}
+              pending={pendingPlace !== null}
+              collapsed={collapsed}
+            >
+              {org.places.length === 0 ? (
+                <DropdownMenuLabel className={MENU_MUTED}>
+                  This organization holds none
+                </DropdownMenuLabel>
+              ) : (
+                <DropdownMenuRadioGroup
+                  value={shownPlace?.id ?? ""}
+                  onValueChange={pickPlace}
+                >
+                  {org.places.map((p) => (
+                    <DropdownMenuRadioItem key={p.id} value={p.id} className={MENU_ITEM}>
+                      <PlaceChip name={p.name} photoUrl={p.photoUrl} menu />
+                      <span className="truncate">{p.name}</span>
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              )}
+              <DropdownMenuSeparator />
+              {canAdd && (
+                <DropdownMenuItem asChild className={MENU_MUTED}>
+                  <Link
+                    href={orgPlacesNewHref(org.id)}
+                    onClick={(e) => guardNav?.(orgPlacesNewHref(org.id), e)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add place
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem asChild className={MENU_MUTED}>
+                <Link
+                  href={orgPlacesHref(org.id)}
+                  onClick={(e) => guardNav?.(orgPlacesHref(org.id), e)}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  All places
+                </Link>
+              </DropdownMenuItem>
+            </RailSelector>
             {placeRows.map((tab) => (
               <NavRow
                 key={tab}

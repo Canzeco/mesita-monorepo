@@ -68,7 +68,7 @@ describe("SHELL_ROUTES are the addresses with no scope at all", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the place's five views, then the organization's four pages", () => {
+  it("is the place's six views, then the organization's three flat pages", () => {
     // The order is the declaration's: the place's group, then the
     // organization's. MESITA-1841 added `capabilities` (was `settings`),
     // `rewards`, `organization` and `credits`, and moved `activity` from the
@@ -76,18 +76,23 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // MESITA-1845 swaps `credits` for `customers`: Credits merged back into
     // Payments and has no address of its own, and Customers gained a row.
     // MESITA-1847 drops `members`: the people are CONTENT on the Organization
-    // page now, so the address has nothing left to be.
+    // page now. MESITA-1848 adds `menus` (split out of Profile) and gives
+    // `settings` NO flat twin: `/settings` is claimed by a permanent legacy
+    // redirect onto `/capabilities`, and a contract name a config rule
+    // shadows is the MESITA-1839 trap exactly — live here, dead on arrival.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
+      "menus",
       "reviews",
       "capabilities",
       "rewards",
       "admin",
-      "organization",
       "customers",
       "payments",
       "activity",
     ]);
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("settings");
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("places");
     for (const r of FLAT_ROUTE_LIST) expect(isFlatRoute(r)).toBe(true);
     expect(isFlatRoute("/orgs/x")).toBe(false);
     expect(isFlatRoute("/account")).toBe(false);
@@ -145,7 +150,13 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // flight, and a row that goes dark for that instant reads as a glitch
     // (MESITA-1841).
     for (const page of ORG_PAGES) {
-      if (page === "places") continue; // no flat twin: the list lives under its org
+      // `places` is the place segment's own root, and `settings` is claimed
+      // by a permanent legacy redirect — neither has a flat twin, and a name
+      // that cannot resolve is worse than no name (MESITA-1848).
+      if (!(page in FLAT_ROUTES)) {
+        expect(flatOrgTargetFromPathname(`/${page}`)).toBeNull();
+        continue;
+      }
       expect(flatOrgTargetFromPathname(`/${page}`)).toBe(page);
     }
     expect(flatOrgTargetFromPathname(FLAT_ROUTES.profile)).toBeNull();
@@ -215,14 +226,18 @@ describe("the organization's pages (MESITA-1807)", () => {
     // word twice; MESITA-1842 gave it the bare address, because the only thing
     // squatting there was a cookie-writing forwarder that now lives at
     // `/switch`.
-    expect(ORG_PAGES).toEqual(["customers", "payments", "activity", "places"]);
-    expect(ORG_TARGETS).toEqual([
-      "organization",
+    // ONE LIST (MESITA-1848): the organization's pages, the rail's rows and
+    // the contract's targets are the same array, in Pato's order. Two lists
+    // is how an address ends up live in one and dead in the other.
+    expect(ORG_PAGES).toEqual([
+      "settings",
+      "places",
       "customers",
       "payments",
       "activity",
-      "places",
     ]);
+    expect(ORG_TARGETS).toEqual(ORG_PAGES);
+    expect(ORG_TARGETS).not.toContain("organization");
     // CREDITS IS NOT AN ADDRESS ANY MORE (MESITA-1845). It merged into
     // Payments on Pato's one word, and both its spellings forward from
     // `next.config.ts` — so a name in this contract would be a live address
@@ -232,8 +247,8 @@ describe("the organization's pages (MESITA-1807)", () => {
     // EVERY TARGET IS A NAMED SEGMENT (MESITA-1846), Organization included:
     // the rail draws its five as siblings, so their addresses look alike. The
     // bare id is a forwarder with its own helper, never `orgHref`'s output.
-    expect(orgHref("org-x")).toBe("/orgs/org-x/organization");
-    expect(orgHref("org-x", "organization")).toBe("/orgs/org-x/organization");
+    expect(orgHref("org-x")).toBe("/orgs/org-x/settings");
+    expect(orgHref("org-x", "settings")).toBe("/orgs/org-x/settings");
     expect(orgRootHref("org-x")).toBe("/orgs/org-x");
     expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
     expect(orgHref("org-x", "customers")).toBe("/orgs/org-x/customers");
@@ -258,20 +273,14 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "switch", "route.ts"))).toBe(true);
   });
 
-  it("THE RAIL LISTS THEM ALL — there are no doors left (MESITA-1847)", () => {
+  it("THE RAIL LISTS THEM ALL, and the lists are one array (MESITA-1848)", () => {
     // Members was the last organization address with no row of its own,
     // reached through a chevron on the Organization page. Pato: "members and
     // places in organization i mean, fuck nested things display shit there."
     // The people are ON that page now, so the rail's list and the contract's
     // list are the same list — and an address in the contract that no row can
     // light would render a screen with no pill at all.
-    expect(ORG_RAIL_TARGETS).toEqual([
-      "organization",
-      "customers",
-      "payments",
-      "activity",
-      "places",
-    ]);
+    expect(ORG_RAIL_TARGETS).toEqual(ORG_PAGES);
     expect([...ORG_RAIL_TARGETS].sort()).toEqual([...ORG_TARGETS].sort());
   });
 
@@ -314,7 +323,7 @@ describe("the organization's pages (MESITA-1807)", () => {
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/organization");
+    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/settings");
     expect(orgRootHref("a/b")).toBe("/orgs/a%2Fb");
     expect(orgHref("a/b", "payments")).toBe("/orgs/a%2Fb/payments");
     expect(orgSwitchHref("a/b", "/profile")).toBe("/orgs/a%2Fb/switch?to=%2Fprofile");
@@ -325,9 +334,11 @@ describe("the organization's pages (MESITA-1807)", () => {
   // Both spellings answer "organization" (MESITA-1846). The bare id is a 307
   // in flight, and a rail row that goes dark for that instant reads as a
   // glitch — the same courtesy every flat resolver already gets.
-  it("the bare id and the segment both light the Organization row", () => {
-    expect(orgTargetFromPathname("/orgs/org-x")).toBe("organization");
-    expect(orgTargetFromPathname("/orgs/org-x/organization")).toBe("organization");
+  it("the bare id and the segment both light the Settings row", () => {
+    expect(orgTargetFromPathname("/orgs/org-x")).toBe("settings");
+    expect(orgTargetFromPathname("/orgs/org-x/settings")).toBe("settings");
+    // The old spelling is not a target any more (MESITA-1848).
+    expect(orgTargetFromPathname("/orgs/org-x/organization")).toBeNull();
   });
 
   it("reads the id back out of any organization pathname", () => {
@@ -360,10 +371,11 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(orgTargetFromPathname("/orgs/org-x/places/p-1")).toBeNull();
     // A third segment under a page is not that page.
     expect(orgTargetFromPathname("/orgs/org-x/payments/x")).toBeNull();
-    // The BARE address IS the Organization page since MESITA-1842, trailing
-    // slash included — it used to answer null, because it was a forwarder.
-    expect(orgTargetFromPathname(orgHref("org-x"))).toBe("organization");
-    expect(orgTargetFromPathname("/orgs/org-x/")).toBe("organization");
+    // The BARE address is a 307 onto Settings and answers "settings",
+    // trailing slash included — a row that goes dark for the instant the
+    // forward is in flight reads as a glitch.
+    expect(orgTargetFromPathname("/orgs/org-x")).toBe("settings");
+    expect(orgTargetFromPathname("/orgs/org-x/")).toBe("settings");
   });
 });
 

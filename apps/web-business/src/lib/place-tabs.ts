@@ -11,10 +11,16 @@
 // Keep this file free of server imports. It is the half a client component may
 // have.
 
-// THE TAB MATRIX: Profile · Reviews · Capabilities · Rewards · Admin, in the
-// order the rail lists them under the Place group (Pato, 2026-09-14, a drawing
-// of two levels: "Organization / Payments / Credits / Activity / Place(s) →
-// Profile / Reviews / Capabilities / Rewards / Admin").
+// THE TAB MATRIX: Profile · Menus · Reviews · Capabilities · Rewards · Admin,
+// in the order the rail lists them under the PLACE SELECTOR (Pato, 2026-09-14:
+// "better three sections … PLACE SELECTOR / Profile / Menus / Reviews /
+// Capabilities / Rewards / Admin").
+//
+// MENUS ARRIVED IN MESITA-1848, split out of Profile — where `MenusSection`
+// had always rendered as the last child of the longest form in the console.
+// It joins the READ set, not the two that write: every held role could open it
+// while it lived inside Profile, and splitting a view out must never quietly
+// take a surface away from a viewer.
 //
 // TWO CHANGES FROM THE FLAT SIX (MESITA-1841):
 //
@@ -44,6 +50,7 @@
 // URL is a temporary redirect onto it.
 export const PLACE_TABS = [
   "profile",
+  "menus",
   "reviews",
   "capabilities",
   "rewards",
@@ -53,6 +60,7 @@ export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
+  menus: "Menus",
   reviews: "Reviews",
   capabilities: "Capabilities",
   rewards: "Rewards",
@@ -72,7 +80,7 @@ export type ViewerAccess = {
 /** Which tabs a viewer may open on a place — THE matrix, in one place.
  *
  *  pool place            → Profile only (it carries Claim)
- *  held · org viewer     → Profile + Reviews (the read surfaces)
+ *  held · org viewer     → Profile + Menus + Reviews (the read surfaces)
  *  held · owner/editor   → + Capabilities + Rewards
  *  super-admin           → + Admin (operator internals)
  *
@@ -91,8 +99,8 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   if (!access.held) return ["profile"];
   const tabs: PlaceTab[] =
     access.role === "viewer"
-      ? ["profile", "reviews"]
-      : ["profile", "reviews", "capabilities", "rewards"];
+      ? ["profile", "menus", "reviews"]
+      : ["profile", "menus", "reviews", "capabilities", "rewards"];
   if (access.isSuperAdmin) tabs.push("admin");
   return tabs;
 }

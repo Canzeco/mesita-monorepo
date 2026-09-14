@@ -1,5 +1,11 @@
-// Organization — WHICH one you are in, WHO is in it, and WHAT it holds. All
-// three on the page, none of them behind a door.
+// Settings — the organization itself: WHO is in it and WHAT it holds, both on
+// the page rather than behind doors.
+//
+// Named Settings since MESITA-1848, at `/orgs/<id>/settings`. The rail's group
+// is headed "Organization" by its own selector now, so a page under it called
+// Organization said the word twice in one column — the redundancy this whole
+// pass has been deleting. WHICH organization is the selector's question, and
+// it is answered in the rail, beside the pages it scopes.
 //
 // Pato, 2026-09-14, on the version that shipped an hour earlier: *"this is
 // redundant, make like boxes"*, then *"members and places in organization i
@@ -22,11 +28,9 @@
 // Invite in `right`, so folding `/orgs/<id>/members` in was moving two reads,
 // not writing a screen.
 //
-// THE SELECTOR IS THE HEADING. `OrgSwitcher` carries the organization's name
-// at full weight, so this page renders no visible `h1` repeating it — the
-// heading is sr-only, which keeps the landmark without printing the word
-// twice in 200px. A trigger is a `<button>`; a heading is not phrasing
-// content and cannot live inside one.
+// THE HEADING IS THE NAME. The selector left for the rail (MESITA-1848), so
+// the page carries its own `h1` again — the organization's name, which is the
+// one string that says whose settings these are.
 //
 // NO STRIPE BADGE. It stated Payments' fact on a page that no longer links to
 // Payments — and Payments carries that same badge on its own heading, one rail
@@ -41,7 +45,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronRight, Plus, Store } from "lucide-react";
 import { MembersCard } from "@/components/console/MembersCard";
-import { OrgSwitcher } from "@/components/console/OrgSwitcher";
 import { Section } from "@/components/shared/Section";
 import {
   apiListOrgMembers,
@@ -57,6 +60,8 @@ import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const ROLE_LABEL = { owner: "Owner", editor: "Editor", viewer: "Viewer" } as const;
 
 /** One place the organization holds: its thumb, its name, and the way in.
  *  The whole row is the target — the name alone is not enough to hit. */
@@ -141,9 +146,12 @@ export default async function OrganizationPage(props: {
 
   return (
     <>
-      <h1 className="sr-only">{org.name}</h1>
-
-      <OrgSwitcher />
+      <h1 className="font-display text-2xl font-semibold tracking-tight">
+        {org.name}
+      </h1>
+      <p className="text-muted-foreground text-sm leading-snug">
+        You are {ROLE_LABEL[org.myRole]} here.
+      </p>
 
       <MembersCard
         orgId={org.id}

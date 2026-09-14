@@ -62,12 +62,11 @@ export function crumbsFor(
   }
   const target = orgTargetFromPathname(pathname);
   if (target) {
-    // The organization's own page IS the organization: one crumb, its name.
-    // A second crumb reading "Organization" under it would restate the first
-    // (MESITA-1810), which is exactly what `/orgs/<id>/organization` did in
-    // the address until MESITA-1842 took that segment out.
+    // The organization's NAME, then the page — every organization address is
+    // a named page now (MESITA-1848), Settings included, so there is no
+    // bare-name target left to special-case.
     const trail = [names.orgName ?? "Organization"];
-    if (target !== "organization") trail.push(ORG_TARGET_LABEL[target]);
+    trail.push(ORG_TARGET_LABEL[target]);
     if (/\/places\/new\/?$/.test(pathname)) trail.push("Add");
     return trail;
   }
