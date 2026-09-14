@@ -11,6 +11,13 @@
 // each resolves the way Next will resolve it.
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
+import {
+  ORG_PAGES,
+  SHELL_ROUTES,
+  orgHref,
+  orgPlacesNewHref,
+} from "./console-routes";
+import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
 type Has = { type: string; key: string; value?: string };
 type Rule = {
@@ -126,8 +133,14 @@ describe("the legacy console's URLs all still resolve", () => {
     expect(resolve("/unit/abc/place/preview", all)).toBe("/places/abc/profile");
   });
 
-  it("/settings lands on the shell's Account screen", async () => {
-    expect(resolve("/settings", await rules())).toBe("/account");
+  // MESITA-1839. This test used to assert `/settings` -> `/account`, which is
+  // what the rule did — and the rule was the bug. MESITA-1832 shipped a live
+  // page at `/settings`; config redirects run before filesystem routes, so the
+  // page was unreachable and the rail's Settings row 308'd to Account. CI was
+  // green the whole time, because this file pinned the redirect rather than
+  // the reachability. Now it pins the absence.
+  it("/settings is NOT forwarded — it is a live address", async () => {
+    expect(resolve("/settings", await rules())).toBeNull();
   });
 
   it("the Capabilities view forwards to Settings (MESITA-1815), one hop", async () => {
@@ -219,5 +232,45 @@ describe("every redirect is permanent, and forwards somewhere this repo serves",
       expect(rule.destination).not.toBe("/places");
       expect(rule.destination.startsWith("/organization")).toBe(false);
     }
+  });
+});
+
+// THE GUARD THIS FILE WAS MISSING (MESITA-1839).
+//
+// Every test above asks "does this DEAD address still land somewhere?". None
+// asked the mirror question: "is this LIVE address still reachable?" So when
+// MESITA-1832 named a page `/settings` — a path a MESITA-1564-era rule already
+// forwarded to `/account` — nothing failed. Config redirects run before
+// filesystem routes, so the page shipped unreachable and stayed that way,
+// green, for a day.
+//
+// A redirect table and a route table are two halves of one namespace, and
+// nothing was comparing them. This does.
+describe("no live address is swallowed by the redirect table", () => {
+  it("every SHELL_ROUTES entry falls through to its route", async () => {
+    const all = await rules();
+    for (const [name, href] of Object.entries(SHELL_ROUTES)) {
+      expect(
+        resolve(href, all),
+        `SHELL_ROUTES.${name} (${href}) is caught by a redirect — the page at that path can never be reached`,
+      ).toBeNull();
+    }
+  });
+
+  it("every place view's address falls through", async () => {
+    const all = await rules();
+    for (const tab of PLACE_TABS) {
+      const href = placeTabHref("abc", tab);
+      expect(resolve(href, all), `${href} is caught by a redirect`).toBeNull();
+    }
+  });
+
+  it("every organization page's address falls through", async () => {
+    const all = await rules();
+    for (const page of ORG_PAGES) {
+      const href = orgHref("org-9", page);
+      expect(resolve(href, all), `${href} is caught by a redirect`).toBeNull();
+    }
+    expect(resolve(orgPlacesNewHref("org-9"), all)).toBeNull();
   });
 });
