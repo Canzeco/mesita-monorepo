@@ -87,18 +87,26 @@ export default async function AccountPage() {
         >
           {email.trim().charAt(0).toUpperCase()}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
+        {/* A div, not a span: this box is a div, and an <h1> is not phrasing
+            content — it may not sit inside one. The switcher boxes use spans
+            because their wrapper is a <button>, which may hold no heading at
+            all. */}
+        <div className="flex min-w-0 flex-1 flex-col">
           <span className={TINY_LABEL_CLASS}>You</span>
           {/* The email IS the heading: it keeps the landmark the removed
               "Account" h1 held, and it is the one string on this page that
               says whose console this is. */}
-          <h1 className="mt-0.5 truncate text-base font-semibold tracking-tight">
+          {/* font-sans is LOAD-BEARING: globals.css puts every bare h1 on the
+              display face, so without it the first of three peer titles
+              renders in Fraunces and the other two in Inter — three boxes at
+              one rank, wearing two typefaces. */}
+          <h1 className="mt-0.5 truncate font-sans text-base font-semibold tracking-tight">
             {email}
           </h1>
           <span className="text-muted-foreground truncate text-[12px]">
             {accountMeta(orgs.length, orgsError)}
           </span>
-        </span>
+        </div>
         <SignOutButton
           redirectTo="/signin"
           className={`${GHOST_PILL_BUTTON_CLASS} shrink-0`}
