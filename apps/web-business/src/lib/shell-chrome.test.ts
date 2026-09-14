@@ -190,35 +190,29 @@ describe("the unsaved-edits guard reaches the rail", () => {
 // PAGE's (ScopeSwitchers.tsx). The one rule that has outlived every
 // redesign: nothing indents. Pato rejected a tree twice (1714, 1715), boxes
 // once (1815), and switchers-as-rows twice (1818, 1822).
-describe("the rail is two groups of rows", () => {
+describe("the rail is four nouns and one indent", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
-  // THE FLAT LAW IS NARROWED, NOT DELETED (MESITA-1841).
+  // THE FLAT LAW, THIRD REVISION (MESITA-1844).
   //
-  // "Indent nothing" was the right rule for six peer pages: an indent among
-  // equals is decoration, and decoration in a nav is noise. The rail has two
-  // SUBJECTS now — the organization and the place — so one indent is the
-  // cheapest way to say which row is about which, and it is saying something
-  // true that the labels cannot ("Payments" and "Profile" look like siblings
-  // and are not).
+  // MESITA-1832 wrote it for six peer pages: an indent among equals is
+  // decoration. MESITA-1841 spent one indent to separate two subjects.
+  // MESITA-1842 headed both groups by name and took the indent back.
+  // MESITA-1844 deletes the headers — four flat nouns need no eyebrow — and
+  // spends the indent where Pato's drawing puts its asterisks: the place's
+  // five, under the row they are about.
   //
-  // What the law still forbids is everything that was only ever decoration:
-  // a tree line, a bullet, a box, a well, a second eyebrow, a `role="group"`.
-  // And it forbids a SECOND indent — the moment a rail has two depths of
-  // nesting it is a file tree, which is what the original rule was protecting
-  // against.
-  // THE FLAT LAW IS BACK IN FORCE AS WRITTEN (MESITA-1842).
-  //
-  // MESITA-1841 spent one sanctioned indent to separate the two subjects.
-  // MESITA-1842 heads BOTH groups with their subject's name instead, and an
-  // inset under a header says a second time what the header says once — so
-  // nothing indents again, and every decorative form stays banned.
-  it("indents NOTHING, and draws no tree line, bullet, box or well", () => {
+  // What the law forbids, unchanged through all four: everything that was
+  // only ever decoration — a tree line, a bullet, a box, a well, a second
+  // eyebrow, a `role="group"` — and a SECOND depth, which is the point a rail
+  // stops being a nav and becomes a file tree.
+  it("indents ONE level, by padding, and draws no tree line, bullet, box or well", () => {
     const r = rail();
+    expect(r).toContain('const ROW_INDENT = "pl-7 lg:pl-6";');
+    // Exactly one indent constant, applied in exactly one place.
+    expect((r.match(/ROW_INDENT/g) ?? []).length).toBe(2);
+    expect(r).toContain("indent && !collapsed && ROW_INDENT");
     expect(r).not.toContain("paddingLeft");
-    expect(r).not.toMatch(/^\s*inset$/m);
-    expect(r).not.toContain("RAIL_INDENT");
-    expect(r).not.toMatch(/\bpl-\d/);
     expect(r).not.toMatch(/border-l-\d/);
     expect(r).not.toMatch(/rounded-full["\s]*\/>/);
     expect(r).not.toContain("<Scope");
@@ -227,25 +221,19 @@ describe("the rail is two groups of rows", () => {
     expect(r).not.toContain('role="group"');
   });
 
-  it("BOTH groups are headed, by their subject's name, identically", () => {
+  it("has no group header, and no name in it at all", () => {
     const r = rail();
-    // The header is a label, not a link and not a trigger: the group's own
-    // first row is already the page about that subject, and the switchers are
-    // Account's (MESITA-1822).
-    const header = r.slice(r.indexOf("function GroupHeader"), r.indexOf("export function Sidebar"));
-    expect(header).not.toContain("<Link");
-    expect(header).not.toContain("<button");
-    expect(header).not.toContain("onClick");
-    expect(header).toContain('role="presentation"');
-    // TWO headers, one component — heading one group and not the other is what
-    // made the other look unparented in MESITA-1841.
-    expect((r.match(/<GroupHeader/g) ?? []).length).toBe(2);
-    // Each prints its subject's NAME, falling back to its noun.
-    expect(r).toContain('org?.name ?? "Organization"');
-    expect(r).toContain('"Place";');
+    // The headers were MESITA-1842's answer to two subjects. One flat column
+    // of nouns has one subject — the console — and a NAME among nouns reads
+    // as a destination, which is what MESITA-1832 banned it for originally.
+    expect(r).not.toContain("GroupHeader");
+    expect(r).not.toContain("TINY_LABEL_CLASS");
+    expect(r).not.toContain("org?.name");
+    expect(r).not.toContain("scope.place?.name");
+    expect(r).not.toContain("openPlace.name");
   });
 
-  it("holds no switcher, no Plus, no chip, no menu — those are the organization page's", () => {
+  it("holds no switcher, no Plus row, no chip, no menu — those are the organization page's", () => {
     const r = rail();
     expect(r).not.toContain("DropdownMenu");
     expect(r).not.toContain("<Picker");
@@ -254,7 +242,6 @@ describe("the rail is two groups of rows", () => {
     expect(r).not.toContain("Switch organization");
     expect(r).not.toContain("Switch place");
     expect(r).not.toContain('label="Add place"');
-    expect(r).not.toContain('label="Places"');
     expect(r).not.toContain("<select");
     const sw = readCode("components/console/ScopeSwitchers.tsx");
     expect(sw).toContain('label="Switch organization"');
@@ -264,26 +251,24 @@ describe("the rail is two groups of rows", () => {
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
-  it("is the organization's four, the place's five, then Account — from the route contract and the ONE matrix (MESITA-1841)", () => {
+  it("is Account, the organization's three, then the place's five — from the route contract and the ONE matrix (MESITA-1844)", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
-    // Both groups come from a declared list, never from rows written by hand —
+    // Both runs come from a declared list, never from rows written by hand —
     // that is what keeps the rail and the route contract in step.
     expect(nav).toContain("ORG_RAIL_TARGETS.map((target)");
     expect(nav).toContain("placeRows.map((tab)");
-    // Each group's header sits ABOVE its own rows, and the organization's four
-    // come before the place's five.
-    const iOrgHead = nav.indexOf("<GroupHeader");
-    const iOrg = nav.indexOf("ORG_RAIL_TARGETS.map");
-    const iPlaceHead = nav.lastIndexOf("<GroupHeader");
-    const iPlace = nav.indexOf("placeRows.map");
-    expect(iOrgHead).toBeLessThan(iOrg);
-    expect(iOrg).toBeLessThan(iPlaceHead);
-    expect(iPlaceHead).toBeLessThan(iPlace);
-    // Account is the FOOTER's row now, below the nav's groups (MESITA-1842).
-    expect(nav).not.toContain("href={SHELL_ROUTES.account}");
-    expect(rail().indexOf("href={SHELL_ROUTES.account}")).toBeGreaterThan(
-      rail().indexOf("</nav>"),
+    // ACCOUNT IS ROW ONE, inside the landmark, above everything (MESITA-1844).
+    const iAccount = nav.indexOf("href={SHELL_ROUTES.account}");
+    expect(iAccount).toBeGreaterThan(-1);
+    expect(iAccount).toBeLessThan(nav.indexOf("ORG_RAIL_TARGETS.map"));
+    expect(nav.indexOf("ORG_RAIL_TARGETS.map")).toBeLessThan(nav.indexOf("placeRows.map"));
+    // The contract carries the order, and Payments and Credits are not in it.
+    expect(readCode("lib/console-routes.ts")).toContain(
+      'export const ORG_RAIL_TARGETS = ["organization", "activity", "places"] as const;',
+    );
+    expect(readCode("lib/console-routes.ts")).toContain(
+      'export const ORG_DOOR_TARGETS = ["members", "payments", "credits"] as const;',
     );
     // The place's five, in the drawing's order.
     expect(r).toContain('["profile", "reviews", "capabilities", "rewards", "admin"] as const');
@@ -293,7 +278,7 @@ describe("the rail is two groups of rows", () => {
     // there and the click costs one hop. The flat address is the fallback for
     // the state with nothing to name yet.
     expect(r).toContain("placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab]");
-    expect(r).toContain("org ? orgHref(org.id, target) : FLAT_ROUTES[target]");
+    expect(r).toContain("href={orgHref(org.id, target)}");
     // Both readers, on both scopes, because either address may be on screen.
     expect(r).toContain("placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname)");
     expect(r).toContain("orgTargetFromPathname(pathname) ?? flatOrgTargetFromPathname(pathname)");
@@ -303,16 +288,30 @@ describe("the rail is two groups of rows", () => {
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
   });
 
-  // MESITA-1841. `/orgs/new` is the one address two `active` expressions could
-  // both claim — Account owned the organization's ceremonies until now, and
-  // Organization owns them from here. Two pills is the failure every rail test
-  // in this repo counts, and it arrives exactly this way: one row keeping a
-  // clause after another row took the subject.
-  it("Account lights for Account alone — the organization's doors light Organization", () => {
+  // Two pills is the failure every rail test in this repo counts, and it
+  // arrives exactly this way: one row keeping a clause after another row took
+  // the subject. Account owned the organization's ceremonies until
+  // MESITA-1841; Organization owns them, and now Payments and Credits too.
+  it("Account lights for Account alone — every roomless organization page lights Organization", () => {
     const r = rail();
     expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
     expect(r).toMatch(/orgTarget === "members"/);
-    expect(r).toMatch(/orgTarget === "places"/);
+    expect(r).toMatch(/orgTarget === "payments"/);
+    expect(r).toMatch(/orgTarget === "credits"/);
+    // Places takes its own, and must NOT be swept into Organization's clause.
+    const orgClause = r.slice(r.indexOf("const orgRowActive"), r.indexOf("return ("));
+    expect(orgClause).not.toContain('orgTarget === "places"');
+  });
+
+  // The two pages that lost their rows keep their door, on the page that is
+  // their scope. A page nothing offers is a page that gets lost.
+  it("Payments and Credits are doors on the Organization page", () => {
+    const page = readCode("app/(shell)/orgs/[orgId]/page.tsx");
+    for (const target of ["members", "payments", "credits"]) {
+      expect(page, target).toContain(`orgHref(org.id, "${target}")`);
+    }
+    expect(page).toContain("orgPlacesHref(org.id)");
+    expect((page.match(/<DoorRow/g) ?? []).length).toBe(4);
   });
 
   // MESITA-1833: they are no longer DIMMED. Every one is a live link that
@@ -377,21 +376,19 @@ describe("the rail is two groups of rows", () => {
     expect(sw).toContain("canAddPlace(org.myRole)");
   });
 
-  // ONE FOOTER, PINNED (MESITA-1842). Account sat with the nav while Collapse
-  // was pinned to the bottom, so the rail's empty space fell BETWEEN two
-  // footer items — which reads as a layout that failed, where empty space
-  // BELOW a footer reads as room to spare.
-  it("Account and Collapse are one pinned footer, in that order", () => {
+  // ONE FOOTER, AND ONLY THE RAIL'S OWN CONTROL IN IT (MESITA-1844). Account
+  // moved to row one, so the footer is one button under one seam and the
+  // rail's empty space falls ABOVE it — which reads as room to spare, where
+  // space between two footer items reads as a layout that failed.
+  it("the footer is Collapse alone, pinned, under the rail's one seam", () => {
     const r = rail();
     const footer = r.slice(r.indexOf("</nav>"));
     expect(footer).toContain("onToggleCollapse");
-    expect(footer).toContain("href={SHELL_ROUTES.account}");
-    expect(footer.indexOf("SHELL_ROUTES.account")).toBeLessThan(
-      footer.indexOf("onToggleCollapse"),
-    );
-    // One block, one seam, and it does not scroll with the rows above it.
+    expect(footer).not.toContain("SHELL_ROUTES.account");
     expect(footer).toContain("shrink-0");
     expect((footer.match(/border-t/g) ?? []).length).toBe(1);
+    // And the nav above it carries none: one seam in the whole column.
+    expect((r.slice(r.indexOf("<nav"), r.indexOf("</nav>")).match(/border-t/g) ?? []).length).toBe(0);
   });
 
   it("focus travels on the brand's ring, not the browser's", () => {
@@ -414,7 +411,8 @@ describe("the rail is two groups of rows", () => {
     expect(r).not.toContain("hover:text-foreground");
     expect(r).toContain('"bg-sidebar-foreground text-sidebar font-semibold"');
     expect(r).toContain("text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground");
-    expect(r).toContain('cn(TINY_LABEL_CLASS, "text-sidebar-muted block truncate")');
+    // The eyebrow that used to carry the third token went with the group
+    // headers (MESITA-1844); the muted token is the rows' own resting colour.
   });
 
   it("the layout hands the rail the whole viewer and the two rail cookies, raw", () => {

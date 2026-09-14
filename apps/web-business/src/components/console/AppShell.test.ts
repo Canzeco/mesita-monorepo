@@ -178,10 +178,12 @@ describe("the rail is light, and every text token is a measured pair", () => {
     expect(rail).toContain('aria-label="Console"');
   });
 
-  it("uses TINY_LABEL_CLASS for the eyebrow, never a bare heading tag", () => {
-    // globals.css puts every bare h1/h2/h3 on the display face, so a 10px
-    // eyebrow written as an <h2> silently becomes a serif.
-    expect(rail).toContain("TINY_LABEL_CLASS");
+  it("has no eyebrow at all, and no bare heading tag (MESITA-1844)", () => {
+    // The rail's two group headers are gone: four flat nouns need no eyebrow.
+    // The heading ban outlives them — globals.css puts every bare h1/h2/h3 on
+    // the display face, so a 10px label written as an <h2> silently becomes a
+    // serif, and that is how an eyebrow comes back wearing the wrong face.
+    expect(rail).not.toContain("TINY_LABEL_CLASS");
     expect(code(rail)).not.toMatch(/<h[123][\s>]/);
   });
 });
