@@ -11,15 +11,31 @@
 // Keep this file free of server imports. It is the half a client component may
 // have.
 
-// THE TAB MATRIX: Profile · Reviews · Activity · Settings · Admin, in the
-// order the rail lists them (Pato, 2026-09-13: "Place Profile, Place Reviews,
-// Place Activity, Place Settings, Place Admin"). Reviews is the fifth view
-// (MESITA-1807): the cross-channel score tiles that used to sit on Profile,
-// then the per-review list (MESITA-1802). Settings was Capabilities until
-// MESITA-1815 — label AND segment, so the address says what the row says;
-// `/places/<id>/capabilities` forwards from next.config.ts. The DOMAIN word
-// stays: `state-vocabulary.ts` still calls what a guest can do here a
-// capability (Notion Main §11.2); only the page is renamed.
+// THE TAB MATRIX: Profile · Reviews · Capabilities · Rewards · Admin, in the
+// order the rail lists them under the Place group (Pato, 2026-09-14, a drawing
+// of two levels: "Organization / Payments / Credits / Activity / Place(s) →
+// Profile / Reviews / Capabilities / Rewards / Admin").
+//
+// TWO CHANGES FROM THE FLAT SIX (MESITA-1841):
+//
+//   ACTIVITY LEFT. It was a place view from MESITA-1537 until now. The drawing
+//   puts it flush-left with the organization's pages, and that is the right
+//   scope: an operator asking "how are we doing" is asking about the business,
+//   not about one storefront. `/places/<id>/activity` forwards to the
+//   organization's, which opens on the place that was selected.
+//
+//   REWARDS ARRIVED, split out of Capabilities. Capabilities is the ladder of
+//   what a guest CAN do here — accept prepays, pickup, delivery, reservations —
+//   plus the internal Settings zone. Rewards is what a guest EARNS: the
+//   strategy ladder, Visit Rewards, and the Partnership body that prices them.
+//   The two were one 440-line component (`PromosSection`) whose own headings
+//   already drew the line; this makes the line an address.
+//
+// Capabilities is its own name again. MESITA-1815 renamed it to Settings —
+// label AND segment — and MESITA-1841 puts both back, because the drawing says
+// Capabilities and the word never stopped being the domain's (Notion Main
+// §11.2, `state-vocabulary.ts`). `/places/<id>/settings` now forwards here,
+// which is the reverse of the rule MESITA-1815 wrote.
 //
 // Profile USED to have no segment of its own: it was /places/<id>, and the
 // other views hung beneath it. That made the one view an operator is most
@@ -29,8 +45,8 @@
 export const PLACE_TABS = [
   "profile",
   "reviews",
-  "activity",
-  "settings",
+  "capabilities",
+  "rewards",
   "admin",
 ] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
@@ -38,8 +54,8 @@ export type PlaceTab = (typeof PLACE_TABS)[number];
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
   reviews: "Reviews",
-  activity: "Activity",
-  settings: "Settings",
+  capabilities: "Capabilities",
+  rewards: "Rewards",
   admin: "Admin",
 };
 
@@ -56,9 +72,14 @@ export type ViewerAccess = {
 /** Which tabs a viewer may open on a place — THE matrix, in one place.
  *
  *  pool place            → Profile only (it carries Claim)
- *  held · org viewer     → Profile + Reviews + Activity (read surfaces)
- *  held · owner/editor   → + Settings
+ *  held · org viewer     → Profile + Reviews (the read surfaces)
+ *  held · owner/editor   → + Capabilities + Rewards
  *  super-admin           → + Admin (operator internals)
+ *
+ *  A VIEWER LOST A ROW, and did not lose a surface: their third read screen
+ *  was Activity, which is the organization's page now and which every member
+ *  of the organization can open (MESITA-1841). Capabilities and Rewards both
+ *  WRITE, so neither joins the read set.
  *
  *  Two callers, one rule (MESITA-1779). The place layout resolves it
  *  server-side for the place you are ON (`visibleTabs` in lib/place-view.ts
@@ -70,8 +91,8 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   if (!access.held) return ["profile"];
   const tabs: PlaceTab[] =
     access.role === "viewer"
-      ? ["profile", "reviews", "activity"]
-      : ["profile", "reviews", "activity", "settings"];
+      ? ["profile", "reviews"]
+      : ["profile", "reviews", "capabilities", "rewards"];
   if (access.isSuperAdmin) tabs.push("admin");
   return tabs;
 }

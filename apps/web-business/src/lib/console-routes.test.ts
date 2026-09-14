@@ -11,9 +11,11 @@ import {
   FLAT_ROUTES,
   ORG_PAGES,
   ORG_PAGE_LABEL,
+  ORG_RAIL_PAGES,
   PLACES_OWNED,
   SHELL_ROUTES,
   FLAT_ROUTE_LIST,
+  flatOrgPageFromPathname,
   flatViewFromPathname,
   isFlatRoute,
   orgHref,
@@ -64,14 +66,21 @@ describe("SHELL_ROUTES are the addresses with no scope at all", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the five place views plus the organization's two pages", () => {
+  it("is the place's five views, then the organization's five pages", () => {
+    // The order is the declaration's: the place's group, then the
+    // organization's. MESITA-1841 added `capabilities` (was `settings`),
+    // `rewards`, `organization` and `credits`, and moved `activity` from the
+    // first group to the second — it resolves an ORGANIZATION now.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
       "reviews",
-      "activity",
-      "settings",
+      "capabilities",
+      "rewards",
       "admin",
+      "organization",
       "payments",
+      "credits",
+      "activity",
       "members",
     ]);
     for (const r of FLAT_ROUTE_LIST) expect(isFlatRoute(r)).toBe(true);
@@ -96,6 +105,31 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     expect(flatViewFromPathname(FLAT_ROUTES.payments)).toBeNull();
     expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
     expect(flatViewFromPathname("/profiles")).toBeNull();
+  });
+
+  it("a flat organization page reads as that page, and a place view does not", () => {
+    // The rail lights an organization row for the flat address too — an
+    // operator who typed `/credits` is on Credits while the forward is in
+    // flight, and a row that goes dark for that instant reads as a glitch
+    // (MESITA-1841).
+    for (const page of ORG_PAGES) {
+      if (page === "places") continue; // no flat twin: the list lives under its org
+      expect(flatOrgPageFromPathname(`/${page}`)).toBe(page);
+    }
+    expect(flatOrgPageFromPathname(FLAT_ROUTES.profile)).toBeNull();
+    expect(flatOrgPageFromPathname(orgHref("org-x", "credits"))).toBeNull();
+    expect(flatOrgPageFromPathname("/creditsx")).toBeNull();
+  });
+
+  it("THE TWO READERS NEVER BOTH ANSWER for one address", () => {
+    // `/activity` moved from the place group to the organization's in
+    // MESITA-1841. If both readers claimed it the rail would paint two pills,
+    // and "exactly one pill" is the rule every rail test asserts.
+    for (const href of FLAT_ROUTE_LIST) {
+      const asView = flatViewFromPathname(href);
+      const asPage = flatOrgPageFromPathname(href);
+      expect(asView === null || asPage === null, href).toBe(true);
+    }
   });
 });
 
@@ -136,17 +170,43 @@ describe("the place is addressed by its id again (MESITA-1839)", () => {
 describe("the organization's pages (MESITA-1807)", () => {
   const ID: Record<string, string> = { "org-x": "[orgId]" };
 
-  it("the organization's three pages, and the bare address that forwards", () => {
+  it("the organization's six pages, and the bare address that forwards", () => {
     // MESITA-1810 folded Payments and Members INTO one Organization page;
     // MESITA-1832 dissolved that page and scattered them to flat addresses;
     // MESITA-1839 gives each its own address under the organization that owns
-    // it. Payments is the default because it is where Stripe returns.
-    expect(ORG_PAGES).toEqual(["payments", "members", "places"]);
+    // it; MESITA-1841 brings Organization back as a page of its own and gives
+    // Credits and Activity rooms. Payments stays the DEFAULT because it is
+    // where Stripe returns — not because it is first.
+    expect(ORG_PAGES).toEqual([
+      "organization",
+      "payments",
+      "credits",
+      "activity",
+      "members",
+      "places",
+    ]);
     expect(orgRootHref("org-x")).toBe("/orgs/org-x");
     expect(orgHref("org-x")).toBe("/orgs/org-x/payments");
+    expect(orgHref("org-x", "organization")).toBe("/orgs/org-x/organization");
+    expect(orgHref("org-x", "credits")).toBe("/orgs/org-x/credits");
+    expect(orgHref("org-x", "activity")).toBe("/orgs/org-x/activity");
     expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
     expect(orgPlacesNewHref("org-x")).toBe("/orgs/org-x/places/new");
+  });
+
+  it("the rail lists four of the six, in the drawing's order", () => {
+    // Members and Places have addresses and no row: the Organization page is
+    // their door (MESITA-1841). Every rail page is a real page.
+    expect(ORG_RAIL_PAGES).toEqual([
+      "organization",
+      "payments",
+      "credits",
+      "activity",
+    ]);
+    for (const page of ORG_RAIL_PAGES) {
+      expect(ORG_PAGES).toContain(page);
+    }
   });
 
   it("the organization is a FORWARDER, and its list a page with a loading boundary (MESITA-1832)", () => {
@@ -364,7 +424,8 @@ describe("withQuery — the resolver forwards its whole query", () => {
 describe("the old addresses are gone from disk", () => {
   it("no organization, places-list or claim route survives outside /orgs", () => {
     for (const rel of [
-      ["organization", "page.tsx"],
+      // NOT `organization/page.tsx`: that is a LIVE flat resolver again
+      // (MESITA-1841). The ceremony under it is what stayed dead.
       ["organization", "new", "page.tsx"],
       ["places", "page.tsx"],
       ["places", "new", "page.tsx"],

@@ -21,10 +21,15 @@
 //   - Back replayed a path whose meaning had since changed.
 //
 // So the canonical address names its subject, and the flat name stays live as
-// a RESOLVER onto it. Same two addresses as MESITA-1832 shipped; the arrow is
-// reversed. The rail links to the canonical one, so a click still costs one
-// hop — the flat address is for bookmarks, typed URLs and Stripe's stored
+// a RESOLVER onto it. The rail links to the canonical one, so a click costs
+// one hop — the flat address is for bookmarks, typed URLs and Stripe's stored
 // return links.
+//
+// TWO SUBJECTS, NOT ONE LIST (MESITA-1841). Pato's drawing of 2026-09-14 puts
+// four pages flush-left and five indented under Place(s), and the addresses
+// say the same thing: everything under `/orgs/<id>/` is the organization's,
+// everything under `/places/<id>/` is one place's. Nothing in the console is
+// about neither — except Account, which is about the person.
 //
 //   /                          the resolver — your current place, else your
 //                              organization, else Create (a 307, never cached)
@@ -32,20 +37,27 @@
 //                              switcher. The one page with no scope.
 //   /orgs/new                  Create organization — the ceremony
 //
-//   /places/<id>/profile       THE PLACE, five views
-//              /reviews
-//              /activity
-//              /settings       the place's switches
-//              /admin          super-admin only
-//
-//   /orgs/<id>/payments        THE ORGANIZATION's money — Stripe · Partner ·
-//                              Credits. Stripe's return_url is minted against
-//                              `/orgs/<id>?connect=`, which lands here.
+//   /orgs/<id>/organization    THE ORGANIZATION itself — its name, Members,
+//                              Places. A page again (it dissolved into Account
+//                              in MESITA-1832; the drawing names it row one).
+//            /payments         Stripe · Partner. Stripe's return_url is minted
+//                              against `/orgs/<id>?connect=`, which lands here.
+//            /credits          Prepaid Credits — its own room since
+//                              MESITA-1841, out of Payments.
+//            /activity         the organization's numbers, by place. It was a
+//                              PLACE view until MESITA-1841.
 //            /members          who may sign in, and at what role
 //            /places           what it holds and can claim (?owned=)
 //            /places/new       Add place
 //
-//   /profile /reviews /activity /settings /payments /members
+//   /places/<id>/profile       THE PLACE, five views
+//              /reviews
+//              /capabilities   what a guest CAN do here
+//              /rewards        what a guest EARNS here
+//              /admin          super-admin only
+//
+//   /profile /reviews /capabilities /rewards /admin
+//   /organization /payments /credits /activity /members
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -57,19 +69,22 @@
 // (lib/rail-scope.ts).
 //
 // THE OLD ADDRESSES FORWARD from next.config.ts: `/organization?org=` →
-// `/orgs/<id>`, `/places?org=` → `/orgs/<id>/places`, `/places/new?org=` →
-// `/orgs/<id>/places/new`, `/organization/new` → `/orgs/new`, `/pool` → `/`,
-// and the no-org forms → `/`.
+// `/orgs/<id>/organization`, `/places?org=` → `/orgs/<id>/places`, `/settings`
+// → `/capabilities`, `/places/<id>/settings` → `/places/<id>/capabilities`,
+// `/places/<id>/activity` → `/activity`, `/pool` → `/`.
 //
 // NOTHING IN THAT TABLE MAY SHADOW A LIVE ADDRESS. `/settings` did, for a day
 // (MESITA-1839): a MESITA-1564-era rule forwarded it to `/account`, config
 // redirects run before filesystem routes, and MESITA-1832's Settings page was
-// therefore unreachable while CI stayed green. `legacy-redirects.test.ts` now
-// walks every address in this file through that table.
+// therefore unreachable while CI stayed green. The same trap is live again in
+// the other direction — `/organization` used to forward to `/` and is a PAGE
+// now, so that rule had to go. `legacy-redirects.test.ts` walks every address
+// in this file through that table.
 //
 // `/` is a TEMPORARY redirect, never a permanent one: a 308 would be cached by
 // browsers forever, and where `/` lands depends on which place you opened
-// last. Every legacy forward is permanent — those moves are not coming back.
+// last. Every legacy forward is permanent — those moves are not coming back —
+// except the two whose destination is itself a resolver.
 
 export const SHELL_ROUTES = {
   root: "/",
@@ -77,58 +92,46 @@ export const SHELL_ROUTES = {
   orgNew: "/orgs/new",
 } as const;
 
-/** The flat, scope-free addresses. Each 307s onto the canonical address for
- *  the remembered place or organization; with nothing remembered, each renders
- *  the one next step. They are what a bookmark, a typed URL and a Stripe
- *  return link land on — the rail never links to them. */
-export const FLAT_ROUTES = {
-  profile: "/profile",
-  reviews: "/reviews",
-  activity: "/activity",
-  settings: "/settings",
-  admin: "/admin",
-  payments: "/payments",
-  members: "/members",
-} as const;
-
-export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];
-
-export const FLAT_ROUTE_LIST: readonly string[] = Object.values(FLAT_ROUTES);
-
-export function isFlatRoute(pathname: string): boolean {
-  return FLAT_ROUTE_LIST.includes(pathname.replace(/\/$/, ""));
-}
-
-/** Which place view a FLAT pathname is, or null.
- *
- *  A rail row lights for these as well as for the canonical address: an
- *  operator who typed `/reviews` is on Reviews while the forward is in
- *  flight, and a row that goes dark for that instant reads as a glitch. */
-export function flatViewFromPathname(
-  pathname: string,
-): "profile" | "reviews" | "activity" | "settings" | "admin" | null {
-  const seg = pathname.replace(/\/$/, "");
-  const views = ["profile", "reviews", "activity", "settings", "admin"] as const;
-  for (const v of views) if (seg === `/${v}`) return v;
-  return null;
-}
-
 // ── The organization's pages ──────────────────────────────────────────────
 //
-// Payments, Members and Places. The bare `/orgs/<id>` is a FORWARDER onto
-// Payments, not a page — the Organization screen it used to name dissolved in
-// MESITA-1832, and the address survives because Stripe stored it. Places is
-// the list, where Claim lives (`/new` beneath it); the rail lights Account for
-// both, because Account is the page that answers "which organization".
+// Organization, Payments, Credits, Activity, Members, Places. The first four
+// are the rail's own rows (MESITA-1841); Members and Places have addresses and
+// no row, reached from the Organization page that holds them.
+//
+// The bare `/orgs/<id>` stays a FORWARDER, not a page: it is the organization
+// SWITCHER's mechanism (it writes the org cookie, clears the place cookie and
+// honours `?to=`) and it is the address Stripe stored. Organization is a
+// named segment beneath it rather than taking that spot, because a page cannot
+// set a cookie on the way through.
 
-export const ORG_PAGES = ["payments", "members", "places"] as const;
+export const ORG_PAGES = [
+  "organization",
+  "payments",
+  "credits",
+  "activity",
+  "members",
+  "places",
+] as const;
 export type OrgPage = (typeof ORG_PAGES)[number];
 
 export const ORG_PAGE_LABEL: Record<OrgPage, string> = {
+  organization: "Organization",
   payments: "Payments",
+  credits: "Credits",
+  activity: "Activity",
   members: "Members",
   places: "Places",
 };
+
+/** The four the rail lists, in the drawing's order. Members and Places are
+ *  addresses without rows — the Organization page is their door. */
+export const ORG_RAIL_PAGES = [
+  "organization",
+  "payments",
+  "credits",
+  "activity",
+] as const;
+export type OrgRailPage = (typeof ORG_RAIL_PAGES)[number];
 
 const ORGS = "/orgs";
 
@@ -138,8 +141,9 @@ export function orgHref(orgId: string, page: OrgPage = "payments"): string {
   return `${ORGS}/${encodeURIComponent(orgId)}/${page}`;
 }
 
-/** The bare organization address. A forwarder, not a page — Stripe minted
- *  Account Link return_urls against it, so it has to keep resolving. */
+/** The bare organization address. A forwarder, not a page — it is the
+ *  switcher's mechanism, and Stripe minted Account Link return_urls against
+ *  it, so it has to keep resolving. */
 export function orgRootHref(orgId: string): string {
   return `${ORGS}/${encodeURIComponent(orgId)}`;
 }
@@ -185,6 +189,59 @@ export function orgPageFromPathname(pathname: string): OrgPage | null {
   return (ORG_PAGES as readonly string[]).includes(second)
     ? (second as OrgPage)
     : null;
+}
+
+// ── The flat addresses ────────────────────────────────────────────────────
+
+/** The flat, scope-free addresses. Each 307s onto the canonical address for
+ *  the remembered place or organization; with nothing remembered, each renders
+ *  the one next step. They are what a bookmark, a typed URL and a Stripe
+ *  return link land on — the rail never links to them. */
+export const FLAT_ROUTES = {
+  // The place's five
+  profile: "/profile",
+  reviews: "/reviews",
+  capabilities: "/capabilities",
+  rewards: "/rewards",
+  admin: "/admin",
+  // The organization's
+  organization: "/organization",
+  payments: "/payments",
+  credits: "/credits",
+  activity: "/activity",
+  members: "/members",
+} as const;
+
+export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];
+
+export const FLAT_ROUTE_LIST: readonly string[] = Object.values(FLAT_ROUTES);
+
+export function isFlatRoute(pathname: string): boolean {
+  return FLAT_ROUTE_LIST.includes(pathname.replace(/\/$/, ""));
+}
+
+/** Which place view a FLAT pathname is, or null.
+ *
+ *  A rail row lights for these as well as for the canonical address: an
+ *  operator who typed `/reviews` is on Reviews while the forward is in
+ *  flight, and a row that goes dark for that instant reads as a glitch. */
+export function flatViewFromPathname(
+  pathname: string,
+): "profile" | "reviews" | "capabilities" | "rewards" | "admin" | null {
+  const seg = pathname.replace(/\/$/, "");
+  const views = ["profile", "reviews", "capabilities", "rewards", "admin"] as const;
+  for (const v of views) if (seg === `/${v}`) return v;
+  return null;
+}
+
+/** Which ORGANIZATION page a flat pathname is, or null — the same courtesy
+ *  for the four rows above the Place group. */
+export function flatOrgPageFromPathname(pathname: string): OrgPage | null {
+  const seg = pathname.replace(/\/$/, "");
+  for (const page of ORG_PAGES) {
+    if (seg === `/${page}`) return page;
+  }
+  return null;
 }
 
 // ── The list's two filters (MESITA-1710) ──────────────────────────────────

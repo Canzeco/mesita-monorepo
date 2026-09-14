@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  LADDER_ZONES,
+  ZONE_ROWS,
   guestSummary,
   offeringRows,
   paintRows,
+  rowsForZone,
   topPrerequisite,
   type LadderInput,
 } from "./offerings";
@@ -186,5 +189,58 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
     expect(row.disagreement?.fix).toBe("organization");
     expect(row.disagreement?.fixLabel).toBe("Organization");
     expect(row.disagreement?.fixLabel).not.toContain("Join");
+  });
+});
+
+
+// MESITA-1841. Capabilities and Rewards are two DISPLAYS of this one ladder.
+// The engine stayed whole on purpose — the rungs depend on each other, and two
+// copies of a dependency ladder is two copies that can disagree — so the only
+// way the split can fail is a row that belongs to neither zone. Such a row
+// renders nowhere, on no page, while every source-reading test stays green.
+// That is the orphaned-view class MESITA-1804 named, and this is its guard.
+describe("the ladder's two zones (MESITA-1841)", () => {
+  const guestRows = () =>
+    paintRows(offeringRows({ ...BASE, connect: { kind: "ready" } }));
+
+  it("every guest row belongs to exactly one zone", () => {
+    for (const row of guestRows()) {
+      const zones = LADDER_ZONES.filter((z) => ZONE_ROWS[z].includes(row.key));
+      expect(zones, `${row.key} is in ${zones.length} zones`).toHaveLength(1);
+    }
+  });
+
+  it("the two zones partition the painted ladder — nothing lost, nothing doubled", () => {
+    const all = guestRows();
+    const split = LADDER_ZONES.flatMap((z) => rowsForZone(all, z));
+    expect(split.map((r) => r.key).sort()).toEqual(all.map((r) => r.key).sort());
+  });
+
+  it("Partnership and Stripe belong to NO zone — they are prerequisites, not switches", () => {
+    for (const z of LADDER_ZONES) {
+      expect(ZONE_ROWS[z]).not.toContain("partnership");
+      expect(ZONE_ROWS[z]).not.toContain("stripe");
+    }
+  });
+
+  it("Rewards is what a guest EARNS; Capabilities is what a guest can DO", () => {
+    expect(ZONE_ROWS.rewards).toEqual(["visit_rewards"]);
+    expect(ZONE_ROWS.capabilities).toContain("mesita_pay");
+    expect(ZONE_ROWS.capabilities).toContain("reservations");
+    expect(ZONE_ROWS.capabilities).not.toContain("visit_rewards");
+  });
+
+  it("each zone's summary describes its own rows, never the other's", () => {
+    // `guestSummary` is fed the ZONE's rows, so Capabilities never claims
+    // guests can earn rewards and Rewards never claims they can book a table.
+    const on: LadderInput = {
+      ...BASE,
+      visitRewardsLevel: 1,
+      rails: { ...BASE.rails, mesita_pay: true },
+      connect: { kind: "ready" },
+    };
+    const all = offeringRows(on);
+    expect(guestSummary(rowsForZone(all, "capabilities"))).not.toMatch(/visit rewards/i);
+    expect(guestSummary(rowsForZone(all, "rewards"))).not.toMatch(/pay by card/i);
   });
 });

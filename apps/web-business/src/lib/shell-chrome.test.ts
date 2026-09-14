@@ -186,14 +186,27 @@ describe("the unsaved-edits guard reaches the rail", () => {
 // PAGE's (ScopeSwitchers.tsx). The one rule that has outlived every
 // redesign: nothing indents. Pato rejected a tree twice (1714, 1715), boxes
 // once (1815), and switchers-as-rows twice (1818, 1822).
-describe("the rail is seven rows", () => {
+describe("the rail is two groups of rows", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
-  it("indents NOTHING, and draws no tree line, bullet, box, eyebrow or seam", () => {
+  // THE FLAT LAW IS NARROWED, NOT DELETED (MESITA-1841).
+  //
+  // "Indent nothing" was the right rule for six peer pages: an indent among
+  // equals is decoration, and decoration in a nav is noise. The rail has two
+  // SUBJECTS now — the organization and the place — so one indent is the
+  // cheapest way to say which row is about which, and it is saying something
+  // true that the labels cannot ("Payments" and "Profile" look like siblings
+  // and are not).
+  //
+  // What the law still forbids is everything that was only ever decoration:
+  // a tree line, a bullet, a box, a well, a second eyebrow, a `role="group"`.
+  // And it forbids a SECOND indent — the moment a rail has two depths of
+  // nesting it is a file tree, which is what the original rule was protecting
+  // against.
+  it("indents with ONE constant, once, and draws no tree line, bullet, box or well", () => {
     const r = rail();
     expect(r).not.toContain("paddingLeft");
     expect(r).not.toMatch(/^\s*inset$/m);
-    expect(r).not.toContain("inset?:");
     expect(r).not.toContain("pl-8");
     expect(r).not.toContain("pl-6");
     expect(r).not.toMatch(/border-l-\d/);
@@ -202,6 +215,28 @@ describe("the rail is seven rows", () => {
     expect(r).not.toContain("<Seam");
     expect(r).not.toContain("WELL_BG");
     expect(r).not.toContain('role="group"');
+    // ONE indent constant, declared once and spent once. A second literal
+    // `pl-` in this file is a second depth arriving by hand.
+    expect(r).toContain('const RAIL_INDENT = "pl-4";');
+    expect((r.match(/\bpl-\d/g) ?? []).length).toBe(1);
+    expect((r.match(/RAIL_INDENT/g) ?? []).length).toBe(2);
+    // …and it never applies at w-16, where every mark is centred.
+    expect(r).toContain('collapsed ? "justify-center px-0 py-2" : indent && RAIL_INDENT');
+  });
+
+  it("the group is ONE header, and the header names the place rather than repeating the word", () => {
+    const r = rail();
+    // The header is a label, not a link and not a trigger: Profile is one row
+    // below it, and the switchers are Account's (MESITA-1822).
+    const header = r.slice(r.indexOf("function GroupHeader"), r.indexOf("export function Sidebar"));
+    expect(header).not.toContain("<Link");
+    expect(header).not.toContain("<button");
+    expect(header).not.toContain("onClick");
+    expect(header).toContain('role="presentation"');
+    // Exactly one header is rendered.
+    expect((r.match(/<GroupHeader/g) ?? []).length).toBe(1);
+    // It prints the place's NAME, falling back to the bare noun.
+    expect(r).toContain('"Place";');
   });
 
   it("holds no switcher, no Plus, no chip, no menu — those are the organization page's", () => {
@@ -223,32 +258,52 @@ describe("the rail is seven rows", () => {
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
-  it("is Account · Profile · Reviews · Payments · Activity · Settings (· Admin), from the route contract and the ONE matrix (MESITA-1832)", () => {
+  it("is the organization's four, the place's five, then Account — from the route contract and the ONE matrix (MESITA-1841)", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
+    // Account is INSIDE the landmark: a link parked outside <nav> for visual
+    // reasons is a link a screen reader's landmark list loses.
     expect(nav).toContain("href={SHELL_ROUTES.account}");
-    expect(nav).toContain("rows.map((row)");
-    const table = r.slice(r.indexOf("const all: Row[] = ["), r.indexOf("const rows = all.filter"));
-    const at = (needle: string) => table.indexOf(needle);
-    expect(at('viewRow("profile")')).toBeGreaterThan(-1);
-    expect(at('viewRow("profile")')).toBeLessThan(at('viewRow("reviews")'));
-    expect(at('viewRow("reviews")')).toBeLessThan(at("paymentsHref"));
-    expect(at("paymentsHref")).toBeLessThan(at('viewRow("activity")'));
-    expect(at('viewRow("activity")')).toBeLessThan(at('viewRow("settings")'));
-    expect(table).toContain('viewRow("admin")');
-    expect(table).toContain("if (isSuperAdmin)");
+    // Both groups come from a declared list, never from rows written by hand —
+    // that is what keeps the rail and the route contract in step.
+    expect(nav).toContain("ORG_RAIL_PAGES.map((page)");
+    expect(nav).toContain("placeRows.map((tab)");
+    // The organization's four come BEFORE the place's five, and the header
+    // sits between them.
+    const iOrg = nav.indexOf("ORG_RAIL_PAGES.map");
+    const iHeader = nav.indexOf("<GroupHeader");
+    const iPlace = nav.indexOf("placeRows.map");
+    expect(iOrg).toBeLessThan(iHeader);
+    expect(iHeader).toBeLessThan(iPlace);
+    expect(nav.indexOf("href={SHELL_ROUTES.account}")).toBeGreaterThan(iPlace);
+    // The place's five, in the drawing's order.
+    expect(r).toContain('["profile", "reviews", "capabilities", "rewards", "admin"] as const');
+    expect(r).toContain('tab === "admin" ? isSuperAdmin : true');
     // A ROW IS THE CANONICAL ADDRESS (MESITA-1839): the shell has already
     // resolved which place and which organization, so the row links straight
     // there and the click costs one hop. The flat address is the fallback for
     // the state with nothing to name yet.
     expect(r).toContain("placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab]");
-    expect(r).toContain('org ? orgHref(org.id, "payments") : FLAT_ROUTES.payments');
-    // Both readers, because either address may be on screen.
+    expect(r).toContain("org ? orgHref(org.id, page) : FLAT_ROUTES[page]");
+    // Both readers, on both scopes, because either address may be on screen.
     expect(r).toContain("placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname)");
+    expect(r).toContain("orgPageFromPathname(pathname) ?? flatOrgPageFromPathname(pathname)");
     expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
     expect(r).not.toContain("?org=");
     expect(r).not.toContain("window.location");
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
+  });
+
+  // MESITA-1841. `/orgs/new` is the one address two `active` expressions could
+  // both claim — Account owned the organization's ceremonies until now, and
+  // Organization owns them from here. Two pills is the failure every rail test
+  // in this repo counts, and it arrives exactly this way: one row keeping a
+  // clause after another row took the subject.
+  it("Account lights for Account alone — the organization's doors light Organization", () => {
+    const r = rail();
+    expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
+    expect(r).toMatch(/orgPage === "members"/);
+    expect(r).toMatch(/orgPage === "places"/);
   });
 
   // MESITA-1833: they are no longer DIMMED. Every one is a live link that
@@ -310,7 +365,9 @@ describe("the rail is seven rows", () => {
     const r = rail();
     const footer = r.slice(r.indexOf("</nav>"));
     expect(footer).toContain("onToggleCollapse");
+    // No navigation below the landmark — Account moved INSIDE it (MESITA-1841).
     expect(footer).not.toContain("<NavRow");
+    expect(footer).not.toContain("<Link");
   });
 
   it("focus travels on the brand's ring, not the browser's", () => {
@@ -367,10 +424,18 @@ describe("the rail is seven rows", () => {
       }
     }
     expect([...union].sort()).toEqual([...PLACE_TABS].sort());
+    // A viewer gets the READ surfaces. Capabilities and Rewards both write, so
+    // the matrix withholds both (MESITA-1841) — and the viewer lost no third
+    // screen: Activity is the organization's page now, open to every member.
     expect(tabsForAccess({ held: true, role: "viewer", isSuperAdmin: false })).toEqual([
       "profile",
       "reviews",
-      "activity",
+    ]);
+    expect(tabsForAccess({ held: true, role: "editor", isSuperAdmin: false })).toEqual([
+      "profile",
+      "reviews",
+      "capabilities",
+      "rewards",
     ]);
     expect(tabsForAccess({ held: false, role: null, isSuperAdmin: true })).toEqual([
       "profile",
@@ -444,13 +509,40 @@ describe("every place view has its own loading boundary", () => {
   });
 });
 
-describe("Settings first paint is a row list, not a meter (MESITA-1739)", () => {
+describe("Capabilities first paint is a row list, not a meter (MESITA-1739)", () => {
   it("the loading skeleton is rows, not Profile's photo band", () => {
-    const s = read("app/(shell)/places/[id]/settings/loading.tsx");
+    const s = read("app/(shell)/places/[id]/capabilities/loading.tsx");
     expect(s).not.toContain("h-[420px]");
     expect(s).not.toContain("PlaceViewSkeleton");
-    expect(s).toContain("Loading settings");
-    expect(s).toContain("length: 7");
+    expect(s).toContain("Loading capabilities");
+    expect(s).toContain("length: 6");
+  });
+
+  // MESITA-1841: Rewards came out of this page and took the strategy cards
+  // with it, so its skeleton is a different SHAPE — one row, then the cards.
+  // A copied skeleton showing six rows would be a promise the page breaks.
+  it("Rewards has a skeleton of its own, and it is not Capabilities'", () => {
+    const s = read("app/(shell)/places/[id]/rewards/loading.tsx");
+    expect(s).toContain("Loading rewards");
+    expect(s).not.toContain("length: 6");
+    expect(s).toContain("length: 3");
+  });
+
+  // ONE ENGINE, TWO VIEWS (MESITA-1841). The ladder's rungs depend on one
+  // another, so the computation is never split — only the display is. Two
+  // copies of a dependency ladder is two copies that can disagree.
+  it("the two views are one component, selected by zone", () => {
+    const cap = readCode("app/(shell)/places/[id]/capabilities/CapabilitiesTab.tsx");
+    const rew = readCode("app/(shell)/places/[id]/rewards/RewardsTab.tsx");
+    expect(cap).toContain('zone="capabilities"');
+    expect(rew).toContain('zone="rewards"');
+    for (const t of [cap, rew]) expect(t).toContain("<PromosSection");
+    // The mapping is declared once and is TOTAL over the guest rows — a row
+    // in neither zone would render nowhere while every source test stayed
+    // green (the orphaned-view class, MESITA-1804).
+    const off = readCode("components/place-manage/sections/controls/offerings.ts");
+    expect(off).toContain("export const ZONE_ROWS");
+    expect(off).toContain("export function rowsForZone");
   });
 
   it("the page does not open on a 0-of-7 meter", () => {
@@ -615,7 +707,7 @@ describe("the container stays uncapped", () => {
 
 describe("tab hrefs", () => {
   it("carry no organization: the place id names its holder (MESITA-1807)", () => {
-    expect(placeTabHref("p-1", "settings")).toBe("/places/p-1/settings");
+    expect(placeTabHref("p-1", "capabilities")).toBe("/places/p-1/capabilities");
     expect(placeTabHref("p-1", "reviews")).toBe("/places/p-1/reviews");
   });
   it("agree with placeHref, which is Profile's address", () => {

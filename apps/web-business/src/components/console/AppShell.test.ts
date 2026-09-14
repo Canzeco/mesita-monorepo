@@ -135,6 +135,8 @@ describe("the rail is light, and every text token is a measured pair", () => {
       /^href=\{landingHref\}$/, // where / would land, resolved by AppShell
       /^href=\{href\}$/, // NavRow prop pass-through: built by the caller
       /^href=\{row\.href\}$/, // the six rows: a table of SHELL_ROUTES / viewHref entries (MESITA-1832)
+      /^href=\{viewRow\(/, // a place view, canonical or its flat resolver (MESITA-1841)
+      /^href=\{orgRow\(/, // an organization page, canonical or its flat resolver
     ];
     const links = [
       ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),
