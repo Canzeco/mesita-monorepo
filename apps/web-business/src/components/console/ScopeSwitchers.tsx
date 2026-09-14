@@ -259,11 +259,11 @@ export function ScopeSwitchers() {
         : "This organization holds none";
 
   return (
-    // ONE COLUMN, at every width (MESITA-1834). Organization above Place:
-    // the organization is what the place hangs off, so the stack reads in
-    // the order the scope resolves. The page caps the measure
-    // (ACCOUNT_COLUMN_CLASS) — a stacked row in an uncapped console is a
-    // 1700px ribbon, which is the defect this replaced, widened.
+    // ONE COLUMN, at every width, FULL WIDTH (MESITA-1834, MESITA-1836).
+    // Organization above Place: the organization is what the place hangs off,
+    // so the stack reads in the order the scope resolves. No grid at any
+    // breakpoint, and nothing caps the measure — the page is a fragment in
+    // the shell's fluid column like every other console page.
     <div className="flex flex-col gap-3">
       <Switcher
         eyebrow="Organization"
