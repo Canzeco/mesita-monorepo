@@ -17,9 +17,11 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/orgs/new", names)).toEqual(["Create organization"]);
   });
 
-  it("each organization page is the organization, then the page (MESITA-1842)", () => {
+  it("each organization page is the organization, then the page", () => {
     // Members has no crumb because it has no address (MESITA-1847): the
-    // people are content ON the Organization page, not a page under it.
+    // people are content ON Settings, not a page under it. Every address that
+    // IS a page gets both crumbs — there is no bare-name target left to
+    // special-case since MESITA-1848.
     expect(crumbsFor(orgHref("o", "payments"), names)).toEqual([
       "Strana Group",
       "Payments",
@@ -28,10 +30,11 @@ describe("crumbsFor", () => {
       "Strana Group",
       "Places",
     ]);
-    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group"]);
+    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group", "Settings"]);
     // …and with no name resolved yet, the noun rather than an empty trail.
     expect(crumbsFor(orgHref("o"), { orgName: null, placeName: null })).toEqual([
       "Organization",
+      "Settings",
     ]);
   });
 

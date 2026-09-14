@@ -33,32 +33,31 @@
 //                              switcher. The one page with no scope.
 //   /orgs/new                  Create organization — the ceremony
 //
-//   /orgs/<id>                 NOT a page (MESITA-1846): a 307 onto
-//                              `/organization`, and the one address that
-//                              catches Stripe's stored `?connect=` and hands
-//                              the whole query to Payments.
-//   /orgs/<id>/organization   THE ORGANIZATION itself — which one you are in,
-//                              its people, and the places it holds, all on
-//                              the page rather than behind doors
+//   /orgs/<id>                 NOT a page: a 307 onto `/settings`, and the one
+//                              address that catches Stripe's stored
+//                              `?connect=` and hands the query to Payments.
+//   /orgs/<id>/settings       THE ORGANIZATION itself — its name, its people,
+//                              and the places it holds, on the page
+//            /places           the whole catalogue: the states matrix, the
+//                              ?owned= filters, Claim and Release
 //            /customers        who keeps coming back (Soon)
 //            /payments         Stripe · Partner · Prepaid Credits
 //            /activity         the organization's numbers, by place
-//            /places           the whole catalogue: the states matrix, the
-//                              ?owned= filters, Claim and Release
 //            /places/new       Add place
 //            /switch?to=       NOT a page: the org switcher's mechanism —
 //                              writes the org cookie, clears the place cookie,
 //                              forwards. A page cannot set a cookie on the way
 //                              through, which is the only reason it exists.
 //
-//   /places/<id>/profile       THE PLACE, five views
+//   /places/<id>/profile       THE PLACE, six views
+//              /menus
 //              /reviews
 //              /capabilities   what a guest CAN do here
 //              /rewards        what a guest EARNS here
 //              /admin          super-admin only
 //
-//   /profile /reviews /capabilities /rewards /admin
-//   /organization /customers /payments /activity
+//   /profile /menus /reviews /capabilities /rewards /admin
+//   /customers /payments /activity
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -67,11 +66,13 @@
 //                              Next resolves static segments first, so every
 //                              real route still wins and an unknown name 404s.
 //
-// `/orgs/<id>/organization` CAME BACK (MESITA-1846). MESITA-1842 deleted it
-// for saying the noun twice, which is a real smell — and the thing that beats
-// it is that the rail draws FIVE organization rows as siblings. Four named
-// addresses and one raw uuid reads, in the address bar, as four pages and one
-// container. Pato wrote the routing out himself with the segment in it.
+// `/orgs/<id>/organization` IS `/orgs/<id>/settings` (MESITA-1848). The
+// segment existed (MESITA-1846) so that every organization row would be a
+// named address rather than one raw uuid among four names — that reasoning
+// stands and this keeps it. What changed is the NAME: the rail's group is
+// headed "Organization" by its own selector now, so a page under it repeating
+// that noun said the word twice in one column. Pato's list calls the page
+// Settings.
 //
 // `/orgs/<id>/credits` IS GONE TOO (MESITA-1845), and this one MERGED rather
 // than moved: Payments has a rail row again, and Prepaid Credits is the
@@ -101,12 +102,11 @@ export const SHELL_ROUTES = {
 
 // ── The organization ──────────────────────────────────────────────────────
 //
-// The organization ITSELF is `/orgs/<id>` — named `"organization"` in this
-// contract so one vocabulary covers the bare address and the segments beneath
-// it. Customers, Payments, Activity and Places are the rail's other four
-// rows, and since MESITA-1847 there is nothing else: every organization
-// address is a rail row, because the one that was not — Members — is now
-// CONTENT on the Organization page rather than a door out of it.
+// The organization's pages, in the order the rail lists them under the
+// ORGANIZATION SELECTOR (MESITA-1848). ORG_PAGES, ORG_TARGETS and
+// ORG_RAIL_TARGETS are now ONE list: every organization address is a rail row
+// and every rail row is a real address, so the two cannot drift. Members is
+// not among them — it is CONTENT on Settings (MESITA-1847), not a door.
 
 /** The segments BENEATH `/orgs/<id>`.
  *
@@ -116,23 +116,27 @@ export const SHELL_ROUTES = {
  *  strip is back where it came from, so the segment forwards instead of
  *  resolving — TEMPORARILY, because this answer has now moved twice. */
 export const ORG_PAGES = [
+  "settings",
+  "places",
   "customers",
   "payments",
   "activity",
-  "places",
 ] as const;
 export type OrgPage = (typeof ORG_PAGES)[number];
 
-/** Everything the organization addresses, the bare page included. */
-export const ORG_TARGETS = ["organization", ...ORG_PAGES] as const;
+/** Everything the organization addresses. There is no bare-name target any
+ *  more (MESITA-1848): the group is HEADED "Organization" by its selector, so
+ *  a page repeating that noun was the redundancy this pass has been deleting.
+ *  Its page is `settings`. */
+export const ORG_TARGETS = ORG_PAGES;
 export type OrgTarget = (typeof ORG_TARGETS)[number];
 
 export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
-  organization: "Organization",
+  settings: "Settings",
+  places: "Places",
   customers: "Customers",
   payments: "Payments",
   activity: "Activity",
-  places: "Places",
 };
 
 /** The FIVE the rail lists, in the drawing's order (MESITA-1845).
@@ -148,13 +152,7 @@ export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
  *  which is the page it was split out of. See ORG_PAGES.
  *
  *  PLACES stays the row the place's five views sit under. */
-export const ORG_RAIL_TARGETS = [
-  "organization",
-  "customers",
-  "payments",
-  "activity",
-  "places",
-] as const;
+export const ORG_RAIL_TARGETS = ORG_PAGES;
 export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
 
 // THERE ARE NO DOORS LEFT (MESITA-1847). `members` was the last organization
@@ -170,7 +168,7 @@ const ORGS = "/orgs";
  *  Organization included — the rail draws its five as siblings, so their
  *  addresses look alike. The bare `${ORGS}/<id>` is a forwarder onto the
  *  default, and the one thing that catches Stripe's stored `?connect=`. */
-export function orgHref(orgId: string, target: OrgTarget = "organization"): string {
+export function orgHref(orgId: string, target: OrgTarget = "settings"): string {
   return `${ORGS}/${encodeURIComponent(orgId)}/${target}`;
 }
 
@@ -216,11 +214,6 @@ export function orgIdFromPathname(pathname: string): string | null {
 
 /** Which organization address a pathname is, or null when it is not one.
  *
- *  The BARE `/orgs/<id>` answers `"organization"` even though the page moved
- *  to `/orgs/<id>/organization` (MESITA-1846): it is a 307 in flight, and a
- *  rail row that goes dark for that instant reads as a glitch. The same
- *  courtesy every flat resolver already gets.
- *
  *  The Add place ceremony (`/orgs/<id>/places/new`) reads as Places: it is the
  *  list's own sub-step. `/switch` is never an address the rail lights — it is
  *  a redirect that exists for a few milliseconds. */
@@ -230,13 +223,13 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
   );
   if (!match || match[1] === "new") return null;
   const [, , second, third] = match;
-  if (!second) return "organization";
+  // The bare `/orgs/<id>` is a 307 onto Settings; it answers "settings" so
+  // the row does not go dark for the instant the forward is in flight, which
+  // reads as a glitch — the courtesy every flat resolver already gets.
+  if (!second) return "settings";
   if (second === "switch") return null;
   if (second === "places") return third === undefined || third === "new" ? "places" : null;
   if (third !== undefined) return null;
-  // ORG_TARGETS, not ORG_PAGES: `organization` is a segment of its own since
-  // MESITA-1846, and reading only the pages would leave the rail's first row
-  // dark on the very address it links to.
   return (ORG_TARGETS as readonly string[]).includes(second)
     ? (second as OrgTarget)
     : null;
@@ -251,14 +244,18 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
  *  resolve — and a name in the contract that cannot resolve is worse than no
  *  name at all. The organization's list is reached from its page. */
 export const FLAT_ROUTES = {
-  // The place's five
+  // The place's six
   profile: "/profile",
+  menus: "/menus",
   reviews: "/reviews",
   capabilities: "/capabilities",
   rewards: "/rewards",
   admin: "/admin",
-  // The organization's four
-  organization: "/organization",
+  // The organization's three. `settings` has NO flat twin: `/settings` is
+  // claimed by a permanent legacy redirect onto `/capabilities`, and a
+  // contract name a config rule shadows is the MESITA-1839 trap exactly —
+  // live in the vocabulary, dead on arrival. `places` has none either: it is
+  // the place segment's own root (see below).
   customers: "/customers",
   payments: "/payments",
   activity: "/activity",
@@ -279,9 +276,16 @@ export function isFlatRoute(pathname: string): boolean {
  *  flight, and a row that goes dark for that instant reads as a glitch. */
 export function flatViewFromPathname(
   pathname: string,
-): "profile" | "reviews" | "capabilities" | "rewards" | "admin" | null {
+): "profile" | "menus" | "reviews" | "capabilities" | "rewards" | "admin" | null {
   const seg = pathname.replace(/\/$/, "");
-  const views = ["profile", "reviews", "capabilities", "rewards", "admin"] as const;
+  const views = [
+    "profile",
+    "menus",
+    "reviews",
+    "capabilities",
+    "rewards",
+    "admin",
+  ] as const;
   for (const v of views) if (seg === `/${v}`) return v;
   return null;
 }
@@ -291,7 +295,11 @@ export function flatViewFromPathname(
 export function flatOrgTargetFromPathname(pathname: string): OrgTarget | null {
   const seg = pathname.replace(/\/$/, "");
   for (const target of ORG_TARGETS) {
-    if (seg === `/${target}` && seg !== "/places") return target;
+    // `settings` and `places` have no flat twin — the first is claimed by a
+    // permanent legacy redirect onto `/capabilities`, the second is the place
+    // segment's own root. A name in FLAT_ROUTES is the only one that resolves.
+    if (!(target in FLAT_ROUTES)) continue;
+    if (seg === `/${target}`) return target;
   }
   return null;
 }
