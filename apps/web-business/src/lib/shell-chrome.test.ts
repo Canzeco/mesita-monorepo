@@ -571,15 +571,32 @@ describe("the container stays uncapped", () => {
   // three nouns, and Account shows all three at one rank. The You box lives on
   // the page and the other two in a client component, so the shape is a shared
   // constant rather than a component — and both sides must read it.
-  it("Account's three boxes share one shape", () => {
+  it("Account is ONE card whose three rows share one shape (MESITA-1840)", () => {
     const page = read("app/(shell)/account/page.tsx");
-    expect(page).toContain("SCOPE_BOX_CLASS");
-    expect(read("components/console/ScopeSwitchers.tsx")).toContain("SCOPE_BOX_CLASS");
-    expect(read("lib/ui-classes.ts")).toContain("export const SCOPE_BOX_CLASS");
-    // The You box is a fact, not a switcher: no trigger, no chevron on it.
+    const ui = read("lib/ui-classes.ts");
+    // The card wraps; the rows share a shape. Both constants, so the three
+    // cannot drift into three ranks again — the failure "three big boxes"
+    // was invented to fix.
+    expect(ui).toContain("export const SCOPE_CARD_CLASS");
+    expect(ui).toContain("export const SCOPE_ROW_CLASS");
+    expect(page).toContain("SCOPE_CARD_CLASS");
+    expect(page).toContain("SCOPE_ROW_CLASS");
+    expect(read("components/console/ScopeSwitchers.tsx")).toContain("SCOPE_ROW_CLASS");
+    // The boxed era is over: no stack of bordered cards, no gap between them.
+    expect(ui).not.toContain("SCOPE_BOX_CLASS");
+    // `divide-y` draws only between DIRECT children, so the card must carry
+    // it and ScopeSwitchers must NOT wrap its two rows.
+    expect(ui).toContain("divide-y");
+    expect(read("components/console/ScopeSwitchers.tsx")).not.toContain('"flex flex-col gap-3"');
+    // The You row is a fact, not a switcher: no trigger, no chevron on it.
     expect(page).not.toContain("DropdownMenu");
-    // Three boxes means the skeleton draws three, at the same height.
-    expect((read("app/(shell)/account/loading.tsx").match(/h-24/g) ?? []).length).toBe(3);
+    // Three rows means the skeleton draws three, at the same height, inside
+    // one bordered card — a skeleton that draws the wrong shape IS the
+    // layout shift it exists to prevent.
+    const skeleton = read("app/(shell)/account/loading.tsx");
+    expect((skeleton.match(/h-24/g) ?? []).length).toBe(3);
+    expect(skeleton).toContain("divide-y");
+    expect(skeleton).not.toContain("gap-3");
   });
 
   it("the rail is a fixed column, never a capped one", () => {
