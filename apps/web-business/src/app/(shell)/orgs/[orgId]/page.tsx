@@ -1,5 +1,5 @@
 // Organization — THE ORGANIZATION itself: what it is, who is in it, what it
-// holds.
+// holds. At `/orgs/<id>`, the address that is simply its name.
 //
 // A page again, after two days as nothing. MESITA-1810 made it one page;
 // MESITA-1832 dissolved it into Account, splitting its money onto Payments,
@@ -7,6 +7,18 @@
 // merged what was left into a single card. Pato's 2026-09-14 drawing names it
 // row one of the rail, so it is an address again — and it is the door to the
 // two pages that have no rail row of their own.
+//
+// IT TOOK THE BARE ADDRESS IN MESITA-1842. It shipped one issue earlier at
+// `/orgs/<id>/organization`, which says the word twice, because the bare
+// address was a route handler: the org SWITCHER writes a cookie there, and a
+// Server Component cannot. That one job moved to `/orgs/<id>/switch`, leaving
+// the natural address for the page it was always about.
+//
+// STRIPE STILL LANDS HERE. An Account Link's return_url is minted against
+// `/orgs/<id>?connect=return` when the link is CREATED, so links minted months
+// ago arrive at this page and must reach the notice that reads `?connect=` —
+// which lives on Payments. A page can redirect even though it cannot set a
+// cookie, so the forward happens below with the query intact.
 //
 // IT IS NOT A SECOND ACCOUNT. Account answers "who am I, and which
 // organization and place am I in" — the person and the two switchers. This
@@ -27,7 +39,12 @@ import {
   type PaymentAccount,
 } from "@/lib/api/organizations";
 import { canAddPlace, findOrg } from "@/lib/active-organization";
-import { orgHref, orgPlacesHref, orgPlacesNewHref } from "@/lib/console-routes";
+import {
+  orgHref,
+  orgPlacesHref,
+  orgPlacesNewHref,
+  withQuery,
+} from "@/lib/console-routes";
 import {
   GHOST_PILL_BUTTON_CLASS,
   SCOPE_CARD_CLASS,
@@ -86,11 +103,18 @@ function DoorRow({
 
 export default async function OrganizationPage(props: {
   params: Promise<{ orgId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { orgId } = await props.params;
+  const [{ orgId }, sp] = await Promise.all([props.params, props.searchParams]);
+  // STRIPE'S STORED RETURN, before anything else: `?connect=` belongs to the
+  // notice on Payments, and forwarding the WHOLE query keeps every parameter
+  // Stripe may have added since the link was minted.
+  if (typeof sp.connect === "string") {
+    redirect(withQuery(orgHref(orgId, "payments"), sp));
+  }
   const user = await getServerUser();
   if (!user) {
-    redirect(`/signin?next=${encodeURIComponent(orgHref(orgId, "organization"))}`);
+    redirect(`/signin?next=${encodeURIComponent(orgHref(orgId))}`);
   }
   const supabase = await createServerSupabase();
   // The segment layout above already refused a foreign id; this read is for

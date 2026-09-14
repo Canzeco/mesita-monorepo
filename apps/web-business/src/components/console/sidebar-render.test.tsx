@@ -95,7 +95,6 @@ function render(pathname: string, over: Over = {}): string {
       isSuperAdmin={over.isSuperAdmin ?? false}
       viewerError={over.viewerError ?? false}
       accountLabel="pato@canzeco.com"
-      landingHref="/"
       collapsed={over.collapsed ?? false}
       onToggleCollapse={() => {}}
     />,
@@ -116,9 +115,22 @@ const hrefs = (html: string) => (html.match(/href="([^"]*)"/g) ?? []).map((m) =>
 const pillText = (html: string) =>
   (html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "").replace(/<[^>]+>/g, "");
 const navOf = (html: string) => html.slice(html.indexOf("<nav"), html.indexOf("</nav>"));
-const rows = (html: string) => navOf(html).match(/<a [^>]*href="[^"]*"/g) ?? [];
+/** The footer — Account and Collapse — which sits BELOW the landmark since
+ *  MESITA-1842, pinned so the rail's empty space falls under it rather than
+ *  between its two items. */
+const footerOf = (html: string) => html.slice(html.indexOf("</nav>"));
+const rows = (html: string) => html.match(/<a [^>]*href="[^"]*"/g) ?? [];
+/** Every row label in the rail, nav then footer, in render order. */
 const labels = (html: string) =>
-  (navOf(html).match(/<span class="truncate">([^<]*)<\/span>/g) ?? []).map((m) => m.replace(/<[^>]+>/g, ""));
+  (html.match(/<span class="truncate">([^<]*)<\/span>/g) ?? [])
+    .map((m) => m.replace(/<[^>]+>/g, ""))
+    // `Collapse` is the rail's own control, not a destination.
+    .filter((l) => l !== "Collapse");
+/** The GROUP HEADERS, in order: each group's subject, by name. */
+const groups = (html: string) =>
+  (navOf(html).match(/tracking-\[0\.14em\][^"]*">([^<]*)</g) ?? []).map((m) =>
+    m.slice(m.indexOf(">") + 1, -1),
+  );
 
 describe("exactly one pill, on every route (MESITA-1832)", () => {
   const ROUTES: [string, string][] = [
@@ -193,6 +205,9 @@ describe("two levels: the organization's four, then the place's five (MESITA-184
     const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     expect(labels(html)).toEqual([...ORG_FOUR, ...PLACE_FIVE, "Account"]);
     expect(rows(html)).toHaveLength(9);
+    // NO WORDMARK (MESITA-1842). Pato: "no mesita logo, fuck it."
+    expect(html).not.toContain("<svg viewBox=\"0 0 293.03 100\"");
+    expect(html).not.toContain(">business<");
     const admin = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     expect(labels(admin)).toEqual([...ORG_FOUR, ...PLACE_FIVE, "Admin", "Account"]);
     expect(hrefs(admin)).toContain(view("admin"));
@@ -202,31 +217,41 @@ describe("two levels: the organization's four, then the place's five (MESITA-184
     // and the URL it lands on can be sent to someone. What MESITA-1832's law
     // protects is what the OPERATOR meets: words, no id, no switcher.
     expect(labels(html).some((l) => l.includes("p-1") || l.includes("org-a"))).toBe(false);
-    expect(html).not.toContain(">Strana Group<");
+    expect(groups(html).some((g) => g.includes("org-a"))).toBe(false);
+    // THE ORGANIZATION'S NAME IS A HEADER, NOT A ROW (MESITA-1842). MESITA-1832
+    // banned it from the rail entirely, when it could only have appeared AS a
+    // row and would have read as a seventh destination. As the group's header
+    // it is the subject the four rows beneath it are about — a label, nothing
+    // clickable, and nothing that can be mistaken for a place to go.
+    expect(labels(html)).not.toContain("Strana Group");
     expect(navOf(html)).not.toContain("<button");
     expect(html).not.toContain('role="group"');
     expect(html).not.toContain("Switch organization");
   });
 
-  // THE GROUP IS ONE HEADER AND ONE INDENT. MESITA-1832's flat law is
-  // narrowed here, not deleted: the five place rows sit under the place's
-  // NAME and nothing else marks the nesting — no tree line, no bullet, no
-  // box, no second eyebrow, and no seam except Account's.
-  it("the place's name heads the group, and only the place rows are indented", () => {
+  // BOTH GROUPS ARE HEADED, BY NAME, AND NOTHING INDENTS (MESITA-1842).
+  // MESITA-1841 headed the place group and left the organization's bare, so
+  // the rail's one label read as an orphan — and with an empty catalogue it
+  // rendered as the bare word PLACE, naming nothing. Two names is a sentence;
+  // one name is a stray tag.
+  it("each group is headed by its subject's NAME, and no row indents", () => {
     const html = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     const n = navOf(html);
-    expect(n).toContain("Strana Del Valle");
-    // Five indented rows: Profile, Reviews, Capabilities, Rewards, Admin.
-    expect((n.match(/pl-4/g) ?? []).length).toBe(5);
-    // ONE seam in the expanded rail, and it is Account's.
-    expect((n.match(/border-t/g) ?? []).length).toBe(1);
+    expect(groups(html)).toEqual(["Strana Group", "Strana Del Valle"]);
+    // The flat law is back in force as written: an inset under a header says
+    // a second time what the header says once.
+    expect(n).not.toContain("pl-4");
     expect(n).not.toContain("border-l");
     expect(n).not.toContain("list-disc");
+    // The nav carries NO seam — the one seam in the rail is the footer's.
+    expect(n).not.toContain("border-t");
+    expect((footerOf(html).match(/border-t/g) ?? []).length).toBe(1);
   });
 
-  it("with no place at all the header is the bare noun, never an empty line", () => {
+  it("a subject with no name yet falls back to its noun, never to an empty line", () => {
     const html = render(FLAT_ROUTES.profile, { rememberedOrgId: "org-b" });
-    expect(navOf(html)).toContain(">Place<");
+    // The organization HAS a name; the place does not exist yet.
+    expect(groups(html)).toEqual(["Org Test", "Place"]);
   });
 
   // MESITA-1838, extended by MESITA-1841 to the rows that did not exist then.
@@ -257,8 +282,9 @@ describe("two levels: the organization's four, then the place's five (MESITA-184
 
   it("the rows are the CANONICAL addresses — one hop, and shareable", () => {
     const html = render(view("profile"), { rememberedPlaceId: "p-1" });
-    expect(hrefs(html).slice(1, 10)).toEqual([
-      orgHref("org-a", "organization"),
+    // No wordmark above them any more, so the rows start at index 0.
+    expect(hrefs(html)).toEqual([
+      orgHref("org-a"),
       orgHref("org-a", "payments"),
       orgHref("org-a", "credits"),
       orgHref("org-a", "activity"),
@@ -278,8 +304,8 @@ describe("two levels: the organization's four, then the place's five (MESITA-184
       organizations: [{ id: "org-b", name: "Org Test", myRole: "owner", places: [] }],
       rememberedOrgId: "org-b",
     });
-    expect(hrefs(html).slice(1, 10)).toEqual([
-      orgHref("org-b", "organization"),
+    expect(hrefs(html)).toEqual([
+      orgHref("org-b"),
       orgHref("org-b", "payments"),
       orgHref("org-b", "credits"),
       orgHref("org-b", "activity"),
@@ -357,20 +383,21 @@ describe("the states a 10/10 has to answer", () => {
     expect(pillText(html)).toBe("Profile");
   });
 
-  it("collapsed: every label a title, one pill, and the group is a hairline", () => {
+  it("collapsed: every label a title, one pill, and the groups are a hairline", () => {
     const html = render(FLAT_ROUTES.capabilities, { collapsed: true, rememberedPlaceId: "p-1" });
     expect(rows(html)).toHaveLength(9);
     expect(html).toContain('title="Capabilities"');
     expect(html).toContain('title="Payments"');
     expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(pills(html)).toHaveLength(1);
-    // The place's NAME cannot fit at w-16, so the group is announced by a
-    // seam instead — and the indent is dropped, because a centred icon column
-    // with five of nine marks pushed right reads as broken, not as nested.
+    // A name cannot fit at w-16, so the SECOND group is announced by a seam
+    // instead — the first needs none, being the top of the column. One seam in
+    // the nav, one in the footer.
     const n = navOf(html);
-    expect((n.match(/border-t/g) ?? []).length).toBe(2);
-    expect(n).not.toContain("pl-4");
+    expect((n.match(/border-t/g) ?? []).length).toBe(1);
     expect(n).not.toContain("Strana Del Valle");
+    expect(n).not.toContain("Strana Group");
+    expect((footerOf(html).match(/border-t/g) ?? []).length).toBe(1);
   });
 });
 

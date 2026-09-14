@@ -5,7 +5,6 @@ import { crumbsFor } from "./ConsoleHeader";
 import {
   orgHref,
   orgPlacesNewHref,
-  orgRootHref,
   placeHref,
 } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
@@ -18,10 +17,11 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/orgs/new", names)).toEqual(["Create organization"]);
   });
 
-  it("each organization page is the organization, then the page (MESITA-1839)", () => {
-    // There is no bare Organization page any more: `/orgs/<id>` is a
-    // forwarder, so it has no crumb of its own. Each of its three pages names
-    // itself under the organization.
+  it("each organization page is the organization, then the page (MESITA-1842)", () => {
+    // `/orgs/<id>` IS the Organization page, so it is ONE crumb: its name. A
+    // second crumb reading "Organization" under it would restate the first —
+    // which is exactly what the `/organization` segment did in the address
+    // until MESITA-1842 removed it.
     expect(crumbsFor(orgHref("o", "payments"), names)).toEqual([
       "Strana Group",
       "Payments",
@@ -34,7 +34,11 @@ describe("crumbsFor", () => {
       "Strana Group",
       "Places",
     ]);
-    expect(crumbsFor(orgRootHref("o"), names)).toEqual([]);
+    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group"]);
+    // …and with no name resolved yet, the noun rather than an empty trail.
+    expect(crumbsFor(orgHref("o"), { orgName: null, placeName: null })).toEqual([
+      "Organization",
+    ]);
   });
 
   it("the add ceremony is Places / Add", () => {

@@ -30,10 +30,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   FLAT_ROUTES,
-  ORG_PAGE_LABEL,
+  ORG_TARGET_LABEL,
   SHELL_ROUTES,
   flatViewFromPathname,
-  orgPageFromPathname,
+  orgTargetFromPathname,
   placeIdFromPathname,
 } from "@/lib/console-routes";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
@@ -61,12 +61,14 @@ export function crumbsFor(
     trail.push(PLACE_TAB_LABEL[flat]);
     return trail;
   }
-  const page = orgPageFromPathname(pathname);
-  if (page) {
-    // The organization's own page is the organization: no second crumb
-    // restating it (MESITA-1810). Its list, and the add step under the list.
+  const target = orgTargetFromPathname(pathname);
+  if (target) {
+    // The organization's own page IS the organization: one crumb, its name.
+    // A second crumb reading "Organization" under it would restate the first
+    // (MESITA-1810), which is exactly what `/orgs/<id>/organization` did in
+    // the address until MESITA-1842 took that segment out.
     const trail = [names.orgName ?? "Organization"];
-    trail.push(ORG_PAGE_LABEL[page]);
+    if (target !== "organization") trail.push(ORG_TARGET_LABEL[target]);
     if (/\/places\/new\/?$/.test(pathname)) trail.push("Add");
     return trail;
   }

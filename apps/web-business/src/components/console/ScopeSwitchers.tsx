@@ -60,7 +60,7 @@ import {
   orgHref,
   orgPlacesHref,
   orgPlacesNewHref,
-  orgRootHref,
+  orgSwitchHref,
 } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { placeThumbUrl } from "@/lib/place-thumb";
@@ -251,10 +251,11 @@ export function ScopeSwitchers() {
     startTransition(() => router.push(href));
   };
   const pickOrg = (id: string) => {
-    // The BARE `/orgs/<id>` is the forwarder: it writes the org cookie, clears
-    // the place cookie and lands back on Account. `orgHref` names a page now
-    // (MESITA-1839), and a page would ignore `?to=`.
-    if (id !== org.id) go(`${orgRootHref(id)}?to=${SHELL_ROUTES.account}`, id);
+    // `/orgs/<id>/switch` is the forwarder: it writes the org cookie, clears
+    // the place cookie and lands back on Account. Every other organization
+    // address is a PAGE (MESITA-1842), and a page cannot set a cookie on the
+    // way through — which is the only reason that address exists.
+    if (id !== org.id) go(orgSwitchHref(id, SHELL_ROUTES.account), id);
   };
   const pickPlace = (id: string) => {
     if (id === place?.id) return;

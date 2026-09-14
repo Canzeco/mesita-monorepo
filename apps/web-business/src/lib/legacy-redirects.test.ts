@@ -164,17 +164,29 @@ describe("the legacy console's URLs all still resolve", () => {
 // MESITA-1807. The organization moved from `?org=` into the path.
 describe("the ?org= addresses forward into the path", () => {
   it("/organization?org=<id> is that organization's own page", async () => {
-    expect(resolve("/organization?org=org-9", await rules())).toBe(
-      "/orgs/org-9/organization",
-    );
+    expect(resolve("/organization?org=org-9", await rules())).toBe("/orgs/org-9");
   });
 
   it("a Stripe return link minted before the move keeps its query", async () => {
     // Stripe stored `/organization?org=<id>&connect=return` when the Account
-    // Link was minted. `org` becomes the segment; `connect` rides through.
+    // Link was minted. `org` becomes the segment; `connect` rides through to
+    // the Organization page, which hands it on to Payments where the notice
+    // that reads it lives.
     expect(
       resolve("/organization?org=org-9&connect=return", await rules()),
-    ).toBe("/orgs/org-9/organization?connect=return");
+    ).toBe("/orgs/org-9?connect=return");
+  });
+
+  // MESITA-1842. `/orgs/<id>/organization` shipped in MESITA-1841 and lived
+  // one issue: the segment said the word its parent already carries. It
+  // forwards onto the bare address, one hop, and nothing chains.
+  it("the doubled organization segment forwards onto the bare address", async () => {
+    const all = await rules();
+    expect(resolve("/orgs/org-9/organization", all)).toBe("/orgs/org-9");
+    expect(resolve("/orgs/org-9", all)).toBeNull();
+    expect(resolve("/orgs/org-9/payments", all)).toBeNull();
+    // The switcher's own address is live and must never be forwarded.
+    expect(resolve("/orgs/org-9/switch", all)).toBeNull();
   });
 
   // MESITA-1841. The bare rule is GONE, and its absence is the assertion:
