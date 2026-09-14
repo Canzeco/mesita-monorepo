@@ -93,9 +93,10 @@ export const SHELL_ROUTES = {
 //
 // The organization ITSELF is `/orgs/<id>` — named `"organization"` in this
 // contract so one vocabulary covers the bare address and the five segments
-// beneath it. Payments, Credits and Activity are the rail's other three rows;
-// Members and Places have addresses and no row, because the Organization page
-// is their door.
+// beneath it. Activity and Places are the rail's other two rows; Members,
+// Payments and Credits have addresses and no row (MESITA-1844), because the
+// Organization page is their door — and each lights the Organization row,
+// which is the row you would go back through.
 
 /** The segments BENEATH `/orgs/<id>`. */
 export const ORG_PAGES = [
@@ -120,14 +121,27 @@ export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
   places: "Places",
 };
 
-/** The four the rail lists, in the drawing's order. */
-export const ORG_RAIL_TARGETS = [
-  "organization",
-  "payments",
-  "credits",
-  "activity",
-] as const;
+/** The THREE the rail lists, in the drawing's order (MESITA-1844).
+ *
+ *  PAYMENTS AND CREDITS LEFT IT. Pato, 2026-09-14: *"payments inside org."*
+ *  They are pages an operator SETS UP — a Stripe account is connected once, a
+ *  credit balance is topped up now and then — and the rail is for what you
+ *  check. The Organization page is their door, exactly as it already was for
+ *  Members and Places, and both keep every address they had. What changed is
+ *  only which rows a glance down the column has to read past.
+ *
+ *  PLACES GAINED ONE. It is the bridge between the organization and the
+ *  storefronts, it is where an operator holding none meets Add place, and it
+ *  is the row the place's five views now sit under. */
+export const ORG_RAIL_TARGETS = ["organization", "activity", "places"] as const;
 export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
+
+/** The organization addresses with NO row of their own — each reached from
+ *  the Organization page, and each lighting ITS row while you are there. A
+ *  page in neither list is a page nothing in the rail can light, which is the
+ *  drift `sidebar-render.test.tsx` counts as a second pill or none. */
+export const ORG_DOOR_TARGETS = ["members", "payments", "credits"] as const;
+export type OrgDoorTarget = (typeof ORG_DOOR_TARGETS)[number];
 
 const ORGS = "/orgs";
 

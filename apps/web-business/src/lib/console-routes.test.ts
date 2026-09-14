@@ -11,6 +11,7 @@ import {
   FLAT_ROUTES,
   ORG_PAGES,
   ORG_TARGET_LABEL,
+  ORG_DOOR_TARGETS,
   ORG_RAIL_TARGETS,
   ORG_TARGETS,
   PLACES_OWNED,
@@ -237,16 +238,19 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "switch", "route.ts"))).toBe(true);
   });
 
-  it("the rail lists four of the six, in the drawing's order", () => {
-    // Members and Places have addresses and no row: the Organization page is
-    // their door (MESITA-1841). Every rail target is a real target.
-    expect(ORG_RAIL_TARGETS).toEqual([
-      "organization",
-      "payments",
-      "credits",
-      "activity",
-    ]);
+  it("the rail lists three of the six; the other three are doors (MESITA-1844)", () => {
+    // Members, Payments and Credits have addresses and no row: the
+    // Organization page is their door, and each lights ITS row. Every rail
+    // target is a real target, the two lists are disjoint, and together they
+    // are the whole vocabulary — a target in neither is an address nothing in
+    // the console can light or offer.
+    expect(ORG_RAIL_TARGETS).toEqual(["organization", "activity", "places"]);
+    expect(ORG_DOOR_TARGETS).toEqual(["members", "payments", "credits"]);
     for (const t of ORG_RAIL_TARGETS) expect(ORG_TARGETS).toContain(t);
+    for (const t of ORG_DOOR_TARGETS) expect(ORG_TARGETS).toContain(t);
+    expect([...ORG_RAIL_TARGETS, ...ORG_DOOR_TARGETS].sort()).toEqual(
+      [...ORG_TARGETS].sort(),
+    );
   });
 
   it("the organization is a PAGE, and so is every address under it (MESITA-1842)", () => {
