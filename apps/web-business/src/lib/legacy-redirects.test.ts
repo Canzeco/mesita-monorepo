@@ -255,9 +255,18 @@ describe("every redirect forwards somewhere this repo serves", () => {
   // accident. `/places/<id>/activity` forwards to a RESOLVER, and where a
   // place's numbers live has now moved once (MESITA-1841) — a 308 would cache
   // this answer in every browser forever.
-  const TEMPORARY = new Set(["/places/:id/activity"]);
+  // TEMPORARY where the ANSWER has moved and could move again — a 308 caches
+  // today's product decision in every browser that follows it, forever.
+  // Activity moved from the place to the organization (MESITA-1841); Credits
+  // moved out of Payments and back into it inside one day (MESITA-1841 →
+  // MESITA-1845).
+  const TEMPORARY = new Set([
+    "/places/:id/activity",
+    "/orgs/:orgId/credits",
+    "/credits",
+  ]);
 
-  it("permanent, except the one forward onto a resolver", async () => {
+  it("permanent, except the forwards onto an answer that has moved", async () => {
     for (const rule of await rules()) {
       expect(rule.permanent, rule.source).toBe(!TEMPORARY.has(rule.source));
     }

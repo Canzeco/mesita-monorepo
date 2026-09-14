@@ -190,7 +190,7 @@ describe("the unsaved-edits guard reaches the rail", () => {
 // PAGE's (ScopeSwitchers.tsx). The one rule that has outlived every
 // redesign: nothing indents. Pato rejected a tree twice (1714, 1715), boxes
 // once (1815), and switchers-as-rows twice (1818, 1822).
-describe("the rail is four nouns and one indent", () => {
+describe("the rail is six nouns and one indent", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
   // THE FLAT LAW, THIRD REVISION (MESITA-1844).
@@ -251,7 +251,7 @@ describe("the rail is four nouns and one indent", () => {
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
-  it("is Account, the organization's three, then the place's five — from the route contract and the ONE matrix (MESITA-1844)", () => {
+  it("is Account, the organization's five, then the place's five — from the route contract and the ONE matrix (MESITA-1845)", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
     // Both runs come from a declared list, never from rows written by hand —
@@ -264,12 +264,17 @@ describe("the rail is four nouns and one indent", () => {
     expect(iAccount).toBeLessThan(nav.indexOf("ORG_RAIL_TARGETS.map"));
     expect(nav.indexOf("ORG_RAIL_TARGETS.map")).toBeLessThan(nav.indexOf("placeRows.map"));
     // The contract carries the order, and Payments and Credits are not in it.
-    expect(readCode("lib/console-routes.ts")).toContain(
-      'export const ORG_RAIL_TARGETS = ["organization", "activity", "places"] as const;',
-    );
-    expect(readCode("lib/console-routes.ts")).toContain(
-      'export const ORG_DOOR_TARGETS = ["members", "payments", "credits"] as const;',
-    );
+    const routes = readCode("lib/console-routes.ts");
+    for (const target of ["organization", "customers", "payments", "activity", "places"]) {
+      expect(routes, target).toContain(`  "${target}",`);
+    }
+    expect(routes).toContain('export const ORG_DOOR_TARGETS = ["members"] as const;');
+    // CREDITS IS NOT AN ADDRESS (MESITA-1845): it merged into Payments, and
+    // both its spellings forward from next.config.ts. A name left in the
+    // contract would be a live address the redirect table shadows — the
+    // MESITA-1839 trap, which stayed green for a day in production.
+    expect(routes).not.toContain('credits: "/credits"');
+    expect(routes).not.toMatch(/^\s+"credits",$/m);
     // The place's five, in the drawing's order.
     expect(r).toContain('["profile", "reviews", "capabilities", "rewards", "admin"] as const');
     expect(r).toContain('tab === "admin" ? isSuperAdmin : true');
@@ -292,26 +297,58 @@ describe("the rail is four nouns and one indent", () => {
   // arrives exactly this way: one row keeping a clause after another row took
   // the subject. Account owned the organization's ceremonies until
   // MESITA-1841; Organization owns them, and now Payments and Credits too.
-  it("Account lights for Account alone — every roomless organization page lights Organization", () => {
+  it("Account lights for Account alone — Members, the one roomless page, lights Organization", () => {
     const r = rail();
     expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
     expect(r).toMatch(/orgTarget === "members"/);
-    expect(r).toMatch(/orgTarget === "payments"/);
-    expect(r).toMatch(/orgTarget === "credits"/);
-    // Places takes its own, and must NOT be swept into Organization's clause.
+    // Every other organization address has a row of its own now (MESITA-1845),
+    // and a row keeping a clause after another row took the subject is exactly
+    // how this rail grows a second pill.
     const orgClause = r.slice(r.indexOf("const orgRowActive"), r.indexOf("return ("));
-    expect(orgClause).not.toContain('orgTarget === "places"');
+    for (const taken of ["places", "payments", "customers", "activity"]) {
+      expect(orgClause, taken).not.toContain(`orgTarget === "${taken}"`);
+    }
   });
 
-  // The two pages that lost their rows keep their door, on the page that is
-  // their scope. A page nothing offers is a page that gets lost.
-  it("Payments and Credits are doors on the Organization page", () => {
+  // MEMBERS is the one organization page with no row, so the Organization
+  // page is the only thing that offers it. A page nothing offers gets lost.
+  it("the Organization page is Members' door, and carries no door to a row", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/page.tsx");
-    for (const target of ["members", "payments", "credits"]) {
-      expect(page, target).toContain(`orgHref(org.id, "${target}")`);
-    }
+    expect(page).toContain('orgHref(org.id, "members")');
     expect(page).toContain("orgPlacesHref(org.id)");
-    expect((page.match(/<DoorRow/g) ?? []).length).toBe(4);
+    // Payments and Credits had doors here for the one issue they had no row
+    // (MESITA-1844). Both are gone: two doors to one room is what the rail was
+    // cut down to avoid, and Credits has no address left at all.
+    expect(page).not.toContain('orgHref(org.id, "payments")');
+    expect(page).not.toContain("credits");
+    expect((page.match(/<DoorRow/g) ?? []).length).toBe(2);
+  });
+
+  // CUSTOMERS IS A LIVE ROW WITH A REAL PAGE (MESITA-1845). Pato's list says
+  // "(Soon)", and a Soon badge in a rail is a dimmed row — the thing
+  // MESITA-1833 forbids in his own words. The badge lives on the page.
+  it("Customers opens a real page, and the rail says nothing about Soon", () => {
+    const r = rail();
+    expect(r).not.toContain("Soon");
+    expect(r).not.toContain("disabled");
+    const page = readCode("app/(shell)/orgs/[orgId]/customers/page.tsx");
+    expect(page).toContain("SOON_STRIPS.customers");
+    expect(page).toContain("<h1");
+    // Every page has a loading boundary, or Next keeps the PREVIOUS screen
+    // painted and the rail reads as broken (MESITA-1729).
+    expect(
+      existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/customers/loading.tsx")),
+    ).toBe(true);
+  });
+
+  // The room Credits had for one issue is GONE, not orphaned: a route file
+  // nobody links to is a page that drifts out of sync with the one that
+  // replaced it.
+  it("the Credits page is deleted, and both spellings forward", async () => {
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/credits"))).toBe(false);
+    const config = readFileSync(path.join(SRC, "..", "next.config.ts"), "utf8");
+    expect(config).toContain('source: "/orgs/:orgId/credits"');
+    expect(config).toContain('{ source: "/credits", destination: "/payments", permanent: false }');
   });
 
   // MESITA-1833: they are no longer DIMMED. Every one is a live link that
