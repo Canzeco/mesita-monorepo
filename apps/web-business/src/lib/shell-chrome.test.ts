@@ -544,7 +544,7 @@ describe("the container stays uncapped", () => {
   it("Account caps its own column, and nothing above it", () => {
     const page = read("app/(shell)/account/page.tsx");
     expect(page).toContain("ACCOUNT_COLUMN_CLASS");
-    expect(read("lib/ui-classes.ts")).toContain('export const ACCOUNT_COLUMN_CLASS = "flex w-full max-w-xl flex-col gap-4"');
+    expect(read("lib/ui-classes.ts")).toContain('export const ACCOUNT_COLUMN_CLASS = "flex w-full max-w-2xl flex-col gap-4"');
     // The skeleton wears the same measure, or the swap shifts the layout.
     expect(read("app/(shell)/account/loading.tsx")).toContain("ACCOUNT_COLUMN_CLASS");
     // One column: the switchers may not reintroduce a grid.
