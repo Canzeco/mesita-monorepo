@@ -99,6 +99,25 @@ export const SHELL_BLEED = "-mx-4 sm:-mx-6 lg:-mx-8";
 // mistake — cap the form, not the card.
 export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
 
+// The measure for a page that is a COLUMN OF CONTROLS, not a form and not a
+// table: Account (MESITA-1834). Wider than a form column — these rows carry
+// an eyebrow, a name and a meta line, not a 13-character field — and still
+// capped, for the same reason the form column is.
+//
+// Pato, 2026-09-14: "better UI don't use two columns, just one." The two
+// switchers were `sm:grid-cols-2` in a fluid console, so each half ran to
+// ~800px: a three-line row stretched until its chevron sat a hand's width
+// from the name it belonged to, and Sign out sat ~1500px from the email it
+// signs out of. STACKING ALONE WOULD HAVE MADE THAT WORSE — one column of
+// 1700px ribbons instead of two of 800px — so the stack and the cap are one
+// fix, not two.
+//
+// This is not a crack in MESITA-1558. That law caps nothing and says so in
+// its own words, one comment up: readability is protected PER ELEMENT, not
+// by squeezing the console. `<main>`, the gutter wrapper and the rail stay
+// uncapped, and `shell-chrome.test.ts` still proves it.
+export const ACCOUNT_COLUMN_CLASS = "flex w-full max-w-xl flex-col gap-4";
+
 // ── The wide-record table (MESITA-1608) ────────────────────────────────────
 //
 // The identity column of a states matrix, pinned to the left edge while the

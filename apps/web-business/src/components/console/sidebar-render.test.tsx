@@ -271,6 +271,15 @@ describe("the switchers live on Account (MESITA-1832)", () => {
     expect(html).toContain(">Nothing to switch between yet<");
   });
 
+  // MESITA-1834: one column, at every width. Two columns in a fluid console
+  // stretched each three-line row to ~800px, chevron a hand's width from its
+  // name; the page caps the measure so stacking does not just widen it.
+  it("the switchers are one column, never a grid", () => {
+    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
+    expect(html).not.toContain("grid-cols");
+    expect(html).toContain('class="flex flex-col gap-3"');
+  });
+
   // The meta the dropdown computes now rides ON the trigger (MESITA-1833):
   // the role and the holding, without opening anything.
   it("each switcher states its scope on the trigger, not one click behind it", () => {
