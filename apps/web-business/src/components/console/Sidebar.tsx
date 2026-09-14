@@ -1,37 +1,56 @@
 "use client";
 
-// The whole navigation: one lateral rail, SIX PAGES (MESITA-1832) — seven
-// for a super-admin.
+// The whole navigation: one lateral rail, TWO LEVELS (MESITA-1841).
 //
-// Pato, 2026-09-13, with a drawing of six rows: "optimize the ui as if it
-// was just for orgs that only have one place. Account must contain select
-// account, organization selector, and place selector. Place profile. Place
-// reviews. Org & place payments. Place activity. Org & place settings. Make
-// the frontend web routes /account /profile /reviews /payments /activity
-// /settings."
+// Pato, 2026-09-14, a drawing of nine rows on two levels:
 //
-//   [ ○ Account     ]  → /account   who you are · switch organization · switch place
-//   [ ⌂ Profile     ]  → /profile   THE SELECTED PLACE's profile
-//   [ ★ Reviews     ]  → /reviews
-//   [ ▤ Payments    ]  → /payments  the organization's money (Stripe · Partner · Credits)
-//   [ ▥ Activity    ]  → /activity
-//   [ ⚙ Settings    ]  → /settings  the place's switches · the organization's members
-//   [ ⛨ Admin       ]  → /admin     super-admin only
+//   Organization / Payments / Credits / Activity / Place(s) →
+//     Profile / Reviews / Capabilities / Rewards / Admin
+//
+//   [ ▣ Organization ]  → /orgs/<id>/organization   who is in it, what it holds
+//   [ ▤ Payments     ]  → /orgs/<id>/payments       Stripe · Partner
+//   [ ◎ Credits      ]  → /orgs/<id>/credits        prepaid, and its liability
+//   [ ▥ Activity     ]  → /orgs/<id>/activity       the numbers, by place
+//   ─ <the place's name> ────
+//     [ ⌂ Profile      ]  → /places/<id>/profile
+//     [ ★ Reviews      ]  → /places/<id>/reviews
+//     [ ⇄ Capabilities ]  → /places/<id>/capabilities   what a guest CAN do
+//     [ ⛁ Rewards      ]  → /places/<id>/rewards        what a guest EARNS
+//     [ ⛨ Admin        ]  → /places/<id>/admin          super-admin only
 //   ─────
-//   ◧ Collapse         the footer: the rail's own control
+//   ○ Account          the person, and the two switchers
+//   ◧ Collapse         the rail's own control
 //
-// NO ID IN ANY ADDRESS. Every page is about the selected place and its
-// organization — the console's memory (lib/selected-place.ts server-side,
-// lib/rail-scope.ts here). A one-place owner never meets an id, a switcher
-// in the rail, or the word "organization" in a row. Exactly ONE filled
-// pill, always: the ceremonies (/orgs/new, the list, Add place) light the
-// row they belong to (Account).
+// WHY A GROUP AND NOT SEVEN PEERS. The console has exactly two subjects. Six
+// flat peers (MESITA-1832) made an operator read every label to find out which
+// subject a row was about, and the labels cannot carry that: "Payments" and
+// "Profile" look like siblings and are not — one is the company's money, the
+// other is one storefront's page. The indent says it in one glance, and the
+// addresses already said it (`/orgs/<id>/…` vs `/places/<id>/…`).
 //
-// NO PLACE YET: Profile · Reviews · Activity · Settings (· Admin) stay, AT
-// FULL STRENGTH (MESITA-1833); each opens the page, which answers with the
-// one next step. The rail never shrinks. Zero organizations: Account and
-// Create organization. A failed organizations read: Account and a muted
-// line, never the create row (MESITA-1793's law).
+// THE GROUP HEADER IS A LABEL, NOT A SWITCHER. MESITA-1822 took the two
+// switchers out of the rail on purpose and put them on Account; this does not
+// put one back. The header prints the SELECTED PLACE's name, which is the one
+// fact the five rows beneath it depend on and the only thing the old flat rail
+// could not say — "Profile" alone never told you whose.
+//
+// NO ID IN ANY ADDRESS THE OPERATOR READS. Every href carries one; none is
+// ever shown. A one-place owner meets no id, no switcher, and no chevron.
+// Exactly ONE filled pill, always.
+//
+// ACCOUNT IS THE LAST ROW, not row one. It is not one of the two subjects —
+// it is the person — and Pato's drawing leaves it off the numbered list
+// entirely. It keeps a row because nothing else reaches you, sign-out, or the
+// two switchers, and it stays INSIDE the nav landmark below a seam: a link
+// parked outside `<nav>` for visual reasons is a link a screen reader's
+// landmark list loses. Members and Places have addresses and no row of their
+// own: the Organization page is their door, and they light ITS row.
+//
+// NO PLACE YET: the five place rows stay, AT FULL STRENGTH (MESITA-1833); each
+// opens the page, which answers with the one next step. The rail never
+// shrinks. Zero organizations: Account and Create organization. A failed
+// organizations read: Account and a muted line, never the create row
+// (MESITA-1793's law).
 //
 // THEY USED TO BE DIMMED, and the dimming was a lie. `opacity-60` plus a
 // "Profile · add a place first" tooltip painted five of seven rows as
@@ -42,9 +61,12 @@
 // this functional. not hidden shit." A disabled look belongs to a control
 // that does nothing; these do something.
 //
-// FLAT. Nothing in this file indents — no inset, no tree line, no bullet, no
-// `pl-8`, no box, no eyebrow, no seam — and `shell-chrome.test.ts` forbids
-// all of them.
+// ONE INDENT, UNDER ONE HEADER, AND NOTHING ELSE. The flat law
+// (MESITA-1832) is narrowed, not deleted: `shell-chrome.test.ts` still refuses
+// a tree line, a bullet, a box, an eyebrow above the organization rows, and a
+// second seam. `RAIL_INDENT` is the one sanctioned inset and it is written
+// once — a second literal `pl-` in this file is the failure the test watches
+// for.
 //
 // DARK (MESITA-1831). The rail sits on the brand's ink (`--sidebar` is the
 // dock token, globals.css) and paints ONLY with `sidebar-*` tokens: rows at
@@ -57,12 +79,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AlertCircle,
+  Building2,
   ChartNoAxesColumn,
+  Coins,
+  Gift,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Settings,
   Shield,
+  SlidersHorizontal,
   Star,
   Store,
   UserRound,
@@ -74,10 +99,13 @@ import { MesitaMark } from "@/components/brand/MesitaMark";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
+  ORG_RAIL_PAGES,
   SHELL_ROUTES,
+  flatOrgPageFromPathname,
   flatViewFromPathname,
   orgHref,
   orgPageFromPathname,
+  type OrgRailPage,
 } from "@/lib/console-routes";
 import {
   PLACE_TAB_LABEL,
@@ -124,6 +152,11 @@ const ROW_REST =
 // off-white fill with ink text — the brightest thing in the column, which is
 // what makes "you are here" survive a glance down it.
 const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
+// THE ONE INDENT (MESITA-1841). Written once, used once, and never at w-16:
+// the collapsed rail centres its icons, so an inset there would push five of
+// nine marks off the column's axis and the group would read as broken rather
+// than as nested.
+const RAIL_INDENT = "pl-4";
 // The full route is prefetched on hover (MESITA-1779): the click then paints
 // the body at once instead of the skeleton. The prop works at runtime in
 // app/ and is missing from Link's public type, so it is spread in.
@@ -131,35 +164,50 @@ const HOVER_PREFETCH = { unstable_dynamicOnHover: true } as object;
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
-// THE MARKS NAME THE SUBJECT, NOT THE LABEL (MESITA-1838). Pato, 2026-09-14:
-// "wtf are those icons. change them." Four of the seven were lucide defaults
-// chosen off the word rather than the thing, and depicted the wrong noun:
+// THE MARKS NAME THE SUBJECT, NOT THE LABEL (MESITA-1838, extended by
+// MESITA-1841 to the three rows that did not exist then):
 //
-//   Profile   FileText  → Store       it is the PLACE's public page, not a
-//                                     document — and Store is already the mark
-//                                     the place chip wears on Account, so the
-//                                     rail and the page say one noun one way
-//   Payments  CreditCard→ Wallet      the page is the organization's money
-//                                     (Stripe · Partner · Credits); a card is
-//                                     one instrument, the page is the purse
-//   Activity  Activity  → ChartNoAxesColumn
-//                                     a heart-rate squiggle reads medical; the
-//                                     page is counts over time
-//   Settings  Settings2 → Settings    sliders are a filter idiom; a gear is the
-//                                     settings CONVENTION, and a nav is the
-//                                     last place to innovate for its own sake
+//   Organization  Building2           the company, not the storefront — and
+//                                     deliberately unlike Profile's Store, so
+//                                     the two subjects never share a glyph
+//   Credits       Coins               prepaid money sitting there, against
+//                                     Payments' Wallet, which is the account
+//                                     it flows through
+//   Capabilities  SlidersHorizontal   the same mark the page's own card wears
+//                                     (place-manage); a gear would say
+//                                     "settings", which is the name this view
+//                                     just stopped using
+//   Rewards       Gift                what a guest gets back
 //
-// Account (UserRound), Reviews (Star) and Admin (Shield) did not move: each is
-// already the conventional mark for its subject, and swapping a correct icon
-// to look busy is churn.
+// Profile (Store), Reviews (Star), Payments (Wallet), Activity
+// (ChartNoAxesColumn), Account (UserRound) and Admin (Shield) are unchanged —
+// each is already the conventional mark for its subject, and swapping a
+// correct icon to look busy is churn.
 
-
-/** The rail's word for a view — the bare word, as in the drawing (Account ·
- *  Profile · Reviews · Payments · Activity · Settings). `PLACE_TAB_LABEL` is
- *  the same word; this exists so the tests and the rail share one reader. */
+/** The rail's word for a view — the bare word, as in the drawing.
+ *  `PLACE_TAB_LABEL` is the same word; this exists so the tests and the rail
+ *  share one reader. */
 export function placeRowLabel(tab: PlaceTab): string {
   return PLACE_TAB_LABEL[tab];
 }
+
+const ORG_ROW: Record<
+  OrgRailPage,
+  { label: string; Icon: React.ComponentType<{ className?: string }> }
+> = {
+  organization: { label: "Organization", Icon: Building2 },
+  payments: { label: "Payments", Icon: Wallet },
+  credits: { label: "Credits", Icon: Coins },
+  activity: { label: "Activity", Icon: ChartNoAxesColumn },
+};
+
+const PLACE_ROW_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
+  profile: Store,
+  reviews: Star,
+  capabilities: SlidersHorizontal,
+  rewards: Gift,
+  admin: Shield,
+};
 
 function NavRow({
   href,
@@ -167,6 +215,7 @@ function NavRow({
   Icon,
   active,
   collapsed,
+  indent = false,
   onNavigate,
   onGuardedNavigate,
   title,
@@ -177,6 +226,8 @@ function NavRow({
   Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
   collapsed: boolean;
+  /** Inside the Place group. Ignored at `w-16`, which centres every mark. */
+  indent?: boolean;
   onNavigate?: () => void;
   onGuardedNavigate?: GuardNav;
   title?: string;
@@ -201,7 +252,7 @@ function NavRow({
       className={cn(
         ROW_BASE,
         active ? ROW_ACTIVE : ROW_REST,
-        collapsed && "justify-center px-0 py-2",
+        collapsed ? "justify-center px-0 py-2" : indent && RAIL_INDENT,
       )}
     >
       <Icon className={ICON} />
@@ -236,6 +287,29 @@ function MutedRow({
   );
 }
 
+/** The Place group's header — the selected place's NAME, or the bare word
+ *  when there is none yet. Not a link and not a trigger: the switcher lives on
+ *  Account (MESITA-1822) and Profile is one row below, so anything clickable
+ *  here would be a second door to a page already on screen.
+ *
+ *  At `w-16` the name cannot fit, so the group is announced by a hairline
+ *  instead — the ONE seam in the rail, and the reason the collapsed rail still
+ *  reads as two groups rather than nine loose marks. */
+function GroupHeader({ name, collapsed }: { name: string; collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <div role="presentation" className="border-sidebar-border mx-2 my-1.5 border-t" />
+    );
+  }
+  return (
+    <div className="mt-3 mb-1 px-2.5">
+      <span className={cn(TINY_LABEL_CLASS, "text-sidebar-muted block truncate")}>
+        {name}
+      </span>
+    </div>
+  );
+}
+
 export function Sidebar({
   scope,
   organizations,
@@ -254,22 +328,20 @@ export function Sidebar({
 
   const org = scope.org;
   const onOrgNew = pathname === SHELL_ROUTES.orgNew;
-  // Account owns its ceremonies: the create step, the organization's list
-  // and the Add place step all light Account — while there IS an Account
-  // scope to own them. With no organization the create step is its own row.
-  const orgPage = orgPageFromPathname(pathname);
-  // Account owns the organization's doors: the create step, the places list,
-  // Add place, and Members — which has an address of its own since
-  // MESITA-1839 but no rail row, because the rail is six rows by the drawing.
-  // It is reached from Account's organization menu, so Account is what lights.
-  const onAccount =
-    pathname === SHELL_ROUTES.account ||
-    pathname === FLAT_ROUTES.members ||
-    (org !== null &&
-      (onOrgNew || orgPage === "places" || orgPage === "members"));
+  // WHICH ORGANIZATION PAGE, by either address: the canonical
+  // `/orgs/<id>/<page>` or the flat resolver still in flight. Both light the
+  // same row — an operator who typed `/credits` is on Credits.
+  const orgPage = orgPageFromPathname(pathname) ?? flatOrgPageFromPathname(pathname);
+  // ACCOUNT LIGHTS FOR ACCOUNT, AND NOTHING ELSE. It used to own the
+  // organization's ceremonies because that is where they lived; Members,
+  // Places and Add place light ORGANIZATION now, whose page is their door, and
+  // the create ceremony lights whichever row would take you back — Organization
+  // when there is one, the Create row when there is not. A second pill is the
+  // failure mode every rail test in this repo counts, and `onOrgNew` appearing
+  // in two `active` expressions at once is how it happens.
+  const onAccount = pathname === SHELL_ROUTES.account;
   // The view you are on, whichever address you came by: the canonical
   // `/places/<id>/<view>` or the flat resolver still in flight (MESITA-1839).
-  // Both light the same row — an operator who typed `/reviews` is on Reviews.
   const currentView = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
 
   // Which views the selected place offers this viewer: the ONE matrix
@@ -296,26 +368,25 @@ export function Sidebar({
   const placeId = scope.place?.id ?? scope.foreignPlaceId ?? null;
   const viewRow = (tab: PlaceTab) =>
     placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab];
-  const paymentsHref = org ? orgHref(org.id, "payments") : FLAT_ROUTES.payments;
+  const orgRow = (page: OrgRailPage) =>
+    org ? orgHref(org.id, page) : FLAT_ROUTES[page];
 
-  // The six rows, in the drawing's order; Payments is the organization's,
-  // the rest are the place's.
-  type Row = { href: string; label: string; Icon: React.ComponentType<{ className?: string }>; place?: PlaceTab };
-  const all: Row[] = [
-    { href: viewRow("profile"), label: placeRowLabel("profile"), Icon: Store, place: "profile" },
-    { href: viewRow("reviews"), label: placeRowLabel("reviews"), Icon: Star, place: "reviews" },
-    { href: paymentsHref, label: "Payments", Icon: Wallet },
-    { href: viewRow("activity"), label: placeRowLabel("activity"), Icon: ChartNoAxesColumn, place: "activity" },
-    { href: viewRow("settings"), label: placeRowLabel("settings"), Icon: Settings, place: "settings" },
-  ];
-  if (isSuperAdmin) {
-    all.push({ href: viewRow("admin"), label: placeRowLabel("admin"), Icon: Shield, place: "admin" });
-  }
-  const rows = all.filter((r) => !r.place || noPlace || placeTabs.includes(r.place));
+  // The five place rows, filtered by the matrix. With no place at all the
+  // whole held set stays: each page answers with Add place.
+  const placeRows = (["profile", "reviews", "capabilities", "rewards", "admin"] as const)
+    .filter((tab) => (tab === "admin" ? isSuperAdmin : true))
+    .filter((tab) => noPlace || placeTabs.includes(tab));
+
+  // The group's header word: the place's name when there is one — including a
+  // pool place, whose name the place layout publishes — else the bare noun.
+  const groupName =
+    scope.place?.name ??
+    (foreign && openPlace?.id === scope.foreignPlaceId ? openPlace.name : null) ??
+    "Place";
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3">
-      {/* THE TOP LINE: the product. Who you are is the first box below. */}
+      {/* THE TOP LINE: the product. Who you are is the footer. */}
       <div
         className={cn(
           "flex shrink-0 items-center",
@@ -356,17 +427,6 @@ export function Sidebar({
         aria-label="Console"
         className="mt-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
       >
-        <NavRow
-          href={SHELL_ROUTES.account}
-          label="Account"
-          title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
-          Icon={UserRound}
-          active={onAccount}
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-          onGuardedNavigate={guardNav ?? undefined}
-        />
-
         {viewerError ? (
           <MutedRow
             label="Couldn't load organizations"
@@ -384,25 +444,71 @@ export function Sidebar({
             onGuardedNavigate={guardNav ?? undefined}
           />
         ) : (
-          rows.map((row) => (
-            <NavRow
-              key={row.href}
-              href={row.href}
-              label={row.label}
-              Icon={row.Icon}
-              active={row.place ? currentView === row.place : orgPage === "payments" || pathname === FLAT_ROUTES.payments}
-              collapsed={collapsed}
-              onNavigate={onNavigate}
-              onGuardedNavigate={guardNav ?? undefined}
-            />
-          ))
+          <>
+            {ORG_RAIL_PAGES.map((page) => (
+              <NavRow
+                key={page}
+                href={orgRow(page)}
+                label={ORG_ROW[page].label}
+                Icon={ORG_ROW[page].Icon}
+                // Members, Places and Add place are the Organization page's
+                // doors, so they light Organization — the row you would go
+                // back through.
+                active={
+                  page === "organization"
+                    ? orgPage === "organization" ||
+                      orgPage === "members" ||
+                      orgPage === "places" ||
+                      onOrgNew
+                    : orgPage === page
+                }
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+                onGuardedNavigate={guardNav ?? undefined}
+              />
+            ))}
+
+            <GroupHeader name={groupName} collapsed={collapsed} />
+
+            {placeRows.map((tab) => (
+              <NavRow
+                key={tab}
+                href={viewRow(tab)}
+                label={placeRowLabel(tab)}
+                Icon={PLACE_ROW_ICON[tab]}
+                active={currentView === tab}
+                collapsed={collapsed}
+                indent
+                onNavigate={onNavigate}
+                onGuardedNavigate={guardNav ?? undefined}
+              />
+            ))}
+          </>
         )}
+        {/* ACCOUNT IS THE LAST ROW, AND STILL A ROW IN THE NAV. It is not one
+            of the two subjects the rail is organized around — it is who is
+            looking — so it sits below a seam rather than above the
+            Organization rows. It stays INSIDE the landmark because it is
+            navigation: a link to a page, parked outside `<nav>` for visual
+            reasons, is a link a screen reader's landmark list loses. */}
+        <div className="border-sidebar-border mt-2 border-t pt-2">
+          <NavRow
+            href={SHELL_ROUTES.account}
+            label="Account"
+            title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
+            Icon={UserRound}
+            active={onAccount}
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+            onGuardedNavigate={guardNav ?? undefined}
+          />
+        </div>
       </nav>
 
       {/* THE FOOTER IS THE RAIL'S OWN CONTROL, AND ONLY THAT: the one button
           that acts on the rail rather than navigating anywhere. */}
-      {onToggleCollapse && (
-        <div className="border-sidebar-border mt-2 shrink-0 border-t pt-2">
+      <div className="mt-2 shrink-0">
+        {onToggleCollapse && (
           <button
             type="button"
             onClick={onToggleCollapse}
@@ -423,8 +529,8 @@ export function Sidebar({
             )}
             <span className={collapsed ? "sr-only" : "truncate"}>Collapse</span>
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

@@ -41,14 +41,25 @@ import {
   offeringRows,
   paintRows,
   railWriteFailure,
+  rowsForZone,
   shouldRenderConfig,
   topPrerequisite,
   type ConnectState,
   type LadderRowKey,
+  type LadderZone,
 } from "./controls/offerings";
 import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./controls/shared";
 
-// Capabilities (admin Controls tab — a rename that stops at the label).
+// The place's ladder — rendered ONCE per zone (MESITA-1841).
+//
+// ONE ENGINE, TWO VIEWS. `zone` selects which rungs and which trailing blocks
+// this renders: Capabilities is what a guest CAN do here plus the internal
+// "How this place is run" box; Rewards is what a guest EARNS — Visit Rewards,
+// its strategy ladder, and the Partnership body that prices it. The rungs
+// depend on one another (Partner unlocks Visit Rewards and Mesita Pay; Stripe
+// unlocks the money rungs), so the COMPUTATION is never split — two copies of
+// a dependency ladder is two copies that can disagree. `ZONE_ROWS` in
+// controls/offerings.ts owns the mapping and a test proves it is total.
 //
 // MESITA-1739 first paint: summary of what guests can do, then the one
 // prerequisite that unlocks the most rows, then the rows. The 0–7 meter
@@ -60,9 +71,12 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 export function PromosSection({
   place,
   onSaved,
+  zone,
 }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
+  /** Which half of the ladder this instance renders (MESITA-1841). */
+  zone: LadderZone;
 }) {
   const [v, setV] = useState(place);
   const { dirtyLabels } = usePlaceContext();
@@ -120,8 +134,12 @@ export function PromosSection({
   };
   const rows = offeringRows(ladderInput);
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
-  const painted = paintRows(rows);
-  const summary = guestSummary(rows);
+  // THE ZONE'S ROWS, not the ladder's. `rows` stays whole — `topPrerequisite`
+  // and the rail toggles below read the full ladder — and only what is PAINTED
+  // narrows, so the summary line describes the view you are actually on.
+  const zoneRows = rowsForZone(rows, zone);
+  const painted = paintRows(zoneRows);
+  const summary = guestSummary(zoneRows);
   const prereq = topPrerequisite(ladderInput);
 
   const applyPlace = (next: AdminPlace) => {
@@ -375,7 +393,7 @@ export function PromosSection({
           )}
         </div>
 
-        {member && (
+        {member && zone === "rewards" && (
           <div className="mt-4">
             <PartnershipBody
               place={v}
@@ -388,28 +406,36 @@ export function PromosSection({
         )}
 
         <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
-          Capability switches save instantly. Channel picks wait for Save.
+          {zone === "capabilities"
+            ? "Capability switches save instantly. Channel picks wait for Save."
+            : "Turning Visit Rewards on saves instantly. A strategy is confirmed in its card."}
         </p>
       </section>
 
-      <section aria-labelledby="zone-settings">
-        <div className="mb-2.5 px-1">
-          <GroupLabel>
-            <span id="zone-settings">Settings</span>
-          </GroupLabel>
-        </div>
-        <SectionCard
-          icon={<SlidersHorizontal className="h-4 w-4" />}
-          tint="slate"
-          title="How this place is run"
-          subtitle="Internal — nothing here is something a guest can do."
-        >
-          <div className="divide-border/60 mt-2 flex flex-col divide-y">
-            <VisitsCard place={v} />
-            <TeamSection place={v} />
+      {/* THE INTERNAL ZONE IS CAPABILITIES' ALONE (MESITA-1841). It was headed
+          "Settings" while the page was called Settings; the page is
+          Capabilities again and the card's own title already says what this
+          is, so the eyebrow says whose it is instead of repeating the page. */}
+      {zone === "capabilities" && (
+        <section aria-labelledby="zone-internal">
+          <div className="mb-2.5 px-1">
+            <GroupLabel>
+              <span id="zone-internal">Internal</span>
+            </GroupLabel>
           </div>
-        </SectionCard>
-      </section>
+          <SectionCard
+            icon={<SlidersHorizontal className="h-4 w-4" />}
+            tint="slate"
+            title="How this place is run"
+            subtitle="Internal — nothing here is something a guest can do."
+          >
+            <div className="divide-border/60 mt-2 flex flex-col divide-y">
+              <VisitsCard place={v} />
+              <TeamSection place={v} />
+            </div>
+          </SectionCard>
+        </section>
+      )}
 
       {modalStrategy && (
         <ProductModal

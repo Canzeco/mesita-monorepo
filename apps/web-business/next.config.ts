@@ -3,7 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // ONE place console (MESITA-1564). The `(console)` tree — /place/<id> under
   // Profile · Partnership · Performance · Settings — is deleted; `/places/<id>`
-  // under Profile · Capabilities · Activity · Admin is the whole surface now.
+  // under Profile · Reviews · Capabilities · Rewards · Admin is the whole
+  // surface now (MESITA-1841).
   //
   // The tab names do NOT map one to one (Partnership and Settings merged into
   // Capabilities), so a legacy tab cannot be forwarded to a matching tab
@@ -24,21 +25,39 @@ const nextConfig: NextConfig = {
       { source: "/unit/:id/:rest*", destination: "/places/:id/profile", permanent: true },
       { source: "/place/:id", destination: "/places/:id/profile", permanent: true },
       { source: "/place/:id/:rest*", destination: "/places/:id/profile", permanent: true },
-      // NO RULE FOR /settings. It used to forward here to `/account`, from
-      // MESITA-1564's deletion of the legacy console's own settings screen.
-      // MESITA-1832 then named a LIVE page `/settings` without noticing, and
-      // config redirects run BEFORE filesystem routes — so for a day the
-      // rail's Settings row 308'd to Account and the page it pointed at could
-      // not be reached at all (verified in production, MESITA-1839).
+      // A RULE MAY NEVER SHADOW A LIVE ADDRESS. Config redirects run BEFORE
+      // filesystem routes, so a stale entry here makes a real page unreachable
+      // while CI stays green. It has happened once in production: `/settings`
+      // forwarded to `/account` from MESITA-1564, MESITA-1832 then named a LIVE
+      // page `/settings`, and for a day the rail's own row 308'd away from the
+      // page it pointed at (MESITA-1839). `legacy-redirects.test.ts` now walks
+      // every live address in lib/console-routes.ts through this table.
       //
-      // `legacy-redirects.test.ts` now walks every live address through this
-      // table and fails if one is swallowed again.
-      // The Capabilities view became Settings (MESITA-1815) — label and
-      // segment together, so the row and the address agree.
+      // MESITA-1841 reverses two rules and adds two.
+      //
+      // Capabilities took its name back — MESITA-1815 had renamed the view
+      // Settings, label and segment together, and this rule pointed the other
+      // way. `/settings` (flat) and `/places/<id>/settings` are the legacy
+      // spellings now.
       {
-        source: "/places/:id/capabilities",
-        destination: "/places/:id/settings",
+        source: "/places/:id/settings",
+        destination: "/places/:id/capabilities",
         permanent: true,
+      },
+      // The flat twin. PERMANENT is safe here and only here because the
+      // destination is itself a resolver: `/capabilities` reads the remembered
+      // place at request time, so a cached 308 cannot pin anyone to a stale
+      // place the way a cached `/places/<id>/…` would.
+      { source: "/settings", destination: "/capabilities", permanent: true },
+      // Activity left the place for the organization (MESITA-1841). There is
+      // no org id in this path to forward to, so it lands on the FLAT address,
+      // which resolves the remembered organization. TEMPORARY: where a place's
+      // numbers live is a product decision that has now moved once, and a 308
+      // would cache this answer in every browser forever.
+      {
+        source: "/places/:id/activity",
+        destination: "/activity",
+        permanent: false,
       },
       // THE ORGANIZATION MOVED INTO THE PATH (MESITA-1807). `?org=<id>` used
       // to name it on every console URL; the id is captured off the query
@@ -51,10 +70,14 @@ const nextConfig: NextConfig = {
       {
         source: "/organization",
         has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
-        destination: "/orgs/:org",
+        destination: "/orgs/:org/organization",
         permanent: true,
       },
-      { source: "/organization", destination: "/", permanent: true },
+      // NO BARE `/organization` RULE. It forwarded to `/` while the
+      // Organization screen did not exist; MESITA-1841 made it a live flat
+      // resolver, and leaving the rule would have swallowed it exactly the way
+      // `/settings` was swallowed in MESITA-1839. The `has` rule above keeps
+      // the `?org=` era working and cannot match without that query.
       { source: "/organization/new", destination: "/orgs/new", permanent: true },
       {
         source: "/places",

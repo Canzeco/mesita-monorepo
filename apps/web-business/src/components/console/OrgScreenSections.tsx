@@ -5,8 +5,13 @@
 // "organization all in the same page"), with Members and Places beside
 // them. Members moved to /settings and Places to /account; what is left is
 // the organization's MONEY: funnel first (approved at the autoplan gate,
-// 2026-09-06) — Stripe, then Partner, then Prepaid Credits as the one Soon
-// strip (MESITA-1828 took Mesita Capital and Activity off).
+// 2026-09-06) — Stripe, then Partner.
+//
+// CREDITS LEFT IN MESITA-1841. It was the page's one `SoonStrip`, and Pato's
+// 2026-09-14 drawing gives it a rail row of its own — so it is a page now
+// (`/orgs/<id>/credits`), carrying the same strip. A row whose destination is
+// a scroll position two boxes down a different page is a row that lies about
+// where it goes.
 //
 // Sync and presentational on purpose: the server page assembles the props,
 // this component owns the composition, and the order test pins THIS file.
@@ -14,12 +19,14 @@
 import { Section } from "@/components/shared/Section";
 import { PartnerCard } from "@/components/console/PartnerCard";
 import { PaymentsCard } from "@/components/console/PaymentsCard";
-import { SoonStrip } from "@/components/console/SoonStrip";
 import type { Organization, PaymentAccount } from "@/lib/api/organizations";
 
 /** The box order, exported so the pin test asserts the product decision. */
-export const ORG_SCREEN_ORDER = ["stripe", "partner", "credits"] as const;
+export const ORG_SCREEN_ORDER = ["stripe", "partner"] as const;
 
+/** Credits' own page renders this (MESITA-1841). It stays here because this
+ *  file is where the organization's money boxes are declared, and because the
+ *  strip moved without changing a word. */
 export const SOON_STRIPS: Record<"credits", { title: string; line: string }> = {
   credits: {
     title: "Prepaid Credits",
@@ -68,8 +75,6 @@ export function PaymentsSections({
           isOwner={isOwner}
         />
       </Section>
-
-      <SoonStrip {...SOON_STRIPS.credits} />
     </>
   );
 }

@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
 import {
+  FLAT_ROUTE_LIST,
   ORG_PAGES,
   SHELL_ROUTES,
   orgHref,
@@ -139,37 +140,49 @@ describe("the legacy console's URLs all still resolve", () => {
   // page was unreachable and the rail's Settings row 308'd to Account. CI was
   // green the whole time, because this file pinned the redirect rather than
   // the reachability. Now it pins the absence.
-  it("/settings is NOT forwarded — it is a live address", async () => {
-    expect(resolve("/settings", await rules())).toBeNull();
+  // MESITA-1841 reverses this pair. Capabilities took its name back, so the
+  // arrow flips: `/settings` is the legacy spelling now, at BOTH addresses.
+  it("Settings forwards to Capabilities, flat and scoped, one hop each", async () => {
+    const all = await rules();
+    expect(resolve("/settings", all)).toBe("/capabilities");
+    expect(resolve("/places/abc/settings", all)).toBe("/places/abc/capabilities");
+    // The live names are routes, not redirects — nothing chains.
+    expect(resolve("/capabilities", all)).toBeNull();
+    expect(resolve("/places/abc/capabilities", all)).toBeNull();
   });
 
-  it("the Capabilities view forwards to Settings (MESITA-1815), one hop", async () => {
+  it("a place's Activity forwards to the organization's, which resolves", async () => {
+    // Activity moved up a scope (MESITA-1841) and there is no org id in the
+    // old path to forward to, so it lands on the FLAT address — which reads
+    // the remembered organization at request time.
     const all = await rules();
-    expect(resolve("/places/abc/capabilities", all)).toBe("/places/abc/settings");
-    // The new address is a route, not a redirect — nothing chains.
-    expect(resolve("/places/abc/settings", all)).toBeNull();
+    expect(resolve("/places/abc/activity", all)).toBe("/activity");
+    expect(resolve("/activity", all)).toBeNull();
   });
 });
 
 // MESITA-1807. The organization moved from `?org=` into the path.
 describe("the ?org= addresses forward into the path", () => {
-  it("/organization?org=<id> is that organization's Overview", async () => {
+  it("/organization?org=<id> is that organization's own page", async () => {
     expect(resolve("/organization?org=org-9", await rules())).toBe(
-      "/orgs/org-9",
+      "/orgs/org-9/organization",
     );
   });
 
   it("a Stripe return link minted before the move keeps its query", async () => {
     // Stripe stored `/organization?org=<id>&connect=return` when the Account
-    // Link was minted. `org` becomes the segment; `connect` rides through to
-    // Overview, which hands it on to Payments.
+    // Link was minted. `org` becomes the segment; `connect` rides through.
     expect(
       resolve("/organization?org=org-9&connect=return", await rules()),
-    ).toBe("/orgs/org-9?connect=return");
+    ).toBe("/orgs/org-9/organization?connect=return");
   });
 
-  it("/organization with no org is the resolver", async () => {
-    expect(resolve("/organization", await rules())).toBe("/");
+  // MESITA-1841. The bare rule is GONE, and its absence is the assertion:
+  // `/organization` is a live flat resolver again, and a rule matching it
+  // would make that page unreachable exactly the way `/settings` was in
+  // MESITA-1839. Config redirects run before filesystem routes.
+  it("bare /organization is NOT forwarded — it is a live address", async () => {
+    expect(resolve("/organization", await rules())).toBeNull();
   });
 
   it("/organization/new is the ceremony's new address", async () => {
@@ -210,19 +223,44 @@ describe("the ?org= addresses forward into the path", () => {
 
   it("the has-rules sit ABOVE their bare twins — first match wins", async () => {
     const all = await rules();
-    for (const source of ["/organization", "/places", "/places/new"]) {
+    // `/organization` left this list in MESITA-1841: it has no bare twin any
+    // more, because the bare address is a live page.
+    for (const source of ["/places", "/places/new"]) {
       const withHas = all.findIndex((r) => r.source === source && r.has);
       const bare = all.findIndex((r) => r.source === source && !r.has);
       expect(withHas).toBeGreaterThan(-1);
       expect(bare).toBeGreaterThan(-1);
       expect(withHas).toBeLessThan(bare);
     }
+    // The `?org=` rule for /organization survives WITHOUT a bare twin.
+    expect(all.some((r) => r.source === "/organization" && r.has)).toBe(true);
+    expect(all.some((r) => r.source === "/organization" && !r.has)).toBe(false);
   });
 });
 
-describe("every redirect is permanent, and forwards somewhere this repo serves", () => {
-  it("permanent — these moves are not coming back", async () => {
-    for (const rule of await rules()) expect(rule.permanent).toBe(true);
+describe("every redirect forwards somewhere this repo serves", () => {
+  // ONE rule is temporary, and it is named here so a second cannot appear by
+  // accident. `/places/<id>/activity` forwards to a RESOLVER, and where a
+  // place's numbers live has now moved once (MESITA-1841) — a 308 would cache
+  // this answer in every browser forever.
+  const TEMPORARY = new Set(["/places/:id/activity"]);
+
+  it("permanent, except the one forward onto a resolver", async () => {
+    for (const rule of await rules()) {
+      expect(rule.permanent, rule.source).toBe(!TEMPORARY.has(rule.source));
+    }
+  });
+
+  it("a permanent rule never lands on a flat resolver", async () => {
+    // A cached 308 onto `/profile` would pin a browser to whatever place it
+    // resolved to the FIRST time — which is the bug MESITA-1832's cookie
+    // addressing had. `/settings` -> `/capabilities` is the exception and is
+    // safe: both sides are resolvers, so the answer is recomputed either way.
+    for (const rule of await rules()) {
+      if (!rule.permanent) continue;
+      if (rule.source === "/settings") continue;
+      expect(FLAT_ROUTE_LIST, rule.source).not.toContain(rule.destination);
+    }
   });
 
   it("no rule forwards to a route this repo no longer serves", async () => {
@@ -230,7 +268,7 @@ describe("every redirect is permanent, and forwards somewhere this repo serves",
       expect(rule.destination.startsWith("/place/")).toBe(false);
       expect(rule.destination).not.toBe("/settings");
       expect(rule.destination).not.toBe("/places");
-      expect(rule.destination.startsWith("/organization")).toBe(false);
+      expect(rule.destination).not.toBe("/places/:id/settings");
     }
   });
 });
@@ -272,5 +310,22 @@ describe("no live address is swallowed by the redirect table", () => {
       expect(resolve(href, all), `${href} is caught by a redirect`).toBeNull();
     }
     expect(resolve(orgPlacesNewHref("org-9"), all)).toBeNull();
+  });
+
+  // THE HALF THIS GUARD WAS STILL MISSING (MESITA-1841). The three tests above
+  // walk the CANONICAL addresses. `/settings` — the address that actually
+  // broke in MESITA-1839 — was a FLAT one, and flat addresses are exactly the
+  // ones a legacy rule is likely to collide with, because they are short,
+  // unscoped, and the console has used several of them for something else
+  // before. `/organization` was one such collision waiting in this very
+  // change.
+  it("every FLAT address falls through — the shape that broke before", async () => {
+    const all = await rules();
+    for (const href of FLAT_ROUTE_LIST) {
+      expect(
+        resolve(href, all),
+        `${href} is caught by a redirect — the resolver at that path can never be reached`,
+      ).toBeNull();
+    }
   });
 });

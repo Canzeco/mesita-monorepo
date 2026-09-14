@@ -33,19 +33,22 @@ function render(over: Partial<{ org: Organization; account: PaymentAccount | nul
 
 describe("the Payments page composition", () => {
   it("pins the approved order constant", () => {
-    expect(ORG_SCREEN_ORDER).toEqual(["stripe", "partner", "credits"]);
+    // Credits left in MESITA-1841: it has a rail row now, so it has a page.
+    expect(ORG_SCREEN_ORDER).toEqual(["stripe", "partner"]);
   });
 
   it("renders the boxes in that order, and nothing that moved elsewhere", () => {
     const html = render();
-    const positions = ["Stripe Account", "Partner", SOON_STRIPS.credits.title].map((t) => html.indexOf(t));
+    const positions = ["Stripe Account", "Partner"].map((t) => html.indexOf(t));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
-    // Members are on /settings, Places on /account (MESITA-1832).
+    // Members and Places are the Organization page's (MESITA-1841); Credits
+    // is its own page; Mesita Capital and Activity left in MESITA-1828.
     expect(html).not.toContain("Members");
     expect(html).not.toContain(">Add place<");
     expect(html).not.toContain("Mesita Capital");
     expect(html).not.toContain("one feed");
+    expect(html).not.toContain(SOON_STRIPS.credits.title);
   });
 
   it("labels the Partner switch Partner, never Not Partner or Patner", () => {
@@ -76,10 +79,17 @@ describe("the Payments page composition", () => {
     expect(html).toContain("Accept Prepays");
   });
 
-  it("keeps the ONE Soon strip honest: dashed, one line, no knobs (MESITA-1828)", () => {
-    const html = render();
-    expect(html.match(/border-dashed/g)?.length).toBe(1);
-    expect(html).toContain("outstanding liability will live here.");
+  it("leaves no Soon strip behind on Payments (MESITA-1841)", () => {
+    // Every box on this page is now live. A dashed row among them would be the
+    // only unreal thing on a page about real money.
+    expect(render()).not.toContain("border-dashed");
+  });
+
+  it("keeps the Credits copy honest wherever it renders (MESITA-1828)", () => {
+    // The strip moved to its own page; the promise it makes did not change,
+    // and this is still the only place that constant is declared.
+    expect(SOON_STRIPS.credits.title).toBe("Prepaid Credits");
+    expect(SOON_STRIPS.credits.line).toContain("outstanding liability will live here.");
     expect(SOON_STRIPS.credits.line).not.toMatch(/advance|loan|rate|%/i);
   });
 });

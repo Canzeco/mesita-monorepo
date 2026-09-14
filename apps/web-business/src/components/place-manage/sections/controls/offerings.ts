@@ -483,6 +483,53 @@ export function guestSummary(rows: readonly OfferingRow[]): string {
   return `Right now, guests can ${phrases.slice(0, -1).join(", ")}, and ${last}.`;
 }
 
+// ── THE TWO ZONES (MESITA-1841) ───────────────────────────────────────────
+//
+// The ladder is one computation and stays one: the rungs depend on each other,
+// so splitting the ENGINE would mean computing Partner and Stripe twice and
+// letting the two copies disagree. What splits is the DISPLAY. Pato's drawing
+// of 2026-09-14 gives the place five views, two of which come out of this one
+// component:
+//
+//   Capabilities   what a guest CAN do here — pay by card, redeem prepays,
+//                  order pickup or delivery, book a table — plus the internal
+//                  "How this place is run" zone.
+//   Rewards        what a guest EARNS here: Visit Rewards, its strategy
+//                  ladder, and the Partnership body that prices them.
+//
+// The line is not new. `PromosSection` already drew it with its own headings;
+// this makes it an address, so a link can point at one or the other.
+//
+// EVERY GUEST ROW BELONGS TO EXACTLY ONE ZONE, and `offerings.test.ts` proves
+// it — a row added to the ladder and to neither zone would silently render
+// nowhere, which is the one failure mode this split can have.
+
+export const LADDER_ZONES = ["capabilities", "rewards"] as const;
+export type LadderZone = (typeof LADDER_ZONES)[number];
+
+export const ZONE_ROWS: Record<LadderZone, readonly LadderRowKey[]> = {
+  capabilities: [
+    "mesita_pay",
+    "accept_prepays",
+    "sell_prepays",
+    "pickup",
+    "delivery",
+    "reservations",
+  ],
+  rewards: ["visit_rewards"],
+};
+
+/** The zone's rows, in the ladder's own order. Partnership and Stripe belong
+ *  to no zone: they are prerequisites, rendered as the one-line prompt and the
+ *  Partnership body, never as switches. */
+export function rowsForZone(
+  rows: readonly OfferingRow[],
+  zone: LadderZone,
+): OfferingRow[] {
+  const keep = ZONE_ROWS[zone];
+  return rows.filter((r) => keep.includes(r.key));
+}
+
 /** Partnership and Stripe are not guest capabilities — they leave this list
  *  (chip / Org / one line). Disagreements sort first; then writable; then
  *  "Not yours to set". */
