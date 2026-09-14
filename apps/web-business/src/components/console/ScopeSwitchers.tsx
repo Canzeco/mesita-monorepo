@@ -59,24 +59,30 @@ import { SHELL_ROUTES, orgHref, orgPlacesHref, orgPlacesNewHref } from "@/lib/co
 import { placeTabHref } from "@/lib/place-tabs";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import type { RailOrg } from "@/lib/rail-scope";
-import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { SCOPE_BOX_CLASS, SCOPE_CHIP_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 const FOCUS_RING = "outline-none focus-visible:ring-2 focus-visible:ring-ring";
-// 64px so the row clears the 44px touch minimum with room for three lines.
+// TWO OF THE THREE BOXES (MESITA-1837). The shape is shared with Account's
+// You box through SCOPE_BOX_CLASS; only the hover and the menu state belong
+// to a trigger, so only those live here.
 const TRIGGER = cn(
-  "border-border bg-card flex min-h-16 w-full min-w-0 items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition",
-  "hover:bg-muted/50 data-[state=open]:bg-muted/50",
+  SCOPE_BOX_CLASS,
+  "transition hover:bg-muted/50 data-[state=open]:bg-muted/50",
   FOCUS_RING,
 );
 // The "nothing here yet" row: dashed against the solid live one, the same
 // idiom EmptyState uses, so the two read as one vocabulary.
 const TRIGGER_EMPTY = "border-dashed bg-transparent";
-const CHIP =
-  "bg-muted text-muted-foreground ring-border flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ring-1";
+const CHIP = cn(
+  SCOPE_CHIP_CLASS,
+  "bg-muted text-muted-foreground ring-border flex items-center justify-center text-base font-semibold ring-1",
+);
 // The organization wears the brand; the place wears its own photo. Two
 // different kinds of thing, so they never look interchangeable.
-const CHIP_ORG =
-  "bg-brand flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-display text-sm font-semibold text-white";
+const CHIP_ORG = cn(
+  SCOPE_CHIP_CLASS,
+  "bg-brand font-display flex items-center justify-center text-base font-semibold text-white",
+);
 const MENU_CHIP =
   "bg-muted text-foreground ring-border flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ring-1";
 const MENU_ITEM = "gap-2.5 rounded-lg py-1.5 text-[13px]";
@@ -99,7 +105,7 @@ function OrgChip({ name, menu = false }: { name: string; menu?: boolean }) {
 }
 
 function PlaceChip({ place, menu = false }: { place: RailPlace | null; menu?: boolean }) {
-  const px = menu ? 20 : 36;
+  const px = menu ? 20 : 44;
   const src = place ? placeThumbUrl(place.photoUrl, px) : null;
   if (src) {
     return (
@@ -110,15 +116,15 @@ function PlaceChip({ place, menu = false }: { place: RailPlace | null; menu?: bo
         width={px}
         height={px}
         className={cn(
-          "ring-border shrink-0 object-cover ring-1",
-          menu ? "h-5 w-5 rounded-md" : "h-9 w-9 rounded-xl",
+          "ring-border object-cover ring-1",
+          menu ? "h-5 w-5 shrink-0 rounded-md" : cn(SCOPE_CHIP_CLASS, "ring-border"),
         )}
       />
     );
   }
   return (
     <span aria-hidden className={menu ? MENU_CHIP : CHIP}>
-      <Store className={menu ? "h-3 w-3" : "h-4 w-4"} />
+      <Store className={menu ? "h-3 w-3" : "h-5 w-5"} />
     </span>
   );
 }
@@ -127,7 +133,7 @@ function PlaceChip({ place, menu = false }: { place: RailPlace | null; menu?: bo
 function AddChip() {
   return (
     <span aria-hidden className={CHIP}>
-      <Plus className="h-4 w-4" />
+      <Plus className="h-5 w-5" />
     </span>
   );
 }
@@ -190,16 +196,16 @@ function Switcher({
           <span className={TINY_LABEL_CLASS}>{eyebrow}</span>
           <span
             className={cn(
-              "truncate text-sm font-semibold",
+              "mt-0.5 truncate text-base font-semibold",
               empty && "text-[color:var(--brand-pink-text)]",
             )}
           >
             {name}
           </span>
-          <span className="text-muted-foreground truncate text-[11px]">{meta}</span>
+          <span className="text-muted-foreground truncate text-[12px]">{meta}</span>
         </span>
         {switchable && (
-          <ChevronsUpDown aria-hidden className="text-muted-foreground h-4 w-4 shrink-0" />
+          <ChevronsUpDown aria-hidden className="text-muted-foreground h-4.5 w-4.5 shrink-0" />
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={6} className="w-72 motion-reduce:animate-none">

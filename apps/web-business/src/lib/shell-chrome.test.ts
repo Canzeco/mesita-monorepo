@@ -550,6 +550,21 @@ describe("the container stays uncapped", () => {
     expect(read("components/console/ScopeSwitchers.tsx")).not.toMatch(/grid-cols/);
   });
 
+  // MESITA-1837: the person, the organization and the place are the console's
+  // three nouns, and Account shows all three at one rank. The You box lives on
+  // the page and the other two in a client component, so the shape is a shared
+  // constant rather than a component — and both sides must read it.
+  it("Account's three boxes share one shape", () => {
+    const page = read("app/(shell)/account/page.tsx");
+    expect(page).toContain("SCOPE_BOX_CLASS");
+    expect(read("components/console/ScopeSwitchers.tsx")).toContain("SCOPE_BOX_CLASS");
+    expect(read("lib/ui-classes.ts")).toContain("export const SCOPE_BOX_CLASS");
+    // The You box is a fact, not a switcher: no trigger, no chevron on it.
+    expect(page).not.toContain("DropdownMenu");
+    // Three boxes means the skeleton draws three, at the same height.
+    expect((read("app/(shell)/account/loading.tsx").match(/h-24/g) ?? []).length).toBe(3);
+  });
+
   it("the rail is a fixed column, never a capped one", () => {
     const rail = read("components/console/Sidebar.tsx");
     expect(rail).not.toMatch(/max-w-\dxl/);

@@ -108,6 +108,26 @@ export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
 // other console page is a fragment in the layout's own full-width column, and
 // Account is too. Do not add this constant back.
 
+// ── Account's three boxes (MESITA-1837) ────────────────────────────────────
+//
+// Pato: "three big boxes." The console has exactly three nouns — the person,
+// the organization, the place — and Account is the one page that shows all
+// three at once. They get ONE shape and ONE rank: an identity header above
+// two rows (MESITA-1833) gave three different weights to three things that
+// are each one thing, and the header read as chrome above the "real" content.
+//
+// Shared by the page (the You box, a plain div) and ScopeSwitchers (the two
+// menu triggers) so the three cannot drift apart — the drift is the whole
+// failure mode here, and a shared string is cheaper than a component that
+// would have to be a client one for the two that open menus.
+//
+// FULL WIDTH: the console is fluid and Account caps nothing (MESITA-1836).
+export const SCOPE_BOX_CLASS =
+  "border-border bg-card flex min-h-24 w-full min-w-0 items-center gap-4 rounded-2xl border px-5 py-4 text-left";
+
+// The box's 44px chip well — the monogram, the place thumb, the plus.
+export const SCOPE_CHIP_CLASS = "h-11 w-11 shrink-0 rounded-xl";
+
 
 // ── The wide-record table (MESITA-1608) ────────────────────────────────────
 //

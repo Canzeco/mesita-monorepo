@@ -7,11 +7,16 @@
 // viewer state — and proves the rail at zero, at one, with no place, on a
 // pool place, and at `w-16`. It is the strongest proof this app has: no
 // browser can get past the OTP wall.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { resolveRailScope, type RailOrg } from "@/lib/rail-scope";
 import { FLAT_ROUTES, SHELL_ROUTES, orgHref, orgPlacesNewHref, viewHref } from "@/lib/console-routes";
 import { PLACE_TABS } from "@/lib/place-tabs";
+
+const read_ui = () =>
+  readFileSync(join(process.cwd(), "src/lib/ui-classes.ts"), "utf8");
 
 const nav = vi.hoisted(() => ({ pathname: "/" }));
 vi.mock("next/navigation", () => ({
@@ -278,6 +283,17 @@ describe("the switchers live on Account (MESITA-1832)", () => {
     const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
     expect(html).not.toContain("grid-cols");
     expect(html).toContain('class="flex flex-col gap-3"');
+  });
+
+  // MESITA-1837: two of Account's three boxes render here and the third
+  // renders on the page, so the shape is a shared constant. If these two ever
+  // stop carrying it, the three have drifted into three ranks again — which
+  // is exactly the hierarchy "three big boxes" replaced.
+  it("both switchers wear the shared box shape, at box size", () => {
+    const html = renderSwitchers(SHELL_ROUTES.account, { organizations: SOLO });
+    expect((html.match(/min-h-24/g) ?? []).length).toBe(2);
+    expect((html.match(/h-11 w-11/g) ?? []).length).toBe(2);
+    expect(read_ui()).toContain("export const SCOPE_BOX_CLASS");
   });
 
   // The meta the dropdown computes now rides ON the trigger (MESITA-1833):
