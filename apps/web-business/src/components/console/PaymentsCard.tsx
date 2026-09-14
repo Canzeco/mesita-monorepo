@@ -156,7 +156,10 @@ export function PaymentsCard({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <DataRow label="Account">
+        {/* The Section above is titled "Stripe". A row labelled "Account"
+            under it was the card's ONLY row restating its own heading, so the
+            label is empty and the state pill is the row (MESITA-1847). */}
+        <DataRow label="">
           <StatePill state={state} />
         </DataRow>
         {/* The pill says "Ready", and this says what Ready costs the owner in

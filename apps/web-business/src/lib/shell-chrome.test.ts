@@ -171,25 +171,25 @@ describe("the unsaved-edits guard reaches the rail", () => {
     const rail = readCode("components/console/Sidebar.tsx");
     // Rows ask before leaving a dirty place.
     expect(rail).toContain("if (!active) onGuardedNavigate?.(href, e);");
-    // The switchers live on the organization page (MESITA-1822); their menu
-    // doors and their choices ask too — the guard decides BEFORE the pending
-    // name is shown.
-    const sw = readCode("components/console/ScopeSwitchers.tsx");
+    // The organization selector lives on the Organization page (MESITA-1847);
+    // its menu door and its choice ask too — the guard decides BEFORE the
+    // pending name is shown, or an operator sees the new organization's name
+    // while still sitting on the old one's unsaved edits.
+    const sw = readCode("components/console/OrgSwitcher.tsx");
     const menuLink = sw.slice(sw.indexOf("function MenuLink"));
     expect(menuLink.slice(0, menuLink.indexOf("\n}\n"))).toContain("onGuardedNavigate?.(href, e)");
-    const go = sw.slice(sw.indexOf("const go = ("));
-    const goBody = go.slice(0, go.indexOf("};"));
-    expect(goBody.indexOf("guardNav?.(href)")).toBeGreaterThan(-1);
-    expect(goBody.indexOf("guardNav?.(href)")).toBeLessThan(goBody.indexOf("setChoice("));
+    const pick = sw.slice(sw.indexOf("const pickOrg = ("));
+    const pickBody = pick.slice(0, pick.indexOf("};"));
+    expect(pickBody.indexOf("guardNav?.(href)")).toBeGreaterThan(-1);
+    expect(pickBody.indexOf("guardNav?.(href)")).toBeLessThan(pickBody.indexOf("setChoice("));
   });
 });
 
-// MESITA-1822. The rail is SEVEN ROWS and nothing else: Account ·
-// Organization · Place Profile · Reviews · Activity · Settings · Admin. The
-// switchers ("change organization, change place") are the Organization
-// PAGE's (ScopeSwitchers.tsx). The one rule that has outlived every
-// redesign: nothing indents. Pato rejected a tree twice (1714, 1715), boxes
-// once (1815), and switchers-as-rows twice (1818, 1822).
+// The rail carries destinations and nothing else. The organization SELECTOR
+// is the Organization page's (OrgSwitcher.tsx) — it went to Account in
+// MESITA-1832 and came back in MESITA-1847 on Pato's "organization must be
+// selected in organization not fucking there". Pato has rejected a tree twice
+// (1714, 1715), boxes once (1815), and switchers-as-rows twice (1818, 1822).
 describe("the rail is six nouns and one indent", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
@@ -233,7 +233,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(r).not.toContain("openPlace.name");
   });
 
-  it("holds no switcher, no Plus row, no chip, no menu — those are the organization page's", () => {
+  it("holds no switcher, no Plus row, no chip, no menu — the organization page's", () => {
     const r = rail();
     expect(r).not.toContain("DropdownMenu");
     expect(r).not.toContain("<Picker");
@@ -243,11 +243,10 @@ describe("the rail is six nouns and one indent", () => {
     expect(r).not.toContain("Switch place");
     expect(r).not.toContain('label="Add place"');
     expect(r).not.toContain("<select");
-    const sw = readCode("components/console/ScopeSwitchers.tsx");
-    expect(sw).toContain('label="Switch organization"');
-    expect(sw).toContain('label="Switch place"');
+    const sw = readCode("components/console/OrgSwitcher.tsx");
+    expect(sw).toContain('aria-label="Switch organization"');
     expect(sw).toContain("useRailScopeContext()");
-    expect(readCode("app/(shell)/account/page.tsx")).toContain("<ScopeSwitchers />");
+    expect(readCode("app/(shell)/orgs/[orgId]/organization/page.tsx")).toContain("<OrgSwitcher />");
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
@@ -268,7 +267,9 @@ describe("the rail is six nouns and one indent", () => {
     for (const target of ["organization", "customers", "payments", "activity", "places"]) {
       expect(routes, target).toContain(`  "${target}",`);
     }
-    expect(routes).toContain('export const ORG_DOOR_TARGETS = ["members"] as const;');
+    // No door constant at all (MESITA-1847): every organization address is a
+    // rail row, so the rail's list IS the contract's list.
+    expect(routes).not.toContain("ORG_DOOR_TARGETS");
     // CREDITS IS NOT AN ADDRESS (MESITA-1845): it merged into Payments, and
     // both its spellings forward from next.config.ts. A name left in the
     // contract would be a live address the redirect table shadows — the
@@ -297,31 +298,69 @@ describe("the rail is six nouns and one indent", () => {
   // arrives exactly this way: one row keeping a clause after another row took
   // the subject. Account owned the organization's ceremonies until
   // MESITA-1841; Organization owns them, and now Payments and Credits too.
-  it("Account lights for Account alone — Members, the one roomless page, lights Organization", () => {
+  it("Account lights for Account alone, and every org row takes only its own", () => {
     const r = rail();
     expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
-    expect(r).toMatch(/orgTarget === "members"/);
-    // Every other organization address has a row of its own now (MESITA-1845),
-    // and a row keeping a clause after another row took the subject is exactly
-    // how this rail grows a second pill.
+    // MESITA-1847 removed the last borrowed clause: Members is CONTENT on the
+    // Organization page, not an address behind it. A row keeping a clause
+    // after another row took the subject is exactly how this rail grows a
+    // second pill, which every rail test in this repo counts.
     const orgClause = r.slice(r.indexOf("const orgRowActive"), r.indexOf("return ("));
-    for (const taken of ["places", "payments", "customers", "activity"]) {
+    for (const taken of ["members", "places", "payments", "customers", "activity"]) {
       expect(orgClause, taken).not.toContain(`orgTarget === "${taken}"`);
     }
   });
 
-  // MEMBERS is the one organization page with no row, so the Organization
-  // page is the only thing that offers it. A page nothing offers gets lost.
-  it("the Organization page is Members' door, and carries no door to a row", () => {
+  // MESITA-1847. Pato: "members and places in organization i mean, fuck
+  // nested things display shit there." The page IS its people and its places.
+  // A door is a box that refuses to show you anything.
+  it("the Organization page shows its people and its places, and offers no door", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/organization/page.tsx");
-    expect(page).toContain('orgHref(org.id, "members")');
-    expect(page).toContain("orgPlacesHref(org.id)");
-    // Payments and Credits had doors here for the one issue they had no row
-    // (MESITA-1844). Both are gone: two doors to one room is what the rail was
-    // cut down to avoid, and Credits has no address left at all.
+    expect(page).not.toContain("DoorRow");
+    expect(page).toContain("<MembersCard");
+    expect(page).toContain("apiListOrgMembers");
+    expect(page).toContain("placeHref(");
+    expect(page).toContain("orgPlacesNewHref(org.id)");
+    // The members ADDRESS is gone with the door that reached it, and the
+    // money pages have rows of their own.
+    expect(page).not.toContain('orgHref(org.id, "members")');
     expect(page).not.toContain('orgHref(org.id, "payments")');
     expect(page).not.toContain("credits");
-    expect((page.match(/<DoorRow/g) ?? []).length).toBe(2);
+    // No Stripe read: the page shows nothing about Stripe, so it asks nothing.
+    expect(page).not.toContain("apiGetPaymentAccount");
+    expect(page).not.toContain("OrgStateBadge");
+    // The list is CAPPED — `org.places` is unbounded and this is the rail's
+    // first row, so an organization with 200 places must not render 200 rows
+    // on the screen the console opens to.
+    expect(page).toContain("org.places.slice(0, 10)");
+  });
+
+  // The selector moved to the page about the thing it selects (MESITA-1847).
+  // Pato: "organization must be selected in organization not fucking there,
+  // account is just for there."
+  it("the organization selector is on Organization; Account is the person alone", () => {
+    const page = readCode("app/(shell)/orgs/[orgId]/organization/page.tsx");
+    expect(page).toContain("<OrgSwitcher />");
+    const account = readCode("app/(shell)/account/page.tsx");
+    expect(account).not.toContain("ScopeSwitchers");
+    expect(account).not.toContain("OrgSwitcher");
+    expect(account).toContain("SignOutButton");
+    // The PLACE switcher is deleted outright, not moved: the Organization
+    // page lists the places themselves, and a menu whose contents are already
+    // on the page one box below is a second door to the same room.
+    expect(existsSync(path.join(SRC, "components/console/ScopeSwitchers.tsx"))).toBe(false);
+    const sw = readCode("components/console/OrgSwitcher.tsx");
+    expect(sw).not.toContain("Switch place");
+    expect(sw).toContain('aria-label="Switch organization"');
+    expect(sw).toContain("Create organization");
+  });
+
+  // The people live where the page does now; the address forwards.
+  it("the Members page is deleted, and both spellings forward", () => {
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/members"))).toBe(false);
+    const config = readFileSync(path.join(SRC, "..", "next.config.ts"), "utf8");
+    expect(config).toContain('source: "/orgs/:orgId/members"');
+    expect(config).toContain('{ source: "/members", destination: "/organization", permanent: false }');
   });
 
   // CUSTOMERS IS A LIVE ROW WITH A REAL PAGE (MESITA-1845). Pato's list says
@@ -421,16 +460,17 @@ describe("the rail is six nouns and one indent", () => {
     expect(org).toContain("url.search = search.toString();");
   });
 
-  it("the switchers: a name at n=1, the transition as the pending clock, a chosen name only after the guard", () => {
-    const sw = readCode("components/console/ScopeSwitchers.tsx");
-    expect(sw).toContain("switchable={organizations.length >= 2}");
-    expect(sw).toContain("switchable={org.places.length >= 2}");
+  it("the selector: a name at n=1, and the transition is the pending clock", () => {
+    const sw = readCode("components/console/OrgSwitcher.tsx");
+    // A switcher with nothing to switch is a NAME (MESITA-1818): no chevron
+    // at one organization, and the row still opens its menu as the door to
+    // Create organization.
+    expect(sw).toContain("const switchable = organizations.length >= 2;");
     expect(sw).toContain("const pendingId = isPending ? choice : null;");
     expect(sw).not.toContain("choice.at === pathname");
-    expect(sw).toContain("aria-busy={pending || undefined}");
+    expect(sw).toContain("aria-busy=");
     expect(sw).not.toContain("useEffect");
     expect(sw).toContain("motion-reduce:animate-none");
-    expect(sw).toContain("canAddPlace(org.myRole)");
   });
 
   // ONE FOOTER, AND ONLY THE RAIL'S OWN CONTROL IN IT (MESITA-1844). Account
@@ -735,38 +775,31 @@ describe("the container stays uncapped", () => {
     expect(read("app/(shell)/account/loading.tsx")).not.toMatch(/max-w-\dxl/);
     expect(read("lib/ui-classes.ts")).not.toContain("export const ACCOUNT_COLUMN_CLASS");
     // The one column IS the ask (MESITA-1834) and stays: no grid, any width.
-    expect(read("components/console/ScopeSwitchers.tsx")).not.toMatch(/grid-cols/);
+    expect(read("components/console/OrgSwitcher.tsx")).not.toMatch(/grid-cols/);
   });
 
-  // MESITA-1837: the person, the organization and the place are the console's
-  // three nouns, and Account shows all three at one rank. The You box lives on
-  // the page and the other two in a client component, so the shape is a shared
-  // constant rather than a component — and both sides must read it.
-  it("Account is ONE card whose three rows share one shape (MESITA-1840)", () => {
+  // MESITA-1847. Account is the PERSON and nothing else — Pato: "account is
+  // just for there." The organization selector went to the Organization page
+  // and the place selector was deleted, so what is left is one row: who you
+  // are, how many organizations you are in, and the way out.
+  it("Account is ONE card of ONE row, and the row is the person", () => {
     const page = read("app/(shell)/account/page.tsx");
     const ui = read("lib/ui-classes.ts");
-    // The card wraps; the rows share a shape. Both constants, so the three
-    // cannot drift into three ranks again — the failure "three big boxes"
-    // was invented to fix.
+    // The shape is still a shared constant, shared now with the Organization
+    // page's selector — so the two cannot drift into two ranks.
     expect(ui).toContain("export const SCOPE_CARD_CLASS");
     expect(ui).toContain("export const SCOPE_ROW_CLASS");
     expect(page).toContain("SCOPE_CARD_CLASS");
     expect(page).toContain("SCOPE_ROW_CLASS");
-    expect(read("components/console/ScopeSwitchers.tsx")).toContain("SCOPE_ROW_CLASS");
-    // The boxed era is over: no stack of bordered cards, no gap between them.
+    expect(read("components/console/OrgSwitcher.tsx")).toContain("SCOPE_ROW_CLASS");
     expect(ui).not.toContain("SCOPE_BOX_CLASS");
-    // `divide-y` draws only between DIRECT children, so the card must carry
-    // it and ScopeSwitchers must NOT wrap its two rows.
-    expect(ui).toContain("divide-y");
-    expect(read("components/console/ScopeSwitchers.tsx")).not.toContain('"flex flex-col gap-3"');
     // The You row is a fact, not a switcher: no trigger, no chevron on it.
     expect(page).not.toContain("DropdownMenu");
-    // Three rows means the skeleton draws three, at the same height, inside
-    // one bordered card — a skeleton that draws the wrong shape IS the
-    // layout shift it exists to prevent.
+    // ONE row means the skeleton draws one. It has been wrong four times —
+    // each time the shape of a page that no longer existed, so every load
+    // ended in a layout shift on swap. A skeleton is a promise.
     const skeleton = read("app/(shell)/account/loading.tsx");
-    expect((skeleton.match(/h-24/g) ?? []).length).toBe(3);
-    expect(skeleton).toContain("divide-y");
+    expect((skeleton.match(/h-24/g) ?? []).length).toBe(1);
     expect(skeleton).not.toContain("gap-3");
   });
 

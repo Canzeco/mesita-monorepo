@@ -94,6 +94,18 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/credits", destination: "/payments", permanent: false },
+      // MEMBERS IS CONTENT, NOT A PAGE (MESITA-1847). Pato: "members and
+      // places in organization i mean, fuck nested things display shit
+      // there." The people are ON the Organization page now, so the address
+      // has nothing left to be. TEMPORARY: where the org's people live is a
+      // product decision that has moved twice, and a 308 would cache today's
+      // answer in every browser forever.
+      {
+        source: "/orgs/:orgId/members",
+        destination: "/orgs/:orgId/organization",
+        permanent: false,
+      },
+      { source: "/members", destination: "/organization", permanent: false },
       // NO BARE `/organization` RULE. It forwarded to `/` while the
       // Organization screen did not exist; MESITA-1841 made it a live flat
       // resolver, and leaving the rule would have swallowed it exactly the way

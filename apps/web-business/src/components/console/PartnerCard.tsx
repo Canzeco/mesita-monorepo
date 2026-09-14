@@ -81,12 +81,14 @@ export function PartnerCard({
   return (
     <div className="flex flex-col">
       {locked ? (
-        <div className="flex items-center gap-3 py-1">
+        // The Section above is titled "Partner" and says what it unlocks;
+        // repeating the word and the sentence here was saying one thing three
+        // times (MESITA-1847). The span carried this branch's only accessible
+        // name, so the label moves onto the row itself.
+        <div className="flex items-center gap-3 py-1" aria-label="Partner">
           <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-medium">Partner</span>
-            <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-              Connect Stripe first. Partner unlocks Mesita Pay, Visit Rewards
-              and Accept Prepays at every place this organization holds.
+            <span className="text-muted-foreground block text-xs leading-snug">
+              Connect Stripe first.
             </span>
           </span>
           <span className="flex w-[9.5rem] shrink-0 justify-end sm:w-[11rem]">
@@ -110,11 +112,10 @@ export function PartnerCard({
           )}
         >
           <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-medium">Partner</span>
-            <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+            <span className="text-muted-foreground block text-xs leading-snug">
               {on
                 ? "Every place this organization holds is in the partnership."
-                : "Turn on to join every held place. Free — no charge."}
+                : "Turn on to join every held place."}
             </span>
           </span>
           <span className="flex w-[9.5rem] shrink-0 justify-end sm:w-[11rem]">
@@ -122,10 +123,9 @@ export function PartnerCard({
           </span>
         </button>
       ) : (
-        <div className="flex items-center gap-3 py-1">
+        <div className="flex items-center gap-3 py-1" aria-label="Partner">
           <span className="min-w-0 flex-1 text-left">
-            <span className="block text-sm font-medium">Partner</span>
-            <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+            <span className="text-muted-foreground block text-xs leading-snug">
               {on
                 ? "Every place this organization holds is in the partnership."
                 : "An owner turns this on."}

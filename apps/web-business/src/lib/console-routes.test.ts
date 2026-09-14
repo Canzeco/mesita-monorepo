@@ -11,7 +11,6 @@ import {
   FLAT_ROUTES,
   ORG_PAGES,
   ORG_TARGET_LABEL,
-  ORG_DOOR_TARGETS,
   ORG_RAIL_TARGETS,
   ORG_TARGETS,
   PLACES_OWNED,
@@ -69,13 +68,15 @@ describe("SHELL_ROUTES are the addresses with no scope at all", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the place's five views, then the organization's five pages", () => {
+  it("is the place's five views, then the organization's four pages", () => {
     // The order is the declaration's: the place's group, then the
     // organization's. MESITA-1841 added `capabilities` (was `settings`),
     // `rewards`, `organization` and `credits`, and moved `activity` from the
     // first group to the second — it resolves an ORGANIZATION now.
     // MESITA-1845 swaps `credits` for `customers`: Credits merged back into
     // Payments and has no address of its own, and Customers gained a row.
+    // MESITA-1847 drops `members`: the people are CONTENT on the Organization
+    // page now, so the address has nothing left to be.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
       "reviews",
@@ -86,7 +87,6 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "customers",
       "payments",
       "activity",
-      "members",
     ]);
     for (const r of FLAT_ROUTE_LIST) expect(isFlatRoute(r)).toBe(true);
     expect(isFlatRoute("/orgs/x")).toBe(false);
@@ -215,19 +215,12 @@ describe("the organization's pages (MESITA-1807)", () => {
     // word twice; MESITA-1842 gave it the bare address, because the only thing
     // squatting there was a cookie-writing forwarder that now lives at
     // `/switch`.
-    expect(ORG_PAGES).toEqual([
-      "customers",
-      "payments",
-      "activity",
-      "members",
-      "places",
-    ]);
+    expect(ORG_PAGES).toEqual(["customers", "payments", "activity", "places"]);
     expect(ORG_TARGETS).toEqual([
       "organization",
       "customers",
       "payments",
       "activity",
-      "members",
       "places",
     ]);
     // CREDITS IS NOT AN ADDRESS ANY MORE (MESITA-1845). It merged into
@@ -245,7 +238,6 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
     expect(orgHref("org-x", "customers")).toBe("/orgs/org-x/customers");
     expect(orgHref("org-x", "activity")).toBe("/orgs/org-x/activity");
-    expect(orgHref("org-x", "members")).toBe("/orgs/org-x/members");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
     expect(orgPlacesNewHref("org-x")).toBe("/orgs/org-x/places/new");
     // EVERY target is exactly two segments under /orgs — one shape for five
@@ -266,12 +258,13 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(existsSync(path.join(SHELL_DIR, "orgs", "[orgId]", "switch", "route.ts"))).toBe(true);
   });
 
-  it("the rail lists five of the six; MEMBERS is the one door (MESITA-1845)", () => {
-    // Members has an address and no row: the Organization page is its door,
-    // and it lights THAT row. Every rail target is a real target, the two
-    // lists are disjoint, and together they are the whole vocabulary — a
-    // target in neither is an address nothing in the console can light or
-    // offer, which renders as a screen with no pill at all.
+  it("THE RAIL LISTS THEM ALL — there are no doors left (MESITA-1847)", () => {
+    // Members was the last organization address with no row of its own,
+    // reached through a chevron on the Organization page. Pato: "members and
+    // places in organization i mean, fuck nested things display shit there."
+    // The people are ON that page now, so the rail's list and the contract's
+    // list are the same list — and an address in the contract that no row can
+    // light would render a screen with no pill at all.
     expect(ORG_RAIL_TARGETS).toEqual([
       "organization",
       "customers",
@@ -279,12 +272,7 @@ describe("the organization's pages (MESITA-1807)", () => {
       "activity",
       "places",
     ]);
-    expect(ORG_DOOR_TARGETS).toEqual(["members"]);
-    for (const t of ORG_RAIL_TARGETS) expect(ORG_TARGETS).toContain(t);
-    for (const t of ORG_DOOR_TARGETS) expect(ORG_TARGETS).toContain(t);
-    expect([...ORG_RAIL_TARGETS, ...ORG_DOOR_TARGETS].sort()).toEqual(
-      [...ORG_TARGETS].sort(),
-    );
+    expect([...ORG_RAIL_TARGETS].sort()).toEqual([...ORG_TARGETS].sort());
   });
 
   it("every organization address is a PAGE, the bare id included (MESITA-1846)", () => {

@@ -269,6 +269,8 @@ describe("every redirect forwards somewhere this repo serves", () => {
     "/places/:id/activity",
     "/orgs/:orgId/credits",
     "/credits",
+    "/orgs/:orgId/members",
+    "/members",
   ]);
 
   it("permanent, except the forwards onto an answer that has moved", async () => {

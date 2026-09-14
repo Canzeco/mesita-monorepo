@@ -38,10 +38,10 @@
 // inside org."* Pato's next list puts it in the column again, so it is in the
 // column again. CREDITS did not come with it: asked where Credits goes, he
 // said *"merge"*, and it is the `SoonStrip` at the foot of Payments — the page
-// it was split out of in MESITA-1841. MEMBERS is now the only organization
-// address with no row of its own, and it lights ORGANIZATION, whose page is
-// its door. A page no row can light renders zero pills, which reads exactly
-// like a broken console.
+// it was split out of in MESITA-1841. MEMBERS went the other way in
+// MESITA-1847: not a page behind a row but CONTENT on the Organization page,
+// so every organization address is a rail row again and no screen renders
+// with zero pills, which reads exactly like a broken console.
 //
 // CUSTOMERS IS A LIVE ROW. Pato wrote it "(Soon)", and a Soon badge in a rail
 // is a dimmed row — the exact thing MESITA-1833 forbids, in his own words:
@@ -368,13 +368,14 @@ export function Sidebar({
     tab === "admin" ? isSuperAdmin : true,
   ).filter((tab) => noPlace || placeTabs.includes(tab));
 
-  // WHICH ROW A ROW LIGHTS FOR. Organization takes the one address its page
-  // is the door to — Members — plus the create ceremony, which has no
-  // organization yet and would otherwise light nothing. Places takes its list
-  // and the Add place ceremony beneath it. Every other row takes its own.
+  // WHICH ROW A ROW LIGHTS FOR. Every organization address is a rail row
+  // now (MESITA-1847: Members became content ON the Organization page rather
+  // than an address behind it), so each row takes its own — except the create
+  // ceremony, which has no organization to name yet and would otherwise light
+  // nothing. Places also takes the Add place ceremony beneath its list.
   const orgRowActive = (target: OrgRailTarget) =>
     target === "organization"
-      ? orgTarget === "organization" || orgTarget === "members" || onOrgNew
+      ? orgTarget === "organization" || onOrgNew
       : orgTarget === target;
 
   return (

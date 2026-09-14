@@ -18,17 +18,11 @@ describe("crumbsFor", () => {
   });
 
   it("each organization page is the organization, then the page (MESITA-1842)", () => {
-    // `/orgs/<id>` IS the Organization page, so it is ONE crumb: its name. A
-    // second crumb reading "Organization" under it would restate the first —
-    // which is exactly what the `/organization` segment did in the address
-    // until MESITA-1842 removed it.
+    // Members has no crumb because it has no address (MESITA-1847): the
+    // people are content ON the Organization page, not a page under it.
     expect(crumbsFor(orgHref("o", "payments"), names)).toEqual([
       "Strana Group",
       "Payments",
-    ]);
-    expect(crumbsFor(orgHref("o", "members"), names)).toEqual([
-      "Strana Group",
-      "Members",
     ]);
     expect(crumbsFor(orgHref("o", "places"), names)).toEqual([
       "Strana Group",
