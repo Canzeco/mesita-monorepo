@@ -40,6 +40,7 @@
 // button that would walk an operator to a switch they cannot move. That is
 // the ladder grammar Capabilities already uses (offerings.ts), in a grid.
 import type { ConsolePlace } from "@/lib/api/organizations";
+import type { PlaceTab } from "@/lib/place-tabs";
 import type { ProductCard, ProductKey } from "@/components/console/ProductCatalog";
 
 export type { ProductCard, ProductKey };
@@ -121,6 +122,44 @@ const SPECS: readonly ProductSpec[] = [
 /** The catalogue's order — the mock's, read left to right, top to bottom. */
 export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 
+// ── WHERE A CARD'S VERB LANDS (MESITA-1879) ───────────────────────────────
+//
+// Capabilities and Rewards lost their rail rows when the console went flat, so
+// the catalogue is now their door. Every per-place verb used to land on
+// `placeHome` — the place's Profile — which asked the operator to find the
+// switch themselves on a screen that does not hold it.
+//
+// THIS IS A HAND-WRITTEN MAP, AND IT HAS TO BE. The obvious move is to derive
+// it from `ZONE_ROWS` in `place-manage/sections/controls/offerings.ts`, and
+// that does not work: `LadderRowKey` is partnership · stripe · mesita_pay ·
+// visit_rewards · accept_prepays · sell_prepays · pickup · delivery ·
+// reservations, and `ProductKey` is profile · visits · orders · reservations ·
+// rewards · pay · credits · terminal. The two spaces share ONE spelling
+// (`reservations`) and mean different things by it — a product is a thing you
+// buy, a ladder row is a switch with a prerequisite, and `orders` alone is two
+// rows. A derivation across that gap would be a coincidence pretending to be
+// a rule, so the mapping is written down and the test below pins it.
+//
+// Terminal maps to `profile` like every other non-switch card: it is `soon`
+// and carries no action at all, so the entry is never read. It exists so the
+// record is exhaustive and a NEW product cannot be added without answering
+// this question — which is the whole reason this is a Record and not a lookup
+// with a fallback.
+export const PRODUCT_VIEW: Record<ProductKey, PlaceTab> = {
+  profile: "profile",
+  // What a guest EARNS here: the Rewards zone's ladder.
+  visits: "rewards",
+  rewards: "rewards",
+  // What a guest CAN do here: the Capabilities zone's ladder.
+  orders: "capabilities",
+  reservations: "capabilities",
+  credits: "capabilities",
+  // Mesita Pay is an ORG switch on an org Stripe account, so its verb opens
+  // `products/pay` and never reads this map. Mapped for exhaustiveness.
+  pay: "profile",
+  terminal: "profile",
+};
+
 /** "On at 2 of 5 places", or null when the places could not be read. Singular
  *  where it matters: "1 place" reads as a sentence, "1 places" reads as a bug
  *  and is the first thing anyone notices on a screen like this. */
@@ -139,16 +178,24 @@ export function buildProductCards(input: {
    *  no place — two different facts, and a card says two different things. */
   places: readonly ConsolePlace[] | null;
   /** Where a per-place product is turned on: the place, the list, or Add. */
-  placeHome: string;
-  /** The organization holds NO place, so `placeHome` is the Add ceremony.
-   *  The verb has to say so: "Enable" on a button that opens Add place is a
-   *  promise the next screen does not keep. */
+  /** Where a card's verb lands, given the VIEW that product is configured on
+   *  (`PRODUCT_VIEW`). The caller decides what a view means when there is no
+   *  single place to name — the Add ceremony with none, the list with several
+   *  — so this module never has to know which. It replaces a flat
+   *  `placeHome` that sent every per-place product to Profile, a screen that
+   *  holds none of their switches (MESITA-1879). */
+  placeHref: (view: PlaceTab) => string;
+  /** The organization holds NO place, so `placeHref` returns the Add
+   *  ceremony. The verb has to say so: "Enable" on a button that opens Add
+   *  place is a promise the next screen does not keep. */
   noPlaces: boolean;
   /** Mesita Pay's own box, at the foot of this same page. */
   payHref: string;
 }): ProductCard[] {
-  const { partnered, mesitaPayEnabled, places, placeHome, payHref, noPlaces } =
+  const { partnered, mesitaPayEnabled, places, placeHref, payHref, noPlaces } =
     input;
+  /** Every per-place verb lands on the view that actually holds its switch. */
+  const viewHref = (key: ProductKey) => placeHref(PRODUCT_VIEW[key]);
   const total = places?.length ?? 0;
   /** Every verb that lands on a place says what the next screen actually is. */
   const verb = (word: string) => (noPlaces ? "Add a place" : word);
@@ -174,7 +221,7 @@ export function buildProductCards(input: {
         blurb: spec.blurb,
         state: "free",
         note: "Always free. Every place has one.",
-        action: { label: verb("Manage"), href: placeHome },
+        action: { label: verb("Manage"), href: viewHref(spec.key) },
       };
     }
 
@@ -216,7 +263,7 @@ export function buildProductCards(input: {
         note: places ? placeNote(on, total) : null,
         action: {
           label: verb(enabled ? "Manage" : "Enable"),
-          href: placeHome,
+          href: viewHref(spec.key),
         },
       };
     }
@@ -229,7 +276,7 @@ export function buildProductCards(input: {
       blurb: spec.blurb,
       state: "enabled",
       note: "Included with Mesita Partner. Each place sets its own.",
-      action: { label: verb("Manage"), href: placeHome },
+      action: { label: verb("Manage"), href: viewHref(spec.key) },
     };
   });
 }

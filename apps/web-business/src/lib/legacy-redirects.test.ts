@@ -17,6 +17,7 @@ import {
   SHELL_ROUTES,
   orgHref,
   orgPlacesNewHref,
+  orgRootHref,
 } from "./console-routes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
@@ -188,6 +189,27 @@ describe("the ?org= addresses forward into the path", () => {
     ).toBe("/orgs/org-9?connect=return");
   });
 
+  it("the address Stripe actually stored is walked, query and all", async () => {
+    // THE ONE ADDRESS THIS FILE WALKED BY LITERAL, NOT BY CONTRACT
+    // (MESITA-1879). The return_url is minted at
+    // `(shell)/actions/organizations.ts` as
+    // `${origin}${orgRootHref(orgId)}?connect=return` — from `orgRootHref`,
+    // the one console-routes export this test did not import. The check below
+    // hardcoded "/orgs/org-9", so a change to `orgRootHref`'s shape would
+    // leave this suite green while every Account Link Stripe has stored for
+    // months returned to a 404.
+    //
+    // Derive it, and carry the query: `?connect=` is the whole reason the
+    // bare address exists, and a rule that dropped it would land the operator
+    // on a screen that does not know they just came back from onboarding.
+    const all = await rules();
+    const stored = `${orgRootHref("org-9")}?connect=return`;
+    expect(stored).toBe("/orgs/org-9?connect=return");
+    expect(resolve(stored, all)).toBeNull();
+    // And the refresh half of the same pair, which Stripe stores alongside it.
+    expect(resolve(`${orgRootHref("org-9")}?connect=refresh`, all)).toBeNull();
+  });
+
   // MESITA-1842. `/orgs/<id>/organization` shipped in MESITA-1841 and lived
   // one issue: the segment said the word its parent already carries. It
   // forwards onto the bare address, one hop, and nothing chains.
@@ -199,7 +221,8 @@ describe("the ?org= addresses forward into the path", () => {
   it("nothing forwards away from a live organization address", async () => {
     const all = await rules();
     expect(resolve("/orgs/org-9/organization", all)).toBeNull();
-    expect(resolve("/orgs/org-9", all)).toBeNull();
+    // Derived, not typed: this is the address Stripe stored (see above).
+    expect(resolve(orgRootHref("org-9"), all)).toBeNull();
     // PAYMENTS IS NOT A LIVE ADDRESS ANY MORE (MESITA-1869) — it forwards
     // onto the catalogue, so it belongs in the walk below, not here. Products
     // is the live one this rule must never shadow.

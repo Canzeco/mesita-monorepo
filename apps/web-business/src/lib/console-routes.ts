@@ -183,6 +183,77 @@ export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
 export const ORG_RAIL_TARGETS = ORG_PAGES;
 export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
 
+// ── THE RAIL, AS ONE ARRAY (MESITA-1879) ──────────────────────────────────
+//
+// ONE PLACE PER ORGANIZATION, and the ontology goes quiet. Pato, 2026-09-15:
+// *"You can now only manage one place for organization … we still have the
+// ontological structure for orgs and places in the future … so hidden keep the
+// org and place it. but i only see it like simpler."*
+//
+// So the two selectors go and the rows flatten into one column at one depth.
+// The organization is still what most of these addresses are ABOUT — Settings,
+// Products, Customers and Activity are all `/orgs/<id>/…` — but an operator
+// who holds exactly one place has no question the word "Organization" answers,
+// and a selector with one option to select is a control over nothing.
+//
+// WHY SEVEN AND NOT FIVE. Pato drew five, with Products holding everything
+// configurable. At the review gate he took seven: Menus and Reviews came back
+// as rows because neither is configuration. Reviews is the read an independent
+// venue opens daily, and *"configure all shit here"* excludes it by name;
+// folding four jobs into one broad container moves them a click deeper without
+// making the work smaller, which is how Pay › Wallet and business `/account`
+// each ate two extra passes.
+//
+// CAPABILITIES, REWARDS, PLACES AND ADMIN KEEP THEIR ADDRESSES AND LOSE THEIR
+// ROWS. Capabilities and Rewards are reached from the product cards that
+// already link into the place (`lib/products.ts`, `PRODUCT_VIEW`); Places from
+// Add place and the zero-place empty state; Admin by typing it. Hiding a row
+// changes NOTHING about access: `tabsForAccess` is still the one matrix and
+// `PlaceTabGate` still 404s a withheld tab.
+//
+// THIS ARRAY IS THE ONLY STATEMENT OF THE ROW LIST. The rail renders it, the
+// contract test walks it, and every other mention in a docblock or a plan is
+// prose about it. Two lists is how the rail ended up meaning three different
+// things in one document.
+
+/** A rail row names either an organization page or a place view. The two
+ *  spaces do not overlap, so the union is unambiguous and one lookup serves
+ *  the whole column. */
+export type RailRow =
+  | { kind: "org"; target: OrgTarget }
+  | { kind: "place"; view: PlaceRailView };
+
+/** The place views that keep a rail row. NOT `PLACE_TABS` — that is the full
+ *  matrix of what a place HAS; this is what the column LISTS. */
+export const PLACE_RAIL_VIEWS = ["profile", "menus", "reviews"] as const;
+export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
+
+/** THE RAIL, in Pato's order. Account is not here: it is the person, it sits
+ *  below the seam, and it is the one row every state renders. */
+export const RAIL_ROWS: readonly RailRow[] = [
+  { kind: "org", target: "settings" },
+  { kind: "place", view: "profile" },
+  { kind: "place", view: "menus" },
+  { kind: "place", view: "reviews" },
+  { kind: "org", target: "products" },
+  { kind: "org", target: "customers" },
+  { kind: "org", target: "activity" },
+];
+
+/** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
+ *  second array.
+ *
+ *  It drops the PLACE rows and keeps every organization row. The place rows go
+ *  because a place row with no place opens a page about nothing, which is the
+ *  "a row lands somewhere real" law (MESITA-1833) failing quietly. The
+ *  organization rows stay because each is a real page that works with no place
+ *  at all — and because Products is where the eight cards say "Add a place"
+ *  and link to the ceremony. A rail with no door to the one thing a new
+ *  operator came to do is a worse empty state than a muted row ever was. */
+export const ZERO_PLACE_ROWS: readonly RailRow[] = RAIL_ROWS.filter(
+  (r) => r.kind === "org",
+);
+
 // THERE ARE NO DOORS LEFT (MESITA-1847). `members` was the last organization
 // address with no rail row, reached through a chevron on the Organization
 // page — and Pato: *"members and places in organization i mean, fuck nested

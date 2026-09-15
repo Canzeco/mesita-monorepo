@@ -1,0 +1,28 @@
+-- ONE PLACE PER ORGANIZATION IS A CONSOLE RULE, NOT A CONSTRAINT (MESITA-1879).
+--
+-- Pato, 2026-09-15: "You can now only manage one place for organization. we
+-- still have the organization schema. but its different. since our customers
+-- are going to be mainly independent venues first, not franchises. then maybe
+-- franchises. but we still have the ontological structure for orgs and places
+-- in the future."
+--
+-- The business console enforces it in two places and NEITHER is here: the Add
+-- place door is hidden once an organization holds one, and the create server
+-- action refuses a second with a message naming the place already held
+-- (`app/(shell)/actions/places.ts`, `requireCeremonyOwner`).
+--
+-- `places.organization_id` therefore keeps its many-to-one cardinality ON
+-- PURPOSE. A UNIQUE index here would read as tidying up after the product
+-- decision — and it would be the one change that makes franchises a migration
+-- instead of a flag. The console already handles several places gracefully
+-- (a picker returns and the rail stops choosing for you); the database has
+-- never been the thing standing in the way.
+--
+-- The accepted cost of enforcing it in the application: the check is
+-- read-then-refuse, so two tabs racing can both pass it. Blast radius is one
+-- extra place, which the console then explains rather than hides.
+--
+-- This migration changes no schema. It exists so the next person to look at
+-- this column finds the reason before they "fix" it.
+comment on column public.places.organization_id is
+  'The organization that holds this place, or null when it is in the public pool. MANY-TO-ONE ON PURPOSE (MESITA-1879): the business console shows one place per organization and refuses a second in the create action, but that is a product rule, not a data one. Do NOT add a UNIQUE index — franchises are deferred, not cancelled, and this column is what makes bringing them back a flag rather than a migration.';
