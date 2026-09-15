@@ -25,6 +25,15 @@ function Footer() {
           <a href="#money" className="hover:text-foreground py-2 transition">
             Money
           </a>
+          <Link href="/terms" className="hover:text-foreground py-2 transition">
+            Terms
+          </Link>
+          <Link
+            href="/privacy"
+            className="hover:text-foreground py-2 transition"
+          >
+            Privacy
+          </Link>
         </nav>
       </div>
     </footer>

@@ -45,8 +45,11 @@ import { toast } from '@/lib/toast';
 import { ageFromBirthday, errMsg, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-const TERMS_URL = 'https://www.mesita.ai/terms';
-const PRIVACY_URL = 'https://www.mesita.ai/privacy';
+// The apex, no `www.` — web-landing canonicalizes there and the two routes
+// live there (MESITA-1888). The web twin is MESITA_TERMS_URL / MESITA_PRIVACY_URL
+// in web-consumer's src/lib/mesita-contact.ts; both said `www.` and both 404'd.
+const TERMS_URL = 'https://mesita.ai/terms';
+const PRIVACY_URL = 'https://mesita.ai/privacy';
 const PRIVACY_EMAIL = 'privacy@mesita.ai';
 
 const LANGUAGE_OPTIONS = [
