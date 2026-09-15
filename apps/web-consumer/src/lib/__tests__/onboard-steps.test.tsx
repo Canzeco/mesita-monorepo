@@ -51,7 +51,11 @@ function shown(initial?: {
   return headlines.filter((h) => html.includes(asHtml(h)));
 }
 
-function markup(initial?: { firstName: string; birthday: string; sex: string }) {
+function markup(initial?: {
+  firstName: string;
+  birthday: string;
+  sex: string;
+}) {
   return renderToStaticMarkup(<OnboardForm initial={initial} />);
 }
 

@@ -151,7 +151,11 @@ export function OnboardForm({
   /** Write ONE field, then advance — or, on the last step, leave for the app.
    *  `loading` deliberately stays true through the final navigation, so the
    *  button cannot be pressed twice while the route transition runs. */
-  function persist(patch: { first_name?: string; birthday?: string; sex?: ConsumerSex }) {
+  function persist(patch: {
+    first_name?: string;
+    birthday?: string;
+    sex?: ConsumerSex;
+  }) {
     setLoading(true);
     void (async () => {
       try {
@@ -181,7 +185,9 @@ export function OnboardForm({
       // /onboard (the shell gate). DOM value wins, with state as the fallback.
       // The other two are tap-only, so they have no autofill path to miss.
       const fd = new FormData(e.currentTarget);
-      const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
+      const first = (
+        (fd.get("first_name") as string | null) ?? firstName
+      ).trim();
       if (!first) return setError("Tell us your first name.");
       setFirstName(first);
       return persist({ first_name: first });
@@ -192,7 +198,9 @@ export function OnboardForm({
       // Age gate — 13 or below is restricted (MESITA-727).
       const age = ageFromBirthday(birthday);
       if (age === null || age < MIN_SIGNUP_AGE) {
-        return setError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
+        return setError(
+          `You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`,
+        );
       }
       return persist({ birthday });
     }
