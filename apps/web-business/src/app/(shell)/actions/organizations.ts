@@ -111,11 +111,13 @@ export async function connectPaymentsAction(
     .toUpperCase();
   const entityType = String(formData.get("entityType") ?? "").trim();
   if (!orgId) return { error: "Missing organization.", note: null };
+  const intent = String(formData.get("intent") ?? "create");
   // The pre-onboarding gate, enforced server-side too: `required` on the
-  // select is a courtesy the browser can skip. Only on create — resume mints
-  // a link for an account that already carries its answer.
+  // select is a courtesy the browser can skip. Create and RESTART both mint a
+  // new account, so both need the answer; only resume may omit it, because the
+  // account it reopens already carries Stripe's copy.
   if (
-    String(formData.get("intent") ?? "create") === "create" &&
+    (intent === "create" || intent === "restart") &&
     !isConnectEntityType(entityType)
   ) {
     return {
@@ -154,6 +156,10 @@ export async function connectPaymentsAction(
       returnUrl: `${origin}${orgRootHref(orgId)}?connect=return`,
       refreshUrl: `${origin}${orgRootHref(orgId)}?connect=refresh`,
       ...(entityType ? { entityType } : {}),
+      // Only ever from an explicit Start over (MESITA-1865). The EF re-reads
+      // the live Stripe account before it deletes anything, so this flag asks;
+      // it does not authorise.
+      ...(intent === "restart" ? { restart: true } : {}),
     }));
   } catch (e) {
     return {

@@ -38,6 +38,7 @@ import {
   isMockConnect,
   isSupportedConnectCountry,
   isSupportedConnectEntityType,
+  isTerminalDisabledReason,
   keyIsLive,
   MESITA_CONNECT_COUNTRIES,
   MESITA_CONNECT_ENTITY_TYPES,
@@ -80,6 +81,13 @@ type Body = {
    *  asked before onboarding opens. Optional on the wire: the resume path
    *  only mints a link for an account that already exists. */
   entityType?: string;
+  /** THROW THE EXISTING ACCOUNT AWAY (MESITA-1865). Country is per-account
+   *  permanent at Stripe, and both permanent answers are given by someone who
+   *  has not seen the hosted flow yet — so a wrong one used to be terminal for
+   *  the organization. Honoured only while Stripe's OWN object says the account
+   *  never submitted details and never charged; the mirror is not consulted for
+   *  this, because a stale row would delete an account that just finished KYC. */
+  restart?: boolean;
 };
 
 // Stripe's own words go to the LOG. What the owner reads is decided by
@@ -222,10 +230,23 @@ Deno.serve(async (req) => {
   }
   const existing = (existingRes.data as PaymentAccountRow | null) ?? null;
 
+  // A restart provisions a NEW account, so it needs the same two answers a
+  // first connection does. Resume is the one that may omit the entity, because
+  // the account it reopens already carries Stripe's copy of it.
+  const restartAsked = bodyRes.body.restart === true;
+  if (restartAsked && entityType === null) {
+    return json({
+      ok: false,
+      error:
+        `entityType is required when restart is true — a replacement account is created with it.`,
+      code: "entity_type_required",
+    }, 400);
+  }
   const action = classifyExistingAccount(existing, {
     mockMode,
     keyLive: stripeKey ? keyIsLive(stripeKey) : false,
     country,
+    restart: restartAsked,
   });
 
   // ── Mock mode: insert-if-missing, NEVER overwrite a real row. ─────────────
@@ -328,7 +349,63 @@ Deno.serve(async (req) => {
     }
   }
 
-  // "create", "replace", or a 404ed "use": provision a fresh account.
+  // ── Restart: delete the unfinished account, then fall through to create. ──
+  //
+  // The narrow, honest escape from two PERMANENT answers given before anyone
+  // saw the form they configure (MESITA-1865). `country` cannot be patched —
+  // Stripe bakes it into the account — and an owner who picked MX for a US
+  // business, or persona física for a persona moral, previously had no path
+  // that did not go through an operator.
+  //
+  // STRIPE IS THE AUTHORITY, NOT THE MIRROR. The mirror is refreshed on read
+  // and can still be minutes stale; deleting on a stale `details_submitted:
+  // false` would destroy an account that finished KYC in another tab. So the
+  // account is retrieved fresh, and anything that looks like real history —
+  // submitted details, or charges ever enabled — refuses the delete and heals
+  // the mirror on the way out, so the card stops offering the button.
+  let replacedAccountId: string | null = null;
+  if (action === "restart") {
+    try {
+      const live = await stripe.accounts.retrieve(existing!.stripe_account_id);
+      const closed = isTerminalDisabledReason(
+        live.requirements?.disabled_reason ?? null,
+      );
+      if (live.details_submitted === true || live.charges_enabled === true || closed) {
+        await writePaymentAccount(admin, {
+          mode: "update",
+          by: "organization_id",
+          id: orgId,
+          patch: accountSnapshotFromStripe(live, livemode),
+        });
+        return json({
+          ok: false,
+          error: closed
+            // Stripe closed the ENTITY, not the paperwork. Minting a second
+            // account for the same organization is working around that
+            // decision, so it routes to a person like every other rejected.*
+            // surface (MESITA-1645).
+            ? "Stripe closed this account. Write to us and we’ll help you from here."
+            : "This Stripe account has already been submitted, so it can’t be replaced from here. Write to us and we’ll sort it out.",
+          code: closed ? "account_closed" : "onboarding_already_submitted",
+        }, 409);
+      }
+      await stripe.accounts.del(existing!.stripe_account_id);
+      replacedAccountId = existing!.stripe_account_id;
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "resource_missing" || code === "account_invalid") {
+        // Already gone from this universe — the restart's goal, reached by
+        // someone else. Keep the id: it is what keys the replacement's
+        // idempotency, and a retry of THIS restart must replay, not mint.
+        replacedAccountId = existing!.stripe_account_id;
+      } else {
+        console.error("[start-payment-onboarding] restart failed:", err);
+        return stripeFailure(err);
+      }
+    }
+  }
+
+  // "create", "replace", "restart", or a 404ed "use": provision a fresh account.
   // Prefill MUST land on accounts.create: Express + requirement_collection
   // stripe locks KYC after the first Account Link, which is why Software
   // showed up for restaurants — we never sent MCC, Stripe used Canzeco's.
@@ -374,7 +451,13 @@ Deno.serve(async (req) => {
         taxId: prefill.taxId,
         businessProfile: prefill.businessProfile,
       }),
-      { idempotencyKey: connectAccountIdempotencyKey(orgId, country) },
+      {
+        idempotencyKey: connectAccountIdempotencyKey(
+          orgId,
+          country,
+          replacedAccountId,
+        ),
+      },
     );
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);

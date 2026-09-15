@@ -278,12 +278,21 @@ export function connectAccountCreateParams(
  * orphan is forever. Keyed on the two things that identify the intended
  * account. Stripe scopes idempotency per API version, so this key moves with
  * CONNECT_API_VERSION by construction.
+ *
+ * `after` is what makes a RESTART possible (MESITA-1865). On org+country alone,
+ * an owner who restarts with the SAME country replays the key of the account
+ * that was just deleted — Stripe answers with the deleted account, and the
+ * restart silently does nothing. Naming the account being replaced keeps the
+ * key deterministic (a retry of the same restart still replays, which is the
+ * whole point) while making each restart generation its own key.
  */
 export function connectAccountIdempotencyKey(
   orgId: string,
   country: string,
+  after?: string | null,
 ): string {
-  return `connect-acct-${orgId}-${country}`;
+  const base = `connect-acct-${orgId}-${country}`;
+  return after ? `${base}-after-${after}` : base;
 }
 
 /**
@@ -343,16 +352,32 @@ export function accountSnapshotFromStripe(
  * this place is MX" must never silently mint a second account and orphan the
  * first. It returns the existing row under its own name so the caller can say
  * WHY, instead of handing back a fresh link that looks like success.
+ *
+ * `ctx.restart` is the ONE way past that clause (MESITA-1865), and it is an
+ * EXPLICIT ask, never an inference from a mismatched country. It answers
+ * "restart", which is not the same verdict as "replace": replace abandons a row
+ * pointing at an account this key cannot even see, while restart must first
+ * DELETE a reachable account at Stripe — and the caller may only do that after
+ * checking Stripe's own object, because this mirror can be stale and a stale
+ * `details_submitted:false` would delete an account that just finished KYC.
  */
 export function classifyExistingAccount(
   row: { stripe_account_id: string; livemode: boolean; country?: string | null } | null,
-  ctx: { mockMode: boolean; keyLive: boolean; country?: string | null },
-): "create" | "use" | "use_country_mismatch" | "replace" | "return_untouched" {
+  ctx: {
+    mockMode: boolean;
+    keyLive: boolean;
+    country?: string | null;
+    restart?: boolean;
+  },
+): "create" | "use" | "use_country_mismatch" | "replace" | "restart" | "return_untouched" {
   if (!row) return "create";
   const mockRow = isMockConnectAccountId(row.stripe_account_id);
   if (ctx.mockMode) return mockRow ? "use" : "return_untouched";
   if (mockRow) return "replace";
   if (row.livemode !== ctx.keyLive) return "replace";
+  // A reachable, real account the caller explicitly asked to throw away. It
+  // outranks the country clause because it is the answer TO the country clause.
+  if (ctx.restart) return "restart";
   // Only a row that actually KNOWS its country can mismatch: rows written
   // before the column existed are null and must not be treated as wrong.
   if (row.country && ctx.country && row.country !== ctx.country) {
@@ -399,4 +424,32 @@ export function isSupportedConnectEntityType(
 ): value is MesitaConnectEntityType {
   return typeof value === "string" &&
     (MESITA_CONNECT_ENTITY_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * Which `requirements.disabled_reason` values mean the account is CLOSED, not
+ * merely unfinished (MESITA-1865).
+ *
+ * Stripe stamps `requirements.past_due` on a connected account the moment
+ * capabilities are requested and their requirements are unmet — so an Express
+ * account that has never collected one field is already "disabled". Reading
+ * that as a restriction is what made every abandoned onboarding a dead end:
+ * the console showed **Restricted**, the state with no way back in, to the one
+ * person whose whole problem was an unfinished form.
+ *
+ * `rejected.*` and `platform_paused` are different in kind. Stripe (or Mesita)
+ * closed the ENTITY, and neither reopening hosted onboarding nor minting a
+ * replacement account is a next step the merchant may take alone — both route
+ * to a person, the same way `disabledReasonCopy` routes the `rejected.*` family
+ * (MESITA-1645).
+ *
+ * The business console carries its own copy of this rule (it reads the mirror
+ * row, and a Next app cannot import from a Deno EF); `stripe-connect.test.ts`
+ * reads that file and fails when the two drift.
+ */
+export function isTerminalDisabledReason(
+  reason: string | null | undefined,
+): boolean {
+  if (!reason) return false;
+  return reason.startsWith("rejected.") || reason === "platform_paused";
 }

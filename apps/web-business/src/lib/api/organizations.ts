@@ -290,6 +290,26 @@ export type PaymentAccount = {
 };
 
 /**
+ * Which `disabled_reason` values mean the account is FINISHED, not unfinished.
+ *
+ * Stripe sets `requirements.disabled_reason` on a brand-new connected account
+ * the moment capabilities are requested and their requirements are unmet — so
+ * an Express account that has never collected a single field already carries
+ * `requirements.past_due`. Everything else being equal, "disabled" and "not
+ * started" are the same account on day zero, and only one of those two words
+ * describes a next step the owner can take.
+ *
+ * `rejected.*` and `platform_paused` are the exception: Stripe (or Mesita)
+ * closed the account, and reopening hosted onboarding on a closed account is a
+ * loop, not a next step — the same reason `in_review` deliberately has no
+ * button (MESITA-1645). Those keep winning over everything.
+ */
+function isTerminalDisabledReason(reason: string | null | undefined): boolean {
+  if (!reason) return false;
+  return reason.startsWith("rejected.") || reason === "platform_paused";
+}
+
+/**
  * One derivation, shared by the badge and the pill — never re-derived.
  *
  * Charge capability is read FIRST because it is the strongest fact Stripe
@@ -298,6 +318,14 @@ export type PaymentAccount = {
  * asking — has work to do and gets Resume. An owner with nothing outstanding
  * and still no charges is waiting on Stripe, and Resume would only reopen a
  * form they already completed.
+ *
+ * ORDER IS THE BUG THIS FIXES (MESITA-1865). `disabled_reason` used to be read
+ * before `details_submitted`, so EVERY account that walked away from hosted
+ * onboarding came back reading **Restricted** — the state with no Resume
+ * button — over `requirements.past_due`, which Stripe sets on day zero. An
+ * owner who closed the Stripe tab had no way back in, and the only control on
+ * the card was a dashboard that cannot exist yet. Submission now outranks a
+ * non-terminal reason; a terminal one still outranks everything.
  *
  * KNOWN LIMIT, stated rather than papered over: a permanently restricted
  * account that submitted everything and has nothing due is indistinguishable
@@ -310,13 +338,79 @@ export function paymentAccountState(
   orphaned: boolean,
 ): PaymentAccountState {
   if (!account) return "none";
-  if (orphaned || account.disabled_reason) return "restricted";
+  if (orphaned || isTerminalDisabledReason(account.disabled_reason)) {
+    return "restricted";
+  }
   if (account.charges_enabled && account.payouts_enabled) return "live";
   if (account.charges_enabled) return "charges_only";
   if (!account.details_submitted || account.requirements_due.length > 0) {
     return "unfinished";
   }
+  if (account.disabled_reason) return "restricted";
   return "in_review";
+}
+
+/**
+ * Can the owner still be sent into Stripe's hosted onboarding?
+ *
+ * Read by the card instead of pattern-matching the pill. The pill answers
+ * "where is this account"; this answers "is there a door", and they are not
+ * the same question — an account can be Restricted for a reason hosted
+ * onboarding collects (`requirements.past_due`) or for one it never will
+ * (`rejected.fraud`).
+ */
+export function canResumeOnboarding(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): boolean {
+  if (!account || orphaned) return false;
+  if (isTerminalDisabledReason(account.disabled_reason)) return false;
+  return !account.details_submitted || account.requirements_due.length > 0;
+}
+
+/**
+ * Can the Express Dashboard be opened at all?
+ *
+ * `accounts.createLoginLink` FAILS on an account that has not completed hosted
+ * onboarding — there is no dashboard to log into yet — and the EF reported
+ * that refusal as a Mesita misconfiguration, in rose, to a restaurant owner
+ * whose actual problem was an unfinished form (MESITA-1865). A button that
+ * cannot work is not offered.
+ */
+export function canOpenDashboard(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): boolean {
+  return account !== null && !orphaned && account.details_submitted;
+}
+
+/**
+ * May this account be thrown away and replaced?
+ *
+ * Country is PER-ACCOUNT PERMANENT at Stripe, and legal entity decides which
+ * documents the hosted flow asks for — both are answered before onboarding
+ * opens, by someone who has never seen the flow. Getting either wrong used to
+ * be terminal for the organization: `classifyExistingAccount` answers
+ * `use_country_mismatch`, which hands back a link to the same wrongly-countried
+ * account forever.
+ *
+ * The window is narrow ON PURPOSE (`decision:` MESITA-1865): only while the
+ * account has never submitted details and never charged. After that it may hold
+ * KYC or money, and deleting it is an operator's call, not an inference a card
+ * may make. The server re-checks this against Stripe's own object, never this
+ * mirror — this predicate only decides whether to OFFER it.
+ */
+export function canRestartOnboarding(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): boolean {
+  if (!account || orphaned) return false;
+  // A closed account is never quietly replaced with a fresh one. Stripe
+  // rejected the ENTITY, not the paperwork, and minting another account for
+  // the same organization reads as working around that decision — it routes to
+  // a person, like every other `rejected.*` surface (MESITA-1645).
+  if (isTerminalDisabledReason(account.disabled_reason)) return false;
+  return !account.details_submitted && !account.charges_enabled;
 }
 
 export async function apiGetPaymentAccount(
@@ -345,6 +439,11 @@ export async function apiStartPaymentOnboarding(
      *  Stripe Account Links reject one (MESITA-1643). */
     returnUrl: string;
     refreshUrl: string;
+    /** Throw the existing account away and mint a fresh one under the country
+     *  and legal entity in THIS request (MESITA-1865). The EF re-checks the
+     *  live Stripe object before it deletes anything; this flag is a request,
+     *  never a permission. */
+    restart?: boolean;
   },
 ): Promise<{ url: string | null; mock: boolean }> {
   const { url, mock } = await invokeEF<{ url: string | null; mock: boolean }>(
