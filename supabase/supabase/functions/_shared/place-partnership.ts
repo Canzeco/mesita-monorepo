@@ -1,18 +1,26 @@
-// Org-level Partner (MESITA-1798).
+// Place-level Partner (MESITA-1798, re-scoped by MESITA-1892).
 //
-// Stripe is one connected account per organization. Partner is the next
-// org fact: a binary switch on the Organization screen, labeled Partner
-// (on/off — never "Not Partner"). Turning it on:
-//   • writes organizations.partnered
-//   • turns on organizations.mesita_pay_enabled (the payments package a
-//     Partnered org turns on once — Checkout §0; the column existed with
-//     no writer)
-//   • joins every held place at plan=pro Zero (listing_type stays web
-//     until a paid strategy is picked — existing partner-derivation)
-// Turning it off reverses all three.
+// Partner is a fact about the PLACE now: a binary switch on its Settings,
+// labeled Partner (on/off — never "Not Partner"). Turning it on:
+//   • writes places.partnered
+//   • joins the place at plan=pro Zero (listing_type stays web until a paid
+//     strategy is picked — existing partner-derivation)
+// Turning it off reverses both.
 //
-// Stripe Ready (charges_enabled ∧ details_submitted) is the LOCK on the
-// switch, not the fact. The EF refuses ON without it.
+// IT USED TO WRITE THE PAY BIT TOO, and it deliberately no longer does.
+// There were two Mesita Pay bits, the organization's and the place's, and
+// `profiles.mesita_pay_enabled` ANDed them; this switch owned the org's half.
+// MESITA-1892 collapsed them into one column on `place_profiles`, and that
+// column already has exactly ONE writer — `_shared/place-rails.ts`. A second
+// writer for one bit is how a switch and a page end up disagreeing about what
+// is on, so the coupling ends here rather than being re-pointed. This also
+// finishes what MESITA-1867/1868 started: buying or being granted a
+// partnership must never start charging a restaurant's guests.
+//
+// Stripe Ready (charges_enabled ∧ details_submitted) is still the LOCK on the
+// switch, and it is KEPT ON PURPOSE even though the Pay coupling it guarded
+// is gone: loosening a money gate is not this issue's business. A Partner is a
+// merchant, and a merchant has an account that can take a charge.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isConnectChargeReady } from "./payment-account-doc.ts";
@@ -95,31 +103,33 @@ export async function writePlacePartnership(
   return { ok: true };
 }
 
-export type SetOrgPartnershipResult =
+export type SetPlacePartnershipResult =
   | {
     ok: true;
     partnered: boolean;
-    mesitaPayEnabled: boolean;
-    placesJoined: number;
-    placesDropped: number;
+    /** Did this call move the place onto the pro plan / off it? Reported
+     *  rather than assumed, because flipping to the current value is legal
+     *  and must say that nothing moved. */
+    joined: boolean;
+    dropped: boolean;
   }
   | { ok: false; status: number; code: string; error: string };
 
 /**
- * The body of business-web-set-org-partnership. Auth is the caller's job.
- * Idempotent on the org bit: flipping to the current value still cascades
- * held places so a claim that raced the toggle still lands joined.
+ * The body of business-web-set-place-partnership. Auth is the caller's job.
+ * Idempotent: flipping to the current value still re-applies the plan patch,
+ * so a place that raced the toggle still lands joined.
  */
-export async function setOrgPartnership(
+export async function setPlacePartnership(
   admin: SupabaseClient,
-  orgId: string,
+  placeId: string,
   partnered: boolean,
-): Promise<SetOrgPartnershipResult> {
+): Promise<SetPlacePartnershipResult> {
   if (partnered) {
     const account = await admin
-      .from("organization_payment_accounts")
+      .from("place_payment_accounts")
       .select("charges_enabled, details_submitted")
-      .eq("organization_id", orgId)
+      .eq("place_id", placeId)
       .maybeSingle();
     if (account.error) {
       return {
@@ -143,64 +153,49 @@ export async function setOrgPartnership(
     }
   }
 
-  const { data: org, error: orgErr } = await admin
-    .from("organizations")
-    .update({
-      partnered,
-      mesita_pay_enabled: partnered,
-    })
-    .eq("id", orgId)
-    .select("id, partnered, mesita_pay_enabled")
-    .single();
-  if (orgErr || !org) {
-    return {
-      ok: false,
-      status: 500,
-      code: "org_update",
-      error: orgErr?.message ?? "Update failed",
-    };
-  }
-
-  const { data: places, error: placesErr } = await admin
+  // READ BEFORE WRITE, and read the plan columns in the same trip: the join /
+  // drop patch is decided from the row as it stands, and `writePlacePartnership`
+  // returns a no-op for a place already in the target state.
+  const { data: place, error: readErr } = await admin
     .from("places")
     .select("id, plan, listing_type, plan_forfeited_at")
-    .eq("organization_id", orgId);
-  if (placesErr) {
+    .eq("id", placeId)
+    .maybeSingle();
+  if (readErr) {
+    return { ok: false, status: 500, code: "place_read", error: readErr.message };
+  }
+  if (!place) {
+    return { ok: false, status: 404, code: "place_not_found", error: "No such place." };
+  }
+
+  const row = place as PlacePartnershipRow;
+  const moved = joiningCount(row, partnered);
+
+  const { data: written, error: writeErr } = await admin
+    .from("places")
+    .update({ partnered })
+    .eq("id", placeId)
+    .select("id, partnered")
+    .single();
+  if (writeErr || !written) {
     return {
       ok: false,
       status: 500,
-      code: "places_read",
-      error: placesErr.message,
+      code: "place_update",
+      error: writeErr?.message ?? "Update failed",
     };
   }
 
-  let placesJoined = 0;
-  let placesDropped = 0;
-  for (const p of (places ?? []) as PlacePartnershipRow[]) {
-    const before = joiningCount(p, partnered);
-    const write = await writePlacePartnership(admin, p, partnered);
-    if (!write.ok) {
-      return {
-        ok: false,
-        status: 500,
-        code: "place_update",
-        error: write.error,
-      };
-    }
-    if (before === "join") placesJoined += 1;
-    if (before === "drop") placesDropped += 1;
+  const patch = await writePlacePartnership(admin, row, partnered);
+  if (!patch.ok) {
+    return { ok: false, status: 500, code: "place_update", error: patch.error };
   }
 
-  const written = org as {
-    partnered: boolean;
-    mesita_pay_enabled: boolean;
-  };
   return {
     ok: true,
-    partnered: written.partnered === true,
-    mesitaPayEnabled: written.mesita_pay_enabled === true,
-    placesJoined,
-    placesDropped,
+    partnered: (written as { partnered: boolean }).partnered === true,
+    joined: moved === "join",
+    dropped: moved === "drop",
   };
 }
 

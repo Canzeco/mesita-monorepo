@@ -5,7 +5,7 @@ import {
   MEXICO_RFC_RE,
   normalizeRfc,
   readRfc,
-} from "./org-rfc.ts";
+} from "./place-rfc.ts";
 import { MEXICO_RFC_RE as PREFILL_RE, rfcIfValid } from "./stripe-connect-prefill.ts";
 
 Deno.test("normalizeRfc trims, upper-cases, and calls nothing an RFC", () => {
@@ -26,7 +26,7 @@ Deno.test("isShapedRfc accepts persona moral (12) and física (13)", () => {
 });
 
 Deno.test("isShapedRfc refuses what the old length cap let through", () => {
-  // Every one of these is <= 20 chars, so business-web-update-organization's
+  // Every one of these is <= 20 chars, so business-web-update-place's
   // previous check passed them — and prefill then silently dropped them.
   assertFalse(isShapedRfc("not-an-rfc"));
   assertFalse(isShapedRfc("ABC010101"), "too short");
@@ -43,11 +43,11 @@ Deno.test("readRfc is the two writers' shared door", () => {
 });
 
 // THE TWIN. The regex is stated twice — here in TypeScript and in SQL as
-// `organizations_rfc_shape`. If one moves without the other, a value the EF
+// `places_rfc_shape`. If one moves without the other, a value the EF
 // accepts gets rejected by the database as a 500, or a value the database
 // accepts never reaches Stripe. This test pins the TS side to the literal the
 // migration carries; changing either means changing both.
-Deno.test("MEXICO_RFC_RE matches the organizations_rfc_shape CHECK", () => {
+Deno.test("MEXICO_RFC_RE matches the places_rfc_shape CHECK", () => {
   assertEquals(MEXICO_RFC_RE.source, "^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$");
 });
 
@@ -63,7 +63,7 @@ Deno.test("isDuplicateRfcError fires only on the RFC index", () => {
   assert(
     isDuplicateRfcError({
       code: "23505",
-      message: 'duplicate key value violates unique constraint "organizations_rfc_unique"',
+      message: 'duplicate key value violates unique constraint "places_rfc_unique"',
       details: null,
     }),
   );
@@ -71,7 +71,7 @@ Deno.test("isDuplicateRfcError fires only on the RFC index", () => {
   assertFalse(
     isDuplicateRfcError({
       code: "23505",
-      message: 'duplicate key value violates unique constraint "organizations_pkey"',
+      message: 'duplicate key value violates unique constraint "places_pkey"',
       details: null,
     }),
   );

@@ -3,7 +3,7 @@ import {
   dropPlacePatch,
   joinPlacePatch,
   type PlacePartnershipRow,
-} from "./org-partnership.ts";
+} from "./place-partnership.ts";
 
 const FREE: PlacePartnershipRow = {
   id: "p1",
