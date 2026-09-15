@@ -12,17 +12,18 @@ import { Coins } from "lucide-react";
 //
 // THE RENAME STOPS AT THE LABEL, as every rename on this rail does. The route
 // stays `/controls-config`, the blob stays `app_config.controls_config`, the
-// endpoints stay `admin-web-get/update-controls-config`, and this constant
+// wire key stays `section: "controls"`, and this constant
 // stays `CONTROLS_PARENT` — a rename that reaches a URL, a column or an EF name
 // is the bug the frozen-directory rule exists to prevent. `FILTERS_PARENT`
 // labelled "Discovery" is the same shape a few rows up; do not "fix" either.
 //
-// "CREDITS" NAMES THE DOMAIN, NOT A CONTAINER — and that rule is why the word
-// came OFF this row. Vocabulary bans Credits as a container name: the consumer
-// section is Wallet because it holds Credits AND saved cards AND gifting. This
-// page is the same shape, one level down — the wired Credits terms and the
-// parked Gifting box are two unlike things — so it takes the container word,
-// Payments, and hands "Credits" back to the box that is only about Credits.
+// THE WORD MOVED DOWN A LEVEL; it was not banned from the page. The box that
+// holds the terms is called Credits now, which it could not be while the page
+// heading read Credits. Do NOT reach for the Wallet argument to justify this:
+// Wallet earns the container word because it holds a SECOND INSTRUMENT, the
+// guest's saved cards, and this page has none — Gifting is Credits with a
+// recipient, as its own subtitle says. Payments is here because Pato asked for
+// it and because the other console already says it, which is reason enough.
 //
 // LAST in Configurations, after Reservations. Every row above it configures an
 // ENGINE that runs a guest journey; this one configures the INSTRUMENT the
