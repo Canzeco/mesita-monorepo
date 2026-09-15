@@ -8,6 +8,20 @@
 //
 // Stripe Ready is the lock. Owner-only to flip; everyone else reads it.
 //
+// THE BOX NAMES NO CAPABILITY (MESITA-1863). Pato: *"the rewards and more
+// shit is not inherent of the partnership — or if it's not, don't mention it
+// there."* It listed Mesita Pay, Visit Rewards and Accept Prepays under the
+// on switch, and not one of them arrives with it: joining writes `partnered`
+// and `mesita_pay_enabled`, and puts every held place on plan=pro at ZERO
+// rates — rewards off, prepays off, and Mesita Pay still behind a
+// charge-ready Stripe account. All three are partner-GATED; none is
+// partner-DELIVERED, so a list under the switch promised what the operator
+// then found switched off on Capabilities.
+//
+// The ladder is where a capability states its own prerequisite
+// (place-manage/sections/controls/offerings.ts). This box says what flipping
+// the switch DOES, and stops.
+//
 // THE 9.5rem RIGHT WELL IS GONE (MESITA-1861). Every branch used to end in
 // `w-[9.5rem] shrink-0 justify-end sm:w-[11rem]`, which pinned the track (or
 // the lock pill) to the far right of a card that, on the fluid console, is
@@ -21,15 +35,6 @@ import { Loader2, Lock } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { setOrgPartnershipAction } from "@/app/(shell)/actions/organizations";
 import { cn } from "@/lib/utils";
-
-/** What being a Partner unlocks at each place — Capabilities still owns
- *  the per-place switches; this box names them so the org toggle is not
- *  a flag without a consequence. */
-export const PARTNER_CAPABILITIES = [
-  { label: "Mesita Pay", detail: "The payments package, on for this organization." },
-  { label: "Visit Rewards", detail: "Each place picks Zero, Conservative or Aggressive." },
-  { label: "Accept Prepays", detail: "Redeem a guest's prepaid balance on the bill." },
-] as const;
 
 function Track({ on, busy }: { on: boolean; busy: boolean }) {
   return (
@@ -134,21 +139,6 @@ export function PartnerCard({
               : "An owner turns this on."}
           </span>
         </div>
-      )}
-
-      {on && (
-        <ul className="border-border/60 mt-3 flex flex-col gap-2 border-t pt-3">
-          {PARTNER_CAPABILITIES.map((c) => (
-            <li key={c.label} className="flex items-start justify-between gap-3">
-              <span className="min-w-0">
-                <span className="block text-sm font-medium">{c.label}</span>
-                <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                  {c.detail}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
       )}
 
       <div aria-live="polite">

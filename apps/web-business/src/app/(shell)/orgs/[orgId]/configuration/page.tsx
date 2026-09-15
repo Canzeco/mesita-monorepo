@@ -157,7 +157,7 @@ export default async function ConfigurationPage(props: {
       <Section
         lane
         title="Partnership"
-        description="Free. Unlocks Mesita Pay, Visit Rewards and Accept Prepays at every held place."
+        description="Free. Every place this organization holds joins; each place then turns on what it offers."
       >
         <PartnerCard
           key={`${org.id}-${org.partnered === true ? "on" : "off"}`}

@@ -137,3 +137,31 @@ describe("the page reads the dependency, not the alphabet", () => {
     expect(PAGE_SRC).toMatch(/flex flex-col gap-1[\s\S]{0,400}<h1/);
   });
 });
+
+// MESITA-1863. The box used to list Mesita Pay, Visit Rewards and Accept
+// Prepays under the on switch. Joining writes `partnered` and
+// `mesita_pay_enabled` and puts every held place on plan=pro at ZERO rates —
+// so all three are partner-GATED and none is partner-DELIVERED. The operator
+// read that the partnership had unlocked them, then met three off switches on
+// Capabilities. The gate belongs where each rung states its own prerequisite:
+// the ladder.
+describe("Partnership is the gate, never the delivery", () => {
+  const NAMED = ["Mesita Pay", "Visit Rewards", "Accept Prepays"];
+
+  it("neither the card nor the page names a capability the switch does not turn on", () => {
+    const code = PARTNER_SRC.replace(/\/\/[^\n]*/g, "");
+    for (const name of NAMED) {
+      expect(code).not.toContain(name);
+      expect(PAGE_SRC).not.toContain(name);
+    }
+  });
+
+  it("the ladder still names the gate, so the claim lives where it is true", () => {
+    const ladder = readFileSync(
+      path.join(__dirname, "../place-manage/sections/controls/offerings.ts"),
+      "utf8",
+    );
+    expect(ladder).toContain("the gate for everything below");
+    expect(ladder).toContain("Needs the partnership");
+  });
+});
