@@ -167,11 +167,21 @@ export async function applyMembershipEntitlement(
 
 export type PartnerMembershipRow = {
   state: string;
+  stripe_subscription_id: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
   price_cents: number | null;
   currency: string;
 };
+
+/** A `mock_*` id is MOCK_SUBSCRIPTION's placeholder, never a Stripe
+ *  subscription. It must not read as one on the real path: an org that got a
+ *  mock grant while the flag was on would otherwise be a permanent partner
+ *  with nothing billable behind it, unable to buy even when it wanted to.
+ *  Same rule `business-web-change-subscription` applies to place rows. */
+export function isMockSubscriptionId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith("mock_");
+}
 
 /**
  * The organization's live membership, or null. At most one row by
@@ -187,7 +197,7 @@ export async function readLiveMembership(
   const { data, error } = await admin
     .from("partner_memberships")
     .select(
-      "state, current_period_end, cancel_at_period_end, price_cents, currency",
+      "state, stripe_subscription_id, current_period_end, cancel_at_period_end, price_cents, currency",
     )
     .eq("organization_id", orgId)
     .in("state", LIVE_MEMBERSHIP_STATES)

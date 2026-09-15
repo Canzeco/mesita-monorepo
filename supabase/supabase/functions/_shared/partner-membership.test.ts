@@ -3,6 +3,7 @@
 // the monthly cap on every place an organization holds.
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import {
+  isMockSubscriptionId,
   LIVE_MEMBERSHIP_STATES,
   MEMBERSHIP_CATALOG_ID,
   MEMBERSHIP_PLAN_KEY,
@@ -107,4 +108,56 @@ Deno.test("the webhook matches a membership before a place", async () => {
   const subPlaceAt = hook.indexOf("resolvePlaceId(admin, sub)");
   assert(subOrgAt > 0 && subPlaceAt > 0, "both branches must exist");
   assert(subOrgAt < subPlaceAt, "the membership branch must come first");
+});
+
+// ─── The three holes Bugbot found on the money path (MESITA-1877) ───────────
+
+Deno.test("a mock grant never blocks the real door", async () => {
+  assertEquals(isMockSubscriptionId("mock_abc"), true);
+  assertEquals(isMockSubscriptionId("sub_abc"), false);
+  assertEquals(isMockSubscriptionId(null), false);
+
+  const door = codeOnly(
+    await read("../business-web-start-membership/index.ts"),
+  );
+  // MOCK_SUBSCRIPTION writes `mock_<orgId>` rows with state active. Once an
+  // operator turns the flag off, every org that took a mock grant would be a
+  // permanent partner with nothing billable behind it — and the already-member
+  // gate would refuse the only door out.
+  assertStringIncludes(door, "if (live.row && (mockMode || !liveIsMock))");
+  // The read has to carry the id for that to be decidable at all.
+  assertStringIncludes(
+    codeOnly(await read("./partner-membership.ts")),
+    "stripe_subscription_id, current_period_end",
+  );
+});
+
+Deno.test("a superseded subscription is cancelled AT STRIPE, not just mirrored", async () => {
+  const hook = codeOnly(
+    await read("../stripe-webhook-handle-event/partner-membership.ts"),
+  );
+  // Stripe redirects home the instant a session completes and this webhook
+  // arrives on its own connection, so an owner who pays twice in that window
+  // has two live subscriptions. Retiring one MIRROR would hide the second
+  // from the console and bill it every year regardless.
+  assertStringIncludes(hook, "stripe.subscriptions.cancel(priorId)");
+  const cancelAt = hook.indexOf("stripe.subscriptions.cancel");
+  const retireAt = hook.indexOf('.update({ state: "canceled" })');
+  assert(cancelAt > 0 && retireAt > 0, "both steps must exist");
+  assert(cancelAt < retireAt, "cancel at Stripe BEFORE retiring the mirror");
+  // A failed cancel must 500 so Stripe retries — the only exception is a
+  // subscription Stripe says is already gone.
+  assertStringIncludes(hook, 'code !== "resource_missing"');
+  assertStringIncludes(hook, "membership_cancel_prior_live");
+});
+
+Deno.test("two concurrent checkouts converge on ONE billing customer", async () => {
+  const billing = codeOnly(await read("./stripe-billing.ts"));
+  const fn = billing.slice(billing.indexOf("export async function ensureOrgBillingCustomer"));
+  // The unique index is on the customer ID, so two DIFFERENT ids for one org
+  // both satisfy it and the later write simply wins — it can never serialize
+  // this. Stripe's own idempotency key is what makes the two callers share an
+  // object; the compare-and-set is what stops an anchor being overwritten.
+  assertStringIncludes(fn, "idempotencyKey: `org-billing-customer-${orgId}`");
+  assertStringIncludes(fn, '.is("stripe_billing_customer_id", null)');
 });
