@@ -418,23 +418,48 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1869. Pato, with a mock: "build something kinda like this, like a
   // pretty catalog… (here have partner and all the products to activate,
   // remember that profile is free)."
-  it("Products is the catalogue: the partnership, the grid, and Mesita Pay", () => {
+  // MESITA-1872. Pato: "remove thus shit. just leave the 8 boxes and the 1
+  // partnership box shit. payments log go into activity."
+  it("Products is the partnership and the grid; Pay has its own address", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/products/page.tsx");
     expect(page).toContain("<PartnerBanner");
     expect(page).toContain("<ProductCatalog");
     expect(page).toContain("buildProductCards");
-    // The two boxes Configuration gave up, whole: the account, a seam, and
-    // the switch it unlocks (MESITA-1866's composition, MESITA-1867's tiers).
-    expect(page).toContain("<PaymentsCard");
-    expect(page).toContain("<MesitaPayCard");
-    expect(page).toContain("apiGetPaymentAccount");
-    // Stripe's stored return travels with the account it is about.
-    expect(page).toContain("ConnectReturnNotice");
     // The counts are REAL: the places read is what every per-place card's
     // state comes out of, and a failure hands `null`, never an empty array —
     // "we could not read this" and "nothing is on" are different sentences.
     expect(page).toContain("apiListConsolePlaces");
     expect(page).toContain("places: ConsolePlace[] | null = null");
+    // A full Section for ONE of eight made that one louder than the other
+    // seven on the page whose whole job is comparing them. It moved whole,
+    // with the read that fed it.
+    for (const gone of [
+      "<PaymentsCard",
+      "<MesitaPayCard",
+      "apiGetPaymentAccount",
+      "ConnectReturnNotice",
+      "SOON_STRIPS",
+      "#mesita-pay",
+    ]) {
+      expect(page, gone).not.toContain(gone);
+    }
+    const pay = readCode("app/(shell)/orgs/[orgId]/products/pay/page.tsx");
+    for (const kept of [
+      "<PaymentsCard",
+      "<MesitaPayCard",
+      "apiGetPaymentAccount",
+      "ConnectReturnNotice",
+    ]) {
+      expect(pay, kept).toContain(kept);
+    }
+    expect(
+      existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/products/pay/loading.tsx")),
+    ).toBe(true);
+    // A SUB-STEP, NOT A ROW: the rail must not grow a ninth row for one
+    // product's setup, and standing on it must not darken Products.
+    const routes = readCode("lib/console-routes.ts");
+    expect(routes).toContain("export function orgPayHref");
+    expect(routes).not.toMatch(/^\s+"pay",$/m);
     // PAYMENTS' OWN PAGE IS DELETED, not orphaned: a route file nobody links
     // to drifts out of sync with the one that replaced it, and a leftover
     // directory would answer the address the redirect table now owns.
@@ -454,10 +479,11 @@ describe("the rail is six nouns and one indent", () => {
     expect(root.indexOf('sp.connect')).toBeLessThan(
       root.indexOf('orgHref(orgId, "settings")'),
     );
-    // It lands on PRODUCTS (MESITA-1869): the Stripe account moved there, and
-    // a forward onto the page that no longer holds the notice is the
+    // It lands on PRODUCTS' PAY PAGE (MESITA-1869, narrowed MESITA-1872):
+    // the Stripe account and the notice that reads `?connect=` live there,
+    // and a forward onto a page that no longer holds the notice is the
     // `/unit/*` → `/place/*` chain again.
-    expect(root).toContain('orgHref(orgId, "products")');
+    expect(root).toContain("orgPayHref(orgId)");
     // The query travels on BOTH branches: dropping it strands an owner on a
     // screen that knows neither which organization nor that they came back.
     expect((root.match(/withQuery\(/g) ?? []).length).toBe(2);

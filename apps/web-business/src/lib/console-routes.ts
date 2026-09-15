@@ -38,9 +38,11 @@
 //                              `?connect=` and hands the query to Payments.
 //   /orgs/<id>/settings       THE ORGANIZATION's own setup — members and
 //                              developers. What you SET, nothing else.
-//            /products         THE CATALOGUE — Mesita Partner, the eight
-//                              products, and the Stripe account Mesita Pay
-//                              rides on
+//            /products         THE CATALOGUE — the Mesita Partner banner and
+//                              the eight product cards, and nothing else
+//            /products/pay     Mesita Pay's own controls: the Stripe account,
+//                              a seam, the switch. A SUB-STEP of the
+//                              catalogue, never a rail row
 //            /places           the whole catalogue: the states matrix, the
 //                              ?owned= filters, Claim and Release
 //            /customers        who keeps coming back (Soon)
@@ -229,6 +231,22 @@ export function orgPlacesNewHref(orgId: string): string {
   return `${orgHref(orgId, "places")}/new`;
 }
 
+/** Mesita Pay's controls — the Stripe account, a seam, the switch
+ *  (MESITA-1872). A SUB-STEP of the catalogue, exactly the shape Add place
+ *  already is: an address beneath the page it belongs to, reached from that
+ *  page, lighting that page's rail row. It is deliberately NOT in ORG_PAGES —
+ *  the rail must not grow a ninth row for one product's setup.
+ *
+ *  It replaces a `#mesita-pay` anchor into a Section at the foot of the
+ *  catalogue. Pato took that Section off the page (*"just leave the 8 boxes
+ *  and the 1 partnership box shit"*), and an anchor into a box that no longer
+ *  exists scrolls nowhere SILENTLY, which is the worst kind of dead link. A
+ *  link that navigates cannot fail that way, and it is shareable, which the
+ *  anchor never was. It is also where Stripe's stored `?connect=` lands. */
+export function orgPayHref(orgId: string): string {
+  return `${orgHref(orgId, "products")}/pay`;
+}
+
 /** Which organization a pathname is scoped to, or null. `/orgs/new` is the
  *  ceremony, not an id. */
 export function orgIdFromPathname(pathname: string): string | null {
@@ -240,9 +258,13 @@ export function orgIdFromPathname(pathname: string): string | null {
 
 /** Which organization address a pathname is, or null when it is not one.
  *
- *  The Add place ceremony (`/orgs/<id>/places/new`) reads as Places: it is the
- *  list's own sub-step. `/switch` is never an address the rail lights — it is
- *  a redirect that exists for a few milliseconds. */
+ *  A SUB-STEP READS AS ITS PAGE. The Add place ceremony
+ *  (`/orgs/<id>/places/new`) reads as Places, and Mesita Pay's controls
+ *  (`/orgs/<id>/products/pay`, MESITA-1872) read as Products: each is the
+ *  page's own next step, and a rail that went dark while an operator stood in
+ *  one would be saying they had left the section they were plainly still in.
+ *  `/switch` is never an address the rail lights — it is a redirect that
+ *  exists for a few milliseconds. */
 export function orgTargetFromPathname(pathname: string): OrgTarget | null {
   const match = pathname.match(
     /^\/orgs\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/,
@@ -255,6 +277,7 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
   if (!second) return "settings";
   if (second === "switch") return null;
   if (second === "places") return third === undefined || third === "new" ? "places" : null;
+  if (second === "products") return third === undefined || third === "pay" ? "products" : null;
   if (third !== undefined) return null;
   return (ORG_TARGETS as readonly string[]).includes(second)
     ? (second as OrgTarget)
