@@ -510,7 +510,7 @@ do $$
 declare v_bad text;
 begin
   select string_agg(x, ', ') into v_bad from (
-    select 'table:place_super_categories'
+    select 'table:place_super_categories' as x
       from pg_class
      where relnamespace = 'public'::regnamespace
        and relname = 'place_super_categories' and relkind in ('r', 'p')
