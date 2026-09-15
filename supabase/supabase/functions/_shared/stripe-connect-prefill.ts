@@ -18,9 +18,12 @@ import {
 import { OPENAI_URL } from "./enrich-config.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isShapedRfc, normalizeRfc } from "./org-rfc.ts";
 
-/** Mexican RFC (persona moral 12 / física 13). Same shape as the dropped CFDI check. */
-export const MEXICO_RFC_RE = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
+/** The RFC rule lives in org-rfc.ts, where the org WRITERS can reach it too
+ *  (MESITA-1880). Re-exported here so this module's existing importers keep
+ *  their entry point. */
+export { MEXICO_RFC_RE } from "./org-rfc.ts";
 
 /** Stripe's product_description cap. Keep the hosted field short. */
 export const PRODUCT_DESCRIPTION_MAX = 400;
@@ -144,10 +147,13 @@ export type ConnectPrefill = {
   businessProfile: ConnectBusinessProfilePrefill;
 };
 
+/** Prefill's fail-open reader: a malformed RFC is simply not sent to Stripe.
+ *  Since MESITA-1880 the writers refuse one at the door and a CHECK backs
+ *  them, so a row reaching here cannot be malformed — this stays fail-open
+ *  for rows written before that, not as a policy. */
 export function rfcIfValid(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const rfc = raw.trim().toUpperCase();
-  return MEXICO_RFC_RE.test(rfc) ? rfc : null;
+  const rfc = normalizeRfc(raw);
+  return rfc && isShapedRfc(rfc) ? rfc : null;
 }
 
 export function asHttpsUrl(raw: unknown): string | null {
