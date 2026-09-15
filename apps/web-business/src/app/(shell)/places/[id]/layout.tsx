@@ -18,6 +18,16 @@
 //
 // This layout resolves the 404 verdict, the holder, the tab set and the
 // AdminPlace ONCE, so the heading, the rail and the page never re-derive them.
+//
+// AND THE PAGES NO LONGER RE-FETCH THEM (MESITA-1875). "Once" was true of one
+// REQUEST, which is not the same thing as once per navigation: `cache()`
+// dedupes inside a request, a client navigation between siblings re-runs the
+// page segment alone in a NEW request, and every view page opened with reads
+// of its own that it used as a boolean and threw away. Measured in production:
+// `business-web-get-overview` p50 472ms, p95 913ms — per tab click, for a
+// fact this layout was holding. The matrix and the held flag travel down
+// through `PlaceScope` now, `PlaceTabGate` does the refusing, and a view page
+// reads nothing.
 import { notFound, redirect } from "next/navigation";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
@@ -25,7 +35,9 @@ import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PublishOpenPlace } from "@/components/console/OpenPlace";
 import { isMemberPlan } from "@/components/place-manage/sections/promo-state";
 import { placeTabHref } from "@/lib/place-tabs";
+import { PlaceTabGate } from "@/components/console/PlaceTabGate";
 import { PlaceManageShell } from "./PlaceManageShell";
+import { PlaceScopeProvider } from "./PlaceScope";
 
 export const dynamic = "force-dynamic";
 
@@ -75,23 +87,39 @@ export default async function PlaceLayout({
     />
   );
 
+  // The matrix, the held flag, and — for a pool place only — the identity
+  // payload its Profile renders. A HELD place gets `view: null`: everything
+  // that screen draws comes through `PlaceContext`, and a second copy of a
+  // record two providers both hold is how a screen starts disagreeing with
+  // itself.
+  const scope = {
+    placeId: id,
+    tabs,
+    held: manage !== null,
+    view: manage ? null : view,
+  };
+
   // Without a manage payload there is no PlaceContext to provide — and
   // nothing that needs one, since only Profile renders. A pool place has no
   // editable state to discard.
   if (!manage) {
     return (
-      <>
+      <PlaceScopeProvider value={scope}>
+        <PlaceTabGate />
         {publish}
         {heading}
         {children}
-      </>
+      </PlaceScopeProvider>
     );
   }
   return (
-    <PlaceManageShell placeId={id} initialPlace={manage.place}>
-      {publish}
-      {heading}
-      {children}
-    </PlaceManageShell>
+    <PlaceScopeProvider value={scope}>
+      <PlaceTabGate />
+      <PlaceManageShell placeId={id} initialPlace={manage.place}>
+        {publish}
+        {heading}
+        {children}
+      </PlaceManageShell>
+    </PlaceScopeProvider>
   );
 }
