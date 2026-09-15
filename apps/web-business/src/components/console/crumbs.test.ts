@@ -47,10 +47,10 @@ describe("crumbsFor", () => {
   });
 
   it("a place is its holder, the place, then the view", () => {
-    expect(crumbsFor(placeTabHref("p", "capabilities"), names)).toEqual([
+    expect(crumbsFor(placeTabHref("p", "credits"), names)).toEqual([
       "Strana Group",
       "Strana Del Valle",
-      "Capabilities",
+      "Credits",
     ]);
     expect(crumbsFor(placeHref("p"), names)).toEqual([
       "Strana Group",

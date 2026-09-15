@@ -137,6 +137,13 @@ describe("the rail is light, and every text token is a measured pair", () => {
       /^href=\{row\.href\}$/, // the six rows: a table of SHELL_ROUTES / viewHref entries (MESITA-1832)
       /^href=\{viewRow\(/, // a place view, canonical or its flat resolver (MESITA-1841)
       /^href=\{orgRow\(/, // an organization page, canonical or its flat resolver
+      // A PRODUCT ROW, through the ONE function that knows the three shapes a
+      // product's address can have (MESITA-1885): a place view, an
+      // organization page, or the Soon sub-page under `products/`. It is
+      // sanctioned for exactly the reason this test exists — the alternative
+      // was a ternary in the rail, which is a second copy of the mapping, and
+      // a second copy is what starts 404ing a row.
+      /^href=\{productRowHref\(/,
     ];
     const links = [
       ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),

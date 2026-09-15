@@ -7,8 +7,9 @@
 import { describe, expect, it } from "vitest";
 import type { ConsolePlace } from "@/lib/api/organizations";
 import { PRODUCT_KEYS } from "@/components/console/ProductCatalog";
-import { PRODUCT_ORDER, PRODUCT_VIEW, buildProductCards } from "./products";
-import { PLACE_TABS, placeTabHref } from "./place-tabs";
+import { PRODUCT_ORDER, buildProductCards } from "./products";
+import { PLACE_TABS, placeTabHref, type PlaceTab } from "./place-tabs";
+import type { ProductKey } from "@/lib/product-keys";
 
 /** The caller's own shape: a view in, an address out. The page builds this
  *  from the one place it holds; the test builds it from a fixed id. */
@@ -85,32 +86,55 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     }
   });
 
-  it("maps EVERY product to a real place view, and to a live one", () => {
-    // PRODUCT_VIEW is hand-written because no derivation exists across
-    // ProductKey and LadderRowKey (they share one spelling and mean different
-    // things by it). Hand-written means a new product can be added without
-    // one, so the exhaustiveness is the assertion — in both directions.
-    expect(Object.keys(PRODUCT_VIEW).sort()).toEqual([...PRODUCT_ORDER].sort());
-    for (const view of Object.values(PRODUCT_VIEW)) {
-      expect(PLACE_TABS).toContain(view);
+  it("EVERY product with a verb is a real place view, by its own name", () => {
+    // `PRODUCT_VIEW` is deleted (MESITA-1885). It was a hand-written
+    // `Record<ProductKey, PlaceTab>` back when six products pointed at two
+    // shared pages; the rooms split per product, so the map became the
+    // identity — and an identity written out by hand is a second place for a
+    // spelling to drift.
+    //
+    // THIS IS THE ASSERTION THAT REPLACES IT, and it is the set equality the
+    // cast `key as PlaceTab` in `products.ts` relies on. The two that are NOT
+    // place views are exactly the two that carry no verb, in both directions:
+    // a product losing its view without losing its verb would 404 an operator
+    // from the catalogue.
+    const noView: readonly ProductKey[] = ["customers", "terminal"];
+    const cards = build({ partnered: true, places: [place()] });
+    for (const key of PRODUCT_ORDER) {
+      if (noView.includes(key)) {
+        expect(cards[key].action, key).toBeNull();
+        expect(PLACE_TABS, key).not.toContain(key);
+      } else {
+        expect(PLACE_TABS, key).toContain(key);
+        expect(cards[key].action, key).not.toBeNull();
+      }
     }
   });
 
-  it("sends a per-place verb to the view that HOLDS its switch", () => {
+  it("sends a per-place verb to the view that HOLDS its switch — its OWN", () => {
     // The bug this replaces: every per-place card pointed at the place root,
     // so an operator clicking Enable on Orders landed on Profile, a screen
-    // holding none of its switches. Capabilities and Rewards lost their rail
-    // rows in MESITA-1879, which makes these verbs their only door.
+    // holding none of its switches (MESITA-1879).
+    //
+    // THREE OF THEM USED TO SHARE ONE ADDRESS. Orders, Reservations and
+    // Credits all opened `capabilities` — one screen, three verbs, and the
+    // operator left to find which row was theirs. MESITA-1885 split the rooms
+    // to match the rail, so each card opens the view of its own name.
     const cards = build({ partnered: true, places: [place()] });
-    expect(cards.orders.action?.href).toBe(placeTabHref("p-1", "capabilities"));
+    expect(cards.orders.action?.href).toBe(placeTabHref("p-1", "orders"));
     expect(cards.reservations.action?.href).toBe(
-      placeTabHref("p-1", "capabilities"),
+      placeTabHref("p-1", "reservations"),
     );
-    expect(cards.credits.action?.href).toBe(placeTabHref("p-1", "capabilities"));
-    // VISITS IS THE ONLY DOOR TO THE REWARDS ZONE NOW (MESITA-1884). The
-    // Rewards card used to share this address; it is gone, so if this href
-    // ever drifts the ladder becomes unreachable from the console.
-    expect(cards.visits.action?.href).toBe(placeTabHref("p-1", "rewards"));
+    expect(cards.credits.action?.href).toBe(placeTabHref("p-1", "credits"));
+    expect(cards.visits.action?.href).toBe(placeTabHref("p-1", "visits"));
+
+    // NO TWO CARDS SHARE A DOOR, which is the assertion the old shape could
+    // not make — and the reason the rail could not list all eight before.
+    const doors = Object.values(cards)
+      .map((c) => c.action?.href)
+      .filter((h): h is string => Boolean(h));
+    expect(doors).toHaveLength(new Set(doors).size);
+
     // And the opposite direction: no per-place verb may land on the bare
     // place root, which is what "points at Profile" looked like.
     for (const key of ["orders", "reservations", "credits", "visits"]) {
@@ -285,7 +309,7 @@ describe("Mesita Pay is the one switch at this level", () => {
     for (const c of cards) {
       if (!c.action) continue;
       expect(c.action.href, c.key).toBe(
-        c.key === "pay" ? PAY : placeTabHref("p-1", PRODUCT_VIEW[c.key]),
+        c.key === "pay" ? PAY : placeTabHref("p-1", c.key as PlaceTab),
       );
     }
   });

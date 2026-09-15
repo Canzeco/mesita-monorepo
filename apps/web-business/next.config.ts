@@ -39,10 +39,40 @@ const nextConfig: NextConfig = {
       // Settings, label and segment together, and this rule pointed the other
       // way. `/settings` (flat) and `/places/<id>/settings` are the legacy
       // spellings now.
+      // CAPABILITIES AND REWARDS ARE NOT VIEWS ANY MORE (MESITA-1885). The
+      // rail lists all eight products, and three of them were rows on the one
+      // Capabilities page — so the page split into a view per product and both
+      // old segments are legacy spellings now.
+      //
+      // BOTH LAND ON VISITS, and `/places/:id/settings` is repointed with
+      // them rather than left aimed at `capabilities`. A redirect onto a
+      // DELETED route is the `/unit/*` → `/place/*` chain again, and it fails
+      // silently because no test walks a legacy source to its destination.
+      //
+      // Visits is the honest landing for all three: it is the place's own
+      // room — the ladder's container, the Partnership body, and the internal
+      // "How this place is run" box that Capabilities used to hold. A
+      // Capabilities bookmark cannot be forwarded to a MATCHING product
+      // because its six rows are now four products; landing on the container
+      // beats guessing one of them.
+      //
+      // TEMPORARY, like every other rename on this page: a 308 caches today's
+      // answer in every browser forever, and where the place's switches live
+      // has now moved three times.
       {
         source: "/places/:id/settings",
-        destination: "/places/:id/capabilities",
-        permanent: true,
+        destination: "/places/:id/visits",
+        permanent: false,
+      },
+      {
+        source: "/places/:id/capabilities",
+        destination: "/places/:id/visits",
+        permanent: false,
+      },
+      {
+        source: "/places/:id/rewards",
+        destination: "/places/:id/visits",
+        permanent: false,
       },
       // THE FLAT `/settings` RULE IS DELETED (MESITA-1871), and this is the
       // whole point of the issue. It forwarded to `/capabilities` from
@@ -107,7 +137,18 @@ const nextConfig: NextConfig = {
         destination: "/orgs/:orgId/products",
         permanent: false,
       },
-      { source: "/credits", destination: "/products", permanent: false },
+      // THE FLAT `/credits` RULE IS DELETED (MESITA-1885), and it had to be:
+      // Mesita Credits is a rail row with a place view of its own now, so
+      // `/credits` is a LIVE flat twin. A config rule runs BEFORE filesystem
+      // routes, so leaving this would make the row's own flat address
+      // unreachable with every check green — `/settings` in MESITA-1839
+      // exactly, which is why `legacy-redirects.test.ts` walks every live
+      // address in lib/console-routes.ts through this table.
+      //
+      // It was SAFE to delete for the same reason MESITA-1871's `/settings`
+      // rule was: this one was `permanent: false`, so no browser has cached
+      // it. The org-scoped rule above stays — a different path, and still the
+      // retired spelling of an organization page.
       // PAYMENTS IS A PRODUCT NOW, not a page (MESITA-1869). Pato's list of
       // the organization's rows has no Payments on it: the page held two Soon
       // strips, and the two things anybody could act on — the Stripe account

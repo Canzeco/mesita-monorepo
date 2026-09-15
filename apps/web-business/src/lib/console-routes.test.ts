@@ -68,7 +68,7 @@ describe("SHELL_ROUTES are the addresses with no scope at all", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the place's six views, then the organization's four flat pages", () => {
+  it("is the place's nine views, then the organization's four flat pages", () => {
     // The order is the declaration's: the place's group, then the
     // organization's. MESITA-1841 added `capabilities` (was `settings`),
     // `rewards`, `organization` and `credits`, and moved `activity` from the
@@ -85,18 +85,34 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // shadows, which is the same trap `settings` fell into. MESITA-1871 gets
     // `settings` back out of that trap by deleting the rule, and
     // `configuration` takes its place as the redirect source.
+    //
+    // MESITA-1885 SWAPS TWO FOR FIVE: `capabilities` and `rewards` are not
+    // views any more — the rail lists all eight products, and three of them
+    // were rows on the one Capabilities page — so each product got a view.
+    // Both old names are redirect sources now and may never come back here.
+    //
+    // `credits` COMING BACK COST A REDIRECT RULE, and that is the MESITA-1839
+    // trap in the other direction: the flat `/credits` forwarded to
+    // `/products`, and a config rule runs BEFORE filesystem routes, so
+    // leaving it would have made this contract name dead on arrival.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
       "menus",
       "reviews",
-      "capabilities",
-      "rewards",
+      "visits",
+      "orders",
+      "reservations",
+      "pay",
+      "credits",
       "admin",
       "settings",
       "products",
       "customers",
       "activity",
     ]);
+    for (const gone of ["capabilities", "rewards"]) {
+      expect(Object.keys(FLAT_ROUTES), gone).not.toContain(gone);
+    }
     expect(Object.keys(FLAT_ROUTES)).not.toContain("payments");
     // `places` is the place segment's own root, so a flat twin could never
     // resolve. `settings` HAS one again (MESITA-1871): it was owned by a
@@ -252,12 +268,17 @@ describe("the organization's pages (MESITA-1807)", () => {
     ]);
     expect(ORG_TARGETS).toEqual(ORG_PAGES);
     expect(ORG_TARGETS).not.toContain("organization");
-    // CREDITS IS NOT AN ADDRESS ANY MORE (MESITA-1845). It merged into
-    // Payments on Pato's one word, and both its spellings forward from
-    // `next.config.ts` — so a name in this contract would be a live address
-    // the redirect table shadows, which is the MESITA-1839 trap exactly.
+    // CREDITS IS NOT AN ORGANIZATION ADDRESS (MESITA-1845). It merged into
+    // Payments on Pato's one word, and `/orgs/<id>/credits` still forwards
+    // from `next.config.ts` — so a name in THIS contract would be a live
+    // address the redirect table shadows, the MESITA-1839 trap exactly.
     expect(ORG_TARGETS).not.toContain("credits");
-    expect(Object.keys(FLAT_ROUTES)).not.toContain("credits");
+    // IT IS A PLACE VIEW NOW, THOUGH (MESITA-1885): Mesita Credits is a rail
+    // row with a view of its own, so the flat `/credits` came back — and the
+    // redirect that used to claim it had to be DELETED in the same commit, or
+    // the name would have been live in this contract and dead on arrival.
+    // `legacy-redirects.test.ts` is what proves the rule is really gone.
+    expect(Object.keys(FLAT_ROUTES)).toContain("credits");
     // PAYMENTS IS NOT AN ADDRESS ANY MORE EITHER (MESITA-1869): it is a
     // product in the catalogue, and both its spellings forward there. Same
     // trap, same assertion.

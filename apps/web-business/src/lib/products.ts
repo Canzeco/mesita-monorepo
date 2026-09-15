@@ -153,45 +153,26 @@ const SPECS: readonly ProductSpec[] = [
 /** The catalogue's order — the mock's, read left to right, top to bottom. */
 export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 
-// ── WHERE A CARD'S VERB LANDS (MESITA-1879) ───────────────────────────────
+// ── `PRODUCT_VIEW` IS DELETED, AND THE ROOMS ARE WHY (MESITA-1885) ────────
 //
-// Capabilities and Rewards lost their rail rows when the console went flat, so
-// the catalogue is now their door. Every per-place verb used to land on
-// `placeHome` — the place's Profile — which asked the operator to find the
-// switch themselves on a screen that does not hold it.
+// It was a hand-written `Record<ProductKey, PlaceTab>`, and it had to be: six
+// products pointed at two shared pages, so the mapping was a real decision
+// nothing could derive. Orders, Reservations and Credits all landed on
+// `capabilities` — one screen, three verbs, and the operator left to find
+// which row was theirs.
 //
-// THIS IS A HAND-WRITTEN MAP, AND IT HAS TO BE. The obvious move is to derive
-// it from `ZONE_ROWS` in `place-manage/sections/controls/offerings.ts`, and
-// that does not work: `LadderRowKey` is partnership · stripe · mesita_pay ·
-// visit_rewards · accept_prepays · sell_prepays · pickup · delivery ·
-// reservations, and `ProductKey` is profile · customers · visits · orders ·
-// reservations · pay · credits · terminal. The two spaces share ONE spelling
-// (`reservations`) and mean different things by it — a product is a thing you
-// buy, a ladder row is a switch with a prerequisite, and `orders` alone is two
-// rows. A derivation across that gap would be a coincidence pretending to be
-// a rule, so the mapping is written down and the test below pins it.
+// Pato put all eight products in the rail, which forced those rooms apart:
+// `ZONE_ROWS` is keyed by product now and each product has a view of its own.
+// So the map collapsed into the identity, and an identity map written out by
+// hand is a second place for a spelling to drift.
 //
-// THE TWO SOON CARDS MAP TO `profile` and mean nothing by it: Terminal and
-// Customers carry no action at all, so their entries are never read. They
-// exist so the record is exhaustive and a NEW product cannot be added without
-// answering this question — which is the whole reason this is a Record and
-// not a lookup with a fallback.
-export const PRODUCT_VIEW: Record<ProductKey, PlaceTab> = {
-  profile: "profile",
-  customers: "profile",
-  // VISITS OWNS THE REWARDS LADDER (MESITA-1884). It always did — this entry
-  // is unchanged — but it used to share the address with a Rewards card that
-  // no longer exists, so this is now the only door to the zone.
-  visits: "rewards",
-  // What a guest CAN do here: the Capabilities zone's ladder.
-  orders: "capabilities",
-  reservations: "capabilities",
-  credits: "capabilities",
-  // Mesita Pay is an ORG switch on an org Stripe account, so its verb opens
-  // `products/pay` and never reads this map. Mapped for exhaustiveness.
-  pay: "profile",
-  terminal: "profile",
-};
+// WHAT REPLACED IT IS A CONSTRUCTION, NOT A CONVENTION. `PLACE_TABS` and
+// `PRODUCT_KEYS` agree on all six per-place products, and
+// `console-routes.test.ts` asserts that set equality in BOTH directions —
+// so `placeHref(key as PlaceTab)` is checked by a test rather than trusted.
+// The two that are not place views (Customers, Terminal) never ask: they are
+// `soon`, they carry no verb, and `productRowHref` in lib/console-routes is
+// the one function that knows their addresses.
 
 /** "On at 2 of 5 places", or null when the places could not be read. Singular
  *  where it matters: "1 place" reads as a sentence, "1 places" reads as a bug
@@ -241,13 +222,13 @@ export function buildProductCards(input: {
   /** Null means the read FAILED. An empty array means the organization holds
    *  no place — two different facts, and a card says two different things. */
   places: readonly ConsolePlace[] | null;
-  /** Where a per-place product is turned on: the place, the list, or Add. */
   /** Where a card's verb lands, given the VIEW that product is configured on
-   *  (`PRODUCT_VIEW`). The caller decides what a view means when there is no
-   *  single place to name — the Add ceremony with none, the list with several
-   *  — so this module never has to know which. It replaces a flat
-   *  `placeHome` that sent every per-place product to Profile, a screen that
-   *  holds none of their switches (MESITA-1879). */
+   *  — which, since MESITA-1885, is the view of the same name. The caller
+   *  decides what a view means when there is no single place to name: the Add
+   *  ceremony with none, the list with several, so this module never has to
+   *  know which. It replaced a flat `placeHome` that sent every per-place
+   *  product to Profile, a screen holding none of their switches
+   *  (MESITA-1879). */
   placeHref: (view: PlaceTab) => string;
   /** The organization holds NO place, so `placeHref` returns the Add
    *  ceremony. The verb has to say so: "Enable" on a button that opens Add
@@ -259,7 +240,10 @@ export function buildProductCards(input: {
   const { partnered, mesitaPayEnabled, places, placeHref, payHref, noPlaces } =
     input;
   /** Every per-place verb lands on the view that actually holds its switch. */
-  const viewHref = (key: ProductKey) => placeHref(PRODUCT_VIEW[key]);
+  // A product's own view, by its own name. Every card that reaches this has a
+  // place view — the two that do not are `soon` and return above, carrying no
+  // verb at all.
+  const viewHref = (key: ProductKey) => placeHref(key as PlaceTab);
   const total = places?.length ?? 0;
   /** Every verb that lands on a place says what the next screen actually is. */
   const verb = (word: string) => (noPlaces ? "Add a place" : word);

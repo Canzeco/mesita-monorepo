@@ -53,16 +53,23 @@ import {
 } from "./controls/offerings";
 import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./controls/shared";
 
-// The place's ladder — rendered ONCE per zone (MESITA-1841).
+// The place's ladder — rendered ONCE per zone, and a zone is a PRODUCT
+// (MESITA-1841, re-cut by MESITA-1885).
 //
-// ONE ENGINE, TWO VIEWS. `zone` selects which rungs and which trailing blocks
-// this renders: Capabilities is what a guest CAN do here plus the internal
-// "How this place is run" box; Rewards is what a guest EARNS — Visit Rewards,
-// its strategy ladder, and the Partnership body that prices it. The rungs
-// depend on one another (Partner unlocks Visit Rewards and Mesita Pay; Stripe
-// unlocks the money rungs), so the COMPUTATION is never split — two copies of
-// a dependency ladder is two copies that can disagree. `ZONE_ROWS` in
-// controls/offerings.ts owns the mapping and a test proves it is total.
+// ONE ENGINE, FIVE VIEWS. `zone` selects which rungs and which trailing blocks
+// this renders: Visits owns Visit Rewards, its strategy ladder, the
+// Partnership body that prices it and the internal "How this place is run"
+// box; Orders owns pickup and delivery; Reservations, Pay and Credits own
+// theirs. The rungs depend on one another (Partner unlocks Visit Rewards and
+// Mesita Pay; Stripe unlocks the money rungs), so the COMPUTATION is never
+// split — two copies of a dependency ladder is two copies that can disagree.
+// `ZONE_ROWS` in controls/offerings.ts owns the mapping and a test proves it
+// is total.
+//
+// WHY FIVE AND NOT TWO. Pato put all eight products in the rail, and Orders,
+// Reservations and Credits were three rows on the one Capabilities page —
+// three rail rows, one address, all lighting together. Splitting the view is
+// what lets a row name its room (MESITA-1833).
 //
 // MESITA-1739 first paint: summary of what guests can do, then the one
 // prerequisite that unlocks the most rows, then the rows. The 0–7 meter
@@ -394,7 +401,7 @@ export function PromosSection({
   // non-member (the pitch, right under the door line) and below them for a
   // member (the rows are the point once you are in).
   const partnershipBody =
-    zone === "rewards" ? (
+    zone === "visits" ? (
       <PartnershipBody
         place={v}
         pillState={pillState}
@@ -456,17 +463,22 @@ export function PromosSection({
         {member && partnershipBody && <div className="mt-4">{partnershipBody}</div>}
 
         <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
-          {zone === "capabilities"
-            ? "Capability switches save instantly. Channel picks wait for Save."
-            : "Turning Visit Rewards on saves instantly. A strategy is confirmed in its card."}
+          {zone === "visits"
+            ? "Turning Visit Rewards on saves instantly. A strategy is confirmed in its card."
+            : "Capability switches save instantly. Channel picks wait for Save."}
         </p>
       </section>
 
-      {/* THE INTERNAL ZONE IS CAPABILITIES' ALONE (MESITA-1841). It was headed
-          "Settings" while the page was called Settings; the page is
-          Capabilities again and the card's own title already says what this
-          is, so the eyebrow says whose it is instead of repeating the page. */}
-      {zone === "capabilities" && (
+      {/* THE INTERNAL ZONE IS VISITS' NOW (MESITA-1885). It was Capabilities'
+          alone, and Capabilities is five views; the box had to pick one rather
+          than be split or repeated. It goes to Visits because that is what it
+          is ABOUT — `VisitsCard` is how visits are run here, and `TeamSection`
+          is who runs them — and because Visits is the container the other
+          products attach to, which makes it the place's own room.
+
+          The eyebrow says whose it is rather than repeating the page: the
+          card's own title already says what this is. */}
+      {zone === "visits" && (
         <section aria-labelledby="zone-internal">
           <div className="mb-2.5 px-1">
             <GroupLabel>

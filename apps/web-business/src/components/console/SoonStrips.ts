@@ -10,9 +10,19 @@
 // Configuration's now, and a composition file for a page that renders only
 // Soon strips is a file that drifts from the page it claims to compose.
 export const SOON_STRIPS: Record<
-  "customers" | "payments" | "developers",
+  "customers" | "payments" | "developers" | "terminal",
   { title: string; line: string }
 > = {
+  // TERMINAL GOT AN ADDRESS (MESITA-1885), because the rail now lists all
+  // eight products and a rail row has to open something real (MESITA-1833).
+  // It is the one product with NO engine and no column at all — the catalogue
+  // card has carried `soon` with no verb since MESITA-1869 — so the page it
+  // opens is this strip and nothing else. Knobs here would be the exact lie
+  // SoonStrip exists to refuse.
+  terminal: {
+    title: "Mesita Terminal",
+    line: "In-person card payments on Mesita hardware. The hardware is not available yet.",
+  },
   // PREPAID CREDITS LEFT (MESITA-1869). It was a strip because it had no
   // engine; it is a CARD now, in the catalogue, because Mesita Credits is a
   // product an operator buys and a place turns on — and a card whose state is

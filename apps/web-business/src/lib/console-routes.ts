@@ -1,6 +1,14 @@
 // Route contract for the (shell) console — every href comes from here, and
 // a test asserts each entry maps to a route file on disk.
 //
+// THE TWO IMPORTS ARE TYPE-ONLY AND VOCABULARY-ONLY, deliberately.
+// `product-keys.ts` has no imports at all; `PlaceTab` is erased at compile
+// time, so it cannot make the cycle `placeHref` below is written literally to
+// avoid. Nothing here may reach the data layer — `shell-contract.test.ts`
+// walks this file for exactly that.
+import type { ProductKey } from "@/lib/product-keys";
+import type { PlaceTab } from "@/lib/place-tabs";
+//
 // THE ADDRESS NAMES ITS SUBJECT (MESITA-1807, restored MESITA-1839).
 //
 // It rode every href as `?org=<id>` once: a query parameter every link had to
@@ -216,36 +224,156 @@ export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
 // prose about it. Two lists is how the rail ended up meaning three different
 // things in one document.
 
-/** A rail row names either an organization page or a place view. The two
- *  spaces do not overlap, so the union is unambiguous and one lookup serves
- *  the whole column. */
+/** A rail row names an organization page, a place view, or a PRODUCT. The
+ *  three spaces do not overlap, so the union is unambiguous and one lookup
+ *  serves the whole column.
+ *
+ *  A PRODUCT ROW IS NOT A PLACE ROW EVEN WHEN IT OPENS A PLACE VIEW
+ *  (MESITA-1885). Five of the eight products are configured on the place and
+ *  three are not — Customers is an organization page, Pay's organization half
+ *  is another, Terminal is a Soon page — so "product" is the subject and
+ *  `productRowHref` is the one function that knows which address each one
+ *  actually has. Keying them by `PlaceRailView` would have forced the three
+ *  exceptions into a shape that does not fit them. */
 export type RailRow =
   | { kind: "org"; target: OrgTarget }
-  | { kind: "place"; view: PlaceRailView };
+  | { kind: "place"; view: PlaceRailView }
+  | { kind: "product"; product: ProductKey };
 
-/** The place views that keep a rail row. NOT `PLACE_TABS` — that is the full
- *  matrix of what a place HAS; this is what the column LISTS. */
-export const PLACE_RAIL_VIEWS = ["profile", "menus", "reviews"] as const;
+/** The place views that keep a rail row OF THEIR OWN. NOT `PLACE_TABS` —
+ *  that is the full matrix of what a place HAS; this is what the column LISTS
+ *  as a place view rather than as a product.
+ *
+ *  MENUS AND REVIEWS LEFT IT (MESITA-1885). They are Profile — the place's
+ *  own description, split into three addresses in MESITA-1848 and given rows
+ *  at the MESITA-1879 review gate — and Pato's product rail has room for the
+ *  place ONCE. They keep their addresses and their access; only the row goes,
+ *  and hidden is never protected: `tabsForAccess` is still the one matrix and
+ *  `PlaceTabGate` still 404s a withheld tab. */
+export const PLACE_RAIL_VIEWS = ["profile"] as const;
 export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 
-/** THE RAIL, in Pato's order. Account is not here: it is the person, it sits
- *  below the seam, and it is the one row every state renders. */
+// ── THE RAIL IS THE PRODUCT LIST NOW (MESITA-1885) ────────────────────────
+//
+// Pato, 2026-09-15, drawing the sidebar:
+//
+//     Settings          Profile          Visits          Payments
+//     Activity          Costumers        Orders          Credits
+//     Products                           Reservations    Terminal
+//
+// ELEVEN ROWS IN FOUR GROUPS, and the groups are HIS blank lines. The console
+// stops being a set of rooms and becomes the thing it sells: three rows about
+// the business itself, then the eight products, grouped free · at the table ·
+// money.
+//
+// THE SEAMS ARE HAIRLINES AND CARRY NO NAMES. MESITA-1842 headed the rail's
+// groups by name and MESITA-1844 deleted the headers two issues later; the
+// rule that survived is one row shape, no indent, one glyph. A blank line is
+// not a heading, so `group` renders as the seam Account already wears and
+// never as a label.
+//
+// MENUS AND REVIEWS LEFT. They are the place's own description — Profile —
+// and this rail has room for the place once. Both keep their addresses and
+// every viewer who could open them still can.
+//
+// THIS ARRAY IS THE ONLY STATEMENT OF THE ROW LIST. The rail renders it, the
+// contract test walks it, and every other mention in a docblock or a plan is
+// prose about it. Two lists is how the rail ended up meaning three different
+// things in one document.
+
+/** THE RAIL, in Pato's order and his groups. Account is not here: it is the
+ *  person, it sits below the last seam, and it is the one row every state
+ *  renders — including the failed read. */
 export const RAIL_ROWS: readonly RailRow[] = [
+  // The business itself. Products stays a row of its own: the catalogue is
+  // where an operator COMPARES the eight and buys one, which is a different
+  // job from configuring the one they already have.
   { kind: "org", target: "settings" },
-  // PRODUCTS RIDES WITH SETTINGS (Pato, 2026-09-15: "move products above
-  // profile"). It also un-splits the column: the rail interleaves two
-  // subjects, and the order was org · place×3 · org×3 — the organization's
-  // own rows broken apart by the place's. Lifting Products next to Settings
-  // makes the three place rows one contiguous block. Customers and Activity
-  // stay below on purpose; this is Pato's order, not a taxonomy, and a full
-  // regroup was not asked for.
-  { kind: "org", target: "products" },
-  { kind: "place", view: "profile" },
-  { kind: "place", view: "menus" },
-  { kind: "place", view: "reviews" },
-  { kind: "org", target: "customers" },
   { kind: "org", target: "activity" },
+  { kind: "org", target: "products" },
+  // Free, and always on. Profile is the place; Customers is the organization.
+  { kind: "product", product: "profile" },
+  { kind: "product", product: "customers" },
+  // At the table.
+  { kind: "product", product: "visits" },
+  { kind: "product", product: "orders" },
+  { kind: "product", product: "reservations" },
+  // Money.
+  { kind: "product", product: "pay" },
+  { kind: "product", product: "credits" },
+  { kind: "product", product: "terminal" },
 ];
+
+/** Where the seam falls, as the INDEX of each row that opens a group. Derived
+ *  from the array above rather than written twice — a hand-kept list of
+ *  indices is a list that survives exactly one row move. */
+export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
+  (acc, row, i) => {
+    const prev = RAIL_ROWS[i - 1];
+    if (!prev) return acc;
+    // A group opens where the SUBJECT changes (business → products), and
+    // again inside the products at Pato's two blank lines.
+    const changed = prev.kind !== row.kind;
+    const productBreak =
+      row.kind === "product" && (row.product === "visits" || row.product === "pay");
+    if (changed || productBreak) acc.push(i);
+    return acc;
+  },
+  [],
+);
+
+// ── WHERE A PRODUCT ROW LANDS (MESITA-1885) ───────────────────────────────
+//
+// Eight products, THREE kinds of address, and this is the only place that
+// knows which is which:
+//
+//   the place's own view   visits · orders · reservations · pay · credits, and
+//                          profile. Five of them are `ZONE_ROWS` zones — the
+//                          ladder re-cut by product — and Profile is the place
+//                          description it always was.
+//   an organization page   customers. It is about the guests of every place
+//                          the organization holds, so there is no place to
+//                          scope it to.
+//   a product sub-page     terminal. No engine, no column, no switch: a
+//                          SoonStrip under `products/`.
+//
+// PAY IS SPLIT ACROSS TWO LEVELS AND THE ROW TAKES THE PLACE'S. The
+// organization's Stripe account and its `mesita_pay_enabled` switch are at
+// `/orgs/<id>/products/pay`; the rung an operator flips per place is on the
+// place. The row points where the work is, and the place view links up.
+//
+// `placeHref` is the caller's, because only the rail knows which place is
+// selected — and what to do when none is (the flat twin, which renders the
+// next step rather than forwarding nowhere).
+export function productRowHref(
+  product: ProductKey,
+  orgId: string,
+  placeHref: (tab: PlaceTab) => string,
+): string {
+  if (product === "customers") return orgHref(orgId, "customers");
+  if (product === "terminal") return orgTerminalHref(orgId);
+  // Every other product IS a place tab, and shares its spelling with one —
+  // `PLACE_TABS` and `PRODUCT_KEYS` agree on all six by construction, which
+  // `console-routes.test.ts` asserts in both directions rather than trusting.
+  return placeHref(product as PlaceTab);
+}
+
+/** Mesita Terminal's page: a Soon strip under `products/`, and a real landing
+ *  for the one row that has nothing else to open. */
+export function orgTerminalHref(orgId: string): string {
+  return `${ORGS}/${encodeURIComponent(orgId)}/products/terminal`;
+}
+
+/** Is this Terminal's page? ONE reader for the rule, like every other
+ *  segment→row question in this file.
+ *
+ *  It has to be asked separately because `orgTargetFromPathname` answers
+ *  `null` here ON PURPOSE: `/products/terminal` is not the catalogue, so the
+ *  Products row must not light for it. Without this the address would light
+ *  NOTHING, which reads as a page outside the console. */
+export function isOrgTerminalPathname(pathname: string): boolean {
+  return /^\/orgs\/[^/]+\/products\/terminal\/?$/.test(pathname);
+}
 
 /** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
  *  second array.
@@ -258,7 +386,14 @@ export const RAIL_ROWS: readonly RailRow[] = [
  *  and link to the ceremony. A rail with no door to the one thing a new
  *  operator came to do is a worse empty state than a muted row ever was. */
 export const ZERO_PLACE_ROWS: readonly RailRow[] = RAIL_ROWS.filter(
-  (r) => r.kind === "org",
+  (r) =>
+    r.kind === "org" ||
+    // THE TWO PRODUCTS THAT ARE NOT PLACE VIEWS SURVIVE (MESITA-1885). The
+    // filter is about whether a row opens a page ABOUT A PLACE, not about
+    // whether it is a product: Customers is the organization's guests and
+    // Terminal is a Soon page, and both work perfectly with no place at all.
+    // The other six are place views and would open a page about nothing.
+    (r.kind === "product" && (r.product === "customers" || r.product === "terminal")),
 );
 
 // THERE ARE NO DOORS LEFT (MESITA-1847). `members` was the last organization
@@ -371,12 +506,18 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
  *  resolve — and a name in the contract that cannot resolve is worse than no
  *  name at all. The organization's list is reached from its page. */
 export const FLAT_ROUTES = {
-  // The place's six
+  // The place's nine. Capabilities and Rewards left with their views
+  // (MESITA-1885) and the five PRODUCT views arrived in their place; both old
+  // names are in the redirect table now, and a contract name a config rule
+  // shadows is the MESITA-1839 trap, so neither may come back here.
   profile: "/profile",
   menus: "/menus",
   reviews: "/reviews",
-  capabilities: "/capabilities",
-  rewards: "/rewards",
+  visits: "/visits",
+  orders: "/orders",
+  reservations: "/reservations",
+  pay: "/pay",
+  credits: "/credits",
   admin: "/admin",
   // The organization's four. `places` has no flat twin: it is the place
   // segment's own root (see below), so a flat `places` could never resolve.
@@ -407,21 +548,38 @@ export function isFlatRoute(pathname: string): boolean {
  *  A rail row lights for these as well as for the canonical address: an
  *  operator who typed `/reviews` is on Reviews while the forward is in
  *  flight, and a row that goes dark for that instant reads as a glitch. */
-export function flatViewFromPathname(
-  pathname: string,
-): "profile" | "menus" | "reviews" | "capabilities" | "rewards" | "admin" | null {
+export function flatViewFromPathname(pathname: string): PlaceTab | null {
   const seg = pathname.replace(/\/$/, "");
-  const views = [
-    "profile",
-    "menus",
-    "reviews",
-    "capabilities",
-    "rewards",
-    "admin",
-  ] as const;
-  for (const v of views) if (seg === `/${v}`) return v;
+  // DERIVED FROM `FLAT_ROUTES`, not written a second time (MESITA-1885). The
+  // list used to be typed out here as well, and the two copies had to be kept
+  // in step by hand across a nine-name rename — which is how a flat twin ends
+  // up resolving while no row lights for it. Every place tab has a flat twin
+  // and only place tabs do, so the entry's own key is the answer.
+  for (const [tab, route] of Object.entries(FLAT_ROUTES)) {
+    if (seg !== route) continue;
+    return (PLACE_TAB_NAMES as readonly string[]).includes(tab)
+      ? (tab as PlaceTab)
+      : null;
+  }
   return null;
 }
+
+/** The place tabs, spelled here so `flatViewFromPathname` can tell a place
+ *  twin from an organization one without importing `PLACE_TABS` as a VALUE —
+ *  `lib/place-tabs` is the module that may import this one, never the reverse
+ *  (`placeHref` below is written literally for the same reason).
+ *  `console-routes.test.ts` asserts the two lists are the same set. */
+const PLACE_TAB_NAMES = [
+  "profile",
+  "menus",
+  "reviews",
+  "visits",
+  "orders",
+  "reservations",
+  "pay",
+  "credits",
+  "admin",
+] as const;
 
 /** Which ORGANIZATION address a flat pathname is, or null — the same courtesy
  *  for the four rows above the place group. */
