@@ -227,6 +227,28 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1848. The groups are headed by SELECTORS, not by eyebrows: the
   // head of a group is the thing itself, and it is a control. An eyebrow says
   // the subject's noun a second time and does nothing.
+  // MESITA-1849. Pato, on the first build: "this looks like shit. make it
+  // cleaner." The selector was a 28px chip at x=10 and two lines tall, while
+  // a row is a 14px icon at x=28 and one line — two glyph columns, three row
+  // heights, and a parent whose label started LEFT of its own children's.
+  // Rank is colour and position now, never size.
+  it("the selector is the row's size and the row's glyph box", () => {
+    const sel = readCode("components/console/RailSelector.tsx");
+    // ONE GLYPH BOX, shared with the rail's ICON literal.
+    expect(sel).toContain('"h-4 w-4 lg:h-3.5 lg:w-3.5 shrink-0');
+    expect(rail()).toContain('const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5"');
+    // ONE HEIGHT: the row's own padding literals, not a taller pair.
+    expect(sel).toContain("min-h-11 lg:min-h-0 lg:py-2");
+    // ONE LINE: no meta prop, so no second line can come back by prop.
+    expect(sel).not.toContain("meta");
+    // RANK BY COLOUR: the head is the bright one, its pages are muted.
+    expect(sel).toContain("text-sidebar-foreground");
+    expect(sel).toContain("font-semibold");
+    expect(rail()).toContain("text-sidebar-muted hover:bg-sidebar-accent");
+    // AIR, NOT BULK, separates the groups now that the head is row-sized.
+    expect((rail().match(/className="mt-3"/g) ?? []).length).toBe(2);
+  });
+
   it("heads its groups with selectors, never with an eyebrow", () => {
     const r = rail();
     expect(r).not.toContain("GroupHeader");

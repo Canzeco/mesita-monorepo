@@ -445,19 +445,38 @@ describe("the two selectors head their groups, in the rail (MESITA-1848)", () =>
     expect((html.match(/lucide-chevrons-up-down/g) ?? []).length).toBe(2);
   });
 
-  // The meta the menu would hide rides ON the trigger (MESITA-1833): the role
-  // and the holding, and which organization the place belongs to.
-  it("each selector states its scope on the trigger, not one click behind it", () => {
+  // MESITA-1849 moved the meta OFF the trigger and into the menu, where the
+  // alternatives it compares against already live. On the trigger it made a
+  // two-line control among one-line rows — the "three row heights" fault
+  // Pato called out — and answered a question nobody had asked yet.
+  it("the trigger is ONE line: a name, and nothing under it", () => {
     const html = render(FLAT_ROUTES.reviews, { organizations: SOLO });
-    expect(html).toContain(">Owner · 1 place<");
-    expect(html).toContain(">In Pato<");
+    expect(html).toContain(">Pato<");
+    expect(html).not.toContain(">Owner · 1 place<");
+    expect(html).not.toContain(">In Pato<");
+    // The rail's own source keeps the line — it renders in the MENU, which is
+    // a portal and therefore absent from this closed-state markup.
+    expect(
+      readFileSync(join(process.cwd(), "src/components/console/Sidebar.tsx"), "utf8"),
+    ).toContain("function orgMeta(");
+  });
+
+  // ONE GLYPH COLUMN (MESITA-1849): a selector's chip is the row icon's box,
+  // so every mark in the rail shares one left edge. Two sizes is the ragged
+  // column Pato saw.
+  it("the selector chip is the row icon's box, to the pixel", () => {
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
+    // The rail's icon box and the chip box are the same literal.
+    const marks = html.match(/h-4 w-4[^"]*lg:h-3\.5 lg:w-3\.5/g) ?? [];
+    expect(marks.length).toBeGreaterThanOrEqual(2);
   });
 
   // MESITA-1833: the zero-places row is an EMPTY STATE, not a name.
-  it("an organization holding no place says so, and still offers Add place", () => {
+  it("an organization holding no place says so on the trigger, in one line", () => {
     const html = render(FLAT_ROUTES.profile, { rememberedOrgId: "org-b" });
-    expect(html).toContain(">Add your first place<");
-    expect(html).toContain(">Nothing to switch between yet<");
+    expect(html).toContain(">Add a place<");
+    // The explanation moved into the menu with every other meta line.
+    expect(html).not.toContain(">Nothing to switch between yet<");
   });
 
   // At w-16 there is no label to align to: each selector is its chip, and the

@@ -87,8 +87,11 @@ import { cn } from "@/lib/utils";
 import {
   MENU_CHIP,
   MENU_ITEM,
+  MENU_META,
   MENU_MUTED,
+  MENU_STACK,
   RailSelector,
+  SELECTOR_CHIP,
 } from "@/components/console/RailSelector";
 import {
   DropdownMenuItem,
@@ -243,9 +246,21 @@ const PLACE_ROWS = [
 
 /** The selector's mark: the organization wears the brand, the place wears its
  *  own photo. Two kinds of thing, so they never look interchangeable — and at
- *  `w-16` the chip is the ONLY thing left identifying the subject. */
-const SELECTOR_CHIP =
-  "h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-[11px] font-semibold";
+ *  `w-16` the chip is the ONLY thing left identifying the subject. Its BOX is
+ *  the row icon's box (SELECTOR_CHIP), so every mark in the column shares one
+ *  left edge; only the fill differs.
+ */
+
+const ROLE_LABEL = { owner: "Owner", editor: "Editor", viewer: "Viewer" } as const;
+
+/** The line the trigger no longer prints (MESITA-1849): the role and the
+ *  holding, on the menu row that actually compares one organization to the
+ *  next. On the trigger it answered a question nobody had asked yet, at twice
+ *  the height of a real destination. */
+function orgMeta(org: RailOrg): string {
+  const n = org.places.length;
+  return `${ROLE_LABEL[org.myRole]} · ${n === 1 ? "1 place" : `${n} places`}`;
+}
 
 function OrgChip({ name, menu = false }: { name: string; menu?: boolean }) {
   return (
@@ -267,7 +282,7 @@ function PlaceChip({
   photoUrl?: string | null;
   menu?: boolean;
 }) {
-  const px = menu ? 20 : 28;
+  const px = menu ? 20 : 16;
   const src = placeThumbUrl(photoUrl ?? null, px);
   if (src) {
     return (
@@ -277,10 +292,7 @@ function PlaceChip({
         alt=""
         width={px}
         height={px}
-        className={cn(
-          "object-cover",
-          menu ? "h-5 w-5 shrink-0 rounded-md" : cn(SELECTOR_CHIP, "rounded-lg"),
-        )}
+        className={cn("object-cover", menu ? "h-5 w-5 shrink-0 rounded-md" : SELECTOR_CHIP)}
       />
     );
   }
@@ -290,7 +302,7 @@ function PlaceChip({
       aria-hidden
       className={menu ? MENU_CHIP : cn(SELECTOR_CHIP, "bg-sidebar-accent text-sidebar-muted")}
     >
-      <Store className={menu ? "h-3 w-3" : "h-3.5 w-3.5"} />
+      <Store className={menu ? "h-3 w-3" : "h-2.5 w-2.5"} />
     </span>
   );
 }
@@ -480,7 +492,6 @@ export function Sidebar({
   const shownPlace = pendingPlace ?? scope.place;
   const placeName = shownPlace?.name ?? foreignName;
   const canAdd = org !== null && canAddPlace(org.myRole);
-  const ROLE_LABEL = { owner: "Owner", editor: "Editor", viewer: "Viewer" } as const;
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
@@ -519,15 +530,14 @@ export function Sidebar({
           />
         ) : (
           <>
-            {/* ── THE ORGANIZATION: which one, then its pages ───────────── */}
+            {/* ── THE ORGANIZATION: which one, then its pages ─────────────
+                AIR, NOT BULK, separates the groups (MESITA-1849). The
+                selector used to be twice a row's height and that WAS the
+                separator; at one height it needs a margin instead. */}
+            <div className="mt-3">
             <RailSelector
               label="Switch organization"
               name={shownOrg?.name ?? "Organization"}
-              meta={
-                shownOrg
-                  ? `${ROLE_LABEL[shownOrg.myRole]} · ${shownOrg.places.length === 1 ? "1 place" : `${shownOrg.places.length} places`}`
-                  : ""
-              }
               chip={<OrgChip name={shownOrg?.name ?? "?"} />}
               switchable={organizations.length >= 2}
               pending={pendingOrg !== null}
@@ -536,14 +546,20 @@ export function Sidebar({
               {organizations.length === 1 ? (
                 <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
                   <OrgChip name={org.name} menu />
-                  <span className="truncate">{org.name}</span>
+                  <span className={MENU_STACK}>
+                    <span className="truncate">{org.name}</span>
+                    <span className={MENU_META}>{orgMeta(org)}</span>
+                  </span>
                 </DropdownMenuLabel>
               ) : (
                 <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
                   {organizations.map((o) => (
                     <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
                       <OrgChip name={o.name} menu />
-                      <span className="truncate">{o.name}</span>
+                      <span className={MENU_STACK}>
+                        <span className="truncate">{o.name}</span>
+                        <span className={MENU_META}>{orgMeta(o)}</span>
+                      </span>
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
@@ -559,6 +575,7 @@ export function Sidebar({
                 </Link>
               </DropdownMenuItem>
             </RailSelector>
+            </div>
             {ORG_RAIL_TARGETS.map((target) => (
               <NavRow
                 key={target}
@@ -574,18 +591,10 @@ export function Sidebar({
             ))}
 
             {/* ── THE PLACE: which one, then its views ──────────────────── */}
+            <div className="mt-3">
             <RailSelector
               label="Switch place"
-              name={placeName ?? (canAdd ? "Add your first place" : "No place yet")}
-              meta={
-                foreignName
-                  ? "Not in your organizations"
-                  : placeName
-                    ? `In ${org.name}`
-                    : canAdd
-                      ? "Nothing to switch between yet"
-                      : "This organization holds none"
-              }
+              name={placeName ?? (canAdd ? "Add a place" : "No place yet")}
               chip={<PlaceChip name={placeName} photoUrl={shownPlace?.photoUrl} />}
               switchable={org.places.length >= 2}
               pending={pendingPlace !== null}
@@ -593,7 +602,9 @@ export function Sidebar({
             >
               {org.places.length === 0 ? (
                 <DropdownMenuLabel className={MENU_MUTED}>
-                  This organization holds none
+                  {foreignName
+                    ? "Not in your organizations"
+                    : `${org.name} holds none yet`}
                 </DropdownMenuLabel>
               ) : (
                 <DropdownMenuRadioGroup
@@ -630,6 +641,7 @@ export function Sidebar({
                 </Link>
               </DropdownMenuItem>
             </RailSelector>
+            </div>
             {placeRows.map((tab) => (
               <NavRow
                 key={tab}
