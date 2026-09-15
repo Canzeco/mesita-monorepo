@@ -6,11 +6,55 @@
 // that DO benefit from a component (label + hint + required mark, for
 // example) live in src/components/shared/Field.tsx.
 
+// ── The two laws every control below obeys (MESITA-1862) ──────────────────
+//
+// FOCUS: a keyboard user gets the BRAND's ring, never the user agent's. The
+// console already spoke this vocabulary in four places — Sidebar.tsx,
+// RailSelector.tsx, PlaceGallery.tsx, ProductCatalog.tsx all ship
+// `focus-visible:ring-2` — and the shared constants were the hole. Anything
+// here that kills the UA outline MUST put a ring back in the same string;
+// `control-affordances.test.ts` fails the pairing, because `outline-none`
+// alone is worse than no rule at all (INPUT_CLASS carried exactly that, and
+// a tinted border is not a focus indicator).
+//
+// The offset is load-bearing, not decoration: a 2px pink ring drawn straight
+// onto a `bg-foreground` near-black pill reads as a border artifact. Two
+// pixels of page background between fill and ring is what makes it a ring.
+// `--ring` is the brand pink in both themes (globals.css:74 and :172). The
+// RAIL does not use it: it is dark ground and has `--sidebar-ring` of its own
+// (MESITA-1831), asserted by shell-chrome.test.ts. Do not unify them.
+export const FOCUS_RING_CLASS =
+  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+// TOUCH: 44px minimum — as a HIT AREA around the paint, not as a bigger pill.
+//
+// Growing every control to 44px was the other option and it makes the member
+// row worse: MESITA-1861's finding on those rows is that they already carry
+// too many competing shapes, and a 44px circle beside a 32px pill is one
+// more. So the paint stays exactly where the design review left it and an
+// invisible `after:` rectangle, centred on the control, carries the finger.
+//
+// Vertical only (`inset-x-0`): these pills are wide enough already, and
+// growing them sideways would make two adjacent hit areas overlap, which
+// turns "44px target" into "wrong button". The icon button is the exception
+// below — it is a 32px circle and needs all four sides.
+export const TOUCH_TARGET_CLASS =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:w-full after:-translate-y-1/2 after:content-['']";
+
+// The square variant, for the 32px icon circle: 44 × 44 centred on the paint,
+// so it grows 6px on every side. MembersCard's rows carry `gap-3` for exactly
+// this reason — at `gap-2` the × hit area came within 2px of the pill beside
+// it and overlapped the role chip on the invite row.
+export const ICON_TOUCH_TARGET_CLASS =
+  "relative after:absolute after:top-1/2 after:left-1/2 after:h-11 after:w-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']";
+
 // Single-line text input. Matches the visual rhythm used across every
-// Mesita form: 44px tall, 12px border-radius, subtle card background,
-// brand-foreground focus ring.
-export const INPUT_CLASS =
-  "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none transition focus:border-foreground/40";
+// Mesita form: 44px tall, 12px border-radius, subtle card background.
+// Two focus affordances, deliberately: the border tint is the resting one a
+// mouse user sees, the ring is the keyboard one. The bare `outline-none` that
+// used to sit in this string is gone — FOCUS_RING_CLASS supplies it, and only
+// together with the ring that replaces what it removes.
+export const INPUT_CLASS = `h-11 w-full rounded-xl border border-border bg-card px-3 text-sm transition focus:border-foreground/40 ${FOCUS_RING_CLASS}`;
 
 // Destructive feedback (form errors, failed actions). Lower contrast than
 // the destructive color full-strength so it reads as a notice, not an alert.
@@ -23,8 +67,8 @@ export const INFO_BOX_CLASS =
 
 // Primary submit button. Used for the bottom-of-form action — full-width,
 // pill-shaped, dark-foreground fill. Use cn() to merge in `flex-1`, etc.
-export const PRIMARY_BUTTON_CLASS =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background transition disabled:opacity-60";
+// Already 48px tall, so it needs no hit area — only the ring.
+export const PRIMARY_BUTTON_CLASS = `flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background transition disabled:opacity-60 ${FOCUS_RING_CLASS}`;
 
 // Tiny uppercase eyebrow label — used for section eyebrows ("PENDING
 // INVITES"), "Read-only" badges, stat tile captions, etc. Single source
@@ -35,20 +79,23 @@ export const TINY_LABEL_CLASS =
 // Small pill action button — the canonical header CTA ("Invite business",
 // "Add staff", etc.). Dark fill, 12px text, pill-shaped. For a
 // full-width form submit use PRIMARY_BUTTON_CLASS instead.
-export const PILL_BUTTON_CLASS =
-  "bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60";
+// ~30px of paint (py-1.5 on 12px text), so it carries the 44px hit area.
+export const PILL_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // Compact icon button (32px circle) — for trash / send / copy actions on
 // list rows. Border ring + subtle hover so it doesn't compete with the
 // row content. Pair with `aria-label` and `title` for accessibility.
-export const ICON_BUTTON_CLASS =
-  "border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border transition disabled:opacity-50";
+// 32px of paint — the × that removes a teammate, which is the single control
+// in this console where a mis-tap costs the most. Square hit area.
+export const ICON_BUTTON_CLASS = `border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border transition disabled:opacity-50 ${FOCUS_RING_CLASS} ${ICON_TOUCH_TARGET_CLASS}`;
 
 // Solid dark pill CTA — the empty-state / error-state primary action
 // ("Add a place", "Try again"). Roomier padding than PILL_BUTTON_CLASS and
 // not full-width like PRIMARY_BUTTON_CLASS. Compose with cn() for margins.
-export const CTA_BUTTON_CLASS =
-  "bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90";
+// ~41px of paint — under 44 by three pixels, which the issue did not name and
+// which is exactly the kind of near-miss that gets the same finding filed
+// again next pass. It takes the hit area too.
+export const CTA_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // Section / empty-state title — display face, xl, tight tracking.
 export const SECTION_TITLE_CLASS =
@@ -58,8 +105,7 @@ export const SECTION_TITLE_CLASS =
 // "Cancel", "Manage"). Border ring, no fill, so it reads as available
 // without competing with the dark CTA beside it. A 12px grey text link is
 // not enough affordance for a real action; this is.
-export const GHOST_PILL_BUTTON_CLASS =
-  "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-60";
+export const GHOST_PILL_BUTTON_CLASS = `border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // ── The shell's one width law (MESITA-1558) ────────────────────────────────
 //
@@ -143,7 +189,6 @@ export const SCOPE_ROW_CLASS =
 
 // The row's 44px chip well — the monogram, the place thumb, the plus.
 export const SCOPE_CHIP_CLASS = "h-11 w-11 shrink-0 rounded-xl";
-
 
 // ── The wide-record table (MESITA-1608) ────────────────────────────────────
 //
