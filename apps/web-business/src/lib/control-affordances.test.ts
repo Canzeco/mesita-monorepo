@@ -5,8 +5,12 @@
 //
 //   1. FOCUS. Every shared control paints the brand's ring on :focus-visible,
 //      and nothing here removes the user agent's outline without putting one
-//      back. A bare `outline-none` is strictly worse than no rule at all — it
-//      deletes the only indicator the browser gave for free.
+//      back. Killing the outline alone is strictly worse than no rule at all
+//      — it deletes the only indicator the browser gave for free. And the
+//      reset is spelled `outline-hidden`, never `outline-none`: in Tailwind
+//      v4 only the former carries the forced-colors transparent outline, and
+//      under Windows high contrast a `ring-*` box-shadow is not painted at
+//      all, so the bare spelling leaves the control with nothing.
 //   2. TOUCH. Every control whose PAINT is under 44px carries a 44px hit area
 //      around it. The paint is a design decision (MESITA-1861: these rows
 //      already hold too many competing shapes); the target is not negotiable.
@@ -46,6 +50,15 @@ const readCode = (rel: string) =>
     .replace(/^\s*\/\/.*$/gm, "")
     .replace(/\/\*[\s\S]*?\*\//g, "");
 
+/** Either Tailwind v4 spelling of "drop the user agent's outline". Matching
+ *  both is what keeps the pairing rule below honest when one becomes the
+ *  other. Not /g — `RegExp.test` on a global regex is stateful. */
+const OUTLINE_RESET = /\boutline-(none|hidden)\b/;
+/** The one spelling a control constant may never ship: no forced-colors
+ *  escape hatch, and `ring-*` is a box-shadow that forced colors will not
+ *  paint. Note `outline-hidden` does not match. */
+const BARE_OUTLINE_NONE = /\boutline-none\b/;
+
 const strings: [string, string][] = Object.entries(uiClasses)
   .filter(([, value]) => typeof value === "string")
   .map(([name, value]) => [name, String(value)]);
@@ -81,13 +94,37 @@ describe("every shared control carries the brand's focus ring", () => {
   });
 
   it("nothing kills the UA outline without replacing it", () => {
-    for (const [name, value] of strings) {
-      if (!value.includes("outline-none")) continue;
+    // BOTH spellings, so that changing one to the other cannot turn this rule
+    // into a loop over nothing. It matched only `outline-none` when the ring
+    // constant carried that spelling; the fix below would have silenced it.
+    const kills = strings.filter(([, value]) => OUTLINE_RESET.test(value));
+    expect(
+      kills.map(([name]) => name),
+      "no constant kills the outline at all — this rule has gone vacuous",
+    ).not.toHaveLength(0);
+    for (const [name, value] of kills) {
       expect(
         value,
         `${name} removes the browser's outline and puts no ring back`,
       ).toContain("focus-visible:ring-");
     }
+  });
+
+  it("the outline reset survives forced-colors mode", () => {
+    // Tailwind v4 draws `ring-*` as a box-shadow, and Windows high-contrast
+    // mode paints no box-shadows. `outline-none` is a bare
+    // `outline-style: none`, so under forced colors it leaves the control
+    // with NO indicator — worse than the UA outline it replaced.
+    // `outline-hidden` is identical in normal mode and adds a transparent 2px
+    // outline that forced-colors repaints as a real system ring.
+    for (const [name, value] of strings) {
+      expect(
+        value,
+        `${name} ships the bare outline-none spelling; use outline-hidden`,
+      ).not.toMatch(BARE_OUTLINE_NONE);
+    }
+    // …and the shared string that every control borrows has the safe one.
+    expect(FOCUS_RING_CLASS).toContain("outline-hidden");
   });
 
   it("the ring is the page token, never the rail's", () => {
@@ -175,8 +212,10 @@ describe("the last hand-rolled control on a Settings-adjacent surface", () => {
   it("TeamSection's role select borrows the shared ring", () => {
     const team = readCode("components/place-manage/sections/TeamSection.tsx");
     expect(team).toContain("FOCUS_RING_CLASS");
-    // Its own `outline-none` is gone; the shared string supplies it with a
-    // ring attached.
-    expect(team).not.toContain("text-xs capitalize outline-none");
+    // Its own `outline-none` is gone; the shared string supplies the reset —
+    // in the forced-colors-safe spelling — with a ring attached. Asserted as
+    // "no bare outline-none anywhere in the file" rather than against the one
+    // class string it used to sit in, which a reorder would have defeated.
+    expect(team).not.toMatch(BARE_OUTLINE_NONE);
   });
 });

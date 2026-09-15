@@ -13,9 +13,21 @@
 // RailSelector.tsx, PlaceGallery.tsx, ProductCatalog.tsx all ship
 // `focus-visible:ring-2` — and the shared constants were the hole. Anything
 // here that kills the UA outline MUST put a ring back in the same string;
-// `control-affordances.test.ts` fails the pairing, because `outline-none`
-// alone is worse than no rule at all (INPUT_CLASS carried exactly that, and
-// a tinted border is not a focus indicator).
+// `control-affordances.test.ts` fails the pairing, because killing the
+// outline alone is worse than no rule at all (INPUT_CLASS carried exactly
+// that, and a tinted border is not a focus indicator).
+//
+// `outline-hidden`, NOT `outline-none` — and in Tailwind v4 those are two
+// different utilities, not two names for one. `outline-none` compiles to a
+// bare `outline-style: none`. `outline-hidden` compiles to the same thing
+// PLUS `@media (forced-colors: active) { outline: 2px solid transparent;
+// outline-offset: 2px }`. That transparent outline is the escape hatch:
+// Windows high-contrast mode does not paint box-shadows, which is what every
+// `ring-*` utility is, so under forced colors the shadow ring vanishes — and
+// with the bare spelling the control is left with NO focus indicator at all,
+// strictly worse than the UA outline this string set out to replace. The
+// forced-colors repaint turns that transparent outline into a real system
+// ring. Identical in normal mode; do not "simplify" it back.
 //
 // The offset is load-bearing, not decoration: a 2px pink ring drawn straight
 // onto a `bg-foreground` near-black pill reads as a border artifact. Two
@@ -24,7 +36,7 @@
 // RAIL does not use it: it is dark ground and has `--sidebar-ring` of its own
 // (MESITA-1831), asserted by shell-chrome.test.ts. Do not unify them.
 export const FOCUS_RING_CLASS =
-  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 // TOUCH: 44px minimum — as a HIT AREA around the paint, not as a bigger pill.
 //
@@ -52,8 +64,9 @@ export const ICON_TOUCH_TARGET_CLASS =
 // Mesita form: 44px tall, 12px border-radius, subtle card background.
 // Two focus affordances, deliberately: the border tint is the resting one a
 // mouse user sees, the ring is the keyboard one. The bare `outline-none` that
-// used to sit in this string is gone — FOCUS_RING_CLASS supplies it, and only
-// together with the ring that replaces what it removes.
+// used to sit in this string is gone — FOCUS_RING_CLASS supplies the outline
+// reset in its forced-colors-safe spelling, and only together with the ring
+// that replaces what it removes.
 export const INPUT_CLASS = `h-11 w-full rounded-xl border border-border bg-card px-3 text-sm transition focus:border-foreground/40 ${FOCUS_RING_CLASS}`;
 
 // Destructive feedback (form errors, failed actions). Lower contrast than
