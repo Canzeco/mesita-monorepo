@@ -1,21 +1,24 @@
-// Payments — THE ORGANIZATION's money: Stripe Account · Partner · Prepaid
-// Credits (Pato, 2026-09-13, "org & place payments (a settings thing)").
+// Payments — PARKED (MESITA-1852). Pato: *"put payments as soon too for the
+// moment."*
 //
-// It sat at the flat `/payments` from MESITA-1832 until MESITA-1839, reading
-// whichever organization a cookie named. It is under the organization now,
-// because that is whose money it is — and because Stripe needs to be able to
-// send an owner back to a SPECIFIC one. An Account Link's return_url is minted
-// against `/orgs/<id>?connect=…`, which forwards here with the query intact;
-// the flat `/payments` still resolves the remembered organization and lands
-// here too.
+// Its two live boxes moved to Configuration, where they belong: a Stripe
+// account is connected once and a Partner switch is flipped once, and both
+// are setup, not reading. What Payments is FOR is what happened — what guests
+// paid and what reached the account — and none of that is built.
+//
+// THE ROW STAYS. Pato said "for the moment", so the address, the rail row and
+// every bookmark survive the pause; only the contents wait. An unbuilt engine
+// shows Soon on its PAGE and never a dimmed row in the rail (MESITA-1833).
+//
+// STRIPE'S STORED RETURN still lands here. An Account Link minted months ago
+// points at `/orgs/<id>?connect=return`, and the bare address forwards that
+// query onward — it is answered by the notice, which travels with the Stripe
+// box to Configuration.
 import { notFound, redirect } from "next/navigation";
 import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
-import { PaymentsSections } from "@/components/console/OrgScreenSections";
-import {
-  apiGetPaymentAccount,
-  apiListOrganizations,
-  type PaymentAccount,
-} from "@/lib/api/organizations";
+import { SoonStrip } from "@/components/console/SoonStrip";
+import { SOON_STRIPS } from "@/components/console/SoonStrips";
+import { apiListOrganizations } from "@/lib/api/organizations";
 import { findOrg } from "@/lib/active-organization";
 import { orgHref } from "@/lib/console-routes";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
@@ -38,30 +41,16 @@ export default async function PaymentsPage({
     redirect(`/signin?next=${encodeURIComponent(orgHref(orgId, "payments"))}`);
   }
   const supabase = await createServerSupabase();
-  // The segment layout above already refused a foreign id; this read is for
-  // the org's own name and role, which the money boxes render.
   const org = findOrg(await apiListOrganizations(supabase), orgId);
   if (!org) notFound();
-
-  let account: PaymentAccount | null = null;
-  let orphaned = false;
-  try {
-    ({ account, orphaned } = await apiGetPaymentAccount(supabase, org.id));
-  } catch (e) {
-    console.error("[payments] business-web-get-payment-account:", e);
-  }
   const connect = typeof sp.connect === "string" ? sp.connect : undefined;
 
   return (
     <>
-      {/* NO BADGE BESIDE THE HEADING (MESITA-1847). It read `charges_enabled`
-          and said "Connected"; the box below says "Ready" only at charges AND
-          payouts AND details submitted. Two ladders describing one account in
-          two vocabularies on one screen, able to visibly disagree — so the
-          precise one stays and the headline one goes. */}
       <h1 className="font-display text-2xl font-semibold tracking-tight">Payments</h1>
       <ConnectReturnNotice connect={connect} />
-      <PaymentsSections org={org} account={account} orphaned={orphaned} />
+      <SoonStrip {...SOON_STRIPS.payments} />
+      <SoonStrip {...SOON_STRIPS.credits} />
     </>
   );
 }

@@ -264,13 +264,15 @@ describe("every redirect forwards somewhere this repo serves", () => {
   // today's product decision in every browser that follows it, forever.
   // Activity moved from the place to the organization (MESITA-1841); Credits
   // moved out of Payments and back into it inside one day (MESITA-1841 →
-  // MESITA-1845).
+  // MESITA-1845); the organization's own page has been Organization, then
+  // Settings, then Configuration (MESITA-1846 → 1848 → 1852).
   const TEMPORARY = new Set([
     "/places/:id/activity",
     "/orgs/:orgId/credits",
     "/credits",
     "/orgs/:orgId/members",
     "/members",
+    "/orgs/:orgId/settings",
   ]);
 
   it("permanent, except the forwards onto an answer that has moved", async () => {
