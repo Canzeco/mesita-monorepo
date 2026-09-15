@@ -6,12 +6,14 @@
 // Pato, 2026-09-14: *"better three sections"* —
 //
 //   [ ○ Account        ]  → /account                the person, no subitems
+//   ─────────────────────
 //   [ ▣ Organization ⌄ ]  which one you are in
 //       Settings          → /orgs/<id>/settings
 //       Places            → /orgs/<id>/places
 //       Customers         → /orgs/<id>/customers
 //       Payments          → /orgs/<id>/payments
 //       Activity          → /orgs/<id>/activity
+//   ─────────────────────
 //   [ ⌂ Place        ⌄ ]  which one you are managing
 //       Profile           → /places/<id>/profile
 //       Menus             → /places/<id>/menus
@@ -166,6 +168,20 @@ const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
 // so the five are still the same rows, moved. `twMerge` drops `px-2.5`'s left
 // half in favour of this.
 const ROW_INDENT = "pl-7 lg:pl-6";
+// THE SECTION SEAM (MESITA-1851). Pato: *"maybe add bar like separating
+// sections."* Each group opens with a hairline above its selector — the same
+// rule the footer already draws over Collapse, at the same weight, so the
+// column has one kind of divider and not two. MESITA-1849 made every row one
+// height, which is what made air alone stop reading as a boundary: once
+// nothing is taller than anything else, a 12px gap is just a gap.
+//
+// The rule is the wrapper's own top border, so it spans the rail's full text
+// column and needs no element of its own — and at `w-16` it still separates
+// the chips, which is the width where the group names are gone entirely.
+//
+// ACCOUNT GETS NO RULE ABOVE IT. The rail carries no wordmark (MESITA-1842),
+// so a seam over row one would separate the column from the window's edge.
+const SECTION_SEAM = "border-sidebar-border mt-2 border-t pt-2";
 // The full route is prefetched on hover (MESITA-1779): the click then paints
 // the body at once instead of the skeleton. The prop works at runtime in
 // app/ and is missing from Link's public type, so it is spread in.
@@ -530,11 +546,8 @@ export function Sidebar({
           />
         ) : (
           <>
-            {/* ── THE ORGANIZATION: which one, then its pages ─────────────
-                AIR, NOT BULK, separates the groups (MESITA-1849). The
-                selector used to be twice a row's height and that WAS the
-                separator; at one height it needs a margin instead. */}
-            <div className="mt-3">
+            {/* ── THE ORGANIZATION: which one, then its pages ─────────── */}
+            <div className={SECTION_SEAM}>
             <RailSelector
               label="Switch organization"
               name={shownOrg?.name ?? "Organization"}
@@ -591,7 +604,7 @@ export function Sidebar({
             ))}
 
             {/* ── THE PLACE: which one, then its views ──────────────────── */}
-            <div className="mt-3">
+            <div className={SECTION_SEAM}>
             <RailSelector
               label="Switch place"
               name={placeName ?? (canAdd ? "Add a place" : "No place yet")}

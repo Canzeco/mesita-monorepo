@@ -243,9 +243,16 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     // And no decoration doing the same job twice.
     expect(n).not.toContain("border-l");
     expect(n).not.toContain("list-disc");
-    // The nav carries NO seam — the one seam in the rail is the footer's.
-    expect(n).not.toContain("border-t");
+    // TWO SEAMS IN THE NAV, one per group after the first (MESITA-1851,
+    // overturning MESITA-1849's "air, not bulk"): a hairline opens
+    // Organization and another opens Place. Account takes none — the rail
+    // carries no wordmark, so a rule over row one divides nothing. The
+    // footer's own seam, over Collapse, is the third and last.
+    expect((n.match(/border-t/g) ?? []).length).toBe(2);
     expect((footerOf(html).match(/border-t/g) ?? []).length).toBe(1);
+    // The seam is the group wrapper's border, never a row's: a row that grew
+    // a rule would be a second row shape.
+    expect(n).not.toMatch(/<a [^>]*class="[^"]*border-t/);
   });
 
   it("at w-16 nothing indents: there is no label to align to", () => {
@@ -397,17 +404,18 @@ describe("the states a 10/10 has to answer", () => {
     expect(pillText(html)).toBe("Profile");
   });
 
-  it("collapsed: every label a title, one pill, one seam in the whole rail", () => {
+  it("collapsed: every label a title, one pill, the same three seams", () => {
     const html = render(FLAT_ROUTES.capabilities, { collapsed: true, rememberedPlaceId: "p-1" });
     expect(rows(html)).toHaveLength(11);
     expect(html).toContain('title="Capabilities"');
     expect(html).toContain('title="Settings"');
     expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(pills(html)).toHaveLength(1);
-    // The nav is one run of marks; the only seam is the footer's, above the
-    // rail's own control.
+    // The groups keep their seams at `w-16` — this is the width where the
+    // names are gone entirely, so the rules are the only thing left saying
+    // where one group ends (MESITA-1851).
     const n = navOf(html);
-    expect((n.match(/border-t/g) ?? []).length).toBe(0);
+    expect((n.match(/border-t/g) ?? []).length).toBe(2);
     expect((footerOf(html).match(/border-t/g) ?? []).length).toBe(1);
   });
 });
