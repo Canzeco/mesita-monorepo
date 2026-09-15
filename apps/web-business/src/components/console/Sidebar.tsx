@@ -175,13 +175,19 @@ const ROW_INDENT = "pl-7 lg:pl-6";
 // height, which is what made air alone stop reading as a boundary: once
 // nothing is taller than anything else, a 12px gap is just a gap.
 //
+// HALF THE DOCK BORDER (MESITA-1860). Pato: *"make the seams lighter."*
+// `--sidebar-border` is 14% white — the right weight for the rail's own right
+// edge against a light page, too loud for a divider inside the column, where
+// the rows themselves sit at 58%. `/50` takes the same token to ~7%; the
+// footer's seam moves with it, because two weights would be two dividers.
+//
 // The rule is the wrapper's own top border, so it spans the rail's full text
 // column and needs no element of its own — and at `w-16` it still separates
 // the chips, which is the width where the group names are gone entirely.
 //
 // ACCOUNT GETS NO RULE ABOVE IT. The rail carries no wordmark (MESITA-1842),
 // so a seam over row one would separate the column from the window's edge.
-const SECTION_SEAM = "border-sidebar-border mt-2 border-t pt-2";
+const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
 // The full route is prefetched on hover (MESITA-1779): the click then paints
 // the body at once instead of the skeleton. The prop works at runtime in
 // app/ and is missing from Link's public type, so it is spread in.
@@ -686,7 +692,7 @@ export function Sidebar({
           seam, and the rail's empty space falls above it — which reads as room
           to spare rather than as a layout that failed. */}
       {onToggleCollapse && (
-        <div className="border-sidebar-border mt-2 flex shrink-0 flex-col gap-0.5 border-t pt-2">
+        <div className="border-sidebar-border/50 mt-2 flex shrink-0 flex-col gap-0.5 border-t pt-2">
           <button
             type="button"
             onClick={onToggleCollapse}
