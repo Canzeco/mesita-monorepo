@@ -177,18 +177,12 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     expect(pillText(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toBe("Create organization");
   });
 
-  it("Configuration is five boxes and offers no door", () => {
-    // MESITA-1847 "fuck nested things display shit there", narrowed by
-    // MESITA-1852: Places left, because it has a rail row of its own.
-    const page = readFileSync(
-      join(process.cwd(), "src/app/(shell)/orgs/[orgId]/configuration/page.tsx"),
-      "utf8",
-    );
-    expect(page).toContain("<MembersCard");
-    expect(page).toContain("SOON_STRIPS.brand");
-    expect(page).toContain("SOON_STRIPS.developers");
-    expect(page).not.toContain("orgPlacesNewHref");
-  });
+  // THE CONFIGURATION BOX LIST IS NOT ASSERTED HERE ANY MORE (MESITA-1870).
+  // An `it` in the RAIL's render test read the Configuration PAGE's source
+  // and counted its boxes — a second, weaker copy of what shell-chrome.test
+  // asserts properly, and it still said "five boxes" in its own name three
+  // issues after there were five. Two files claiming one screen is how a
+  // count goes stale in the one that nobody reads. shell-chrome owns it.
 });
 
 describe("three sections: account, then two selectors over their pages (MESITA-1848)", () => {

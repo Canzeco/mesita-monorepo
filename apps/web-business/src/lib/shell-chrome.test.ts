@@ -366,13 +366,25 @@ describe("the rail is six nouns and one indent", () => {
   // and Mesita Pay were the right boxes in the wrong room — a subscription
   // and a payment account are things you BUY, not things you configure — so
   // they moved to the catalogue whole, composition intact.
-  it("Configuration is three boxes: Members, Brand, Developers", () => {
+  // MESITA-1870. Pato, on the live page: "remove brand configuration from
+  // here." Brand was the second Soon on a page just cut to what you actually
+  // configure, and the weaker of the two: Developers is something this
+  // organization will DO, the brand is a design decision with no column and
+  // no next step. The map entry went with the box.
+  it("Configuration is two boxes: Members, then Developers", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx");
     expect(page).not.toContain("DoorRow");
     expect(page).toContain("<MembersCard");
     expect(page).toContain("apiListOrgMembers");
-    expect(page).toContain("SOON_STRIPS.brand");
     expect(page).toContain("SOON_STRIPS.developers");
+    expect(page).not.toContain("SOON_STRIPS.brand");
+    expect((page.match(/<SoonStrip/g) ?? []).length).toBe(1);
+    // An entry nobody renders is how a vocabulary starts describing a screen
+    // that no longer exists — the note this map already carries about
+    // Prepaid Credits (MESITA-1869).
+    expect(readCode("components/console/SoonStrips.ts")).not.toContain(
+      'title: "Brand"',
+    );
     // THE TWO PAID BOXES LEFT, and so did the Stripe read that fed them: two
     // screens reading one account is how the console starts disagreeing with
     // itself (MESITA-1847's badge lesson), so the read went with the box.
@@ -397,7 +409,7 @@ describe("the rail is six nouns and one indent", () => {
     // The skeleton promises what the page delivers, or every load ends in a
     // shift by the height of two cards that are not coming (MESITA-1729).
     const loading = readCode("app/(shell)/orgs/[orgId]/configuration/loading.tsx");
-    expect((loading.match(/rounded-2xl/g) ?? []).length).toBe(3);
+    expect((loading.match(/rounded-2xl/g) ?? []).length).toBe(2);
   });
 
   // MESITA-1869. Pato, with a mock: "build something kinda like this, like a

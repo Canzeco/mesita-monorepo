@@ -32,10 +32,18 @@
 // the column puts between two unrelated cards, and the caption read as
 // floating. One wrapper, `gap-1`, and proximity says what it should.
 //
-// TWO BOXES ARE HONEST ABOUT BEING UNBUILT. Brand wants a logo and the
-// loyalty card's colour; `Organization` carries neither column. Developers
-// wants API keys. Both show Soon on the PAGE rather than a dimmed row in the
-// rail (MESITA-1833, MESITA-1845).
+// ONE BOX IS HONEST ABOUT BEING UNBUILT: Developers, which wants API keys and
+// whatever an agent needs to drive this organization. It shows Soon on the
+// PAGE rather than as a dimmed row in the rail (MESITA-1833, MESITA-1845).
+//
+// BRAND IS NOT HERE (MESITA-1870). Pato, on the live page: *"remove brand
+// configuration from here."* It was the second Soon on a page that had just
+// been cut to what you actually configure, and it was the weaker of the two:
+// Developers is a thing this organization will DO (keys it holds, an agent it
+// drives), while the brand — a logo and the colour the loyalty card wears —
+// is a design decision with no column, no owner and no next step. Two dashed
+// rows under one live box read as a page that is mostly not built; one reads
+// as a page with one thing coming.
 import { notFound, redirect } from "next/navigation";
 import { MembersCard } from "@/components/console/MembersCard";
 import { SoonStrip } from "@/components/console/SoonStrip";
@@ -102,7 +110,6 @@ export default async function ConfigurationPage(props: {
         loadError={membersError}
       />
 
-      <SoonStrip {...SOON_STRIPS.brand} />
       <SoonStrip {...SOON_STRIPS.developers} />
     </>
   );

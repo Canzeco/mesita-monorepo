@@ -10,7 +10,7 @@
 // Configuration's now, and a composition file for a page that renders only
 // Soon strips is a file that drifts from the page it claims to compose.
 export const SOON_STRIPS: Record<
-  "customers" | "payments" | "brand" | "developers",
+  "customers" | "payments" | "developers",
   { title: string; line: string }
 > = {
   // PREPAID CREDITS LEFT (MESITA-1869). It was a strip because it had no
@@ -29,10 +29,10 @@ export const SOON_STRIPS: Record<
     title: "Payments",
     line: "What guests paid at this organization's places, and what reached its account.",
   },
-  brand: {
-    title: "Brand",
-    line: "The organization's logo, and the colour its loyalty card wears.",
-  },
+  // BRAND LEFT WITH ITS BOX (MESITA-1870). Pato: *"remove brand configuration
+  // from here."* Same rule that moved Prepaid Credits out of this map one
+  // issue ago: an entry nobody renders is how a vocabulary starts describing
+  // a screen that no longer exists.
   developers: {
     title: "Developers",
     line: "API keys and what an agent needs to read and drive this organization.",
