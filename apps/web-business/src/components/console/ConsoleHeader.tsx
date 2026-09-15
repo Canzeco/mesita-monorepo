@@ -50,8 +50,8 @@ export function crumbsFor(
   if (pathname === SHELL_ROUTES.orgNew) return ["Create organization"];
   // The flat addresses (MESITA-1832, resolvers since MESITA-1839): they name
   // no subject, so the crumb supplies the one the shell resolved.
-  if (pathname === FLAT_ROUTES.payments) {
-    return [...(names.orgName ? [names.orgName] : []), "Payments"];
+  if (pathname === FLAT_ROUTES.products) {
+    return [...(names.orgName ? [names.orgName] : []), "Products"];
   }
   const flat = flatViewFromPathname(pathname);
   if (flat) {

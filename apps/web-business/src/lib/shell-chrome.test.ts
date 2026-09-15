@@ -300,7 +300,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(nav.indexOf("ORG_RAIL_TARGETS.map")).toBeLessThan(nav.indexOf("placeRows.map"));
     // The contract carries the order, and Payments and Credits are not in it.
     const routes = readCode("lib/console-routes.ts");
-    for (const target of ["configuration", "places", "customers", "payments", "activity"]) {
+    for (const target of ["configuration", "products", "places", "customers", "activity"]) {
       expect(routes, target).toContain(`  "${target}",`);
     }
     // ONE list (MESITA-1848): the pages, the rail's rows and the contract's
@@ -315,6 +315,11 @@ describe("the rail is six nouns and one indent", () => {
     // MESITA-1839 trap, which stayed green for a day in production.
     expect(routes).not.toContain('credits: "/credits"');
     expect(routes).not.toMatch(/^\s+"credits",$/m);
+    // PAYMENTS IS THE SAME CASE NOW (MESITA-1869): a product in the
+    // catalogue, and both its spellings forward. A name left here would be a
+    // live address next.config.ts shadows.
+    expect(routes).not.toContain('payments: "/payments"');
+    expect(routes).not.toMatch(/^\s+"payments",$/m);
     // The place's five, in the drawing's order.
     expect(r).toContain('"profile",');
     expect(r).toContain('"menus",');
@@ -347,136 +352,83 @@ describe("the rail is six nouns and one indent", () => {
     // after another row took the subject is exactly how this rail grows a
     // second pill, which every rail test in this repo counts.
     const orgClause = r.slice(r.indexOf("const orgRowActive"), r.indexOf("return ("));
-    for (const taken of ["places", "payments", "customers", "activity"]) {
+    for (const taken of ["places", "products", "customers", "activity"]) {
       expect(orgClause, taken).not.toContain(`orgTarget === "${taken}"`);
     }
   });
 
   // MESITA-1847. Pato: "members and places in organization i mean, fuck
   // nested things display shit there." The page IS its people and its places.
-  // A door is a box that refuses to show you anything.
-  // MESITA-1852. Pato: "Remove places from here, its redundant. five boxes:
-  // brand · members · stripe · partnership · developers." Places has a rail
-  // row one line above this page; a box listing them again was the second
-  // door to one room.
-  // MESITA-1866. Pato: merge Stripe and Partnership. Stripe Ready is the LOCK
-  // on the switch, so the two boxes were one dependency with two headings —
-  // one box now, titled for what the organization is deciding, holding the
-  // account, a seam, and the switch it unlocks.
-  // MESITA-1867. Pato: the Stripe onboarding is friction that shrinks the
-  // market, so Partner stops being Stripe-locked. Two tiers now: Mesita
-  // Partner is the yearly subscription per organization (a price, a door, a
-  // price list — needs no Stripe), and Mesita Pay is the optional add-on that
-  // MESITA-1866's box became: the account, a seam, and the switch it unlocks,
-  // lifted to a Section only for a partner and lying flat as a LockedStrip
-  // otherwise. Five boxes, two of them Sections; the Stripe read stays the
-  // page's one read, in every state, so the page has one shape and lifts
-  // the Pay Section the moment `partnered` flips (`?connect=` is Payments'
-  // concern via the bare forwarder, never this page's).
-  it("Configuration is five boxes, and Places is not one of them", () => {
+  // MESITA-1852. Pato: "Remove places from here, its redundant." Places has a
+  // rail row above this page; a box listing them again was a second door.
+  // MESITA-1869. Pato: "Configuration (here have members shit) · Products
+  // (here have partner and all the products to activate…)." Mesita Partner
+  // and Mesita Pay were the right boxes in the wrong room — a subscription
+  // and a payment account are things you BUY, not things you configure — so
+  // they moved to the catalogue whole, composition intact.
+  it("Configuration is three boxes: Members, Brand, Developers", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx");
     expect(page).not.toContain("DoorRow");
-    expect(page).toContain("SOON_STRIPS.brand");
     expect(page).toContain("<MembersCard");
     expect(page).toContain("apiListOrgMembers");
-    // TWO tiers, two Sections, and neither is headed for the vendor or for
-    // the word the old switch wore: Mesita Partner (the subscription) and
-    // Mesita Pay (the account, a seam, and the switch it unlocks — one box,
-    // MESITA-1866's lesson kept). Members is its own component, not a third.
+    expect(page).toContain("SOON_STRIPS.brand");
+    expect(page).toContain("SOON_STRIPS.developers");
+    // THE TWO PAID BOXES LEFT, and so did the Stripe read that fed them: two
+    // screens reading one account is how the console starts disagreeing with
+    // itself (MESITA-1847's badge lesson), so the read went with the box.
+    expect(page).not.toContain("<PartnerCard");
+    expect(page).not.toContain("<MesitaPayCard");
+    expect(page).not.toContain("<PaymentsCard");
+    expect(page).not.toContain("<LockedStrip");
+    expect(page).not.toContain("apiGetPaymentAccount");
+    expect(page).not.toContain("ConnectReturnNotice");
+    expect(page).not.toContain('title="Mesita Partner"');
+    expect(page).not.toContain('title="Mesita Pay"');
     expect(page).not.toContain('title="Stripe"');
     expect(page).not.toContain('title="Partnership"');
-    expect(page).toContain('title="Mesita Partner"');
-    expect(page).toContain('title="Mesita Pay"');
-    expect((page.match(/<Section/g) ?? []).length).toBe(2);
-    expect(page).toContain("<PartnerCard");
-    expect(page).toContain("<MesitaPayCard");
-    // A tier the organization cannot reach yet lies flat, never at Section
-    // rank: the page has one live box to act on and one line saying what
-    // comes next.
-    expect(page).toContain("<LockedStrip");
-    expect(page).toContain("<PaymentsCard");
-    expect(page).toContain("SOON_STRIPS.developers");
-    // PLACES LEFT.
+    // PLACES LEFT EARLIER, and stays gone.
     expect(page).not.toContain("placeHref(");
     expect(page).not.toContain("orgPlacesHref");
     expect(page).not.toContain("orgPlacesNewHref");
-    // The members ADDRESS is gone with the door that reached it, and the
-    // money pages have rows of their own.
     expect(page).not.toContain('orgHref(org.id, "members")');
-    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/organization"))).toBe(false);
-    expect(page).not.toContain('orgHref(org.id, "payments")');
     expect(page).not.toContain("credits");
-    // The Stripe box is here now, so the Stripe read is too — and it is the
-    // ONE place that asks: two screens reading one account is how the console
-    // starts disagreeing with itself (MESITA-1847's badge lesson).
-    expect(page).toContain("apiGetPaymentAccount");
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/organization"))).toBe(false);
     expect(page).not.toContain("OrgStateBadge");
+    // The skeleton promises what the page delivers, or every load ends in a
+    // shift by the height of two cards that are not coming (MESITA-1729).
+    const loading = readCode("app/(shell)/orgs/[orgId]/configuration/loading.tsx");
+    expect((loading.match(/rounded-2xl/g) ?? []).length).toBe(3);
   });
 
-  // MESITA-1852. Payments is PARKED, not deleted: Pato said "for the moment",
-  // so the address, the row and every bookmark survive the pause.
-  it("Payments is a Soon page, and its two live boxes moved to Configuration", () => {
-    const page = readCode("app/(shell)/orgs/[orgId]/payments/page.tsx");
-    expect(page).toContain("SOON_STRIPS.payments");
-    expect(page).toContain("SOON_STRIPS.credits");
-    expect(page).not.toContain("PaymentsCard");
-    expect(page).not.toContain("PartnerCard");
-    expect(page).not.toContain("MesitaPayCard");
-    // The composition file went with the composition.
-    expect(
-      existsSync(path.join(SRC, "components/console/OrgScreenSections.tsx")),
-    ).toBe(false);
-    // Stripe's stored return still lands: the notice travels with the page.
+  // MESITA-1869. Pato, with a mock: "build something kinda like this, like a
+  // pretty catalog… (here have partner and all the products to activate,
+  // remember that profile is free)."
+  it("Products is the catalogue: the partnership, the grid, and Mesita Pay", () => {
+    const page = readCode("app/(shell)/orgs/[orgId]/products/page.tsx");
+    expect(page).toContain("<PartnerBanner");
+    expect(page).toContain("<ProductCatalog");
+    expect(page).toContain("buildProductCards");
+    // The two boxes Configuration gave up, whole: the account, a seam, and
+    // the switch it unlocks (MESITA-1866's composition, MESITA-1867's tiers).
+    expect(page).toContain("<PaymentsCard");
+    expect(page).toContain("<MesitaPayCard");
+    expect(page).toContain("apiGetPaymentAccount");
+    // Stripe's stored return travels with the account it is about.
     expect(page).toContain("ConnectReturnNotice");
-  });
-
-  // The selector moved to the page about the thing it selects (MESITA-1847).
-  // Pato: "organization must be selected in organization not fucking there,
-  // account is just for there."
-  // MESITA-1848. Both selectors are in the rail, beside the pages they scope.
-  // Account is the person alone and carries no selector at all.
-  it("Account is the person alone; the selectors are the rail's", () => {
-    const account = readCode("app/(shell)/account/page.tsx");
-    expect(account).not.toContain("Switcher");
-    expect(account).not.toContain("Selector");
-    expect(account).toContain("SignOutButton");
-    const sel = readCode("components/console/RailSelector.tsx");
-    expect(sel).toContain("aria-label={label}");
-    // The selector is DARK on its trigger and page-toned in its menu — the
-    // popover floats over the page, not over this column.
-    expect(sel).toContain("hover:bg-sidebar-accent");
-    expect(sel).toContain("text-sidebar-foreground");
-  });
-
-  // The people live where the page does now; the address forwards.
-  it("the Members page is deleted, and both spellings forward", () => {
-    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/members"))).toBe(false);
+    // The counts are REAL: the places read is what every per-place card's
+    // state comes out of, and a failure hands `null`, never an empty array —
+    // "we could not read this" and "nothing is on" are different sentences.
+    expect(page).toContain("apiListConsolePlaces");
+    expect(page).toContain("places: ConsolePlace[] | null = null");
+    // PAYMENTS' OWN PAGE IS DELETED, not orphaned: a route file nobody links
+    // to drifts out of sync with the one that replaced it, and a leftover
+    // directory would answer the address the redirect table now owns.
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/payments"))).toBe(false);
     const config = readFileSync(path.join(SRC, "..", "next.config.ts"), "utf8");
-    expect(config).toContain('source: "/orgs/:orgId/members"');
-    expect(config).toContain('{ source: "/members", destination: "/organization", permanent: false }');
+    expect(config).toContain('source: "/orgs/:orgId/payments"');
+    expect(config).toContain('{ source: "/payments", destination: "/products", permanent: false }');
   });
 
-  // CUSTOMERS IS A LIVE ROW WITH A REAL PAGE (MESITA-1845). Pato's list says
-  // "(Soon)", and a Soon badge in a rail is a dimmed row — the thing
-  // MESITA-1833 forbids in his own words. The badge lives on the page.
-  it("Customers opens a real page, and the rail says nothing about Soon", () => {
-    const r = rail();
-    expect(r).not.toContain("Soon");
-    expect(r).not.toContain("disabled");
-    const page = readCode("app/(shell)/orgs/[orgId]/customers/page.tsx");
-    expect(page).toContain("SOON_STRIPS.customers");
-    expect(page).toContain("<h1");
-    // Every page has a loading boundary, or Next keeps the PREVIOUS screen
-    // painted and the rail reads as broken (MESITA-1729).
-    expect(
-      existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/customers/loading.tsx")),
-    ).toBe(true);
-  });
-
-  // MESITA-1846. The bare `/orgs/<id>` is a FORWARDER: it renders nothing,
-  // reads nothing, and exists for two jobs — sending a bookmark on to the page
-  // that names itself, and catching Stripe's stored `?connect=` first. A
-  // forwarder that fetches is a round trip bought for nothing.
   it("the bare organization address renders nothing and reads nothing", () => {
     const root = readCode("app/(shell)/orgs/[orgId]/page.tsx");
     expect(root).not.toContain("return (");
@@ -487,7 +439,10 @@ describe("the rail is six nouns and one indent", () => {
     expect(root.indexOf('sp.connect')).toBeLessThan(
       root.indexOf('orgHref(orgId, "configuration")'),
     );
-    expect(root).toContain('orgHref(orgId, "payments")');
+    // It lands on PRODUCTS (MESITA-1869): the Stripe account moved there, and
+    // a forward onto the page that no longer holds the notice is the
+    // `/unit/*` → `/place/*` chain again.
+    expect(root).toContain('orgHref(orgId, "products")');
     // The query travels on BOTH branches: dropping it strands an owner on a
     // screen that knows neither which organization nor that they came back.
     expect((root.match(/withQuery\(/g) ?? []).length).toBe(2);
@@ -500,7 +455,9 @@ describe("the rail is six nouns and one indent", () => {
     expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/credits"))).toBe(false);
     const config = readFileSync(path.join(SRC, "..", "next.config.ts"), "utf8");
     expect(config).toContain('source: "/orgs/:orgId/credits"');
-    expect(config).toContain('{ source: "/credits", destination: "/payments", permanent: false }');
+    // Credits\' forward follows Payments onto Products (MESITA-1869) rather
+    // than chaining through a deleted route.
+    expect(config).toContain('{ source: "/credits", destination: "/products", permanent: false }');
   });
 
   // MESITA-1833: they are no longer DIMMED. Every one is a live link that

@@ -170,8 +170,8 @@ describe("the ?org= addresses forward into the path", () => {
   it("a Stripe return link minted before the move keeps its query", async () => {
     // Stripe stored `/organization?org=<id>&connect=return` when the Account
     // Link was minted. `org` becomes the segment; `connect` rides through to
-    // the Organization page, which hands it on to Payments where the notice
-    // that reads it lives.
+    // the bare organization address, which hands it on to Products where the
+    // Stripe account and the notice that reads it live (MESITA-1869).
     expect(
       resolve("/organization?org=org-9&connect=return", await rules()),
     ).toBe("/orgs/org-9?connect=return");
@@ -189,7 +189,10 @@ describe("the ?org= addresses forward into the path", () => {
     const all = await rules();
     expect(resolve("/orgs/org-9/organization", all)).toBeNull();
     expect(resolve("/orgs/org-9", all)).toBeNull();
-    expect(resolve("/orgs/org-9/payments", all)).toBeNull();
+    // PAYMENTS IS NOT A LIVE ADDRESS ANY MORE (MESITA-1869) — it forwards
+    // onto the catalogue, so it belongs in the walk below, not here. Products
+    // is the live one this rule must never shadow.
+    expect(resolve("/orgs/org-9/products", all)).toBeNull();
     // The switcher's own address is live and must never be forwarded.
     expect(resolve("/orgs/org-9/switch", all)).toBeNull();
   });
@@ -266,10 +269,15 @@ describe("every redirect forwards somewhere this repo serves", () => {
   // moved out of Payments and back into it inside one day (MESITA-1841 →
   // MESITA-1845); the organization's own page has been Organization, then
   // Settings, then Configuration (MESITA-1846 → 1848 → 1852).
+  // Payments joined them (MESITA-1869): a page that has been a row four
+  // times and is now a card in a catalogue is the definition of an answer
+  // that could move again.
   const TEMPORARY = new Set([
     "/places/:id/activity",
     "/orgs/:orgId/credits",
     "/credits",
+    "/orgs/:orgId/payments",
+    "/payments",
     "/orgs/:orgId/members",
     "/members",
     "/orgs/:orgId/settings",

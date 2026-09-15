@@ -39,6 +39,7 @@
 import { cn } from "@/lib/utils";
 
 export function Section({
+  id,
   title,
   description,
   right,
@@ -46,6 +47,11 @@ export function Section({
   className,
   lane = false,
 }: {
+  /** An anchor, when something on the same page links AT this box —
+   *  Products' catalogue points its Mesita Pay card at the Mesita Pay box
+   *  below the grid (MESITA-1869). Omitted everywhere else: an id nobody
+   *  targets is dead weight in the DOM. */
+  id?: string;
   title: string;
   description?: string;
   right?: React.ReactNode;
@@ -74,7 +80,12 @@ export function Section({
 
   return (
     <section
+      id={id}
+      // A linked-to box must not land under nothing: the shell's `main` is
+      // the only scroller, so `scroll-mt` is what keeps the heading clear of
+      // the header line above it when the anchor is followed.
       className={cn(
+        id && "scroll-mt-6",
         // The live boxes LIFT (MESITA-1861). `--shadow-card` has been in
         // globals.css since the admin port and is used 18 times by the
         // components that came with it; nothing the console composed itself

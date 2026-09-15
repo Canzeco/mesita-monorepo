@@ -1,7 +1,11 @@
-// The Configuration page stops stranding content, and stops lying about
-// Stripe (MESITA-1861). Then it splits into two tiers (MESITA-1867): Mesita
-// Partner, the yearly subscription, and Mesita Pay, the Stripe add-on that
-// the old Partner switch became.
+// The two paid tiers — Mesita Partner, the yearly subscription, and Mesita
+// Pay, the Stripe add-on that the old Partner switch became (MESITA-1867) —
+// and the page that composes them.
+//
+// That page was Configuration for one day; MESITA-1869 moved both boxes to
+// PRODUCTS, where an operator goes to buy, and this file followed them. What
+// MESITA-1861 asserted about stranded content and about lying about Stripe is
+// unchanged, and asserted against the new page.
 //
 // Most of these assert a BIJECTION rather than a single branch: "a failed read
 // shows no Connect button" is worth nothing on its own, because a test that
@@ -14,7 +18,7 @@ import { describe, expect, it } from "vitest";
 import { PaymentsCard } from "./PaymentsCard";
 import { PARTNER_PERKS, PartnerCard } from "./PartnerCard";
 import { MesitaPayCard } from "./MesitaPayCard";
-import { LockedStrip, SoonStrip } from "./SoonStrip";
+import { SoonStrip } from "./SoonStrip";
 import { CARD_PAYMENTS_LIVE } from "./badges";
 import { Section } from "@/components/shared/Section";
 import type { PaymentAccountState } from "@/lib/model/types";
@@ -22,11 +26,11 @@ import type { PaymentAccountState } from "@/lib/model/types";
 const CARD_SRC = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
 const PARTNER_SRC = readFileSync(path.join(__dirname, "./PartnerCard.tsx"), "utf8");
 const PAGE_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/configuration/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/page.tsx"),
   "utf8",
 );
 const LOADING_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/configuration/loading.tsx"),
+  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/loading.tsx"),
   "utf8",
 );
 const LADDER_SRC = readFileSync(
@@ -148,48 +152,30 @@ describe("the unbuilt boxes stop out-shouting the live ones", () => {
   });
 });
 
-// MESITA-1867. A tier the organization cannot reach yet is not an unbuilt
-// engine, but it ranks the same way: flat, dashed, one row. What changes is
-// the glyph — a lock says the "not yet" is on the organization, a Soon pill
-// says it is on us. One geometry, so the two flat rows cannot drift apart the
-// way Soon and Section once did (MESITA-1861).
-describe("a locked tier lies as flat as a Soon one, and says which it is", () => {
-  const locked = renderToStaticMarkup(
-    <LockedStrip title="Mesita Pay" line="Needs Mesita Partner first." />,
-  );
-  const soon = renderToStaticMarkup(<SoonStrip title="Brand" line="l" />);
-
-  it("shares the strip's geometry: dashed, no lift, one title size", () => {
-    for (const html of [locked, soon]) {
-      expect(html).toContain("border-dashed");
-      expect(html).not.toContain("shadow-card");
-      expect(html).toContain("font-display text-sm font-semibold tracking-tight");
-    }
-  });
-
-  it("the lock and the Soon pill are exclusive — never both, never neither", () => {
-    expect(locked).toContain("lucide-lock");
-    expect(locked).not.toContain(">Soon<");
-    expect(soon).toContain(">Soon<");
-    expect(soon).not.toContain("lucide-lock");
-    // And a locked strip is not a switch: no track, no control that pretends.
-    expect(locked).not.toContain("h-6 w-11");
-    expect(locked).not.toContain('role="switch"');
-  });
-});
-
-describe("the page reads the dependency, not the alphabet", () => {
-  it("Mesita Partner, then Mesita Pay, then who may touch it, then the Soons", () => {
-    // Title attributes and component tags, not bare words: the docblock names
-    // every one of these boxes before the JSX does.
+// LOCKEDSTRIP IS GONE (MESITA-1869), and so is the describe that rendered it.
+//
+// MESITA-1867 built it for one caller: Mesita Pay, flat and dashed with a lock
+// where the Soon pill sits, on a Configuration page that had to show the tier
+// even to an organization that could not reach it. The catalogue says that
+// sentence now — the Mesita Pay CARD reads "Locked · Needs Mesita Partner" —
+// and the page simply does not render the box until the organization can
+// touch it. An exported component nobody renders is an invitation to say the
+// same thing twice on one screen, which is the note badges.tsx already wrote
+// about `ORG_STATE_BADGE`.
+//
+describe("the catalogue reads the dependency, not the alphabet", () => {
+  it("the partnership, then the grid, then Mesita Pay, then the honest Soon", () => {
+    // Component tags and title attributes, not bare words: the docblock names
+    // every one of these before the JSX does. The ORDER is the dependency —
+    // what you buy, what it unlocks, the account the add-on rides on, and
+    // last the reading that does not exist yet.
     const order = [
-      'title="Mesita Partner"',
-      "<PartnerCard",
+      "<PartnerBanner",
+      "<ProductCatalog",
       'title="Mesita Pay"',
+      "<PaymentsCard",
       "<MesitaPayCard",
-      "<MembersCard",
-      "SOON_STRIPS.brand",
-      "SOON_STRIPS.developers",
+      "SOON_STRIPS.payments",
     ].map((needle) => PAGE_SRC.indexOf(needle));
     for (const at of order) expect(at).toBeGreaterThan(-1);
     expect(order).toEqual([...order].sort((a, b) => a - b));
@@ -199,16 +185,17 @@ describe("the page reads the dependency, not the alphabet", () => {
     expect(PAGE_SRC).toMatch(/flex flex-col gap-1[\s\S]{0,400}<h1/);
   });
 
-  // A skeleton is a promise about what is coming (MESITA-1729). Five boxes in
-  // the page's order at the page's heights, or every load ends in a shift by
-  // exactly the distance the split moved things.
-  it("the skeleton promises the same five boxes, in order, at their heights", () => {
-    const heights = [...LOADING_SRC.matchAll(/bg-muted (h-\S+) animate-pulse rounded-2xl/g)]
-      .map((m) => m[1]);
-    // Partner is the tall one (price, seam, lead, three lines); Pay is the
-    // STRIP, because not-partnered is the state every new organization lands
-    // in; Members; then two Soon strips.
-    expect(heights).toEqual(["h-48", "h-[72px]", "h-32", "h-[72px]", "h-[72px]"]);
+  // A skeleton is a promise about what is coming (MESITA-1729). The
+  // catalogue's promise is the GRID: eight tiles, because eight is what the
+  // page renders in every state — no read can make a product disappear.
+  it("the skeleton promises the grid, at the grid's own breakpoints", () => {
+    expect(LOADING_SRC).toContain("sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4");
+    const tiles = LOADING_SRC.slice(LOADING_SRC.indexOf("grid grid-cols-1"));
+    expect(tiles).toContain("[0, 1, 2, 3, 4, 5, 6, 7]");
+    // And the three filter pills above it, which are a row the page always
+    // draws — a skeleton that skipped them would shift the grid down 32px on
+    // every load.
+    expect(LOADING_SRC).toContain("rounded-full");
   });
 });
 
@@ -326,28 +313,32 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     expect(modal).toContain("<Perks />");
   });
 
-  it("the page lifts Mesita Pay only for a partner, and locks it flat otherwise", () => {
-    const branch = PAGE_SRC.indexOf("{partnered ? (");
-    const elseAt = PAGE_SRC.indexOf(") : (", branch);
-    const endAt = PAGE_SRC.indexOf(")}", elseAt);
-    expect(branch).toBeGreaterThan(-1);
-    expect(elseAt).toBeGreaterThan(branch);
-    expect(endAt).toBeGreaterThan(elseAt);
-    const yes = PAGE_SRC.slice(branch, elseAt);
-    const no = PAGE_SRC.slice(elseAt, endAt);
-    expect(yes).toContain('title="Mesita Pay"');
-    expect(yes).toContain("<PaymentsCard");
-    expect(yes).toContain("<MesitaPayCard");
-    expect(yes).not.toContain("<LockedStrip");
-    expect(no).toContain("<LockedStrip");
-    expect(no).toContain('title="Mesita Pay"');
-    expect(no).not.toContain("<MesitaPayCard");
-    expect(no).not.toContain("<PaymentsCard");
-    // Each exactly once on the page: one lifted face, one flat face.
+  // MESITA-1869 moved the LOCKED face off this page and into the grid. The
+  // catalogue already draws a Mesita Pay card reading "Locked · Needs Mesita
+  // Partner", so a `LockedStrip` at the foot would say the same sentence
+  // twice on one screen — which is the redundancy this whole pass deletes.
+  it("the Mesita Pay box exists only for a partner, and says so exactly once", () => {
+    expect(PAGE_SRC).toContain("{partnered && (");
+    expect(PAGE_SRC).not.toContain("<LockedStrip");
+    // One box, one switch, one account: a second face is how two screens
+    // start disagreeing about one Stripe account.
     expect((PAGE_SRC.match(/<MesitaPayCard/g) ?? []).length).toBe(1);
-    expect((PAGE_SRC.match(/<LockedStrip/g) ?? []).length).toBe(1);
-    // The Partner box is unconditional — it is the one live box to act on.
-    expect(PAGE_SRC.indexOf("<PartnerCard")).toBeLessThan(branch);
+    expect((PAGE_SRC.match(/<PaymentsCard/g) ?? []).length).toBe(1);
+    expect((PAGE_SRC.match(/title="Mesita Pay"/g) ?? []).length).toBe(1);
+    // The partnership is unconditional and above everything: it is what the
+    // eight cards below it are gated on.
+    expect(PAGE_SRC.indexOf("<PartnerBanner")).toBeLessThan(
+      PAGE_SRC.indexOf("{partnered && ("),
+    );
+    // The BANNER is the one that branches: a strip for the settled fact, the
+    // full PartnerCard box for the state with a decision in it.
+    const banner = readFileSync(path.join(__dirname, "./PartnerBanner.tsx"), "utf8");
+    expect(banner).toContain("if (!partnered) {");
+    expect(banner).toContain("<PartnerCard partnered={false}");
+    // "Membership" is banned in this console (package CLAUDE.md) and the
+    // mock says it — through stripComments, so the docblock that NAMES the
+    // ban cannot fail the assertion it explains.
+    expect(stripComments(banner)).not.toMatch(/membership/i);
   });
 });
 

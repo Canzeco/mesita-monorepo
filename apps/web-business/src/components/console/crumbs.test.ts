@@ -22,9 +22,9 @@ describe("crumbsFor", () => {
     // people are content ON Settings, not a page under it. Every address that
     // IS a page gets both crumbs — there is no bare-name target left to
     // special-case since MESITA-1848.
-    expect(crumbsFor(orgHref("o", "payments"), names)).toEqual([
+    expect(crumbsFor(orgHref("o", "products"), names)).toEqual([
       "Strana Group",
-      "Payments",
+      "Products",
     ]);
     expect(crumbsFor(orgHref("o", "places"), names)).toEqual([
       "Strana Group",
