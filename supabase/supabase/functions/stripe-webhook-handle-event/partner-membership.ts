@@ -19,6 +19,7 @@ import type Stripe from "npm:stripe@17";
 import type { adminClient } from "../_shared/auth.ts";
 import {
   applyMembershipEntitlement,
+  isMockSubscriptionId,
   MEMBERSHIP_PLAN_KEY,
   membershipOutcome,
 } from "../_shared/partner-membership.ts";
@@ -41,6 +42,7 @@ export function organizationIdFor(
  */
 export async function reconcilePartnerMembership(
   admin: ReturnType<typeof adminClient>,
+  stripe: Stripe,
   orgId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
@@ -49,9 +51,47 @@ export async function reconcilePartnerMembership(
 
   if (isLive) {
     // Keep the one-live invariant: retire any OTHER live row for this
-    // organization (typically a leftover `mock_<orgId>` row from the demo
-    // toggle) so the incoming subscription cannot collide with
+    // organization so the incoming subscription cannot collide with
     // partner_memberships_one_live.
+    //
+    // RETIRING THE MIRROR IS NOT ENOUGH WHEN THE OTHER ROW IS REAL. Stripe
+    // redirects the browser home the instant a session completes, while this
+    // webhook arrives on its own connection — so an owner who pays, lands back
+    // on a page that still shows the price, and pays again ends up with TWO
+    // live Stripe subscriptions. Marking one row canceled would hide the
+    // second from the console and bill it every year regardless. So the
+    // superseded subscription is cancelled AT STRIPE first, and only a
+    // successful cancel (or a subscription Stripe says is already gone) lets
+    // the mirror be retired: a silent failure here is a double charge that
+    // renews forever, which is the one outcome worth a 500 and a retry.
+    // `mock_*` ids are not Stripe subscriptions and are retired directly.
+    const { data: priors, error: priorErr } = await admin
+      .from("partner_memberships")
+      .select("stripe_subscription_id")
+      .eq("organization_id", orgId)
+      .neq("stripe_subscription_id", sub.id)
+      .in("state", ["active", "past_due"]);
+    if (priorErr) {
+      throw new Error(`membership_read_prior_live: ${priorErr.message}`);
+    }
+
+    for (const row of (priors ?? []) as { stripe_subscription_id: string }[]) {
+      const priorId = row.stripe_subscription_id;
+      if (isMockSubscriptionId(priorId)) continue;
+      try {
+        await stripe.subscriptions.cancel(priorId);
+      } catch (err) {
+        // `resource_missing` means Stripe has no such subscription to bill —
+        // nothing to cancel, and retiring the mirror is the correct repair.
+        const code = (err as { code?: string } | null)?.code;
+        if (code !== "resource_missing") {
+          throw new Error(
+            `membership_cancel_prior_live (${priorId}): ${String(err)}`,
+          );
+        }
+      }
+    }
+
     const retire = await admin
       .from("partner_memberships")
       .update({ state: "canceled" })

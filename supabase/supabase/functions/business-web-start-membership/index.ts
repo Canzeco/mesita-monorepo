@@ -48,6 +48,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
 import {
   applyMembershipEntitlement,
+  isMockSubscriptionId,
   MEMBERSHIP_CATALOG_ID,
   MEMBERSHIP_PLAN_KEY,
   readLiveMembership,
@@ -102,14 +103,26 @@ Deno.serve(async (req) => {
   if (orgErr) return json({ ok: false, error: orgErr.message }, 500);
   if (!org) return json({ ok: false, error: "Organization not found" }, 404);
 
+  const stripeKey = stripeSecretKey();
+  const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
+
   // Already a member? Say so rather than selling a second subscription —
-  // `partner_memberships_one_live` would reject the row anyway, but after the
-  // owner had already been charged.
+  // `partner_memberships_one_live` would reject the row anyway, but only after
+  // the owner had already been charged.
+  //
+  // A LEFTOVER MOCK GRANT IS NOT A MEMBERSHIP ON THE REAL PATH. MOCK_SUBSCRIPTION
+  // writes `mock_<orgId>` rows with state active; once an operator turns the
+  // flag off, every organization that took a mock grant would be a permanent
+  // partner with nothing billable behind it and no way to buy — this gate
+  // would refuse the only door out. So in real mode we fall through and sell,
+  // and the webhook retires the mock row when the real subscription lands.
+  // (Same rule `business-web-change-subscription` applies to place rows.)
   const live = await readLiveMembership(admin, orgId);
   if (!live.ok) {
     return json({ ok: false, error: `membership_read: ${live.error}` }, 500);
   }
-  if (live.row) {
+  const liveIsMock = isMockSubscriptionId(live.row?.stripe_subscription_id);
+  if (live.row && (mockMode || !liveIsMock)) {
     return json({
       ok: true,
       already_member: true,
@@ -139,9 +152,6 @@ Deno.serve(async (req) => {
     price_cents: number;
     currency: string | null;
   };
-
-  const stripeKey = stripeSecretKey();
-  const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
 
   // ── MOCK mode ─────────────────────────────────────────────────────────────
   if (mockMode) {
