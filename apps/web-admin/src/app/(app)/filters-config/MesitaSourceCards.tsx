@@ -10,7 +10,7 @@ import {
 import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
 
 // The six Mesita sources, in taxonomy order: the four over Places, then the
-// two over Social.
+// two over Socials.
 //
 // ONE RANKER, FOUR DOORS. All four Places sources hand their candidates to
 // the same Lineup blend under the calling mode's signal mask — what tells
@@ -75,7 +75,7 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
         <ConfigSoon
           Icon={Layers}
           title="Mesita Places Browse Search is coming soon"
-          body="No query at all — the catalog itself, railed by occupied Atlas categories and a sampled vibe bank. Catalog calls it. Browse is the one source a guest reaches without typing or moving the map."
+          body="No query at all — the catalog itself, railed by occupied Atlas categories and a sampled vibe bank. No mode calls it today: Catalog became Flexible when its Feed grew a filter control. Browse is what an engine that rails the catalog on no guest input at all would be, which is why the Matrix keeps its row, off for every mode."
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}
         />
@@ -92,8 +92,8 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
       <div id="s-social-browse" className="scroll-mt-16">
         <ConfigSoon
           Icon={PartyPopper}
-          title="Mesita Social Browse Search is coming soon"
-          body="Events a place hosts, not places. Catalog rails them. Social lost its own mode, not its retrieval — there is still no events engine behind either Social source."
+          title="Mesita Socials Browse Search is coming soon"
+          body="Events a place hosts, not places. Catalog rails them. Social lost its own mode, not its retrieval — there is still no events engine behind either Socials source."
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}
         />
@@ -101,7 +101,7 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
       <div id="s-social-flexible" className="scroll-mt-16">
         <ConfigSoon
           Icon={Sparkles}
-          title="Mesita Social Flexible Search is coming soon"
+          title="Mesita Socials Flexible Search is coming soon"
           body="The same events under an arbitrary set of predicates, for when Chat is asked what is on tonight. Never merged into one list with places: an event and a place are different answers."
           doc="Notion Docs › Discovery"
           footer={<FloorSoonNote />}

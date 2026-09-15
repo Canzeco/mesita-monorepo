@@ -1,6 +1,6 @@
 import { LayoutGrid } from "lucide-react";
 import { SectionCard } from "@/components/admin-ui/config";
-import { Flag, Square } from "./DiscoveryFlags";
+import { Mark } from "./DiscoveryMarks";
 import {
   DISCOVERY_ENTITIES,
   DISCOVERY_MODE_KEYS,
@@ -24,9 +24,15 @@ import {
 //
 // RESULT ENTITIES LEADS because it answers the first question an operator
 // asks of a mode — what comes back — and the three bands under it are the
-// machinery that produces it. Squares, not the green/red flags: an entity
-// is a SET the mode can answer with, the same kind of fact as a pool, while
-// green/red means a call fires.
+// machinery that produces it.
+//
+// ONE MARK, FOUR BANDS (MESITA-1856). Every cell is a `Mark`: filled = on,
+// hollow = off, in ink. The emerald/rose flag that used to encode the
+// bottom two bands by hue alone is gone — one table cannot carry two
+// grammars for one boolean. Shape is the surviving distinction and it means
+// the class of fact, not the value: squares are sets (an entity answered
+// with, a place type required, a source called), circles are Lineup signals
+// that rank what those sets returned.
 
 const COLS = 1 + DISCOVERY_MODE_KEYS.length;
 
@@ -59,7 +65,7 @@ export function DiscoveryMatrix() {
     <SectionCard
       icon={<LayoutGrid className="text-muted-foreground size-4" />}
       title="Discovery matrix"
-      subtitle="Locked. The six modes across the top. Result Entities, Places Types, Search Sources, then the signals that rank them. Chips on the cards below repeat the green sources."
+      subtitle="Locked. The six modes across the top. Result Entities, Places Types, Search Sources, then the signals that rank them. A filled mark is on, a hollow one is off. Chips on the mode cards repeat the sources each one calls."
     >
       {/* Bleeds through the card padding on a phone: 52rem of matrix reads
           better across 375px than across the 311px left inside it. */}
@@ -91,7 +97,7 @@ export function DiscoveryMatrix() {
                   const on = modeReturnsEntity(mode, entity.key);
                   return (
                     <td key={mode} className="px-1.5 py-2 text-center">
-                      <Square
+                      <Mark
                         on={on}
                         label={`${entity.label} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "returned" : "not returned"}`}
                       />
@@ -109,7 +115,7 @@ export function DiscoveryMatrix() {
                   const on = modeRequiresPool(mode, pool.key);
                   return (
                     <td key={mode} className="px-1.5 py-2 text-center">
-                      <Square
+                      <Mark
                         on={on}
                         label={`${pool.label} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "required" : "not required"}`}
                       />
@@ -127,9 +133,8 @@ export function DiscoveryMatrix() {
                   const on = modeCallsSource(mode, source);
                   return (
                     <td key={mode} className="px-1.5 py-2 text-center">
-                      <Flag
+                      <Mark
                         on={on}
-                        shape="square"
                         label={`${source} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "on" : "off"}`}
                       />
                     </td>
@@ -149,7 +154,7 @@ export function DiscoveryMatrix() {
                     const state = modeSignalState(mode, row.key);
                     return (
                       <td key={mode} className="px-1.5 py-2 text-center">
-                        <Flag
+                        <Mark
                           on={state === "on"}
                           shape="circle"
                           label={`${label} · ${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
