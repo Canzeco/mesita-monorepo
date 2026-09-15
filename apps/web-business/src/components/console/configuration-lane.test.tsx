@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PaymentsCard } from "./PaymentsCard";
+import { PartnerCard } from "./PartnerCard";
 import { SoonStrip } from "./SoonStrip";
 import { Section } from "@/components/shared/Section";
 
@@ -163,5 +164,48 @@ describe("Partnership is the gate, never the delivery", () => {
     );
     expect(ladder).toContain("the gate for everything below");
     expect(ladder).toContain("Needs the partnership");
+  });
+});
+
+// MESITA-1864. Locked used to render a pill and a sentence where the other
+// two branches render a control, so the state every new organization actually
+// meets — Stripe not Ready — was the one that never showed Partnership as a
+// thing you turn on.
+describe("the Partnership switch shows while it is locked", () => {
+  const partner = (over: Partial<Parameters<typeof PartnerCard>[0]> = {}) =>
+    renderToStaticMarkup(
+      <PartnerCard orgId="org-1" partnered={false} stripeReady isOwner {...over} />,
+    );
+
+  it("every branch renders a track — locked included", () => {
+    const branches = [
+      partner({ stripeReady: false }),
+      partner(),
+      partner({ partnered: true }),
+      partner({ isOwner: false, partnered: true }),
+    ];
+    for (const html of branches) {
+      expect(html).toContain("h-6 w-11");
+      expect(html).toContain('aria-label="Partner"');
+    }
+  });
+
+  it("locked is a switch that reads off, and says why in one line", () => {
+    const html = partner({ stripeReady: false });
+    expect(html).toContain('role="switch"');
+    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain('aria-disabled="true"');
+    expect(html).toContain("Needs a Ready Stripe account — connect Stripe first.");
+    // The pill is gone: one control, one line, never a third atom for the
+    // same fact.
+    expect(html).not.toContain("type-label");
+    // And the locked thumb does not pretend to lift.
+    expect(html).not.toContain("bg-background shadow");
+  });
+
+  it("unlocked keeps the live track, with no lock in the knob", () => {
+    const html = partner();
+    expect(html).toContain("bg-background shadow");
+    expect(html).not.toContain("lucide-lock");
   });
 });
