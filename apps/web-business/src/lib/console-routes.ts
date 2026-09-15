@@ -232,10 +232,17 @@ export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
  *  below the seam, and it is the one row every state renders. */
 export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "org", target: "settings" },
+  // PRODUCTS RIDES WITH SETTINGS (Pato, 2026-09-15: "move products above
+  // profile"). It also un-splits the column: the rail interleaves two
+  // subjects, and the order was org · place×3 · org×3 — the organization's
+  // own rows broken apart by the place's. Lifting Products next to Settings
+  // makes the three place rows one contiguous block. Customers and Activity
+  // stay below on purpose; this is Pato's order, not a taxonomy, and a full
+  // regroup was not asked for.
+  { kind: "org", target: "products" },
   { kind: "place", view: "profile" },
   { kind: "place", view: "menus" },
   { kind: "place", view: "reviews" },
-  { kind: "org", target: "products" },
   { kind: "org", target: "customers" },
   { kind: "org", target: "activity" },
 ];
