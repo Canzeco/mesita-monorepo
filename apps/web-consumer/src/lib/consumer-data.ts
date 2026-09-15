@@ -114,41 +114,48 @@ export type Country = {
   name: string;
   flag: string;
   dial: string;
+  /** ISO 3166-1 alpha-3. The MRZ nationality field is three characters wide
+   *  (MESITA-1820) and a padded two-letter code would be a lie, not a pad.
+   *  `UK` above is the row's LOCAL key, kept for back-compat with stored
+   *  values; its real alpha-3 is GBR. Keep this list and the mobile copy at
+   *  `apps/mobile-consumer/src/lib/countries.ts` in the same order so a
+   *  future diff reads. */
+  iso3: string;
 };
 export const COUNTRIES: Country[] = [
-  { code: "MX", name: "Mexico", flag: "🇲🇽", dial: "52" },
-  { code: "US", name: "United States", flag: "🇺🇸", dial: "1" },
-  { code: "CA", name: "Canada", flag: "🇨🇦", dial: "1" },
-  { code: "ES", name: "Spain", flag: "🇪🇸", dial: "34" },
+  { code: "MX", name: "Mexico", flag: "🇲🇽", dial: "52", iso3: "MEX" },
+  { code: "US", name: "United States", flag: "🇺🇸", dial: "1", iso3: "USA" },
+  { code: "CA", name: "Canada", flag: "🇨🇦", dial: "1", iso3: "CAN" },
+  { code: "ES", name: "Spain", flag: "🇪🇸", dial: "34", iso3: "ESP" },
   // LatAm core — Mesita's natural expansion path.
-  { code: "AR", name: "Argentina", flag: "🇦🇷", dial: "54" },
-  { code: "CO", name: "Colombia", flag: "🇨🇴", dial: "57" },
-  { code: "CL", name: "Chile", flag: "🇨🇱", dial: "56" },
-  { code: "PE", name: "Peru", flag: "🇵🇪", dial: "51" },
-  { code: "BR", name: "Brazil", flag: "🇧🇷", dial: "55" },
-  { code: "UY", name: "Uruguay", flag: "🇺🇾", dial: "598" },
-  { code: "PY", name: "Paraguay", flag: "🇵🇾", dial: "595" },
-  { code: "BO", name: "Bolivia", flag: "🇧🇴", dial: "591" },
-  { code: "EC", name: "Ecuador", flag: "🇪🇨", dial: "593" },
-  { code: "VE", name: "Venezuela", flag: "🇻🇪", dial: "58" },
+  { code: "AR", name: "Argentina", flag: "🇦🇷", dial: "54", iso3: "ARG" },
+  { code: "CO", name: "Colombia", flag: "🇨🇴", dial: "57", iso3: "COL" },
+  { code: "CL", name: "Chile", flag: "🇨🇱", dial: "56", iso3: "CHL" },
+  { code: "PE", name: "Peru", flag: "🇵🇪", dial: "51", iso3: "PER" },
+  { code: "BR", name: "Brazil", flag: "🇧🇷", dial: "55", iso3: "BRA" },
+  { code: "UY", name: "Uruguay", flag: "🇺🇾", dial: "598", iso3: "URY" },
+  { code: "PY", name: "Paraguay", flag: "🇵🇾", dial: "595", iso3: "PRY" },
+  { code: "BO", name: "Bolivia", flag: "🇧🇴", dial: "591", iso3: "BOL" },
+  { code: "EC", name: "Ecuador", flag: "🇪🇨", dial: "593", iso3: "ECU" },
+  { code: "VE", name: "Venezuela", flag: "🇻🇪", dial: "58", iso3: "VEN" },
   // Central America + Caribbean — second-wave markets.
-  { code: "GT", name: "Guatemala", flag: "🇬🇹", dial: "502" },
-  { code: "HN", name: "Honduras", flag: "🇭🇳", dial: "504" },
-  { code: "SV", name: "El Salvador", flag: "🇸🇻", dial: "503" },
-  { code: "NI", name: "Nicaragua", flag: "🇳🇮", dial: "505" },
-  { code: "CR", name: "Costa Rica", flag: "🇨🇷", dial: "506" },
-  { code: "PA", name: "Panama", flag: "🇵🇦", dial: "507" },
-  { code: "DO", name: "Dominican Republic", flag: "🇩🇴", dial: "1" },
-  { code: "PR", name: "Puerto Rico", flag: "🇵🇷", dial: "1" },
+  { code: "GT", name: "Guatemala", flag: "🇬🇹", dial: "502", iso3: "GTM" },
+  { code: "HN", name: "Honduras", flag: "🇭🇳", dial: "504", iso3: "HND" },
+  { code: "SV", name: "El Salvador", flag: "🇸🇻", dial: "503", iso3: "SLV" },
+  { code: "NI", name: "Nicaragua", flag: "🇳🇮", dial: "505", iso3: "NIC" },
+  { code: "CR", name: "Costa Rica", flag: "🇨🇷", dial: "506", iso3: "CRI" },
+  { code: "PA", name: "Panama", flag: "🇵🇦", dial: "507", iso3: "PAN" },
+  { code: "DO", name: "Dominican Republic", flag: "🇩🇴", dial: "1", iso3: "DOM" },
+  { code: "PR", name: "Puerto Rico", flag: "🇵🇷", dial: "1", iso3: "PRI" },
   // Common visitor origins.
-  { code: "UK", name: "United Kingdom", flag: "🇬🇧", dial: "44" },
-  { code: "FR", name: "France", flag: "🇫🇷", dial: "33" },
-  { code: "IT", name: "Italy", flag: "🇮🇹", dial: "39" },
-  { code: "DE", name: "Germany", flag: "🇩🇪", dial: "49" },
-  { code: "NL", name: "Netherlands", flag: "🇳🇱", dial: "31" },
-  { code: "PT", name: "Portugal", flag: "🇵🇹", dial: "351" },
-  { code: "JP", name: "Japan", flag: "🇯🇵", dial: "81" },
-  { code: "AU", name: "Australia", flag: "🇦🇺", dial: "61" },
+  { code: "UK", name: "United Kingdom", flag: "🇬🇧", dial: "44", iso3: "GBR" },
+  { code: "FR", name: "France", flag: "🇫🇷", dial: "33", iso3: "FRA" },
+  { code: "IT", name: "Italy", flag: "🇮🇹", dial: "39", iso3: "ITA" },
+  { code: "DE", name: "Germany", flag: "🇩🇪", dial: "49", iso3: "DEU" },
+  { code: "NL", name: "Netherlands", flag: "🇳🇱", dial: "31", iso3: "NLD" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹", dial: "351", iso3: "PRT" },
+  { code: "JP", name: "Japan", flag: "🇯🇵", dial: "81", iso3: "JPN" },
+  { code: "AU", name: "Australia", flag: "🇦🇺", dial: "61", iso3: "AUS" },
 ];
 
 export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
@@ -326,6 +333,27 @@ export function classFillClass(classKey: ClassKey): string {
       return "bg-tier-gold";
     case "diamond":
       return "bg-tier-diamond";
+  }
+}
+
+/** The metal as INK — the `text-<metal>` utility, for a mark that is drawn
+ *  rather than filled. Today's only caller is the passport's guilloche
+ *  (MESITA-1820), which paints itself in `currentColor` so the lattice stays
+ *  parametric per class instead of hardcoding bronze.
+ *
+ *  This is NOT a third fill and it is NOT paired ink: anything that prints a
+ *  LABEL on the metal still takes `classBadgeClass`, the only place fill and
+ *  ink travel together (MESITA-1142). */
+export function classInkClass(classKey: ClassKey): string {
+  switch (classKey) {
+    case "bronze":
+      return "text-bronze";
+    case "silver":
+      return "text-silver";
+    case "gold":
+      return "text-gold";
+    case "diamond":
+      return "text-diamond";
   }
 }
 

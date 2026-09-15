@@ -2,7 +2,8 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Copy } from 'lucide-react-native';
-import { Pressable, Share, Text, View } from 'react-native';
+import { Platform, Pressable, Share, Text, View } from 'react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
@@ -12,23 +13,36 @@ import { COUNTRIES } from '@/lib/countries';
 import { CLASSES, CLASS_ICONS } from '@/lib/consumer-classes';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useEffectiveClass } from '@/lib/mock-class';
-import { toast } from '@/lib/toast';
 import {
-  ageFromBirthday,
-  formatCompactCount,
-  formatSex,
-} from '@/lib/utils';
+  buildMrz,
+  completionLine,
+  passportFields,
+} from '@/lib/passport-document';
+import { toast } from '@/lib/toast';
+import { formatCompactCount } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-// Passport is a document plus two doors (MESITA-1801). Identity (photo,
-// name, age·sex·country, member number) is look, not a button. Class and
-// Instagram are the only tiles — they open the existing pages. The ladder,
-// invite PIN, and connect form stay there. No Profile row (Me › Profile
+// Passport is a DOCUMENT plus two doors (MESITA-1801, MESITA-1820). Mirror of
+// web `components/consumer/me/PassportModal.tsx` — consumer IA cannot diverge,
+// so the two ship in one PR and carry the same card.
+//
+// MESITA-1820 turned the identity card from three rounded rows into an ICAO
+// 9303 data page: a class-metal header band naming the class, a 35:45 portrait
+// in a metal frame, an uppercase field grid (Member No. / Surname / Given
+// names / Nationality · Date of birth · Sex), a guilloche, and two real
+// 44-character TD3 machine-readable lines. Identity is look, not a button.
+//
+// NO COSTUME. The document is carried by the band, the portrait ratio, the
+// grid, the guilloche and the MRZ. No fake visa stamps, no hologram sheen, no
+// torn-paper edges, no rotated APPROVED mark, no fake barcodes, no paper grain.
+//
+// Class and Instagram are the only tiles — they open the existing pages. The
+// ladder, invite PIN, and connect form stay there. No Profile row (Me › Profile
 // is the editor). No Plan (MESITA-1619). No privacy (MESITA-1688).
 //
-// Colour means class: metal on the identity ring/wash and the Class 44px
-// glyph. Instagram's brand gradient stays inside its glyph, never a
-// full-width pink field. Copy is origin-aware — do not tell a Diamond
+// Colour means class: metal on the band, the portrait frame, the guilloche and
+// the Class 44px glyph. Instagram's brand gradient stays inside its glyph,
+// never a full-width pink field. Copy is origin-aware — do not tell a Diamond
 // guest to climb.
 
 const CLASS_FLOOR = CLASSES[0];
@@ -39,6 +53,11 @@ const REACH_ENTRY = REACH_CANDIDATES.reduce(
     c.followerThreshold < lowest.followerThreshold ? c : lowest,
   REACH_CANDIDATES[0] ?? CLASSES[0],
 );
+
+/** The MRZ's face. Neither app loads a monospace family, so each platform
+ *  borrows the one its OS already ships — web takes Tailwind's `font-mono`
+ *  stack, mobile takes these. */
+const MRZ_FONT = Platform.select({ ios: 'Courier', android: 'monospace' });
 
 function classReward(classId: string): string {
   if (classId === CLASS_CEILING.id) return 'Highest discount';
@@ -84,6 +103,86 @@ function phoneCountry(phone: string | null | undefined) {
   return sorted.find((c) => digits.startsWith(c.dial)) ?? null;
 }
 
+/** The engraved rosette lattice a security document prints behind its field
+ *  grid — web's `--guilloche` in SVG. Two offset rings of concentric hairline
+ *  circles in the class metal at 0.12 opacity, the same alpha ceiling web
+ *  documents, so the field values above stay ≥4.5:1. Drawn, never an asset. */
+function Guilloche({ color }: { color: string }) {
+  const rings = [10, 20, 30, 40, 50, 60, 70, 80];
+  return (
+    <View
+      pointerEvents="none"
+      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+    >
+      <Svg width="100%" height="100%" opacity={0.12}>
+        <G>
+          {rings.map((r) => (
+            <Circle
+              key={`a${r}`}
+              cx="14%"
+              cy="118%"
+              r={r}
+              stroke={color}
+              strokeWidth={0.6}
+              fill="none"
+            />
+          ))}
+          {rings.map((r) => (
+            <Circle
+              key={`b${r}`}
+              cx="86%"
+              cy="-18%"
+              r={r}
+              stroke={color}
+              strokeWidth={0.6}
+              fill="none"
+            />
+          ))}
+        </G>
+      </Svg>
+    </View>
+  );
+}
+
+/** One printed line of the data page. A `Row` on a document has no chevron
+ *  and no handler, on purpose — it is not the settings cell MESITA-1801
+ *  deleted. Guest-fillable blanks print `—` and are counted by the completion
+ *  line; server-owed blanks print `pending` and are never counted. */
+function Row({
+  label,
+  value,
+  placeholder,
+  grow,
+}: {
+  label: string;
+  value: string | null;
+  placeholder: string;
+  /** Takes the leftover width in a horizontal triple; the fixed-label columns
+   *  beside it (DATE OF BIRTH, SEX) size to their own label. */
+  grow?: boolean;
+}) {
+  return (
+    <View style={{ minWidth: 0, flexShrink: 1, flexGrow: grow ? 1 : 0 }}>
+      <Text
+        className="font-bold uppercase text-muted-foreground"
+        style={{ fontSize: 10, letterSpacing: 1.2 }}
+      >
+        {label}
+      </Text>
+      <Text
+        className={
+          value
+            ? 'font-display text-[13px] text-foreground'
+            : 'font-display text-[13px] text-muted-foreground'
+        }
+        numberOfLines={1}
+      >
+        {value ?? placeholder}
+      </Text>
+    </View>
+  );
+}
+
 export default function PassportPage() {
   const router = useRouter();
   const { profile, consumerClass } = useAuth();
@@ -104,16 +203,29 @@ export default function PassportPage() {
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
     profile?.full_name ||
     'Mesita member';
-  const age = ageFromBirthday(profile?.birthday);
-  const sexLabel = formatSex(profile?.sex);
+
+  // NATIONALITY comes from the phone dial code, not a stored country: the
+  // column is never written by onboarding, so the dial code the guest already
+  // gave us is in practice the only source. `1` resolves to USA — a stable
+  // code beats an em dash for every North American guest.
   const country = phoneCountry(profile?.phone);
-  const detailLine = [
-    age != null ? `${age}` : null,
-    sexLabel,
-    country ? `${country.flag} ${country.name}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+
+  const dataPage = {
+    code,
+    firstName: profile?.first_name ?? null,
+    lastName: profile?.last_name ?? null,
+    birthday: profile?.birthday ?? null,
+    sex: profile?.sex ?? null,
+    nationality: country?.iso3 ?? null,
+    // The LABEL the band is printing, not the class key: mobile still speaks
+    // the legacy keys and web speaks the metals, and encoding the key would
+    // make the MRZ contradict the band two centimetres above it.
+    classLabel,
+  };
+  const { fields, missing } = passportFields(dataPage);
+  const [mrzLine1, mrzLine2] = buildMrz(dataPage);
+  const completion = completionLine(missing.length);
+  const byId = (id: string) => fields.find((f) => f.id === id)?.value ?? null;
 
   const classNote =
     onFloor && !igConnected
@@ -165,15 +277,56 @@ export default function PassportPage() {
               left: 0,
             }}
           />
-          <View className="flex-row items-center gap-4 p-4">
-            <LinearGradient
-              colors={[...classBadgeColors(effective.key)]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{ borderRadius: 999, padding: 2.5 }}
+
+          {/* The band. A real passport's top strip names the issuing state;
+              naming the metal there spends the colour budget on the one
+              surface licensed to hold it, and cannot be read as a button. */}
+          <LinearGradient
+            colors={[...classBadgeColors(effective.key)]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+            }}
+          >
+            <Text
+              className="font-display font-semibold uppercase"
+              style={{
+                fontSize: 12,
+                letterSpacing: 1.68,
+                color: classBadgeIconColor(effective.key),
+              }}
             >
-              <View className="rounded-full bg-card p-[2px]">
-                <View className="h-[56px] w-[56px] items-center justify-center overflow-hidden rounded-full bg-muted">
+              Mesita
+            </Text>
+            <Text
+              className="font-bold uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: 1.2,
+                color: classBadgeIconColor(effective.key),
+              }}
+            >
+              {classLabel}
+            </Text>
+          </LinearGradient>
+
+          <View className="p-4">
+            <Guilloche color={classBadgeColors(effective.key)[1]} />
+
+            <View className="flex-row gap-4">
+              {/* 35:45 — the ratio a passport photo actually is. */}
+              <LinearGradient
+                colors={[...classBadgeColors(effective.key)]}
+                start={GRADIENT_DIAGONAL.start}
+                end={GRADIENT_DIAGONAL.end}
+                style={{ borderRadius: 6, padding: 2.5 }}
+              >
+                <View className="h-[95px] w-[74px] items-center justify-center overflow-hidden rounded-[4px] bg-muted">
                   {profile?.avatar_url ? (
                     <Image
                       source={{ uri: profile.avatar_url }}
@@ -182,46 +335,110 @@ export default function PassportPage() {
                       accessibilityLabel={name}
                     />
                   ) : (
-                    <DefaultAvatar size={56} />
+                    <DefaultAvatar size={95} />
                   )}
                 </View>
-              </View>
-            </LinearGradient>
-            <View className="min-w-0 flex-1">
-              <Text
-                className="font-display text-lg font-semibold text-foreground"
-                numberOfLines={1}
-              >
-                {name}
-              </Text>
-              {detailLine ? (
-                <Text
-                  className="text-xs text-muted-foreground"
-                  numberOfLines={1}
-                >
-                  {detailLine}
-                </Text>
-              ) : null}
-              <View className="mt-2 flex-row items-center">
-                <Text className="font-display text-base tabular-nums tracking-wide text-foreground">
-                  {code ?? '—'}
-                </Text>
-                {code ? (
-                  <Pressable
-                    onPress={() => void copyCode()}
-                    accessibilityLabel="Copy member number"
-                    className="h-11 w-11 items-center justify-center rounded-xl"
+              </LinearGradient>
+
+              <View className="min-w-0 flex-1 gap-2">
+                {/* The member number takes the whole top row — louder than it
+                    was, not quieter. It is still the only print of
+                    consumers.code. */}
+                <View style={{ minWidth: 0 }}>
+                  <Text
+                    className="font-bold uppercase text-muted-foreground"
+                    style={{ fontSize: 10, letterSpacing: 1.2 }}
                   >
-                    <Copy color={COLORS.mutedForeground} size={16} />
-                  </Pressable>
-                ) : null}
+                    Member No.
+                  </Text>
+                  <View className="flex-row items-center">
+                    <Text
+                      className={
+                        code
+                          ? 'font-display tabular-nums tracking-wide text-foreground'
+                          : 'font-display tabular-nums tracking-wide text-muted-foreground'
+                      }
+                      style={{ fontSize: 18 }}
+                      numberOfLines={1}
+                    >
+                      {code ?? 'pending'}
+                    </Text>
+                    {code ? (
+                      <Pressable
+                        onPress={() => void copyCode()}
+                        accessibilityLabel="Copy member number"
+                        className="h-11 w-11 items-center justify-center rounded-xl"
+                      >
+                        <Copy color={COLORS.mutedForeground} size={16} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+
+                <Row label="Surname" value={byId('surname')} placeholder="—" />
+                <Row
+                  label="Given names"
+                  value={byId('given')}
+                  placeholder="—"
+                />
               </View>
-              {!code ? (
-                <Text className="text-xs text-muted-foreground">
-                  Assigned on your next profile load.
-                </Text>
-              ) : null}
             </View>
+
+            {/* The passport triple runs the FULL width of the card, not the
+                column beside the portrait: "DATE OF BIRTH" at the 10px floor
+                measures ~91px and the column left of it is ~159px on a narrow
+                phone. Three of them do not fit there. */}
+            <View className="mt-3 flex-row gap-3">
+              <Row
+                label="Nationality"
+                value={byId('nationality')}
+                placeholder="—"
+                grow
+              />
+              <Row
+                label="Date of birth"
+                value={byId('birth')}
+                placeholder="—"
+              />
+              <Row label="Sex" value={byId('sex')} placeholder="—" />
+            </View>
+
+            {/* THE COMPLETION LINE IS A COUNT, NOT A LINK (decision,
+                MESITA-1820). The issue asked for a "Complete" link to
+                Me › Profile beside it; the passport's law is two doors and
+                only two (MESITA-1801), pinned twice over by web's
+                passport-axes contract. The count names what is missing and
+                Me › Profile is one Back away. */}
+            {completion ? (
+              <Text className="mt-3 text-xs text-muted-foreground">
+                {completion}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* The MRZ. Two real TD3 lines with real 7-3-1 check digits, hidden
+              from the screen reader because 44 characters of `<` read aloud is
+              hostile and the grid above already announces every fact it
+              encodes. 10px is the floor, so no scaling. */}
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            className="border-t border-border bg-muted px-3 py-2"
+          >
+            <Text
+              numberOfLines={1}
+              className="text-muted-foreground"
+              style={{ fontFamily: MRZ_FONT, fontSize: 10, letterSpacing: -0.1 }}
+            >
+              {mrzLine1}
+            </Text>
+            <Text
+              numberOfLines={1}
+              className="text-muted-foreground"
+              style={{ fontFamily: MRZ_FONT, fontSize: 10, letterSpacing: -0.1 }}
+            >
+              {mrzLine2}
+            </Text>
           </View>
         </View>
 
