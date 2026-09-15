@@ -282,7 +282,7 @@ describe("the rail is six nouns and one indent", () => {
     // One selector, in the rail. The page's copy is gone, or the two disagree.
     expect(existsSync(path.join(SRC, "components/console/OrgSwitcher.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC, "components/console/ScopeSwitchers.tsx"))).toBe(false);
-    expect(readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx")).not.toContain("Switcher");
+    expect(readCode("app/(shell)/orgs/[orgId]/settings/page.tsx")).not.toContain("Switcher");
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
@@ -300,7 +300,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(nav.indexOf("ORG_RAIL_TARGETS.map")).toBeLessThan(nav.indexOf("placeRows.map"));
     // The contract carries the order, and Payments and Credits are not in it.
     const routes = readCode("lib/console-routes.ts");
-    for (const target of ["configuration", "products", "places", "customers", "activity"]) {
+    for (const target of ["settings", "products", "places", "customers", "activity"]) {
       expect(routes, target).toContain(`  "${target}",`);
     }
     // ONE list (MESITA-1848): the pages, the rail's rows and the contract's
@@ -346,7 +346,7 @@ describe("the rail is six nouns and one indent", () => {
   it("Account lights for Account alone, and every org row takes only its own", () => {
     const r = rail();
     expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
-    expect(r).toContain('target === "configuration"');
+    expect(r).toContain('target === "settings"');
     // MESITA-1847 removed the last borrowed clause: Members is CONTENT on the
     // Organization page, not an address behind it. A row keeping a clause
     // after another row took the subject is exactly how this rail grows a
@@ -371,8 +371,11 @@ describe("the rail is six nouns and one indent", () => {
   // configure, and the weaker of the two: Developers is something this
   // organization will DO, the brand is a design decision with no column and
   // no next step. The map entry went with the box.
-  it("Configuration is two boxes: Members, then Developers", () => {
-    const page = readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx");
+  // MESITA-1871 renamed it Settings, label and segment — the flat `/settings`
+  // came back from the permanent redirect that forced `configuration` in the
+  // first place.
+  it("Settings is two boxes: Members, then Developers", () => {
+    const page = readCode("app/(shell)/orgs/[orgId]/settings/page.tsx");
     expect(page).not.toContain("DoorRow");
     expect(page).toContain("<MembersCard");
     expect(page).toContain("apiListOrgMembers");
@@ -408,7 +411,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(page).not.toContain("OrgStateBadge");
     // The skeleton promises what the page delivers, or every load ends in a
     // shift by the height of two cards that are not coming (MESITA-1729).
-    const loading = readCode("app/(shell)/orgs/[orgId]/configuration/loading.tsx");
+    const loading = readCode("app/(shell)/orgs/[orgId]/settings/loading.tsx");
     expect((loading.match(/rounded-2xl/g) ?? []).length).toBe(2);
   });
 
@@ -449,7 +452,7 @@ describe("the rail is six nouns and one indent", () => {
     // `?connect=` is checked BEFORE the forward, or Stripe's return lands on
     // the organization page, which has no notice to greet it with.
     expect(root.indexOf('sp.connect')).toBeLessThan(
-      root.indexOf('orgHref(orgId, "configuration")'),
+      root.indexOf('orgHref(orgId, "settings")'),
     );
     // It lands on PRODUCTS (MESITA-1869): the Stripe account moved there, and
     // a forward onto the page that no longer holds the notice is the

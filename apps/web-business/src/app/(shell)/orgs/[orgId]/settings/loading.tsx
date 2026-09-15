@@ -7,10 +7,10 @@
 // (MESITA-1869) and Brand left after them, and a skeleton still promising any
 // of them would shift every load by the height of a card that is not coming —
 // exactly the fault this file was written to fix (MESITA-1729), in reverse.
-export default function ConfigurationLoading() {
+export default function SettingsLoading() {
   return (
     <div className="flex flex-col gap-4">
-      <span className="sr-only">Loading configuration…</span>
+      <span className="sr-only">Loading settings…</span>
       <div aria-hidden="true" className="flex flex-col gap-4">
         {/* The h1 and its caption, one group with a `gap-1` between. */}
         <div className="flex flex-col gap-1">

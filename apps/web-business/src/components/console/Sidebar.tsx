@@ -8,7 +8,7 @@
 //   [ ○ Account        ]  → /account                the person, no subitems
 //   ─────────────────────
 //   [ ▣ Organization ⌄ ]  which one you are in
-//       Configuration     → /orgs/<id>/configuration
+//       Settings          → /orgs/<id>/settings
 //       Products          → /orgs/<id>/products
 //       Places            → /orgs/<id>/places
 //       Customers         → /orgs/<id>/customers
@@ -69,7 +69,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   AlertCircle,
-  Building2,
   ChartNoAxesColumn,
   Gift,
   Layers,
@@ -77,6 +76,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  Settings,
   Shield,
   SlidersHorizontal,
   Star,
@@ -203,16 +203,20 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 //                                     icon: a NAME is what distinguishes one
 //                                     organization from another, and an icon
 //                                     would be identical on all of them
-//   Configuration Building2           the organization's own record — the
-//                                     ORGANIZATION, which is what the page is
-//                                     about (MESITA-1853). A gear says
-//                                     "preferences" and says it about nothing
-//                                     in particular; the building says whose
-//                                     record this is. The rename to
-//                                     Configuration (MESITA-1852) does not
-//                                     bring the gear back: the page is five
-//                                     boxes ABOUT this organization, not a
-//                                     preferences screen
+//   Settings      Settings            THE GEAR (MESITA-1871). Pato: *"use to
+//                                     normal settings icon."* MESITA-1853 had
+//                                     given this row `Building2` and argued a
+//                                     gear "says preferences and says it
+//                                     about nothing in particular" — true of
+//                                     a page called Configuration holding
+//                                     five boxes ABOUT the organization. The
+//                                     page is called Settings and holds two
+//                                     (Members, Developers); the three that
+//                                     made it a record moved to Products. The
+//                                     conventional mark is now the honest
+//                                     one, and Reviews and Admin are the
+//                                     precedent: take the convention when the
+//                                     convention is right
 //   Menus         UtensilsCrossed     what the place serves
 //   Customers     Users               PEOPLE, plural, against Account's one —
 //                                     the pairing IS the meaning: you, and
@@ -249,7 +253,7 @@ const ORG_ROW: Record<
   OrgRailTarget,
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  configuration: { label: "Configuration", Icon: Building2 },
+  settings: { label: "Settings", Icon: Settings },
   products: { label: "Products", Icon: LayoutGrid },
   places: { label: "Places", Icon: Layers },
   customers: { label: "Customers", Icon: Users },
@@ -491,8 +495,8 @@ export function Sidebar({
   // ceremony, which has no organization to name yet and would otherwise light
   // nothing. Places also takes the Add place ceremony beneath its list.
   const orgRowActive = (target: OrgRailTarget) =>
-    target === "configuration"
-      ? orgTarget === "configuration" || onOrgNew
+    target === "settings"
+      ? orgTarget === "settings" || onOrgNew
       : orgTarget === target;
 
   // Both selectors guard BEFORE they show a pending name: an operator must
@@ -507,7 +511,7 @@ export function Sidebar({
   // organization address is a PAGE, and a page cannot set a cookie in flight.
   const pickOrg = (id: string) => {
     if (org && id !== org.id)
-      go(orgSwitchHref(id, orgHref(id, "configuration")), id);
+      go(orgSwitchHref(id, orgHref(id, "settings")), id);
   };
   const pickPlace = (id: string) => {
     if (id !== scope.place?.id) go(placeTabHref(id, "profile"), id);

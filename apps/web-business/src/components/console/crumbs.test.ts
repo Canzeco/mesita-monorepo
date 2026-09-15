@@ -30,11 +30,11 @@ describe("crumbsFor", () => {
       "Strana Group",
       "Places",
     ]);
-    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group", "Configuration"]);
+    expect(crumbsFor(orgHref("o"), names)).toEqual(["Strana Group", "Settings"]);
     // …and with no name resolved yet, the noun rather than an empty trail.
     expect(crumbsFor(orgHref("o"), { orgName: null, placeName: null })).toEqual([
       "Organization",
-      "Configuration",
+      "Settings",
     ]);
   });
 

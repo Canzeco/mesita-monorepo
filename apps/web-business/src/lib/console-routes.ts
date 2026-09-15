@@ -33,11 +33,11 @@
 //                              switcher. The one page with no scope.
 //   /orgs/new                  Create organization — the ceremony
 //
-//   /orgs/<id>                 NOT a page: a 307 onto `/configuration`, the one
+//   /orgs/<id>                 NOT a page: a 307 onto `/settings`, the one
 //                              address that catches Stripe's stored
 //                              `?connect=` and hands the query to Payments.
-//   /orgs/<id>/configuration  THE ORGANIZATION's own setup — members, brand,
-//                              developers. What you CONFIGURE, nothing else.
+//   /orgs/<id>/settings       THE ORGANIZATION's own setup — members and
+//                              developers. What you SET, nothing else.
 //            /products         THE CATALOGUE — Mesita Partner, the eight
 //                              products, and the Stripe account Mesita Pay
 //                              rides on
@@ -59,7 +59,7 @@
 //              /admin          super-admin only
 //
 //   /profile /menus /reviews /capabilities /rewards /admin
-//   /configuration /products /customers /activity
+//   /settings /products /customers /activity
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -68,15 +68,24 @@
 //                              Next resolves static segments first, so every
 //                              real route still wins and an unknown name 404s.
 //
-// `/orgs/<id>/organization` IS `/orgs/<id>/configuration` (MESITA-1848, renamed
-// again MESITA-1852). The
-// segment existed (MESITA-1846) so that every organization row would be a
-// named address rather than one raw uuid among four names — that reasoning
-// stands and this keeps it. What changed is the NAME: the rail's group is
-// headed "Organization" by its own selector now, so a page under it repeating
-// that noun said the word twice in one column. Pato called the page Settings,
-// then Configuration — and Configuration is the one that can carry a flat
-// twin, because `/settings` belongs to a permanent legacy redirect.
+// `/orgs/<id>/organization` IS `/orgs/<id>/settings` (MESITA-1846 → 1848 →
+// 1852 → 1871). The segment existed (MESITA-1846) so that every organization
+// row would be a named address rather than one raw uuid among four names —
+// that reasoning stands and every rename since has kept it. What kept moving
+// is the NAME: `organization` said the group's own noun twice in one column,
+// so MESITA-1852 called it `configuration` — and it called it that, rather
+// than `settings`, for exactly one reason: `/settings` was owned by a
+// PERMANENT legacy redirect onto `/capabilities` (MESITA-1841), so the page it
+// named could never carry a flat twin, and a contract name a config rule
+// shadows is the MESITA-1839 trap that took a live page down for a day.
+//
+// MESITA-1871 TAKES THE NAME BACK by removing the cause. Pato: *"rename
+// configuration to settings."* The 308 was CHECKED, not assumed —
+// `curl -I business.mesita.ai/settings` answered `308` with
+// `cache-control: public, max-age=0, must-revalidate`, so every browser
+// revalidates before following it and deleting the rule frees the name at
+// once. `/places/<id>/settings` → `/places/<id>/capabilities` STAYS: it is a
+// different path, and still the retired spelling of a place view.
 //
 // `/orgs/<id>/credits` IS GONE TOO (MESITA-1845), and this one MERGED rather
 // than moved: Payments has a rail row again, and Prepaid Credits is the
@@ -131,7 +140,7 @@ export const SHELL_ROUTES = {
  *  strip is back where it came from, so the segment forwards instead of
  *  resolving — TEMPORARILY, because this answer has now moved twice. */
 export const ORG_PAGES = [
-  "configuration",
+  "settings",
   "products",
   "places",
   "customers",
@@ -142,12 +151,12 @@ export type OrgPage = (typeof ORG_PAGES)[number];
 /** Everything the organization addresses. There is no bare-name target any
  *  more (MESITA-1848): the group is HEADED "Organization" by its selector, so
  *  a page repeating that noun was the redundancy this pass has been deleting.
- *  Its page is `configuration`. */
+ *  Its page is `settings`. */
 export const ORG_TARGETS = ORG_PAGES;
 export type OrgTarget = (typeof ORG_TARGETS)[number];
 
 export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
-  configuration: "Configuration",
+  settings: "Settings",
   products: "Products",
   places: "Places",
   customers: "Customers",
@@ -185,7 +194,7 @@ const ORGS = "/orgs";
  *  Organization included — the rail draws its five as siblings, so their
  *  addresses look alike. The bare `${ORGS}/<id>` is a forwarder onto the
  *  default, and the one thing that catches Stripe's stored `?connect=`. */
-export function orgHref(orgId: string, target: OrgTarget = "configuration"): string {
+export function orgHref(orgId: string, target: OrgTarget = "settings"): string {
   return `${ORGS}/${encodeURIComponent(orgId)}/${target}`;
 }
 
@@ -243,7 +252,7 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
   // The bare `/orgs/<id>` is a 307 onto Configuration; it answers that so
   // the row does not go dark for the instant the forward is in flight, which
   // reads as a glitch — the courtesy every flat resolver already gets.
-  if (!second) return "configuration";
+  if (!second) return "settings";
   if (second === "switch") return null;
   if (second === "places") return third === undefined || third === "new" ? "places" : null;
   if (third !== undefined) return null;
@@ -274,11 +283,11 @@ export const FLAT_ROUTES = {
   // address at all any more (MESITA-1869), and the redirect table owns the
   // name — a contract name a config rule shadows is the MESITA-1839 trap.
   //
-  // `configuration` HAS one, and that is the point of the rename
-  // (MESITA-1852): `/settings` was claimed by a permanent legacy redirect
-  // onto `/capabilities`, so the page it named could never have a twin — a
-  // contract name a config rule shadows is the MESITA-1839 trap exactly.
-  configuration: "/configuration",
+  // `settings` HAS one again (MESITA-1871): the permanent rule that claimed
+  // `/settings` for `/capabilities` is deleted, so the name resolves instead
+  // of being shadowed. That rule is why MESITA-1852 had to call this page
+  // `configuration` in the first place.
+  settings: "/settings",
   products: "/products",
   customers: "/customers",
   activity: "/activity",
