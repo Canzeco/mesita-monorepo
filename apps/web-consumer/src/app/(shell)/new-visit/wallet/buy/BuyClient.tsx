@@ -29,7 +29,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Buy Credits — the real path (MESITA-1676). Was a browser emulator
 // (src/lib/mock/use-credits.ts) until now; this screen is the first one
 // wired to consumer-web-buy-credits, which charges the guest's saved card
-// direct on the target place's organization.
+// direct on the target place's own connected account (it was the place's
+// organization until MESITA-1892 removed that layer).
 //
 // EVERY MONEY TERM IS THE SERVER'S. bonusCents/activatesAt/expiresAt below
 // are DISPLAY ONLY — the server resolves them from controls_config and pins

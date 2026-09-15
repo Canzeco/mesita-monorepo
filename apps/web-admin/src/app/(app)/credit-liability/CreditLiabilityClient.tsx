@@ -71,7 +71,7 @@ function Table({
 type FormState = {
   kind: "refund" | "adjust";
   lotId: string;
-  organizationId: string;
+  placeId: string;
   consumerId: string;
   amountCents: string;
   reason: string;
@@ -80,7 +80,7 @@ type FormState = {
 const EMPTY_FORM: FormState = {
   kind: "adjust",
   lotId: "",
-  organizationId: "",
+  placeId: "",
   consumerId: "",
   amountCents: "",
   reason: "",
@@ -119,7 +119,7 @@ export function CreditLiabilityClient({
   const canSubmit =
     form.reason.trim().length >= 3 &&
     (form.lotId.trim().length > 0 ||
-      (sweepMode && form.organizationId.trim() && form.consumerId.trim()));
+      (sweepMode && form.placeId.trim() && form.consumerId.trim()));
 
   function submit() {
     setActionError(null);
@@ -132,7 +132,7 @@ export function CreditLiabilityClient({
         kind: form.kind,
         reason: form.reason.trim(),
         lotId: form.lotId.trim() || undefined,
-        organizationId: sweepMode ? form.organizationId.trim() : undefined,
+        placeId: sweepMode ? form.placeId.trim() : undefined,
         consumerId: sweepMode ? form.consumerId.trim() : undefined,
         amountCents,
       });
@@ -201,14 +201,14 @@ export function CreditLiabilityClient({
 
       <SectionCard
         icon={<Landmark className="text-muted-foreground h-4 w-4" />}
-        title="Per-organization exposure"
-        subtitle="A currency mismatch means a lot's own currency disagrees with its organization's — a data-integrity signal, not a normal state."
+        title="Per-place exposure"
+        subtitle="One row per place — the place is who owes the guest (MESITA-1892). A currency mismatch means a lot's own currency disagrees with its place's: a data-integrity signal, not a normal state."
       >
         <div className="mt-4">
           <Table
-            columns={["Organization", "Currency", "Issued", "Outstanding", "Lots", ""]}
-            rows={(liability?.byOrganization ?? []).map((r) => [
-              r.organizationName,
+            columns={["Place", "Currency", "Issued", "Outstanding", "Lots", ""]}
+            rows={(liability?.byPlace ?? []).map((r) => [
+              r.placeName,
               r.currency,
               money(r.issuedCents, r.currency),
               money(r.outstandingCents, r.currency),
@@ -231,7 +231,7 @@ export function CreditLiabilityClient({
       <SectionCard
         icon={<Landmark className="text-muted-foreground h-4 w-4" />}
         title="Refund, cancel & adjust"
-        subtitle="refund calls Stripe and returns real money — the balance updates once the webhook confirms, not immediately. adjust claws back a lot (or every live lot a guest holds at one organization, when Lot ID is left blank) with no Stripe leg — an org closing, or correcting an error."
+        subtitle="refund calls Stripe and returns real money — the balance updates once the webhook confirms, not immediately. adjust claws back a lot (or every live lot a guest holds at one place, when Lot ID is left blank) with no Stripe leg — a place closing, or correcting an error."
       >
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SelectField
@@ -252,9 +252,9 @@ export function CreditLiabilityClient({
           {sweepMode ? (
             <>
               <TextField
-                label="Organization ID (sweep)"
-                value={form.organizationId}
-                onChange={(v) => setForm((f) => ({ ...f, organizationId: v }))}
+                label="Place ID (sweep)"
+                value={form.placeId}
+                onChange={(v) => setForm((f) => ({ ...f, placeId: v }))}
               />
               <TextField
                 label="Consumer ID (sweep)"
@@ -278,7 +278,7 @@ export function CreditLiabilityClient({
               value={form.reason}
               onChange={(v) => setForm((f) => ({ ...f, reason: v }))}
               rows={2}
-              placeholder="e.g. guest disputed top-up pi_..., org closed 2026-09-08"
+              placeholder="e.g. guest disputed top-up pi_..., place closed 2026-09-15"
             />
           </div>
         </div>
@@ -288,7 +288,7 @@ export function CreditLiabilityClient({
             {sweepMode ? (
               <span className="text-muted-foreground">
                 Sweep mode: claws back every live lot this guest holds at this
-                organization.
+                place.
               </span>
             ) : null}
           </span>
@@ -317,7 +317,7 @@ export function CreditLiabilityClient({
           form.kind === "refund"
             ? "This calls Stripe now and returns real money. It cannot be undone from here."
             : sweepMode
-              ? "This claws back every live lot this guest holds at this organization. It cannot be undone from here."
+              ? "This claws back every live lot this guest holds at this place. It cannot be undone from here."
               : "This claws back the lot with no Stripe leg. It cannot be undone from here."
         }
         confirmLabel={form.kind === "refund" ? "Refund" : "Adjust"}

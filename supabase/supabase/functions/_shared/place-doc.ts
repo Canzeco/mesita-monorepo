@@ -73,6 +73,7 @@ import {
   PopularTimesSchema,
 } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
+import { isShapedRfc } from "./place-rfc.ts";
 
 // ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
 
@@ -323,10 +324,10 @@ export type PlaceRow = {
   id: string;
   created_at: string;
   updated_at: string;
-  // The organization holding this place; null = the PUBLIC POOL.
-  // claimed_by/claimed_at are provenance, not authorization — see the
-  // organizations migration.
-  organization_id: string | null;
+  // WHO holds this place is now the place itself: `place_members` is the
+  // only tenancy there is (MESITA-1892). `organization_id` used to sit here
+  // and pointed at the holder; claimed_by/claimed_at stayed provenance, not
+  // authorization, and still are.
   claimed_by: string | null;
   claimed_at: string | null;
   slug: string;
@@ -353,13 +354,26 @@ export type PlaceRow = {
   plan_forfeited_at: string | null;
   check_pin: string | null;
   reward_lane_pending_review_at: string | null;
+  // WHAT THE PLACE TOOK FROM THE ORGANIZATION (MESITA-1892). These four
+  // columns were `organizations`' until the tenant boundary moved; they are
+  // on this row now because the merchant and the venue are the same thing.
+  //   partnered  — Mesita Partner, the ENTITLEMENT. The BILLING row lives in
+  //                partner_memberships; the two are deliberately separate.
+  //   legal_name — the legal person this place trades as.
+  //   rfc        — the Mexican tax ID. One RFC is one merchant, and one
+  //                merchant is one place (`places_rfc_unique`).
+  //   stripe_billing_customer_id — the Stripe CUSTOMER this place pays Mesita
+  //                as. NOT place_payment_accounts.stripe_account_id, which is
+  //                the connected account it gets paid THROUGH.
+  partnered: boolean;
+  legal_name: string | null;
+  rfc: string | null;
+  stripe_billing_customer_id: string | null;
 };
 
 export const PLACE_PATCH_KEYS = [
-  // The organization that holds this place; null = the public pool. Written
-  // by business-web-{claim,release}-place, which is why they go through
-  // this door instead of touching `places` directly.
-  "organization_id",
+  // Claim provenance, written by business-web-{claim,release}-place — which
+  // is why they go through this door instead of touching `places` directly.
   "claimed_by",
   "claimed_at",
   "slug",
@@ -386,6 +400,16 @@ export const PLACE_PATCH_KEYS = [
   "plan_forfeited_at",
   "check_pin",
   "reward_lane_pending_review_at",
+  // The four the place took from the organization (MESITA-1892). `partnered`
+  // is patchable here for completeness, but its real writers —
+  // `_shared/place-partnership.ts` and `_shared/partner-membership.ts` —
+  // flip it with a guarded `.update()` that counts what actually moved, so
+  // they can report joined/dropped honestly. A door that returns the patch
+  // cannot tell you that.
+  "partnered",
+  "legal_name",
+  "rfc",
+  "stripe_billing_customer_id",
 ] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at">)[];
 
 type _MissingFromPlacePatchKeys = Exclude<
@@ -660,8 +684,8 @@ function checkPlaceField(key: string, v: unknown): string | null {
     return isNullableLegalSet(v, RATE_LEGAL_VALUES) ? null
       : `${key} must be null or one of ${RATE_LEGAL_VALUES.join(", ")}`;
   }
-  if (key === "organization_id" || key === "claimed_by") {
-    return isNullableString(v) ? null : `${key} must be a uuid string or null`;
+  if (key === "claimed_by") {
+    return isNullableString(v) ? null : "claimed_by must be a uuid string or null";
   }
   if (key === "claimed_at") {
     return isNullableString(v) ? null : "claimed_at must be an ISO timestamp string or null";
@@ -700,6 +724,20 @@ function checkPlaceField(key: string, v: unknown): string | null {
     case "check_pin":
       return isNullableRegex(v, SIX_DIGIT_PIN_RE) ? null
         : `${key} must be exactly 6 digits, or null`;
+    // places.partnered is NOT NULL DEFAULT false — there is no "unknown".
+    case "partnered":
+      return isBoolean(v) ? null : "partnered must be a boolean";
+    case "legal_name":
+    case "stripe_billing_customer_id":
+      return isNullableString(v) ? null : `${key} must be a string or null`;
+    // places_rfc_shape. The regex is NOT restated here: `_shared/place-rfc.ts`
+    // is the one rule, and the CHECK constraint states the same shape in SQL.
+    // A patch must carry an ALREADY-normalized value — a writer that skips
+    // normalizeRfc gets a 400 here rather than a row the unique index cannot
+    // see as a twin.
+    case "rfc":
+      return v === null || (typeof v === "string" && isShapedRfc(v)) ? null
+        : "rfc must be a normalized Mexican RFC, or null";
     default:
       return `unknown place-row field: ${key}`;
   }

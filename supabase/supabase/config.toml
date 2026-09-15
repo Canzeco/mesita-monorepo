@@ -490,13 +490,17 @@ verify_jwt = true
 [functions.business-web-set-partnership]
 verify_jwt = true
 
-# Org-level Partner switch (MESITA-1798). Owner-only; cascades plan=pro
-# onto every held place and writes organizations.mesita_pay_enabled.
-[functions.business-web-set-org-partnership]
+# The place's Partner switch (MESITA-1798, re-scoped by MESITA-1892).
+# Owner-only; writes places.partnered and the plan=pro/free patch beside it.
+# Named for the bit it owns so it cannot be confused with
+# business-web-set-partnership, the plan/rate-strategy door one line above.
+# It no longer writes any Mesita Pay bit — place-rails.ts is that column's
+# single writer.
+[functions.business-web-set-partner-status]
 verify_jwt = true
 
 # The paid door into Mesita Partner (MESITA-1877): an owner buys the yearly
-# Mesita Membership for the ORGANIZATION and every place it holds. Not
+# Mesita Membership for the PLACE. Not
 # Stripe-locked — Connect is what Mesita Pay needs, not the partnership.
 # Entitlement is the webhook's, never this EF's, outside MOCK_SUBSCRIPTION.
 [functions.business-web-start-membership]
@@ -528,39 +532,17 @@ verify_jwt = true
 [functions.business-web-list-members]
 verify_jwt = true
 
-# ── Account / Organization / Place hierarchy (2026-09-05) ──────────────
-# Every one of these requires a session: organizations are the thing places
-# get claimed into, so none of this is public. get-place is the read behind
-# the Place screen — the pool half of it is no wider than list-places
+# ── Account / Place (2026-09-05, re-scoped by MESITA-1892) ─────────────
+# The organization half of this block is gone with the layer: listing,
+# creating and the six org-membership endpoints were each a duplicate of a
+# place endpoint that already exists (list-places, create-place,
+# invite-member, accept-invite, list-members, update-member-role,
+# remove-member), and the place is the sole tenant boundary now.
+# Every one of these still requires a session: a place's claim state and
+# portfolio are nobody's public business. get-place is the read behind the
+# Place screen — the pool half of it is no wider than list-places
 # scope=public, but it still answers as YOU, so it needs your JWT.
-[functions.business-web-list-organizations]
-verify_jwt = true
-
-[functions.business-web-create-organization]
-verify_jwt = true
-
-[functions.business-web-update-organization]
-verify_jwt = true
-
-# Members box (MESITA five-box org screen). Any-member read; owner-only
-# direct add of an EXISTING account (editor/viewer — owner grants wait for
-# the invite lifecycle + remove ceremony). Machine-coded errors.
-[functions.business-web-list-org-members]
-verify_jwt = true
-
-[functions.business-web-add-org-member]
-verify_jwt = true
-
-# The rest of the org-membership lifecycle (MESITA-1550): a logged-in
-# business claims an emailed org invite, an owner promotes or demotes a
-# member, and remove revokes either a membership row or a pending invite.
-[functions.business-web-accept-org-invite]
-verify_jwt = true
-
-[functions.business-web-update-org-member-role]
-verify_jwt = true
-
-[functions.business-web-remove-org-member]
+[functions.business-web-update-legal-identity]
 verify_jwt = true
 
 [functions.business-web-list-places]

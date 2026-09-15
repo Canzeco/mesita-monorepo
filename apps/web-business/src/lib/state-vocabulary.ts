@@ -12,11 +12,13 @@
 //                 place_profiles.credits_enabled) — operator toggles on the Partner tab
 //                 (the set-place-rails doors); engines still gate each rail.
 //
-//                 OWNED joined the box with MESITA-1608: an organization holds
-//                 this place. It is CONSTANT on either console list — Org
-//                 Places filters on it and the pool filters on its absence —
-//                 and Pato kept it anyway, so both screens render one column
-//                 set and the fact goes live the day an unfiltered list
+//                 OWNED joined the box with MESITA-1608: somebody holds this
+//                 place. It used to mean "an organization holds it"; since
+//                 MESITA-1892 removed that layer the fact is the claim itself
+//                 (`places.claimed_by`). It is CONSTANT on either console list
+//                 — the claimed list filters on it and the pool filters on its
+//                 absence — and Pato kept it anyway, so both screens render one
+//                 column set and the fact goes live the day an unfiltered list
 //                 exists. It is not Verified: holding an address and having
 //                 PROVED you hold it are different claims.
 //   INTAKE (11)   own box: 0. Seed … 10. Embedding, each a bool: called or not
@@ -133,12 +135,13 @@ export const ENGINELESS_STATE_FACT_KEYS: readonly GeneralStateKey[] = [
  *
  * The admin notifications door puts a stateFacts blob on each item, and
  * the feed reads facts straight out of it. Owned is not in that blob: it is a
- * join fact (`places.organization_id`), not something an enrichment event
- * observes, and nothing stamps it.
+ * claim fact (`places.claimed_by` — it was the `places.organization_id` join
+ * until MESITA-1892), not something an enrichment event observes, and nothing
+ * stamps it.
  *
  * Which is why this list exists rather than a `?? false` at the read site.
  * Defaulting an unwritten fact to false would have made every notification in
- * the feed claim "no organization holds this place" — a statement nobody
+ * the feed claim "nobody holds this place" — a statement nobody
  * checked, on a surface whose whole job is reporting what happened. The key
  * leaves the feed's type instead, so indexing it is a compile error rather
  * than a plausible-looking lie.

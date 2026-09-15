@@ -15,7 +15,7 @@
 // 913ms over 24h — the read behind the whole Place screen's hard load.
 //
 // The chain ran ONE QUERY AT A TIME, and most of them did not need the one
-// before: `checkSuperAdmin` → `place_members` → `organization_members` →
+// before: `checkSuperAdmin` → `place_members` → the org membership read →
 // `places` → `profiles` → the pin row → `app_config`. Seven round trips in a
 // row for an ordinary operator, on a project where a call costs far more than
 // the query inside it.
@@ -32,17 +32,28 @@
 //                     alongside the place read, and costs a second round trip
 //                     only in the fallback case (a requested id the caller
 //                     does not hold, so `active` becomes places[0]).
-//   the two           are keyed on `userId` alone and read nothing from each
-//   membership reads  other or from `checkSuperAdmin`, so all three start
-//                     together. THIS ONE IS A SPECULATION AND IT HAS A PRICE:
-//                     a super-admin takes neither result and pays two indexed
-//                     `manager_id` lookups for nothing. Two cheap wasted reads
-//                     for the handful of staff accounts, one fewer serial hop
-//                     for every customer. Deliberate — do not "fix" it back.
+//   the membership    is keyed on `userId` alone and reads nothing from
+//   read              `checkSuperAdmin`, so both start together. THIS ONE IS A
+//                     SPECULATION AND IT HAS A PRICE: a super-admin takes the
+//                     result nowhere and pays an indexed `manager_id` lookup
+//                     for nothing. One cheap wasted read for the handful of
+//                     staff accounts, one fewer serial hop for every customer.
+//                     Deliberate — do not "fix" it back.
 //
 // Nothing about the payload, the auth posture or the branch logic changed, and
 // every best-effort read still degrades to its documented fallback rather than
 // failing the overview.
+//
+// ── THE SECOND MEMBERSHIP READ IS GONE (MESITA-1892) ──────────────────────
+//
+// There used to be two: `place_members`, and `organization_members` joined
+// onto `places.organization_id` — because a place held by an organization had
+// no direct row, so every org member but the claimer saw an empty console.
+// That derived role was CAPPED AT EDITOR, since `owner` has to be a
+// place_members row (auth-membership.ts states why). The removal migration
+// turned every org grant into a real place_members row at that same editor
+// ceiling, so nobody lost access when the join disappeared, and one read is
+// now the whole answer.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
@@ -126,9 +137,9 @@ Deno.serve(async (req) => {
   // not awaits: each is awaited at the first line that actually reads it, so
   // the branch structure below is unchanged and only the waiting is gone.
   //
-  // The two membership reads are SPECULATIVE — see the head comment. They are
-  // pure reads on an indexed `manager_id`, so firing one a super-admin will
-  // discard is a cost, never a risk.
+  // The membership read is SPECULATIVE — see the head comment. It is a pure
+  // read on an indexed `manager_id`, so firing one a super-admin will discard
+  // is a cost, never a risk.
   const superAdminP = checkSuperAdmin(admin, authRes.user);
   const memberRowsP = fireAndForgettable(
     admin
@@ -136,12 +147,6 @@ Deno.serve(async (req) => {
       .select(`role, place_id`)
       .eq("manager_id", userId)
       .order("created_at", { ascending: false }),
-  );
-  const orgRowsP = fireAndForgettable(
-    admin
-      .from("organization_members")
-      .select("role, organization_id")
-      .eq("manager_id", userId),
   );
   // The rates the bill engine pays. Nothing in this function reads them, so
   // the only thing its position ever decided was how long the response waited.
@@ -304,34 +309,12 @@ Deno.serve(async (req) => {
     type MemberRow = { role: string; place_id: string };
     const members = (memberRows.data ?? []) as MemberRow[];
 
-    // The ORG-DERIVED path (MESITA-1537 / D1): places held by organizations
-    // the caller belongs to are visible too, with the role derived from the
-    // org membership CAPPED AT EDITOR (auth-membership's law — owner is a
-    // place_members ROW; the materialized owner comes through the direct
-    // path above and wins). Without this, every org member except the
-    // claimer sees an empty console for places one click away in Org Places.
-    const orgRows = await orgRowsP;
-    const orgMemberships = (orgRows.data ?? []) as {
-      role: string;
-      organization_id: string;
-    }[];
+    // The membership rows ARE the portfolio (MESITA-1892). The org-derived
+    // second path this used to merge in — places held by an organization the
+    // caller belonged to, at a role capped to editor — has no source table
+    // left, and needs none: the migration wrote each of those grants as a real
+    // place_members row at the same ceiling, so they arrive above.
     const roleById = new Map(members.map((m) => [m.place_id, m.role]));
-    if (orgMemberships.length > 0) {
-      const orgRoleById = new Map(
-        orgMemberships.map((o) => [o.organization_id, o.role]),
-      );
-      const { data: orgPlaces } = await admin
-        .from("places")
-        .select("id, organization_id")
-        .in("organization_id", [...orgRoleById.keys()]);
-      for (
-        const p of (orgPlaces ?? []) as { id: string; organization_id: string }[]
-      ) {
-        if (roleById.has(p.id)) continue; // direct row wins (incl. owner)
-        const orgRole = orgRoleById.get(p.organization_id) ?? "viewer";
-        roleById.set(p.id, orgRole === "owner" ? "editor" : orgRole);
-      }
-    }
 
     const ids = [...roleById.keys()];
     if (ids.length === 0) {

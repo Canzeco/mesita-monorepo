@@ -1,7 +1,7 @@
 "use client";
 
-// THE CATALOGUE'S HEADLINE (MESITA-1869): what the organization's partnership
-// buys, said once, above the eight cards it gates.
+// THE CATALOGUE'S HEADLINE (MESITA-1869): what this place's partnership buys,
+// said once, above the eight cards it gates.
 //
 // Pato's mock draws it as ONE horizontal strip — a green check, the name, an
 // "Active" chip, a seam, and one line saying the products come with the
@@ -16,8 +16,8 @@
 // wrote: the state with a decision in it gets the box, the state without gets
 // the line.
 //
-// ONE STATUS NOUN: **Partner**. The strip says what the organization IS, and
-// that is the word the pill, the badge and the guest-facing rail all use.
+// ONE STATUS NOUN: **Partner**. The strip says what the place IS, and that is
+// the word the pill, the badge and the guest-facing rail all use.
 // "Membership" names the thing it BOUGHT and appears only where money does
 // (MESITA-1877) — so the mock's "included with your membership" is still
 // written as partnership here.
@@ -35,19 +35,19 @@ import {
   PartnerCard,
 } from "@/components/console/PartnerCard";
 import { Section } from "@/components/shared/Section";
-import type { MembershipPrice, OrgMembership } from "@/lib/api/organizations";
+import type { Membership, MembershipPrice } from "@/lib/api/console";
 
 export function PartnerBanner({
-  orgId,
+  placeId,
   partnered,
   isOwner,
   membership = null,
   price = null,
 }: {
-  orgId: string;
+  placeId: string;
   partnered: boolean;
   isOwner: boolean;
-  membership?: OrgMembership | null;
+  membership?: Membership | null;
   price?: MembershipPrice | null;
 }) {
   if (!partnered) {
@@ -55,10 +55,10 @@ export function PartnerBanner({
       <Section
         lane
         title="Mesita Partner"
-        description="The organization's yearly partnership. Every place it holds is in."
+        description="This place's yearly partnership, bought once a year."
       >
         <PartnerCard
-          orgId={orgId}
+          placeId={placeId}
           partnered={false}
           isOwner={isOwner}
           price={price}

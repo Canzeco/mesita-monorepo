@@ -32,6 +32,13 @@
 // Comments are stripped before matching, because
 // consumer-web-select-ticket-payment/index.ts explains this very rename in a
 // comment sitting INSIDE its own `.select(...)` parentheses.
+//
+// `organization_id` IS NOT ON THIS LIST, on purpose. It was DROPPED, not
+// renamed — there is no compat seam and no wire name to protect — so the
+// narrow query-shape match this file needs would be weaker than the job
+// requires. `no-organization-layer.test.ts` (MESITA-1892) catches it as a bare
+// identifier anywhere in code, which is the stronger guard a dropped concept
+// deserves. Two guards claiming one job is how both stop being maintained.
 
 import { assertEquals } from "jsr:@std/assert@1";
 

@@ -507,9 +507,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   }, [supabase, ticketId, setStepChoice]);
 
   // Disclosed once per place (Pato decision 2026-09-02): cloning the card
-  // onto that place's connected Stripe account creates a customer record
-  // in ITS dashboard, so the "once" is per organization, and place is the
-  // guest-facing proxy for that.
+  // onto that place's connected Stripe account creates a customer record in
+  // ITS dashboard. The connected account used to hang off the organization,
+  // so "once per place" was a guest-facing proxy for "once per org";
+  // MESITA-1892 made the place the account holder, so the two are the same
+  // thing now and this key is exact rather than approximate.
   const [disclosedPlaces, markPlaceDisclosed] = useStoredStringSet(
     "mesita-pay-disclosed-places",
   );

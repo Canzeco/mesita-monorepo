@@ -3,18 +3,20 @@
 // Naming: caller-verb-words. Caller = consumer, verb = buy, words = credits.
 //
 // Charges the guest's saved platform card, cloned onto the target place's
-// ORGANIZATION's connected Stripe account — a DIRECT charge
-// (_shared/mesita-pay-charge.ts): the organization is merchant of record,
-// Mesita never enters the funds flow. Writes a credit_lots row (org-scoped,
-// spendable at any of that organization's places) through the
-// create_credit_lot RPC (MESITA-1671).
+// connected Stripe account — a DIRECT charge (_shared/mesita-pay-charge.ts):
+// the place is merchant of record, Mesita never enters the funds flow.
+// Writes a credit_lots row (place-scoped, spendable at that venue) through
+// the create_credit_lot RPC (MESITA-1671, re-scoped by MESITA-1892: the lot
+// used to be the organization's and spendable across its places; the layer
+// is gone, so the balance is a debt to this guest at THIS place).
 //
 // THE CLIENT NEVER SENDS MONEY TERMS. bonus_cents, activates_at and
 // expires_at are resolved SERVER-side from controls_config and pinned the
 // moment the charge is confirmed — a body carrying any of them, or an
-// inflated/negative paidCents, or an organization_id, is simply never read.
-// paidCents is the one number the client picks, and it must be one of
-// CREDIT_PACKAGE_CENTS or the request never reaches Stripe.
+// inflated/negative paidCents, is simply never read. paidCents is the one
+// number the client picks, and it must be one of CREDIT_PACKAGE_CENTS or the
+// request never reaches Stripe. `placeId` is the only scope the client names
+// and it is re-resolved server-side before anything is charged.
 //
 // TWO WRITERS, ONE ROW. This EF is "the confirm reader": when the charge
 // confirms synchronously (the common case), it calls create_credit_lot
@@ -80,8 +82,8 @@ import {
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
 import {
-  resolveChargeableOrganizationForCredits,
-  resolveOrganizationCurrency,
+  resolveChargeablePlaceForCredits,
+  resolvePlaceCurrency,
 } from "../_shared/credits-readiness.ts";
 import { chargeCreditsWithMesitaPay } from "../_shared/mesita-pay-charge.ts";
 import {
@@ -142,7 +144,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const visitsConfig = await loadVisitsConfig(admin);
-  const chargeable = await resolveChargeableOrganizationForCredits(
+  const chargeable = await resolveChargeablePlaceForCredits(
     admin,
     visitsConfig.payCredits,
     placeId,
@@ -167,7 +169,20 @@ Deno.serve(async (req) => {
   // does not require a gap, only an order.
   const activatesAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + expiryDays * DAY_MS).toISOString();
-  const currency = await resolveOrganizationCurrency(admin, chargeable.organizationId);
+  const currency = await resolvePlaceCurrency(admin, chargeable.placeId);
+  // null means the currency READ failed, not that the place has none —
+  // see resolvePlaceCurrency. Refuse rather than charge a guessed
+  // denomination.
+  if (!currency) {
+    return json(
+      {
+        ok: false,
+        code: "currency_unavailable",
+        error: "Couldn't confirm this place's currency — try again shortly.",
+      },
+      500,
+    );
+  }
 
   const stripeKey = stripeSecretKey();
 
@@ -177,7 +192,7 @@ Deno.serve(async (req) => {
   if (cardsMockMode(stripeKey)) {
     const mockIntentId = `mock_pi_${crypto.randomUUID()}`;
     const lot = await admin.rpc("create_credit_lot", {
-      p_organization_id: chargeable.organizationId,
+      p_place_id: chargeable.placeId,
       p_consumer_id: authRes.user.id,
       p_paid_cents: paidCents,
       p_bonus_cents: bonusCents,
@@ -228,7 +243,7 @@ Deno.serve(async (req) => {
   }
 
   const outcome = await chargeCreditsWithMesitaPay(stripe, admin, {
-    organizationId: chargeable.organizationId,
+    placeId: chargeable.placeId,
     connectedAccountId: chargeable.connectedAccountId,
     consumerId: authRes.user.id,
     platformCustomerId,
@@ -278,7 +293,7 @@ Deno.serve(async (req) => {
   // the webhook backstop somehow wins the race first, this returns the SAME
   // lot rather than a second one.
   const lot = await admin.rpc("create_credit_lot", {
-    p_organization_id: chargeable.organizationId,
+    p_place_id: chargeable.placeId,
     p_consumer_id: authRes.user.id,
     p_paid_cents: paidCents,
     p_bonus_cents: bonusCents,

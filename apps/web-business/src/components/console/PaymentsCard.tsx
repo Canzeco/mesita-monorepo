@@ -14,14 +14,14 @@ import {
   connectPaymentsAction,
   openPaymentsDashboardAction,
   type PaymentsActionState,
-} from "@/app/(shell)/actions/organizations";
+} from "@/app/(shell)/actions/place-setup";
 import {
   canOpenDashboard,
   canRestartOnboarding,
   canResumeOnboarding,
   paymentAccountState,
   type PaymentAccount,
-} from "@/lib/api/organizations";
+} from "@/lib/api/console";
 import { cn } from "@/lib/utils";
 import {
   CTA_BUTTON_CLASS,
@@ -70,7 +70,7 @@ function ErrorBox({ title, message }: { title: string; message: string | null })
  * and a closed modal has no DOM.
  */
 export function ConnectStripeForm({
-  orgId,
+  placeId,
   action,
   pending,
   error,
@@ -80,7 +80,7 @@ export function ConnectStripeForm({
   intent = "create",
   country = "MX",
 }: {
-  orgId: string;
+  placeId: string;
   action: (formData: FormData) => void;
   pending: boolean;
   error: string | null;
@@ -91,7 +91,7 @@ export function ConnectStripeForm({
   return (
     <form action={action} className="flex flex-col gap-4">
       <ErrorBox title="Couldn't connect payments" message={error} />
-      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="placeId" value={placeId} />
       <input type="hidden" name="intent" value={intent} />
       {restarting && (
         <p className="text-muted-foreground text-[12px] leading-relaxed">
@@ -175,13 +175,13 @@ export function ConnectStripeForm({
  * because they are the same failure on the same page.
  */
 export function PaymentsCard({
-  orgId,
+  placeId,
   account,
   orphaned,
   isOwner,
   loadError,
 }: {
-  orgId: string;
+  placeId: string;
   account: PaymentAccount | null;
   orphaned: boolean;
   isOwner: boolean;
@@ -300,7 +300,7 @@ export function PaymentsCard({
                 (MESITA-1865). */}
             {resumable && (
               <form action={connectAction}>
-                <input type="hidden" name="orgId" value={orgId} />
+                <input type="hidden" name="placeId" value={placeId} />
                 {/* Resume mints a link for an account that already exists,
                     so the entity gate does not apply — the account was
                     created with its answer, and Stripe owns it from here. */}
@@ -324,7 +324,7 @@ export function PaymentsCard({
                 and it failed by telling the owner Mesita was broken. */}
             {dashboardReady && (
               <form action={dashAction}>
-                <input type="hidden" name="orgId" value={orgId} />
+                <input type="hidden" name="placeId" value={placeId} />
                 <button
                   type="submit"
                   disabled={opening}
@@ -375,7 +375,7 @@ export function PaymentsCard({
           already been sent back to.
 
           It sits OUTSIDE the not-connected branch now, because Start over asks
-          the same two questions of an organization that already has an account
+          the same two questions of a place that already has an account
           (MESITA-1865). */}
       {isOwner && connectOpen && (
         <Modal
@@ -384,7 +384,7 @@ export function PaymentsCard({
           onClose={() => setConnectOpen(null)}
         >
           <ConnectStripeForm
-            orgId={orgId}
+            placeId={placeId}
             action={connectAction}
             pending={connecting}
             error={connectState.error}

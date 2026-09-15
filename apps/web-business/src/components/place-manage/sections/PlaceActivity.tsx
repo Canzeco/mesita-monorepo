@@ -9,7 +9,7 @@
 // It was `ActivityTab` under `places/[id]/activity`, reading `usePlaceContext`
 // — which only exists inside the place layout. Activity is the ORGANIZATION's
 // page now (Pato's drawing of 2026-09-14 puts it flush-left with Payments and
-// Credits), and that page renders it for whichever of the organization's
+// Credits), and that page renders it for whichever of the caller's
 // places is selected, outside any PlaceContext. The read was always by id; the
 // context was only ever supplying the id and the record.
 

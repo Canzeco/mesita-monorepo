@@ -1,11 +1,13 @@
 // Supabase Edge Function — business-web-list-reviews
 //
 // Authenticated. Returns Mesita guest reviews for a held place, newest first,
-// paginated. Scoped to the holding organization's membership (viewers may
-// read). Google reviews are not proxied — operators open Google directly.
+// paginated. Scoped to the place's own membership, viewers included (it used
+// to be the HOLDING ORGANIZATION's membership; MESITA-1892 removed that layer
+// and `place_members` is the whole grant now). Google reviews are not proxied
+// — operators open Google directly.
 //
 // check_code is a possession token for check.mesita.ai (verify_jwt=false).
-// Same rule as business-web-list-tickets: never return it to org viewers.
+// Same rule as business-web-list-tickets: never return it to viewers.
 // Editors and owners get a visitUrl; viewers see reviews only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -23,7 +25,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { consumerDisplayName } from "../_shared/consumer-lookup.ts";
-import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
+import { requireMembership } from "../_shared/auth-membership.ts";
 
 const CHECK_URL_BASE = "https://check.mesita.ai/";
 
@@ -89,20 +91,25 @@ Deno.serve(async (req) => {
   const offset = clampIntRange(Number(bodyRes.body.offset ?? 0), 0, 10_000);
 
   const admin = adminClient(envRes.env);
-  const orgId = await orgIdForPlace(admin, placeId);
-  if (!orgId) {
+
+  // The 404 and the 403 answer two different questions, so both reads happen
+  // — in parallel, because neither needs the other. `orgIdForPlace` used to
+  // collapse them: a place in no organization was reported as "not found"
+  // whether it existed or not.
+  const [placeRow, roleRes] = await Promise.all([
+    admin.from("places").select("id").eq("id", placeId).maybeSingle(),
+    requireMembership(admin, authRes.user, placeId),
+  ]);
+  if (placeRow.error) return json({ ok: false, error: placeRow.error.message }, 500);
+  if (!placeRow.data) {
     return json({ ok: false, error: "Place not found" }, 404);
   }
-
-  const roleRes = await requireOrgRole(admin, authRes.user, orgId, [
-    "owner",
-    "editor",
-    "viewer",
-  ]);
   if (!roleRes.ok) return roleRes.response;
 
-  const mayLinkVisit =
-    roleRes.role === "owner" || roleRes.role === "editor";
+  // A super-admin reads as an owner would; otherwise the role IS the row.
+  const mayLinkVisit = roleRes.membership.isSuperAdmin ||
+    roleRes.membership.role === "owner" ||
+    roleRes.membership.role === "editor";
 
   const select =
     "id, food, service, ambience, value, overall, comments, created_at, ticket_id, " +

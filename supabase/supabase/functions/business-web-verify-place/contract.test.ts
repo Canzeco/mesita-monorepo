@@ -44,29 +44,49 @@ Deno.test("no code is asked for, and none is checked", () => {
 });
 
 Deno.test("verifying is owner-only, like the claim it completes", () => {
+  // MESITA-1892: the rank is unchanged, what it is proven against moved. The
+  // holding organization is gone, so owner means the `place_members` owner row
+  // the claim minted — which is what requireOwner reads, and the only place
+  // `owner` can come from at all (_shared/auth-membership.ts).
   assert(
-    /requireOrgRole\(\s*admin,\s*authRes\.user,\s*organizationId,\s*\[\s*"owner",?\s*\]/
-      .test(CODE),
-    "must gate on owner of the holding organization",
+    /requireOwner\(\s*admin,\s*authRes\.user,\s*placeId\s*\)/.test(CODE),
+    "must gate on owner of the place itself",
+  );
+  assert(
+    !/requireMembership\(|requireEditor\(/.test(CODE),
+    "an editor must not be able to declare a place verified",
   );
 });
 
-Deno.test("the holder comes from the place, not from the caller's body", () => {
-  // Trusting an organizationId off the request would let an owner of org A
-  // verify a place held by org B: the role check would pass against the org
-  // they named rather than the one that actually holds it.
+Deno.test("the caller's body names a place and nothing else", () => {
+  // The old shape trusted an organizationId off the request, which would have
+  // let an owner of org A verify a place held by org B — the role check
+  // passing against the org they named rather than the one that held it. The
+  // place row is still read here, now to prove the place EXISTS before a 409
+  // claims something about its state.
   assert(
     /\.from\("places"\)[\s\S]{0,120}\.eq\("id",\s*placeId\)/.test(CODE),
-    "must read the place row to learn its holder",
+    "must read the place row",
   );
+  // The body names a place and NOTHING ELSE. `_shared/no-organization-layer.test.ts`
+  // is the repo-wide guard on the retired names themselves; this one pins the
+  // shape of THIS endpoint's input, which is what made the old holder field
+  // forgeable in the first place.
   assert(
-    !/body\.organizationId/.test(CODE),
-    "must not accept an organizationId from the request body",
+    /type Body = \{ placeId\?: string; projectId\?: string \};/.test(CODE),
+    "the request body carries a place id and its legacy alias, nothing more",
   );
 });
 
 Deno.test("an unheld place is an ordering error, not a permission one", () => {
   assert(/"not_held"/.test(CODE), "must answer a distinct not_held code");
+  // And "unheld" is the SHARED pool predicate, not a local re-reading of it.
+  // The listing, the claim and this endpoint disagreeing about what is in the
+  // pool is how a stranger reaches someone else's live restaurant.
+  assert(
+    /isPlaceClaimable\(/.test(CODE),
+    "must ask _shared/place-claim.ts, never re-derive the pool here",
+  );
 });
 
 Deno.test("it writes one approved row, attributed to the mock", () => {

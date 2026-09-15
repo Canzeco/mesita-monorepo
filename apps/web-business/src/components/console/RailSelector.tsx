@@ -26,11 +26,15 @@
 // already live; on the trigger it was answering a question nobody had asked
 // yet at twice the height of a real destination.
 //
-// A SELECTOR WITH NOTHING TO SWITCH IS A NAME (MESITA-1818, 3A): at one
-// organization or one place no chevron renders and the row still opens its
-// menu, which is where the ceremony lives. THE TRANSITION IS THE CLOCK: a
-// choice shows the chosen name only while the `router.push` it started is in
-// flight.
+// A SELECTOR WITH NOTHING TO SWITCH IS A NAME (MESITA-1818, 3A): at one place
+// the rail does not render this at all. THE TRANSITION IS THE CLOCK: a choice
+// shows the chosen name only while the `router.push` it started is in flight.
+//
+// THERE IS ONE SELECTOR LEFT (MESITA-1892). There were two — the organization
+// and its place — and this component was written for both, which is why it
+// takes a `chip` rather than drawing one. It keeps that shape: the place wears
+// its own photo, and the slot is what made two subjects share one control in
+// the first place.
 //
 // DARK, like everything else in this column (MESITA-1831): `sidebar-*` tokens
 // only on the trigger. The MENU is a popover over the page, not part of the
@@ -60,12 +64,6 @@ export const MENU_ITEM = "gap-2.5 rounded-lg py-1.5 text-[13px]";
 export const MENU_MUTED = `${MENU_ITEM} text-muted-foreground`;
 export const MENU_CHIP =
   "bg-muted text-foreground ring-border flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold ring-1";
-/** The line the trigger stopped printing: the role and the holding, on the
- *  menu row it actually compares. */
-export const MENU_META =
-  "text-muted-foreground block truncate text-[11px] font-normal";
-export const MENU_STACK = "flex min-w-0 flex-1 flex-col leading-tight";
-
 /** THE ONE GLYPH BOX. Identical to the rail's `ICON` box, so a selector's
  *  chip and a row's icon share one left edge and one centre line. Anything
  *  bigger here re-opens the ragged column MESITA-1849 closed. */
@@ -81,8 +79,8 @@ export function RailSelector({
   collapsed,
   children,
 }: {
-  /** The accessible name — "Switch organization". Never the subject's own
-   *  name, which changes under the operator and would rename the control. */
+  /** The accessible name — "Switch place". Never the subject's own name,
+   *  which changes under the operator and would rename the control. */
   label: string;
   name: string;
   chip: React.ReactNode;

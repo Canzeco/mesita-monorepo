@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(97);
+select plan(106);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -63,10 +63,13 @@ select ok(
 -- MESITA-1704: the three checks above passed for a full day while `profiles`
 -- was 42501 for every guest. A privilege on a VIEW says the role may reach it;
 -- a `security_invoker` view then re-checks the role against everything its
--- BODY touches, and nothing above can see the body. MESITA-1689 appended one
--- derived column reading `places.organization_id` and `public.organizations` —
--- neither of which a client role held — and the consumer app answered
--- "permission denied for table places" in a red band over the Search map.
+-- BODY touches, and nothing above can see the body. The column that did it was
+-- a derived one reading a tenant table above the place — neither half of which
+-- a client role held — and the consumer app answered "permission denied for
+-- table places" in a red band over the Search map. That tenant layer is gone
+-- (MESITA-1892) and `mesita_pay_enabled` is now a plain column of
+-- `place_profiles`, but the lesson is about the NEXT derived column, not that
+-- one, so the probe stays.
 --
 -- So: run the read. This is the only assertion in the file that proves the
 -- guest browse works rather than that a privilege bit is set.
@@ -297,7 +300,12 @@ select is_empty(
      where c.table_schema = 'public'
        and c.table_name = 'places'
        and c.column_name in (
-         'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
+         -- MESITA-1892 moved the merchant's legal identity onto `places`
+         -- from a table no client role could reach at all. `places` is
+         -- column-granted, so the same secrecy now has to be stated as the
+         -- ABSENCE of a grant — which is exactly what this slot checks.
+         'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social',
+         'rfc', 'legal_name', 'stripe_billing_customer_id'
        )
        and (
          has_column_privilege('anon', 'public.places', c.column_name, 'SELECT')
@@ -305,7 +313,7 @@ select is_empty(
            'authenticated', 'public.places', c.column_name, 'SELECT'
          )
        )$$,
-  'anon and authenticated have no SELECT on existing PIN / CFDI columns'
+  'anon and authenticated have no SELECT on existing PIN / CFDI / legal-identity columns'
 );
 
 select ok(
@@ -339,12 +347,18 @@ select is_empty(
 );
 
 -- The other half of MESITA-1704: the repair must never become "open the table".
--- organizations is EF-only, and it has RLS on with zero policies, so a column
--- grant here would not even error — every place would just read pay-disabled.
+-- The pay bit used to be ANDed with a tenant table's copy of it, reached
+-- through a security-definer function because no client role could read that
+-- table. MESITA-1892 folded that half into `place_profiles`, so nothing in the
+-- view's body is EF-only any more — but the tables that replaced the tenant
+-- layer still are, and a future column appended to `profiles` must never be
+-- answered by reaching into one of them.
 select ok(
-  not has_table_privilege('anon', 'public.organizations', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.organizations', 'SELECT'),
-  'organizations stays closed to the client roles (profiles reads the org bit through a security-definer function instead)'
+  not has_table_privilege('anon', 'public.place_payment_accounts', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.place_payment_accounts', 'SELECT')
+  and not has_table_privilege('anon', 'public.place_guest_customers', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.place_guest_customers', 'SELECT'),
+  'the place-scoped tenant tables stay closed to the client roles (nothing on public.profiles may read one)'
 );
 
 select ok(
@@ -871,38 +885,169 @@ select is_empty(
   'vault.secrets has no retired n8n / serper / tripadvisor rows'
 );
 
--- MESITA-1550: organization_invites exists, EF-only, no client policies.
+-- ━━━ MESITA-1892 — the place is the only tenant ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+-- THE ACCEPTANCE CRITERION, STATED AS A TEST. The organization layer is not
+-- renamed, not parked behind a compatibility view, not left as an unused
+-- column — it is gone. 20260915234500 asserts this at the moment it runs; the
+-- whole reason this file exists is that a LATER migration can quietly undo an
+-- assertion that already passed, and a resurrected tenant layer is exactly the
+-- kind of thing a well-meaning migration brings back.
+--
+-- Extension-owned objects are excluded on purpose: pgTAP itself installs into
+-- `public` here, and the claim is about the schema this repo writes.
+
+select is_empty(
+  $$select c.relname
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and c.relkind in ('r', 'p', 'v', 'm', 'f')
+       and c.relname ilike '%organization%'
+       and not exists (
+         select 1 from pg_depend d
+          where d.objid = c.oid and d.deptype = 'e'
+       )$$,
+  'no organization table, view or matview survives in public (MESITA-1892 removed the layer, it did not rename it)'
+);
+
+select is_empty(
+  $$select c.table_name || '.' || c.column_name
+      from information_schema.columns c
+     where c.table_schema = 'public'
+       and c.column_name ilike '%organization%'$$,
+  'no organization column survives in public (an unused FK is the layer growing back)'
+);
+
+-- The tables are gone; a function body that still SAYS organization is the
+-- same layer surviving as vocabulary, and it is how the next reader learns a
+-- concept the product does not have.
+select is_empty(
+  $$select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.prokind = 'f'
+       and p.prosrc ilike '%organization%'
+       and not exists (
+         select 1 from pg_depend d
+          where d.objid = p.oid and d.deptype = 'e'
+       )$$,
+  'no function body in public still mentions an organization'
+);
+
+-- The same five, named. The sweep above would catch any of them, but it fails
+-- saying "one organization relation survived"; this one fails saying WHICH,
+-- and it is also the only place in the repo that writes down what the layer
+-- consisted of, for whoever reads this file after the migration scrolls away.
+select is_empty(
+  $$select t from unnest(array[
+      'public.organizations', 'public.organization_members',
+      'public.organization_invites', 'public.organization_guest_customers',
+      'public.organization_payment_accounts'
+    ]) t
+    where to_regclass(t) is not null$$,
+  'every table of the organization layer is dropped'
+);
+
+-- WHAT THE ORGANIZATION TABLES WERE PROVING, re-pointed. MESITA-1550 asserted
+-- organizations and organization_invites were EF-only — RLS on, zero policies,
+-- no client SELECT — because a merchant's identity and a pending invite are
+-- not the guest's business. The two tables that inherited that data inherit
+-- the posture; their client SELECT is asserted with the profiles body, above.
+
 select has_table(
-  'public', 'organization_invites',
-  'organization_invites stores pending org-member email invites'
+  'public', 'place_payment_accounts',
+  'place_payment_accounts stores the Stripe Connect account a place gets paid through'
 );
 
 select ok(
   (select relrowsecurity from pg_class
-    where oid = 'public.organization_invites'::regclass),
-  'organization_invites has RLS enabled (EF-only; no client policies)'
+    where oid = 'public.place_payment_accounts'::regclass)
+  and not exists (
+    select 1 from pg_policy where polrelid = 'public.place_payment_accounts'::regclass
+  ),
+  'place_payment_accounts is EF-only: RLS on with zero policies (RLS and no policy denies every non-service role)'
+);
+
+select has_table(
+  'public', 'place_guest_customers',
+  'place_guest_customers stores which Stripe customer a guest is on the place''s connected account'
 );
 
 select ok(
-  not has_table_privilege('anon', 'public.organization_invites', 'SELECT')
-    and not has_table_privilege('authenticated', 'public.organization_invites', 'SELECT'),
-  'client roles have no SELECT on organization_invites'
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_guest_customers'::regclass)
+  and not exists (
+    select 1 from pg_policy where polrelid = 'public.place_guest_customers'::regclass
+  ),
+  'place_guest_customers is EF-only: RLS on with zero policies'
 );
 
--- MESITA-1550: the ≥1-owner backstop is a real constraint trigger, not an
--- app-level count — this is the thing the app-level count-then-act check at
--- the place level cannot be (place_members_one_owner_per_place is a
--- partial unique index and enforces the OPPOSITE invariant, at-most-one).
+-- THE LAST-OWNER BACKSTOP, re-pointed rather than reinvented. MESITA-1550 put
+-- a DEFERRED CONSTRAINT TRIGGER on organization_members because ≥1 owner is a
+-- claim about the rows that REMAIN after a statement, which an app-level
+-- count-then-act cannot make. The place side states the other direction of the
+-- same fact — at most one owner per place — and a partial unique index CAN say
+-- that, atomically, with no trigger. Asserting the index that exists beats
+-- inventing a trigger to keep the shape of an assertion whose table is gone.
 select ok(
   exists (
-    select 1 from pg_trigger t
-    where t.tgname = 'organization_members_owner_backstop'
-      and t.tgrelid = 'public.organization_members'::regclass
-      and t.tgconstraint <> 0
-      and t.tgdeferrable
-      and t.tginitdeferred
+    select 1 from pg_index i
+      join pg_class c on c.oid = i.indexrelid
+     where c.relname = 'place_members_one_owner_per_place'
+       and i.indrelid = 'public.place_members'::regclass
+       and i.indisunique
+       and i.indpred is not null
   ),
-  'organization_members_owner_backstop is a deferred constraint trigger (closes the last-owner-removal race)'
+  'place_members_one_owner_per_place is a partial unique index (one owner per place, enforced by the database)'
+);
+
+-- THE RFC RULE, both halves, on its new table. _shared/place-rfc.ts matches
+-- `places_rfc_unique` BY NAME to turn a 23505 into a sentence a merchant can
+-- act on, so the index name is contract, not decoration.
+select ok(
+  exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.places'::regclass
+       and conname = 'places_rfc_shape'
+       and contype = 'c'
+  ),
+  'places_rfc_shape still checks the RFC shape (a malformed tax ID must never reach a CFDI)'
+);
+
+select ok(
+  exists (
+    select 1 from pg_index i
+      join pg_class c on c.oid = i.indexrelid
+     where c.relname = 'places_rfc_unique'
+       and i.indrelid = 'public.places'::regclass
+       and i.indisunique
+       and i.indpred is not null
+  ),
+  'places_rfc_unique is a partial unique index (one RFC is one merchant; NULL means not paid yet)'
+);
+
+-- THE PAY BIT IS ONE BIT NOW. It was `place AND organization`; the second half
+-- was folded into place_profiles before the layer went, so the capability
+-- every reader sees is unchanged and stated in exactly one column.
+select has_column(
+  'public', 'profiles', 'mesita_pay_enabled',
+  'profiles still exposes mesita_pay_enabled (every Pay door reads it here)'
+);
+
+select is(
+  (select count(*)::int
+     from pg_depend d
+     join pg_rewrite r
+       on r.oid = d.objid and d.classid = 'pg_rewrite'::regclass
+     join pg_attribute a
+       on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
+    where r.ev_class = 'public.profiles'::regclass
+      and d.refobjid = 'public.place_profiles'::regclass
+      and a.attname = 'mesita_pay_enabled'),
+  1,
+  'profiles.mesita_pay_enabled reads place_profiles.mesita_pay_enabled and nothing else (one bit, one writer)'
 );
 
 select * from finish();

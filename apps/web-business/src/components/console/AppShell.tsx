@@ -31,11 +31,14 @@
 // showing a mobile topbar AND a bar offset for a desktop bar that was not
 // there. Everything here switches at `lg` or not at all.
 //
-// ONE SCOPE (MESITA-1807). The rail's organization and place are resolved
-// here, once, from the pathname and the viewer payload, and handed to both
-// rail instances and the header — so three pieces of chrome cannot disagree
-// about whose console this is. The same resolution is what the two rail
-// cookies remember, so the next fresh request paints the same boxes.
+// ONE SCOPE (MESITA-1807). The rail's place is resolved here, once, from the
+// pathname and the viewer payload, and handed to both rail instances and the
+// header — so three pieces of chrome cannot disagree about whose console this
+// is. The same resolution is what the rail cookie remembers, so the next fresh
+// request paints the same rows.
+//
+// ONE SUBJECT, ONE COOKIE (MESITA-1892). There were two of each while an
+// organization sat above the place; the layer is gone and so is its half.
 
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
@@ -44,56 +47,46 @@ import { RailScopeProvider } from "@/components/console/RailScopeContext";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import {
   RAIL_COOKIE_ATTRS,
-  RAIL_ORG_COOKIE,
   RAIL_PLACE_COOKIE,
   SIDEBAR_COLLAPSED_COOKIE,
 } from "@/lib/sidebar-prefs";
-import type { RailOrg } from "@/lib/rail-scope";
+import type { RailPlace } from "@/lib/rail-scope";
 import { useRailScope } from "@/lib/use-rail-scope";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export function AppShell({
-  organizations,
+  places,
   isSuperAdmin,
   viewerError,
   accountLabel,
   rememberedPlaceId,
-  rememberedOrgId,
   defaultCollapsed = false,
   children,
 }: {
-  organizations: readonly RailOrg[];
+  places: readonly RailPlace[];
   isSuperAdmin: boolean;
   viewerError: boolean;
   accountLabel: string;
-  /** The rail cookies, read by the server layout: right on the first frame
+  /** The rail cookie, read by the server layout: right on the first frame
    *  only — a shared layout does not re-run on client navigations, which is
-   *  why the session's own memory (OpenPlaceProvider) beats them. */
+   *  why the session's own memory (OpenPlaceProvider) beats it. */
   rememberedPlaceId: string | null;
-  rememberedOrgId: string | null;
   /** Read from the cookie by the server layout, so the rail paints at its
    *  final width on the first frame. */
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
-  const scope = useRailScope({
-    organizations,
-    rememberedPlaceId,
-    rememberedOrgId,
-    viewerError,
-  });
+  const scope = useRailScope({ places, rememberedPlaceId, viewerError });
   // THE MOBILE TOPBAR STATES THE SCOPE (MESITA-1842). Pato: "no mesita logo,
   // fuck it." The wordmark used to sit here and in the rail; the desktop app's
   // own title bar already says "Mesita Business", so both were a quieter second
   // copy of something the OS renders better. What belongs in a 44px bar above
-  // a CLOSED drawer is the thing the drawer is hiding: which organization and
-  // which place every screen beneath it is about — the same sentence the
-  // rail's two group headers carry on desktop.
-  const scopeLine = [scope.org?.name, scope.place?.name]
-    .filter((n): n is string => Boolean(n))
-    .join(" · ");
+  // a CLOSED drawer is the thing the drawer is hiding: which place every
+  // screen beneath it is about. It was two names joined by a dot while an
+  // organization sat above the place (MESITA-1892); one subject, one name.
+  const scopeLine = scope.place?.name ?? null;
   // Two independent pieces of state, easy to confuse: `open` is the mobile
   // drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
   // collapses — at that size the whole rail is already hidden by default.
@@ -101,18 +94,14 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  // Remember the scope for the next fresh request. The place only when it is
-  // the one actually open — the rail's fallback pick is not a visit.
-  const orgId = scope.org?.id ?? null;
+  // Remember the scope for the next fresh request — but only the place that
+  // is actually open, because the rail's fallback pick is not a visit.
   const visitedPlaceId = scope.placeIsCurrent ? (scope.place?.id ?? null) : null;
   useEffect(() => {
-    if (orgId) {
-      document.cookie = `${RAIL_ORG_COOKIE}=${orgId}; ${RAIL_COOKIE_ATTRS}`;
-    }
     if (visitedPlaceId) {
       document.cookie = `${RAIL_PLACE_COOKIE}=${visitedPlaceId}; ${RAIL_COOKIE_ATTRS}`;
     }
-  }, [orgId, visitedPlaceId]);
+  }, [visitedPlaceId]);
 
   // Lock body scroll, close on Esc, and TRAP TAB.
   //
@@ -180,14 +169,14 @@ export function AppShell({
 
   const railProps = {
     scope,
-    organizations,
+    places,
     isSuperAdmin,
     viewerError,
     accountLabel,
   };
 
   return (
-    <RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>
+    <RailScopeProvider value={{ scope, places, isSuperAdmin }}>
     <div className="fixed inset-0 flex overflow-clip">
       {/* Desktop rail — visible lg+. The column owns the width; the rail fills it. */}
       <div
@@ -267,8 +256,8 @@ export function AppShell({
           </button>
           {/* Text, not a link: the drawer beside it IS the navigation, and a
               second door to a page one tap away is how a bar starts competing
-              with the nav it opens. Empty until an organization resolves — a
-              bar that says "Organization · Place" states nothing. */}
+              with the nav it opens. Empty until a place resolves — a bar that
+              says "Place" states nothing. */}
           {scopeLine && (
             <span className="text-foreground truncate text-sm font-medium">
               {scopeLine}

@@ -146,45 +146,54 @@ Deno.test("scope=all is a MEMBERSHIP read, and it withholds nothing", () => {
   assert(SRC.includes('body.scope === "all"'), "scope=all must be parsed");
   assert(
     SRC.includes("const memberScope"),
-    "org and all share one clearance predicate; two copies would drift",
+    "mine and all share one clearance predicate; two copies would drift",
   );
   // The gate is the CALLER's clearance, not whether a row is held. Keying it
   // off the row would blank half the matrix on the one screen built to
   // compare held places against claimable ones.
   assert(
-    !/scope === "org" \? isPaidPlan/.test(SRC),
-    "the fact gate must read memberScope, not scope === org",
+    !/scope === "mine" \? isPaidPlan/.test(SRC),
+    "the fact gate must read memberScope, not scope === mine",
   );
+  // MESITA-1892: there is nothing left to name and nothing left to prove
+  // membership in. The clearance is the caller's own portfolio — a
+  // place_members row, or super-admin — which is narrower than the tenant
+  // check it replaces, never wider. (`_shared/no-organization-layer.test.ts`
+  // is the repo-wide guard on the retired names; this one pins what replaced
+  // them.)
   assert(
-    SRC.includes("requireOrgRole("),
-    "a membership scope must prove membership",
-  );
-  // organizationId is what membership is checked AGAINST — no id, no read.
-  assert(
-    /organizationId is required for scope=\$\{scope\}/.test(SRC),
-    "both membership scopes require an organizationId",
+    SRC.includes("myPlaceIds.size > 0") && SRC.includes("superAdmin"),
+    "clearance is holding a place, or being staff",
   );
 });
 
-Deno.test("scope=all is this org's places OR the unheld ones", () => {
+Deno.test("scope=all is MY places OR the unheld ones", () => {
   assert(
-    SRC.includes(
-      "organization_id.eq.${organizationId},organization_id.is.null",
-    ),
-    "all = held by this org, or held by nobody",
+    SRC.includes("q.or(`id.in.(${mineList.join(\",\")}),claimed_at.is.null`)"),
+    "all = held by me, or held by nobody",
   );
   // `eq.null` is not a null test in PostgREST and would match nothing.
-  assert(!SRC.includes("organization_id.eq.null"), "null needs is.null");
+  assert(!SRC.includes("claimed_at.eq.null"), "null needs is.null");
+  // And an empty portfolio cannot build `id.in.()`, which PostgREST rejects.
+  assert(
+    SRC.includes("mineList.length === 0"),
+    "the union must collapse to the pool half when I hold nothing",
+  );
 });
 
-Deno.test("the direct-owner filter spares rows this org holds", () => {
+Deno.test("the direct-owner filter spares rows I hold", () => {
   // placeIdsWithDirectOwner is the shared claim predicate: a place with a
-  // project_members owner is not claimable even with organization_id null.
-  // On scope=all it must not strip this organization's OWN rows, which are
-  // held by definition and would otherwise vanish from its own list.
+  // place_members owner is not claimable even with claimed_at null, because
+  // it was owned the old way and never passed through the pool. On scope=all
+  // it must not strip the caller's OWN rows, which are held by definition and
+  // would otherwise vanish from their own list.
   assert(
-    SRC.includes("r.organization_id !== null || !owned.has(r.id)"),
+    SRC.includes("myPlaceIds.has(r.id) || !isHeld(r)"),
     "held rows survive the pool predicate",
+  );
+  assert(
+    SRC.includes("placeIdsWithDirectOwner("),
+    "the owner half comes from the shared predicate, not a local query",
   );
 });
 
@@ -252,12 +261,20 @@ Deno.test("the search escapes LIKE wildcards", () => {
   );
 });
 
-Deno.test("the holder's name rides the row, and the pool has none", () => {
-  assert(SRC.includes("organizationName:"), "row must carry the holder name");
+Deno.test("no holder name rides the row any more", () => {
+  // The row used to carry the holding tenant's `name` so it could say who held
+  // it without a second request. A place is held by the ACCOUNT that claimed
+  // it now, and the only held rows this endpoint returns are the caller's own
+  // — so a holder name could only repeat the caller back at themselves, and
+  // joining `managers` to build one would put another operator's name on a
+  // wire that never needed it.
   assert(
-    SRC.includes("r.organizations?.name ?? null"),
-    "an unheld place reports null, never an invented holder",
+    (CODE.match(/!inner\(/g) ?? []).length === 1,
+    "one embed only (place_profiles); a holder relation would be a second",
   );
+  assert(!CODE.includes("managers"), "no operator identity joins this list");
+  // WHEN is still a fact about the place, and the console shows it.
+  assert(CODE.includes("claimedAt:"), "claimedAt stays on the row");
 });
 
 Deno.test("only columns that exist are selected", () => {

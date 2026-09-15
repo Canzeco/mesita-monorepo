@@ -128,18 +128,17 @@ describe("the rail is light, and every text token is a measured pair", () => {
     // actually lives, so it was the half that mattered.
     const SANCTIONED = [
       /^href=\{SHELL_ROUTES\./, // a fixed address
-      /^href=\{orgHref\(/, // an organization page
-      /^href=\{orgPlacesHref\(/, // the list
-      /^href=\{orgPlacesNewHref\(/, // the Add place ceremony
+      /^href=\{placePageHref\(/, // one of the place's four pages
+      /^href=\{placesHref\(/, // the catalogue
       /^href=\{placeTabHref\(/, // a place view
       /^href=\{landingHref\}$/, // where / would land, resolved by AppShell
       /^href=\{href\}$/, // NavRow prop pass-through: built by the caller
       /^href=\{row\.href\}$/, // the six rows: a table of SHELL_ROUTES / viewHref entries (MESITA-1832)
       /^href=\{viewRow\(/, // a place view, canonical or its flat resolver (MESITA-1841)
-      /^href=\{orgRow\(/, // an organization page, canonical or its flat resolver
+      /^href=\{pageRow\(/, // a place page, canonical or its flat resolver
       // A PRODUCT ROW, through the ONE function that knows the three shapes a
-      // product's address can have (MESITA-1885): a place view, an
-      // organization page, or the Soon sub-page under `products/`. It is
+      // product's address can have (MESITA-1885): a place view, a place page,
+      // or the Soon sub-page under `products/`. It is
       // sanctioned for exactly the reason this test exists — the alternative
       // was a ternary in the rail, which is a second copy of the mapping, and
       // a second copy is what starts 404ing a row.
@@ -172,10 +171,13 @@ describe("the rail is light, and every text token is a measured pair", () => {
     );
   });
 
-  it("resolves the scope once and remembers it in the two rail cookies", () => {
+  it("resolves the scope once and remembers it in the ONE rail cookie", () => {
     expect(shell).toContain("useRailScope(");
-    expect(shell).toContain("RAIL_ORG_COOKIE");
     expect(shell).toContain("RAIL_PLACE_COOKIE");
+    // THERE WAS A SECOND (MESITA-1892). `business_rail_org` remembered which
+    // organization you were in; there is no second scope to remember, and a
+    // cookie nobody reads is a cookie somebody will one day read by mistake.
+    expect(shell).not.toContain("RAIL_ORG_COOKIE");
     // Only a place actually OPEN is remembered — the rail's fallback pick is
     // not a visit.
     expect(shell).toContain("scope.placeIsCurrent ? (scope.place?.id ?? null) : null");

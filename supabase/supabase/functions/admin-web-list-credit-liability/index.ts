@@ -1,18 +1,25 @@
 // Supabase Edge Function — admin-web-list-credit-liability (admin console)
 //
 // The operator view MESITA-1679 asks for: issued value, outstanding balance,
-// pending (still-held) lots, per-organization exposure, and breakage to
-// date — "Credits would otherwise ship with no operator view of issued
-// value, outstanding liability, or per-org exposure."
+// pending (still-held) lots, per-PLACE exposure, and breakage to date —
+// "Credits would otherwise ship with no operator view of issued value,
+// outstanding liability, or per-org exposure." That last phrase is the only
+// thing MESITA-1892 changed: the tenant whose exposure an operator reads is
+// the place, so get_credit_liability's payload carries `byPlace` (entries of
+// placeId / placeName / currency / issuedCents / outstandingCents / lotCount /
+// currencyMismatch) where it carried `byOrganization`. The totals and the
+// breakage half are untouched.
 //
 // ITS OWN admin-web-* NAME, NOT A REUSE. ef-caller-acl.test.ts fails if a
 // consumer-web-* name shows up inside apps/web-admin, so this cannot borrow
 // any consumer-facing wallet read even though the underlying tables are the
 // same — the admin console gets its own door.
 //
-// The heavy lifting — currency-safe grouping, the per-org currency-mismatch
-// flag, breakage falling out of the ledger — lives in the SQL function
-// get_credit_liability (20260908153425_credit_refund_adjust_and_liability.sql).
+// The heavy lifting — currency-safe grouping, the per-place currency-mismatch
+// flag (a lot's currency against the place's own), breakage falling out of
+// the ledger — lives in the SQL function get_credit_liability
+// (20260908153425_credit_refund_adjust_and_liability.sql, re-scoped by
+// 20260915234500_the_place_is_the_only_tenant.sql).
 // This EF is a thin ACL-gated wrapper, same shape as
 // admin-web-get-config's `controls` section.
 //

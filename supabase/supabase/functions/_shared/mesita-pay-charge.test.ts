@@ -4,8 +4,9 @@
 //     never as a body param (that's how a direct charge stays on the RIGHT
 //     account instead of silently hitting the platform's own);
 //   - a cached connected-account customer is reused, never re-minted;
-//   - a fresh customer gets cached so the next charge at the same
-//     organization reuses it;
+//   - a fresh customer gets cached so the next charge at the same PLACE
+//     reuses it (the cache was org-scoped until MESITA-1892 — the connected
+//     account is the place's now, and the cached Customer lives on it);
 //   - the PaymentIntent carries the idempotency key and the ticket id in
 //     metadata (the webhook backstop's only way to find the ticket);
 //   - Stripe's outcome states (succeeded / requires_action / card decline /
@@ -29,7 +30,7 @@ function fakeAdmin(cachedCustomerId: string | null) {
       Promise.resolve({
         data: cachedCustomerId
           ? {
-            organization_id: "org_1",
+            place_id: "place_1",
             consumer_id: "c_1",
             stripe_customer_id: cachedCustomerId,
             created_at: "2026-01-01T00:00:00Z",
@@ -93,7 +94,7 @@ function fakeStripe(overrides: {
 }
 
 const BASE_ARGS = {
-  organizationId: "org_1",
+  placeId: "place_1",
   connectedAccountId: "acct_1",
   consumerId: "c_1",
   ticketId: "ticket_1",
@@ -115,7 +116,7 @@ Deno.test("succeeds: clones, attaches to a NEW customer, caches it, charges dire
 
   // A fresh customer was minted and cached for next time.
   assertEquals(writes, [
-    { organization_id: "org_1", consumer_id: "c_1", stripe_customer_id: "cus_conn_new" },
+    { place_id: "place_1", consumer_id: "c_1", stripe_customer_id: "cus_conn_new" },
   ]);
 
   // Every connected-account call carries stripeAccount as a REQUEST OPTION,

@@ -26,18 +26,18 @@ import type { PaymentAccountState } from "@/lib/model/types";
 const CARD_SRC = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
 const PARTNER_SRC = readFileSync(path.join(__dirname, "./PartnerCard.tsx"), "utf8");
 const PAGE_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/products/page.tsx"),
   "utf8",
 );
 // Mesita Pay's controls got their own address (MESITA-1872): Pato took the
 // Section off the catalogue — *"just leave the 8 boxes and the 1 partnership
 // box shit"* — so the composition this file asserts lives one path deeper.
 const PAY_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/pay/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/products/pay/page.tsx"),
   "utf8",
 );
 const LOADING_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/loading.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/products/loading.tsx"),
   "utf8",
 );
 const LADDER_SRC = readFileSync(
@@ -58,7 +58,7 @@ function stripComments(src: string) {
 function card(over: Partial<Parameters<typeof PaymentsCard>[0]> = {}) {
   return renderToStaticMarkup(
     <PaymentsCard
-      orgId="org-1"
+      placeId="p-1"
       account={null}
       orphaned={false}
       isOwner
@@ -163,10 +163,10 @@ describe("the unbuilt boxes stop out-shouting the live ones", () => {
 //
 // MESITA-1867 built it for one caller: Mesita Pay, flat and dashed with a lock
 // where the Soon pill sits, on a Configuration page that had to show the tier
-// even to an organization that could not reach it. The catalogue says that
-// sentence now — the Mesita Pay CARD reads "Locked · Needs Mesita Partner" —
-// and the page simply does not render the box until the organization can
-// touch it. An exported component nobody renders is an invitation to say the
+// even to a tenant that could not reach it. The catalogue says that sentence
+// now — the Mesita Pay CARD reads "Locked · Needs Mesita Partner" — and the
+// page simply does not render the box until the place can touch it. An
+// exported component nobody renders is an invitation to say the
 // same thing twice on one screen, which is the note badges.tsx already wrote
 // about `ORG_STATE_BADGE`.
 //
@@ -201,27 +201,33 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
     // longer exists scrolls NOWHERE, silently — the worst kind of dead link,
     // which is why the verb is a real address now.
     expect(code).not.toContain("#mesita-pay");
-    expect(PAGE_SRC).toContain("orgPayHref(org.id)");
+    expect(PAGE_SRC).toContain("placePayHref(id)");
   });
 
   it("the payments log moved to Activity, which is where readings live", () => {
     const activity = readFileSync(
-      path.join(__dirname, "../../app/(shell)/orgs/[orgId]/activity/page.tsx"),
+      path.join(__dirname, "../../app/(shell)/places/[id]/activity/page.tsx"),
       "utf8",
     );
-    // Twice on purpose: the no-place branch returns early, and that is the
-    // state that most needs to say what is coming.
-    expect((activity.match(/SOON_STRIPS\.payments/g) ?? []).length).toBe(2);
+    // ONCE now, not twice (MESITA-1892). The second render was the ORG
+    // page's no-place branch, which returned early with `NoPlaceYet` and the
+    // strip; Activity is one place's page, so a caller with no place never
+    // reaches it — the flat `/activity` answers with the next step instead.
+    expect((activity.match(/SOON_STRIPS\.payments/g) ?? []).length).toBe(1);
     // The skeleton grew with it, or every load ends in a 72px shift.
     const loading = readFileSync(
-      path.join(__dirname, "../../app/(shell)/orgs/[orgId]/activity/loading.tsx"),
+      path.join(__dirname, "../../app/(shell)/places/[id]/activity/loading.tsx"),
       "utf8",
     );
     expect(loading).toContain('"h-[220px]", "h-[72px]"');
   });
 
-  it("the caption is grouped with its title, not spaced like a sibling card", () => {
-    expect(PAGE_SRC).toMatch(/flex flex-col gap-1[\s\S]{0,400}<h1/);
+  it("the page adds NO heading of its own — the place layout owns the h1", () => {
+    // MESITA-1892. Every address under `places/[id]` renders beneath
+    // `PlaceHeading`, which names the venue and then the page. A second `h1`
+    // here would be the third time one screen says where you are.
+    expect(stripComments(PAGE_SRC)).not.toContain("<h1");
+    expect(stripComments(LOADING_SRC)).not.toContain("h-7 w-56");
   });
 
   // A skeleton is a promise about what is coming (MESITA-1729). The
@@ -250,17 +256,21 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
 // prerequisite.
 describe("Partnership is the gate, never the delivery", () => {
   const partner = (
-    over: Partial<Omit<Parameters<typeof PartnerCard>[0], "orgId">> = {},
+    over: Partial<Omit<Parameters<typeof PartnerCard>[0], "placeId">> = {},
   ) =>
     renderToStaticMarkup(
-      <PartnerCard orgId="org-1" partnered={false} isOwner {...over} />,
+      <PartnerCard placeId="p-1" partnered={false} isOwner {...over} />,
     );
 
   it("the lead hands the verb to the place, once, in every state", () => {
     expect(stripComments(PARTNER_SRC)).toContain("turns these on");
     for (const html of [partner(), partner({ partnered: true })]) {
       expect(html.split("turns these on").length - 1).toBe(1);
-      expect(html).toContain("from Rewards and Capabilities");
+      // NOT "from Rewards and Capabilities" any more: MESITA-1885 retired
+      // both views and split them into one per product, so the lead names the
+      // set rather than two addresses that stopped existing.
+      expect(html).toContain("from its own product views");
+      expect(html).not.toContain("Capabilities");
     }
   });
 
@@ -310,10 +320,10 @@ describe("Partnership is the gate, never the delivery", () => {
 // they are the two ways this line can lie to an operator about money.
 describe("Mesita Partner is a price, a door, and a price list", () => {
   const partner = (
-    over: Partial<Omit<Parameters<typeof PartnerCard>[0], "orgId">> = {},
+    over: Partial<Omit<Parameters<typeof PartnerCard>[0], "placeId">> = {},
   ) =>
     renderToStaticMarkup(
-      <PartnerCard orgId="org-1" partnered={false} isOwner {...over} />,
+      <PartnerCard placeId="p-1" partnered={false} isOwner {...over} />,
     );
 
   it("the door is the owner's: non-owners read who subscribes instead", () => {
@@ -450,7 +460,7 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     const banner = readFileSync(path.join(__dirname, "./PartnerBanner.tsx"), "utf8");
     expect(banner).toContain("if (!partnered) {");
     expect(banner).toContain("partnered={false}");
-    // ONE STATUS NOUN. The strip says what the organization IS — Partner —
+    // ONE STATUS NOUN. The strip says what the place IS — Partner —
     // and the only "membership" it may carry is the prop that hands it the
     // subscription. Never a synonym in the copy: the mock's "included with
     // your membership" stays written as partnership (MESITA-1877).
@@ -462,7 +472,7 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
 });
 
 // MESITA-1864. Locked used to render a pill and a sentence where the other
-// two branches render a control, so the state every new organization actually
+// two branches render a control, so the state every new place actually
 // meets — Stripe not Ready — was the one that never showed the switch as a
 // thing you turn on. MESITA-1867 moved that switch from Partner to Mesita
 // Pay; the idiom holds: every branch a track and one line. The switch is

@@ -2,7 +2,7 @@
 //
 // This is split out of `place-view.ts` deliberately (MESITA-1558). That module
 // also holds the two `cache()`d server reads, and those reach
-// `lib/api/organizations` -> `lib/api/_invoke` and `place-manage/actions`
+// `lib/api/console` -> `lib/api/_invoke` and `place-manage/actions`
 // -> `lib/supabase-ef` -> `lib/supabase/server`. A "use client" tab row that
 // imports the vocabulary from there drags the whole server data layer into its
 // bundle graph. `shell-contract.test.ts` names that invariant but cannot catch
@@ -97,10 +97,11 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
 };
 
 /** What the rail and the place layout know about a viewer on a place. `role`
- *  is the viewer's role in the organization that holds it; null when nobody
- *  holds it (a pool place). */
+ *  is the viewer's own `place_members` role; null when they hold none — which
+ *  is every pool place (MESITA-1892: there is no holder above the place, so
+ *  the role IS the membership). */
 export type ViewerAccess = {
-  /** An organization holds this place and the viewer is in it. */
+  /** The viewer holds a membership on this place. */
   held: boolean;
   role: "owner" | "editor" | "viewer" | null;
   isSuperAdmin: boolean;
@@ -109,7 +110,7 @@ export type ViewerAccess = {
 /** Which tabs a viewer may open on a place — THE matrix, in one place.
  *
  *  pool place            → Profile only (it carries Claim)
- *  held · org viewer     → Profile + Menus + Reviews (the read surfaces)
+ *  held · viewer         → Profile + Menus + Reviews (the read surfaces)
  *  held · owner/editor   → + the five PRODUCT views
  *  super-admin           → + Admin (operator internals)
  *
@@ -121,10 +122,10 @@ export type ViewerAccess = {
  *
  *  Two callers, one rule (MESITA-1779). The place layout resolves it
  *  server-side for the place you are ON (`visibleTabs` in lib/place-view.ts
- *  delegates here). The rail applies it to the place it shows, from the
- *  viewer's org role and super-admin flag, so a place opens to its views
- *  WITHOUT being visited; the published set still wins on the place itself,
- *  where the server has the last word. */
+ *  delegates here). The rail applies it to the place it shows, from the role
+ *  on the viewer's own row and the super-admin flag, so a place opens to its
+ *  views WITHOUT being visited; the published set still wins on the place
+ *  itself, where the server has the last word. */
 export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   if (!access.held) return ["profile"];
   const tabs: PlaceTab[] =
@@ -144,9 +145,9 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   return tabs;
 }
 
-/** A view's address. No organization rides along any more (MESITA-1807):
- *  the place id names its holder, and the rail reads its scope off the
- *  pathname. */
+/** A view's address. No organization rides along any more (MESITA-1807), and
+ *  since MESITA-1892 there is none to ride: the place id is the whole scope,
+ *  and the rail reads it off the pathname. */
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
   return `/places/${encodeURIComponent(placeId)}/${tab}`;
 }

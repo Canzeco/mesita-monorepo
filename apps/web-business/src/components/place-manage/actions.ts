@@ -516,10 +516,11 @@ export async function setPlaceRails(
 
 // ── Stripe Connect mirror (read-only) ────────────────────────────────────
 //
-// The connected-account state for the place's holding organization, plus the
-// full pay-readiness verdict for the place. Mesita is a PLATFORM, not a
-// marketplace: direct charges on the ORGANIZATION's own account — the
-// organization is merchant of record (MESITA-1545), Mesita never holds funds.
+// The connected-account state for THIS PLACE, plus the full pay-readiness
+// verdict. Mesita is a PLATFORM, not a marketplace: direct charges on the
+// place's own account — the place is merchant of record (MESITA-1545 made
+// that the organization; MESITA-1892 deleted the layer and the venue is the
+// tenant again), and Mesita never holds funds.
 // The law is supabase/functions/_shared/stripe-connect.ts and it is frozen by
 // tests.
 //
@@ -528,8 +529,9 @@ export async function setPlaceRails(
 // step, never a dependency — so the admin read self-heals rather than trusting
 // that every account.updated arrived.
 
-/** `organization_payment_accounts` mirror row, one per org. Absent = the
- *  place's holding organization has never onboarded. */
+/** `place_payment_accounts` mirror row, one per PLACE (MESITA-1892; it was
+ *  `organization_payment_accounts`, shared by every place a holder held).
+ *  Absent = this place has never onboarded. */
 export type OrgPaymentAccount = {
   /** "acct_…" real, or "mock_acct_<place_id>" when MOCK_CONNECT is on. */
   stripe_account_id: string;
@@ -573,16 +575,17 @@ export type PaymentOnboardingStart = {
 };
 
 /**
- * Create (if missing) the place's holding organization's connected account
- * and get a Stripe-hosted onboarding link. This sends `placeId`, not
- * `orgId`: the place console doesn't carry the org id, so the EF resolves
- * the place's holding organization server-side (MESITA-1563) and 400s with
- * `place_has_no_organization` when the place sits in the public pool.
+ * Create (if missing) THIS PLACE's connected account and get a Stripe-hosted
+ * onboarding link. It sends `placeId` and always did: the place console never
+ * carried an org id, so the EF used to resolve the holding organization
+ * server-side (MESITA-1563) and 400 with `place_has_no_organization` for a
+ * pooled place. There is nothing left to resolve (MESITA-1892) — the place IS
+ * the account's owner — so that refusal is gone with the lookup that produced
+ * it.
  *
- * The caller must hold `owner` on that organization (`org-membership.ts
- * requireOrgRole`) — deliberately no super-admin exemption post org-as-
- * merchant (MESITA-1545): organization membership is a business fact, and an
- * operator acting on an org should join it.
+ * The caller must hold `owner` ON THE PLACE (`requireOwner`) — deliberately
+ * no super-admin exemption post place-as-merchant: holding the place is a
+ * business fact, and an operator acting on one should be on its team.
  *
  * `returnUrl` / `refreshUrl` are REQUIRED here. The EF defaults to the
  * business console's `/unit/<id>/promos`, so an admin-initiated onboarding
@@ -633,10 +636,9 @@ export async function startPlacePaymentOnboarding(
 }
 
 /**
- * Mint a single-use Express Dashboard link for the account connected to the
- * place's holding organization. Sends `placeId`; the EF resolves the org the
- * same way `startPlacePaymentOnboarding` does (MESITA-1563) and requires
- * `owner` on it — no super-admin exemption (see that function's doc for why).
+ * Mint a single-use Express Dashboard link for THIS PLACE's connected
+ * account. Sends `placeId` and requires `owner` on the place — no super-admin
+ * exemption (see `startPlacePaymentOnboarding`'s doc for why).
  *
  * Under the old Standard controller this had no reason to exist — the place
  * logged into stripe.com. Under Express (MESITA-1532) a platform-minted link

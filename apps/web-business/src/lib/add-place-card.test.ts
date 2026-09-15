@@ -49,7 +49,7 @@ describe("rowStateForLookup", () => {
     expect(rowStateForLookup(pending, new Set()).kind).toBe("claim");
   });
 
-  it("opens a place this org already holds, even if lookup says partner", () => {
+  it("opens a place the caller already holds, even if lookup says partner", () => {
     const lookup: LookupResult = {
       state: "verified_partner",
       place,
@@ -57,7 +57,7 @@ describe("rowStateForLookup", () => {
     };
     expect(rowStateForLookup(lookup, new Set(["p-1"]))).toEqual({
       kind: "open",
-      label: "In this organization",
+      label: "You hold this",
       placeId: "p-1",
     });
   });

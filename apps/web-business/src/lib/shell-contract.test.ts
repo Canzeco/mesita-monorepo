@@ -2,17 +2,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SHELL_ROUTES, orgHref, orgPlacesNewHref } from "./console-routes";
+import { SHELL_ROUTES, placePageHref } from "./console-routes";
 import { SIGNED_IN_BOUNCE, shouldGate } from "./supabase/middleware";
-import {
-  canAddPlace,
-  canClaim,
-  canRelease,
-  findHolder,
-  findOrg,
-  preferredOrg,
-} from "./active-organization";
-import type { Organization } from "./api/organizations";
+import { canRelease, canVerify, findPlace, pickPlace } from "./active-place";
 
 describe("middleware contract", () => {
   it("does not bounce signed-in visitors off /", () => {
@@ -22,19 +14,19 @@ describe("middleware contract", () => {
     expect(SIGNED_IN_BOUNCE.has("/signin")).toBe(true);
   });
   it("gates every console screen that reads real data", () => {
-    // Every organization page and the ceremony sit under /orgs (MESITA-1807);
-    // the place console stays under /places; Account is its own.
-    expect(shouldGate(orgHref("abc"))).toBe(true);
-    expect(shouldGate(orgHref("abc", "places"))).toBe(true);
-    expect(shouldGate(orgPlacesNewHref("abc"))).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.orgNew)).toBe(true);
+    // Every page the console has sits under /places now (MESITA-1892) — the
+    // place's own views, its four pages, the catalogue and the ceremony —
+    // except Account, which is its own.
+    expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.placesNew)).toBe(true);
     expect(shouldGate("/places/abc")).toBe(true);
     expect(shouldGate("/places/abc/activity")).toBe(true);
+    expect(shouldGate(placePageHref("abc", "settings"))).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
   });
   it("leaves the root ungated — it renders nothing to protect", () => {
-    // `/` resolves to a place or an organization and reads no data of its
-    // own that a visitor could see. Gating it would bounce a signed-out
+    // `/` resolves to a place and reads no data of its own that a visitor
+    // could see. Gating it would bounce a signed-out
     // visitor through sign-in only to reach a redirect. Its destination
     // carries the wall, and so does (shell)/layout.tsx, which is the real
     // boundary either way.
@@ -48,10 +40,13 @@ describe("middleware contract", () => {
     expect(shouldGate("/place/abc")).toBe(false);
     expect(shouldGate("/settings")).toBe(false);
     expect(shouldGate("/pool")).toBe(false);
-    // MESITA-1807 moved the organization into the path; the old address is a
-    // redirect now, resolved before the proxy sees it.
+    // MESITA-1807 moved the organization into the path and MESITA-1892
+    // deleted it; every one of these is a redirect now, resolved before the
+    // proxy sees it.
     expect(shouldGate("/organization")).toBe(false);
     expect(shouldGate("/organization/new")).toBe(false);
+    expect(shouldGate("/orgs/abc")).toBe(false);
+    expect(shouldGate("/orgs/abc/settings")).toBe(false);
   });
 });
 
@@ -96,7 +91,7 @@ describe("client components never import the server data layer", () => {
   it("the rail's scope rule and the place vocabulary stay server-free", () => {
     // Both are imported by "use client" chrome; a server import in either
     // drags the data layer into the browser bundle graph.
-    for (const rel of ["rail-scope.ts", "place-tabs.ts", "active-organization.ts", "console-routes.ts"]) {
+    for (const rel of ["rail-scope.ts", "place-tabs.ts", "active-place.ts", "console-routes.ts"]) {
       const src = readFileSync(path.join(__dirname, rel), "utf8");
       expect(src, rel).not.toMatch(/from\s+["']@\/lib\/supabase/);
       expect(src, rel).not.toMatch(/from\s+["']@\/lib\/api\/_invoke/);
@@ -158,67 +153,62 @@ describe("the shell never re-couples to the overview EF", () => {
   });
 });
 
-const org = (
-  id: string,
-  myRole: Organization["myRole"],
-  places: string[] = [],
-): Organization => ({
+const place = (id: string, myRole: "owner" | "editor" | "viewer") => ({
   id,
-  name: id,
-  legalName: null,
-  rfc: null,
-  currency: "MXN",
   myRole,
-  placeCount: places.length,
-  places: places.map((p) => ({ id: p, name: p, photoUrl: null })),
 });
 
-// NEVER AN ORACLE (MESITA-1807). The path names the organization now, and the
-// org layout answers 404 for a foreign id exactly as for a nonexistent one.
-// These pin the pure rules under it.
-describe("the organization rules", () => {
-  const orgs = [org("a", "owner", ["p-1"]), org("b", "editor")];
+// NEVER AN ORACLE (MESITA-1807). The path names the place, and the place
+// layout answers 404 for one the caller does not hold exactly as for one that
+// does not exist. These pin the pure rules under it.
+//
+// ONE SUBJECT (MESITA-1892). `findOrg`, `preferredOrg` and `findHolder` were
+// three functions about the layer above the place; the layer is gone, so the
+// portfolio is a flat list and one lookup answers all three questions.
+describe("the place rules", () => {
+  const places = [place("a", "owner"), place("b", "editor")];
 
-  it("findOrg answers a membership the caller actually has", () => {
-    expect(findOrg(orgs, "b")?.id).toBe("b");
+  it("findPlace answers a membership the caller actually has", () => {
+    expect(findPlace(places, "b")?.id).toBe("b");
   });
 
-  it("findOrg answers null for a foreign id AND for a nonexistent one", () => {
+  it("findPlace answers null for a foreign id AND for a nonexistent one", () => {
     // The same answer for both, or the path becomes a membership oracle.
-    expect(findOrg(orgs, "someone-elses-org")).toBeNull();
-    expect(findOrg(orgs, "")).toBeNull();
-    expect(findOrg(orgs, null)).toBeNull();
-    expect(findOrg([], "a")).toBeNull();
+    expect(findPlace(places, "someone-elses-place")).toBeNull();
+    expect(findPlace(places, "")).toBeNull();
+    expect(findPlace(places, null)).toBeNull();
+    expect(findPlace([], "a")).toBeNull();
   });
 
-  it("preferredOrg is the remembered one when still a member, else the first", () => {
-    expect(preferredOrg(orgs, "b")?.id).toBe("b");
-    expect(preferredOrg(orgs, "someone-elses-org")?.id).toBe("a");
-    expect(preferredOrg(orgs, null)?.id).toBe("a");
-    expect(preferredOrg([], "a")).toBeNull();
-  });
-
-  it("findHolder searches every organization, never only the remembered one", () => {
-    expect(findHolder(orgs, "p-1")?.org.id).toBe("a");
-    expect(findHolder(orgs, "p-x")).toBeNull();
-    expect(findHolder(orgs, null)).toBeNull();
+  it("pickPlace is the remembered one when still held, else the first", () => {
+    expect(pickPlace(places, "b")?.id).toBe("b");
+    expect(pickPlace(places, "someone-elses-place")?.id).toBe("a");
+    expect(pickPlace(places, null)?.id).toBe("a");
+    expect(pickPlace([], "a")).toBeNull();
   });
 });
 
 describe("action permissions mirror the EF guards", () => {
-  it("claim: owner and editor, never viewer", () => {
-    expect(canClaim("owner")).toBe(true);
-    expect(canClaim("editor")).toBe(true);
-    expect(canClaim("viewer")).toBe(false);
-  });
-  it("add place ceremony: owner only — matching claim EF and create-then-claim", () => {
-    expect(canAddPlace("owner")).toBe(true);
-    expect(canAddPlace("editor")).toBe(false);
-    expect(canAddPlace("viewer")).toBe(false);
-  });
   it("release: owner only — an editor could otherwise re-claim elsewhere", () => {
     expect(canRelease("owner")).toBe(true);
     expect(canRelease("editor")).toBe(false);
     expect(canRelease("viewer")).toBe(false);
+    expect(canRelease(null)).toBe(false);
+  });
+  it("verify: owner only, matching business-web-verify-place's own guard", () => {
+    expect(canVerify("owner")).toBe(true);
+    expect(canVerify("editor")).toBe(false);
+    expect(canVerify("viewer")).toBe(false);
+    expect(canVerify(undefined)).toBe(false);
+  });
+  it("claim has NO predicate left, and that is the assertion (MESITA-1892)", async () => {
+    // `canClaim` and `canAddPlace` asked what rank the caller held in the
+    // ORGANIZATION the place was about to join. `claim_place(p_place_id,
+    // p_claimer)` mints the caller's own owner row, so there is nothing to
+    // hold first and a predicate answering `true` for everyone would be a
+    // lock drawn on a door with no bolt in it.
+    const mod = await import("./active-place");
+    expect(Object.keys(mod)).not.toContain("canClaim");
+    expect(Object.keys(mod)).not.toContain("canAddPlace");
   });
 });

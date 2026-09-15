@@ -2,16 +2,19 @@
 // payment-state pill, data row. Rows not cards — these are calm utility
 // chrome, not decoration.
 //
-// Two ladders, deliberately kept apart: an ORGANIZATION is Not connected
-// or Connected (does money land), a PLACE is Listed or Verified (can a
-// guest reach it, did someone prove they run it). Neither describes the
-// other, so neither badge is reusable for the other.
+// Two ladders, deliberately kept apart: a PAYMENT ACCOUNT is somewhere on
+// Stripe's lifecycle (does money land, can it leave), a PLACE is Listed or
+// Verified (can a guest reach it, did someone prove they run it). Neither
+// describes the other, so neither badge is reusable for the other. They were
+// two ENTITIES' ladders until MESITA-1892 — the organization's and the
+// place's — and the account is the place's own now; the distinction that
+// mattered survives it, because Stripe's state and Atlas's state are still
+// different questions.
 //
-// A third chip, Partner, is deliberately SHARED (MESITA-1867): the
-// organization holds the subscription and every place it holds wears it, so
-// Configuration and the place heading print one word from one component in
-// one colour. Two pages drawing the same fact in two violets was the drift
-// this file exists to prevent.
+// A third chip, Partner, is deliberately SHARED (MESITA-1867): the catalogue
+// banner and the place heading print one word from one component in one
+// colour. Two pages drawing the same fact in two violets was the drift this
+// file exists to prevent.
 import { cn } from "@/lib/utils";
 import type {
   PaymentAccountState,

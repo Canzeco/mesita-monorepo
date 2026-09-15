@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import * as uiClasses from "./ui-classes";
 import { STATES_HEAD_STICKY, SHELL_BLEED, SHELL_GUTTER } from "./ui-classes";
 import { PLACE_TABS, placeTabHref, tabsForAccess } from "./place-tabs";
-import { placeHref } from "./console-routes";
+import { PLACE_PAGES, placeHref } from "./console-routes";
 import { LADDER_ZONES } from "@/components/place-manage/sections/controls/offerings";
 
 const SRC = path.resolve(__dirname, "..");
@@ -212,12 +212,15 @@ describe("the rail is six nouns and one indent", () => {
   // only ever decoration — a tree line, a bullet, a box, a well, a second
   // eyebrow, a `role="group"` — and a SECOND depth, which is the point a rail
   // stops being a nav and becomes a file tree.
-  it("indents ONE level, by padding, and draws no tree line, bullet, box or well", () => {
+  it("indents NOTHING, and draws no tree line, bullet, box or well", () => {
+    // MESITA-1879 flattened the column and MESITA-1892 removed the last thing
+    // an indent could have meant: every row is about the one place, so there
+    // is no parent for a child row to sit under. `ROW_INDENT` is gone rather
+    // than left unused — an indent constant in a flat rail is an invitation
+    // to re-nest it.
     const r = rail();
-    expect(r).toContain('const ROW_INDENT = "pl-7 lg:pl-6";');
-    // Exactly one indent constant, applied in exactly one place.
-    expect((r.match(/ROW_INDENT/g) ?? []).length).toBe(2);
-    expect(r).toContain("indent && !collapsed && ROW_INDENT");
+    expect(r).not.toContain("ROW_INDENT");
+    expect(r).not.toContain("pl-7");
     expect(r).not.toContain("paddingLeft");
     expect(r).not.toMatch(/border-l-\d/);
     expect(r).not.toMatch(/rounded-full["\s]*\/>/);
@@ -262,18 +265,19 @@ describe("the rail is six nouns and one indent", () => {
   });
 
   it("renders a selector only where one has something to select", () => {
-    // MESITA-1879. Both selectors are still in this file and still render —
-    // the franchise path is DEFERRED, not deleted — but each is behind the
-    // condition that makes its question real: two organizations, or two
-    // places. The operator this console is built for sees neither, which is
-    // the whole change.
+    // MESITA-1879. The selector is still in this file and still renders —
+    // the franchise path is DEFERRED, not deleted — behind the condition that
+    // makes its question real: two places. The operator this console is built
+    // for never sees it, which is the whole change.
     const r = rail();
     expect(r).not.toContain("GroupHeader");
     expect(r).not.toContain("TINY_LABEL_CLASS");
-    expect((r.match(/<RailSelector/g) ?? []).length).toBe(2);
-    expect(r).toContain('label="Switch organization"');
+    // ONE SELECTOR (MESITA-1892). There were two — an organization and one of
+    // its places — and the layer is gone, so the only question left is which
+    // place, and only for an operator who holds more than one.
+    expect((r.match(/<RailSelector/g) ?? []).length).toBe(1);
+    expect(r).not.toContain('label="Switch organization"');
     expect(r).toContain('label="Switch place"');
-    expect(r).toContain("organizations.length >= 2 &&");
     expect(r).toContain('scope.mode === "multi" &&');
     // Account is NOT one: there is one of you, so a chevron would be a
     // control with nothing to control. Pato: "(No subitems)".
@@ -284,22 +288,24 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1848. The ceremonies live in the selectors' MENUS, never as rows:
   // a rail row is a destination, and "Create organization" is a thing you do
   // to the subject the selector names.
-  it("keeps the ceremonies in the menus, and renders no row that is not a page", () => {
+  it("keeps the one ceremony out of the menus, and renders no row that is not a page", () => {
     const r = rail();
     expect(r).not.toContain("<Picker");
     expect(r).not.toContain("<select");
     expect(r).not.toContain('label="Add place"');
-    expect(r).toContain("Create organization");
-    // "Add place" LEFT THE MENUS (MESITA-1879). With one place per
-    // organization the ceremony is not an everyday door: it belongs to the
-    // zero state, where it takes a row of its own and says what it is.
+    // "Create organization" LEFT WITH THE LAYER (MESITA-1892). There is no
+    // legal person to create; the one ceremony is Add place.
+    expect(r).not.toContain("Create organization");
+    // "Add place" LEFT THE MENUS (MESITA-1879): it belongs to the zero state,
+    // where it takes a row of its own and says what it is.
     expect(r).toContain('label="Add your place"');
     expect(r).toContain("All places");
     // One selector, in the rail. The page's copy is gone, or the two disagree.
     expect(existsSync(path.join(SRC, "components/console/OrgSwitcher.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC, "components/console/ScopeSwitchers.tsx"))).toBe(false);
-    expect(readCode("app/(shell)/orgs/[orgId]/settings/page.tsx")).not.toContain("Switcher");
-    expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
+    expect(existsSync(path.join(SRC, "components/console/CreateOrganizationForm.tsx"))).toBe(false);
+    expect(readCode("app/(shell)/places/[id]/settings/page.tsx")).not.toContain("Switcher");
+    expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, places, isSuperAdmin }}>");
   });
 
   it("is ONE run over the contract's array, then Account (MESITA-1879)", () => {
@@ -323,15 +329,21 @@ describe("the rail is six nouns and one indent", () => {
     expect(iAccount).toBeGreaterThan(nav.indexOf("rows.map((row, i)"));
     // The contract carries the order, and Payments and Credits are not in it.
     const routes = readCode("lib/console-routes.ts");
-    for (const target of ["settings", "products", "places", "customers", "activity"]) {
+    for (const target of ["settings", "products", "customers", "activity"]) {
       expect(routes, target).toContain(`  "${target}",`);
     }
-    // ONE list (MESITA-1848): the pages, the rail's rows and the contract's
-    // targets are the same array, so an address cannot be live in one and
-    // dead in another.
-    expect(routes).toContain("export const ORG_TARGETS = ORG_PAGES;");
-    expect(routes).toContain("export const ORG_RAIL_TARGETS = ORG_PAGES;");
+    // ONE list (MESITA-1848, collapsed to one NAME in MESITA-1892). It was
+    // three aliases of one array — `ORG_PAGES`, `ORG_TARGETS`,
+    // `ORG_RAIL_TARGETS` — because the pages, the contract's targets and the
+    // rail's rows had drifted apart once and were pinned back together by
+    // assignment. With the organization gone there is one list and one name.
+    expect(routes).toContain("export const PLACE_PAGES");
+    expect(routes).not.toContain("ORG_TARGETS");
+    expect(routes).not.toContain("ORG_RAIL_TARGETS");
     expect(routes).not.toContain("ORG_DOOR_TARGETS");
+    // `places` IS NOT a place page: the catalogue lists every place there is,
+    // so scoping it under one would be asking a venue to list its siblings.
+    expect(routes).toContain('placesNew: "/places/new"');
     // CREDITS IS A PLACE VIEW AGAIN (MESITA-1885), after two issues as no
     // address at all: it is a PRODUCT with a rail row, so `/credits` resolves
     // and the redirect that claimed it was deleted in the same commit. It is
@@ -360,17 +372,19 @@ describe("the rail is six nouns and one indent", () => {
     // there and the click costs one hop. The flat address is the fallback for
     // the state with nothing to name yet.
     expect(r).toContain("placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab]");
-    expect(r).toContain("href={orgHref(org.id, row.target)}");
+    expect(r).toContain("placeId ? placePageHref(placeId, page) : FLAT_ROUTES[page]");
+    expect(r).toContain("href={pageRow(row.target)}");
     // A PRODUCT ROW ASKS ONE FUNCTION (MESITA-1885). Eight products, three
-    // kinds of address — a place view, an organization page, a Soon sub-page
-    // — and `productRowHref` is the only thing that knows which is which. A
-    // ternary in the rail would be a second copy of that mapping.
-    expect(r).toContain("href={productRowHref(row.product, org.id, viewRow)}");
+    // kinds of address — a place view, a place page, a Soon sub-page — and
+    // `productRowHref` is the only thing that knows which is which. A ternary
+    // in the rail would be a second copy of that mapping.
+    expect(r).toContain("href={productRowHref(row.product, placeId ?? \"\", viewRow)}");
     expect(routes).toContain("export function productRowHref");
-    // Both readers, on both scopes, because either address may be on screen.
+    // Both readers, on both spellings, because either address may be on
+    // screen while a forward is in flight.
     expect(r).toContain("placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname)");
-    expect(r).toContain("orgTargetFromPathname(pathname) ?? flatOrgTargetFromPathname(pathname)");
-    expect(r).toContain("tabsForAccess({ held: true, role: org.myRole, isSuperAdmin })");
+    expect(r).toContain("placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname)");
+    expect(r).toContain("role: scope.place?.myRole ?? null,");
     expect(r).not.toContain("?org=");
     expect(r).not.toContain("window.location");
     expect(readCode("lib/place-view.ts")).toContain("return tabsForAccess({");
@@ -380,18 +394,19 @@ describe("the rail is six nouns and one indent", () => {
   // arrives exactly this way: one row keeping a clause after another row took
   // the subject. Account owned the organization's ceremonies until
   // MESITA-1841; Organization owns them, and now Payments and Credits too.
-  it("Account lights for Account alone, and every org row takes only its own", () => {
+  it("Account lights for Account alone, and every page row takes only its own", () => {
     const r = rail();
     expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
-    expect(r).toContain('target === "settings"');
-    // MESITA-1847 removed the last borrowed clause: Members is CONTENT on the
-    // Organization page, not an address behind it. A row keeping a clause
-    // after another row took the subject is exactly how this rail grows a
-    // second pill, which every rail test in this repo counts.
-    const orgClause = r.slice(r.indexOf("const orgRowActive"), r.indexOf("return ("));
-    for (const taken of ["places", "products", "customers", "activity"]) {
-      expect(orgClause, taken).not.toContain(`orgTarget === "${taken}"`);
-    }
+    // NO BORROWED CLAUSE AT ALL (MESITA-1892). Settings used to light for the
+    // create-organization ceremony as well — the one address with no
+    // organization to name — so `orgRowActive` had to special-case it. The
+    // ceremony is gone, so every page row is its own name and nothing else,
+    // which is the shortest form of the rule this test exists for: a row
+    // keeping a clause after another row took the subject is how the rail
+    // grows a second pill.
+    expect(r).toContain("active={placePage === row.target}");
+    expect(r).not.toContain("orgRowActive");
+    expect(r).not.toContain('=== "settings" ||');
   });
 
   // MESITA-1847. Pato: "members and places in organization i mean, fuck
@@ -411,11 +426,22 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1871 renamed it Settings, label and segment — the flat `/settings`
   // came back from the permanent redirect that forced `configuration` in the
   // first place.
-  it("Settings is two boxes: Members, then Developers", () => {
-    const page = readCode("app/(shell)/orgs/[orgId]/settings/page.tsx");
+  it("Settings is two boxes: the team, then Developers", () => {
+    const page = readCode("app/(shell)/places/[id]/settings/page.tsx");
     expect(page).not.toContain("DoorRow");
-    expect(page).toContain("<MembersCard");
-    expect(page).toContain("apiListOrgMembers");
+    // ONE MEMBERS SURFACE (MESITA-1892). `MembersCard` was the organization's
+    // own, over four `business-web-*-org-member` endpoints that were twins of
+    // the place endpoints `TeamSection` has always driven — so the card is
+    // deleted rather than repointed, and the section moved here from the
+    // internal box on Visits.
+    expect(page).toContain("<SettingsBody");
+    expect(readCode("app/(shell)/places/[id]/settings/SettingsBody.tsx")).toContain(
+      "<TeamSection place={place} />",
+    );
+    expect(existsSync(path.join(SRC, "components/console/MembersCard.tsx"))).toBe(false);
+    expect(readCode("components/place-manage/sections/PromosSection.tsx")).not.toContain(
+      "<TeamSection",
+    );
     expect(page).toContain("SOON_STRIPS.developers");
     expect(page).not.toContain("SOON_STRIPS.brand");
     expect((page.match(/<SoonStrip/g) ?? []).length).toBe(1);
@@ -440,15 +466,13 @@ describe("the rail is six nouns and one indent", () => {
     expect(page).not.toContain('title="Partnership"');
     // PLACES LEFT EARLIER, and stays gone.
     expect(page).not.toContain("placeHref(");
-    expect(page).not.toContain("orgPlacesHref");
-    expect(page).not.toContain("orgPlacesNewHref");
-    expect(page).not.toContain('orgHref(org.id, "members")');
+    expect(page).not.toContain("placesHref");
     expect(page).not.toContain("credits");
-    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/organization"))).toBe(false);
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs"))).toBe(false);
     expect(page).not.toContain("OrgStateBadge");
     // The skeleton promises what the page delivers, or every load ends in a
     // shift by the height of two cards that are not coming (MESITA-1729).
-    const loading = readCode("app/(shell)/orgs/[orgId]/settings/loading.tsx");
+    const loading = readCode("app/(shell)/places/[id]/settings/loading.tsx");
     expect((loading.match(/rounded-2xl/g) ?? []).length).toBe(2);
   });
 
@@ -458,15 +482,17 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1872. Pato: "remove thus shit. just leave the 8 boxes and the 1
   // partnership box shit. payments log go into activity."
   it("Products is the partnership and the grid; Pay has its own address", () => {
-    const page = readCode("app/(shell)/orgs/[orgId]/products/page.tsx");
+    const page = readCode("app/(shell)/places/[id]/products/page.tsx");
     expect(page).toContain("<PartnerBanner");
     expect(page).toContain("<ProductCatalog");
     expect(page).toContain("buildProductCards");
-    // The counts are REAL: the places read is what every per-place card's
-    // state comes out of, and a failure hands `null`, never an empty array —
-    // "we could not read this" and "nothing is on" are different sentences.
-    expect(page).toContain("apiListConsolePlaces");
-    expect(page).toContain("places: ConsolePlace[] | null = null");
+    // The states are REAL: the place read is what every card's state comes
+    // out of, and a failure renders the page's error instead of an empty
+    // record — "we could not read this" and "nothing is on" are different
+    // sentences (MESITA-1892 turned the COUNT into a state; the rule held).
+    expect(page).toContain("apiConsoleViewer");
+    expect(page).toContain("place: ConsolePlace | null = null");
+    expect(page).toContain("readFailed");
     // A full Section for ONE of eight made that one louder than the other
     // seven on the page whose whole job is comparing them. It moved whole,
     // with the read that fed it.
@@ -480,7 +506,7 @@ describe("the rail is six nouns and one indent", () => {
     ]) {
       expect(page, gone).not.toContain(gone);
     }
-    const pay = readCode("app/(shell)/orgs/[orgId]/products/pay/page.tsx");
+    const pay = readCode("app/(shell)/places/[id]/products/pay/page.tsx");
     for (const kept of [
       "<PaymentsCard",
       "<MesitaPayCard",
@@ -490,44 +516,44 @@ describe("the rail is six nouns and one indent", () => {
       expect(pay, kept).toContain(kept);
     }
     expect(
-      existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/products/pay/loading.tsx")),
+      existsSync(path.join(SRC, "app/(shell)/places/[id]/products/pay/loading.tsx")),
     ).toBe(true);
-    // A SUB-STEP, NOT A ROW OF ITS OWN: this page is the ORGANIZATION's half
-    // of Mesita Pay — the Stripe account and the org switch — and standing on
-    // it lights Products, the catalogue it is a step inside.
+    // A SUB-STEP, NOT A ROW OF ITS OWN: this page is Mesita Pay's SETUP — the
+    // Stripe account and the switch it unlocks — and standing on it lights
+    // Products, the catalogue it is a step inside.
     //
-    // THE PRODUCT'S ROW POINTS AT THE PLACE (MESITA-1885), where the rung an
-    // operator actually flips is. Two levels, two screens, one product; the
-    // place view links up here for the half it cannot own.
+    // THE PRODUCT'S ROW POINTS AT THE VIEW (MESITA-1885), where the rung an
+    // operator actually flips is. Two screens, one product: buying it, and
+    // running it. The split was organization-versus-place until MESITA-1892.
     const routes = readCode("lib/console-routes.ts");
-    expect(routes).toContain("export function orgPayHref");
+    expect(routes).toContain("export function placePayHref");
     expect(routes).not.toContain('target: "pay"');
     // PAYMENTS' OWN PAGE IS DELETED, not orphaned: a route file nobody links
     // to drifts out of sync with the one that replaced it, and a leftover
     // directory would answer the address the redirect table now owns.
-    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/payments"))).toBe(false);
+    expect(existsSync(path.join(SRC, "app/(shell)/places/[id]/payments"))).toBe(false);
     const config = readFileSync(path.join(SRC, "..", "next.config.ts"), "utf8");
     expect(config).toContain('source: "/orgs/:orgId/payments"');
     expect(config).toContain('{ source: "/payments", destination: "/products", permanent: false }');
   });
 
-  it("the bare organization address renders nothing and reads nothing", () => {
-    const root = readCode("app/(shell)/orgs/[orgId]/page.tsx");
+  it("the bare PLACE address renders nothing, reads nothing, and catches Stripe", () => {
+    // THE STRIPE CATCHER MOVED WITH THE ACCOUNT (MESITA-1892). It was the
+    // bare `/orgs/<id>`; the account is `place_payment_accounts` now, so it
+    // is the bare `/places/<id>`, and `next.config.ts` forwards every stored
+    // `/orgs/…` return through `/`, which resolves the remembered place.
+    const root = readCode("app/(shell)/places/[id]/page.tsx");
     expect(root).not.toContain("return (");
-    expect(root).not.toContain("apiListOrganizations");
+    expect(root).not.toContain("apiMyPlaces");
     expect(root).not.toContain("createServerSupabase");
     // `?connect=` is checked BEFORE the forward, or Stripe's return lands on
-    // the organization page, which has no notice to greet it with.
-    expect(root.indexOf('sp.connect')).toBeLessThan(
-      root.indexOf('orgHref(orgId, "settings")'),
+    // Profile, which has no notice to greet it with.
+    expect(root.indexOf("sp.connect")).toBeLessThan(
+      root.indexOf('placeTabHref(id, "profile")'),
     );
-    // It lands on PRODUCTS' PAY PAGE (MESITA-1869, narrowed MESITA-1872):
-    // the Stripe account and the notice that reads `?connect=` live there,
-    // and a forward onto a page that no longer holds the notice is the
-    // `/unit/*` → `/place/*` chain again.
-    expect(root).toContain("orgPayHref(orgId)");
+    expect(root).toContain("placePayHref(id)");
     // The query travels on BOTH branches: dropping it strands an owner on a
-    // screen that knows neither which organization nor that they came back.
+    // screen that does not know they just came back.
     expect((root.match(/withQuery\(/g) ?? []).length).toBe(2);
   });
 
@@ -535,7 +561,7 @@ describe("the rail is six nouns and one indent", () => {
   // nobody links to is a page that drifts out of sync with the one that
   // replaced it.
   it("the ORG Credits page stays deleted; the flat name came back as a place view", async () => {
-    expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/credits"))).toBe(false);
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs"))).toBe(false);
     const config = readFileSync(path.join(SRC, "..", "next.config.ts"), "utf8");
     expect(config).toContain('source: "/orgs/:orgId/credits"');
     // THE FLAT RULE IS DELETED (MESITA-1885). Mesita Credits is a product
@@ -559,12 +585,18 @@ describe("the rail is six nouns and one indent", () => {
     const r = rail();
     expect(r).not.toContain("opacity-60");
     expect(r).not.toContain("add a place first");
-    expect(r).toContain("const noPlace = org !== null && scope.place === null && !foreign;");
+    expect(r).toContain("const noPlace = scope.place === null && !foreign;");
     // NoPlaceYet moved out of the place layout (MESITA-1839): under
     // `/places/<id>` there is always an id, so "no place" cannot happen
     // there. It is the flat address that has nothing to name, and answers.
-    expect(readCode("lib/flat-address.tsx")).toContain("return <NoPlaceYet org={org} />;");
-    expect(readCode("components/console/NoPlaceYet.tsx")).toContain("canAddPlace(org.myRole)");
+    expect(readCode("lib/flat-address.tsx")).toContain("return <NoPlaceYet />;");
+    // AND IT TAKES NO ROLE (MESITA-1892). The card used to branch on
+    // `canAddPlace(org.myRole)` and show an editor a dead end; claiming mints
+    // the claimer's own owner row, so there is one next step for everybody.
+    expect(readCode("components/console/NoPlaceYet.tsx")).not.toContain("canAddPlace");
+    expect(readCode("components/console/NoPlaceYet.tsx")).toContain(
+      "SHELL_ROUTES.placesNew",
+    );
   });
 
   it("the FLAT pages resolve the remembered scope; the canonical ones read the path (MESITA-1839)", () => {
@@ -572,13 +604,16 @@ describe("the rail is six nouns and one indent", () => {
     // What changed is who reads it: the flat resolvers, not the place layout.
     const sel = readCode("lib/selected-place.ts");
     expect(sel).toContain("export const getSelection = cache(");
-    expect(sel).toContain("findHolder(organizations, rememberedPlaceId)");
+    expect(sel).toContain("findPlace(places, rememberedPlaceId)");
     expect(sel).toContain("RAIL_PLACE_COOKIE");
+    // ONE COOKIE (MESITA-1892): the organization half is gone, and with it
+    // the rule that the holder wins over the remembered organization.
+    expect(sel).not.toContain("RAIL_ORG_COOKIE");
 
     const flat = readCode("lib/flat-address.tsx");
     expect(flat).toContain("await getSelection()");
     expect(flat).toContain("redirect(withQuery(placeTabHref(placeId, tab), sp))");
-    expect(flat).toContain("redirect(withQuery(orgHref(org.id, page), sp))");
+    expect(flat).toContain("redirect(withQuery(placePageHref(placeId, page), sp))");
     // ONE route file serves all ten (MESITA-1842), and its vocabulary IS the
     // contract — so a flat name can never be live in the rail and dead on
     // disk, which is the drift ten hand-written directories invited.
@@ -591,14 +626,14 @@ describe("the rail is six nouns and one indent", () => {
     expect(layout).toContain("const { id } = await params;");
     expect(layout).not.toContain("getSelection");
 
-    // The switcher's forwarder still SELECTS on the way through: that is its
-    // whole mechanism, and why `?to=` may be a flat address. It moved off the
-    // bare `/orgs/<id>` in MESITA-1842 so the page could have that address.
-    const org = readCode("app/(shell)/orgs/[orgId]/switch/route.ts");
-    expect(org).toContain("res.cookies.set(RAIL_ORG_COOKIE, orgId");
-    expect(org).toContain('res.cookies.set(RAIL_PLACE_COOKIE, ""');
-    expect(org).toContain("orgHref(orgId)");
-    expect(org).toContain("url.search = search.toString();");
+    // THE SWITCHER'S FORWARDER IS GONE (MESITA-1892), and its absence is the
+    // assertion. `/orgs/<id>/switch` existed for exactly one reason — a page
+    // cannot set a cookie on the way through, and selecting an organization
+    // meant writing one and clearing the other. There is one cookie and no
+    // second scope to switch, so the place selector is a plain `router.push`
+    // and the route handler has nothing left to do.
+    expect(existsSync(path.join(SRC, "app/(shell)/orgs"))).toBe(false);
+    expect(rail()).not.toContain("orgSwitchHref");
   });
 
   it("the selectors: a name at n=1, and the transition is the pending clock", () => {
@@ -609,10 +644,8 @@ describe("the rail is six nouns and one indent", () => {
     // still a row spent on saying what the operator already knows. The
     // condition moved out of the prop and into the render, so `switchable` is
     // unconditional wherever a selector appears at all.
-    expect(sw).toContain("organizations.length >= 2 &&");
     expect(sw).toContain('scope.mode === "multi" &&');
-    expect(sw).not.toContain("switchable={organizations.length >= 2}");
-    expect(sw).not.toContain("switchable={org.places.length >= 2}");
+    expect(sw).not.toContain("switchable={places.length >= 2}");
     expect(sw).toContain("const pendingId = isPending ? choice : null;");
     expect(sw).not.toContain("choice.at === pathname");
     expect(sw).not.toContain("useEffect");
@@ -661,14 +694,16 @@ describe("the rail is six nouns and one indent", () => {
     // headers (MESITA-1844); the muted token is the rows' own resting colour.
   });
 
-  it("the layout hands the rail the whole viewer and the two rail cookies, raw", () => {
+  it("the layout hands the rail the whole viewer and the ONE rail cookie, raw", () => {
     const layout = readCode("app/(shell)/layout.tsx");
     expect(layout).toContain("apiConsoleViewer(supabase)");
     expect(layout).toContain("isSuperAdmin={viewer.isSuperAdmin}");
-    expect(layout).toContain("places: o.places");
+    expect(layout).toContain("viewer.places.map");
     expect(layout).toContain("viewerError={viewerError}");
     expect(layout).toContain("plausibleId(jar.get(RAIL_PLACE_COOKIE)?.value)");
-    expect(layout).toContain("plausibleId(jar.get(RAIL_ORG_COOKIE)?.value)");
+    // ONE COOKIE (MESITA-1892). A cookie nobody reads is a cookie somebody
+    // will one day read by mistake.
+    expect(layout).not.toContain("RAIL_ORG_COOKIE");
     // A layout cannot read the pathname, so it must not pretend to resolve.
     expect(layout).not.toContain("resolveRailScope");
     expect(layout).not.toContain("searchParams");
@@ -793,22 +828,29 @@ describe("every place view has its own loading boundary", () => {
         .filter((s) => !s.startsWith("(") && !s.startsWith("["))
         .pop();
       if (!seg) continue;
-      // `settings` is the ONE exemption, and it is not a drift: `orgHref(id)`
-      // defaults to Settings (`orgHref(orgId, target = "settings")`), so the
-      // bare call IS this page's address — it just spells it by omission.
-      if (seg === "settings") continue;
+      // NO EXEMPTION ANY MORE (MESITA-1892). `settings` had one, because
+      // `orgHref(id)` defaulted to it and so named the page by omission. The
+      // place's pages take an explicit segment, so every guard spells its own.
       expect(m[0].toLowerCase(), `${seg}: ${m[0]}`).toContain(seg.toLowerCase());
     }
-    // Vacuous-pass guard: a walk that finds no guarded page must fail.
-    expect(guarded).toBeGreaterThanOrEqual(6);
+    // Vacuous-pass guard: a walk that finds no guarded page must fail. FOUR
+    // now rather than six: the place's views read nothing and guard nothing
+    // (MESITA-1875), and the four organization pages that each guarded became
+    // two — Customers and Terminal render a Soon strip and no longer read the
+    // holder's name, so they have nothing to sign in for.
+    expect(guarded).toBeGreaterThanOrEqual(4);
   });
 
-  it("every view directory on disk is a known tab", () => {
+  it("every directory on disk is a known tab or a known page", () => {
+    // TWO VOCABULARIES SINCE MESITA-1892: the place's nine views, and the
+    // four pages that used to hang off the organization. A directory in
+    // neither is a page nobody can reach.
+    const known = [...PLACE_TABS, ...PLACE_PAGES] as readonly string[];
     const dirs = readdirSync(VIEWS, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
     for (const dir of dirs) {
-      expect(PLACE_TABS as readonly string[]).toContain(dir);
+      expect(known, dir).toContain(dir);
     }
   });
 
@@ -842,7 +884,7 @@ describe("every place view has its own loading boundary", () => {
         "visibleTabs",
         "notFound",
         "createServerSupabase",
-        "apiListOrganizations",
+        "apiMyPlaces",
         "force-dynamic",
         "await",
       ]) {
@@ -879,14 +921,27 @@ describe("every place view has its own loading boundary", () => {
     // `/places/<id>` is a live address — a 307 onto Profile — and refusing it
     // mid-forward turns a redirect into a dead end.
     expect(gate).toContain("tab !== null");
+    // AND IT GATES THE PAGES (MESITA-1892). Settings, Products, Customers and
+    // Activity were the organization's, refused by a membership layout of
+    // their own; they are segments under the place now and `tabsForAccess`
+    // has nothing to say about them. They are the HOLDER's pages — the rail
+    // already hides their rows for a pool place, and Settings would otherwise
+    // throw inside `usePlaceContext`, which a pool place has no provider for.
+    expect(gate).toContain("placePageFromPathname(pathname) !== null");
+    expect(gate).toContain("isPlaceTerminalPathname(pathname)");
+    expect(gate).toContain("if (isPage && !held) notFound();");
   });
 
   // The pool branch reads what two layouts above it already resolved.
   it("the pool Profile fetches nothing", () => {
     const pool = readCode("app/(shell)/places/[id]/profile/PoolProfile.tsx");
     expect(pool).toContain("usePlaceScope()");
-    expect(pool).toContain("useRailScopeContext()");
-    for (const gone of ["apiListOrganizations", "apiGetConsolePlace", "cookies(", "preferredOrg"]) {
+    // AND IT NEEDS NOTHING ELSE (MESITA-1892). It read the rail's
+    // organizations too, because claiming meant naming which organization the
+    // place would join; `claim_place(p_place_id, p_claimer)` mints the
+    // caller's own owner row, so the claim has one subject.
+    expect(pool).not.toContain("useRailScopeContext()");
+    for (const gone of ["apiMyPlaces", "apiGetConsolePlace", "cookies(", "pickPlace"]) {
       expect(pool, gone).not.toContain(gone);
     }
   });
@@ -967,10 +1022,16 @@ describe("a product view's first paint is a row list, not a meter (MESITA-1739)"
     expect(s).toContain('dirtyLabels.includes("Reservations")');
   });
 
-  it("the Organization-for-Stripe door goes to the holder's organization page", () => {
+  it("the Stripe door goes to this place's own Mesita Pay page", () => {
+    // IT POINTED ONE LEVEL UP (MESITA-1892). The Stripe account was the
+    // holding organization's, so the door was that organization's page — and
+    // the holder had to be PUBLISHED by the place layout before the link even
+    // resolved, which is why there was a root-resolver fallback. The account
+    // is `place_payment_accounts` now, so the door is the place's own
+    // `products/pay` and `place.id` is the page's own subject.
     const s = readCode("components/place-manage/sections/PromosSection.tsx");
-    expect(s).toContain("useOpenPlace()?.holderOrgId");
-    expect(s).toContain("orgPageHref(holderOrgId)");
+    expect(s).toContain("placePayHref(place.id)");
+    expect(s).not.toContain("holderOrgId");
     expect(s).not.toContain("useSearchParams");
   });
 });
@@ -1067,8 +1128,9 @@ describe("the container stays uncapped", () => {
 
   // MESITA-1847. Account is the PERSON and nothing else — Pato: "account is
   // just for there." The organization selector went to the Organization page
-  // and the place selector was deleted, so what is left is one row: who you
-  // are, how many organizations you are in, and the way out.
+  // and the place selector was deleted; MESITA-1892 took the organization
+  // count with the layer, so what is left is one row: who you are, and the
+  // way out.
   it("Account is ONE card of ONE row, and the row is the person", () => {
     const page = read("app/(shell)/account/page.tsx");
     const ui = read("lib/ui-classes.ts");
@@ -1141,7 +1203,9 @@ describe("tab hrefs", () => {
       .filter((e) => e.isDirectory())
       .filter((e) => existsSync(path.join(placeDir, e.name, "page.tsx")))
       .map((e) => e.name);
-    expect(segments.sort()).toEqual([...PLACE_TABS].sort());
+    // The nine views AND the four pages (MESITA-1892) — a directory in
+    // neither vocabulary is a page nobody can reach.
+    expect(segments.sort()).toEqual([...PLACE_TABS, ...PLACE_PAGES].sort());
   });
 });
 

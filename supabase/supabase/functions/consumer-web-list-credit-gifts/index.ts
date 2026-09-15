@@ -8,8 +8,14 @@
 // here ever returns another consumer's gifts, claimed_by identity, or a
 // recoverable code — code_hash never leaves this table at all.
 //
+// EACH GIFT NAMES ITS PLACE. The lot behind a gift is place-scoped
+// (MESITA-1892) — it spends at one venue — so the row the sender sees is
+// titled with that place, read off place_profiles. It used to carry the
+// organization's name, which told the sender the least useful half of where
+// their money went.
+//
 // Body:     {}
-// Response: { ok: true, gifts: [{ id, organizationName, paidCents, bonusCents,
+// Response: { ok: true, gifts: [{ id, placeName, paidCents, bonusCents,
 //              creditedCents, state, note, createdAt, claimedAt, cancelledAt,
 //              expiresAt }] }
 
@@ -61,7 +67,7 @@ Deno.serve(async (req) => {
   const lotIds = gifts.map((g) => g.lot_id);
   const lotsRes = await admin
     .from("credit_lots")
-    .select("id, organization_id, paid_cents, bonus_cents")
+    .select("id, place_id, paid_cents, bonus_cents")
     .in("id", lotIds);
   if (lotsRes.error) {
     return json({
@@ -72,33 +78,28 @@ Deno.serve(async (req) => {
   const lotsById = new Map(
     ((lotsRes.data ?? []) as {
       id: string;
-      organization_id: string;
+      place_id: string;
       paid_cents: number;
       bonus_cents: number;
     }[]).map((l) => [l.id, l]),
   );
 
-  const organizationIds = [
-    ...new Set(
-      [...lotsById.values()].map((l) => l.organization_id),
-    ),
+  const placeIds = [
+    ...new Set([...lotsById.values()].map((l) => l.place_id)),
   ];
-  const orgsRes = organizationIds.length
-    ? await admin.from("organizations").select("id, name").in(
-      "id",
-      organizationIds,
-    )
+  const placesRes = placeIds.length
+    ? await admin.from("place_profiles").select("id, name").in("id", placeIds)
     : { data: [], error: null };
-  if (orgsRes.error) {
+  if (placesRes.error) {
     return json({
       ok: false,
-      error: `credit_gifts_list_orgs: ${orgsRes.error.message}`,
+      error: `credit_gifts_list_places: ${placesRes.error.message}`,
     }, 500);
   }
-  const orgNameById = new Map(
-    ((orgsRes.data ?? []) as { id: string; name: string }[]).map((
-      o,
-    ) => [o.id, o.name]),
+  const placeNameById = new Map(
+    ((placesRes.data ?? []) as { id: string; name: string }[]).map((
+      pl,
+    ) => [pl.id, pl.name]),
   );
 
   const shaped = gifts.map((g) => {
@@ -107,9 +108,7 @@ Deno.serve(async (req) => {
     const bonusCents = lot?.bonus_cents ?? 0;
     return {
       id: g.id,
-      organizationName: lot
-        ? (orgNameById.get(lot.organization_id) ?? "Mesita")
-        : "Mesita",
+      placeName: lot ? (placeNameById.get(lot.place_id) ?? "Mesita") : "Mesita",
       paidCents,
       bonusCents,
       creditedCents: paidCents + bonusCents,

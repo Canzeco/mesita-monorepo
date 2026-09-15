@@ -1,4 +1,7 @@
-// Stripe Express hosted onboarding prefills from the organization's places.
+// Stripe Express hosted onboarding prefills from the merchant's own place
+// (MESITA-1892 — the Connect account belongs to the PLACE now, so the rows
+// this reads from are that one place's; it used to gather every place an
+// organization held).
 //
 // Stripe does not take form values on accountLinks.create. Prefill is written
 // onto the Account BEFORE the first Account Link (after that, Express with
@@ -8,6 +11,13 @@
 // Atlas already classified the place. LLM is only for the leftover: undefined
 // category, a tied mix of supers, or a missing product description. Fail-open:
 // a missing key or a slow model still mints the link.
+//
+// THE ROW HELPERS STAY PLURAL ON PURPOSE. `sortPlacesForPrefill`,
+// `mccFromPlaces` and `firstOf` take an array, and the caller now passes one
+// of length 0 or 1. They are pure, already pinned by
+// stripe-connect-prefill.test.ts, and total over any row count — collapsing
+// them to a single row would buy nothing and re-open the ordering bug the
+// stable sort exists to prevent.
 
 import {
   familiesForAtlasCategory,
@@ -18,12 +28,12 @@ import {
 import { OPENAI_URL } from "./enrich-config.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isShapedRfc, normalizeRfc } from "./org-rfc.ts";
+import { isShapedRfc, normalizeRfc } from "./place-rfc.ts";
 
-/** The RFC rule lives in org-rfc.ts, where the org WRITERS can reach it too
- *  (MESITA-1880). Re-exported here so this module's existing importers keep
- *  their entry point. */
-export { MEXICO_RFC_RE } from "./org-rfc.ts";
+/** The RFC rule lives in place-rfc.ts, where the place WRITERS can reach it
+ *  too (MESITA-1880). Re-exported here so this module's existing importers
+ *  keep their entry point. */
+export { MEXICO_RFC_RE } from "./place-rfc.ts";
 
 /** Stripe's product_description cap. Keep the hosted field short. */
 export const PRODUCT_DESCRIPTION_MAX = 400;
@@ -126,7 +136,11 @@ export type PlacePrefillRow = {
   email?: string | null;
 };
 
-export type OrgPrefillRow = {
+/** The merchant's own identity columns, read straight off `places`
+ *  (MESITA-1892): its trade name, `places.legal_name` and `places.rfc`. The
+ *  trade name is kept separate from the profile rows below because a place
+ *  whose `place_profiles` row is missing still has one. */
+export type MerchantPrefillRow = {
   name: string;
   legalName: string;
   rfc: string | null;
@@ -221,8 +235,11 @@ export function mccFromPlace(place: PlacePrefillRow): string | null {
 }
 
 /**
- * One MCC for the org. Majority wins; a restaurant/bar tie prefers restaurants
- * (Mesita's default hospitality) rather than calling the model.
+ * One MCC for the merchant. Majority wins; a restaurant/bar tie prefers
+ * restaurants (Mesita's default hospitality) rather than calling the model.
+ * With the account scoped to one place the majority is a formality — but it
+ * is what makes the function total over zero rows, which is the case that
+ * actually happens (a place with no profile row yet).
  */
 export function mccFromPlaces(places: PlacePrefillRow[]): string | null {
   const counts = new Map<string, number>();
@@ -264,36 +281,63 @@ export function sortPlacesForPrefill(places: PlacePrefillRow[]): PlacePrefillRow
 }
 
 const PLACE_PREFILL_SELECT =
-  "id, place_profiles!inner(name, category, category_label, family_keys, description, website_url, instagram_url, phone, email)";
+  "id, legal_name, rfc, place_profiles(name, category, category_label, family_keys, description, website_url, instagram_url, phone, email)";
 
-/** Org places for Connect prefill. Isolated from the onboarding EF so
- *  Stripe's account patch does not sit in write-surface's 2000-char
- *  window of the places read (that scan treats any write-verb as a places write). */
-export async function loadOrgPlacesForPrefill(
+/**
+ * Everything Connect prefill needs about the merchant, in ONE read: the legal
+ * identity off `places` and the Atlas profile off `place_profiles`.
+ *
+ * BOTH HALVES COME FROM HERE ON PURPOSE. `legal_name` and `rfc` moved onto
+ * `places` when the organization layer was removed (MESITA-1892), and the
+ * onboarding EF was reading them itself — a second raw read of the tenant row
+ * in a handler whose next statement patches Stripe. This module already had
+ * to read the row; the EF now has no reason to.
+ *
+ * It also keeps Stripe's account patch out of write-surface's 2000-char window
+ * of a places read (that scan treats any write-verb near `.from("places")` as
+ * a places write).
+ *
+ * `places` comes back as an ARRAY because everything downstream is
+ * array-shaped (see the file header), not because more than one row can. The
+ * embed is a LEFT join: a place whose profile has not been written yet still
+ * yields its legal identity, and prefill falls back to the default MCC.
+ */
+export async function loadPlaceForPrefill(
   admin: SupabaseClient,
-  orgId: string,
-): Promise<{ places: PlacePrefillRow[]; error: unknown }> {
+  placeId: string,
+): Promise<{
+  merchant: MerchantPrefillRow;
+  places: PlacePrefillRow[];
+  error: unknown;
+}> {
   const { data, error } = await admin
     .from("places")
     .select(PLACE_PREFILL_SELECT)
-    .eq("organization_id", orgId)
+    .eq("id", placeId)
     .order("id");
-  type ProfileEmbed = PlacePrefillRow | PlacePrefillRow[];
-  const places: PlacePrefillRow[] = ((data ?? []) as {
+  type ProfileEmbed = PlacePrefillRow | PlacePrefillRow[] | null;
+  const rows = (data ?? []) as {
     id: string;
+    legal_name?: string | null;
+    rfc?: string | null;
     place_profiles: ProfileEmbed;
-  }[])
-    .map((row) => {
-      const profile = Array.isArray(row.place_profiles)
-        ? row.place_profiles[0]
-        : row.place_profiles;
-      return { id: row.id, ...(profile ?? {}) };
-    });
-  return { places, error };
+  }[];
+  const places: PlacePrefillRow[] = rows.map((row) => {
+    const profile = Array.isArray(row.place_profiles)
+      ? row.place_profiles[0]
+      : row.place_profiles;
+    return { id: row.id, ...(profile ?? {}) };
+  });
+  const merchant: MerchantPrefillRow = {
+    name: (places[0]?.name ?? "").trim(),
+    legalName: (rows[0]?.legal_name ?? "").trim(),
+    rfc: rows[0]?.rfc ?? null,
+  };
+  return { merchant, places, error };
 }
 
 export function deterministicConnectPrefill(
-  org: OrgPrefillRow,
+  merchant: MerchantPrefillRow,
   places: PlacePrefillRow[],
 ): ConnectPrefill {
   places = sortPlacesForPrefill(places);
@@ -302,7 +346,7 @@ export function deterministicConnectPrefill(
   const email = firstOf(places, (p) => asEmail(p.email));
   const phone = firstOf(places, (p) => asPhone(p.phone));
   const description = firstOf(places, (p) => trimProductDescription(p.description));
-  const tradeName = (org.name || "").trim() ||
+  const tradeName = (merchant.name || "").trim() ||
     (places.map((p) => (p.name ?? "").trim()).find(Boolean) ?? "");
   const mcc = mccFromPlaces(places) ?? DEFAULT_CONNECT_MCC;
   const profile: ConnectBusinessProfilePrefill = {
@@ -315,7 +359,7 @@ export function deterministicConnectPrefill(
   };
   return {
     ...(email ? { email } : {}),
-    ...(rfcIfValid(org.rfc) ? { taxId: rfcIfValid(org.rfc)! } : {}),
+    ...(rfcIfValid(merchant.rfc) ? { taxId: rfcIfValid(merchant.rfc)! } : {}),
     businessProfile: profile,
   };
 }
@@ -437,7 +481,7 @@ export async function completePrefillWithLlm(opts: {
 
 /**
  * Fields the LLM may PATCH onto an already-created Account. Never sent on
- * accounts.create — Stripe idempotency is org+country, so a fail-open or a
+ * accounts.create — Stripe idempotency is place+country, so a fail-open or a
  * different model sentence would 409 the replay and orphan the first account.
  */
 export function llmBusinessProfilePatch(
@@ -455,12 +499,12 @@ export function llmBusinessProfilePatch(
 }
 
 export async function resolveConnectPrefill(opts: {
-  org: OrgPrefillRow;
+  merchant: MerchantPrefillRow;
   places: PlacePrefillRow[];
   openaiKey: string | undefined;
   fetchImpl?: typeof fetch;
 }): Promise<ConnectPrefill> {
-  const base = deterministicConnectPrefill(opts.org, opts.places);
+  const base = deterministicConnectPrefill(opts.merchant, opts.places);
   const needMcc = needsLlmMcc(opts.places);
   const needDescription = needsLlmDescription(opts.places);
   if (!needMcc && !needDescription) return base;

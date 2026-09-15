@@ -19,8 +19,16 @@ begin;
 select plan(13);
 
 insert into auth.users (id) values ('22222222-2222-2222-2222-222222222222');
-insert into public.organizations (id, name, currency)
-values ('11111111-1111-1111-1111-111111111111', 'pgTAP org', 'MXN');
+-- The place is the tenant a balance is spendable at (MESITA-1892), and it
+-- takes two rows: `places.id` carries an FK to `place_profiles.id`, so the
+-- profile row comes first. `place_profiles.name` is GENERATED from
+-- mesita_name/google_name and cannot be written directly. `currency` is
+-- spelled out rather than left to its default because the last case below is
+-- about a liability aggregate that must never sum two of them.
+insert into public.place_profiles (id, google_name)
+values ('11111111-1111-1111-1111-111111111111', 'pgTAP operator place');
+insert into public.places (id, slug, currency)
+values ('11111111-1111-1111-1111-111111111111', 'pgtap-operator-place', 'MXN');
 insert into public.consumers (id, code)
 values ('22222222-2222-2222-2222-222222222222', '9999-0001');
 
@@ -63,7 +71,7 @@ select is(
 select is(
   ((public.reverse_credit_lot(
     (select id from public.credit_lots where stripe_payment_intent_id = 'pi_refund_test'),
-    'adjust', null, 'org_closed'
+    'adjust', null, 'place_closed'
   ))->>'ok')::boolean,
   true,
   'adjust with a null amount claws back the whole remainder');

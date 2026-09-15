@@ -49,8 +49,8 @@ const DOORED_TABLES = [
   "profiles",
   "places",
   "consumers",
-  "organization_payment_accounts",
-  "organization_guest_customers",
+  "place_payment_accounts",
+  "place_guest_customers",
 ] as const;
 
 /** The doors themselves, and the compat shim. They read these tables because
@@ -61,7 +61,7 @@ const DOORS = [
   "_shared/place-doc.ts",
   "_shared/consumer-doc.ts",
   "_shared/payment-account-doc.ts",
-  "_shared/organization-guest-customer-doc.ts",
+  "_shared/place-guest-customer-doc.ts",
   "_shared/place-id.ts",
 ];
 
@@ -231,13 +231,21 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "business-web-update-place/place-social-refresh.ts",
   "consumer-web-apply-ticket-credits/index.ts",
   "consumer-web-confirm-reservation/index.ts",
+  // The Credits surfaces resolve the PLACE a balance or a gift is spendable
+  // at (MESITA-1892 — they resolved the organization, which had its own name
+  // and its own pay bit). They read place_profiles for the name and the
+  // Mesita Pay intent bit; the money rows they key on carry place_id.
+  "consumer-web-list-credit-balances/index.ts",
+  "consumer-web-list-credit-gifts/index.ts",
   "consumer-web-list-credit-places/index.ts",
+  "consumer-web-redeem-credit-gift/index.ts",
   "eleven-a1-report-outcome/index.ts",
   "eleven-a2-confirm-reservation/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
+  "gift-web-preview-code/index.ts", // the same place lookup, unauthenticated (MESITA-1892)
   "supabase-cron-enrich-place-contents/index.ts",
   "supabase-cron-enrich-place-research/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
@@ -294,14 +302,12 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 });
 
 const PLACES_READ_ALLOWLIST = [
-  "_shared/auth-membership.ts",
   "_shared/credits-readiness.ts",
   "_shared/membership-enforcement.ts",
-  "_shared/mesita-pay-readiness.ts",
-  "_shared/org-membership.ts",
   "_shared/place-claim.ts",
   "_shared/reservation-places.ts",
-  "_shared/stripe-connect-prefill.ts", // org places → Connect MCC/url/description; place_profiles has no organization_id (MESITA-1795)
+  "_shared/stripe-billing.ts", // the PLACE's billing-customer anchor, compare-and-set (MESITA-1892 — it was the organization's)
+  "_shared/stripe-connect-prefill.ts", // the place row → Connect MCC/url/description; the legal identity it prefills from lives on `places`, not place_profiles (MESITA-1795, re-pointed by MESITA-1892)
   "_shared/ticket-check.ts",
   "admin-web-decide-place-claim/index.ts",
   "admin-web-delete-place/index.ts",
@@ -312,22 +318,19 @@ const PLACES_READ_ALLOWLIST = [
   "admin-web-set-plan/index.ts",
   "business-web-change-subscription/index.ts",
   "business-web-get-overview/index.ts",
-  "business-web-get-payment-account/index.ts", // org_id for the Connect mirror (MESITA-1740)
+  "business-web-get-payment-account/index.ts", // the place row for the Connect mirror (MESITA-1740)
   "business-web-get-place/index.ts",
-  "business-web-claim-place/index.ts", // auto-join when the org is Partnered (MESITA-1798)
-  "business-web-list-organizations/index.ts",
+  "business-web-list-reviews/index.ts", // place-exists 404 before requireMembership; it used to resolve the org that held the place (MESITA-1892)
   "business-web-list-places/index.ts",
   "business-web-release-place/index.ts",
   "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
-  "_shared/org-partnership.ts", // cascade plan=pro/free onto held places (MESITA-1798)
-  "_shared/partner-membership.ts", // the same cascade, driven by the Mesita Membership's Stripe state (MESITA-1877)
+  "_shared/place-partnership.ts", // reads the place's own plan/listing_type before the join/drop patch (MESITA-1798, re-scoped by MESITA-1892)
+  "_shared/partner-membership.ts", // the same read, driven by the Mesita Membership's Stripe state (MESITA-1877)
+  "business-web-update-legal-identity/index.ts", // reads the row back after writing legal_name/rfc (MESITA-1892)
   "business-web-update-place/index.ts",
   "business-web-verify-place/index.ts",
-  "consumer-web-apply-ticket-credits/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-discount-quote/index.ts",
-  "consumer-web-list-credit-places/index.ts",
-  "consumer-web-list-credit-balances/index.ts", // org's places for the one-place face; place_profiles has no organization_id (MESITA-1816)
   "stripe-webhook-handle-event/index.ts",
 ];
 
@@ -372,25 +375,25 @@ const PAYMENT_ACCOUNT_READ_ALLOWLIST = [
   "business-web-get-payment-dashboard-link/index.ts",
   "business-web-start-payment-onboarding/index.ts",
   "consumer-web-list-credit-places/index.ts",
-  "_shared/org-partnership.ts", // Stripe Ready lock on the Partner switch (MESITA-1798)
+  "_shared/place-partnership.ts", // Stripe Ready lock on the Partner switch (MESITA-1798)
 ];
 
-Deno.test("PAYMENT ACCOUNT READ: no new raw reader of organization_payment_accounts outside the allowlist", async () => {
+Deno.test("PAYMENT ACCOUNT READ: no new raw reader of place_payment_accounts outside the allowlist", async () => {
   assertRatchet(
-    "organization_payment_accounts",
-    await findReaders("organization_payment_accounts"),
+    "place_payment_accounts",
+    await findReaders("place_payment_accounts"),
     PAYMENT_ACCOUNT_READ_ALLOWLIST,
   );
 });
 
 const GUEST_CUSTOMER_READ_ALLOWLIST = [
-  "_shared/organization-guest-customer-doc.ts", // THE guest-customer door — sole reader today
+  "_shared/place-guest-customer-doc.ts", // THE guest-customer door — sole reader today
 ];
 
-Deno.test("GUEST CUSTOMER READ: no new raw reader of organization_guest_customers outside the allowlist", async () => {
+Deno.test("GUEST CUSTOMER READ: no new raw reader of place_guest_customers outside the allowlist", async () => {
   assertRatchet(
-    "organization_guest_customers",
-    await findReaders("organization_guest_customers"),
+    "place_guest_customers",
+    await findReaders("place_guest_customers"),
     GUEST_CUSTOMER_READ_ALLOWLIST,
   );
 });
@@ -479,15 +482,12 @@ const SWALLOWED_TODAY = [
   "_shared/config-section-reservations.ts",
   "_shared/create-place.ts",
   "_shared/membership.ts",
-  "_shared/org-membership.ts",
   "_shared/place-slug.ts",
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
   "_shared/stripe-billing.ts",
   "_shared/ticket-check.ts",
   "business-web-confirm-reservation/index.ts",
-  "business-web-get-overview/index.ts",
-  "business-web-release-place/index.ts",
   "business-web-update-place/place-social-refresh.ts",
   "consumer-mcp/index.ts",
   "consumer-mcp/profile-tool.ts",

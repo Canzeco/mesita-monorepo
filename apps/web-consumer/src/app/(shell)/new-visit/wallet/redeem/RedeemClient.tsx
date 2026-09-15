@@ -27,9 +27,9 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // thing a guest re-reads while checking their typing, and here it is money.
 //
 // TWO STATES ON ONE ROUTE, like Gift: the field, then what landed. The result
-// names the ORGANIZATION before the amount (Credits are org-scoped, not
-// place-scoped — the real backend's own model), because a guest who just
-// claimed some needs to know where before they know how much.
+// names the PLACE before the amount (credit_lots is place-scoped since
+// MESITA-1892 — the backend's own model), because a guest who just claimed
+// some needs to know where before they know how much.
 //
 // REACHED FROM THE PUBLIC LANDING PAGE (/gift/[code], outside the shell) via
 // ?code=, forwarded through sign-in — see page.tsx, unchanged by this rewire.
@@ -42,13 +42,13 @@ function RedeemResult({ result }: { result: RedeemGiftOutcome }) {
           Credits added at
         </div>
         <div className="font-display mt-1 text-2xl font-semibold tracking-tight">
-          {result.organizationName}
+          {result.placeName}
         </div>
         <div className="mt-3 text-4xl font-bold tracking-tight tabular-nums">
           {formatCurrency(result.creditedCents)}
         </div>
         <div className="text-muted-foreground mt-1 text-xs">
-          Spendable at {result.organizationName} only
+          Spendable at {result.placeName} only
         </div>
       </div>
 
@@ -65,7 +65,7 @@ function RedeemResult({ result }: { result: RedeemGiftOutcome }) {
 
       <WalletParkedNote>
         Runs in Stripe TEST mode — the balance above is real, on that
-        organization&apos;s account.
+        place&apos;s account.
       </WalletParkedNote>
     </div>
   );

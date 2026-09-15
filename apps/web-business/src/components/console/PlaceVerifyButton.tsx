@@ -1,9 +1,9 @@
 "use client";
 
-// Verify — one click, on a place the organization already holds.
+// Verify — one click, on a place you already hold.
 //
 // It sits next to Claim / Release because it is the other half of the same
-// ceremony: an organization takes a place, then it becomes Verified. It is
+// ceremony: a manager takes a place, then it becomes Verified. It is
 // NOT offered on a place nobody holds (claim first) and NOT offered on one
 // already verified (Verified never lapses, so there is nothing to redo).
 //
@@ -24,7 +24,7 @@ export function PlaceVerifyButton({
   allowed,
 }: {
   placeId: string;
-  /** False when the caller's org role may not verify. Hidden rather than
+  /** False when the caller's role may not verify. Hidden rather than
    *  shown-and-rejected, same law as PlaceHoldButton: the EF would 403, and
    *  a control that cannot work is worse than no control. */
   allowed: boolean;

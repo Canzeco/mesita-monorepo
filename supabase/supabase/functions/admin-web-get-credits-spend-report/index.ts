@@ -3,11 +3,14 @@
 // Visibility, not reconciliation (MESITA-1678 §6). Mesita has no POS/register
 // integration to reconcile at_place credit spend against, so this is not the
 // Stripe-ledger ↔ credit_ledger reconciliation the issue itself flags as a
-// separate, larger mechanism — it is a per-organization, per-paid_method
-// total an operator can notice a spike or a mismatch against their own books
-// with. Same thin ACL-gated wrapper shape as admin-web-list-credit-liability;
-// the aggregation lives in get_credit_spend_report
-// (20260909210000_credits_settle_ticket_bill.sql).
+// separate, larger mechanism — it is a per-PLACE, per-paid_method total an
+// operator can notice a spike or a mismatch against their own books with.
+// Per-place is not a finer cut of the old per-organization one: since
+// MESITA-1892 the place IS the tenant, so this is the whole exposure, not a
+// drill-down into it. Same thin ACL-gated wrapper shape as
+// admin-web-list-credit-liability; the aggregation lives in
+// get_credit_spend_report, whose rows are now
+// (place_id, place_name, paid_method, spend_count, spend_cents).
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

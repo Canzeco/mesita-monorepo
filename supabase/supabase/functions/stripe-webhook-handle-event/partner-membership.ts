@@ -1,19 +1,26 @@
-// The webhook's organization surface — Mesita Membership (MESITA-1877).
+// The webhook's Membership surface — Mesita Membership (MESITA-1877,
+// re-scoped to the PLACE by MESITA-1892).
 //
-// Stripe is the only thing that may turn an organization into a paying
-// Partner: `business-web-start-membership` opens a Checkout Session and
-// entitles NOTHING, and this file is what runs when the money actually
-// arrives. The one exception is MOCK_SUBSCRIPTION, where no Stripe event will
-// ever come and the EF entitles inline.
+// Stripe is the only thing that may turn a place into a paying Partner:
+// `business-web-start-membership` opens a Checkout Session and entitles
+// NOTHING, and this file is what runs when the money actually arrives. The one
+// exception is MOCK_SUBSCRIPTION, where no Stripe event will ever come and the
+// EF entitles inline.
 //
-// Routed by `metadata.organization_id`, set on both the session and the
-// subscription so the renewal a year from now still knows whose it is.
+// ROUTING CHANGED SHAPE, NOT JUST NAMES. A Membership used to be the one
+// business object stamped with an organization's id and no place id, so the
+// mere presence of that key was the routing test. Now a Membership carries a
+// place id — and so does the older per-place Verified subscription
+// (business-web-change-subscription). Presence of an id can no longer tell
+// them apart, so `membershipRouteFor` asks WHAT KIND of thing this is
+// (`mesita_kind` / `plan_key`) and only then whose. Getting that wrong would
+// reconcile a Verified subscription as a Membership, or the reverse.
 //
 // The mirror is written for EVERY state; the entitlement follows
-// `membershipOutcome` (partner-membership.ts), which is where LAPSE ≠ DROP
-// lives: `past_due` keeps the partnership and touches no place, because a
-// declined yearly MX card must not null four rate columns and the monthly cap
-// on every place an organization holds.
+// `membershipOutcome` (_shared/partner-membership.ts), which is where
+// LAPSE ≠ DROP lives: `past_due` keeps the partnership and touches nothing
+// else, because a declined yearly MX card must not null four rate columns and
+// the monthly cap on the place.
 
 import type Stripe from "npm:stripe@17";
 import type { adminClient } from "../_shared/auth.ts";
@@ -26,16 +33,58 @@ import {
 } from "../_shared/partner-membership.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
-/** The organization a Stripe object belongs to, or null when it is not a
- *  Membership at all. Metadata only — there is no id to fall back on, and
- *  guessing from the customer would let a place subscription land here. */
-export function organizationIdFor(
-  obj: Stripe.Checkout.Session | Stripe.Subscription,
-): string | null {
-  const id = obj.metadata?.organization_id;
-  return typeof id === "string" && id.length > 0 ? id : null;
+/** `metadata.mesita_kind` for a Membership. business-web-start-membership
+ *  stamps this literal; EFs cannot import from each other's directories, so
+ *  the second leg below (`plan_key`) is the one that comes from a shared
+ *  constant and keeps the two honest. */
+const MEMBERSHIP_METADATA_KIND = "business_membership";
+
+/**
+ * What a Stripe object is, and whose.
+ *
+ *   membership   — a Membership for `placeId`. Reconcile it.
+ *   unroutable   — a Membership by kind that names no place. See below.
+ *   not_membership — anything else; the caller falls through to the place-plan
+ *                  and consumer branches.
+ *
+ * THE UNROUTABLE RUNG IS NOT HYPOTHETICAL. A yearly subscription sold before
+ * MESITA-1892 was stamped with the id of the ORGANIZATION that bought it, and
+ * organizations are gone. Metadata is frozen on the Stripe SUBSCRIPTION — the
+ * object Stripe re-sends on every renewal, lapse and cancellation for the rest
+ * of that year — and the migration rewrote our rows, not Stripe's objects. So
+ * this handler will meet Memberships that name no place for up to a year.
+ *
+ * It is detected by ABSENCE rather than by reading the retired key, which is
+ * both simpler and wider: any Membership that cannot name a place lands here,
+ * whatever it does carry. There is nothing to map from either way.
+ *
+ * And it refuses, loudly, rather than guessing. Falling through would hand the
+ * object to `resolvePlaceId`, which falls back to the CUSTOMER and could
+ * reconcile a Membership onto an unrelated place's plan; picking a place out
+ * of a dissolved holding is a guess about money. The caller logs the
+ * subscription id and acks, which leaves the mirror untouched and the
+ * partnership exactly as it stands until a human re-stamps the metadata.
+ */
+export type MembershipRoute =
+  | { kind: "membership"; placeId: string }
+  | { kind: "unroutable" }
+  | { kind: "not_membership" };
+
+function metaString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
+export function membershipRouteFor(
+  obj: Stripe.Checkout.Session | Stripe.Subscription,
+): MembershipRoute {
+  const meta = obj.metadata ?? {};
+  const isMembership = metaString(meta.mesita_kind) === MEMBERSHIP_METADATA_KIND ||
+    metaString(meta.plan_key) === MEMBERSHIP_PLAN_KEY;
+  if (!isMembership) return { kind: "not_membership" };
+
+  const placeId = metaString(meta.place_id);
+  return placeId ? { kind: "membership", placeId } : { kind: "unroutable" };
+}
 
 
 /** The Stripe statuses that still bill. `trialing` is here and `unpaid` is
@@ -44,27 +93,26 @@ export function organizationIdFor(
 const BILLABLE_STRIPE_STATUSES = ["active", "trialing", "past_due"] as const;
 
 /**
- * Does this organization still hold a DIFFERENT live subscription at Stripe?
+ * Does this place still hold a DIFFERENT live subscription at Stripe?
  *
  * The authority of last resort for a revoke. The mirror is the cheap answer
  * and it is right in the ordinary ordering; this one is right in every
  * ordering, because Stripe is where the subscriptions actually are.
  *
- * Matched on `metadata.organization_id`, not on the customer alone: one
- * customer could one day hold something else, and revoking a partnership
- * because of an unrelated subscription would be the same class of mistake in
- * the opposite direction.
+ * Matched on `metadata.place_id`, not on the customer alone: one customer
+ * could one day hold something else, and revoking a partnership because of an
+ * unrelated subscription would be the same class of mistake in the opposite
+ * direction.
  *
  * A FAILED READ THROWS. Answering "no other subscription" because Stripe was
- * briefly unreachable would null four rate columns and the monthly cap on
- * every place an organization holds. The webhook 500s and Stripe retries,
- * which costs a few minutes of a stale `partnered` flag — the cheaper error
- * by a wide margin.
+ * briefly unreachable would null four rate columns and the monthly cap on the
+ * place. The webhook 500s and Stripe retries, which costs a few minutes of a
+ * stale `partnered` flag — the cheaper error by a wide margin.
  */
-async function orgHasAnotherLiveSubscription(
+async function placeHasAnotherLiveSubscription(
   stripe: Stripe,
   sub: Stripe.Subscription,
-  orgId: string,
+  placeId: string,
 ): Promise<boolean> {
   const customerId = typeof sub.customer === "string"
     ? sub.customer
@@ -79,7 +127,7 @@ async function orgHasAnotherLiveSubscription(
       limit: 100,
     });
     const other = page.data.some((s) =>
-      s.id !== sub.id && s.metadata?.organization_id === orgId
+      s.id !== sub.id && s.metadata?.place_id === placeId
     );
     if (other) return true;
   }
@@ -140,22 +188,22 @@ async function cancelIfStillBillable(
 }
 
 /**
- * Upserts the organization's membership mirror and applies the entitlement
- * its state implies. Throws on a write failure so the caller 500s and Stripe
- * retries — the same contract the place and consumer reconcilers keep.
+ * Upserts the place's membership mirror and applies the entitlement its state
+ * implies. Throws on a write failure so the caller 500s and Stripe retries —
+ * the same contract the place-plan and consumer reconcilers keep.
  */
 export async function reconcilePartnerMembership(
   admin: ReturnType<typeof adminClient>,
   stripe: Stripe,
-  orgId: string,
+  placeId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
   const { localState, customerId, periodEnd, priceCents, currency, isLive } =
     subscriptionSnapshot(sub);
 
   if (isLive) {
-    // Keep the one-live invariant: retire any OTHER live row for this
-    // organization so the incoming subscription cannot collide with
+    // Keep the one-live invariant: retire any OTHER live row for this place
+    // so the incoming subscription cannot collide with
     // partner_memberships_one_live.
     //
     // RETIRING THE MIRROR IS NOT ENOUGH WHEN THE OTHER ROW IS REAL. Stripe
@@ -172,7 +220,7 @@ export async function reconcilePartnerMembership(
     const { data: priors, error: priorErr } = await admin
       .from("partner_memberships")
       .select("stripe_subscription_id")
-      .eq("organization_id", orgId)
+      .eq("place_id", placeId)
       .neq("stripe_subscription_id", sub.id)
       .in("state", ["active", "past_due"]);
     if (priorErr) {
@@ -188,7 +236,7 @@ export async function reconcilePartnerMembership(
     const retire = await admin
       .from("partner_memberships")
       .update({ state: "canceled" })
-      .eq("organization_id", orgId)
+      .eq("place_id", placeId)
       .neq("stripe_subscription_id", sub.id)
       .in("state", ["active", "past_due"]);
     if (retire.error) {
@@ -200,7 +248,7 @@ export async function reconcilePartnerMembership(
     .from("partner_memberships")
     .upsert(
       {
-        organization_id: orgId,
+        place_id: placeId,
         plan_key: MEMBERSHIP_PLAN_KEY,
         stripe_customer_id: customerId,
         stripe_subscription_id: sub.id,
@@ -217,58 +265,60 @@ export async function reconcilePartnerMembership(
     throw new Error(`membership_mirror: ${mirror.error.message}`);
   }
 
-  // The organization anchors the customer it pays as, so a lapsed member who
+  // The place anchors the customer it pays as, so a lapsed member who
   // re-subscribes keeps one billing history. Only fills a hole — never
-  // overwrites an anchor, and never accepts a mock id as one.
+  // overwrites an anchor, and never accepts a mock id as one. The
+  // compare-and-set is the same race guard ensurePlaceBillingCustomer uses:
+  // this door and that one fill the same column from two directions.
   if (customerId && !customerId.startsWith("mock_")) {
     await admin
-      .from("organizations")
+      .from("places")
       .update({ stripe_billing_customer_id: customerId })
-      .eq("id", orgId)
+      .eq("id", placeId)
       .is("stripe_billing_customer_id", null);
   }
 
-  // THE ENTITLEMENT ANSWERS TO THE ORGANIZATION, NOT TO THIS ONE EVENT.
+  // THE ENTITLEMENT ANSWERS TO THE PLACE, NOT TO THIS ONE EVENT.
   //
   // Cancelling a superseded subscription above makes Stripe emit
   // `customer.subscription.deleted` for it, and that event arrives back here
-  // carrying the same `organization_id`. Read alone, its state says revoke —
-  // so the org would lose `partnered` and every held place would be dropped
-  // at the exact moment it had just paid twice. And `joinPlacePatch` does not
-  // undo that: the replacement's entitle writes `plan=pro` at ZERO, so the
-  // rates and the monthly cap the operator configured are gone for good. A
-  // double-payment repair would become a permanent outage.
+  // carrying the same `place_id`. Read alone, its state says revoke — so the
+  // place would lose `partnered` and be dropped to free at the exact moment it
+  // had just paid twice. And `joinPlacePatch` does not undo that: the
+  // replacement's entitle writes `plan=pro` at ZERO, so the rates and the
+  // monthly cap the operator configured are gone for good. A double-payment
+  // repair would become a permanent outage.
   //
   // So a revoke has to survive TWO questions, because the two events race and
-  // neither ordering may drop a paying organization:
+  // neither ordering may drop a paying place:
   //
   //   the mirror   Is another membership row still live? This answers the
   //                ordinary ordering, where the replacement was upserted
   //                before the cancellation event came back.
   //   Stripe       Does the customer still hold another subscription for this
-  //                organization? This answers the INVERTED ordering — the
-  //                deleted event overtaking the upsert — which the mirror
-  //                cannot see, because in that window the prior is already
-  //                retired and the replacement is not written yet. The two
-  //                arrive as separate HTTP requests with different event ids,
-  //                so `stripe_events` does not serialize them.
+  //                place? This answers the INVERTED ordering — the deleted
+  //                event overtaking the upsert — which the mirror cannot see,
+  //                because in that window the prior is already retired and the
+  //                replacement is not written yet. The two arrive as separate
+  //                HTTP requests with different event ids, so `stripe_events`
+  //                does not serialize them.
   //
   // Stripe is asked only when the cheap answer is "nothing left", which is
   // the revocation path alone — never on the renewals that make up almost
   // every delivery.
   let outcome = membershipOutcome(localState);
   if (outcome === "revoke") {
-    const remaining = await readLiveMembership(admin, orgId);
+    const remaining = await readLiveMembership(admin, placeId);
     if (!remaining.ok) {
       throw new Error(`membership_read_remaining: ${remaining.error}`);
     }
     if (remaining.row) {
       outcome = "mirror";
-    } else if (await orgHasAnotherLiveSubscription(stripe, sub, orgId)) {
+    } else if (await placeHasAnotherLiveSubscription(stripe, sub, placeId)) {
       outcome = "mirror";
     }
   }
 
-  const applied = await applyMembershipEntitlement(admin, orgId, outcome);
+  const applied = await applyMembershipEntitlement(admin, placeId, outcome);
   if (!applied.ok) throw new Error(`membership_entitlement: ${applied.error}`);
 }

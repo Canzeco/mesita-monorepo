@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PlaceStatesTable } from "./PlaceStatesTable";
-import type { ConsolePlace } from "@/lib/api/organizations";
+import type { ConsolePlace } from "@/lib/api/console";
 
 function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
   return {
@@ -20,9 +20,7 @@ function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
     name: "Cabaret Social Room",
     address: null,
     zone: null,
-    organizationId: "org-1",
     claimedAt: null,
-    organizationName: "Canzeco",
     photoUrl: null,
     listed: true,
     requestCount: 3,
@@ -98,9 +96,13 @@ describe("rows and columns", () => {
 
   it("the identity cell holds the image and the name and nothing else", () => {
     const html = render({
-      places: [place({ organizationName: "Canzeco", address: "Av. Nuevo León 4" })],
+      places: [place({ address: "Av. Nuevo León 4", legalName: "Canzeco SA" })],
     });
     // Both facts are still ON the payload; the cell must not render them.
+    // The holder's NAME went with the organization (MESITA-1892) — the row
+    // says whether YOU hold it, which is the Owned column — so the second
+    // half of this pair is the legal name, which is on the place now and is
+    // just as much not-this-cell's-business.
     expect(html).not.toContain("Canzeco");
     expect(html).not.toContain("Av. Nuevo León 4");
     expect(html).toContain("Cabaret Social Room");
@@ -126,7 +128,6 @@ describe("cell values", () => {
       name: "Old Payload",
       address: null,
       zone: null,
-      organizationId: null,
       claimedAt: null,
     };
     const html = renderToStaticMarkup(
@@ -160,7 +161,7 @@ describe("one list, both kinds of row", () => {
     const html = render({
       places: [
         place({ id: "mine", name: "Held Bar", owned: true }),
-        place({ id: "free", name: "Free Bar", owned: false, organizationId: null }),
+        place({ id: "free", name: "Free Bar", owned: false }),
       ],
     });
     expect(html).toContain("Held Bar");

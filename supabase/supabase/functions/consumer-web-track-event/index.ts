@@ -29,9 +29,10 @@ const ALLOWED_EVENTS = new Set([
   // MESITA-1619 — Me's Plan box, the one door to the plan sheet now that the
   // Passport prints no plan. Mirrored in web-consumer's AnalyticsEvent union.
   "plan_open",
-  // MESITA-1674 — the Wallet's real balance list is paginated (twenty
-  // organizations is a named design case); this is the only new interaction
-  // the read adds.
+  // MESITA-1674 — the Wallet's real balance list is paginated (twenty places
+  // is a named design case; it read "twenty organizations" until MESITA-1892
+  // made the place the thing a balance belongs to); this is the only new
+  // interaction the read adds.
   "wallet_load_more_tap",
   // MESITA-1697 — Home's modes, finally instrumented. See track.ts.
   "home_mode_view",

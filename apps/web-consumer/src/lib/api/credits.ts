@@ -6,7 +6,7 @@
 // in their outcomes are for DISPLAY, echoed back from what the server
 // already decided and wrote. The balance read below is the same posture the
 // other direction: every cents figure and every timestamp in a
-// CreditOrgBalance is exactly what credit_ledger already agrees to, nothing
+// CreditPlaceBalance is exactly what credit_ledger already agrees to, nothing
 // recomputed on the client.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -80,20 +80,16 @@ export type CreditLot = {
   expired: boolean;
 };
 
-/** The one place a single-place organization holds (MESITA-1816). */
-export type CreditBalancePlace = {
-  id: string;
-  name: string;
+/** ONE PLACE, ONE BALANCE (MESITA-1892). credit_lots is place-scoped now, so
+ *  the balance no longer wraps a separate face: the place IS the balance's
+ *  identity, name and art alike. The `placeCount`/`place` pair that let a
+ *  one-place organization borrow its place's face (MESITA-1816) has nothing
+ *  left to choose between. */
+export type CreditPlaceBalance = {
+  placeId: string;
+  placeName: string;
+  /** The place's `photos[0]`, ONE string. Null when it has none. */
   photoUrl: string | null;
-};
-
-export type CreditOrgBalance = {
-  organizationId: string;
-  organizationName: string;
-  /** Places the organization holds today; 0 is possible. */
-  placeCount: number;
-  /** The organization's ONE place when placeCount === 1, else null. */
-  place: CreditBalancePlace | null;
   currency: string;
   totalCents: number;
   spendableCents: number;
@@ -101,12 +97,13 @@ export type CreditOrgBalance = {
   paidCents: number;
   nearestExpiryAt: string | null;
   nearestActivationAt: string | null;
+  /** Whether Buy would still work at this place today. A balance renders regardless — this only gates the "buy more" affordance. */
   acceptsMoreCredits: boolean;
   lots: CreditLot[];
 };
 
 export type ListCreditBalancesResult = {
-  organizations: CreditOrgBalance[];
+  places: CreditPlaceBalance[];
   nextCursor: string | null;
   /** The clock every pending/expired split in this response was computed against — anchor countdowns to this, never to the guest's own device time. */
   serverNowMs: number;
@@ -123,7 +120,7 @@ export async function apiListCreditBalances(
     "Couldn't load your Credits.",
   );
   return {
-    organizations: res.organizations ?? [],
+    places: res.places ?? [],
     nextCursor: res.nextCursor ?? null,
     serverNowMs: res.serverNowMs,
   };
@@ -165,8 +162,8 @@ export async function apiGiftCredits(
 
 export type RedeemGiftOutcome = {
   lotId: string;
-  organizationId?: string;
-  organizationName: string;
+  placeId?: string;
+  placeName: string;
   paidCents?: number;
   bonusCents?: number;
   creditedCents: number;
@@ -200,7 +197,7 @@ export async function apiCancelGift(
 
 export type SentGift = {
   id: string;
-  organizationName: string;
+  placeName: string;
   paidCents: number;
   bonusCents: number;
   creditedCents: number;

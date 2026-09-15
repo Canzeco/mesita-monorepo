@@ -23,6 +23,14 @@
 // names it just vacated go IN, so this guard keeps catching the MESITA-1602
 // failure class against the new names instead of quietly going blind.
 //
+// MESITA-1892 removed the organization layer, and this guard meets BOTH of its
+// halves at once. The five organization tables go IN. And `place_payment_accounts`
+// comes OUT: it was retired with the MESITA-1590 rename and is a real table again
+// under new ownership — the merchant account hangs off the PLACE now — so it joins
+// `places` and `managers` in LIVE_AGAIN, which is the mechanism this file already
+// has for exactly that. A recycled name left in DROPPED_TABLES would fail every
+// call site that legitimately reads it.
+//
 // MESITA-1719: the seven were a floor, not the set. The criterion below is
 // every public relation that migrations created, renamed-from, or dropped
 // and that is not in live `pg_class` (tables + views — PostgREST `.from()`
@@ -50,7 +58,12 @@ const DROPPED_TABLES = [
   "manager_invites",
   "membership_strikes",
   "membership_tiers",
-  "place_payment_accounts",
+  "org_plans",
+  "organization_guest_customers",
+  "organization_invites",
+  "organization_members",
+  "organization_payment_accounts",
+  "organizations",
   "plans",
   "playground_reservations",
   "project_invites",
@@ -98,7 +111,7 @@ const MUST_COVER = [
 ] as const;
 
 /** Recycled: vacated once, then recreated. Must never re-enter the list. */
-const LIVE_AGAIN = ["managers", "places"] as const;
+const LIVE_AGAIN = ["managers", "place_payment_accounts", "places"] as const;
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url).pathname;
 

@@ -1,6 +1,6 @@
 "use client";
 
-// The Organization screen's Mesita Partner box (MESITA-1867).
+// The catalogue's Mesita Partner box (MESITA-1867).
 //
 // ── HOW IT GOT HERE ───────────────────────────────────────────────────────
 //
@@ -19,11 +19,12 @@
 //
 // Pato, 2026-09-15: the Stripe onboarding is friction that shrinks the
 // market, so Partner stops being Stripe-locked. **Mesita Partner** is a
-// yearly subscription per ORGANIZATION — every held place is in — and it is
-// what a place needs for Visit Rewards, Accept Prepays and guest checks.
-// **Mesita Pay** (the Stripe account and card payments inside Mesita) is an
-// optional add-on on top, and it is where the switch this file used to be
-// went: `MesitaPayCard.tsx`.
+// yearly subscription, and since MESITA-1892 it is bought PER PLACE — the
+// organization that used to hold it for every place at once is gone, and
+// `places.partnered` is the column. It is what a place needs for Visit
+// Rewards, Accept Prepays and guest checks. **Mesita Pay** (the Stripe
+// account and card payments inside Mesita) is an optional add-on on top, and
+// it is where the switch this file used to be went: `MesitaPayCard.tsx`.
 //
 // So this box is a price, a door, and a price list. Not partnered: the price
 // at display rank and, for an owner, one CTA — no pill, because the CTA IS
@@ -51,8 +52,8 @@
 // badge all still say Partner, and the word Membership appears exactly where
 // money does.
 //
-// The price is the CATALOG's now, off `org_plans` through the organizations
-// payload, so the number an owner reads is the number Stripe bills.
+// The price is the CATALOG's now, off `membership_plans` through the console
+// viewer's envelope, so the number an owner reads is the number Stripe bills.
 // `PARTNER_PRICE_LABEL` survives as the fallback for a payload that carries
 // none — a price box with no price is worse than a stale one.
 //
@@ -60,10 +61,10 @@
 // mutates a row directly, so nothing needs re-seeding.
 
 import { useActionState, useCallback, useState } from "react";
-import { startMembershipAction } from "@/app/(shell)/actions/organizations";
+import { startMembershipAction } from "@/app/(shell)/actions/place-setup";
 import { PartnerPill } from "@/components/console/badges";
 import { Modal } from "@/components/shared/Modal";
-import type { MembershipPrice, OrgMembership } from "@/lib/api/organizations";
+import type { Membership, MembershipPrice } from "@/lib/api/console";
 import { membershipPriceLabel } from "@/lib/business/plans";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -91,9 +92,9 @@ export const PARTNER_PERKS = [
  * What the partnered state says under the pill. ONE sentence, and which one
  * depends on facts the payload may not carry:
  *
- *   no membership row   "Renews yearly." — true, and all we know. An
- *                       organization made a partner by the operator switch
- *                       has no subscription to date, and so does one whose
+ *   no membership row   "Renews yearly." — true, and all we know. A place
+ *                       made a partner by the operator switch has no
+ *                       subscription to date, and neither does one whose
  *                       billing read failed. Neither may be told a date.
  *   cancelling          the date is an ENDING, so it must not wear the word
  *                       "renews" — that is the one way this line can lie.
@@ -101,7 +102,7 @@ export const PARTNER_PERKS = [
  *                       says what needs doing without saying it is over.
  */
 export function membershipLine(
-  membership: OrgMembership | null | undefined,
+  membership: Membership | null | undefined,
 ): string {
   if (!membership || !membership.renewsAt) return "Renews yearly.";
   const on = formatShortDate(membership.renewsAt);
@@ -136,7 +137,7 @@ function Perks() {
       {/* A sentence, not an eyebrow: 12px muted, never the 10px tiny label
           — it carries the one qualifier that keeps the list honest. */}
       <p className="text-muted-foreground text-xs leading-snug">
-        Each place then turns these on, from Rewards and Capabilities
+This place then turns these on, from its own product views
       </p>
       <ul className="flex flex-col gap-1 text-[13px] leading-snug">
         {PARTNER_PERKS.map(([name, clause]) => (
@@ -160,13 +161,13 @@ function Perks() {
  *  and a redirect out of a server action is only a redirect when the form
  *  submits it. `pending` disables the button because Checkout sessions are a
  *  network hop away and a second click is a second session. */
-function BuyForm({ orgId }: { orgId: string }) {
+function BuyForm({ placeId }: { placeId: string }) {
   const [state, action, pending] = useActionState(startMembershipAction, {
     error: null,
   });
   return (
     <form action={action} className="flex flex-col gap-3">
-      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="placeId" value={placeId} />
       {state.error && <p className={ERROR_BOX_CLASS}>{state.error}</p>}
       <button type="submit" className={PRIMARY_BUTTON_CLASS} disabled={pending}>
         {pending ? "Opening checkout…" : "Continue to checkout"}
@@ -181,16 +182,16 @@ function BuyForm({ orgId }: { orgId: string }) {
 }
 
 export function PartnerCard({
-  orgId,
+  placeId,
   partnered,
   isOwner,
   membership = null,
   price = null,
 }: {
-  orgId: string;
+  placeId: string;
   partnered: boolean;
   isOwner: boolean;
-  membership?: OrgMembership | null;
+  membership?: Membership | null;
   price?: MembershipPrice | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -244,13 +245,13 @@ export function PartnerCard({
           title="Mesita Membership"
           description={`${membershipPriceLabel(price).amount} ${
             membershipPriceLabel(price).suffix
-          }, per organization.`}
+          }, for this place.`}
           onClose={close}
         >
           <div className="flex flex-col gap-4">
             <PriceLine price={price} />
             <Perks />
-            <BuyForm orgId={orgId} />
+            <BuyForm placeId={placeId} />
           </div>
         </Modal>
       )}
