@@ -82,7 +82,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
   CalendarCheck,
@@ -107,10 +107,12 @@ import {
 import { cn } from "@/lib/utils";
 import {
   MENU_CHIP,
+  MENU_EMPTY,
   MENU_ITEM,
   MENU_META,
   MENU_MUTED,
   MENU_STACK,
+  MenuSearch,
   RailSelector,
   SELECTOR_CHIP,
 } from "@/components/console/RailSelector";
@@ -121,6 +123,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { canAddPlace } from "@/lib/active-organization";
+import { PLACE_SEARCH_MIN, filterPlaces } from "@/lib/place-search";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
@@ -472,6 +475,12 @@ export function Sidebar({
   // the push it started is in flight, so the rail never claims a scope the
   // server has not answered for yet.
   const [choice, setChoice] = useState<string | null>(null);
+  // THE PICKER'S FILTER (MESITA-1803), and it is inert below
+  // `PLACE_SEARCH_MIN` places: the state exists, nothing reads it, no field
+  // renders. The query is the rail's because the menu unmounts on close and
+  // would otherwise forget mid-choice.
+  const [placeQuery, setPlaceQuery] = useState("");
+  const placeSearchRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const pendingId = isPending ? choice : null;
 
@@ -594,6 +603,35 @@ export function Sidebar({
   const pickPlace = (id: string) => {
     if (id !== scope.place?.id) go(placeTabHref(id, "profile"), id);
   };
+  // EVERY CLOSE ENDS THE NARROWING, not just the one that picks a place.
+  // Clearing inside `pickPlace` covered a single route out of four: Escape, a
+  // click outside and the trigger itself all left the query standing, and the
+  // next open was a menu already filtered by a word typed minutes ago with
+  // nothing on screen to say so.
+  const closePlaceMenu = (open: boolean) => {
+    if (!open) setPlaceQuery("");
+  };
+  // ESCAPE, IN TWO STAGES, AND ONLY FROM HERE. Radix's dismiss listener is on
+  // the document in the capture phase, so the field's own handler never sees
+  // the key; `DismissableLayer` calls this first and honours a
+  // `preventDefault()`. A non-empty query absorbs Escape and clears; an empty
+  // one — which is every state below PLACE_SEARCH_MIN, where no field renders
+  // at all — falls through and the menu closes, as it always did.
+  const escapePlaceMenu = (e: KeyboardEvent) => {
+    if (placeQuery !== "") {
+      e.preventDefault();
+      setPlaceQuery("");
+    }
+  };
+  // A LIST LONG ENOUGH TO NEED A FIELD, and the rows left after one is typed.
+  // The threshold is read, never retyped (lib/place-search.ts).
+  const placeSearch = org !== null && org.places.length >= PLACE_SEARCH_MIN;
+  const shownPlaces =
+    org === null
+      ? []
+      : placeSearch
+        ? filterPlaces(org.places, placeQuery)
+        : org.places;
 
   const pendingOrg = pendingId
     ? (organizations.find((o) => o.id === pendingId) ?? null)
@@ -689,18 +727,38 @@ export function Sidebar({
                   switchable
                   pending={pendingPlace !== null}
                   collapsed={collapsed}
+                  autoFocusRef={placeSearch ? placeSearchRef : undefined}
+                  onOpenChange={closePlaceMenu}
+                  onEscapeKeyDown={escapePlaceMenu}
                 >
+                  {/* ABOVE THE GROUP, NEVER INSIDE IT (MESITA-1803): a field
+                      inside a radio group is announced as one of the choices.
+                      It appears only past PLACE_SEARCH_MIN places; below
+                      that this menu is exactly what it was. */}
+                  {placeSearch && (
+                    <MenuSearch
+                      value={placeQuery}
+                      onChange={setPlaceQuery}
+                      placeholder="Search places"
+                      inputRef={placeSearchRef}
+                    />
+                  )}
                   <DropdownMenuRadioGroup
                     value={shownPlace?.id ?? ""}
                     onValueChange={pickPlace}
                   >
-                    {org.places.map((p) => (
+                    {shownPlaces.map((p) => (
                       <DropdownMenuRadioItem key={p.id} value={p.id} className={MENU_ITEM}>
                         <PlaceChip name={p.name} photoUrl={p.photoUrl} menu />
                         <span className="truncate">{p.name}</span>
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
+                  {placeSearch && shownPlaces.length === 0 && (
+                    <p className={MENU_EMPTY}>No places match.</p>
+                  )}
+                  {/* The footer is OUTSIDE the filter, always: when nothing
+                      matches it is the only way out of the menu. */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className={MENU_MUTED}>
                     <Link
