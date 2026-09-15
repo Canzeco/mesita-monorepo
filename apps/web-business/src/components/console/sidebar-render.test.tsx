@@ -267,7 +267,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     const html = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     for (const mark of [
       "lucide-user-round", // Account — the person, one of them
-      "lucide-cog", // Settings — the organization's own record
+      "lucide-building2", // Settings — the organization itself, whose record this is
       "lucide-users", // Customers — people, plural, against Account's one
       "lucide-wallet", // Payments — the purse, not one card
       "lucide-chart-no-axes-column", // Activity — counts over time
@@ -284,17 +284,19 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     // Coins left the app with the Credits page (MESITA-1845) and must not
     // creep back: there is no Credits row and no Credits address to wear it.
     expect(html).not.toContain("lucide-coins");
-    // The organization's SELECTOR wears its initial, not an icon: a name is
-    // what tells one organization from another, and a glyph would be the same
-    // on all of them (MESITA-1848).
-    expect(html).not.toContain("lucide-building2");
+    // The organization's SELECTOR still wears its INITIAL, not the building:
+    // a name is what tells one organization from another, and a glyph would be
+    // the same on all of them (MESITA-1848). The building appears exactly
+    // once, on Settings — the org's own record — never in the chip.
+    expect(html.match(/lucide-building2/g) ?? []).toHaveLength(1);
     // Nor the marks these rows replaced.
     expect(html).not.toContain("lucide-file-text");
     expect(html).not.toContain("lucide-credit-card");
     expect(html).not.toContain("lucide-settings-2");
-    // The gear belongs to Settings, which IS a preferences page. Capabilities
-    // is a ladder of what a guest can do, and wears sliders.
+    // No gear anywhere: Settings wears the organization it is about, and
+    // Capabilities — a ladder of what a guest can do — wears sliders.
     expect(html).not.toContain("lucide-settings ");
+    expect(html).not.toContain("lucide-cog");
   });
 
   it("the rows are the CANONICAL addresses — one hop, and shareable", () => {
