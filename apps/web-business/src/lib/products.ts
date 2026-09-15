@@ -13,14 +13,26 @@
 //                        exists — there is no column to flip and no price, so
 //                        it is the one card with no off state and no verb but
 //                        Manage.
-//   Mesita Visits        guest checks at the bill. Partner-gated, no per-place
-//                        column of its own: the subscription IS the state.
+//   Mesita Visits        guest checks at the bill. Partner-gated, and the
+//                        subscription IS the state — so it is ALWAYS ON for a
+//                        partner, the Profile pattern, never an on/off card
+//                        (MESITA-1882). Visits is not a capability; it is the
+//                        container Rewards, Pay and Credits attach to, which
+//                        is why it has no column, no rail row and no ladder
+//                        rung anywhere else in this console either.
 //   Mesita Orders        `pickup_orders_enabled` OR `delivery_orders_enabled`,
 //                        per place. One card, because an operator thinks
 //                        "orders" and the two columns are its two shapes.
 //   Mesita Reservations  `reservations_enabled`, per place.
-//   Mesita Rewards       visit discounts and cashback. Partner-gated; the
-//                        strategy itself is per place, on Rewards.
+//   Mesita Rewards       visit discounts. Partner-gated AND per place, off
+//                        `visitRewards` — the strategy the four rate columns
+//                        spell, where `zero` is OFF (MESITA-1882). It used to
+//                        read Enabled for every partner, so a place sitting on
+//                        Zero was told its rewards were on while it served 0%
+//                        and carried no Partner badge in the guest app.
+//                        ("cashback" left the blurb with that fix: nothing
+//                        accumulates on Mesita — a reward is a discount on
+//                        tonight's bill, `_shared/memo-knowledge.ts`.)
 //   Mesita Pay           the ORG switch `mesita_pay_enabled`, on top of
 //                        Partner. The one product turned on at this level.
 //   Mesita Credits       `credits_enabled`, per place. Partner-gated too —
@@ -92,9 +104,9 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "rewards",
     name: "Mesita Rewards",
-    blurb: "Offer visit discounts and cashback to your guests.",
+    blurb: "Give guests a reason to come back. You set the discount, you fund it.",
     needsPartner: true,
-    atPlace: null,
+    atPlace: (p) => p.visitRewards === true,
   },
   {
     key: "pay",
@@ -268,14 +280,28 @@ export function buildProductCards(input: {
       };
     }
 
-    // What is left is partner-gated and has no column of its own: Visits and
-    // Rewards. The subscription turned them on; the place chooses how far.
+    // WHAT IS LEFT IS VISITS, AND ONLY VISITS (MESITA-1882).
+    //
+    // This used to be a fall-through shared by Visits and Rewards, and that
+    // sharing WAS the bug: two cards computed byte-identically — same gate,
+    // same hardcoded `enabled`, same note, same href — so the only difference
+    // a merchant could see between them was the icon. Worse, it made Rewards
+    // claim Enabled for a place sitting on Zero: 0% to every guest, and no
+    // Partner badge in the guest app, reported by the one screen whose whole
+    // job is saying what is on. Rewards now reads `visitRewards` through the
+    // per-place branch above, which leaves exactly one spec here.
+    //
+    // Visits keeps no count because it has nothing to count: there is no
+    // `visits_enabled` column (two tests assert its absence), no rail row and
+    // no ladder rung. The subscription IS the state, so this is the Profile
+    // shape — always on, one verb, no off — and the note says which
+    // subscription rather than implying a switch the place does not have.
     return {
       key: spec.key,
       name: spec.name,
       blurb: spec.blurb,
       state: "enabled",
-      note: "Included with Mesita Partner. Each place sets its own.",
+      note: "Included with Mesita Partner. Every place has one.",
       action: { label: verb("Manage"), href: viewHref(spec.key) },
     };
   });

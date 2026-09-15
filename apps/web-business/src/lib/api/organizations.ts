@@ -142,6 +142,13 @@ export type ConsolePlace = {
   reservations?: boolean;
   mesitaPay?: boolean;
   credits?: boolean;
+  /** Visit Rewards is ON — i.e. the place's strategy is not `zero`
+   *  (MESITA-1882). The ONE commercial fact with no column behind it: the
+   *  four rate columns spell a strategy, and the EF derives this boolean
+   *  through the same `strategyForRates` that decides whether the guest app
+   *  shows a Partner badge. Undefined on the pool, withheld with `partner`
+   *  and `verified` — what a place gives away is not a stranger's business. */
+  visitRewards?: boolean;
 };
 
 /** REQUEST-CACHED (MESITA-1729). The shell layout lists organizations for the

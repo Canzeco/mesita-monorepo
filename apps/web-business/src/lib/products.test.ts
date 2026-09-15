@@ -276,3 +276,93 @@ describe("Mesita Terminal is honest about not existing", () => {
     ]);
   });
 });
+
+describe("Rewards tells the truth about Zero (MESITA-1882)", () => {
+  // THE BUG THIS REPLACES. Rewards and Visits shared one fall-through branch
+  // that hardcoded `enabled` for any partner, so a place sitting on strategy
+  // Zero read "Enabled" while serving 0% to every guest — and, because
+  // listing_type='partner' is `plan ≠ free ∧ strategy ≠ zero`, while carrying
+  // no Partner badge in the guest app either. The one screen whose job is
+  // saying what is on was the last place you could learn it was off.
+  //
+  // Bijection, per this file's rule: the SAME builder must answer differently
+  // for a place on Zero and a place on a paid strategy. Asserting only the
+  // "on" half would pass for the old hardcoded branch.
+  it("reads Not enabled at Zero and Enabled on a paid strategy", () => {
+    const off = build({
+      partnered: true,
+      places: [place({ visitRewards: false })],
+    }).rewards;
+    const on = build({
+      partnered: true,
+      places: [place({ visitRewards: true })],
+    }).rewards;
+
+    expect(off.state).toBe("off");
+    expect(on.state).toBe("enabled");
+    // The two states must not be the same card wearing two words.
+    expect(off.state).not.toBe(on.state);
+    expect(off.note).toContain("Off at");
+    expect(on.note).toContain("On at");
+    // Off still offers the way in — an off product with no verb is a dead end.
+    expect(off.action?.label).toBe("Enable");
+    expect(on.action?.label).toBe("Manage");
+  });
+
+  it("counts places like every other per-place card, and fabricates none", () => {
+    const mixed = build({
+      partnered: true,
+      places: [
+        place({ id: "p-1", visitRewards: true }),
+        place({ id: "p-2", visitRewards: false }),
+      ],
+    }).rewards;
+    expect(mixed.state).toBe("enabled");
+    expect(mixed.note).toBe("On at 1 of 2 places.");
+
+    // A FAILED read prints no number — the rule this file exists to hold.
+    const unread = build({ partnered: true, places: null }).rewards;
+    expect(unread.state).toBe("off");
+    expect(unread.note).toBeNull();
+  });
+
+  it("never promises cashback — nothing accumulates on Mesita", () => {
+    // `_shared/memo-knowledge.ts` id "no-cashback": a reward is a discount on
+    // tonight's bill. `cashback_ledger` is a dropped table.
+    for (const card of Object.values(build({ partnered: true }))) {
+      expect(card.blurb.toLowerCase(), card.key).not.toContain("cashback");
+    }
+  });
+});
+
+describe("Visits is the container, not a switch (MESITA-1882)", () => {
+  it("is on for a partner no matter what any place says", () => {
+    // There is no `visits_enabled` column anywhere — two other tests assert
+    // its absence — so no per-place fact may move this card.
+    for (
+      const places of [
+        [],
+        [place({ visitRewards: false })],
+        [place({ visitRewards: true }), place({ id: "p-2" })],
+        null,
+      ]
+    ) {
+      const visits = build({ partnered: true, places }).visits;
+      expect(visits.state, JSON.stringify(places)).toBe("enabled");
+      expect(visits.note).toBe(
+        "Included with Mesita Partner. Every place has one.",
+      );
+    }
+  });
+
+  it("but the partnership still gates it — on is not unconditional", () => {
+    // The bijection against the test above: same card, no partnership.
+    expect(build({ partnered: false }).visits.state).toBe("locked");
+  });
+
+  it("no longer shares a note with Rewards — they were one card twice", () => {
+    const cards = build({ partnered: true, places: [place()] });
+    expect(cards.visits.note).not.toBe(cards.rewards.note);
+    expect(cards.visits.state).not.toBe(cards.rewards.state);
+  });
+});
