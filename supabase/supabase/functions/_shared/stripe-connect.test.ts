@@ -11,6 +11,7 @@ import {
   isMockConnectAccountId,
   isSupportedConnectCountry,
   isSupportedConnectEntityType,
+  isTerminalDisabledReason,
   connectApiVersion,
   keyIsLive,
   CONNECT_API_VERSION,
@@ -201,6 +202,32 @@ Deno.test("the idempotency key is stable per org+country, and varies by both", (
   );
 });
 
+Deno.test("a restart's key names the account it replaces, so the same country can be re-minted", () => {
+  // Without this the restart is a silent no-op: same org, same country, same
+  // key — Stripe replays and hands back the account that was just deleted
+  // (MESITA-1865).
+  assert(
+    connectAccountIdempotencyKey("org-1", "MX", "acct_dead") !==
+      connectAccountIdempotencyKey("org-1", "MX"),
+  );
+  // Still deterministic: retrying THE SAME restart must replay, not mint a
+  // second permanent account.
+  assertEquals(
+    connectAccountIdempotencyKey("org-1", "MX", "acct_dead"),
+    connectAccountIdempotencyKey("org-1", "MX", "acct_dead"),
+  );
+  // Two generations of restart are two keys.
+  assert(
+    connectAccountIdempotencyKey("org-1", "MX", "acct_dead") !==
+      connectAccountIdempotencyKey("org-1", "MX", "acct_deader"),
+  );
+  // null/undefined are "no restart", not a distinct generation.
+  assertEquals(
+    connectAccountIdempotencyKey("org-1", "MX", null),
+    connectAccountIdempotencyKey("org-1", "MX"),
+  );
+});
+
 Deno.test("Account Link urls must be absolute — a relative path is the bug", () => {
   // What `${origin}/?org=...` produced when origin was "" because the caller
   // is a server action with no Origin header.
@@ -328,6 +355,63 @@ Deno.test("transition law: a COUNTRY mismatch is never replaceable", () => {
   // Mock mode never touches a real row, country notwithstanding.
   assertEquals(
     classifyExistingAccount(mx, { mockMode: true, keyLive: false, country: "US" }),
+    "return_untouched",
+  );
+});
+
+Deno.test("restart is the ONE way past the country clause, and only when asked", () => {
+  // The escape hatch for two PERMANENT answers given before anyone saw the
+  // form they configure (MESITA-1865). It is never inferred from a mismatch:
+  // the same row without the flag still answers use_country_mismatch above.
+  const mx = { stripe_account_id: "acct_mx", livemode: false, country: "MX" };
+  assertEquals(
+    classifyExistingAccount(mx, {
+      mockMode: false,
+      keyLive: false,
+      country: "US",
+      restart: true,
+    }),
+    "restart",
+  );
+  // Same country, same intent: an owner correcting only the legal entity.
+  assertEquals(
+    classifyExistingAccount(mx, {
+      mockMode: false,
+      keyLive: false,
+      country: "MX",
+      restart: true,
+    }),
+    "restart",
+  );
+  // Nothing to restart — "create" already provisions.
+  assertEquals(
+    classifyExistingAccount(null, {
+      mockMode: false,
+      keyLive: false,
+      country: "MX",
+      restart: true,
+    }),
+    "create",
+  );
+  // A row this key cannot see is REPLACE, not restart: there is nothing at
+  // Stripe to delete, and restart's whole job is the delete.
+  assertEquals(
+    classifyExistingAccount(mx, {
+      mockMode: false,
+      keyLive: true,
+      country: "MX",
+      restart: true,
+    }),
+    "replace",
+  );
+  // Mock mode still never touches a real row, restart notwithstanding.
+  assertEquals(
+    classifyExistingAccount(mx, {
+      mockMode: true,
+      keyLive: false,
+      country: "MX",
+      restart: true,
+    }),
     "return_untouched",
   );
 });
@@ -480,4 +564,50 @@ Deno.test("no merchant-facing Connect EF relays Stripe's own words to the browse
       `${ef} must carry the house sentence for a platform-side failure`,
     );
   }
+});
+
+Deno.test("terminal disabled reasons: closed, not merely unfinished", () => {
+  // Stripe stamps requirements.past_due on a connected account the moment
+  // capabilities are requested and unmet — day zero, nothing collected. Reading
+  // that as a restriction is what made every abandoned onboarding a dead end
+  // (MESITA-1865).
+  assertEquals(isTerminalDisabledReason("requirements.past_due"), false);
+  assertEquals(isTerminalDisabledReason("requirements.pending_verification"), false);
+  assertEquals(isTerminalDisabledReason("under_review"), false);
+  assertEquals(isTerminalDisabledReason("listed"), false);
+  assertEquals(isTerminalDisabledReason(null), false);
+  assertEquals(isTerminalDisabledReason(undefined), false);
+  // Closed. Neither resume nor a replacement account is the merchant's to take.
+  for (
+    const reason of [
+      "rejected.fraud",
+      "rejected.terms_of_service",
+      "rejected.listed",
+      "rejected.other",
+      "platform_paused",
+    ]
+  ) {
+    assertEquals(isTerminalDisabledReason(reason), true, reason);
+  }
+});
+
+Deno.test("the business console's copy of the terminal-reason rule has not drifted", async () => {
+  // A Next app cannot import from a Deno EF, so the console carries its own
+  // isTerminalDisabledReason over the same mirror column. Two copies of one
+  // rule is how `unfinished` and `restricted` disagreed in the first place, so
+  // the duplicate is pinned rather than trusted.
+  const src = await Deno.readTextFile(
+    new URL(
+      "../../../../apps/web-business/src/lib/api/organizations.ts",
+      import.meta.url,
+    ),
+  );
+  assert(
+    src.includes("function isTerminalDisabledReason("),
+    "web-business lost its copy of the terminal-reason rule",
+  );
+  assert(
+    src.includes(`reason.startsWith("rejected.") || reason === "platform_paused"`),
+    "web-business's terminal-reason rule no longer matches _shared/stripe-connect.ts",
+  );
 });
