@@ -1,9 +1,12 @@
 // Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
 // Search after idle.
 //
-// Consumer Search and admin Manage Single Place (admin-web-suggest-places,
-// mode deep). Business still calls suggestPlaces (Autocomplete + Mesita
-// ILIKE, Mesita-first sort).
+// THREE NAME BARS RUN THIS LANE: consumer Search, admin Manage Single Place
+// (admin-web-suggest-places, mode deep), and — since MESITA-1874 — the
+// business console's Add place. The last one used to run `suggestPlaces`
+// (Autocomplete + a Mesita ILIKE) and returned one establishment from
+// anywhere on earth for a partial name; `suggestPlaces` itself stays, for
+// consumer-mcp.
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
 // Fast numbers are the same list; they stay locked.
