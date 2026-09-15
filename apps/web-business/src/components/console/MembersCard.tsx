@@ -39,10 +39,22 @@ import { cn } from "@/lib/utils";
 const ADD_INITIAL: AddMemberState = { error: null, email: "", added: false, mode: null };
 const ROW_INITIAL: MemberRowActionState = { error: null };
 
-function RoleChip({ role }: { role: string }) {
+/** The role, and — for the reader's own row — the fact that it is theirs.
+ *
+ *  "You" used to be its own 11px muted span beside the chip (MESITA-1861), so
+ *  a member row ended in FOUR control shapes at four weights: bare text, a
+ *  bordered chip, a ghost pill and a 32px circle. That reads as a toolbar, not
+ *  as a row. It is one fact about one person — whose role this is — so it is
+ *  one chip. */
+function RoleChip({ role, isMe }: { role: string; isMe?: boolean }) {
   return (
     <span className="border-border bg-card rounded-full border px-2.5 py-0.5 text-[11px] font-semibold capitalize">
       {role}
+      {/* `normal-case`, because the chip is `capitalize` and without it
+          the suffix renders " · You" — two capitals for one fact. */}
+      {isMe && (
+        <span className="text-muted-foreground normal-case"> · you</span>
+      )}
     </span>
   );
 }
@@ -94,8 +106,7 @@ function MemberRow({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {isMe && <span className="text-muted-foreground text-[11px]">You</span>}
-          <RoleChip role={member.role} />
+          <RoleChip role={member.role} isMe={isMe} />
           {isOwner && confirming === null && (
             <>
               <button
@@ -296,6 +307,7 @@ export function MembersCard({
 
   return (
     <Section
+      lane
       title="Members"
       description="Place teams are separate."
       right={

@@ -129,16 +129,37 @@ export function ConnectStripeForm({
   );
 }
 
+/**
+ * `account: null` means TWO different things, and for months the card could
+ * only say one of them (MESITA-1861).
+ *
+ * The page catches a failed `business-web-get-payment-account` and leaves
+ * `account` null; `paymentAccountState(null, false)` returns `"none"`; the
+ * pill says **No account** and the card offers **Connect Stripe**. So a
+ * transient Edge Function blip told an owner with a live, charging Stripe
+ * account that they had none, and put a button in front of them that creates
+ * a SECOND one. The page's own docblock forbade exactly this — "A failure is
+ * no box state, never a box that asserts 'not connected' about an account
+ * nobody managed to ask about" — and the code did it anyway, because null
+ * carried no way to tell the two apart.
+ *
+ * `loadError` is that way. It is a separate branch, not a third state on the
+ * pill: an unread account has no state to show, so the card shows none and
+ * offers no action. Same shape and same words as MembersCard's `loadError`,
+ * because they are the same failure on the same page.
+ */
 export function PaymentsCard({
   orgId,
   account,
   orphaned,
   isOwner,
+  loadError,
 }: {
   orgId: string;
   account: PaymentAccount | null;
   orphaned: boolean;
   isOwner: boolean;
+  loadError: string | null;
 }) {
   const [connectState, connectAction, connecting] = useActionState(
     connectPaymentsAction,
@@ -153,15 +174,35 @@ export function PaymentsCard({
   const state = paymentAccountState(account, orphaned);
   const note = connectState.note ?? dashState.note;
 
+  // Never "No account" on a failed read, and never a Connect button under it.
+  if (loadError) {
+    return <p className="text-muted-foreground text-sm">{loadError}</p>;
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div>
         {/* The Section above is titled "Stripe". A row labelled "Account"
-            under it was the card's ONLY row restating its own heading, so the
-            label is empty and the state pill is the row (MESITA-1847). */}
-        <DataRow label="">
+            under it was the card's ONLY row restating its own heading
+            (MESITA-1847) — so the label was emptied and the row kept. On a
+            fluid full-width card that left a bordered row with an empty left
+            cell, a hairline under it, and the pill alone at the far right:
+            ~1400px of underlined nothing, the ugliest element on the page.
+            Emptying a row does not remove it. The row is gone; the pill and
+            the action it gates now sit together, first thing in the lane
+            (MESITA-1861). */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <StatePill state={state} />
-        </DataRow>
+          {isOwner && (state === "none" || orphaned) && (
+            <button
+              type="button"
+              onClick={() => setConnectOpen(true)}
+              className={CTA_BUTTON_CLASS}
+            >
+              {orphaned ? "Connect again" : "Connect Stripe"}
+            </button>
+          )}
+        </div>
         {/* The pill says "Ready", and this says what Ready costs the owner in
             waiting. Without it "Ready" is just a quieter version of the same
             unanswered question (MESITA-1643). */}
@@ -201,88 +242,85 @@ export function PaymentsCard({
         )}
       </div>
 
-      {isOwner && (
+      {/* The not-connected branch has NO block here any more — its button is
+          up beside the state pill and its modal is a sibling below, so this
+          renders only when there is genuinely something to render. An empty
+          `<div className="flex flex-col gap-3">` is still a flex item, and
+          the parent's `gap-4` pays for it: 16px of dead space at the foot of
+          the card, which is the same bug this issue is removing (MESITA-1861). */}
+      {isOwner && state !== "none" && !orphaned && (
         <div className="flex flex-col gap-3">
-          {state === "none" || orphaned ? (
-            <>
-              {/* The button and nothing else. The rows above already say the
-                  state — "No account", and for an orphan the Why row says the
-                  account is gone — so a sentence here would only repeat them
-                  in a second voice. */}
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setConnectOpen(true)}
-                  className={CTA_BUTTON_CLASS}
-                >
-                  {orphaned ? "Connect again" : "Connect Stripe"}
-                </button>
-              </div>
-              {/* A failure keeps the modal up: the answers are still in the
-                  fields, and the message belongs beside them, not on a card
-                  the reader has already been sent back to. */}
-              {connectOpen && (
-                <Modal
-                  title="Connect Stripe"
-                  description="Two answers Stripe can't change later."
-                  onClose={() => setConnectOpen(false)}
-                >
-                  <ConnectStripeForm
-                    orgId={orgId}
-                    action={connectAction}
-                    pending={connecting}
-                    error={connectState.error}
-                  />
-                </Modal>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <ErrorBox title="Couldn't connect payments" message={connectState.error} />
-              <div className="flex items-center gap-3">
-              {/* Resume follows the STATE. It used to key off
-                  !details_submitted, which meant an account waiting on Stripe
-                  still offered a button that reopened a finished form
-                  (MESITA-1645). */}
-              {state === "unfinished" && (
-                <form action={connectAction}>
-                  <input type="hidden" name="orgId" value={orgId} />
-                  {/* Resume mints a link for an account that already exists,
-                      so the entity gate does not apply — the account was
-                      created with its answer, and Stripe owns it from here. */}
-                  <input type="hidden" name="intent" value="resume" />
-                  <input
-                    type="hidden"
-                    name="country"
-                    value={account?.country ?? "MX"}
-                  />
-                  <button
-                    type="submit"
-                    disabled={connecting}
-                    className={CTA_BUTTON_CLASS}
-                  >
-                    {connecting ? "Opening Stripe..." : "Resume onboarding"}
-                  </button>
-                </form>
-              )}
-              <form action={dashAction}>
+          <ErrorBox title="Couldn't connect payments" message={connectState.error} />
+          <div className="flex items-center gap-3">
+            {/* Resume follows the STATE. It used to key off
+                !details_submitted, which meant an account waiting on Stripe
+                still offered a button that reopened a finished form
+                (MESITA-1645). */}
+            {state === "unfinished" && (
+              <form action={connectAction}>
                 <input type="hidden" name="orgId" value={orgId} />
+                {/* Resume mints a link for an account that already exists,
+                    so the entity gate does not apply — the account was
+                    created with its answer, and Stripe owns it from here. */}
+                <input type="hidden" name="intent" value="resume" />
+                <input
+                  type="hidden"
+                  name="country"
+                  value={account?.country ?? "MX"}
+                />
                 <button
                   type="submit"
-                  disabled={opening}
-                  className={PILL_BUTTON_CLASS}
+                  disabled={connecting}
+                  className={CTA_BUTTON_CLASS}
                 >
-                  {opening ? "Opening..." : "Open Stripe dashboard"}
+                  {connecting ? "Opening Stripe..." : "Resume onboarding"}
                 </button>
               </form>
-              </div>
-              <ErrorBox title="Couldn't open the Stripe dashboard" message={dashState.error} />
-            </div>
-          )}
+            )}
+            <form action={dashAction}>
+              <input type="hidden" name="orgId" value={orgId} />
+              <button
+                type="submit"
+                disabled={opening}
+                className={PILL_BUTTON_CLASS}
+              >
+                {opening ? "Opening..." : "Open Stripe dashboard"}
+              </button>
+            </form>
+          </div>
+          <ErrorBox title="Couldn't open the Stripe dashboard" message={dashState.error} />
           {note && !connectState.error && !dashState.error && (
             <p className="text-muted-foreground text-[12px]">{note}</p>
           )}
         </div>
+      )}
+
+      {/* The connect path's own feedback, on the card rather than in the
+          wrapper that no longer exists: a failure the modal has already been
+          dismissed past still has to be said somewhere. */}
+      {isOwner && (state === "none" || orphaned) && (
+        <>
+          {note && !connectState.error && (
+            <p className="text-muted-foreground text-[12px]">{note}</p>
+          )}
+          {/* A failure keeps the modal up: the answers are still in the
+              fields, and the message belongs beside them, not on a card the
+              reader has already been sent back to. */}
+          {connectOpen && (
+            <Modal
+              title="Connect Stripe"
+              description="Two answers Stripe can't change later."
+              onClose={() => setConnectOpen(false)}
+            >
+              <ConnectStripeForm
+                orgId={orgId}
+                action={connectAction}
+                pending={connecting}
+                error={connectState.error}
+              />
+            </Modal>
+          )}
+        </>
       )}
     </div>
   );

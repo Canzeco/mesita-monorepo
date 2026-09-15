@@ -7,6 +7,14 @@
 // Partner — on or off. Never "Not Partner", never "Patner".
 //
 // Stripe Ready is the lock. Owner-only to flip; everyone else reads it.
+//
+// THE 9.5rem RIGHT WELL IS GONE (MESITA-1861). Every branch used to end in
+// `w-[9.5rem] shrink-0 justify-end sm:w-[11rem]`, which pinned the track (or
+// the lock pill) to the far right of a card that, on the fluid console, is
+// ~1690px wide — with its own sentence pinned to the far left. Two atoms, one
+// desert. The well existed to line the three branches up with each other; the
+// Section lane does that job now, for every box on the page at once, so what
+// is left is the control and its sentence sitting next to each other.
 
 import { useState, useTransition } from "react";
 import { Loader2, Lock } from "lucide-react";
@@ -85,17 +93,16 @@ export function PartnerCard({
         // repeating the word and the sentence here was saying one thing three
         // times (MESITA-1847). The span carried this branch's only accessible
         // name, so the label moves onto the row itself.
-        <div className="flex items-center gap-3 py-1" aria-label="Partner">
-          <span className="min-w-0 flex-1 text-left">
-            <span className="text-muted-foreground block text-xs leading-snug">
-              Connect Stripe first.
-            </span>
+        <div
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 py-1"
+          aria-label="Partner"
+        >
+          <span className="text-muted-foreground bg-muted type-label inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-semibold">
+            <Lock className="h-3 w-3" aria-hidden />
+            Needs a Ready Stripe account
           </span>
-          <span className="flex w-[9.5rem] shrink-0 justify-end sm:w-[11rem]">
-            <span className="text-muted-foreground bg-muted inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-label font-semibold">
-              <Lock className="h-3 w-3" aria-hidden />
-              Needs a Ready Stripe account
-            </span>
+          <span className="text-muted-foreground min-w-0 text-xs leading-snug">
+            Connect Stripe first.
           </span>
         </div>
       ) : canFlip || pending ? (
@@ -111,28 +118,20 @@ export function PartnerCard({
             pending ? "cursor-default opacity-60" : "cursor-pointer hover:opacity-90",
           )}
         >
-          <span className="min-w-0 flex-1 text-left">
-            <span className="text-muted-foreground block text-xs leading-snug">
-              {on
-                ? "Every place this organization holds is in the partnership."
-                : "Turn on to join every held place."}
-            </span>
-          </span>
-          <span className="flex w-[9.5rem] shrink-0 justify-end sm:w-[11rem]">
-            <Track on={on} busy={pending} />
+          <Track on={on} busy={pending} />
+          <span className="text-muted-foreground min-w-0 text-xs leading-snug">
+            {on
+              ? "Every place this organization holds is in the partnership."
+              : "Turn on to join every held place."}
           </span>
         </button>
       ) : (
         <div className="flex items-center gap-3 py-1" aria-label="Partner">
-          <span className="min-w-0 flex-1 text-left">
-            <span className="text-muted-foreground block text-xs leading-snug">
-              {on
-                ? "Every place this organization holds is in the partnership."
-                : "An owner turns this on."}
-            </span>
-          </span>
-          <span className="flex w-[9.5rem] shrink-0 justify-end sm:w-[11rem]">
-            <Track on={on} busy={false} />
+          <Track on={on} busy={false} />
+          <span className="text-muted-foreground min-w-0 text-xs leading-snug">
+            {on
+              ? "Every place this organization holds is in the partnership."
+              : "An owner turns this on."}
           </span>
         </div>
       )}

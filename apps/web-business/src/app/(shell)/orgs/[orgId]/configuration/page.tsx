@@ -28,6 +28,23 @@
 // loyalty card's colour; `Organization` carries neither column. Developers
 // wants API keys. Both show Soon on the PAGE rather than a dimmed row in the
 // rail (MESITA-1833, MESITA-1845).
+//
+// ── THE LABEL LANE, AND THE ORDER (MESITA-1861) ───────────────────────────
+//
+// Pato, on the live page: *"make this more pretty."* A design review found
+// the ugliness was mechanical, not taste — the boxes stranded their content
+// at opposite edges of a ~1690px card, the two unbuilt boxes carried bigger
+// type than the three live ones, and the h1 and its caption were separated by
+// the same gap as two unrelated cards. Section's `lane` prop fixes the first,
+// SoonStrip's new geometry the second, and the header wrapper below the
+// third. NOTHING here caps a width; the console is still fluid (MESITA-1836).
+//
+// THE ORDER IS THE DEPENDENCY. It used to read Brand · Members · Stripe ·
+// Partnership · Developers, which opened AND closed the page on a box that
+// does not exist, and put the one thing a new organization must actually do
+// third. Now: Stripe, the lock — Partnership, what the lock opens — Members,
+// who may touch it — then the two honest Soons. `loading.tsx` carries the
+// same order, or every load ends in a shift.
 import { notFound, redirect } from "next/navigation";
 import { MembersCard } from "@/components/console/MembersCard";
 import { PartnerCard } from "@/components/console/PartnerCard";
@@ -78,16 +95,30 @@ export default async function ConfigurationPage(props: {
 
   // The Stripe box's own read. A failure is no box state, never a box that
   // asserts "not connected" about an account nobody managed to ask about.
+  //
+  // That was the INTENT, and for months the code did the opposite: the catch
+  // left `account` null, `paymentAccountState(null, false)` returns "none",
+  // and the card rendered the pill "No account" over a **Connect Stripe**
+  // button — offering an owner with a live, charging account a second one,
+  // because a blip and a genuine absence were the same value (MESITA-1861).
+  // The flag is what tells them apart, and it is the same shape as the
+  // members read directly above.
   let account: PaymentAccount | null = null;
   let orphaned = false;
+  let accountError: string | null = null;
   try {
     ({ account, orphaned } = await apiGetPaymentAccount(supabase, org.id));
   } catch (e) {
+    accountError = "Couldn't load the Stripe account.";
     console.error("[configuration] business-web-get-payment-account:", e);
   }
 
   const isOwner = org.myRole === "owner";
+  // A failed read is NOT "not ready" — it is unknown. Partnership stays
+  // locked either way (the lock is the safe default), but the reason it gives
+  // must not be a claim about an account nobody managed to fetch.
   const stripeReady =
+    accountError === null &&
     account !== null &&
     account.charges_enabled === true &&
     account.details_submitted === true &&
@@ -95,34 +126,36 @@ export default async function ConfigurationPage(props: {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">
-        {org.name}
-      </h1>
-      <p className="text-muted-foreground text-sm leading-snug">
-        You are {ROLE_LABEL[org.myRole]} here.
-      </p>
+      {/* The caption BELONGS to the title. The shell column is `gap-4` and
+          this page is a fragment, so an unwrapped `h1` + `p` were 16px apart
+          — the identical gap the column puts between two unrelated cards, and
+          the caption read as floating between the name and the boxes. One
+          wrapper, `gap-1`, and proximity says what it should (MESITA-1861). */}
+      <div className="flex flex-col gap-1">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {org.name}
+        </h1>
+        <p className="text-muted-foreground text-sm leading-snug">
+          You are {ROLE_LABEL[org.myRole]} here.
+        </p>
+      </div>
 
-      <SoonStrip {...SOON_STRIPS.brand} />
-
-      <MembersCard
-        orgId={org.id}
-        members={members}
-        pendingInvites={pendingInvites}
-        myManagerId={user.id}
-        isOwner={isOwner}
-        loadError={membersError}
-      />
-
-      <Section title="Stripe" description="The account this organization gets paid through.">
+      <Section
+        lane
+        title="Stripe"
+        description="The account this organization gets paid through."
+      >
         <PaymentsCard
           orgId={org.id}
           account={account}
           orphaned={orphaned}
           isOwner={isOwner}
+          loadError={accountError}
         />
       </Section>
 
       <Section
+        lane
         title="Partnership"
         description="Free. Unlocks Mesita Pay, Visit Rewards and Accept Prepays at every held place."
       >
@@ -135,6 +168,16 @@ export default async function ConfigurationPage(props: {
         />
       </Section>
 
+      <MembersCard
+        orgId={org.id}
+        members={members}
+        pendingInvites={pendingInvites}
+        myManagerId={user.id}
+        isOwner={isOwner}
+        loadError={membersError}
+      />
+
+      <SoonStrip {...SOON_STRIPS.brand} />
       <SoonStrip {...SOON_STRIPS.developers} />
     </>
   );
