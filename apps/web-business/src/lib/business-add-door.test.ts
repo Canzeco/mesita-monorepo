@@ -113,11 +113,18 @@ describe("the add door is the ceremony", () => {
     expect(CEREMONY).not.toContain("CreatePlaceForm");
   });
 
-  it("the ceremony loading boundary is form-shaped, not the list", () => {
+  // MESITA-1850. The boundary is SEARCH-shaped: one full-width bar and the
+  // line under it. It drew a 520px column with a field and a button — the
+  // shape of the screen this replaced — so every load ended in a shift on
+  // swap. And it draws NO result rows: an empty search has none, and
+  // promising a list before a query exists is a second lie.
+  it("the loading boundary is the search bar, full width, with no rows", () => {
     const loading = read("app/(shell)/orgs/[orgId]/places/new/loading.tsx");
-    expect(loading).toContain("max-w-md");
-    expect(loading).not.toContain("h-[68px]");
+    expect(loading).not.toContain("max-w-md");
+    expect(loading).toContain("w-full");
+    expect(loading).toContain("h-14");
     expect(loading).not.toContain("length: 5");
+    expect(loading).not.toContain("rounded-full");
   });
 
   it("add-place modules never remount the OTP stack", () => {
@@ -160,13 +167,49 @@ describe("the add door is the ceremony", () => {
     );
   });
 
-  it("a failed claim after mint keeps the error on the Add card", () => {
+  // MESITA-1850. The card became a ROW, and the error with it: a half-done
+  // mint (place created, claim failed) must leave its message ON that row and
+  // re-ask the catalogue, so the operator's next click acts on what is true
+  // NOW. The rewrite keeps both halves and adds the thing the card could not
+  // do — errors keyed by place id, so one failing row never wipes another's.
+  it("a failed claim after mint keeps the error on its own row, and re-asks", () => {
     const form = codeOnly(read("components/add-place/AddPlaceForm.tsx"));
-    const apply = form.slice(form.indexOf("const applyLookup"));
-    const applyBody = apply.slice(0, apply.indexOf("const pick"));
-    expect(applyBody).not.toContain("setActionError(null)");
-    expect(form).toContain("setActionError(result.error)");
     expect(form).toContain("retryPlaceId");
+    expect(form).toContain("alreadyExists");
+    // Per-row, never a single shared slot: two rows can fail independently.
+    expect(form).toContain("const [rowErrors, setRowErrors]");
+    expect(form).toContain("fail(p.placeId,");
+    // The refresh is what makes the next click honest.
+    expect(form).toContain("await refresh(p.placeId)");
+    const create = form.slice(form.indexOf("const onCreate ="));
+    const createBody = create.slice(0, create.indexOf("const onClaim ="));
+    expect(createBody.indexOf("refresh(p.placeId)")).toBeGreaterThan(-1);
+  });
+
+  // MESITA-1850. Pato: "display if the place is already on mesita or if its
+  // not, and put the shitty button to claim/verify all the fucking workflow."
+  it("every result row shows its Mesita state and carries its own verb", () => {
+    const form = codeOnly(read("components/add-place/AddPlaceForm.tsx"));
+    const row = codeOnly(read("components/add-place/AddPlaceRow.tsx"));
+    // The state is resolved for EVERY prediction, not for one picked slot.
+    expect(form).toContain("for (const p of results)");
+    expect(form).toContain("apiLookupPlace(supabase, p.placeId)");
+    expect(form).toContain("rowStateForLookup(lookup, held)");
+    // A failed lookup leaves the row CHECKING — never "Not on Mesita", which
+    // would offer Create for a place that exists and 409 on the click.
+    expect(row).toContain("Checking Mesita");
+    // The bar is full width and unlabelled: no form column, no Cancel.
+    expect(form).not.toContain("FORM_COLUMN_CLASS");
+    expect(form).not.toContain("cancelHref");
+    expect(form).toContain('type="search"');
+    // The verbs live on the row, one per state.
+    expect(row).toContain('"Creating…" : "Create"');
+    expect(row).toContain('"Claiming…" : "Claim"');
+    expect(row).toContain(">\n                Open\n              </Link>");
+    expect(row).toContain('state.kind === "create"');
+    expect(row).toContain('state.kind === "claim"');
+    // A held place gets NO verb — state only.
+    expect(row).not.toContain('state.kind === "taken"');
   });
 });
 
