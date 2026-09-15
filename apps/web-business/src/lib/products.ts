@@ -13,6 +13,14 @@
 //                        exists — there is no column to flip and no price, so
 //                        it is the one card with no off state and no verb but
 //                        Manage.
+//   Mesita Customers     who keeps coming back. It WILL be free, exactly like
+//                        Profile — Pato wrote it "Costumers (Free)" — and it
+//                        is `soon` anyway, because the engine is not built
+//                        (`/orgs/<id>/customers` is a SoonStrip page). A price
+//                        is not a reason to paint a green chip on an empty
+//                        page, so the chip says the harder word and the note
+//                        carries the price. No verb: Customers has its own
+//                        rail row, so the door already exists.
 //   Mesita Visits        guest checks at the bill. Partner-gated, and the
 //                        subscription IS the state — so it is ALWAYS ON for a
 //                        partner, the Profile pattern, never an on/off card
@@ -20,19 +28,13 @@
 //                        container Rewards, Pay and Credits attach to, which
 //                        is why it has no column, no rail row and no ladder
 //                        rung anywhere else in this console either.
+//                        REWARDS IS NOW ITS SECOND SENTENCE (MESITA-1884) —
+//                        see `rewardsClause` for why that is a note and never
+//                        a state.
 //   Mesita Orders        `pickup_orders_enabled` OR `delivery_orders_enabled`,
 //                        per place. One card, because an operator thinks
 //                        "orders" and the two columns are its two shapes.
 //   Mesita Reservations  `reservations_enabled`, per place.
-//   Mesita Rewards       visit discounts. Partner-gated AND per place, off
-//                        `visitRewards` — the strategy the four rate columns
-//                        spell, where `zero` is OFF (MESITA-1882). It used to
-//                        read Enabled for every partner, so a place sitting on
-//                        Zero was told its rewards were on while it served 0%
-//                        and carried no Partner badge in the guest app.
-//                        ("cashback" left the blurb with that fix: nothing
-//                        accumulates on Mesita — a reward is a discount on
-//                        tonight's bill, `_shared/memo-knowledge.ts`.)
 //   Mesita Pay           the ORG switch `mesita_pay_enabled`, on top of
 //                        Partner. The one product turned on at this level.
 //   Mesita Credits       `credits_enabled`, per place. Partner-gated too —
@@ -70,6 +72,12 @@ type ProductSpec = {
   /** The per-place column(s) behind it, or null when the product is not a
    *  per-place switch (Profile, Pay, Terminal). */
   atPlace: PlacePredicate | null;
+  /** NOT BUILT, and the sentence that says so. A `soon` spec outranks every
+   *  other branch below — no gate, no count, no verb — because a product that
+   *  does not exist cannot be locked, off, or enabled. It used to be a
+   *  hardcoded `key === "terminal"`, which is fine for one and a lie waiting
+   *  for the second (MESITA-1884 brought Customers). */
+  soon: string | null;
 };
 
 const SPECS: readonly ProductSpec[] = [
@@ -79,6 +87,18 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Manage your places, menus, photos and reviews.",
     needsPartner: false,
     atPlace: null,
+    soon: null,
+  },
+  {
+    key: "customers",
+    name: "Mesita Customers",
+    blurb: "See who keeps coming back, and what they spend.",
+    needsPartner: false,
+    atPlace: null,
+    // FREE AND UNBUILT ARE BOTH TRUE, and the chip may only say one of them.
+    // It says the harder one. The price goes in the note, where it costs an
+    // operator nothing to learn it early.
+    soon: "Always free. Nothing is live yet.",
   },
   {
     key: "visits",
@@ -86,6 +106,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Close in-person bills with a simple visit checkout.",
     needsPartner: true,
     atPlace: null,
+    soon: null,
   },
   {
     key: "orders",
@@ -93,6 +114,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Receive pickup and delivery orders with checkout.",
     needsPartner: false,
     atPlace: (p) => p.pickupOrders === true || p.deliveryOrders === true,
+    soon: null,
   },
   {
     key: "reservations",
@@ -100,13 +122,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Manage table bookings with your preferred provider.",
     needsPartner: false,
     atPlace: (p) => p.reservations === true,
-  },
-  {
-    key: "rewards",
-    name: "Mesita Rewards",
-    blurb: "Give guests a reason to come back. You set the discount, you fund it.",
-    needsPartner: true,
-    atPlace: (p) => p.visitRewards === true,
+    soon: null,
   },
   {
     key: "pay",
@@ -114,6 +130,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Accept card payments for visits and orders.",
     needsPartner: true,
     atPlace: null,
+    soon: null,
   },
   {
     key: "credits",
@@ -121,6 +138,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Sell and accept branded credits for visits and orders.",
     needsPartner: true,
     atPlace: (p) => p.credits === true,
+    soon: null,
   },
   {
     key: "terminal",
@@ -128,6 +146,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Take in-person payments with Mesita hardware.",
     needsPartner: false,
     atPlace: null,
+    soon: "Mesita hardware is not available yet.",
   },
 ];
 
@@ -145,23 +164,25 @@ export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 // it from `ZONE_ROWS` in `place-manage/sections/controls/offerings.ts`, and
 // that does not work: `LadderRowKey` is partnership · stripe · mesita_pay ·
 // visit_rewards · accept_prepays · sell_prepays · pickup · delivery ·
-// reservations, and `ProductKey` is profile · visits · orders · reservations ·
-// rewards · pay · credits · terminal. The two spaces share ONE spelling
+// reservations, and `ProductKey` is profile · customers · visits · orders ·
+// reservations · pay · credits · terminal. The two spaces share ONE spelling
 // (`reservations`) and mean different things by it — a product is a thing you
 // buy, a ladder row is a switch with a prerequisite, and `orders` alone is two
 // rows. A derivation across that gap would be a coincidence pretending to be
 // a rule, so the mapping is written down and the test below pins it.
 //
-// Terminal maps to `profile` like every other non-switch card: it is `soon`
-// and carries no action at all, so the entry is never read. It exists so the
-// record is exhaustive and a NEW product cannot be added without answering
-// this question — which is the whole reason this is a Record and not a lookup
-// with a fallback.
+// THE TWO SOON CARDS MAP TO `profile` and mean nothing by it: Terminal and
+// Customers carry no action at all, so their entries are never read. They
+// exist so the record is exhaustive and a NEW product cannot be added without
+// answering this question — which is the whole reason this is a Record and
+// not a lookup with a fallback.
 export const PRODUCT_VIEW: Record<ProductKey, PlaceTab> = {
   profile: "profile",
-  // What a guest EARNS here: the Rewards zone's ladder.
+  customers: "profile",
+  // VISITS OWNS THE REWARDS LADDER (MESITA-1884). It always did — this entry
+  // is unchanged — but it used to share the address with a Rewards card that
+  // no longer exists, so this is now the only door to the zone.
   visits: "rewards",
-  rewards: "rewards",
   // What a guest CAN do here: the Capabilities zone's ladder.
   orders: "capabilities",
   reservations: "capabilities",
@@ -181,6 +202,37 @@ function placeNote(on: number, total: number): string {
   if (on === 0) return `Off at all ${places}.`;
   if (on === total) return `On at ${on === 1 ? "your one place" : `all ${places}`}.`;
   return `On at ${on} of ${places}.`;
+}
+
+// ── REWARDS IS A SENTENCE INSIDE VISITS, NEVER A STATE (MESITA-1884) ──────
+//
+// Pato: *"should i separate visits and rewards into two?? i don't think so."*
+// He is right, and the merge has exactly one trap in it.
+//
+// THE TRAP: give the merged card the DIAL's state and it lies the other way.
+// MESITA-1882 fixed a Rewards card that claimed Enabled at Zero. Fold Rewards
+// into Visits by taking `visitRewards` as the card's state, and a partner
+// whose visit checkout works perfectly — guests scan, the bill closes, money
+// moves — reads **"Not enabled"** because the discount happens to be 0%. That
+// is a fresh lie pointing the opposite way, on the same screen, about the same
+// two facts.
+//
+// So the two facts stay two. Visits' STATE is the container's (on for every
+// partner, there is no column), and the dial goes in the second sentence,
+// where "no rewards set yet" is information and not an accusation that
+// checkout is broken.
+//
+// It obeys the same no-fabrication rule as every count on this page: a failed
+// read and an organization with no places both drop the clause rather than
+// print a zero.
+function rewardsClause(places: readonly ConsolePlace[] | null): string {
+  if (!places || places.length === 0) return "Every place has one.";
+  const on = places.filter((p) => p.visitRewards === true).length;
+  if (on === 0) return "No rewards set yet.";
+  if (on < places.length) return `Rewards on at ${on} of ${places.length} places.`;
+  return places.length === 1
+    ? "Rewards on at your one place."
+    : `Rewards on at all ${places.length} places.`;
 }
 
 export function buildProductCards(input: {
@@ -213,14 +265,17 @@ export function buildProductCards(input: {
   const verb = (word: string) => (noPlaces ? "Add a place" : word);
 
   return SPECS.map((spec): ProductCard => {
-    // Terminal first: nothing below applies to a product that does not exist.
-    if (spec.key === "terminal") {
+    // SOON FIRST, and it outranks everything below: nothing further down
+    // applies to a product that does not exist. A `soon` card cannot be
+    // locked (there is no subscription that would deliver it), cannot be off
+    // (there is no switch), and must never be counted.
+    if (spec.soon) {
       return {
         key: spec.key,
         name: spec.name,
         blurb: spec.blurb,
         state: "soon",
-        note: "Mesita hardware is not available yet.",
+        note: spec.soon,
         action: null,
       };
     }
@@ -280,16 +335,7 @@ export function buildProductCards(input: {
       };
     }
 
-    // WHAT IS LEFT IS VISITS, AND ONLY VISITS (MESITA-1882).
-    //
-    // This used to be a fall-through shared by Visits and Rewards, and that
-    // sharing WAS the bug: two cards computed byte-identically — same gate,
-    // same hardcoded `enabled`, same note, same href — so the only difference
-    // a merchant could see between them was the icon. Worse, it made Rewards
-    // claim Enabled for a place sitting on Zero: 0% to every guest, and no
-    // Partner badge in the guest app, reported by the one screen whose whole
-    // job is saying what is on. Rewards now reads `visitRewards` through the
-    // per-place branch above, which leaves exactly one spec here.
+    // WHAT IS LEFT IS VISITS, AND ONLY VISITS.
     //
     // Visits keeps no count because it has nothing to count: there is no
     // `visits_enabled` column (two tests assert its absence), no rail row and
@@ -301,7 +347,7 @@ export function buildProductCards(input: {
       name: spec.name,
       blurb: spec.blurb,
       state: "enabled",
-      note: "Included with Mesita Partner. Every place has one.",
+      note: `Included with Mesita Partner. ${rewardsClause(places)}`,
       action: { label: verb("Manage"), href: viewHref(spec.key) },
     };
   });

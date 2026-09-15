@@ -22,7 +22,10 @@
 //   off       the same fact, false. The verb points at where it is turned on.
 //   locked    true-but-unreachable: the product needs Mesita Partner and the
 //             organization is not one. A lock, never a disabled Enable button.
-//   soon      not built. Mesita Terminal, and only it.
+//   soon      not built. Mesita Terminal (no hardware) and Mesita Customers
+//             (no engine). A product that will be FREE still shows Soon while
+//             it does not exist: "free" is a price, and a price is not a
+//             reason to paint a green chip on an empty page.
 //
 // `note` is the second line, and it is a COUNT where one exists — "On at 2 of
 // 5 places" is read off `business-web-list-places`, the same payload the
@@ -44,7 +47,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  BadgePercent,
   CalendarCheck,
   Check,
   CreditCard,
@@ -53,17 +55,32 @@ import {
   ShoppingBag,
   Store,
   Ticket,
+  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// THE EIGHT, IN PATO'S ORDER (2026-09-15): *"Profile · Costumers · Visits ·
+// Orders · Reservations · Payments · Credits · Terminal"*, with the
+// partnership above the grid and not in it.
+//
+// REWARDS IS NOT HERE ANY MORE, and that is the whole point of MESITA-1884.
+// Pato: *"should i separate visits and rewards into two?? i don't think so."*
+// A reward is a DIAL INSIDE Visits — no price, no purchase, and its only
+// state is the rate you set — so selling it as a ninth card sold the same
+// thing twice. MESITA-1882 had already paid for that mistake once, when the
+// two cards computed byte-identically and the only difference a merchant
+// could see was the icon.
+//
+// CUSTOMERS TOOK ITS SLOT, and it is `soon`, not free: the engine is not
+// built. See `lib/products.ts` for why the chip says the harder word.
 export const PRODUCT_KEYS = [
   "profile",
+  "customers",
   "visits",
   "orders",
   "reservations",
-  "rewards",
   "pay",
   "credits",
   "terminal",
@@ -93,10 +110,12 @@ export type ProductCard = {
  *  a grid is a toy, and this screen is where an operator spends money. */
 const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
   profile: { Icon: Store, tint: "bg-teal-500/10 text-teal-700" },
+  // Customers inherits the pink Rewards left behind: eight products, eight
+  // tints, and no gap where a retired card used to be.
+  customers: { Icon: Users, tint: "bg-pink-500/10 text-pink-700" },
   visits: { Icon: Ticket, tint: "bg-rose-500/10 text-rose-700" },
   orders: { Icon: ShoppingBag, tint: "bg-amber-500/10 text-amber-700" },
   reservations: { Icon: CalendarCheck, tint: "bg-sky-500/10 text-sky-700" },
-  rewards: { Icon: BadgePercent, tint: "bg-pink-500/10 text-pink-700" },
   pay: { Icon: CreditCard, tint: "bg-violet-500/10 text-violet-700" },
   credits: { Icon: Wallet, tint: "bg-emerald-500/10 text-emerald-700" },
   terminal: { Icon: CreditCard, tint: "bg-slate-500/10 text-slate-700" },
