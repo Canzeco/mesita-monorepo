@@ -8,6 +8,41 @@
 //
 // Self-contained: own JWT verification, own DB reads via the service role,
 // never calls another Edge Function.
+//
+// ── IT USED TO WAIT ON ITSELF (MESITA-1876) ───────────────────────────────
+//
+// Pato: *"do the sequential db hops too."* Measured before: p50 472ms, p95
+// 913ms over 24h — the read behind the whole Place screen's hard load.
+//
+// The chain ran ONE QUERY AT A TIME, and most of them did not need the one
+// before: `checkSuperAdmin` → `place_members` → `organization_members` →
+// `places` → `profiles` → the pin row → `app_config`. Seven round trips in a
+// row for an ordinary operator, on a project where a call costs far more than
+// the query inside it.
+//
+// THREE THINGS NOW OVERLAP, and each is a different kind of claim:
+//
+//   `app_config`      depends on NOTHING here and used to run LAST, blocking
+//                     the response for pure latency. It starts first and is
+//                     awaited at the end. Free.
+//   the pin row       reads `places.check_pin` for whichever place ends up
+//                     ACTIVE. The console always sends a placeId, and on the
+//                     super-admin branch the requested id IS the active one by
+//                     construction — so it is fired on the REQUESTED id
+//                     alongside the place read, and costs a second round trip
+//                     only in the fallback case (a requested id the caller
+//                     does not hold, so `active` becomes places[0]).
+//   the two           are keyed on `userId` alone and read nothing from each
+//   membership reads  other or from `checkSuperAdmin`, so all three start
+//                     together. THIS ONE IS A SPECULATION AND IT HAS A PRICE:
+//                     a super-admin takes neither result and pays two indexed
+//                     `manager_id` lookups for nothing. Two cheap wasted reads
+//                     for the handful of staff accounts, one fewer serial hop
+//                     for every customer. Deliberate — do not "fix" it back.
+//
+// Nothing about the payload, the auth posture or the branch logic changed, and
+// every best-effort read still degrades to its documented fallback rather than
+// failing the overview.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
@@ -35,6 +70,26 @@ const PLACE_ADMIN_EMBEDDING_COLUMNS =
 // and it must never widen PLACE_PUBLIC_COLUMNS.
 const PLACE_ADMIN_STATE_COLUMNS = ", google_place_id";
 
+/** Start a read now, and make it safe to NEVER await (MESITA-1876).
+ *
+ *  Three of the reads below are speculative: a super-admin takes neither
+ *  membership result, and the pin row is discarded when `active` falls back to
+ *  a place other than the one requested. A floating promise that rejects is an
+ *  UNHANDLED REJECTION, which in a Deno isolate is a 500 with no body and no
+ *  log line anyone would connect to this file — for a super-admin, on a
+ *  transient blip, in a branch nobody reads.
+ *
+ *  Attaching a no-op catch to the adopted promise marks the original handled.
+ *  The returned promise still REJECTS when awaited, so a caller that does read
+ *  it sees exactly what it saw before this change. (In practice supabase-js
+ *  resolves query failures as `{ error }` rather than rejecting; this is
+ *  against the case where it does not.) */
+function fireAndForgettable<T>(p: PromiseLike<T>): Promise<T> {
+  const q = Promise.resolve(p);
+  q.catch(() => {});
+  return q;
+}
+
 // `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId` (legacy)
 // is this EF's legacy alias, kept working during the client migration window.
 type Body = {
@@ -60,13 +115,61 @@ Deno.serve(async (req) => {
   // and returns the requested place) is granted when the caller's email
   // is in public.super_admins.
   const admin = adminClient(envRes.env);
-  const isSuperAdmin = await checkSuperAdmin(admin, authRes.user);
 
   const body = await readJsonOr<Body>(req, {});
   const requestedPlaceId = readPlaceIdAlias(body) || null;
   // 0 means "don't fetch tickets at all" — the sidebar layout doesn't need
   // them, only the active page does.
   const ticketsLimit = clampTicketsLimit(body.ticketsLimit);
+
+  // EVERYTHING THAT NEEDS ONLY THE USER ID STARTS NOW (MESITA-1876). Promises,
+  // not awaits: each is awaited at the first line that actually reads it, so
+  // the branch structure below is unchanged and only the waiting is gone.
+  //
+  // The two membership reads are SPECULATIVE — see the head comment. They are
+  // pure reads on an indexed `manager_id`, so firing one a super-admin will
+  // discard is a cost, never a risk.
+  const superAdminP = checkSuperAdmin(admin, authRes.user);
+  const memberRowsP = fireAndForgettable(
+    admin
+      .from("place_members")
+      .select(`role, place_id`)
+      .eq("manager_id", userId)
+      .order("created_at", { ascending: false }),
+  );
+  const orgRowsP = fireAndForgettable(
+    admin
+      .from("organization_members")
+      .select("role, organization_id")
+      .eq("manager_id", userId),
+  );
+  // The rates the bill engine pays. Nothing in this function reads them, so
+  // the only thing its position ever decided was how long the response waited.
+  // Guarded like the speculative three, and for a reason that is easy to
+  // miss: this one IS always awaited on the happy path, but every early
+  // return above it — the super-admin 400, the 404, the two 500s — leaves it
+  // floating. An error response is exactly when a second unhandled rejection
+  // is least welcome.
+  const rewardsConfigP = fireAndForgettable(
+    admin
+      .from("app_config")
+      .select("promos_config")
+      .maybeSingle(),
+  );
+  // The staff PIN of the place that will BE active. Speculated on the
+  // requested id; re-read below only when `active` turns out to be a
+  // different place.
+  const pinRowP = requestedPlaceId
+    ? fireAndForgettable(
+      admin
+        .from("places")
+        .select("check_pin")
+        .eq("id", requestedPlaceId)
+        .maybeSingle(),
+    )
+    : null;
+
+  const isSuperAdmin = await superAdminP;
 
   // Super-admin path: skip place_members. Require an explicit placeId
   // (legacy body keys projectId/activeUnitId still accepted via
@@ -194,11 +297,7 @@ Deno.serve(async (req) => {
     // Pull every place the caller is a member of, with the role on each row.
     // Read via profiles so Promos v4 membership columns (MESITA-542) and
     // place rate/plan fields round-trip with the place profile.
-    const memberRows = await admin
-      .from("place_members")
-      .select(`role, place_id`)
-      .eq("manager_id", userId)
-      .order("created_at", { ascending: false });
+    const memberRows = await memberRowsP;
     if (memberRows.error) {
       return json({ ok: false, error: memberRows.error.message }, 500);
     }
@@ -211,10 +310,7 @@ Deno.serve(async (req) => {
     // place_members ROW; the materialized owner comes through the direct
     // path above and wins). Without this, every org member except the
     // claimer sees an empty console for places one click away in Org Places.
-    const orgRows = await admin
-      .from("organization_members")
-      .select("role, organization_id")
-      .eq("manager_id", userId);
+    const orgRows = await orgRowsP;
     const orgMemberships = (orgRows.data ?? []) as {
       role: string;
       organization_id: string;
@@ -268,11 +364,19 @@ Deno.serve(async (req) => {
   // so no consumer- or viewer-facing payload can ever pick it up. The bill
   // is always required (MESITA-1095); there is no per-place switch.
   if (active) {
-    const pinRow = await admin
-      .from("places")
-      .select("check_pin")
-      .eq("id", (active as { id: string }).id)
-      .maybeSingle();
+    const activeId = (active as { id: string }).id;
+    // The speculative read above already asked for the REQUESTED place, which
+    // is the active one on every call the console makes (and, on the
+    // super-admin branch, by construction). A second round trip is spent only
+    // when `active` fell back to places[0] — a requested id the caller does
+    // not hold, or no id at all.
+    const pinRow = pinRowP && activeId === requestedPlaceId
+      ? await pinRowP
+      : await admin
+        .from("places")
+        .select("check_pin")
+        .eq("id", activeId)
+        .maybeSingle();
     if (!pinRow.error) {
       const row = pinRow.data as { check_pin: string | null } | null;
       // The VALUE stays owner-only; the BOOLEAN is member-visible so the
@@ -314,12 +418,13 @@ Deno.serve(async (req) => {
   // the engine stopped reading when it went additive-v10 (MESITA-992) —
   // on Aggressive that under-reported returning visits by 10 points.
   // Product terms, not sensitive: every guest sees these rates at the bill.
+  //
+  // The read was kicked off before any of the above (MESITA-1876); this is
+  // where its answer is finally needed, and by now it has almost always
+  // landed.
   let rewardsConfig: unknown = null;
   {
-    const cfg = await admin
-      .from("app_config")
-      .select("promos_config")
-      .maybeSingle();
+    const cfg = await rewardsConfigP;
     if (cfg.error) {
       // Non-fatal — the client falls back to its bundled defaults and says so.
       console.error("[business-web-get-overview] promos_config:", cfg.error.message);
