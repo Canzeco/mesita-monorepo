@@ -312,13 +312,11 @@ const PLACES_READ_ALLOWLIST = [
   "admin-web-decide-place-claim/index.ts",
   "admin-web-delete-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
-  "admin-web-get-place-payment-account/index.ts",
   "admin-web-list-place-claims/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-plan/index.ts",
   "business-web-change-subscription/index.ts",
   "business-web-get-overview/index.ts",
-  "business-web-get-payment-account/index.ts", // the place row for the Connect mirror (MESITA-1740)
   "business-web-get-place/index.ts",
   "business-web-list-reviews/index.ts", // place-exists 404 before requireMembership; it used to resolve the org that held the place (MESITA-1892)
   "business-web-list-places/index.ts",

@@ -288,3 +288,94 @@ Deno.test("the row cap is unchanged", () => {
   assert(m, "MAX_LIMIT must stay declared");
   assertEquals(m![1], "100");
 });
+
+// ── THE SHELL'S ENVELOPE, AND THE HELD-ONLY FACTS (MESITA-1892) ───────────
+//
+// THIS IS THE SEAM NOTHING ELSE CAN SEE. `business-web-list-organizations` was
+// deleted and the console's shell reads THIS endpoint instead, so two
+// console-wide facts that used to ride the organizations payload now ride
+// here — and the held-only facts the organization row carried are on the
+// place. The client reaches them through `invokeEF<ConsoleViewer>`, which is
+// an UNCHECKED CAST: if this endpoint stops shipping a key, web-business
+// type-checks green, builds green, and renders `undefined` in production.
+// These assertions are the only thing standing between that and a shipped
+// console with no Admin row and no Membership price.
+//
+// The mirror is apps/web-business/src/lib/api/console.ts — `ConsoleViewer`
+// and the HELD ONLY block of `ConsolePlace`.
+
+Deno.test("the envelope carries the two console-wide facts", () => {
+  assert(
+    /isSuperAdmin:\s*superAdmin/.test(CODE),
+    "the shell learns whether the Admin row exists from this payload",
+  );
+  assert(
+    CODE.includes("membershipPrice,"),
+    "the Membership's catalog price rides the envelope, not every row",
+  );
+  assert(
+    CODE.includes('.from("membership_plans")'),
+    "the price comes from the catalog row Stripe is provisioned from",
+  );
+});
+
+Deno.test("held-only facts ship, and only to a reader who holds the place", () => {
+  for (
+    const key of [
+      "myRole:",
+      "legalName:",
+      "rfc:",
+      "currency:",
+      "partnered:",
+      "mesitaPayEnabled:",
+      "membership:",
+    ]
+  ) {
+    assert(CODE.includes(key), `payload must carry ${key}`);
+  }
+  // The gate is per-PLACE membership, not merely "is a business caller".
+  // `memberScope` would leak a venue's RFC to anyone holding any other place.
+  assert(
+    /canSeeHeldFacts\(r\.id\)\s*\n?\s*\?/.test(CODE) ||
+      CODE.includes("...(canSeeHeldFacts(r.id)"),
+    "held-only facts must be gated on canSeeHeldFacts(r.id)",
+  );
+  assert(
+    /const canSeeHeldFacts = \(id: string\) =>\s*superAdmin \|\| myPlaceIds\.has\(id\)/
+      .test(CODE),
+    "canSeeHeldFacts is a place_members row for THAT place, or super-admin",
+  );
+});
+
+Deno.test("the legal person is selected from places, not looked up twice", () => {
+  // These were columns on the organization row. They are columns on the place
+  // now, so they cost no extra read — and a second query for them would be a
+  // round trip per render of the console shell.
+  assert(
+    CODE.includes("partnered, legal_name, rfc, currency,"),
+    "the held-only columns ride the select that was already happening",
+  );
+});
+
+Deno.test("the live membership is read once, batched, and degrades to null", () => {
+  assert(
+    CODE.includes('.from("partner_memberships")'),
+    "the billing behind `partnered` is read from the mirror table",
+  );
+  assert(
+    CODE.includes("LIVE_MEMBERSHIP_STATES"),
+    "live means the same two states the one-live unique index is built on",
+  );
+  assert(
+    /chunked\(heldIds, ID_CHUNK\)/.test(CODE),
+    "batched with .in(), never one query per row",
+  );
+  assert(
+    CODE.includes("membershipByPlace.get(r.id) ?? null"),
+    "a place with no live membership ships null, not undefined",
+  );
+  assert(
+    CODE.includes("membershipByPlace.clear()"),
+    "a failed read ships null everywhere rather than a partial map",
+  );
+});

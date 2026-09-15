@@ -47,13 +47,17 @@ const FORBIDDEN = [
   "org_mesita_pay_enabled",
 ] as const;
 
-/** Strips block comments, line comments and the contents of string literals.
+/** Strips block comments and line comments. Nothing else.
  *
- *  STRINGS GO TOO, and that is not a hole: a forbidden name in a string is
- *  either a PostgREST table name or an RPC name — both of which are code in
- *  every sense that matters — so they are scanned separately below against the
- *  raw source. What stripping buys is that a SENTENCE inside an error message
- *  or a docblock-adjacent literal explaining the removal does not trip it. */
+ *  STRING LITERALS DELIBERATELY SURVIVE. A forbidden name inside a string is
+ *  almost always code here — a PostgREST column in `.select("organization_id")`,
+ *  a filter in `.eq("organization_id", …)`, a request-body key — and none of
+ *  those shapes is reachable by CALL_SHAPES, which only knows `.from` and
+ *  `.rpc`. Stripping strings would blind the scan to the majority of the
+ *  stragglers it exists to catch, so it does not. The cost is that a guard
+ *  which must write the dead names down trips on itself; SELF below is the
+ *  answer to that, and it is a short, auditable list rather than a rule that
+ *  quietly stops reading strings everywhere. */
 function codeOnly(src: string): string {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, " ")
@@ -88,10 +92,17 @@ function edgeFunctionSources(): string[] {
   return out;
 }
 
-/** This file and the retired-name guard both NAME the layer on purpose. */
+/** The guards that NAME the layer on purpose. Each one has to write the dead
+ *  tokens down to be able to look for them, so scanning them finds only their
+ *  own subject matter: `dropped-table-refs.test.ts` lists the five tables in
+ *  DROPPED_TABLES, and `org-efs-retired.test.ts` lists the nine retired EF
+ *  folder names — three of which end in `-organization` / `-organizations`.
+ *  Exempting a guard is not a hole: none of them is a caller, and each is
+ *  itself asserted on by the suite. */
 const SELF = [
   "no-organization-layer.test.ts",
   "dropped-table-refs.test.ts",
+  "org-efs-retired.test.ts",
 ];
 
 Deno.test("no Edge Function code carries the organization layer", () => {

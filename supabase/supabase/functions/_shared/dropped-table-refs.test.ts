@@ -160,8 +160,15 @@ Deno.test("no Edge Function queries a table the schema no longer has", () => {
   const offenders: string[] = [];
 
   for (const path of edgeFunctionSources()) {
-    // This file names the dropped tables on purpose; it is not a caller.
-    if (path.endsWith("dropped-table-refs.test.ts")) continue;
+    // The guards name the dropped tables on purpose; neither is a caller.
+    // This file lists them in DROPPED_TABLES, and `no-organization-layer.test.ts`
+    // carries a literal `.from("organizations")` as the fixture that proves its
+    // own call-shape regex still fires — the one string in the repo that must
+    // look exactly like the thing being hunted. Mirrors that file's SELF list.
+    if (
+      path.endsWith("dropped-table-refs.test.ts") ||
+      path.endsWith("no-organization-layer.test.ts")
+    ) continue;
     const src = Deno.readTextFileSync(path);
     for (const table of DROPPED_TABLES) {
       // Match the PostgREST call shape only, so prose, comments explaining the

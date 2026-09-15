@@ -116,7 +116,7 @@ export type SetPlacePartnershipResult =
   | { ok: false; status: number; code: string; error: string };
 
 /**
- * The body of business-web-set-place-partnership. Auth is the caller's job.
+ * The body of business-web-set-partner-status. Auth is the caller's job.
  * Idempotent: flipping to the current value still re-applies the plan patch,
  * so a place that raced the toggle still lands joined.
  */

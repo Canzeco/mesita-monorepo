@@ -234,12 +234,23 @@ export async function apiListConsolePlaces(
   return places ?? [];
 }
 
+/** The legal person behind the venue — `places.legal_name` and `places.rfc`.
+ *
+ *  `name` IS NOT IN THE ANSWER (MESITA-1892), and the type must not claim it
+ *  is. The endpoint echoed the ORGANIZATION's editable `name` back, because
+ *  the legal person and the thing you could rename were one row. They are
+ *  not: a place's `name` is a generated column on `place_profiles`
+ *  (mesita_name → google_name), so this endpoint cannot write it and does not
+ *  select it. Leaving `"name"` in the Pick typed a field the server never
+ *  sends as a `string`, which no gate here can catch — the EF is on the other
+ *  side of the wire — and the first caller to read `.name` off the result
+ *  would get `undefined` with the compiler insisting otherwise. */
 export async function apiUpdateLegalIdentity(
   client: SupabaseClient,
   input: { placeId: string; legalName: string | null; rfc: string | null },
-): Promise<Pick<ConsolePlace, "id" | "name" | "legalName" | "rfc" | "currency">> {
+): Promise<Pick<ConsolePlace, "id" | "legalName" | "rfc" | "currency">> {
   const { place } = await invokeEF<{
-    place: Pick<ConsolePlace, "id" | "name" | "legalName" | "rfc" | "currency">;
+    place: Pick<ConsolePlace, "id" | "legalName" | "rfc" | "currency">;
   }>(
     client,
     "business-web-update-legal-identity",

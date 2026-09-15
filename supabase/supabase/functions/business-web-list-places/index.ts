@@ -127,6 +127,10 @@ import {
 } from "../_shared/place-state.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import {
+  LIVE_MEMBERSHIP_STATES,
+  MEMBERSHIP_PLAN_KEY,
+} from "../_shared/partner-membership.ts";
+import {
   type FunctionState,
   operatorFunctionStates,
 } from "../_shared/schema-catalog.ts";
@@ -172,7 +176,7 @@ Deno.serve(async (req) => {
   const [myMemberships, superAdmin, directOwners] = await Promise.all([
     admin
       .from("place_members")
-      .select("place_id")
+      .select("place_id, role")
       .eq("manager_id", authRes.user.id),
     checkSuperAdmin(admin, authRes.user),
     placeIdsWithDirectOwner(admin),
@@ -180,9 +184,17 @@ Deno.serve(async (req) => {
   if (myMemberships.error) {
     return json({ ok: false, error: myMemberships.error.message }, 500);
   }
-  const myPlaceIds = new Set(
-    ((myMemberships.data ?? []) as { place_id: string }[]).map((r) => r.place_id),
-  );
+  // The caller's own role per place, not just the id set: the console's
+  // Settings and the Team surface both need to know whether THIS reader is an
+  // owner, and the rail draws from the same payload. One read answers both.
+  const myRoleByPlace = new Map<string, "owner" | "editor" | "viewer">();
+  for (
+    const r of (myMemberships.data ?? []) as {
+      place_id: string;
+      role: "owner" | "editor" | "viewer";
+    }[]
+  ) myRoleByPlace.set(r.place_id, r.role);
+  const myPlaceIds = new Set(myRoleByPlace.keys());
 
   // Everything but the open pool is a MEMBERSHIP read, and both membership
   // scopes ship the full fact set — to a caller who has proved they are a
@@ -200,6 +212,12 @@ Deno.serve(async (req) => {
     .select(
       `id, state, content_state, claimed_at, plan, ` +
         `welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, ` +
+        // WHAT THE ORGANIZATION USED TO CARRY (MESITA-1892). The legal person,
+        // the Partner entitlement and the currency were columns on a row above
+        // the place; they are columns ON it now, so they cost no extra read —
+        // they ride the select that was already happening. Withheld per row
+        // below, not here: a pool row must not leak a venue's RFC.
+        `partnered, legal_name, rfc, currency, ` +
         `place_profiles!inner(${PLACE_PROFILE_EMBED})`,
     )
     .limit(limit);
@@ -243,6 +261,10 @@ Deno.serve(async (req) => {
     welcome_premium_rate: number | null;
     free_rate: number | null;
     premium_rate: number | null;
+    partnered: boolean | null;
+    legal_name: string | null;
+    rfc: string | null;
+    currency: string | null;
     place_profiles: {
       name: string;
       address: string | null;
@@ -268,6 +290,16 @@ Deno.serve(async (req) => {
    *  OLD way (created, then verified into an owner row) never passed through
    *  the pool and would sit in it looking free. */
   const isHeld = (r: Row) => r.claimed_at !== null || directOwners.has(r.id);
+
+  /** May THIS reader see the held-only facts of THIS place?
+   *
+   *  Narrower than `memberScope` on purpose. `memberScope` asks "has the caller
+   *  proved they are a business", which is enough for commercial facts like
+   *  Partner and Verified. The legal person behind a venue — its RFC, its legal
+   *  name, what it pays Mesita — belongs to the people who hold it, so it is
+   *  gated on a `place_members` row for THAT place. A super-admin holds none
+   *  and sees all, the same bypass every other business endpoint grants. */
+  const canSeeHeldFacts = (id: string) => superAdmin || myPlaceIds.has(id);
 
   // Wherever unheld rows appear, they must satisfy that predicate. On "all"
   // the filter must spare the caller's OWN rows, which are held by definition
@@ -306,9 +338,77 @@ Deno.serve(async (req) => {
     }
   }
 
+  // THE BILLING BEHIND `partnered`, for the places the caller actually holds.
+  // At most one live row per place by construction (`partner_memberships_one_live`
+  // is a unique partial index on exactly these two states), so this is a map,
+  // not a list. Best-effort like `verified`: a failed read leaves the map empty
+  // and every row ships `membership: null`, which every consumer already has to
+  // treat as "became a partner some other way" rather than as "not a partner".
+  const heldIds = rows.map((r) => r.id).filter((id) => canSeeHeldFacts(id));
+  const membershipByPlace = new Map<string, {
+    state: string;
+    renewsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  }>();
+  if (heldIds.length > 0) {
+    for (const idPart of chunked(heldIds, ID_CHUNK)) {
+      const { data: ms, error: mErr } = await admin
+        .from("partner_memberships")
+        .select("place_id, state, current_period_end, cancel_at_period_end")
+        .in("place_id", idPart)
+        .in("state", LIVE_MEMBERSHIP_STATES);
+      if (mErr) {
+        console.error("[list-places] partner_memberships:", mErr.message);
+        membershipByPlace.clear();
+        break;
+      }
+      for (
+        const m of (ms ?? []) as {
+          place_id: string;
+          state: string;
+          current_period_end: string | null;
+          cancel_at_period_end: boolean;
+        }[]
+      ) {
+        membershipByPlace.set(m.place_id, {
+          state: m.state,
+          renewsAt: m.current_period_end,
+          cancelAtPeriodEnd: m.cancel_at_period_end === true,
+        });
+      }
+    }
+  }
+
+  // ONE PRICE FOR THE WHOLE CONSOLE, off `membership_plans` — the same row the
+  // Stripe price is provisioned from, so what an owner reads is what Stripe
+  // bills. It is a CATALOG fact, not a place's, so it rides the envelope
+  // rather than every row. It used to reach the console on the organizations
+  // payload; that payload is gone and this is the call that replaced it.
+  let membershipPrice: { priceCents: number; currency: string } | null = null;
+  if (memberScope) {
+    const { data: plan, error: planErr } = await admin
+      .from("membership_plans")
+      .select("price_cents, currency")
+      .eq("key", MEMBERSHIP_PLAN_KEY)
+      .maybeSingle();
+    if (planErr) {
+      console.error("[list-places] membership_plans:", planErr.message);
+    } else if (plan) {
+      const row = plan as { price_cents: number; currency: string };
+      membershipPrice = { priceCents: row.price_cents, currency: row.currency };
+    }
+  }
+
   return json({
     ok: true,
     scope,
+    // THE SHELL'S ENVELOPE (MESITA-1892). These two are console-wide facts, not
+    // facts about any place, and they reached the shell on the organizations
+    // payload until that endpoint was deleted. They ride here because this is
+    // the one call the shell already makes, and a second round trip to learn
+    // whether the Admin row exists would be a round trip per render.
+    isSuperAdmin: superAdmin,
+    membershipPrice,
     places: rows.map((r) => {
       const p = r.place_profiles;
       return {
@@ -386,6 +486,28 @@ Deno.serve(async (req) => {
         reservations: p.reservations_enabled === true,
         mesitaPay: p.mesita_pay_enabled === true,
         credits: p.credits_enabled === true,
+        // ── HELD ONLY ───────────────────────────────────────────────────
+        //
+        // What the organization row carried, on the place that carries it
+        // now. `undefined`, never null, on a row this reader does not hold:
+        // absent says "not shipped", null would say "read and empty", and the
+        // console renders those differently.
+        ...(canSeeHeldFacts(r.id)
+          ? {
+            myRole: myRoleByPlace.get(r.id),
+            legalName: r.legal_name,
+            rfc: r.rfc,
+            currency: r.currency ?? "MXN",
+            partnered: r.partnered === true,
+            // THE ONE PAY BIT (MESITA-1892). Same column as `mesitaPay`
+            // above, shipped again under the name the held surface reads it
+            // by — the org half was folded into it, so there is one switch
+            // and both names answer from it rather than from two columns
+            // that could disagree.
+            mesitaPayEnabled: p.mesita_pay_enabled === true,
+            membership: membershipByPlace.get(r.id) ?? null,
+          }
+          : {}),
       };
     }),
   });
