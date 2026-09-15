@@ -33,7 +33,7 @@ const scope = (pathname: string, over: Partial<Parameters<typeof resolveRailScop
 
 describe("a place route", () => {
   it("is scoped to its holder, whatever organization was remembered", () => {
-    const s = scope(placeTabHref("p-3", "rewards"), { rememberedOrgId: "org-a" });
+    const s = scope(placeTabHref("p-3", "visits"), { rememberedOrgId: "org-a" });
     expect(s.org?.id).toBe("org-c");
     expect(s.place?.id).toBe("p-3");
     expect(s.placeIsCurrent).toBe(true);

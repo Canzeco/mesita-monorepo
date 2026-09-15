@@ -153,14 +153,34 @@ describe("the legacy console's URLs all still resolve", () => {
   // `configuration` instead. Deleting it was checked against the live
   // response first (`308` with `max-age=0, must-revalidate`, so every browser
   // revalidates), not assumed.
-  it("a PLACE's Settings still forwards to Capabilities; the FLAT name is live", async () => {
+  it("the three retired place segments all land on Visits, and nothing chains", async () => {
+    // MESITA-1885 retired `capabilities` and `rewards` as views: the rail
+    // lists all eight products and three of them were rows on the one
+    // Capabilities page, so each product took a view of its own.
+    //
+    // ALL THREE LAND ON VISITS, including `/settings` — which was aimed at
+    // `capabilities` and had to be repointed in the same commit. A redirect
+    // onto a DELETED route is the `/unit/*` -> `/place/*` chain again, and it
+    // fails silently because no test walks a legacy source to its own
+    // destination. This one does.
     const all = await rules();
-    expect(resolve("/places/abc/settings", all)).toBe("/places/abc/capabilities");
+    for (const gone of ["settings", "capabilities", "rewards"]) {
+      expect(resolve(`/places/abc/${gone}`, all), gone).toBe("/places/abc/visits");
+    }
     // The absence IS the assertion: a rule here would shadow the live page.
     expect(resolve("/settings", all)).toBeNull();
-    // The live names are routes, not redirects — nothing chains.
-    expect(resolve("/capabilities", all)).toBeNull();
-    expect(resolve("/places/abc/capabilities", all)).toBeNull();
+    // NOTHING CHAINS: every destination is a route, not another source.
+    expect(resolve("/places/abc/visits", all)).toBeNull();
+    expect(resolve("/visits", all)).toBeNull();
+    // AND THE FLAT `/credits` RULE IS GONE (MESITA-1885). Mesita Credits is a
+    // rail row with a view of its own, so `/credits` is a live flat twin —
+    // leaving the rule would have made it dead on arrival with every check
+    // green, which is `/settings` in MESITA-1839 exactly.
+    expect(resolve("/credits", all)).toBeNull();
+    expect(resolve("/places/abc/credits", all)).toBeNull();
+    // The ORG-scoped Credits rule stays: a different path, and still the
+    // retired spelling of an organization page.
+    expect(resolve("/orgs/o1/credits", all)).toBe("/orgs/o1/products");
   });
 
   it("a place's Activity forwards to the organization's, which resolves", async () => {
@@ -314,7 +334,14 @@ describe("every redirect forwards somewhere this repo serves", () => {
     "/orgs/:orgId/configuration",
     "/configuration",
     "/orgs/:orgId/credits",
-    "/credits",
+    // MESITA-1885: the three place segments that became products. Where the
+    // place's switches live has now moved three times, and a 308 would cache
+    // today's answer in every browser forever. `/places/:id/settings` moved
+    // OFF permanent for the same reason — it used to point at `capabilities`,
+    // a route this repo no longer serves.
+    "/places/:id/settings",
+    "/places/:id/capabilities",
+    "/places/:id/rewards",
     "/orgs/:orgId/payments",
     "/payments",
     "/orgs/:orgId/members",
@@ -348,6 +375,11 @@ describe("every redirect forwards somewhere this repo serves", () => {
       expect(rule.destination).not.toBe("/orgs/:orgId/configuration");
       expect(rule.destination).not.toBe("/places");
       expect(rule.destination).not.toBe("/places/:id/settings");
+      // MESITA-1885 deleted these two views. `/places/:id/settings` pointed
+      // at `capabilities` until this issue, which is exactly the chain-onto-a
+      // -deleted-route mistake this test exists to catch.
+      expect(rule.destination).not.toBe("/places/:id/capabilities");
+      expect(rule.destination).not.toBe("/places/:id/rewards");
     }
   });
 });

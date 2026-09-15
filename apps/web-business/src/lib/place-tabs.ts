@@ -9,7 +9,9 @@
 // it: its rule is a per-file regex with no transitive walk.
 //
 // Keep this file free of server imports. It is the half a client component may
-// have.
+// have. `product-keys.ts` is importable for the same reason: it is vocabulary
+// with no imports of its own.
+import { PRODUCT_LABEL } from "@/lib/product-keys";
 
 // THE TAB MATRIX: Profile · Menus · Reviews · Capabilities · Rewards · Admin,
 // in the order the rail lists them under the PLACE SELECTOR (Pato, 2026-09-14:
@@ -48,22 +50,49 @@
 // likely to send someone a link to the one view with no link — /places/<id>/profile
 // answered 404 (MESITA-1732). It has its own address now, and the bare place
 // URL is a temporary redirect onto it.
+// ── ONE VIEW PER PRODUCT (MESITA-1885) ────────────────────────────────────
+//
+// Capabilities and Rewards are gone as views, and what replaced them is the
+// PRODUCT each of their rows belonged to. Pato put all eight products in the
+// rail; three of them — Orders, Reservations and Credits — were rows on the
+// single Capabilities page, so three rail rows would have pointed at one
+// address and lit up together. A rail row that cannot say which room it opens
+// is MESITA-1833's law failing quietly, so the rooms got split to match the
+// list.
+//
+// The split is the ladder's own: `ZONE_ROWS` (sections/controls/offerings.ts)
+// is keyed by product now, and each view renders its product's rows. No row
+// moved between products and none was invented — `offerings.test.ts` proves
+// every guest row still belongs to exactly one zone.
+//
+// `/places/<id>/capabilities` and `/places/<id>/rewards` forward, temporarily:
+// this answer has moved four times and a 308 caches today's in every browser
+// forever.
 export const PLACE_TABS = [
   "profile",
   "menus",
   "reviews",
-  "capabilities",
-  "rewards",
+  "visits",
+  "orders",
+  "reservations",
+  "pay",
+  "credits",
   "admin",
 ] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
+/** The five product views take their label from the PRODUCT vocabulary, not
+ *  from a second list here: the rail row, the card and the page heading are
+ *  one noun or an operator learns that one of the three is lying. */
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
   menus: "Menus",
   reviews: "Reviews",
-  capabilities: "Capabilities",
-  rewards: "Rewards",
+  visits: PRODUCT_LABEL.visits,
+  orders: PRODUCT_LABEL.orders,
+  reservations: PRODUCT_LABEL.reservations,
+  pay: PRODUCT_LABEL.pay,
+  credits: PRODUCT_LABEL.credits,
   admin: "Admin",
 };
 
@@ -81,13 +110,14 @@ export type ViewerAccess = {
  *
  *  pool place            → Profile only (it carries Claim)
  *  held · org viewer     → Profile + Menus + Reviews (the read surfaces)
- *  held · owner/editor   → + Capabilities + Rewards
+ *  held · owner/editor   → + the five PRODUCT views
  *  super-admin           → + Admin (operator internals)
  *
- *  A VIEWER LOST A ROW, and did not lose a surface: their third read screen
- *  was Activity, which is the organization's page now and which every member
- *  of the organization can open (MESITA-1841). Capabilities and Rewards both
- *  WRITE, so neither joins the read set.
+ *  THE PRODUCT VIEWS INHERIT CAPABILITIES' AND REWARDS' ACCESS EXACTLY
+ *  (MESITA-1885). Splitting one write surface into five must not hand a
+ *  viewer a switch, and must not take one from an editor: every row that was
+ *  owner/editor-only still is, and the read set is untouched. Five entries
+ *  where there were two is the whole diff.
  *
  *  Two callers, one rule (MESITA-1779). The place layout resolves it
  *  server-side for the place you are ON (`visibleTabs` in lib/place-view.ts
@@ -100,7 +130,16 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   const tabs: PlaceTab[] =
     access.role === "viewer"
       ? ["profile", "menus", "reviews"]
-      : ["profile", "menus", "reviews", "capabilities", "rewards"];
+      : [
+          "profile",
+          "menus",
+          "reviews",
+          "visits",
+          "orders",
+          "reservations",
+          "pay",
+          "credits",
+        ];
   if (access.isSuperAdmin) tabs.push("admin");
   return tabs;
 }

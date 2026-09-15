@@ -561,19 +561,39 @@ export function guestSummary(rows: readonly OfferingRow[]): string {
 // it — a row added to the ladder and to neither zone would silently render
 // nowhere, which is the one failure mode this split can have.
 
-export const LADDER_ZONES = ["capabilities", "rewards"] as const;
+// ── A ZONE IS A PRODUCT NOW (MESITA-1885) ─────────────────────────────────
+//
+// The zones were `capabilities` and `rewards`, one page each. Pato put all
+// eight products in the rail, and three of them — Orders, Reservations and
+// Credits — were rows INSIDE Capabilities, so three rail rows would have
+// opened one address and highlighted together. The rooms had to match the
+// list.
+//
+// NO ROW MOVED BETWEEN PRODUCTS and none was invented: the six Capabilities
+// rows redistribute to the four products that own them, and `visit_rewards`
+// stays under the product it was always a dial inside (MESITA-1884). The test
+// still proves EVERY guest row belongs to exactly one zone, which is the one
+// failure mode this split can have.
+//
+// `mesita_pay` is the per-PLACE rung; the ORGANIZATION's own switch and its
+// Stripe account stay at `/orgs/<id>/products/pay`, and the Pay view links up
+// to it. Two levels, two screens, one product — which is what the catalogue
+// card already says: "On for the organization. Each place turns it on too."
+export const LADDER_ZONES = [
+  "visits",
+  "orders",
+  "reservations",
+  "pay",
+  "credits",
+] as const;
 export type LadderZone = (typeof LADDER_ZONES)[number];
 
 export const ZONE_ROWS: Record<LadderZone, readonly LadderRowKey[]> = {
-  capabilities: [
-    "mesita_pay",
-    "accept_prepays",
-    "sell_prepays",
-    "pickup",
-    "delivery",
-    "reservations",
-  ],
-  rewards: ["visit_rewards"],
+  visits: ["visit_rewards"],
+  orders: ["pickup", "delivery"],
+  reservations: ["reservations"],
+  pay: ["mesita_pay"],
+  credits: ["accept_prepays", "sell_prepays"],
 };
 
 /** The zone's rows, in the ladder's own order. Partnership and Stripe belong

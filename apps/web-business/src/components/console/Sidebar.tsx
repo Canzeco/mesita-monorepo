@@ -82,21 +82,27 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import {
   AlertCircle,
+  CalendarCheck,
   ChartNoAxesColumn,
+  CreditCard,
   Layers,
   LayoutGrid,
+  Nfc,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Settings,
+  ShoppingBag,
   Star,
   Store,
+  Ticket,
   UserRound,
   Users,
   UtensilsCrossed,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -119,18 +125,22 @@ import { placeThumbUrl } from "@/lib/place-thumb";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
+  RAIL_GROUP_STARTS,
   RAIL_ROWS,
   SHELL_ROUTES,
   ZERO_PLACE_ROWS,
   flatOrgTargetFromPathname,
   flatViewFromPathname,
+  isOrgTerminalPathname,
   orgHref,
   orgPlacesHref,
   orgPlacesNewHref,
   orgSwitchHref,
   orgTargetFromPathname,
+  productRowHref,
   type OrgRailTarget,
 } from "@/lib/console-routes";
+import { PRODUCT_LABEL, type ProductKey } from "@/lib/product-keys";
 import {
   PLACE_TAB_LABEL,
   placeTabFromPathname,
@@ -274,13 +284,29 @@ const ORG_ROW: Record<
 };
 
 /** The rail's mark for a row, by subject. `RAIL_ROWS` decides WHICH rows and
- *  in what order (lib/console-routes); this decides what each one wears. */
+ *  in what order (lib/console-routes); this decides what each one wears.
+ *
+ *  THE PRODUCT ROWS WEAR THE CATALOGUE'S MARKS (MESITA-1885) — the same glyph
+ *  the card carries in `ProductCatalog.tsx`, because a row and a card naming
+ *  one product with two different pictures is how an operator learns to
+ *  distrust both. The TINT does not come along: a rail row is one glyph on the
+ *  sidebar's own dark surface, and eight colours in a column is the "lots of
+ *  fucking different styles in the same menu" Pato ruled out in MESITA-1845. */
 const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   settings: Settings,
   products: LayoutGrid,
-  customers: Users,
   activity: ChartNoAxesColumn,
+  // The eight, in PRODUCT_KEYS order.
   profile: Store,
+  customers: Users,
+  visits: Ticket,
+  orders: ShoppingBag,
+  reservations: CalendarCheck,
+  pay: CreditCard,
+  credits: Wallet,
+  terminal: Nfc,
+  // Kept for the two views that lost their rows and not their addresses: the
+  // place heading and the flat resolvers still read this table.
   menus: UtensilsCrossed,
   reviews: Star,
 };
@@ -462,6 +488,9 @@ export function Sidebar({
   // mode every rail test in this repo counts, and it arrives exactly this way:
   // one row keeping a clause after another row took the subject.
   const onAccount = pathname === SHELL_ROUTES.account;
+  // Terminal's page is under `products/` and is NOT the catalogue, so
+  // `orgTargetFromPathname` answers null for it and this answers instead.
+  const onTerminal = isOrgTerminalPathname(pathname);
   // The view you are on, whichever address you came by: the canonical
   // `/places/<id>/<view>` or the flat resolver still in flight (MESITA-1839).
   const currentView = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
@@ -499,9 +528,33 @@ export function Sidebar({
   //   role/matrix a place view the viewer may not open is not listed. Same
   //               `tabsForAccess` the place layout gates on, so the rail and
   //               the gate cannot disagree.
-  const rows = (scope.mode === "zero" ? ZERO_PLACE_ROWS : RAIL_ROWS).filter(
-    (r) => r.kind === "org" || noPlace || placeTabs.includes(r.view),
+  //
+  // A PRODUCT ROW IS FILTERED BY THE TAB IT OPENS (MESITA-1885), not by being
+  // a product: six of the eight are place views, so an editor-only switch must
+  // not be listed for a viewer. Customers and Terminal are organization pages
+  // and every member may open them, which is why they answer `true` here
+  // rather than being looked up in a matrix they are not in.
+  const productListed = (product: ProductKey) =>
+    product === "customers" ||
+    product === "terminal" ||
+    noPlace ||
+    placeTabs.includes(product as PlaceTab);
+  const rows = (scope.mode === "zero" ? ZERO_PLACE_ROWS : RAIL_ROWS).filter((r) =>
+    r.kind === "org"
+      ? true
+      : r.kind === "product"
+        ? productListed(r.product)
+        : noPlace || placeTabs.includes(r.view),
   );
+  /** The seam falls above a row that OPENS a group, and only while the row
+   *  before it survived the filter — a hairline under nothing is a rule that
+   *  outlived its rows. Recomputed against the filtered list for that reason,
+   *  never read off `RAIL_GROUP_STARTS` directly. */
+  const opensGroup = (i: number): boolean => {
+    if (i === 0) return false;
+    const full = RAIL_ROWS.indexOf(rows[i]);
+    return RAIL_GROUP_STARTS.includes(full);
+  };
 
   // WHICH ROW A ROW LIGHTS FOR. Every organization address is a rail row
   // now (MESITA-1847: Members became content ON the Organization page rather
@@ -512,6 +565,17 @@ export function Sidebar({
     target === "settings"
       ? orgTarget === "settings" || onOrgNew
       : orgTarget === target;
+
+  // WHICH PRODUCT ROW LIGHTS (MESITA-1885). Three of the eight do not open a
+  // place view, so each answers from the space its address is actually in —
+  // and `products` itself must NOT light for them, or the catalogue row and a
+  // product row would be on together. `onProductSubPage` is what keeps
+  // `/products/terminal` off the Products row.
+  const productRowActive = (product: ProductKey) => {
+    if (product === "customers") return orgTarget === "customers";
+    if (product === "terminal") return onTerminal;
+    return currentView === (product as PlaceTab);
+  };
 
   // Both selectors guard BEFORE they show a pending name: an operator must
   // not see the new scope while still sitting on the old one's unsaved edits.
@@ -666,31 +730,62 @@ export function Sidebar({
                 onGuardedNavigate={guardNav ?? undefined}
               />
             )}
-            {rows.map((row) =>
-              row.kind === "org" ? (
-                <NavRow
-                  key={`org:${row.target}`}
-                  href={orgHref(org.id, row.target)}
-                  label={ORG_ROW[row.target].label}
-                  Icon={ORG_ROW[row.target].Icon}
-                  active={orgRowActive(row.target)}
-                  collapsed={collapsed}
-                  onNavigate={onNavigate}
-                  onGuardedNavigate={guardNav ?? undefined}
-                />
+            {rows.map((row, i) => {
+              // PATO'S BLANK LINES, as hairlines. The rail's groups carry no
+              // NAMES — MESITA-1842 headed them and MESITA-1844 deleted the
+              // headers two issues later — so a group opens with the same seam
+              // Account already wears and nothing else.
+              const seam = opensGroup(i) ? SECTION_SEAM : undefined;
+              const common = {
+                collapsed,
+                onNavigate,
+                onGuardedNavigate: guardNav ?? undefined,
+              };
+              const node =
+                row.kind === "org" ? (
+                  <NavRow
+                    href={orgHref(org.id, row.target)}
+                    label={ORG_ROW[row.target].label}
+                    Icon={ORG_ROW[row.target].Icon}
+                    active={orgRowActive(row.target)}
+                    {...common}
+                  />
+                ) : row.kind === "product" ? (
+                  <NavRow
+                    href={productRowHref(row.product, org.id, viewRow)}
+                    label={PRODUCT_LABEL[row.product]}
+                    Icon={RAIL_ICON[row.product]}
+                    active={productRowActive(row.product)}
+                    {...common}
+                  />
+                ) : (
+                  <NavRow
+                    href={viewRow(row.view)}
+                    label={placeRowLabel(row.view)}
+                    Icon={RAIL_ICON[row.view]}
+                    active={currentView === row.view}
+                    {...common}
+                  />
+                );
+              const key =
+                row.kind === "org"
+                  ? `org:${row.target}`
+                  : row.kind === "product"
+                    ? `product:${row.product}`
+                    : `place:${row.view}`;
+              // THE SEAM IS A WRAPPER'S BORDER, NEVER A ROW'S — a row that
+              // grew a rule would be a second row shape. A row with no seam
+              // gets NO wrapper either: an empty div per row is depth the
+              // column does not need, and this file's own depth test counts
+              // it.
+              return seam ? (
+                <div key={key} className={seam}>
+                  {node}
+                </div>
               ) : (
-                <NavRow
-                  key={`place:${row.view}`}
-                  href={viewRow(row.view)}
-                  label={placeRowLabel(row.view)}
-                  Icon={RAIL_ICON[row.view]}
-                  active={currentView === row.view}
-                  collapsed={collapsed}
-                  onNavigate={onNavigate}
-                  onGuardedNavigate={guardNav ?? undefined}
-                />
-              ),
-            )}
+                <Fragment key={key}>{node}</Fragment>
+              );
+            })}
 
           </>
         )}

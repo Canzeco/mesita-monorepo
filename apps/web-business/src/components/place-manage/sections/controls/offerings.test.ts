@@ -250,16 +250,31 @@ describe("the ladder's two zones (MESITA-1841)", () => {
     }
   });
 
-  it("Rewards is what a guest EARNS; Capabilities is what a guest can DO", () => {
-    expect(ZONE_ROWS.rewards).toEqual(["visit_rewards"]);
-    expect(ZONE_ROWS.capabilities).toContain("mesita_pay");
-    expect(ZONE_ROWS.capabilities).toContain("reservations");
-    expect(ZONE_ROWS.capabilities).not.toContain("visit_rewards");
+  it("a zone IS a product, and each holds exactly its own rows (MESITA-1885)", () => {
+    // The whole re-cut, written out. Capabilities' six rows redistributed to
+    // the four products that own them and `visit_rewards` stayed under Visits.
+    // Asserted as EQUALITY, not `toContain`: a row quietly gaining a second
+    // home would satisfy containment in both places and put one switch on two
+    // screens, which is how the console starts disagreeing with itself.
+    expect(ZONE_ROWS.visits).toEqual(["visit_rewards"]);
+    expect(ZONE_ROWS.orders).toEqual(["pickup", "delivery"]);
+    expect(ZONE_ROWS.reservations).toEqual(["reservations"]);
+    expect(ZONE_ROWS.pay).toEqual(["mesita_pay"]);
+    expect(ZONE_ROWS.credits).toEqual(["accept_prepays", "sell_prepays"]);
   });
 
-  it("each zone's summary describes its own rows, never the other's", () => {
-    // `guestSummary` is fed the ZONE's rows, so Capabilities never claims
-    // guests can earn rewards and Rewards never claims they can book a table.
+  it("NO ROW HAS TWO HOMES — the zones partition the ladder", () => {
+    // The failure this split can have, and the one the old two-zone version
+    // could not: five zones is five chances to list `mesita_pay` twice. The
+    // other half — every row has at LEAST one home — is the totality test
+    // above this block.
+    const seen = LADDER_ZONES.flatMap((z) => [...ZONE_ROWS[z]]);
+    expect(seen).toHaveLength(new Set(seen).size);
+  });
+
+  it("each zone's summary describes its own rows, never another's", () => {
+    // `guestSummary` is fed the ZONE's rows, so Orders never claims guests
+    // can earn rewards and Visits never claims they can book a table.
     const on: LadderInput = {
       ...BASE,
       visitRewardsLevel: 1,
@@ -268,8 +283,9 @@ describe("the ladder's two zones (MESITA-1841)", () => {
       orgMesitaPay: true,
     };
     const all = offeringRows(on);
-    expect(guestSummary(rowsForZone(all, "capabilities"))).not.toMatch(/visit rewards/i);
-    expect(guestSummary(rowsForZone(all, "rewards"))).not.toMatch(/pay by card/i);
+    expect(guestSummary(rowsForZone(all, "orders"))).not.toMatch(/visit rewards/i);
+    expect(guestSummary(rowsForZone(all, "visits"))).not.toMatch(/pay by card/i);
+    expect(guestSummary(rowsForZone(all, "visits"))).not.toMatch(/book a table/i);
   });
 });
 
