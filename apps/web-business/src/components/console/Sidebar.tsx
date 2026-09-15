@@ -67,6 +67,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   AlertCircle,
+  Building2,
   ChartNoAxesColumn,
   Gift,
   Layers,
@@ -76,7 +77,6 @@ import {
   Shield,
   SlidersHorizontal,
   Star,
-  Cog,
   Store,
   UserRound,
   Users,
@@ -181,10 +181,13 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 //                                     icon: a NAME is what distinguishes one
 //                                     organization from another, and an icon
 //                                     would be identical on all of them
-//   Settings      Cog                 the organization's own record. A gear
-//                                     is right here and wrong on Capabilities,
-//                                     which is a ladder of what a guest can
-//                                     do, not a preferences screen
+//   Settings      Building2           the organization's own record — the
+//                                     ORGANIZATION, which is what the page is
+//                                     about. A gear says "preferences" and
+//                                     says it about nothing in particular; the
+//                                     building says whose record this is. It
+//                                     is also wrong on Capabilities, a ladder
+//                                     of what a guest can do
 //   Menus         UtensilsCrossed     what the place serves
 //   Customers     Users               PEOPLE, plural, against Account's one —
 //                                     the pairing IS the meaning: you, and
@@ -218,7 +221,7 @@ const ORG_ROW: Record<
   OrgRailTarget,
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  settings: { label: "Settings", Icon: Cog },
+  settings: { label: "Settings", Icon: Building2 },
   places: { label: "Places", Icon: Layers },
   customers: { label: "Customers", Icon: Users },
   payments: { label: "Payments", Icon: Wallet },
