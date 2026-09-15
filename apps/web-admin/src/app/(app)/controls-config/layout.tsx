@@ -1,8 +1,8 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Credits — the Wallet's Credits policy. One flat page. A label never repeats
-// its section heading, which is why the terms box below is called Terms: the
-// page took the name Credits in the rename and a box cannot hold it too.
+// Payments — the Wallet's Credits policy. One flat page. A label never repeats
+// its section heading, which is why the wired box below is called Credits: the
+// page gave that word up in the MESITA-1854 rename, so the box could take it.
 //
 // The directory, the route and the blob all stay `controls-config` /
 // `controls_config`. A rename stops at the label here as it does everywhere on
@@ -13,7 +13,7 @@ export default function ControlsConfigLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ConfigPageLayout eyebrow="Product · Credits" title="Credits">
+    <ConfigPageLayout eyebrow="Product · Payments" title="Payments">
       {children}
     </ConfigPageLayout>
   );

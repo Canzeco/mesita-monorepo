@@ -37,21 +37,17 @@
 // about whose console this is. The same resolution is what the two rail
 // cookies remember, so the next fresh request paints the same boxes.
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { Sidebar } from "@/components/console/Sidebar";
+import { RailScopeProvider } from "@/components/console/RailScopeContext";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
-import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
-import { SHELL_ROUTES, orgHref, placeHref } from "@/lib/console-routes";
 import {
   RAIL_COOKIE_ATTRS,
   RAIL_ORG_COOKIE,
   RAIL_PLACE_COOKIE,
   SIDEBAR_COLLAPSED_COOKIE,
 } from "@/lib/sidebar-prefs";
-import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import type { RailOrg } from "@/lib/rail-scope";
 import { useRailScope } from "@/lib/use-rail-scope";
 
@@ -82,34 +78,28 @@ export function AppShell({
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
-  const scope = useRailScope({ organizations, rememberedPlaceId, rememberedOrgId });
-  // Where the wordmark lands: the same answer `/` gives, resolved here so the
-  // click costs no redirect hop.
-  const landingHref = scope.place
-    ? placeHref(scope.place.id)
-    : scope.org
-      ? orgHref(scope.org.id)
-      : SHELL_ROUTES.orgNew;
-  // The mobile wordmark is a route out of the place screen exactly like the
-  // rail's rows are, so it answers to the same guard. OpenPlaceProvider is
-  // mounted by the LAYOUT rather than here, so this hook can see it.
-  const guardNav = useOpenPlaceGuard();
+  const scope = useRailScope({
+    organizations,
+    rememberedPlaceId,
+    rememberedOrgId,
+    viewerError,
+  });
+  // THE MOBILE TOPBAR STATES THE SCOPE (MESITA-1842). Pato: "no mesita logo,
+  // fuck it." The wordmark used to sit here and in the rail; the desktop app's
+  // own title bar already says "Mesita Business", so both were a quieter second
+  // copy of something the OS renders better. What belongs in a 44px bar above
+  // a CLOSED drawer is the thing the drawer is hiding: which organization and
+  // which place every screen beneath it is about — the same sentence the
+  // rail's two group headers carry on desktop.
+  const scopeLine = [scope.org?.name, scope.place?.name]
+    .filter((n): n is string => Boolean(n))
+    .join(" · ");
   // Two independent pieces of state, easy to confuse: `open` is the mobile
   // drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
   // collapses — at that size the whole rail is already hidden by default.
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const drawerRef = useRef<HTMLDivElement>(null);
-  // The drawer element as STATE, for the rail's menus to portal into
-  // (MESITA-1818): a ref alone is null on the first render and never
-  // re-renders when it fills, so the menus would portal to the body — outside
-  // the `aria-modal` boundary — for the life of the session. The callback
-  // ref sets both.
-  const [menuHost, setMenuHost] = useState<HTMLDivElement | null>(null);
-  const bindDrawer = useCallback((el: HTMLDivElement | null) => {
-    drawerRef.current = el;
-    setMenuHost(el);
-  }, []);
 
   // Remember the scope for the next fresh request. The place only when it is
   // the one actually open — the rail's fallback pick is not a visit.
@@ -194,10 +184,10 @@ export function AppShell({
     isSuperAdmin,
     viewerError,
     accountLabel,
-    landingHref,
   };
 
   return (
+    <RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>
     <div className="fixed inset-0 flex overflow-clip">
       {/* Desktop rail — visible lg+. The column owns the width; the rail fills it. */}
       <div
@@ -238,7 +228,7 @@ export function AppShell({
           onClick={close}
         />
         <div
-          ref={bindDrawer}
+          ref={drawerRef}
           className={
             // w-60 matches the expanded rail — anything wider and the rail
             // underfills the panel.
@@ -249,7 +239,7 @@ export function AppShell({
           aria-modal="true"
           aria-label="Console navigation"
         >
-          <Sidebar {...railProps} onNavigate={close} menuContainer={menuHost} />
+          <Sidebar {...railProps} onNavigate={close} />
           {open && (
             <button
               type="button"
@@ -275,14 +265,15 @@ export function AppShell({
           >
             <Menu className="h-4 w-4" />
           </button>
-          <Link
-            href={landingHref}
-            onClick={(e) => guardNav?.(landingHref, e)}
-            className="inline-flex items-center gap-2 truncate"
-          >
-            <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-            <span className={TINY_LABEL_CLASS}>business</span>
-          </Link>
+          {/* Text, not a link: the drawer beside it IS the navigation, and a
+              second door to a page one tap away is how a bar starts competing
+              with the nav it opens. Empty until an organization resolves — a
+              bar that says "Organization · Place" states nothing. */}
+          {scopeLine && (
+            <span className="text-foreground truncate text-sm font-medium">
+              {scopeLine}
+            </span>
+          )}
         </header>
 
         <ConsoleHeader scope={scope} />
@@ -292,5 +283,6 @@ export function AppShell({
         </main>
       </div>
     </div>
+    </RailScopeProvider>
   );
 }

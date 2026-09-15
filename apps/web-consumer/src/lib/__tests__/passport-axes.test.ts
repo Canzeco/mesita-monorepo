@@ -314,6 +314,25 @@ describe("the Passport sheet is the same document as the bar", () => {
     expect(bound).not.toContain("renewsAt");
   });
 
+  it("Class and Instagram each say one thing — perk vs next action, never glued", () => {
+    // MESITA-1819: Diamond used to read "Highest discount · Instagram or an
+    // invite". Perk glued to doors. A ceiling guest was told how to get the
+    // class they already hold. Captions live in passportDoorCaptions so the
+    // four states cannot drift from a ternary in the page.
+    const named = importedFrom(sheet, "@/lib/consumer-data");
+    expect(named).toContain("passportDoorCaptions");
+    expect(codeOnly(sheet)).toContain("passportDoorCaptions({");
+    expect(codeOnly(sheet)).not.toMatch(/\$\{cls\?\.reward\} · Instagram/);
+    expect(codeOnly(sheet)).not.toContain("Connect for Stories and Rewards");
+    expect(read(DATA)).toContain("Highest discount at every table.");
+    expect(read(DATA)).toContain(
+      "Starting discount. Climb with Instagram or an invite.",
+    );
+    expect(read(DATA)).toContain(
+      "Connect to share Stories and earn extra Rewards.",
+    );
+  });
+
   it("is identity plus two doors — Class then Instagram, not a field list", () => {
     // MESITA-1801: the page used to be a settings list (Number · Profile ·
     // Class · Instagram). Identity is a document now; the only buttons are

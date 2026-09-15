@@ -55,7 +55,14 @@ export default async function ShellLayout({
   // no organizations" either (MESITA-1793's law: a fetch failure never says
   // "create one"). The rail gets the flag and says so; each page reports its
   // own error.
-  let viewer: ConsoleViewer = { organizations: [], isSuperAdmin: false };
+  // `membershipPrice: null` is the same honest absence every other field
+  // carries here: no price was read, so nothing prints one, and PartnerCard
+  // falls back to the label rather than inventing a number.
+  let viewer: ConsoleViewer = {
+    organizations: [],
+    isSuperAdmin: false,
+    membershipPrice: null,
+  };
   let viewerError = false;
   try {
     viewer = await apiConsoleViewer(supabase);
@@ -85,6 +92,13 @@ export default async function ShellLayout({
             name: o.name,
             myRole: o.myRole,
             places: o.places,
+            // The two tier flags ride the rail's list so a place's ladder can
+            // read its holder's Partner / Mesita Pay state without a second
+            // org-list call (MESITA-1867). Copied as they are: undefined on a
+            // stale payload stays undefined, which the ladder reads as
+            // unknown, never as off.
+            partnered: o.partnered,
+            mesitaPayEnabled: o.mesitaPayEnabled,
           }))}
           isSuperAdmin={viewer.isSuperAdmin}
           viewerError={viewerError}

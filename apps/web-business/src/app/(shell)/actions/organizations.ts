@@ -10,12 +10,13 @@ import {
   apiGetPaymentDashboardLink,
   apiRemoveOrgMember,
   apiSetOrgPartnership,
+  apiStartMembership,
   apiStartPaymentOnboarding,
   apiUpdateOrganization,
   apiUpdateOrgMemberRole,
   type OrgRole,
 } from "@/lib/api/organizations";
-import { orgHref } from "@/lib/console-routes";
+import { orgHref, orgRootHref } from "@/lib/console-routes";
 import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
 
@@ -111,11 +112,13 @@ export async function connectPaymentsAction(
     .toUpperCase();
   const entityType = String(formData.get("entityType") ?? "").trim();
   if (!orgId) return { error: "Missing organization.", note: null };
+  const intent = String(formData.get("intent") ?? "create");
   // The pre-onboarding gate, enforced server-side too: `required` on the
-  // select is a courtesy the browser can skip. Only on create — resume mints
-  // a link for an account that already carries its answer.
+  // select is a courtesy the browser can skip. Create and RESTART both mint a
+  // new account, so both need the answer; only resume may omit it, because the
+  // account it reopens already carries Stripe's copy.
   if (
-    String(formData.get("intent") ?? "create") === "create" &&
+    (intent === "create" || intent === "restart") &&
     !isConnectEntityType(entityType)
   ) {
     return {
@@ -146,12 +149,18 @@ export async function connectPaymentsAction(
     ({ url, mock } = await apiStartPaymentOnboarding(supabase, {
       orgId,
       country,
-      // Stripe stores these when the Account Link is minted, so they must
-      // name the organization page's real address (MESITA-1807). `/` still
-      // forwards `?connect=` for links minted against the old ones.
-      returnUrl: `${origin}${orgHref(orgId)}?connect=return`,
-      refreshUrl: `${origin}${orgHref(orgId)}?connect=refresh`,
+      // Stripe stores these when the Account Link is minted, and they outlive
+      // every rename (MESITA-1807). They name the BARE address deliberately
+      // (MESITA-1846): that route is the one place `?connect=` is read and
+      // handed on to Payments, and it is the address least likely to move
+      // again — the page behind it has moved three times in one day.
+      returnUrl: `${origin}${orgRootHref(orgId)}?connect=return`,
+      refreshUrl: `${origin}${orgRootHref(orgId)}?connect=refresh`,
       ...(entityType ? { entityType } : {}),
+      // Only ever from an explicit Start over (MESITA-1865). The EF re-reads
+      // the live Stripe account before it deletes anything, so this flag asks;
+      // it does not authorise.
+      ...(intent === "restart" ? { restart: true } : {}),
     }));
   } catch (e) {
     return {
@@ -333,4 +342,68 @@ export async function setOrgPartnershipAction(
       partnered: false,
     };
   }
+}
+
+export type StartMembershipState = { error: string | null };
+
+/**
+ * The owner buys the organization's yearly Mesita Membership (MESITA-1877).
+ *
+ * It ends in a redirect in every mode that works: real Stripe returns the
+ * hosted Checkout page, and MOCK_SUBSCRIPTION returns the success URL after
+ * entitling inline. So there is no success branch here — only the two ways it
+ * can fail to leave.
+ *
+ * `redirect()` throws NEXT_REDIRECT and MUST stay outside the try: errMsg
+ * would swallow it and the modal would show a nonsense error instead of
+ * going to Stripe (MESITA-1793, and connectPaymentsAction above).
+ *
+ * ABSOLUTE URLS, BUILT HERE. This is a server action calling through
+ * supabase-js, so no browser sets an Origin on that hop and the EF's own
+ * fallback would build a relative path Stripe rejects — the same lesson
+ * MESITA-1643 taught Connect. The console is the only party that knows where
+ * the owner should land.
+ */
+export async function startMembershipAction(
+  _prev: StartMembershipState,
+  formData: FormData,
+): Promise<StartMembershipState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  if (!orgId) return { error: "Missing organization." };
+
+  const origin = await consoleOrigin();
+  if (!origin) {
+    return {
+      error: "Couldn't work out where to send you back to. Reload and try again.",
+    };
+  }
+
+  const supabase = await createServerSupabase();
+  let checkoutUrl: string | null = null;
+  let alreadyMember = false;
+  try {
+    ({ checkoutUrl, alreadyMember } = await apiStartMembership(supabase, {
+      orgId,
+      successUrl: `${origin}${orgHref(orgId, "products")}?membership=return`,
+      cancelUrl: `${origin}${orgHref(orgId, "products")}?membership=cancelled`,
+    }));
+  } catch (e) {
+    const code = (e as { code?: string | null })?.code ?? null;
+    return {
+      error: code === "stripe_live_blocked"
+        // The operator's own gate (MESITA-37), not the owner's mistake — so
+        // it says who can clear it rather than telling them to try again.
+        ? "Live payments aren't switched on yet. Mesita has to enable them."
+        : errMsg(e, "Couldn't start the membership checkout."),
+    };
+  }
+
+  if (alreadyMember) {
+    // Two tabs, or a double-click. The partnership is already paid for, so
+    // the honest answer is to show them the page saying so.
+    revalidatePath("/", "layout");
+    return { error: null };
+  }
+  if (checkoutUrl) redirect(checkoutUrl);
+  return { error: "Couldn't start the membership checkout." };
 }

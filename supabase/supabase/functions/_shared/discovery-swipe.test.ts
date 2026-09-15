@@ -14,6 +14,8 @@ const NOW = new Date("2026-08-21T18:00:00Z");
 const GEO = { lat: 25.67, lng: -100.31 };
 const WEIGHTS = swipeLineupWeights(DISCOVERY_DEFAULTS.weights);
 const PARAMS = DISCOVERY_DEFAULTS.params;
+/** Merit order only. These tests are about the blend, not the bought lane. */
+const SLOT_OFF = { enabled: false, everyNth: 0 };
 
 const HOURS = {
   friday: [{ open: "18:00", close: "02:00" }],
@@ -69,6 +71,7 @@ Deno.test("rank: closer beats farther when the other signals tie", () => {
     [far, near],
     GEO,
     WEIGHTS,
+    SLOT_OFF,
     PARAMS,
     { now: NOW, random: () => 0.5 },
   );
@@ -82,6 +85,7 @@ Deno.test("rank: paid plan beats free at the same pin", () => {
     [plain, partner],
     GEO,
     WEIGHTS,
+    SLOT_OFF,
     PARAMS,
     { now: NOW, random: () => 0.5 },
   );
@@ -95,6 +99,7 @@ Deno.test("rank: a partner at the radius edge is scored, not dropped", () => {
     [mid, edge],
     GEO,
     WEIGHTS,
+    SLOT_OFF,
     PARAMS,
     { now: NOW, random: () => 0.5 },
   );
@@ -106,7 +111,10 @@ Deno.test("rank: randomness can flip two close places", () => {
   const b = row("b", 1, 4.2, 40);
   let n = 0;
   const random = () => (n++ === 0 ? 0.99 : 0.01);
-  const ordered = rankSwipeDeck([a, b], GEO, WEIGHTS, PARAMS, { now: NOW, random });
+  const ordered = rankSwipeDeck([a, b], GEO, WEIGHTS, SLOT_OFF, PARAMS, {
+    now: NOW,
+    random,
+  });
   assertEquals(ordered.map((r) => r.id), ["a", "b"]);
 });
 
@@ -141,4 +149,73 @@ Deno.test("recommend-swipe ranks with the Swipe mask, not the old sum", async ()
   assertEquals(src.includes("weightProximity"), false);
   assertEquals(src.includes("partnerBias"), false);
   assertEquals(src.includes("swipeBlend"), false);
+});
+
+// ── The bought lane on Scroll (MESITA-1855) ──────────────────────────────────
+//
+// All weights zero, so every place scores exactly 1 under `Π s^w` and merit
+// order is the incoming order. Anything that moves was moved by slotting.
+// With the real mask, Mesita Level already lifts a promoting place and these
+// assertions would pass whether or not lane 2 ran.
+
+const ZERO_WEIGHTS = Object.fromEntries(
+  Object.keys(DISCOVERY_DEFAULTS.weights).map((k) => [k, 0]),
+) as typeof WEIGHTS;
+
+/** Rates `strategyForRates` recognises as Aggressive. An invented tuple
+ *  returns null, the place does not promote, and the queue is empty. */
+const PROMO_RATES = {
+  welcome_free_rate: 30,
+  welcome_premium_rate: 50,
+  free_rate: 10,
+  premium_rate: 30,
+  strike_count: 0,
+  last_strike_at: null,
+  promo_paused_until: null,
+  plan_forfeited_at: null,
+};
+
+Deno.test("Scroll: a promoting place is moved into the bought slot", () => {
+  const rows = [
+    row("a", 1, 4.2, 40, "pro"),
+    row("b", 1, 4.2, 40, "pro"),
+    row("c", 1, 4.2, 40, "pro"),
+    { ...row("d", 1, 4.2, 40, "pro"), ...PROMO_RATES },
+  ];
+  const ordered = rankSwipeDeck(
+    rows,
+    GEO,
+    ZERO_WEIGHTS,
+    { enabled: true, everyNth: 2 },
+    PARAMS,
+    { now: NOW, random: () => 0.5 },
+  );
+  assertEquals(ordered.map((r) => r.id), ["a", "d", "b", "c"]);
+});
+
+Deno.test("Scroll: slotting off serves merit order", () => {
+  const rows = [
+    row("a", 1, 4.2, 40, "pro"),
+    row("b", 1, 4.2, 40, "pro"),
+    row("c", 1, 4.2, 40, "pro"),
+    { ...row("d", 1, 4.2, 40, "pro"), ...PROMO_RATES },
+  ];
+  const ordered = rankSwipeDeck(
+    rows,
+    GEO,
+    ZERO_WEIGHTS,
+    SLOT_OFF,
+    PARAMS,
+    { now: NOW, random: () => 0.5 },
+  );
+  assertEquals(ordered.map((r) => r.id), ["a", "b", "c", "d"]);
+});
+
+Deno.test("recommend-swipe passes the slotting config, not a literal", async () => {
+  // The bug this file exists to prevent is a lane that is wired in the shared
+  // module and never reached from the EF.
+  const src = await Deno.readTextFile(
+    new URL("../consumer-web-recommend-swipe/index.ts", import.meta.url),
+  );
+  assertEquals(src.includes("cfg.slotting"), true);
 });

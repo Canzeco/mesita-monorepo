@@ -5,7 +5,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { StatePill, disabledReasonCopy } from "./badges";
-import { paymentAccountState, type PaymentAccount } from "@/lib/api/organizations";
+import {
+  canOpenDashboard,
+  canRestartOnboarding,
+  canResumeOnboarding,
+  paymentAccountState,
+  type PaymentAccount,
+} from "@/lib/api/organizations";
 import { ConnectReturnNotice } from "./ConnectReturnNotice";
 
 const CARD = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
@@ -74,8 +80,80 @@ describe("one word no longer means two opposite things", () => {
 
   it("offers Resume on the owner's move and NOT on Stripe's", () => {
     // The loop this closes: a button that reopened a form already completed.
-    expect(CARD).toContain('state === "unfinished" && (');
+    expect(canResumeOnboarding(account({ details_submitted: true }), false)).toBe(
+      false,
+    );
+    expect(CARD).toContain("{resumable && (");
     expect(CARD).not.toContain("!account?.details_submitted && (");
+  });
+});
+
+describe("an abandoned onboarding is not a dead end (MESITA-1865)", () => {
+  // Stripe sets requirements.disabled_reason the moment capabilities are
+  // requested and unmet, so THIS is what every owner who closed the Stripe tab
+  // comes back to. It used to read Restricted, and Restricted has no way in.
+  const abandoned = account({ disabled_reason: "requirements.past_due" });
+
+  it("day-zero past_due is UNFINISHED, not Restricted", () => {
+    expect(paymentAccountState(abandoned, false)).toBe("unfinished");
+    expect(canResumeOnboarding(abandoned, false)).toBe(true);
+  });
+
+  it("a closed account stays Restricted and is offered nothing", () => {
+    for (const reason of ["rejected.fraud", "platform_paused"]) {
+      const dead = account({ disabled_reason: reason });
+      expect(paymentAccountState(dead, false)).toBe("restricted");
+      expect(canResumeOnboarding(dead, false)).toBe(false);
+      expect(canRestartOnboarding(dead, false)).toBe(false);
+    }
+  });
+
+  it("a submitted account with a live reason is still Restricted", () => {
+    // The ordering fix must not swallow a genuine restriction on an account
+    // that finished: submission outranks the reason, having nothing due does
+    // not.
+    expect(
+      paymentAccountState(
+        account({
+          details_submitted: true,
+          disabled_reason: "requirements.pending_verification",
+        }),
+        false,
+      ),
+    ).toBe("restricted");
+  });
+
+  it("never offers a dashboard that cannot exist yet", () => {
+    // createLoginLink FAILS before hosted onboarding completes, and the EF
+    // reported that refusal as a Mesita misconfiguration.
+    expect(canOpenDashboard(abandoned, false)).toBe(false);
+    expect(canOpenDashboard(account({ details_submitted: true }), false)).toBe(
+      true,
+    );
+    expect(CARD).toContain("{dashboardReady && (");
+  });
+
+  it("Start over is offered ONLY before anything was submitted or charged", () => {
+    expect(canRestartOnboarding(abandoned, false)).toBe(true);
+    expect(
+      canRestartOnboarding(account({ details_submitted: true }), false),
+    ).toBe(false);
+    expect(
+      canRestartOnboarding(account({ charges_enabled: true }), false),
+    ).toBe(false);
+    // An orphaned row has Connect again on the pill row; Start over would be
+    // a second door to the same place.
+    expect(canRestartOnboarding(abandoned, true)).toBe(false);
+  });
+
+  it("Start over reopens the two permanent answers, marked as a restart", () => {
+    expect(CARD).toContain('setConnectOpen("restart")');
+    expect(CARD).toContain('name="intent" value={intent}');
+  });
+
+  it("an account with no door at all renders no action block", () => {
+    // A rejected account used to get a lone dashboard button that 503ed.
+    expect(CARD).toContain("(resumable || dashboardReady || restartable)");
   });
 });
 

@@ -31,10 +31,14 @@ import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
+  accountSnapshotFromStripe,
   isMockConnectAccountId,
   keyIsLive,
 } from "../_shared/stripe-connect.ts";
-import type { PaymentAccountRow } from "../_shared/payment-account-doc.ts";
+import {
+  type PaymentAccountRow,
+  writePaymentAccount,
+} from "../_shared/payment-account-doc.ts";
 
 type Body = {
   orgId?: string;
@@ -131,17 +135,58 @@ Deno.serve(async (req) => {
     const link = await stripe.accounts.createLoginLink(row.stripe_account_id);
     return json({ ok: true, mock: false, url: link.url, account: row });
   } catch (err) {
-    // The most likely cause is an account created BEFORE the Express flip:
-    // createLoginLink only works where the controller granted Express
-    // dashboard access, and controller properties are permanent.
+    // THERE ARE TWO FAILURES HERE AND ONLY ONE OF THEM IS OURS (MESITA-1865).
+    //
+    // The Express Dashboard does not EXIST until the account finishes hosted
+    // onboarding — `createLoginLink` refuses before that — so the commonest
+    // way into this catch is an owner who closed the Stripe tab halfway. They
+    // were told "payments aren't set up on Mesita's side, we've been notified",
+    // which is false, unactionable, and points them away from the one thing
+    // that would fix it. Stripe's own object decides which sentence they get,
+    // because the mirror can be stale in either direction.
+    const message = (err as { message?: string })?.message ??
+      "Could not open the payments dashboard.";
+    let submitted: boolean | null = null;
+    try {
+      const account = await stripe.accounts.retrieve(row.stripe_account_id);
+      submitted = account.details_submitted === true;
+      // Free the mirror from the staleness that put the button there at all.
+      await writePaymentAccount(admin, {
+        mode: "update",
+        by: "organization_id",
+        id: orgId,
+        patch: accountSnapshotFromStripe(account, keyIsLive(stripeKey)),
+      });
+    } catch (refreshErr) {
+      console.error(
+        `[get-payment-dashboard-link] could not re-read ${row.stripe_account_id}:`,
+        refreshErr,
+      );
+    }
+
+    if (submitted === false) {
+      console.info(
+        `[get-payment-dashboard-link] no dashboard yet for ` +
+          `${row.stripe_account_id}: hosted onboarding is unfinished.`,
+      );
+      return json({
+        ok: false,
+        error:
+          "Finish setting up your Stripe account first — the Stripe dashboard opens once Stripe has everything it asked for.",
+        code: "onboarding_incomplete",
+        account: row,
+      }, 409);
+    }
+
+    // The genuine platform failure: most likely an account created BEFORE the
+    // Express flip, since createLoginLink only works where the controller
+    // granted Express dashboard access and controller properties are permanent.
     //
     // That is a fact about OUR configuration, and the reader is the restaurant
     // owner, so Stripe's wording goes to the log and not to their browser —
     // same rule failure-copy.ts (MESITA-1645) applies next door. The sentence
     // is duplicated rather than imported because EFs do not reach into each
     // other's directories; the test below is what keeps the two in step.
-    const message = (err as { message?: string })?.message ??
-      "Could not open the payments dashboard.";
     console.error(
       `[get-payment-dashboard-link] createLoginLink failed for ` +
         `${row.stripe_account_id} — the merchant saw a generic sentence. ` +

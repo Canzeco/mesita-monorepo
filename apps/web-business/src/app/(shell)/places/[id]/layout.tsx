@@ -1,18 +1,43 @@
-// The Place surface: admin's Manage Single Place, mounted in the business
-// console (MESITA-1537). The views — Profile · Reviews · Activity · Settings ·
-// Admin — the same components the operator console uses.
+// The place surface — Profile · Reviews · Activity · Settings · Admin — for
+// THE PLACE THE ADDRESS NAMES (MESITA-1839).
 //
-// This layout is the ONE authority: it resolves the 404 verdict, the holder,
-// the tab set, and the AdminPlace the ported sections read. The heading and
-// the rail both take that resolution rather than re-deriving any of it, so
-// there is exactly one place that decides what this viewer may see.
+// THE ID IS BACK IN THE PATH, and the reason is the one MESITA-1807 already
+// wrote down about `?org=`: scope that is not in the URL is scope the URL
+// cannot carry. MESITA-1832 moved it into a cookie, which made three things
+// stop working at once — a link to a place could not be sent to anyone, two
+// browser tabs could not hold two places (a cookie is per-browser, so the
+// second navigation in either tab rendered the other tab's place, on Profile
+// an edit against the wrong record), and Back replayed a path whose meaning
+// had since changed.
+//
+// The one-place console MESITA-1832 built is untouched: the rail still shows
+// six words with no switcher and no id, and `/profile` still works typed by
+// hand — it resolves the remembered place and forwards here. What changed is
+// which of the two addresses is canonical. The rail links HERE, so a click
+// still costs one hop; the flat address is for arrivals.
+//
+// This layout resolves the 404 verdict, the holder, the tab set and the
+// AdminPlace ONCE, so the heading, the rail and the page never re-derive them.
+//
+// AND THE PAGES NO LONGER RE-FETCH THEM (MESITA-1875). "Once" was true of one
+// REQUEST, which is not the same thing as once per navigation: `cache()`
+// dedupes inside a request, a client navigation between siblings re-runs the
+// page segment alone in a NEW request, and every view page opened with reads
+// of its own that it used as a boolean and threw away. Measured in production:
+// `business-web-get-overview` p50 472ms, p95 913ms — per tab click, for a
+// fact this layout was holding. The matrix and the held flag travel down
+// through `PlaceScope` now, `PlaceTabGate` does the refusing, and a view page
+// reads nothing.
 import { notFound, redirect } from "next/navigation";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
-import { getManagePlace, getPlaceView, placeTabHref, visibleTabs } from "@/lib/place-view";
+import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PublishOpenPlace } from "@/components/console/OpenPlace";
 import { isMemberPlan } from "@/components/place-manage/sections/promo-state";
+import { placeTabHref } from "@/lib/place-tabs";
+import { PlaceTabGate } from "@/components/console/PlaceTabGate";
 import { PlaceManageShell } from "./PlaceManageShell";
+import { PlaceScopeProvider } from "./PlaceScope";
 
 export const dynamic = "force-dynamic";
 
@@ -24,47 +49,27 @@ export default async function PlaceLayout({
   children: React.ReactNode;
 }) {
   const { id } = await params;
+  const user = await getServerUser();
+  if (!user) redirect(`/signin?next=${encodeURIComponent(placeTabHref(id, "profile"))}`);
   const supabase = await createServerSupabase();
 
-  // THREE round trips became one wait (MESITA-1729). The user check, the place
-  // view and the manage payload are mutually independent — none reads another's
-  // answer — but they were awaited on consecutive lines, so a tab click paid
-  // them end to end. This layout is force-dynamic, so that was every click.
-  //
-  // Guard ORDER is load-bearing and must stay as written below: `user` is
-  // checked before `view`. Signed out, get-place also fails, and answering 404
-  // to someone who merely needs to sign in would be both wrong and a worse
-  // experience. Checking user first keeps the old redirect.
-  //
-  // `getPlaceView` and `getManagePlace` are request-cached (lib/place-view.ts),
-  // so the tab page below asking for the same data is still free.
-  const [user, view, manage] = await Promise.all([
-    getServerUser(),
-    // get-place answers 404 the same way for "does not exist" and "held by
-    // an organization you are not in". This branch must not tell them apart.
+  // Guard ORDER is load-bearing: `user` above, then `view`. Signed out,
+  // get-place also fails, and answering 404 to someone who merely needs to
+  // sign in would be both wrong and a worse experience. The two reads are
+  // request-cached (lib/place-view.ts), so the page beneath asking again is
+  // free.
+  const [view, manage] = await Promise.all([
     getPlaceView(supabase, id).catch(() => null),
-    // Null for a pool place: nobody holds it, so there is nothing to manage
-    // yet — Profile carries the Claim button instead.
     getManagePlace(id),
   ]);
-  // Bounce back to a real address, not the redirect (MESITA-1732):
-  // /auth/post-signin pushes `next` straight through, so a bare place URL here
-  // would cost the operator an extra hop after signing in.
-  if (!user) {
-    redirect(`/signin?next=${encodeURIComponent(placeTabHref(id, "profile"))}`);
-  }
   if (!view) notFound();
   const tabs = visibleTabs(view, manage);
 
-  // The rail needs this place's NAME and its VIEW SET, and it renders above
-  // this layout, so it cannot know either. Publishing them upward costs
-  // nothing — both are already in hand — where a second
-  // `business-web-get-place` from the shell would cost a round trip on every
-  // navigation. `tabs` is `visibleTabs()`, so the rail shows exactly the views
-  // this viewer may open and never a disabled row.
-  //
-  // The unsaved-edits guard travels up too, but from further in: only
-  // `PlaceNavBridge`, inside PlaceProvider, can read it.
+  // The rail renders above this layout and cannot know this place's NAME
+  // or its VIEW SET; both are in hand, so they are published upward — and
+  // for a pool place the rail learns the place exists at all. AppShell turns
+  // the published id into the rail cookie, which is what makes the flat
+  // addresses resolve here next time.
   const publish = (
     <PublishOpenPlace
       id={id}
@@ -73,10 +78,6 @@ export default async function PlaceLayout({
       tabs={tabs}
     />
   );
-
-  // ONE call site for the heading. Building it twice — once per branch — is
-  // the drift this layout's docblock exists to prevent. It is a page title in
-  // the content flow now, not a sticky bar: the rail is what stays.
   const heading = (
     <PlaceHeading
       name={view.place.name}
@@ -86,24 +87,39 @@ export default async function PlaceLayout({
     />
   );
 
+  // The matrix, the held flag, and — for a pool place only — the identity
+  // payload its Profile renders. A HELD place gets `view: null`: everything
+  // that screen draws comes through `PlaceContext`, and a second copy of a
+  // record two providers both hold is how a screen starts disagreeing with
+  // itself.
+  const scope = {
+    placeId: id,
+    tabs,
+    held: manage !== null,
+    view: manage ? null : view,
+  };
+
   // Without a manage payload there is no PlaceContext to provide — and
-  // nothing that needs one, since only Profile renders. The bar still shows,
-  // unguarded: a pool place has no editable state to discard.
+  // nothing that needs one, since only Profile renders. A pool place has no
+  // editable state to discard.
   if (!manage) {
     return (
-      <>
+      <PlaceScopeProvider value={scope}>
+        <PlaceTabGate />
         {publish}
         {heading}
         {children}
-      </>
+      </PlaceScopeProvider>
     );
   }
-
   return (
-    <PlaceManageShell placeId={id} initialPlace={manage.place}>
-      {publish}
-      {heading}
-      {children}
-    </PlaceManageShell>
+    <PlaceScopeProvider value={scope}>
+      <PlaceTabGate />
+      <PlaceManageShell placeId={id} initialPlace={manage.place}>
+        {publish}
+        {heading}
+        {children}
+      </PlaceManageShell>
+    </PlaceScopeProvider>
   );
 }

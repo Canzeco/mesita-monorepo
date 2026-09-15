@@ -20,6 +20,25 @@
 // the slotting pass. With slotting on or off, the relative order of every
 // place that did not buy a slot stays identical.
 //
+// LANE 2 ONLY STARTED RUNNING AT MESITA-1855, and this comment described it
+// as live for three weeks before that. `slotPromoted` and `discoveryRank` had
+// zero production callers: Word, Map and Scroll all called `rankByBlend`
+// directly, and three tests ASSERTED the absence as though it were an
+// invariant. So the only live path from what a place pays to where it ranked
+// was the `mesita_level` exponent — precisely the thing this file says money
+// must not buy. Read that as a warning about this file rather than about that
+// bug: a header can describe an architecture nobody wired, and stay true-
+// looking for as long as nobody greps for the caller. `nearby-lineup.test.ts`
+// now asserts `discoveryRank` HAS a non-test caller, which is the assertion
+// that would have caught it.
+//
+// WHERE IT ATTACHES. Scroll slots over its single ranked deck, which is what
+// slotPromoted takes. Map slots INSIDE each of its listed lanes, never over
+// the concatenation: the partner/non-partner lane split is already a bought
+// mechanism, and promoting is a subset of partner (`isPlacePromoting` is
+// false on any unpaid plan), so a pass over the joined list would price the
+// same money twice and could move a place past a partner.
+//
 // WEIGHTS ARE EXPONENTS, NOT MULTIPLIERS. Each signal enters as `s^w`. Since
 // s ∈ [0,1]:
 //

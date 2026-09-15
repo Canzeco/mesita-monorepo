@@ -15,6 +15,9 @@ export function useRailScope(input: {
   organizations: readonly RailOrg[];
   rememberedPlaceId: string | null;
   rememberedOrgId: string | null;
+  /** The organizations read failed (`(shell)/layout.tsx`). Carried, never
+   *  re-derived: an empty array is a different fact (MESITA-1879). */
+  viewerError: boolean;
 }): RailScope {
   const pathname = usePathname();
   const lastPlaceId = useLastPlaceId();
@@ -24,5 +27,6 @@ export function useRailScope(input: {
     lastPlaceId,
     rememberedPlaceId: input.rememberedPlaceId,
     rememberedOrgId: input.rememberedOrgId,
+    viewerError: input.viewerError,
   });
 }

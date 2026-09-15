@@ -6,12 +6,22 @@
 // or Connected (does money land), a PLACE is Listed or Verified (can a
 // guest reach it, did someone prove they run it). Neither describes the
 // other, so neither badge is reusable for the other.
+//
+// A third chip, Partner, is deliberately SHARED (MESITA-1867): the
+// organization holds the subscription and every place it holds wears it, so
+// Configuration and the place heading print one word from one component in
+// one colour. Two pages drawing the same fact in two violets was the drift
+// this file exists to prevent.
 import { cn } from "@/lib/utils";
 import type {
-  OrganizationState,
   PaymentAccountState,
   PlaceState,
 } from "@/lib/model/types";
+
+/** The bordered-chip grammar every state chip on a heading wears: 11px, a
+ *  dot, the card's own background. One string so a new chip cannot drift. */
+const CHIP_CLASS =
+  "border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold";
 
 const PLACE_STATE_LABEL: Record<PlaceState, string> = {
   listed: "Listed",
@@ -31,12 +41,7 @@ export function PlaceStateBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
-        className,
-      )}
-    >
+    <span className={cn(CHIP_CLASS, className)}>
       <span
         className={cn("h-1.5 w-1.5 rounded-full", PLACE_STATE_DOT[state])}
       />
@@ -45,24 +50,29 @@ export function PlaceStateBadge({
   );
 }
 
-const ORG_STATE_LABEL: Record<OrganizationState, string> = {
-  not_connected: "Not connected",
-  connected: "Connected",
-};
-
-const ORG_STATE_DOT: Record<OrganizationState, string> = {
-  not_connected: "bg-muted-foreground/50",
-  connected: "bg-emerald-500",
-};
-
-export function OrgStateBadge({ state }: { state: OrganizationState }) {
+/**
+ * PARTNER, ONE WORD, ONE COLOUR (MESITA-1867).
+ *
+ * Rendered only while the fact is true — the caller decides. There is no
+ * "Not a partner" twin: on the Partner box the CTA IS the not-yet state, and
+ * a muted pill beside a price and a button would be three atoms for one
+ * fact. Violet because it is neither Listed's grey nor Verified's green nor
+ * a payment state's amber — a different ladder, a different hue.
+ */
+export function PartnerPill({ className }: { className?: string }) {
   return (
-    <span className="border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
-      <span className={cn("h-1.5 w-1.5 rounded-full", ORG_STATE_DOT[state])} />
-      {ORG_STATE_LABEL[state]}
+    <span className={cn(CHIP_CLASS, className)}>
+      <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+      Partner
     </span>
   );
 }
+
+// ORG_STATE_BADGE IS GONE (MESITA-1847). It read `charges_enabled` alone and
+// said "Connected", while `StatePill` on the same screen says "Ready" only at
+// charges AND payouts AND details submitted — one account, two ladders, two
+// vocabularies, free to disagree in front of the owner. The precise one stays.
+// An exported badge nobody renders is an invitation to say it twice again.
 
 /**
  * "READY", NOT "LIVE" (MESITA-1643).
@@ -100,6 +110,54 @@ const STATE_LABEL: Record<PaymentAccountState, string> = {
 export const READY_CAPTION = CARD_PAYMENTS_LIVE
   ? null
   : "Your account is ready. Mesita starts sending payments through it when card payments go live \u2014 we\u2019ll email you.";
+
+/**
+ * The Mesita Pay switch's own sentence, DERIVED from the same flag as the
+ * caption 40px above it (MESITA-1867). A static "Guests can pay by card"
+ * under a Ready pill whose caption says Mesita is not sending payments yet
+ * is two lines in one box disagreeing about whether money moves. Flip
+ * CARD_PAYMENTS_LIVE and both move together.
+ */
+export function mesitaPaySwitchLine(on: boolean): string {
+  if (CARD_PAYMENTS_LIVE) {
+    return on
+      ? "Guests can pay by card at every place that turns it on."
+      : "Turn on so places can take card payments inside Mesita.";
+  }
+  return on
+    ? "Places can turn on card payments; Mesita starts sending them when card payments go live."
+    : "Turn on so places can offer card payments once they go live.";
+}
+
+/**
+ * Why the Mesita Pay switch is locked, per account state \u2014 never "connect
+ * Stripe first" to someone who did (MESITA-1867). The switch's lock is
+ * Stripe Ready; the line names the rung the account is actually on, and
+ * "see above" points at the PaymentsCard in the same box that says the rest.
+ *
+ * `live` is unreachable through the page's `stripeReady` predicate (a Ready
+ * account unlocks the switch), and `charges_only` clears it too \u2014 charges
+ * and details are what the predicate reads, payouts are not. Both rows exist
+ * so the Record is total and a new state cannot fall through to "connect
+ * first".
+ */
+const PAY_LOCKED_LINE: Record<PaymentAccountState, string> = {
+  none: "Needs a Ready Stripe account \u2014 connect Stripe first.",
+  unfinished: "Finish Stripe onboarding first.",
+  in_review: "Stripe is checking the account.",
+  restricted: "Stripe restricted the account \u2014 see above.",
+  charges_only: "Stripe still needs payouts enabled \u2014 see above.",
+  live: "Ready.",
+};
+
+export function mesitaPayLockedLine(
+  state: PaymentAccountState,
+  orphaned: boolean,
+): string {
+  // An orphaned mirror reads `restricted` from paymentAccountState, but for
+  // the owner it is an account that is not there: the door is Connect again.
+  return orphaned ? PAY_LOCKED_LINE.none : PAY_LOCKED_LINE[state];
+}
 
 const STATE_CLASS: Record<PaymentAccountState, string> = {
   none: "bg-muted text-muted-foreground",

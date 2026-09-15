@@ -101,7 +101,9 @@ describe("the rail is light, and every text token is a measured pair", () => {
   });
 
   it("the active row is a solid fill, so `you are here` survives a glance", () => {
-    expect(rail).toContain('ROW_ACTIVE = "bg-foreground text-background');
+    // On the dark rail (MESITA-1831) the fill is the off-white sidebar
+    // foreground with ink text — the brightest thing in the column.
+    expect(rail).toContain('ROW_ACTIVE = "bg-sidebar-foreground text-sidebar');
   });
 
   it("marks the active row for assistive tech, not just visually", () => {
@@ -131,7 +133,17 @@ describe("the rail is light, and every text token is a measured pair", () => {
       /^href=\{orgPlacesNewHref\(/, // the Add place ceremony
       /^href=\{placeTabHref\(/, // a place view
       /^href=\{landingHref\}$/, // where / would land, resolved by AppShell
-      /^href=\{href\}$/, // NavRow / CeremonyPlus / MenuLink prop pass-through: built by the caller
+      /^href=\{href\}$/, // NavRow prop pass-through: built by the caller
+      /^href=\{row\.href\}$/, // the six rows: a table of SHELL_ROUTES / viewHref entries (MESITA-1832)
+      /^href=\{viewRow\(/, // a place view, canonical or its flat resolver (MESITA-1841)
+      /^href=\{orgRow\(/, // an organization page, canonical or its flat resolver
+      // A PRODUCT ROW, through the ONE function that knows the three shapes a
+      // product's address can have (MESITA-1885): a place view, an
+      // organization page, or the Soon sub-page under `products/`. It is
+      // sanctioned for exactly the reason this test exists — the alternative
+      // was a ternary in the rail, which is a second copy of the mapping, and
+      // a second copy is what starts 404ing a row.
+      /^href=\{productRowHref\(/,
     ];
     const links = [
       ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),
@@ -173,10 +185,12 @@ describe("the rail is light, and every text token is a measured pair", () => {
     expect(rail).toContain('aria-label="Console"');
   });
 
-  it("uses TINY_LABEL_CLASS for the eyebrow, never a bare heading tag", () => {
-    // globals.css puts every bare h1/h2/h3 on the display face, so a 10px
-    // eyebrow written as an <h2> silently becomes a serif.
-    expect(rail).toContain("TINY_LABEL_CLASS");
+  it("has no eyebrow at all, and no bare heading tag (MESITA-1844)", () => {
+    // The rail's two group headers are gone: four flat nouns need no eyebrow.
+    // The heading ban outlives them — globals.css puts every bare h1/h2/h3 on
+    // the display face, so a 10px label written as an <h2> silently becomes a
+    // serif, and that is how an eyebrow comes back wearing the wrong face.
+    expect(rail).not.toContain("TINY_LABEL_CLASS");
     expect(code(rail)).not.toMatch(/<h[123][\s>]/);
   });
 });

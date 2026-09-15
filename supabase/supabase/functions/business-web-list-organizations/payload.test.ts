@@ -50,3 +50,32 @@ Deno.test("the org list carries the Partner switch facts (MESITA-1798)", () => {
     "the embed must select both columns",
   );
 });
+
+Deno.test("the org list carries the Membership behind Partner (MESITA-1877)", () => {
+  // The renewal date and the dunning state, so the Products banner can say
+  // WHEN it renews without a second round trip.
+  assert(SRC.includes('.from("partner_memberships")'));
+  assert(SRC.includes("LIVE_MEMBERSHIP_STATES"), "only live rows are billing");
+  assert(SRC.includes("renewsAt: membership.current_period_end"));
+  assert(SRC.includes("cancelAtPeriodEnd:"));
+  // The catalog price rides the ENVELOPE, not every row: it is a console-wide
+  // fact, and repeating it per organization is how two of them drift.
+  assert(SRC.includes("membershipPrice,"));
+});
+
+Deno.test("a failed billing read ships null, and never fails the call", () => {
+  // The rail, the switcher and the create form all ride this payload. A
+  // billing read must never be what takes them down (MESITA-1793's law), and
+  // `membership: null` is already a real state — a partner from the operator
+  // switch has no subscription either — so the console needs no new branch.
+  const start = SRC.indexOf('.from("partner_memberships")');
+  const window = SRC.slice(start, start + 1200);
+  assert(
+    window.includes("console.error"),
+    "a failed membership read is logged, not thrown",
+  );
+  assert(
+    !/memberships\.error\)\s*return json/.test(window),
+    "a failed membership read must not 500 the whole payload",
+  );
+});

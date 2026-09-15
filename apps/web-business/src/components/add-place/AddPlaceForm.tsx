@@ -1,16 +1,47 @@
 "use client";
 
-// Add place — search Google, then Create (not on Mesita) or Add (on Mesita).
-// Mutations go through server actions. Suggest + lookup stay in the browser.
-import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import Link from "next/link";
+// Add place — ONE SEARCH BAR AND ONE LIST (MESITA-1850).
+//
+// Pato, 2026-09-14, on the form this replaced: *"that looks like shit. make
+// full width bar with the actual word engine. display if the place is already
+// on mesita or if its not. and put the shitty button to claim/verify all the
+// fucking workflow."*
+//
+// WHAT WAS WRONG. It was a FORM: a 520px input capped by FORM_COLUMN_CLASS
+// with a 12px "Place" eyebrow over it and a Cancel pill under it, on a
+// 1700px screen. Picking a prediction collapsed the list, THEN ran the
+// lookup, THEN rendered a card — three steps to learn one boolean ("is this
+// on Mesita?") and a fourth to act on it.
+//
+// WHAT IT IS NOW. The bar is the page. Results are a full-width list, and
+// every row carries the answer and the verb: the place, its address, its
+// state, and Create · Claim · Open. Nothing collapses, nothing is picked,
+// nothing waits for a second screen.
+//
+// KNOWING IS FREE, SO KNOW EAGERLY. `business-web-find-place` is a pure DB
+// lookup on `google_place_id` — it never calls Google and bills nothing — so
+// every prediction resolves in PARALLEL the moment the predictions land.
+// That is the whole reason the state can live on the row instead of behind a
+// click. If the two calls ever diverge in cost, batch the lookup rather than
+// moving the fact back behind a step.
+//
+// EVERY RESULT KEEPS ITS OWN STATE. Lookups, pending flags and errors are
+// keyed by Google place id, never by a single "selected" slot — two rows can
+// be mid-claim and mid-error at once without either one stealing the other's
+// spinner. A shared slot is how a list UI silently becomes a form again.
+//
+// THE SEARCH TOKEN IS PER QUERY. Google's autocomplete session token groups
+// keystrokes into one billable search; it rotates when the query is cleared,
+// not when a row is acted on, because acting on a row does not end the search
+// — the operator may claim two places from one list.
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Loader2, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import {
   addListedPlaceAction,
   createThenClaimAction,
 } from "@/app/(shell)/actions/places";
-import { cardForLookup, type CeremonyCard } from "@/lib/add-place-card";
+import { rowStateForLookup, type RowState } from "@/lib/add-place-card";
 import {
   apiPlacesAutocomplete,
   type PlacePrediction,
@@ -18,21 +49,12 @@ import {
 import { apiLookupPlace } from "@/lib/api/verifications";
 import { placeHref } from "@/lib/console-routes";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  ERROR_BOX_CLASS,
-  FORM_COLUMN_CLASS,
-  GHOST_PILL_BUTTON_CLASS,
-  INPUT_CLASS,
-} from "@/lib/ui-classes";
-import { cn, errMsg } from "@/lib/utils";
-import {
-  AddListedPlaceCard,
-  CreatePlaceCard,
-  OpenHeldPlaceCard,
-  PartnerOtherCard,
-} from "./AddPlaceCards";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { errMsg } from "@/lib/utils";
+import { AddPlaceHint, AddPlaceRow } from "./AddPlaceRow";
 
 const SEARCH_DEBOUNCE_MS = 220;
+const MIN_QUERY = 2;
 
 function newSessionToken(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -45,34 +67,35 @@ export function AddPlaceForm({
   organizationId,
   canAdd,
   heldPlaceIds,
-  cancelHref,
 }: {
   organizationId: string;
   canAdd: boolean;
   heldPlaceIds: readonly string[];
-  cancelHref: string;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const held = useMemo(() => new Set(heldPlaceIds), [heldPlaceIds]);
-  const listId = useId();
   const sessionTokenRef = useRef(newSessionToken());
 
   const [query, setQuery] = useState("");
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
-  const [highlight, setHighlight] = useState(0);
-  const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<PlacePrediction | null>(null);
-  const [card, setCard] = useState<CeremonyCard | null>(null);
-  const [lookupPending, startLookup] = useTransition();
-  const [lookupError, setLookupError] = useState<string | null>(null);
+  /** Per Google place id. Absent = still checking; that is what the row's
+   *  "Checking Mesita" line reads, so it is never a guess. */
+  const [states, setStates] = useState<Record<string, RowState>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [actingId, setActingId] = useState<string | null>(null);
   const [actionPending, startAction] = useTransition();
-  const [actionError, setActionError] = useState<string | null>(null);
 
+  // ── The search ─────────────────────────────────────────────────────────
+  // CLEARING IS THE HANDLER'S JOB, NOT THE EFFECT'S. Setting state
+  // synchronously inside an effect cascades renders (react-hooks lint), so a
+  // query that fell below the minimum is emptied where the operator emptied
+  // it — in `onChange` — and this effect only ever runs a search.
   useEffect(() => {
-    if (selected || query.trim().length < 2) return;
+    const trimmed = query.trim();
+    if (trimmed.length < MIN_QUERY) return;
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       setSearching(true);
@@ -80,20 +103,33 @@ export function AddPlaceForm({
       try {
         const results = await apiPlacesAutocomplete(
           supabase,
-          query,
+          trimmed,
           sessionTokenRef.current,
         );
-        if (!cancelled) {
-          setPredictions(results);
-          setHighlight(0);
-          setOpen(results.length > 0);
+        if (cancelled) return;
+        setPredictions(results);
+        // KNOW EAGERLY: resolve every row's Mesita state in parallel. A
+        // failed lookup leaves that row "Checking Mesita" rather than
+        // asserting "Not on Mesita", which would offer Create for a place
+        // that exists and 409 on the click.
+        for (const p of results) {
+          void (async () => {
+            try {
+              const lookup = await apiLookupPlace(supabase, p.placeId);
+              if (cancelled) return;
+              setStates((prev) => ({
+                ...prev,
+                [p.placeId]: rowStateForLookup(lookup, held),
+              }));
+            } catch {
+              // Silent by design: the row keeps saying it is checking.
+            }
+          })();
         }
       } catch (err) {
-        if (!cancelled) {
-          setSearchError(errMsg(err, "Couldn't search places right now."));
-          setPredictions([]);
-          setOpen(false);
-        }
+        if (cancelled) return;
+        setSearchError(errMsg(err, "Couldn't search places right now."));
+        setPredictions([]);
       } finally {
         if (!cancelled) setSearching(false);
       }
@@ -102,245 +138,151 @@ export function AddPlaceForm({
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [query, selected, supabase]);
+  }, [query, supabase, held]);
 
-  const applyLookup = (prediction: PlacePrediction) => {
-    setLookupError(null);
-    startLookup(async () => {
-      try {
-        const lookup = await apiLookupPlace(supabase, prediction.placeId);
-        setCard(cardForLookup(lookup, prediction, held));
-      } catch (err) {
-        setLookupError(errMsg(err, "Couldn't look up that place."));
-        setCard(null);
-      }
-    });
-  };
-
-  const pick = (prediction: PlacePrediction) => {
-    setSelected(prediction);
-    setQuery(
-      prediction.secondaryText
-        ? `${prediction.mainText} · ${prediction.secondaryText}`
-        : prediction.mainText,
-    );
-    setPredictions([]);
-    setOpen(false);
-    setCard(null);
-    setActionError(null);
-    applyLookup(prediction);
-  };
-
+  // ── The two verbs ──────────────────────────────────────────────────────
   const goHeld = (placeId: string) => {
     router.push(placeHref(placeId));
     router.refresh();
   };
+  const fail = (id: string, message: string) =>
+    setRowErrors((prev) => ({ ...prev, [id]: message }));
+  const clearError = (id: string) =>
+    setRowErrors((prev) => {
+      const { [id]: _gone, ...rest } = prev;
+      return rest;
+    });
+  /** Re-ask this row after a partial failure, so the next click acts on what
+   *  the catalogue says NOW rather than on what it said before the attempt. */
+  const refresh = async (googlePlaceId: string) => {
+    try {
+      const lookup = await apiLookupPlace(supabase, googlePlaceId);
+      setStates((prev) => ({
+        ...prev,
+        [googlePlaceId]: rowStateForLookup(lookup, held),
+      }));
+    } catch {
+      // Leave the row's last known state; the error line already tells it.
+    }
+  };
 
-  const onCreate = () => {
-    if (!selected) return;
-    setActionError(null);
+  const onCreate = (p: PlacePrediction) => {
+    clearError(p.placeId);
+    setActingId(p.placeId);
     startAction(async () => {
-      const result = await createThenClaimAction(
-        selected.placeId,
-        organizationId,
-      );
+      const result = await createThenClaimAction(p.placeId, organizationId);
       if (result.heldPlaceId) {
         goHeld(result.heldPlaceId);
         return;
       }
-      if (result.alreadyExists) {
-        setActionError(null);
-        applyLookup(selected);
+      // Someone created it between the lookup and the click, or the claim
+      // half failed. Either way the row's state is stale — re-ask.
+      if (result.alreadyExists || result.retryPlaceId) {
+        if (result.error) fail(p.placeId, result.error);
+        await refresh(p.placeId);
         return;
       }
-      if (result.retryPlaceId) {
-        setActionError(result.error);
-        applyLookup(selected);
-        return;
-      }
-      setActionError(result.error);
+      fail(p.placeId, result.error ?? "Couldn't create that place.");
     });
   };
 
-  const onAdd = (placeId: string) => {
-    setActionError(null);
+  const onClaim = (p: PlacePrediction, placeId: string) => {
+    clearError(p.placeId);
+    setActingId(p.placeId);
     startAction(async () => {
       const result = await addListedPlaceAction(placeId, organizationId);
       if (result.heldPlaceId) {
         goHeld(result.heldPlaceId);
         return;
       }
-      setActionError(result.error);
+      fail(p.placeId, result.error ?? "Couldn't claim that place.");
+      await refresh(p.placeId);
     });
   };
 
-  const expanded = open && !selected && predictions.length > 0;
-  const activeId =
-    expanded && predictions[highlight]
-      ? `${listId}-${predictions[highlight].placeId}`
-      : undefined;
+  const tooShort = query.trim().length < MIN_QUERY;
+  const nothingFound =
+    !tooShort && !searching && !searchError && predictions.length === 0;
 
   return (
-    <div className={FORM_COLUMN_CLASS}>
-      <div className="block">
-        <span className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
-          Place
-        </span>
-        <div className="relative">
-          <input
-            type="text"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={expanded}
-            aria-controls={listId}
-            aria-activedescendant={activeId}
-            autoComplete="off"
-            autoFocus
-            value={query}
-            placeholder="Search by place name"
-            className={INPUT_CLASS}
-            onChange={(e) => {
-              const next = e.target.value;
-              setQuery(next);
-              if (selected) {
-                setSelected(null);
-                setCard(null);
-                setLookupError(null);
-                setActionError(null);
-                sessionTokenRef.current = newSessionToken();
-              }
-              if (next.trim().length < 2) {
-                setPredictions([]);
-                setOpen(false);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (!expanded) {
-                if (e.key === "Escape" && selected) {
-                  setSelected(null);
-                  setCard(null);
-                  setQuery("");
-                  sessionTokenRef.current = newSessionToken();
-                }
-                return;
-              }
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setHighlight((i) => (i + 1) % predictions.length);
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setHighlight(
-                  (i) => (i - 1 + predictions.length) % predictions.length,
-                );
-              } else if (e.key === "Enter") {
-                e.preventDefault();
-                const hit = predictions[highlight];
-                if (hit) pick(hit);
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                setOpen(false);
-              }
-            }}
-          />
-          {(searching || lookupPending || actionPending) && (
-            <Loader2 className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin" />
-          )}
-          {expanded && (
-            <ul
-              id={listId}
-              role="listbox"
-              className="border-border bg-card absolute inset-x-0 z-20 mt-1 max-h-64 overflow-y-auto rounded-xl border p-1"
-            >
-              {predictions.map((p, i) => (
-                <li key={p.placeId} role="presentation">
-                  <button
-                    type="button"
-                    id={`${listId}-${p.placeId}`}
-                    role="option"
-                    aria-selected={i === highlight}
-                    onMouseEnter={() => setHighlight(i)}
-                    onClick={() => pick(p)}
-                    className={cn(
-                      "flex w-full flex-col rounded-lg px-3 py-2 text-left text-sm",
-                      i === highlight ? "bg-muted" : "hover:bg-muted/60",
-                    )}
-                  >
-                    <span className="truncate font-semibold">{p.mainText}</span>
-                    {p.secondaryText ? (
-                      <span className="text-muted-foreground truncate text-[12px]">
-                        {p.secondaryText}
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+    <div className="flex w-full min-w-0 flex-col gap-4">
+      {/* THE BAR IS THE PAGE. Full width, no label above it — the placeholder
+          and the h1 already say what it searches. */}
+      <div className="relative w-full">
+        <Search
+          aria-hidden
+          className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2"
+        />
+        <input
+          type="search"
+          autoComplete="off"
+          autoFocus
+          value={query}
+          aria-label="Search for a place"
+          placeholder="Search for your place by name"
+          onChange={(e) => {
+            const next = e.target.value;
+            setQuery(next);
+            if (next.trim().length < MIN_QUERY) {
+              // Back below the minimum: the list, its states and its errors
+              // all belonged to a query that no longer exists.
+              setPredictions([]);
+              setStates({});
+              setRowErrors({});
+              setSearchError(null);
+              // The session token groups keystrokes into ONE billable Google
+              // search; a cleared box is a new search, a claimed row is not.
+              sessionTokenRef.current = newSessionToken();
+            }
+          }}
+          // NO NATIVE CLEAR BUTTON (MESITA-1873). Pato: *"remove the ugly
+          // ass X."* It was never ours: WebKit draws
+          // `::-webkit-search-cancel-button` inside every `type="search"`
+          // input, in the browser's own grey at the browser's own size, and
+          // on a 56px bar with a 16px magnifier opposite it the mismatch is
+          // the first thing the eye lands on.
+          //
+          // HIDDEN, NOT TRADED AWAY. Dropping `type="search"` would remove it
+          // too and cost the two things the type is actually for: Escape
+          // clears the box, and a screen reader announces a searchbox rather
+          // than a text field. `appearance-none` on the pseudo-element is the
+          // narrow fix; `::-ms-clear` is the same glyph in Edge's legacy
+          // engine, which draws it for text inputs too.
+          className="border-border bg-card focus:border-foreground/40 h-14 w-full rounded-2xl border pr-12 pl-11 text-base outline-none transition [&::-ms-clear]:hidden [&::-webkit-search-cancel-button]:appearance-none"
+        />
+        {searching && (
+          <Loader2 className="text-muted-foreground pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 animate-spin motion-reduce:animate-none" />
+        )}
       </div>
 
       {searchError ? <p className={ERROR_BOX_CLASS}>{searchError}</p> : null}
 
-      {!selected &&
-        !searching &&
-        !searchError &&
-        query.trim().length >= 2 &&
-        predictions.length === 0 && (
-          <p className="text-muted-foreground text-xs">
-            No matches. Try a different spelling.
-          </p>
-        )}
+      {tooShort && !searchError ? <AddPlaceHint /> : null}
 
-      <div aria-live="polite" className="flex flex-col gap-3">
-        {selected && lookupPending && !card ? (
-          <p className="text-muted-foreground text-sm">Looking up…</p>
-        ) : null}
-        {lookupError ? (
-          <p className={ERROR_BOX_CLASS}>
-            {lookupError}{" "}
-            {selected ? (
-              <button
-                type="button"
-                className="underline"
-                onClick={() => applyLookup(selected)}
-              >
-                Try again
-              </button>
-            ) : null}
-          </p>
-        ) : null}
-        {card?.kind === "create" && (
-          <CreatePlaceCard
-            prediction={card.prediction}
-            canAdd={canAdd}
-            pending={actionPending}
-            error={actionError}
-            onCreate={onCreate}
-          />
-        )}
-        {card?.kind === "add" && (
-          <AddListedPlaceCard
-            place={card.place}
-            canAdd={canAdd}
-            pending={actionPending}
-            error={actionError}
-            onAdd={() => onAdd(card.place.id)}
-          />
-        )}
-        {card?.kind === "open" && (
-          <OpenHeldPlaceCard placeId={card.placeId} name={card.name} />
-        )}
-        {card?.kind === "partner" && (
-          <PartnerOtherCard
-            place={card.place}
-            ownerEmail={card.ownerEmail}
-          />
-        )}
-      </div>
+      {nothingFound ? (
+        <p className="text-muted-foreground text-sm">
+          No match for “{query.trim()}”. Try the name as it appears on the door.
+        </p>
+      ) : null}
 
-      <Link href={cancelHref} className={`${GHOST_PILL_BUTTON_CLASS} self-start`}>
-        Cancel
-      </Link>
+      {predictions.length > 0 && (
+        // A GAPPED COLUMN, not a divided block (MESITA-1873): each result is
+        // its own card now, so the separator between them is air.
+        <ul aria-live="polite" className="flex w-full flex-col gap-2">
+          {predictions.map((p) => (
+            <AddPlaceRow
+              key={p.placeId}
+              prediction={p}
+              state={states[p.placeId] ?? null}
+              canAdd={canAdd}
+              pending={actionPending && actingId === p.placeId}
+              error={rowErrors[p.placeId] ?? null}
+              onCreate={() => onCreate(p)}
+              onClaim={(placeId) => onClaim(p, placeId)}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

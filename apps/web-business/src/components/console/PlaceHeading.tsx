@@ -22,9 +22,15 @@
 //
 // Client because the view name comes from the pathname, and the layout that
 // renders this cannot read it.
+//
+// The Partner chip is the shared `PartnerPill` (MESITA-1867). It was an
+// inline span here with its own violet while Configuration grew a second
+// Partner chip for the organization — one word, two colours, two pages. The
+// place wears the subscription its organization holds, so it wears the same
+// component.
 
 import { usePathname } from "next/navigation";
-import { PlaceStateBadge } from "@/components/console/badges";
+import { PartnerPill, PlaceStateBadge } from "@/components/console/badges";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
 
 export function PlaceHeading({
@@ -62,12 +68,7 @@ export function PlaceHeading({
         ) : listed ? (
           <PlaceStateBadge state="listed" />
         ) : null}
-        {partner ? (
-          <span className="border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-500 dark:bg-violet-400" />
-            Partner
-          </span>
-        ) : null}
+        {partner ? <PartnerPill /> : null}
       </div>
       {/* Which view you are in. The rail says it too, but the rail is a menu
           and this is the page — a title that does not name the page it titles

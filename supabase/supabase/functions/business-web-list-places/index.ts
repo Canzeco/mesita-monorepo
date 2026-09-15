@@ -91,6 +91,7 @@ import {
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
 import { placeIdsWithDirectOwner } from "../_shared/place-claim.ts";
+import { ratesFromPlace, strategyForRates } from "../_shared/promo-strategy.ts";
 import {
   isPlaceEnriched,
   isPlaceEnriching,
@@ -147,9 +148,13 @@ Deno.serve(async (req) => {
   let q = admin
     .from("places")
     // `plan` is a places column, not a profile one — Partner is
-    // `isPaidPlan(plan)` and needs no extra read.
+    // `isPaidPlan(plan)` and needs no extra read. The four rate columns ride
+    // beside it for the same reason (MESITA-1882): Visit Rewards is not a
+    // boolean anywhere in this schema, it is the strategy those four rates
+    // spell, and `zero` IS off.
     .select(
       `id, state, content_state, organization_id, claimed_at, plan, ` +
+        `welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, ` +
         `place_profiles!inner(${PLACE_PROFILE_EMBED}), organizations(name)`,
     )
     .limit(limit);
@@ -198,6 +203,10 @@ Deno.serve(async (req) => {
     organization_id: string | null;
     claimed_at: string | null;
     plan: string | null;
+    welcome_free_rate: number | null;
+    welcome_premium_rate: number | null;
+    free_rate: number | null;
+    premium_rate: number | null;
     place_profiles: {
       name: string;
       address: string | null;
@@ -320,6 +329,25 @@ Deno.serve(async (req) => {
             typeof p.enrichment.functions === "object" &&
             p.enrichment.functions !== null
           ? operatorFunctionStates(p.enrichment.functions)
+          : undefined,
+        // Visit Rewards — the one commercial fact with NO column of its own
+        // (MESITA-1882). It is the strategy the four rate columns spell, and
+        // `zero` is off: a member may sit on Zero deliberately (Docs › Rewards
+        // §C, "membership stays, discounts pause"). Derived through the SAME
+        // `strategyForRates` the partner derivation uses, never a second copy
+        // of the preset tuples — if these two ever disagree, a place reads
+        // Enabled here while the consumer app withholds its Partner badge,
+        // which is the exact bug this field exists to close.
+        //
+        // The BOOLEAN ships, never the rates. What a place pays has never
+        // been on this wire and does not start now; the console only needs
+        // "is it on". Withheld on the pool with `partner` and `verified`
+        // (header rule 4) — same class of commercial fact, same clearance.
+        visitRewards: memberScope
+          ? (() => {
+            const strategy = strategyForRates(ratesFromPlace(r));
+            return strategy !== null && strategy !== "zero";
+          })()
           : undefined,
         // The commercial rails, exactly the columns that exist.
         orders: p.orders_enabled === true,

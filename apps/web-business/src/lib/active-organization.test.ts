@@ -73,6 +73,9 @@ describe("the root page", () => {
     expect(code.indexOf('typeof sp.connect === "string"')).toBeLessThan(
       code.indexOf("resolveLanding("),
     );
+    // The BARE organization address (MESITA-1839): the forwarder, which is
+    // what Stripe's stored return_urls name and what selects the org before
+    // landing on Payments, where the `?connect=` notice lives.
     expect(code).toContain("redirect(withQuery(orgHref(org.id), rest))");
   });
 

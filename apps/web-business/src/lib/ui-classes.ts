@@ -99,6 +99,52 @@ export const SHELL_BLEED = "-mx-4 sm:-mx-6 lg:-mx-8";
 // mistake — cap the form, not the card.
 export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
 
+// THERE IS NO ACCOUNT COLUMN CONSTANT, and the hole is the point (MESITA-1836).
+// One briefly lived here: MESITA-1834 was asked for "one column, not two", and
+// the stack shipped with an invented `max-w-xl` cap beside it — the reasoning
+// being that a stacked row in a fluid console runs to 1700px. MESITA-1835 then
+// tuned that invented number. Pato: "i mean, one full width column, wtf is
+// that." The column above is for FORMS, which Account holds none of; every
+// other console page is a fragment in the layout's own full-width column, and
+// Account is too. Do not add this constant back.
+
+// ── Account's ONE box (MESITA-1840) ───────────────────────────────────────
+//
+// Pato, on the three boxes live: "merge."
+//
+// MESITA-1837 made them three separate cards at one rank ("three big boxes"),
+// which fixed the real bug — MESITA-1833 had ranked the person as a header
+// above two rows, giving three different weights to three things that are
+// each one thing. The parity was right. The containers were not: on the
+// account this console is optimized for (one organization, one place), three
+// bordered cards with gaps between them are three boxes carrying one fact
+// each, and the borders say the person, the organization and the place are
+// unrelated. They are one scope, read top to bottom.
+//
+// So: ONE card, three rows, hairlines instead of gaps. The rank MESITA-1837
+// established is untouched — every row has the same chip well, the same
+// eyebrow, the same title weight, the same height. The merge removes the
+// chrome between them, never the parity.
+//
+// Shared by the page (the You row, a plain div) and ScopeSwitchers (the two
+// menu triggers) so the three cannot drift apart — the drift is the whole
+// failure mode here, and a shared string is cheaper than a component that
+// would have to be a client one for the two that open menus.
+//
+// `divide-y` needs the three rows to be DIRECT children, which is why
+// ScopeSwitchers returns a fragment rather than its own wrapper.
+//
+// FULL WIDTH: the console is fluid and Account caps nothing (MESITA-1836).
+export const SCOPE_CARD_CLASS =
+  "border-border bg-card divide-border w-full min-w-0 divide-y overflow-hidden rounded-2xl border";
+
+export const SCOPE_ROW_CLASS =
+  "flex min-h-24 w-full min-w-0 items-center gap-4 px-5 py-4 text-left";
+
+// The row's 44px chip well — the monogram, the place thumb, the plus.
+export const SCOPE_CHIP_CLASS = "h-11 w-11 shrink-0 rounded-xl";
+
+
 // ── The wide-record table (MESITA-1608) ────────────────────────────────────
 //
 // The identity column of a states matrix, pinned to the left edge while the

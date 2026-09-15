@@ -244,6 +244,86 @@ export function isMockCustomerId(id: string | null | undefined): boolean {
   return !!id && id.startsWith("mock_");
 }
 
+// ─── The organization's Stripe customer anchor ──────────────────────────────
+//
+// The sibling of ensureConsumerCustomer, for the org side (MESITA-1877). It
+// resolves the customer an organization PAYS MESITA as, for the yearly Mesita
+// Membership.
+//
+// TWO STRIPE IDENTITIES, AND THEY MUST NEVER MEET. `organizations
+// .stripe_billing_customer_id` is a Customer on Mesita's own account — the org
+// as a buyer. `organization_payment_accounts.stripe_account_id` is a CONNECT
+// account — the org as a seller, where guests' money lands. Handing the second
+// where the first belongs bills a restaurant on its own account, which is a
+// bug that looks like it worked.
+//
+// Anchored on `organizations`, not on the subscription row, for the same
+// reason the consumer anchor is: the customer outlives any one subscription,
+// so a lapsed member who re-subscribes keeps one billing history rather than
+// silently getting a second customer.
+
+export async function ensureOrgBillingCustomer(
+  admin: SupabaseClient,
+  stripe: Stripe,
+  orgId: string,
+  orgName: string | null,
+): Promise<string> {
+  const { data: org } = await admin
+    .from("organizations")
+    .select("stripe_billing_customer_id")
+    .eq("id", orgId)
+    .maybeSingle();
+  const anchored =
+    (org as { stripe_billing_customer_id?: string | null } | null)
+      ?.stripe_billing_customer_id ?? null;
+  if (anchored && !isMockCustomerId(anchored)) return anchored;
+
+  // TWO CONCURRENT CHECKOUTS MUST NOT MINT TWO CUSTOMERS, and the unique index
+  // cannot stop them: it is on the customer ID, so two different ids for the
+  // same organization both satisfy it and the later write simply wins, leaving
+  // the other caller transacting on an orphan. Two guards, in this order:
+  //
+  //   1. An IDEMPOTENCY KEY on the org. Stripe replays the same Customer for
+  //      every call carrying it, so the racing callers get ONE object rather
+  //      than two that then have to be reconciled.
+  //   2. A compare-and-set anchor. The update only fires while the column is
+  //      still null, so exactly one writer claims it; anyone whose update
+  //      matched no row re-reads and adopts the winner. That also stops a
+  //      later call from overwriting an anchor that already has history.
+  const customer = await stripe.customers.create({
+    name: orgName ?? undefined,
+    metadata: { organization_id: orgId, mesita_kind: "business" },
+  }, { idempotencyKey: `org-billing-customer-${orgId}` });
+
+  const { data: claimed, error } = await admin
+    .from("organizations")
+    .update({ stripe_billing_customer_id: customer.id })
+    .eq("id", orgId)
+    .is("stripe_billing_customer_id", null)
+    .select("stripe_billing_customer_id")
+    .maybeSingle();
+  if (!error && claimed) return customer.id;
+
+  // We lost the race, or the column already held a mock id. Re-read: the
+  // winner is the anchor, and a mock placeholder is replaced rather than
+  // returned, since handing `mock_cus_*` to a live key 400s.
+  const { data: raced } = await admin
+    .from("organizations")
+    .select("stripe_billing_customer_id")
+    .eq("id", orgId)
+    .maybeSingle();
+  const winner =
+    (raced as { stripe_billing_customer_id?: string | null } | null)
+      ?.stripe_billing_customer_id ?? null;
+  if (winner && !isMockCustomerId(winner)) return winner;
+
+  await admin
+    .from("organizations")
+    .update({ stripe_billing_customer_id: customer.id })
+    .eq("id", orgId);
+  return customer.id;
+}
+
 export async function ensureConsumerCustomer(
   admin: SupabaseClient,
   stripe: Stripe,

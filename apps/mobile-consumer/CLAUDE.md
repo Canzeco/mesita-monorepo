@@ -26,4 +26,4 @@ The 2026-08-20 freeze is lifted (Pato, MESITA-1789): Me boxes are full-page rout
 - Home-hub parked tabs are `ComingSoonModal`, not redirects; `CatalogTab`/`AskAiTab`/`SocialTab` stay in tree, each a one-flag un-park.
 - Maps: react-native-maps, Google provider on both platforms (`SearchMap.native.tsx`); the web export and a missing `EXPO_PUBLIC_GMP_KEY` both fall back to the placeholder, and suggest/rail/add still work via EFs.
 - **The wallet + THE TICKET are at v4 parity (MESITA-1094):** searchbar over the bare place list → one-tap create at `base` → the seven-step journey at `/rewards/ticket/[id]`.
-- `src/lib/api/` mirrors `apps/web-consumer/src/lib/api/*`. `src/providers/auth.tsx` holds session + profile + the `onboarded` predicate (`first_name && last_name && birthday && sex`) — both halves required, because reservations book under the full name.
+- `src/lib/api/` mirrors `apps/web-consumer/src/lib/api/*`. `src/providers/auth.tsx` holds session + profile and delegates `onboarded` to `isOnboarded` (`src/lib/api/auth.ts`): `first_name && birthday && sex` (MESITA-1829). Last name is the RESERVATION's gate, never signup's.

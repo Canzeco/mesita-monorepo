@@ -76,7 +76,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           sourceLogo={<MesitaSourceBadge />}
         />
         <StarRow rating={overall} />
-        <p className="text-muted-foreground type-meta leading-snug">
+        <p className="text-muted-foreground type-body leading-snug">
           Overall{" "}
           <span className="text-foreground font-semibold">{overall}</span>
           {" · "}Food{" "}

@@ -34,6 +34,62 @@ Deno.test("state facts come from the shared helpers, never re-implemented", () =
   }
 });
 
+// ── Visit Rewards is a STRATEGY, not a column (MESITA-1882) ─────────────
+//
+// The console's Products grid used to hardcode Rewards as Enabled for every
+// partnered org, because no rewards fact was on this payload to read. A place
+// sitting on Zero therefore read "Enabled" while serving 0% — and, since
+// `listing_type='partner'` is `plan ≠ free ∧ strategy ≠ zero`, while carrying
+// no Partner badge in the consumer app either.
+//
+// The fix has one hazard worth a test: there is no `visit_rewards` boolean to
+// select, so the fact has to be DERIVED from the four rate columns. Derived
+// twice and it drifts, and the drift is silent — the grid says Enabled, the
+// guest app says nothing. So this pins the derivation to the shared reader.
+Deno.test("visitRewards derives through the shared strategy reader", () => {
+  assert(
+    SRC.includes("strategyForRates("),
+    "visitRewards must call the shared strategyForRates",
+  );
+  assert(
+    SRC.includes("ratesFromPlace("),
+    "the rates must be read by the shared ratesFromPlace",
+  );
+  assert(
+    /from "\.\.\/_shared\/promo-strategy\.ts"/.test(SRC),
+    "both must come from _shared/promo-strategy.ts, not a local copy",
+  );
+  // The preset tuples live in promo-strategy.ts and NOWHERE else. A literal
+  // rate here would be a fifth copy of the ladder.
+  for (const rate of ["welcome_free_rate:", "welcome_premium_rate:"]) {
+    assert(
+      !new RegExp(`${rate}\\s*\\d`).test(CODE),
+      `${rate} must not carry a literal preset value in this EF`,
+    );
+  }
+});
+
+Deno.test("the four rate columns are selected — they ARE the rewards fact", () => {
+  for (
+    const column of [
+      "welcome_free_rate",
+      "welcome_premium_rate",
+      "free_rate",
+      "premium_rate",
+    ]
+  ) {
+    assert(CODE.includes(column), `${column} must be in the select`);
+  }
+  // The BOOLEAN ships, never the rates: what a place pays has never been on
+  // this wire. If any of these ever appears as a payload key, that changed.
+  assert(
+    !/\n\s*(welcome_)?(free|premium)_?[Rr]ate:/.test(
+      SRC.slice(SRC.indexOf("visitRewards")),
+    ),
+    "a rate must never become a payload field",
+  );
+});
+
 Deno.test("the enrichment column is selected — it feeds enrichFunctions", () => {
   // Re-added by MESITA-1687. The embed carries `place_profiles.enrichment`
   // so the per-function map can be folded with no second query — the same
@@ -140,7 +196,9 @@ Deno.test("pool rows withhold the facts a guest has no claim to", () => {
   // "ship it to everyone" (MESITA-1687) meant every BUSINESS browser, and
   // memberScope is exactly that gate — the same one partner/verified already
   // use, so the map does not go further than they do.
-  for (const fact of ["partner", "verified", "enrichFunctions"]) {
+  // visitRewards joined them in MESITA-1882: what discount a place gives is
+  // the same class of commercial fact as what plan it pays for.
+  for (const fact of ["partner", "verified", "enrichFunctions", "visitRewards"]) {
     const m = SRC.match(new RegExp(`${fact}:[^,]*`));
     assert(m, `${fact} must be on the payload`);
     assert(

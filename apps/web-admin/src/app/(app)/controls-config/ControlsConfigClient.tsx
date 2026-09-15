@@ -1,14 +1,15 @@
 "use client";
 
-// Credits — the Wallet's Credits policy. One box of WIRED knobs plus a parked
+// Payments — the Wallet's Credits policy. One box of WIRED knobs plus a parked
 // Gifting box. The unrendered key (minHoldHours) still rides the whole blob
 // (Ojo/Reservations law): no reader for a floor yet, so it is not a question.
 //
-// THE WIRED BOX IS "TERMS", NOT "CREDITS" (Pato, 2026-09-02). The page took the
-// name Credits in the rail rename, and a section may not repeat its page's
-// heading — a box called Credits under a page called Credits tells an operator
-// nothing about which of the two they are reading. Terms is what the box holds:
-// the hold, the bonus that pays for it, and the life of the money.
+// THE WIRED BOX IS "CREDITS" (MESITA-1854). It was "Terms" only for as long as
+// the page itself read Credits — a section may not repeat its page's heading,
+// and a box called Credits under a page called Credits tells an operator
+// nothing about which of the two they are reading. The page is Payments now,
+// so the box takes the word back, and the page still says what the money IS:
+// Payments holds Credits and, one day, Gifting.
 //
 // TWO GROUPS IN ONE BOX, BECAUSE THEY WEAR DIFFERENT UNITS. The hold and the
 // bonus are priced against each other and read in HOURS; expiry reads in DAYS
@@ -128,7 +129,7 @@ export function ControlsConfigClient({
 
       <SectionCard
         icon={<Hourglass className="text-secondary h-4 w-4" />}
-        title="Terms"
+        title="Credits"
         subtitle="How long a prepaid balance is held before a guest can spend it, what the place pays for that hold, and how long the Credits live before they expire."
         state={
           updatedAt ? (

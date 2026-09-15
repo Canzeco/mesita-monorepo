@@ -10,6 +10,8 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import { useOpenPlace } from "@/components/console/OpenPlace";
+import { useRailScopeContext } from "@/components/console/RailScopeContext";
+import { findOrg } from "@/lib/active-organization";
 import { SHELL_ROUTES, orgHref as orgPageHref } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
@@ -41,14 +43,33 @@ import {
   offeringRows,
   paintRows,
   railWriteFailure,
+  rowsForZone,
   shouldRenderConfig,
+  orgFlag,
   topPrerequisite,
   type ConnectState,
   type LadderRowKey,
+  type LadderZone,
 } from "./controls/offerings";
 import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./controls/shared";
 
-// Capabilities (admin Controls tab — a rename that stops at the label).
+// The place's ladder — rendered ONCE per zone, and a zone is a PRODUCT
+// (MESITA-1841, re-cut by MESITA-1885).
+//
+// ONE ENGINE, FIVE VIEWS. `zone` selects which rungs and which trailing blocks
+// this renders: Visits owns Visit Rewards, its strategy ladder, the
+// Partnership body that prices it and the internal "How this place is run"
+// box; Orders owns pickup and delivery; Reservations, Pay and Credits own
+// theirs. The rungs depend on one another (Partner unlocks Visit Rewards and
+// Mesita Pay; Stripe unlocks the money rungs), so the COMPUTATION is never
+// split — two copies of a dependency ladder is two copies that can disagree.
+// `ZONE_ROWS` in controls/offerings.ts owns the mapping and a test proves it
+// is total.
+//
+// WHY FIVE AND NOT TWO. Pato put all eight products in the rail, and Orders,
+// Reservations and Credits were three rows on the one Capabilities page —
+// three rail rows, one address, all lighting together. Splitting the view is
+// what lets a row name its room (MESITA-1833).
 //
 // MESITA-1739 first paint: summary of what guests can do, then the one
 // prerequisite that unlocks the most rows, then the rows. The 0–7 meter
@@ -56,13 +77,32 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // coincidence with §11.2's seven capabilities is still a coincidence.
 // Partnership is a PlaceHeading chip + one line; Partner and Stripe
 // live on Organization. Nested configs stay MOUNTED (shouldRenderConfig).
+//
+// TWO TIERS ON ORGANIZATION (MESITA-1867). Mesita Partner is the org's
+// yearly subscription and the gate for Rewards; Mesita Pay is an optional
+// add-on (the Stripe account and an org switch) and the gate for the Pay
+// rung. The ladder reads the holder org's two flags off `RailScopeContext`
+// — the shell already holds the org list on every route, so this is zero
+// extra reads — and `null` when the holder is not in it, which the engine
+// renders as Checking…, never off. The rungs still gate on the PLACE's own
+// `member` (`plan ≠ free`); the org flags steer the top line and the Pay
+// rung only (offerings.ts explains the precedence).
+//
+// THE PARTNERSHIP BODY RENDERS FOR EVERY PILL STATE on Rewards. It used to be
+// member-gated, and a forfeited place reads plan=free — so the forfeited
+// copy and its Re-join door were dead on arrival. Non-members get it ABOVE
+// the rows, as the pitch (the top line's Organization link is the one door);
+// members keep it below, as before.
 
 export function PromosSection({
   place,
   onSaved,
+  zone,
 }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
+  /** Which half of the ladder this instance renders (MESITA-1841). */
+  zone: LadderZone;
 }) {
   const [v, setV] = useState(place);
   const { dirtyLabels } = usePlaceContext();
@@ -71,6 +111,19 @@ export function PromosSection({
   // layout (MESITA-1807); before it lands, the root resolver answers for it.
   const holderOrgId = useOpenPlace()?.holderOrgId ?? null;
   const orgHref = holderOrgId ? orgPageHref(holderOrgId) : SHELL_ROUTES.root;
+  // The holder's two tier flags, off the rail's org list (MESITA-1867). Null
+  // when the holder is not in the viewer's list — a pool place, a page
+  // rendered without the shell — and null is "unknown", never "off".
+  const railOrgs = useRailScopeContext()?.organizations ?? [];
+  const holderOrg = findOrg(railOrgs, holderOrgId);
+  // `?? null`, never `=== true`: both flags are OPTIONAL on the payload
+  // ("UNDEFINED when the payload predates the EF — absent is not false",
+  // lib/api/organizations.ts), and collapsing undefined to false would send
+  // a paying org's place to subscribe again and lock its Pay rung "Off".
+  const orgPartnered = orgFlag(holderOrg?.partnered);
+  const orgMesitaPay = orgFlag(holderOrg?.mesitaPayEnabled);
+  // Re-join is owner-only: the subscription it re-enters is the owner's.
+  const isOwner = holderOrg?.myRole === "owner";
 
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
@@ -117,11 +170,18 @@ export function PromosSection({
     connect,
     connectLoading,
     rewardLaneHeld,
+    orgPartnered,
+    orgMesitaPay,
+    forfeited,
   };
   const rows = offeringRows(ladderInput);
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
-  const painted = paintRows(rows);
-  const summary = guestSummary(rows);
+  // THE ZONE'S ROWS, not the ladder's. `rows` stays whole — `topPrerequisite`
+  // and the rail toggles below read the full ladder — and only what is PAINTED
+  // narrows, so the summary line describes the view you are actually on.
+  const zoneRows = rowsForZone(rows, zone);
+  const painted = paintRows(zoneRows);
+  const summary = guestSummary(zoneRows);
   const prereq = topPrerequisite(ladderInput);
 
   const applyPlace = (next: AdminPlace) => {
@@ -337,6 +397,21 @@ export function PromosSection({
     }
   };
 
+  // Rewards' own box — every pill state. Placed above the rows for a
+  // non-member (the pitch, right under the door line) and below them for a
+  // member (the rows are the point once you are in).
+  const partnershipBody =
+    zone === "visits" ? (
+      <PartnershipBody
+        place={v}
+        pillState={pillState}
+        storedStrategy={storedStrategy}
+        member={member}
+        orgHref={orgHref}
+        isOwner={isOwner}
+      />
+    ) : null;
+
   const writable = painted.filter(
     (r) => r.state.kind !== "not_mine" && r.state.kind !== "soon",
   );
@@ -350,17 +425,27 @@ export function PromosSection({
         <p id="zone-offerings" className="text-foreground text-sm leading-snug">
           {summary}
         </p>
-        {prereq?.action === "organization" && (
+        {prereq && (
           <p className="text-muted-foreground mt-2 text-sm leading-snug">
-            {prereq.text}{" "}
-            <Link
-              href={orgHref}
-              className="text-foreground font-semibold underline underline-offset-4"
-            >
-              Organization
-            </Link>
+            {prereq.text}
+            {/* Only the Organization fix carries a link; a re-join is this
+                place's own door (unbuilt — the line says when it lands), and
+                a link to Organization there would send a forfeited place to
+                subscribe twice. */}
+            {prereq.action === "organization" && (
+              <>
+                {" "}
+                <Link
+                  href={orgHref}
+                  className="text-foreground font-semibold underline underline-offset-4"
+                >
+                  Organization
+                </Link>
+              </>
+            )}
           </p>
         )}
+        {!member && partnershipBody && <div className="mt-4">{partnershipBody}</div>}
         <div className="mt-4 flex flex-col">
           {writable.map((r) => rowNode(r.key))}
           {notYours.length > 0 && (
@@ -375,41 +460,44 @@ export function PromosSection({
           )}
         </div>
 
-        {member && (
-          <div className="mt-4">
-            <PartnershipBody
-              place={v}
-              pillState={pillState}
-              storedStrategy={storedStrategy}
-              member={member}
-              orgHref={orgHref}
-            />
-          </div>
-        )}
+        {member && partnershipBody && <div className="mt-4">{partnershipBody}</div>}
 
         <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
-          Capability switches save instantly. Channel picks wait for Save.
+          {zone === "visits"
+            ? "Turning Visit Rewards on saves instantly. A strategy is confirmed in its card."
+            : "Capability switches save instantly. Channel picks wait for Save."}
         </p>
       </section>
 
-      <section aria-labelledby="zone-settings">
-        <div className="mb-2.5 px-1">
-          <GroupLabel>
-            <span id="zone-settings">Settings</span>
-          </GroupLabel>
-        </div>
-        <SectionCard
-          icon={<SlidersHorizontal className="h-4 w-4" />}
-          tint="slate"
-          title="How this place is run"
-          subtitle="Internal — nothing here is something a guest can do."
-        >
-          <div className="divide-border/60 mt-2 flex flex-col divide-y">
-            <VisitsCard place={v} />
-            <TeamSection place={v} />
+      {/* THE INTERNAL ZONE IS VISITS' NOW (MESITA-1885). It was Capabilities'
+          alone, and Capabilities is five views; the box had to pick one rather
+          than be split or repeated. It goes to Visits because that is what it
+          is ABOUT — `VisitsCard` is how visits are run here, and `TeamSection`
+          is who runs them — and because Visits is the container the other
+          products attach to, which makes it the place's own room.
+
+          The eyebrow says whose it is rather than repeating the page: the
+          card's own title already says what this is. */}
+      {zone === "visits" && (
+        <section aria-labelledby="zone-internal">
+          <div className="mb-2.5 px-1">
+            <GroupLabel>
+              <span id="zone-internal">Internal</span>
+            </GroupLabel>
           </div>
-        </SectionCard>
-      </section>
+          <SectionCard
+            icon={<SlidersHorizontal className="h-4 w-4" />}
+            tint="slate"
+            title="How this place is run"
+            subtitle="Internal — nothing here is something a guest can do."
+          >
+            <div className="divide-border/60 mt-2 flex flex-col divide-y">
+              <VisitsCard place={v} />
+              <TeamSection place={v} />
+            </div>
+          </SectionCard>
+        </section>
+      )}
 
       {modalStrategy && (
         <ProductModal

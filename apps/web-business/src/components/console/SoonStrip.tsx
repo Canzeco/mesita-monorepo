@@ -3,14 +3,65 @@
 // Sections (the disabled-row idiom), and the one-line
 // height is what keeps three of these stacked from becoming gray porridge.
 // House law: an unbuilt engine shows Soon, never knobs, never a fake feed.
+//
+// h3, like Section (MESITA-1847). It was an h2 — so the page's least
+// important box outranked every live one in the outline while reading as the
+// quietest thing on screen.
+//
+// ── IT NOW WEARS SECTION'S GEOMETRY (MESITA-1861) ─────────────────────────
+//
+// The outline rank was fixed; the VISUAL rank was still backwards. This drew
+// `rounded-xl px-5 py-4` with a 15px title against Section's `rounded-2xl
+// p-4` and 14px — so on Configuration, Brand and Developers (the two boxes
+// that do not exist) carried the biggest type and the tightest radius on the
+// page, and read as the loudest things on it. Two box families disagreeing on
+// three values is not a style; it is drift nobody measured.
+//
+// Radius, padding and title size now come from Section. What stays is the
+// DASHED border and the absent shadow — Section lifts with `shadow-card`,
+// this lies flat. One honest signal instead of three accidental ones, and the
+// difference now reads as rank rather than as a different component.
+//
+// IT DOES NOT TAKE SECTION'S LANE. Customers and Payments are nothing BUT a
+// Soon strip, and a 288px label lane on a page holding one strip would leave
+// MORE white, not less — the exact failure this issue is fixing on
+// Configuration. A strip stays one row at every width.
+//
+// ── LOCKEDSTRIP LIVED HERE, AND IS GONE (MESITA-1869) ─────────────────────
+//
+// MESITA-1867 built it for one caller: Mesita Pay on Configuration, flat and
+// dashed with a lock where the Soon pill sits, because that page had to show
+// the tier even to an organization that could not reach it. The catalogue
+// says that sentence now — the Mesita Pay CARD reads "Locked · Needs Mesita
+// Partner" — and Products simply does not render the box until the
+// organization can touch it, so a strip below the grid would be the same
+// sentence twice on one screen. The idiom it proved stands and is written
+// down: a built tier nobody can reach yet ranks with the unbuilt ones, flat,
+// and the GLYPH is what says whose "not yet" it is.
+
+/** The strip's geometry. Kept as a constant with one caller: it is what
+ *  MESITA-1861 aligned to Section's radius and padding, and a second flat row
+ *  must be built from it rather than beside it. */
+export const STRIP_CLASS =
+  "border-border flex items-center justify-between gap-4 rounded-2xl border border-dashed p-4";
+
+function StripText({ title, line }: { title: string; line: string }) {
+  return (
+    <div className="min-w-0">
+      <h3 className="font-display text-sm font-semibold tracking-tight">
+        {title}
+      </h3>
+      <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug">
+        {line}
+      </p>
+    </div>
+  );
+}
 
 export function SoonStrip({ title, line }: { title: string; line: string }) {
   return (
-    <div className="border-border flex items-center justify-between gap-4 rounded-xl border border-dashed px-5 py-4">
-      <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
-        <p className="text-muted-foreground truncate text-sm">{line}</p>
-      </div>
+    <div className={STRIP_CLASS}>
+      <StripText title={title} line={line} />
       <span className="text-muted-foreground border-border shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
         Soon
       </span>

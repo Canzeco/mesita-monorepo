@@ -11,6 +11,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
+import {
+  isDuplicateRfcError,
+  readRfc,
+  RFC_SHAPE_ERROR,
+  RFC_TAKEN_ERROR,
+} from "../_shared/org-rfc.ts";
 
 type Body = {
   orgId?: string;
@@ -38,12 +44,15 @@ Deno.serve(async (req) => {
   if (legalName && legalName.length > 200) {
     return json({ ok: false, error: "legal name is too long" }, 400);
   }
-  const rfc = typeof body.rfc === "string"
-    ? body.rfc.trim().toUpperCase() || null
-    : null;
-  if (rfc && rfc.length > 20) {
-    return json({ ok: false, error: "RFC is too long" }, 400);
+  // Shape, not just length (MESITA-1880). The length cap this replaces let
+  // anything 20 chars or under through, and `rfcIfValid` then dropped a
+  // malformed value on the floor at Connect prefill — so the owner saved an
+  // RFC, saw it stored, and Stripe never received it. Now it is refused here.
+  const rfcRead = readRfc(body.rfc);
+  if (!rfcRead.ok) {
+    return json({ ok: false, code: "rfc_shape", error: RFC_SHAPE_ERROR }, 400);
   }
+  const rfc = rfcRead.rfc;
 
   const admin = adminClient(envRes.env);
   const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
@@ -56,6 +65,9 @@ Deno.serve(async (req) => {
     .select("id, name, legal_name, rfc, currency")
     .single();
   if (updErr || !org) {
+    if (isDuplicateRfcError(updErr)) {
+      return json({ ok: false, code: "rfc_taken", error: RFC_TAKEN_ERROR }, 409);
+    }
     return json({ ok: false, error: updErr?.message ?? "Update failed" }, 500);
   }
 

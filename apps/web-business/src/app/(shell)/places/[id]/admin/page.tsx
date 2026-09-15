@@ -1,18 +1,13 @@
-import { notFound } from "next/navigation";
-import { getManagePlace } from "@/lib/place-view";
+// Admin — operator internals, super-admin only.
+//
+// The tab row never offers this to a restaurant, and the gate refuses it
+// outright: a typed URL is not a capability. `tabsForAccess` puts `admin` in
+// the set only when `isSuperAdmin`, so `PlaceTabGate` in the layout is the
+// same refusal from the same matrix (MESITA-1875) — this page used to spend
+// `business-web-get-overview` re-reading `manage.isSuperAdmin`, which the
+// layout had already folded into the tab set it hands the rail.
 import { AdminTab } from "./AdminTab";
 
-export const dynamic = "force-dynamic";
-
-export default async function PlaceAdminPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const manage = await getManagePlace(id);
-  // Operator internals. The tab row never offers this to a restaurant, and
-  // this refuses it outright — a typed URL is not a capability.
-  if (!manage || !manage.isSuperAdmin) notFound();
+export default function PlaceAdminPage() {
   return <AdminTab />;
 }

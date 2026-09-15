@@ -320,6 +320,7 @@ const PLACES_READ_ALLOWLIST = [
   "business-web-release-place/index.ts",
   "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
   "_shared/org-partnership.ts", // cascade plan=pro/free onto held places (MESITA-1798)
+  "_shared/partner-membership.ts", // the same cascade, driven by the Mesita Membership's Stripe state (MESITA-1877)
   "business-web-update-place/index.ts",
   "business-web-verify-place/index.ts",
   "consumer-web-apply-ticket-credits/index.ts",

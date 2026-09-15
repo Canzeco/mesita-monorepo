@@ -16,6 +16,9 @@ import {
   type PaymentsActionState,
 } from "@/app/(shell)/actions/organizations";
 import {
+  canOpenDashboard,
+  canRestartOnboarding,
+  canResumeOnboarding,
   paymentAccountState,
   type PaymentAccount,
 } from "@/lib/api/organizations";
@@ -71,19 +74,38 @@ export function ConnectStripeForm({
   action,
   pending,
   error,
+  /** "restart" replaces an account that never got submitted, so the same two
+   *  answers are asked again and the wording changes — the owner is correcting
+   *  something, not starting from nothing (MESITA-1865). */
+  intent = "create",
+  country = "MX",
 }: {
   orgId: string;
   action: (formData: FormData) => void;
   pending: boolean;
   error: string | null;
+  intent?: "create" | "restart";
+  country?: string;
 }) {
+  const restarting = intent === "restart";
   return (
     <form action={action} className="flex flex-col gap-4">
       <ErrorBox title="Couldn't connect payments" message={error} />
       <input type="hidden" name="orgId" value={orgId} />
-      <input type="hidden" name="intent" value="create" />
+      <input type="hidden" name="intent" value={intent} />
+      {restarting && (
+        <p className="text-muted-foreground text-[12px] leading-relaxed">
+          This replaces the Stripe account you started and never finished.
+          Nothing was submitted to Stripe, so nothing is lost — you answer these
+          two again and Stripe opens on a clean form.
+        </p>
+      )}
       <Field label="Country">
-        <select name="country" defaultValue="MX" className={INPUT_CLASS}>
+        <select
+          name="country"
+          defaultValue={country}
+          className={INPUT_CLASS}
+        >
           {CONNECT_COUNTRIES.map((c) => (
             <option key={c.code} value={c.code}>
               {c.label}
@@ -119,7 +141,11 @@ export function ConnectStripeForm({
         </span>
       </Field>
       <button type="submit" disabled={pending} className={PRIMARY_BUTTON_CLASS}>
-        {pending ? "Opening Stripe..." : "Continue to Stripe"}
+        {pending
+          ? "Opening Stripe..."
+          : restarting
+            ? "Replace and continue to Stripe"
+            : "Continue to Stripe"}
       </button>
       <p className="text-muted-foreground text-[12px] leading-relaxed">
         Stripe asks for the rest — legal name, RFC, address, bank account — in
@@ -129,16 +155,37 @@ export function ConnectStripeForm({
   );
 }
 
+/**
+ * `account: null` means TWO different things, and for months the card could
+ * only say one of them (MESITA-1861).
+ *
+ * The page catches a failed `business-web-get-payment-account` and leaves
+ * `account` null; `paymentAccountState(null, false)` returns `"none"`; the
+ * pill says **No account** and the card offers **Connect Stripe**. So a
+ * transient Edge Function blip told an owner with a live, charging Stripe
+ * account that they had none, and put a button in front of them that creates
+ * a SECOND one. The page's own docblock forbade exactly this — "A failure is
+ * no box state, never a box that asserts 'not connected' about an account
+ * nobody managed to ask about" — and the code did it anyway, because null
+ * carried no way to tell the two apart.
+ *
+ * `loadError` is that way. It is a separate branch, not a third state on the
+ * pill: an unread account has no state to show, so the card shows none and
+ * offers no action. Same shape and same words as MembersCard's `loadError`,
+ * because they are the same failure on the same page.
+ */
 export function PaymentsCard({
   orgId,
   account,
   orphaned,
   isOwner,
+  loadError,
 }: {
   orgId: string;
   account: PaymentAccount | null;
   orphaned: boolean;
   isOwner: boolean;
+  loadError: string | null;
 }) {
   const [connectState, connectAction, connecting] = useActionState(
     connectPaymentsAction,
@@ -148,17 +195,52 @@ export function PaymentsCard({
     openPaymentsDashboardAction,
     INITIAL,
   );
-  const [connectOpen, setConnectOpen] = useState(false);
+  // One modal, two jobs. `null` is closed; the value is which question is
+  // being asked, because a restart has to carry `intent=restart` through the
+  // same form (MESITA-1865).
+  const [connectOpen, setConnectOpen] = useState<"create" | "restart" | null>(
+    null,
+  );
 
   const state = paymentAccountState(account, orphaned);
   const note = connectState.note ?? dashState.note;
+  // THE CARD ASKS THE PREDICATES, NOT THE PILL (MESITA-1865). Resume used to
+  // key off `state === "unfinished"`, and "unfinished" used to lose to any
+  // `disabled_reason` — which Stripe sets on day zero — so the owner who
+  // abandoned onboarding got the one state with no way back in.
+  const resumable = canResumeOnboarding(account, orphaned);
+  const dashboardReady = canOpenDashboard(account, orphaned);
+  const restartable = canRestartOnboarding(account, orphaned);
+
+  // Never "No account" on a failed read, and never a Connect button under it.
+  if (loadError) {
+    return <p className="text-muted-foreground text-sm">{loadError}</p>;
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <DataRow label="Account">
+        {/* The Section above is titled "Stripe". A row labelled "Account"
+            under it was the card's ONLY row restating its own heading
+            (MESITA-1847) — so the label was emptied and the row kept. On a
+            fluid full-width card that left a bordered row with an empty left
+            cell, a hairline under it, and the pill alone at the far right:
+            ~1400px of underlined nothing, the ugliest element on the page.
+            Emptying a row does not remove it. The row is gone; the pill and
+            the action it gates now sit together, first thing in the lane
+            (MESITA-1861). */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <StatePill state={state} />
-        </DataRow>
+          {isOwner && (state === "none" || orphaned) && (
+            <button
+              type="button"
+              onClick={() => setConnectOpen("create")}
+              className={CTA_BUTTON_CLASS}
+            >
+              {orphaned ? "Connect again" : "Connect Stripe"}
+            </button>
+          )}
+        </div>
         {/* The pill says "Ready", and this says what Ready costs the owner in
             waiting. Without it "Ready" is just a quieter version of the same
             unanswered question (MESITA-1643). */}
@@ -198,70 +280,49 @@ export function PaymentsCard({
         )}
       </div>
 
-      {isOwner && (
+      {/* The not-connected branch has NO block here any more — its button is
+          up beside the state pill and its modal is a sibling below, so this
+          renders only when there is genuinely something to render. An empty
+          `<div className="flex flex-col gap-3">` is still a flex item, and
+          the parent's `gap-4` pays for it: 16px of dead space at the foot of
+          the card, which is the same bug this issue is removing (MESITA-1861). */}
+      {isOwner && state !== "none" && !orphaned &&
+        (resumable || dashboardReady || restartable) && (
         <div className="flex flex-col gap-3">
-          {state === "none" || orphaned ? (
-            <>
-              {/* The button and nothing else. The rows above already say the
-                  state — "No account", and for an orphan the Why row says the
-                  account is gone — so a sentence here would only repeat them
-                  in a second voice. */}
-              <div className="flex justify-end">
+          <ErrorBox title="Couldn't connect payments" message={connectState.error} />
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Resume follows whether a DOOR EXISTS, not which word the pill
+                happens to use. It keyed off !details_submitted once, which
+                reopened a finished form for an account waiting on Stripe
+                (MESITA-1645); then off `state === "unfinished"`, which never
+                fired for the person who walked away mid-onboarding, because
+                Stripe's day-zero `requirements.past_due` outranked it
+                (MESITA-1865). */}
+            {resumable && (
+              <form action={connectAction}>
+                <input type="hidden" name="orgId" value={orgId} />
+                {/* Resume mints a link for an account that already exists,
+                    so the entity gate does not apply — the account was
+                    created with its answer, and Stripe owns it from here. */}
+                <input type="hidden" name="intent" value="resume" />
+                <input
+                  type="hidden"
+                  name="country"
+                  value={account?.country ?? "MX"}
+                />
                 <button
-                  type="button"
-                  onClick={() => setConnectOpen(true)}
+                  type="submit"
+                  disabled={connecting}
                   className={CTA_BUTTON_CLASS}
                 >
-                  {orphaned ? "Connect again" : "Connect Stripe"}
+                  {connecting ? "Opening Stripe..." : "Resume onboarding"}
                 </button>
-              </div>
-              {/* A failure keeps the modal up: the answers are still in the
-                  fields, and the message belongs beside them, not on a card
-                  the reader has already been sent back to. */}
-              {connectOpen && (
-                <Modal
-                  title="Connect Stripe"
-                  description="Two answers Stripe can't change later."
-                  onClose={() => setConnectOpen(false)}
-                >
-                  <ConnectStripeForm
-                    orgId={orgId}
-                    action={connectAction}
-                    pending={connecting}
-                    error={connectState.error}
-                  />
-                </Modal>
-              )}
-            </>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <ErrorBox title="Couldn't connect payments" message={connectState.error} />
-              <div className="flex items-center gap-3">
-              {/* Resume follows the STATE. It used to key off
-                  !details_submitted, which meant an account waiting on Stripe
-                  still offered a button that reopened a finished form
-                  (MESITA-1645). */}
-              {state === "unfinished" && (
-                <form action={connectAction}>
-                  <input type="hidden" name="orgId" value={orgId} />
-                  {/* Resume mints a link for an account that already exists,
-                      so the entity gate does not apply — the account was
-                      created with its answer, and Stripe owns it from here. */}
-                  <input type="hidden" name="intent" value="resume" />
-                  <input
-                    type="hidden"
-                    name="country"
-                    value={account?.country ?? "MX"}
-                  />
-                  <button
-                    type="submit"
-                    disabled={connecting}
-                    className={CTA_BUTTON_CLASS}
-                  >
-                    {connecting ? "Opening Stripe..." : "Resume onboarding"}
-                  </button>
-                </form>
-              )}
+              </form>
+            )}
+            {/* The Express Dashboard does not exist until hosted onboarding
+                finishes, so before that this button could only ever fail —
+                and it failed by telling the owner Mesita was broken. */}
+            {dashboardReady && (
               <form action={dashAction}>
                 <input type="hidden" name="orgId" value={orgId} />
                 <button
@@ -272,14 +333,65 @@ export function PaymentsCard({
                   {opening ? "Opening..." : "Open Stripe dashboard"}
                 </button>
               </form>
-              </div>
-              <ErrorBox title="Couldn't open the Stripe dashboard" message={dashState.error} />
-            </div>
+            )}
+            {/* The escape from the two PERMANENT answers. Offered only while
+                the account has never been submitted and never charged — after
+                that it may hold KYC or money, and replacing it is a
+                conversation, not a button. */}
+            {restartable && (
+              <button
+                type="button"
+                onClick={() => setConnectOpen("restart")}
+                className={PILL_BUTTON_CLASS}
+              >
+                Start over
+              </button>
+            )}
+          </div>
+          {restartable && (
+            <p className="text-muted-foreground text-[12px] leading-relaxed">
+              Picked the wrong country or legal entity? Start over replaces the
+              account — Stripe can&apos;t change a country after the fact.
+            </p>
           )}
+          <ErrorBox title="Couldn't open the Stripe dashboard" message={dashState.error} />
           {note && !connectState.error && !dashState.error && (
             <p className="text-muted-foreground text-[12px]">{note}</p>
           )}
         </div>
+      )}
+
+      {/* The connect path's own feedback, on the card rather than in the
+          wrapper that no longer exists: a failure the modal has already been
+          dismissed past still has to be said somewhere. */}
+      {isOwner && (state === "none" || orphaned) &&
+        note &&
+        !connectState.error && (
+        <p className="text-muted-foreground text-[12px]">{note}</p>
+      )}
+
+      {/* A failure keeps the modal up: the answers are still in the fields,
+          and the message belongs beside them, not on a card the reader has
+          already been sent back to.
+
+          It sits OUTSIDE the not-connected branch now, because Start over asks
+          the same two questions of an organization that already has an account
+          (MESITA-1865). */}
+      {isOwner && connectOpen && (
+        <Modal
+          title={connectOpen === "restart" ? "Start over" : "Connect Stripe"}
+          description="Two answers Stripe can't change later."
+          onClose={() => setConnectOpen(null)}
+        >
+          <ConnectStripeForm
+            orgId={orgId}
+            action={connectAction}
+            pending={connecting}
+            error={connectState.error}
+            intent={connectOpen}
+            country={account?.country ?? "MX"}
+          />
+        </Modal>
       )}
     </div>
   );

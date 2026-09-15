@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 import { Loader2, Lock } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { cn } from "@/lib/utils";
 import { cx } from "./shared";
 import { type OfferingRow } from "./offerings";
 
@@ -24,22 +25,49 @@ import { type OfferingRow } from "./offerings";
 // value in the control column: that column stays one control so aria-checked
 // stays one bit, and so a lock chip and a switch stay on the same axis.
 
-function Track({ on, busy }: { on: boolean; busy: boolean }) {
+// THE ONE TRACK (MESITA-1867). The Organization screen's Partner switch grew
+// its own copy of this span (MESITA-1798), then taught it to lock
+// (MESITA-1864); the Mesita Pay box would have been a third. It is exported
+// from here once instead — `MesitaPayCard` imports it — so a locked knob looks
+// the same on Organization as on Capabilities.
+//
+// `cn`, not `cx`, for the classes: `cx` is a plain join, and a join that
+// emits `bg-muted` next to `bg-background shadow` leaves the winner to
+// stylesheet order. `cn` (tailwind-merge) keeps the last `bg-*` only, and the
+// ternary below never asks it to — but the render test that pins the literal
+// "bg-background shadow" on an unlocked knob, and its absence on a locked one,
+// is what proves the two can never both emit.
+export function Track({
+  on,
+  busy,
+  locked = false,
+}: {
+  on: boolean;
+  busy: boolean;
+  /** The prerequisite is unmet. The switch still renders — off, dimmed, and
+   *  carrying the lock in the knob (MESITA-1864) — because a pill where the
+   *  other states render a control hides what the thing IS: a switch. */
+  locked?: boolean;
+}) {
   return (
     <span
       aria-hidden
-      className={cx(
+      className={cn(
         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-        on ? "bg-secondary" : "bg-muted-foreground/25",
+        locked ? "bg-muted-foreground/15" : on ? "bg-secondary" : "bg-muted-foreground/25",
       )}
     >
       <span
-        className={cx(
-          "bg-background inline-flex h-5 w-5 transform items-center justify-center rounded-full shadow transition-transform",
+        className={cn(
+          "inline-flex h-5 w-5 transform items-center justify-center rounded-full transition-transform",
           on ? "translate-x-[22px]" : "translate-x-0.5",
+          // A locked knob carries no shadow: shadow is what makes the thumb
+          // look liftable, and this one is not.
+          locked ? "bg-muted" : "bg-background shadow",
         )}
       >
         {busy && <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />}
+        {locked && !busy && <Lock className="text-muted-foreground h-3 w-3" aria-hidden />}
       </span>
     </span>
   );

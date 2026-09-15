@@ -26,10 +26,17 @@ type CompletenessCheck = {
   hint: string;
   weight: number;
   done: (p: AdminPlace) => boolean;
-  /** Same-page scroll target id (Place tab). */
+  /** Same-page scroll target id — ONLY for a section this card's own page
+   *  renders. A scrollId naming an element on another view is a chip that
+   *  does nothing, silently: `scrollToSection` below bails on a null lookup
+   *  with no feedback of any kind. That is what happened to Menu when
+   *  MESITA-1848 moved `MenusSection` to its own address and left the id
+   *  behind (MESITA-1883). If the destination is another view, use `tab`. */
   scrollId?: string;
-  /** Cross-tab section id under manage-single. */
-  tab?: "promos";
+  /** Cross-view section id — the chip becomes a LINK through
+   *  `placeSectionHref`, which is the only kind of destination that survives
+   *  a view being split out from under it. */
+  tab?: "promos" | "menus";
 };
 
 // Weights sum to exactly 100. Photos weigh most — they carry the consumer
@@ -87,7 +94,13 @@ const CHECKS: readonly CompletenessCheck[] = [
       (p.products?.menu?.length ?? 0) > 0 ||
       (p.menus?.length ?? 0) > 0 ||
       !!p.menu_pdf_url,
-    scrollId: "place-products",
+    // A LINK, not a scroll (MESITA-1883). This was `scrollId:
+    // "place-products"` — the id `MenusSection` renders — until MESITA-1848
+    // gave Menus its own address. From that day the target was on a different
+    // page, so the chip called `getElementById`, got null, and returned:
+    // a button that did nothing at all, on the one card whose entire job is
+    // telling an operator what to go and fix.
+    tab: "menus",
   },
   {
     label: "Reservations",
@@ -199,11 +212,14 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                     </button>
                   );
                 }
-                if (c.tab === "promos") {
+                // ANY tab, not just "promos" (MESITA-1883). Hardcoding the one
+                // value meant a second cross-view chip silently fell through
+                // to the inert `<span>` below instead of linking.
+                if (c.tab) {
                   return (
                     <CrossTabLink
                       key={c.label}
-                      href={placeSectionHref(placeId, "promos")}
+                      href={placeSectionHref(placeId, c.tab)}
                       className={CHIP_CLASS + " inline-flex items-center gap-1"}
                     >
                       {c.hint}

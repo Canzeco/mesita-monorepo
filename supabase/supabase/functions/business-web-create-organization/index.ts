@@ -4,6 +4,13 @@
 // An account may hold several organizations; there is no uniqueness on
 // name because two real businesses can share one.
 //
+// THE RFC IS THE EXCEPTION (MESITA-1880). One organization = one RFC = one
+// merchant, and this endpoint used to write `body.rfc ?? null` raw — no trim,
+// no uppercase, no shape, no twin check. A duplicate meant two permanent
+// Stripe connected accounts for one legal person and a guest's credits split
+// across two balances Stripe cannot merge. The guarantee is the partial
+// unique index; this is the sentence the owner reads instead of a 23505.
+//
 // Auth: a signed-in account carrying the business role. Deliberately NOT
 // bare-authed: organizations are the thing places get claimed into, so
 // letting any session mint one hands the claim path to every visitor.
@@ -15,6 +22,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { mayCreateOrganization } from "./session-gate.ts";
+import {
+  isDuplicateRfcError,
+  readRfc,
+  RFC_SHAPE_ERROR,
+  RFC_TAKEN_ERROR,
+} from "../_shared/org-rfc.ts";
 
 type Body = {
   name?: string;
@@ -46,6 +59,13 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "name is too long" }, 400);
   }
 
+  // Normalized and shape-checked BEFORE the manager upsert below, so a
+  // malformed RFC costs nothing and the 400 names the real problem.
+  const rfcRead = readRfc(body.rfc);
+  if (!rfcRead.ok) {
+    return json({ ok: false, code: "rfc_shape", error: RFC_SHAPE_ERROR }, 400);
+  }
+
   const admin = adminClient(envRes.env);
 
   // The manager row is the Account, and the FK target of the membership
@@ -68,12 +88,15 @@ Deno.serve(async (req) => {
     .insert({
       name,
       legal_name: body.legalName ?? null,
-      rfc: body.rfc ?? null,
+      rfc: rfcRead.rfc,
       currency: (body.currency ?? "MXN").toUpperCase(),
     })
     .select("id, name, legal_name, rfc, currency")
     .single();
   if (orgErr || !org) {
+    if (isDuplicateRfcError(orgErr)) {
+      return json({ ok: false, code: "rfc_taken", error: RFC_TAKEN_ERROR }, 409);
+    }
     return json({ ok: false, error: orgErr?.message ?? "Create failed" }, 500);
   }
 

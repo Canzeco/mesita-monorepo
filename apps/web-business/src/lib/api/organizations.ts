@@ -21,6 +21,27 @@ export type OrgRole = "owner" | "editor" | "viewer";
  *  MESITA-1553 mistake, and the rail is on every screen in the console). */
 export type RailPlace = { id: string; name: string; photoUrl: string | null };
 
+/** The organization's live Mesita Membership — the yearly subscription that
+ *  makes it a Partner (MESITA-1877). BILLING, never entitlement: `partnered`
+ *  is the fact, this is why.
+ *
+ *  `state` is "active" or "past_due". Past due is STILL A PARTNER — Stripe is
+ *  dunning a card that may well recover, and nothing about the partnership
+ *  changes until the subscription actually ends. The console says the payment
+ *  is due; it never says the partnership is gone. */
+export type OrgMembership = {
+  state: "active" | "past_due";
+  /** End of the paid period — when it renews, or when it lapses if it is
+   *  cancelling. Null when Stripe has not set one yet. */
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+};
+
+/** The catalog price of the Membership, off `org_plans` — the same row the
+ *  Stripe price is provisioned from, so what the owner reads is what Stripe
+ *  bills. Null when the payload predates MESITA-1877 or the read failed. */
+export type MembershipPrice = { priceCents: number; currency: string };
+
 export type Organization = {
   id: string;
   name: string;
@@ -34,6 +55,15 @@ export type Organization = {
   partnered?: boolean;
   /** Org Mesita Pay package. Rides Partner; UNDEFINED on a stale payload. */
   mesitaPayEnabled?: boolean;
+  /** The BILLING behind `partnered` (MESITA-1877) — the live Mesita
+   *  Membership, or null.
+   *
+   *  NULL IS NOT "NOT A PARTNER". `partnered` is the entitlement and answers
+   *  that on its own; this is null whenever the organization became a partner
+   *  some other way (the operator switch, a migration), and also whenever the
+   *  billing read failed. Every consumer of it must degrade to the plain
+   *  yearly line rather than concluding anything about the partnership. */
+  membership?: OrgMembership | null;
   /** The places this organization holds, by name. Rides the org list so the
    *  rail has its portfolio on the first frame instead of one round trip
    *  later (MESITA-1779). */
@@ -46,6 +76,9 @@ export type Organization = {
 export type ConsoleViewer = {
   organizations: Organization[];
   isSuperAdmin: boolean;
+  /** One price for the whole console — it is a catalog fact, not an
+   *  organization's, so it rides the envelope rather than every row. */
+  membershipPrice: MembershipPrice | null;
 };
 
 export type ConsolePlace = {
@@ -109,6 +142,13 @@ export type ConsolePlace = {
   reservations?: boolean;
   mesitaPay?: boolean;
   credits?: boolean;
+  /** Visit Rewards is ON — i.e. the place's strategy is not `zero`
+   *  (MESITA-1882). The ONE commercial fact with no column behind it: the
+   *  four rate columns spell a strategy, and the EF derives this boolean
+   *  through the same `strategyForRates` that decides whether the guest app
+   *  shows a Partner badge. Undefined on the pool, withheld with `partner`
+   *  and `verified` — what a place gives away is not a stranger's business. */
+  visitRewards?: boolean;
 };
 
 /** REQUEST-CACHED (MESITA-1729). The shell layout lists organizations for the
@@ -125,18 +165,21 @@ export type ConsolePlace = {
 export const apiConsoleViewer = cache(async function apiConsoleViewer(
   client: SupabaseClient,
 ): Promise<ConsoleViewer> {
-  const { organizations, isSuperAdmin } = await invokeEF<ConsoleViewer>(
-    client,
-    "business-web-list-organizations",
-    {},
-    "Couldn't load your organizations.",
-  );
+  const { organizations, isSuperAdmin, membershipPrice } =
+    await invokeEF<ConsoleViewer>(
+      client,
+      "business-web-list-organizations",
+      {},
+      "Couldn't load your organizations.",
+    );
   return {
     organizations: (organizations ?? []).map((o) => ({
       ...o,
       places: o.places ?? [],
+      membership: o.membership ?? null,
     })),
     isSuperAdmin: isSuperAdmin === true,
+    membershipPrice: membershipPrice ?? null,
   };
 });
 
@@ -290,6 +333,26 @@ export type PaymentAccount = {
 };
 
 /**
+ * Which `disabled_reason` values mean the account is FINISHED, not unfinished.
+ *
+ * Stripe sets `requirements.disabled_reason` on a brand-new connected account
+ * the moment capabilities are requested and their requirements are unmet — so
+ * an Express account that has never collected a single field already carries
+ * `requirements.past_due`. Everything else being equal, "disabled" and "not
+ * started" are the same account on day zero, and only one of those two words
+ * describes a next step the owner can take.
+ *
+ * `rejected.*` and `platform_paused` are the exception: Stripe (or Mesita)
+ * closed the account, and reopening hosted onboarding on a closed account is a
+ * loop, not a next step — the same reason `in_review` deliberately has no
+ * button (MESITA-1645). Those keep winning over everything.
+ */
+function isTerminalDisabledReason(reason: string | null | undefined): boolean {
+  if (!reason) return false;
+  return reason.startsWith("rejected.") || reason === "platform_paused";
+}
+
+/**
  * One derivation, shared by the badge and the pill — never re-derived.
  *
  * Charge capability is read FIRST because it is the strongest fact Stripe
@@ -298,6 +361,14 @@ export type PaymentAccount = {
  * asking — has work to do and gets Resume. An owner with nothing outstanding
  * and still no charges is waiting on Stripe, and Resume would only reopen a
  * form they already completed.
+ *
+ * ORDER IS THE BUG THIS FIXES (MESITA-1865). `disabled_reason` used to be read
+ * before `details_submitted`, so EVERY account that walked away from hosted
+ * onboarding came back reading **Restricted** — the state with no Resume
+ * button — over `requirements.past_due`, which Stripe sets on day zero. An
+ * owner who closed the Stripe tab had no way back in, and the only control on
+ * the card was a dashboard that cannot exist yet. Submission now outranks a
+ * non-terminal reason; a terminal one still outranks everything.
  *
  * KNOWN LIMIT, stated rather than papered over: a permanently restricted
  * account that submitted everything and has nothing due is indistinguishable
@@ -310,13 +381,79 @@ export function paymentAccountState(
   orphaned: boolean,
 ): PaymentAccountState {
   if (!account) return "none";
-  if (orphaned || account.disabled_reason) return "restricted";
+  if (orphaned || isTerminalDisabledReason(account.disabled_reason)) {
+    return "restricted";
+  }
   if (account.charges_enabled && account.payouts_enabled) return "live";
   if (account.charges_enabled) return "charges_only";
   if (!account.details_submitted || account.requirements_due.length > 0) {
     return "unfinished";
   }
+  if (account.disabled_reason) return "restricted";
   return "in_review";
+}
+
+/**
+ * Can the owner still be sent into Stripe's hosted onboarding?
+ *
+ * Read by the card instead of pattern-matching the pill. The pill answers
+ * "where is this account"; this answers "is there a door", and they are not
+ * the same question — an account can be Restricted for a reason hosted
+ * onboarding collects (`requirements.past_due`) or for one it never will
+ * (`rejected.fraud`).
+ */
+export function canResumeOnboarding(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): boolean {
+  if (!account || orphaned) return false;
+  if (isTerminalDisabledReason(account.disabled_reason)) return false;
+  return !account.details_submitted || account.requirements_due.length > 0;
+}
+
+/**
+ * Can the Express Dashboard be opened at all?
+ *
+ * `accounts.createLoginLink` FAILS on an account that has not completed hosted
+ * onboarding — there is no dashboard to log into yet — and the EF reported
+ * that refusal as a Mesita misconfiguration, in rose, to a restaurant owner
+ * whose actual problem was an unfinished form (MESITA-1865). A button that
+ * cannot work is not offered.
+ */
+export function canOpenDashboard(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): boolean {
+  return account !== null && !orphaned && account.details_submitted;
+}
+
+/**
+ * May this account be thrown away and replaced?
+ *
+ * Country is PER-ACCOUNT PERMANENT at Stripe, and legal entity decides which
+ * documents the hosted flow asks for — both are answered before onboarding
+ * opens, by someone who has never seen the flow. Getting either wrong used to
+ * be terminal for the organization: `classifyExistingAccount` answers
+ * `use_country_mismatch`, which hands back a link to the same wrongly-countried
+ * account forever.
+ *
+ * The window is narrow ON PURPOSE (`decision:` MESITA-1865): only while the
+ * account has never submitted details and never charged. After that it may hold
+ * KYC or money, and deleting it is an operator's call, not an inference a card
+ * may make. The server re-checks this against Stripe's own object, never this
+ * mirror — this predicate only decides whether to OFFER it.
+ */
+export function canRestartOnboarding(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): boolean {
+  if (!account || orphaned) return false;
+  // A closed account is never quietly replaced with a fresh one. Stripe
+  // rejected the ENTITY, not the paperwork, and minting another account for
+  // the same organization reads as working around that decision — it routes to
+  // a person, like every other `rejected.*` surface (MESITA-1645).
+  if (isTerminalDisabledReason(account.disabled_reason)) return false;
+  return !account.details_submitted && !account.charges_enabled;
 }
 
 export async function apiGetPaymentAccount(
@@ -345,6 +482,11 @@ export async function apiStartPaymentOnboarding(
      *  Stripe Account Links reject one (MESITA-1643). */
     returnUrl: string;
     refreshUrl: string;
+    /** Throw the existing account away and mint a fresh one under the country
+     *  and legal entity in THIS request (MESITA-1865). The EF re-checks the
+     *  live Stripe object before it deletes anything; this flag is a request,
+     *  never a permission. */
+    restart?: boolean;
   },
 ): Promise<{ url: string | null; mock: boolean }> {
   const { url, mock } = await invokeEF<{ url: string | null; mock: boolean }>(
@@ -367,6 +509,35 @@ export async function apiGetPaymentDashboardLink(
     "Couldn't open the payments dashboard.",
   );
   return url ?? null;
+}
+
+/** Opens Stripe Checkout for the organization's yearly Mesita Membership
+ *  (MESITA-1877). Owner-only, enforced by the EF.
+ *
+ *  It returns a URL in EVERY mode: real Stripe gives the hosted Checkout page,
+ *  and MOCK_SUBSCRIPTION gives `successUrl` back after entitling inline — so
+ *  the caller redirects, full stop, and never branches on `mock`.
+ *
+ *  `alreadyMember` is the one non-redirect answer: the organization has a live
+ *  membership, so there is nothing to sell. It exists because two tabs and a
+ *  double-click are ordinary, and charging twice for one year is not. */
+export async function apiStartMembership(
+  client: SupabaseClient,
+  input: { orgId: string; successUrl?: string; cancelUrl?: string },
+): Promise<{ checkoutUrl: string | null; alreadyMember: boolean }> {
+  const res = await invokeEF<{
+    checkout_url?: string | null;
+    already_member?: boolean;
+  }>(
+    client,
+    "business-web-start-membership",
+    input,
+    "Couldn't start the membership checkout.",
+  );
+  return {
+    checkoutUrl: res.checkout_url ?? null,
+    alreadyMember: res.already_member === true,
+  };
 }
 
 export async function apiSetOrgPartnership(

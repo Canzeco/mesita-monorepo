@@ -279,7 +279,7 @@ export function PlanModal() {
             </button>
           )}
 
-          <p className="text-muted-foreground type-label leading-relaxed">
+          <p className="text-muted-foreground type-body leading-relaxed">
             Premium is a subscription, not a class — your class still comes from
             followers or an invitation. You become Premium the moment payment
             clears.

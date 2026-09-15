@@ -7,12 +7,13 @@
 // distance order.
 
 import {
-  rankByBlend,
+  discoveryRank,
   type SignalParamsByKey,
   type SignalWeights,
+  type SlottingConfig,
 } from "./discovery-blend.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
-import { toLineupPlace } from "./discovery-place.ts";
+import { toLineupPlace, toPromotingFields } from "./discovery-place.ts";
 import type { SignalKey } from "./discovery-signals.ts";
 import {
   isMesitaPartnerRow,
@@ -25,6 +26,8 @@ import { familiesForPlace } from "./place-taxonomy.ts";
 export type ListedLineupOpts = {
   center: { lat: number; lng: number };
   weights: SignalWeights;
+  /** The bought lane. Required, never optional — see rankSwipeDeck's note. */
+  slotting: SlottingConfig;
   params?: SignalParamsByKey;
   categories?: string[];
   families?: string[];
@@ -57,6 +60,15 @@ function toMapLineupPlace(row: Record<string, unknown>) {
  * Blend partner listed and Mesita-extra listed separately, then concat,
  * then Google (distance, unchanged). A cafe never jumps a partner.
  * On throw, return the closest-N merge order.
+ *
+ * SLOTTING RUNS INSIDE EACH LANE, NOT OVER THE CONCATENATION (MESITA-1855).
+ * Two reasons. The lane split is already a bought mechanism — every partner
+ * sits ahead of every non-partner — so slotting the joined list would price
+ * the same money twice and mostly reshuffle a block that is already at the
+ * front. And the lanes exist so a cafe never jumps a partner; a pass over
+ * the concatenation could move a promoting cafe past one. Per lane, the
+ * question slotting answers is the right one: among places that already sit
+ * together, which of them bought the next position.
  */
 export function reorderListedLanes<T extends MesitaNearbyRow>(
   merged: Array<NearbyMerged<T>>,
@@ -83,9 +95,18 @@ export function reorderListedLanes<T extends MesitaNearbyRow>(
     };
     const project = (row: T) =>
       toMapLineupPlace(row as unknown as Record<string, unknown>);
+    const promotingOf = (row: T) =>
+      toPromotingFields(row as unknown as Record<string, unknown>);
     const rank = (rows: T[]) =>
-      rankByBlend(rows, project, intent, opts.weights, opts.params)
-        .map((r) => ({ kind: "listed" as const, row: r.row }));
+      discoveryRank(
+        rows,
+        project,
+        promotingOf,
+        intent,
+        opts.weights,
+        opts.slotting,
+        opts.params,
+      ).map((r) => ({ kind: "listed" as const, row: r.row }));
     return [...rank(partners), ...rank(extra), ...google];
   } catch {
     return merged;

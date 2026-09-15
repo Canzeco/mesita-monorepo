@@ -29,9 +29,12 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  ORG_PAGE_LABEL,
+  FLAT_ROUTES,
+  ORG_TARGET_LABEL,
   SHELL_ROUTES,
-  orgPageFromPathname,
+  flatViewFromPathname,
+  isOrgTerminalPathname,
+  orgTargetFromPathname,
   placeIdFromPathname,
 } from "@/lib/console-routes";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
@@ -46,12 +49,36 @@ export function crumbsFor(
 ): string[] {
   if (pathname === SHELL_ROUTES.account) return ["Account"];
   if (pathname === SHELL_ROUTES.orgNew) return ["Create organization"];
-  const page = orgPageFromPathname(pathname);
-  if (page) {
-    // The organization's own page is the organization: no second crumb
-    // restating it (MESITA-1810). Its list, and the add step under the list.
+  // The flat addresses (MESITA-1832, resolvers since MESITA-1839): they name
+  // no subject, so the crumb supplies the one the shell resolved.
+  if (pathname === FLAT_ROUTES.products) {
+    return [...(names.orgName ? [names.orgName] : []), "Products"];
+  }
+  const flat = flatViewFromPathname(pathname);
+  if (flat) {
+    const trail = names.orgName ? [names.orgName] : [];
+    if (names.placeName) trail.push(names.placeName);
+    trail.push(PLACE_TAB_LABEL[flat]);
+    return trail;
+  }
+  // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE (MESITA-1885), so
+  // `orgTargetFromPathname` answers null for it on purpose — the Products row
+  // must not light there. That leaves it matching nothing below, and a
+  // pathname that matches nothing returns an EMPTY trail: a header with no
+  // crumbs at all, which reads as a page outside the console.
+  //
+  // It gets the ceremony shape — organization · section · leaf — the same one
+  // `/places/new` uses, because that is what it is: a step inside Products.
+  if (isOrgTerminalPathname(pathname)) {
+    return [names.orgName ?? "Organization", ORG_TARGET_LABEL.products, "Terminal"];
+  }
+  const target = orgTargetFromPathname(pathname);
+  if (target) {
+    // The organization's NAME, then the page — every organization address is
+    // a named page now (MESITA-1848), Settings included, so there is no
+    // bare-name target left to special-case.
     const trail = [names.orgName ?? "Organization"];
-    if (page !== "overview") trail.push(ORG_PAGE_LABEL[page]);
+    trail.push(ORG_TARGET_LABEL[target]);
     if (/\/places\/new\/?$/.test(pathname)) trail.push("Add");
     return trail;
   }
