@@ -717,12 +717,68 @@ describe("every place view has its own loading boundary", () => {
     expect(s).toContain("motion-reduce:animate-none");
   });
 
-  it("Reviews guards like Settings: a pool place answers 404, never a throw", () => {
-    const page = readCode("app/(shell)/places/[id]/reviews/page.tsx");
-    expect(page).toContain("if (!manage) notFound();");
+  // MESITA-1875. The guard is unchanged and it is not on the page any more:
+  // every view page used to re-read `getManagePlace` (p50 472ms in
+  // production) to learn a boolean the layout had just computed, and pay it
+  // again on every navigation — `cache()` dedupes inside ONE request, and a
+  // client navigation between siblings re-runs the page segment alone in a
+  // new one. The layout publishes the matrix; `PlaceTabGate` refuses from it.
+  it("NO place view page reads anything — the gate is the layout's", () => {
+    for (const tab of ["profile", "menus", "reviews", "capabilities", "rewards", "admin"]) {
+      const page = readCode(`app/(shell)/places/[id]/${tab}/page.tsx`);
+      for (const gone of [
+        "getManagePlace",
+        "getPlaceView",
+        "visibleTabs",
+        "notFound",
+        "createServerSupabase",
+        "apiListOrganizations",
+        "force-dynamic",
+        "await",
+      ]) {
+        expect(page, `${tab}: ${gone}`).not.toContain(gone);
+      }
+    }
+    // Reviews' own rule survives the move: its summary belongs to the view,
+    // never back inside Profile's section stack.
     expect(readCode("components/place-manage/sections/PlaceSection.tsx")).not.toContain(
       "ReviewsSummary",
     );
+  });
+
+  it("the layout resolves the matrix ONCE and publishes it", () => {
+    const layout = readCode("app/(shell)/places/[id]/layout.tsx");
+    expect(layout).toContain("visibleTabs(view, manage)");
+    expect(layout).toContain("<PlaceScopeProvider");
+    // Both branches gate: a pool place has a matrix too (Profile alone), and
+    // leaving the gate off that branch is how `/places/<pool-id>/admin`
+    // renders operator internals to a restaurant.
+    expect((layout.match(/<PlaceTabGate \/>/g) ?? []).length).toBe(2);
+    expect((layout.match(/<PlaceScopeProvider/g) ?? []).length).toBe(2);
+    // The AdminPlace does NOT ride the scope: PlaceManageShell owns it, the
+    // save bar mutates it, and two providers holding one record is how a
+    // screen starts disagreeing with itself.
+    expect(layout).toContain("view: manage ? null : view");
+  });
+
+  // The refusal itself, in one place, from the ONE matrix.
+  it("the gate reads the matrix and lets the bare place URL through", () => {
+    const gate = readCode("components/console/PlaceTabGate.tsx");
+    expect(gate).toContain("placeTabFromPathname(pathname)");
+    expect(gate).toContain("notFound()");
+    // `/places/<id>` is a live address — a 307 onto Profile — and refusing it
+    // mid-forward turns a redirect into a dead end.
+    expect(gate).toContain("tab !== null");
+  });
+
+  // The pool branch reads what two layouts above it already resolved.
+  it("the pool Profile fetches nothing", () => {
+    const pool = readCode("app/(shell)/places/[id]/profile/PoolProfile.tsx");
+    expect(pool).toContain("usePlaceScope()");
+    expect(pool).toContain("useRailScopeContext()");
+    for (const gone of ["apiListOrganizations", "apiGetConsolePlace", "cookies(", "preferredOrg"]) {
+      expect(pool, gone).not.toContain(gone);
+    }
   });
 });
 
