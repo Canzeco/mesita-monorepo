@@ -363,19 +363,38 @@ describe("the rail is six nouns and one indent", () => {
   // on the switch, so the two boxes were one dependency with two headings —
   // one box now, titled for what the organization is deciding, holding the
   // account, a seam, and the switch it unlocks.
-  it("Configuration is four boxes, and Places is not one of them", () => {
+  // MESITA-1867. Pato: the Stripe onboarding is friction that shrinks the
+  // market, so Partner stops being Stripe-locked. Two tiers now: Mesita
+  // Partner is the yearly subscription per organization (a price, a door, a
+  // price list — needs no Stripe), and Mesita Pay is the optional add-on that
+  // MESITA-1866's box became: the account, a seam, and the switch it unlocks,
+  // lifted to a Section only for a partner and lying flat as a LockedStrip
+  // otherwise. Five boxes, two of them Sections; the Stripe read stays the
+  // page's one read, in every state, so the page has one shape and lifts
+  // the Pay Section the moment `partnered` flips (`?connect=` is Payments'
+  // concern via the bare forwarder, never this page's).
+  it("Configuration is five boxes, and Places is not one of them", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx");
     expect(page).not.toContain("DoorRow");
     expect(page).toContain("SOON_STRIPS.brand");
     expect(page).toContain("<MembersCard");
     expect(page).toContain("apiListOrgMembers");
-    // ONE box over both: the account's card and the switch, under one title,
-    // and no second heading for the vendor.
+    // TWO tiers, two Sections, and neither is headed for the vendor or for
+    // the word the old switch wore: Mesita Partner (the subscription) and
+    // Mesita Pay (the account, a seam, and the switch it unlocks — one box,
+    // MESITA-1866's lesson kept). Members is its own component, not a third.
     expect(page).not.toContain('title="Stripe"');
-    expect(page).toContain('title="Partnership"');
-    expect((page.match(/<Section/g) ?? []).length).toBe(1);
-    expect(page).toContain("<PaymentsCard");
+    expect(page).not.toContain('title="Partnership"');
+    expect(page).toContain('title="Mesita Partner"');
+    expect(page).toContain('title="Mesita Pay"');
+    expect((page.match(/<Section/g) ?? []).length).toBe(2);
     expect(page).toContain("<PartnerCard");
+    expect(page).toContain("<MesitaPayCard");
+    // A tier the organization cannot reach yet lies flat, never at Section
+    // rank: the page has one live box to act on and one line saying what
+    // comes next.
+    expect(page).toContain("<LockedStrip");
+    expect(page).toContain("<PaymentsCard");
     expect(page).toContain("SOON_STRIPS.developers");
     // PLACES LEFT.
     expect(page).not.toContain("placeHref(");
@@ -402,6 +421,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(page).toContain("SOON_STRIPS.credits");
     expect(page).not.toContain("PaymentsCard");
     expect(page).not.toContain("PartnerCard");
+    expect(page).not.toContain("MesitaPayCard");
     // The composition file went with the composition.
     expect(
       existsSync(path.join(SRC, "components/console/OrgScreenSections.tsx")),
