@@ -11,7 +11,7 @@
 // that needs the catalog most.
 //
 // Body:     {}
-// Response: { ok: true, categories, superCategories, tags, facets, fieldLimits, counts }
+// Response: { ok: true, categories, families, tags, facets, fieldLimits, counts }
 //
 // Local:  supabase functions serve business-web-get-atlas-fields
 // Deploy: supabase functions deploy business-web-get-atlas-fields

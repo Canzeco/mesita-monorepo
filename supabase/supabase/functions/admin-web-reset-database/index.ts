@@ -7,7 +7,7 @@
 // auth accounts, the app_config admin-config singleton (Atlas/Intaker/
 // Memo/Sourcing/Scoring/Reservations/Promos/Models/Agents/Verification),
 // consumer_code_counter, and the re-seeded vocabularies (classes,
-// consumer_plans, project_plans, place_categories, place_super_categories,
+// consumer_plans, project_plans, place_categories, place_families,
 // place_tags).
 //
 // RE-SEEDED MEANS IDENTITY ONLY. classes converge on label + rank, the two

@@ -34,7 +34,7 @@
 //             only, Socials on Catalog and Chat. Autocomplete is the one
 //             source that returns regions and cities, in the SAME call as
 //             the places; Socials is spec-only until an events engine exists.
-//   SOURCES   the Search Sources subpage: Super Categories strip (seven
+//   SOURCES   the Search Sources subpage: Families strip (seven
 //             params, one list written onto Fast / Deep / Map) ·
 //             the three Google Places searches · the four Mesita Places
 //             searches (Name · Nearby · Browse · Flexible) · the two Mesita
@@ -158,8 +158,8 @@ export type SocialConfig = {
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
 // the SUPER, not Google's slug (MESITA-1695): twenty-two switches in Google's
-// vocabulary, capped by an ordered "first N", is what let four whole Supers
-// sit invisibly off. Order is the guest's — SUPER_CATEGORIES sort_order.
+// vocabulary, capped by an ordered "first N", is what let four whole families
+// sit invisibly off. Order is the guest's — FAMILIES sort_order.
 export const SUPER_PARAM_KEYS = [
   "restaurants",
   "cafes_bakeries",
@@ -195,8 +195,8 @@ export type MapConfig = {
 
 /**
  * The seven params the operator actually sees. `label` and `emoji` are
- * verbatim from SUPER_CATEGORIES in _shared/place-taxonomy.ts; `battery` is
- * the Google slugs that Super sends, shown read-only so the box says what it
+ * verbatim from FAMILIES in _shared/place-taxonomy.ts; `battery` is
+ * the Google slugs that family sends, shown read-only so the box says what it
  * bills without asking anyone to toggle Google's vocabulary.
  */
 export const SUPER_FIELDS: {

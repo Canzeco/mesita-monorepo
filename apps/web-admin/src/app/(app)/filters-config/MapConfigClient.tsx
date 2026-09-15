@@ -16,7 +16,7 @@
 // consumer app"). It was the guest's question from 2026-08-29 until the
 // Search Filters sheet was deleted in MESITA-1699, and the consumer app now
 // has nothing to override it with. Its two neighbours from that sheet went
-// to Search Sources instead: the Super Categories strip and the Nearby
+// to Search Sources instead: the Families strip and the Nearby
 // pull. `googleFill` here is what decides whether Google rows appear at all.
 
 import { useEffect, useMemo, useState, useTransition } from "react";

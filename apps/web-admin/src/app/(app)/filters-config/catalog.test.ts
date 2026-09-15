@@ -437,9 +437,9 @@ describe("Discovery function APIs", () => {
     expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
-  it("the category param is seven Supers, and categoryCount is gone", () => {
-    // MESITA-1695: the operator's noun is the Super, not Google's slug, and
-    // the ordered "first N" cap that hid four whole Supers is deleted. A
+  it("the category param is seven families, and categoryCount is gone", () => {
+    // MESITA-1695: the operator's noun is the family, not Google's slug, and
+    // the ordered "first N" cap that hid four whole families is deleted. A
     // stored blob carrying it must not resurrect it.
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
     expect("categoryCount" in DEFAULT_GENERAL).toBe(false);
@@ -448,7 +448,7 @@ describe("Discovery function APIs", () => {
     ).toBe(false);
     expect(SUPER_FIELDS.length).toBe(7);
     expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(7);
-    // Every Super names the Google battery it bills, so the box can say what
+    // Every family names the Google battery it bills, so the box can say what
     // it spends without asking anyone to toggle Google's vocabulary.
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
     // The three the strip has always billed are on; the four it could not see
@@ -463,9 +463,9 @@ describe("Discovery function APIs", () => {
     ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
   });
 
-  it("coerceConfig folds a pre-1695 Google-slug blob up into Supers", () => {
+  it("coerceConfig folds a pre-1695 Google-slug blob up into families", () => {
     // THE LIVE BLOB: five slugs true, nothing else stored. It has to land on
-    // exactly the three F&B Supers or the console shows a different answer
+    // exactly the three F&B families or the console shows a different answer
     // than the Edge Functions read.
     const folded = coerceConfig({
       map: {
@@ -583,7 +583,7 @@ describe("Discovery page box order", () => {
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
-    const supersStrip = readFileSync(join(__dirname, "SuperCategoriesClient.tsx"), "utf8");
+    const supersStrip = readFileSync(join(__dirname, "FamiliesClient.tsx"), "utf8");
     const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
@@ -615,7 +615,7 @@ describe("Discovery page box order", () => {
     expect(chrome).toContain("DISCOVERY_TABS");
     expect(chrome).toContain("tab?.label");
     expect(page).toContain("redirect(DISCOVERY_MATRIX_HREF)");
-    expect(page).not.toContain("SuperCategoriesClient");
+    expect(page).not.toContain("FamiliesClient");
     expect(page).not.toContain("ConfigSection");
     expect(nextConfig).toContain('destination: "/filters-config/modes"');
     expect(nextConfig).not.toContain('destination: "/filters-config",');
@@ -623,9 +623,9 @@ describe("Discovery page box order", () => {
     expect(nextConfig).toContain('source: "/filters-config/modules"');
     expect(nextConfig).toContain('destination: "/filters-config/sources"');
 
-    // The param is the Super (MESITA-1695). Google's slugs are printed under
+    // The param is the family (MESITA-1695). Google's slugs are printed under
     // each switch as the battery it bills, never as twenty-two switches.
-    expect(supersStrip).toContain('title="Super Categories"');
+    expect(supersStrip).toContain('title="Families"');
     expect(supersStrip).toContain("SUPER_FIELDS");
     expect(supersStrip).not.toContain("NEARBY_TYPE_FIELDS");
     expect(supersStrip).not.toContain("Categories available");
@@ -832,17 +832,17 @@ describe("Discovery page box order", () => {
       last = idx;
     }
     expect(modesJsx).not.toContain("SocialConfigClient");
-    // Super Categories stay on Sources; the wipe stays on Modes. Two boxes,
+    // Families stay on Sources; the wipe stays on Modes. Two boxes,
     // two questions — never fold one into the other.
-    expect(modesJsx).not.toContain("SuperCategoriesClient");
+    expect(modesJsx).not.toContain("FamiliesClient");
     expect(modesJsx).not.toContain("GeneralGateConfigClient");
     expect(sourcesJsx).not.toContain("GeneralGateConfigClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    // NINE BOXES AND NOTHING ELSE. The Super Categories strip is a shared
+    // NINE BOXES AND NOTHING ELSE. The Families strip is a shared
     // battery above them, not a source, so it does not spend one of the nine.
-    const sourceOrder = ["SuperCategoriesClient", "GoogleSourceCards", "MesitaSourceCards"];
+    const sourceOrder = ["FamiliesClient", "GoogleSourceCards", "MesitaSourceCards"];
     expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
     expect(sourcesJsx).not.toContain("PoolQualityFloorCard");
     expect(sourcesJsx).not.toContain("SignalsConfigClient");

@@ -343,7 +343,7 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
         Pull {GOOGLE_PULL_STOPS[0]} is one Nearby Search (New) POST with every
         enabled type. Pull 40 or 60 paginates Legacy Nearby with{" "}
         <span className="text-foreground font-semibold">next_page_token</span>,
-        then filters to the Super battery and distance-sorts. Each page spends
+        then filters to the family battery and distance-sorts. Each page spends
         one per-IP quota unit.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

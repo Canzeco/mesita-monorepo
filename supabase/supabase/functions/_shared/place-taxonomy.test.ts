@@ -1,7 +1,7 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
-  ATLAS_CATEGORY_SUPERS,
-  SUPER_CATEGORIES,
+  ATLAS_CATEGORY_FAMILIES,
+  FAMILIES,
   familiesForAtlasCategory,
   familiesForPlace,
   readGuestFamilyKeys,
@@ -9,9 +9,9 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("Atlas Super Category catalog is eight slugs: seven real + Other last", () => {
-  assertEquals(SUPER_CATEGORIES.length, 8);
-  assertEquals(SUPER_CATEGORIES.map((s) => s.slug), [
+Deno.test("place family catalog is eight slugs: seven real + Undefined last", () => {
+  assertEquals(FAMILIES.length, 8);
+  assertEquals(FAMILIES.map((s) => s.slug), [
     "restaurants",
     "cafes_bakeries",
     "bars_nightlife",
@@ -21,25 +21,25 @@ Deno.test("Atlas Super Category catalog is eight slugs: seven real + Other last"
     "wellness_beauty",
     "undefined",
   ]);
-  const last = SUPER_CATEGORIES[SUPER_CATEGORIES.length - 1]!;
+  const last = FAMILIES[FAMILIES.length - 1]!;
   assertEquals(last.slug, "undefined");
   assertEquals(last.label, "Undefined");
   assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps to 1–2 supers; exactly seven doubles", () => {
-  const slugs = Object.keys(ATLAS_CATEGORY_SUPERS);
+Deno.test("every Atlas category maps to 1–2 families; exactly seven doubles", () => {
+  const slugs = Object.keys(ATLAS_CATEGORY_FAMILIES);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
   const covered = new Set<string>();
   const doubles: string[] = [];
   for (const slug of slugs) {
-    const supers = ATLAS_CATEGORY_SUPERS[slug] ?? [];
-    if (supers.length < 1 || supers.length > 2) {
-      throw new Error(`${slug} has ${supers.length} supers`);
+    const families = ATLAS_CATEGORY_FAMILIES[slug] ?? [];
+    if (families.length < 1 || families.length > 2) {
+      throw new Error(`${slug} has ${families.length} families`);
     }
-    if (supers.length === 2) doubles.push(slug);
-    for (const s of supers) covered.add(s);
+    if (families.length === 2) doubles.push(slug);
+    for (const s of families) covered.add(s);
   }
   assertEquals(doubles.sort(), [
     "board_game_cafe",
@@ -52,14 +52,14 @@ Deno.test("every Atlas category maps to 1–2 supers; exactly seven doubles", ()
   ]);
   assertEquals(
     [...covered].sort(),
-    SUPER_CATEGORIES.map((s) => s.slug).slice().sort(),
+    FAMILIES.map((s) => s.slug).slice().sort(),
   );
 });
 
-Deno.test("membership totals per super (incl. shared members)", () => {
+Deno.test("membership totals per family (incl. shared members)", () => {
   const counts: Record<string, number> = {};
-  for (const supers of Object.values(ATLAS_CATEGORY_SUPERS)) {
-    for (const s of supers) counts[s] = (counts[s] ?? 0) + 1;
+  for (const families of Object.values(ATLAS_CATEGORY_FAMILIES)) {
+    for (const s of families) counts[s] = (counts[s] ?? 0) + 1;
   }
   assertEquals(counts, {
     restaurants: 37,
@@ -113,7 +113,7 @@ Deno.test("sports split from beauty: training vs treatment", () => {
   assertEquals(familiesForAtlasCategory("medical_spa"), ["wellness_beauty"]);
 });
 
-Deno.test("undefined category maps to Super undefined; empty has none", () => {
+Deno.test("undefined category maps to family undefined; empty has none", () => {
   assertEquals(familiesForAtlasCategory("undefined"), ["undefined"]);
   assertEquals(familiesForAtlasCategory(null), []);
   assertEquals(familiesForAtlasCategory(""), []);
@@ -197,14 +197,14 @@ Deno.test("sanitizeFamilyKeys drops junk, dedupes, caps at TWO, catalog order", 
   assertEquals(sanitizeFamilyKeys(null), []);
 });
 
-Deno.test("undefined never rides along with a real super", () => {
+Deno.test("undefined never rides along with a real family", () => {
   assertEquals(sanitizeFamilyKeys(["undefined", "restaurants"]), [
     "restaurants",
   ]);
   assertEquals(sanitizeFamilyKeys(["undefined"]), ["undefined"]);
 });
 
-Deno.test("readGuestFamilyKeys keeps every selected Super pill", () => {
+Deno.test("readGuestFamilyKeys keeps every selected family pill", () => {
   assertEquals(
     readGuestFamilyKeys([
       "experiences",

@@ -62,6 +62,18 @@ jobs:
             supabase:
               - 'supabase/**'
               - '.github/workflows/supabase.yml'
+              # MESITA-1857. Two tests in this suite STRING-SCAN other packages
+              # — `config-section-callers.test.ts` reads web-admin's source, and
+              # `place-families-parity.test.ts` reads both consumer apps and
+              # forbids the pre-MESITA-1857 family vocabulary across every app. A
+              # filter of 'supabase/**' alone means a PR that touches only
+              # apps/** skips the job that would catch it, which is how the
+              # mobile family list drifted from the catalog unnoticed. Anything
+              # a supabase test reads belongs in this filter.
+              - 'apps/web-admin/src/**'
+              - 'apps/web-business/src/**'
+              - 'apps/web-consumer/src/**'
+              - 'apps/mobile-consumer/src/**'
 
   check:
     name: deno lint · test
