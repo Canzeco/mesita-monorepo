@@ -601,10 +601,27 @@ export function Sidebar({
       go(orgSwitchHref(id, orgHref(id, "settings")), id);
   };
   const pickPlace = (id: string) => {
-    // A choice ends the narrowing. The next open starts on the whole list, or
-    // the operator meets a menu already filtered by a word they typed once.
-    setPlaceQuery("");
     if (id !== scope.place?.id) go(placeTabHref(id, "profile"), id);
+  };
+  // EVERY CLOSE ENDS THE NARROWING, not just the one that picks a place.
+  // Clearing inside `pickPlace` covered a single route out of four: Escape, a
+  // click outside and the trigger itself all left the query standing, and the
+  // next open was a menu already filtered by a word typed minutes ago with
+  // nothing on screen to say so.
+  const closePlaceMenu = (open: boolean) => {
+    if (!open) setPlaceQuery("");
+  };
+  // ESCAPE, IN TWO STAGES, AND ONLY FROM HERE. Radix's dismiss listener is on
+  // the document in the capture phase, so the field's own handler never sees
+  // the key; `DismissableLayer` calls this first and honours a
+  // `preventDefault()`. A non-empty query absorbs Escape and clears; an empty
+  // one — which is every state below PLACE_SEARCH_MIN, where no field renders
+  // at all — falls through and the menu closes, as it always did.
+  const escapePlaceMenu = (e: KeyboardEvent) => {
+    if (placeQuery !== "") {
+      e.preventDefault();
+      setPlaceQuery("");
+    }
   };
   // A LIST LONG ENOUGH TO NEED A FIELD, and the rows left after one is typed.
   // The threshold is read, never retyped (lib/place-search.ts).
@@ -711,6 +728,8 @@ export function Sidebar({
                   pending={pendingPlace !== null}
                   collapsed={collapsed}
                   autoFocusRef={placeSearch ? placeSearchRef : undefined}
+                  onOpenChange={closePlaceMenu}
+                  onEscapeKeyDown={escapePlaceMenu}
                 >
                   {/* ABOVE THE GROUP, NEVER INSIDE IT (MESITA-1803): a field
                       inside a radio group is announced as one of the choices.
