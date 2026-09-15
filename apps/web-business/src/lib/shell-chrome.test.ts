@@ -245,8 +245,14 @@ describe("the rail is six nouns and one indent", () => {
     expect(sel).toContain("text-sidebar-foreground");
     expect(sel).toContain("font-semibold");
     expect(rail()).toContain("text-sidebar-muted hover:bg-sidebar-accent");
-    // AIR, NOT BULK, separates the groups now that the head is row-sized.
-    expect((rail().match(/className="mt-3"/g) ?? []).length).toBe(2);
+    // A SEAM, NOT AIR (MESITA-1851): with every row one height, a margin
+    // stopped reading as a boundary, so each group after Account opens on the
+    // footer's own hairline. ONE constant draws both.
+    expect(rail()).toContain(
+      'const SECTION_SEAM = "border-sidebar-border mt-2 border-t pt-2"',
+    );
+    expect((rail().match(/className=\{SECTION_SEAM\}/g) ?? []).length).toBe(2);
+    expect(rail()).not.toContain('className="mt-3"');
   });
 
   it("heads its groups with selectors, never with an eyebrow", () => {
