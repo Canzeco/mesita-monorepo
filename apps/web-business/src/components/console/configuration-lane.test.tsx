@@ -126,8 +126,8 @@ describe("the unbuilt boxes stop out-shouting the live ones", () => {
 });
 
 describe("the page reads the dependency, not the alphabet", () => {
-  it("Stripe, then what it unlocks, then who may touch it, then the Soons", () => {
-    const order = ["Stripe", "Partnership", "MembersCard", "SOON_STRIPS.brand"]
+  it("Partnership, then who may touch it, then the Soons", () => {
+    const order = ["Partnership", "MembersCard", "SOON_STRIPS.brand"]
       .map((needle) => PAGE_SRC.indexOf(`"${needle}"`) >= 0
         ? PAGE_SRC.indexOf(`"${needle}"`)
         : PAGE_SRC.lastIndexOf(needle));

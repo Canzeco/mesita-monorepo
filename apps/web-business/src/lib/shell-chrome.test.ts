@@ -359,15 +359,22 @@ describe("the rail is six nouns and one indent", () => {
   // brand · members · stripe · partnership · developers." Places has a rail
   // row one line above this page; a box listing them again was the second
   // door to one room.
-  it("Configuration is five boxes, and Places is not one of them", () => {
+  // MESITA-1866. Pato: merge Stripe and Partnership. Stripe Ready is the LOCK
+  // on the switch, so the two boxes were one dependency with two headings —
+  // one box now, titled for what the organization is deciding, holding the
+  // account, a seam, and the switch it unlocks.
+  it("Configuration is four boxes, and Places is not one of them", () => {
     const page = readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx");
     expect(page).not.toContain("DoorRow");
     expect(page).toContain("SOON_STRIPS.brand");
     expect(page).toContain("<MembersCard");
     expect(page).toContain("apiListOrgMembers");
-    expect(page).toContain('title="Stripe"');
-    expect(page).toContain("<PaymentsCard");
+    // ONE box over both: the account's card and the switch, under one title,
+    // and no second heading for the vendor.
+    expect(page).not.toContain('title="Stripe"');
     expect(page).toContain('title="Partnership"');
+    expect((page.match(/<Section/g) ?? []).length).toBe(1);
+    expect(page).toContain("<PaymentsCard");
     expect(page).toContain("<PartnerCard");
     expect(page).toContain("SOON_STRIPS.developers");
     // PLACES LEFT.

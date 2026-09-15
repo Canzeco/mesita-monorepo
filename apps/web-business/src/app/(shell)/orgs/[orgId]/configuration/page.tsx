@@ -1,4 +1,5 @@
-// Configuration — the organization's own setup, in FIVE BOXES (MESITA-1852).
+// Configuration — the organization's own setup, in FOUR BOXES (MESITA-1852,
+// merged to four in MESITA-1866).
 //
 // Pato, 2026-09-14, on the Settings page this replaces: *"Remove places from
 // here, its redundant. five boxes: brand · members · stripe · partnership ·
@@ -19,10 +20,19 @@
 // switch. Payments is where you will read what happened, which is why it is
 // parked as Soon until there is something to read.
 //
-// THE BOX IS NAMED "STRIPE", not "Payouts" (which implies a payouts report
-// that does not exist) and not "Getting paid" (a sentence where a name goes).
-// Its button already says Connect Stripe; naming the box after the thing you
-// connect is the one label nobody has to decode.
+// STRIPE AND PARTNERSHIP ARE ONE BOX (MESITA-1866). Pato: merge them. They
+// were one chain pretending to be two: Stripe Ready is the LOCK on the Partner
+// switch, so the Partnership box's locked state existed to say "go do the
+// thing in the box above", and the Stripe box's reason to exist, for an
+// operator, was the switch below it. Two headings and two descriptions for one
+// dependency. Now: the account and its button, a seam, the switch — the
+// prerequisite reads first, the point reads last.
+//
+// AND THE BOX IS NAMED "PARTNERSHIP". The old box was "Stripe" because naming
+// a box after the thing you connect needs no decoding — true, and it still
+// holds for the BUTTON, which goes on saying Connect Stripe. But the merged
+// box is not about a vendor: Stripe is where the money moves through,
+// the partnership is what the organization is deciding.
 //
 // TWO BOXES ARE HONEST ABOUT BEING UNBUILT. Brand wants a logo and the
 // loyalty card's colour; `Organization` carries neither column. Developers
@@ -42,9 +52,9 @@
 // THE ORDER IS THE DEPENDENCY. It used to read Brand · Members · Stripe ·
 // Partnership · Developers, which opened AND closed the page on a box that
 // does not exist, and put the one thing a new organization must actually do
-// third. Now: Stripe, the lock — Partnership, what the lock opens — Members,
-// who may touch it — then the two honest Soons. `loading.tsx` carries the
-// same order, or every load ends in a shift.
+// third. Now: Partnership, the one thing to set up — Members, who may touch
+// it — then the two honest Soons. `loading.tsx` carries the same order, or
+// every load ends in a shift.
 import { notFound, redirect } from "next/navigation";
 import { MembersCard } from "@/components/console/MembersCard";
 import { PartnerCard } from "@/components/console/PartnerCard";
@@ -142,8 +152,8 @@ export default async function ConfigurationPage(props: {
 
       <Section
         lane
-        title="Stripe"
-        description="The account this organization gets paid through."
+        title="Partnership"
+        description="Free, and the account it gets paid through. Every place this organization holds joins; each place then turns on what it offers."
       >
         <PaymentsCard
           orgId={org.id}
@@ -152,20 +162,18 @@ export default async function ConfigurationPage(props: {
           isOwner={isOwner}
           loadError={accountError}
         />
-      </Section>
-
-      <Section
-        lane
-        title="Partnership"
-        description="Free. Every place this organization holds joins; each place then turns on what it offers."
-      >
-        <PartnerCard
-          key={`${org.id}-${org.partnered === true ? "on" : "off"}`}
-          orgId={org.id}
-          partnered={org.partnered === true}
-          stripeReady={stripeReady}
-          isOwner={isOwner}
-        />
+        {/* ONE SEAM, inside one box (MESITA-1866): the account above, the
+            switch it unlocks below. Not a second box — the prerequisite and
+            the thing it gates are one subject. */}
+        <div className="border-border/60 border-t pt-3">
+          <PartnerCard
+            key={`${org.id}-${org.partnered === true ? "on" : "off"}`}
+            orgId={org.id}
+            partnered={org.partnered === true}
+            stripeReady={stripeReady}
+            isOwner={isOwner}
+          />
+        </div>
       </Section>
 
       <MembersCard
