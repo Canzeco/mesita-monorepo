@@ -588,3 +588,46 @@ Deno.test("Pay has no Google fallback, so its lane cap never collapses", () => {
     ),
   );
 });
+
+// MESITA-1874. Pato, on the Add place bar returning ONE result — a bar in
+// Toledo, Ohio — for the query `strana`: "use autocomplete and text search
+// from google … basically the word search mode but without showing the
+// locations results."
+//
+// The facade is one call, so what is worth pinning is the three things that
+// call could get wrong and still compile: the wrong ENGINE (`suggestPlaces`,
+// Autocomplete alone — the whole point of the issue), the wrong MODE (the
+// lane's default is `fast`, which is Autocomplete alone again, so leaving
+// mode out would silently undo this), and LOCATIONS turned on (a place picker
+// must never offer a city).
+Deno.test("business Add place runs the deep lane, places only", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../business-web-suggest-places/index.ts", import.meta.url),
+  );
+  const code = src.split("\n").filter((l) => !l.trimStart().startsWith("//"))
+    .join("\n");
+  assertEquals(code.includes("runConsumerSearchLane"), true);
+  assertEquals(code.includes('mode: "deep"'), true);
+  // The engine it left. A comment may name it; the code may not call it.
+  assertEquals(code.includes("suggestPlaces"), false);
+  // Locations ride the consumer searchbar alone. Absent means false, and the
+  // absence IS the assertion — an explicit `true` here would put cities in a
+  // list whose every row offers Create.
+  assertEquals(code.includes("locations"), false);
+});
+
+// The lane is now the engine behind all three name bars, so a caller that
+// quietly drops back to `fast` is a regression nobody would see in CI.
+Deno.test("every deep-lane facade asks for deep", async () => {
+  for (const caller of ["admin", "business"]) {
+    const src = await Deno.readTextFile(
+      new URL(`../${caller}-web-suggest-places/index.ts`, import.meta.url),
+    );
+    assertEquals(
+      src.includes("runConsumerSearchLane"),
+      true,
+      `${caller} runs the lane`,
+    );
+    assertEquals(src.includes("deep"), true, `${caller} asks for deep`);
+  }
+});
