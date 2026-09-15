@@ -74,6 +74,20 @@ const nextConfig: NextConfig = {
         destination: "/places/:id/visits",
         permanent: false,
       },
+      // AND THEIR FLAT TWINS, which is the half that is easy to forget. Both
+      // were live flat resolvers until this issue — `/capabilities` and
+      // `/rewards` are in operators' bookmarks and in old links — and a name
+      // dropped from `FLAT_ROUTES` does not fall through to anything: the
+      // `[flat]` segment answers 404 for a name not in the contract, on
+      // purpose, so that a typo never renders a generic page.
+      //
+      // So retiring a flat name WITHOUT adding its forward turns a working
+      // bookmark into a 404, which is the mirror of the MESITA-1839 trap this
+      // table's own comments are about: there a rule shadowed a live address,
+      // here a missing rule strands a retired one. Both land on Visits, for
+      // the reason the place-scoped rules above give.
+      { source: "/capabilities", destination: "/visits", permanent: false },
+      { source: "/rewards", destination: "/visits", permanent: false },
       // THE FLAT `/settings` RULE IS DELETED (MESITA-1871), and this is the
       // whole point of the issue. It forwarded to `/capabilities` from
       // MESITA-1841 — permanently — which is the single reason MESITA-1852

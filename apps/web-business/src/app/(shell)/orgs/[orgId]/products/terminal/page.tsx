@@ -16,7 +16,7 @@ import { SoonStrip } from "@/components/console/SoonStrip";
 import { SOON_STRIPS } from "@/components/console/SoonStrips";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { findOrg } from "@/lib/active-organization";
-import { orgHref } from "@/lib/console-routes";
+import { orgTerminalHref } from "@/lib/console-routes";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,11 @@ export default async function TerminalPage(props: {
   const { orgId } = await props.params;
   const user = await getServerUser();
   if (!user) {
-    redirect(`/signin?next=${encodeURIComponent(orgHref(orgId, "products"))}`);
+    // BACK TO THIS PAGE, not to the catalogue above it: `next` is a promise
+    // that signing in resumes what you opened, and every sibling page keeps
+    // it. Sending a Terminal link to the grid would be a quiet redirect an
+    // operator has to notice and undo.
+    redirect(`/signin?next=${encodeURIComponent(orgTerminalHref(orgId))}`);
   }
   const supabase = await createServerSupabase();
   // The segment layout above already refused a foreign id; this read is for
