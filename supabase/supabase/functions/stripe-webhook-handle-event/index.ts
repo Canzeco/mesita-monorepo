@@ -257,7 +257,7 @@ async function handleStripeEvent(
       const membershipOrgId = organizationIdFor(session);
       if (membershipOrgId) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        await reconcilePartnerMembership(admin, membershipOrgId, sub);
+        await reconcilePartnerMembership(admin, stripe, membershipOrgId, sub);
         break;
       }
 
@@ -292,7 +292,7 @@ async function handleStripeEvent(
       // would otherwise have its membership reconciled onto a place.
       const membershipOrgId = organizationIdFor(sub);
       if (membershipOrgId) {
-        await reconcilePartnerMembership(admin, membershipOrgId, sub);
+        await reconcilePartnerMembership(admin, stripe, membershipOrgId, sub);
         break;
       }
 
