@@ -173,7 +173,7 @@ Deno.test("cancelling a superseded subscription must not revoke the live one", a
   // double-payment repair turning into an outage.
   assertStringIncludes(hook, 'if (outcome === "revoke")');
   assertStringIncludes(hook, "readLiveMembership(admin, orgId)");
-  assertStringIncludes(hook, 'if (remaining.row) outcome = "mirror"');
+  assertStringIncludes(hook, 'if (remaining.row) {');
   // The mirror must already be written when that read runs, or the dead row
   // is still in the live set and answers for itself.
   const mirrorAt = hook.indexOf("membership_mirror");
@@ -206,4 +206,32 @@ Deno.test("the prior cancel survives a Stripe retry", async () => {
   const retrieveAt = hook.indexOf("subscriptions.retrieve(subscriptionId)");
   const cancelAt = hook.indexOf("subscriptions.cancel(subscriptionId)");
   assert(retrieveAt > 0 && cancelAt > 0 && retrieveAt < cancelAt);
+});
+
+Deno.test("a revoke asks STRIPE when the mirror says nothing is left", async () => {
+  const hook = codeOnly(
+    await read("../stripe-webhook-handle-event/partner-membership.ts"),
+  );
+  // The two events race and neither ordering may drop a paying organization.
+  // The mirror answers the ordinary one. It CANNOT answer the inverted one —
+  // the deleted event overtaking the replacement's upsert — because in that
+  // window the prior is already retired and the replacement is not written
+  // yet, and the two arrive as separate requests with different event ids, so
+  // `stripe_events` does not serialize them.
+  assertStringIncludes(hook, "orgHasAnotherLiveSubscription(stripe, sub, orgId)");
+  assertStringIncludes(hook, "BILLABLE_STRIPE_STATUSES");
+  // Matched on the org, not on the customer alone: revoking a partnership
+  // because of an unrelated subscription is the same mistake inverted.
+  assertStringIncludes(hook, 's.metadata?.organization_id === orgId');
+  // And it is asked ONLY on the revoke path — never on the renewals that are
+  // almost every delivery.
+  const guardAt = hook.indexOf("orgHasAnotherLiveSubscription(stripe, sub, orgId)");
+  const revokeAt = hook.indexOf('if (outcome === "revoke")');
+  assert(revokeAt > 0 && guardAt > revokeAt, "the guard lives inside the revoke branch");
+  // A failed Stripe read must NOT read as "nothing else is live": that answer
+  // nulls four rate columns and the cap on every held place, and
+  // joinPlacePatch never restores them.
+  const fn = hook.slice(hook.indexOf("async function orgHasAnotherLiveSubscription"));
+  const body = fn.slice(0, fn.indexOf("\n}"));
+  assert(!body.includes("catch"), "a Stripe failure throws so Stripe retries");
 });

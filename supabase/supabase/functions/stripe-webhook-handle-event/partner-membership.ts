@@ -37,6 +37,55 @@ export function organizationIdFor(
 }
 
 
+
+/** The Stripe statuses that still bill. `trialing` is here and `unpaid` is
+ *  not, deliberately: a trial is a live agreement, an unpaid one has run out
+ *  of retries. */
+const BILLABLE_STRIPE_STATUSES = ["active", "trialing", "past_due"] as const;
+
+/**
+ * Does this organization still hold a DIFFERENT live subscription at Stripe?
+ *
+ * The authority of last resort for a revoke. The mirror is the cheap answer
+ * and it is right in the ordinary ordering; this one is right in every
+ * ordering, because Stripe is where the subscriptions actually are.
+ *
+ * Matched on `metadata.organization_id`, not on the customer alone: one
+ * customer could one day hold something else, and revoking a partnership
+ * because of an unrelated subscription would be the same class of mistake in
+ * the opposite direction.
+ *
+ * A FAILED READ THROWS. Answering "no other subscription" because Stripe was
+ * briefly unreachable would null four rate columns and the monthly cap on
+ * every place an organization holds. The webhook 500s and Stripe retries,
+ * which costs a few minutes of a stale `partnered` flag — the cheaper error
+ * by a wide margin.
+ */
+async function orgHasAnotherLiveSubscription(
+  stripe: Stripe,
+  sub: Stripe.Subscription,
+  orgId: string,
+): Promise<boolean> {
+  const customerId = typeof sub.customer === "string"
+    ? sub.customer
+    : sub.customer?.id ?? null;
+  // A mock customer has nothing at Stripe to ask about.
+  if (!customerId || isMockSubscriptionId(customerId)) return false;
+
+  for (const status of BILLABLE_STRIPE_STATUSES) {
+    const page = await stripe.subscriptions.list({
+      customer: customerId,
+      status,
+      limit: 100,
+    });
+    const other = page.data.some((s) =>
+      s.id !== sub.id && s.metadata?.organization_id === orgId
+    );
+    if (other) return true;
+  }
+  return false;
+}
+
 /** Stripe statuses that can no longer bill anyone. Cancelling one of these
  *  is not a no-op — Stripe rejects it — so they are the skip list. */
 const DEAD_STRIPE_STATUSES = new Set(["canceled", "incomplete_expired"]);
@@ -185,19 +234,39 @@ export async function reconcilePartnerMembership(
   // `customer.subscription.deleted` for it, and that event arrives back here
   // carrying the same `organization_id`. Read alone, its state says revoke —
   // so the org would lose `partnered` and every held place would be dropped
-  // while the membership that replaced it is live and paid. A double-payment
-  // repair would become an outage.
+  // at the exact moment it had just paid twice. And `joinPlacePatch` does not
+  // undo that: the replacement's entitle writes `plan=pro` at ZERO, so the
+  // rates and the monthly cap the operator configured are gone for good. A
+  // double-payment repair would become a permanent outage.
   //
-  // A revoke is therefore only honoured when the organization has no OTHER
-  // live membership left. The mirror is already written above, so the dead
-  // row has left the live set and this read sees exactly what remains.
+  // So a revoke has to survive TWO questions, because the two events race and
+  // neither ordering may drop a paying organization:
+  //
+  //   the mirror   Is another membership row still live? This answers the
+  //                ordinary ordering, where the replacement was upserted
+  //                before the cancellation event came back.
+  //   Stripe       Does the customer still hold another subscription for this
+  //                organization? This answers the INVERTED ordering — the
+  //                deleted event overtaking the upsert — which the mirror
+  //                cannot see, because in that window the prior is already
+  //                retired and the replacement is not written yet. The two
+  //                arrive as separate HTTP requests with different event ids,
+  //                so `stripe_events` does not serialize them.
+  //
+  // Stripe is asked only when the cheap answer is "nothing left", which is
+  // the revocation path alone — never on the renewals that make up almost
+  // every delivery.
   let outcome = membershipOutcome(localState);
   if (outcome === "revoke") {
     const remaining = await readLiveMembership(admin, orgId);
     if (!remaining.ok) {
       throw new Error(`membership_read_remaining: ${remaining.error}`);
     }
-    if (remaining.row) outcome = "mirror";
+    if (remaining.row) {
+      outcome = "mirror";
+    } else if (await orgHasAnotherLiveSubscription(stripe, sub, orgId)) {
+      outcome = "mirror";
+    }
   }
 
   const applied = await applyMembershipEntitlement(admin, orgId, outcome);
