@@ -21,6 +21,16 @@
 // `isSuperAdmin` rides along because the rail derives which of a place's four
 // views a viewer may open (Admin is super-admin only) without visiting it.
 //
+// THE MEMBERSHIP RIDES IT TOO (MESITA-1877). `partnered` is the entitlement,
+// and it is all most readers need; `membership` is the BILLING behind it —
+// renewal date, whether it is cancelling, and whether Stripe is dunning — so
+// the Products page can print "Renews 14 Sep 2027" instead of "Renews yearly"
+// and say "Payment due" without a second round trip. It is null for an
+// organization that was made a partner some other way (the operator switch, a
+// migration): partnered true with membership null is a real state, not a bug.
+// `membershipPrice` is the CATALOG price, the same row Stripe's price is
+// provisioned from, so the console stops carrying a hardcoded label.
+//
 // Auth: any signed-in account. The list is scoped to the caller's own
 // memberships, so there is nothing to gate beyond a session.
 
@@ -32,6 +42,10 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
+import {
+  LIVE_MEMBERSHIP_STATES,
+  MEMBERSHIP_PLAN_KEY,
+} from "../_shared/partner-membership.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -79,6 +93,60 @@ Deno.serve(async (req) => {
   };
   const list = (rows ?? []) as unknown as Row[];
   const ids = list.map((r) => r.organizations.id);
+
+  // The live Membership per organization, and the catalog price. Both are
+  // small, independent reads, so they share one wait with each other — but
+  // NOT with the places query below, which the rail blocks on.
+  //
+  // A FAILED READ IS NOT "NO MEMBERSHIP". Either read failing leaves its map
+  // empty and the payload ships `membership: null`, which the console reads
+  // as "billing unknown" and falls back to the plain yearly line — the same
+  // shape a partner from another door already produces. Nothing here may fail
+  // the whole call: the rail, the switcher and the create form all ride this
+  // payload, and a billing read must never be what takes them down.
+  type MembershipRow = {
+    organization_id: string;
+    state: string;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean;
+  };
+  const membershipByOrg = new Map<string, MembershipRow>();
+  let membershipPrice: { priceCents: number; currency: string } | null = null;
+  if (ids.length) {
+    const [memberships, plan] = await Promise.all([
+      admin
+        .from("partner_memberships")
+        .select(
+          "organization_id, state, current_period_end, cancel_at_period_end",
+        )
+        .in("organization_id", ids)
+        .in("state", LIVE_MEMBERSHIP_STATES),
+      admin
+        .from("org_plans")
+        .select("price_cents, currency")
+        .eq("key", MEMBERSHIP_PLAN_KEY)
+        .maybeSingle(),
+    ]);
+    if (memberships.error) {
+      console.error(
+        "[business-web-list-organizations] partner_memberships:",
+        memberships.error,
+      );
+    } else {
+      for (const row of (memberships.data ?? []) as MembershipRow[]) {
+        membershipByOrg.set(row.organization_id, row);
+      }
+    }
+    const planRow = plan.data as
+      | { price_cents: number; currency: string | null }
+      | null;
+    if (planRow) {
+      membershipPrice = {
+        priceCents: planRow.price_cents,
+        currency: (planRow.currency ?? "MXN").toUpperCase(),
+      };
+    }
+  }
 
   // Every held place in one round trip, then grouped in memory — cheaper
   // than a query per organization, and it is the same read the count used
@@ -133,8 +201,10 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     isSuperAdmin,
+    membershipPrice,
     organizations: list.map((r) => {
       const places = byOrg.get(r.organizations.id) ?? [];
+      const membership = membershipByOrg.get(r.organizations.id) ?? null;
       return {
         id: r.organizations.id,
         name: r.organizations.name,
@@ -143,6 +213,13 @@ Deno.serve(async (req) => {
         currency: r.organizations.currency,
         partnered: r.organizations.partnered === true,
         mesitaPayEnabled: r.organizations.mesita_pay_enabled === true,
+        membership: membership
+          ? {
+            state: membership.state,
+            renewsAt: membership.current_period_end,
+            cancelAtPeriodEnd: membership.cancel_at_period_end === true,
+          }
+          : null,
         myRole: r.role,
         placeCount: places.length,
         places,

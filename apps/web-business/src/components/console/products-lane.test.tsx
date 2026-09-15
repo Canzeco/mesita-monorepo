@@ -249,8 +249,12 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
 // still lives where it is true: on the ladder rung that states its own
 // prerequisite.
 describe("Partnership is the gate, never the delivery", () => {
-  const partner = (over: Partial<Parameters<typeof PartnerCard>[0]> = {}) =>
-    renderToStaticMarkup(<PartnerCard partnered={false} isOwner {...over} />);
+  const partner = (
+    over: Partial<Omit<Parameters<typeof PartnerCard>[0], "orgId">> = {},
+  ) =>
+    renderToStaticMarkup(
+      <PartnerCard orgId="org-1" partnered={false} isOwner {...over} />,
+    );
 
   it("the lead hands the verb to the place, once, in every state", () => {
     expect(stripComments(PARTNER_SRC)).toContain("turns these on");
@@ -297,11 +301,20 @@ describe("Partnership is the gate, never the delivery", () => {
 
 // MESITA-1867. The Partner box is a price, a door and a price list. Not
 // partnered: the price at display rank and, for an owner, the one CTA — no
-// pill, because the CTA IS the state. Partnered: the shared pill and "Renews
-// yearly." Each state is asserted against its opposite.
+// pill, because the CTA IS the state. Partnered: the shared pill and when it
+// renews. Each state is asserted against its opposite.
+//
+// MESITA-1877 gave the door somewhere to go: the modal's INFO line became a
+// real Continue, the price comes off the catalog, and the partnered state
+// prints a DATE. The copy laws under that date are asserted below, because
+// they are the two ways this line can lie to an operator about money.
 describe("Mesita Partner is a price, a door, and a price list", () => {
-  const partner = (over: Partial<Parameters<typeof PartnerCard>[0]> = {}) =>
-    renderToStaticMarkup(<PartnerCard partnered={false} isOwner {...over} />);
+  const partner = (
+    over: Partial<Omit<Parameters<typeof PartnerCard>[0], "orgId">> = {},
+  ) =>
+    renderToStaticMarkup(
+      <PartnerCard orgId="org-1" partnered={false} isOwner {...over} />,
+    );
 
   it("the door is the owner's: non-owners read who subscribes instead", () => {
     const owner = partner();
@@ -328,8 +341,10 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     // The pill's dot is its signature: "Partner" alone also appears in the
     // third perk, so the word cannot be the witness.
     expect(on).toContain("bg-violet-500");
+    // No membership row on the payload — the operator switch, a migration, or
+    // a failed billing read. All the console knows is the cadence.
     expect(on).toContain("Renews yearly.");
-    expect(on).toContain("Renewal and cancellation land with the next release.");
+    expect(on).toContain("Cancelling from here lands with the next release.");
     expect(on).not.toContain("Become a partner");
     expect(on).not.toContain("An owner subscribes.");
     // And no pill where the CTA is the state: never three atoms for one fact.
@@ -337,19 +352,79 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     expect(off).not.toContain("Renews yearly.");
   });
 
-  it("the modal restates the commitment and has no button that pretends", () => {
-    // Static render never opens it, so the source is the witness. A disabled
-    // Continue would be a knob that pretends (SoonStrip.tsx); the CTA that
-    // opens the modal already demonstrates the door.
+  // MESITA-1877. `membershipLine` is the one place that turns a subscription
+  // into a sentence, and there are exactly two sentences it must never write.
+  it("a membership that is ENDING never wears the word renews", () => {
+    const html = partner({
+      partnered: true,
+      membership: {
+        state: "active",
+        renewsAt: "2027-09-14T00:00:00.000Z",
+        cancelAtPeriodEnd: true,
+      },
+    });
+    expect(html).not.toMatch(/Renews/);
+    expect(html).toMatch(/Ends .*2027/);
+    // And it stops offering to do what is already done.
+    expect(html).not.toContain("Cancelling from here lands");
+  });
+
+  it("past due is still a partner, and says what needs doing", () => {
+    const html = partner({
+      partnered: true,
+      membership: {
+        state: "past_due",
+        renewsAt: "2027-09-14T00:00:00.000Z",
+        cancelAtPeriodEnd: false,
+      },
+    });
+    expect(html).toContain("bg-violet-500");
+    expect(html).toContain("Payment due");
+    // LAPSE ≠ DROP: nothing here may read as the partnership being over.
+    expect(html).not.toMatch(/expired|no longer|cancelled|canceled/i);
+    expect(html).not.toContain("Become a partner");
+  });
+
+  it("the price is the catalog's, and the label is only the fallback", () => {
+    const html = partner({ price: { priceCents: 150000, currency: "MXN" } });
+    expect(html).toContain("MX$1,500");
+    expect(html).not.toContain("MX$1,000");
+    // The suffix is not billing data: "a year" is the catalog interval and
+    // IVA is a fact about selling in Mexico, so neither rides the wire.
+    expect(html).toContain("+ IVA a year");
+  });
+
+  it("the modal restates the commitment and now carries the real button", () => {
+    // Static render never opens it, so the source is the witness. The
+    // placeholder INFO line is gone: MESITA-1877 shipped the checkout, and a
+    // promise where a button belongs is only honest while there is nothing to
+    // press.
     const start = PARTNER_SRC.indexOf("<Modal");
     const end = PARTNER_SRC.indexOf("</Modal>");
     expect(start).toBeGreaterThan(-1);
     const modal = stripComments(PARTNER_SRC.slice(start, end));
-    expect(modal).toContain('title="Mesita Partner"');
-    expect(modal).toContain("Checkout lands with the next release.");
-    expect(modal).not.toContain("<button");
-    expect(modal).toContain("<PriceLine />");
-    expect(modal).toContain("<Perks />");
+    // The MONEY moment is the one place the word Membership is allowed.
+    expect(modal).toContain('title="Mesita Membership"');
+    expect(modal).not.toContain("Checkout lands with the next release.");
+    expect(modal).toContain("<BuyForm");
+    // Order: price, then what it buys, then the commitment. Nobody decides
+    // before reading what they are deciding about.
+    expect(modal.indexOf("<PriceLine")).toBeLessThan(modal.indexOf("<Perks"));
+    expect(modal.indexOf("<Perks")).toBeLessThan(modal.indexOf("<BuyForm"));
+  });
+
+  it("the buy button is a form, disabled while it opens, and never fakes", () => {
+    const buy = stripComments(
+      PARTNER_SRC.slice(PARTNER_SRC.indexOf("function BuyForm")),
+    );
+    // A server action that redirects to Stripe only redirects from a form
+    // submit, never from an onClick handler.
+    expect(buy).toContain("<form action={action}");
+    expect(buy).toContain("startMembershipAction");
+    // A Checkout session is a network hop; a second click is a second
+    // session, and the owner pays for whichever one they finish.
+    expect(buy).toContain("disabled={pending}");
+    expect(buy).toContain("Continue to checkout");
   });
 
   // MESITA-1869 moved the LOCKED face off the catalogue and into the grid;
@@ -374,11 +449,15 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     // fact, the full PartnerCard box for the state with a decision in it.
     const banner = readFileSync(path.join(__dirname, "./PartnerBanner.tsx"), "utf8");
     expect(banner).toContain("if (!partnered) {");
-    expect(banner).toContain("<PartnerCard partnered={false}");
-    // "Membership" is banned in this console (package CLAUDE.md) and the
-    // mock says it — through stripComments, so the docblock that NAMES the
-    // ban cannot fail the assertion it explains.
-    expect(stripComments(banner)).not.toMatch(/membership/i);
+    expect(banner).toContain("partnered={false}");
+    // ONE STATUS NOUN. The strip says what the organization IS — Partner —
+    // and the only "membership" it may carry is the prop that hands it the
+    // subscription. Never a synonym in the copy: the mock's "included with
+    // your membership" stays written as partnership (MESITA-1877).
+    const bannerCode = stripComments(banner);
+    const copy = bannerCode.match(/Product access[^<{]*/)?.[0] ?? "";
+    expect(copy).toContain("partnership");
+    expect(copy).not.toMatch(/membership/i);
   });
 });
 

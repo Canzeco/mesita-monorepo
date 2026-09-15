@@ -805,6 +805,33 @@ export type Database = {
         }
         Relationships: []
       }
+      org_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          key: string
+          label: string
+          price_cents: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          key: string
+          label: string
+          price_cents?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          key?: string
+          label?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+        }
+        Relationships: []
+      }
       organization_guest_customers: {
         Row: {
           consumer_id: string
@@ -987,6 +1014,7 @@ export type Database = {
           name: string
           partnered: boolean
           rfc: string | null
+          stripe_billing_customer_id: string | null
           updated_at: string
         }
         Insert: {
@@ -998,6 +1026,7 @@ export type Database = {
           name: string
           partnered?: boolean
           rfc?: string | null
+          stripe_billing_customer_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1009,9 +1038,70 @@ export type Database = {
           name?: string
           partnered?: boolean
           rfc?: string | null
+          stripe_billing_customer_id?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      partner_memberships: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          id: string
+          organization_id: string
+          plan_key: string
+          price_cents: number | null
+          state: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          organization_id: string
+          plan_key: string
+          price_cents?: number | null
+          state: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          organization_id?: string
+          plan_key?: string
+          price_cents?: number | null
+          state?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_memberships_plan_key_fkey"
+            columns: ["plan_key"]
+            isOneToOne: false
+            referencedRelation: "org_plans"
+            referencedColumns: ["key"]
+          },
+        ]
       }
       place_categories: {
         Row: {

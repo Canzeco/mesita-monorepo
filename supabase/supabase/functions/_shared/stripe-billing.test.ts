@@ -5,8 +5,9 @@
 //
 // resolvePlanPrice() is the self-provisioning price resolver. The contract we
 // lock here:
-//   • the catalog is the source of truth for the two-plan mapping
-//     (consumer premium monthly / business Verified yearly), amounts from DB;
+//   • the catalog is the source of truth for the plan mapping (consumer
+//     Premium monthly / the org's yearly Mesita Membership / the legacy
+//     per-place Verified year), amounts from DB;
 //   • a cached stripe_price_id that still matches the DB row is a fast-path
 //     hit — no product/price is created (idempotent);
 //   • a missing lookup row yields null (no accidental provisioning);
@@ -20,15 +21,26 @@ import { resolvePlanPrice, STRIPE_CATALOG, liveChargesBlocked } from "./stripe-b
 
 // ─── Catalog contract ────────────────────────────────────────────────────
 
-Deno.test("STRIPE_CATALOG: Premium monthly + Verified yearly map to DB rows", () => {
+Deno.test("STRIPE_CATALOG: every sold plan maps to its own DB row", () => {
   const byId = Object.fromEntries(STRIPE_CATALOG.map((e) => [e.id, e]));
-  assertEquals(STRIPE_CATALOG.length, 2);
+  assertEquals(STRIPE_CATALOG.length, 3);
 
   assertEquals(byId["consumer_premium"].table, "consumer_plans");
   assertEquals(byId["consumer_premium"].rowKey, "premium");
   assertEquals(byId["consumer_premium"].lookupKey, "consumer_premium_monthly");
   assertEquals(byId["consumer_premium"].interval, "month");
 
+  // The org's yearly Mesita Membership (MESITA-1877) — what is SOLD now.
+  assertEquals(byId["business_partner_membership"].table, "org_plans");
+  assertEquals(byId["business_partner_membership"].rowKey, "membership");
+  assertEquals(
+    byId["business_partner_membership"].lookupKey,
+    "business_partner_membership_yearly",
+  );
+  assertEquals(byId["business_partner_membership"].interval, "year");
+
+  // The per-PLACE SKU it supersedes, kept while places still bill on it
+  // (business-web-change-subscription; MESITA-1868 retires that door).
   assertEquals(byId["business_verified"].table, "place_plans");
   assertEquals(byId["business_verified"].rowKey, "pro");
   assertEquals(byId["business_verified"].lookupKey, "business_verified_yearly");
@@ -38,6 +50,16 @@ Deno.test("STRIPE_CATALOG: Premium monthly + Verified yearly map to DB rows", ()
 Deno.test("STRIPE_CATALOG: lookup keys are unique (idempotency anchors)", () => {
   const keys = STRIPE_CATALOG.map((e) => e.lookupKey);
   assertEquals(new Set(keys).size, keys.length);
+});
+
+// resolvePlanPrice caches the provisioned price id back onto table.rowKey.
+// Two entries sharing one lookup row would each overwrite the other's id,
+// fail their own verification on the next read, and mint a fresh Stripe price
+// on EVERY checkout — which is why the Membership got org_plans rather than
+// borrowing place_plans.pro at the same MX$1,000.
+Deno.test("STRIPE_CATALOG: one lookup row per entry", () => {
+  const rows = STRIPE_CATALOG.map((e) => `${e.table}.${e.rowKey}`);
+  assertEquals(new Set(rows).size, rows.length);
 });
 
 Deno.test("liveChargesBlocked: test keys and missing live flag never block", () => {

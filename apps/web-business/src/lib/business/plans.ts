@@ -31,14 +31,41 @@ export function planForSubscription(sub: StrategySubscriptionId): PlanKey {
 /**
  * Pato's number (2026-09-15): *"pon tú de mil pesos al año, súper barato."*
  *
- * The ONE source both the Partner box and its modal print — two renderings
- * of a price that can drift is a price list that lies in one of them. It is
- * a label, not a value: nothing charges off it. To be replaced by
- * `place_plans.pro.price_cents` on the organizations payload when MESITA-1868
- * ships the checkout, so the number the owner reads is the number Stripe
- * bills.
+ * THE FALLBACK, since MESITA-1877. The real number now rides the
+ * organizations payload off `org_plans.membership` — the same row Stripe's
+ * price is provisioned from, so what an owner reads is what Stripe bills.
+ * This constant is what `membershipPriceLabel` prints when that read is
+ * missing: an older payload, or a billing read that failed. A price box with
+ * no price would be worse than a stale one, and the two have not differed
+ * since the row was seeded at this number.
  */
 export const PARTNER_PRICE_LABEL = {
   amount: "MX$1,000",
   suffix: "+ IVA a year",
 } as const;
+
+/**
+ * The price as the console prints it, from the catalog when the payload
+ * carried one.
+ *
+ * The SUFFIX is not billing data and never comes off the wire: "a year" is
+ * the catalog entry's interval, fixed in code, and IVA is a fact about
+ * selling in Mexico, not a Stripe field. Only the amount can move, so only
+ * the amount is read.
+ */
+export function membershipPriceLabel(
+  price: { priceCents: number; currency: string } | null | undefined,
+): { amount: string; suffix: string } {
+  if (!price || !Number.isFinite(price.priceCents)) return PARTNER_PRICE_LABEL;
+  const pesos = price.priceCents / 100;
+  // Whole pesos when it is whole — "MX$1,000.00" on a round yearly price
+  // reads as a receipt, not a price tag.
+  const amount = Number.isInteger(pesos)
+    ? pesos.toLocaleString("en-US")
+    : pesos.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  const prefix = price.currency === "MXN" ? "MX$" : `${price.currency} `;
+  return { amount: `${prefix}${amount}`, suffix: PARTNER_PRICE_LABEL.suffix };
+}

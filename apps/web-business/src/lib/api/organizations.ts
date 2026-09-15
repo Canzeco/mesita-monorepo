@@ -21,6 +21,27 @@ export type OrgRole = "owner" | "editor" | "viewer";
  *  MESITA-1553 mistake, and the rail is on every screen in the console). */
 export type RailPlace = { id: string; name: string; photoUrl: string | null };
 
+/** The organization's live Mesita Membership — the yearly subscription that
+ *  makes it a Partner (MESITA-1877). BILLING, never entitlement: `partnered`
+ *  is the fact, this is why.
+ *
+ *  `state` is "active" or "past_due". Past due is STILL A PARTNER — Stripe is
+ *  dunning a card that may well recover, and nothing about the partnership
+ *  changes until the subscription actually ends. The console says the payment
+ *  is due; it never says the partnership is gone. */
+export type OrgMembership = {
+  state: "active" | "past_due";
+  /** End of the paid period — when it renews, or when it lapses if it is
+   *  cancelling. Null when Stripe has not set one yet. */
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+};
+
+/** The catalog price of the Membership, off `org_plans` — the same row the
+ *  Stripe price is provisioned from, so what the owner reads is what Stripe
+ *  bills. Null when the payload predates MESITA-1877 or the read failed. */
+export type MembershipPrice = { priceCents: number; currency: string };
+
 export type Organization = {
   id: string;
   name: string;
@@ -34,6 +55,15 @@ export type Organization = {
   partnered?: boolean;
   /** Org Mesita Pay package. Rides Partner; UNDEFINED on a stale payload. */
   mesitaPayEnabled?: boolean;
+  /** The BILLING behind `partnered` (MESITA-1877) — the live Mesita
+   *  Membership, or null.
+   *
+   *  NULL IS NOT "NOT A PARTNER". `partnered` is the entitlement and answers
+   *  that on its own; this is null whenever the organization became a partner
+   *  some other way (the operator switch, a migration), and also whenever the
+   *  billing read failed. Every consumer of it must degrade to the plain
+   *  yearly line rather than concluding anything about the partnership. */
+  membership?: OrgMembership | null;
   /** The places this organization holds, by name. Rides the org list so the
    *  rail has its portfolio on the first frame instead of one round trip
    *  later (MESITA-1779). */
@@ -46,6 +76,9 @@ export type Organization = {
 export type ConsoleViewer = {
   organizations: Organization[];
   isSuperAdmin: boolean;
+  /** One price for the whole console — it is a catalog fact, not an
+   *  organization's, so it rides the envelope rather than every row. */
+  membershipPrice: MembershipPrice | null;
 };
 
 export type ConsolePlace = {
@@ -125,18 +158,21 @@ export type ConsolePlace = {
 export const apiConsoleViewer = cache(async function apiConsoleViewer(
   client: SupabaseClient,
 ): Promise<ConsoleViewer> {
-  const { organizations, isSuperAdmin } = await invokeEF<ConsoleViewer>(
-    client,
-    "business-web-list-organizations",
-    {},
-    "Couldn't load your organizations.",
-  );
+  const { organizations, isSuperAdmin, membershipPrice } =
+    await invokeEF<ConsoleViewer>(
+      client,
+      "business-web-list-organizations",
+      {},
+      "Couldn't load your organizations.",
+    );
   return {
     organizations: (organizations ?? []).map((o) => ({
       ...o,
       places: o.places ?? [],
+      membership: o.membership ?? null,
     })),
     isSuperAdmin: isSuperAdmin === true,
+    membershipPrice: membershipPrice ?? null,
   };
 });
 
@@ -466,6 +502,35 @@ export async function apiGetPaymentDashboardLink(
     "Couldn't open the payments dashboard.",
   );
   return url ?? null;
+}
+
+/** Opens Stripe Checkout for the organization's yearly Mesita Membership
+ *  (MESITA-1877). Owner-only, enforced by the EF.
+ *
+ *  It returns a URL in EVERY mode: real Stripe gives the hosted Checkout page,
+ *  and MOCK_SUBSCRIPTION gives `successUrl` back after entitling inline — so
+ *  the caller redirects, full stop, and never branches on `mock`.
+ *
+ *  `alreadyMember` is the one non-redirect answer: the organization has a live
+ *  membership, so there is nothing to sell. It exists because two tabs and a
+ *  double-click are ordinary, and charging twice for one year is not. */
+export async function apiStartMembership(
+  client: SupabaseClient,
+  input: { orgId: string; successUrl?: string; cancelUrl?: string },
+): Promise<{ checkoutUrl: string | null; alreadyMember: boolean }> {
+  const res = await invokeEF<{
+    checkout_url?: string | null;
+    already_member?: boolean;
+  }>(
+    client,
+    "business-web-start-membership",
+    input,
+    "Couldn't start the membership checkout.",
+  );
+  return {
+    checkoutUrl: res.checkout_url ?? null,
+    alreadyMember: res.already_member === true,
+  };
 }
 
 export async function apiSetOrgPartnership(

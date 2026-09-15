@@ -55,7 +55,14 @@ export default async function ShellLayout({
   // no organizations" either (MESITA-1793's law: a fetch failure never says
   // "create one"). The rail gets the flag and says so; each page reports its
   // own error.
-  let viewer: ConsoleViewer = { organizations: [], isSuperAdmin: false };
+  // `membershipPrice: null` is the same honest absence every other field
+  // carries here: no price was read, so nothing prints one, and PartnerCard
+  // falls back to the label rather than inventing a number.
+  let viewer: ConsoleViewer = {
+    organizations: [],
+    isSuperAdmin: false,
+    membershipPrice: null,
+  };
   let viewerError = false;
   try {
     viewer = await apiConsoleViewer(supabase);
