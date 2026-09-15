@@ -16,6 +16,26 @@
 // A ROW WITH NO BUTTON IS FINISHED, NOT BROKEN. A place another organization
 // holds renders its state and stops; every action would 409, and a disabled
 // button that explains nothing is worse than no button at all.
+//
+// ── A RESULT IS A CARD (MESITA-1873) ──────────────────────────────────────
+//
+// Pato, on the live list: *"prettier results wtf."* The content was right and
+// the CONTAINER was not: hairline-separated rows sitting directly on the
+// page's own ground, which is the one surface in this console that is not
+// white. Against the product tiles that shipped the same morning — rounded,
+// lifted, on `bg-card` — the search results read as a table somebody had not
+// finished styling.
+//
+// So a result takes `Section`'s geometry, which is the console's card: the
+// same radius, the same border, the same `shadow-card` lift, the same 16px
+// padding. The list becomes a gapped column instead of a divided block. The
+// card lifts a little further on hover, because every one of these rows is
+// something you are about to click.
+//
+// NOTHING ABOUT THE CONTENT MOVED. The place, its address, what Mesita
+// already knows and the one verb are still on one line, the state pill is
+// still neutral in all five states, and the button is still the only thing
+// that changes weight.
 import Link from "next/link";
 import { Loader2, Store } from "lucide-react";
 import type { RowState } from "@/lib/add-place-card";
@@ -48,10 +68,10 @@ export function AddPlaceRow({
   onClaim: (placeId: string) => void;
 }) {
   return (
-    <li className="border-border flex flex-col gap-2 border-b px-1 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
+    <li className="border-border bg-card shadow-card hover:border-foreground/20 flex flex-col gap-2 rounded-2xl border p-4 transition sm:flex-row sm:items-center sm:gap-4">
       <span
         aria-hidden
-        className="bg-muted text-muted-foreground ring-border hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 sm:flex"
+        className="bg-muted text-muted-foreground hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex"
       >
         <Store className="h-4 w-4" />
       </span>

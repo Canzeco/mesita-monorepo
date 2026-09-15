@@ -235,7 +235,20 @@ export function AddPlaceForm({
               sessionTokenRef.current = newSessionToken();
             }
           }}
-          className="border-border bg-card focus:border-foreground/40 h-14 w-full rounded-2xl border pr-12 pl-11 text-base outline-none transition"
+          // NO NATIVE CLEAR BUTTON (MESITA-1873). Pato: *"remove the ugly
+          // ass X."* It was never ours: WebKit draws
+          // `::-webkit-search-cancel-button` inside every `type="search"`
+          // input, in the browser's own grey at the browser's own size, and
+          // on a 56px bar with a 16px magnifier opposite it the mismatch is
+          // the first thing the eye lands on.
+          //
+          // HIDDEN, NOT TRADED AWAY. Dropping `type="search"` would remove it
+          // too and cost the two things the type is actually for: Escape
+          // clears the box, and a screen reader announces a searchbox rather
+          // than a text field. `appearance-none` on the pseudo-element is the
+          // narrow fix; `::-ms-clear` is the same glyph in Edge's legacy
+          // engine, which draws it for text inputs too.
+          className="border-border bg-card focus:border-foreground/40 h-14 w-full rounded-2xl border pr-12 pl-11 text-base outline-none transition [&::-ms-clear]:hidden [&::-webkit-search-cancel-button]:appearance-none"
         />
         {searching && (
           <Loader2 className="text-muted-foreground pointer-events-none absolute top-1/2 right-4 h-4 w-4 -translate-y-1/2 animate-spin motion-reduce:animate-none" />
@@ -253,7 +266,9 @@ export function AddPlaceForm({
       ) : null}
 
       {predictions.length > 0 && (
-        <ul aria-live="polite" className="flex w-full flex-col">
+        // A GAPPED COLUMN, not a divided block (MESITA-1873): each result is
+        // its own card now, so the separator between them is air.
+        <ul aria-live="polite" className="flex w-full flex-col gap-2">
           {predictions.map((p) => (
             <AddPlaceRow
               key={p.placeId}
