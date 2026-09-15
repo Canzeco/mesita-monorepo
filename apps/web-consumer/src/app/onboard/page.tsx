@@ -43,7 +43,8 @@ export default async function ConsumerOnboardPage({
   // back. One predicate, both call sites.
   //
   // A row missing ANY of the three comes back here once and fills the gap —
-  // `initial` prefills the rest so it is one field, not the whole form again.
+  // `initial` prefills the rest, and the form OPENS on the first unanswered
+  // question (MESITA-1830), so it is one question, not the whole flow again.
   // That is a behaviour change from MESITA-1806, when a first-name-only row
   // sailed through: adding sex to the predicate re-onboards anyone without it.
   // Checked against live data before shipping (1 consumer, sex already set, 0
@@ -82,29 +83,23 @@ export default async function ConsumerOnboardPage({
   return (
     <MobileFrame>
       <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-8 pb-8">
-        {/* THE HEADLINE IS THE FIRST THING NOW (design review, defect 1).
-            "SIGNED IN AS +52…" used to own this slot in a bordered card with
-            its own button, which put account-recovery chrome above the brand
-            and above the only sentence that tells a guest what is happening.
-            It is a footnote under the button now — still reachable for the
-            person who signed in as the wrong account, no longer the first
-            thing read by the many who did not.
+        {/* NO HEADLINE HERE (MESITA-1830). The page used to own one fixed
+            headline; the flow is three questions now and the heading changes
+            with the step, so `OnboardForm` renders it — the question IS the
+            <h1>, and a page-level title above it would be a second voice.
+
+            WHAT THIS FILE STILL OWNS is the frame and the exits. "SIGNED IN
+            AS +52…" used to sit in a bordered card ABOVE the brand (design
+            review, defect 1), which put account-recovery chrome above the only
+            sentence telling a guest what is happening. It is a footnote under
+            the button now — still reachable for the person who signed in as
+            the wrong account, and it is the real exit from step 1, which is
+            why the step bar renders no Back there.
 
             NO LOGO TILE (defect 8). A 48px pink-gradient square with
             `shadow-glow`, floating alone above the headline, was decoration
             wearing the brand: the guest just came through a Mesita OTP and
             the wordmark is not in question. The display face carries it. */}
-        <header className="mb-8">
-          <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
-            Last step before
-            <br />
-            you&apos;re in.
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Three answers. Takes about fifteen seconds.
-          </p>
-        </header>
-
         <OnboardForm initial={initial} next={nextTarget} />
 
         <div className="text-muted-foreground mt-5 flex items-center justify-between gap-3 text-xs">

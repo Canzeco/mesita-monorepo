@@ -1,6 +1,8 @@
 import { Redirect, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { ChevronLeft } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import {
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +26,28 @@ const SEXES = [
   { value: 'male', label: 'Male' },
 ] as const;
 
+// ONE QUESTION PER SCREEN (MESITA-1830) — the hand-mirror of web's
+// ONBOARD_STEPS in apps/web-consumer/src/lib/consumer-onboarding.ts. Same
+// three keys, same order, same headlines; web/mobile IA cannot diverge, and
+// the drift alarm greps THIS FILE for these three headline strings
+// (apps/web-consumer/src/lib/__tests__/onboarding-gate.test.ts).
+//
+// The age is interpolated from MIN_SIGNUP_AGE, never typed — it has moved
+// once already (MESITA-727) and a literal here would rot silently.
+const STEPS = [
+  {
+    key: 'first_name',
+    headline: 'What should we call you?',
+    dek: 'The app greets you by it.',
+  },
+  {
+    key: 'birthday',
+    headline: "When's your birthday?",
+    dek: `We check you're ${MIN_SIGNUP_AGE} or over, and we'll remember it.`,
+  },
+  { key: 'sex', headline: 'Last one.', dek: null },
+] as const;
+
 export default function Onboard() {
   const router = useRouter();
   const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
@@ -33,21 +57,53 @@ export default function Onboard() {
   // name is still asked by the reservation flow instead, where the guest can
   // see why the place needs it.
   //
-  // Prefilled so a half-onboarded consumer fills the one missing field.
+  // Prefilled so a half-onboarded consumer fills the one missing field, and
+  // the flow OPENS on that field rather than at the top (MESITA-1830). That
+  // resume is real, not cosmetic: each step writes as it is answered, because
+  // consumer-web-update-profile patches only the keys a request carries.
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [sex, setSex] = useState<'male' | 'female' | ''>(
     profile?.sex === 'male' || profile?.sex === 'female' ? profile.sex : '',
   );
+  const [step, setStep] = useState(() => {
+    if (!profile?.first_name) return 0;
+    if (!profile?.birthday) return 1;
+    return 2;
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Android's hardware Back steps DOWN the flow instead of leaving it, so it
+  // matches the chevron. Returning false at step 0 hands the press back to the
+  // OS — there is nothing before the first question, and "Not you?" is the
+  // real exit. Registered before the `onboarded` early return so the hook
+  // order never changes between renders.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step === 0) return false;
+      setError(null);
+      setStep((s) => Math.max(0, s - 1));
+      return true;
+    });
+    return () => sub.remove();
+  }, [step]);
+
+  const current = STEPS[step];
+  const last = step === STEPS.length - 1;
 
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
   // Age gate — 13 or below is restricted (MESITA-727).
   const age = ageFromBirthday(birthday.trim());
   const underage = age !== null && age < MIN_SIGNUP_AGE;
+  // Only the CURRENT question gates the button; the others are already
+  // written or not yet asked.
   const canSubmit =
-    firstName.trim().length > 0 && validBirthday && !underage && sex !== '';
+    current.key === 'first_name'
+      ? firstName.trim().length > 0
+      : current.key === 'birthday'
+        ? validBirthday && !underage
+        : sex !== '';
 
   const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
@@ -59,13 +115,22 @@ export default function Onboard() {
     setError(null);
     setBusy(true);
     try {
-      await apiUpdateConsumerProfile({
-        first_name: firstName.trim(),
-        birthday: birthday.trim(),
-        ...(sex === 'male' || sex === 'female' ? { sex } : {}),
-      });
-      await refreshProfile();
-      router.replace('/');
+      if (current.key === 'first_name') {
+        await apiUpdateConsumerProfile({ first_name: firstName.trim() });
+      } else if (current.key === 'birthday') {
+        await apiUpdateConsumerProfile({ birthday: birthday.trim() });
+      } else if (sex === 'male' || sex === 'female') {
+        await apiUpdateConsumerProfile({ sex });
+      }
+      if (last) {
+        // Only the final write completes the gate, so this is the only place
+        // the provider's `onboarded` can flip — refreshing earlier would cost
+        // a round trip that cannot change anything.
+        await refreshProfile();
+        router.replace('/');
+        return;
+      }
+      setStep((s) => s + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
     } finally {
@@ -75,8 +140,10 @@ export default function Onboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
-      {/* Identity header — the signed-in phone is already on auth.user from the
-          OTP step. "Not you?" signs out and returns to /sign-in. */}
+      {/* Step bar — the mirror of web's OnboardStepBar. The dots are ONE
+          control (a progressbar reading "Step 2 of 3"), not three announced
+          elements, and the right-hand spacer keeps them from shifting
+          sideways when the chevron appears at step 2. */}
       <View
         style={{
           flexDirection: 'row',
@@ -87,153 +154,190 @@ export default function Onboard() {
           paddingBottom: 4,
         }}
       >
-        <Text
-          className="text-muted-foreground"
-          style={{ fontSize: 13 }}
-          numberOfLines={1}
+        <View style={{ width: 44, alignItems: 'flex-start' }}>
+          {step > 0 ? (
+            <Pressable
+              onPress={() => {
+                setError(null);
+                setStep((s) => Math.max(0, s - 1));
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={8}
+              style={{
+                minHeight: 44,
+                width: 44,
+                justifyContent: 'center',
+              }}
+            >
+              <ChevronLeft color="#260409" size={22} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Step ${step + 1} of ${STEPS.length}`}
+          accessibilityValue={{ min: 1, max: STEPS.length, now: step + 1 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
-          {phoneLabel ? `Signed in as ${phoneLabel}` : 'Signed in'}
-        </Text>
-        <Pressable
-          onPress={() => void signOut()}
-          accessibilityRole="button"
-          accessibilityLabel="Not you? Sign out"
-          hitSlop={8}
-          style={{ minHeight: 44, justifyContent: 'center' }}
-        >
-          <Text className="font-semibold text-primary" style={{ fontSize: 13 }}>
-            Not you?
-          </Text>
-        </Pressable>
+          {STEPS.map((s, i) => (
+            <View
+              key={s.key}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              className={i <= step ? 'bg-foreground' : 'bg-border'}
+              style={{ height: 6, width: i === step ? 20 : 6, borderRadius: 3 }}
+            />
+          ))}
+        </View>
+
+        <View style={{ width: 44 }} />
       </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
+        style={{ flex: 1, paddingHorizontal: 24, paddingBottom: 16 }}
       >
-        <Text
-          className="font-display font-semibold text-foreground"
-          style={{ fontSize: 28, letterSpacing: -0.42 }}
-        >
-          Last step before you&apos;re in.
-        </Text>
-        <Text
-          className="mt-2 text-muted-foreground"
-          style={{ fontSize: 14 }}
-        >
-          Three answers. Takes about fifteen seconds.
-        </Text>
-
-        <View
-          className="rounded-2xl border border-border bg-card"
-          style={{
-            marginTop: 32,
-            padding: 24,
-            shadowColor: '#260409',
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 2,
-          }}
-        >
-          <TextField
-            label="First name"
-            autoComplete="given-name"
-            autoCapitalize="words"
-            maxLength={60}
-            value={firstName}
-            onChangeText={setFirstName}
-          />
-
+        {/* No card wrapper (design review, defect 4 — web closed it in
+            MESITA-1829, mobile closes it here). A bordered, shadowed box
+            around the only question on the screen framed it as a form to be
+            processed rather than a door to be walked through. */}
+        <View style={{ flex: 1, paddingTop: 24 }}>
           <Text
-            className="font-semibold text-foreground"
-            style={{ marginTop: 20, marginBottom: 8, fontSize: 14 }}
+            accessibilityRole="header"
+            className="font-display font-semibold text-foreground"
+            style={{ fontSize: 28, letterSpacing: -0.42 }}
           >
-            Your birthday
+            {current.headline}
           </Text>
-          <BirthdayPicker value={birthday} onChange={setBirthday} />
-
-          {underage ? (
-            <Text
-              className="mt-2 text-destructive"
-              style={{ fontSize: 12 }}
-            >
-              You must be at least {MIN_SIGNUP_AGE} to use Mesita.
-            </Text>
-          ) : (
-            <Text
-              className="mt-2 text-muted-foreground"
-              style={{ fontSize: 11, lineHeight: 15 }}
-            >
-              Private. It checks you&apos;re {MIN_SIGNUP_AGE} or over, and sets
-              the age on your Passport.
-            </Text>
-          )}
-
-          {/* Two options and no third: `consumers_sex_check` allows male and
-              female only (narrowed by 20260825003000), so this list is the
-              whole vocabulary. radiogroup rather than two buttons so
-              TalkBack/VoiceOver announce it as one exclusive choice. */}
-          <Text
-            className="font-semibold text-foreground"
-            style={{ marginTop: 20, marginBottom: 8, fontSize: 14 }}
-          >
-            Sex
-          </Text>
-          <View
-            accessibilityRole="radiogroup"
-            style={{ flexDirection: 'row', gap: 8 }}
-          >
-            {SEXES.map((option) => {
-              const on = sex === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setSex(option.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                  accessibilityLabel={option.label}
-                  className={
-                    on
-                      ? 'flex-1 items-center justify-center rounded-full border border-foreground bg-foreground'
-                      : 'flex-1 items-center justify-center rounded-full border border-border bg-card'
-                  }
-                  style={{ height: 44 }}
-                >
-                  <Text
-                    className={on ? 'text-background' : 'text-foreground'}
-                    style={{ fontSize: 14, fontWeight: '600' }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={{ marginTop: 24 }}>
-            <Button
-              onPress={() => void submit()}
-              loading={busy}
-              disabled={!canSubmit || busy}
-            >
-              Let&apos;s go
-            </Button>
-          </View>
-
-          {error ? (
-            <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
-              {error}
+          {current.dek ? (
+            <Text className="mt-2 text-muted-foreground" style={{ fontSize: 14 }}>
+              {current.dek}
             </Text>
           ) : null}
 
+          <View style={{ marginTop: 32 }}>
+            {current.key === 'first_name' ? (
+              <TextField
+                accessibilityLabel={current.headline}
+                autoComplete="given-name"
+                autoCapitalize="words"
+                autoFocus
+                maxLength={60}
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+            ) : null}
+
+            {current.key === 'birthday' ? (
+              <>
+                <BirthdayPicker value={birthday} onChange={setBirthday} />
+                {underage ? (
+                  <Text className="mt-3 text-destructive" style={{ fontSize: 12 }}>
+                    You must be at least {MIN_SIGNUP_AGE} to use Mesita.
+                  </Text>
+                ) : (
+                  <Text
+                    className="mt-3 text-muted-foreground"
+                    style={{ fontSize: 12, lineHeight: 16 }}
+                  >
+                    Nobody sees it. It sets the age on your Passport.
+                  </Text>
+                )}
+              </>
+            ) : null}
+
+            {/* Two options and no third: `consumers_sex_check` allows male and
+                female only (narrowed by 20260825003000), so this list is the
+                whole vocabulary. radiogroup rather than two buttons so
+                TalkBack/VoiceOver announce it as one exclusive choice — and it
+                carries its own label, because the visible heading now says
+                "Last one." rather than naming the question. */}
+            {current.key === 'sex' ? (
+              <View
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Sex"
+                style={{ flexDirection: 'row', gap: 8 }}
+              >
+                {SEXES.map((option) => {
+                  const on = sex === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => setSex(option.value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: on }}
+                      accessibilityLabel={option.label}
+                      className={
+                        on
+                          ? 'flex-1 items-center justify-center rounded-full border border-foreground bg-foreground'
+                          : 'flex-1 items-center justify-center rounded-full border border-border bg-card'
+                      }
+                      style={{ height: 44 }}
+                    >
+                      <Text
+                        className={on ? 'text-background' : 'text-foreground'}
+                        style={{ fontSize: 14, fontWeight: '600' }}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+          </View>
+
+          {error ? (
+            <Text className="mt-4 text-destructive" style={{ fontSize: 12 }}>
+              {error}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Bottom-anchored so the CTA does not move between step 1 and step 3
+            — the one element whose job is to stay put. */}
+        <Button
+          onPress={() => void submit()}
+          loading={busy}
+          disabled={!canSubmit || busy}
+        >
+          Continue
+        </Button>
+
+        {/* Identity is a FOOTNOTE under the button (design review, defect 1 —
+            web closed it in MESITA-1829, mobile closes it here). It used to
+            own the top of the screen, putting account-recovery chrome above
+            the only sentence that tells a guest what is happening. It is also
+            the real exit from step 1, which is why no Back renders there. */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginTop: 12,
+          }}
+        >
           <Text
             className="text-muted-foreground"
-            style={{ marginTop: 12, textAlign: 'center', fontSize: 11, lineHeight: 15 }}
+            style={{ fontSize: 12, flexShrink: 1 }}
+            numberOfLines={1}
           >
-            Only your name is shared with a place — it&apos;s the name your
-            reservation is booked under.
+            {phoneLabel ?? 'Your account'}
           </Text>
+          <Pressable
+            onPress={() => void signOut()}
+            accessibilityRole="button"
+            accessibilityLabel="Not you? Sign out"
+            hitSlop={8}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
+            <Text className="font-semibold text-primary" style={{ fontSize: 12 }}>
+              Not you?
+            </Text>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
