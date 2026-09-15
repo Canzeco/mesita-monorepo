@@ -10,6 +10,7 @@ import {
   apiGetPaymentDashboardLink,
   apiRemoveOrgMember,
   apiSetOrgPartnership,
+  apiStartMembership,
   apiStartPaymentOnboarding,
   apiUpdateOrganization,
   apiUpdateOrgMemberRole,
@@ -341,4 +342,68 @@ export async function setOrgPartnershipAction(
       partnered: false,
     };
   }
+}
+
+export type StartMembershipState = { error: string | null };
+
+/**
+ * The owner buys the organization's yearly Mesita Membership (MESITA-1877).
+ *
+ * It ends in a redirect in every mode that works: real Stripe returns the
+ * hosted Checkout page, and MOCK_SUBSCRIPTION returns the success URL after
+ * entitling inline. So there is no success branch here — only the two ways it
+ * can fail to leave.
+ *
+ * `redirect()` throws NEXT_REDIRECT and MUST stay outside the try: errMsg
+ * would swallow it and the modal would show a nonsense error instead of
+ * going to Stripe (MESITA-1793, and connectPaymentsAction above).
+ *
+ * ABSOLUTE URLS, BUILT HERE. This is a server action calling through
+ * supabase-js, so no browser sets an Origin on that hop and the EF's own
+ * fallback would build a relative path Stripe rejects — the same lesson
+ * MESITA-1643 taught Connect. The console is the only party that knows where
+ * the owner should land.
+ */
+export async function startMembershipAction(
+  _prev: StartMembershipState,
+  formData: FormData,
+): Promise<StartMembershipState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  if (!orgId) return { error: "Missing organization." };
+
+  const origin = await consoleOrigin();
+  if (!origin) {
+    return {
+      error: "Couldn't work out where to send you back to. Reload and try again.",
+    };
+  }
+
+  const supabase = await createServerSupabase();
+  let checkoutUrl: string | null = null;
+  let alreadyMember = false;
+  try {
+    ({ checkoutUrl, alreadyMember } = await apiStartMembership(supabase, {
+      orgId,
+      successUrl: `${origin}${orgHref(orgId, "products")}?membership=return`,
+      cancelUrl: `${origin}${orgHref(orgId, "products")}?membership=cancelled`,
+    }));
+  } catch (e) {
+    const code = (e as { code?: string | null })?.code ?? null;
+    return {
+      error: code === "stripe_live_blocked"
+        // The operator's own gate (MESITA-37), not the owner's mistake — so
+        // it says who can clear it rather than telling them to try again.
+        ? "Live payments aren't switched on yet. Mesita has to enable them."
+        : errMsg(e, "Couldn't start the membership checkout."),
+    };
+  }
+
+  if (alreadyMember) {
+    // Two tabs, or a double-click. The partnership is already paid for, so
+    // the honest answer is to show them the page saying so.
+    revalidatePath("/", "layout");
+    return { error: null };
+  }
+  if (checkoutUrl) redirect(checkoutUrl);
+  return { error: "Couldn't start the membership checkout." };
 }

@@ -244,6 +244,65 @@ export function isMockCustomerId(id: string | null | undefined): boolean {
   return !!id && id.startsWith("mock_");
 }
 
+// ─── The organization's Stripe customer anchor ──────────────────────────────
+//
+// The sibling of ensureConsumerCustomer, for the org side (MESITA-1877). It
+// resolves the customer an organization PAYS MESITA as, for the yearly Mesita
+// Membership.
+//
+// TWO STRIPE IDENTITIES, AND THEY MUST NEVER MEET. `organizations
+// .stripe_billing_customer_id` is a Customer on Mesita's own account — the org
+// as a buyer. `organization_payment_accounts.stripe_account_id` is a CONNECT
+// account — the org as a seller, where guests' money lands. Handing the second
+// where the first belongs bills a restaurant on its own account, which is a
+// bug that looks like it worked.
+//
+// Anchored on `organizations`, not on the subscription row, for the same
+// reason the consumer anchor is: the customer outlives any one subscription,
+// so a lapsed member who re-subscribes keeps one billing history rather than
+// silently getting a second customer.
+
+export async function ensureOrgBillingCustomer(
+  admin: SupabaseClient,
+  stripe: Stripe,
+  orgId: string,
+  orgName: string | null,
+): Promise<string> {
+  const { data: org } = await admin
+    .from("organizations")
+    .select("stripe_billing_customer_id")
+    .eq("id", orgId)
+    .maybeSingle();
+  const anchored =
+    (org as { stripe_billing_customer_id?: string | null } | null)
+      ?.stripe_billing_customer_id ?? null;
+  if (anchored && !isMockCustomerId(anchored)) return anchored;
+
+  const customer = await stripe.customers.create({
+    name: orgName ?? undefined,
+    metadata: { organization_id: orgId, mesita_kind: "business" },
+  });
+  const { error } = await admin
+    .from("organizations")
+    .update({ stripe_billing_customer_id: customer.id })
+    .eq("id", orgId);
+  if (error) {
+    // The unique index rejected us: a concurrent checkout anchored first.
+    // Re-read and use the winner so the two callers converge on ONE customer
+    // instead of racing a second one into Stripe.
+    const { data: raced } = await admin
+      .from("organizations")
+      .select("stripe_billing_customer_id")
+      .eq("id", orgId)
+      .maybeSingle();
+    const winner =
+      (raced as { stripe_billing_customer_id?: string | null } | null)
+        ?.stripe_billing_customer_id ?? null;
+    if (winner && !isMockCustomerId(winner)) return winner;
+  }
+  return customer.id;
+}
+
 export async function ensureConsumerCustomer(
   admin: SupabaseClient,
   stripe: Stripe,

@@ -16,20 +16,39 @@
 // wrote: the state with a decision in it gets the box, the state without gets
 // the line.
 //
-// "MEMBERSHIP" IS BANNED in this console (package CLAUDE.md), so the mock's
-// "included with your membership" is written with the word the product
-// actually uses. One vocabulary, everywhere.
+// ONE STATUS NOUN: **Partner**. The strip says what the organization IS, and
+// that is the word the pill, the badge and the guest-facing rail all use.
+// "Membership" names the thing it BOUGHT and appears only where money does
+// (MESITA-1877) — so the mock's "included with your membership" is still
+// written as partnership here.
+//
+// AND THE STRIP PRINTS THE DATE (MESITA-1877). "Renews yearly" was all the
+// console knew before there was a subscription; now that there is one, the
+// settled fact includes WHEN, and `membershipLine` is the one place that
+// decides how to say it — including the two ways it must not: never "renews"
+// for a membership that is ending, never "over" for one Stripe is still
+// dunning.
 
 import { Check } from "lucide-react";
-import { PartnerCard } from "@/components/console/PartnerCard";
+import {
+  membershipLine,
+  PartnerCard,
+} from "@/components/console/PartnerCard";
 import { Section } from "@/components/shared/Section";
+import type { MembershipPrice, OrgMembership } from "@/lib/api/organizations";
 
 export function PartnerBanner({
+  orgId,
   partnered,
   isOwner,
+  membership = null,
+  price = null,
 }: {
+  orgId: string;
   partnered: boolean;
   isOwner: boolean;
+  membership?: OrgMembership | null;
+  price?: MembershipPrice | null;
 }) {
   if (!partnered) {
     return (
@@ -38,7 +57,12 @@ export function PartnerBanner({
         title="Mesita Partner"
         description="The organization's yearly partnership. Every place it holds is in."
       >
-        <PartnerCard partnered={false} isOwner={isOwner} />
+        <PartnerCard
+          orgId={orgId}
+          partnered={false}
+          isOwner={isOwner}
+          price={price}
+        />
       </Section>
     );
   }
@@ -54,16 +78,30 @@ export function PartnerBanner({
       <h2 className="font-display text-sm font-semibold tracking-tight">
         Mesita Partner
       </h2>
-      <span className="inline-flex items-center rounded-full bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-        Active
-      </span>
+      {/* The chip is the STATE, so it changes when the state does: a card
+          Stripe is retrying is not "Active", and the strip must not be the
+          one surface that says everything is fine. Amber, not red — the
+          partnership is intact and nothing has been taken away. */}
+      {membership?.state === "past_due"
+        ? (
+          <span className="inline-flex items-center rounded-full bg-amber-500/14 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+            Payment due
+          </span>
+        )
+        : (
+          <span className="inline-flex items-center rounded-full bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+            Active
+          </span>
+        )}
       {/* The seam is the strip's only chrome: it separates the FACT on the
           left from what the fact buys on the right, which is the whole
           sentence. It disappears when the row wraps, where the wrap itself is
           the separation. */}
       <span aria-hidden className="bg-border hidden h-6 w-px sm:block" />
       <p className="text-muted-foreground min-w-0 text-[13px] leading-snug">
-        Product access included with your partnership. Renews yearly.
+        Product access included with your partnership. {membershipLine(
+          membership,
+        )}
       </p>
     </div>
   );

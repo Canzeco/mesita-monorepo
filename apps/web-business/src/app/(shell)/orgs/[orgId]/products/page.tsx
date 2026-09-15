@@ -19,7 +19,10 @@
 //
 //   the organization   `partnered` and `mesitaPayEnabled` — the two org-level
 //                      columns. The subscription gates four cards; the Pay
-//                      switch IS one.
+//                      switch IS one. Since MESITA-1877 the same payload also
+//                      carries the live Membership (renewal date, dunning)
+//                      and the catalog price, so the banner states WHEN it
+//                      renews and what it costs without a second call.
 //   its places         `business-web-list-places`, scope "org": the per-place
 //                      columns (`pickupOrders`, `deliveryOrders`,
 //                      `reservations`, `credits`) become the COUNT a card
@@ -48,11 +51,12 @@
 // Mesita Pay is the exception, and the reason it is: it is an ORG switch on an
 // ORG Stripe account, so its verb opens `products/pay`.
 import { notFound, redirect } from "next/navigation";
+import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { ProductCatalog } from "@/components/console/ProductCatalog";
 import {
+  apiConsoleViewer,
   apiListConsolePlaces,
-  apiListOrganizations,
   type ConsolePlace,
 } from "@/lib/api/organizations";
 import { findOrg } from "@/lib/active-organization";
@@ -70,17 +74,22 @@ export const dynamic = "force-dynamic";
 
 export default async function ProductsPage(props: {
   params: Promise<{ orgId: string }>;
+  searchParams: Promise<{ membership?: string }>;
 }) {
   const { orgId } = await props.params;
+  const { membership: membershipParam } = await props.searchParams;
   const supabase = await createServerSupabase();
-  const [user, organizations] = await Promise.all([
+  // The VIEWER, not just the list: the Membership's catalog price is a
+  // console-wide fact and rides the envelope. It is the same request-cached
+  // call `apiListOrganizations` reads through, so this costs no round trip.
+  const [user, viewer] = await Promise.all([
     getServerUser(),
-    apiListOrganizations(supabase),
+    apiConsoleViewer(supabase),
   ]);
   if (!user) {
     redirect(`/signin?next=${encodeURIComponent(orgHref(orgId, "products"))}`);
   }
-  const org = findOrg(organizations, orgId);
+  const org = findOrg(viewer.organizations, orgId);
   if (!org) notFound();
 
   const isOwner = org.myRole === "owner";
@@ -129,11 +138,21 @@ export default async function ProductsPage(props: {
         </p>
       </div>
 
+      {/* What Stripe Checkout sent them back with, above everything: the
+          answer to "did that work" outranks the catalogue it came from. */}
+      <MembershipReturnNotice membership={membershipParam} />
+
       {/* THE ONE BOX Pato kept: the partnership every gated card below is
           gated on. It ranks by depth — the full PartnerCard box while the
           organization is not a partner (a price, the owner's CTA, the perks,
           the modal), one line once it is. */}
-      <PartnerBanner partnered={partnered} isOwner={isOwner} />
+      <PartnerBanner
+        orgId={org.id}
+        partnered={partnered}
+        isOwner={isOwner}
+        membership={org.membership ?? null}
+        price={viewer.membershipPrice}
+      />
 
       <ProductCatalog products={products} />
     </>

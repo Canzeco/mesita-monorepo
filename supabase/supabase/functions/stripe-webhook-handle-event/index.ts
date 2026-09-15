@@ -15,9 +15,14 @@
 // verifies — and is then acked WITHOUT being processed, which is what keeps
 // a mode flip from costing a multi-day Stripe retry storm.
 //
-// One endpoint, four surfaces:
+// One endpoint, five surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
 //     flips a consumer to/from Premium on the back of the paid door.
+//   • organization_id → the organization's yearly Mesita Membership
+//     (MESITA-1877, partner-membership.ts). The ONLY writer that flips
+//     organizations.partnered on the back of the paid door. Matched BEFORE
+//     place_id in both branches below: a membership carries no place_id, and
+//     the place branch's resolver falls back to the customer.
 //   • place_id     → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
 //     places.plan on the back of the paid door.
 //   • Connect account.updated → organization_payment_accounts mirror (PLATFORM
@@ -87,6 +92,10 @@ import {
   handleChargeDisputeCreated,
   handleChargeRefunded,
 } from "./credit-refund.ts";
+import {
+  organizationIdFor,
+  reconcilePartnerMembership,
+} from "./partner-membership.ts";
 
 Deno.serve(async (req) => {
   // Vendor webhook — no CORS preflight; POST-only.
@@ -241,6 +250,17 @@ async function handleStripeEvent(
           : session.subscription?.id ?? null;
       if (!subscriptionId) break;
 
+      // An ORGANIZATION's Mesita Membership (MESITA-1877) — the yearly
+      // partnership — is the most specific kind and is matched first: a
+      // membership session carries organization_id and never place_id, so a
+      // later check could not have caught it.
+      const membershipOrgId = organizationIdFor(session);
+      if (membershipOrgId) {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        await reconcilePartnerMembership(admin, membershipOrgId, sub);
+        break;
+      }
+
       // Business checkout sessions always carry place_id metadata;
       // consumer ones carry consumer_id (or client_reference_id).
       const placeId =
@@ -265,6 +285,16 @@ async function handleStripeEvent(
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
+
+      // The organization's Membership renewing, lapsing or ending. Matched
+      // before the place lookup below because `resolvePlaceId` falls back to
+      // the customer, and an org that ALSO has a place subscription on file
+      // would otherwise have its membership reconciled onto a place.
+      const membershipOrgId = organizationIdFor(sub);
+      if (membershipOrgId) {
+        await reconcilePartnerMembership(admin, membershipOrgId, sub);
+        break;
+      }
 
       const placeId =
         (sub.metadata?.place_id as string | undefined) ??

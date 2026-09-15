@@ -28,7 +28,7 @@
 // So this box is a price, a door, and a price list. Not partnered: the price
 // at display rank and, for an owner, one CTA — no pill, because the CTA IS
 // the state and a "Not a partner" chip beside it would be three atoms for one
-// fact. Partnered: the shared `PartnerPill` and "Renews yearly." The list
+// fact. Partnered: the shared `PartnerPill` and when it renews. The list
 // under the hairline renders in EVERY state, because a paid tier with no
 // stated benefits is a price with no price list — but it keeps the
 // MESITA-1863 truth: the lead says each place turns these on itself, the
@@ -36,23 +36,40 @@
 // see LifecycleBanner), and the badge is qualified with "once a strategy is
 // on", which is true at the state every subscriber lands in.
 //
-// THE MODAL HAS NO BUTTON. Checkout is MESITA-1868; until it ships, a disabled
-// "Continue" would be a knob that pretends (house law, SoonStrip.tsx). The CTA
-// that opens the modal already demonstrates the door; the modal restates the
-// commitment — price, what it unlocks — and says, in one INFO line, that the
-// checkout lands with the next release. PR 2 adds the real button here.
+// ── THE MODAL HAS A BUTTON NOW (MESITA-1877) ──────────────────────────────
 //
-// No `useState(partnered)` any more: nothing here writes, so nothing here
-// needs re-seeding, and the page dropped its `key=` remount with it. The only
-// state is whether the modal is open.
+// It shipped without one on purpose: checkout did not exist, and a disabled
+// "Continue" is a knob that pretends (house law, SoonStrip.tsx). The
+// subscription is real now, so the INFO line that stood in for it is gone and
+// the button is the commitment — the last thing in the modal, after the price
+// and what it buys, because that is the order someone decides in.
+//
+// THE WORD ON THE BUTTON IS "MEMBERSHIP", AND IT IS THE ONLY ONE. Pato,
+// 2026-09-15: *"call it membership or something."* The thing you BUY is the
+// Membership; the thing you BECOME is a Partner — one purchase noun, one
+// status noun, never two names for one fact. So the pill, the banner and the
+// badge all still say Partner, and the word Membership appears exactly where
+// money does.
+//
+// The price is the CATALOG's now, off `org_plans` through the organizations
+// payload, so the number an owner reads is the number Stripe bills.
+// `PARTNER_PRICE_LABEL` survives as the fallback for a payload that carries
+// none — a price box with no price is worse than a stale one.
+//
+// State: whether the modal is open, and the action's own. Nothing here
+// mutates a row directly, so nothing needs re-seeding.
 
-import { useCallback, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
+import { startMembershipAction } from "@/app/(shell)/actions/organizations";
 import { PartnerPill } from "@/components/console/badges";
 import { Modal } from "@/components/shared/Modal";
-import { PARTNER_PRICE_LABEL } from "@/lib/business/plans";
+import type { MembershipPrice, OrgMembership } from "@/lib/api/organizations";
+import { membershipPriceLabel } from "@/lib/business/plans";
+import { formatShortDate } from "@/lib/format";
 import {
   CTA_BUTTON_CLASS,
-  INFO_BOX_CLASS,
+  ERROR_BOX_CLASS,
+  PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 
 /**
@@ -70,17 +87,42 @@ export const PARTNER_PERKS = [
   ],
 ] as const;
 
+/**
+ * What the partnered state says under the pill. ONE sentence, and which one
+ * depends on facts the payload may not carry:
+ *
+ *   no membership row   "Renews yearly." — true, and all we know. An
+ *                       organization made a partner by the operator switch
+ *                       has no subscription to date, and so does one whose
+ *                       billing read failed. Neither may be told a date.
+ *   cancelling          the date is an ENDING, so it must not wear the word
+ *                       "renews" — that is the one way this line can lie.
+ *   past due            still a partner (Stripe is dunning), and the console
+ *                       says what needs doing without saying it is over.
+ */
+export function membershipLine(
+  membership: OrgMembership | null | undefined,
+): string {
+  if (!membership || !membership.renewsAt) return "Renews yearly.";
+  const on = formatShortDate(membership.renewsAt);
+  if (membership.state === "past_due") {
+    return `Payment due — we'll retry the card. Paid through ${on}.`;
+  }
+  if (membership.cancelAtPeriodEnd) return `Ends ${on}.`;
+  return `Renews ${on}.`;
+}
+
 /** The price at display rank — the box's anchor, restated in the modal at
- *  the commitment moment. One rank, one source (PARTNER_PRICE_LABEL). */
-function PriceLine() {
+ *  the commitment moment. One rank, one source (the catalog, or the label
+ *  that stands in for it). */
+function PriceLine({ price }: { price: MembershipPrice | null }) {
+  const label = membershipPriceLabel(price);
   return (
     <p className="flex flex-wrap items-baseline gap-x-1.5">
       <span className="font-display text-lg font-semibold tracking-tight">
-        {PARTNER_PRICE_LABEL.amount}
+        {label.amount}
       </span>
-      <span className="text-muted-foreground text-[12px]">
-        {PARTNER_PRICE_LABEL.suffix}
-      </span>
+      <span className="text-muted-foreground text-[12px]">{label.suffix}</span>
     </p>
   );
 }
@@ -114,12 +156,42 @@ function Perks() {
   );
 }
 
+/** The commitment. A form, not an onClick: the action redirects to Stripe,
+ *  and a redirect out of a server action is only a redirect when the form
+ *  submits it. `pending` disables the button because Checkout sessions are a
+ *  network hop away and a second click is a second session. */
+function BuyForm({ orgId }: { orgId: string }) {
+  const [state, action, pending] = useActionState(startMembershipAction, {
+    error: null,
+  });
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="orgId" value={orgId} />
+      {state.error && <p className={ERROR_BOX_CLASS}>{state.error}</p>}
+      <button type="submit" className={PRIMARY_BUTTON_CLASS} disabled={pending}>
+        {pending ? "Opening checkout…" : "Continue to checkout"}
+      </button>
+      {/* Where the money goes, said before they leave rather than on the
+          Stripe page where it is too late to be a decision. */}
+      <p className="text-muted-foreground text-center text-[11px] leading-snug">
+        Stripe takes the payment. Renews every year until you cancel.
+      </p>
+    </form>
+  );
+}
+
 export function PartnerCard({
+  orgId,
   partnered,
   isOwner,
+  membership = null,
+  price = null,
 }: {
+  orgId: string;
   partnered: boolean;
   isOwner: boolean;
+  membership?: OrgMembership | null;
+  price?: MembershipPrice | null;
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -130,18 +202,21 @@ export function PartnerCard({
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-3">
             <PartnerPill />
-            <span className="text-sm">Renews yearly.</span>
+            <span className="text-sm">{membershipLine(membership)}</span>
           </div>
-          {/* Honest about what is not built: the subscription's own doors are
-              MESITA-1868. Said once, quietly, instead of a Manage button that
-              opens nothing. */}
-          <p className="text-muted-foreground text-xs leading-snug">
-            Renewal and cancellation land with the next release.
-          </p>
+          {/* Still honest about what is not built. Checkout shipped; cancelling
+              from here has not (MESITA-1868), so the line narrowed rather than
+              disappearing — and it goes entirely once the membership is
+              already ending, where it would be an offer to do what is done. */}
+          {!membership?.cancelAtPeriodEnd && (
+            <p className="text-muted-foreground text-xs leading-snug">
+              Cancelling from here lands with the next release.
+            </p>
+          )}
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <PriceLine />
+          <PriceLine price={price} />
           {isOwner ? (
             <button
               type="button"
@@ -166,16 +241,16 @@ export function PartnerCard({
 
       {open && (
         <Modal
-          title="Mesita Partner"
-          description={`${PARTNER_PRICE_LABEL.amount} ${PARTNER_PRICE_LABEL.suffix}, per organization.`}
+          title="Mesita Membership"
+          description={`${membershipPriceLabel(price).amount} ${
+            membershipPriceLabel(price).suffix
+          }, per organization.`}
           onClose={close}
         >
           <div className="flex flex-col gap-4">
-            <PriceLine />
+            <PriceLine price={price} />
             <Perks />
-            <div className={INFO_BOX_CLASS}>
-              Checkout lands with the next release.
-            </div>
+            <BuyForm orgId={orgId} />
           </div>
         </Modal>
       )}

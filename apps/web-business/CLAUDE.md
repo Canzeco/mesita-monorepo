@@ -13,4 +13,4 @@
 - **A place VIEW PAGE reads NOTHING.** The layout resolves the matrix once into `PlaceScope`; `PlaceTabGate` 404s. `cache()` dedupes per REQUEST and a sibling nav is a new one, so a page fetch is paid every click.
 - **Layout:** fluid, no max-width. `(shell)/layout.tsx` sets `SHELL_GUTTER`, rail outside; `SHELL_BLEED` is full-bleed. Pages are fragments with `loading.tsx`; forms cap at `FORM_COLUMN_CLASS`; save = `PlaceSaveBar`.
 - **Never rebuild ticket UI**: Validate is staff-only; leave `business-web-*-ticket*`.
-- `plan=pro` is Mesita Partner. **"Membership" banned.** Roles owner/editor/viewer.
+- `plan=pro` is Mesita Partner, bought as the yearly org **Mesita Membership**. **It names the SKU, never the status.** Roles owner/editor/viewer.
