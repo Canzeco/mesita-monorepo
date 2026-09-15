@@ -178,6 +178,15 @@ describe("the legacy console's URLs all still resolve", () => {
     // green, which is `/settings` in MESITA-1839 exactly.
     expect(resolve("/credits", all)).toBeNull();
     expect(resolve("/places/abc/credits", all)).toBeNull();
+    // THE FLAT TWINS FORWARD TOO, and forgetting them is the mirror of the
+    // MESITA-1839 trap this file is mostly about: there a rule SHADOWED a
+    // live address, here a MISSING rule strands a retired one. `/capabilities`
+    // and `/rewards` were live flat resolvers until MESITA-1885, and a name
+    // dropped from `FLAT_ROUTES` does not fall through to anything — the
+    // `[flat]` segment answers 404 for a name not in the contract, on purpose.
+    // So a bookmark would have 404ed with every check green.
+    expect(resolve("/capabilities", all)).toBe("/visits");
+    expect(resolve("/rewards", all)).toBe("/visits");
     // The ORG-scoped Credits rule stays: a different path, and still the
     // retired spelling of an organization page.
     expect(resolve("/orgs/o1/credits", all)).toBe("/orgs/o1/products");
@@ -342,6 +351,8 @@ describe("every redirect forwards somewhere this repo serves", () => {
     "/places/:id/settings",
     "/places/:id/capabilities",
     "/places/:id/rewards",
+    "/capabilities",
+    "/rewards",
     "/orgs/:orgId/payments",
     "/payments",
     "/orgs/:orgId/members",

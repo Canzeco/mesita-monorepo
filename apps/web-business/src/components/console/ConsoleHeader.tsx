@@ -33,6 +33,7 @@ import {
   ORG_TARGET_LABEL,
   SHELL_ROUTES,
   flatViewFromPathname,
+  isOrgTerminalPathname,
   orgTargetFromPathname,
   placeIdFromPathname,
 } from "@/lib/console-routes";
@@ -59,6 +60,17 @@ export function crumbsFor(
     if (names.placeName) trail.push(names.placeName);
     trail.push(PLACE_TAB_LABEL[flat]);
     return trail;
+  }
+  // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE (MESITA-1885), so
+  // `orgTargetFromPathname` answers null for it on purpose — the Products row
+  // must not light there. That leaves it matching nothing below, and a
+  // pathname that matches nothing returns an EMPTY trail: a header with no
+  // crumbs at all, which reads as a page outside the console.
+  //
+  // It gets the ceremony shape — organization · section · leaf — the same one
+  // `/places/new` uses, because that is what it is: a step inside Products.
+  if (isOrgTerminalPathname(pathname)) {
+    return [names.orgName ?? "Organization", ORG_TARGET_LABEL.products, "Terminal"];
   }
   const target = orgTargetFromPathname(pathname);
   if (target) {

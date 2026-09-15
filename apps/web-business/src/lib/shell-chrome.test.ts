@@ -756,6 +756,53 @@ describe("every place view has its own loading boundary", () => {
     }
   });
 
+  // SIGNING IN RESUMES WHAT YOU OPENED, on every page that guards.
+  //
+  // `next` is a promise, and a page that names a DIFFERENT address quietly
+  // breaks it: you click a link, sign in, and land somewhere else, with
+  // nothing on screen saying why. It is invisible in review because the
+  // redirect still works — Terminal shipped pointing at the catalogue above
+  // it, and only a reviewer reading two adjacent lines caught it.
+  //
+  // THE RULE IS STRUCTURAL: the `next` expression must NAME the page it is
+  // on — its own directory, or a helper whose name carries it. That is what
+  // makes this a guard for the class rather than for one page.
+  it("a page's sign-in `next` names the page you were on", () => {
+    const SHELL = path.join(SRC, "app", "(shell)");
+    const pages: string[] = [];
+    const walkPages = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walkPages(p);
+        else if (e.name === "page.tsx") pages.push(p);
+      }
+    };
+    walkPages(SHELL);
+    let guarded = 0;
+    for (const file of pages) {
+      const src = readFileSync(file, "utf8");
+      const m = src.match(/\/signin\?next=[^\n]*/);
+      if (!m) continue;
+      guarded += 1;
+      // The page's own segment: the last directory that is not a group or a
+      // dynamic param.
+      const seg = path
+        .dirname(file)
+        .slice(SHELL.length + 1)
+        .split(path.sep)
+        .filter((s) => !s.startsWith("(") && !s.startsWith("["))
+        .pop();
+      if (!seg) continue;
+      // `settings` is the ONE exemption, and it is not a drift: `orgHref(id)`
+      // defaults to Settings (`orgHref(orgId, target = "settings")`), so the
+      // bare call IS this page's address — it just spells it by omission.
+      if (seg === "settings") continue;
+      expect(m[0].toLowerCase(), `${seg}: ${m[0]}`).toContain(seg.toLowerCase());
+    }
+    // Vacuous-pass guard: a walk that finds no guarded page must fail.
+    expect(guarded).toBeGreaterThanOrEqual(6);
+  });
+
   it("every view directory on disk is a known tab", () => {
     const dirs = readdirSync(VIEWS, { withFileTypes: true })
       .filter((e) => e.isDirectory())

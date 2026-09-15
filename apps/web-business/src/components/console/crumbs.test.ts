@@ -5,6 +5,7 @@ import { crumbsFor } from "./ConsoleHeader";
 import {
   orgHref,
   orgPlacesNewHref,
+  orgTerminalHref,
   placeHref,
 } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
@@ -15,6 +16,28 @@ describe("crumbsFor", () => {
   it("Account and the ceremony stand alone", () => {
     expect(crumbsFor("/account", names)).toEqual(["Account"]);
     expect(crumbsFor("/orgs/new", names)).toEqual(["Create organization"]);
+  });
+
+  it("Terminal is a STEP inside Products, and never an empty trail", () => {
+    // `/orgs/<id>/products/terminal` is deliberately not an org TARGET —
+    // `orgTargetFromPathname` answers null so the Products ROW does not light
+    // there (MESITA-1885). That made it match nothing here and return `[]`,
+    // which renders a header with no crumbs at all: a page that reads as
+    // being outside the console.
+    //
+    // It takes the ceremony shape, the one `/places/new` already uses.
+    expect(crumbsFor(orgTerminalHref("o"), names)).toEqual([
+      "Strana Group",
+      "Products",
+      "Terminal",
+    ]);
+    // And it names the organization even when the scope has not resolved one.
+    expect(
+      crumbsFor(orgTerminalHref("o"), { orgName: null, placeName: null }),
+    ).toEqual(["Organization", "Products", "Terminal"]);
+    // THE BIJECTION: the catalogue itself is still two crumbs, so the leaf is
+    // a real difference and not a label this test would accept anywhere.
+    expect(crumbsFor(orgHref("o", "products"), names)).not.toContain("Terminal");
   });
 
   it("each organization page is the organization, then the page", () => {
