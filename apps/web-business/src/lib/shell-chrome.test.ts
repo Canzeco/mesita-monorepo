@@ -282,7 +282,7 @@ describe("the rail is six nouns and one indent", () => {
     // One selector, in the rail. The page's copy is gone, or the two disagree.
     expect(existsSync(path.join(SRC, "components/console/OrgSwitcher.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC, "components/console/ScopeSwitchers.tsx"))).toBe(false);
-    expect(readCode("app/(shell)/orgs/[orgId]/settings/page.tsx")).not.toContain("Switcher");
+    expect(readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx")).not.toContain("Switcher");
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
@@ -300,7 +300,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(nav.indexOf("ORG_RAIL_TARGETS.map")).toBeLessThan(nav.indexOf("placeRows.map"));
     // The contract carries the order, and Payments and Credits are not in it.
     const routes = readCode("lib/console-routes.ts");
-    for (const target of ["settings", "places", "customers", "payments", "activity"]) {
+    for (const target of ["configuration", "places", "customers", "payments", "activity"]) {
       expect(routes, target).toContain(`  "${target}",`);
     }
     // ONE list (MESITA-1848): the pages, the rail's rows and the contract's
@@ -341,7 +341,7 @@ describe("the rail is six nouns and one indent", () => {
   it("Account lights for Account alone, and every org row takes only its own", () => {
     const r = rail();
     expect(r).toContain("const onAccount = pathname === SHELL_ROUTES.account;");
-    expect(r).toContain('target === "settings"');
+    expect(r).toContain('target === "configuration"');
     // MESITA-1847 removed the last borrowed clause: Members is CONTENT on the
     // Organization page, not an address behind it. A row keeping a clause
     // after another row took the subject is exactly how this rail grows a
@@ -355,26 +355,52 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1847. Pato: "members and places in organization i mean, fuck
   // nested things display shit there." The page IS its people and its places.
   // A door is a box that refuses to show you anything.
-  it("Settings shows its people and its places, and offers no door", () => {
-    const page = readCode("app/(shell)/orgs/[orgId]/settings/page.tsx");
+  // MESITA-1852. Pato: "Remove places from here, its redundant. five boxes:
+  // brand · members · stripe · partnership · developers." Places has a rail
+  // row one line above this page; a box listing them again was the second
+  // door to one room.
+  it("Configuration is five boxes, and Places is not one of them", () => {
+    const page = readCode("app/(shell)/orgs/[orgId]/configuration/page.tsx");
     expect(page).not.toContain("DoorRow");
+    expect(page).toContain("SOON_STRIPS.brand");
     expect(page).toContain("<MembersCard");
     expect(page).toContain("apiListOrgMembers");
-    expect(page).toContain("placeHref(");
-    expect(page).toContain("orgPlacesNewHref(org.id)");
+    expect(page).toContain('title="Stripe"');
+    expect(page).toContain("<PaymentsCard");
+    expect(page).toContain('title="Partnership"');
+    expect(page).toContain("<PartnerCard");
+    expect(page).toContain("SOON_STRIPS.developers");
+    // PLACES LEFT.
+    expect(page).not.toContain("placeHref(");
+    expect(page).not.toContain("orgPlacesHref");
+    expect(page).not.toContain("orgPlacesNewHref");
     // The members ADDRESS is gone with the door that reached it, and the
     // money pages have rows of their own.
     expect(page).not.toContain('orgHref(org.id, "members")');
     expect(existsSync(path.join(SRC, "app/(shell)/orgs/[orgId]/organization"))).toBe(false);
     expect(page).not.toContain('orgHref(org.id, "payments")');
     expect(page).not.toContain("credits");
-    // No Stripe read: the page shows nothing about Stripe, so it asks nothing.
-    expect(page).not.toContain("apiGetPaymentAccount");
+    // The Stripe box is here now, so the Stripe read is too — and it is the
+    // ONE place that asks: two screens reading one account is how the console
+    // starts disagreeing with itself (MESITA-1847's badge lesson).
+    expect(page).toContain("apiGetPaymentAccount");
     expect(page).not.toContain("OrgStateBadge");
-    // The list is CAPPED — `org.places` is unbounded and this is the rail's
-    // first row, so an organization with 200 places must not render 200 rows
-    // on the screen the console opens to.
-    expect(page).toContain("org.places.slice(0, 10)");
+  });
+
+  // MESITA-1852. Payments is PARKED, not deleted: Pato said "for the moment",
+  // so the address, the row and every bookmark survive the pause.
+  it("Payments is a Soon page, and its two live boxes moved to Configuration", () => {
+    const page = readCode("app/(shell)/orgs/[orgId]/payments/page.tsx");
+    expect(page).toContain("SOON_STRIPS.payments");
+    expect(page).toContain("SOON_STRIPS.credits");
+    expect(page).not.toContain("PaymentsCard");
+    expect(page).not.toContain("PartnerCard");
+    // The composition file went with the composition.
+    expect(
+      existsSync(path.join(SRC, "components/console/OrgScreenSections.tsx")),
+    ).toBe(false);
+    // Stripe's stored return still lands: the notice travels with the page.
+    expect(page).toContain("ConnectReturnNotice");
   });
 
   // The selector moved to the page about the thing it selects (MESITA-1847).
@@ -432,7 +458,7 @@ describe("the rail is six nouns and one indent", () => {
     // `?connect=` is checked BEFORE the forward, or Stripe's return lands on
     // the organization page, which has no notice to greet it with.
     expect(root.indexOf('sp.connect')).toBeLessThan(
-      root.indexOf('orgHref(orgId, "settings")'),
+      root.indexOf('orgHref(orgId, "configuration")'),
     );
     expect(root).toContain('orgHref(orgId, "payments")');
     // The query travels on BOTH branches: dropping it strands an owner on a

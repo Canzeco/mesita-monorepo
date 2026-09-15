@@ -14,7 +14,7 @@
 // a new operator sees. The Soon badge lives on this page, never in the rail.
 import { notFound, redirect } from "next/navigation";
 import { SoonStrip } from "@/components/console/SoonStrip";
-import { SOON_STRIPS } from "@/components/console/OrgScreenSections";
+import { SOON_STRIPS } from "@/components/console/SoonStrips";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { findOrg } from "@/lib/active-organization";
 import { orgHref } from "@/lib/console-routes";

@@ -8,7 +8,7 @@
 //   [ ○ Account        ]  → /account                the person, no subitems
 //   ─────────────────────
 //   [ ▣ Organization ⌄ ]  which one you are in
-//       Settings          → /orgs/<id>/settings
+//       Configuration     → /orgs/<id>/configuration
 //       Places            → /orgs/<id>/places
 //       Customers         → /orgs/<id>/customers
 //       Payments          → /orgs/<id>/payments
@@ -197,13 +197,16 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 //                                     icon: a NAME is what distinguishes one
 //                                     organization from another, and an icon
 //                                     would be identical on all of them
-//   Settings      Building2           the organization's own record — the
+//   Configuration Building2           the organization's own record — the
 //                                     ORGANIZATION, which is what the page is
-//                                     about. A gear says "preferences" and
-//                                     says it about nothing in particular; the
-//                                     building says whose record this is. It
-//                                     is also wrong on Capabilities, a ladder
-//                                     of what a guest can do
+//                                     about (MESITA-1853). A gear says
+//                                     "preferences" and says it about nothing
+//                                     in particular; the building says whose
+//                                     record this is. The rename to
+//                                     Configuration (MESITA-1852) does not
+//                                     bring the gear back: the page is five
+//                                     boxes ABOUT this organization, not a
+//                                     preferences screen
 //   Menus         UtensilsCrossed     what the place serves
 //   Customers     Users               PEOPLE, plural, against Account's one —
 //                                     the pairing IS the meaning: you, and
@@ -237,7 +240,7 @@ const ORG_ROW: Record<
   OrgRailTarget,
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  settings: { label: "Settings", Icon: Building2 },
+  configuration: { label: "Configuration", Icon: Building2 },
   places: { label: "Places", Icon: Layers },
   customers: { label: "Customers", Icon: Users },
   payments: { label: "Payments", Icon: Wallet },
@@ -479,7 +482,9 @@ export function Sidebar({
   // ceremony, which has no organization to name yet and would otherwise light
   // nothing. Places also takes the Add place ceremony beneath its list.
   const orgRowActive = (target: OrgRailTarget) =>
-    target === "settings" ? orgTarget === "settings" || onOrgNew : orgTarget === target;
+    target === "configuration"
+      ? orgTarget === "configuration" || onOrgNew
+      : orgTarget === target;
 
   // Both selectors guard BEFORE they show a pending name: an operator must
   // not see the new scope while still sitting on the old one's unsaved edits.
@@ -492,7 +497,8 @@ export function Sidebar({
   // the place cookie and lands on the organization you picked. Every other
   // organization address is a PAGE, and a page cannot set a cookie in flight.
   const pickOrg = (id: string) => {
-    if (org && id !== org.id) go(orgSwitchHref(id, orgHref(id, "settings")), id);
+    if (org && id !== org.id)
+      go(orgSwitchHref(id, orgHref(id, "configuration")), id);
   };
   const pickPlace = (id: string) => {
     if (id !== scope.place?.id) go(placeTabHref(id, "profile"), id);

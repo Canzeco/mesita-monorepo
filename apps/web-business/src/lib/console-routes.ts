@@ -33,11 +33,11 @@
 //                              switcher. The one page with no scope.
 //   /orgs/new                  Create organization — the ceremony
 //
-//   /orgs/<id>                 NOT a page: a 307 onto `/settings`, and the one
+//   /orgs/<id>                 NOT a page: a 307 onto `/configuration`, the one
 //                              address that catches Stripe's stored
 //                              `?connect=` and hands the query to Payments.
-//   /orgs/<id>/settings       THE ORGANIZATION itself — its name, its people,
-//                              and the places it holds, on the page
+//   /orgs/<id>/configuration  THE ORGANIZATION's own setup — brand, members,
+//                              Stripe, partnership, developers
 //            /places           the whole catalogue: the states matrix, the
 //                              ?owned= filters, Claim and Release
 //            /customers        who keeps coming back (Soon)
@@ -57,7 +57,7 @@
 //              /admin          super-admin only
 //
 //   /profile /menus /reviews /capabilities /rewards /admin
-//   /customers /payments /activity
+//   /configuration /customers /payments /activity
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -66,13 +66,15 @@
 //                              Next resolves static segments first, so every
 //                              real route still wins and an unknown name 404s.
 //
-// `/orgs/<id>/organization` IS `/orgs/<id>/settings` (MESITA-1848). The
+// `/orgs/<id>/organization` IS `/orgs/<id>/configuration` (MESITA-1848, renamed
+// again MESITA-1852). The
 // segment existed (MESITA-1846) so that every organization row would be a
 // named address rather than one raw uuid among four names — that reasoning
 // stands and this keeps it. What changed is the NAME: the rail's group is
 // headed "Organization" by its own selector now, so a page under it repeating
-// that noun said the word twice in one column. Pato's list calls the page
-// Settings.
+// that noun said the word twice in one column. Pato called the page Settings,
+// then Configuration — and Configuration is the one that can carry a flat
+// twin, because `/settings` belongs to a permanent legacy redirect.
 //
 // `/orgs/<id>/credits` IS GONE TOO (MESITA-1845), and this one MERGED rather
 // than moved: Payments has a rail row again, and Prepaid Credits is the
@@ -116,7 +118,7 @@ export const SHELL_ROUTES = {
  *  strip is back where it came from, so the segment forwards instead of
  *  resolving — TEMPORARILY, because this answer has now moved twice. */
 export const ORG_PAGES = [
-  "settings",
+  "configuration",
   "places",
   "customers",
   "payments",
@@ -127,12 +129,12 @@ export type OrgPage = (typeof ORG_PAGES)[number];
 /** Everything the organization addresses. There is no bare-name target any
  *  more (MESITA-1848): the group is HEADED "Organization" by its selector, so
  *  a page repeating that noun was the redundancy this pass has been deleting.
- *  Its page is `settings`. */
+ *  Its page is `configuration`. */
 export const ORG_TARGETS = ORG_PAGES;
 export type OrgTarget = (typeof ORG_TARGETS)[number];
 
 export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
-  settings: "Settings",
+  configuration: "Configuration",
   places: "Places",
   customers: "Customers",
   payments: "Payments",
@@ -168,7 +170,7 @@ const ORGS = "/orgs";
  *  Organization included — the rail draws its five as siblings, so their
  *  addresses look alike. The bare `${ORGS}/<id>` is a forwarder onto the
  *  default, and the one thing that catches Stripe's stored `?connect=`. */
-export function orgHref(orgId: string, target: OrgTarget = "settings"): string {
+export function orgHref(orgId: string, target: OrgTarget = "configuration"): string {
   return `${ORGS}/${encodeURIComponent(orgId)}/${target}`;
 }
 
@@ -223,10 +225,10 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
   );
   if (!match || match[1] === "new") return null;
   const [, , second, third] = match;
-  // The bare `/orgs/<id>` is a 307 onto Settings; it answers "settings" so
+  // The bare `/orgs/<id>` is a 307 onto Configuration; it answers that so
   // the row does not go dark for the instant the forward is in flight, which
   // reads as a glitch — the courtesy every flat resolver already gets.
-  if (!second) return "settings";
+  if (!second) return "configuration";
   if (second === "switch") return null;
   if (second === "places") return third === undefined || third === "new" ? "places" : null;
   if (third !== undefined) return null;
@@ -251,11 +253,14 @@ export const FLAT_ROUTES = {
   capabilities: "/capabilities",
   rewards: "/rewards",
   admin: "/admin",
-  // The organization's three. `settings` has NO flat twin: `/settings` is
-  // claimed by a permanent legacy redirect onto `/capabilities`, and a
-  // contract name a config rule shadows is the MESITA-1839 trap exactly —
-  // live in the vocabulary, dead on arrival. `places` has none either: it is
-  // the place segment's own root (see below).
+  // The organization's four. `places` has no flat twin: it is the place
+  // segment's own root (see below), so a flat `places` could never resolve.
+  //
+  // `configuration` HAS one, and that is the point of the rename
+  // (MESITA-1852): `/settings` was claimed by a permanent legacy redirect
+  // onto `/capabilities`, so the page it named could never have a twin — a
+  // contract name a config rule shadows is the MESITA-1839 trap exactly.
+  configuration: "/configuration",
   customers: "/customers",
   payments: "/payments",
   activity: "/activity",
@@ -295,9 +300,9 @@ export function flatViewFromPathname(
 export function flatOrgTargetFromPathname(pathname: string): OrgTarget | null {
   const seg = pathname.replace(/\/$/, "");
   for (const target of ORG_TARGETS) {
-    // `settings` and `places` have no flat twin — the first is claimed by a
-    // permanent legacy redirect onto `/capabilities`, the second is the place
-    // segment's own root. A name in FLAT_ROUTES is the only one that resolves.
+    // `places` has no flat twin — it is the place segment's own root, so a
+    // flat `places` could never resolve. A name in FLAT_ROUTES is the only
+    // one that does.
     if (!(target in FLAT_ROUTES)) continue;
     if (seg === `/${target}`) return target;
   }

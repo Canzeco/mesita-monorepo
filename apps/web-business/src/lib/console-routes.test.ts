@@ -68,7 +68,7 @@ describe("SHELL_ROUTES are the addresses with no scope at all", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the place's six views, then the organization's three flat pages", () => {
+  it("is the place's six views, then the organization's four flat pages", () => {
     // The order is the declaration's: the place's group, then the
     // organization's. MESITA-1841 added `capabilities` (was `settings`),
     // `rewards`, `organization` and `credits`, and moved `activity` from the
@@ -87,12 +87,17 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "capabilities",
       "rewards",
       "admin",
+      "configuration",
       "customers",
       "payments",
       "activity",
     ]);
-    expect(Object.keys(FLAT_ROUTES)).not.toContain("settings");
+    // `places` is the place segment's own root, so a flat twin could never
+    // resolve. `configuration` HAS one — that is the point of the rename
+    // (MESITA-1852): `/settings` was owned by a permanent legacy redirect, so
+    // the page it named could never carry a twin.
     expect(Object.keys(FLAT_ROUTES)).not.toContain("places");
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("settings");
     for (const r of FLAT_ROUTE_LIST) expect(isFlatRoute(r)).toBe(true);
     expect(isFlatRoute("/orgs/x")).toBe(false);
     expect(isFlatRoute("/account")).toBe(false);
@@ -230,7 +235,7 @@ describe("the organization's pages (MESITA-1807)", () => {
     // the contract's targets are the same array, in Pato's order. Two lists
     // is how an address ends up live in one and dead in the other.
     expect(ORG_PAGES).toEqual([
-      "settings",
+      "configuration",
       "places",
       "customers",
       "payments",
@@ -247,8 +252,8 @@ describe("the organization's pages (MESITA-1807)", () => {
     // EVERY TARGET IS A NAMED SEGMENT (MESITA-1846), Organization included:
     // the rail draws its five as siblings, so their addresses look alike. The
     // bare id is a forwarder with its own helper, never `orgHref`'s output.
-    expect(orgHref("org-x")).toBe("/orgs/org-x/settings");
-    expect(orgHref("org-x", "settings")).toBe("/orgs/org-x/settings");
+    expect(orgHref("org-x")).toBe("/orgs/org-x/configuration");
+    expect(orgHref("org-x", "configuration")).toBe("/orgs/org-x/configuration");
     expect(orgRootHref("org-x")).toBe("/orgs/org-x");
     expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
     expect(orgHref("org-x", "customers")).toBe("/orgs/org-x/customers");
@@ -323,7 +328,7 @@ describe("the organization's pages (MESITA-1807)", () => {
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/settings");
+    expect(orgHref("a/b")).toBe("/orgs/a%2Fb/configuration");
     expect(orgRootHref("a/b")).toBe("/orgs/a%2Fb");
     expect(orgHref("a/b", "payments")).toBe("/orgs/a%2Fb/payments");
     expect(orgSwitchHref("a/b", "/profile")).toBe("/orgs/a%2Fb/switch?to=%2Fprofile");
@@ -335,8 +340,8 @@ describe("the organization's pages (MESITA-1807)", () => {
   // in flight, and a rail row that goes dark for that instant reads as a
   // glitch — the same courtesy every flat resolver already gets.
   it("the bare id and the segment both light the Settings row", () => {
-    expect(orgTargetFromPathname("/orgs/org-x")).toBe("settings");
-    expect(orgTargetFromPathname("/orgs/org-x/settings")).toBe("settings");
+    expect(orgTargetFromPathname("/orgs/org-x")).toBe("configuration");
+    expect(orgTargetFromPathname("/orgs/org-x/configuration")).toBe("configuration");
     // The old spelling is not a target any more (MESITA-1848).
     expect(orgTargetFromPathname("/orgs/org-x/organization")).toBeNull();
   });
@@ -371,11 +376,11 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(orgTargetFromPathname("/orgs/org-x/places/p-1")).toBeNull();
     // A third segment under a page is not that page.
     expect(orgTargetFromPathname("/orgs/org-x/payments/x")).toBeNull();
-    // The BARE address is a 307 onto Settings and answers "settings",
+    // The BARE address is a 307 onto Settings and answers "configuration",
     // trailing slash included — a row that goes dark for the instant the
     // forward is in flight reads as a glitch.
-    expect(orgTargetFromPathname("/orgs/org-x")).toBe("settings");
-    expect(orgTargetFromPathname("/orgs/org-x/")).toBe("settings");
+    expect(orgTargetFromPathname("/orgs/org-x")).toBe("configuration");
+    expect(orgTargetFromPathname("/orgs/org-x/")).toBe("configuration");
   });
 });
 

@@ -119,8 +119,8 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     [SHELL_ROUTES.account, "Account"],
     // The create ceremony has no organization to name yet, so it lights
     // Settings — the row you would go back through (MESITA-1848).
-    [SHELL_ROUTES.orgNew, "Settings"],
-    [orgHref("org-a", "settings"), "Settings"],
+    [SHELL_ROUTES.orgNew, "Configuration"],
+    [orgHref("org-a", "configuration"), "Configuration"],
     // Places has a row of its own, and Add place is its list's own step.
     [orgHref("org-a", "places"), "Places"],
     [orgPlacesNewHref("org-a"), "Places"],
@@ -172,26 +172,29 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // `/orgs/new` is the one address two `active` expressions could both claim
     // — Account owned it until MESITA-1841, and the organization's own first
     // page owns it now. With no organization at all it belongs to Create.
-    expect(pillText(render(SHELL_ROUTES.orgNew, { rememberedPlaceId: "p-1" }))).toBe("Settings");
+    expect(pillText(render(SHELL_ROUTES.orgNew, { rememberedPlaceId: "p-1" }))).toBe("Configuration");
     expect(pills(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toHaveLength(1);
     expect(pillText(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toBe("Create organization");
   });
 
-  it("Settings shows its people and places rather than doors to them", () => {
-    // MESITA-1847: Pato, "fuck nested things display shit there."
+  it("Configuration is five boxes and offers no door", () => {
+    // MESITA-1847 "fuck nested things display shit there", narrowed by
+    // MESITA-1852: Places left, because it has a rail row of its own.
     const page = readFileSync(
-      join(process.cwd(), "src/app/(shell)/orgs/[orgId]/settings/page.tsx"),
+      join(process.cwd(), "src/app/(shell)/orgs/[orgId]/configuration/page.tsx"),
       "utf8",
     );
     expect(page).toContain("<MembersCard");
-    expect(page).toContain("orgPlacesNewHref(org.id)");
+    expect(page).toContain("SOON_STRIPS.brand");
+    expect(page).toContain("SOON_STRIPS.developers");
+    expect(page).not.toContain("orgPlacesNewHref");
   });
 });
 
 describe("three sections: account, then two selectors over their pages (MESITA-1848)", () => {
   // The labels an operator reads, top to bottom. The two SELECTOR rows are
   // not in this list — they render names, not destinations.
-  const ORG_FIVE = ["Settings", "Places", "Customers", "Payments", "Activity"];
+  const ORG_FIVE = ["Configuration", "Places", "Customers", "Payments", "Activity"];
   const PLACE_FIVE = ["Profile", "Menus", "Reviews", "Capabilities", "Rewards"];
 
   it("are Account, the organization's five, then the place's — Admin only for a super-admin", () => {
@@ -305,7 +308,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
       // The menus are closed, so their ceremonies are not in the markup —
       // what the rail RENDERS is the destinations.
       SHELL_ROUTES.account,
-      orgHref("org-a", "settings"),
+      orgHref("org-a", "configuration"),
       orgHref("org-a", "places"),
       orgHref("org-a", "customers"),
       orgHref("org-a", "payments"),
@@ -328,7 +331,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     });
     expect(hrefs(html)).toEqual([
       SHELL_ROUTES.account,
-      orgHref("org-b", "settings"),
+      orgHref("org-b", "configuration"),
       orgHref("org-b", "places"),
       orgHref("org-b", "customers"),
       orgHref("org-b", "payments"),
@@ -359,7 +362,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
 });
 
 describe("the states a 10/10 has to answer", () => {
-  const ORG_FIVE = ["Settings", "Places", "Customers", "Payments", "Activity"];
+  const ORG_FIVE = ["Configuration", "Places", "Customers", "Payments", "Activity"];
   const PLACE_FIVE = ["Profile", "Menus", "Reviews", "Capabilities", "Rewards"];
 
   it("zero organizations: Account and Create organization, nothing else", () => {
@@ -410,7 +413,7 @@ describe("the states a 10/10 has to answer", () => {
     const html = render(FLAT_ROUTES.capabilities, { collapsed: true, rememberedPlaceId: "p-1" });
     expect(rows(html)).toHaveLength(11);
     expect(html).toContain('title="Capabilities"');
-    expect(html).toContain('title="Settings"');
+    expect(html).toContain('title="Configuration"');
     expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(pills(html)).toHaveLength(1);
     // The groups keep their seams at `w-16` — this is the width where the

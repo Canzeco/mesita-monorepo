@@ -106,6 +106,19 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/members", destination: "/organization", permanent: false },
+      // SETTINGS IS CONFIGURATION (MESITA-1852). Pato: "change name of
+      // settings to configuration." TEMPORARY, like every other rename on
+      // this page: where the organization's own setup lives has moved three
+      // times in a day, and a 308 caches today's answer forever.
+      //
+      // NO FLAT `/settings` RULE IS ADDED: that path already forwards to
+      // `/capabilities` from MESITA-1841, and a second rule for the same
+      // source is dead code that reads like a live one.
+      {
+        source: "/orgs/:orgId/settings",
+        destination: "/orgs/:orgId/configuration",
+        permanent: false,
+      },
       // NO BARE `/organization` RULE. It forwarded to `/` while the
       // Organization screen did not exist; MESITA-1841 made it a live flat
       // resolver, and leaving the rule would have swallowed it exactly the way
