@@ -249,7 +249,7 @@ describe("the rail is six nouns and one indent", () => {
     // stopped reading as a boundary, so each group after Account opens on the
     // footer's own hairline. ONE constant draws both.
     expect(rail()).toContain(
-      'const SECTION_SEAM = "border-sidebar-border mt-2 border-t pt-2"',
+      'const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2"',
     );
     expect((rail().match(/className=\{SECTION_SEAM\}/g) ?? []).length).toBe(2);
     expect(rail()).not.toContain('className="mt-3"');
