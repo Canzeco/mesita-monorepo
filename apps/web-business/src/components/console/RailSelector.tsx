@@ -42,7 +42,7 @@
 // the trigger's `aria-label`, which is on it at every width.
 
 import { cn } from "@/lib/utils";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,6 +72,76 @@ export const MENU_STACK = "flex min-w-0 flex-1 flex-col leading-tight";
 export const SELECTOR_CHIP =
   "h-4 w-4 lg:h-3.5 lg:w-3.5 shrink-0 overflow-hidden rounded-[4px] flex items-center justify-center text-[8px] font-semibold leading-none";
 
+/** The line a filter leaves behind when it matches nothing. Muted, one row
+ *  tall, in the menu's own page tokens — and here, not in the rail, for the
+ *  same reason every other class on this page is here (MESITA-1831). */
+export const MENU_EMPTY = "text-muted-foreground px-2 py-1.5 text-[13px]";
+
+/** A FIELD INSIDE A MENU, which Radix does not expect.
+ *
+ *  Two things make it work, and both are invisible until they are missing:
+ *
+ *  TYPEAHEAD. `DropdownMenu` listens for printable keys on the content and
+ *  jumps to the row that starts with them. Left alone it eats every character
+ *  aimed at this input — you type "cafe" and the menu hops to four different
+ *  rows while the field stays empty. `stopPropagation` on the keystrokes that
+ *  belong to the input is what stops that, and the arrows, Enter, Home, End
+ *  and Tab are deliberately NOT stopped: those are how you leave the field for
+ *  the rows.
+ *
+ *  ESCAPE, IN TWO STAGES. A non-empty query swallows Escape and clears
+ *  itself; an empty one lets it through and Radix closes the menu. One key,
+ *  two answers, in the order a person expects: undo the narrowing first, leave
+ *  second.
+ *
+ *  FOCUS. Radix focuses the first ITEM when the menu opens, which would put
+ *  the caret nowhere. The selector's `autoFocusRef` sends it here instead. */
+export function MenuSearch({
+  value,
+  onChange,
+  placeholder,
+  inputRef,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <div className="bg-popover sticky top-0 z-10 flex items-center gap-2 px-2 py-1.5">
+      <Search aria-hidden className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        aria-label={placeholder}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            if (value === "") return;
+            e.preventDefault();
+            e.stopPropagation();
+            onChange("");
+            return;
+          }
+          if (
+            e.key === "ArrowDown" ||
+            e.key === "ArrowUp" ||
+            e.key === "Enter" ||
+            e.key === "Home" ||
+            e.key === "End" ||
+            e.key === "Tab"
+          )
+            return;
+          e.stopPropagation();
+        }}
+        className="placeholder:text-muted-foreground flex-1 bg-transparent text-[13px] outline-none"
+      />
+    </div>
+  );
+}
+
 export function RailSelector({
   label,
   name,
@@ -79,6 +149,7 @@ export function RailSelector({
   switchable,
   pending,
   collapsed,
+  autoFocusRef,
   children,
 }: {
   /** The accessible name — "Switch organization". Never the subject's own
@@ -89,6 +160,10 @@ export function RailSelector({
   switchable: boolean;
   pending: boolean;
   collapsed: boolean;
+  /** Where the caret goes when the menu opens, when the menu has a field in
+   *  it at all. Unset — every selector that has nothing to search — and Radix
+   *  keeps its own behaviour: focus the first row. */
+  autoFocusRef?: React.RefObject<HTMLInputElement | null>;
   children: React.ReactNode;
 }) {
   return (
@@ -124,6 +199,13 @@ export function RailSelector({
         align="start"
         sideOffset={6}
         className="w-64 motion-reduce:animate-none"
+        onOpenAutoFocus={
+          autoFocusRef &&
+          ((e: Event) => {
+            e.preventDefault();
+            autoFocusRef.current?.focus();
+          })
+        }
       >
         {children}
       </DropdownMenuContent>

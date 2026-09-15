@@ -33,6 +33,13 @@ function DropdownMenuContent({
    *  `aria-modal` surface (the console drawer, MESITA-1818) must portal INTO
    *  that surface, or a screen reader and the focus trap cannot see it. */
   container?: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>["container"];
+  /** WHERE THE CARET LANDS ON OPEN. Radix's runtime composes this with its
+   *  own mount focus — call `preventDefault()` and focus what you want
+   *  instead — but its public type OMITS the prop (it is private to
+   *  `MenuContentImpl`), so a menu that opens onto a field of its own
+   *  (MESITA-1803) cannot say so without this line. Re-declared, not
+   *  re-implemented: the value still goes straight to the primitive. */
+  onOpenAutoFocus?: (event: Event) => void;
 }) {
   return (
     <DropdownMenuPrimitive.Portal container={container}>

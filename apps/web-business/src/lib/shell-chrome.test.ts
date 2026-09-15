@@ -281,6 +281,44 @@ describe("the rail is six nouns and one indent", () => {
     expect(account.slice(0, account.indexOf("/>"))).not.toContain("Selector");
   });
 
+  // MESITA-1803. The place picker grows a search field past a count, and the
+  // count is ONE exported number. These are the pairings a compiler cannot
+  // see: the rail reading the constant, and the two lines without which a
+  // field inside a Radix menu does not work at all.
+  it("the picker's threshold is read, never retyped", () => {
+    const r = rail();
+    expect(r).toContain("PLACE_SEARCH_MIN");
+    // The failure this catches: someone inlines the digit, the constant and
+    // the rail drift, and the field appears at a count no test names.
+    expect(r).not.toMatch(/places\.length >= \d/);
+    expect(r).not.toMatch(/places\.length >= 8/);
+    // The field is above the radio group, never inside it — a search row
+    // inside a radio group is announced as one of the options.
+    const picker = r.slice(r.indexOf('label="Switch place"'));
+    expect(picker.indexOf("<MenuSearch")).toBeGreaterThan(-1);
+    expect(picker.indexOf("<MenuSearch")).toBeLessThan(
+      picker.indexOf("<DropdownMenuRadioGroup"),
+    );
+    // And the way out stays outside the filter: "All places" is rendered
+    // unconditionally, so a query that matches nothing still has a door.
+    const footer = picker.slice(picker.indexOf("<DropdownMenuSeparator"));
+    expect(footer).toContain("All places");
+    expect(footer).not.toContain("placeSearch &&");
+  });
+
+  it("the menu's field survives Radix's typeahead and its own focus", () => {
+    const sel = readCode("components/console/RailSelector.tsx");
+    // Without stopPropagation the menu's typeahead eats every keystroke aimed
+    // at the input; without onOpenAutoFocus the caret opens on a row instead
+    // of the field. Both are one line, and both look removable.
+    expect(sel).toContain("e.stopPropagation()");
+    expect(sel).toContain("onOpenAutoFocus");
+    // Escape clears a query before it closes the menu — the guard that makes
+    // the two stages two.
+    expect(sel).toContain('e.key === "Escape"');
+    expect(sel).toContain('if (value === "") return;');
+  });
+
   // MESITA-1848. The ceremonies live in the selectors' MENUS, never as rows:
   // a rail row is a destination, and "Create organization" is a thing you do
   // to the subject the selector names.
