@@ -140,14 +140,13 @@ Deno.test("a superseded subscription is cancelled AT STRIPE, not just mirrored",
   // arrives on its own connection, so an owner who pays twice in that window
   // has two live subscriptions. Retiring one MIRROR would hide the second
   // from the console and bill it every year regardless.
-  assertStringIncludes(hook, "stripe.subscriptions.cancel(priorId)");
-  const cancelAt = hook.indexOf("stripe.subscriptions.cancel");
+  assertStringIncludes(hook, "await cancelIfStillBillable(stripe, priorId)");
+  const cancelAt = hook.indexOf("await cancelIfStillBillable(stripe, priorId)");
   const retireAt = hook.indexOf('.update({ state: "canceled" })');
   assert(cancelAt > 0 && retireAt > 0, "both steps must exist");
   assert(cancelAt < retireAt, "cancel at Stripe BEFORE retiring the mirror");
-  // A failed cancel must 500 so Stripe retries — the only exception is a
-  // subscription Stripe says is already gone.
-  assertStringIncludes(hook, 'code !== "resource_missing"');
+  // A failed cancel must 500 so Stripe retries — the only exceptions are
+  // Stripe's own two ways of saying there is nothing left to cancel.
   assertStringIncludes(hook, "membership_cancel_prior_live");
 });
 
@@ -160,4 +159,51 @@ Deno.test("two concurrent checkouts converge on ONE billing customer", async () 
   // object; the compare-and-set is what stops an anchor being overwritten.
   assertStringIncludes(fn, "idempotencyKey: `org-billing-customer-${orgId}`");
   assertStringIncludes(fn, '.is("stripe_billing_customer_id", null)');
+});
+
+Deno.test("cancelling a superseded subscription must not revoke the live one", async () => {
+  const hook = codeOnly(
+    await read("../stripe-webhook-handle-event/partner-membership.ts"),
+  );
+  // `stripe.subscriptions.cancel` makes Stripe emit
+  // customer.subscription.deleted for the prior, and that event comes back
+  // here carrying the SAME organization_id. Read alone its state says revoke,
+  // so the org would lose `partnered` and every held place would be dropped
+  // while the membership that replaced it is live and paid — a
+  // double-payment repair turning into an outage.
+  assertStringIncludes(hook, 'if (outcome === "revoke")');
+  assertStringIncludes(hook, "readLiveMembership(admin, orgId)");
+  assertStringIncludes(hook, 'if (remaining.row) outcome = "mirror"');
+  // The mirror must already be written when that read runs, or the dead row
+  // is still in the live set and answers for itself.
+  const mirrorAt = hook.indexOf("membership_mirror");
+  const readAt = hook.indexOf("membership_read_remaining");
+  assert(mirrorAt > 0 && readAt > 0, "both must exist");
+  assert(
+    mirrorAt < readAt,
+    "mirror the incoming state BEFORE reading what is still live",
+  );
+});
+
+Deno.test("the prior cancel survives a Stripe retry", async () => {
+  const hook = codeOnly(
+    await read("../stripe-webhook-handle-event/partner-membership.ts"),
+  );
+  // A cancel that succeeds and is then followed by a failed write 500s, and
+  // Stripe redelivers — at which point a SECOND cancel on an already-canceled
+  // subscription is an error, not a no-op. Rethrowing it wedges the reconcile
+  // forever: the mirror never retires and the new membership never upserts.
+  assertStringIncludes(hook, "cancelIfStillBillable");
+  assertStringIncludes(hook, "DEAD_STRIPE_STATUSES");
+  assertStringIncludes(hook, "nothingLeftToCancel");
+  // Both of Stripe's "nothing to cancel" answers count as success.
+  assertStringIncludes(hook, '"resource_missing"');
+  assert(
+    hook.includes("already"),
+    "an already-canceled subscription is the goal already met",
+  );
+  // Read the live object before acting: a dead status is skipped, not tried.
+  const retrieveAt = hook.indexOf("subscriptions.retrieve(subscriptionId)");
+  const cancelAt = hook.indexOf("subscriptions.cancel(subscriptionId)");
+  assert(retrieveAt > 0 && cancelAt > 0 && retrieveAt < cancelAt);
 });

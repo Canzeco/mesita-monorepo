@@ -22,6 +22,7 @@ import {
   isMockSubscriptionId,
   MEMBERSHIP_PLAN_KEY,
   membershipOutcome,
+  readLiveMembership,
 } from "../_shared/partner-membership.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
@@ -33,6 +34,60 @@ export function organizationIdFor(
 ): string | null {
   const id = obj.metadata?.organization_id;
   return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+
+/** Stripe statuses that can no longer bill anyone. Cancelling one of these
+ *  is not a no-op — Stripe rejects it — so they are the skip list. */
+const DEAD_STRIPE_STATUSES = new Set(["canceled", "incomplete_expired"]);
+
+/** True for the two ways Stripe says "there is nothing here to cancel": the
+ *  object is gone, or it is already canceled. Both mean the goal is already
+ *  met, which is the only reading that makes a RETRY safe. */
+function nothingLeftToCancel(err: unknown): boolean {
+  const e = err as { code?: string; message?: string } | null;
+  if (e?.code === "resource_missing") return true;
+  return /already\s+canceled/i.test(e?.message ?? "");
+}
+
+/**
+ * Cancels a superseded subscription, idempotently.
+ *
+ * THE RETRY IS THE WHOLE REASON THIS IS NOT ONE LINE. A cancel that succeeds
+ * and is then followed by a failed write 500s, and Stripe redelivers the
+ * event — at which point a second `cancel` on an already-canceled
+ * subscription is an ERROR, not a no-op. Rethrowing it would wedge the
+ * reconcile forever: the mirror never retires, the new membership never
+ * upserts, and every redelivery fails the same way.
+ *
+ * So: read the live object first and skip a status that cannot bill, and
+ * treat both of Stripe's "nothing to cancel" answers as success. Anything
+ * else still throws — a subscription we failed to cancel for a real reason is
+ * a second yearly charge, and that is worth the retry.
+ */
+async function cancelIfStillBillable(
+  stripe: Stripe,
+  subscriptionId: string,
+): Promise<void> {
+  let prior: Stripe.Subscription | null = null;
+  try {
+    prior = await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (err) {
+    if (nothingLeftToCancel(err)) return;
+    throw new Error(
+      `membership_read_prior_stripe (${subscriptionId}): ${String(err)}`,
+    );
+  }
+  if (prior && DEAD_STRIPE_STATUSES.has(prior.status)) return;
+
+  try {
+    await stripe.subscriptions.cancel(subscriptionId);
+  } catch (err) {
+    if (nothingLeftToCancel(err)) return;
+    throw new Error(
+      `membership_cancel_prior_live (${subscriptionId}): ${String(err)}`,
+    );
+  }
 }
 
 /**
@@ -78,18 +133,7 @@ export async function reconcilePartnerMembership(
     for (const row of (priors ?? []) as { stripe_subscription_id: string }[]) {
       const priorId = row.stripe_subscription_id;
       if (isMockSubscriptionId(priorId)) continue;
-      try {
-        await stripe.subscriptions.cancel(priorId);
-      } catch (err) {
-        // `resource_missing` means Stripe has no such subscription to bill —
-        // nothing to cancel, and retiring the mirror is the correct repair.
-        const code = (err as { code?: string } | null)?.code;
-        if (code !== "resource_missing") {
-          throw new Error(
-            `membership_cancel_prior_live (${priorId}): ${String(err)}`,
-          );
-        }
-      }
+      await cancelIfStillBillable(stripe, priorId);
     }
 
     const retire = await admin
@@ -135,7 +179,27 @@ export async function reconcilePartnerMembership(
       .is("stripe_billing_customer_id", null);
   }
 
-  const outcome = membershipOutcome(localState);
+  // THE ENTITLEMENT ANSWERS TO THE ORGANIZATION, NOT TO THIS ONE EVENT.
+  //
+  // Cancelling a superseded subscription above makes Stripe emit
+  // `customer.subscription.deleted` for it, and that event arrives back here
+  // carrying the same `organization_id`. Read alone, its state says revoke —
+  // so the org would lose `partnered` and every held place would be dropped
+  // while the membership that replaced it is live and paid. A double-payment
+  // repair would become an outage.
+  //
+  // A revoke is therefore only honoured when the organization has no OTHER
+  // live membership left. The mirror is already written above, so the dead
+  // row has left the live set and this read sees exactly what remains.
+  let outcome = membershipOutcome(localState);
+  if (outcome === "revoke") {
+    const remaining = await readLiveMembership(admin, orgId);
+    if (!remaining.ok) {
+      throw new Error(`membership_read_remaining: ${remaining.error}`);
+    }
+    if (remaining.row) outcome = "mirror";
+  }
+
   const applied = await applyMembershipEntitlement(admin, orgId, outcome);
   if (!applied.ok) throw new Error(`membership_entitlement: ${applied.error}`);
 }
