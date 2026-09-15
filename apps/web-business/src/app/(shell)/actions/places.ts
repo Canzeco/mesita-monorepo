@@ -108,9 +108,33 @@ function revalidateHold() {
 
 const OWNER_ONLY = "Only the owner can add a place to this organization.";
 
-/** Ceremony Create/Add are owner-only. `business-web-create-place` only
- *  checks a signed-in user, so this gate must run before mint or an editor
- *  could leave an unowned catalogue row after a 403 claim. */
+/** ONE PLACE PER ORGANIZATION, REFUSED AND NOT MERELY HIDDEN (MESITA-1879).
+ *
+ *  Pato: *"You can now only manage one place for organization."* The console
+ *  hides the Add door once an organization holds one — but a hidden door is
+ *  not a closed one. A stale tab, a bookmarked ceremony, `/orgs/<id>/places`
+ *  (still live, still reachable) or a super-admin can all still post here, and
+ *  a second place drops the organization into the multi-place fallback for
+ *  good.
+ *
+ *  It says WHICH place it already holds, because "you already have one" with
+ *  no name is a dead end on a screen the operator came to precisely because
+ *  they could not find it.
+ *
+ *  NOT A DATABASE CONSTRAINT, deliberately: `places.organization_id` keeps its
+ *  cardinality so franchises need no migration to come back (see the
+ *  comment-only migration this issue ships). The accepted cost is that this is
+ *  read-then-refuse, so two tabs racing can both pass — blast radius is one
+ *  extra place, which the console then explains rather than hiding. */
+function alreadyHoldsPlace(org: { places: readonly { name: string }[] }): string | null {
+  const first = org.places[0];
+  if (!first) return null;
+  return `This organization already holds ${first.name}. Open it, or contact support to add a second place.`;
+}
+
+/** Ceremony Create/Add are owner-only, and one-place. `business-web-create-place`
+ *  only checks a signed-in user, so both gates must run before mint or an
+ *  editor could leave an unowned catalogue row after a 403 claim. */
 async function requireCeremonyOwner(
   supabase: Awaited<ReturnType<typeof createServerSupabase>>,
   organizationId: string,
@@ -123,7 +147,7 @@ async function requireCeremonyOwner(
   }
   const org = findOrg(orgs, organizationId);
   if (!org || !canAddPlace(org.myRole)) return OWNER_ONLY;
-  return null;
+  return alreadyHoldsPlace(org);
 }
 
 /** Claim a listed Mesita place into this organization (the Add card). */

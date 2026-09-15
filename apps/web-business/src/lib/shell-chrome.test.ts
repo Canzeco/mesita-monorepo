@@ -180,6 +180,8 @@ describe("the unsaved-edits guard reaches the rail", () => {
     expect(goBody.indexOf("guardNav?.(href)")).toBeLessThan(goBody.indexOf("setChoice("));
     // Every ceremony in either MENU is a guarded link, never a bare one. The
     // NavRow's own <Link> guards through `onGuardedNavigate`, checked above.
+    // The selectors render only in the states where they answer something
+    // (MESITA-1879), and their ceremonies ride with them.
     const menus = rail.slice(rail.indexOf("<RailSelector"));
     for (const m of menus.match(/<Link\b[\s\S]*?<\/Link>/g) ?? []) {
       expect(m).toContain("guardNav?.(");
@@ -251,17 +253,27 @@ describe("the rail is six nouns and one indent", () => {
     expect(rail()).toContain(
       'const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2"',
     );
-    expect((rail().match(/className=\{SECTION_SEAM\}/g) ?? []).length).toBe(2);
+    // ONE SEAM NOW (MESITA-1879): the rail is one flat column, so the only
+    // boundary left is the one over Account — the person, below the business.
+    // It was two while two selectors each opened a group.
+    expect((rail().match(/className=\{SECTION_SEAM\}/g) ?? []).length).toBe(1);
     expect(rail()).not.toContain('className="mt-3"');
   });
 
-  it("heads its groups with selectors, never with an eyebrow", () => {
+  it("renders a selector only where one has something to select", () => {
+    // MESITA-1879. Both selectors are still in this file and still render —
+    // the franchise path is DEFERRED, not deleted — but each is behind the
+    // condition that makes its question real: two organizations, or two
+    // places. The operator this console is built for sees neither, which is
+    // the whole change.
     const r = rail();
     expect(r).not.toContain("GroupHeader");
     expect(r).not.toContain("TINY_LABEL_CLASS");
     expect((r.match(/<RailSelector/g) ?? []).length).toBe(2);
     expect(r).toContain('label="Switch organization"');
     expect(r).toContain('label="Switch place"');
+    expect(r).toContain("organizations.length >= 2 &&");
+    expect(r).toContain('scope.mode === "multi" &&');
     // Account is NOT one: there is one of you, so a chevron would be a
     // control with nothing to control. Pato: "(No subitems)".
     const account = r.slice(r.indexOf("href={SHELL_ROUTES.account}"));
@@ -277,7 +289,10 @@ describe("the rail is six nouns and one indent", () => {
     expect(r).not.toContain("<select");
     expect(r).not.toContain('label="Add place"');
     expect(r).toContain("Create organization");
-    expect(r).toContain("Add place");
+    // "Add place" LEFT THE MENUS (MESITA-1879). With one place per
+    // organization the ceremony is not an everyday door: it belongs to the
+    // zero state, where it takes a row of its own and says what it is.
+    expect(r).toContain('label="Add your place"');
     expect(r).toContain("All places");
     // One selector, in the rail. The page's copy is gone, or the two disagree.
     expect(existsSync(path.join(SRC, "components/console/OrgSwitcher.tsx"))).toBe(false);
@@ -286,18 +301,25 @@ describe("the rail is six nouns and one indent", () => {
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, organizations, isSuperAdmin }}>");
   });
 
-  it("is Account, then two selectors each over their own pages (MESITA-1848)", () => {
+  it("is ONE run over the contract's array, then Account (MESITA-1879)", () => {
     const r = rail();
     const nav = r.slice(r.indexOf("<nav"), r.indexOf("</nav>"));
-    // Both runs come from a declared list, never from rows written by hand —
-    // that is what keeps the rail and the route contract in step.
-    expect(nav).toContain("ORG_RAIL_TARGETS.map((target)");
-    expect(nav).toContain("placeRows.map((tab)");
-    // ACCOUNT IS ROW ONE, inside the landmark, above everything (MESITA-1844).
+    // ONE RUN, over a DECLARED list — that is what keeps the rail and the
+    // route contract in step. It was two runs over two arrays while the rail
+    // had two selectors; it is `RAIL_ROWS` now, and the render test walks the
+    // same array rather than re-typing it.
+    expect(nav).toContain("rows.map((row)");
+    expect(r).toContain("RAIL_ROWS");
+    expect(r).toContain("ZERO_PLACE_ROWS");
+    // And nothing hand-writes a row list beside it.
+    expect(nav).not.toContain("ORG_RAIL_TARGETS.map");
+    expect(nav).not.toContain("placeRows.map((tab)");
+    // ACCOUNT IS LAST, inside the landmark, under the one seam: the column
+    // reads the business top to bottom, then you (MESITA-1879 reverses
+    // MESITA-1844's row one).
     const iAccount = nav.indexOf("href={SHELL_ROUTES.account}");
     expect(iAccount).toBeGreaterThan(-1);
-    expect(iAccount).toBeLessThan(nav.indexOf("ORG_RAIL_TARGETS.map"));
-    expect(nav.indexOf("ORG_RAIL_TARGETS.map")).toBeLessThan(nav.indexOf("placeRows.map"));
+    expect(iAccount).toBeGreaterThan(nav.indexOf("rows.map((row)"));
     // The contract carries the order, and Payments and Credits are not in it.
     const routes = readCode("lib/console-routes.ts");
     for (const target of ["settings", "products", "places", "customers", "activity"]) {
@@ -320,16 +342,23 @@ describe("the rail is six nouns and one indent", () => {
     // live address next.config.ts shadows.
     expect(routes).not.toContain('payments: "/payments"');
     expect(routes).not.toMatch(/^\s+"payments",$/m);
-    // The place's five, in the drawing's order.
-    expect(r).toContain('"profile",');
-    expect(r).toContain('"menus",');
-    expect(r).toContain('tab === "admin" ? isSuperAdmin : true');
+    // THE ROW ORDER LIVES IN THE CONTRACT, NOT IN THE RAIL (MESITA-1879).
+    // Sidebar used to declare `PLACE_ROWS` beside the render, which is two
+    // lists for one column. `RAIL_ROWS` is the only one now, and this is the
+    // assertion that the rail stopped keeping its own copy.
+    expect(routes).toContain("export const RAIL_ROWS");
+    expect(r).not.toContain("const PLACE_ROWS = [");
+    // Admin is not filtered in the rail any more because it has no row at
+    // all; the matrix still gates the ADDRESS (`tabsForAccess`, PlaceTabGate).
+    expect(r).not.toContain('tab === "admin" ? isSuperAdmin : true');
+    expect(routes).not.toMatch(/view: "admin"/);
+    expect(routes).not.toMatch(/target: "places"/);
     // A ROW IS THE CANONICAL ADDRESS (MESITA-1839): the shell has already
     // resolved which place and which organization, so the row links straight
     // there and the click costs one hop. The flat address is the fallback for
     // the state with nothing to name yet.
     expect(r).toContain("placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab]");
-    expect(r).toContain("href={orgHref(org.id, target)}");
+    expect(r).toContain("href={orgHref(org.id, row.target)}");
     // Both readers, on both scopes, because either address may be on screen.
     expect(r).toContain("placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname)");
     expect(r).toContain("orgTargetFromPathname(pathname) ?? flatOrgTargetFromPathname(pathname)");
@@ -553,11 +582,16 @@ describe("the rail is six nouns and one indent", () => {
 
   it("the selectors: a name at n=1, and the transition is the pending clock", () => {
     const sw = readCode("components/console/Sidebar.tsx");
-    // A selector with nothing to switch is a NAME (MESITA-1818): no chevron
-    // at one organization or one place, and the row still opens its menu,
-    // which is where the ceremony lives.
-    expect(sw).toContain("switchable={organizations.length >= 2}");
-    expect(sw).toContain("switchable={org.places.length >= 2}");
+    // A selector with nothing to switch does not RENDER at all any more
+    // (MESITA-1879). MESITA-1818 made it a name without a chevron; the flat
+    // rail goes one step further, because a name with no question attached is
+    // still a row spent on saying what the operator already knows. The
+    // condition moved out of the prop and into the render, so `switchable` is
+    // unconditional wherever a selector appears at all.
+    expect(sw).toContain("organizations.length >= 2 &&");
+    expect(sw).toContain('scope.mode === "multi" &&');
+    expect(sw).not.toContain("switchable={organizations.length >= 2}");
+    expect(sw).not.toContain("switchable={org.places.length >= 2}");
     expect(sw).toContain("const pendingId = isPending ? choice : null;");
     expect(sw).not.toContain("choice.at === pathname");
     expect(sw).not.toContain("useEffect");

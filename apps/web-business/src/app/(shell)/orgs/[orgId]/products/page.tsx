@@ -65,8 +65,8 @@ import {
   orgPayHref,
   orgPlacesHref,
   orgPlacesNewHref,
-  placeHref,
 } from "@/lib/console-routes";
+import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import { buildProductCards } from "@/lib/products";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 
@@ -108,12 +108,18 @@ export default async function ProductsPage(props: {
     console.error("[products] business-web-list-places:", e);
   }
 
-  // Where a per-place product is turned on. One place is the common case this
-  // console is optimized for, so it skips the chooser entirely.
+  // Where a per-place product is turned on. One place is the case this console
+  // is built for, so it skips the chooser entirely and lands on the VIEW that
+  // holds the switch — Capabilities or Rewards, per `PRODUCT_VIEW`. Those two
+  // lost their rail rows in MESITA-1879, which makes this card the door.
+  //
+  // With several places there is no single view to name, so the verb opens the
+  // list and the operator picks; with none it opens Add place, and `noPlaces`
+  // makes every verb say so.
   const held = org.places;
-  const placeHome =
+  const placeLanding = (view: PlaceTab) =>
     held.length === 1
-      ? placeHref(held[0].id)
+      ? placeTabHref(held[0].id, view)
       : held.length > 1
         ? orgPlacesHref(org.id, "org")
         : orgPlacesNewHref(org.id);
@@ -122,7 +128,7 @@ export default async function ProductsPage(props: {
     partnered,
     mesitaPayEnabled: org.mesitaPayEnabled === true,
     places,
-    placeHome,
+    placeHref: placeLanding,
     noPlaces: held.length === 0,
     payHref: orgPayHref(org.id),
   });

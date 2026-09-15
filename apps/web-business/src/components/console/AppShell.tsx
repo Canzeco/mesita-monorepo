@@ -78,7 +78,12 @@ export function AppShell({
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
-  const scope = useRailScope({ organizations, rememberedPlaceId, rememberedOrgId });
+  const scope = useRailScope({
+    organizations,
+    rememberedPlaceId,
+    rememberedOrgId,
+    viewerError,
+  });
   // THE MOBILE TOPBAR STATES THE SCOPE (MESITA-1842). Pato: "no mesita logo,
   // fuck it." The wordmark used to sit here and in the rail; the desktop app's
   // own title bar already says "Mesita Business", so both were a quieter second

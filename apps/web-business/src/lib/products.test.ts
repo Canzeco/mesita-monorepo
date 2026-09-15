@@ -7,9 +7,12 @@
 import { describe, expect, it } from "vitest";
 import type { ConsolePlace } from "@/lib/api/organizations";
 import { PRODUCT_KEYS } from "@/components/console/ProductCatalog";
-import { PRODUCT_ORDER, buildProductCards } from "./products";
+import { PRODUCT_ORDER, PRODUCT_VIEW, buildProductCards } from "./products";
+import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
-const HOME = "/places/p-1/profile";
+/** The caller's own shape: a view in, an address out. The page builds this
+ *  from the one place it holds; the test builds it from a fixed id. */
+const HREF = (view: (typeof PLACE_TABS)[number]) => placeTabHref("p-1", view);
 const PAY = "/orgs/org-1/products#mesita-pay";
 
 function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
@@ -29,7 +32,7 @@ function build(over: Partial<Parameters<typeof buildProductCards>[0]> = {}) {
     partnered: false,
     mesitaPayEnabled: false,
     places: [],
-    placeHome: HOME,
+    placeHref: HREF,
     noPlaces: false,
     payHref: PAY,
     ...over,
@@ -60,6 +63,38 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     }
   });
 
+  it("maps EVERY product to a real place view, and to a live one", () => {
+    // PRODUCT_VIEW is hand-written because no derivation exists across
+    // ProductKey and LadderRowKey (they share one spelling and mean different
+    // things by it). Hand-written means a new product can be added without
+    // one, so the exhaustiveness is the assertion — in both directions.
+    expect(Object.keys(PRODUCT_VIEW).sort()).toEqual([...PRODUCT_ORDER].sort());
+    for (const view of Object.values(PRODUCT_VIEW)) {
+      expect(PLACE_TABS).toContain(view);
+    }
+  });
+
+  it("sends a per-place verb to the view that HOLDS its switch", () => {
+    // The bug this replaces: every per-place card pointed at the place root,
+    // so an operator clicking Enable on Orders landed on Profile, a screen
+    // holding none of its switches. Capabilities and Rewards lost their rail
+    // rows in MESITA-1879, which makes these verbs their only door.
+    const cards = build({ partnered: true, places: [place()] });
+    expect(cards.orders.action?.href).toBe(placeTabHref("p-1", "capabilities"));
+    expect(cards.reservations.action?.href).toBe(
+      placeTabHref("p-1", "capabilities"),
+    );
+    expect(cards.credits.action?.href).toBe(placeTabHref("p-1", "capabilities"));
+    expect(cards.rewards.action?.href).toBe(placeTabHref("p-1", "rewards"));
+    expect(cards.visits.action?.href).toBe(placeTabHref("p-1", "rewards"));
+    // And the opposite direction: no per-place verb may land on the bare
+    // place root, which is what "points at Profile" looked like.
+    for (const key of ["orders", "reservations", "credits", "rewards", "visits"]) {
+      expect(cards[key].action?.href).not.toBe("/places/p-1");
+      expect(cards[key].action?.href).not.toBe(placeTabHref("p-1", "profile"));
+    }
+  });
+
   it("every card names itself Mesita, and says one thing", () => {
     for (const card of Object.values(build())) {
       expect(card.name.startsWith("Mesita ")).toBe(true);
@@ -76,7 +111,10 @@ describe("Mesita Profile is free, and is the only card that says so", () => {
       expect(profile.state).toBe("free");
       expect(profile.note).toContain("Always free");
       // It still has a verb: the profile is the thing you go and edit.
-      expect(profile.action).toEqual({ label: "Manage", href: HOME });
+      expect(profile.action).toEqual({
+        label: "Manage",
+        href: placeTabHref("p-1", "profile"),
+      });
     }
   });
 
@@ -209,10 +247,14 @@ describe("Mesita Pay is the one switch at this level", () => {
   });
 
   it("is the ONLY product whose verb leaves the place behind", () => {
+    // Every other verb lands on a PLACE address — its own view now
+    // (MESITA-1879), not the place root every one of them shared before.
     const cards = Object.values(build({ partnered: true, places: [place()] }));
     for (const c of cards) {
       if (!c.action) continue;
-      expect(c.action.href, c.key).toBe(c.key === "pay" ? PAY : HOME);
+      expect(c.action.href, c.key).toBe(
+        c.key === "pay" ? PAY : placeTabHref("p-1", PRODUCT_VIEW[c.key]),
+      );
     }
   });
 });

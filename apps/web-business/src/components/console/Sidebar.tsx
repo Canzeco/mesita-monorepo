@@ -1,39 +1,45 @@
 "use client";
 
-// The whole navigation: THREE SECTIONS, each headed by a SELECTOR
-// (MESITA-1848).
+// The whole navigation: ONE FLAT COLUMN (MESITA-1879).
 //
-// Pato, 2026-09-14: *"better three sections"* —
-//
-//   [ ○ Account        ]  → /account                the person, no subitems
+//   ⚙ Settings          → /orgs/<id>/settings       the team: members, keys
+//   ⌂ Profile           → /places/<id>/profile
+//   🍴 Menus            → /places/<id>/menus
+//   ★ Reviews           → /places/<id>/reviews
+//   ▦ Products          → /orgs/<id>/products       the catalogue
+//   👥 Customers        → /orgs/<id>/customers
+//   ▁ Activity          → /orgs/<id>/activity
 //   ─────────────────────
-//   [ ▣ Organization ⌄ ]  which one you are in
-//       Settings          → /orgs/<id>/settings
-//       Products          → /orgs/<id>/products
-//       Places            → /orgs/<id>/places
-//       Customers         → /orgs/<id>/customers
-//       Activity          → /orgs/<id>/activity
-//   ─────────────────────
-//   [ ⌂ Place        ⌄ ]  which one you are managing
-//       Profile           → /places/<id>/profile
-//       Menus             → /places/<id>/menus
-//       Reviews           → /places/<id>/reviews
-//       Capabilities      → /places/<id>/capabilities
-//       Rewards           → /places/<id>/rewards
-//       Admin             → /places/<id>/admin      super-admin only
+//   ○ Account           → /account                  the person
 //   ═════════════════════
-//   ◧ Collapse            the rail's own control
+//   ◧ Collapse          the rail's own control
 //
-// THE RAIL ANSWERS "WHICH" AND "WHERE" IN ONE COLUMN. It was a flat list of
-// destinations, and a flat list cannot say which organization or which place
-// those destinations are ABOUT — so the answer lived on a page (MESITA-1822),
-// then on Account (MESITA-1832), then split in two (MESITA-1847). Heading each
-// group with its own selector puts the scope question beside the pages it
-// scopes, which is the only place it has ever belonged.
+// ONE PLACE PER ORGANIZATION, SO THE ONTOLOGY GOES QUIET. Pato, 2026-09-15:
+// *"You can now only manage one place for organization … we still have the
+// ontological structure for orgs and places in the future … so hidden keep the
+// org and place it. but i only see it like simpler."*
 //
-// ACCOUNT HAS NO SUBITEMS, so it is not a selector at all: there is one of
-// you, and the row is simply a link to `/account`. Giving it a chevron would
-// be a control with nothing to control.
+// Four of these rows are organization addresses and three are place views, and
+// the column says so nowhere — because an operator holding exactly one place
+// has no question the word "Organization" answers. The two selectors are gone:
+// a control with one option to select is a control over nothing. THE SCOPE
+// MODEL IS NOT GONE. `lib/rail-scope.ts` still resolves it, still finds a
+// holder across every organization, still handles a pool place; `RailScope.mode`
+// decides which of those answers this column renders. Franchises are deferred,
+// and a deferred thing may not be deleted on its way out.
+//
+// THE ROW LIST LIVES IN `lib/console-routes.ts` AS `RAIL_ROWS`, once. This
+// file renders it and never restates it — two lists is how the rail came to
+// mean three different things in one document.
+//
+// ACCOUNT MOVED TO THE FOOT, below the seam. It is the person, not the
+// business, and it is the one row every state renders.
+//
+// WHAT LOST ITS ROW AND KEPT ITS ADDRESS: Capabilities and Rewards (reached
+// from the product cards that already link into the place), Places (Add place
+// and the zero-place empty state), Admin (typed, super-admin only). Hiding a
+// row changes NOTHING about access — `tabsForAccess` is still the one matrix
+// and `PlaceTabGate` still 404s a withheld tab.
 //
 // "KEEP IT STANDARD AND BORING." Pato, on the pass that made the rail flat:
 // *"just standard spacing and design, don't use lots of fucking different
@@ -50,11 +56,21 @@
 //
 // NO ID IN ANYTHING THE OPERATOR READS. Every href carries one; none is shown.
 //
-// NO PLACE YET: the place rows stay, AT FULL STRENGTH (MESITA-1833); each
-// opens the page, which answers with the one next step. The rail never
-// shrinks. Zero organizations: Account and Create organization. A failed
-// organizations read: Account and a muted line, never the create row
-// (MESITA-1793's law).
+// FOUR SHAPES, ONE COLUMN (`RailScope.mode`):
+//
+//   unknown  the organizations read FAILED. A muted retry line, never a count
+//            and never the create row (MESITA-1793's law). An empty array is a
+//            DIFFERENT fact and gets a different screen.
+//   zero     a successful read of no places. Settings and Account, and the
+//            page carries the one next step. Production holds zero places, so
+//            this is every fresh environment, not an edge case.
+//   solo     the seven rows. What this console is for.
+//   multi    two or more. The rows still render for the place the ADDRESS
+//            names; when nothing names one, the console does not choose — a
+//            place picked for you is an edit against the wrong venue, and
+//            nothing on screen would say so.
+//
+// Zero organizations is separate and older: Account and Create organization.
 //
 // DARK (MESITA-1831). The rail sits on the brand's ink (`--sidebar` is the
 // dock token, globals.css) and paints ONLY with `sidebar-*` tokens: rows at
@@ -70,15 +86,12 @@ import { useState, useTransition } from "react";
 import {
   AlertCircle,
   ChartNoAxesColumn,
-  Gift,
   Layers,
   LayoutGrid,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Settings,
-  Shield,
-  SlidersHorizontal,
   Star,
   Store,
   UserRound,
@@ -97,7 +110,6 @@ import {
 } from "@/components/console/RailSelector";
 import {
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -107,8 +119,9 @@ import { placeThumbUrl } from "@/lib/place-thumb";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
-  ORG_RAIL_TARGETS,
+  RAIL_ROWS,
   SHELL_ROUTES,
+  ZERO_PLACE_ROWS,
   flatOrgTargetFromPathname,
   flatViewFromPathname,
   orgHref,
@@ -260,24 +273,17 @@ const ORG_ROW: Record<
   activity: { label: "Activity", Icon: ChartNoAxesColumn },
 };
 
-const PLACE_ROW_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
+/** The rail's mark for a row, by subject. `RAIL_ROWS` decides WHICH rows and
+ *  in what order (lib/console-routes); this decides what each one wears. */
+const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  settings: Settings,
+  products: LayoutGrid,
+  customers: Users,
+  activity: ChartNoAxesColumn,
   profile: Store,
   menus: UtensilsCrossed,
   reviews: Star,
-  capabilities: SlidersHorizontal,
-  rewards: Gift,
-  admin: Shield,
 };
-
-/** The place's six, in the list's order. Admin is super-admin only. */
-const PLACE_ROWS = [
-  "profile",
-  "menus",
-  "reviews",
-  "capabilities",
-  "rewards",
-  "admin",
-] as const;
 
 /** The selector's mark: the organization wears the brand, the place wears its
  *  own photo. Two kinds of thing, so they never look interchangeable — and at
@@ -485,9 +491,17 @@ export function Sidebar({
   const viewRow = (tab: PlaceTab) =>
     placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab];
 
-  const placeRows = PLACE_ROWS.filter((tab) =>
-    tab === "admin" ? isSuperAdmin : true,
-  ).filter((tab) => noPlace || placeTabs.includes(tab));
+  // WHICH ROWS. `RAIL_ROWS` is the whole vocabulary; two filters narrow it and
+  // neither invents a row:
+  //
+  //   zero        the FILTER `ZERO_PLACE_ROWS` — Settings alone. Not a second
+  //               array: a place row with no place opens a page about nothing.
+  //   role/matrix a place view the viewer may not open is not listed. Same
+  //               `tabsForAccess` the place layout gates on, so the rail and
+  //               the gate cannot disagree.
+  const rows = (scope.mode === "zero" ? ZERO_PLACE_ROWS : RAIL_ROWS).filter(
+    (r) => r.kind === "org" || noPlace || placeTabs.includes(r.view),
+  );
 
   // WHICH ROW A ROW LIGHTS FOR. Every organization address is a rail row
   // now (MESITA-1847: Members became content ON the Organization page rather
@@ -537,20 +551,11 @@ export function Sidebar({
         aria-label="Console"
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
       >
-        {/* THE PERSON, FIRST (MESITA-1844). Before the navigation, not under
-            it: the column reads who you are, what you run, how it is doing,
-            where it happens. It is the one row every state renders. */}
-        <NavRow
-          href={SHELL_ROUTES.account}
-          label="Account"
-          title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
-          Icon={UserRound}
-          active={onAccount}
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-          onGuardedNavigate={guardNav ?? undefined}
-        />
         {viewerError ? (
+          // THE READ FAILED, and that is not the zero state. A count here
+          // would be a claim about the operator's business that nothing
+          // supports, and "Create organization" would be a lie
+          // (MESITA-1793's law).
           <MutedRow
             label="Couldn't load organizations"
             Icon={AlertCircle}
@@ -568,130 +573,142 @@ export function Sidebar({
           />
         ) : (
           <>
-            {/* ── THE ORGANIZATION: which one, then its pages ─────────── */}
-            <div className={SECTION_SEAM}>
-            <RailSelector
-              label="Switch organization"
-              name={shownOrg?.name ?? "Organization"}
-              chip={<OrgChip name={shownOrg?.name ?? "?"} />}
-              switchable={organizations.length >= 2}
-              pending={pendingOrg !== null}
-              collapsed={collapsed}
-            >
-              {organizations.length === 1 ? (
-                <DropdownMenuLabel className={cn(MENU_ITEM, "flex items-center")}>
-                  <OrgChip name={org.name} menu />
-                  <span className={MENU_STACK}>
-                    <span className="truncate">{org.name}</span>
-                    <span className={MENU_META}>{orgMeta(org)}</span>
-                  </span>
-                </DropdownMenuLabel>
-              ) : (
-                <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
-                  {organizations.map((o) => (
-                    <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
-                      <OrgChip name={o.name} menu />
-                      <span className={MENU_STACK}>
-                        <span className="truncate">{o.name}</span>
-                        <span className={MENU_META}>{orgMeta(o)}</span>
-                      </span>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className={MENU_MUTED}>
-                <Link
-                  href={SHELL_ROUTES.orgNew}
-                  onClick={(e) => guardNav?.(SHELL_ROUTES.orgNew, e)}
+            {/* A SELECTOR ONLY WHERE THERE IS SOMETHING TO SELECT
+                (MESITA-1879). The rail is flat for the operator this console
+                is built for — one organization, one place — and neither
+                control renders for them. Both stay in the code, and in the
+                render, for the operator who genuinely has the question. */}
+            {organizations.length >= 2 && (
+              <div className="mb-1">
+                <RailSelector
+                  label="Switch organization"
+                  name={shownOrg?.name ?? "Organization"}
+                  chip={<OrgChip name={shownOrg?.name ?? "?"} />}
+                  switchable
+                  pending={pendingOrg !== null}
+                  collapsed={collapsed}
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Create organization
-                </Link>
-              </DropdownMenuItem>
-            </RailSelector>
-            </div>
-            {ORG_RAIL_TARGETS.map((target) => (
-              <NavRow
-                key={target}
-                href={orgHref(org.id, target)}
-                label={ORG_ROW[target].label}
-                Icon={ORG_ROW[target].Icon}
-                active={orgRowActive(target)}
-                collapsed={collapsed}
-                indent
-                onNavigate={onNavigate}
-                onGuardedNavigate={guardNav ?? undefined}
-              />
-            ))}
-
-            {/* ── THE PLACE: which one, then its views ──────────────────── */}
-            <div className={SECTION_SEAM}>
-            <RailSelector
-              label="Switch place"
-              name={placeName ?? (canAdd ? "Add a place" : "No place yet")}
-              chip={<PlaceChip name={placeName} photoUrl={shownPlace?.photoUrl} />}
-              switchable={org.places.length >= 2}
-              pending={pendingPlace !== null}
-              collapsed={collapsed}
-            >
-              {org.places.length === 0 ? (
-                <DropdownMenuLabel className={MENU_MUTED}>
-                  {foreignName
-                    ? "Not in your organizations"
-                    : `${org.name} holds none yet`}
-                </DropdownMenuLabel>
-              ) : (
-                <DropdownMenuRadioGroup
-                  value={shownPlace?.id ?? ""}
-                  onValueChange={pickPlace}
+                  <DropdownMenuRadioGroup value={org.id} onValueChange={pickOrg}>
+                    {organizations.map((o) => (
+                      <DropdownMenuRadioItem key={o.id} value={o.id} className={MENU_ITEM}>
+                        <OrgChip name={o.name} menu />
+                        <span className={MENU_STACK}>
+                          <span className="truncate">{o.name}</span>
+                          <span className={MENU_META}>{orgMeta(o)}</span>
+                        </span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className={MENU_MUTED}>
+                    <Link
+                      href={SHELL_ROUTES.orgNew}
+                      onClick={(e) => guardNav?.(SHELL_ROUTES.orgNew, e)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Create organization
+                    </Link>
+                  </DropdownMenuItem>
+                </RailSelector>
+              </div>
+            )}
+            {scope.mode === "multi" && (
+              // TWO OR MORE PLACES. The console does not choose one — the
+              // selector names which venue these rows are about, and says
+              // "Pick a place" while nothing does. A place row lighting under
+              // an unnamed place would be lying about what is being edited.
+              <div className="mb-1">
+                <RailSelector
+                  label="Switch place"
+                  name={placeName ?? "Pick a place"}
+                  chip={<PlaceChip name={placeName} photoUrl={shownPlace?.photoUrl} />}
+                  switchable
+                  pending={pendingPlace !== null}
+                  collapsed={collapsed}
                 >
-                  {org.places.map((p) => (
-                    <DropdownMenuRadioItem key={p.id} value={p.id} className={MENU_ITEM}>
-                      <PlaceChip name={p.name} photoUrl={p.photoUrl} menu />
-                      <span className="truncate">{p.name}</span>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              )}
-              <DropdownMenuSeparator />
-              {canAdd && (
-                <DropdownMenuItem asChild className={MENU_MUTED}>
-                  <Link
-                    href={orgPlacesNewHref(org.id)}
-                    onClick={(e) => guardNav?.(orgPlacesNewHref(org.id), e)}
+                  <DropdownMenuRadioGroup
+                    value={shownPlace?.id ?? ""}
+                    onValueChange={pickPlace}
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add place
-                  </Link>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem asChild className={MENU_MUTED}>
-                <Link
-                  href={orgPlacesHref(org.id)}
-                  onClick={(e) => guardNav?.(orgPlacesHref(org.id), e)}
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  All places
-                </Link>
-              </DropdownMenuItem>
-            </RailSelector>
-            </div>
-            {placeRows.map((tab) => (
+                    {org.places.map((p) => (
+                      <DropdownMenuRadioItem key={p.id} value={p.id} className={MENU_ITEM}>
+                        <PlaceChip name={p.name} photoUrl={p.photoUrl} menu />
+                        <span className="truncate">{p.name}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className={MENU_MUTED}>
+                    <Link
+                      href={orgPlacesHref(org.id)}
+                      onClick={(e) => guardNav?.(orgPlacesHref(org.id), e)}
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                      All places
+                    </Link>
+                  </DropdownMenuItem>
+                </RailSelector>
+              </div>
+            )}
+            {scope.mode === "zero" && canAdd && (
+              // THE ONE CEREMONY THAT EARNS A ROW, and only while it is the
+              // only thing to do. Every other ceremony lives on the page it
+              // belongs to; with no place at all there is no page to put this
+              // one on, and the rail would otherwise be a column of rooms
+              // about a venue that does not exist yet.
               <NavRow
-                key={tab}
-                href={viewRow(tab)}
-                label={placeRowLabel(tab)}
-                Icon={PLACE_ROW_ICON[tab]}
-                active={currentView === tab}
+                href={orgPlacesNewHref(org.id)}
+                label="Add your place"
+                Icon={Plus}
+                active={orgTarget === "places"}
                 collapsed={collapsed}
-                indent
                 onNavigate={onNavigate}
                 onGuardedNavigate={guardNav ?? undefined}
               />
-            ))}
+            )}
+            {rows.map((row) =>
+              row.kind === "org" ? (
+                <NavRow
+                  key={`org:${row.target}`}
+                  href={orgHref(org.id, row.target)}
+                  label={ORG_ROW[row.target].label}
+                  Icon={ORG_ROW[row.target].Icon}
+                  active={orgRowActive(row.target)}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                  onGuardedNavigate={guardNav ?? undefined}
+                />
+              ) : (
+                <NavRow
+                  key={`place:${row.view}`}
+                  href={viewRow(row.view)}
+                  label={placeRowLabel(row.view)}
+                  Icon={RAIL_ICON[row.view]}
+                  active={currentView === row.view}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                  onGuardedNavigate={guardNav ?? undefined}
+                />
+              ),
+            )}
+
           </>
         )}
+        {/* THE PERSON, LAST (MESITA-1879). Above the rail's own control and
+            below one seam: the column reads the business top to bottom, then
+            you. It renders in every state, including the failed read. */}
+        <div className={SECTION_SEAM}>
+          <NavRow
+            href={SHELL_ROUTES.account}
+            label="Account"
+            title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
+            Icon={UserRound}
+            active={onAccount}
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+            onGuardedNavigate={guardNav ?? undefined}
+          />
+        </div>
       </nav>
 
       {/* THE RAIL'S OWN CONTROL, pinned to the bottom and alone there. Account
