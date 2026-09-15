@@ -1,175 +1,184 @@
 "use client";
 
-// The Organization screen's Partner switch (MESITA-1798).
+// The Organization screen's Mesita Partner box (MESITA-1867).
 //
-// Same grammar as a Capabilities ladder row: the WHOLE ROW is the
-// `role="switch"` button, the track is a plain span inside it. Label is
-// Partner — on or off. Never "Not Partner", never "Patner".
+// ── HOW IT GOT HERE ───────────────────────────────────────────────────────
 //
-// Stripe Ready is the lock. Owner-only to flip; everyone else reads it. The
-// lock hides nothing: every branch renders the same track and one line
-// (MESITA-1864).
+// MESITA-1798 made this a `role="switch"` in the Capabilities-ladder grammar
+// — Partner, on or off, owner-only, Stripe Ready as the lock. MESITA-1863
+// stripped the capability list from under the switch: joining put every held
+// place on plan=pro at ZERO rates, so the three things it listed were
+// partner-GATED and none partner-DELIVERED, and the operator met three off
+// switches on Capabilities right after reading that the partnership had
+// unlocked them. MESITA-1864 made the locked state a dimmed track and one
+// line instead of a pill, so the state every new organization met still
+// showed Partnership as a thing you turn on. MESITA-1861 deleted the 9.5rem
+// right well; MESITA-1866 folded the switch under the Stripe box with a seam.
 //
-// THE BOX NAMES NO CAPABILITY (MESITA-1863). Pato: *"the rewards and more
-// shit is not inherent of the partnership — or if it's not, don't mention it
-// there."* It listed Mesita Pay, Visit Rewards and Accept Prepays under the
-// on switch, and not one of them arrives with it: joining writes `partnered`
-// and `mesita_pay_enabled`, and puts every held place on plan=pro at ZERO
-// rates — rewards off, prepays off, and Mesita Pay still behind a
-// charge-ready Stripe account. All three are partner-GATED; none is
-// partner-DELIVERED, so a list under the switch promised what the operator
-// then found switched off on Capabilities.
+// ── TWO TIERS NOW, AND THIS IS THE FIRST ──────────────────────────────────
 //
-// The ladder is where a capability states its own prerequisite
-// (place-manage/sections/controls/offerings.ts). This box says what flipping
-// the switch DOES, and stops.
+// Pato, 2026-09-15: the Stripe onboarding is friction that shrinks the
+// market, so Partner stops being Stripe-locked. **Mesita Partner** is a
+// yearly subscription per ORGANIZATION — every held place is in — and it is
+// what a place needs for Visit Rewards, Accept Prepays and guest checks.
+// **Mesita Pay** (the Stripe account and card payments inside Mesita) is an
+// optional add-on on top, and it is where the switch this file used to be
+// went: `MesitaPayCard.tsx`.
 //
-// THE 9.5rem RIGHT WELL IS GONE (MESITA-1861). Every branch used to end in
-// `w-[9.5rem] shrink-0 justify-end sm:w-[11rem]`, which pinned the track (or
-// the lock pill) to the far right of a card that, on the fluid console, is
-// ~1690px wide — with its own sentence pinned to the far left. Two atoms, one
-// desert. The well existed to line the three branches up with each other; the
-// Section lane does that job now, for every box on the page at once, so what
-// is left is the control and its sentence sitting next to each other.
+// So this box is a price, a door, and a price list. Not partnered: the price
+// at display rank and, for an owner, one CTA — no pill, because the CTA IS
+// the state and a "Not a partner" chip beside it would be three atoms for one
+// fact. Partnered: the shared `PartnerPill` and "Renews yearly." The list
+// under the hairline renders in EVERY state, because a paid tier with no
+// stated benefits is a price with no price list — but it keeps the
+// MESITA-1863 truth: the lead says each place turns these on itself, the
+// marker is a dash and never a check (a check means "done" on this route,
+// see LifecycleBanner), and the badge is qualified with "once a strategy is
+// on", which is true at the state every subscriber lands in.
+//
+// THE MODAL HAS NO BUTTON. Checkout is MESITA-1868; until it ships, a disabled
+// "Continue" would be a knob that pretends (house law, SoonStrip.tsx). The CTA
+// that opens the modal already demonstrates the door; the modal restates the
+// commitment — price, what it unlocks — and says, in one INFO line, that the
+// checkout lands with the next release. PR 2 adds the real button here.
+//
+// No `useState(partnered)` any more: nothing here writes, so nothing here
+// needs re-seeding, and the page dropped its `key=` remount with it. The only
+// state is whether the modal is open.
 
-import { useState, useTransition } from "react";
-import { Loader2, Lock } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
-import { setOrgPartnershipAction } from "@/app/(shell)/actions/organizations";
-import { cn } from "@/lib/utils";
+import { useCallback, useState } from "react";
+import { PartnerPill } from "@/components/console/badges";
+import { Modal } from "@/components/shared/Modal";
+import { PARTNER_PRICE_LABEL } from "@/lib/business/plans";
+import {
+  CTA_BUTTON_CLASS,
+  INFO_BOX_CLASS,
+} from "@/lib/ui-classes";
 
-function Track({
-  on,
-  busy,
-  locked = false,
-}: {
-  on: boolean;
-  busy: boolean;
-  /** Stripe is not Ready. The switch still renders — off, dimmed, and
-   *  carrying the lock in the knob (MESITA-1864). */
-  locked?: boolean;
-}) {
+/**
+ * What the subscription lets each place turn on. Rendered by the box and by
+ * the modal from this one array, so the two can never list different perks.
+ * Three lines, nouns not verbs, one clause each — held to that on purpose:
+ * three check-lines would read as a pricing page inside an OPERATE surface.
+ */
+export const PARTNER_PERKS = [
+  ["Visit Rewards", "Conservative or Aggressive discounts at the bill."],
+  ["Accept Prepays", "Redeem a guest's balance as a bill reduction."],
+  [
+    "Guest checks",
+    "On Mesita Validate (QR), and the Partner badge once a strategy is on.",
+  ],
+] as const;
+
+/** The price at display rank — the box's anchor, restated in the modal at
+ *  the commitment moment. One rank, one source (PARTNER_PRICE_LABEL). */
+function PriceLine() {
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-        locked ? "bg-muted-foreground/15" : on ? "bg-secondary" : "bg-muted-foreground/25",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-flex h-5 w-5 transform items-center justify-center rounded-full transition-transform",
-          on ? "translate-x-[22px]" : "translate-x-0.5",
-          // A locked knob carries no shadow: shadow is what makes the thumb
-          // look liftable, and this one is not.
-          locked ? "bg-muted" : "bg-background shadow",
-        )}
-      >
-        {busy && <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />}
-        {locked && !busy && <Lock className="text-muted-foreground h-3 w-3" aria-hidden />}
+    <p className="flex flex-wrap items-baseline gap-x-1.5">
+      <span className="font-display text-lg font-semibold tracking-tight">
+        {PARTNER_PRICE_LABEL.amount}
       </span>
-    </span>
+      <span className="text-muted-foreground text-[12px]">
+        {PARTNER_PRICE_LABEL.suffix}
+      </span>
+    </p>
+  );
+}
+
+/** The lead and the list. The lead is what keeps the list honest: "turns
+ *  these on" says the place does it, from the two views that hold the
+ *  switches — the subscription opens the gate and delivers nothing itself. */
+function Perks() {
+  return (
+    <div className="flex flex-col gap-2">
+      {/* A sentence, not an eyebrow: 12px muted, never the 10px tiny label
+          — it carries the one qualifier that keeps the list honest. */}
+      <p className="text-muted-foreground text-xs leading-snug">
+        Each place then turns these on, from Rewards and Capabilities
+      </p>
+      <ul className="flex flex-col gap-1 text-[13px] leading-snug">
+        {PARTNER_PERKS.map(([name, clause]) => (
+          <li key={name} className="flex gap-2">
+            {/* A dash, never a check: on this route a check means "done". */}
+            <span aria-hidden className="text-muted-foreground shrink-0">
+              &ndash;
+            </span>
+            <span className="min-w-0">
+              <span className="font-medium">{name}</span>{" "}
+              <span className="text-muted-foreground">&mdash; {clause}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
 export function PartnerCard({
-  orgId,
   partnered,
-  stripeReady,
   isOwner,
 }: {
-  orgId: string;
   partnered: boolean;
-  stripeReady: boolean;
   isOwner: boolean;
 }) {
-  const [on, setOn] = useState(partnered);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
-  const locked = !stripeReady;
-  const canFlip = isOwner && !locked && !pending;
-
-  const toggle = () => {
-    if (!canFlip) return;
-    const next = !on;
-    setOn(next);
-    setError(null);
-    start(async () => {
-      const r = await setOrgPartnershipAction(orgId, next);
-      if (r.error) {
-        setOn(!next);
-        setError(r.error);
-        return;
-      }
-      setOn(r.partnered);
-    });
-  };
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
-    <div className="flex flex-col">
-      {locked ? (
-        // THE SWITCH SHOWS WHILE IT IS LOCKED (MESITA-1864). Pato, on an org
-        // whose Stripe account is Restricted: "show here like a toggle or
-        // something." This branch used to render a pill and a sentence where
-        // the other two render a control — so the one state every new
-        // organization meets was the one that never showed what Partnership
-        // is: a thing you turn on. Now all three are a track and a line.
-        //
-        // The pill went with it. Switch + pill + sentence is three atoms for
-        // one fact: the dimmed track says "not available", the sentence says
-        // why, and `role="switch"` + `aria-disabled` says both to a reader.
-        <div
-          role="switch"
-          aria-checked={false}
-          aria-disabled
-          aria-label="Partner"
-          className="flex items-center gap-3 py-1"
-        >
-          <Track on={false} busy={false} locked />
-          <span className="text-muted-foreground min-w-0 text-xs leading-snug">
-            Needs a Ready Stripe account — connect Stripe first.
-          </span>
+    <div className="flex flex-col gap-3">
+      {partnered ? (
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <PartnerPill />
+            <span className="text-sm">Renews yearly.</span>
+          </div>
+          {/* Honest about what is not built: the subscription's own doors are
+              MESITA-1868. Said once, quietly, instead of a Manage button that
+              opens nothing. */}
+          <p className="text-muted-foreground text-xs leading-snug">
+            Renewal and cancellation land with the next release.
+          </p>
         </div>
-      ) : canFlip || pending ? (
-        <button
-          type="button"
-          role="switch"
-          aria-checked={on}
-          aria-label="Partner"
-          disabled={pending}
-          onClick={toggle}
-          className={cn(
-            "flex w-full items-center gap-3 py-1 text-left transition",
-            pending ? "cursor-default opacity-60" : "cursor-pointer hover:opacity-90",
-          )}
-        >
-          <Track on={on} busy={pending} />
-          <span className="text-muted-foreground min-w-0 text-xs leading-snug">
-            {on
-              ? "Every place this organization holds is in the partnership."
-              : "Turn on to join every held place."}
-          </span>
-        </button>
       ) : (
-        <div className="flex items-center gap-3 py-1" aria-label="Partner">
-          <Track on={on} busy={false} />
-          <span className="text-muted-foreground min-w-0 text-xs leading-snug">
-            {on
-              ? "Every place this organization holds is in the partnership."
-              : "An owner turns this on."}
-          </span>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <PriceLine />
+          {isOwner ? (
+            <button
+              type="button"
+              className={CTA_BUTTON_CLASS}
+              onClick={() => setOpen(true)}
+            >
+              Become a partner
+            </button>
+          ) : (
+            <span className="text-muted-foreground text-xs leading-snug">
+              An owner subscribes.
+            </span>
+          )}
         </div>
       )}
 
-      <div aria-live="polite">
-        {error && (
-          <div className="pt-2">
-            <ErrorNote message={error} />
-          </div>
-        )}
+      {/* The price list, under a hairline, in every state: it is what they
+          pay for, and what they paid for. */}
+      <div className="border-border/60 border-t pt-3">
+        <Perks />
       </div>
+
+      {open && (
+        <Modal
+          title="Mesita Partner"
+          description={`${PARTNER_PRICE_LABEL.amount} ${PARTNER_PRICE_LABEL.suffix}, per organization.`}
+          onClose={close}
+        >
+          <div className="flex flex-col gap-4">
+            <PriceLine />
+            <Perks />
+            <div className={INFO_BOX_CLASS}>
+              Checkout lands with the next release.
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

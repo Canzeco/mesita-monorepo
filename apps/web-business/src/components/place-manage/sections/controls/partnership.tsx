@@ -14,6 +14,58 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 
 // Partnership box + its lifecycle rail + the status pill. Moved verbatim out
 // of PromosSection.tsx on 2026-09-02 (file split, no behaviour change).
+//
+// ── TWO TIERS (MESITA-1867, Pato 2026-09-15) ──────────────────────────────
+//
+// The partnership used to be one free switch on Organization, locked until
+// the org's Stripe account was Ready — so this body said "Partner is free"
+// and step 1 said "Turn on Partner on Organization — it's free." Both were
+// true and both are gone: Stripe Connect onboarding was the price of
+// admission to REWARDS, which never needed a charge path, and that friction
+// shrank the market. Now:
+//
+//   Mesita Partner   the organization's YEARLY subscription; every place it
+//                    holds is in. It is what unlocks Conservative and
+//                    Aggressive here (and Accept Prepays on Capabilities).
+//   Mesita Pay       an optional add-on on Organization — the Stripe account
+//                    and card payments. Not this page's concern: Rewards is
+//                    what a guest EARNS, and no reward needs a charge path.
+//
+// Zero stays free — it is the absence of the product, not its bottom rung.
+//
+// The body renders for EVERY pill state now, not only for members. A
+// forfeited place reads plan=free (the strike patch drops the plan), so a
+// member-gated body could never show the forfeited copy or its door; and a
+// place that was never in needs the pitch more than a member does.
+//
+// A NON-MEMBER GETS THE PITCH ALONE. The first cut of MESITA-1867 rendered
+// the lifecycle banner for every state, so a place whose organization had
+// not subscribed read the same door three times in eight lines: the page's
+// top line ("Become a Mesita Partner on Organization —", linked), the
+// banner's step 1 ("Subscribe on Organization — yearly…"), then this
+// paragraph. The top line is the door; the banner is for a place that is in
+// (or was), where the three steps mean something; the pitch is what a
+// non-member needs.
+//
+// ── WHY THERE IS NO RE-JOIN BUTTON YET ───────────────────────────────────
+//
+// Forfeit is PER PLACE (three strikes drop this place to plan=free and stamp
+// plan_forfeited_at) while the subscription is PER ORGANIZATION — so the way
+// back is a place action, "re-join this place", never "toggle the org". The
+// door is not wired: the one join door (`setPlacePlan` →
+// `business-web-set-partnership {action:"join"}`) is guarded by
+// `requireEditor` and never reads `organizations.partnered`, so the first
+// console caller of it would let any editor put any place on plan=pro for
+// nothing, under a paid tier. The plan had the button render disabled until
+// the backend issue guards that door (org partnered ∧ owner) — but a
+// disabled primary button is a knob that pretends, the exact thing the
+// house law (SoonStrip.tsx) forbids and the reason the Partner modal on
+// Organization has no Continue button. So the door's honest state is one
+// line: the page's top line says when re-join lands, and this box says what
+// re-joining will do and whose action it is (the owner's — the subscription
+// it re-enters is the owner's). PR 2 adds the button when it does something.
+// The same door serves a DROPPED place — not in the partnership while its
+// organization is — which reads plan=free without a forfeit stamp.
 
 // ─── Lifecycle banner — this place's progress on the three Tutorial steps ─
 //
@@ -31,7 +83,7 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 // only pill in the viewport.
 
 const STEP_TITLES = {
-  join: "Join the partnership",
+  join: "Become a Mesita Partner",
   strategy: "Pick a strategy",
   honor: "Honor guest checks",
 } as const;
@@ -79,23 +131,29 @@ function LifecycleBanner({
   const forfeited = pillState === "forfeited";
 
   // Helper copy per step, keyed off the derived state + pill. Only the active
-  // step's line renders.
-  const joinDetail =
-    view.join === "current"
-      ? "Turn on Partner on Organization — it's free."
-      : "Free — switch strategies anytime.";
+  // step's line renders. Step 1 is never the active step here: `join` is
+  // "current" only for a non-member, and a non-member gets the pitch alone
+  // (PartnershipBody) — so this line is the done/upcoming reading, and the
+  // "Subscribe on Organization" instruction it used to carry lives on the
+  // page's top line, once.
+  const joinDetail = "Yearly — switch strategies anytime.";
   const strategyDetail =
     view.strategy === "done" && strategy
-      ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
+      ? `${strategy.emoji} ${strategy.name} — switch anytime.`
       : view.strategy === "current"
         ? storedStrategy === ZERO_STRATEGY_ID
           ? "Zero pauses discounts — pick a paid strategy to reopen the lane."
           : "Custom rates — pick a strategy to standardize."
-          : "Conservative or Aggressive — switch free anytime.";
+          : "Conservative or Aggressive — switch anytime.";
+  // Forfeited: the page's top line already names the three strikes and says
+  // when re-join lands, so this step's line says what the third strike did to
+  // the steps — honoring is blocked, and the strategy is picked again on the
+  // way back (lifecycleView resets it). It used to say "re-join this place
+  // below", which pointed at a button that no longer renders.
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
-        ? "Partnership forfeited after 3 strikes — turn Partner on Organization to recover."
+        ? "Forfeited on the third strike — the strategy is picked again after re-joining."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."
@@ -184,35 +242,53 @@ export function PartnershipBody({
   storedStrategy,
   member,
   orgHref,
+  isOwner,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
   storedStrategy: StrategyId | null;
   member: boolean;
   orgHref: string;
+  /** Owner of the holder organization. Re-join is owner-only because the
+   *  subscription it re-enters is the owner's; everyone else reads. */
+  isOwner: boolean;
 }) {
-  const stateNote =
-    pillState === "pending" ? null : describeMembershipState(place, pillState);
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
   const underReview = pillState === "review";
   const canDrop = member && !forfeited;
-  const showJoin = notMember || forfeited;
+  // Pending has no note (the banner's step 3 line says it). A non-member
+  // has none (the pitch alone). Forfeited keeps its red note — it is the
+  // ONE forfeited sentence on this box, because the banner does not render
+  // for a place that is out (plan=free), and the page's top line says when
+  // re-join lands, not what happened.
+  const stateNote =
+    pillState === "pending" || notMember
+      ? null
+      : describeMembershipState(place, pillState);
 
-  const nextLine = notMember || underReview
+  // No line for a non-member (the page's top line is the door), for review
+  // (its own paragraph below), or for forfeited (its own line below).
+  const nextLine = notMember || underReview || forfeited
     ? null
-    : forfeited
-      ? "Turn Partner off and on again on Organization to clear the forfeit and strikes; then pick a strategy again."
-      : "Switching to Zero pauses discounts without ending the partnership. Turning Partner off on Organization drops every held place.";
+    : "Switching to Zero pauses discounts without ending the partnership. The partnership is managed on Organization.";
 
   return (
     <div className="flex flex-col gap-3 pb-3">
-        <LifecycleBanner
-          place={place}
-          pillState={pillState}
-          storedStrategy={storedStrategy}
-          member={member}
-        />
+        {/* The three steps mean something only for a place that is IN.
+            A non-member gets the pitch alone (the top line is its door); a
+            forfeited place reads plan=free and gets its note and its line —
+            a banner whose step 1 says "Yearly — every place is in" over a
+            red "forfeited" note would be the contradiction the review
+            caught. */}
+        {member && (
+          <LifecycleBanner
+            place={place}
+            pillState={pillState}
+            storedStrategy={storedStrategy}
+            member={member}
+          />
+        )}
         {stateNote && (
           <p
             className={cx(
@@ -229,11 +305,11 @@ export function PartnershipBody({
         )}
 
         <p className="text-muted-foreground type-body leading-snug">
-          <span className="text-foreground font-semibold">Partner is free.</span>{" "}
-          The switch lives on Organization. It unlocks{" "}
+          <span className="text-foreground font-semibold">Mesita Partner</span>{" "}
+          is the organization&apos;s yearly partnership. It unlocks{" "}
           <span className="text-foreground font-semibold">Conservative</span>{" "}
           and <span className="text-foreground font-semibold">Aggressive</span>{" "}
-          here. Zero stays free too.
+          here. Zero stays free.
         </p>
 
         {nextLine && (
@@ -249,26 +325,23 @@ export function PartnershipBody({
           </p>
         )}
 
-        {showJoin && (
-          <div className="flex flex-col gap-2">
-            <Link
-              href={orgHref}
-              className="bg-foreground text-background inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-5 type-body font-semibold transition hover:opacity-90 active:scale-[0.99]"
-            >
-              {forfeited ? "Re-join on Organization" : "Turn on Partner"}
-            </Link>
-            <p className="text-muted-foreground type-meta leading-snug">
-              Free — no charge, ever. The switch is on Organization.
-            </p>
-          </div>
+        {/* NO BUTTON — see the docblock. The door's honest state is one
+            line: what re-joining will do, whose action it is, and when it
+            lands. */}
+        {forfeited && (
+          <p className="text-muted-foreground text-xs leading-snug">
+            {isOwner
+              ? "Re-join lands with the next release — it clears the strikes and the forfeit for this place; the organization's partnership is untouched."
+              : "An owner re-joins this place when re-join lands with the next release; the organization's partnership is untouched."}
+          </p>
         )}
 
         {canDrop && (
           <Link
             href={orgHref}
-            className="text-muted-foreground hover:text-destructive self-start text-xs font-semibold underline underline-offset-4 transition"
+            className="text-muted-foreground hover:text-foreground self-start text-xs font-semibold underline underline-offset-4 transition"
           >
-            Turn off Partner on Organization
+            Manage the partnership on Organization
           </Link>
         )}
     </div>

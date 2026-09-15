@@ -25,8 +25,16 @@ import {
 } from "@/lib/active-organization";
 import { flatViewFromPathname, orgIdFromPathname, placeIdFromPathname } from "@/lib/console-routes";
 
-/** What the rail needs of an organization. */
-export type RailOrg = Pick<Organization, "id" | "name" | "myRole" | "places">;
+/** What the rail needs of an organization — plus the two org-level tier
+ *  flags (MESITA-1867). They are not the rail's to paint; they ride this
+ *  list because the shell already holds it on every route, and a place's
+ *  Rewards/Capabilities ladder reads them off `RailScopeContext` instead of
+ *  spending a second `business-web-list-organizations` call per navigation.
+ *  Both optional on the payload, so absent stays "unknown", never false. */
+export type RailOrg = Pick<
+  Organization,
+  "id" | "name" | "myRole" | "places" | "partnered" | "mesitaPayEnabled"
+>;
 
 export type RailScope = {
   /** The organization the rail is showing. Null only with no membership. */

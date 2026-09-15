@@ -51,7 +51,8 @@ export type PromotingSnapshot = MembershipSnapshot & {
 export type MembershipPillState =
   "not_member" | "pending" | "live" | "paused" | "forfeited" | "review";
 
-// A place on any paid plan holds the Partnership (plan != free). Free to join.
+// A place on any paid plan holds the Partnership (plan != free) — joined
+// under the organization's Mesita Partner subscription (MESITA-1867).
 export function isMemberPlan(plan: unknown): boolean {
   return !!plan && plan !== "free";
 }
@@ -120,8 +121,7 @@ export function describeMembershipState(
   }
   if (pillState === "forfeited") {
     return {
-      label:
-        "Partnership forfeited after 3 strikes — re-join is an admin decision.",
+      label: "Partnership forfeited after 3 strikes.",
       tone: "blocked",
     };
   }

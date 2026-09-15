@@ -85,6 +85,13 @@ export default async function ShellLayout({
             name: o.name,
             myRole: o.myRole,
             places: o.places,
+            // The two tier flags ride the rail's list so a place's ladder can
+            // read its holder's Partner / Mesita Pay state without a second
+            // org-list call (MESITA-1867). Copied as they are: undefined on a
+            // stale payload stays undefined, which the ladder reads as
+            // unknown, never as off.
+            partnered: o.partnered,
+            mesitaPayEnabled: o.mesitaPayEnabled,
           }))}
           isSuperAdmin={viewer.isSuperAdmin}
           viewerError={viewerError}

@@ -11,8 +11,16 @@
 //
 // Same chrome as PlaceTagsPicker's picker, extracted so the second modal in
 // the console does not fork a third set of z-index and backdrop values.
+//
+// FOCUS MOVES IN, AND COMES BACK (MESITA-1867). A dialog that opens under a
+// keyboard user's focus leaves them tabbing through the page behind the
+// backdrop; one that closes without returning focus drops them at the top of
+// the document. The container takes focus on mount (tabIndex -1, so it is
+// focusable by script but never a tab stop of its own), and the element that
+// was focused when the modal mounted — the button that opened it — gets it
+// back on unmount.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 export function Modal({
@@ -26,6 +34,8 @@ export function Modal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -33,6 +43,17 @@ export function Modal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialogRef.current?.focus();
+    return () => {
+      opener?.focus();
+    };
+  }, []);
 
   // The page behind must not scroll under a modal — on a phone the backdrop
   // is the whole viewport, so a stray touch scrolls a document the reader
@@ -51,7 +72,9 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className="border-border/70 bg-card shadow-elev flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="border-border/70 bg-card shadow-elev flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border outline-none"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

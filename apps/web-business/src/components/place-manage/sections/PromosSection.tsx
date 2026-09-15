@@ -10,6 +10,8 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import { useOpenPlace } from "@/components/console/OpenPlace";
+import { useRailScopeContext } from "@/components/console/RailScopeContext";
+import { findOrg } from "@/lib/active-organization";
 import { SHELL_ROUTES, orgHref as orgPageHref } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
@@ -43,6 +45,7 @@ import {
   railWriteFailure,
   rowsForZone,
   shouldRenderConfig,
+  orgFlag,
   topPrerequisite,
   type ConnectState,
   type LadderRowKey,
@@ -67,6 +70,22 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // coincidence with §11.2's seven capabilities is still a coincidence.
 // Partnership is a PlaceHeading chip + one line; Partner and Stripe
 // live on Organization. Nested configs stay MOUNTED (shouldRenderConfig).
+//
+// TWO TIERS ON ORGANIZATION (MESITA-1867). Mesita Partner is the org's
+// yearly subscription and the gate for Rewards; Mesita Pay is an optional
+// add-on (the Stripe account and an org switch) and the gate for the Pay
+// rung. The ladder reads the holder org's two flags off `RailScopeContext`
+// — the shell already holds the org list on every route, so this is zero
+// extra reads — and `null` when the holder is not in it, which the engine
+// renders as Checking…, never off. The rungs still gate on the PLACE's own
+// `member` (`plan ≠ free`); the org flags steer the top line and the Pay
+// rung only (offerings.ts explains the precedence).
+//
+// THE PARTNERSHIP BODY RENDERS FOR EVERY PILL STATE on Rewards. It used to be
+// member-gated, and a forfeited place reads plan=free — so the forfeited
+// copy and its Re-join door were dead on arrival. Non-members get it ABOVE
+// the rows, as the pitch (the top line's Organization link is the one door);
+// members keep it below, as before.
 
 export function PromosSection({
   place,
@@ -85,6 +104,19 @@ export function PromosSection({
   // layout (MESITA-1807); before it lands, the root resolver answers for it.
   const holderOrgId = useOpenPlace()?.holderOrgId ?? null;
   const orgHref = holderOrgId ? orgPageHref(holderOrgId) : SHELL_ROUTES.root;
+  // The holder's two tier flags, off the rail's org list (MESITA-1867). Null
+  // when the holder is not in the viewer's list — a pool place, a page
+  // rendered without the shell — and null is "unknown", never "off".
+  const railOrgs = useRailScopeContext()?.organizations ?? [];
+  const holderOrg = findOrg(railOrgs, holderOrgId);
+  // `?? null`, never `=== true`: both flags are OPTIONAL on the payload
+  // ("UNDEFINED when the payload predates the EF — absent is not false",
+  // lib/api/organizations.ts), and collapsing undefined to false would send
+  // a paying org's place to subscribe again and lock its Pay rung "Off".
+  const orgPartnered = orgFlag(holderOrg?.partnered);
+  const orgMesitaPay = orgFlag(holderOrg?.mesitaPayEnabled);
+  // Re-join is owner-only: the subscription it re-enters is the owner's.
+  const isOwner = holderOrg?.myRole === "owner";
 
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
@@ -131,6 +163,9 @@ export function PromosSection({
     connect,
     connectLoading,
     rewardLaneHeld,
+    orgPartnered,
+    orgMesitaPay,
+    forfeited,
   };
   const rows = offeringRows(ladderInput);
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
@@ -355,6 +390,21 @@ export function PromosSection({
     }
   };
 
+  // Rewards' own box — every pill state. Placed above the rows for a
+  // non-member (the pitch, right under the door line) and below them for a
+  // member (the rows are the point once you are in).
+  const partnershipBody =
+    zone === "rewards" ? (
+      <PartnershipBody
+        place={v}
+        pillState={pillState}
+        storedStrategy={storedStrategy}
+        member={member}
+        orgHref={orgHref}
+        isOwner={isOwner}
+      />
+    ) : null;
+
   const writable = painted.filter(
     (r) => r.state.kind !== "not_mine" && r.state.kind !== "soon",
   );
@@ -368,17 +418,27 @@ export function PromosSection({
         <p id="zone-offerings" className="text-foreground text-sm leading-snug">
           {summary}
         </p>
-        {prereq?.action === "organization" && (
+        {prereq && (
           <p className="text-muted-foreground mt-2 text-sm leading-snug">
-            {prereq.text}{" "}
-            <Link
-              href={orgHref}
-              className="text-foreground font-semibold underline underline-offset-4"
-            >
-              Organization
-            </Link>
+            {prereq.text}
+            {/* Only the Organization fix carries a link; a re-join is this
+                place's own door (unbuilt — the line says when it lands), and
+                a link to Organization there would send a forfeited place to
+                subscribe twice. */}
+            {prereq.action === "organization" && (
+              <>
+                {" "}
+                <Link
+                  href={orgHref}
+                  className="text-foreground font-semibold underline underline-offset-4"
+                >
+                  Organization
+                </Link>
+              </>
+            )}
           </p>
         )}
+        {!member && partnershipBody && <div className="mt-4">{partnershipBody}</div>}
         <div className="mt-4 flex flex-col">
           {writable.map((r) => rowNode(r.key))}
           {notYours.length > 0 && (
@@ -393,17 +453,7 @@ export function PromosSection({
           )}
         </div>
 
-        {member && zone === "rewards" && (
-          <div className="mt-4">
-            <PartnershipBody
-              place={v}
-              pillState={pillState}
-              storedStrategy={storedStrategy}
-              member={member}
-              orgHref={orgHref}
-            />
-          </div>
-        )}
+        {member && partnershipBody && <div className="mt-4">{partnershipBody}</div>}
 
         <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
           {zone === "capabilities"

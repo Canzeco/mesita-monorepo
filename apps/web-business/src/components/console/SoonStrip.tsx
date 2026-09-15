@@ -26,20 +26,55 @@
 // Soon strip, and a 288px label lane on a page holding one strip would leave
 // MORE white, not less — the exact failure this issue is fixing on
 // Configuration. A strip stays one row at every width.
+//
+// ── A LOCKED TIER LIES FLAT TOO (MESITA-1867) ─────────────────────────────
+//
+// Rank by depth is the law this file wrote: what is not live does not lift.
+// Mesita Pay, before the organization is a Mesita Partner, is not an unbuilt
+// engine — it is a built one the organization cannot reach yet. Same
+// geometry, same flat rank, and a lock where the Soon pill sits: dashed still
+// says "not yet", the glyph says why it is not yet is on you, not on us. A
+// full-rank Section for a tier nobody can touch would put two boxes at one
+// rank on a page that has exactly one thing to do.
+
+import { Lock } from "lucide-react";
+
+/** The strip's geometry, shared by Soon and Locked so the two flat rows
+ *  cannot drift apart the way Soon and Section once did. */
+export const STRIP_CLASS =
+  "border-border flex items-center justify-between gap-4 rounded-2xl border border-dashed p-4";
+
+function StripText({ title, line }: { title: string; line: string }) {
+  return (
+    <div className="min-w-0">
+      <h3 className="font-display text-sm font-semibold tracking-tight">
+        {title}
+      </h3>
+      <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug">
+        {line}
+      </p>
+    </div>
+  );
+}
 
 export function SoonStrip({ title, line }: { title: string; line: string }) {
   return (
-    <div className="border-border flex items-center justify-between gap-4 rounded-2xl border border-dashed p-4">
-      <div className="min-w-0">
-        <h3 className="font-display text-sm font-semibold tracking-tight">
-          {title}
-        </h3>
-        <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug">
-          {line}
-        </p>
-      </div>
+    <div className={STRIP_CLASS}>
+      <StripText title={title} line={line} />
       <span className="text-muted-foreground border-border shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
         Soon
+      </span>
+    </div>
+  );
+}
+
+export function LockedStrip({ title, line }: { title: string; line: string }) {
+  return (
+    <div className={STRIP_CLASS}>
+      <StripText title={title} line={line} />
+      <span className="shrink-0">
+        <Lock className="text-muted-foreground h-4 w-4" aria-hidden />
+        <span className="sr-only">Locked</span>
       </span>
     </div>
   );
