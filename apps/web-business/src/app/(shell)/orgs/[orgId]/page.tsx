@@ -18,7 +18,8 @@
 // do. STRIPE stores an Account Link's `return_url` when the link is MINTED, so
 // links created months ago point at `/orgs/<id>?connect=return` and land here
 // forever. That branch is checked FIRST and forwards the WHOLE query to
-// Payments, where the notice that reads `?connect=` lives — dropping the query
+// PRODUCTS (MESITA-1869), which is where the Stripe account and the notice
+// that reads `?connect=` now live — dropping the query
 // would strand an owner on a screen that knows neither which organization they
 // onboarded nor that they just came back.
 //
@@ -41,7 +42,7 @@ export default async function OrgRootPage(props: {
 }) {
   const [{ orgId }, sp] = await Promise.all([props.params, props.searchParams]);
   if (typeof sp.connect === "string") {
-    redirect(withQuery(orgHref(orgId, "payments"), sp));
+    redirect(withQuery(orgHref(orgId, "products"), sp));
   }
   redirect(withQuery(orgHref(orgId, "configuration"), sp));
 }

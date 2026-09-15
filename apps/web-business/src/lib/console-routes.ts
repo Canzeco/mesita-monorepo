@@ -36,12 +36,14 @@
 //   /orgs/<id>                 NOT a page: a 307 onto `/configuration`, the one
 //                              address that catches Stripe's stored
 //                              `?connect=` and hands the query to Payments.
-//   /orgs/<id>/configuration  THE ORGANIZATION's own setup — brand, members,
-//                              Stripe, partnership, developers
+//   /orgs/<id>/configuration  THE ORGANIZATION's own setup — members, brand,
+//                              developers. What you CONFIGURE, nothing else.
+//            /products         THE CATALOGUE — Mesita Partner, the eight
+//                              products, and the Stripe account Mesita Pay
+//                              rides on
 //            /places           the whole catalogue: the states matrix, the
 //                              ?owned= filters, Claim and Release
 //            /customers        who keeps coming back (Soon)
-//            /payments         Stripe · Partner · Prepaid Credits
 //            /activity         the organization's numbers, by place
 //            /places/new       Add place
 //            /switch?to=       NOT a page: the org switcher's mechanism —
@@ -57,7 +59,7 @@
 //              /admin          super-admin only
 //
 //   /profile /menus /reviews /capabilities /rewards /admin
-//   /configuration /customers /payments /activity
+//   /configuration /products /customers /activity
 //                              307 onto the address above, resolving the
 //                              remembered place/organization. With nothing
 //                              selected they render the one next step
@@ -81,6 +83,17 @@
 // `SoonStrip` at the foot of that page, which is where it lived before
 // MESITA-1841 gave it a room of its own. Both spellings forward, TEMPORARILY —
 // a 308 would cache an answer that has already moved twice.
+//
+// `/orgs/<id>/payments` IS GONE NOW TOO (MESITA-1869), and Credits' forward
+// follows it onto Products. Payments was a page holding two Soon strips: what
+// it was FOR — what guests paid, and what reached the account — is a reading
+// of a product that is not built, and the two things on it anybody could act
+// on (the Stripe account, the Partner subscription) are PRODUCTS. Pato,
+// 2026-09-15, listing the organization's rows: *"Configuration (here have
+// members shit) · Products (here have partner and all the products to
+// activate, remember that profile is free) · Places · Costumers · Activity."*
+// Payments is not on that list. Its address forwards, TEMPORARILY, for the
+// same reason every rename on this page does.
 //
 // `orgs/[orgId]/layout.tsx` resolves membership ONCE, server-side; a foreign
 // id and a nonexistent id both answer 404, so the path is never an oracle for
@@ -119,9 +132,9 @@ export const SHELL_ROUTES = {
  *  resolving — TEMPORARILY, because this answer has now moved twice. */
 export const ORG_PAGES = [
   "configuration",
+  "products",
   "places",
   "customers",
-  "payments",
   "activity",
 ] as const;
 export type OrgPage = (typeof ORG_PAGES)[number];
@@ -135,23 +148,25 @@ export type OrgTarget = (typeof ORG_TARGETS)[number];
 
 export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
   configuration: "Configuration",
+  products: "Products",
   places: "Places",
   customers: "Customers",
-  payments: "Payments",
   activity: "Activity",
 };
 
-/** The FIVE the rail lists, in the drawing's order (MESITA-1845).
+/** The FIVE the rail lists, in Pato's order (MESITA-1869).
  *
  *  CUSTOMERS IS NEW, and it is a live row, not a dimmed one: Pato's list
  *  writes it "(Soon)", and MESITA-1833 is his own law that the rail may never
  *  paint a working row as dead. The Soon badge lives on the page.
  *
- *  PAYMENTS IS BACK, one issue after MESITA-1844 took it out on *"payments
- *  inside org."* Pato's list puts it in the column again.
+ *  PRODUCTS TOOK PAYMENTS' PLACE, and its slot in the order — second, right
+ *  under Configuration. It is the catalogue: the partnership, the eight
+ *  products and the Stripe account. Payments had a row for four issues and
+ *  never had a page worth opening.
  *
- *  CREDITS IS NOT HERE, and has no address either — it merged into Payments,
- *  which is the page it was split out of. See ORG_PAGES.
+ *  CREDITS IS NOT HERE, and has no address either: it is a PRODUCT now, a
+ *  card in the catalogue. See ORG_PAGES.
  *
  *  PLACES stays the row the place's five views sit under. */
 export const ORG_RAIL_TARGETS = ORG_PAGES;
@@ -255,14 +270,17 @@ export const FLAT_ROUTES = {
   admin: "/admin",
   // The organization's four. `places` has no flat twin: it is the place
   // segment's own root (see below), so a flat `places` could never resolve.
+  // `payments` has none either, and for the opposite reason: it is not an
+  // address at all any more (MESITA-1869), and the redirect table owns the
+  // name — a contract name a config rule shadows is the MESITA-1839 trap.
   //
   // `configuration` HAS one, and that is the point of the rename
   // (MESITA-1852): `/settings` was claimed by a permanent legacy redirect
   // onto `/capabilities`, so the page it named could never have a twin — a
   // contract name a config rule shadows is the MESITA-1839 trap exactly.
   configuration: "/configuration",
+  products: "/products",
   customers: "/customers",
-  payments: "/payments",
   activity: "/activity",
 } as const;
 

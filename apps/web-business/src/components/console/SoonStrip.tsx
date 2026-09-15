@@ -27,20 +27,21 @@
 // MORE white, not less — the exact failure this issue is fixing on
 // Configuration. A strip stays one row at every width.
 //
-// ── A LOCKED TIER LIES FLAT TOO (MESITA-1867) ─────────────────────────────
+// ── LOCKEDSTRIP LIVED HERE, AND IS GONE (MESITA-1869) ─────────────────────
 //
-// Rank by depth is the law this file wrote: what is not live does not lift.
-// Mesita Pay, before the organization is a Mesita Partner, is not an unbuilt
-// engine — it is a built one the organization cannot reach yet. Same
-// geometry, same flat rank, and a lock where the Soon pill sits: dashed still
-// says "not yet", the glyph says why it is not yet is on you, not on us. A
-// full-rank Section for a tier nobody can touch would put two boxes at one
-// rank on a page that has exactly one thing to do.
+// MESITA-1867 built it for one caller: Mesita Pay on Configuration, flat and
+// dashed with a lock where the Soon pill sits, because that page had to show
+// the tier even to an organization that could not reach it. The catalogue
+// says that sentence now — the Mesita Pay CARD reads "Locked · Needs Mesita
+// Partner" — and Products simply does not render the box until the
+// organization can touch it, so a strip below the grid would be the same
+// sentence twice on one screen. The idiom it proved stands and is written
+// down: a built tier nobody can reach yet ranks with the unbuilt ones, flat,
+// and the GLYPH is what says whose "not yet" it is.
 
-import { Lock } from "lucide-react";
-
-/** The strip's geometry, shared by Soon and Locked so the two flat rows
- *  cannot drift apart the way Soon and Section once did. */
+/** The strip's geometry. Kept as a constant with one caller: it is what
+ *  MESITA-1861 aligned to Section's radius and padding, and a second flat row
+ *  must be built from it rather than beside it. */
 export const STRIP_CLASS =
   "border-border flex items-center justify-between gap-4 rounded-2xl border border-dashed p-4";
 
@@ -63,18 +64,6 @@ export function SoonStrip({ title, line }: { title: string; line: string }) {
       <StripText title={title} line={line} />
       <span className="text-muted-foreground border-border shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
         Soon
-      </span>
-    </div>
-  );
-}
-
-export function LockedStrip({ title, line }: { title: string; line: string }) {
-  return (
-    <div className={STRIP_CLASS}>
-      <StripText title={title} line={line} />
-      <span className="shrink-0">
-        <Lock className="text-muted-foreground h-4 w-4" aria-hidden />
-        <span className="sr-only">Locked</span>
       </span>
     </div>
   );

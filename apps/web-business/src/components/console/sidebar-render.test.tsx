@@ -121,12 +121,12 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // Settings — the row you would go back through (MESITA-1848).
     [SHELL_ROUTES.orgNew, "Configuration"],
     [orgHref("org-a", "configuration"), "Configuration"],
+    [orgHref("org-a", "products"), "Products"],
     // Places has a row of its own, and Add place is its list's own step.
     [orgHref("org-a", "places"), "Places"],
     [orgPlacesNewHref("org-a"), "Places"],
     // The canonical addresses the rail links to (MESITA-1839)…
     [orgHref("org-a", "customers"), "Customers"],
-    [orgHref("org-a", "payments"), "Payments"],
     [orgHref("org-a", "activity"), "Activity"],
     [view("profile"), "Profile"],
     [view("menus"), "Menus"],
@@ -136,7 +136,7 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // …and the flat ones an operator can still type, which light the same
     // row while the forward is in flight.
     [FLAT_ROUTES.customers, "Customers"],
-    [FLAT_ROUTES.payments, "Payments"],
+    [FLAT_ROUTES.products, "Products"],
     [FLAT_ROUTES.activity, "Activity"],
     [FLAT_ROUTES.profile, "Profile"],
     [FLAT_ROUTES.menus, "Menus"],
@@ -194,7 +194,9 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
 describe("three sections: account, then two selectors over their pages (MESITA-1848)", () => {
   // The labels an operator reads, top to bottom. The two SELECTOR rows are
   // not in this list — they render names, not destinations.
-  const ORG_FIVE = ["Configuration", "Places", "Customers", "Payments", "Activity"];
+  // MESITA-1869: Products took Payments' slot, second, right under
+  // Configuration — Pato's order, and the order ORG_PAGES declares.
+  const ORG_FIVE = ["Configuration", "Products", "Places", "Customers", "Activity"];
   const PLACE_FIVE = ["Profile", "Menus", "Reviews", "Capabilities", "Rewards"];
 
   it("are Account, the organization's five, then the place's — Admin only for a super-admin", () => {
@@ -207,6 +209,11 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     // CREDITS MERGED INTO PAYMENTS (MESITA-1845): no row, and no address.
     expect(labels(html)).not.toContain("Credits");
     expect(hrefs(html).some((h) => h.includes("credits"))).toBe(false);
+    // AND PAYMENTS ITSELF IS GONE (MESITA-1869) — a product in the catalogue,
+    // not a row. Same assertion, because it is the same failure: a rail row
+    // pointing at an address the redirect table owns.
+    expect(labels(html)).not.toContain("Payments");
+    expect(hrefs(html).some((h) => h.includes("payments"))).toBe(false);
     // AND NO ROW SAYS "SOON". Customers renders at full strength like every
     // other row; its page carries the badge (MESITA-1833).
     expect(html).not.toContain("Soon");
@@ -272,7 +279,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
       "lucide-user-round", // Account — the person, one of them
       "lucide-building2", // Settings — the organization itself, whose record this is
       "lucide-users", // Customers — people, plural, against Account's one
-      "lucide-wallet", // Payments — the purse, not one card
+      "lucide-layout-grid", // Products — the catalogue IS a grid of tiles
       "lucide-chart-no-axes-column", // Activity — counts over time
       "lucide-layers", // Places — a stack of them
       "lucide-store", // Profile — the place's public page
@@ -287,6 +294,8 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     // Coins left the app with the Credits page (MESITA-1845) and must not
     // creep back: there is no Credits row and no Credits address to wear it.
     expect(html).not.toContain("lucide-coins");
+    // The purse left with the Payments row it belonged to (MESITA-1869).
+    expect(html).not.toContain("lucide-wallet");
     // The organization's SELECTOR still wears its INITIAL, not the building:
     // a name is what tells one organization from another, and a glyph would be
     // the same on all of them (MESITA-1848). The building appears exactly
@@ -309,9 +318,9 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
       // what the rail RENDERS is the destinations.
       SHELL_ROUTES.account,
       orgHref("org-a", "configuration"),
+      orgHref("org-a", "products"),
       orgHref("org-a", "places"),
       orgHref("org-a", "customers"),
-      orgHref("org-a", "payments"),
       orgHref("org-a", "activity"),
       view("profile"),
       view("menus"),
@@ -332,9 +341,9 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     expect(hrefs(html)).toEqual([
       SHELL_ROUTES.account,
       orgHref("org-b", "configuration"),
+      orgHref("org-b", "products"),
       orgHref("org-b", "places"),
       orgHref("org-b", "customers"),
-      orgHref("org-b", "payments"),
       orgHref("org-b", "activity"),
       FLAT_ROUTES.profile,
       FLAT_ROUTES.menus,
@@ -362,7 +371,9 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
 });
 
 describe("the states a 10/10 has to answer", () => {
-  const ORG_FIVE = ["Configuration", "Places", "Customers", "Payments", "Activity"];
+  // MESITA-1869: Products took Payments' slot, second, right under
+  // Configuration — Pato's order, and the order ORG_PAGES declares.
+  const ORG_FIVE = ["Configuration", "Products", "Places", "Customers", "Activity"];
   const PLACE_FIVE = ["Profile", "Menus", "Reviews", "Capabilities", "Rewards"];
 
   it("zero organizations: Account and Create organization, nothing else", () => {

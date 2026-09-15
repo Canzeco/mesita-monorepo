@@ -10,17 +10,21 @@
 // Configuration's now, and a composition file for a page that renders only
 // Soon strips is a file that drifts from the page it claims to compose.
 export const SOON_STRIPS: Record<
-  "credits" | "customers" | "payments" | "brand" | "developers",
+  "customers" | "payments" | "brand" | "developers",
   { title: string; line: string }
 > = {
-  credits: {
-    title: "Prepaid Credits",
-    line: "The organization's Credits balance, terms, and outstanding liability will live here.",
-  },
+  // PREPAID CREDITS LEFT (MESITA-1869). It was a strip because it had no
+  // engine; it is a CARD now, in the catalogue, because Mesita Credits is a
+  // product an operator buys and a place turns on — and a card whose state is
+  // read off `credits_enabled` is not a Soon at all. An entry nobody renders
+  // is how a vocabulary starts describing a screen that no longer exists.
   customers: {
     title: "Customers",
     line: "The guests who visit and pay at this organization's places, and what they are worth.",
   },
+  // Payments HAS NO PAGE ANY MORE (MESITA-1869) — it is the strip at the
+  // foot of the catalogue, which is where a reading of money that has not
+  // moved yet belongs: under the products that would move it.
   payments: {
     title: "Payments",
     line: "What guests paid at this organization's places, and what reached its account.",

@@ -88,24 +88,47 @@ const nextConfig: NextConfig = {
       // ever followed it — which is the trap `/settings` fell into
       // (MESITA-1839). The flat twin lands on the flat destination, which
       // resolves the remembered organization at request time.
+      //
+      // AND PAYMENTS ITSELF IS GONE (MESITA-1869). Credits' forward follows it
+      // onto Products, so neither chains through a deleted route — the mistake
+      // `/unit/*` made when it still pointed at `/place/*`.
       {
         source: "/orgs/:orgId/credits",
-        destination: "/orgs/:orgId/payments",
+        destination: "/orgs/:orgId/products",
         permanent: false,
       },
-      { source: "/credits", destination: "/payments", permanent: false },
+      { source: "/credits", destination: "/products", permanent: false },
+      // PAYMENTS IS A PRODUCT NOW, not a page (MESITA-1869). Pato's list of
+      // the organization's rows has no Payments on it: the page held two Soon
+      // strips, and the two things anybody could act on — the Stripe account
+      // and the Partner subscription — are cards in the catalogue. The row,
+      // the address and every bookmark forward there.
+      //
+      // TEMPORARY, like every other rename on this page. A 308 caches today's
+      // answer in every browser forever, and this answer has moved four times.
+      {
+        source: "/orgs/:orgId/payments",
+        destination: "/orgs/:orgId/products",
+        permanent: false,
+      },
+      { source: "/payments", destination: "/products", permanent: false },
       // MEMBERS IS CONTENT, NOT A PAGE (MESITA-1847). Pato: "members and
       // places in organization i mean, fuck nested things display shit
       // there." The people are ON the Organization page now, so the address
       // has nothing left to be. TEMPORARY: where the org's people live is a
       // product decision that has moved twice, and a 308 would cache today's
       // answer in every browser forever.
+      // Both forwards were left pointing at `organization`, a segment
+      // MESITA-1852 renamed to `configuration` — so `/members` had been
+      // landing on a 404 since (MESITA-1869 repoints them). A redirect onto a
+      // deleted route is the `/unit/*` → `/place/*` chain again, and it fails
+      // silently because no test walks a LEGACY source to its destination.
       {
         source: "/orgs/:orgId/members",
-        destination: "/orgs/:orgId/organization",
+        destination: "/orgs/:orgId/configuration",
         permanent: false,
       },
-      { source: "/members", destination: "/organization", permanent: false },
+      { source: "/members", destination: "/configuration", permanent: false },
       // SETTINGS IS CONFIGURATION (MESITA-1852). Pato: "change name of
       // settings to configuration." TEMPORARY, like every other rename on
       // this page: where the organization's own setup lives has moved three

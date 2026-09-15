@@ -9,9 +9,9 @@
 //   ─────────────────────
 //   [ ▣ Organization ⌄ ]  which one you are in
 //       Configuration     → /orgs/<id>/configuration
+//       Products          → /orgs/<id>/products
 //       Places            → /orgs/<id>/places
 //       Customers         → /orgs/<id>/customers
-//       Payments          → /orgs/<id>/payments
 //       Activity          → /orgs/<id>/activity
 //   ─────────────────────
 //   [ ⌂ Place        ⌄ ]  which one you are managing
@@ -73,6 +73,7 @@ import {
   ChartNoAxesColumn,
   Gift,
   Layers,
+  LayoutGrid,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -83,7 +84,6 @@ import {
   UserRound,
   Users,
   UtensilsCrossed,
-  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -217,7 +217,10 @@ const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 //   Customers     Users               PEOPLE, plural, against Account's one —
 //                                     the pairing IS the meaning: you, and
 //                                     everyone who comes to you
-//   Payments      Wallet              the page is the purse, not one card
+//   Products      LayoutGrid          the CATALOGUE — a grid of tiles, which
+//                                     is literally what the page is
+//                                     (MESITA-1869). Wallet left with the
+//                                     Payments row it belonged to
 //   Activity      ChartNoAxesColumn   counts over time; a heart-rate squiggle
 //                                     reads medical
 //   Places        Layers              a stack of them, and the SAME mark the
@@ -247,9 +250,9 @@ const ORG_ROW: Record<
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
   configuration: { label: "Configuration", Icon: Building2 },
+  products: { label: "Products", Icon: LayoutGrid },
   places: { label: "Places", Icon: Layers },
   customers: { label: "Customers", Icon: Users },
-  payments: { label: "Payments", Icon: Wallet },
   activity: { label: "Activity", Icon: ChartNoAxesColumn },
 };
 

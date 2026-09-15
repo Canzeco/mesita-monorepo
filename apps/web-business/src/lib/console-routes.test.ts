@@ -80,6 +80,9 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // `settings` NO flat twin: `/settings` is claimed by a permanent legacy
     // redirect onto `/capabilities`, and a contract name a config rule
     // shadows is the MESITA-1839 trap exactly — live here, dead on arrival.
+    // MESITA-1869 swaps `payments` for `products`: the catalogue took the
+    // row, and `/payments` is a redirect source now — a name a config rule
+    // shadows, which is the same trap `settings` fell into.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
       "menus",
@@ -88,10 +91,11 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "rewards",
       "admin",
       "configuration",
+      "products",
       "customers",
-      "payments",
       "activity",
     ]);
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("payments");
     // `places` is the place segment's own root, so a flat twin could never
     // resolve. `configuration` HAS one — that is the point of the rename
     // (MESITA-1852): `/settings` was owned by a permanent legacy redirect, so
@@ -108,7 +112,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
   // ONE ROUTE FILE FOR ALL TEN (MESITA-1842). They were ten directories
   // holding one line each, and adding the eleventh meant remembering to create
   // a directory, a page and a loading boundary that no compiler would miss.
-  it("all ten are served by the ONE `[flat]` segment, with its own boundary", () => {
+  it("every one is served by the ONE `[flat]` segment, with its own boundary", () => {
     const dir = path.join(SHELL_DIR, "[flat]");
     expect(existsSync(path.join(dir, "page.tsx"))).toBe(true);
     expect(existsSync(path.join(dir, "loading.tsx"))).toBe(true);
@@ -144,7 +148,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     for (const tab of PLACE_TABS) {
       expect(flatViewFromPathname(FLAT_ROUTES[tab])).toBe(tab);
     }
-    expect(flatViewFromPathname(FLAT_ROUTES.payments)).toBeNull();
+    expect(flatViewFromPathname(FLAT_ROUTES.products)).toBeNull();
     expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
     expect(flatViewFromPathname("/profiles")).toBeNull();
   });
@@ -167,11 +171,12 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     expect(flatOrgTargetFromPathname(FLAT_ROUTES.profile)).toBeNull();
     // A canonical address is never a flat one, and a name that merely STARTS
     // with a live one is not either.
-    expect(flatOrgTargetFromPathname(orgHref("org-x", "payments"))).toBeNull();
-    expect(flatOrgTargetFromPathname("/paymentsx")).toBeNull();
-    // `/credits` is not a flat address at all now (MESITA-1845) — the
-    // redirect table owns it.
+    expect(flatOrgTargetFromPathname(orgHref("org-x", "products"))).toBeNull();
+    expect(flatOrgTargetFromPathname("/productsx")).toBeNull();
+    // Neither `/credits` (MESITA-1845) nor `/payments` (MESITA-1869) is a
+    // flat address any more — the redirect table owns both names.
     expect(flatOrgTargetFromPathname("/credits")).toBeNull();
+    expect(flatOrgTargetFromPathname("/payments")).toBeNull();
   });
 
   it("THE TWO READERS NEVER BOTH ANSWER for one address", () => {
@@ -234,11 +239,12 @@ describe("the organization's pages (MESITA-1807)", () => {
     // ONE LIST (MESITA-1848): the organization's pages, the rail's rows and
     // the contract's targets are the same array, in Pato's order. Two lists
     // is how an address ends up live in one and dead in the other.
+    // MESITA-1869: Products takes Payments' slot, second, in Pato's order.
     expect(ORG_PAGES).toEqual([
       "configuration",
+      "products",
       "places",
       "customers",
-      "payments",
       "activity",
     ]);
     expect(ORG_TARGETS).toEqual(ORG_PAGES);
@@ -249,13 +255,17 @@ describe("the organization's pages (MESITA-1807)", () => {
     // the redirect table shadows, which is the MESITA-1839 trap exactly.
     expect(ORG_TARGETS).not.toContain("credits");
     expect(Object.keys(FLAT_ROUTES)).not.toContain("credits");
+    // PAYMENTS IS NOT AN ADDRESS ANY MORE EITHER (MESITA-1869): it is a
+    // product in the catalogue, and both its spellings forward there. Same
+    // trap, same assertion.
+    expect(ORG_TARGETS).not.toContain("payments");
     // EVERY TARGET IS A NAMED SEGMENT (MESITA-1846), Organization included:
     // the rail draws its five as siblings, so their addresses look alike. The
     // bare id is a forwarder with its own helper, never `orgHref`'s output.
     expect(orgHref("org-x")).toBe("/orgs/org-x/configuration");
     expect(orgHref("org-x", "configuration")).toBe("/orgs/org-x/configuration");
     expect(orgRootHref("org-x")).toBe("/orgs/org-x");
-    expect(orgHref("org-x", "payments")).toBe("/orgs/org-x/payments");
+    expect(orgHref("org-x", "products")).toBe("/orgs/org-x/products");
     expect(orgHref("org-x", "customers")).toBe("/orgs/org-x/customers");
     expect(orgHref("org-x", "activity")).toBe("/orgs/org-x/activity");
     expect(orgHref("org-x", "places")).toBe("/orgs/org-x/places");
@@ -330,7 +340,7 @@ describe("the organization's pages (MESITA-1807)", () => {
   it("encodes the id, so a slash in one cannot forge a route", () => {
     expect(orgHref("a/b")).toBe("/orgs/a%2Fb/configuration");
     expect(orgRootHref("a/b")).toBe("/orgs/a%2Fb");
-    expect(orgHref("a/b", "payments")).toBe("/orgs/a%2Fb/payments");
+    expect(orgHref("a/b", "products")).toBe("/orgs/a%2Fb/products");
     expect(orgSwitchHref("a/b", "/profile")).toBe("/orgs/a%2Fb/switch?to=%2Fprofile");
     expect(orgIdFromPathname(orgHref("a/b"))).toBe("a/b");
     expect(orgIdFromPathname(orgRootHref("a/b"))).toBe("a/b");
@@ -375,7 +385,7 @@ describe("the organization's pages (MESITA-1807)", () => {
     expect(orgTargetFromPathname("/orgs/org-x/billing")).toBeNull();
     expect(orgTargetFromPathname("/orgs/org-x/places/p-1")).toBeNull();
     // A third segment under a page is not that page.
-    expect(orgTargetFromPathname("/orgs/org-x/payments/x")).toBeNull();
+    expect(orgTargetFromPathname("/orgs/org-x/products/x")).toBeNull();
     // The BARE address is a 307 onto Settings and answers "configuration",
     // trailing slash included — a row that goes dark for the instant the
     // forward is in flight reads as a glitch.
@@ -494,7 +504,7 @@ describe("withQuery — the resolver forwards its whole query", () => {
   // forward drops the query, the operator finishes Stripe onboarding on a
   // screen that never shows the return notice. This is the assertion that
   // stops it.
-  const PAY = "/orgs/org-9/payments";
+  const PAY = "/orgs/org-9/products";
 
   it("is a no-op with nothing to carry", () => {
     expect(withQuery(PAY, {})).toBe(PAY);
