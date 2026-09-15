@@ -19,6 +19,7 @@ import {
 import { ErrorNote } from "@/components/ErrorNote";
 import { usePlaceUI } from "../PlaceUIContext";
 import { formatShortDate } from "@/lib/format";
+import { FOCUS_RING_CLASS } from "@/lib/ui-classes";
 
 /** All three place roles — owner is unique & transferable (MESITA-919). */
 const MEMBER_ROLES = ["owner", "editor", "viewer"] as const;
@@ -305,7 +306,13 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                           e.target.value,
                         )
                       }
-                      className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-xs capitalize outline-none disabled:opacity-50"
+                      // The last hand-rolled control on a Settings-adjacent
+                      // surface that killed the UA outline and put nothing
+                      // back (MESITA-1862). It keeps its own geometry - 32px
+                      // is deliberate for a secondary control inside an
+                      // already-expanded confirm form - and borrows the
+                      // console's shared ring rather than inventing one.
+                      className={`border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-xs capitalize disabled:opacity-50 ${FOCUS_RING_CLASS}`}
                     >
                       {MEMBER_ROLES.map((r) => (
                         <option key={r} value={r}>

@@ -105,7 +105,7 @@ function MemberRow({
             <p className="text-muted-foreground truncate text-[12px]">{secondary}</p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
           <RoleChip role={member.role} isMe={isMe} />
           {isOwner && confirming === null && (
             <>
@@ -230,7 +230,7 @@ function PendingInviteRow({
           <p className="truncate text-sm font-medium">{invite.email}</p>
           <p className="text-muted-foreground truncate text-[12px]">Invited, pending</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
           <RoleChip role={invite.role} />
           {isOwner && !confirming && (
             <button
