@@ -52,12 +52,12 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 // Forfeit is PER PLACE (three strikes drop this place to plan=free and stamp
 // plan_forfeited_at) while the subscription is PER ORGANIZATION — so the way
 // back is a place action, "re-join this place", never "toggle the org". The
-// door is not wired: the one join door (`setPlacePlan` →
-// `business-web-set-partnership {action:"join"}`) is guarded by
-// `requireEditor` and never reads `organizations.partnered`, so the first
-// console caller of it would let any editor put any place on plan=pro for
-// nothing, under a paid tier. The plan had the button render disabled until
-// the backend issue guards that door (org partnered ∧ owner) — but a
+// door is now guarded but still unwired: MESITA-1889 made the one join door
+// (`setPlacePlan` → `business-web-set-partnership {action:"join"}`) refuse
+// unless the holder organization is `partnered` AND the caller owns it (409
+// `org_not_partnered`), so it can no longer let an editor put any place on
+// plan=pro for nothing under a paid tier. Only the button is left, and it
+// belongs to MESITA-1891. The plan had it render disabled meanwhile — but a
 // disabled primary button is a knob that pretends, the exact thing the
 // house law (SoonStrip.tsx) forbids and the reason the Partner modal on
 // Organization has no Continue button. So the door's honest state is one
