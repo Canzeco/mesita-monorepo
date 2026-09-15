@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cardForLookup } from "./add-place-card";
+import { rowStateForLookup } from "./add-place-card";
 import type { LookupPlace, LookupResult } from "./api/verifications";
-import type { PlacePrediction } from "./api/place-search";
-
-const prediction: PlacePrediction = {
-  placeId: "ChIJtest",
-  mainText: "Strana",
-  secondaryText: "Valle",
-  state: "not_in_mesita",
-};
 
 const place: LookupPlace = {
   id: "p-1",
@@ -32,25 +24,29 @@ const methods = {
   email: { available: false, displayEmail: null },
 };
 
-describe("cardForLookup", () => {
-  it("mints when Mesita has no row", () => {
+describe("rowStateForLookup", () => {
+  it("creates when Mesita has no row", () => {
     const lookup: LookupResult = { state: "not_in_mesita", place: null };
-    expect(cardForLookup(lookup, prediction, new Set()).kind).toBe("create");
+    const row = rowStateForLookup(lookup, new Set());
+    expect(row).toEqual({ kind: "create", label: "Not on Mesita" });
   });
 
-  it("adds unclaimed and pending rows", () => {
+  // THE PRIOR LAW, KEPT: "pending verification rows are still Add (unowned
+  // Mesita places)". Nobody HOLDS a place someone merely asked for, and
+  // hiding the button would let an unfinished request park it forever.
+  it("claims an unclaimed row, and one another org is only ASKING for", () => {
     const unclaimed: LookupResult = {
       state: "web_listed_unclaimed",
       place,
       methods,
     };
-    expect(cardForLookup(unclaimed, prediction, new Set()).kind).toBe("add");
-    const pending: LookupResult = {
-      state: "pending_by_other",
+    expect(rowStateForLookup(unclaimed, new Set())).toEqual({
+      kind: "claim",
+      label: "On Mesita",
       place,
-      methods,
-    };
-    expect(cardForLookup(pending, prediction, new Set()).kind).toBe("add");
+    });
+    const pending: LookupResult = { state: "pending_by_other", place, methods };
+    expect(rowStateForLookup(pending, new Set()).kind).toBe("claim");
   });
 
   it("opens a place this org already holds, even if lookup says partner", () => {
@@ -59,17 +55,48 @@ describe("cardForLookup", () => {
       place,
       owner: { id: "someone-else", email: "x@y.z" },
     };
-    const card = cardForLookup(lookup, prediction, new Set(["p-1"]));
-    expect(card).toEqual({ kind: "open", placeId: "p-1", name: "Strana" });
+    expect(rowStateForLookup(lookup, new Set(["p-1"]))).toEqual({
+      kind: "open",
+      label: "In this organization",
+      placeId: "p-1",
+    });
   });
 
-  it("shows partner-other when another org holds it", () => {
+  it("names this org's own pending claim, and still opens it", () => {
+    const lookup: LookupResult = {
+      state: "pending_by_me",
+      place,
+      methods,
+      verification: {
+        id: "v-1",
+        method: "ai_email",
+        payload: {},
+        requester_email: "me@x.mx",
+        state: "pending",
+        reject_reason: null,
+        decided_at: null,
+        decided_via: null,
+        created_at: "2026-01-01",
+      },
+    };
+    expect(rowStateForLookup(lookup, new Set())).toEqual({
+      kind: "pending",
+      label: "Your claim is pending",
+      placeId: "p-1",
+    });
+  });
+
+  // Pato, MESITA-1850: a place another organization HOLDS gets no button.
+  // Every action would 409, and an honest dead end beats a button that lies.
+  it("states Claimed and offers nothing when another org holds it", () => {
     const lookup: LookupResult = {
       state: "verified_partner",
       place,
       owner: { id: "other", email: "owner@x.mx" },
     };
-    const card = cardForLookup(lookup, prediction, new Set());
-    expect(card.kind).toBe("partner");
+    const row = rowStateForLookup(lookup, new Set());
+    expect(row).toEqual({ kind: "taken", label: "Claimed" });
+    expect("place" in row).toBe(false);
+    expect("placeId" in row).toBe(false);
   });
 });
