@@ -17,12 +17,26 @@
 // console remembers (the rail cookie), else the organization's first. A
 // `?place=` naming a place this organization does not hold falls back rather
 // than 404ing — the id in the query is a preference, not the page's subject.
+//
+// THE PAYMENTS LOG LIVES HERE (MESITA-1872). Pato: *"payments log go into
+// activity."* It was the last strip on the catalogue, and it was the only
+// thing on that page that was not a product: what guests paid and what
+// reached the account is a READING, and this is the page an operator opens to
+// read what happened. It is unbuilt, so it is a `SoonStrip` — never a fake
+// feed and never a fake number.
+//
+// IT RENDERS IN EVERY STATE, the no-place one included. That is the state
+// that most needs to say what is coming: an organization with nothing to
+// show would otherwise meet a page with one card telling it to add a place
+// and no hint that money will ever be reported here.
 import { notFound, redirect } from "next/navigation";
 import { NoPlaceYet } from "@/components/console/NoPlaceYet";
 import { ErrorNote } from "@/components/ErrorNote";
 import { PlaceActivity } from "@/components/place-manage/sections/PlaceActivity";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { findOrg } from "@/lib/active-organization";
+import { SoonStrip } from "@/components/console/SoonStrip";
+import { SOON_STRIPS } from "@/components/console/SoonStrips";
 import { orgHref } from "@/lib/console-routes";
 import { getManagePlace } from "@/lib/place-view";
 import { getSelection } from "@/lib/selected-place";
@@ -51,6 +65,7 @@ export default async function OrgActivityPage(props: {
       <>
         <h1 className="font-display text-2xl font-semibold tracking-tight">Activity</h1>
         <NoPlaceYet org={org} />
+        <SoonStrip {...SOON_STRIPS.payments} />
       </>
     );
   }
@@ -76,6 +91,9 @@ export default async function OrgActivityPage(props: {
       ) : (
         <ErrorNote message="Couldn't load this place's numbers. Reload to try again." />
       )}
+      {/* The payments log, at the foot: it is the organization's reading, so
+          it sits UNDER the one place's numbers rather than above them. */}
+      <SoonStrip {...SOON_STRIPS.payments} />
     </>
   );
 }

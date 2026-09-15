@@ -29,6 +29,13 @@ const PAGE_SRC = readFileSync(
   path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/page.tsx"),
   "utf8",
 );
+// Mesita Pay's controls got their own address (MESITA-1872): Pato took the
+// Section off the catalogue — *"just leave the 8 boxes and the 1 partnership
+// box shit"* — so the composition this file asserts lives one path deeper.
+const PAY_SRC = readFileSync(
+  path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/pay/page.tsx"),
+  "utf8",
+);
 const LOADING_SRC = readFileSync(
   path.join(__dirname, "../../app/(shell)/orgs/[orgId]/products/loading.tsx"),
   "utf8",
@@ -78,9 +85,9 @@ describe("a failed account read is not an absent account", () => {
   });
 
   it("the page gives the failure its own name instead of reusing null", () => {
-    expect(PAGE_SRC).toContain("accountError");
+    expect(PAY_SRC).toContain("accountError");
     // stripeReady must not read "not ready" out of an unread account.
-    expect(PAGE_SRC).toMatch(/accountError === null &&\s*\n\s*account !== null/);
+    expect(PAY_SRC).toMatch(/accountError === null &&\s*\n\s*account !== null/);
   });
 });
 
@@ -164,21 +171,53 @@ describe("the unbuilt boxes stop out-shouting the live ones", () => {
 // about `ORG_STATE_BADGE`.
 //
 describe("the catalogue reads the dependency, not the alphabet", () => {
-  it("the partnership, then the grid, then Mesita Pay, then the honest Soon", () => {
-    // Component tags and title attributes, not bare words: the docblock names
-    // every one of these before the JSX does. The ORDER is the dependency —
-    // what you buy, what it unlocks, the account the add-on rides on, and
-    // last the reading that does not exist yet.
-    const order = [
-      "<PartnerBanner",
-      "<ProductCatalog",
-      'title="Mesita Pay"',
-      "<PaymentsCard",
-      "<MesitaPayCard",
-      "SOON_STRIPS.payments",
-    ].map((needle) => PAGE_SRC.indexOf(needle));
+  // MESITA-1872. Pato, on the live catalogue: *"remove thus shit. just leave
+  // the 8 boxes and the 1 partnership box shit. payments log go into
+  // activity."* The page is the banner and the grid; a full Section for ONE
+  // of the eight made that one louder than the other seven on the page whose
+  // whole job is comparing them.
+  it("the catalogue is the partnership and the grid, and NOTHING else", () => {
+    const order = ["<PartnerBanner", "<ProductCatalog"].map((n) =>
+      PAGE_SRC.indexOf(n),
+    );
     for (const at of order) expect(at).toBeGreaterThan(-1);
     expect(order).toEqual([...order].sort((a, b) => a - b));
+    // The box left, and so did the read that fed it: two screens reading one
+    // Stripe account is how the console starts disagreeing with itself.
+    // Through stripComments: the docblock NAMES what it deleted, and a
+    // "not present" assertion must not pass or fail on an explanation.
+    const code = stripComments(PAGE_SRC);
+    for (const gone of [
+      "<PaymentsCard",
+      "<MesitaPayCard",
+      'title="Mesita Pay"',
+      "apiGetPaymentAccount",
+      "ConnectReturnNotice",
+      "SoonStrip",
+    ]) {
+      expect(code, gone).not.toContain(gone);
+    }
+    // And the anchor went with it. `#mesita-pay` into a Section that no
+    // longer exists scrolls NOWHERE, silently — the worst kind of dead link,
+    // which is why the verb is a real address now.
+    expect(code).not.toContain("#mesita-pay");
+    expect(PAGE_SRC).toContain("orgPayHref(org.id)");
+  });
+
+  it("the payments log moved to Activity, which is where readings live", () => {
+    const activity = readFileSync(
+      path.join(__dirname, "../../app/(shell)/orgs/[orgId]/activity/page.tsx"),
+      "utf8",
+    );
+    // Twice on purpose: the no-place branch returns early, and that is the
+    // state that most needs to say what is coming.
+    expect((activity.match(/SOON_STRIPS\.payments/g) ?? []).length).toBe(2);
+    // The skeleton grew with it, or every load ends in a 72px shift.
+    const loading = readFileSync(
+      path.join(__dirname, "../../app/(shell)/orgs/[orgId]/activity/loading.tsx"),
+      "utf8",
+    );
+    expect(loading).toContain('"h-[220px]", "h-[72px]"');
   });
 
   it("the caption is grouped with its title, not spaced like a sibling card", () => {
@@ -313,25 +352,26 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     expect(modal).toContain("<Perks />");
   });
 
-  // MESITA-1869 moved the LOCKED face off this page and into the grid. The
-  // catalogue already draws a Mesita Pay card reading "Locked · Needs Mesita
-  // Partner", so a `LockedStrip` at the foot would say the same sentence
-  // twice on one screen — which is the redundancy this whole pass deletes.
-  it("the Mesita Pay box exists only for a partner, and says so exactly once", () => {
-    expect(PAGE_SRC).toContain("{partnered && (");
-    expect(PAGE_SRC).not.toContain("<LockedStrip");
+  // MESITA-1869 moved the LOCKED face off the catalogue and into the grid;
+  // MESITA-1872 moved the LIVE face onto its own address. The card already
+  // reads "Locked · Needs Mesita Partner", so the Pay page says it once more
+  // — with the door — and never as a second locked box.
+  it("the Mesita Pay page is one box for a partner, and a door otherwise", () => {
+    expect(PAY_SRC).toContain("if (!partnered) {");
+    expect(PAY_SRC).not.toContain("<LockedStrip");
     // One box, one switch, one account: a second face is how two screens
     // start disagreeing about one Stripe account.
-    expect((PAGE_SRC.match(/<MesitaPayCard/g) ?? []).length).toBe(1);
-    expect((PAGE_SRC.match(/<PaymentsCard/g) ?? []).length).toBe(1);
-    expect((PAGE_SRC.match(/title="Mesita Pay"/g) ?? []).length).toBe(1);
-    // The partnership is unconditional and above everything: it is what the
-    // eight cards below it are gated on.
-    expect(PAGE_SRC.indexOf("<PartnerBanner")).toBeLessThan(
-      PAGE_SRC.indexOf("{partnered && ("),
+    expect((PAY_SRC.match(/<MesitaPayCard/g) ?? []).length).toBe(1);
+    expect((PAY_SRC.match(/<PaymentsCard/g) ?? []).length).toBe(1);
+    // Stripe's stored return travels with the account it is about.
+    expect(PAY_SRC).toContain("ConnectReturnNotice");
+    // The non-partner branch returns BEFORE the Stripe read: a page that
+    // fetched an account it will not render buys a round trip for nothing.
+    expect(PAY_SRC.indexOf("if (!partnered) {")).toBeLessThan(
+      PAY_SRC.indexOf("await apiGetPaymentAccount("),
     );
-    // The BANNER is the one that branches: a strip for the settled fact, the
-    // full PartnerCard box for the state with a decision in it.
+    // The BANNER is what branches on the catalogue: a strip for the settled
+    // fact, the full PartnerCard box for the state with a decision in it.
     const banner = readFileSync(path.join(__dirname, "./PartnerBanner.tsx"), "utf8");
     expect(banner).toContain("if (!partnered) {");
     expect(banner).toContain("<PartnerCard partnered={false}");

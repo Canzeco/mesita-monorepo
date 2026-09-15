@@ -1,37 +1,40 @@
-// Products — THE CATALOGUE (MESITA-1869).
+// Products — THE CATALOGUE (MESITA-1869), and after MESITA-1872 it is exactly
+// two things: the Mesita Partner banner, and the eight product cards.
 //
-// Pato, 2026-09-15, listing the organization's rows: *"Configuration (here
-// have members shit) · Products (here have partner and all the products to
-// activate, remember that profile is free) · Places · Costumers · Activity"*,
-// with a mock of the grid.
+// Pato, on the live page: *"remove thus shit. just leave the 8 boxes and the 1
+// partnership box shit. payments log go into activity."*
 //
-// THIS PAGE REPLACES PAYMENTS, address and row. Payments was a page holding
-// two Soon strips: what it was FOR — what guests paid, what reached the
-// account — is a reading of a product that is not built, and the two things on
-// it anybody could act on were setup boxes that had already moved to
-// Configuration (MESITA-1852). Both of those are PRODUCTS, so they are here.
+// WHAT LEFT, AND WHY EACH ONE HAD TO. **Mesita Pay's Section** hung at the
+// foot with its Stripe account and switch — a full box for ONE of the eight,
+// on the page whose whole job is to let an operator compare all eight. It has
+// its own address now (`products/pay`), reached from its own card, and
+// Stripe's stored `?connect=` follows it there. **The Payments Soon strip**
+// went to Activity, which is where an operator already reads what happened;
+// what guests paid and what reached the account is a READING, not a product,
+// and it was the only thing on this page that was not one.
 //
 // ── WHAT THE PAGE READS, AND WHY IT READS IT ──────────────────────────────
 //
-// Three reads, and every card's state comes out of one of them:
+// Two reads now, and every card's state comes out of one of them:
 //
 //   the organization   `partnered` and `mesitaPayEnabled` — the two org-level
-//                      columns. The subscription gates three cards; the Pay
+//                      columns. The subscription gates four cards; the Pay
 //                      switch IS one.
 //   its places         `business-web-list-places`, scope "org": the per-place
 //                      columns (`pickupOrders`, `deliveryOrders`,
-//                      `reservations`, `credits`, `mesitaPay`) become the
-//                      COUNT a card prints. This is the same payload the
-//                      states matrix renders, so the two screens cannot
-//                      disagree about a place.
-//   the Stripe account the Mesita Pay box below the grid, moved from
-//                      Configuration with its `?connect=` notice.
+//                      `reservations`, `credits`) become the COUNT a card
+//                      prints. This is the same payload the states matrix
+//                      renders, so the two screens cannot disagree about a
+//                      place.
+//
+// The Stripe read went with the box that needed it: two screens reading one
+// account is how the console starts disagreeing with itself (MESITA-1847's
+// badge lesson).
 //
 // A FAILED READ IS NOT A ZERO. If the places read throws, every per-place card
 // drops its note rather than printing "On at 0 of 0 places" — a fabricated
 // number is the one thing SoonStrip's law forbids outright, and zero is the
-// most believable fabrication on this screen. Same shape as the Stripe read's
-// `accountError` below, which is the MESITA-1861 bug written down.
+// most believable fabrication on this screen.
 //
 // ── WHERE A PRODUCT IS ACTUALLY TURNED ON ─────────────────────────────────
 //
@@ -43,27 +46,19 @@
 // (MESITA-1833's law that a row lands somewhere real).
 //
 // Mesita Pay is the exception, and the reason it is: it is an ORG switch on an
-// ORG Stripe account, so its verb points at the box at the foot of this page.
+// ORG Stripe account, so its verb opens `products/pay`.
 import { notFound, redirect } from "next/navigation";
-import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
-import { MesitaPayCard } from "@/components/console/MesitaPayCard";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
-import { PaymentsCard } from "@/components/console/PaymentsCard";
 import { ProductCatalog } from "@/components/console/ProductCatalog";
-import { SoonStrip } from "@/components/console/SoonStrip";
-import { SOON_STRIPS } from "@/components/console/SoonStrips";
-import { Section } from "@/components/shared/Section";
 import {
-  apiGetPaymentAccount,
   apiListConsolePlaces,
   apiListOrganizations,
-  paymentAccountState,
   type ConsolePlace,
-  type PaymentAccount,
 } from "@/lib/api/organizations";
 import { findOrg } from "@/lib/active-organization";
 import {
   orgHref,
+  orgPayHref,
   orgPlacesHref,
   orgPlacesNewHref,
   placeHref,
@@ -73,14 +68,10 @@ import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductsPage({
-  params,
-  searchParams,
-}: {
+export default async function ProductsPage(props: {
   params: Promise<{ orgId: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ orgId }, sp] = await Promise.all([params, searchParams]);
+  const { orgId } = await props.params;
   const supabase = await createServerSupabase();
   const [user, organizations] = await Promise.all([
     getServerUser(),
@@ -94,7 +85,6 @@ export default async function ProductsPage({
 
   const isOwner = org.myRole === "owner";
   const partnered = org.partnered === true;
-  const connect = typeof sp.connect === "string" ? sp.connect : undefined;
 
   // The places, for the per-place counts. NULL on failure, never an empty
   // array: the cards tell "we could not read this" and "nothing is on" apart,
@@ -108,26 +98,6 @@ export default async function ProductsPage({
   } catch (e) {
     console.error("[products] business-web-list-places:", e);
   }
-
-  // The Stripe box's own read, moved here with the box (MESITA-1861's shape
-  // kept exactly: the FLAG is what tells a blip from a genuine absence, and
-  // without it a live account is offered a second one).
-  let account: PaymentAccount | null = null;
-  let orphaned = false;
-  let accountError: string | null = null;
-  try {
-    ({ account, orphaned } = await apiGetPaymentAccount(supabase, org.id));
-  } catch (e) {
-    accountError = "Couldn't load the Stripe account.";
-    console.error("[products] business-web-get-payment-account:", e);
-  }
-
-  const stripeReady =
-    accountError === null &&
-    account !== null &&
-    account.charges_enabled === true &&
-    account.details_submitted === true &&
-    !orphaned;
 
   // Where a per-place product is turned on. One place is the common case this
   // console is optimized for, so it skips the chooser entirely.
@@ -145,7 +115,7 @@ export default async function ProductsPage({
     places,
     placeHome,
     noPlaces: held.length === 0,
-    payHref: `${orgHref(org.id, "products")}#mesita-pay`,
+    payHref: orgPayHref(org.id),
   });
 
   return (
@@ -159,52 +129,13 @@ export default async function ProductsPage({
         </p>
       </div>
 
-      {/* Stripe's stored return lands on this page with the box it is about
-          (MESITA-1869): the bare `/orgs/<id>` forwards `?connect=` here. */}
-      <ConnectReturnNotice connect={connect} />
-
+      {/* THE ONE BOX Pato kept: the partnership every gated card below is
+          gated on. It ranks by depth — the full PartnerCard box while the
+          organization is not a partner (a price, the owner's CTA, the perks,
+          the modal), one line once it is. */}
       <PartnerBanner partnered={partnered} isOwner={isOwner} />
 
       <ProductCatalog products={products} />
-
-      {/* MESITA PAY'S OWN BOX, at the foot, and only once the organization can
-          reach it. Not partnered, the card above already says "Needs Mesita
-          Partner" and a second locked box would say it twice — the
-          MESITA-1866/1867 composition survives, one tier down the page. */}
-      {partnered && (
-        <Section
-          id="mesita-pay"
-          lane
-          title="Mesita Pay"
-          description="Card payments inside Mesita, through the organization's own Stripe account."
-        >
-          <PaymentsCard
-            orgId={org.id}
-            account={account}
-            orphaned={orphaned}
-            isOwner={isOwner}
-            loadError={accountError}
-          />
-          {/* ONE SEAM, inside one box (MESITA-1866): the account above, the
-              switch it unlocks below. */}
-          <div className="border-border/60 border-t pt-3">
-            <MesitaPayCard
-              partnered
-              stripeReady={stripeReady}
-              mesitaPayEnabled={org.mesitaPayEnabled === true}
-              isOwner={isOwner}
-              accountState={paymentAccountState(account, orphaned)}
-              orphaned={orphaned}
-              loadError={accountError}
-            />
-          </div>
-        </Section>
-      )}
-
-      {/* What the catalogue cannot show yet: the money that moved through it.
-          Honest about being unbuilt, and it sits UNDER the products rather
-          than owning a row of its own (MESITA-1869 deleted that row). */}
-      <SoonStrip {...SOON_STRIPS.payments} />
     </>
   );
 }

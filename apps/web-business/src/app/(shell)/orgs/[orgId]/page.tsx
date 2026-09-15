@@ -18,8 +18,9 @@
 // do. STRIPE stores an Account Link's `return_url` when the link is MINTED, so
 // links created months ago point at `/orgs/<id>?connect=return` and land here
 // forever. That branch is checked FIRST and forwards the WHOLE query to
-// PRODUCTS (MESITA-1869), which is where the Stripe account and the notice
-// that reads `?connect=` now live — dropping the query
+// PRODUCTS' PAY PAGE (MESITA-1869, narrowed MESITA-1872), which is where the
+// Stripe account and the notice that reads `?connect=` now live — the
+// catalogue itself is the grid and nothing else — dropping the query
 // would strand an owner on a screen that knows neither which organization they
 // onboarded nor that they just came back.
 //
@@ -32,7 +33,7 @@
 // bought for nothing: the page it forwards to does both, and `orgs/[orgId]/
 // layout.tsx` above has already refused a foreign id.
 import { redirect } from "next/navigation";
-import { orgHref, withQuery } from "@/lib/console-routes";
+import { orgHref, orgPayHref, withQuery } from "@/lib/console-routes";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function OrgRootPage(props: {
 }) {
   const [{ orgId }, sp] = await Promise.all([props.params, props.searchParams]);
   if (typeof sp.connect === "string") {
-    redirect(withQuery(orgHref(orgId, "products"), sp));
+    redirect(withQuery(orgPayHref(orgId), sp));
   }
   redirect(withQuery(orgHref(orgId, "settings"), sp));
 }
