@@ -6,7 +6,9 @@
 // `role="switch"` button, the track is a plain span inside it. Label is
 // Partner — on or off. Never "Not Partner", never "Patner".
 //
-// Stripe Ready is the lock. Owner-only to flip; everyone else reads it.
+// Stripe Ready is the lock. Owner-only to flip; everyone else reads it. The
+// lock hides nothing: every branch renders the same track and one line
+// (MESITA-1864).
 //
 // THE BOX NAMES NO CAPABILITY (MESITA-1863). Pato: *"the rewards and more
 // shit is not inherent of the partnership — or if it's not, don't mention it
@@ -36,22 +38,36 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { setOrgPartnershipAction } from "@/app/(shell)/actions/organizations";
 import { cn } from "@/lib/utils";
 
-function Track({ on, busy }: { on: boolean; busy: boolean }) {
+function Track({
+  on,
+  busy,
+  locked = false,
+}: {
+  on: boolean;
+  busy: boolean;
+  /** Stripe is not Ready. The switch still renders — off, dimmed, and
+   *  carrying the lock in the knob (MESITA-1864). */
+  locked?: boolean;
+}) {
   return (
     <span
       aria-hidden
       className={cn(
         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-        on ? "bg-secondary" : "bg-muted-foreground/25",
+        locked ? "bg-muted-foreground/15" : on ? "bg-secondary" : "bg-muted-foreground/25",
       )}
     >
       <span
         className={cn(
-          "bg-background inline-flex h-5 w-5 transform items-center justify-center rounded-full shadow transition-transform",
+          "inline-flex h-5 w-5 transform items-center justify-center rounded-full transition-transform",
           on ? "translate-x-[22px]" : "translate-x-0.5",
+          // A locked knob carries no shadow: shadow is what makes the thumb
+          // look liftable, and this one is not.
+          locked ? "bg-muted" : "bg-background shadow",
         )}
       >
         {busy && <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />}
+        {locked && !busy && <Lock className="text-muted-foreground h-3 w-3" aria-hidden />}
       </span>
     </span>
   );
@@ -94,20 +110,26 @@ export function PartnerCard({
   return (
     <div className="flex flex-col">
       {locked ? (
-        // The Section above is titled "Partner" and says what it unlocks;
-        // repeating the word and the sentence here was saying one thing three
-        // times (MESITA-1847). The span carried this branch's only accessible
-        // name, so the label moves onto the row itself.
+        // THE SWITCH SHOWS WHILE IT IS LOCKED (MESITA-1864). Pato, on an org
+        // whose Stripe account is Restricted: "show here like a toggle or
+        // something." This branch used to render a pill and a sentence where
+        // the other two render a control — so the one state every new
+        // organization meets was the one that never showed what Partnership
+        // is: a thing you turn on. Now all three are a track and a line.
+        //
+        // The pill went with it. Switch + pill + sentence is three atoms for
+        // one fact: the dimmed track says "not available", the sentence says
+        // why, and `role="switch"` + `aria-disabled` says both to a reader.
         <div
-          className="flex flex-wrap items-center gap-x-3 gap-y-2 py-1"
+          role="switch"
+          aria-checked={false}
+          aria-disabled
           aria-label="Partner"
+          className="flex items-center gap-3 py-1"
         >
-          <span className="text-muted-foreground bg-muted type-label inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-semibold">
-            <Lock className="h-3 w-3" aria-hidden />
-            Needs a Ready Stripe account
-          </span>
+          <Track on={false} busy={false} locked />
           <span className="text-muted-foreground min-w-0 text-xs leading-snug">
-            Connect Stripe first.
+            Needs a Ready Stripe account — connect Stripe first.
           </span>
         </div>
       ) : canFlip || pending ? (
