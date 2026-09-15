@@ -41,10 +41,10 @@ export default function PrivacyPage() {
 
       <LegalSection heading="What you tell us about yourself">
         <p>
-          When you set up your account we ask for your first and last name, your
-          date of birth, your country and, optionally, your sex. The date of
-          birth is what we check against the minimum age of 14, and it is shown
-          back to you on your Mesita passport.
+          When you set up your account we ask for your first name, your date of
+          birth and your sex. Your last name is asked later, the first time you
+          book a table. The date of birth is what we check against the minimum
+          age of 14, and it is shown back to you on your Mesita passport.
         </p>
         <p>
           A profile photo and an Instagram handle are optional. The handle is
@@ -98,11 +98,10 @@ export default function PrivacyPage() {
 
       <LegalSection heading="What other people see">
         <p>
-          Your account has its own visibility switches, in Settings under
-          Privacy. You can make the account private, and separately turn off
-          whether other guests can see the places you saved, the places you have
-          visited, and your Mesita stories. They are independent of each other,
-          and they are yours to change whenever you want.
+          Your account has two visibility switches, in Settings under Privacy.
+          You can make the account private, and you can turn off whether other
+          guests see your Mesita stories. Both are yours to change whenever you
+          want.
         </p>
       </LegalSection>
 
@@ -135,9 +134,9 @@ export default function PrivacyPage() {
           .
         </p>
         <p>
-          Deleting the account is in the app, in Settings under Privacy &amp;
-          data. You type DELETE to confirm and the account is deleted; the same
-          address above is the way to do it if you can no longer sign in.
+          Deleting the account is in the app, in Settings, with your data. You
+          type DELETE to confirm and the account is deleted; the same address
+          above is the way to do it if you can no longer sign in.
         </p>
       </LegalSection>
 

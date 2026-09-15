@@ -122,9 +122,9 @@ export default function TermsPage() {
 
       <LegalSection heading="Ending it">
         <p>
-          You can delete your account from the app at any time, in Settings
-          under Privacy &amp; data. You type DELETE to confirm, and the account
-          is deleted.
+          You can delete your account from the app at any time, in Settings,
+          with your data. You type DELETE to confirm, and the account is
+          deleted.
         </p>
         <p>
           We can close an account that is being used to break these terms, or to

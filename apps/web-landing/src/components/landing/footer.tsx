@@ -13,18 +13,30 @@ function Footer() {
           © Mesita · {year} · Launching in San Francisco, January 2027
         </p>
         <nav className="text-muted-foreground flex flex-wrap items-center gap-4 text-[12px]">
-          <a href="#catalog" className="hover:text-foreground py-2 transition">
+          <Link
+            href="/#catalog"
+            className="hover:text-foreground py-2 transition"
+          >
             Catalog
-          </a>
-          <a href="#agents" className="hover:text-foreground py-2 transition">
+          </Link>
+          <Link
+            href="/#agents"
+            className="hover:text-foreground py-2 transition"
+          >
             Agents
-          </a>
-          <a href="#passport" className="hover:text-foreground py-2 transition">
-            Passport
-          </a>
-          <a href="#money" className="hover:text-foreground py-2 transition">
+          </Link>
+          <Link
+            href="/#rewards"
+            className="hover:text-foreground py-2 transition"
+          >
+            Rewards
+          </Link>
+          <Link
+            href="/#money"
+            className="hover:text-foreground py-2 transition"
+          >
             Money
-          </a>
+          </Link>
           <Link href="/terms" className="hover:text-foreground py-2 transition">
             Terms
           </Link>
