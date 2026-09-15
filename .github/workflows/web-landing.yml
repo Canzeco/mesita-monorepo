@@ -21,7 +21,7 @@ defaults:
 
 jobs:
   check:
-    name: lint · typecheck · build
+    name: lint · typecheck · test · build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,6 +47,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
 
       - name: Build
         run: pnpm run build
