@@ -303,14 +303,14 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
 
   it("the rows are the CANONICAL addresses — one hop, and shareable", () => {
     const html = render(view("profile"), { rememberedPlaceId: "p-1", organizations: SOLO_AT_P1 });
+    // DERIVED, not retyped (MESITA-1883). This was a second hand-written
+    // order, which is the thing this file's own header bans — and it is why
+    // moving one row in `RAIL_ROWS` failed here instead of passing, in a test
+    // whose subject is addresses rather than order.
     expect(hrefs(html)).toEqual([
-      orgHref("org-solo1", "settings"),
-      view("profile"),
-      view("menus"),
-      view("reviews"),
-      orgHref("org-solo1", "products"),
-      orgHref("org-solo1", "customers"),
-      orgHref("org-solo1", "activity"),
+      ...RAIL_ROWS.map((r) =>
+        r.kind === "org" ? orgHref("org-solo1", r.target) : view(r.view),
+      ),
       SHELL_ROUTES.account,
     ]);
   });
@@ -445,7 +445,14 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
 
   it("a pool place published by the layout: Profile alone among the place rows", () => {
     const html = render(FLAT_ROUTES.profile, { lastPlaceId: "p-x" });
-    expect(labels(html)).toEqual(["Settings", "Profile", "Products", "Customers", "Activity", "Account"]);
+    // Every org row, plus Profile alone of the place rows — in RAIL_ROWS
+    // order, derived rather than retyped (MESITA-1883).
+    expect(labels(html)).toEqual([
+      ...RAIL_ROWS.filter((r) => r.kind === "org" || r.view === "profile").map(
+        (r) => ROW_LABEL[r.kind === "org" ? r.target : r.view],
+      ),
+      "Account",
+    ]);
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Profile");
   });
