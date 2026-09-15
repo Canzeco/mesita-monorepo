@@ -205,6 +205,7 @@ export function PassportModal() {
   const supabase = useBrowserSupabase();
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   const {
     key,
     origin,
@@ -220,7 +221,10 @@ export function PassportModal() {
         const { consumer } = await apiFetchConsumerProfile(supabase);
         if (!cancelled) setProfile(consumer);
       } catch (e) {
-        if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
+        if (!cancelled) {
+          setFailed(true);
+          toast(errMsg(e, "Couldn't load your profile."));
+        }
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -263,7 +267,14 @@ export function PassportModal() {
   };
   const { fields, missing } = passportFields(dataPage);
   const [mrzLine1, mrzLine2] = buildMrz(dataPage);
-  const completion = loaded ? completionLine(missing.length) : null;
+  // A FAILED FETCH IS NOT AN EMPTY PROFILE. When the profile read throws,
+  // `profile` stays null and every guest-owned field reads as blank — so an
+  // ungated count says "5 fields left to fill" to a guest whose passport is
+  // actually complete, under a member number that prints "pending". The band,
+  // the portrait and the MRZ already degrade honestly (they show what they
+  // have); the count is the one line that ASSERTS something, so it is the one
+  // line that has to know the read failed.
+  const completion = loaded && !failed ? completionLine(missing.length) : null;
   const byId = (id: string) => fields.find((f) => f.id === id)?.value ?? null;
 
   const handle = classHandle ?? profile?.instagram_handle ?? null;

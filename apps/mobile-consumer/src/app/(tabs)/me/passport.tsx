@@ -57,8 +57,16 @@ const REACH_ENTRY = REACH_CANDIDATES.reduce(
 
 /** The MRZ's face. Neither app loads a monospace family, so each platform
  *  borrows the one its OS already ships — web takes Tailwind's `font-mono`
- *  stack, mobile takes these. */
-const MRZ_FONT = Platform.select({ ios: 'Courier', android: 'monospace' });
+ *  stack, mobile takes these. `default` is not decoration: this app also
+ *  ships through `expo export --platform web`, and without it `Platform
+ *  .select` returns undefined there, the MRZ falls back to the proportional
+ *  body face, and 44 characters that are supposed to line up column for
+ *  column with the line above stop lining up at all. */
+const MRZ_FONT = Platform.select({
+  ios: 'Courier',
+  android: 'monospace',
+  default: 'monospace',
+});
 
 /** Guest-facing captions — keep in lockstep with web `passportDoorCaptions`
  *  (MESITA-1819). Class is the perk. Climb doors only while the guest can
