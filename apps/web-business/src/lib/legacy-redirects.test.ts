@@ -140,12 +140,23 @@ describe("the legacy console's URLs all still resolve", () => {
   // page was unreachable and the rail's Settings row 308'd to Account. CI was
   // green the whole time, because this file pinned the redirect rather than
   // the reachability. Now it pins the absence.
-  // MESITA-1841 reverses this pair. Capabilities took its name back, so the
-  // arrow flips: `/settings` is the legacy spelling now, at BOTH addresses.
-  it("Settings forwards to Capabilities, flat and scoped, one hop each", async () => {
+  // MESITA-1841 reversed this pair: Capabilities took its name back, so
+  // `/settings` became the legacy spelling at BOTH addresses.
+  //
+  // MESITA-1871 SPLITS THEM. The PLACE-scoped rule stays — `/places/<id>/
+  // settings` is still the retired spelling of a place view. The FLAT rule is
+  // deleted, because it was the one thing standing between the organization's
+  // own page and its real name: a permanent 308 on `/settings` meant the
+  // contract could name that page and Next would never serve it, which is
+  // MESITA-1839 exactly, and it is why MESITA-1852 called the page
+  // `configuration` instead. Deleting it was checked against the live
+  // response first (`308` with `max-age=0, must-revalidate`, so every browser
+  // revalidates), not assumed.
+  it("a PLACE's Settings still forwards to Capabilities; the FLAT name is live", async () => {
     const all = await rules();
-    expect(resolve("/settings", all)).toBe("/capabilities");
     expect(resolve("/places/abc/settings", all)).toBe("/places/abc/capabilities");
+    // The absence IS the assertion: a rule here would shadow the live page.
+    expect(resolve("/settings", all)).toBeNull();
     // The live names are routes, not redirects — nothing chains.
     expect(resolve("/capabilities", all)).toBeNull();
     expect(resolve("/places/abc/capabilities", all)).toBeNull();
@@ -272,15 +283,19 @@ describe("every redirect forwards somewhere this repo serves", () => {
   // Payments joined them (MESITA-1869): a page that has been a row four
   // times and is now a card in a catalogue is the definition of an answer
   // that could move again.
+  // And `configuration` joined them (MESITA-1871), swapping places with
+  // `settings`: the organization's own page has now been called Organization,
+  // Settings, Configuration and Settings again.
   const TEMPORARY = new Set([
     "/places/:id/activity",
+    "/orgs/:orgId/configuration",
+    "/configuration",
     "/orgs/:orgId/credits",
     "/credits",
     "/orgs/:orgId/payments",
     "/payments",
     "/orgs/:orgId/members",
     "/members",
-    "/orgs/:orgId/settings",
   ]);
 
   it("permanent, except the forwards onto an answer that has moved", async () => {
@@ -304,7 +319,10 @@ describe("every redirect forwards somewhere this repo serves", () => {
   it("no rule forwards to a route this repo no longer serves", async () => {
     for (const rule of await rules()) {
       expect(rule.destination.startsWith("/place/")).toBe(false);
-      expect(rule.destination).not.toBe("/settings");
+      // `/settings` was on this list until MESITA-1871 made it live again;
+      // `/configuration` took its place as the name nothing may land on.
+      expect(rule.destination).not.toBe("/configuration");
+      expect(rule.destination).not.toBe("/orgs/:orgId/configuration");
       expect(rule.destination).not.toBe("/places");
       expect(rule.destination).not.toBe("/places/:id/settings");
     }

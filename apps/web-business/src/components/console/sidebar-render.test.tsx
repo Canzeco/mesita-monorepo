@@ -119,8 +119,8 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     [SHELL_ROUTES.account, "Account"],
     // The create ceremony has no organization to name yet, so it lights
     // Settings — the row you would go back through (MESITA-1848).
-    [SHELL_ROUTES.orgNew, "Configuration"],
-    [orgHref("org-a", "configuration"), "Configuration"],
+    [SHELL_ROUTES.orgNew, "Settings"],
+    [orgHref("org-a", "settings"), "Settings"],
     [orgHref("org-a", "products"), "Products"],
     // Places has a row of its own, and Add place is its list's own step.
     [orgHref("org-a", "places"), "Places"],
@@ -172,7 +172,7 @@ describe("exactly one pill, on every route (MESITA-1832)", () => {
     // `/orgs/new` is the one address two `active` expressions could both claim
     // — Account owned it until MESITA-1841, and the organization's own first
     // page owns it now. With no organization at all it belongs to Create.
-    expect(pillText(render(SHELL_ROUTES.orgNew, { rememberedPlaceId: "p-1" }))).toBe("Configuration");
+    expect(pillText(render(SHELL_ROUTES.orgNew, { rememberedPlaceId: "p-1" }))).toBe("Settings");
     expect(pills(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toHaveLength(1);
     expect(pillText(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toBe("Create organization");
   });
@@ -190,7 +190,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
   // not in this list — they render names, not destinations.
   // MESITA-1869: Products took Payments' slot, second, right under
   // Configuration — Pato's order, and the order ORG_PAGES declares.
-  const ORG_FIVE = ["Configuration", "Products", "Places", "Customers", "Activity"];
+  const ORG_FIVE = ["Settings", "Products", "Places", "Customers", "Activity"];
   const PLACE_FIVE = ["Profile", "Menus", "Reviews", "Capabilities", "Rewards"];
 
   it("are Account, the organization's five, then the place's — Admin only for a super-admin", () => {
@@ -271,7 +271,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     const html = render(view("profile"), { rememberedPlaceId: "p-1", isSuperAdmin: true });
     for (const mark of [
       "lucide-user-round", // Account — the person, one of them
-      "lucide-building2", // Settings — the organization itself, whose record this is
+      "lucide-settings", // Settings — the gear, the conventional mark (MESITA-1871)
       "lucide-users", // Customers — people, plural, against Account's one
       "lucide-layout-grid", // Products — the catalogue IS a grid of tiles
       "lucide-chart-no-axes-column", // Activity — counts over time
@@ -290,18 +290,26 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     expect(html).not.toContain("lucide-coins");
     // The purse left with the Payments row it belonged to (MESITA-1869).
     expect(html).not.toContain("lucide-wallet");
-    // The organization's SELECTOR still wears its INITIAL, not the building:
-    // a name is what tells one organization from another, and a glyph would be
-    // the same on all of them (MESITA-1848). The building appears exactly
-    // once, on Settings — the org's own record — never in the chip.
-    expect(html.match(/lucide-building2/g) ?? []).toHaveLength(1);
+    // The organization's SELECTOR wears its INITIAL, never a glyph: a name is
+    // what tells one organization from another, and an icon would be the same
+    // on all of them (MESITA-1848). `Building2` left the app entirely with
+    // MESITA-1871 — the Settings row was its only wearer.
+    expect(html).not.toContain("lucide-building2");
+    // And the gear is on that ONE row. A second would mean two screens
+    // claiming to be where you configure things.
+    expect(html.match(/lucide-settings\b/g) ?? []).toHaveLength(1);
     // Nor the marks these rows replaced.
     expect(html).not.toContain("lucide-file-text");
     expect(html).not.toContain("lucide-credit-card");
+    // `settings-2` is the SLIDERS variant, and Capabilities already wears
+    // `sliders-horizontal` — two marks for one idea on one column.
     expect(html).not.toContain("lucide-settings-2");
-    // No gear anywhere: Settings wears the organization it is about, and
-    // Capabilities — a ladder of what a guest can do — wears sliders.
-    expect(html).not.toContain("lucide-settings ");
+    // THE GEAR IS BACK, on one row (MESITA-1871). Pato: "use to normal
+    // settings icon." MESITA-1853 had banned it while the page was called
+    // Configuration and held five boxes ABOUT the organization; three of
+    // those moved to Products, the page is called Settings and holds two, and
+    // the conventional mark is now the honest one. Capabilities — a ladder of
+    // what a guest can do — still wears sliders, not a gear.
     expect(html).not.toContain("lucide-cog");
   });
 
@@ -311,7 +319,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
       // The menus are closed, so their ceremonies are not in the markup —
       // what the rail RENDERS is the destinations.
       SHELL_ROUTES.account,
-      orgHref("org-a", "configuration"),
+      orgHref("org-a", "settings"),
       orgHref("org-a", "products"),
       orgHref("org-a", "places"),
       orgHref("org-a", "customers"),
@@ -334,7 +342,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
     });
     expect(hrefs(html)).toEqual([
       SHELL_ROUTES.account,
-      orgHref("org-b", "configuration"),
+      orgHref("org-b", "settings"),
       orgHref("org-b", "products"),
       orgHref("org-b", "places"),
       orgHref("org-b", "customers"),
@@ -367,7 +375,7 @@ describe("three sections: account, then two selectors over their pages (MESITA-1
 describe("the states a 10/10 has to answer", () => {
   // MESITA-1869: Products took Payments' slot, second, right under
   // Configuration — Pato's order, and the order ORG_PAGES declares.
-  const ORG_FIVE = ["Configuration", "Products", "Places", "Customers", "Activity"];
+  const ORG_FIVE = ["Settings", "Products", "Places", "Customers", "Activity"];
   const PLACE_FIVE = ["Profile", "Menus", "Reviews", "Capabilities", "Rewards"];
 
   it("zero organizations: Account and Create organization, nothing else", () => {
@@ -418,7 +426,7 @@ describe("the states a 10/10 has to answer", () => {
     const html = render(FLAT_ROUTES.capabilities, { collapsed: true, rememberedPlaceId: "p-1" });
     expect(rows(html)).toHaveLength(11);
     expect(html).toContain('title="Capabilities"');
-    expect(html).toContain('title="Configuration"');
+    expect(html).toContain('title="Settings"');
     expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(pills(html)).toHaveLength(1);
     // The groups keep their seams at `w-16` — this is the width where the

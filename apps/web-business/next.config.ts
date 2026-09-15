@@ -44,11 +44,21 @@ const nextConfig: NextConfig = {
         destination: "/places/:id/capabilities",
         permanent: true,
       },
-      // The flat twin. PERMANENT is safe here and only here because the
-      // destination is itself a resolver: `/capabilities` reads the remembered
-      // place at request time, so a cached 308 cannot pin anyone to a stale
-      // place the way a cached `/places/<id>/…` would.
-      { source: "/settings", destination: "/capabilities", permanent: true },
+      // THE FLAT `/settings` RULE IS DELETED (MESITA-1871), and this is the
+      // whole point of the issue. It forwarded to `/capabilities` from
+      // MESITA-1841 — permanently — which is the single reason MESITA-1852
+      // had to name the organization's own page `configuration` instead of
+      // `settings`: a config rule runs BEFORE filesystem routes, so the name
+      // could be live in the contract and dead on arrival, which is
+      // MESITA-1839 exactly. Pato asked for the name back, so the rule goes
+      // rather than the name.
+      //
+      // IT WAS SAFE TO DELETE, AND THAT WAS CHECKED, NOT ASSUMED:
+      // `curl -I business.mesita.ai/settings` answered `308` with
+      // `cache-control: public, max-age=0, must-revalidate`, so every browser
+      // that ever followed it revalidates before following it again. The
+      // place-scoped `/places/:id/settings` rule above STAYS — a different
+      // path, and still the retired spelling of a place view.
       // Activity left the place for the organization (MESITA-1841). There is
       // no org id in this path to forward to, so it lands on the FLAT address,
       // which resolves the remembered organization. TEMPORARY: where a place's
@@ -120,28 +130,30 @@ const nextConfig: NextConfig = {
       // answer in every browser forever.
       // Both forwards were left pointing at `organization`, a segment
       // MESITA-1852 renamed to `configuration` — so `/members` had been
-      // landing on a 404 since (MESITA-1869 repoints them). A redirect onto a
-      // deleted route is the `/unit/*` → `/place/*` chain again, and it fails
-      // silently because no test walks a LEGACY source to its destination.
+      // landing on a 404 since (MESITA-1869 repoints them, MESITA-1871 moves
+      // them again with the rename). A redirect onto a deleted route is the
+      // `/unit/*` → `/place/*` chain again, and it fails silently because no
+      // test walks a LEGACY source to its destination.
       {
         source: "/orgs/:orgId/members",
-        destination: "/orgs/:orgId/configuration",
+        destination: "/orgs/:orgId/settings",
         permanent: false,
       },
-      { source: "/members", destination: "/configuration", permanent: false },
-      // SETTINGS IS CONFIGURATION (MESITA-1852). Pato: "change name of
-      // settings to configuration." TEMPORARY, like every other rename on
-      // this page: where the organization's own setup lives has moved three
-      // times in a day, and a 308 caches today's answer forever.
+      { source: "/members", destination: "/settings", permanent: false },
+      // CONFIGURATION IS SETTINGS AGAIN (MESITA-1871). Pato: *"rename
+      // configuration to settings."* MESITA-1852 had gone the other way, and
+      // only because the flat `/settings` was claimed; that rule is deleted
+      // above, so both spellings of the old name forward here instead.
       //
-      // NO FLAT `/settings` RULE IS ADDED: that path already forwards to
-      // `/capabilities` from MESITA-1841, and a second rule for the same
-      // source is dead code that reads like a live one.
+      // TEMPORARY, like every other rename on this page: where the
+      // organization's own setup lives has moved four times, and a 308 caches
+      // today's answer in every browser forever.
       {
-        source: "/orgs/:orgId/settings",
-        destination: "/orgs/:orgId/configuration",
+        source: "/orgs/:orgId/configuration",
+        destination: "/orgs/:orgId/settings",
         permanent: false,
       },
+      { source: "/configuration", destination: "/settings", permanent: false },
       // NO BARE `/organization` RULE. It forwarded to `/` while the
       // Organization screen did not exist; MESITA-1841 made it a live flat
       // resolver, and leaving the rule would have swallowed it exactly the way

@@ -44,5 +44,5 @@ export default async function OrgRootPage(props: {
   if (typeof sp.connect === "string") {
     redirect(withQuery(orgHref(orgId, "products"), sp));
   }
-  redirect(withQuery(orgHref(orgId, "configuration"), sp));
+  redirect(withQuery(orgHref(orgId, "settings"), sp));
 }
