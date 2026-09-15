@@ -2,15 +2,17 @@
 // boundary of its own (MESITA-1729), which reads as a broken menu rather than
 // a slow one.
 //
-// FIVE BOXES, because the page is five boxes (MESITA-1852). It drew one 192px
-// card — the shape of the two-door page this replaced — so every load ended in
-// a layout shift on swap. A skeleton is a promise about what is coming.
+// FOUR BOXES, because the page is four boxes (MESITA-1852, merged in
+// MESITA-1866). It drew one 192px card — the shape of the two-door page this
+// replaced — so every load ended in a layout shift on swap. A skeleton is a
+// promise about what is coming.
 //
-// THE ORDER AND THE HEIGHTS FOLLOW THE PAGE (MESITA-1861). The page now reads
-// Stripe · Partnership · Members · Brand · Developers, and its boxes wear the
-// label lane — so a skeleton still promising the old order would shift every
-// load by exactly the distance the reorder moved things. The two Soon strips
-// also shrank when they took Section's padding and 12px line.
+// THE ORDER AND THE HEIGHTS FOLLOW THE PAGE (MESITA-1861). The page reads
+// Partnership · Members · Brand · Developers, and its boxes wear the label
+// lane — so a skeleton still promising the old order would shift every load by
+// exactly the distance the merge moved things. Partnership is the TALL one
+// now: it carries the account rows, the button, a seam and the switch, where
+// the two boxes it replaced were 112px each.
 export default function ConfigurationLoading() {
   return (
     <div className="flex flex-col gap-4">
@@ -21,11 +23,10 @@ export default function ConfigurationLoading() {
           <div className="bg-muted h-8 w-64 animate-pulse rounded" />
           <div className="bg-muted h-4 w-40 animate-pulse rounded" />
         </div>
-        {/* Stripe · Partnership · Members, then the two Soon strips. The
-            three live boxes are shorter than they were: the lane puts each
-            one's title beside its body instead of above it. */}
-        <div className="bg-muted h-28 animate-pulse rounded-2xl" />
-        <div className="bg-muted h-28 animate-pulse rounded-2xl" />
+        {/* Partnership · Members, then the two Soon strips. The live boxes
+            are shorter than they were: the lane puts each one's title beside
+            its body instead of above it. */}
+        <div className="bg-muted h-56 animate-pulse rounded-2xl" />
         <div className="bg-muted h-32 animate-pulse rounded-2xl" />
         <div className="bg-muted h-[72px] animate-pulse rounded-2xl" />
         <div className="bg-muted h-[72px] animate-pulse rounded-2xl" />
