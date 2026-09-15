@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateConsumerProfile } from "@/lib/api/profile";
@@ -10,6 +10,7 @@ import {
   firstIncompleteOnboardStep,
   isConsumerSex,
   ONBOARD_STEPS,
+  stepAfterSave,
   type ConsumerSex,
 } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -57,6 +58,17 @@ import {
 // the button wherever the column happened to end. With one question per screen
 // that reverses: bottom-anchored is the only position that does not MOVE
 // between step 1 and step 3, so the thumb stays where it was.
+//
+// AN ERROR DIES WHEN THE ANSWER CHANGES. Every message this form shows is
+// about the value in the field right now — "You must be at least 14", "Tell us
+// your first name", "Couldn't save." Once the guest edits the answer the
+// message is describing something that is no longer on screen, and the worst
+// case is the age gate: the birthday is corrected, the red line still says the
+// guest is too young, and the only way to clear it is to press a button that
+// looks like it will fail. So EVERY answer-changing handler clears it — the
+// name input, the birthday picker, the sex chips and the sex arrow keys — not
+// just the one that happened to produce the complaint. Submitting clears it
+// too; that is the re-check, not the rule.
 //
 // PRESERVED FROM THE ONE-SCREEN VERSION, all still load-bearing: the
 // FormData-over-state read of the name (autofill populates the input without
@@ -115,6 +127,31 @@ export function OnboardForm({
   const current = ONBOARD_STEPS[step];
   const last = step === ONBOARD_STEPS.length - 1;
 
+  // ADVANCING A STEP HAS TO SAY SO. Nothing navigates here — the same form
+  // swaps its question in place — so a screen reader's focus stays wherever
+  // the guest left it (the Continue button, or the input that just
+  // disappeared) and NOTHING is announced. The guest hears silence and then,
+  // on the next Tab, a field for a question they were never read.
+  //
+  // Moving focus to the step's <h1> is the fix the heading already earns: it
+  // IS the question, so reading it reads the new screen, and a keyboard user
+  // lands above the field instead of below it. `tabIndex={-1}` makes the
+  // heading focusable programmatically WITHOUT adding a tab stop; the ring is
+  // suppressed because this focus is never the guest's own doing.
+  //
+  // Skipped on the first render: arriving at /onboard is a real navigation,
+  // which the browser already announces, and grabbing focus on mount would
+  // only move the guest's starting point for no news.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    headingRef.current?.focus();
+  }, [step]);
+
   // Only the CURRENT question gates the button. The others are either already
   // written or not yet asked.
   const ready =
@@ -143,6 +180,7 @@ export function OnboardForm({
           : CONSUMER_SEXES.length - 1
         : (at + step + CONSUMER_SEXES.length) % CONSUMER_SEXES.length;
     setSex(CONSUMER_SEXES[nextIndex].value);
+    setError(null);
     const options =
       e.currentTarget.querySelectorAll<HTMLButtonElement>("[data-sex-option]");
     options[nextIndex]?.focus();
@@ -156,6 +194,14 @@ export function OnboardForm({
     birthday?: string;
     sex?: ConsumerSex;
   }) {
+    // THE STEP THIS WRITE BELONGS TO, read now rather than when it resolves.
+    // Back stays live during a save (it is not disabled, and Android's
+    // hardware Back cannot be), so a guest who presses Continue and then Back
+    // used to be dragged forward again the moment the EF answered: the
+    // resolve ran `s + 1` against whatever step they had since moved to. The
+    // write itself is still correct and still kept — only the advance is
+    // withdrawn, by `stepAfterSave`, when the guest has already left.
+    const from = step;
     setLoading(true);
     void (async () => {
       try {
@@ -165,7 +211,7 @@ export function OnboardForm({
           router.refresh();
           return;
         }
-        setStep((s) => s + 1);
+        setStep((s) => stepAfterSave(from, s));
         setLoading(false);
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));
@@ -222,7 +268,11 @@ export function OnboardForm({
 
       {/* The headline changes per step, so it lives here rather than in
           page.tsx — the question IS the heading, not a caption above one. */}
-      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
+      <h1
+        ref={headingRef}
+        tabIndex={-1}
+        className="font-display text-3xl leading-tight font-semibold tracking-tight outline-none"
+      >
         {current.headline}
       </h1>
       {current.dek ? (
@@ -235,7 +285,10 @@ export function OnboardForm({
             name="first_name"
             className={INPUT_CLASS}
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => {
+              setFirstName(e.target.value);
+              setError(null);
+            }}
             maxLength={60}
             autoComplete="given-name"
             aria-label={current.headline}
@@ -245,7 +298,13 @@ export function OnboardForm({
 
         {current.key === "birthday" ? (
           <>
-            <BirthdayPicker value={birthday} onChange={setBirthday} />
+            <BirthdayPicker
+              value={birthday}
+              onChange={(v) => {
+                setBirthday(v);
+                setError(null);
+              }}
+            />
             {/* The reassurance sits on the field it defends, not below the
                 button, which is past where anyone scanning has stopped. */}
             <p className="text-muted-foreground type-body mt-3">
@@ -277,7 +336,10 @@ export function OnboardForm({
                     // group once and leaves it once.
                     tabIndex={on || (!sex && i === 0) ? 0 : -1}
                     data-sex-option
-                    onClick={() => setSex(value)}
+                    onClick={() => {
+                      setSex(value);
+                      setError(null);
+                    }}
                     className={cn(
                       SEX_CHIP_CLASS,
                       on

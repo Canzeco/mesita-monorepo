@@ -2,6 +2,7 @@ import { Redirect, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
+  AccessibilityInfo,
   BackHandler,
   KeyboardAvoidingView,
   Platform,
@@ -79,6 +80,13 @@ export default function Onboard() {
   // OS — there is nothing before the first question, and "Not you?" is the
   // real exit. Registered before the `onboarded` early return so the hook
   // order never changes between renders.
+  //
+  // The same effect ANNOUNCES the new question. Nothing navigates here — the
+  // screen stays mounted and swaps its headline — so VoiceOver/TalkBack say
+  // nothing at all when the step changes, leaving a guest who cannot see the
+  // dots with a field for a question they were never read. The headline IS
+  // the question, so reading it reads the screen. (Web does this by moving
+  // focus to the <h1>; RN has no focusable heading, so it speaks instead.)
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (step === 0) return false;
@@ -86,6 +94,7 @@ export default function Onboard() {
       setStep((s) => Math.max(0, s - 1));
       return true;
     });
+    AccessibilityInfo.announceForAccessibility(STEPS[step].headline);
     return () => sub.remove();
   }, [step]);
 
@@ -112,6 +121,13 @@ export default function Onboard() {
   }
 
   const submit = async () => {
+    // The step this write belongs to, read now rather than when it resolves —
+    // the mirror of web's `stepAfterSave` (lib/consumer-onboarding.ts). Back
+    // stays live during a save, and on Android the hardware Back cannot be
+    // disabled at all, so "Continue, then Back" used to undo itself: the
+    // resolve ran `s + 1` against whatever step the guest had moved to. The
+    // field is still saved; only the advance is withdrawn.
+    const from = step;
     setError(null);
     setBusy(true);
     try {
@@ -130,7 +146,7 @@ export default function Onboard() {
         router.replace('/');
         return;
       }
-      setStep((s) => s + 1);
+      setStep((s) => (s === from ? s + 1 : s));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save your profile');
     } finally {
@@ -226,13 +242,22 @@ export default function Onboard() {
                 autoFocus
                 maxLength={60}
                 value={firstName}
-                onChangeText={setFirstName}
+                onChangeText={(v) => {
+                  setFirstName(v);
+                  setError(null);
+                }}
               />
             ) : null}
 
             {current.key === 'birthday' ? (
               <>
-                <BirthdayPicker value={birthday} onChange={setBirthday} />
+                <BirthdayPicker
+                  value={birthday}
+                  onChange={(v) => {
+                    setBirthday(v);
+                    setError(null);
+                  }}
+                />
                 {underage ? (
                   <Text className="mt-3 text-destructive" style={{ fontSize: 12 }}>
                     You must be at least {MIN_SIGNUP_AGE} to use Mesita.
@@ -265,7 +290,10 @@ export default function Onboard() {
                   return (
                     <Pressable
                       key={option.value}
-                      onPress={() => setSex(option.value)}
+                      onPress={() => {
+                        setSex(option.value);
+                        setError(null);
+                      }}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: on }}
                       accessibilityLabel={option.label}

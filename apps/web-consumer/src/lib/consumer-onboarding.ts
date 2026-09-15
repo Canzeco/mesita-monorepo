@@ -142,6 +142,29 @@ export function firstIncompleteOnboardStep(
   return ONBOARD_STEPS.length;
 }
 
+/**
+ * Where the step lands when a per-step write resolves: one forward, but ONLY
+ * if the guest is still on the step that write belongs to.
+ *
+ * Back is deliberately live during a save — it is not disabled on web, and on
+ * Android the hardware Back cannot be — so "Continue, then Back" is a real
+ * sequence, not a stress test. Advancing unconditionally on resolve made that
+ * sequence silently undo itself: the guest pressed Back, saw the previous
+ * question, and half a second later the EF answered and yanked them forward
+ * again, with no event they could connect it to.
+ *
+ * `from` is read when the write STARTS, `current` is the live step. They
+ * differ exactly when the guest has moved in the meantime, and then the
+ * advance is dropped. The write is never dropped — the field is saved either
+ * way, which is the whole point of persisting per step.
+ *
+ * Hand-mirrored in apps/mobile-consumer/src/app/onboard.tsx for the same
+ * reason ONBOARD_STEPS is: independent install roots, no shared module.
+ */
+export function stepAfterSave(from: number, current: number): number {
+  return current === from ? from + 1 : current;
+}
+
 /** The booking gate: enough to put a name on a table. */
 export function consumerCanBook(
   profile: OnboardableProfile | null | undefined,

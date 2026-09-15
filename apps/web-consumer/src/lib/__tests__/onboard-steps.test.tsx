@@ -30,7 +30,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { OnboardForm } from "@/app/onboard/OnboardForm";
-import { ONBOARD_STEPS } from "@/lib/consumer-onboarding";
+import { ONBOARD_STEPS, stepAfterSave } from "@/lib/consumer-onboarding";
 
 /** React escapes apostrophes in text nodes, so "When's" lands in the markup as
  *  "When&#x27;s". Compare headlines through the same transform rather than
@@ -105,11 +105,59 @@ describe("the onboarding stepper renders one question at a time", () => {
     }
   });
 
+  it("gives the question heading a programmatic focus target", () => {
+    // The step changes in place — no navigation — so the ONLY thing that can
+    // tell a screen reader the question changed is focus moving to the new
+    // headline, and focus can only move there if the <h1> is focusable.
+    // `tabindex="-1"` is that, and it must be -1 rather than 0: a heading that
+    // joins the tab order makes every sighted keyboard user press Tab an extra
+    // time on every step.
+    //
+    // This environment is `node` with no jsdom (vitest.config.ts), so the
+    // effect that CALLS focus() cannot run here; what is pinned statically is
+    // its precondition, which is the half that silently rots. Deleting the
+    // tabIndex would leave `headingRef.current?.focus()` a no-op with no other
+    // symptom.
+    const h1 = /<h1\b[^>]*>/.exec(markup())?.[0] ?? "";
+    expect(h1).toContain('tabindex="-1"');
+    expect(h1).not.toContain('tabindex="0"');
+    expect(markup()).toContain(asHtml(headlines[0]));
+  });
+
   it("asks the name with a label, not a placeholder echoing it", () => {
     // The defect this flow was built out of: `<Field label="First name">`
     // wrapping `placeholder="First name"`, the same string twice.
     const html = markup();
     expect(html).toContain('name="first_name"');
     expect(html).not.toContain("placeholder=");
+  });
+});
+
+// Pressing Back while a save is in flight used to be undone by the save: the
+// resolve advanced the step unconditionally, so the guest was dragged forward
+// again half a second after choosing to go back. `stepAfterSave` is the rule
+// that closed it, extracted from the resolve handler so it can be asserted
+// without a DOM and without racing a promise (this suite has neither jsdom nor
+// a click). The numbers below are written out, not derived from the function.
+describe("a save only advances the step it was started from", () => {
+  it("advances when the guest has not moved", () => {
+    expect(stepAfterSave(0, 0)).toBe(1);
+    expect(stepAfterSave(1, 1)).toBe(2);
+  });
+
+  it("leaves the step alone when Back landed first", () => {
+    // Started on the birthday (1), guest pressed Back to the name (0), the
+    // write resolves: the guest stays on the name.
+    expect(stepAfterSave(1, 0)).toBe(0);
+    expect(stepAfterSave(2, 1)).toBe(1);
+    expect(stepAfterSave(2, 0)).toBe(0);
+  });
+
+  it("never lands past the last step", () => {
+    // Two writes resolving out of order: the first advanced 0 -> 1, so the
+    // second (also started at 0) must not push 1 -> 2 behind the guest's back.
+    expect(stepAfterSave(0, 1)).toBe(1);
+    const lastIndex = ONBOARD_STEPS.length - 1;
+    expect(stepAfterSave(lastIndex, lastIndex - 1)).toBe(lastIndex - 1);
   });
 });
