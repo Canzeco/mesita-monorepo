@@ -5,7 +5,7 @@ import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
 // Search Sources — the nine searches: three Google Places, four Mesita
-// Places, two Mesita Social, after the shared Super Categories strip.
+// Places, two Mesita Socials, after the shared Super Categories strip.
 // NINE BOXES AND NOTHING ELSE (Pato, 2026-09-08). Every quality floor now
 // lives INSIDE the source it cuts, so the standalone floor cards are gone.
 // One box owns each key and the rest mirror it read-only — see SourceFloor.

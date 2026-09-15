@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DiscoveryMatrix } from "./DiscoveryMatrix";
 
 describe("Discovery matrix", () => {
-  it("marks Word × Nearby Search red — the guest pin is a bias, not a call", () => {
+  it("marks Word × Nearby Search hollow — the guest pin is a bias, not a call", () => {
     const html = renderToStaticMarkup(<DiscoveryMatrix />);
     expect(html).toContain("Google Places Nearby Search · Word · off");
     expect(html).not.toContain("Google Places Nearby Search · Word · on");
@@ -24,12 +24,34 @@ describe("Discovery matrix", () => {
     expect(html).toContain("Mesita Places Flexible Search · Chat · on");
     // Social lost its mode, not its retrieval: Catalog rails the events and
     // Chat is asked about them.
-    // Social's rails are still Browse — no guest predicate reaches them.
-    expect(html).toContain("Mesita Social Browse Search · Feed · on");
-    expect(html).toContain("Mesita Social Flexible Search · Chat · on");
-    expect(html).toContain("Mesita Listed · Favorites · not required");
-    expect(html).toContain("Mesita Enriched · Favorites · not required");
+    // The Socials rails are still Browse — no guest predicate reaches them.
+    expect(html).toContain("Mesita Socials Browse Search · Feed · on");
+    expect(html).toContain("Mesita Socials Flexible Search · Chat · on");
+    // Places Browse kept its row when it lost its caller (MESITA-1856): the
+    // Sources page still renders its box, so the row is off for every mode
+    // rather than absent.
+    for (const mode of ["Word", "Map", "Feed", "Scroll", "Chat", "Favorites"]) {
+      expect(html).toContain(`Mesita Places Browse Search · ${mode} · off`);
+      expect(html).not.toContain(`Mesita Places Browse Search · ${mode} · on`);
+    }
+    // THE THREE NESTED PLACE TYPES. Mesita Listed retired: listing is a row
+    // existing, which no mode gates on — enrichment is the gate that runs.
+    expect(html).not.toContain("Mesita Listed");
     expect(html).toContain("Google Places · Favorites · required");
+    expect(html).toContain("Mesita Enriched Places · Favorites · not required");
+    expect(html).toContain("Mesita Partnered Places · Favorites · not required");
+    expect(html).toContain("Mesita Enriched Places · Map · required");
+    expect(html).toContain("Mesita Partnered Places · Map · required");
+    expect(html).toContain("Mesita Enriched Places · Feed · required");
+    expect(html).toContain("Mesita Partnered Places · Feed · not required");
+    expect(html).toContain("Mesita Enriched Places · Scroll · required");
+    // ONE GRAMMAR, IN INK. Fill says on, a hollow outline says off, on every
+    // band — no hue encodes a boolean anywhere in this table.
+    expect(html).not.toContain("emerald");
+    expect(html).not.toContain("rose");
+    expect(html).toContain("bg-foreground");
+    // Every mark carries its name in text; `title` alone is not one.
+    expect(html).toContain("sr-only");
     expect(html).toContain("border-t-2");
     // Band title carries the class noun; the row is the bare signal name.
     expect(html).toContain("Randomness · Map · off");
@@ -46,6 +68,13 @@ describe("Discovery matrix", () => {
     }
     expect(html).toContain("Places · Word · returned");
     expect(html).not.toContain("Places · Word · not returned");
+    // Socials is the third Result Entity, and it rides the two modes that
+    // carry an event source. Spec-only: both Socials sources are Soon.
+    expect(html).toContain("Socials · Feed · returned");
+    expect(html).toContain("Socials · Chat · returned");
+    for (const mode of ["Word", "Map", "Scroll", "Favorites"]) {
+      expect(html).toContain(`Socials · ${mode} · not returned`);
+    }
     // Social is not a mode any more; it has no column.
     expect(html).not.toContain("· Social ·");
   });
