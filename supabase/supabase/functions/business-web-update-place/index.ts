@@ -91,8 +91,10 @@ type UpdateBody = {
   state?: "active" | "paused" | "archived";
   fiscal_type?: "formal" | "informal";
   // NOTE: `plan` is deliberately NOT editable here. Plan changes are billing
-  // and go through business-web-change-subscription (Stripe), so a client can't
-  // grant itself Verified (plan=pro; ultra legacy) with a plain profile update.
+  // and follow the organization's Mesita Membership (MESITA-1877), so a client
+  // can't grant itself Partner (plan=pro; ultra legacy) with a plain profile
+  // update. The per-place checkout that used to own this is retired
+  // (MESITA-1889).
   // NOTE: `address` is native (Google/Intaker-sourced) and deliberately NOT
   // editable here — kept in the type only so stale clients get the reject.
   address?: string | null;
@@ -264,13 +266,14 @@ Deno.serve(async (req) => {
   }
   if ("plan" in body) {
     // Plan is billing, not profile: reject instead of silently ignoring so a
-    // stale client learns the contract moved to business-web-change-subscription.
+    // stale client learns the contract moved to the organization's Mesita
+    // Membership (business-web-start-membership).
     return json(
       {
         ok: false,
         code: "plan_via_billing",
         error:
-          "plan is managed by business-web-change-subscription (Stripe), not by profile updates.",
+          "plan follows the organization's Mesita Membership, not profile updates.",
       },
       400,
     );

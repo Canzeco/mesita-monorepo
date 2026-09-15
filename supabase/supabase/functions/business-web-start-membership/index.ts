@@ -3,11 +3,11 @@
 // The paid door into Mesita Partner (MESITA-1877). An OWNER buys the yearly
 // **Mesita Membership** for an organization; every place it holds is in.
 //
-// This replaces nothing yet: `business-web-change-subscription` still sells
-// the per-PLACE Verified SKU to callers that predate the org tier, and
-// MESITA-1868 retires it. What it does replace is the honest placeholder the
-// console has been showing since MESITA-1867 — "Checkout lands with the next
-// release."
+// This is now the ONLY paid door into the partnership: MESITA-1889 retired
+// the per-PLACE Verified checkout (`business-web-change-subscription`) and
+// the operator switch (`business-web-set-org-partnership`), so
+// `organizations.partnered` has exactly one writer — this EF under
+// MOCK_SUBSCRIPTION, and the Stripe webhook for real money.
 //
 // Body: { orgId: string, successUrl?: string, cancelUrl?: string }
 // Response: { ok: true, checkout_url: string, mock?: true }

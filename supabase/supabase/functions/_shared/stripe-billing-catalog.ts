@@ -14,8 +14,9 @@
 // MESITA-1877 — THE PARTNERSHIP MOVED UP TO THE ORGANIZATION. What is sold
 // now is `business_partner_membership`: one yearly subscription per
 // organization, every place it holds included. `business_verified` is the per-PLACE SKU that
-// preceded it (business-web-change-subscription), kept because places already
-// bill on it; MESITA-1868 retires that door.
+// preceded it. MESITA-1889 retired its door (business-web-change-subscription),
+// but the ENTRY stays: it anchors the Stripe price already provisioned for it,
+// and any subscription still billing on that price.
 //
 // EVERY ENTRY OWNS ITS LOOKUP ROW. resolvePlanPrice caches the provisioned
 // price id back onto `table`.`rowKey`, so two entries sharing one row would

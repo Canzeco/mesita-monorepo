@@ -1,16 +1,17 @@
 // Supabase Edge Function — admin-web-set-plan
 //
-// The admin door onto places.plan. business-web-change-subscription puts
-// it this way: "A Stripe subscription is billing, not entitlement:
-// places.plan is the single source of truth and can be granted through
-// other doors (admin, partnership)." This is that door.
+// The admin door onto places.plan. A Stripe subscription is billing, not
+// entitlement: places.plan is the single source of truth and can be granted
+// through other doors (admin, partnership). This is that door.
 //
 // Grants or revokes a membership directly. No Stripe, no money, no
 // place_subscriptions row — entitlement only. The admin console needs it
 // because business-web-update-place deliberately rejects `plan` (it is
-// billing, not profile), and business-web-change-subscription is the paid
-// door: owner-scoped and, once live-mode ships, it would open a real Stripe
-// Checkout against someone else's place.
+// billing, not profile), and the paid door is the organization's yearly
+// Mesita Membership (business-web-start-membership): owner-scoped, org-wide,
+// and it would open a real Stripe Checkout against someone else's
+// organization. (The per-place paid door, business-web-change-subscription,
+// was retired by MESITA-1889.)
 //
 // Deliberately NOT coupled to billing: if a place carries a live Stripe
 // subscription, setting plan here changes entitlement and leaves that

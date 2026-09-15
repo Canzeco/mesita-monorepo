@@ -7,7 +7,7 @@
 // reason. This door never takes a `plan` field (MESITA-1740).
 //
 // Actions:
-//   join     — free partnership join. Writes plan=pro internally, plus
+//   join     — the partnership join. Writes plan=pro internally, plus
 //              the rates that ride along (MESITA-818/912: partnership and
 //              the strategy that justifies it are one atomic write).
 //              Allowed from free or forfeited. Refuses if already a member.
@@ -16,6 +16,18 @@
 //
 // Auth: requireEditor — the Capabilities tab is every held role except
 // viewer, and this is that tab's writer.
+//
+// JOIN IS NOT FREE ANY MORE (MESITA-1889). `plan=pro` is Mesita Partner, and
+// an organization becomes a Partner by buying the yearly Mesita Membership
+// (MESITA-1877). So `join` carries two extra gates that `drop` and `strategy`
+// deliberately do not: the place's holder ORGANIZATION must be `partnered`
+// (409 org_not_partnered), and the caller must be an OWNER of it (403).
+// Without the first, any editor could hand its place the paid entitlement for
+// nothing; without the second, an editor could spend the organization's
+// membership on a place its owner never chose. The partnered check runs
+// FIRST so a non-owner at a non-partnered org hears the real reason.
+// Dropping and switching strategy stay at editor — they are the Capabilities
+// tab, and locking them would break it for every editor.
 //
 // Body: { placeId | projectId, action: "join" | "drop" | "strategy",
 //         welcome_free_rate?, welcome_premium_rate?, free_rate?,
@@ -39,6 +51,7 @@ import {
   readEFEnv,
   requireEditor,
 } from "../_shared/auth.ts";
+import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
@@ -178,6 +191,48 @@ Deno.serve(async (req) => {
   const currentPlan = (row.plan as string) ?? "free";
   const actor = authRes.user.email ?? authRes.user.id;
   const patch: Record<string, unknown> = {};
+
+  // The entitlement gate (MESITA-1889). `join` grants plan=pro — Mesita
+  // Partner — and the only thing that buys Partner is the organization's
+  // yearly Mesita Membership. Order matters: the partnered check before the
+  // role check, so a non-owner at a non-partnered org is told what is
+  // actually missing.
+  if (action === "join") {
+    const orgId = await orgIdForPlace(admin, placeId);
+    if (!orgId) {
+      return json(
+        {
+          ok: false,
+          code: "org_not_partnered",
+          error: "Only a place held by a Mesita Partner organization can join.",
+        },
+        409,
+      );
+    }
+    const { data: org, error: orgErr } = await admin
+      .from("organizations")
+      .select("partnered")
+      .eq("id", orgId)
+      .maybeSingle();
+    if (orgErr) {
+      return json({ ok: false, error: `org_read: ${orgErr.message}` }, 500);
+    }
+    if ((org as { partnered?: boolean } | null)?.partnered !== true) {
+      return json(
+        {
+          ok: false,
+          code: "org_not_partnered",
+          error:
+            "This organization is not a Mesita Partner. Buy the Mesita Membership first.",
+        },
+        409,
+      );
+    }
+    const orgRoleRes = await requireOrgRole(admin, authRes.user, orgId, [
+      "owner",
+    ]);
+    if (!orgRoleRes.ok) return orgRoleRes.response;
+  }
 
   if (action === "strategy") {
     if (currentPlan === "free") {

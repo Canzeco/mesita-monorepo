@@ -1,3 +1,39 @@
+// ARCHIVED — a retired Edge Function, kept as a record. Not a module: nothing
+// imports it, nothing builds it, and it is not deployable from here.
+//
+//   cloud slug     business-web-change-subscription
+//   cloud version  196
+//   last deployed  2026-09-15 (a redeploy of unchanged source — every merge
+//                  to main deploys every function in config.toml)
+//   repo source    supabase/supabase/functions/business-web-change-subscription.
+//                  Git holds the full history; this copy is the file as it
+//                  stood the day it was retired.
+//   retired by     MESITA-1889
+//
+// Why. It sold a per-PLACE Verified subscription (MX$1,000/year) and granted
+// `places.plan` off the back of it — a second door onto the same entitlement
+// the organization's yearly Mesita Membership now owns (MESITA-1877). No app
+// called it: grep across apps/ found zero callers, and `place_subscriptions`
+// holds zero rows in the live project, so retiring it moved nothing.
+//
+// What replaced it. The organization buys ONE Membership
+// (business-web-start-membership) and every place it holds is joined by the
+// webhook's entitlement writer. In the same PR, `reconcilePlaceSubscription`
+// in stripe-webhook-handle-event stopped writing `places.plan` at all: it
+// still MIRRORS any legacy Stripe subscription into `place_subscriptions`, so
+// one stays observable, but it can no longer move an entitlement behind the
+// Membership's back.
+//
+// Its catalog entry (`business_verified` → `place_plans.pro`,
+// lookup_key `business_verified_yearly`) is deliberately left in
+// _shared/stripe-billing-catalog.ts: deleting it would orphan the provisioned
+// Stripe price and any subscription still billing on it.
+//
+// The `../_shared/*` imports below are recorded as written and do not resolve
+// from this directory.
+//
+// ─────────────────────── original source below, verbatim ───────────────────
+
 // Supabase Edge Function — business-web-change-subscription (product caller)
 //
 // Authenticated, owner-only. The paid door into a place's plan:

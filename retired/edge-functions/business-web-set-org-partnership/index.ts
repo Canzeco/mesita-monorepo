@@ -1,3 +1,36 @@
+// ARCHIVED — a retired Edge Function, kept as a record. Not a module: nothing
+// imports it, nothing builds it, and it is not deployable from here.
+//
+//   cloud slug     business-web-set-org-partnership
+//   cloud version  2
+//   last deployed  2026-09-12
+//   repo source    supabase/supabase/functions/business-web-set-org-partnership,
+//                  shipped by MESITA-1798. Git holds the full history; this
+//                  copy is the file as it stood the day it was retired.
+//   retired by     MESITA-1889
+//
+// Why. It was one of three doors writing the same entitlement, and the only
+// one that COUPLED two facts into a single write: `organizations.partnered`
+// and `organizations.mesita_pay_enabled` moved together, so the operator
+// could not make an organization a Partner without also switching card
+// payments on for its guests. It also refused ON without a Ready Connect
+// account — a lock that belongs to Mesita Pay, not to the partnership
+// (Pato, 2026-09-15: the Membership is not Stripe-locked).
+//
+// What replaced it. `organizations.partnered` is written by the Mesita
+// Membership lifecycle alone (MESITA-1877: business-web-start-membership →
+// stripe-webhook-handle-event → _shared/partner-membership.ts). Mesita Pay
+// gets its own owner-only writer in MESITA-1890. The per-place cascade this
+// EF used (joinPlacePatch / dropPlacePatch / writePlacePartnership) survives
+// in _shared/org-partnership.ts and is what the Membership writer calls.
+//
+// Its body, `setOrgPartnership` in _shared/org-partnership.ts, was deleted in
+// the same PR; only the cascade helpers remain there. The `../_shared/*`
+// imports below are recorded as written and do not resolve from this
+// directory.
+//
+// ─────────────────────── original source below, verbatim ───────────────────
+
 // Supabase Edge Function — business-web-set-org-partnership
 //
 // The OPERATOR's door onto an organization's Partner switch (MESITA-1798).
