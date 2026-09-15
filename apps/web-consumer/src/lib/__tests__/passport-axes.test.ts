@@ -369,6 +369,42 @@ describe("the Passport sheet is the same document as the bar", () => {
     expect(sheet).not.toContain("function handOff");
     expect(codeOnly(sheet)).not.toContain("LocalSheet");
   });
+
+  it("the MRZ is the card's ONLY machine-readable strip — a real code replaces it, never joins it", () => {
+    // MESITA-1821, decision 2. The MRZ MESITA-1820 shipped is honest but
+    // decorative: real ICAO 7-3-1 check digits, `aria-hidden`, and nothing on
+    // earth scans it. The day the Passport carries a genuinely scannable code,
+    // the MRZ GOES — it does not sit beside it. Two machine-readable-looking
+    // strips on one document, one of them fake, teaches the staff member who
+    // tries the wrong one first that the card lies.
+    //
+    // This is also the only place in apps/web-consumer where decision 1 — AGE,
+    // never a full date of birth, once staff read this object — is pinnable at
+    // all. The grid's DATE OF BIRTH row is guest-facing and legitimate; the MRZ
+    // is the one print on this card that a machine could hand to a stranger,
+    // and `buildMrz` puts `YYMMDD` in it. So the guard on "no DOB reaches
+    // staff from here" IS the guard on "nothing here scans". The staff payload
+    // itself is shaped in supabase `_shared/ticket-check.ts`, another package.
+    //
+    // PARSED LISTS, per this file's own law: the comment you are reading names
+    // `QRCodeSVG` and `qrcode.react`, so a bare `not.toContain("QRCode")`
+    // would fire on its own rationale and get greened by deleting it.
+    const named = importedFrom(sheet, "@/lib/passport-document");
+    expect(named).toContain("buildMrz");
+    // The real thing, as `TicketScreen.tsx` renders it today.
+    expect(importedFrom(sheet, "qrcode.react")).toEqual([]);
+    const rendered = [...codeOnly(sheet).matchAll(/<([A-Z][A-Za-z0-9]*)/g)].map(
+      (m) => m[1],
+    );
+    expect(rendered).toContain("Row");
+    expect(rendered.filter((n) => /qr|barcode|scan/i.test(n))).toEqual([]);
+    // And the strip stays hidden from the screen reader, which is the other
+    // half of "no human reads this": 44 characters of `<` read aloud is
+    // hostile, and the grid above already announces every fact it encodes.
+    const mrzMount = sheet.indexOf("{mrzLine1}");
+    expect(mrzMount).toBeGreaterThan(-1);
+    expect(sheet.slice(mrzMount - 400, mrzMount)).toContain("aria-hidden");
+  });
 });
 
 describe("the plan keeps one door, and only one", () => {
