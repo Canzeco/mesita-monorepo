@@ -1,6 +1,12 @@
 // Products — THE CATALOGUE (MESITA-1869), and after MESITA-1872 it is exactly
 // two things: the Mesita Partner banner, and the eight product cards.
 //
+// WHICH EIGHT CHANGED IN MESITA-1884, the shape did not. Pato: *"should i
+// separate visits and rewards into two?? i don't think so."* Rewards left the
+// grid — it is a dial inside Visits, not a thing anyone buys — and Customers
+// took the slot. The partnership stays a BANNER and never becomes a ninth
+// card: *"(partnership, not a product but on top, special)"*.
+//
 // Pato, on the live page: *"remove thus shit. just leave the 8 boxes and the 1
 // partnership box shit. payments log go into activity."*
 //
@@ -41,15 +47,17 @@
 //
 // ── WHERE A PRODUCT IS ACTUALLY TURNED ON ─────────────────────────────────
 //
-// Six of the eight are per-PLACE switches (Capabilities and Rewards), so the
-// card's verb is a link into the place, not a switch here: an organization
-// holding five places cannot turn Pickup Orders on for "the organization"
-// because there is no such column. One place → straight into it. Several →
-// the Places list, which is the chooser. None → Add place, the one next step
-// (MESITA-1833's law that a row lands somewhere real).
+// Five of the eight carry a verb into the PLACE (Capabilities and Rewards),
+// because that is where their switch is: an organization holding five places
+// cannot turn Pickup Orders on for "the organization" — there is no such
+// column. One place → straight into it. Several → the Places list, which is
+// the chooser. None → Add place, the one next step (MESITA-1833's law that a
+// row lands somewhere real).
 //
-// Mesita Pay is the exception, and the reason it is: it is an ORG switch on an
-// ORG Stripe account, so its verb opens `products/pay`.
+// The other three carry no place verb at all. Mesita Pay is an ORG switch on
+// an ORG Stripe account, so its verb opens `products/pay`; Customers and
+// Terminal are `soon`, so they carry no verb at all and their doors are the
+// rail rows they already have.
 import { notFound, redirect } from "next/navigation";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
