@@ -152,6 +152,9 @@ Deno.serve(async (req) => {
       ),
       guestGeo,
       swipeLineupWeights(cfg.weights),
+      // The bought lane, live since MESITA-1855. `ranked: false` already
+      // bypasses this whole branch, so slotting never runs on pool order.
+      cfg.slotting,
       cfg.params,
       {
         categories: predicates.categories,
