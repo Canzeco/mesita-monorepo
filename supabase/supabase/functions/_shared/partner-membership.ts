@@ -94,10 +94,11 @@ export type ApplyMembershipResult =
  * `joinPlacePatch` / `dropPlacePatch` return null for a place already in the
  * target state, so a replayed webhook writes nothing at all.
  *
- * Deliberately NOT `setOrgPartnership`. That one is the operator switch's
- * body: it refuses without a Ready Connect account — Membership is not
- * Stripe-locked any more — and it writes `mesita_pay_enabled` alongside,
- * which is the coupling this issue undoes.
+ * THIS IS THE ONLY WRITER of `organizations.partnered`. It deliberately never
+ * went through the operator switch's body, which refused without a Ready
+ * Connect account — the Membership is not Stripe-locked — and wrote
+ * `mesita_pay_enabled` in the same statement. MESITA-1889 retired that door
+ * and deleted its body, so this function is now the last one standing.
  */
 export async function applyMembershipEntitlement(
   admin: SupabaseClient,

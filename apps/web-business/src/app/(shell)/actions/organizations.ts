@@ -9,7 +9,6 @@ import {
   apiCreateOrganization,
   apiGetPaymentDashboardLink,
   apiRemoveOrgMember,
-  apiSetOrgPartnership,
   apiStartMembership,
   apiStartPaymentOnboarding,
   apiUpdateOrganization,
@@ -313,35 +312,6 @@ export async function updateOrgMemberRoleAction(
   }
   revalidatePath("/", "layout");
   return { error: null };
-}
-
-export type SetOrgPartnershipState = {
-  error: string | null;
-  partnered: boolean;
-};
-
-/** Owner flips the org Partner switch. Stripe Ready is the lock; the EF
- *  also refuses ON without it (code stripe_not_ready). */
-export async function setOrgPartnershipAction(
-  orgId: string,
-  partnered: boolean,
-): Promise<SetOrgPartnershipState> {
-  if (!orgId) return { error: "Missing organization.", partnered: false };
-  const supabase = await createServerSupabase();
-  try {
-    const r = await apiSetOrgPartnership(supabase, orgId, partnered);
-    revalidatePath("/", "layout");
-    return { error: null, partnered: r.partnered };
-  } catch (e) {
-    const code = (e as { code?: string | null })?.code ?? null;
-    return {
-      error:
-        code === "stripe_not_ready"
-          ? "Connect Stripe first — Partner needs a Ready account."
-          : errMsg(e, "Couldn't update Partner."),
-      partnered: false,
-    };
-  }
 }
 
 export type StartMembershipState = { error: string | null };

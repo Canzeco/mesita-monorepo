@@ -53,11 +53,10 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
     path: "../business-web-list-tickets/index.ts",
     accepts: ["POST"],
   },
-  {
-    name: "business-web-change-subscription",
-    path: "../business-web-change-subscription/index.ts",
-    accepts: ["POST"],
-  },
+  // business-web-change-subscription retired by MESITA-1889 — the per-place
+  // Verified checkout. The organization's yearly Mesita Membership
+  // (business-web-start-membership) is the one paid door now; it is not on
+  // this list yet, which is its own follow-up.
   {
     name: "consumer-web-create-subscription",
     path: "../consumer-web-create-subscription/index.ts",

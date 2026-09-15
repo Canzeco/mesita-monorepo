@@ -23,8 +23,11 @@
 //     organizations.partnered on the back of the paid door. Matched BEFORE
 //     place_id in both branches below: a membership carries no place_id, and
 //     the place branch's resolver falls back to the customer.
-//   • place_id     → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
-//     places.plan on the back of the paid door.
+//   • place_id     → a LEGACY per-place subscription (Verified / plan=pro;
+//     ultra legacy), MIRRORED ONLY. Since MESITA-1889 this branch writes
+//     `place_subscriptions` and never `places.plan`: the org's Membership is
+//     the one entitlement door, and the per-place checkout that fed this one
+//     is retired (retired/edge-functions/business-web-change-subscription).
 //   • Connect account.updated → organization_payment_accounts mirror (PLATFORM
 //     account layer, connect-account.ts).
 //   • Connect payment_intent.{succeeded,payment_failed} → Mesita Pay's
@@ -50,9 +53,10 @@
 //
 // Tier/plan precedence rule: a subscription lapse only downgrades an
 // entitlement that came through the paid door. A consumer's Premium earned
-// via Instagram or invitation is never stripped because a card failed — and
-// a place plan granted outside billing is only lowered when it matches the
-// plan the lapsed subscription was paying for.
+// via Instagram or invitation is never stripped because a card failed. For
+// places the rule is now absolute rather than conditional (MESITA-1889): a
+// lapsing per-place subscription downgrades nothing at all, because the plan
+// it would have lowered belongs to the organization's Membership.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
@@ -70,12 +74,7 @@ import {
   resolvePlaceId,
   resolvePlanKey,
 } from "./subscription-resolve.ts";
-import {
-  applyListingTypeToPatch,
-} from "../_shared/partner-derivation.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
-import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
-import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 import { verifyStripeEvent } from "./webhook-verify.ts";
 import { handleConnectAccountUpdated } from "./connect-account.ts";
@@ -369,7 +368,12 @@ async function reconcileConsumerSubscription(
 
 // ─── Business side ──────────────────────────────────────────────────────────
 
-// Upserts the place's subscription mirror and applies the plan side-effect.
+// MIRROR ONLY (MESITA-1889). Upserts the place's subscription mirror so a
+// legacy per-place Stripe subscription stays observable — and writes NOTHING
+// on `places`. `places.plan` now comes from the organization's Mesita
+// Membership alone (_shared/partner-membership.ts), so a stale per-place
+// subscription lapsing cannot drop a place its org is still paying for, and a
+// live one cannot grant a plan the org never bought.
 async function reconcilePlaceSubscription(
   admin: ReturnType<typeof adminClient>,
   placeId: string,
@@ -419,65 +423,5 @@ async function reconcilePlaceSubscription(
     );
   if (mirror.error) {
     throw new Error(`place_subscription_mirror: ${mirror.error.message}`);
-  }
-
-  if (isLive) {
-    const { data: row, error: readErr } = await admin
-      .from("places")
-      .select(
-        "listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
-      )
-      .eq("id", placeId)
-      .maybeSingle();
-    if (readErr) throw new Error(`place_read: ${readErr.message}`);
-    if (!row) throw new Error(`place_not_found: ${placeId}`);
-
-    const patch: Record<string, unknown> = { plan: planKey };
-    applyListingTypeToPatch(patch, {
-      plan: planKey,
-      rates: ratesFromPlace(row as Record<string, unknown>),
-      currentListingType: (row as Record<string, unknown>).listing_type as string,
-    });
-
-    const grant = await writePlace(admin, {
-      table: "places",
-      mode: "update",
-      id: placeId,
-      patch: patch as PlacePatch,
-    });
-    if (!grant.ok) throw new Error(`place_grant: ${grant.error}`);
-  } else {
-    const { data: row, error: readErr } = await admin
-      .from("places")
-      .select(
-        "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
-      )
-      .eq("id", placeId)
-      .maybeSingle();
-    if (readErr) throw new Error(`place_read: ${readErr.message}`);
-    if (!row) return;
-
-    const current = row as Record<string, unknown>;
-    if ((current.plan as string) !== planKey) return;
-
-    const patch: Record<string, unknown> = { plan: "free" };
-    applyListingTypeToPatch(patch, {
-      plan: "free",
-      rates: ratesFromPlace(current),
-      currentListingType: current.listing_type as string,
-    });
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
-
-    // Guard: only revoke if the plan is still what we read above — a
-    // concurrent change (another webhook, a manual admin grant) must win.
-    const revoke = await writePlace(admin, {
-      table: "places",
-      mode: "update",
-      id: placeId,
-      patch: patch as PlacePatch,
-      guard: { plan: planKey },
-    });
-    if (!revoke.ok) throw new Error(`place_revoke: ${revoke.error}`);
   }
 }

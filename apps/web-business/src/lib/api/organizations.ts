@@ -540,24 +540,6 @@ export async function apiStartMembership(
   };
 }
 
-export async function apiSetOrgPartnership(
-  client: SupabaseClient,
-  orgId: string,
-  partnered: boolean,
-): Promise<{
-  partnered: boolean;
-  mesitaPayEnabled: boolean;
-  placesJoined: number;
-  placesDropped: number;
-}> {
-  return invokeEF(
-    client,
-    "business-web-set-org-partnership",
-    { orgId, partnered },
-    "Couldn't update Partner.",
-  );
-}
-
 /** scope "all" and "org" both need organizationId and are membership reads;
  *  "public" is the open pool.
  *
