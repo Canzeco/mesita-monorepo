@@ -19,7 +19,7 @@ import { Search } from "lucide-react";
 import { useMock } from "@/mock/MockStore";
 import { Section } from "@/components/shared/Section";
 import { Badge } from "@/components/shared/Badges";
-import { placeTabHref } from "@/lib/place-tabs";
+import { placeRootHref } from "@/lib/console-routes";
 import {
   CTA_BUTTON_CLASS,
   GHOST_PILL_BUTTON_CLASS,
@@ -75,7 +75,7 @@ export default function AddPlacePage() {
                   <p className="text-muted-foreground truncate text-[11px]">{p.category} · {p.city}</p>
                 </div>
                 <Badge tone="good">Already yours</Badge>
-                <Link href={placeTabHref(p.id, "profile")} className={GHOST_PILL_BUTTON_CLASS}>
+                <Link href={placeRootHref(p.id)} className={GHOST_PILL_BUTTON_CLASS}>
                   Open
                 </Link>
               </li>

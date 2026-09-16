@@ -28,7 +28,12 @@ import {
   CTA_BUTTON_CLASS,
   GHOST_PILL_BUTTON_CLASS,
 } from "@/lib/ui-classes";
-import { SHELL_ROUTES, ownedFromParam, placesHref } from "@/lib/console-routes";
+import {
+  SHELL_ROUTES,
+  ownedFromParam,
+  placeRootHref,
+  placesHref,
+} from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
 
@@ -175,7 +180,12 @@ export default function PlacesPage() {
                         </td>
                       ))}
                       <td className="px-3 py-2.5 text-right">
-                        <Link href={placeTabHref(p.id, "profile")} className={GHOST_PILL_BUTTON_CLASS}>
+                        {/* A place you HOLD opens on its Home. The pool row
+                            below keeps Profile, and the difference is the
+                            point: nothing has been claimed there, so there is
+                            no Home to open — `tabsForAccess({held:false})` is
+                            Profile alone, and Home would 404. */}
+                        <Link href={placeRootHref(p.id)} className={GHOST_PILL_BUTTON_CLASS}>
                           Open
                         </Link>
                       </td>

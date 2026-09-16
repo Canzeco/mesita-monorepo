@@ -6,12 +6,11 @@
 // today's one place becomes tomorrow's four, and a browser that cached a
 // permanent redirect would keep opening a place the operator no longer works
 // at. Here the same rule shows up as `router.replace`, which leaves no history
-// entry — Back from Profile must go where the operator came from, not bounce
+// entry — Back from Home must go where the operator came from, not bounce
 // off this page and forward again.
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { SHELL_ROUTES } from "@/lib/console-routes";
-import { placeTabHref } from "@/lib/place-tabs";
+import { SHELL_ROUTES, placeRootHref } from "@/lib/console-routes";
 import { useMock } from "@/mock/MockStore";
 
 export default function ConsoleRoot() {
@@ -37,10 +36,12 @@ export default function ConsoleRoot() {
     }
     const remembered = world.places.find((p) => p.id === lastPlaceId);
     // A portfolio of several with nothing remembered gets the LIST. The console
-    // does not pick one: `places[0]` is a place the operator never chose, and
-    // Profile is a form.
+    // does not pick one: `places[0]` is a place the operator never chose.
     const target = remembered ?? (world.places.length === 1 ? world.places[0] : null);
-    router.replace(target ? placeTabHref(target.id, "profile") : SHELL_ROUTES.places);
+    // AND WHEN IT DOES KNOW, IT LANDS ON HOME (MESITA-1914). This used to land
+    // on Profile, which meant the console opened on a form — thirty fields
+    // about who you are, handed to somebody who came to see what happened.
+    router.replace(target ? placeRootHref(target.id) : SHELL_ROUTES.places);
   }, [hydrated, world, lastPlaceId, router]);
 
   return (

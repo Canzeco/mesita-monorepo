@@ -8,6 +8,7 @@
 //   │  Mesita          │  the HEAD: the lockup, pinned, scrolls with nothing
 //   ├──────────────────┤
 //   │  Lumbre y Sal ⌄  │  the place this column is about
+//   │  Home            │  where the console opens
 //   │  Settings        │
 //   │  …               │  the rows, and the only thing that scrolls
 //   │                  │  the slack falls HERE, between the work and you
@@ -61,6 +62,7 @@ import {
   ChartNoAxesColumn,
   CreditCard,
   Gift,
+  House,
   LayoutGrid,
   Plus,
   RotateCw,
@@ -81,8 +83,10 @@ import {
   RAIL_ROWS,
   SHELL_ROUTES,
   flatPlacePageFromPathname,
+  isPlaceHomePathname,
   placePageFromPathname,
   placePageHref,
+  placeRootHref,
   productRowHref,
   type PlacePage,
 } from "@/lib/console-routes";
@@ -118,6 +122,13 @@ const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
 //                                literally what the page is
 //   Activity  ChartNoAxesColumn  counts over time; a squiggle reads medical
 //   Profile   Store              the PLACE's public page, not a document
+//   Home      House              the place's own front door
+//
+// HOME IS A HOUSE AND NOT THE FLAME (MESITA-1914). The consumer app's Home tab
+// wears `MesitaMark` — it sits in a bottom nav with no lockup anywhere near it,
+// so the flame is the only brand on that screen. Here the lockup is three rows
+// above, and a 14px flame under a 20px flame reads as the same mark printed
+// twice at two sizes rather than as a destination.
 //
 // The product rows wear the CATALOGUE's marks — one product with two different
 // pictures is how an operator learns to distrust both. The tint does not come
@@ -311,7 +322,19 @@ export function Sidebar({
             }
             const seam = opensGroup(i) ? SECTION_SEAM : undefined;
             const node =
-              row.kind === "page" ? (
+              row.kind === "home" ? (
+                // HOME HAS NO MATRIX ROW. `tabsForAccess` is a list of VIEWS,
+                // and Home is not one — a viewer who may open this place at all
+                // may see its front door, which prints only what the rows below
+                // it would have printed anyway.
+                <NavRow
+                  href={placeRootHref(placeId ?? "")}
+                  label="Home"
+                  Icon={House}
+                  active={isPlaceHomePathname(pathname)}
+                  onNavigate={onNavigate}
+                />
+              ) : row.kind === "page" ? (
                 <NavRow
                   href={pageHref(row.target)}
                   label={PLACE_PAGE_LABEL[row.target]}
@@ -341,11 +364,13 @@ export function Sidebar({
                 />
               );
             const key =
-              row.kind === "page"
-                ? `page:${row.target}`
-                : row.kind === "product"
-                  ? `product:${row.product}`
-                  : `place:${row.view}`;
+              row.kind === "home"
+                ? "home"
+                : row.kind === "page"
+                  ? `page:${row.target}`
+                  : row.kind === "product"
+                    ? `product:${row.product}`
+                    : `place:${row.view}`;
             // THE SEAM IS A WRAPPER'S BORDER, NEVER A ROW'S — a row that grew a
             // rule would be a second row shape. A row with no seam gets no
             // wrapper either.

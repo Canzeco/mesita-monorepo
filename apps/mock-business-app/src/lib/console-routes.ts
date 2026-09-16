@@ -40,8 +40,13 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   activity: "Activity",
 };
 
-/** A rail row names a place PAGE, a place VIEW, or a PRODUCT. */
+/** A rail row names HOME, a place PAGE, a place VIEW, or a PRODUCT.
+ *
+ *  Home carries no target because it HAS no target to carry: it is the place
+ *  itself, at the place's own bare address, and a field naming which part of
+ *  the place it meant would be the beginning of a second Home. */
 export type RailRow =
+  | { kind: "home" }
   | { kind: "page"; target: PlacePage }
   | { kind: "place"; view: PlaceRailView }
   | { kind: "product"; product: ProductKey };
@@ -52,8 +57,14 @@ export const PLACE_RAIL_VIEWS = ["profile"] as const;
 export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 
 /** THE RAIL, in Pato's order and his groups. Account is not here: it is the
- *  person, and it renders last in every state including the failed read. */
+ *  person, and it renders last in every state including the failed read.
+ *
+ *  HOME IS FIRST AND ALONE (MESITA-1914). Its seam costs nothing to declare —
+ *  `home` is a kind of its own, so `RAIL_GROUP_STARTS` derives the rule under
+ *  it exactly as it derives the other three. The console used to open on
+ *  Settings, which made an operator's first screen a thing to configure. */
 export const RAIL_ROWS: readonly RailRow[] = [
+  { kind: "home" },
   { kind: "page", target: "settings" },
   { kind: "page", target: "activity" },
   { kind: "page", target: "products" },
@@ -110,6 +121,14 @@ export function placeRootHref(placeId: string): string {
   return `/places/${encodeURIComponent(placeId)}`;
 }
 
+/** Is this pathname HOME — the place's bare address, `/places/<id>` and
+ *  nothing after it? A fourth segment is a view or a page, and the rail's Home
+ *  row must not stay lit underneath one of those. */
+export function isPlaceHomePathname(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts.length === 2 && parts[0] === "places" && parts[1] !== "new";
+}
+
 export function placesHref(owned?: PlacesOwned | null): string {
   return owned ? `${SHELL_ROUTES.places}?owned=${owned}` : SHELL_ROUTES.places;
 }
@@ -142,6 +161,7 @@ export function isPlacePayPathname(pathname: string): boolean {
  *  canonical address. A name NOT in this list 404s on purpose, so that a typo
  *  never renders a generic page. */
 export const FLAT_ROUTES = {
+  home: "/home",
   profile: "/profile",
   menus: "/menus",
   reviews: "/reviews",
@@ -168,15 +188,25 @@ export function isFlatRoute(pathname: string): boolean {
  *  PAGE (`/settings`, `/products`, `/customers`, `/activity`) or not flat. */
 export function flatViewFromPathname(pathname: string): PlaceTab | null {
   const name = pathname.startsWith("/") ? pathname.slice(1) : pathname;
-  if (!isFlatRoute(`/${name}`)) return null;
+  if (!isFlatRoute(`/${name}`) || isFlatHome(pathname)) return null;
   return (PLACE_PAGES as readonly string[]).includes(name)
     ? null
     : (name as PlaceTab);
 }
 
+/** `/home` is the ONE flat name that resolves to neither a view nor a page: it
+ *  means the place's bare address. Both readers around it end in "anything
+ *  that is not a page is a view", so without this guard `/home` would resolve
+ *  to a `PlaceTab` called "home" that no matrix, label or route has ever heard
+ *  of — and it would surface as a 404 three files from its cause. */
+export function isFlatHome(pathname: string): boolean {
+  const name = pathname.startsWith("/") ? pathname.slice(1) : pathname;
+  return `/${name}` === FLAT_ROUTES.home;
+}
+
 export function flatPlacePageFromPathname(pathname: string): PlacePage | null {
   const name = pathname.startsWith("/") ? pathname.slice(1) : pathname;
-  if (!isFlatRoute(`/${name}`)) return null;
+  if (!isFlatRoute(`/${name}`) || isFlatHome(pathname)) return null;
   return (PLACE_PAGES as readonly string[]).includes(name)
     ? (name as PlacePage)
     : null;
