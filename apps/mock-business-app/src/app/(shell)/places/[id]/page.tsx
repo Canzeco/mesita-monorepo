@@ -92,8 +92,11 @@ function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
     out.push({
       label: `${unanswered} review${unanswered === 1 ? "" : "s"} unanswered`,
       line: "A reply is public, and the guests who read it are the ones deciding whether to come.",
-      door: "Open Reviews",
-      href: placeTabHref(place.id, "reviews"),
+      // PROFILE, not Reviews (MESITA-1917): Reviews is a card there now, and a
+      // door naming an address that no longer exists is the 404 a union type
+      // is the only thing standing between you and.
+      door: "Open Profile",
+      href: placeTabHref(place.id, "profile"),
     });
   }
 

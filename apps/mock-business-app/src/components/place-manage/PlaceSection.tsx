@@ -65,6 +65,7 @@ import {
   ALLOWED_IMAGE_ACCEPT,
   validateUploadFile,
 } from "@/lib/place-upload-utils";
+import { ReviewsSummary } from "./ReviewsSummary";
 import { FIELD_LIMITS } from "@/mock/atlas";
 import type { MockDay, MockPlaceProfile } from "@/mock/types";
 
@@ -208,9 +209,12 @@ function placeToForm(v: MockPlaceProfile): Form {
   };
 }
 
-/** The whole record the save writes, built from the form. `nz` is the real
- *  file's: an empty string becomes null so a cleared field actually clears. */
-function formToProfile(f: Form, base: MockPlaceProfile): MockPlaceProfile {
+/** The fields THIS card owns, built from the form. A partial, not a whole
+ *  record: Menus is a second section on the same page and a full profile from
+ *  each of them would mean whichever merged last reverted the other's work
+ *  (PlaceContext's `SaveBuild`). `nz` is the real file's: an empty string
+ *  becomes null so a cleared field actually clears. */
+function formToProfile(f: Form): Partial<MockPlaceProfile> {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   const hours: Partial<Record<MockDay, { open: string; close: string }[]>> = {};
   for (const d of DAYS) {
@@ -222,7 +226,6 @@ function formToProfile(f: Form, base: MockPlaceProfile): MockPlaceProfile {
     EDITABLE_CHANNELS.map((c) => [c.key as string, nz(f.channels[c.key as string] ?? "")]),
   );
   return {
-    ...base,
     // Empty Mesita name clears the override → the place falls back to google_name.
     mesita_name: mesitaName.length > 0 ? mesitaName : null,
     description: nz(f.description.slice(0, FIELD_LIMITS.descriptionMax)),
@@ -240,7 +243,14 @@ function sliceEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function PlaceSection({ place }: { place: MockPlaceProfile }) {
+export function PlaceSection({
+  place,
+  children,
+}: {
+  place: MockPlaceProfile;
+  /** Extra Place-page boxes (Menus) — flow in the same masonry columns. */
+  children?: React.ReactNode;
+}) {
   const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
   const [errors, setErrors] = useState<{ photos?: string }>({});
@@ -305,6 +315,7 @@ export function PlaceSection({ place }: { place: MockPlaceProfile }) {
     .join(" · ");
 
   useSectionSaver(
+    "place",
     dirtyLabel || "Place",
     placeDirty,
     () => {
@@ -316,7 +327,7 @@ export function PlaceSection({ place }: { place: MockPlaceProfile }) {
         };
       }
       if (!placeDirty) return { kind: "clean" as const };
-      return { kind: "patch" as const, profile: formToProfile(form, place) };
+      return { kind: "patch" as const, patch: formToProfile(form) };
     },
     (fresh) => {
       const next = placeToForm(fresh);
@@ -713,6 +724,15 @@ export function PlaceSection({ place }: { place: MockPlaceProfile }) {
         />
         {errors.photos ? <ErrorNote message={errors.photos} /> : null}
       </SectionCard>
+
+      {/* Menus, handed in by ProfileView — the `children` seam this card has
+          always documented, filled again since MESITA-1917. */}
+      {children}
+
+      {/* Reviews closes the masonry (Pato live 2026-09-01): every card above
+          is something an operator sets, this one is the only thing the world
+          says back. Read-only, so it sits after the editable set. */}
+      <ReviewsSummary place={place} />
 
       {metaFor !== null && (
         <MediaMetaDialog

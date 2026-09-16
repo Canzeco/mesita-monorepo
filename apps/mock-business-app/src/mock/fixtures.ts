@@ -19,11 +19,11 @@ import type {
   MockCreditBalance,
   MockCustomer,
   MockMember,
-  MockMenu,
   MockOrder,
   MockDay,
   MockPlace,
   MockPlaceProfile,
+  MockProfileMenu,
   MockPoolPlace,
   MockReservation,
   MockReview,
@@ -327,17 +327,6 @@ export const REVIEWS: MockReview[] = build(ALL_IDS, 7, (placeId, i, rnd) => {
   };
 });
 
-export const MENUS: MockMenu[] = PLACES.flatMap((p) =>
-  Array.from({ length: p.menuCount }, (_, i) => ({
-    id: `mnu_${p.id}_${i}`,
-    placeId: p.id,
-    name: ["Food", "Drinks", "Brunch"][i] ?? `Menu ${i + 1}`,
-    kind: (i === 2 ? "link" : "pdf") as "pdf" | "link",
-    updatedAt: daysAgo(i * 11 + 4),
-    pages: i === 2 ? 0 : 2 + i,
-  })),
-);
-
 export const CREDIT_BALANCES: MockCreditBalance[] = build(ALL_IDS, 23, (placeId, i, rnd) => ({
   id: `crb_${placeId}_${i}`,
   placeId,
@@ -442,6 +431,22 @@ function photoSet(from: string, to: string, glyph: string, n: number): string[] 
   );
 }
 
+
+/** A place's menus, as the Menus card edits them. `upload` is a file that was
+ *  pushed to Storage in the real console and is a plain URL here; `drive` is a
+ *  Google Drive or Docs link the operator pasted. */
+function menuSet(slug: string, names: string[], driveAt = -1): MockProfileMenu[] {
+  return names.map((name, i) => ({
+    key: `mnu_${slug}_${i}`,
+    name,
+    source: i === driveAt ? ("drive" as const) : ("upload" as const),
+    url:
+      i === driveAt
+        ? `https://drive.google.com/file/d/${slug}${i}menu/view`
+        : `https://files.example/menu-pdfs/${slug}/${name.toLowerCase()}.pdf`,
+  }));
+}
+
 const WEEK: Partial<Record<MockDay, { open: string; close: string }[]>> = {
   monday: [{ open: "13:00", close: "23:00" }],
   tuesday: [{ open: "13:00", close: "23:00" }],
@@ -481,7 +486,17 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     opentable_url: "https://opentable.example/lumbre-y-sal",
     content_state: "ready",
     reservation_channel: "whatsapp",
-    menu_count: 3,
+    menus: menuSet("lumbre", ["Food", "Drinks", "Brunch"], 2),
+    google_stars_overall: 4.6,
+    google_review_count: 1180,
+    mesita_stars_overall: 4.7,
+    mesita_review_count: 218,
+    mesita_stars_food: 4.8,
+    mesita_stars_service: 4.5,
+    mesita_stars_ambience: 4.9,
+    mesita_stars_value: 4.3,
+    instagram_followers_count: 18400,
+    facebook_followers: 6200,
   },
   plc_pardo: {
     mesita_name: null,
@@ -522,7 +537,22 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     // No reservation channel picked, and one menu short: the two chips this
     // place's meter prints.
     reservation_channel: null,
-    menu_count: 1,
+    // NO MENU, so that the completeness meter's "Add a menu" chip is REACHABLE
+    // on some place: it is the only chip on this card that scrolls, and with
+    // every fixture carrying a menu it only ever appeared under "+3 more" on
+    // the place that is missing eight other things. This is the one-thing-left
+    // shape — two chips, both in the visible five, one of them a live button.
+    menus: [],
+    google_stars_overall: 4.4,
+    google_review_count: 372,
+    mesita_stars_overall: 4.3,
+    mesita_review_count: 61,
+    mesita_stars_food: 4.5,
+    mesita_stars_service: 4.1,
+    mesita_stars_ambience: 4.4,
+    mesita_stars_value: 4.2,
+    instagram_followers_count: 3100,
+    facebook_followers: null,
   },
   plc_hoja: {
     mesita_name: null,
@@ -562,7 +592,17 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     // the completeness meter.
     content_state: "generating",
     reservation_channel: "instagram",
-    menu_count: 2,
+    menus: menuSet("hoja", ["Drinks", "Food"], 0),
+    google_stars_overall: 4.2,
+    google_review_count: 148,
+    mesita_stars_overall: 4.1,
+    mesita_review_count: 37,
+    mesita_stars_food: 4.0,
+    mesita_stars_service: 4.2,
+    mesita_stars_ambience: 4.4,
+    mesita_stars_value: 3.8,
+    instagram_followers_count: 920,
+    facebook_followers: null,
   },
   plc_norte: {
     mesita_name: null,
@@ -596,6 +636,16 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     opentable_url: "",
     content_state: null,
     reservation_channel: null,
-    menu_count: 0,
+    menus: [],
+    google_stars_overall: null,
+    google_review_count: null,
+    mesita_stars_overall: null,
+    mesita_review_count: 0,
+    mesita_stars_food: null,
+    mesita_stars_service: null,
+    mesita_stars_ambience: null,
+    mesita_stars_value: null,
+    instagram_followers_count: null,
+    facebook_followers: null,
   },
 };

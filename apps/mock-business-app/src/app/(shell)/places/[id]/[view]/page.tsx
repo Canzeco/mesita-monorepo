@@ -17,8 +17,6 @@ import { usePlaceScope } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PLACE_TABS, PLACE_TAB_LABEL, type PlaceTab } from "@/lib/place-tabs";
 import { ProfileView } from "@/components/views/ProfileView";
-import { MenusView } from "@/components/views/MenusView";
-import { ReviewsView } from "@/components/views/ReviewsView";
 import { VisitsView } from "@/components/views/VisitsView";
 import { OrdersView } from "@/components/views/OrdersView";
 import { ReservationsView } from "@/components/views/ReservationsView";
@@ -29,8 +27,6 @@ import { AdminView } from "@/components/views/AdminView";
 
 const VIEWS: Record<PlaceTab, () => React.ReactElement | null> = {
   profile: ProfileView,
-  menus: MenusView,
-  reviews: ReviewsView,
   visits: VisitsView,
   orders: OrdersView,
   reservations: ReservationsView,

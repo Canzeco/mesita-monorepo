@@ -93,8 +93,8 @@ const INTENTS: Intent[] = [
   {
     match: /\b(menu|menus|carta|dish|dishes|plato)\b/,
     answer: {
-      reply: "Menus are their own screen — a PDF or a link, and guests open whichever is newest.",
-      door: { label: "Open Menus", href: (id: string) => placeTabHref(id, "menus") },
+      reply: "Menus are a card on the profile — a PDF or a Drive link, and guests open whichever is newest.",
+      door: PROFILE("Open Profile › Menus"),
     },
   },
   {
@@ -174,8 +174,8 @@ const INTENTS: Intent[] = [
   {
     match: /\b(review|reviews|rating|stars|reseña)\b/,
     answer: {
-      reply: "Reviews are guests' own words, and a reply is public. I'd draft one and let you send it.",
-      door: { label: "Open Reviews", href: (id: string) => placeTabHref(id, "reviews") },
+      reply: "Scores and reach are a card on the profile — Google and Mesita, Instagram and Facebook.",
+      door: PROFILE("Open Profile › Reviews"),
     },
   },
   {

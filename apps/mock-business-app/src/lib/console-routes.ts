@@ -214,8 +214,6 @@ export function isPlacePayPathname(pathname: string): boolean {
 export const FLAT_ROUTES = {
   home: "/home",
   profile: "/profile",
-  menus: "/menus",
-  reviews: "/reviews",
   visits: "/visits",
   orders: "/orders",
   reservations: "/reservations",
