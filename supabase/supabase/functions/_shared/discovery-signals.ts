@@ -8,28 +8,35 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE EIGHT: Name · Summary · Proximity · Timing · Category ·
-// Popularity · Mesita Level · Randomness. Slotting still runs AFTER the
-// blend (discovery-blend.ts) and still buys a POSITION, not an exponent.
+// THERE ARE NINE: Name · Summary · Proximity · Timing · Category ·
+// Enriched · Partnered · Popularity · Randomness. Slotting still runs AFTER
+// the blend (discovery-blend.ts) and still buys a POSITION, not an exponent.
 //
-// Partnership and Promotion merged into MESITA LEVEL (MESITA-1408): one
-// continuous axis for where a place sits on the Mesita spectrum, from
-// catalog row to actively promoting. They were never independent — a place
-// only promotes if it pays — so two exponents over one underlying fact let
-// an operator double-count money by accident. Level reads `plan`, the
-// public `promoting` boolean, and (MESITA-1598) Intake high-water — never
-// rates, strategy, or pause columns.
+// MESITA LEVEL SPLIT INTO TWO BINARIES (MESITA-1858): `enriched` — did
+// Mesita do the work on this place — and `partnered` — does this place pay.
+// This is NOT a reversal of the MESITA-1408 merge. That merge killed
+// Partnership × Promotion, two exponents over THE SAME money fact, which let
+// an operator double-count money by accident. These two read disjoint facts:
+// one the enrichment state, the other `plan`. No double-count is possible.
 //
-// LEVEL IS NO LONGER ENTIRELY BOUGHT (MESITA-1598, item 3). A well-enriched
-// free place can outrank a paying place with a thin profile: the money rung
-// sets a base and Intake high-water modulates it, so quality moves the same
-// axis money does instead of being a second, independent question. Item 2
-// (whether LEVEL_LISTED itself is still the right floor) is a separate,
-// still-open decision.
+// PROMOTION LEFT THE EXPONENT ENTIRELY. `promoting` is no longer read by any
+// signal. Since MESITA-1855 lane 2 is wired, so promotion buys a POSITION —
+// which is what discovery-blend.ts's header always said money must do.
 //
-// The key is `mesita_level`, never bare `level`. `places.price_level` is
-// Google's field and create-door-profile.ts already writes "Price level:"
-// into a signal-shaped line; a bare Level would collide exactly there.
+// THE ENRICHMENT GRADIENT SURVIVES THE SPLIT. MESITA-1858 first wrote
+// `enriched` as a pure binary and deferred the `intake_high_water` gradient
+// (MESITA-1598) to a later issue. Review caught that the binary reads the
+// SAME predicate the ranked lanes admit on, so it is a constant 1 wherever it
+// is scored — a dead axis and a live regression against the old ladder. The
+// gradient is therefore kept, off `intakeHighWater` and
+// `attachIntakeHighWater` at their three call sites. Details at `enriched`.
+//
+// The keys are `enriched` and `partnered`, never bare `level`, `partner` or
+// `partnership`. `places.price_level` is Google's field and
+// create-door-profile.ts already writes "Price level:" into a signal-shaped
+// line; a bare Level would collide exactly there. `partner` is the consumer
+// wire boolean (place-family-keys.ts) and `partnership` was a retired signal
+// key — the past participle keeps the signal distinct from both.
 //
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
 // (`places.embedding` — the Summary blurb, never Presentation). Social left
@@ -63,13 +70,14 @@ import { haversineKm } from "./geo.ts";
 import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
+import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import { PULSE_TOTAL } from "./pulse-pieces.ts";
 
 /**
- * The eight earned signals, in Notion Docs > Discovery section 8.3 order:
+ * The nine earned signals, in Notion Docs > Discovery section 8.3 order:
  * what the caller ASKED FOR first (name, summary, category), then what the
  * world is (proximity, timing), then where the place sits with us
- * (mesita_level, popularity), then the tie-breaker.
+ * (enriched, partnered, popularity), then the tie-breaker.
  *
  * ORDER IS PRESENTATION ONLY. The blend is a product of `s^w`, so it is
  * commutative; nothing downstream may read a signal by index.
@@ -80,7 +88,8 @@ export const SIGNAL_KEYS = [
   "category",
   "proximity",
   "timing",
-  "mesita_level",
+  "enriched",
+  "partnered",
   "popularity",
   "randomness",
 ] as const;
@@ -114,9 +123,8 @@ function pnum(params: SignalParamBag | undefined, key: string, fallback: number)
 /**
  * The facts a signal is allowed to see. This is a projection of `places`, not
  * the row — narrowing it here is what stops a signal from quietly reaching for
- * rates. Partnership may read `plan`. Promotion may read the computed
- * `promoting` boolean. Mesita Level may also read `intakeHighWater`
- * (MESITA-1598). Still absent: strategy, pause columns, and rates.
+ * rates. Partnered may read `plan`; nothing else may. Still absent:
+ * strategy, pause columns, and rates.
  */
 export type SignalPlace = {
   lat: number | null;
@@ -130,17 +138,32 @@ export type SignalPlace = {
   embedding: unknown;
   /** Name vector (`places.name_embedding`). */
   nameEmbedding?: unknown;
-  /** Membership plan. Mesita Level reads this; nothing else may. */
+  /**
+   * Did Mesita do the work on this place. EXPLICIT: the projection
+   * (`toSignalPlace`, discovery-place.ts) sets this from `isEnrichedPlace`
+   * and the signal never re-derives it — a signal that reached for
+   * `content_state` itself would read `undefined` on any relation that does
+   * not carry the column and score the whole deck identically, silently.
+   * Absent means the caller did not wire it, which scores OFF, not full
+   * credit: an unstated enrichment is not an enriched place.
+   */
+  enriched?: boolean;
+  /** Membership plan. Partnered may read `plan`; nothing else may. */
   plan?: string | null;
-  /** Live discount right now. Mesita Level reads this; nothing else may. */
+  /**
+   * Live discount right now. NO SIGNAL READS THIS ANY MORE (MESITA-1858):
+   * promotion buys a lane-2 POSITION (MESITA-1855), not an exponent. Kept on
+   * the projection because the debug payload and the slotting pass both
+   * still travel with it.
+   */
   promoting?: boolean;
   /**
    * How far the Intake queue got, 0..PULSE_TOTAL (`pulseOf`,
-   * pulse-pieces.ts). Mesita Level reads this; nothing else may (MESITA-1598
-   * item 3). `undefined` means the caller hasn't wired the side-read for
-   * this surface yet — an honest "unknown", scored as full credit, never a
-   * silent 0 that would look like a genuinely unenriched place. `null`
-   * behaves the same as `undefined`.
+   * pulse-pieces.ts). `enriched` reads this; nothing else may. It is the
+   * gradient MESITA-1598 added and MESITA-1858 restored — the binary alone is
+   * a constant on every lane that admits only enriched rows (see `enriched`).
+   * A surface has to opt in by running `attachIntakeHighWater`; absent, the
+   * signal falls back to the binary.
    */
   intakeHighWater?: number | null;
 };
@@ -427,86 +450,120 @@ export function summary(
   return vectorScore(place.embedding, intent.queryVector, unembedded);
 }
 
-// ── 7. Mesita Level ───────────────────────────────────────────
+// ── 7. Enriched ──────────────────────────────────────────────────────────────
 
 /**
- * Where the place sits on the Mesita spectrum, from catalog row to actively
- * promoting. The merge of the old Partnership and Promotion signals
- * (MESITA-1408).
+ * Did Mesita do the work on this place.
  *
- * Three facts, read and nothing else: a paid `plan`, the public `promoting`
- * boolean — `toLineupPlace` has already collapsed rates, strategy and pause
- * columns into that one flag — and (MESITA-1598) Intake high-water, how far
- * the enrich queue got. Fine rungs (conservative / aggressive / dominant)
- * are Promoting's business, not this signal's.
+ * ONE FACT, READ AND NOTHING ELSE: the explicit `enriched` boolean the
+ * projection set from `isEnrichedPlace` (place-family-keys.ts — `content_state
+ * = 'ready'` OR a stamped `enriched_at`). The signal does not re-derive it,
+ * and there is deliberately no second predicate here: two answers to "is this
+ * place enriched" is how the consumer wire and the ranker drift apart.
  *
- * THREE RUNGS, GEOMETRICALLY SPACED. Each step up is the same ratio (×5), so
- * under `s^w` every rung is the same distance from its neighbour in log
- * space — which is the only spacing that stays even once the blend raises
- * the score to a power.
+ * GRADED WHERE THE ROW CARRIES A HIGH-WATER NUMBER, binary where it does not.
  *
- * The rungs are deliberately the old product: before MESITA-1598, Level was
- * exactly `partnership(place) * promotion(place)` at the default weights of
- * 1 and 1, for all four input combinations. Landing the MESITA-1408 merge
- * changed what the axis is CALLED and how an operator tunes it, not the
- * order any guest sees. A place that somehow reads `promoting` on a free
- * plan lands on the middle rung rather than the floor — it is doing
- * something — which is what the old product did too.
+ * MESITA-1858 wrote this as a pure binary and called the lost resolution a
+ * deferred item. IT IS NOT DEFERRABLE, because the binary reads the SAME
+ * PREDICATE THE RANKED LANES ADMIT ON, so on every surface that can score it
+ * the answer is a constant 1:
  *
- * NOT ENTIRELY BOUGHT ANY MORE (MESITA-1598, item 3). The money rung sets a
- * BASE; Intake high-water then MODULATES it — the same axis, not a second
- * independent question, so a well-enriched free place can outrank a paying
- * place with a thin profile. `intakeHighWater === undefined` (a surface that
- * hasn't wired the side-read yet, discovery-place.ts) reads as full credit —
- * an honest "unknown", never a silent penalty a caller didn't ask for.
- * `LEVEL_ENRICHMENT_FLOOR` is chosen so a FULLY enriched listed place
- * (0.04 × 1) narrowly outranks a COMPLETELY unenriched partner
- * (0.2 × 0.15 = 0.03) — the exact scenario the decision names — with real
- * but not enormous margin; the same ratio holds at the partner/promoting
- * boundary too. LEVEL_LISTED itself (item 2) is untouched — that is a
- * separate, still-open decision.
+ *   - Map filters every listed row through `keepListedForScope` →
+ *     `isEnrichedListedRow`, a copy of `isEnrichedPlace`, BEFORE
+ *     `reorderListedLanes` ranks anything.
+ *   - Scroll's pool query is `.eq("content_state", "ready")`.
+ *   - Word masks this signal to 0 and never scores it at all.
  *
- * LEVEL IS DERIVED, NEVER STORED. There is no `places.level` column and
- * there must not be one: every fact it reads already has an owner, and a
- * stored copy is a second source of truth that will drift (🔤 Vocabulary).
+ * A constant signal cannot reorder a deck, and the Discovery console would be
+ * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
+ * the retired `mesita_level` folded `intake_high_water` (0..PULSE_TOTAL), a
+ * fact that is NOT the admission predicate, so it did discriminate among
+ * admitted rows — two ready partner rows at one point on the Map, high-water
+ * 10 and 2, ranked 3.1x apart and would now tie, handing the order to
+ * whatever Postgres returned.
+ *
+ * So the gradient is restored here, verbatim: `ENRICHED_OFF + (1 -
+ * ENRICHED_OFF) * hw / PULSE_TOTAL`, which is MESITA-1598's own
+ * `0.15 + 0.85 * hw/10`. MESITA-1858 kept `intakeHighWater` and
+ * `attachIntakeHighWater` wired for exactly this, and the issue's note that
+ * the collapse was deliberate was written believing the binary would still
+ * separate enriched from unenriched places in a deck — which it cannot,
+ * because an unenriched place never enters one. Pato reverses this in one
+ * line by deleting the high-water branch.
+ *
+ * AN EXPLICIT `enriched: false` STAYS AT THE FLOOR whatever the side-read
+ * says. That is the googleOnly exclusion the projection makes by name; a
+ * synthesized row must not be able to climb on a number fetched by id.
+ *
+ * ABSENT READS OFF, NOT UNKNOWN. The opposite of `intakeHighWater`'s old
+ * rule, and deliberately: high-water is a side-read a surface has to opt
+ * into, while `enriched` is set by the projection every ranking engine runs
+ * through. An absent value means the row genuinely said nothing, and the
+ * honest score for "we have no evidence Mesita touched this" is the floor.
  */
-export const LEVEL_LISTED = 0.04;
-export const LEVEL_PARTNER = 0.2;
-export const LEVEL_PROMOTING = 1;
-/** Full credit for a place no wired surface has fetched high-water for yet —
- *  an abstention, not a penalty (MESITA-1598). */
-export const LEVEL_ENRICHMENT_UNKNOWN = 1;
-/** The floor a CONFIRMED-unenriched place's money rung is multiplied by.
- *  Must sit below LEVEL_LISTED / LEVEL_PARTNER (0.2) for a fully-enriched
- *  free place to ever outrank a thin partner; 0.15 leaves real margin
- *  without re-deciding item 2. */
-export const LEVEL_ENRICHMENT_FLOOR = 0.15;
 
-export function mesitaLevel(
+/**
+ * The off value. NEVER 0 — a hard zero deletes a place from a multiplicative
+ * blend (discovery-blend.ts). Demote, don't hide.
+ *
+ * 0.15 is `LEVEL_ENRICHMENT_FLOOR` carried over verbatim from MESITA-1598, so
+ * the split is an order-preserving refactor rather than a re-tuning.
+ */
+export const ENRICHED_OFF = 0.15;
+
+export function enriched(
   place: SignalPlace,
   _intent?: SignalIntent,
   _params?: SignalParamBag,
 ): number {
-  const plan = (place.plan ?? "free").toLowerCase();
-  const partnered = plan !== "" && plan !== "free";
-  const promoting = place.promoting === true;
-  const moneyRung = partnered && promoting
-    ? LEVEL_PROMOTING
-    : partnered || promoting
-    ? LEVEL_PARTNER
-    : LEVEL_LISTED;
-
+  if (place.enriched === false) return clamp01(ENRICHED_OFF);
   const highWater = place.intakeHighWater;
-  if (highWater === null || highWater === undefined) {
-    return clamp01(moneyRung * LEVEL_ENRICHMENT_UNKNOWN);
+  if (typeof highWater === "number" && Number.isFinite(highWater)) {
+    return clamp01(
+      ENRICHED_OFF + (1 - ENRICHED_OFF) * clamp01(highWater / PULSE_TOTAL),
+    );
   }
-  const fraction = clamp01(highWater / PULSE_TOTAL);
-  const enrichmentTerm = LEVEL_ENRICHMENT_FLOOR +
-    (1 - LEVEL_ENRICHMENT_FLOOR) * fraction;
-  return clamp01(moneyRung * enrichmentTerm);
+  return clamp01(place.enriched === true ? 1 : ENRICHED_OFF);
 }
 
-// ── 8. Randomness ────────────────────────────────────────────────────────────
+// ── 8. Partnered ─────────────────────────────────────────────────────────────
+
+/**
+ * Does this place pay Mesita.
+ *
+ * ONE FACT, READ AND NOTHING ELSE: `plan`, through `isPaidPlan`
+ * (membership-enforcement-helpers.ts) — the same predicate the consumer wire's
+ * `partner` boolean uses, never a second copy. Never rates, never strategy,
+ * never the pause columns, and no longer `promoting`: a live discount buys a
+ * lane-2 position (MESITA-1855), not an exponent.
+ *
+ * THE EMPTY STRING IS NORMALIZED BEFORE THE CALL, and that is load-bearing.
+ * `isPaidPlan` is `(plan ?? "free").toLowerCase() !== "free"`, so it answers
+ * TRUE for `""` — the coalesce only catches null and undefined. `places.plan`
+ * is a NOT NULL enum defaulting to `'free'`, so an empty string can only reach
+ * here from a synthesized Google row or a fixture, which is exactly where a
+ * free place silently scoring as a partner would go unnoticed.
+ */
+
+/**
+ * The off value. NEVER 0 — see ENRICHED_OFF.
+ *
+ * 0.2 is `LEVEL_LISTED / LEVEL_PARTNER`, the 5x partner-over-listed spacing
+ * the old ladder had, carried over so the order no guest sees change.
+ */
+export const PARTNERED_OFF = 0.2;
+
+export function partnered(
+  place: SignalPlace,
+  _intent?: SignalIntent,
+  _params?: SignalParamBag,
+): number {
+  const plan = (place.plan ?? "").trim();
+  if (plan === "") return clamp01(PARTNERED_OFF);
+  return clamp01(isPaidPlan(plan) ? 1 : PARTNERED_OFF);
+}
+
+// ── 9. Randomness ────────────────────────────────────────────────────────────
 
 /**
  * The only signal that reads nothing about the place.
@@ -542,7 +599,8 @@ export const SIGNALS: Record<SignalKey, SignalFn> = {
   timing,
   category,
   popularity,
-  mesita_level: mesitaLevel,
+  enriched,
+  partnered,
   randomness,
 };
 
@@ -554,7 +612,8 @@ export const SIGNAL_LABELS: Record<SignalKey, string> = {
   timing: "Timing",
   category: "Category",
   popularity: "Popularity",
-  mesita_level: "Mesita Level",
+  enriched: "Enriched",
+  partnered: "Partnered",
   randomness: "Randomness",
 };
 
@@ -566,7 +625,7 @@ export const SIGNAL_BLURBS: Record<SignalKey, string> = {
   timing: "Is it open, and is this its hour — read in the place's own local time.",
   category: "Does the type answer what the guest asked for.",
   popularity: "Rating shrunk toward the catalog mean by review volume.",
-  mesita_level:
-    "How far up the Mesita spectrum the place sits, from catalog row to actively promoting.",
+  enriched: "Did Mesita do the work on this place — a written profile, not a raw Google row.",
+  partnered: "Does this place pay Mesita. Demotes a free place, never hides it.",
   randomness: "Reads nothing about the place. Keeps the deck from freezing.",
 };

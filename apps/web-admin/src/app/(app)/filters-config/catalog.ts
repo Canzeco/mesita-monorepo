@@ -42,12 +42,15 @@
 //             Nearby are live without knobs of their own — their counts sit
 //             on the Word and Map mode boxes — so the four Soon boxes are
 //             Browse, Flexible, and both Socials ones.
-//   SIGNALS   eight earned signals: Name · Summary · Category · Proximity ·
-//             Timing · Mesita Level · Popularity · Randomness. Slotting
-//             stays a post-blend position pass. Old `semantic` folds to
-//             Summary. Partnership and Promotion merged into Mesita Level
-//             and Social left the library (MESITA-1408); Social then left
-//             the mode list too, and is now two Sources.
+//   SIGNALS   nine earned signals: Name · Summary · Category · Proximity ·
+//             Timing · Enriched · Partnered · Popularity · Randomness.
+//             Slotting stays a post-blend position pass. Old `semantic`
+//             folds to Summary. Partnership and Promotion merged into Mesita
+//             Level and Social left the library (MESITA-1408); Social then
+//             left the mode list too, and is now two Sources. Mesita Level
+//             then SPLIT into the two binaries Enriched and Partnered
+//             (MESITA-1858) — disjoint facts, so no double-count — and
+//             `mesita_level` folds onto both for one release.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -58,7 +61,8 @@ export const SIGNAL_KEYS = [
   "category",
   "proximity",
   "timing",
-  "mesita_level",
+  "enriched",
+  "partnered",
   "popularity",
   "randomness",
 ] as const;
@@ -276,16 +280,24 @@ export const WEIGHT_MAX = 4;
 /**
  * Mirrors SIGNAL_WEIGHT_MAX / weightMaxFor in _shared/discovery-config.ts.
  *
- * Level's exponent is capped at 2, not the uniform 4, because 0.04^w means
- * money annihilates relevance long before the uniform ceiling: 625x at 2 vs
- * ~390,000x at 4 (Pato, MESITA-1410). Level is no longer entirely bought
- * (MESITA-1598 folded in Intake high-water) but this ceiling still bounds
- * the same money rungs the ratio above is computed from. The EF clamps this
- * server-side either way — the mirror is here so the console's dial cannot
- * offer a number the backend will silently refuse.
+ * Both binaries are capped at 2, not the uniform 4, because they floor far
+ * below the ~0.85 the uniform ceiling was reasoned from: `partnered` floors
+ * at 0.2, so its span is 5^w (25x at 2, 625x at 4), and `enriched` floors at
+ * 0.15, so its span is ~6.67^w (44x at 2, ~1,975x at 4). At the uniform
+ * ceiling each stops being a weight and becomes a filter.
+ *
+ * CARRIED BY NAME FROM `mesita_level` (MESITA-1858). This map was keyed on
+ * that exact string; dropping it without adding these two would have doubled
+ * money's exponent ceiling silently on merge day. Pato's MESITA-1410 decision
+ * capped the money axis at 2 when it floored at 0.04 (a 625x span) — the 2 is
+ * carried as the money-conservative reading, and it is one number to reverse.
+ *
+ * The EF clamps this server-side either way — the mirror is here so the
+ * console's dial cannot offer a number the backend will silently refuse.
  */
 export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
-  mesita_level: 2,
+  enriched: 2,
+  partnered: 2,
 };
 
 export function weightMaxFor(key: SignalKey): number {
@@ -534,7 +546,9 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   popularity: { priorRating: 4.2, confidence: 60, floorRating: 3 },
   name: { unembedded: 0.4 },
   summary: { unembedded: 0.4 },
-  mesita_level: {},
+  // Zero params each, exact parity with the `mesita_level` row they replace.
+  enriched: {},
+  partnered: {},
   randomness: {},
 };
 
@@ -546,7 +560,8 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     popularity: 1,
     name: 1,
     summary: 1,
-    mesita_level: 1,
+    enriched: 1,
+    partnered: 1,
     randomness: 0.35,
   },
   params: DEFAULT_SIGNAL_PARAMS,
@@ -725,7 +740,8 @@ export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "category" as const },
   { kind: "signal" as const, key: "proximity" as const },
   { kind: "signal" as const, key: "timing" as const },
-  { kind: "signal" as const, key: "mesita_level" as const },
+  { kind: "signal" as const, key: "enriched" as const },
+  { kind: "signal" as const, key: "partnered" as const },
   { kind: "signal" as const, key: "popularity" as const },
   { kind: "signal" as const, key: "randomness" as const },
 ] as const;
@@ -954,12 +970,13 @@ const DISCOVERY_MODE_SIGNALS: Record<
   readonly SignalKey[]
 > = {
   word: ["name"],
-  map: ["category", "proximity", "timing", "mesita_level", "popularity"],
+  map: ["category", "proximity", "timing", "enriched", "partnered", "popularity"],
   catalog: [
     "category",
     "proximity",
     "timing",
-    "mesita_level",
+    "enriched",
+    "partnered",
     "popularity",
     "randomness",
   ],
@@ -967,7 +984,8 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "category",
     "proximity",
     "timing",
-    "mesita_level",
+    "enriched",
+    "partnered",
     "popularity",
     "randomness",
   ],
@@ -977,7 +995,8 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "category",
     "proximity",
     "timing",
-    "mesita_level",
+    "enriched",
+    "partnered",
     "popularity",
   ],
   favorites: [],
@@ -1089,12 +1108,22 @@ export const SIGNALS: {
     fields: UNIT,
   },
   {
-    key: "mesita_level",
-    label: "Mesita Level",
-    fn: "mesitaLevel()",
-    input: "Place plan and the computed promoting boolean. Never strategy, rates, or pause columns.",
-    process: "Three rungs, ×5 apart: neither → 0.04, one → 0.2, both → 1. Demotes, never hides.",
-    output: "How far up the Mesita spectrum the place sits, from catalog row to actively promoting.",
+    key: "enriched",
+    label: "Enriched",
+    fn: "enriched()",
+    input: "The explicit enriched boolean the projection set, plus Intake high-water when the surface merged it in. The signal never re-derives either.",
+    process: "Graded on high-water: 0.15 + 0.85 x hw/10. No high-water, binary: enriched → 1, otherwise 0.15. Demotes, never hides.",
+    output: "Did Mesita do the work on this place — a written profile, not a raw Google row.",
+    apis: [],
+    fields: UNIT,
+  },
+  {
+    key: "partnered",
+    label: "Partnered",
+    fn: "partnered()",
+    input: "Place plan, through isPaidPlan. Never strategy, rates, pause columns, or promoting.",
+    process: "Binary: a paid plan → 1, free or blank → 0.2. Demotes, never hides.",
+    output: "Does this place pay Mesita. A live discount buys a slot, not this exponent.",
     apis: [],
     fields: UNIT,
   },
@@ -1119,15 +1148,69 @@ function num(raw: unknown, fallback: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-/** Old blobs stored Summary as `semantic`. Fold before SIGNAL_KEYS rebuild. */
-function foldLegacySignalBag(raw: Record<string, unknown>): Record<string, unknown> {
+/**
+ * Retired signal keys an old blob may still carry. Mirrors
+ * LEGACY_SIGNAL_ALIASES in _shared/discovery-config.ts — read for ONE
+ * RELEASE, then both copies go.
+ *
+ *   semantic      → summary                  (MESITA-1408)
+ *   mesita_level  → enriched AND partnered   (MESITA-1858)
+ *
+ * Mesita Level folds onto BOTH halves because it was both facts at once.
+ * An explicitly-set new key always wins over the alias.
+ */
+export const LEGACY_SIGNAL_ALIASES: Record<string, readonly SignalKey[]> = {
+  semantic: ["summary"],
+  mesita_level: ["enriched", "partnered"],
+};
+
+const warnedLegacyKeys = new Set<string>();
+
+/** Test seam: the structured warn below fires once per key per page load. */
+export function resetLegacySignalWarnings(): void {
+  warnedLegacyKeys.clear();
+}
+
+function foldLegacySignalBag(
+  raw: Record<string, unknown>,
+  scope: "weights" | "params" = "weights",
+): Record<string, unknown> {
   const next = { ...raw };
-  if (next.summary == null && next.semantic != null) next.summary = next.semantic;
+  for (const [legacy, targets] of Object.entries(LEGACY_SIGNAL_ALIASES)) {
+    const value = next[legacy];
+    if (value == null) continue;
+    const foldedTo: SignalKey[] = [];
+    for (const target of targets) {
+      if (next[target] == null) {
+        next[target] = value;
+        foldedTo.push(target);
+      }
+    }
+    const seen = `${scope}:${legacy}`;
+    if (!warnedLegacyKeys.has(seen)) {
+      warnedLegacyKeys.add(seen);
+      console.warn("[filters-config] legacy signal key", {
+        key: legacy,
+        scope,
+        value,
+        foldedTo,
+        preserved: scope === "weights",
+      });
+    }
+  }
   return next;
 }
 
 /**
- * Tolerant read of whatever the EF returned, rebuilt against SIGNAL_KEYS.
+ * Tolerant read of whatever the EF returned.
+ *
+ * THE WEIGHTS MAP IS ADDITIVE FOR ONE RELEASE (MESITA-1858), matching
+ * `normalizeDiscoveryConfig`. This page does a WHOLE-BLOB save, and it deploys
+ * on merge while the Edge Functions deploy by hand — so between the two, a
+ * rebuild-from-SIGNAL_KEYS here would evict `mesita_level` from the stored
+ * blob the moment an operator saved any unrelated section, and the still-old
+ * EF would read a deliberately-set 2 back as the default 1. Preserving unknown
+ * weight keys is what makes that window survivable rather than destructive.
  *
  * Exponents round to two decimals for the same reason the EF normalizer does:
  * the field steps in 0.05, and a float landing at 1.7000000000000002 would
@@ -1138,7 +1221,14 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
   const w = foldLegacySignalBag((r.weights ?? {}) as Record<string, unknown>);
   const s = (r.slotting ?? {}) as Record<string, unknown>;
 
-  const weights = {} as Record<SignalKey, number>;
+  const weights: Record<string, number> = {};
+  // Unknown keys first, so a known key always overwrites a stale one.
+  for (const [key, raw] of Object.entries(w)) {
+    if ((SIGNAL_KEYS as readonly string[]).includes(key)) continue;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isFinite(n)) continue;
+    weights[key] = Math.round(Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, n)) * 100) / 100;
+  }
   for (const key of SIGNAL_KEYS) {
     const v = num(w[key], DEFAULT_CONFIG.weights[key], WEIGHT_MIN, weightMaxFor(key));
     weights[key] = Math.round(v * 100) / 100;
@@ -1155,7 +1245,10 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     };
   }
 
-  const rawParams = foldLegacySignalBag((r.params ?? {}) as Record<string, unknown>);
+  const rawParams = foldLegacySignalBag(
+    (r.params ?? {}) as Record<string, unknown>,
+    "params",
+  );
   const params = {} as SignalParams;
   for (const key of SIGNAL_KEYS) {
     const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
@@ -1177,7 +1270,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
   }
 
   return {
-    weights,
+    weights: weights as Record<SignalKey, number>,
     params,
     slotting: {
       enabled: typeof s.enabled === "boolean" ? s.enabled : DEFAULT_CONFIG.slotting.enabled,

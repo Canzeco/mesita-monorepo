@@ -136,18 +136,20 @@ Deno.test("a cafe never jumps a partner after Lineup", () => {
   );
 });
 
-Deno.test("reorderListedLanes: intake_high_water (MESITA-1601) reorders when Level is weighted", () => {
-  // Two partners (same plan, so moneyRung ties) at the same point — only
-  // Intake high-water differs. This is the wiring consumer-web-list-places
-  // provides via `attachIntakeHighWater` before calling `mergeNearbyCatalog`:
-  // `reorderListedLanes` itself stays synchronous and unaware of the query.
+Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is weighted", () => {
+  // REPLACES "intake_high_water (MESITA-1601) reorders when Level is
+  // weighted". The gradient collapsed to a binary at MESITA-1858, so the
+  // high-water numbers no longer move anything — but the DIRECTION they
+  // encoded still has to reach the ranker, and that is what this pins. The
+  // fact now travels on the row itself (`content_state` / `enriched_at`,
+  // selected by EARNED_LANE_COLUMNS), not on a side-read.
   const hi = {
     id: "hi",
     plan: "pro",
     google_place_id: "ChIJ-hi",
     lat: 25.6701,
     lng: -100.3001,
-    intake_high_water: 10,
+    content_state: "ready",
   };
   const lo = {
     id: "lo",
@@ -155,17 +157,17 @@ Deno.test("reorderListedLanes: intake_high_water (MESITA-1601) reorders when Lev
     google_place_id: "ChIJ-lo",
     lat: 25.6701,
     lng: -100.3001,
-    intake_high_water: 0,
+    content_state: "queued",
   };
   const merged = mergeNearbyCatalog([lo, hi], [], CENTER, LANES);
-  const levelOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS.weights) };
-  for (const key of Object.keys(levelOnly) as (keyof typeof levelOnly)[]) {
-    levelOnly[key] = 0;
+  const enrichedOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS.weights) };
+  for (const key of Object.keys(enrichedOnly) as (keyof typeof enrichedOnly)[]) {
+    enrichedOnly[key] = 0;
   }
-  levelOnly.mesita_level = 4;
+  enrichedOnly.enriched = 2;
   const out = reorderListedLanes(merged, {
     center: CENTER,
-    weights: levelOnly,
+    weights: enrichedOnly,
     slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
   });
@@ -258,9 +260,10 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   // `mapped` (then `admitGuestMinReviews`). Listed-only still inlines it.
   const googleBranch = src.slice(src.indexOf("const mapped = admitMapCatalog("));
   assertEquals(googleBranch.includes("reorderListedLanes"), true);
-  // MESITA-1601: Lineup scores mesita_level, which needs the Intake
-  // high-water side-read merged onto the row before ranking — the branch
-  // that actually calls `reorderListedLanes` must also call this.
+  // MESITA-1601, retained with no live reader (MESITA-1858): the branch that
+  // calls `reorderListedLanes` must also call the high-water side-read. No
+  // signal reads it today — the gradient collapsed into the `enriched`
+  // binary — and it stays wired so restoring the gradient is a re-wire.
   assertEquals(googleBranch.includes("attachIntakeHighWater"), true);
   // Behavioural, not source-text: the old assertion pinned the literal
   // `searchPower >= 2` and was satisfiable by whatever the file happened to
@@ -321,9 +324,12 @@ Deno.test("slotPromoted has a non-test caller", async () => {
 //
 // Every test below runs with ALL WEIGHTS ZERO. Under `Π s^w` that makes every
 // place score exactly 1, so merit order is the incoming order and anything
-// that moves was moved by the slotting pass. With Mesita Level on, a promoting
-// partner already outranks a quiet one on merit and these assertions would
-// pass without lane 2 running at all.
+// that moves was moved by the slotting pass. This mattered more before
+// MESITA-1858: with the old Mesita Level on, a promoting partner outranked a
+// quiet one ON MERIT and these assertions would have passed without lane 2
+// running at all. No signal reads `promoting` any more, so that particular
+// false pass is gone — the zeroed weights stay because they make the
+// assertion say exactly one thing.
 
 const NOW = new Date("2026-08-21T18:00:00Z");
 

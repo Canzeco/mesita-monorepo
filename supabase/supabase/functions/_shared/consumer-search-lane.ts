@@ -870,10 +870,11 @@ async function fetchEmbedPool(
     console.error("[consumer-search-lane] embed pool:", error.message);
     return [];
   }
-  // Deep Lineup scores mesita_level (MESITA-1598) — Intake high-water needs
-  // `intake_high_water` on the row, and `profiles` doesn't carry it. One
-  // batched side-read merges it in here, the single choke point both
-  // `runDeepSearch` and `runMesitaNameSearch` rank through.
+  // The `enriched` gradient needs `intake_high_water` on the row, and
+  // `profiles` doesn't carry it. One batched side-read merges it in here, the
+  // single choke point both `runDeepSearch` and `runMesitaNameSearch` rank
+  // through — and this pool is already `.eq("content_state", "ready")`, so
+  // without it the signal is a constant across every row in it.
   return await attachIntakeHighWater(
     admin,
     (data ?? []) as unknown as Record<string, unknown>[],

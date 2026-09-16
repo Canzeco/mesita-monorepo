@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   coerceConfig,
   DEFAULT_CATALOG,
+  DEFAULT_CONFIG,
   DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
@@ -23,10 +24,14 @@ import {
   modeRequiresPool,
   modeReturnsEntity,
   modeSignalState,
+  resetLegacySignalWarnings,
   SUPER_FIELDS,
   SIGNAL_KEYS,
+  SIGNAL_WEIGHT_MAX,
   SIGNALS,
   snapMapReloadPair,
+  WEIGHT_MAX,
+  weightMaxFor,
 } from "./catalog";
 
 describe("Discovery function APIs", () => {
@@ -38,7 +43,8 @@ describe("Discovery function APIs", () => {
         ["category", []],
         ["proximity", []],
         ["timing", []],
-        ["mesita_level", []],
+        ["enriched", []],
+        ["partnered", []],
         ["popularity", []],
         ["randomness", []],
       ].sort(),
@@ -58,7 +64,8 @@ describe("Discovery function APIs", () => {
       "category",
       "proximity",
       "timing",
-      "mesita_level",
+      "enriched",
+      "partnered",
       "popularity",
       "randomness",
     ]);
@@ -66,13 +73,19 @@ describe("Discovery function APIs", () => {
     expect([...SIGNAL_KEYS]).toEqual(LIBRARY_SIGNALS.map((row) => row.key));
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).not.toContain("semantic");
-    expect(SIGNAL_KEYS).toContain("mesita_level");
+    expect(SIGNAL_KEYS).toContain("enriched");
+    expect(SIGNAL_KEYS).toContain("partnered");
+    // Split into the two binaries (MESITA-1858). The key is PERSISTED, so
+    // this is what says the rename completed on the console side too.
+    expect(SIGNAL_KEYS).not.toContain("mesita_level");
     // Never bare `level` — `places.price_level` owns that word on a place.
     expect(SIGNAL_KEYS).not.toContain("level");
+    // Never bare `partner` — that is the consumer wire boolean.
+    expect(SIGNAL_KEYS).not.toContain("partner");
     expect(SIGNAL_KEYS).toContain("randomness");
     expect(SIGNAL_KEYS).toContain("name");
     expect(SIGNAL_KEYS).toContain("summary");
-    // Merged into mesita_level; Social left the library (MESITA-1408).
+    // Merged away at MESITA-1408; Social left the library then too.
     expect(SIGNAL_KEYS).not.toContain("partnership");
     expect(SIGNAL_KEYS).not.toContain("promotion");
     expect(SIGNAL_KEYS).not.toContain("social");
@@ -85,9 +98,12 @@ describe("Discovery function APIs", () => {
     });
     expect(cfg.weights.summary).toBe(2);
     expect(cfg.weights.name).toBe(1);
-    expect(cfg.weights.mesita_level).toBe(1);
+    expect(cfg.weights.enriched).toBe(1);
+    expect(cfg.weights.partnered).toBe(1);
     expect(cfg.params.summary.unembedded).toBe(0.2);
-    expect(cfg.weights).not.toHaveProperty("semantic");
+    // The legacy key itself is PRESERVED now (MESITA-1858, the additive
+    // window) — it is the fold that matters, not the deletion.
+    expect(cfg.weights).toHaveProperty("semantic");
   });
 
   it("nine sources and a locked mode → source matrix", () => {
@@ -275,11 +291,18 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("map", "proximity")).toBe("on");
     expect(modeSignalState("map", "randomness")).toBe("zero");
     expect(modeSignalState("swipe", "randomness")).toBe("on");
-    expect(modeSignalState("catalog", "mesita_level")).toBe("on");
-    expect(modeSignalState("map", "mesita_level")).toBe("on");
-    expect(modeSignalState("swipe", "mesita_level")).toBe("on");
-    expect(modeSignalState("chat", "mesita_level")).toBe("on");
-    expect(modeSignalState("word", "mesita_level")).toBe("off");
+    // Splitting one on-signal into two is the identity transform: every mode
+    // Level was on for gets both halves, and no mode gains one.
+    expect(modeSignalState("catalog", "enriched")).toBe("on");
+    expect(modeSignalState("map", "enriched")).toBe("on");
+    expect(modeSignalState("swipe", "enriched")).toBe("on");
+    expect(modeSignalState("chat", "enriched")).toBe("on");
+    expect(modeSignalState("word", "enriched")).toBe("off");
+    expect(modeSignalState("catalog", "partnered")).toBe("on");
+    expect(modeSignalState("map", "partnered")).toBe("on");
+    expect(modeSignalState("swipe", "partnered")).toBe("on");
+    expect(modeSignalState("chat", "partnered")).toBe("on");
+    expect(modeSignalState("word", "partnered")).toBe("off");
     expect(modeSignalState("favorites", "proximity")).toBe("off");
     expect(
       SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
@@ -749,7 +772,8 @@ describe("Discovery page box order", () => {
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
-    expect(signals).toContain("mesita_level");
+    expect(signals).toContain("enriched");
+    expect(signals).toContain("partnered");
     // The per-card mode dot strip is gone (MESITA-1856): the Matrix table on
     // this same page draws that grid with column headers, and six unlabelled
     // circles under a card repeated it without them.
@@ -860,5 +884,125 @@ describe("Discovery page box order", () => {
     expect(sourcesJsx).not.toContain("FavsConfigCard");
     expect(sourcesJsx).not.toContain('title="General"');
     expect(sourcesJsx).not.toContain('title="Signals"');
+  });
+});
+
+// ── MESITA-1858: the split, the cap, and the deploy window ─────────────────
+
+describe("Mesita Level splits into Enriched and Partnered", () => {
+  it("carries the money cap BY NAME — this map is keyed on the deleted string", () => {
+    // Had `mesita_level` simply left this map, `partnered` would have
+    // inherited the uniform 4 and money's exponent ceiling would have
+    // DOUBLED on merge day, with nothing failing anywhere.
+    expect(Object.keys(SIGNAL_WEIGHT_MAX).length).toBeGreaterThan(0);
+    expect(weightMaxFor("partnered")).toBe(2);
+    expect(weightMaxFor("enriched")).toBe(2);
+    expect(weightMaxFor("proximity")).toBe(WEIGHT_MAX);
+    expect(weightMaxFor("partnered")).not.toBe(WEIGHT_MAX);
+  });
+
+  it("clamps a console write above the cap instead of accepting it", () => {
+    const cfg = coerceConfig({ weights: { partnered: 4, enriched: 4, proximity: 4 } });
+    expect(cfg.weights.partnered).toBe(2);
+    expect(cfg.weights.enriched).toBe(2);
+    expect(cfg.weights.proximity).toBe(4);
+  });
+
+  it("every Record<SignalKey, …> map on this page has full key coverage", () => {
+    // A missing DEFAULT_SIGNAL_PARAMS entry on the EF side throws a TypeError
+    // that `loadDiscoveryConfig` swallows, returning DISCOVERY_DEFAULTS for
+    // the whole config on every request. Same shape of hazard here.
+    const expected = [...SIGNAL_KEYS].sort();
+    expect(Object.keys(DEFAULT_CONFIG.weights).sort()).toEqual(expected);
+    expect(Object.keys(DEFAULT_CONFIG.params).sort()).toEqual(expected);
+    expect(LIBRARY_SIGNALS.map((r) => r.key).sort()).toEqual(expected);
+    expect(SIGNALS.map((s) => s.key).sort()).toEqual(expected);
+    // And the icon map the Signals page renders, read as source: a missing
+    // key there is a card with no icon, not a type error, because ICONS is
+    // declared Record<SignalKey, …> in a file this test cannot import.
+    const client = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
+    const icons = client.slice(client.indexOf("const ICONS"));
+    for (const key of SIGNAL_KEYS) {
+      expect(icons.slice(0, icons.indexOf("};"))).toContain(`${key}:`);
+    }
+  });
+
+  it("reads mesita_level as a deprecated alias, onto both halves", () => {
+    resetLegacySignalWarnings();
+    const cfg = coerceConfig({ weights: { mesita_level: 2 } });
+    expect(cfg.weights.enriched).toBe(2);
+    expect(cfg.weights.partnered).toBe(2);
+  });
+
+  it("lets an explicitly-set new key win over the alias", () => {
+    resetLegacySignalWarnings();
+    const cfg = coerceConfig({
+      weights: { mesita_level: 2, partnered: 0.5, enriched: 1.25 },
+    });
+    expect(cfg.weights.partnered).toBe(0.5);
+    expect(cfg.weights.enriched).toBe(1.25);
+  });
+
+  it("PRESERVES an unknown weight key — the deploy-window mitigation", () => {
+    // This page auto-deploys on merge; the Edge Functions deploy by hand. In
+    // between, a whole-blob Save from here must not evict a key the EF side
+    // is about to need. A rebuild-from-SIGNAL_KEYS would have done exactly
+    // that, and the still-old EF would read a set 2 back as the default 1.
+    resetLegacySignalWarnings();
+    const cfg = coerceConfig({ weights: { mesita_level: 2, proximity: 1.5 } });
+    expect((cfg.weights as unknown as Record<string, number>).mesita_level).toBe(2);
+    expect(cfg.weights.proximity).toBe(1.5);
+  });
+
+  it("survives an unrelated Save — save the Chat prompt, diff the weights", () => {
+    // The literal failure: Vercel ships, the operator saves the Chat prompt,
+    // and the save path is `weights: live.config.weights` where `live.config`
+    // is a coerceConfig of whatever the EF returned. So a round-trip is what
+    // a save does to the weights map.
+    resetLegacySignalWarnings();
+    const live = coerceConfig({
+      weights: { mesita_level: 2, proximity: 1.5 },
+      chat: { prompt: "before" },
+    });
+    const afterSave = coerceConfig({ ...live, chat: { prompt: "after" } });
+    expect(afterSave.weights).toEqual(live.weights);
+    expect((afterSave.weights as unknown as Record<string, number>).mesita_level)
+      .toBe(2);
+    expect(afterSave.chat.prompt).toBe("after");
+  });
+
+  it("logs ONCE, structured, when a legacy key is folded", () => {
+    resetLegacySignalWarnings();
+    const seen: unknown[][] = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => void seen.push(args);
+    try {
+      coerceConfig({ weights: { mesita_level: 2 } });
+      coerceConfig({ weights: { mesita_level: 2 } });
+    } finally {
+      console.warn = original;
+    }
+    expect(seen).toHaveLength(1);
+    expect(seen[0][0]).toBe("[filters-config] legacy signal key");
+    expect(seen[0][1]).toMatchObject({
+      key: "mesita_level",
+      value: 2,
+      foldedTo: ["enriched", "partnered"],
+    });
+  });
+
+  it("mirrors the EF's signal key list exactly — these keys are PERSISTED", () => {
+    // Renaming one side alone does not fail a type check anywhere. It
+    // silently resets live discovery config to defaults.
+    const ef = readFileSync(
+      join(__dirname, "../../../../../../supabase/supabase/functions/_shared/discovery-signals.ts"),
+      "utf8",
+    );
+    const block = ef.slice(
+      ef.indexOf("export const SIGNAL_KEYS = ["),
+      ef.indexOf("] as const;", ef.indexOf("export const SIGNAL_KEYS = [")),
+    );
+    const efKeys = [...block.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+    expect(efKeys).toEqual([...SIGNAL_KEYS]);
   });
 });

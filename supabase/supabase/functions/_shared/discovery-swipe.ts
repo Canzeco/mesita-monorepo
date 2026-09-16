@@ -3,7 +3,7 @@
 // The engine key stays `swipe`; the surface is Home's Scroll pill since
 // MESITA-1697. Admission cuts first; the blend then scores under
 // weightsForMode("swipe"): proximity, timing, category, popularity,
-// mesita_level, randomness. Name, Summary, and Social stay 0. The
+// enriched, partnered, randomness. Name, Summary, and Social stay 0. The
 // 2026-08-26 two-signal SUM and partnerBias / randomnessMax multipliers are
 // retired — those knobs stay on the blob, unread.
 //
@@ -14,8 +14,9 @@
 //               place is MOVED FORWARD into. MESITA-1855.
 //
 // LANE 2 RUNS HERE (MESITA-1855). Until then `slotPromoted` had no production
-// caller anywhere — three tests asserted the absence — so `mesita_level` was
-// the only live path from what a place pays to where it ranks. That is the
+// caller anywhere — three tests asserted the absence — so the retired
+// `mesita_level` exponent was the only live path from what a place pays to
+// where it ranks. That is the
 // thing the two-lane split exists to prevent: money is supposed to buy a
 // POSITION, and the position pass was dead code. Scroll is where it belongs,
 // because Scroll is a single ranked deck, which is exactly what slotPromoted

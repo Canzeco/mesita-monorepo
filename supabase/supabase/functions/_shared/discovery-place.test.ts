@@ -89,6 +89,43 @@ Deno.test("a mapped row moves Popularity off the prior — the dead-signal guard
   assert(mapped > bare, `a 4.6 across 900 reviews (${mapped}) should beat the prior (${bare})`);
 });
 
+Deno.test("toSignalPlace sets `enriched` explicitly, from EITHER fact", () => {
+  // `isEnrichedPlace` is content_state='ready' OR a stamped enriched_at —
+  // BOTH, never one: 27% of the live catalog is ready with a null
+  // enriched_at, so an enriched_at-only test would grey a quarter of it.
+  // Set HERE, once, so the signal never re-derives it off a relation that
+  // may not carry the column (`public.places` has neither enriched_at nor
+  // family_keys; `place_profiles` and the `profiles` view do).
+  assertEquals(toSignalPlace({ ...ROW, content_state: "ready" }).enriched, true);
+  assertEquals(
+    toSignalPlace({ ...ROW, content_state: "queued", enriched_at: "2026-09-01T00:00:00Z" })
+      .enriched,
+    true,
+  );
+  assertEquals(
+    toSignalPlace({ ...ROW, content_state: "queued", enriched_at: null }).enriched,
+    false,
+  );
+  // Never undefined: an absent fact is an answered "no", not a hole.
+  assertEquals(toSignalPlace({}).enriched, false);
+});
+
+Deno.test("a synthesized Google row is never enriched, whatever its content_state says", () => {
+  // consumer-web-list-places stamps `content_state: "ready"` alongside
+  // `googleOnly: true` on a raw Google hit Mesita has never touched. Gating
+  // the PROJECTION keeps that out of ranking. The same synthesis on the
+  // consumer WIRE (withFamilyKeys) is a pre-existing bug with its own issue
+  // and is deliberately untouched here — this asserts the ranking side only.
+  assertEquals(
+    toSignalPlace({ ...ROW, content_state: "ready", googleOnly: true }).enriched,
+    false,
+  );
+  assertEquals(
+    toLineupPlace({ ...ROW, content_state: "ready", googleOnly: true }).enriched,
+    false,
+  );
+});
+
 Deno.test("toLineupPlace adds nameEmbedding, plan, and promoting; toSignalPlace still omits them", () => {
   const earned = toSignalPlace(ROW) as unknown as Record<string, unknown>;
   assertEquals(earned.nameEmbedding, undefined);
@@ -99,11 +136,16 @@ Deno.test("toLineupPlace adds nameEmbedding, plan, and promoting; toSignalPlace 
   assertEquals(lineup.plan, "pro");
   assertEquals(lineup.promoting, true);
   assertEquals(lineup.rating, 4.6);
+  // And it inherits `enriched` through the spread — the earned fact travels
+  // on both projections, unlike plan and the name vector.
+  assertEquals(toLineupPlace({ ...ROW, content_state: "ready" }).enriched, true);
   assertEquals(toLineupPlace({ ...ROW, plan: "free" }).promoting, false);
 });
 
 Deno.test("toSignalPlace carries no promo field, whatever the row holds", () => {
   const p = toSignalPlace(ROW) as unknown as Record<string, unknown>;
+  // `enriched` is a derived boolean, not a bought column — the two lanes are
+  // still disjoint by COLUMN, which is what the list-level test above pins.
   for (const col of BOUGHT_LANE_COLUMNS) {
     assertEquals(p[col], undefined, `"${col}" leaked into the earned lane`);
   }
@@ -159,8 +201,9 @@ Deno.test("attachIntakeHighWater: a query error leaves rows UNTOUCHED, never a c
   const admin = fakePlacesAdmin([], { message: "boom" });
   const rows = [{ id: "p1" }, { id: "p2" }];
   const out = await attachIntakeHighWater(admin, rows);
-  // Same objects back, no `intake_high_water` key added — mesitaLevel reads
-  // that absence as UNKNOWN (full credit), never as "everyone is at 0".
+  // Same objects back, no `intake_high_water` key added. No signal reads the
+  // field today (MESITA-1858 collapsed the gradient into `enriched`); the
+  // absence-vs-zero distinction is preserved for the deferred re-wire.
   assertEquals(out, rows);
   assert(!("intake_high_water" in out[0]));
 });

@@ -22,6 +22,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { SignalPlace } from "./discovery-signals.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
+import { isEnrichedPlace } from "./place-family-keys.ts";
 import { pulseOf } from "./pulse-pieces.ts";
 
 /**
@@ -43,6 +44,12 @@ export const EARNED_LANE_COLUMNS = [
   "google_stars_overall",
   "google_review_count",
   "embedding",
+  // The two columns `isEnrichedPlace` reads (MESITA-1858). Both are already
+  // in PLACE_PUBLIC_COLUMNS, so no consumer payload grows. Neither is in
+  // BOUGHT_LANE_COLUMNS, so the lanes stay disjoint — `plan` is the bought
+  // lane's, and Partnered reads it from there under the documented exception.
+  "content_state",
+  "enriched_at",
 ] as const;
 
 /** Every column the bought lane reads. Disjoint from the list above, by design. */
@@ -71,6 +78,17 @@ function nOrNull(v: unknown): number | null {
  * own review counts are thin enough today that blending them would move the
  * Bayesian shrinkage on noise. That is a second signal when it has volume, not
  * a second term in this one.
+ *
+ * `enriched` is set HERE, explicitly, and the signal never re-derives it
+ * (MESITA-1858). `isEnrichedPlace` degrades to `content_state` alone on a
+ * relation that lacks `enriched_at` — `public.places` is exactly such a
+ * relation — so the answer belongs at the one place that knows which relation
+ * the row came from. A synthesized Google row is excluded by name:
+ * consumer-web-list-places stamps `content_state: "ready"` alongside
+ * `googleOnly: true` on a hit Mesita has never touched, and calling that
+ * enriched would hand the raw Google lane the enriched multiplier.
+ * (The same synthesis on the CONSUMER WIRE is a separate, pre-existing bug
+ * with its own issue; this gate is scoped to ranking and does not touch it.)
  */
 export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
   return {
@@ -82,6 +100,10 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
     rating: nOrNull(row.google_stars_overall),
     user_ratings_total: nOrNull(row.google_review_count),
     embedding: row.embedding,
+    enriched: row.googleOnly === true ? false : isEnrichedPlace(row as {
+      content_state?: string | null;
+      enriched_at?: string | null;
+    }),
   };
 }
 
@@ -94,9 +116,9 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
  * other field — it is NOT selected by `EARNED_LANE_COLUMNS` (`places.
  * enrichment` sits behind the `profiles` view and isn't in the public
  * projection), so a row only carries it when the caller ran
- * `attachIntakeHighWater` first. A row that never got that side-read simply
- * has the key absent, which `mesitaLevel` reads as "unknown" (full credit),
- * never a silent penalty.
+ * `attachIntakeHighWater` first. THE `enriched` SIGNAL READS IT (MESITA-1858
+ * kept the gradient: the binary alone is a constant on every lane that admits
+ * only enriched rows). A row without it scores the binary instead.
  */
 export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
   return {
@@ -113,13 +135,16 @@ export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
 }
 
 /**
- * The side-read `mesita_level` needs but `profiles` doesn't carry
- * (MESITA-1598): `places.enrichment->highWater` for a batch of place ids,
- * merged onto each row as `intake_high_water` — the same shape
+ * The side-read the retired `mesita_level` gradient needed and `profiles`
+ * doesn't carry (MESITA-1598): `places.enrichment->highWater` for a batch of
+ * place ids, merged onto each row as `intake_high_water` — the same shape
  * `toLineupPlace` already knows how to read off any other column. Call this
- * AFTER the main admission query and BEFORE ranking; rows for ids the query
- * returns nothing for simply keep no key, which `mesitaLevel` treats as
- * "unknown" rather than a confirmed zero.
+ * AFTER the main admission query and BEFORE ranking.
+ *
+ * THIS IS WHAT MAKES `enriched` AN AXIS (MESITA-1858). The signal's binary
+ * half reads the same predicate the ranked lanes admit on, so without this
+ * side-read it answers 1 for every row it is ever handed. The gradient it
+ * feeds is the only part of the signal that can reorder an admitted pool.
  *
  * One batched query regardless of pool size — never N+1, and it never joins
  * into the ranking query itself, so a surface that doesn't call this pays

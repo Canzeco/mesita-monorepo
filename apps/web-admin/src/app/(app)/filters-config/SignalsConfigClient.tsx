@@ -1,11 +1,13 @@
 "use client";
 
-// Mesita Places Search Signals — the eight earned signals every Mesita
+// Mesita Places Search Signals — the nine earned signals every Mesita
 // Places source is ranked by (Docs > Discovery 8.3). Sources retrieve;
 // Lineup ranks; these are what it reads. Engines do not invent a second
 // scale. Weights and params persist on discovery_config. Slotting is a
-// post-blend position pass, not a weight. Mesita Level is the merged
-// partnership + promotion row.
+// post-blend position pass, not a weight. Mesita Level split into the two
+// binary rows Enriched and Partnered (MESITA-1858): one reads the enrichment
+// state, the other reads `plan`. Disjoint facts, so no double-count — which
+// is the thing the MESITA-1408 merge existed to prevent.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -21,6 +23,7 @@ import {
   Dices,
   FileText,
   MapPin,
+  Sparkles,
   Star,
   Tags,
   Type,
@@ -49,7 +52,8 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   timing: Clock,
   category: Tags,
   popularity: Star,
-  mesita_level: BadgeCheck,
+  enriched: Sparkles,
+  partnered: BadgeCheck,
   randomness: Dices,
 };
 
@@ -140,7 +144,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Mesita Places Search Signals"
-        subtitle="What ranks every Mesita Places source. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
+        subtitle="What ranks every Mesita Places source. Nine earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
         state={
           <KnobState
             kind="enforced"
@@ -177,10 +181,13 @@ export function SignalsConfigClient({
                       type="number"
                       inputMode="decimal"
                       min={WEIGHT_MIN}
-                      // Per-signal, not the uniform ceiling: Level is capped at
-                      // what the merge shipped (MESITA-1410). The EF clamps
-                      // server-side regardless; this stops the dial from
-                      // offering a number the backend would silently refuse.
+                      // Per-signal, not the uniform ceiling: the cap keys on
+                      // the two rows Mesita Level split into — Enriched and
+                      // Partnered — each carrying the 2 the merge shipped
+                      // (MESITA-1410, MESITA-1858), so money's exponent
+                      // ceiling did not silently double on merge day. The EF
+                      // clamps server-side regardless; this stops the dial
+                      // from offering a number the backend would refuse.
                       max={weightMaxFor(spec.key)}
                       step={0.05}
                       value={cfg.weights[spec.key]}

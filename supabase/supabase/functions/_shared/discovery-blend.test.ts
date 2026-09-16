@@ -7,8 +7,8 @@ import {
   type SignalWeights,
 } from "./discovery-blend.ts";
 import {
-  LEVEL_PARTNER,
-  LEVEL_PROMOTING,
+  ENRICHED_OFF,
+  PARTNERED_OFF,
   SIGNAL_KEYS,
   type SignalPlace,
 } from "./discovery-signals.ts";
@@ -92,7 +92,8 @@ const WEIGHTS_OFF: SignalWeights = {
   timing: 0,
   category: 0,
   popularity: 0,
-  mesita_level: 0,
+  enriched: 0,
+  partnered: 0,
   randomness: 0,
 };
 
@@ -237,8 +238,22 @@ Deno.test("a popularity-only blend ignores promoting — Promotion is its own we
   assertEquals(a.parts, b.parts);
 });
 
-Deno.test("Mesita Level weight lifts a live discount without reading rates", () => {
-  const w: SignalWeights = { ...WEIGHTS_OFF, mesita_level: 1 };
+Deno.test("the Partnered weight lifts a paying place without reading rates", () => {
+  // Replaces "Mesita Level weight lifts a live discount": the lift is now for
+  // PAYING, not for a live discount. A discount buys a lane-2 slot instead
+  // (MESITA-1855), which the slotting tests below cover.
+  const w: SignalWeights = { ...WEIGHTS_OFF, partnered: 1 };
+  const free = blend({ ...project(row("free", 4.5)), plan: "free" }, {}, w);
+  const paid = blend({ ...project(row("paid", 4.5)), plan: "pro" }, {}, w);
+  assert(paid.score > free.score, `paid ${paid.score} must beat free ${free.score}`);
+  assertEquals(free.parts.partnered, PARTNERED_OFF);
+  assertEquals(paid.parts.partnered, 1);
+});
+
+Deno.test("a live discount no longer moves the earned score at all", () => {
+  // The whole point of MESITA-1858 landing after MESITA-1855: with lane 2
+  // wired, promotion buys a POSITION, and `promoting` left the exponent.
+  const w: SignalWeights = { ...WEIGHTS_OFF, partnered: 1, enriched: 1 };
   const quiet = blend(
     { ...project(row("quiet", 4.5)), plan: "pro", promoting: false },
     {},
@@ -249,9 +264,37 @@ Deno.test("Mesita Level weight lifts a live discount without reading rates", () 
     {},
     w,
   );
-  assert(live.score > quiet.score, `live ${live.score} must beat quiet ${quiet.score}`);
-  assertEquals(quiet.parts.mesita_level, LEVEL_PARTNER);
-  assertEquals(live.parts.mesita_level, LEVEL_PROMOTING);
+  assertEquals(live.score, quiet.score);
+});
+
+Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits", () => {
+  // BOTH ROWS ARE ENRICHED, because that is the only population this signal
+  // ever scores: Map admits a listed row only through `isEnrichedListedRow`
+  // and Scroll's pool is `.eq("content_state", "ready")`. An `enriched: false`
+  // row here would make the assertion green by construction — production
+  // never ranks one. What must move the blend is the difference between a
+  // thin profile and a finished one, both admitted.
+  const w: SignalWeights = { ...WEIGHTS_OFF, enriched: 1 };
+  const thin = blend(
+    { ...project(row("thin", 4.5)), enriched: true, intakeHighWater: 2 },
+    {},
+    w,
+  );
+  const full = blend(
+    { ...project(row("full", 4.5)), enriched: true, intakeHighWater: 10 },
+    {},
+    w,
+  );
+  assert(full.score > thin.score, `full ${full.score} must beat thin ${thin.score}`);
+  assertEquals(full.parts.enriched, 1);
+  assertAlmostEquals(thin.parts.enriched, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.2, 1e-12);
+  // The floor still holds at the bottom of the gradient: demote, never delete.
+  const created = blend(
+    { ...project(row("created", 4.5)), enriched: true, intakeHighWater: 0 },
+    {},
+    w,
+  );
+  assertAlmostEquals(created.parts.enriched, ENRICHED_OFF, 1e-12);
 });
 
 Deno.test("slotting off is a no-op", () => {

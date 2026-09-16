@@ -200,16 +200,23 @@ Deno.test("three nested place types: Map picks the ring, Feed and Scroll need en
 Deno.test("Mesita Places Search signals match the admin matrix", () => {
   assertEquals(modeSignalState("word", "name"), "on");
   assertEquals(modeSignalState("word", "summary"), "off");
-  assertEquals(modeSignalState("word", "mesita_level"), "off");
+  assertEquals(modeSignalState("word", "enriched"), "off");
+  assertEquals(modeSignalState("word", "partnered"), "off");
   assertEquals(modeSignalState("chat", "summary"), "on");
   assertEquals(modeSignalState("chat", "randomness"), "off");
   assertEquals(modeSignalState("map", "proximity"), "on");
   assertEquals(modeSignalState("map", "randomness"), "zero");
   assertEquals(modeSignalState("swipe", "randomness"), "on");
-  assertEquals(modeSignalState("catalog", "mesita_level"), "on");
-  assertEquals(modeSignalState("map", "mesita_level"), "on");
-  assertEquals(modeSignalState("swipe", "mesita_level"), "on");
-  assertEquals(modeSignalState("chat", "mesita_level"), "on");
+  // Splitting one on-signal into two on-signals is the identity transform:
+  // every mode Level was on for gets both halves, and no mode gains one.
+  assertEquals(modeSignalState("catalog", "enriched"), "on");
+  assertEquals(modeSignalState("map", "enriched"), "on");
+  assertEquals(modeSignalState("swipe", "enriched"), "on");
+  assertEquals(modeSignalState("chat", "enriched"), "on");
+  assertEquals(modeSignalState("catalog", "partnered"), "on");
+  assertEquals(modeSignalState("map", "partnered"), "on");
+  assertEquals(modeSignalState("swipe", "partnered"), "on");
+  assertEquals(modeSignalState("chat", "partnered"), "on");
   assertEquals(
     SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
     true,
@@ -222,7 +229,8 @@ Deno.test("weightsForMode zeros off and Map randomness against defaults", () => 
   assertEquals(map.name, 0);
   assertEquals(map.summary, 0);
   assertEquals(map.proximity, DISCOVERY_DEFAULTS.weights.proximity);
-  assertEquals(map.mesita_level, DISCOVERY_DEFAULTS.weights.mesita_level);
+  assertEquals(map.enriched, DISCOVERY_DEFAULTS.weights.enriched);
+  assertEquals(map.partnered, DISCOVERY_DEFAULTS.weights.partnered);
   const word = weightsForMode("word", DISCOVERY_DEFAULTS.weights);
   assertEquals(word.name, DISCOVERY_DEFAULTS.weights.name);
   for (const key of SIGNAL_KEYS) {
