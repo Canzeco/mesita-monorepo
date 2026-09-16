@@ -129,8 +129,18 @@ export function PromosSection({
   // place to subscribe again and lock its Pay rung "Off".
   const placePartnered = tierFlag(railPlace?.partnered);
   const placeMesitaPay = tierFlag(railPlace?.mesitaPayEnabled);
-  // Re-join is owner-only: the subscription it re-enters is the owner's.
-  const isOwner = railPlace?.myRole === "owner";
+  // ONE ROLE READ, TWO VERDICTS. Re-join is owner-only (the subscription it
+  // re-enters is the owner's) and so is the Mesita Pay rung
+  // (`business-web-set-place-rails` takes `requireOwner` for that one key) —
+  // but they want the unknown case answered differently, so both derive from
+  // the same read rather than growing two.
+  const myRole = railPlace?.myRole ?? null;
+  // A button, so unknown means DON'T OFFER IT: nothing is lost by a missing
+  // door, and a 403 after a press is worse.
+  const isOwner = myRole === "owner";
+  // A row's state, so unknown means DON'T CLAIM: `null` leaves the rung as it
+  // was rather than telling an owner the switch is not theirs.
+  const ownsPay = myRole === null ? null : myRole === "owner";
 
   const router = useRouter();
   const [switchPending, startSwitch] = useTransition();
@@ -182,6 +192,7 @@ export function PromosSection({
     rewardLaneHeld,
     placePartnered,
     placeMesitaPay,
+    isOwner: ownsPay,
     forfeited,
   };
   const rows = offeringRows(ladderInput);

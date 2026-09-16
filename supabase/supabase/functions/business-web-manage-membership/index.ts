@@ -24,13 +24,17 @@
 // is the person who ends it. An editor gets the 403 the console's own copy
 // already implies.
 //
-// MOCK_SUBSCRIPTION IS ANSWERED, NEVER FLIPPED (MESITA-37). With the mock on
-// — or with no Stripe secret at all — there is no Stripe subscription behind
-// the partnership, so this returns `url: null, mock: true` and calls Stripe
-// zero times. The console says so in one line, which is the same shape
-// `business-web-get-payment-dashboard-link` uses for a mock Connect account.
-// This EF never reads STRIPE_ALLOW_LIVE and never writes any of the three
-// operator flags.
+// THE MOCK ANSWER COMES FROM THE ROW, NOT FROM THE FLAG (MESITA-1891 review).
+// With no Stripe secret at all — or with no live `partner_memberships` row,
+// or one whose subscription id is a `mock_*` placeholder — there is no Stripe
+// subscription behind the partnership, so this returns `url: null, mock: true`
+// and calls Stripe zero times. The console says so in one line, which is the
+// same shape `business-web-get-payment-dashboard-link` uses for a mock Connect
+// account. `portal-gate.ts` holds the decision and says why it may not be
+// MOCK_SUBSCRIPTION: an operator flipping that flag back on over a place that
+// bought a REAL yearly Membership would strand that owner with no cancel path
+// while Stripe kept billing, and there is no other cancel path in the product.
+// This EF reads none of the three operator flags, and writes none of them.
 //
 // NOT BEHIND `liveChargesBlocked`. That gate (MESITA-37) guards the paths
 // that OPEN a charge — checkout, catalog provisioning, Connect account
@@ -60,15 +64,11 @@ import {
   readPlaceBillingCustomer,
   STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
+import { readLiveMembership } from "../_shared/partner-membership.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
+import { membershipPortalIsMock } from "./portal-gate.ts";
 
 type Body = { placeId?: unknown; projectId?: unknown; returnUrl?: unknown };
-
-// ⚠️ DEMO MOCK — the one on/off switch shared with the checkout EFs. Agents
-// must never flip it (MESITA-37); it is an operator's call. Read here only to
-// answer "is there a Stripe subscription behind this partnership at all".
-const MOCK_SUBSCRIPTION =
-  (Deno.env.get("MOCK_SUBSCRIPTION") ?? "true").toLowerCase() !== "false";
 
 function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
@@ -101,8 +101,18 @@ Deno.serve(async (req) => {
   const stripeKey = stripeSecretKey();
   // The mock grant has no Stripe subscription, so there is nothing to open.
   // Answered BEFORE the customer read: a mock environment must not depend on
-  // a column that only the real path ever fills.
-  if (MOCK_SUBSCRIPTION || !stripeKey) {
+  // a column that only the real path ever fills. With no key at all the row is
+  // not even read — `membershipPortalIsMock` answers on the key alone, and a
+  // query against an unconfigured environment would only be able to fail.
+  let live: { stripe_subscription_id: string | null } | null = null;
+  if (stripeKey) {
+    const read = await readLiveMembership(admin, placeId);
+    if (!read.ok) {
+      return json({ ok: false, error: `membership_read: ${read.error}` }, 500);
+    }
+    live = read.row;
+  }
+  if (membershipPortalIsMock(stripeKey, live)) {
     return json({ ok: true, url: null, mock: true });
   }
 

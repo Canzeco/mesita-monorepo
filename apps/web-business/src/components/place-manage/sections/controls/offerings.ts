@@ -219,6 +219,20 @@ export type LadderInput = {
    *  the account's state is moot. `null`/undefined is "Checking…", never off:
    *  a stale payload must not tell a paying place its switch is down. */
   placeMesitaPay?: boolean | null;
+  /** Does this caller OWN the place? (MESITA-1891 review.) Only the Mesita Pay
+   *  rung reads it, and only to stop offering a switch that the server will
+   *  refuse: `business-web-set-place-rails` takes `requireOwner` for the
+   *  `mesita_pay` key and `requireEditor` for the other three, so an editor's
+   *  toggle here 409s at the door while the same control on the Pay card is
+   *  already locked for them. Two surfaces for one door disagreeing about who
+   *  may use it is worse than either answer.
+   *
+   *  `null`/undefined is UNKNOWN, not "no" — the role is read off the rail's
+   *  own list, which is absent on a pool place or a page rendered without the
+   *  shell. Unknown leaves the rung exactly as it was, because guessing "not
+   *  yours" at an owner is the same class of lie as guessing "off" at a
+   *  paying place. */
+  isOwner?: boolean | null;
   /** This place lost the partnership to a third strike (`plan_forfeited_at`).
    *  A forfeited place reads `member=false` (the strike patch drops `plan`),
    *  so without this the top line could not tell "never joined" from
@@ -234,6 +248,12 @@ const NEEDS_PAY = "Needs Mesita Pay";
 // that overflows it, and the row's own label already says Mesita Pay — the
 // chip only has to say where.
 const NEEDS_ORG_PAY = "Off in Products";
+/** Who moves the Mesita Pay rung, when it is not the person reading it. Sits
+ *  in the `not_mine` slot rather than `locked` because the rung is neither
+ *  unmet nor off: an editor sees the TRUE state of card acceptance, they just
+ *  cannot change it. `MesitaPayCard` says the same thing in a sentence ("An
+ *  owner turns this on."); this is the chip-width version. */
+export const OWNER_SETS_PAY = "Owner only";
 
 function railState(on: boolean): RowState {
   return on ? { kind: "on" } : { kind: "off" };
@@ -286,7 +306,14 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
   // product's own switch in Products (MESITA-1867). Order: Partner, then that
   // switch (an explicit `false` is a verdict, and one that makes the Stripe
   // state moot), then the two reads still in flight (the Connect mirror, or a
-  // tier flag the rail has not answered), then Stripe, then the rail.
+  // tier flag the rail has not answered), then Stripe, then RANK, then the
+  // rail.
+  //
+  // RANK IS LAST, exactly as `MesitaPayCard`'s branch chain has it: a
+  // prerequisite is what the place is missing and outranks who is reading. It
+  // is `not_mine` and never `locked`, because `locked` renders the row OFF and
+  // would tell an editor that a place taking card payments is not — the
+  // MESITA-1735 class of bug, on the one rung where it means money.
   const payState: RowState = !member
     ? { kind: "locked", needs: NEEDS_PARTNER }
     : input.placeMesitaPay === false
@@ -295,7 +322,9 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
         ? { kind: "checking" }
         : connect.kind !== "ready"
           ? { kind: "locked", needs: NEEDS_STRIPE }
-          : railState(rails.mesita_pay);
+          : input.isOwner === false
+            ? { kind: "not_mine", word: OWNER_SETS_PAY, on: rails.mesita_pay }
+            : railState(rails.mesita_pay);
 
   const rows: Omit<OfferingRow, "disagreement">[] = [
     {
@@ -470,7 +499,11 @@ function guestsGet(row: Omit<OfferingRow, "disagreement">, input: LadderInput): 
     case "visit_rewards":
       return input.member && input.visitRewardsLevel > 0 && !input.rewardLaneHeld;
     case "mesita_pay":
-      return row.state.kind === "on";
+      // `not_mine` since the rank branch (MESITA-1891 review): the rung reads
+      // the same bit either way, and reading it as "guests do not get it"
+      // would manufacture a disagreement line at every editor.
+      return row.state.kind === "on" ||
+        (row.state.kind === "not_mine" && row.state.on === true);
     case "reservations":
       return row.state.kind === "not_mine" && row.state.on === true;
     default:
@@ -535,8 +568,16 @@ export function guestSummary(rows: readonly OfferingRow[]): string {
     .filter((r) => {
       if (!GUEST_PHRASE[r.key]) return false;
       if (r.disagreement) return false;
-      if (r.key === "reservations") return r.state.kind === "not_mine" && r.state.on === true;
-      return r.state.kind === "on";
+      // `not_mine` with `on: true` IS live for guests — it says the fact is
+      // real and somebody else writes it. Reservations was the only row that
+      // could reach that state until the Mesita Pay rung learned rank
+      // (MESITA-1891 review), so the special case became the rule: an editor
+      // must still read "guests can pay by card" about a place that takes
+      // cards.
+      return (
+        r.state.kind === "on" ||
+        (r.state.kind === "not_mine" && r.state.on === true)
+      );
     })
     .map((r) => GUEST_PHRASE[r.key]!);
   if (phrases.length === 0) return "Right now, nothing is live for guests.";
