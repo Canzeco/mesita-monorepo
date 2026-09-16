@@ -12,10 +12,14 @@
 #
 #   ./scripts/regen-types.sh
 #
-# Prefer the Supabase MCP `generate_typescript_types` tool over this script
-# when running non-interactively — the CLI (`supabase gen types typescript
-# --linked`) has been observed to hang on non-TTY runs; paste its output into
-# each target below when you do.
+# The CLI is the source of truth for these files. If it hangs on a non-TTY run
+# (it has, historically), the Supabase MCP `generate_typescript_types` tool is
+# the fallback — but it emits the PUBLIC schema only, so its output drops the
+# `graphql_public` block and the empty `Constants.graphql_public` entry that
+# the CLI emits: 29 lines that would silently come back the next time anyone
+# ran this script. Verified 2026-09-15 (MESITA-1895). If you must use the MCP
+# tool, diff its output against the committed file first and restore that block
+# by regenerating with the CLI rather than by hand.
 
 set -euo pipefail
 
