@@ -2518,6 +2518,41 @@ export type Database = {
           },
         ]
       }
+      visit_ticket_payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          method: string
+          stripe_payment_intent_id: string | null
+          ticket_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          method: string
+          stripe_payment_intent_id?: string | null
+          ticket_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          method?: string
+          stripe_payment_intent_id?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_ticket_payments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "visit_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visit_tickets: {
         Row: {
           approved_amount_due_cents: number | null
@@ -2956,6 +2991,10 @@ export type Database = {
         }[]
       }
       queue_due_place_enrichments: { Args: never; Returns: number }
+      record_visit_tenders: {
+        Args: { p_tenders: Json; p_ticket_id: string }
+        Returns: Json
+      }
       redeem_credit_gift: {
         Args: { p_claimer_id: string; p_code_hash: string }
         Returns: Json

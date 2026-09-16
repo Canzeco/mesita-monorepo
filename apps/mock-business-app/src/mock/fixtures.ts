@@ -212,19 +212,70 @@ function build<T>(placeIds: string[], per: number, make: (placeId: string, i: nu
 
 const ALL_IDS = PLACES.map((p) => p.id);
 
+// A VISIT IS SETTLED BY TENDER ROWS (MESITA-1910), so the fixture builds the
+// arithmetic instead of picking one word. `totalCents` is what the guest owed
+// after the reward; Credits reduce it further; the tenders take the rest.
+//
+//     sum(tenders) + creditsCents = totalCents
+//
+// Four shapes, because each is a case the single chip got wrong:
+//   · one tender          the everyday bill
+//   · credits + one       the chip showed "credits" and the cash vanished
+//   · cash + card         unrepresentable before this — the guest split it
+//   · credits, no tender  Credits covered the bill; ZERO rows is the honest
+//                         answer, and the old model needed a sentinel for it
 export const VISITS: MockVisit[] = build(ALL_IDS, 14, (placeId, i, rnd) => {
   const r = rnd();
+  const totalCents = 18_000 + Math.floor(rnd() * 96_000);
+  const shape = rnd();
+
+  let creditsCents = 0;
+  let tenders: MockVisit["tenders"] = [];
+  if (shape > 0.9) {
+    // Credits cover the whole bill: no tender at all.
+    creditsCents = totalCents;
+  } else if (shape > 0.62) {
+    // Credits take a bite, one tender settles the remainder.
+    creditsCents = Math.min(totalCents, 2_000 + Math.floor(rnd() * 22_000));
+    tenders = [{ method: r > 0.5 ? "card" : "cash", amountCents: totalCents - creditsCents }];
+  } else if (shape > 0.42) {
+    // The split the scalar column could never hold.
+    const first = Math.floor(totalCents * (0.3 + rnd() * 0.4));
+    tenders = [
+      { method: "cash", amountCents: first },
+      { method: "card", amountCents: totalCents - first },
+    ];
+  } else {
+    tenders = [
+      { method: r > 0.78 ? "mesita_pay" : r > 0.4 ? "card" : "cash", amountCents: totalCents },
+    ];
+  }
+
   return {
     id: `vst_${placeId}_${i}`,
     placeId,
     guest: GUESTS[Math.floor(r * GUESTS.length)].name,
     at: daysAgo(Math.floor(i / 2), (i % 2) * 5 + 2),
-    totalCents: 18_000 + Math.floor(rnd() * 96_000),
+    totalCents,
     rewardCents: Math.floor(rnd() * 5_500),
-    method: r > 0.7 ? "credits" : r > 0.25 ? "card" : "cash",
+    creditsCents,
+    tenders,
     state: i === 0 ? "open" : r > 0.94 ? "voided" : "settled",
   };
 });
+
+// THE INVARIANT, HELD AT BUILD TIME. The screen's whole claim is that the
+// breakdown adds up; a fixture that drifts by a centavo would make the mock
+// teach the opposite of what the real table enforces. Throwing here fails the
+// build, which is louder than a wrong number nobody adds up by hand.
+for (const v of VISITS) {
+  const taken = v.tenders.reduce((n, t) => n + t.amountCents, 0);
+  if (taken + v.creditsCents !== v.totalCents) {
+    throw new Error(
+      `MockVisit ${v.id}: tenders (${taken}) + credits (${v.creditsCents}) !== total (${v.totalCents})`,
+    );
+  }
+}
 
 export const ORDERS: MockOrder[] = build(ALL_IDS, 11, (placeId, i, rnd) => {
   const r = rnd();
