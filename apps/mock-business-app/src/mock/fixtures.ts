@@ -21,6 +21,7 @@ import type {
   MockMember,
   MockOrder,
   MockDay,
+  MockPlan,
   MockPlace,
   MockPlaceProfile,
   MockProfileMenu,
@@ -335,33 +336,65 @@ export const CREDIT_BALANCES: MockCreditBalance[] = build(ALL_IDS, 23, (placeId,
   lastMoveAt: daysAgo(i),
 }));
 
-/** Skewed, not uniform. A class column where every level is equally common
- *  says nothing about the room — the whole reason to look at it is to find out
- *  that a Del Valle restaurant is two thirds A/B and C+, and a flat draw would
- *  hide exactly that. */
+/** A PYRAMID, not a flat draw. Most guests are Bronze, Silver is earned on
+ *  Instagram, Gold is bought, and Diamond is invited — a column where all four
+ *  are equally common would say the ladder means nothing. */
 function classFor(r: number): MockClass {
-  if (r > 0.62) return "A/B";
-  if (r > 0.34) return "C+";
-  if (r > 0.16) return "C";
-  if (r > 0.06) return "C-";
-  return "D+";
+  if (r > 0.94) return "Diamond";
+  if (r > 0.78) return "Gold";
+  if (r > 0.55) return "Silver";
+  return "Bronze";
+}
+
+/** Plan FOLLOWS class, because in the real product it cannot contradict it.
+ *
+ *  Paying is what gets you Gold, so a Gold guest is on Premium and Bronze and
+ *  Silver guests are not — a Silver who paid would rank up and stop being
+ *  Silver. Diamond is the only free variable: it is invite-only and outranks
+ *  Gold, so a Diamond guest may or may not also be paying, and Class alone
+ *  cannot tell you which. Roll only that case. */
+function planFor(cls: MockClass, r: number): MockPlan {
+  if (cls === "Gold") return "Premium";
+  if (cls === "Diamond") return r > 0.5 ? "Premium" : "Free";
+  return "Free";
+}
+
+/** "Ana Robles" -> "ana.robles". Accents out, because a handle cannot carry
+ *  them and a mock that prints @fermin.rico with an accent teaches a shape
+ *  Instagram would reject. */
+function handleFor(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z ]/g, "")
+    .trim()
+    .replace(/ +/g, ".");
 }
 
 export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) => {
   const guest = GUESTS[i % GUESTS.length];
+  const cls = classFor(rnd());
+  const name = `${guest.name}${i >= GUESTS.length ? " Jr." : ""}`;
   return {
     id: `cus_${placeId}_${i}`,
     placeId,
-    name: `${guest.name}${i >= GUESTS.length ? " Jr." : ""}`,
+    name,
     age: 19 + Math.floor(rnd() * 49),
-    class: classFor(rnd()),
+    class: cls,
     sex: guest.sex,
+    plan: planFor(cls, rnd()),
+    // A Silver ALWAYS has a handle — Silver is the class Instagram earns, so a
+    // Silver with an empty cell is a contradiction on screen. Everyone else is
+    // a coin the reviewer can watch land both ways.
+    instagram: cls === "Silver" || rnd() > 0.55 ? handleFor(name) : null,
     visits: 1 + Math.floor(rnd() * 19),
-    whatsapp: `+52 81 5555 ${String(1200 + Math.floor(rnd() * 8000)).padStart(4, "0")}`,
+    spendCents: 22_000 + Math.floor(rnd() * 480_000),
+    phone: `+52 81 5555 ${String(1200 + Math.floor(rnd() * 8000)).padStart(4, "0")}`,
     // TWO of sixteen, and scattered rather than at the top, so the unlocked
-    // state is on screen at first paint and the column visibly MIXES. A table
-    // that is locked all the way down reads as a column that does not work.
-    whatsappBought: i === 3 || i === 10,
+    // state is on screen at first paint and the columns visibly MIX. A table
+    // locked all the way down reads as a pair of columns that do not work.
+    contactUnlocked: i === 3 || i === 10,
   };
 });
 
