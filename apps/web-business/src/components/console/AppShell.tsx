@@ -156,9 +156,11 @@ export function AppShell({
 
   const close = () => setOpen(false);
 
+  // The rail takes the SCOPE, not the portfolio (MESITA-1918): `places` fed
+  // the selector's menu, and the selector is gone. The list stays here, where
+  // `useRailScope` resolves it and `RailScopeProvider` publishes it.
   const railProps = {
     scope,
-    places,
     isSuperAdmin,
     viewerError,
     accountLabel,

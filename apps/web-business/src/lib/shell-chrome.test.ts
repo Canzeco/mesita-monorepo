@@ -174,7 +174,6 @@ describe("the unsaved-edits guard reaches the rail", () => {
     for (const f of [
       "components/console/Sidebar.tsx",
       "components/console/AppShell.tsx",
-      "components/console/RailSelector.tsx",
     ]) {
       const src = readCode(f);
       expect(src, f).not.toContain("collapsed");
@@ -199,21 +198,20 @@ describe("the unsaved-edits guard reaches the rail", () => {
     const rail = readCode("components/console/Sidebar.tsx");
     // Rows ask before leaving a dirty place.
     expect(rail).toContain("if (!active) onGuardedNavigate?.(href, e);");
-    // Both selectors are the rail's own since MESITA-1848, and both ask too:
-    // the guard decides BEFORE the pending name is shown, or an operator sees
-    // the new scope while still sitting on the old one's unsaved edits.
-    const go = rail.slice(rail.indexOf("const go = ("));
-    const goBody = go.slice(0, go.indexOf("};"));
-    expect(goBody.indexOf("guardNav?.(href)")).toBeGreaterThan(-1);
-    expect(goBody.indexOf("guardNav?.(href)")).toBeLessThan(goBody.indexOf("setChoice("));
-    // Every ceremony in either MENU is a guarded link, never a bare one. The
-    // NavRow's own <Link> guards through `onGuardedNavigate`, checked above.
-    // The selectors render only in the states where they answer something
-    // (MESITA-1879), and their ceremonies ride with them.
-    const menus = rail.slice(rail.indexOf("<RailSelector"));
-    for (const m of menus.match(/<Link\b[\s\S]*?<\/Link>/g) ?? []) {
-      expect(m).toContain("guardNav?.(");
-    }
+    // THERE IS NO MENU LEFT TO GUARD (MESITA-1918). The selector and its
+    // pending-switch clock are gone, so `const go = (` and `setChoice(` are
+    // gone with them — and every way out of this column is now a NavRow, which
+    // guards through `onGuardedNavigate` above. That is the whole surface.
+    expect(rail).not.toContain("const go = (");
+    expect(rail).not.toContain("setChoice(");
+    expect(rail).not.toContain("<RailSelector");
+    // Every remaining <Link> in the file is a NavRow's own.
+    const links = rail.match(/<Link\b[\s\S]*?<\/Link>/g) ?? [];
+    expect(links.length).toBeLessThanOrEqual(1);
+    // And the rail's own rows still route through the guard, including the
+    // catalogue door the menu used to hold.
+    expect(rail).toContain('label="All places"');
+    expect(rail).toContain("onGuardedNavigate={guardNav ?? undefined}");
   });
 });
 
@@ -258,146 +256,6 @@ describe("the rail is six nouns and one indent", () => {
     expect(r).not.toContain("WELL_BG");
     expect(r).not.toContain('role="group"');
   });
-
-  // MESITA-1848. The groups are headed by SELECTORS, not by eyebrows: the
-  // head of a group is the thing itself, and it is a control. An eyebrow says
-  // the subject's noun a second time and does nothing.
-  // MESITA-1849. Pato, on the first build: "this looks like shit. make it
-  // cleaner." The selector was a 28px chip at x=10 and two lines tall, while
-  // a row is a 14px icon at x=28 and one line — two glyph columns, three row
-  // heights, and a parent whose label started LEFT of its own children's.
-  // Rank is colour and position now, never size.
-  it("the selector is the row's size and the row's glyph box", () => {
-    const sel = readCode("components/console/RailSelector.tsx");
-    // ONE GLYPH BOX, shared with the rail's ICON literal.
-    expect(sel).toContain('"h-4 w-4 lg:h-3.5 lg:w-3.5 shrink-0');
-    expect(rail()).toContain('const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5"');
-    // ONE HEIGHT: the row's own padding literals, not a taller pair.
-    expect(sel).toContain("min-h-11 lg:min-h-0 lg:py-2");
-    // ONE LINE: no meta prop, so no second line can come back by prop.
-    expect(sel).not.toContain("meta");
-    // RANK BY COLOUR: the head is the bright one, its pages are muted.
-    expect(sel).toContain("text-sidebar-foreground");
-    expect(sel).toContain("font-semibold");
-    expect(rail()).toContain("text-sidebar-muted hover:bg-sidebar-accent");
-    // A SEAM, NOT AIR (MESITA-1851): with every row one height, a margin
-    // stopped reading as a boundary, so each group after Account opens on the
-    // footer's own hairline. ONE constant draws both.
-    expect(rail()).toContain(
-      'const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2"',
-    );
-    // ONE SEAM DECLARED ONCE, and the groups plus the foot all draw it. It
-    // moved from a bare `className={SECTION_SEAM}` to `cn(SECTION_SEAM, …)`
-    // when Account left the scroller for the pinned footer (MESITA-1909), so
-    // what is pinned is the constant's single definition, not its spelling at
-    // one call site.
-    expect((rail().match(/SECTION_SEAM/g) ?? []).length).toBeGreaterThan(1);
-    expect(rail()).not.toContain('className="mt-3"');
-  });
-
-  it("renders ONE selector, and it heads the rail wherever a place is known", () => {
-    // MESITA-1899 reversed MESITA-1879's condition. The selector used to
-    // render only at `multi`, on the reasoning that a control over one thing
-    // selects nothing — true while the ORGANIZATION selector still headed the
-    // column. MESITA-1892 deleted that one with the layer, so at solo (the
-    // shape every real operator is in) the rail opened naming nothing.
-    // It heads `solo` and `multi` now; `zero` and `unknown` still get none.
-    const r = rail();
-    expect(r).not.toContain("GroupHeader");
-    expect(r).not.toContain("TINY_LABEL_CLASS");
-    // ONE SELECTOR (MESITA-1892). There were two — an organization and one of
-    // its places — and the layer is gone, so the only subject left is the
-    // place. Still exactly one: heading the rail at solo did not add a second.
-    expect((r.match(/<RailSelector/g) ?? []).length).toBe(1);
-    expect(r).not.toContain('label="Switch organization"');
-    expect(r).toContain('label="Switch place"');
-    expect(r).toContain('scope.mode === "solo" || scope.mode === "multi"');
-    // And the two states that must NOT get one keep their own branches: a
-    // failed read must never name a place, and zero has none to name.
-    expect(r).toContain('scope.mode === "zero" &&');
-    // Account is NOT one: there is one of you, so a chevron would be a
-    // control with nothing to control. Pato: "(No subitems)".
-    const account = r.slice(r.indexOf("href={SHELL_ROUTES.account}"));
-    expect(account.slice(0, account.indexOf("/>"))).not.toContain("Selector");
-  });
-
-  // MESITA-1803. The place picker grows a search field past a count, and the
-  // count is ONE exported number. These are the pairings a compiler cannot
-  // see: the rail reading the constant, and the two lines without which a
-  // field inside a Radix menu does not work at all.
-  it("the picker's threshold is read, never retyped", () => {
-    const r = rail();
-    expect(r).toContain("PLACE_SEARCH_MIN");
-    // The failure this catches: someone inlines the digit, the constant and
-    // the rail drift, and the field appears at a count no test names.
-    expect(r).not.toMatch(/places\.length >= \d/);
-    expect(r).not.toMatch(/places\.length >= 8/);
-    // The field is above the radio group, never inside it — a search row
-    // inside a radio group is announced as one of the options.
-    const picker = r.slice(r.indexOf('label="Switch place"'));
-    expect(picker.indexOf("<MenuSearch")).toBeGreaterThan(-1);
-    expect(picker.indexOf("<MenuSearch")).toBeLessThan(
-      picker.indexOf("<DropdownMenuRadioGroup"),
-    );
-    // And the way out stays outside the filter: "All places" is rendered
-    // unconditionally, so a query that matches nothing still has a door.
-    const footer = picker.slice(picker.indexOf("<DropdownMenuSeparator"));
-    expect(footer).toContain("All places");
-    expect(footer).not.toContain("placeSearch &&");
-  });
-
-  it("the menu's field survives Radix's typeahead and its own focus", () => {
-    const sel = readCode("components/console/RailSelector.tsx");
-    // Without stopPropagation the menu's typeahead eats every keystroke aimed
-    // at the input; without onOpenAutoFocus the caret opens on a row instead
-    // of the field. Both are one line, and both look removable.
-    expect(sel).toContain("e.stopPropagation()");
-    expect(sel).toContain("onOpenAutoFocus");
-    // The field's keyboard is ONE exported function, which is what lets
-    // components/console/rail-selector.test.ts press keys at it rather than
-    // read this file. Inlining it back into the JSX puts the arrow keys
-    // beyond reach of any test again.
-    expect(sel).toContain("export function handleMenuSearchKeyDown");
-    expect(sel).toContain("onKeyDown={handleMenuSearchKeyDown}");
-  });
-
-  // MESITA-1803, the second pass. Three failures the first build shipped, and
-  // the wiring that answers each. What CAN be proven by calling a function is
-  // proven in components/console/rail-selector.test.ts; these two are props
-  // crossing a component boundary, which only the source shows.
-  it("Escape is answered where Radix asks, not where the field is", () => {
-    const sel = readCode("components/console/RailSelector.tsx");
-    const rail = readCode("components/console/Sidebar.tsx");
-    // FAILURE PREVENTED: the two-stage Escape silently stops working. Radix
-    // dismisses from a document CAPTURE listener, so a bubble-phase handler
-    // on the input never runs — the query could never clear, the menu just
-    // closed. `DismissableLayer` calls `onEscapeKeyDown` BEFORE it checks
-    // `defaultPrevented`, so the answer has to be the content's prop.
-    expect(sel).toContain("onEscapeKeyDown?: (event: KeyboardEvent) => void");
-    expect(sel).toContain("onEscapeKeyDown={onEscapeKeyDown}");
-    expect(rail).toContain("onEscapeKeyDown={escapePlaceMenu}");
-    expect(rail).toMatch(/escapePlaceMenu[\s\S]{0,200}e\.preventDefault\(\)/);
-    // And the stage that lived in the input — where it could never fire — is
-    // gone, not merely duplicated.
-    expect(sel).not.toContain('if (value === "") return;');
-  });
-
-  it("the query dies with the menu, by every route out", () => {
-    const sel = readCode("components/console/RailSelector.tsx");
-    const rail = readCode("components/console/Sidebar.tsx");
-    // FAILURE PREVENTED: a typed query outliving the menu. Clearing it inside
-    // `pickPlace` covered ONE of four exits — Escape, a click outside and the
-    // trigger all left it standing, and the next open showed a list filtered
-    // by a word nobody could see. `onOpenChange` is every exit at once.
-    expect(sel).toContain("onOpenChange?: (open: boolean) => void");
-    expect(sel).toContain("<DropdownMenu modal={false} onOpenChange={onOpenChange}>");
-    expect(rail).toContain("onOpenChange={closePlaceMenu}");
-    expect(rail).toMatch(/closePlaceMenu[\s\S]{0,160}setPlaceQuery\(""\)/);
-    // The reset that only covered picking a place is gone, not doubled up.
-    const pick = rail.slice(rail.indexOf("const pickPlace"));
-    expect(pick.slice(0, pick.indexOf("};"))).not.toContain("setPlaceQuery");
-  });
-
   // MESITA-1848. The ceremonies live in the selectors' MENUS, never as rows:
   // a rail row is a destination, and "Create organization" is a thing you do
   // to the subject the selector names.
@@ -412,7 +270,8 @@ describe("the rail is six nouns and one indent", () => {
     // "Add place" LEFT THE MENUS (MESITA-1879): it belongs to the zero state,
     // where it takes a row of its own and says what it is.
     expect(r).toContain('label="Add your place"');
-    expect(r).toContain("All places");
+    // The catalogue is a ROW at `multi` now, not a menu footer (MESITA-1918).
+    expect(r).toContain('label="All places"');
     // One selector, in the rail. The page's copy is gone, or the two disagree.
     expect(existsSync(path.join(SRC, "components/console/OrgSwitcher.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC, "components/console/ScopeSwitchers.tsx"))).toBe(false);
@@ -750,26 +609,6 @@ describe("the rail is six nouns and one indent", () => {
     expect(existsSync(path.join(SRC, "app/(shell)/orgs"))).toBe(false);
     expect(rail()).not.toContain("orgSwitchHref");
   });
-
-  it("the selectors: a name at n=1, and the transition is the pending clock", () => {
-    const sw = readCode("components/console/Sidebar.tsx");
-    // The condition lives in the RENDER, not in the prop — `switchable` is
-    // unconditional wherever a selector appears at all, so this file's job is
-    // only to pin WHERE that is. MESITA-1818 made it a name without a
-    // chevron, MESITA-1879 stopped rendering it at one place, and MESITA-1899
-    // put it back: with the organization selector gone (MESITA-1892) a name
-    // at n=1 is the rail's head, not a row spent restating what is known.
-    expect(sw).toContain('scope.mode === "solo" || scope.mode === "multi"');
-    expect(sw).not.toContain("switchable={places.length >= 2}");
-    expect(sw).toContain("const pendingId = isPending ? choice : null;");
-    expect(sw).not.toContain("choice.at === pathname");
-    expect(sw).not.toContain("useEffect");
-    expect(readCode("components/console/RailSelector.tsx")).toContain("aria-busy=");
-    expect(readCode("components/console/RailSelector.tsx")).toContain(
-      "motion-reduce:animate-none",
-    );
-  });
-
   // THREE BANDS, AND EACH HOLDS ONE KIND OF THING (MESITA-1909): the lockup
   // above `<nav>`, the rows inside it, Account below it. The footer used to be
   // Collapse — the rail's own control dressed as a row — and Account trailed
@@ -1281,9 +1120,10 @@ describe("the container stays uncapped", () => {
     expect(ui).toContain("export const SCOPE_ROW_CLASS");
     expect(page).toContain("SCOPE_CARD_CLASS");
     expect(page).toContain("SCOPE_ROW_CLASS");
-    // The rail's selector wears the RAIL's shape, not the page's — the shared
-    // SCOPE_ROW_CLASS is Account's card and belongs to page surfaces.
-    expect(read("components/console/RailSelector.tsx")).not.toContain("SCOPE_ROW_CLASS");
+    // The page's shape stays the page's: the rail never borrowed
+    // SCOPE_ROW_CLASS, and since MESITA-1918 there is no rail component left
+    // that could.
+    expect(existsSync(path.join(SRC, "components/console/RailSelector.tsx"))).toBe(false);
     expect(ui).not.toContain("SCOPE_BOX_CLASS");
     // The You row is a fact, not a switcher: no trigger, no chevron on it.
     expect(page).not.toContain("DropdownMenu");
