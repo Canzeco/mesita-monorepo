@@ -497,6 +497,12 @@ verify_jwt = true
 [functions.business-web-start-membership]
 verify_jwt = true
 
+# The door OUT of Mesita Partner (MESITA-1891): an owner opens Stripe's own
+# Billing Portal and cancels there. Owner-only, mints nothing but a session,
+# and writes no cancellation logic — the webhook mirrors what Stripe does.
+[functions.business-web-manage-membership]
+verify_jwt = true
+
 # MESITA-892: Memo-backed next-promo suggestions on Performance (advisory;
 # never writes rates; never exposes consumer class).
 [functions.business-web-suggest-promo]

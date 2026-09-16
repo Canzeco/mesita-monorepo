@@ -3,11 +3,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   LADDER_ZONES,
+  PLACE_NOT_PARTNERED,
   ZONE_ROWS,
   guestSummary,
   ladderScoreMatchesPromotionScore,
   offeringRows,
   paintRows,
+  rejoinFailure,
   rowsForZone,
   tierFlag,
   topPrerequisite,
@@ -418,19 +420,19 @@ describe("the top line: two partner facts, one precedence", () => {
       },
     },
     {
-      name: "not a member, org partnered, forfeited → this place's own re-join, unbuilt",
+      name: "not a member, place partnered, forfeited → this place's own re-join",
       input: { member: false, placePartnered: true, forfeited: true },
       expect: {
         action: "rejoin",
-        text: "This place forfeited the partnership after 3 strikes — re-join lands with the next release.",
+        text: "This place forfeited the partnership after 3 strikes — an owner can re-join it.",
       },
     },
     {
-      name: "not a member, org partnered, not forfeited (a dropped place) → the same door",
+      name: "not a member, place partnered, not forfeited (a dropped place) → the same door",
       input: { member: false, placePartnered: true, forfeited: false },
       expect: {
         action: "rejoin",
-        text: "This place is not in the partnership — re-join lands with the next release.",
+        text: "This place is not in the partnership — an owner can re-join it.",
       },
     },
     {
@@ -463,16 +465,30 @@ describe("the top line: two partner facts, one precedence", () => {
     expect(line?.text).not.toContain("Organization");
   });
 
-  it("a re-join line never points at a door that is not on the page", () => {
-    // The engine paints two zones and only Rewards carries the partnership
-    // box; the re-join door is unbuilt in this PR. So the line says when the
-    // door lands and never "below" — on Capabilities there is nothing below,
-    // and on Rewards there is no button to be below.
+  it("a re-join line names WHO, never where — and never promises a release", () => {
+    // The button exists now (MESITA-1891) and it lives in the Visits box, but
+    // this engine paints five zones and only Visits carries that box. So the
+    // line still never says "below", and it no longer says "lands with the
+    // next release" either: it names the rank that can press it, which is
+    // true on all five.
     for (const forfeited of [true, false]) {
       const line = topPrerequisite({ ...READY, member: false, placePartnered: true, forfeited });
-      expect(line?.text).toContain("lands with the next release");
+      expect(line?.text).toContain("an owner can re-join it");
       expect(line?.text).not.toMatch(/\bbelow\b/);
+      expect(line?.text).not.toContain("next release");
+      expect(line?.text).not.toContain("lands with");
     }
+  });
+
+  // MESITA-1889's 409 is a state, not a retry: the place has no live Mesita
+  // Membership behind it, and a second press cannot change that. Printing
+  // "try again" there would be the impossible retry MESITA-1736 shipped on
+  // the rail switches.
+  it("the join door's refusal discriminates a state from a retry", () => {
+    expect(rejoinFailure(PLACE_NOT_PARTNERED)).toContain("no live Mesita Membership");
+    expect(rejoinFailure(PLACE_NOT_PARTNERED)).not.toContain("try again");
+    expect(rejoinFailure(null)).toContain("try again");
+    expect(rejoinFailure("boom")).toBe(rejoinFailure(null));
   });
 });
 

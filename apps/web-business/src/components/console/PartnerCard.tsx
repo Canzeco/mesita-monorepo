@@ -57,11 +57,31 @@
 // `PARTNER_PRICE_LABEL` survives as the fallback for a payload that carries
 // none — a price box with no price is worse than a stale one.
 //
-// State: whether the modal is open, and the action's own. Nothing here
+// ── AND CANCELLING IS A LINK NOW (MESITA-1891) ────────────────────────────
+//
+// The partnered face used to end on "Cancelling from here lands with the next
+// release." It lands here: `ManageMembership` posts to
+// `business-web-manage-membership`, which mints a Stripe Billing Portal
+// session and hands back its url. MESITA WRITES NO CANCELLATION LOGIC — the
+// portal moves the subscription in Stripe, the webhook mirrors what comes
+// back, and cancel, invoices and the card on file are one door instead of
+// three. So the word here is MANAGE, not Cancel: the page it opens does more
+// than end things, and a button that promises only the destructive half would
+// be the wrong label on the right door.
+//
+// IT IS EXPORTED, because the partnered face an operator actually meets is
+// `PartnerBanner`'s strip, not this box (products/page.tsx renders the banner,
+// and the banner renders this card only for a NON-partner). One component,
+// two render sites, so the two can never offer different doors.
+//
+// State: whether the modal is open, and the actions' own. Nothing here
 // mutates a row directly, so nothing needs re-seeding.
 
 import { useActionState, useCallback, useState } from "react";
-import { startMembershipAction } from "@/app/(shell)/actions/place-setup";
+import {
+  manageMembershipAction,
+  startMembershipAction,
+} from "@/app/(shell)/actions/place-setup";
 import { PartnerPill } from "@/components/console/badges";
 import { Modal } from "@/components/shared/Modal";
 import type { Membership, MembershipPrice } from "@/lib/api/console";
@@ -181,6 +201,66 @@ function BuyForm({ placeId }: { placeId: string }) {
   );
 }
 
+/**
+ * The door out, and everything else the subscription needs: cancel, invoices,
+ * the card on file (MESITA-1891). It is Stripe's Billing Portal, so Mesita
+ * owns none of that logic.
+ *
+ * A FORM, not an onClick — the action redirects to Stripe, and a redirect out
+ * of a server action is only a redirect when the form submits it (the same
+ * lesson `BuyForm` above and `connectPaymentsAction` both carry). `pending`
+ * disables it because a portal session is a network hop away.
+ *
+ * OWNER-ONLY, matching the EF: the person who signed the yearly commitment is
+ * the person who ends it. Everyone else reads who can, which is the same
+ * shape the non-partnered face uses for "An owner subscribes."
+ *
+ * `note` is the mock answer — no Stripe subscription exists in this
+ * environment — and it is deliberately NOT an error: nothing went wrong.
+ */
+export function ManageMembership({
+  placeId,
+  isOwner,
+}: {
+  placeId: string;
+  isOwner: boolean;
+}) {
+  const [state, action, pending] = useActionState(manageMembershipAction, {
+    error: null,
+    note: null,
+  });
+  if (!isOwner) {
+    return (
+      <p className="text-muted-foreground text-xs leading-snug">
+        An owner manages the membership.
+      </p>
+    );
+  }
+  return (
+    <form action={action} className="flex flex-col gap-1">
+      <input type="hidden" name="placeId" value={placeId} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="text-muted-foreground hover:text-foreground self-start text-xs font-semibold underline underline-offset-4 transition disabled:cursor-default disabled:opacity-60"
+      >
+        {pending ? "Opening Stripe…" : "Manage membership"}
+      </button>
+      {/* Always mounted: a live region that appears together with its message
+          does not announce. An error wears the error box; the mock NOTE does
+          not, because nothing failed. */}
+      <div aria-live="polite">
+        {state.error && <p className={ERROR_BOX_CLASS}>{state.error}</p>}
+        {!state.error && state.note && (
+          <p className="text-muted-foreground text-xs leading-snug">
+            {state.note}
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}
+
 export function PartnerCard({
   placeId,
   partnered,
@@ -205,15 +285,7 @@ export function PartnerCard({
             <PartnerPill />
             <span className="text-sm">{membershipLine(membership)}</span>
           </div>
-          {/* Still honest about what is not built. Checkout shipped; cancelling
-              from here has not (MESITA-1868), so the line narrowed rather than
-              disappearing — and it goes entirely once the membership is
-              already ending, where it would be an offer to do what is done. */}
-          {!membership?.cancelAtPeriodEnd && (
-            <p className="text-muted-foreground text-xs leading-snug">
-              Cancelling from here lands with the next release.
-            </p>
-          )}
+          <ManageMembership placeId={placeId} isOwner={isOwner} />
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">

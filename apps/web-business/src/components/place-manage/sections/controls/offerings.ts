@@ -653,19 +653,19 @@ export type TopPrerequisite =
  *   member                                → silent, whatever the tier says
  *                                           (except Stripe, below)
  *   !member ∧ placePartnered = false        → subscribe in Products (link)
- *   !member ∧ placePartnered = true ∧ forfeited → re-join this place (unbuilt;
- *                                           the line says when it lands)
+ *   !member ∧ placePartnered = true ∧ forfeited → re-join this place (the
+ *                                           button lives in the Visits box)
  *   !member ∧ placePartnered = true ∧ !forfeited → same door (a dropped place
  *                                           whose subscription is still live)
  *   !member ∧ placePartnered unknown        → nothing — the rail has not
  *                                           answered, and a wrong door is
  *                                           worse than no line
  *
- * The re-join lines used to end "— re-join it below." That promised a button
- * that was inert on one zone and absent on the others (the same engine paints
- * them all), so they now carry the one sentence every unbuilt door on this
- * console uses. The Visits box adds what re-joining will do and whose action
- * it is; this line never says "below".
+ * The re-join lines used to end "— re-join it below", then "— re-join lands
+ * with the next release" while the door was unbuilt. The door is built
+ * (MESITA-1891) and the button is in the Visits box — but this engine paints
+ * five zones and only Visits carries that box, so the line still never says
+ * "below". It names WHO can re-join instead, which is true on all five.
  *
  * The Stripe line is Mesita Pay's concern, so it only shows once the Mesita
  * Pay switch is known ON: with it off (or unknown) the rung already says "Off
@@ -692,8 +692,8 @@ export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
       return {
         action: "rejoin",
         text: input.forfeited
-          ? "This place forfeited the partnership after 3 strikes — re-join lands with the next release."
-          : "This place is not in the partnership — re-join lands with the next release.",
+          ? "This place forfeited the partnership after 3 strikes — an owner can re-join it."
+          : "This place is not in the partnership — an owner can re-join it.",
       };
     }
     return null;
@@ -759,6 +759,22 @@ export function controlWriteFailure(action: string): string {
 
 /** EF failure codes this tab BRANCHES on rather than prints. */
 export const STRIPE_LIVE_BLOCKED = "stripe_live_blocked";
+
+/** The join door's own refusal (MESITA-1889), which is not a retry.
+ *
+ * `business-web-set-partnership {action:"join"}` 409s `place_not_partnered`
+ * when the place has no live Mesita Membership behind it — a state a second
+ * press cannot change. Printing "try again" there would be the same
+ * impossible retry MESITA-1736 shipped on the rail switches. Everything else
+ * IS a retry, so it takes the tab's one sentence. */
+export const PLACE_NOT_PARTNERED = "place_not_partnered";
+
+export function rejoinFailure(code: string | null): string {
+  if (code === PLACE_NOT_PARTNERED) {
+    return "This place has no live Mesita Membership to re-join — buy one in Products first.";
+  }
+  return controlWriteFailure("re-join this place");
+}
 
 /**
  * What a refused Connect onboarding says to the operator.

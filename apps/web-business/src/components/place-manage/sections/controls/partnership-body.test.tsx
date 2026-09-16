@@ -33,7 +33,16 @@ function place(over: Partial<AdminPlace> = {}): AdminPlace {
 
 function body(
   pillState: MembershipPillState,
-  over: { isOwner?: boolean; place?: AdminPlace } = {},
+  over: {
+    isOwner?: boolean;
+    place?: AdminPlace;
+    /** PRESENT ⇒ this caller may write. PromosSection passes a handler only
+     *  for an owner of a place it has READ as `partnered`; this box never
+     *  decides that for itself. */
+    onRejoin?: () => void;
+    rejoinPending?: boolean;
+    rejoinError?: string | null;
+  } = {},
 ) {
   return renderToStaticMarkup(
     <PartnershipBody
@@ -43,9 +52,16 @@ function body(
       member={pillState !== "not_member" && pillState !== "forfeited"}
       setupHref="/places/p-1/products/pay"
       isOwner={over.isOwner ?? true}
+      onRejoin={over.onRejoin}
+      rejoinPending={over.rejoinPending}
+      rejoinError={over.rejoinError}
     />,
   );
 }
+
+/** A caller who may write. The handler itself never fires under
+ *  `renderToStaticMarkup`; its PRESENCE is the permission. */
+const MAY_WRITE = () => {};
 
 // The first cut rendered the three-step banner in every state, so a place
 // that had never subscribed read the same door three times in eight lines:
@@ -75,30 +91,73 @@ describe("a non-member gets the pitch alone", () => {
   });
 });
 
-// The door is unbuilt: the one join door is `requireEditor`-guarded and
-// never reads `places.partnered`, so wiring it under a paid tier would be a
-// free plan=pro for any editor. A DISABLED primary button is the
-// knob-that-pretends the house law forbids (SoonStrip.tsx) — the same law
-// that left the Partner modal without a Continue button. One line.
-describe("forfeited is one note and one line, never a button", () => {
-  const owner = body("forfeited");
+// MESITA-1891 built the door. MESITA-1889 had already guarded it — the join
+// refuses unless the PLACE is `partnered` and the caller OWNS it — which is
+// what made a button safe to render at all; before that it would have handed
+// any editor a free plan=pro under a paid tier. The permission arrives as a
+// HANDLER, not as a boolean, so "may write" and "has a button" cannot drift
+// apart. And there is still no disabled primary button: a knob that pretends
+// is what the house law forbids (SoonStrip.tsx).
+describe("forfeited offers the door to whoever may open it", () => {
+  const writer = body("forfeited", { onRejoin: MAY_WRITE });
   const editor = body("forfeited", { isOwner: false });
+  const readOnlyOwner = body("forfeited");
 
-  it("renders no button at all", () => {
-    for (const html of [owner, editor]) {
+  // THE BIJECTION. A handler means a button; no handler means no button, in
+  // both of the two ways a caller can lack one.
+  it("a caller who may write gets the button; one who may not never does", () => {
+    expect(writer).toContain("<button");
+    expect(writer).toContain("Re-join this place");
+    for (const html of [editor, readOnlyOwner]) {
       expect(html).not.toContain("<button");
       expect(html).not.toContain("Re-join this place");
     }
   });
 
-  it("says when re-join lands, and whose action it is", () => {
-    expect(owner).toContain("Re-join lands with the next release");
-    expect(owner).toContain("the yearly subscription is untouched");
-    expect(editor).toContain("An owner re-joins this place");
-    expect(editor).not.toContain("Re-join lands with the next release —");
+  it("says what re-joining does, and nothing about a next release", () => {
+    for (const html of [writer, editor, readOnlyOwner]) {
+      expect(html).toContain("the yearly subscription is untouched");
+      expect(html).toContain("clears the strikes and the forfeit");
+      expect(html).not.toContain("next release");
+      expect(html).not.toContain("lands with");
+    }
+    // A caller who may not write keeps the sentence naming who can — and the
+    // one who may does not read it, because the button IS the answer.
+    expect(editor).toContain("An owner re-joins this place.");
+    expect(writer).not.toContain("An owner re-joins this place.");
+  });
+
+  it("the button is busy, never disabled-and-silent, and never fakes a press", () => {
+    const busy = body("forfeited", { onRejoin: MAY_WRITE, rejoinPending: true });
+    expect(busy).toContain("Re-joining…");
+    expect(busy).toContain("disabled");
+    expect(writer).not.toContain("disabled");
+  });
+
+  it("a failed join lands beside the button, in operator words", () => {
+    const failed = body("forfeited", {
+      onRejoin: MAY_WRITE,
+      rejoinError: "Couldn't re-join this place. Nothing changed — try again.",
+    });
+    expect(failed).toContain("Nothing changed");
+    // Always-mounted live region: one that appears with its message does not
+    // announce.
+    expect(writer).toContain('aria-live="polite"');
+  });
+
+  // A DROPPED place — out of the partnership while the Membership is live —
+  // reads not_member with no forfeit stamp, and it is the same door.
+  it("a dropped place gets the same door, with its own sentence", () => {
+    const dropped = body("not_member", { onRejoin: MAY_WRITE });
+    expect(dropped).toContain("Re-join this place");
+    expect(dropped).toContain("puts this place back in the partnership");
+    expect(dropped).not.toContain("clears the strikes");
+    // And a plain non-member, with nothing bought, is offered nothing.
+    expect(body("not_member")).not.toContain("Re-join this place");
   });
 
   it("keeps ONE forfeited note, and no banner over it", () => {
+    const owner = readOnlyOwner;
     // The banner's step 1 would read "Yearly — switch strategies anytime"
     // with a check, two lines above a red "forfeited" — the contradiction
     // the review caught.

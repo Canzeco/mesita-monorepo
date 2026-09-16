@@ -36,6 +36,13 @@
 // through `/`); the bare address forwards the whole query here, because this
 // is where the notice and the account it is about both live.
 //
+// THE SWITCH IS LIVE FOR AN OWNER (MESITA-1891). `MesitaPayCard` writes
+// `place_profiles.mesita_pay_enabled` through `business-web-set-place-rails`,
+// whose `mesita_pay` key is owner-only, and refreshes this route afterwards.
+// Everything this page computes above it — `partnered`, `stripeReady`, the
+// account state — is still what decides whether that branch is reachable at
+// all, so the lock lives here and the control lives there.
+//
 // THE COMPOSITION IS MESITA-1866's, UNCHANGED: the account (`PaymentsCard`),
 // one seam, and the switch it unlocks (`MesitaPayCard`). And the PARTNER GATE
 // is unchanged too — Mesita Pay rides on Mesita Partner (MESITA-1867), so a
@@ -146,7 +153,13 @@ export default async function MesitaPayPage({
             switch it unlocks below. Not a second box — the prerequisite and
             the thing it gates are one subject. */}
         <div className="border-border/60 border-t pt-3">
+          {/* THE `key=` IS THE RE-SEED (MESITA-1891). The switch keeps its own
+              `on` so a click answers immediately; this remounts it whenever
+              the server's bit changes, so a fresher server render always wins
+              over a stale local copy. */}
           <MesitaPayCard
+            key={`mesita-pay-${place.mesitaPayEnabled === true}`}
+            placeId={id}
             partnered
             stripeReady={stripeReady}
             mesitaPayEnabled={place.mesitaPayEnabled === true}

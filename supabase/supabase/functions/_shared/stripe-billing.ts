@@ -274,6 +274,55 @@ export type PlaceBillingCustomer =
  * anchored, and what is it called. The trade name is a generated column on
  * `place_profiles`, embedded rather than fetched separately.
  */
+/**
+ * The place's ALREADY-STORED billing customer — a read, never a mint
+ * (MESITA-1891).
+ *
+ * `ensurePlaceBillingCustomer` is the checkout path's door: it creates the
+ * Customer when there is none, because a purchase has to have somewhere to
+ * go. The Billing Portal is the opposite case. A portal session over a
+ * freshly-minted Customer with no subscription and no invoices opens a page
+ * that can do nothing, and it leaves a stray Customer behind on every visit
+ * from a place that never bought anything. So this one refuses instead, and
+ * the console keeps the door shut rather than opening an empty room.
+ *
+ * `mock_cus_*` is MOCK_SUBSCRIPTION's placeholder, not a Stripe Customer
+ * (isMockCustomerId), so it reads as absent here for the same reason it does
+ * everywhere else: handing one to a live key 400s.
+ */
+export type StoredBillingCustomer =
+  | { ok: true; customerId: string }
+  | {
+    ok: false;
+    code: "place_not_found" | "no_billing_customer";
+    error: string;
+  };
+
+export async function readPlaceBillingCustomer(
+  admin: SupabaseClient,
+  placeId: string,
+): Promise<StoredBillingCustomer> {
+  const { data: place } = await admin
+    .from("places")
+    .select("stripe_billing_customer_id")
+    .eq("id", placeId)
+    .maybeSingle();
+  if (!place) {
+    return { ok: false, code: "place_not_found", error: `No place ${placeId}.` };
+  }
+  const anchored =
+    (place as { stripe_billing_customer_id?: string | null })
+      .stripe_billing_customer_id ?? null;
+  if (!anchored || isMockCustomerId(anchored)) {
+    return {
+      ok: false,
+      code: "no_billing_customer",
+      error: "This place has no Stripe billing account yet.",
+    };
+  }
+  return { ok: true, customerId: anchored };
+}
+
 export async function ensurePlaceBillingCustomer(
   admin: SupabaseClient,
   stripe: Stripe,
