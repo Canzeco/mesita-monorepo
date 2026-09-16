@@ -10,9 +10,15 @@ const fraunces = Fraunces({
   axes: ["opsz"],
 });
 
-// NO `metadataBase`, and no Open Graph card. This app is never served on a
-// domain, never linked to and never crawled; a share card for a mock console is
-// a share card for something that does not exist.
+// `robots: noindex, nofollow` IS LOAD-BEARING NOW (MESITA-1903). The app is
+// deployed and publicly reachable, so this is one of the two things keeping a
+// mock of the business console out of a search result — the other is the MOCK
+// strip in `AppShell`. Do not remove either without the other's job being
+// covered.
+//
+// Still no `metadataBase` and no Open Graph card: the link is passed to people
+// who are told what it is, and a share card would make a mock look like a
+// product announcement.
 export const metadata: Metadata = {
   title: { default: "Mock business console", template: "%s · Mock" },
   description: "A disconnected mock of the Mesita business console.",

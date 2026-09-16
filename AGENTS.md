@@ -41,14 +41,14 @@
 | `apps/web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
 | `apps/web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
 | `apps/web-validate` | Mesita Validate, the staff ticket page · on check.mesita.ai until validate.mesita.ai DNS (Next.js · Vercel) — QRs encode `check.mesita.ai/<code>` |
-| `apps/mock-business-app` | The business console, disconnected — fixtures only, local :3006, never deployed |
+| `apps/mock-business-app` | The business console, disconnected — fixtures only, its own Vercel project |
 | `apps/mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | Native business app (Expo SDK 57 · **scaffold only**) |
 | `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
-| `assets` | The brand: edit `assets/brand/brand.json`, run `deno task sync-brand` — it writes every brand output (guide: Notion Docs › Design) |
+| `assets` | The brand: edit `assets/brand/brand.json`, `deno task sync-brand` writes every output (guide: Notion Docs › Design) |
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace — mobile needs `nodeLinker: hoisted`). `cd` into a package to work; run every `supabase` command from `supabase/`.
-- **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.
-- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard: no `.icns`/`.jxl`/`.heif`/`.heic` anywhere) and `brand.yml` (brand sync).
+- **Vercel:** each `apps/web-*` — and `apps/mock-business-app` — is its own Vercel project (canzeco team) on this repo, Root Directory the package, "skip unaffected" on — a push to `main` deploys only what changed.
+- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard, no `.icns`/`.jxl`/`.heif`/`.heic`) and `brand.yml` (brand sync).
 - **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated, what Cursor and Codex read (never a `CODEX.md`). Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
 - **Workspaces, every platform (Rules I-3, I-4):** before a code issue's first repository write, one claimed workspace: `deno task worktree add MESITA-<id> <slug>` creates it in `../worktrees/<platform>/`; `--adopt .` claims the checkout you launched in (launch worktree, Cursor worktree, or the cloud clone itself); plain `add MESITA-<id>` resumes the live one, never a second. Work only from that path (Claude Code `EnterWorktree path=<printed>`; Cursor: open it; Codex: `cd`), confirmed by `deno task worktree preflight` before writing. **Enforced by `scripts/preflight.sh`:** Claude Code's `PreToolUse` hook (`.claude/settings.json`) refuses Edit/Write outside a claimed workspace, the git `pre-commit` hook `boot`/`add` install refuses commits (Cursor, Codex, humans), Cursor's shell hook (`.cursor/hooks.json`) refuses `git commit`. `.worktreeinclude` names the gitignored state a worktree receives (env files only). **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-validate :3005 · mock-business-app :3006 · mobile-consumer :8081 · mobile-business :8082.
