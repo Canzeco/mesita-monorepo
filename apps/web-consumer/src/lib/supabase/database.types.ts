@@ -1106,27 +1106,27 @@ export type Database = {
       place_categories: {
         Row: {
           created_at: string
+          family_keys: string[]
           label: string
           section: string
           slug: string
           sort_order: number
-          super_category_slugs: string[]
         }
         Insert: {
           created_at?: string
+          family_keys?: string[]
           label: string
           section: string
           slug: string
           sort_order: number
-          super_category_slugs?: string[]
         }
         Update: {
           created_at?: string
+          family_keys?: string[]
           label?: string
           section?: string
           slug?: string
           sort_order?: number
-          super_category_slugs?: string[]
         }
         Relationships: []
       }
@@ -1278,6 +1278,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      place_families: {
+        Row: {
+          created_at: string
+          emoji: string
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          label?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       place_invites: {
         Row: {
@@ -1996,30 +2020,6 @@ export type Database = {
             referencedColumns: ["key"]
           },
         ]
-      }
-      place_super_categories: {
-        Row: {
-          created_at: string
-          emoji: string
-          label: string
-          slug: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          emoji: string
-          label: string
-          slug: string
-          sort_order: number
-        }
-        Update: {
-          created_at?: string
-          emoji?: string
-          label?: string
-          slug?: string
-          sort_order?: number
-        }
-        Relationships: []
       }
       place_tags: {
         Row: {
@@ -2992,7 +2992,7 @@ export type Database = {
         }
         Returns: Json
       }
-      atlas_super_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
+      atlas_family_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
       bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
       cancel_credit_gift: {
         Args: { p_gift_id: string; p_sender_id: string }
@@ -3107,7 +3107,7 @@ export type Database = {
       }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
-      seed_place_super_categories: { Args: never; Returns: undefined }
+      seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
       spend_credits: {
