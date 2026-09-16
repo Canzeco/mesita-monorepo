@@ -78,6 +78,7 @@ describe("every shared control carries the brand's focus ring", () => {
       "INPUT_CLASS",
       "PILL_BUTTON_CLASS",
       "PRIMARY_BUTTON_CLASS",
+      "QUIET_LINK_BUTTON_CLASS",
     ]);
   });
 

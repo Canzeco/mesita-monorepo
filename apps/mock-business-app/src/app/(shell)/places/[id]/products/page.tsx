@@ -1,6 +1,6 @@
 "use client";
 
-// PRODUCTS IS THE CATALOGUE: a banner and eight cards, and nothing else.
+// PRODUCTS IS THE CATALOGUE: the gate, then eight cards, and nothing else.
 //
 // A CARD STATES A FACT THE CONSOLE READ. Profile is free on every place;
 // partner-gated products read Locked and carry NO verb, because a button on a
@@ -14,13 +14,13 @@
 import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
+import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
+import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards } from "@/lib/products";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
-import { CTA_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 
 export default function ProductsPage() {
   const place = useHeldPlaceOrNull();
@@ -45,32 +45,14 @@ export default function ProductsPage() {
     <>
       <PlaceHeading place={place} view="Products" />
 
-      {/* THE BANNER, ABOVE THE GRID. It is the one thing on the page that is
-          not a card, because Partner is not a product — it is the gate five of
-          them are behind. */}
-      <div
-        className={cn(
-          "rounded-2xl border p-4",
-          place.partnered
-            ? "border-[color:var(--tier-gold)]/40 bg-[color:var(--tier-gold)]/8"
-            : "border-border bg-card shadow-card",
-        )}
-      >
-        <p className={TINY_LABEL_CLASS}>Mesita Membership</p>
-        <p className="font-display mt-1 text-xl font-semibold tracking-tight">
-          {place.partnered ? "This place is a Mesita Partner" : "This place is not a partner"}
-        </p>
-        <p className="text-muted-foreground mt-1 max-w-prose text-[13px] leading-snug">
-          {place.partnered
-            ? "The Membership is the SKU — bought per place, yearly. Partner is the status it grants, and it is what five of the eight products below read."
-            : "Five of the eight products below need it. Bought per place, yearly; Mesita Payments is an add-on on top."}
-        </p>
-        {!place.partnered && (
-          <Link href="#" className={cn(CTA_BUTTON_CLASS, "mt-3")}>
-            See the Membership
-          </Link>
-        )}
-      </div>
+      <MembershipReturnNotice />
+
+      {/* THE GATE, ABOVE THE GRID, sized by the decision in it — a box when
+          there is a purchase to make, one line when there is not. It is the
+          one thing on the page that is not a card, because Partner is not a
+          product: it is what five of them are behind. See PartnerCard.tsx for
+          why it is not a ninth card in the grid. */}
+      <PartnerBanner place={place} />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {

@@ -120,6 +120,20 @@ export const SECTION_TITLE_CLASS =
 // not enough affordance for a real action; this is.
 export const GHOST_PILL_BUTTON_CLASS = `border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
+// A SECOND action that must not read as a second choice (MESITA-1927). A
+// ghost pill beside a CTA is the same silhouette in a lighter colour, so the
+// eye weighs them equally; dropping the border drops the competition. Use it
+// where the verb is real but must not outrank the fact beside it — "Manage
+// membership" on the partnered strip is the case it was extracted for.
+//
+// IT CARRIES THE TWO LAWS BY CONSTRUCTION, which is the whole reason it is a
+// constant rather than an inline string. The obvious spelling of "just a text
+// button" — `text-xs font-semibold underline` — omits both, which is exactly
+// what `PartnerCard.tsx`'s ManageMembership shipped with: no ring on tab, and
+// about 16px of hit area against a 44px minimum, on the only control that
+// cancels a subscription or fixes a failed card.
+export const QUIET_LINK_BUTTON_CLASS = `text-muted-foreground hover:text-foreground decoration-border hover:decoration-foreground/40 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium underline underline-offset-4 transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+
 // ── The shell's one width law (MESITA-1558) ────────────────────────────────
 //
 // The console is FLUID: no max-width. Pato asked it to use all the space, and
