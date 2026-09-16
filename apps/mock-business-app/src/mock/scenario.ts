@@ -110,7 +110,7 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   {
     id: "viewer",
     label: "Viewer",
-    hint: "Three views. The other six are hidden AND refused.",
+    hint: "Profile alone. Every other view and all four pages are refused.",
     patch: { mode: "solo", role: "viewer" },
   },
   {

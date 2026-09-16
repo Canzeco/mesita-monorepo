@@ -1,7 +1,14 @@
 // The place's views, and who may see which.
 //
 // Snapshot of `apps/web-business/src/lib/place-tabs.ts`. Client-safe: the rail
-// applies `tabsForAccess` to the viewer's own role on every navigation.
+// applies both matrices below to the viewer's own role on every navigation.
+//
+// `PLACE_PAGES` IS A VALUE IMPORT AND THAT IS SAFE TODAY — `console-routes.ts`
+// imports only a TYPE from here, which is erased, so there is no runtime edge
+// back and no cycle. Do not add a value import there; `pagesForAccess` would
+// become a cycle, and a cycle in a permission matrix is an undefined at module
+// evaluation, which reads as "allowed".
+import { PLACE_PAGES, type PlacePage } from "@/lib/console-routes";
 import { PRODUCT_LABEL } from "@/lib/product-keys";
 
 // MENUS AND REVIEWS ARE NOT HERE (MESITA-1917). They are CARDS ON PROFILE
@@ -67,6 +74,33 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
         ];
   if (access.isSuperAdmin) tabs.push("admin");
   return tabs;
+}
+
+/** The PAGES this caller may open under a place — `/places/<id>/{settings,
+ *  products,customers,activity}` and `products/pay` beneath them.
+ *
+ *  THE GATE THE RAIL USED TO RUN BY ACCIDENT. Every product row went through
+ *  `tabsForAccess`, so a viewer's rail came out as Profile alone — and that
+ *  was the ONLY role check standing between a viewer and the four pages,
+ *  because the four are STATIC segments beside `[view]`: `PlaceTabGate` never
+ *  sees them, and `useHeldPlaceOrNull` answers "is this place held", never "as
+ *  what". MESITA-1933 took the product rows off the rail, which would have
+ *  left that gate with nothing to filter and all three remaining pages open,
+ *  with every check green. So the gate is written down now instead of ridden.
+ *
+ *  ONE MATRIX, TWO READERS: the rail drops the row from this, and each page
+ *  refuses the address from this. Hidden is not protected — a page reachable
+ *  by typing its address is a page, whatever the rail chose to draw.
+ *
+ *  ALL OR NOTHING, DERIVED. Every `PlacePage` is a surface where the place is
+ *  configured, bought for or audited, so there is no page a viewer may have
+ *  and the answer is the whole list or the empty one. Deriving it means a page
+ *  added to `PLACE_PAGES` cannot be left out of this by forgetting. The day
+ *  one of them becomes readable by a viewer, this stops being all-or-nothing
+ *  and has to name its list. */
+export function pagesForAccess(access: ViewerAccess): PlacePage[] {
+  if (!access.held || access.role === "viewer") return [];
+  return [...PLACE_PAGES];
 }
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

@@ -12,7 +12,8 @@
 // — guests, intake, rewards, payments — which no single product's half covers.
 // It is reached from Home and from the ask bar. Do not fold this list into
 // Payments: the payments entries are a slice of it, not the whole thing.
-import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
+import { notFound } from "next/navigation";
+import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { Tiles } from "@/components/shared/Tiles";
@@ -26,6 +27,7 @@ import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 export default function PlaceActivityPage() {
   const place = useHeldPlaceOrNull();
+  const { pages } = usePlaceScope();
   const { scenario, now } = useMock();
   // THE GATE THESE PAGES WERE MISSING. They are static segments beside
   // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
@@ -33,6 +35,13 @@ export default function PlaceActivityPage() {
   // to reach the body with no place at all. It sits after the hooks and before
   // the first `place.` — a guard below a dereference is not a guard.
   if (!place) return <NotHeld />;
+  // AND HELD AS WHAT (MESITA-1933). `NotHeld` above answers "is this place
+  // held"; it has never answered the role, and until now nothing did for this
+  // page — the rail's product rows were running `tabsForAccess` and that was
+  // the whole console's role check. The rows are gone, so the gate is here.
+  // `notFound`, like `PlaceTabGate`: a page reachable by typing its address is
+  // a page, whatever the rail chose to draw.
+  if (!pages.includes("activity")) notFound();
 
   const events = listFor(ACTIVITY.filter((e) => e.placeId === place.id), scenario);
 

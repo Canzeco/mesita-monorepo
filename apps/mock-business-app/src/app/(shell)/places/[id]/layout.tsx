@@ -10,7 +10,7 @@ import { use } from "react";
 import { notFound } from "next/navigation";
 import { PlaceScopeProvider } from "@/components/console/PlaceScope";
 import { useMock } from "@/mock/MockStore";
-import { tabsForAccess } from "@/lib/place-tabs";
+import { pagesForAccess, tabsForAccess } from "@/lib/place-tabs";
 
 export default function PlaceLayout({
   children,
@@ -40,17 +40,22 @@ export default function PlaceLayout({
   // exist — only that we could not ask.
   if (!place && !pool && !world.viewerError) notFound();
 
+  // ONE ACCESS OBJECT, TWO MATRICES, RESOLVED ONCE. Splitting the read is how
+  // the rail and a page end up disagreeing about the same person.
+  const access = {
+    held: place !== null,
+    role: place?.myRole ?? null,
+    isSuperAdmin: scenario.isSuperAdmin,
+  };
+
   return (
     <PlaceScopeProvider
       value={{
         place,
         pool: pool ? { id: pool.id, name: pool.name, category: pool.category, city: pool.city } : null,
         readFailed: world.viewerError,
-        tabs: tabsForAccess({
-          held: place !== null,
-          role: place?.myRole ?? null,
-          isSuperAdmin: scenario.isSuperAdmin,
-        }),
+        tabs: tabsForAccess(access),
+        pages: pagesForAccess(access),
       }}
     >
       {children}

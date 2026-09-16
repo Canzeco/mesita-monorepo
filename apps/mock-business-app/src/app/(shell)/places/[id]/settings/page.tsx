@@ -10,7 +10,8 @@
 // where a role is granted, and this is it — two surfaces granting the same
 // thing is how one of them ends up granting a role the other cannot revoke.
 import { X } from "lucide-react";
-import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
+import { notFound } from "next/navigation";
+import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { Badge } from "@/components/shared/Badges";
@@ -28,6 +29,7 @@ import {
 
 export default function PlaceSettingsPage() {
   const place = useHeldPlaceOrNull();
+  const { pages } = usePlaceScope();
   const { scenario } = useMock();
   // THE GATE THESE PAGES WERE MISSING. They are static segments beside
   // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
@@ -35,6 +37,13 @@ export default function PlaceSettingsPage() {
   // to reach the body with no place at all. It sits after the hooks and before
   // the first `place.` — a guard below a dereference is not a guard.
   if (!place) return <NotHeld />;
+  // AND HELD AS WHAT (MESITA-1933). `NotHeld` above answers "is this place
+  // held"; it has never answered the role, and until now nothing did for this
+  // page — the rail's product rows were running `tabsForAccess` and that was
+  // the whole console's role check. The rows are gone, so the gate is here.
+  // `notFound`, like `PlaceTabGate`: a page reachable by typing its address is
+  // a page, whatever the rail chose to draw.
+  if (!pages.includes("settings")) notFound();
 
   const members = listFor(MEMBERS.filter((m) => m.placeId === place.id), scenario);
   const canManage = place.myRole === "owner";
