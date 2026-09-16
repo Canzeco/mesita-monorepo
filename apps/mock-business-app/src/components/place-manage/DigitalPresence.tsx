@@ -10,9 +10,28 @@
 // Instagram and Facebook are FOLLOWER COUNTS, not reviews. Digital Presence is
 // the only name that covers what is in the box (Pato's call, 2026-09-16).
 //
-// FOUR TILES (Pato live 2026-09-02): Google · Mesita · Instagram · Facebook.
-// Scores are half the reputation an operator is asked about; reach is the
-// other half. That order stays: the two scores, then the two reaches.
+// FOUR ROWS, NOT A 2×2 (MESITA-1932; Pato: "sort the items or grid in a better
+// way, that looks like shit"). It was four bordered wells inside a bordered
+// card, and four things were wrong with that:
+//
+//   1. A VIEWPORT BREAKPOINT WAS SIZING A CONTAINER. `sm:grid-cols-2` fires on
+//      window width, but this card lives in a ~440px masonry column, so at xl
+//      it forced two ~190px tiles and `4.7 ★★★★★` ran into its own padding.
+//      Rows have no breakpoint at all, so that bug cannot come back.
+//   2. BOX IN A BOX. `SectionCard` already draws a border and a shadow; each
+//      well added a second border and a fill. Hairlines and whitespace separate
+//      four rows without a single extra frame, and nothing here is clickable —
+//      a card is for an interaction, and there is no interaction in this box.
+//   3. IT CLAIMED FOUR PEERS AND DELIVERED TWO PAIRS. Google and Mesita are
+//      scores out of five; Instagram and Facebook are audience counts. Drawn
+//      identically, the only thing telling them apart was the 11px hint — the
+//      smallest type on the card carrying the biggest distinction. Stacked, the
+//      two starred rows sit together and the kinds group themselves.
+//   4. NO SHARED EDGE. Four numbers at four different left edges cannot be read
+//      as a set. Every value is now right-aligned on one edge.
+//
+// The ORDER did not change, because it was never the problem: scores first,
+// reach second (Pato live 2026-09-02).
 //
 // THE SUB-SCORES LEFT. Food/Service/Ambience/Value are Mesita's breakdown and
 // Mesita's alone — Google publishes none — so on a four-platform card they
@@ -24,7 +43,8 @@
 // never learns it exists.
 //
 // A SNAPSHOT of apps/web-business/src/components/place-manage/sections/
-// ReviewsSummary.tsx, which still carries both halves under the old name.
+// ReviewsSummary.tsx, which still carries both halves, under the old name, in
+// the 2×2 this one left behind.
 
 import { Globe, Lock, Star } from "lucide-react";
 import { SectionCard } from "@/components/admin-ui/manage";
@@ -82,8 +102,9 @@ export function AutoPill() {
  *  is where the count is scraped from and where an operator who wants to read
  *  one gets sent.
  *
- *  16px, not the Channels card's 14px — `MesitaLogo.tsx` puts the bare mark's
- *  floor at 16, and four marks at one size read as four peers. */
+ *  16px — `MesitaLogo.tsx` puts the bare mark's floor at 16, and four marks at
+ *  one size read as four peers. The Channels card's 14px is its own: it labels
+ *  a dense stack of fields, this labels four rows. */
 const MARK: Record<string, string> = {
   Google: "/channels/googlemaps.svg",
   Mesita: "/channels/mesita.svg",
@@ -91,9 +112,10 @@ const MARK: Record<string, string> = {
   Facebook: "/channels/facebook.svg",
 };
 
-/** One metric well — big number, optional star row, hint line. Shared so a
- *  score and a follower count read as peers on the same 2×2 grid. */
-function Tile({
+/** One platform, one line. Mark and name on the left with the hint under it,
+ *  the value hard against the right edge — that edge is the whole point, it is
+ *  what lets four numbers be read as a set instead of four separate facts. */
+function PresenceRow({
   label,
   value,
   muted,
@@ -110,27 +132,34 @@ function Tile({
   hint: string;
 }) {
   return (
-    <div className="border-border/60 bg-muted/40 flex min-w-0 flex-col gap-1.5 rounded-xl border px-3.5 py-3">
-      <p className="text-muted-foreground flex items-center gap-1.5 type-label">
+    <div className="flex items-center justify-between gap-4 py-3.5">
+      <span className="flex min-w-0 items-center gap-2.5">
         {/* Static 16px brand SVG — next/image adds nothing here. Decorative:
-            the label beside it already says "Instagram", and a screen reader
+            the name beside it already says "Instagram", and a screen reader
             saying it twice is worse than not saying it at all. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={MARK[label]} alt="" aria-hidden className="h-4 w-4 shrink-0" />
-        {label}
-      </p>
-      <p className="flex items-center gap-2" aria-label={ariaLabel}>
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] leading-tight font-semibold">
+            {label}
+          </span>
+          <span className="text-muted-foreground block type-label">{hint}</span>
+        </span>
+      </span>
+      <span
+        className="flex shrink-0 items-center gap-2"
+        aria-label={ariaLabel}
+      >
+        {stars != null ? <Stars value={stars} /> : null}
         <span
           className={
-            "text-2xl leading-none font-semibold tracking-tight tabular-nums " +
+            "text-xl leading-none font-semibold tracking-tight tabular-nums " +
             (muted ? "text-muted-foreground" : "text-foreground")
           }
         >
           {value}
         </span>
-        {stars != null ? <Stars value={stars} /> : null}
-      </p>
-      <p className="text-muted-foreground type-label">{hint}</p>
+      </span>
     </div>
   );
 }
@@ -145,7 +174,7 @@ function Score({
   hint: string;
 }) {
   return (
-    <Tile
+    <PresenceRow
       label={label}
       value={stars == null ? "—" : stars.toFixed(1)}
       muted={stars == null}
@@ -166,7 +195,7 @@ function Reach({
   followers: number | null;
 }) {
   return (
-    <Tile
+    <PresenceRow
       label={label}
       value={followers == null ? "—" : compact(followers)}
       muted={followers == null}
@@ -194,10 +223,12 @@ export function DigitalPresence({ place }: { place: MockPlaceProfile }) {
       subtitle="Where this place shows up, and how many people are looking."
       action={<AutoPill />}
     >
-      {/* Scores first, reach second — the order the operator is asked about
-          them, and the order they carry weight. Two per row at every width
-          the masonry column takes. */}
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* `divide-y` draws only BETWEEN DIRECT children, so these four rows must
+          stay direct children of this element — wrap them in anything and the
+          three hairlines silently vanish. `border-y` closes the list at both
+          ends, which is what makes it read as a table rather than four
+          paragraphs that happen to be stacked. */}
+      <div className="divide-border/60 border-border/60 mt-5 divide-y border-y">
         <Score
           label="Google"
           stars={googleStars}
