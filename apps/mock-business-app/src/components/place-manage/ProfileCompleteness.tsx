@@ -41,6 +41,11 @@ type CompletenessCheck = {
   hint: string;
   weight: number;
   done: (p: MockPlaceProfile) => boolean;
+  /** Same-page scroll target id — the chip becomes a button that moves the
+   *  page to the card that fixes it. ONLY for a section this card's own page
+   *  renders: `scrollToSection` bails on a null lookup with no feedback of any
+   *  kind, so an id naming an element elsewhere is a chip that does nothing. */
+  scrollId?: string;
 };
 
 // Weights sum to exactly 100. Photos weigh most — they carry the consumer
@@ -94,7 +99,15 @@ const CHECKS: readonly CompletenessCheck[] = [
     label: "Menu",
     hint: "Add a menu",
     weight: 10,
-    done: (p) => p.menu_count > 0,
+    done: (p) => p.menus.length > 0,
+    // A SCROLL AGAIN, not an inert span (MESITA-1917). This was `scrollId:
+    // "place-products"` until MESITA-1848 gave Menus its own address; from
+    // that day `getElementById` returned null and the chip did nothing at all,
+    // silently, on the one card whose entire job is telling an operator what to
+    // go and fix (MESITA-1883). Menus is back on this page, so the id resolves
+    // and the chip works — which is the whole reason `MenusSection` still
+    // renders `id="place-products"`.
+    scrollId: "place-products",
   },
   {
     label: "Reservations",
@@ -111,6 +124,16 @@ const CHECKS: readonly CompletenessCheck[] = [
     done: (p) => (p.tags?.length ?? 0) >= 3,
   },
 ];
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (el instanceof HTMLElement) {
+    el.setAttribute("tabindex", "-1");
+    el.focus({ preventScroll: true });
+  }
+}
 
 export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
   const missing = CHECKS.filter((c) => !c.done(place));
@@ -180,11 +203,22 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
               <span className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">
                 Missing:
               </span>
-              {missing.slice(0, 5).map((c) => (
-                <span key={c.label} className={CHIP_CLASS}>
-                  {c.hint}
-                </span>
-              ))}
+              {missing.slice(0, 5).map((c) =>
+                c.scrollId ? (
+                  <button
+                    key={c.label}
+                    type="button"
+                    className={CHIP_CLASS + " transition hover:bg-amber-500/20"}
+                    onClick={() => scrollToSection(c.scrollId!)}
+                  >
+                    {c.hint}
+                  </button>
+                ) : (
+                  <span key={c.label} className={CHIP_CLASS}>
+                    {c.hint}
+                  </span>
+                ),
+              )}
               {missing.length > 5 && (
                 <span className="text-muted-foreground type-meta">
                   +{missing.length - 5} more

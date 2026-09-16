@@ -189,7 +189,7 @@ function withProfile(place: MockPlace, profile: MockPlaceProfile | undefined): M
     website: profile.website_url ?? place.website,
     photoUrl: profile.photos[0] ?? place.photoUrl,
     photoCount: profile.photos.length,
-    menuCount: profile.menu_count,
+    menuCount: profile.menus.length,
   };
 }
 

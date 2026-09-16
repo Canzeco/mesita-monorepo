@@ -68,12 +68,10 @@ import {
   RotateCw,
   Settings,
   ShoppingBag,
-  Star,
   Store,
   Ticket,
   UserRound,
   Users,
-  UtensilsCrossed,
   Wallet,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -146,8 +144,6 @@ const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   pay: CreditCard,
   credits: Wallet,
   // The two views that lost their rows and kept their addresses.
-  menus: UtensilsCrossed,
-  reviews: Star,
 };
 
 const PAGE_ICON: Record<PlacePage, React.ComponentType<{ className?: string }>> = {

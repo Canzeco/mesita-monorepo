@@ -131,14 +131,6 @@ export type MockReview = {
   reply: string | null;
 };
 
-export type MockMenu = {
-  id: string;
-  placeId: string;
-  name: string;
-  kind: "pdf" | "link";
-  updatedAt: string;
-  pages: number;
-};
 
 /** A guest's credit balance AT ONE PLACE.
  *
@@ -293,10 +285,46 @@ export type MockPlaceProfile = {
   content_state: string | null;
   /** What `isServingChannel` reads for the Reservations completeness check. */
   reservation_channel: string | null;
-  /** Menus live at their own address since MESITA-1848, but completeness still
-   *  counts them, so the count travels with the profile. */
-  menu_count: number;
+  /** THE MENUS THEMSELVES, not a count (MESITA-1917). Menus is a card on
+   *  Profile again, so the form edits this array and the save writes it back;
+   *  `MockPlace.menuCount` is derived from its length rather than stored. */
+  menus: MockProfileMenu[];
+
+  // ── What the world says back ────────────────────────────────────────────
+  //
+  // Every number below is enrichment- or guest-written, which is why the
+  // Reviews card is read-only and wears one `auto` pill for the whole card.
+  // Stars are null rather than 0 where nothing has been scored: an unreviewed
+  // place must never render a fabricated 5.0, and "—" is the only honest
+  // rendering of a number nobody has produced.
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  mesita_stars_overall: number | null;
+  mesita_review_count: number | null;
+  /** Mesita's breakdown, and Mesita's alone — Google publishes no sub-scores,
+   *  which is why these four only appear once Mesita itself has been reviewed. */
+  mesita_stars_food: number | null;
+  mesita_stars_service: number | null;
+  mesita_stars_ambience: number | null;
+  mesita_stars_value: number | null;
+  /** Reach, not score. Null is "not linked", which is a different fact from
+   *  a linked account with no followers. */
+  instagram_followers_count: number | null;
+  facebook_followers: number | null;
 };
+
+/** One menu on a place. `source` is how it got here: a file the operator
+ *  uploaded, or a Drive/Docs link they pasted. The real editor stores both as
+ *  a URL and tells them apart the same way. */
+export type MockProfileMenu = {
+  key: string;
+  name: string;
+  url: string;
+  source: "upload" | "drive";
+};
+
+/** The real editor's cap, and the reason the Menus card can refuse an add. */
+export const MENU_MAX_COUNT = 20;
 
 // ── THE ATLAS CATALOG ───────────────────────────────────────────────────────
 //

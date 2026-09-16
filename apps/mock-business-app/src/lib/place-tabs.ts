@@ -4,10 +4,13 @@
 // applies `tabsForAccess` to the viewer's own role on every navigation.
 import { PRODUCT_LABEL } from "@/lib/product-keys";
 
+// MENUS AND REVIEWS ARE NOT HERE (MESITA-1917). They are CARDS ON PROFILE
+// now, not views, so there is no name for `PlaceTabGate` to admit and
+// `/places/<id>/menus` 404s like any other name off this contract. Neither
+// ever had a rail row to lose — MESITA-1900 set the rail to Pato's eight
+// products and neither was among them.
 export const PLACE_TABS = [
   "profile",
-  "menus",
-  "reviews",
   "visits",
   "orders",
   "reservations",
@@ -20,8 +23,6 @@ export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
-  menus: "Menus",
-  reviews: "Reviews",
   visits: PRODUCT_LABEL.visits,
   orders: PRODUCT_LABEL.orders,
   reservations: PRODUCT_LABEL.reservations,
@@ -46,11 +47,12 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
   if (!access.held) return ["profile"];
   const tabs: PlaceTab[] =
     access.role === "viewer"
-      ? ["profile", "menus", "reviews"]
+      ? // ONE VIEW, and that is not a narrowing (MESITA-1917). A viewer's three
+        // were Profile, Menus and Reviews; the other two are cards on the first
+        // one now, so the same person still reads the same things.
+        ["profile"]
       : [
           "profile",
-          "menus",
-          "reviews",
           "visits",
           "orders",
           "reservations",

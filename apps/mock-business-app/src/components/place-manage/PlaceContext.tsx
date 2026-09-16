@@ -39,9 +39,15 @@ const FAKE_LATENCY_MS = 550;
 
 /** What a section hands back when the bar is pressed. Three outcomes, not two:
  *  `invalid` is what lets the Photos box refuse an over-ceiling gallery with a
- *  sentence instead of silently truncating it. */
+ *  sentence instead of silently truncating it.
+ *
+ *  A PARTIAL, not a whole profile (MESITA-1917). While Profile had one section
+ *  the difference was invisible; Menus is a second, and two sections each
+ *  handing back a complete record would mean whichever merged last quietly
+ *  reverted the other's fields. This is the shape the real `boxToPatch` has
+ *  always had, and the reason it has it. */
 export type SaveBuild =
-  | { kind: "patch"; profile: MockPlaceProfile }
+  | { kind: "patch"; patch: Partial<MockPlaceProfile> }
   | { kind: "invalid"; error: string }
   | { kind: "clean" };
 
@@ -66,7 +72,7 @@ type PlaceContextValue = {
   saveError: string | null;
   saveAll: () => void;
   requestDiscard: () => void;
-  register: (section: Section | null) => void;
+  register: (id: string, section: Section | null) => void;
 };
 
 const Ctx = createContext<PlaceContextValue | null>(null);
@@ -98,38 +104,58 @@ export function PlaceFormProvider({
   children: React.ReactNode;
 }) {
   const { saveProfile } = useMock();
-  // A REF, not state: the section re-registers on every render (its `build`
-  // closes over the live form), and storing that in state would set state
-  // during render for no reader — nothing paints the callbacks, only the
-  // booleans beside them.
-  const sectionRef = useRef<Section | null>(null);
-  const [dirty, setDirty] = useState(false);
+  // A REF keyed by section id, not state: each section re-registers on every
+  // render (its `build` closes over the live form), and storing that in state
+  // would set state during render for no reader — nothing paints the
+  // callbacks, only the booleans beside them.
+  //
+  // A MAP, not one slot (MESITA-1917). Profile had exactly one section while
+  // Menus lived at its own address; now it has two, and a single slot would
+  // have meant whichever registered last was the only one the bar could see —
+  // the other's edits silently unsaveable, with nothing on screen saying so.
+  const sectionsRef = useRef<Map<string, Section>>(new Map());
   const [dirtyLabels, setDirtyLabels] = useState<string[]>([]);
   const [savePending, setSavePending] = useState(false);
   const [saveOk, setSaveOk] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const register = useCallback((section: Section | null) => {
-    sectionRef.current = section;
-    // The booleans DO paint, so they are state — set from the section's own
-    // effect, never from this render.
-    setDirty(section?.dirty ?? false);
-    setDirtyLabels(section?.dirty ? [section.label] : []);
+  const register = useCallback((id: string, section: Section | null) => {
+    if (section) sectionsRef.current.set(id, section);
+    else sectionsRef.current.delete(id);
+    // The labels DO paint, so they are state — set from each section's own
+    // effect, never from this render. Registration order is insertion order,
+    // which is the order the cards appear, so the bar reads top to bottom.
+    setDirtyLabels(
+      [...sectionsRef.current.values()].filter((s) => s.dirty).map((s) => s.label),
+    );
   }, []);
 
   const saveAll = useCallback(() => {
-    const section = sectionRef.current;
-    if (!section || savePending) return;
-    const built = section.build();
-    if (built.kind === "invalid") {
-      setSaveError(built.error);
-      setSaveOk(false);
-      return;
+    const sections = [...sectionsRef.current.values()];
+    if (sections.length === 0 || savePending) return;
+
+    // EVERY SECTION BUILDS BEFORE ANY OF THEM SAVES. A section that refuses
+    // stops the whole save — a partial write would leave the bar saying
+    // "Saved" over a form that still holds unsaved work in the box that
+    // refused.
+    const patch: Partial<MockPlaceProfile> = {};
+    let anything = false;
+    for (const s of sections) {
+      const built = s.build();
+      if (built.kind === "invalid") {
+        setSaveError(built.error);
+        setSaveOk(false);
+        return;
+      }
+      if (built.kind === "clean") continue;
+      Object.assign(patch, built.patch);
+      anything = true;
     }
-    if (built.kind === "clean") return;
+    if (!anything) return;
+
     setSaveError(null);
     setSavePending(true);
-    const next = built.profile;
+    const next: MockPlaceProfile = { ...profile, ...patch };
     window.setTimeout(() => {
       setSavePending(false);
       // The refusal lands where a real one would: AFTER the round trip, with
@@ -140,16 +166,16 @@ export function PlaceFormProvider({
         return;
       }
       saveProfile(placeId, next);
-      sectionRef.current?.onSaved(next);
+      for (const s of sectionsRef.current.values()) s.onSaved(next);
       setSaveOk(true);
     }, FAKE_LATENCY_MS);
-  }, [placeId, readOnly, saveProfile, savePending]);
+  }, [placeId, profile, readOnly, saveProfile, savePending]);
 
   const requestDiscard = useCallback(() => {
     // NO CONFIRM DIALOG. The real one asks because a discard there throws away
     // work typed against a live record; here the record is a fixture and the
     // worst case is retyping a sentence into a mock.
-    sectionRef.current?.onReset();
+    for (const s of sectionsRef.current.values()) s.onReset();
     setSaveError(null);
     setSaveOk(false);
   }, []);
@@ -159,7 +185,7 @@ export function PlaceFormProvider({
       value={{
         placeId,
         profile,
-        isDirty: dirty,
+        isDirty: dirtyLabels.length > 0,
         dirtyLabels,
         savePending,
         saveOk,
@@ -184,6 +210,7 @@ export function PlaceFormProvider({
  *  of them. What the provider actually paints is the dirty flag and the label,
  *  so those are what the effect watches. */
 export function useSectionSaver(
+  id: string,
   label: string,
   dirty: boolean,
   build: () => SaveBuild,
@@ -202,13 +229,13 @@ export function useSectionSaver(
   });
 
   useEffect(() => {
-    register({
+    register(id, {
       label,
       dirty,
       build: () => latest.current.build(),
       onSaved: (fresh) => latest.current.onSaved(fresh),
       onReset: () => latest.current.onReset(),
     });
-    return () => register(null);
-  }, [register, dirty, label]);
+    return () => register(id, null);
+  }, [register, id, dirty, label]);
 }
