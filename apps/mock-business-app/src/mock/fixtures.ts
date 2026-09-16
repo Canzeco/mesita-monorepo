@@ -21,7 +21,9 @@ import type {
   MockMember,
   MockMenu,
   MockOrder,
+  MockDay,
   MockPlace,
+  MockPlaceProfile,
   MockPoolPlace,
   MockReservation,
   MockReview,
@@ -68,7 +70,7 @@ export const PLACES: MockPlace[] = [
     pay: "enabled",
     rating: 4.7,
     reviewCount: 218,
-    photoCount: 24,
+    photoCount: 8,
     menuCount: 3,
   },
   {
@@ -92,7 +94,7 @@ export const PLACES: MockPlace[] = [
     pay: "started",
     rating: 4.3,
     reviewCount: 61,
-    photoCount: 9,
+    photoCount: 5,
     menuCount: 1,
   },
   {
@@ -116,7 +118,7 @@ export const PLACES: MockPlace[] = [
     pay: "pending",
     rating: 4.1,
     reviewCount: 37,
-    photoCount: 14,
+    photoCount: 2,
     menuCount: 2,
   },
   {
@@ -364,3 +366,185 @@ export const VIEWER = {
   email: "you@mock.mesita.ai",
   joinedAt: daysAgo(412),
 } as const;
+
+// ── THE PROFILE RECORDS ─────────────────────────────────────────────────────
+//
+// One per place, under the REAL column names, because the Profile screen is a
+// snapshot of the business console's and reads them by name (mock/types.ts
+// says why). The Atlas vocabulary these point into lives in `mock/atlas.ts`.
+//
+// The four are deliberately at four different COMPLETENESS bands, because the
+// meter above the form is the first thing on the screen and a console where
+// every place scores 100% never shows what the chips look like:
+//
+//   Lumbre y Sal      100%  complete — the emerald check, no chips
+//   Café Pardo         80%  sky — two chips
+//   Hoja Verde         55%  amber — four chips
+//   Panadería Norte    25%  rose — five chips and "+N more"
+
+/** N gallery tiles for one place, deterministic and obviously not photographs.
+ *  The hero is the place's own card image so the gallery's first tile and the
+ *  rail agree; the rest step through the same hue. */
+function photoSet(from: string, to: string, glyph: string, n: number): string[] {
+  return Array.from({ length: n }, (_, i) =>
+    i === 0 ? gradient(from, to, glyph) : gradient(to, from, String(i + 1)),
+  );
+}
+
+const WEEK: Partial<Record<MockDay, { open: string; close: string }[]>> = {
+  monday: [{ open: "13:00", close: "23:00" }],
+  tuesday: [{ open: "13:00", close: "23:00" }],
+  wednesday: [{ open: "13:00", close: "23:00" }],
+  thursday: [{ open: "13:00", close: "23:30" }],
+  friday: [{ open: "13:00", close: "01:00" }],
+  saturday: [{ open: "12:00", close: "01:00" }],
+};
+
+export const PROFILES: Record<string, MockPlaceProfile> = {
+  plc_lumbre: {
+    mesita_name: "Lumbre y Sal",
+    google_name: "Lumbre y Sal Parrilla",
+    category: "steak_house",
+    category_label: "Steakhouse",
+    family_keys: ["restaurants"],
+    description:
+      "A wood-fired grill in Del Valle where the whole menu passes over live coals. The room is built around the fire: an open kitchen, a long bar facing it, and a terrace that opens when the evening cools. Cuts are dry-aged in house and served whole to share; the mezcal list is short and regional.",
+    price_level: 3,
+    currency: "MXN",
+    tags: ["dine_in", "full_bar", "date_night", "outdoor_seating", "valet", "mezcal_tequila", "upscale"],
+    photos: photoSet("#fb2b7b", "#7b0f3c", "L", 8),
+    hours: { ...WEEK, sunday: [{ open: "12:00", close: "18:00" }] },
+    address: "Av. Vasconcelos 1204, Del Valle",
+    zone: "Del Valle",
+    city: "San Pedro Garza García",
+    lat: 25.6543,
+    lng: -100.3591,
+    timezone: "America/Monterrey",
+    phone: "+528155550142",
+    website_url: "https://lumbreysal.example",
+    instagram_url: "https://instagram.com/lumbreysal.example",
+    facebook_url: "https://facebook.com/lumbreysal.example",
+    whatsapp_url: "https://wa.me/528155550142",
+    google_maps_url: "https://maps.google.com/?cid=1000000000000000001",
+    uber_eats_url: "",
+    opentable_url: "https://opentable.example/lumbre-y-sal",
+    content_state: "ready",
+    reservation_channel: "whatsapp",
+    menu_count: 3,
+  },
+  plc_pardo: {
+    mesita_name: null,
+    google_name: "Café Pardo",
+    category: "cafe",
+    category_label: "Café",
+    family_keys: ["cafes_bakeries"],
+    description:
+      "A corner café in the Centro with a single-origin rotation and a short pastry case baked the same morning. Counter service, big windows, and enough outlets that half the room is working.",
+    price_level: 1,
+    currency: "MXN",
+    tags: ["wifi", "working_laptop", "counter_service", "takeout", "power_outlets"],
+    photos: photoSet("#f0a24a", "#8a3d12", "P", 5),
+    // No Sunday and no Saturday — a real café's hours, and the two closed rows
+    // are what the Hours card's toggle looks like at rest.
+    hours: {
+      monday: [{ open: "07:30", close: "20:00" }],
+      tuesday: [{ open: "07:30", close: "20:00" }],
+      wednesday: [{ open: "07:30", close: "20:00" }],
+      thursday: [{ open: "07:30", close: "20:00" }],
+      friday: [{ open: "07:30", close: "21:00" }],
+    },
+    address: "Calle Morelos 88, Centro",
+    zone: "Centro",
+    city: "Monterrey",
+    lat: 25.6714,
+    lng: -100.3095,
+    timezone: "America/Monterrey",
+    phone: "+528155550197",
+    website_url: "https://cafepardo.example",
+    instagram_url: "https://instagram.com/cafepardo.example",
+    facebook_url: "",
+    whatsapp_url: "",
+    google_maps_url: "https://maps.google.com/?cid=1000000000000000002",
+    uber_eats_url: "https://ubereats.example/store/cafe-pardo",
+    opentable_url: "",
+    content_state: "ready",
+    // No reservation channel picked, and one menu short: the two chips this
+    // place's meter prints.
+    reservation_channel: null,
+    menu_count: 1,
+  },
+  plc_hoja: {
+    mesita_name: null,
+    google_name: "Hoja Verde",
+    category: "cocktail_bar",
+    category_label: "Cocktail bar",
+    family_keys: ["bars_nightlife"],
+    // Under 80 characters ON PURPOSE — the Presentation check is a LENGTH
+    // check, and a one-line blurb is exactly the case it exists to catch.
+    description: "Garden cocktail bar in Del Valle.",
+    price_level: 2,
+    currency: "MXN",
+    tags: ["cocktails", "outdoor_seating"],
+    // Two photos, one under the "at least 3" floor.
+    photos: photoSet("#3fb98a", "#0d4a37", "H", 2),
+    hours: {
+      wednesday: [{ open: "18:00", close: "01:00" }],
+      thursday: [{ open: "18:00", close: "01:00" }],
+      friday: [{ open: "18:00", close: "02:00" }],
+      saturday: [{ open: "18:00", close: "02:00" }],
+    },
+    address: "Río Danubio 415, Del Valle",
+    zone: "Del Valle",
+    city: "San Pedro Garza García",
+    lat: 25.6601,
+    lng: -100.3624,
+    timezone: "America/Monterrey",
+    phone: "+528155550163",
+    website_url: "",
+    instagram_url: "https://instagram.com/hojaverde.example",
+    facebook_url: "",
+    whatsapp_url: "",
+    google_maps_url: "https://maps.google.com/?cid=1000000000000000003",
+    uber_eats_url: "",
+    opentable_url: "",
+    // MID-ENRICHMENT, which is the only way to see the quiet footnote under
+    // the completeness meter.
+    content_state: "generating",
+    reservation_channel: "instagram",
+    menu_count: 2,
+  },
+  plc_norte: {
+    mesita_name: null,
+    google_name: "Panadería Norte",
+    // The undefined category — a real row, and the one that makes the Family
+    // field fall back to the Intaker's inferred keys with "(inferred)".
+    category: "undefined",
+    category_label: "Bakery",
+    family_keys: ["cafes_bakeries"],
+    description: null,
+    price_level: null,
+    currency: null,
+    tags: [],
+    photos: photoSet("#6f7ae8", "#241f6b", "N", 2),
+    hours: null,
+    address: "Blvd. Díaz Ordaz 700, Santa María",
+    zone: null,
+    city: "Monterrey",
+    // No coordinates: the Location card's map band is absent here, which is
+    // the other half of that card nobody sees.
+    lat: null,
+    lng: null,
+    timezone: "America/Monterrey",
+    phone: "",
+    website_url: "",
+    instagram_url: "",
+    facebook_url: "",
+    whatsapp_url: "",
+    google_maps_url: "",
+    uber_eats_url: "",
+    opentable_url: "",
+    content_state: null,
+    reservation_channel: null,
+    menu_count: 0,
+  },
+};

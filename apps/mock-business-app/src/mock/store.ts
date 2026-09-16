@@ -13,6 +13,7 @@
 // settings. A harness that white-screens on that is worse than one that
 // forgets, so the failure path is "use the default" every time.
 import { DEFAULT_SCENARIO, type Scenario } from "@/mock/scenario";
+import type { MockPlaceProfile } from "@/mock/types";
 
 const KEY = "mesita-mock-business-app:scenario";
 const PLACE_KEY = "mesita-mock-business-app:last-place";
@@ -96,6 +97,9 @@ export function resetScenario(): void {
   cachedScenario = DEFAULT_SCENARIO;
   cachedRaw = null;
   safeSet(KEY, null);
+  // Reset means "put the world back", and a saved Profile edit is part of the
+  // world now — leaving it behind would make Reset a partial promise.
+  profileEdits = NO_EDITS;
   emit();
 }
 
@@ -122,4 +126,37 @@ export function getHydrated(): true {
 }
 export function getServerHydrated(): false {
   return false;
+}
+
+// ── PROFILE EDITS, AND WHY THEY ARE NOT IN localStorage ─────────────────────
+//
+// The Profile screen is EDITABLE and its save bar is the whole reason its
+// cards are laid out the way they are, so this app's Save has to do something:
+// it writes here, and the heading, the completeness meter and the rail all
+// re-read from it. A Save that only toggled a "Saved" pill would be the one
+// lie a harness must not tell.
+//
+// IN MEMORY, unlike the scenario one block up, and the reason is the Photos
+// card: an uploaded photo becomes a data URI, ten of them is comfortably past
+// the ~5MB origin quota, and `safeSet` swallowing that throw would mean an
+// edit that silently did not persist — worse than one that obviously did not.
+// So these last as long as the tab does. On reload the fixtures are the
+// database again, which is what this app promises anyway.
+let profileEdits: Record<string, MockPlaceProfile> = {};
+
+/** Frozen empty object: `useSyncExternalStore` compares by identity, so the
+ *  server snapshot has to be the same reference every call. */
+const NO_EDITS: Record<string, MockPlaceProfile> = Object.freeze({});
+
+export function getProfileEdits(): Record<string, MockPlaceProfile> {
+  return profileEdits;
+}
+
+export function getServerProfileEdits(): Record<string, MockPlaceProfile> {
+  return NO_EDITS;
+}
+
+export function saveProfile(placeId: string, profile: MockPlaceProfile): void {
+  profileEdits = { ...profileEdits, [placeId]: profile };
+  emit();
 }

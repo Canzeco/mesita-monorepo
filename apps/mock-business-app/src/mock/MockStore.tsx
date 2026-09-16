@@ -8,17 +8,21 @@ import { useMemo, useSyncExternalStore } from "react";
 import {
   getHydrated,
   getLastPlaceId,
+  getProfileEdits,
   getScenario,
   getServerHydrated,
   getServerLastPlaceId,
+  getServerProfileEdits,
   getServerScenario,
   rememberPlace,
   resetScenario,
+  saveProfile,
   setScenario,
   subscribe,
 } from "@/mock/store";
 import { resolveWorld, type Scenario, type World } from "@/mock/scenario";
 import { MOCK_NOW, VIEWER } from "@/mock/fixtures";
+import type { MockPlaceProfile } from "@/mock/types";
 
 export function useMock(): {
   scenario: Scenario;
@@ -31,6 +35,8 @@ export function useMock(): {
   /** The fixture's FIXED now. Never `Date.now()` — see mock/fixtures.ts. */
   now: Date;
   viewer: typeof VIEWER;
+  /** What Profile's save bar writes. In memory only — see mock/store.ts. */
+  saveProfile: (placeId: string, profile: MockPlaceProfile) => void;
   /** False on the server and on the first client render, true after. Screens
    *  that would 404 on a place the stored scenario DOES hold must wait for it. */
   hydrated: boolean;
@@ -38,7 +44,15 @@ export function useMock(): {
   const scenario = useSyncExternalStore(subscribe, getScenario, getServerScenario);
   const lastPlaceId = useSyncExternalStore(subscribe, getLastPlaceId, getServerLastPlaceId);
   const hydrated = useSyncExternalStore(subscribe, getHydrated, getServerHydrated);
-  const world = useMemo(() => resolveWorld(scenario), [scenario]);
+  const profileEdits = useSyncExternalStore(
+    subscribe,
+    getProfileEdits,
+    getServerProfileEdits,
+  );
+  const world = useMemo(
+    () => resolveWorld(scenario, profileEdits),
+    [scenario, profileEdits],
+  );
 
   return {
     scenario,
@@ -49,6 +63,7 @@ export function useMock(): {
     rememberPlace,
     now: MOCK_NOW,
     viewer: VIEWER,
+    saveProfile,
     hydrated,
   };
 }
