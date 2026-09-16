@@ -1,14 +1,20 @@
 // The Add place ceremony is the door (MESITA-1813). `/add` stays a redirect.
 //
 // Pato live, 2026-09-13: search Google; on Mesita add it; if not, create it.
-// Create and Add are owner-only. List rows still say Claim. The old wait-state
-// ("Mesita adds places to the catalogue") is the failure mode these rules
-// catch — a missing CTA compiles, typechecks, and quietly hands managers
-// nowhere to go.
+// The old wait-state ("Mesita adds places to the catalogue") is the failure
+// mode these rules catch — a missing CTA compiles, typechecks, and quietly
+// hands managers nowhere to go.
+//
+// THE OWNER GATE IS GONE (MESITA-1892), and its absence is asserted rather
+// than dropped. Create and Add were owner-of-the-ORGANIZATION, because
+// `claim_place_into_org` needed a target organization and a rank in it;
+// `claim_place(p_place_id, p_claimer)` mints the CLAIMER's own owner row, so
+// there is no membership to hold before you hold the place. A gate re-added
+// here would hide the one door a new operator has.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { canAddPlace, canVerify } from "./active-organization";
+import { canVerify } from "./active-place";
 import { PROTECTED_PREFIXES } from "./supabase/middleware";
 
 const SRC = path.resolve(__dirname, "..");
@@ -34,10 +40,8 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const PLACES_PAGE = codeOnly(read("app/(shell)/orgs/[orgId]/places/page.tsx"));
-const CEREMONY = codeOnly(
-  read("app/(shell)/orgs/[orgId]/places/new/page.tsx"),
-);
+const PLACES_PAGE = codeOnly(read("app/(shell)/places/page.tsx"));
+const CEREMONY = codeOnly(read("app/(shell)/places/new/page.tsx"));
 const ADD_PLACE_SRC = walk(
   path.join(SRC, "components", "add-place"),
 ).map((f) => readFileSync(f, "utf8"));
@@ -48,11 +52,11 @@ describe("the add door is the ceremony", () => {
     expect(PLACES_PAGE).not.toContain("Add a place");
   });
 
-  it("an empty catalogue offers Add place to the owner, never a wait-state", () => {
+  it("an empty catalogue offers Add place, never a wait-state", () => {
     const emptyState =
       PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
     expect(emptyState).not.toBe("");
-    expect(emptyState).toContain("orgPlacesNewHref(");
+    expect(emptyState).toContain("SHELL_ROUTES.placesNew");
     expect(emptyState).toContain("Add place");
     expect(emptyState).not.toMatch(/Mesita adds places/i);
     expect(PLACES_PAGE).not.toMatch(/Add a place|Create place|New place/i);
@@ -74,11 +78,16 @@ describe("the add door is the ceremony", () => {
     }
   });
 
-  it("a viewer does not get the Add place CTA", () => {
-    expect(PLACES_PAGE).toContain("canAddPlace(org.myRole)");
-    expect(canAddPlace("owner")).toBe(true);
-    expect(canAddPlace("editor")).toBe(false);
-    expect(canAddPlace("viewer")).toBe(false);
+  it("EVERY signed-in manager gets the Add place CTA (MESITA-1892)", () => {
+    // The bijection with the gate that left: no role is consulted anywhere on
+    // this page for the ceremony, and the CTA is not inside a conditional
+    // that could hide it from customer #1 — which is what the org-owner gate
+    // did to every editor.
+    expect(PLACES_PAGE).not.toContain("canAddPlace");
+    expect(PLACES_PAGE).not.toContain("canClaim");
+    // Release is the one verb that IS still role-gated, and it is owner-only
+    // because the EF refuses anyone else.
+    expect(PLACES_PAGE).toContain("canRelease(place.myRole)");
   });
 
   it("search stayed gone — the page filters by rail, never by query", () => {
@@ -105,7 +114,7 @@ describe("the add door is the ceremony", () => {
   it("the ceremony searches, then Create or Add — never a claim table, never OTP", () => {
     expect(CEREMONY).toContain("Add place");
     expect(CEREMONY).toContain("AddPlaceForm");
-    expect(CEREMONY).toContain("canAddPlace");
+    expect(CEREMONY).not.toContain("canAddPlace");
     expect(CEREMONY).not.toContain('"/add"');
     expect(CEREMONY).not.toContain("apiListConsolePlaces");
     expect(CEREMONY).not.toContain("PlaceHoldButton");
@@ -119,7 +128,7 @@ describe("the add door is the ceremony", () => {
   // swap. And it draws NO result rows: an empty search has none, and
   // promising a list before a query exists is a second lie.
   it("the loading boundary is the search bar, full width, with no rows", () => {
-    const loading = read("app/(shell)/orgs/[orgId]/places/new/loading.tsx");
+    const loading = read("app/(shell)/places/new/loading.tsx");
     expect(loading).not.toContain("max-w-md");
     expect(loading).toContain("w-full");
     expect(loading).toContain("h-14");
@@ -147,23 +156,25 @@ describe("the add door is the ceremony", () => {
     expect(actions).toContain("addListedPlaceAction");
   });
 
-  it("ceremony mutations refuse non-owners before mint or claim", () => {
+  it("ceremony mutations carry ONE id, and no gate with no subject", () => {
+    // THE REVERSE OF WHAT THIS ASSERTED (MESITA-1892). It pinned
+    // `requireCeremonyOwner` running BEFORE the mint, so an editor could not
+    // leave an unowned catalogue row behind a 403 claim. Both halves of that
+    // are gone with the organization: there is no rank above the place to
+    // require, and the claim cannot 403 on a role it does not read.
     const actions = codeOnly(read("app/(shell)/actions/places.ts"));
-    expect(actions).toContain("function requireCeremonyOwner");
-    expect(actions).toContain("canAddPlace(org.myRole)");
+    expect(actions).not.toContain("requireCeremonyOwner");
+    expect(actions).not.toContain("canAddPlace");
+    expect(actions).not.toContain("organizationId");
+    // And the claim still runs after the mint, which is the ordering that
+    // mattered for a different reason: a created place nobody claimed is a
+    // catalogue row with no owner.
     const createFn = actions.slice(
       actions.indexOf("export async function createThenClaimAction"),
     );
-    expect(createFn.indexOf("requireCeremonyOwner")).toBeGreaterThanOrEqual(0);
-    expect(createFn.indexOf("requireCeremonyOwner")).toBeLessThan(
-      createFn.indexOf("apiCreatePlace"),
-    );
-    const addFn = actions.slice(
-      actions.indexOf("export async function addListedPlaceAction"),
-    );
-    expect(addFn.indexOf("requireCeremonyOwner")).toBeGreaterThanOrEqual(0);
-    expect(addFn.indexOf("requireCeremonyOwner")).toBeLessThan(
-      addFn.indexOf("apiClaimPlace"),
+    expect(createFn.indexOf("apiCreatePlace")).toBeGreaterThanOrEqual(0);
+    expect(createFn.indexOf("apiCreatePlace")).toBeLessThan(
+      createFn.indexOf("apiClaimPlace"),
     );
   });
 

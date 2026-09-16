@@ -17,19 +17,21 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 //
 // ── TWO TIERS (MESITA-1867, Pato 2026-09-15) ──────────────────────────────
 //
-// The partnership used to be one free switch on Organization, locked until
-// the org's Stripe account was Ready — so this body said "Partner is free"
-// and step 1 said "Turn on Partner on Organization — it's free." Both were
-// true and both are gone: Stripe Connect onboarding was the price of
+// The partnership used to be one free switch on the organization's page,
+// locked until its Stripe account was Ready — so this body said "Partner is
+// free" and step 1 said "Turn on Partner on Organization — it's free." Both
+// were true and both are gone: Stripe Connect onboarding was the price of
 // admission to REWARDS, which never needed a charge path, and that friction
-// shrank the market. Now:
+// shrank the market. Now, and since MESITA-1892 both of them are the PLACE's
+// own, in its Products catalogue:
 //
-//   Mesita Partner   the organization's YEARLY subscription; every place it
-//                    holds is in. It is what unlocks Conservative and
-//                    Aggressive here (and Accept Prepays on Capabilities).
-//   Mesita Pay       an optional add-on on Organization — the Stripe account
-//                    and card payments. Not this page's concern: Rewards is
-//                    what a guest EARNS, and no reward needs a charge path.
+//   Mesita Partner   this place's YEARLY subscription (`places.partnered`).
+//                    It is what unlocks Conservative and Aggressive here (and
+//                    Accept Prepays on the Credits view).
+//   Mesita Pay       an optional add-on — the Stripe account and card
+//                    payments, at `products/pay`. Not this box's concern: a
+//                    reward is what a guest EARNS, and no reward needs a
+//                    charge path.
 //
 // Zero stays free — it is the absence of the product, not its bottom rung.
 //
@@ -39,33 +41,35 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 // place that was never in needs the pitch more than a member does.
 //
 // A NON-MEMBER GETS THE PITCH ALONE. The first cut of MESITA-1867 rendered
-// the lifecycle banner for every state, so a place whose organization had
-// not subscribed read the same door three times in eight lines: the page's
-// top line ("Become a Mesita Partner on Organization —", linked), the
-// banner's step 1 ("Subscribe on Organization — yearly…"), then this
-// paragraph. The top line is the door; the banner is for a place that is in
+// the lifecycle banner for every state, so a place that had not subscribed
+// read the same door three times in eight lines: the page's top line ("Become
+// a Mesita Partner in Products —", linked), the banner's step 1 ("Subscribe —
+// yearly…"), then this paragraph. The top line is the door; the banner is for
+// a place that is in
 // (or was), where the three steps mean something; the pitch is what a
 // non-member needs.
 //
 // ── WHY THERE IS NO RE-JOIN BUTTON YET ───────────────────────────────────
 //
-// Forfeit is PER PLACE (three strikes drop this place to plan=free and stamp
-// plan_forfeited_at) while the subscription is PER ORGANIZATION — so the way
-// back is a place action, "re-join this place", never "toggle the org". The
-// door is now guarded but still unwired: MESITA-1889 made the one join door
-// (`setPlacePlan` → `business-web-set-partnership {action:"join"}`) refuse
-// unless the holder organization is `partnered` AND the caller owns it (409
-// `org_not_partnered`), so it can no longer let an editor put any place on
-// plan=pro for nothing under a paid tier. Only the button is left, and it
-// belongs to MESITA-1891. The plan had it render disabled meanwhile — but a
-// disabled primary button is a knob that pretends, the exact thing the
-// house law (SoonStrip.tsx) forbids and the reason the Partner modal on
-// Organization has no Continue button. So the door's honest state is one
-// line: the page's top line says when re-join lands, and this box says what
-// re-joining will do and whose action it is (the owner's — the subscription
-// it re-enters is the owner's). PR 2 adds the button when it does something.
-// The same door serves a DROPPED place — not in the partnership while its
-// organization is — which reads plan=free without a forfeit stamp.
+// Forfeit drops this place to plan=free and stamps `plan_forfeited_at`, while
+// the Membership it bought is untouched — so the way back is a re-join, never
+// "turn the subscription off and on".
+//
+// THE DOOR IS GUARDED NOW, AND STILL UNWIRED. MESITA-1889 made the one join
+// door (`setPlacePlan` → `business-web-set-partnership {action:"join"}`)
+// refuse unless the holder was `partnered` AND the caller owned it; MESITA-1892
+// removed the holder, so it asks the PLACE those same two questions (409
+// `place_not_partnered`, then 403). Either way it can no longer let an editor
+// put a place on plan=pro for nothing under a paid tier. Only the button is
+// left, and it belongs to MESITA-1891. The plan had it render disabled
+// meanwhile — but a disabled primary button is a knob that pretends, the exact
+// thing the house law (SoonStrip.tsx) forbids and the reason the Partner modal
+// has no Continue button. So the door's honest state is one line: the page's
+// top line says when re-join lands, and this box says what re-joining will do
+// and whose action it is (the owner's — the Membership it re-enters is the
+// owner's). The same door serves a DROPPED place — out of the partnership
+// while the Membership is live — which reads plan=free without a forfeit
+// stamp.
 
 // ─── Lifecycle banner — this place's progress on the three Tutorial steps ─
 //
@@ -134,8 +138,8 @@ function LifecycleBanner({
   // step's line renders. Step 1 is never the active step here: `join` is
   // "current" only for a non-member, and a non-member gets the pitch alone
   // (PartnershipBody) — so this line is the done/upcoming reading, and the
-  // "Subscribe on Organization" instruction it used to carry lives on the
-  // page's top line, once.
+  // "Subscribe" instruction it used to carry lives on the page's top line,
+  // once.
   const joinDetail = "Yearly — switch strategies anytime.";
   const strategyDetail =
     view.strategy === "done" && strategy
@@ -241,16 +245,18 @@ export function PartnershipBody({
   pillState,
   storedStrategy,
   member,
-  orgHref,
+  setupHref,
   isOwner,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
   storedStrategy: StrategyId | null;
   member: boolean;
-  orgHref: string;
-  /** Owner of the holder organization. Re-join is owner-only because the
-   *  subscription it re-enters is the owner's; everyone else reads. */
+  /** The place's own Mesita Pay page, where the subscription's banner is one
+   *  click up and the account it gates is on the page itself. */
+  setupHref: string;
+  /** Owner of this place. Re-join is owner-only because the subscription it
+   *  re-enters is the owner's; everyone else reads. */
   isOwner: boolean;
 }) {
   const notMember = pillState === "not_member";
@@ -271,7 +277,7 @@ export function PartnershipBody({
   // (its own paragraph below), or for forfeited (its own line below).
   const nextLine = notMember || underReview || forfeited
     ? null
-    : "Switching to Zero pauses discounts without ending the partnership. The partnership is managed on Organization.";
+    : "Switching to Zero pauses discounts without ending the partnership. The partnership is managed in Products.";
 
   return (
     <div className="flex flex-col gap-3 pb-3">
@@ -306,7 +312,7 @@ export function PartnershipBody({
 
         <p className="text-muted-foreground type-body leading-snug">
           <span className="text-foreground font-semibold">Mesita Partner</span>{" "}
-          is the organization&apos;s yearly partnership. It unlocks{" "}
+          is this place&apos;s yearly partnership. It unlocks{" "}
           <span className="text-foreground font-semibold">Conservative</span>{" "}
           and <span className="text-foreground font-semibold">Aggressive</span>{" "}
           here. Zero stays free.
@@ -331,17 +337,17 @@ export function PartnershipBody({
         {forfeited && (
           <p className="text-muted-foreground text-xs leading-snug">
             {isOwner
-              ? "Re-join lands with the next release — it clears the strikes and the forfeit for this place; the organization's partnership is untouched."
-              : "An owner re-joins this place when re-join lands with the next release; the organization's partnership is untouched."}
+              ? "Re-join lands with the next release — it clears the strikes and the forfeit; the yearly subscription is untouched."
+              : "An owner re-joins this place when re-join lands with the next release; the yearly subscription is untouched."}
           </p>
         )}
 
         {canDrop && (
           <Link
-            href={orgHref}
+            href={setupHref}
             className="text-muted-foreground hover:text-foreground self-start text-xs font-semibold underline underline-offset-4 transition"
           >
-            Manage the partnership on Organization
+            Manage the partnership in Products
           </Link>
         )}
     </div>

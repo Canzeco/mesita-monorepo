@@ -19,7 +19,8 @@ import {
 
 describe("state vocabulary", () => {
   it("is twelve general facts plus eleven Intake functions 0–10", () => {
-    // Owned joined with MESITA-1608 — an organization holds this place, which
+    // Owned joined with MESITA-1608 — somebody holds this place (the claim
+    // on `places` since MESITA-1892; an organization before that), which
     // is not the same claim as Verified (having PROVED you hold it).
     expect(GENERAL_STATE_COUNT).toBe(12);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);

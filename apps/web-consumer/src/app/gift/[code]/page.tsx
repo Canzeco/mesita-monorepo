@@ -33,9 +33,13 @@ import { PIN_LENGTH } from "@/components/consumer/PinField";
 // issue — MESITA-1692 built that half explicitly so this page would only
 // ever have to forward one query param).
 //
-// NO ORG LOGO — organizations has no logo/photo column in the schema at all
-// (checked directly before writing this). A text monogram substitutes; a
-// real image is a Design/asset-pipeline decision this issue does not scope.
+// NO LOGO — the public gift preview carries the place's NAME and nothing
+// else, so there is no image to draw and a text monogram substitutes. The
+// reason changed under this line with MESITA-1892: a gift used to be an
+// organization's, and `organizations` had no logo or photo column at all, so
+// a monogram was the only thing possible. A place DOES have `photos`, which
+// makes an image a payload-and-Design decision now rather than a schema
+// impossibility — still not one this page takes on its own.
 
 export const dynamic = "force-dynamic";
 
@@ -147,14 +151,14 @@ export default async function GiftLandingPage({
 
   return (
     <Shell>
-      {/* ORG IDENTITY LEADS. No logo column in the schema yet — see header —
-          so a monogram carries the brand mark instead of a photo. */}
+      {/* THE PLACE LEADS. The preview payload carries no image — see header —
+          so a monogram carries the mark instead of a photo. */}
       <div className="bg-pink-gradient shadow-glow mb-5 flex h-16 w-16 items-center justify-center rounded-3xl text-2xl font-bold text-white">
-        {gift.organizationName.trim().charAt(0).toUpperCase() || "M"}
+        {gift.placeName.trim().charAt(0).toUpperCase() || "M"}
       </div>
       <p className="text-muted-foreground type-eyebrow">Credits at</p>
       <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight">
-        {gift.organizationName}
+        {gift.placeName}
       </h1>
 
       {/* THEN THE AMOUNT. */}
@@ -163,8 +167,7 @@ export default async function GiftLandingPage({
       </div>
       <p className="text-muted-foreground mt-1 text-xs">
         {formatCurrency(gift.paidCents)} paid, +{formatCurrency(gift.bonusCents)}{" "}
-        from {gift.organizationName} · spendable at {gift.organizationName}{" "}
-        only
+        from {gift.placeName} · spendable at {gift.placeName} only
       </p>
 
       {gift.pending ? (
@@ -192,7 +195,7 @@ export default async function GiftLandingPage({
       <p className="text-muted-foreground mt-3 flex items-center gap-1.5 text-xs">
         <MesitaMark className="h-3.5 w-3.5" />
         Runs in Stripe TEST mode — this balance is real, on that
-        organization&apos;s account.
+        place&apos;s account.
       </p>
     </Shell>
   );

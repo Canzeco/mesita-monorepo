@@ -7,8 +7,12 @@
 //
 // It used to live inside `OrgScreenSections.tsx`, the Payments page's box
 // composition. That file is gone (MESITA-1852): its two live boxes are
-// Configuration's now, and a composition file for a page that renders only
-// Soon strips is a file that drifts from the page it claims to compose.
+// Settings' now, and a composition file for a page that renders only Soon
+// strips is a file that drifts from the page it claims to compose.
+//
+// THE SUBJECT IS THE PLACE (MESITA-1892). Three of these sentences said "this
+// organization's places" — plural, about a holder above the venue. There is no
+// holder: a place carries its own guests, its own payments and its own keys.
 export const SOON_STRIPS: Record<
   "customers" | "payments" | "developers" | "terminal",
   { title: string; line: string }
@@ -30,14 +34,14 @@ export const SOON_STRIPS: Record<
   // is how a vocabulary starts describing a screen that no longer exists.
   customers: {
     title: "Customers",
-    line: "The guests who visit and pay at this organization's places, and what they are worth.",
+    line: "The guests who visit and pay here, and what they are worth.",
   },
   // Payments HAS NO PAGE ANY MORE (MESITA-1869) — it is the strip at the
   // foot of the catalogue, which is where a reading of money that has not
   // moved yet belongs: under the products that would move it.
   payments: {
     title: "Payments",
-    line: "What guests paid at this organization's places, and what reached its account.",
+    line: "What guests paid here, and what reached this place's account.",
   },
   // BRAND LEFT WITH ITS BOX (MESITA-1870). Pato: *"remove brand configuration
   // from here."* Same rule that moved Prepaid Credits out of this map one
@@ -45,6 +49,6 @@ export const SOON_STRIPS: Record<
   // a screen that no longer exists.
   developers: {
     title: "Developers",
-    line: "API keys and what an agent needs to read and drive this organization.",
+    line: "API keys and what an agent needs to read and drive this place.",
   },
 };

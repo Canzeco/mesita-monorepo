@@ -24,14 +24,27 @@
 // renders this cannot read it.
 //
 // The Partner chip is the shared `PartnerPill` (MESITA-1867). It was an
-// inline span here with its own violet while Configuration grew a second
-// Partner chip for the organization — one word, two colours, two pages. The
-// place wears the subscription its organization holds, so it wears the same
-// component.
+// inline span here with its own violet while the organization's page grew a
+// second Partner chip of its own — one word, two colours, two pages. There is
+// one subscription and one place to wear it now (MESITA-1892), and it wears
+// the same component the catalogue's banner does.
+//
+// IT NAMES THE PAGE AS WELL AS THE VIEW (MESITA-1892). Every address under
+// `places/[id]` renders beneath this heading, and four of them are PAGES
+// rather than views — Settings, Products, Customers, Activity, which used to
+// hang off the organization and had an `h1` each. They do not any more: a page
+// body that added its own title would make this the second heading on the
+// screen, so the sub-line answers for both spaces and each page body opens
+// with its lead sentence.
 
 import { usePathname } from "next/navigation";
 import { PartnerPill, PlaceStateBadge } from "@/components/console/badges";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
+import {
+  PLACE_PAGE_LABEL,
+  isPlaceTerminalPathname,
+  placePageFromPathname,
+} from "@/lib/console-routes";
 
 export function PlaceHeading({
   name,
@@ -50,7 +63,18 @@ export function PlaceHeading({
   // copy of the bare-means-Profile rule; a routing rule written twice is one
   // copy too many, and the bare URL redirects now rather than rendering.
   const tab = placeTabFromPathname(pathname);
-  const viewLabel = tab ? PLACE_TAB_LABEL[tab] : null;
+  const page = placePageFromPathname(pathname);
+  // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE. `placePageFromPathname`
+  // answers "products" for `products/pay` (the sub-step reads as its page) and
+  // null for `products/terminal`, so the one address that would otherwise be
+  // titleless names itself here.
+  const viewLabel = tab
+    ? PLACE_TAB_LABEL[tab]
+    : isPlaceTerminalPathname(pathname)
+      ? "Terminal"
+      : page
+        ? PLACE_PAGE_LABEL[page]
+        : null;
 
   return (
     <div className="flex flex-col gap-1">

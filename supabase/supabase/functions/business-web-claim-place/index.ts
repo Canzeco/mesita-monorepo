@@ -1,6 +1,12 @@
 // Supabase Edge Function — business-web-claim-place
 //
-// Moves a place out of the PUBLIC POOL into an organization.
+// Takes a place out of the PUBLIC POOL and makes the caller its owner.
+//
+// IT USED TO FILE THE PLACE UNDER SOMETHING (MESITA-1892). The claim was a
+// conditional UPDATE on `organization_id`, and the caller had to name an
+// organization they owned. The organization layer is gone: a claim now writes
+// `claimed_by`/`claimed_at` as provenance and mints the `place_members` owner
+// row that IS the grant. Nothing is filed anywhere; the place holds itself.
 //
 // Ownership PROOF is still out of scope — a claim is an assertion, not a
 // proof of it — but Verified is no longer a separate ceremony (MESITA-1690,
@@ -11,19 +17,28 @@
 // claimed before this shipped, or for the rare claim whose auto-verify write
 // failed. Two things matter about the claim itself:
 //
-//   1. The claim is a CONDITIONAL UPDATE (`organization_id is null` in the
-//      WHERE clause), so two concurrent claims cannot both win — the loser
-//      gets a 409 instead of silently overwriting.
+//   1. The claim is a CONDITIONAL UPDATE (`claimed_at is null` in the WHERE
+//      clause, inside `claim_place`), so two concurrent claims cannot both
+//      win — the loser gets a 409 instead of silently overwriting.
 //   2. The claimable predicate is shared with the listing
 //      (_shared/place-claim.ts), so a place the list hides cannot be
 //      claimed by guessing its id.
 //
-// Auth: OWNER of the TARGET organization (MESITA-1537 gate C2). Claiming
-// now MINTS place ownership — the claimer's project_members owner row is
-// written atomically with the claim (claim_place_into_org RPC), which is
-// what unlocks the funnel's owner-gated features (PIN, Partnership,
-// transfer). An ownership ceremony is owner-only, same law as
-// add-org-member; editors see an explained disabled state in the console.
+// AUTH: any signed-in business account. THIS IS NOT A WIDENING. The gate it
+// replaces was "owner of the target organization", and an organization was
+// something any signed-in account could create for itself in the same session
+// (business-web-create-organization, now deleted) — so the role check proved
+// only that the caller had made themselves a container first. The real gate
+// was, and remains, the pool predicate: what stops you claiming is that
+// somebody already owns the place, never who you are.
+//
+// THE PARTNER AUTO-JOIN IS GONE. A place claimed into a partnered
+// organization used to inherit plan=pro Zero, because Partner was an org fact
+// that cascaded onto everything it held. Partner is a fact about the PLACE
+// now (`places.partnered`), so a freshly claimed place is simply not a
+// partner yet — its new owner turns it on through business-web-set-partner-status,
+// which is Stripe-locked. Nothing on the wire changes: the response never
+// carried a partnership field.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -34,11 +49,9 @@ import {
   rejectUnlessMethods,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOrgRole } from "../_shared/org-membership.ts";
-import { writePlacePartnership } from "../_shared/org-partnership.ts";
 import { writeApprovedVerification } from "../_shared/place-verification.ts";
 
-type Body = { placeId?: string; projectId?: string; organizationId?: string };
+type Body = { placeId?: string; projectId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -52,31 +65,21 @@ Deno.serve(async (req) => {
 
   const body = await readJsonOr<Body>(req, {});
   const placeId = readPlaceIdAlias(body);
-  const organizationId = body.organizationId;
   if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
-  if (!organizationId) {
-    return json({ ok: false, error: "organizationId is required" }, 400);
-  }
 
   const admin = adminClient(envRes.env);
 
-  const roleRes = await requireOrgRole(admin, authRes.user, organizationId, [
-    "owner",
-  ]);
-  if (!roleRes.ok) return roleRes.response;
-
-  // ONE atomic database function does the guarded claim (organization_id
-  // IS NULL is the lock) and the owner-row upsert together — supabase-js
-  // has no transactions, and a claim without its owner row is the dead-end
-  // this whole path exists to kill. The RPC honors the pool predicate
-  // (place-claim.ts's two facts) and answers machine codes.
-  const { data, error } = await admin.rpc("claim_place_into_org", {
+  // ONE atomic database function does the guarded claim (`claimed_at is null`
+  // is the lock) and the owner-row upsert together — supabase-js has no
+  // transactions, and a claim without its owner row is the dead-end this whole
+  // path exists to kill. The RPC honors the pool predicate (place-claim.ts's
+  // two facts) and answers machine codes.
+  const { data, error } = await admin.rpc("claim_place", {
     p_place_id: placeId,
-    p_organization_id: organizationId,
     p_claimer: authRes.user.id,
   });
   if (error) return json({ ok: false, error: error.message }, 500);
-  const result = data as { ok: boolean; code?: string };
+  const result = data as { ok: boolean; code?: string; claimed_at?: string };
 
   if (!result.ok) {
     if (result.code === "not_claimable" || result.code === "owner_conflict") {
@@ -118,43 +121,8 @@ Deno.serve(async (req) => {
     console.error("[claim-place] auto-verify:", verifyResult.error);
   }
 
-  // AUTO-JOIN ON A PARTNERED ORG (MESITA-1798). Partner is an org fact;
-  // a place claimed into one inherits plan=pro Zero. Best-effort: the
-  // claim already succeeded, and the org toggle can cascade again.
-  const { data: orgRow, error: orgReadErr } = await admin
-    .from("organizations")
-    .select("partnered")
-    .eq("id", organizationId)
-    .maybeSingle();
-  if (orgReadErr) {
-    console.error("[claim-place] auto-join org read:", orgReadErr.message);
-  } else if ((orgRow as { partnered?: boolean } | null)?.partnered === true) {
-    const { data: placeRow, error: placeReadErr } = await admin
-      .from("places")
-      .select("id, plan, listing_type, plan_forfeited_at")
-      .eq("id", placeId)
-      .maybeSingle();
-    if (placeReadErr) {
-      console.error("[claim-place] auto-join place read:", placeReadErr.message);
-    } else if (placeRow) {
-      const join = await writePlacePartnership(
-        admin,
-        placeRow as {
-          id: string;
-          plan: string | null;
-          listing_type: string | null;
-          plan_forfeited_at: string | null;
-        },
-        true,
-      );
-      if (!join.ok) {
-        console.error("[claim-place] auto-join:", join.error);
-      }
-    }
-  }
-
   return json({
     ok: true,
-    place: { id: placeId, organization_id: organizationId },
+    place: { id: placeId, claimedAt: result.claimed_at ?? null },
   });
 });

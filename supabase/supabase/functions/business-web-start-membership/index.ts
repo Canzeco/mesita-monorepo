@@ -1,36 +1,44 @@
 // Supabase Edge Function — business-web-start-membership (product caller)
 //
 // The paid door into Mesita Partner (MESITA-1877). An OWNER buys the yearly
-// **Mesita Membership** for an organization; every place it holds is in.
+// **Mesita Membership** for a PLACE. MESITA-1877 sold it per organization,
+// covering every place the org held; MESITA-1892 removed that layer, so one
+// Membership buys one place — the tenant boundary and the billing boundary
+// are the same line again.
 //
 // This is now the ONLY paid door into the partnership: MESITA-1889 retired
 // the per-PLACE Verified checkout (`business-web-change-subscription`) and
 // the operator switch (`business-web-set-org-partnership`), so
-// `organizations.partnered` has exactly one writer — this EF under
+// `places.partnered` has exactly one writer — this EF under
 // MOCK_SUBSCRIPTION, and the Stripe webhook for real money.
 //
-// Body: { orgId: string, successUrl?: string, cancelUrl?: string }
+// Body: { placeId: string, successUrl?: string, cancelUrl?: string }
 // Response: { ok: true, checkout_url: string, mock?: true }
 //           { ok: true, already_member: true, current_period_end }
 //
-// Auth: owner of the organization. Same rung as Connect Stripe — the person
-// who signs a yearly commitment is the person who owns the account, and
-// `requireOrgRole` does NOT auto-allow super-admins, so an operator buying on
-// someone's behalf has to join the organization first.
+// Auth: owner of the place. Same rung as Connect Stripe — the person who
+// signs a yearly commitment is the person who owns the place.
+//
+// ONE WIDENING, STATED: `requireOrgRole` did NOT auto-allow super-admins, so
+// an operator buying on someone's behalf had to join the organization first.
+// The place-scoped `requireOwner` (auth-membership.ts) does allow them, and
+// this door takes that uniform rule rather than growing a private owner
+// check. An operator can now open a real Stripe Checkout for a place they are
+// not on the team of; the money still moves only if they pay.
 //
 // NOT STRIPE-LOCKED. The old Partner switch refused without a Ready Connect
 // account; Pato struck that on 2026-09-15 because onboarding friction shrinks
-// the market. An organization can buy a Membership having never met Stripe
-// Connect — Connect is what Mesita Pay needs, and Mesita Pay is the add-on.
+// the market. A place can buy a Membership having never met Stripe Connect —
+// Connect is what Mesita Pay needs, and Mesita Pay is the add-on.
 //
 // TWO MODES, the same MOCK_SUBSCRIPTION toggle the other two checkout EFs use:
 //
-//   • MOCK — writes an active mock membership row and entitles the
-//     organization immediately. No money moves. Also the mode whenever no
-//     Stripe key is configured, so a fresh environment works out of the box.
+//   • MOCK — writes an active mock membership row and entitles the place
+//     immediately. No money moves. Also the mode whenever no Stripe key is
+//     configured, so a fresh environment works out of the box.
 //   • REAL — creates a Stripe Checkout Session and entitles NOTHING. The
-//     webhook flips `organizations.partnered` once Stripe confirms, which is
-//     the only order that cannot hand out a partnership for an abandoned
+//     webhook flips `places.partnered` once Stripe confirms, which is the
+//     only order that cannot hand out a partnership for an abandoned
 //     checkout.
 //
 // Local:  supabase functions serve business-web-start-membership
@@ -44,8 +52,12 @@ import {
   readJson,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOrgRole } from "../_shared/org-membership.ts";
+import {
+  adminClient,
+  getAuthedUser,
+  readEFEnv,
+  requireOwner,
+} from "../_shared/auth.ts";
 import {
   applyMembershipEntitlement,
   isMockSubscriptionId,
@@ -54,7 +66,7 @@ import {
   readLiveMembership,
 } from "../_shared/partner-membership.ts";
 import {
-  ensureOrgBillingCustomer,
+  ensurePlaceBillingCustomer,
   ensureWholeCatalog,
   liveChargesBlocked,
   resolvePlanPrice,
@@ -62,7 +74,7 @@ import {
 } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
 
-type Body = { orgId?: unknown; successUrl?: unknown; cancelUrl?: unknown };
+type Body = { placeId?: unknown; successUrl?: unknown; cancelUrl?: unknown };
 
 const MOCK_PERIOD_DAYS = 365;
 
@@ -88,20 +100,18 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const orgId = str(bodyRes.body.orgId);
-  if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
+  const placeId = str(bodyRes.body.placeId);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const admin = adminClient(envRes.env);
-  const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
+  const roleRes = await requireOwner(admin, authRes.user, placeId);
   if (!roleRes.ok) return roleRes.response;
 
-  const { data: org, error: orgErr } = await admin
-    .from("organizations")
-    .select("id, name")
-    .eq("id", orgId)
-    .maybeSingle();
-  if (orgErr) return json({ ok: false, error: orgErr.message }, 500);
-  if (!org) return json({ ok: false, error: "Organization not found" }, 404);
+  // NO PLACE ROW IS READ HERE. It used to read the organization for its name
+  // and its 404; both answers now come from `ensurePlaceBillingCustomer`,
+  // which has to read the place anyway to find its billing anchor. On the
+  // mock path, where no Stripe customer is minted, the `partner_memberships`
+  // foreign key is what refuses an id that names nothing.
 
   const stripeKey = stripeSecretKey();
   const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
@@ -111,13 +121,13 @@ Deno.serve(async (req) => {
   // the owner had already been charged.
   //
   // A LEFTOVER MOCK GRANT IS NOT A MEMBERSHIP ON THE REAL PATH. MOCK_SUBSCRIPTION
-  // writes `mock_<orgId>` rows with state active; once an operator turns the
-  // flag off, every organization that took a mock grant would be a permanent
-  // partner with nothing billable behind it and no way to buy — this gate
-  // would refuse the only door out. So in real mode we fall through and sell,
-  // and the webhook retires the mock row when the real subscription lands.
-  // (Same rule `business-web-change-subscription` applies to place rows.)
-  const live = await readLiveMembership(admin, orgId);
+  // writes `mock_<placeId>` rows with state active; once an operator turns the
+  // flag off, every place that took a mock grant would be a permanent partner
+  // with nothing billable behind it and no way to buy — this gate would refuse
+  // the only door out. So in real mode we fall through and sell, and the
+  // webhook retires the mock row when the real subscription lands.
+  // (Same rule `business-web-change-subscription` applies to plan rows.)
+  const live = await readLiveMembership(admin, placeId);
   if (!live.ok) {
     return json({ ok: false, error: `membership_read: ${live.error}` }, 500);
   }
@@ -131,14 +141,17 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Fallbacks only — the console passes its own URLs. They point at the
+  // place's own Products room, which is where the Membership is sold now that
+  // there is no org shell above it.
   const origin = req.headers.get("origin") ?? "";
   const successUrl = str(bodyRes.body.successUrl) ||
-    `${origin}/orgs/${orgId}/products?membership=return`;
+    `${origin}/places/${placeId}/products?membership=return`;
   const cancelUrl = str(bodyRes.body.cancelUrl) ||
-    `${origin}/orgs/${orgId}/products?membership=cancelled`;
+    `${origin}/places/${placeId}/products?membership=cancelled`;
 
   const { data: planRow } = await admin
-    .from("org_plans")
+    .from("membership_plans")
     .select("key, label, price_cents, currency")
     .eq("key", MEMBERSHIP_PLAN_KEY)
     .maybeSingle();
@@ -158,16 +171,16 @@ Deno.serve(async (req) => {
     const periodEnd = new Date(
       Date.now() + MOCK_PERIOD_DAYS * 24 * 60 * 60 * 1000,
     ).toISOString();
-    // Stable per-org id so re-subscribing updates the same row instead of
+    // Stable per-place id so re-subscribing updates the same row instead of
     // tripping partner_memberships_one_live.
-    const mockSubId = `mock_${orgId}`;
+    const mockSubId = `mock_${placeId}`;
 
     const mirror = await admin.from("partner_memberships").upsert(
       {
-        organization_id: orgId,
+        place_id: placeId,
         plan_key: MEMBERSHIP_PLAN_KEY,
         stripe_subscription_id: mockSubId,
-        stripe_customer_id: `mock_cus_${orgId}`,
+        stripe_customer_id: `mock_cus_${placeId}`,
         state: "active",
         price_cents: plan.price_cents,
         currency: plan.currency ?? "MXN",
@@ -183,7 +196,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const entitled = await applyMembershipEntitlement(admin, orgId, "entitle");
+    const entitled = await applyMembershipEntitlement(admin, placeId, "entitle");
     if (!entitled.ok) {
       return json({ ok: false, error: `mock_grant: ${entitled.error}` }, 500);
     }
@@ -193,7 +206,9 @@ Deno.serve(async (req) => {
       checkout_url: successUrl,
       mock: true,
       partnered: entitled.partnered,
-      placesJoined: entitled.placesJoined,
+      // What actually MOVED, not a count of places visited: `joined` is false
+      // on a replayed grant because joinPlacePatch found nothing to change.
+      joined: entitled.joined,
       current_period_end: periodEnd,
     });
   }
@@ -208,29 +223,39 @@ Deno.serve(async (req) => {
   }
   const stripe = new Stripe(stripeKey!, { apiVersion: STRIPE_API_VERSION });
 
-  // Self-provisioning: materializes the product + price from org_plans on the
-  // first real checkout after a deploy, and re-provisions when the row's
-  // price changes. No dashboard step.
+  // Self-provisioning: materializes the product + price from membership_plans
+  // on the first real checkout after a deploy, and re-provisions when the
+  // row's price changes. No dashboard step.
   const resolved = await resolvePlanPrice(admin, stripe, MEMBERSHIP_CATALOG_ID);
   if (!resolved) {
     return json({ ok: false, error: "Membership price not configured" }, 500);
   }
   void ensureWholeCatalog(admin, stripe);
 
-  const customerId = await ensureOrgBillingCustomer(
-    admin,
-    stripe,
-    orgId,
-    (org as { name?: string | null }).name ?? null,
-  );
+  const anchor = await ensurePlaceBillingCustomer(admin, stripe, placeId);
+  if (!anchor.ok) {
+    return json(
+      { ok: false, error: anchor.error, code: anchor.code },
+      anchor.code === "place_not_found" ? 404 : 500,
+    );
+  }
+  const customerId = anchor.customerId;
 
-  // `organization_id` on BOTH the session and the subscription: the session
-  // carries checkout.session.completed, the subscription carries every
+  // `place_id` on BOTH the session and the subscription: the session carries
+  // checkout.session.completed, the subscription carries every
   // customer.subscription.* that follows for the rest of the membership's
   // life. Metadata on one only would leave the webhook unable to route the
   // renewal a year later.
+  //
+  // `mesita_kind` IS NOW LOAD-BEARING, not decoration. The webhook used to
+  // recognise a Membership by its `organization_id` — the one business object
+  // that had one. Since MESITA-1892 a Membership and a Verified subscription
+  // both carry `place_id`, so the KIND is the only thing that tells them
+  // apart (stripe-webhook-handle-event/partner-membership.ts,
+  // `membershipRouteFor`). Dropping either of these two keys would route this
+  // subscription as a plan change.
   const metadata = {
-    organization_id: orgId,
+    place_id: placeId,
     plan_key: MEMBERSHIP_PLAN_KEY,
     mesita_kind: "business_membership",
   };
@@ -238,7 +263,7 @@ Deno.serve(async (req) => {
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    client_reference_id: orgId,
+    client_reference_id: placeId,
     line_items: [{ price: resolved.priceId, quantity: 1 }],
     metadata,
     subscription_data: { metadata },
@@ -252,7 +277,7 @@ Deno.serve(async (req) => {
   // neither entitle nor revoke anything.
   await admin.from("partner_memberships").upsert(
     {
-      organization_id: orgId,
+      place_id: placeId,
       plan_key: MEMBERSHIP_PLAN_KEY,
       stripe_customer_id: customerId,
       state: "incomplete",

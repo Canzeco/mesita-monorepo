@@ -4,9 +4,10 @@
 // `requireSuperAdmin`. The Capabilities tab that drives it renders for every
 // held role but viewer, so every switch on it 403'd for anyone outside
 // `public.super_admins` — which, on the live database of 2026-09-10, meant
-// everyone except the one person who is both the only super-admin and the
-// only organization member. It worked for the only account that had ever
-// opened the page.
+// everyone except the one person who was both the only super-admin and the
+// only member of the only organization that then existed (the org layer went
+// away in MESITA-1892; `place_members` is the whole of tenancy now). It
+// worked for the only account that had ever opened the page.
 //
 // The EF NAME IS THE ACL (root CLAUDE.md), so the fix is a second door rather
 // than a widened one: `business-web-set-place-rails` with `requireEditor`.

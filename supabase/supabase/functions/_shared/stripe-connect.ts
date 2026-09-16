@@ -210,11 +210,14 @@ export type ConnectAccountSnapshot = {
 export type { ConnectBusinessProfilePrefill };
 
 export type ConnectAccountCreateInput = {
-  orgId: string;
+  /** The merchant. Since MESITA-1892 that is the PLACE — the organization
+   *  layer that used to own the account is gone, and `place_payment_accounts`
+   *  is one row per place. */
+  placeId: string;
   country: string;
   /** null when the caller is resuming an account that already carries it. */
   entityType: MesitaConnectEntityType | null;
-  /** The organization's legal name, for company prefill. Empty string = none. */
+  /** `places.legal_name`, for company prefill. Empty string = none. */
   legalName: string;
   /** Account email — Stripe's login + receipts, from a place email when we have one. */
   email?: string;
@@ -250,17 +253,30 @@ function businessProfileParams(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/**
+ * WHO THIS ACCOUNT BELONGS TO, stamped on the Stripe object.
+ *
+ * It said `organization_id` until MESITA-1892 and now says `place_id`, which
+ * is safe to change outright for one reason: NOTHING READS IT BACK. The
+ * mirror is keyed by `stripe_account_id` — the webhook's `account.updated`
+ * handler looks the row up by that id, and every EF reads by `place_id` from
+ * our own table — so an account created months ago still carrying
+ * `organization_id` routes exactly as well as a new one. The key is for the
+ * humans reading Stripe's dashboard, and for that reader a stale key is a
+ * historical note, not a mis-delivery. If anything ever starts routing on
+ * this metadata, it must read BOTH keys; today nothing does.
+ */
 export function connectAccountCreateParams(
   input: ConnectAccountCreateInput,
 ): Stripe.AccountCreateParams {
-  const { orgId, country, entityType } = input;
+  const { placeId, country, entityType } = input;
   const company = companyParams(input);
   const businessProfile = businessProfileParams(input.businessProfile);
   return {
     country,
     controller: MESITA_CONNECT_CONTROLLER,
     capabilities: MESITA_CONNECT_CAPABILITIES,
-    metadata: { organization_id: orgId },
+    metadata: { place_id: placeId },
     ...(entityType ? { business_type: entityType } : {}),
     ...(company ? { company } : {}),
     ...(input.email ? { email: input.email } : {}),
@@ -279,19 +295,19 @@ export function connectAccountCreateParams(
  * account. Stripe scopes idempotency per API version, so this key moves with
  * CONNECT_API_VERSION by construction.
  *
- * `after` is what makes a RESTART possible (MESITA-1865). On org+country alone,
- * an owner who restarts with the SAME country replays the key of the account
- * that was just deleted — Stripe answers with the deleted account, and the
- * restart silently does nothing. Naming the account being replaced keeps the
- * key deterministic (a retry of the same restart still replays, which is the
- * whole point) while making each restart generation its own key.
+ * `after` is what makes a RESTART possible (MESITA-1865). On place+country
+ * alone, an owner who restarts with the SAME country replays the key of the
+ * account that was just deleted — Stripe answers with the deleted account, and
+ * the restart silently does nothing. Naming the account being replaced keeps
+ * the key deterministic (a retry of the same restart still replays, which is
+ * the whole point) while making each restart generation its own key.
  */
 export function connectAccountIdempotencyKey(
-  orgId: string,
+  placeId: string,
   country: string,
   after?: string | null,
 ): string {
-  const base = `connect-acct-${orgId}-${country}`;
+  const base = `connect-acct-${placeId}-${country}`;
   return after ? `${base}-after-${after}` : base;
 }
 

@@ -41,22 +41,22 @@ function body(
       pillState={pillState}
       storedStrategy={null}
       member={pillState !== "not_member" && pillState !== "forfeited"}
-      orgHref="/orgs/org-1/configuration"
+      setupHref="/places/p-1/products/pay"
       isOwner={over.isOwner ?? true}
     />,
   );
 }
 
 // The first cut rendered the three-step banner in every state, so a place
-// whose organization had never subscribed read the same door three times in
-// eight lines: the page's top line, the banner's step 1 ("Subscribe on
-// Organization — yearly…"), then the pitch. The banner is for a place that
-// is IN; the pitch is what a non-member needs.
+// that had never subscribed read the same door three times in eight lines:
+// the page's top line, the banner's step 1 ("Subscribe — yearly…"), then the
+// pitch. The banner is for a place that is IN; the pitch is what a non-member
+// needs.
 describe("a non-member gets the pitch alone", () => {
   const html = body("not_member");
 
   it("no lifecycle banner, so the door is not repeated", () => {
-    expect(html).not.toContain("Subscribe on Organization");
+    expect(html).not.toContain("Subscribe");
     expect(html).not.toContain("Become a Mesita Partner");
     expect(html).not.toContain("Pick a strategy");
     expect(html).not.toContain("Honor guest checks");
@@ -76,10 +76,10 @@ describe("a non-member gets the pitch alone", () => {
 });
 
 // The door is unbuilt: the one join door is `requireEditor`-guarded and
-// never reads `organizations.partnered`, so wiring it under a paid tier
-// would be a free plan=pro for any editor. A DISABLED primary button is the
+// never reads `places.partnered`, so wiring it under a paid tier would be a
+// free plan=pro for any editor. A DISABLED primary button is the
 // knob-that-pretends the house law forbids (SoonStrip.tsx) — the same law
-// that leaves the Organization modal without a Continue button. One line.
+// that left the Partner modal without a Continue button. One line.
 describe("forfeited is one note and one line, never a button", () => {
   const owner = body("forfeited");
   const editor = body("forfeited", { isOwner: false });
@@ -93,7 +93,7 @@ describe("forfeited is one note and one line, never a button", () => {
 
   it("says when re-join lands, and whose action it is", () => {
     expect(owner).toContain("Re-join lands with the next release");
-    expect(owner).toContain("the organization&#x27;s partnership is untouched");
+    expect(owner).toContain("the yearly subscription is untouched");
     expect(editor).toContain("An owner re-joins this place");
     expect(editor).not.toContain("Re-join lands with the next release —");
   });

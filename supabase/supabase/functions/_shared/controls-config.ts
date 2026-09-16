@@ -15,7 +15,7 @@
 // the first time a restaurateur did the arithmetic.
 //
 // What the hold actually buys is EVIDENCE: the guest committed money to this
-// organization before the bill existed, so Mesita can say it influenced the
+// place before the bill existed, so Mesita can say it influenced the
 // visit rather than discounting one that was already happening. The bonus is
 // acquisition spend, priced like any other discount. Bounded honestly — it
 // proves pre-commitment, not causation; only attribution proves that, and

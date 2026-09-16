@@ -3,7 +3,7 @@
 // (mesita-pay-charge.test.ts covers that shared path in depth); this file
 // locks the two things unique to the Credits caller:
 //   - only paidCents is ever charged — bonusCents never reaches Stripe, it is
-//     the organization's own top-up on top of a real charge;
+//     the place's own top-up on top of a real charge;
 //   - the PaymentIntent's metadata carries mesita_kind: "credit_purchase" plus
 //     every pinned term, because that metadata is the webhook backstop's ONLY
 //     way to find and replay this purchase later (stripe-webhook-handle-event
@@ -23,7 +23,7 @@ function fakeAdmin(cachedCustomerId: string | null) {
       Promise.resolve({
         data: cachedCustomerId
           ? {
-            organization_id: "org_1",
+            place_id: "place_1",
             consumer_id: "c_1",
             stripe_customer_id: cachedCustomerId,
             created_at: "2026-01-01T00:00:00Z",
@@ -73,7 +73,7 @@ function fakeStripe(overrides: {
 }
 
 const BASE_ARGS = {
-  organizationId: "org_1",
+  placeId: "place_1",
   connectedAccountId: "acct_1",
   consumerId: "c_1",
   platformCustomerId: "cus_platform_1",
@@ -104,7 +104,7 @@ Deno.test("metadata carries mesita_kind and every pinned term, all as strings", 
     (intent.params as { metadata: Record<string, string> }).metadata,
     {
       mesita_kind: "credit_purchase",
-      organization_id: "org_1",
+      place_id: "place_1",
       consumer_id: "c_1",
       paid_cents: "50000",
       bonus_cents: "5000",

@@ -491,7 +491,7 @@ verify_jwt = true
 verify_jwt = true
 
 # The paid door into Mesita Partner (MESITA-1877): an owner buys the yearly
-# Mesita Membership for the ORGANIZATION and every place it holds. Not
+# Mesita Membership for the PLACE. Not
 # Stripe-locked — Connect is what Mesita Pay needs, not the partnership.
 # Entitlement is the webhook's, never this EF's, outside MOCK_SUBSCRIPTION.
 [functions.business-web-start-membership]
@@ -523,39 +523,17 @@ verify_jwt = true
 [functions.business-web-list-members]
 verify_jwt = true
 
-# ── Account / Organization / Place hierarchy (2026-09-05) ──────────────
-# Every one of these requires a session: organizations are the thing places
-# get claimed into, so none of this is public. get-place is the read behind
-# the Place screen — the pool half of it is no wider than list-places
+# ── Account / Place (2026-09-05, re-scoped by MESITA-1892) ─────────────
+# The organization half of this block is gone with the layer: listing,
+# creating and the six org-membership endpoints were each a duplicate of a
+# place endpoint that already exists (list-places, create-place,
+# invite-member, accept-invite, list-members, update-member-role,
+# remove-member), and the place is the sole tenant boundary now.
+# Every one of these still requires a session: a place's claim state and
+# portfolio are nobody's public business. get-place is the read behind the
+# Place screen — the pool half of it is no wider than list-places
 # scope=public, but it still answers as YOU, so it needs your JWT.
-[functions.business-web-list-organizations]
-verify_jwt = true
-
-[functions.business-web-create-organization]
-verify_jwt = true
-
-[functions.business-web-update-organization]
-verify_jwt = true
-
-# Members box (MESITA five-box org screen). Any-member read; owner-only
-# direct add of an EXISTING account (editor/viewer — owner grants wait for
-# the invite lifecycle + remove ceremony). Machine-coded errors.
-[functions.business-web-list-org-members]
-verify_jwt = true
-
-[functions.business-web-add-org-member]
-verify_jwt = true
-
-# The rest of the org-membership lifecycle (MESITA-1550): a logged-in
-# business claims an emailed org invite, an owner promotes or demotes a
-# member, and remove revokes either a membership row or a pending invite.
-[functions.business-web-accept-org-invite]
-verify_jwt = true
-
-[functions.business-web-update-org-member-role]
-verify_jwt = true
-
-[functions.business-web-remove-org-member]
+[functions.business-web-update-legal-identity]
 verify_jwt = true
 
 [functions.business-web-list-places]
@@ -744,7 +722,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Mesita Credits — buy path (MESITA-1676). Charges the guest's saved card,
-# cloned onto the target place's organization's connected Stripe account
+# cloned onto the target place's connected Stripe account
 # (mesita-pay-charge.ts), and writes an org-scoped credit_lots row through
 # the create_credit_lot RPC. The webhook's Connect branch is the reliability
 # backstop for the same charge (stripe-webhook-handle-event).
@@ -752,13 +730,13 @@ verify_jwt = true
 verify_jwt = true
 
 # The Buy sheet's "Where" picker: places that accept Mesita Credits AND whose
-# organization is Connect charge-ready today.
+# place is Connect charge-ready today.
 [functions.consumer-web-list-credit-places]
 verify_jwt = true
 
 # Gift Credits (MESITA-1677) — issuance only (MESITA-1380: no transfers
 # between consumers). The sender's own card is charged, cloned onto the
-# target place's organization exactly like Buy; the resulting lot has no
+# target place exactly like Buy; the resulting lot has no
 # owner until a stranger redeems its hashed code. All four are JWT-gated —
 # the PUBLIC half of gifting is gift-web-preview-code, above, a different
 # actor prefix entirely. Redeem stays behind the auth wall on purpose
@@ -776,7 +754,7 @@ verify_jwt = true
 verify_jwt = true
 
 # The Wallet's real balance read (MESITA-1674): the calling consumer's own
-# credit_lots, grouped by organization and paginated.
+# credit_lots, grouped by place and paginated.
 [functions.consumer-web-list-credit-balances]
 verify_jwt = true
 
@@ -792,7 +770,7 @@ verify_jwt = true
 verify_jwt = true
 
 # The operator side of Credits (MESITA-1679). Liability is the exposure view
-# — issued value, outstanding balance, per-organization exposure, breakage.
+# — issued value, outstanding balance, per-place exposure, breakage.
 # The spend report is visibility only: Mesita has no POS to reconcile
 # at_place spend against. Refund is the support primitive; its "refund" kind
 # only calls Stripe, and the webhook remains the sole writer of a refund
@@ -810,13 +788,13 @@ verify_jwt = true
 verify_jwt = false
 
 # Stripe Connect PLATFORM account layer (no charges). The merchant of record
-# is the ORGANIZATION (MESITA-1545). Org-owner-only onboarding starter:
-# creates the organization's connected account + returns the Stripe-hosted
+# is the PLACE (MESITA-1545, re-scoped by MESITA-1892). Owner-only
+# onboarding starter: creates the place's connected account + returns the Stripe-hosted
 # Account Link.
 [functions.business-web-start-payment-onboarding]
 verify_jwt = true
 
-# Any-member read of the organization's Connect mirror; refresh-through from
+# Any-member read of the place's Connect mirror; refresh-through from
 # Stripe by default while the webhook endpoint is missing (MESITA-1531).
 [functions.business-web-get-payment-account]
 verify_jwt = true
@@ -828,7 +806,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Super-admin read of a place's Connect mirror (resolved through its
-# organization) + the pay-readiness AND chain (intent bit ∧ payCard rail ∧
+# place) + the pay-readiness AND chain (intent bit ∧ payCard rail ∧
 # Stripe capability); refresh-on-read.
 [functions.admin-web-get-place-payment-account]
 verify_jwt = true

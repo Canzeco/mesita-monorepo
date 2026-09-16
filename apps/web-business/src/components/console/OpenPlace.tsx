@@ -5,8 +5,8 @@
 //
 // WHY THIS EXISTS. The rail is rendered by `(shell)/layout.tsx`, which sits
 // ABOVE `places/[id]/layout.tsx` — the only thing that knows a place's name
-// when the place is not in the viewer's own portfolio (a pool place), which
-// views this viewer may open, and whether its form is dirty. A server layout
+// when the caller holds no membership on it (a pool place), which views this
+// viewer may open, and whether its form is dirty. A server layout
 // cannot read the pathname, and re-fetching the place in the shell would be a
 // second `business-web-get-place` on every navigation for facts the child
 // already has in hand.
@@ -15,7 +15,7 @@
 //
 // TWO PUBLISHERS, DELIBERATELY SEPARATE:
 //
-//   <PublishOpenPlace>  id, name, holder, tabs — rendered by the place LAYOUT,
+//   <PublishOpenPlace>  id, name, held, tabs — rendered by the place LAYOUT,
 //                       which resolves all four server-side.
 //   <PublishPlaceNav>   guardNav — rendered INSIDE PlaceProvider, because that
 //                       is the only place `usePlaceContext()` does not throw.
@@ -51,13 +51,15 @@ import type { PlaceTab } from "@/lib/place-tabs";
 export type OpenPlace = {
   id: string;
   name: string;
-  /** The organization that holds it; null for a pool place. */
-  holderOrgId: string | null;
-  /** Exactly the views this viewer may open — `visibleTabs()`, so 1 to 5.
-   *  A viewer gets Profile + Reviews + Activity; `admin` only for
-   *  super-admins; a pool place gets Profile alone. The rail renders this and
-   *  nothing else: a greyed-out row for a view you cannot open is a worse
-   *  answer than no row. */
+  /** THE CALLER HOLDS IT — a `place_members` row of their own. It was the
+   *  holding organization's id until MESITA-1892, and the only question ever
+   *  asked of it was "is this null", so the layer's removal turns it into the
+   *  boolean it always was. */
+  held: boolean;
+  /** Exactly the views this viewer may open — `visibleTabs()`. A viewer gets
+   *  the read surfaces; `admin` only for super-admins; a pool place gets
+   *  Profile alone. The rail renders this and nothing else: a greyed-out row
+   *  for a view you cannot open is a worse answer than no row. */
   tabs: PlaceTab[];
 };
 
@@ -97,8 +99,8 @@ export function OpenPlaceProvider({ children }: { children: React.ReactNode }) {
       setPlace: (next: OpenPlace | null) => {
         setPlaceState(next);
         // Only a HELD place is worth remembering: a pool place is not in
-        // any portfolio the rail could show it in.
-        if (next?.holderOrgId) setLastPlaceId(next.id);
+        // the portfolio the rail draws from.
+        if (next?.held) setLastPlaceId(next.id);
       },
       lastPlaceId,
       guardNav: guard?.fn ?? null,
@@ -129,7 +131,7 @@ export function useOpenPlaceGuard(): GuardNav | null {
 
 /** Rendered by the place layout. Clears on unmount so the rail's foreign place
  *  disappears the moment you navigate off the place. */
-export function PublishOpenPlace({ id, name, holderOrgId, tabs }: OpenPlace) {
+export function PublishOpenPlace({ id, name, held, tabs }: OpenPlace) {
   const { setPlace } = useContext(OpenPlaceContext);
   // `tabs` is a fresh array each render, so join it into a primitive for the
   // dependency list — otherwise this effect re-runs on every render forever.
@@ -138,11 +140,11 @@ export function PublishOpenPlace({ id, name, holderOrgId, tabs }: OpenPlace) {
     setPlace({
       id,
       name,
-      holderOrgId,
+      held,
       tabs: tabKey.split(",") as PlaceTab[],
     });
     return () => setPlace(null);
-  }, [id, name, holderOrgId, tabKey, setPlace]);
+  }, [id, name, held, tabKey, setPlace]);
   return null;
 }
 

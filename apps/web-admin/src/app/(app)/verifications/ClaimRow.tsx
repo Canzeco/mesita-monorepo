@@ -35,9 +35,12 @@ export function ClaimRow({
           <p className="font-display text-base font-semibold tracking-tight">
             {claim.place.name ?? "(deleted place)"}
           </p>
+          {/* The claim names WHEN, and the Claimed by row below names WHO.
+              It used to name the organization the place was claimed into as
+              well; MESITA-1892 removed that layer, so there is no third
+              party left to print here. */}
           <p className="text-muted-foreground text-xs">
-            claimed {formatDate(claim.claimed_at)} into{" "}
-            <span className="font-medium">{claim.organization?.name ?? "(deleted org)"}</span>
+            claimed {formatDate(claim.claimed_at)}
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 type-meta font-bold tracking-wider text-amber-700 uppercase">

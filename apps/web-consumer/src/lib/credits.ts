@@ -82,62 +82,35 @@ export function formatWhen(atMs: number): string {
   }).format(new Date(atMs));
 }
 
-// ── Whose face a balance wears (MESITA-1816) ──────────────────────────────
-// THE ORGANIZATION IS THE MONEY BOUNDARY, NOT ALWAYS THE FACE. Pato,
-// 2026-09-13: "too complex for one organization to manage multiple places
-// too. It's just too enterprise." The ledger stays org-scoped, but while an
-// organization holds exactly ONE place the guest never meets the word: the
-// card is titled with the place, wears the place's own photo, and says
-// "spendable at Taquería X". At two or more places — or none, a place
-// released after the purchase — the card is the organization's, as before.
+// ── Whose face a balance wears (MESITA-1816 · MESITA-1892) ─────────────────
+// THE PLACE IS THE MONEY BOUNDARY AND THE FACE. Pato, 2026-09-13: "too
+// complex for one organization to manage multiple places too. It's just too
+// enterprise." MESITA-1816 answered that by keeping the ledger org-scoped and
+// lending the card the place's face while the org held exactly one place;
+// MESITA-1892 finished the thought and deleted the organization outright. A
+// balance is now a debt owed by ONE venue, so there is no second identity to
+// choose between: the card is titled with the place, wears the place's own
+// `photos[0]`, and says "spendable at" that place. `balanceFace` — the reader
+// that picked between the two — is gone with the choice it existed to make.
 
-export type BalanceFace = {
-  /** What the card and the balance screen are titled. */
-  name: string;
-  /** The place's own `photos[0]`; null for an organization (no art of its own) or a photo-less place. */
-  photoUrl: string | null;
-  /** True when the face is the organization's one place. */
-  isPlace: boolean;
-};
-
-export function balanceFace(
-  o: {
-    organizationName: string;
-    placeCount: number;
-    place: { name: string; photoUrl: string | null } | null;
-  },
-): BalanceFace {
-  if (o.placeCount === 1 && o.place) {
-    return { name: o.place.name, photoUrl: o.place.photoUrl, isPlace: true };
-  }
-  return { name: o.organizationName, photoUrl: null, isPlace: false };
+/** "Spendable at Taquería X". One venue, one sentence — the two- and
+ *  zero-place branches died with the organization (MESITA-1892). */
+export function spendableAtCopy(o: { placeName: string }): string {
+  return `Spendable at ${o.placeName}`;
 }
 
-/** "Spendable at Taquería X" · "Spendable at any of Grupo X's 3 places" ·
- *  the organization alone when it holds nothing today. */
-export function spendableAtCopy(
-  o: { organizationName: string; placeCount: number; place: { name: string } | null },
-): string {
-  const face = balanceFace({ ...o, place: o.place ? { ...o.place, photoUrl: null } : null });
-  if (face.isPlace) return `Spendable at ${face.name}`;
-  if (o.placeCount >= 2) {
-    return `Spendable at any of ${o.organizationName}'s ${o.placeCount} places`;
-  }
-  return `Spendable at ${o.organizationName}`;
-}
-
-// ── The three states a real, org-scoped balance can be in ──────────────────
+// ── The three states a real, place-scoped balance can be in ────────────────
 // Credits used to open in exactly two — Available and Expired — because the
 // buy path never applied the hold it still carries in the schema (BalanceClient
 // once said so outright). This read surfaces PENDING lots too (any writer
 // other than the buy path can still produce one), so the card needs the
 // third state back.
 
-export type OrgBalanceState = "spendable" | "pending" | "expired";
+export type BalanceState = "spendable" | "pending" | "expired";
 
-export function orgBalanceState(
+export function balanceState(
   o: { spendableCents: number; pendingCents: number },
-): OrgBalanceState {
+): BalanceState {
   if (o.spendableCents > 0) return "spendable";
   if (o.pendingCents > 0) return "pending";
   return "expired";
@@ -146,7 +119,7 @@ export function orgBalanceState(
 /**
  * The one number a card leads with: what's usable now, else what's on its
  * way, else — for a balance that is only ever dead money — what was there.
- * Never zero while totalCents is positive, so a fully expired org still
+ * Never zero while totalCents is positive, so a fully expired place still
  * shows the guest what they had rather than reading as an empty balance.
  */
 export function headlineCents(

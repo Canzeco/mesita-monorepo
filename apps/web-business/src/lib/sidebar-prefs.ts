@@ -7,14 +7,19 @@
 // a shared cookie name would let one collapse the other.
 export const SIDEBAR_COLLAPSED_COOKIE = "business_sidebar_collapsed";
 
-// WHICH PLACE AND WHICH ORGANIZATION YOU WERE LAST IN (MESITA-1807). The rail
-// shows the last place opened while you are on an organization page, and `/`
-// lands on it after a reload; the organization is what Account, the create
-// ceremony and a pool place fall back to. One id each. Within a session the
-// OpenPlace context is the truth (a shared layout does not re-run on client
-// navigations); these make the FIRST frame right.
+// WHICH PLACE YOU WERE LAST IN (MESITA-1807). Every flat address resolves to
+// it, `/` lands on it after a reload, and the rail shows it while you are on
+// an address that names no place. Within a session the OpenPlace context is
+// the truth (a shared layout does not re-run on client navigations); this
+// makes the FIRST frame right.
+//
+// THERE WAS A SECOND COOKIE (MESITA-1892). `business_rail_org` remembered
+// which organization you were in — the fallback for Account, the create
+// ceremony and a pool place. There is no second scope to remember, so it is
+// gone rather than left writing a value nothing reads; a cookie nobody reads
+// is a cookie somebody will one day read by mistake. Browsers still holding
+// the old one simply never send it anywhere that looks.
 export const RAIL_PLACE_COOKIE = "business_rail_place";
-export const RAIL_ORG_COOKIE = "business_rail_org";
 
 /** A year, path-wide, same-site: the shape every rail cookie is written in. */
 export const RAIL_COOKIE_ATTRS = "path=/; max-age=31536000; samesite=lax";

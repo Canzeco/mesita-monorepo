@@ -39,14 +39,14 @@
 // how a screen starts disagreeing with itself.
 
 import { createContext, useContext } from "react";
-import type { ConsolePlaceView } from "@/lib/api/organizations";
+import type { ConsolePlaceView } from "@/lib/api/console";
 import type { PlaceTab } from "@/lib/place-tabs";
 
 export type PlaceScopeValue = {
   placeId: string;
   /** The matrix's answer for this caller on this place. */
   tabs: readonly PlaceTab[];
-  /** An organization holds this place and the caller can manage it. */
+  /** The caller holds this place and can manage it. */
   held: boolean;
   /** Identity + holder + claimable. Null for a held place — nothing renders
    *  it there, and shipping a second copy of a record `PlaceContext` already

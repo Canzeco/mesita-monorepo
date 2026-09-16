@@ -10,14 +10,14 @@ import type { Database } from "./database.types";
 //
 // 2. "Already-signed-in bounce" — / hosts the auth surface; signed-in
 //    visitors should not see it. We bounce them through
-//    /auth/post-signin, which forwards to the place catalog.
+//    /auth/post-signin, which forwards to the place catalogue.
 //
 // There is no onboarded-vs-not check anywhere any more: you sign in, you
 // pick a place, you manage it.
 
 export const PROTECTED_PREFIXES = [
   // `/add` is NOT here any more (MESITA-1664): the route is a bare redirect
-  // to /places now, reads nothing and renders nothing, and /places carries
+  // to `/` now, reads nothing and renders nothing, and /places carries
   // the wall. Gating a redirect would only bounce a signed-out visitor
   // through sign-in to reach a page that immediately sends them somewhere
   // gated anyway.
@@ -29,15 +29,17 @@ export const PROTECTED_PREFIXES = [
   // all four are behind the signed-out wall. Nothing in the shell is mock
   // any more.
   //
-  // `/orgs` is every organization page and the create ceremony (MESITA-1807);
-  // `/organization` and the bare `/places` are next.config.ts redirects now,
-  // resolved before a request ever reaches this proxy, so gating them would
-  // guard a dead path. `/places` stays for the place console beneath it.
+  // `/orgs` IS NOT HERE ANY MORE (MESITA-1892). Every organization address is
+  // a next.config.ts redirect now, resolved before a request ever reaches this
+  // proxy, so gating the prefix would guard a dead path — the same reasoning
+  // that took `/organization`, `/place` and `/settings` off this list.
+  //
+  // `/places` is the WHOLE console now: the catalogue, the Add ceremony, and
+  // every place's own views and pages. Two prefixes are all that is left.
   //
   // `/` itself stays OUT, and stays out deliberately: it is a redirect that
   // reads nothing and renders nothing, and its destination is walled. Same
   // reasoning as `/add`.
-  "/orgs",
   "/places",
   "/account",
 ];

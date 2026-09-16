@@ -6,7 +6,7 @@
 //
 // TWO CASES, AND THE FIRST ONE IS A RACE. Stripe redirects the browser the
 // instant the session completes, and the webhook that writes
-// `organizations.partnered` arrives on its own connection — usually first,
+// `places.partnered` arrives on its own connection — usually first,
 // sometimes not. So "return" must NOT claim the partnership is live: it says
 // the payment went through and the page catches up, which is true in both
 // orderings. Promising more would be a green banner over a not-yet-partnered

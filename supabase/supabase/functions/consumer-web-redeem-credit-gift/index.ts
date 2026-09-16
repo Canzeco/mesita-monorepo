@@ -27,8 +27,14 @@
 // against one IP, and per-IP is what actually slows a 10-digit guessing
 // script down regardless of how many accounts sit behind it.
 //
+// WHAT THE CLAIMER GETS IS A BALANCE AT ONE VENUE. The lot handed over is
+// place-scoped (MESITA-1892), so the response names the PLACE — that is both
+// who owes the credits and where they can be spent. It used to name the
+// organization, which was the boundary but never the thing the guest walks
+// into.
+//
 // Body:     { code: string }
-// Response: { ok: true, lotId, organizationId, organizationName, creditedCents,
+// Response: { ok: true, lotId, placeId, placeName, creditedCents,
 //              paidCents, bonusCents, note, expiresAt }
 //         | { ok: false, code: "gift_invalid", error } (one generic outcome)
 //         | 400 | 401 | 429
@@ -149,12 +155,12 @@ Deno.serve(async (req) => {
   });
 
   // Won — shape the response from the lot + the (now-claimed) gift row so
-  // RedeemClient can render "Credits added at <organization>" without a
-  // second round trip.
+  // RedeemClient can render "Credits added at <place>" without a second round
+  // trip.
   const [lotRow, giftRow] = await Promise.all([
     admin
       .from("credit_lots")
-      .select("id, organization_id, paid_cents, bonus_cents, expires_at")
+      .select("id, place_id, paid_cents, bonus_cents, expires_at")
       .eq("id", data.lotId!)
       .maybeSingle(),
     admin
@@ -166,7 +172,7 @@ Deno.serve(async (req) => {
   const lot = lotRow.data as
     | {
       id: string;
-      organization_id: string;
+      place_id: string;
       paid_cents: number;
       bonus_cents: number;
       expires_at: string;
@@ -179,19 +185,19 @@ Deno.serve(async (req) => {
     // failed.
     return json({ ok: true, lotId: data.lotId, note: null });
   }
-  const org = await admin
-    .from("organizations")
+  const placeRow = await admin
+    .from("place_profiles")
     .select("name")
-    .eq("id", lot.organization_id)
+    .eq("id", lot.place_id)
     .maybeSingle();
-  const organizationName = (org.data as { name?: string } | null)?.name ??
+  const placeName = (placeRow.data as { name?: string } | null)?.name ??
     "Mesita";
 
   return json({
     ok: true,
     lotId: lot.id,
-    organizationId: lot.organization_id,
-    organizationName,
+    placeId: lot.place_id,
+    placeName,
     paidCents: lot.paid_cents,
     bonusCents: lot.bonus_cents,
     creditedCents: lot.paid_cents + lot.bonus_cents,

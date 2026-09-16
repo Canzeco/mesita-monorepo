@@ -22,7 +22,10 @@ export const PLACE_COLUMNS: readonly string[] = [
   "content_state",
   // ISO 4217 for this place. Already shown in Identity.
   "currency",
-  "organization_id",
+  // WHEN this place left the pool. The holder used to be named here too
+  // (`organization_id`); MESITA-1892 removed the layer, and the grant is a
+  // `place_members` row the console reads as the caller's own role — so the
+  // only thing left for this projection to carry is the timestamp.
   "claimed_at",
   "created_at",
   "updated_at",

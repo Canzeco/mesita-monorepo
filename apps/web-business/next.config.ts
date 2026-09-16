@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // ONE place console (MESITA-1564). The `(console)` tree — /place/<id> under
   // Profile · Partnership · Performance · Settings — is deleted; `/places/<id>`
-  // under Profile · Reviews · Capabilities · Rewards · Admin is the whole
-  // surface now (MESITA-1841).
+  // is the whole surface now: nine views plus four pages of its own
+  // (MESITA-1892).
   //
   // The tab names do NOT map one to one (Partnership and Settings merged into
   // Capabilities), so a legacy tab cannot be forwarded to a matching tab
@@ -33,37 +33,29 @@ const nextConfig: NextConfig = {
       // page it pointed at (MESITA-1839). `legacy-redirects.test.ts` now walks
       // every live address in lib/console-routes.ts through this table.
       //
-      // MESITA-1841 reverses two rules and adds two.
-      //
-      // Capabilities took its name back — MESITA-1815 had renamed the view
-      // Settings, label and segment together, and this rule pointed the other
-      // way. `/settings` (flat) and `/places/<id>/settings` are the legacy
-      // spellings now.
       // CAPABILITIES AND REWARDS ARE NOT VIEWS ANY MORE (MESITA-1885). The
       // rail lists all eight products, and three of them were rows on the one
       // Capabilities page — so the page split into a view per product and both
       // old segments are legacy spellings now.
       //
-      // BOTH LAND ON VISITS, and `/places/:id/settings` is repointed with
-      // them rather than left aimed at `capabilities`. A redirect onto a
-      // DELETED route is the `/unit/*` → `/place/*` chain again, and it fails
-      // silently because no test walks a legacy source to its destination.
-      //
-      // Visits is the honest landing for all three: it is the place's own
-      // room — the ladder's container, the Partnership body, and the internal
-      // "How this place is run" box that Capabilities used to hold. A
-      // Capabilities bookmark cannot be forwarded to a MATCHING product
-      // because its six rows are now four products; landing on the container
-      // beats guessing one of them.
+      // BOTH LAND ON VISITS. A Capabilities bookmark cannot be forwarded to a
+      // MATCHING product because its six rows are now four products; landing
+      // on the container beats guessing one of them. Visits is the honest
+      // landing: it is the place's own room — the ladder's container, the
+      // Partnership body, and the internal "How this place is run" box that
+      // Capabilities used to hold.
       //
       // TEMPORARY, like every other rename on this page: a 308 caches today's
       // answer in every browser forever, and where the place's switches live
       // has now moved three times.
-      {
-        source: "/places/:id/settings",
-        destination: "/places/:id/visits",
-        permanent: false,
-      },
+      //
+      // `/places/:id/settings` IS NOT HERE ANY MORE (MESITA-1892), and its
+      // absence is the assertion. It forwarded to Visits as the retired
+      // spelling of a place view; the place has a Settings PAGE now — the
+      // members and the developer keys that used to hang off the organization
+      // — so leaving the rule would make that page unreachable with every
+      // check green, which is `/settings` in MESITA-1839 exactly. It was safe
+      // to delete because it was `permanent: false`: no browser cached it.
       {
         source: "/places/:id/capabilities",
         destination: "/places/:id/visits",
@@ -75,7 +67,7 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       // AND THEIR FLAT TWINS, which is the half that is easy to forget. Both
-      // were live flat resolvers until this issue — `/capabilities` and
+      // were live flat resolvers until MESITA-1885 — `/capabilities` and
       // `/rewards` are in operators' bookmarks and in old links — and a name
       // dropped from `FLAT_ROUTES` does not fall through to anything: the
       // `[flat]` segment answers 404 for a name not in the contract, on
@@ -88,151 +80,155 @@ const nextConfig: NextConfig = {
       // the reason the place-scoped rules above give.
       { source: "/capabilities", destination: "/visits", permanent: false },
       { source: "/rewards", destination: "/visits", permanent: false },
-      // THE FLAT `/settings` RULE IS DELETED (MESITA-1871), and this is the
-      // whole point of the issue. It forwarded to `/capabilities` from
-      // MESITA-1841 — permanently — which is the single reason MESITA-1852
-      // had to name the organization's own page `configuration` instead of
-      // `settings`: a config rule runs BEFORE filesystem routes, so the name
-      // could be live in the contract and dead on arrival, which is
-      // MESITA-1839 exactly. Pato asked for the name back, so the rule goes
-      // rather than the name.
+      // `/places/:id/activity` IS GONE FROM THIS TABLE TOO (MESITA-1892).
+      // Activity left the place for the organization in MESITA-1841 and this
+      // rule forwarded it to the flat address; the organization is gone and
+      // Activity is the PLACE's page again, at the address it started from.
+      // Same law as `/places/:id/settings` above: a rule over a live page is
+      // MESITA-1839, and `permanent: false` is what made deleting it safe.
       //
-      // IT WAS SAFE TO DELETE, AND THAT WAS CHECKED, NOT ASSUMED:
-      // `curl -I business.mesita.ai/settings` answered `308` with
-      // `cache-control: public, max-age=0, must-revalidate`, so every browser
-      // that ever followed it revalidates before following it again. The
-      // place-scoped `/places/:id/settings` rule above STAYS — a different
-      // path, and still the retired spelling of a place view.
-      // Activity left the place for the organization (MESITA-1841). There is
-      // no org id in this path to forward to, so it lands on the FLAT address,
-      // which resolves the remembered organization. TEMPORARY: where a place's
-      // numbers live is a product decision that has now moved once, and a 308
-      // would cache this answer in every browser forever.
+      // ── THE ORGANIZATION IS GONE (MESITA-1892) ─────────────────────────
+      //
+      // `partnered`, `legal_name`, `rfc`, the Stripe account and the members
+      // all live on `places` now, so every `/orgs/<id>/…` address is dead and
+      // every one of them is in somebody's bookmarks. They forward to the FLAT
+      // twin of the page they were, which resolves the remembered place at
+      // request time — the closest honest answer, since an organization id
+      // cannot be turned into a place id once the join table is dropped.
+      //
+      // TEMPORARY, all of them. They land on resolvers, and a 308 would cache
+      // the hop in every browser that ever follows it; this table's own rule
+      // is that a permanent rule never lands on a resolver.
+      //
+      // THE TWO STRIPE ADDRESSES LAND ON `/`, NOT ON A PAGE. Stripe stores an
+      // Account Link's `return_url` when the link is MINTED, and every link
+      // ever minted points at the bare `/orgs/<id>?connect=return` (or, older
+      // still, `/organization?org=<id>&connect=return`). `/` is the one
+      // address that reads `?connect=` and hands the whole query to the
+      // selected place's Pay page. Any other destination would strand an owner
+      // who just spent eight minutes uploading documents on a screen that does
+      // not know they came back.
+      { source: "/orgs/new", destination: "/", permanent: false },
       {
-        source: "/places/:id/activity",
-        destination: "/activity",
+        source: "/orgs/:orgId/settings",
+        destination: "/settings",
         permanent: false,
       },
-      // THE ORGANIZATION MOVED INTO THE PATH (MESITA-1807). `?org=<id>` used
-      // to name it on every console URL; the id is captured off the query
-      // and becomes the segment. Stripe stores an Account Link's return_url
-      // when the link is minted, so `/organization?org=&connect=return` links
-      // minted before this shipped still arrive here — the rest of the query
-      // rides through to `/orgs/<id>`, whose Overview hands `?connect=` on to
-      // Payments. The no-org forms go to `/`, the resolver. The `has` rules
-      // must stay ABOVE their bare twins: first match wins.
       {
-        source: "/organization",
-        has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
-        destination: "/orgs/:org",
-        permanent: true,
-      },
-      // NO `/orgs/:orgId/organization` RULE. One lived here between
-      // MESITA-1842 and MESITA-1846, forwarding onto the bare id. The page is
-      // back at that segment, and a config rule runs BEFORE filesystem routes
-      // — so leaving it would make the rail's first row unreachable with every
-      // check green, which is `/settings` in MESITA-1839 exactly.
-      // CREDITS MERGED BACK INTO PAYMENTS (MESITA-1845). It was a `SoonStrip`
-      // at the foot of Payments, MESITA-1841 gave it a room, and Pato answered
-      // the question of where it goes once Payments had a row again with one
-      // word: "merge." Both spellings forward.
-      //
-      // TEMPORARY, deliberately. Where Credits lives has now moved twice in
-      // one day, and a 308 would cache today's answer in every browser that
-      // ever followed it — which is the trap `/settings` fell into
-      // (MESITA-1839). The flat twin lands on the flat destination, which
-      // resolves the remembered organization at request time.
-      //
-      // AND PAYMENTS ITSELF IS GONE (MESITA-1869). Credits' forward follows it
-      // onto Products, so neither chains through a deleted route — the mistake
-      // `/unit/*` made when it still pointed at `/place/*`.
-      {
-        source: "/orgs/:orgId/credits",
-        destination: "/orgs/:orgId/products",
+        source: "/orgs/:orgId/configuration",
+        destination: "/settings",
         permanent: false,
       },
-      // THE FLAT `/credits` RULE IS DELETED (MESITA-1885), and it had to be:
-      // Mesita Credits is a rail row with a place view of its own now, so
-      // `/credits` is a LIVE flat twin. A config rule runs BEFORE filesystem
-      // routes, so leaving this would make the row's own flat address
-      // unreachable with every check green — `/settings` in MESITA-1839
-      // exactly, which is why `legacy-redirects.test.ts` walks every live
-      // address in lib/console-routes.ts through this table.
-      //
-      // It was SAFE to delete for the same reason MESITA-1871's `/settings`
-      // rule was: this one was `permanent: false`, so no browser has cached
-      // it. The org-scoped rule above stays — a different path, and still the
-      // retired spelling of an organization page.
-      // PAYMENTS IS A PRODUCT NOW, not a page (MESITA-1869). Pato's list of
-      // the organization's rows has no Payments on it: the page held two Soon
-      // strips, and the two things anybody could act on — the Stripe account
-      // and the Partner subscription — are cards in the catalogue. The row,
-      // the address and every bookmark forward there.
-      //
-      // TEMPORARY, like every other rename on this page. A 308 caches today's
-      // answer in every browser forever, and this answer has moved four times.
-      {
-        source: "/orgs/:orgId/payments",
-        destination: "/orgs/:orgId/products",
-        permanent: false,
-      },
-      { source: "/payments", destination: "/products", permanent: false },
       // MEMBERS IS CONTENT, NOT A PAGE (MESITA-1847). Pato: "members and
       // places in organization i mean, fuck nested things display shit
-      // there." The people are ON the Organization page now, so the address
-      // has nothing left to be. TEMPORARY: where the org's people live is a
-      // product decision that has moved twice, and a 308 would cache today's
-      // answer in every browser forever.
-      // Both forwards were left pointing at `organization`, a segment
-      // MESITA-1852 renamed to `configuration` — so `/members` had been
-      // landing on a 404 since (MESITA-1869 repoints them, MESITA-1871 moves
-      // them again with the rename). A redirect onto a deleted route is the
-      // `/unit/*` → `/place/*` chain again, and it fails silently because no
-      // test walks a LEGACY source to its destination.
+      // there." The people are ON the Settings page now, so the address has
+      // nothing left to be.
       {
         source: "/orgs/:orgId/members",
-        destination: "/orgs/:orgId/settings",
+        destination: "/settings",
         permanent: false,
       },
       { source: "/members", destination: "/settings", permanent: false },
-      // CONFIGURATION IS SETTINGS AGAIN (MESITA-1871). Pato: *"rename
-      // configuration to settings."* MESITA-1852 had gone the other way, and
-      // only because the flat `/settings` was claimed; that rule is deleted
-      // above, so both spellings of the old name forward here instead.
-      //
-      // TEMPORARY, like every other rename on this page: where the
-      // organization's own setup lives has moved four times, and a 308 caches
-      // today's answer in every browser forever.
+      // The three sub-steps under Products, above the page itself: first match
+      // wins, and a deeper source must be listed before the shallower one it
+      // shares a prefix with.
       {
-        source: "/orgs/:orgId/configuration",
-        destination: "/orgs/:orgId/settings",
+        source: "/orgs/:orgId/products/pay",
+        destination: "/products",
         permanent: false,
       },
-      { source: "/configuration", destination: "/settings", permanent: false },
-      // NO BARE `/organization` RULE. It forwarded to `/` while the
-      // Organization screen did not exist; MESITA-1841 made it a live flat
-      // resolver, and leaving the rule would have swallowed it exactly the way
-      // `/settings` was swallowed in MESITA-1839. The `has` rule above keeps
-      // the `?org=` era working and cannot match without that query.
-      { source: "/organization/new", destination: "/orgs/new", permanent: true },
       {
-        source: "/places",
-        has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
-        destination: "/orgs/:org/places",
-        permanent: true,
+        source: "/orgs/:orgId/products/terminal",
+        destination: "/products",
+        permanent: false,
       },
-      { source: "/places", destination: "/", permanent: true },
       {
-        source: "/places/new",
-        has: [{ type: "query", key: "org", value: "(?<org>[^&]+)" }],
-        destination: "/orgs/:org/places/new",
-        permanent: true,
+        source: "/orgs/:orgId/products",
+        destination: "/products",
+        permanent: false,
       },
-      { source: "/places/new", destination: "/", permanent: true },
-      // Org Places and Public Places merged into one list (MESITA-1614), and
-      // the list moved under its organization (MESITA-1807): the resolver
-      // knows which one.
-      { source: "/pool", destination: "/", permanent: true },
+      // CREDITS MERGED BACK INTO PAYMENTS (MESITA-1845), PAYMENTS BECAME A
+      // PRODUCT (MESITA-1869), and both spellings have forwarded to the
+      // catalogue ever since. They follow it down a level with everything
+      // else.
+      {
+        source: "/orgs/:orgId/credits",
+        destination: "/products",
+        permanent: false,
+      },
+      {
+        source: "/orgs/:orgId/payments",
+        destination: "/products",
+        permanent: false,
+      },
+      { source: "/payments", destination: "/products", permanent: false },
+      {
+        source: "/orgs/:orgId/customers",
+        destination: "/customers",
+        permanent: false,
+      },
+      {
+        source: "/orgs/:orgId/activity",
+        destination: "/activity",
+        permanent: false,
+      },
+      // The organization's place list and its Add ceremony are the console's
+      // own catalogue now, at the top level where they belong.
+      {
+        source: "/orgs/:orgId/places/new",
+        destination: "/places/new",
+        permanent: false,
+      },
+      {
+        source: "/orgs/:orgId/places",
+        destination: "/places",
+        permanent: false,
+      },
+      // The switcher's mechanism. It wrote the organization cookie and cleared
+      // the place one; there is one cookie left and no second scope to switch,
+      // so the address has nothing to do.
+      { source: "/orgs/:orgId/switch", destination: "/", permanent: false },
+      // THE BARE ADDRESS — Stripe's stored return. Query and all, to `/`.
+      { source: "/orgs/:orgId", destination: "/", permanent: false },
+      // Anything else that ever hung under an organization. Last, so every
+      // named page above wins first.
+      { source: "/orgs/:orgId/:rest*", destination: "/", permanent: false },
+      // The `?org=` era's own two addresses (MESITA-1807). `/organization`
+      // carried the id in the query and was the OTHER address Stripe stored,
+      // so it lands on `/` for the reason above; its ceremony has nothing left
+      // to create.
+      { source: "/organization", destination: "/", permanent: false },
+      { source: "/organization/new", destination: "/", permanent: false },
+      // THE ORG INVITE PAGE IS GONE (MESITA-1892). `organization_invites` is
+      // dropped, so a token in an old email cannot be accepted by anything —
+      // but `/accept-invite` is the page that accepts a place invite, and it
+      // is the one screen that can say so. A 404 could not.
+      {
+        source: "/accept-org-invite",
+        destination: "/accept-invite",
+        permanent: false,
+      },
+      // `/pool` was Public Places before MESITA-1614 merged the two lists into
+      // one. That list is `/places` again (MESITA-1892), so this points at it
+      // rather than at the resolver it was parked on while the list lived
+      // under an organization.
+      { source: "/pool", destination: "/places", permanent: true },
+      // NO `/places` OR `/places/new` RULE, and the absence is the assertion.
+      // Both forwarded to `/` from MESITA-1807, when the list lived under an
+      // organization and these two spellings could not name one. The list is
+      // back at `/places` and the ceremony at `/places/new` (MESITA-1892), and
+      // a config rule runs BEFORE filesystem routes — so leaving either would
+      // make the catalogue unreachable with every check green, which is
+      // `/settings` in MESITA-1839 exactly.
+      //
+      // THESE TWO WERE `permanent: true`, which makes them the riskiest
+      // deletions in this file: a 308 is cached on disk by every browser that
+      // followed it. Vercel serves Next redirects with
+      // `cache-control: public, max-age=0, must-revalidate` (checked on the
+      // live host for MESITA-1871's `/settings`), so every browser
+      // revalidates before following one again and the rules stop applying at
+      // once. Stated rather than assumed, because assuming it is how a live
+      // page stays dark for a day.
     ];
   },
   images: {

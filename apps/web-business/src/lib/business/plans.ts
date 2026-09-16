@@ -8,10 +8,12 @@
 //
 // THE YEARLY SKU IS BACK, AS MESITA PARTNER (MESITA-1867). Pato struck the
 // paid stream on 2026-09-06 and the console spent a week saying Partner was
-// free and Stripe-locked; on 2026-09-15 he put the price back at the
-// ORGANIZATION: Mesita Partner is a yearly subscription per organization,
-// every held place is in, and Mesita Pay (the Stripe account) is an optional
-// add-on on top — not the lock. `plan=pro` is what a place holds under it.
+// free and Stripe-locked; on 2026-09-15 he put the price back. It was priced
+// per ORGANIZATION for one day — every place a holder held was in — and
+// MESITA-1892 deleted that layer, so the Membership is bought PER PLACE and
+// `places.partnered` is the entitlement. Mesita Pay (the Stripe account) is
+// an optional add-on on top, not the lock. `plan=pro` is what a place holds
+// under the partnership.
 
 // Ported with MESITA-1537 (the Place screen mounts admin's Single Place
 // components). `plan` is billing, not profile: it reaches the DB through the
@@ -31,8 +33,8 @@ export function planForSubscription(sub: StrategySubscriptionId): PlanKey {
 /**
  * Pato's number (2026-09-15): *"pon tú de mil pesos al año, súper barato."*
  *
- * THE FALLBACK, since MESITA-1877. The real number now rides the
- * organizations payload off `org_plans.membership` — the same row Stripe's
+ * THE FALLBACK, since MESITA-1877. The real number now rides the console
+ * viewer's envelope off `membership_plans.membership` — the same row Stripe's
  * price is provisioned from, so what an owner reads is what Stripe bills.
  * This constant is what `membershipPriceLabel` prints when that read is
  * missing: an older payload, or a billing read that failed. A price box with

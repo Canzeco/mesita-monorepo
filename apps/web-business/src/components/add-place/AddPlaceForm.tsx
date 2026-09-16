@@ -63,13 +63,14 @@ function newSessionToken(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+// NO `canAdd`, AND NO ORGANIZATION (MESITA-1892). Both were the same fact:
+// the ceremony was owner-of-the-organization, and every verb had to name the
+// organization the place would join. `claim_place(p_place_id, p_claimer)`
+// mints the caller's own owner row, so a signed-in manager may claim and the
+// only id a verb carries is the place's.
 export function AddPlaceForm({
-  organizationId,
-  canAdd,
   heldPlaceIds,
 }: {
-  organizationId: string;
-  canAdd: boolean;
   heldPlaceIds: readonly string[];
 }) {
   const router = useRouter();
@@ -170,7 +171,7 @@ export function AddPlaceForm({
     clearError(p.placeId);
     setActingId(p.placeId);
     startAction(async () => {
-      const result = await createThenClaimAction(p.placeId, organizationId);
+      const result = await createThenClaimAction(p.placeId);
       if (result.heldPlaceId) {
         goHeld(result.heldPlaceId);
         return;
@@ -190,7 +191,7 @@ export function AddPlaceForm({
     clearError(p.placeId);
     setActingId(p.placeId);
     startAction(async () => {
-      const result = await addListedPlaceAction(placeId, organizationId);
+      const result = await addListedPlaceAction(placeId);
       if (result.heldPlaceId) {
         goHeld(result.heldPlaceId);
         return;
@@ -274,7 +275,6 @@ export function AddPlaceForm({
               key={p.placeId}
               prediction={p}
               state={states[p.placeId] ?? null}
-              canAdd={canAdd}
               pending={actionPending && actingId === p.placeId}
               error={rowErrors[p.placeId] ?? null}
               onCreate={() => onCreate(p)}

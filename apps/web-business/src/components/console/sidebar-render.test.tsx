@@ -1,25 +1,25 @@
-// The rail, RENDERED (MESITA-1807; six pages since MESITA-1832).
+// The rail, RENDERED (MESITA-1807; one subject since MESITA-1892).
 //
 // Source-reading contracts cannot see two pills: two rows computing `active`
 // for one pathname pass every regex and light up together on screen. This
 // file renders the real Sidebar over a pathname matrix with a mocked router
 // and counts `aria-current="page"` — exactly one, on every route, in every
-// viewer state — and proves the rail at zero, at one, with no place, on a
-// pool place, and at `w-16`. It is the strongest proof this app has: no
-// browser can get past the OTP wall.
+// viewer state — and proves the rail at zero, at one, on a pool place, and at
+// `w-16`. It is the strongest proof this app has: no browser can get past the
+// OTP wall.
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { resolveRailScope, type RailOrg } from "@/lib/rail-scope";
+import { resolveRailScope, type RailPlace } from "@/lib/rail-scope";
 import {
   FLAT_ROUTES,
   FLAT_ROUTE_LIST,
-  ORG_PAGES,
+  PLACE_PAGES,
   RAIL_GROUP_STARTS,
   RAIL_ROWS,
   SHELL_ROUTES,
-  orgHref,
-  orgPlacesNewHref,
-  orgTerminalHref,
+  placePageHref,
+  placePayHref,
+  placeTerminalHref,
   productRowHref,
 } from "@/lib/console-routes";
 import { PLACE_TABS, placeTabHref } from "@/lib/place-tabs";
@@ -27,6 +27,8 @@ import { PRODUCT_LABEL } from "@/lib/product-keys";
 
 /** The canonical address of a view on the fixture place the rail resolves. */
 const view = (tab: (typeof PLACE_TABS)[number]) => placeTabHref("p-1", tab);
+/** The same, for one of the place's four pages. */
+const page = (p: (typeof PLACE_PAGES)[number]) => placePageHref("p-1", p);
 
 const nav = vi.hoisted(() => ({ pathname: "/" }));
 vi.mock("next/navigation", () => ({
@@ -37,71 +39,47 @@ vi.mock("next/navigation", () => ({
 
 import { Sidebar } from "./Sidebar";
 
-const ORGS: RailOrg[] = [
-  {
-    id: "org-a",
-    name: "Strana Group",
-    myRole: "owner",
-    places: [
-      { id: "p-1", name: "Strana Del Valle", photoUrl: null },
-      { id: "p-2", name: "Strana Polanco", photoUrl: null },
-    ],
-  },
-  { id: "org-b", name: "Org Test", myRole: "owner", places: [] },
+/** The majority customer: one place, owned. */
+const SOLO: RailPlace[] = [
+  { id: "p-1", name: "Strana Del Valle", photoUrl: null, myRole: "owner" },
 ];
 
-/** A solo organization whose one place is the fixture `p-1`, so the canonical
- *  view addresses in this file resolve against it. */
-const SOLO_AT_P1: RailOrg[] = [
-  {
-    id: "org-solo1",
-    name: "Hoster",
-    myRole: "owner",
-    places: [{ id: "p-1", name: "Strana Del Valle", photoUrl: null }],
-  },
-];
-
-/** The majority customer: one organization holding one place. */
-const SOLO: RailOrg[] = [
-  {
-    id: "org-solo",
-    name: "Pato",
-    myRole: "owner",
-    places: [{ id: "p-solo", name: "Hoster Brewing Company", photoUrl: null }],
-  },
+/** Two places — the franchise path, deferred but not deleted. */
+const MANY: RailPlace[] = [
+  ...SOLO,
+  { id: "p-2", name: "Strana Polanco", photoUrl: null, myRole: "owner" },
 ];
 
 type Over = {
-  organizations?: RailOrg[];
+  places?: RailPlace[];
   isSuperAdmin?: boolean;
   viewerError?: boolean;
   collapsed?: boolean;
   rememberedPlaceId?: string | null;
-  rememberedOrgId?: string | null;
   lastPlaceId?: string | null;
 };
 
 function scopeFor(pathname: string, over: Over = {}) {
   nav.pathname = pathname;
-  const organizations = over.organizations ?? ORGS;
+  const places = over.places ?? SOLO;
   return {
-    organizations,
+    places,
     scope: resolveRailScope({
-      organizations,
+      places,
       pathname,
       lastPlaceId: over.lastPlaceId ?? null,
       rememberedPlaceId: over.rememberedPlaceId ?? null,
-      rememberedOrgId: over.rememberedOrgId ?? null,
+      viewerError: over.viewerError ?? false,
     }),
   };
 }
 
 function render(pathname: string, over: Over = {}): string {
-  const { organizations, scope } = scopeFor(pathname, over);
+  const { places, scope } = scopeFor(pathname, over);
   return renderToStaticMarkup(
     <Sidebar
       scope={scope}
-      organizations={organizations}
+      places={places}
       isSuperAdmin={over.isSuperAdmin ?? false}
       viewerError={over.viewerError ?? false}
       accountLabel="pato@canzeco.com"
@@ -120,8 +98,8 @@ const navOf = (html: string) => html.slice(html.indexOf("<nav"), html.indexOf("<
  *  space falls above it rather than between two footer items. */
 const footerOf = (html: string) => html.slice(html.indexOf("</nav>"));
 const rows = (html: string) => html.match(/<a [^>]*href="[^"]*"/g) ?? [];
-/** Every DESTINATION label, in render order. The two selectors render their
- *  subject's name in a different span, so they never appear here — a name is
+/** Every DESTINATION label, in render order. The selector renders its
+ *  subject's name in a different span, so it never appears here — a name is
  *  not a place to go (MESITA-1848). */
 const labels = (html: string) =>
   (html.match(/<span class="truncate">([^<]*)<\/span>/g) ?? [])
@@ -145,7 +123,7 @@ const ROW_LABEL: Record<string, string> = {
  *  takes the PRODUCT vocabulary's label, not a copy of it here — the rail, the
  *  card and the page heading are one noun (MESITA-1885). */
 const RAIL_LABELS = RAIL_ROWS.map((r) =>
-  r.kind === "org"
+  r.kind === "page"
     ? ROW_LABEL[r.target]
     : r.kind === "product"
       ? PRODUCT_LABEL[r.product]
@@ -156,13 +134,13 @@ const ALL_LABELS = [...RAIL_LABELS, "Account"];
 describe("exactly one pill, on every route (MESITA-1879)", () => {
   const ROUTES: [string, string][] = [
     [SHELL_ROUTES.account, "Account"],
-    // The create ceremony has no organization to name yet, so it lights
-    // Settings — the row you would go back through.
-    [SHELL_ROUTES.orgNew, "Settings"],
-    [orgHref("org-a", "settings"), "Settings"],
-    [orgHref("org-a", "products"), "Products"],
-    [orgHref("org-a", "customers"), "Customers"],
-    [orgHref("org-a", "activity"), "Activity"],
+    [page("settings"), "Settings"],
+    [page("products"), "Products"],
+    [page("customers"), "Customers"],
+    [page("activity"), "Activity"],
+    // Mesita Pay's setup reads as its PAGE, so the Products row stays lit
+    // while an operator stands in it (MESITA-1872).
+    [placePayHref("p-1"), "Products"],
     [view("profile"), "Profile"],
     // THE FIVE PRODUCT VIEWS (MESITA-1885), each lighting its OWN row. Three
     // of them used to be rows on `capabilities`, so before the split these
@@ -173,9 +151,10 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     [view("pay"), "Pay"],
     [view("credits"), "Credits"],
     // The two products that are NOT place views.
-    [orgTerminalHref("org-a"), "Terminal"],
+    [placeTerminalHref("p-1"), "Terminal"],
     // The flat names an operator can still type light the same row while the
     // forward is in flight.
+    [FLAT_ROUTES.settings, "Settings"],
     [FLAT_ROUTES.customers, "Customers"],
     [FLAT_ROUTES.products, "Products"],
     [FLAT_ROUTES.activity, "Activity"],
@@ -211,8 +190,11 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     FLAT_ROUTES.menus,
     FLAT_ROUTES.reviews,
     FLAT_ROUTES.admin,
-    orgHref("org-a", "places"),
-    orgPlacesNewHref("org-a"),
+    // The catalogue and its ceremony are above every place (MESITA-1892), and
+    // neither is a row in the solo shape — the empty state is where Add place
+    // earns one.
+    SHELL_ROUTES.places,
+    SHELL_ROUTES.placesNew,
   ];
   for (const pathname of ROWLESS) {
     it(`${pathname} is live and lights no row`, () => {
@@ -227,27 +209,23 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     const every = [
       ...FLAT_ROUTE_LIST,
       ...PLACE_TABS.map(view),
-      ...ORG_PAGES.map((t) => orgHref("org-a", t)),
+      ...PLACE_PAGES.map(page),
+      placePayHref("p-1"),
+      placeTerminalHref("p-1"),
       SHELL_ROUTES.account,
-      SHELL_ROUTES.orgNew,
-      orgPlacesNewHref("org-a"),
+      SHELL_ROUTES.places,
+      SHELL_ROUTES.placesNew,
     ];
     for (const href of every) {
       const n = pills(render(href, { isSuperAdmin: true, rememberedPlaceId: "p-1" })).length;
       expect(n, href).toBeLessThanOrEqual(1);
     }
   });
-
-  it("the create ceremony never lights TWO rows", () => {
-    expect(pillText(render(SHELL_ROUTES.orgNew, { rememberedPlaceId: "p-1" }))).toBe("Settings");
-    expect(pills(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toHaveLength(1);
-    expect(pillText(render(SHELL_ROUTES.orgNew, { organizations: [] }))).toBe("Create organization");
-  });
 });
 
 describe("one flat column, and Account at the foot (MESITA-1879)", () => {
   it("renders RAIL_ROWS in order, then Account — and nothing else", () => {
-    const html = render(view("profile"), { rememberedPlaceId: "p-1", organizations: SOLO_AT_P1 });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     expect(labels(html)).toEqual(ALL_LABELS);
     // ELEVEN ROWS AND ACCOUNT (MESITA-1885). Derived from the contract, not
     // typed again: the count is the thing this file's header bans a second
@@ -278,14 +256,14 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // carries the badge (MESITA-1833).
     expect(html).not.toContain("Soon");
     // NO ID IS VISIBLE, though every href carries one (MESITA-1839).
-    expect(labels(html).some((l) => l.includes("p-") || l.includes("org-"))).toBe(false);
+    expect(labels(html).some((l) => l.includes("p-"))).toBe(false);
   });
 
-  it("has ONE depth: the selectors are gone, so nothing indents", () => {
+  it("has ONE depth: the selector is gone, so nothing indents", () => {
     // The indent existed to say "these rows are under that selector". With no
     // selector there is nothing to sit under, and an indent would be a tree
     // line drawn from nowhere.
-    const n = navOf(render(view("profile"), { rememberedPlaceId: "p-1", organizations: SOLO_AT_P1 }));
+    const n = navOf(render(view("profile"), { rememberedPlaceId: "p-1" }));
     expect(n).not.toContain("pl-7");
     expect(n).not.toContain("pl-6");
     expect(n).not.toContain("pl-10");
@@ -308,7 +286,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
   });
 
   it("each row wears the mark of its subject", () => {
-    const html = render(view("profile"), { rememberedPlaceId: "p-1", organizations: SOLO_AT_P1 });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     for (const mark of [
       "lucide-settings", // Settings — the gear (MESITA-1871)
       "lucide-chart-no-axes-column", // Activity — counts over time
@@ -331,7 +309,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // The marks that left WITH their rows. Each still exists in the app on
     // the page it belongs to; none belongs in this column any more.
     for (const gone of [
-      "lucide-layers", // Places
+      "lucide-layers", // Places — the catalogue, reached from the empty state
       "lucide-sliders-horizontal", // Capabilities, retired as a view
       "lucide-gift", // Rewards, folded into Visits
       "lucide-shield", // Admin
@@ -340,10 +318,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     ]) {
       expect(html, gone).not.toContain(gone);
     }
-    // And the marks that never belonged. `lucide-wallet` left this list in
-    // MESITA-1885: it is Credits' mark on the catalogue card, and the product
-    // rows wear the catalogue's marks so a row and a card cannot name one
-    // product with two pictures.
+    // And the marks that never belonged.
     expect(html).not.toContain("lucide-coins");
     expect(html).not.toContain("lucide-building2");
     expect(html).not.toContain("lucide-cog");
@@ -354,7 +329,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
   });
 
   it("the rows are the CANONICAL addresses — one hop, and shareable", () => {
-    const html = render(view("profile"), { rememberedPlaceId: "p-1", organizations: SOLO_AT_P1 });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     // DERIVED, not retyped (MESITA-1883). This was a second hand-written
     // order, which is the thing this file's own header bans — and it is why
     // moving one row in `RAIL_ROWS` failed here instead of passing, in a test
@@ -366,10 +341,10 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // lives.
     expect(hrefs(html)).toEqual([
       ...RAIL_ROWS.map((r) =>
-        r.kind === "org"
-          ? orgHref("org-solo1", r.target)
+        r.kind === "page"
+          ? placePageHref("p-1", r.target)
           : r.kind === "product"
-            ? productRowHref(r.product, "org-solo1", view)
+            ? productRowHref(r.product, "p-1", view)
             : view(r.view),
       ),
       SHELL_ROUTES.account,
@@ -381,7 +356,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // and Credits were three rows on `capabilities` before the split: this
     // list would have held that address three times, and three rows would
     // have lit together on every one of them.
-    const html = render(view("profile"), { rememberedPlaceId: "p-1", organizations: SOLO_AT_P1 });
+    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     const addresses = hrefs(html);
     expect(addresses).toHaveLength(new Set(addresses).size);
   });
@@ -403,9 +378,11 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // That is the honest answer, not a regression: a row a viewer cannot open
     // would 404 them through `PlaceTabGate`, and a rail row landing on a 404
     // is MESITA-1833's law failing. The gate did not move — `tabsForAccess`
-    // is still the one matrix, still enforced server-side on a typed URL.
-    const viewer: RailOrg[] = [{ ...SOLO_AT_P1[0], myRole: "viewer" }];
-    const html = render(FLAT_ROUTES.profile, { organizations: viewer, rememberedPlaceId: "p-1" });
+    // is still the one matrix, still enforced server-side on a typed URL —
+    // and the ROLE it reads is the caller's own `place_members` row now
+    // (MESITA-1892), not a rank in the organization above the place.
+    const viewer: RailPlace[] = [{ ...SOLO[0], myRole: "viewer" }];
+    const html = render(FLAT_ROUTES.profile, { places: viewer, rememberedPlaceId: "p-1" });
     const seen = labels(html);
 
     // The five that write are gone…
@@ -428,97 +405,76 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
 });
 
 describe("the four shapes the console can be in (MESITA-1879)", () => {
-  it("zero organizations: Account and Create organization, nothing else", () => {
-    const html = render(SHELL_ROUTES.orgNew, { organizations: [] });
-    expect(labels(html)).toEqual(["Create organization", "Account"]);
-    expect(pills(html)).toHaveLength(1);
-    expect(pillText(html)).toBe("Create organization");
-  });
-
-  it("unknown — the read FAILED: a muted line, never the create row", () => {
+  it("unknown — the read FAILED: a muted line, never the add row", () => {
     // MESITA-1793's law. And it must not read as the ZERO state either: an
     // empty array is a successful read of nothing, which gets a different
     // screen entirely.
-    const html = render(SHELL_ROUTES.account, { organizations: [], viewerError: true });
-    expect(html).toContain("Couldn&#x27;t load organizations");
-    expect(html).not.toContain("Create organization");
+    const html = render(SHELL_ROUTES.account, { places: [], viewerError: true });
+    expect(html).toContain("Couldn&#x27;t load your places");
+    expect(html).not.toContain("Add your place");
     // One link in the landmark: Account. The muted line is a div, not a row.
     expect(rows(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Account");
   });
 
-  it("zero PLACES: the ceremony, the org's pages, and no row about a place", () => {
-    // The filter, not a second array. The PLACE rows go — a place row with no
-    // place opens a page about nothing, which is the "a row lands somewhere
-    // real" law failing quietly (MESITA-1833). The ORGANIZATION rows stay:
-    // each is a real page that works with no place, and Products is where the
-    // cards say "Add a place".
+  it("zero PLACES: the ceremony and Account, and no row about a place", () => {
+    // `ZERO_PLACE_ROWS` is a FILTER over `RAIL_ROWS`, never a second array —
+    // and with the organization gone it keeps nothing, because every row in
+    // this column names a place: a page OF one, a view OF one, or a product
+    // configured ON one. A row with no subject opens a page about nothing,
+    // which is the "a row lands somewhere real" law failing quietly
+    // (MESITA-1833).
     //
-    // And the ceremony takes a row, which it does in no other state. A rail
-    // with no door to the one thing a new operator came to do is a worse
+    // So the ceremony takes the only row, which it does in no other state. A
+    // rail with no door to the one thing a new operator came to do is a worse
     // empty state than a muted row ever was — and production holds zero
     // places, so this is every fresh environment.
-    const html = render(SHELL_ROUTES.account, {
-      organizations: [{ id: "org-b", name: "Org Test", myRole: "owner", places: [] }],
-      rememberedOrgId: "org-b",
-    });
-    //
-    // CUSTOMERS AND TERMINAL SURVIVE (MESITA-1885), and that is the filter's
-    // actual rule: it drops rows that open a page ABOUT A PLACE, not rows
-    // that happen to be products. Both of those work perfectly with no place
-    // — one is the organization's guests, the other is a Soon page.
-    expect(labels(html)).toEqual([
-      "Add your place",
+    const html = render(SHELL_ROUTES.account, { places: [] });
+    expect(labels(html)).toEqual(["Add your place", "Account"]);
+    expect(hrefs(html)).toEqual([SHELL_ROUTES.placesNew, SHELL_ROUTES.account]);
+    // No row about a place, by name: the failure mode is one creeping back.
+    for (const gone of [
       "Settings",
       "Activity",
       "Products",
       "Customers",
       "Terminal",
-      "Account",
-    ]);
-    expect(hrefs(html)).toEqual([
-      orgPlacesNewHref("org-b"),
-      orgHref("org-b", "settings"),
-      orgHref("org-b", "activity"),
-      orgHref("org-b", "products"),
-      orgHref("org-b", "customers"),
-      orgTerminalHref("org-b"),
-      SHELL_ROUTES.account,
-    ]);
-    // No row about a place, by name: the failure mode is one creeping back.
-    for (const gone of ["Profile", "Menus", "Reviews", "Visits", "Orders", "Reservations", "Pay", "Credits"]) {
+      "Profile",
+      "Menus",
+      "Reviews",
+      "Visits",
+      "Orders",
+      "Reservations",
+      "Pay",
+      "Credits",
+    ]) {
       expect(labels(html), gone).not.toContain(gone);
     }
     expect(html).not.toContain("opacity-60");
   });
 
-  it("zero places, and NOT the owner: the pages stay, the ceremony does not", () => {
-    // Add place is owner-only (`canAddPlace`, matching the EF's own guard), so
-    // an editor gets no row for a door that would 403. They are not stranded:
-    // the organization's pages are all still there.
-    const html = render(SHELL_ROUTES.account, {
-      organizations: [{ id: "org-b", name: "Org Test", myRole: "editor", places: [] }],
-      rememberedOrgId: "org-b",
-    });
-    expect(labels(html)).toEqual([
-      "Settings",
-      "Activity",
-      "Products",
-      "Customers",
-      "Terminal",
-      "Account",
-    ]);
+  it("zero places, and NOT an owner anywhere: the ceremony still renders", () => {
+    // ADD PLACE HAS NO ROLE GATE ANY MORE (MESITA-1892). It was
+    // `canAddPlace` — owner of the ORGANIZATION — so an editor with no place
+    // met a rail holding Account alone. `claim_place(p_place_id, p_claimer)`
+    // mints the claimer's own owner row, so there is no rank to hold first
+    // and the one door a new operator has is always there.
+    const html = render(SHELL_ROUTES.placesNew, { places: [] });
+    expect(labels(html)).toEqual(["Add your place", "Account"]);
+    expect(pills(html)).toHaveLength(1);
+    expect(pillText(html)).toBe("Add your place");
   });
 
   it("solo — the customer this console is for: every row, nothing muted", () => {
     // `visits`, not `reviews`: Reviews folded under Profile (MESITA-1885) and
     // lights no row, and this test's subject is the row that DOES light.
-    const html = render(FLAT_ROUTES.visits, { organizations: SOLO });
+    const html = render(FLAT_ROUTES.visits, { places: SOLO });
     expect(labels(html)).toEqual(ALL_LABELS);
     expect(html).not.toContain("opacity-60");
     expect(pillText(html)).toBe("Visits");
-    // NO SELECTOR. One organization, one place: neither control has anything
-    // to select, and a control over nothing is the thing this issue removed.
+    // NO SELECTOR. One place: the control has nothing to select, and a
+    // control over nothing is the thing MESITA-1879 removed. The
+    // organization's own selector went with the layer (MESITA-1892).
     expect(html).not.toContain('aria-label="Switch organization"');
     expect(html).not.toContain('aria-label="Switch place"');
   });
@@ -527,64 +483,43 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // The franchise path is DEFERRED, not deleted. `RailSelector` still
     // renders, still switches, still guards — behind the one condition where
     // the question is real.
-    const html = render(SHELL_ROUTES.account, { rememberedOrgId: "org-a" });
+    const html = render(SHELL_ROUTES.account, { places: MANY });
     expect(html).toContain('aria-label="Switch place"');
     expect(html).toContain(">Pick a place<");
     // The rows still render; none of them lights, because no address names a
     // place and the rail refuses to choose one.
     expect(labels(html)).toEqual(ALL_LABELS);
     expect(pillText(html)).toBe("Account");
+    // With no place named, every row falls back to its FLAT twin, which
+    // resolves at request time rather than pointing at a place the rail
+    // refused to pick.
+    expect(hrefs(html)).toContain(FLAT_ROUTES.settings);
+    expect(hrefs(html)).toContain(FLAT_ROUTES.profile);
   });
 
   it("multi — but the ADDRESS names one: that place's rows light normally", () => {
     // `visits`, not `menus`: Menus folded under Profile in MESITA-1885 and
     // has no row to light. A product view is the right subject here anyway —
     // it is what most of this rail now is.
-    const html = render(view("visits"), { rememberedOrgId: "org-a" });
+    const html = render(view("visits"), { places: MANY });
     expect(html).toContain('aria-label="Switch place"');
     expect(html).toContain(">Strana Del Valle<");
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Visits");
   });
 
-  it("two organizations: the org selector returns too, on its own axis", () => {
-    // Multi-ORG and multi-PLACE are different questions. An operator in two
-    // organizations each holding one place gets the org selector and a flat
-    // place column.
-    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
-    expect(html).toContain('aria-label="Switch organization"');
-    expect(html).toContain(">Strana Group<");
-  });
-
   it("a pool place published by the layout: Profile alone among the place rows", () => {
+    // A place the caller holds no membership on offers Profile and nothing
+    // else (`tabsForAccess`), and its PAGES go with the rest: Settings,
+    // Products, Customers and Activity are about a venue that is not theirs.
     const html = render(FLAT_ROUTES.profile, { lastPlaceId: "p-x" });
-    // Every org row, plus Profile alone of the place rows — in RAIL_ROWS
-    // order, derived rather than retyped (MESITA-1883).
-    // A POOL PLACE OFFERS PROFILE AND NOTHING ELSE (`tabsForAccess`), so the
-    // five product views that ARE place views drop out and the three org rows
-    // plus the two product rows that are not place views stay. Derived rather
-    // than retyped (MESITA-1883).
-    expect(labels(html)).toEqual([
-      ...RAIL_ROWS.filter(
-        (r) =>
-          r.kind === "org" ||
-          (r.kind === "product" &&
-            ["profile", "customers", "terminal"].includes(r.product)),
-      ).map((r) =>
-        r.kind === "org"
-          ? ROW_LABEL[r.target]
-          : r.kind === "product"
-            ? PRODUCT_LABEL[r.product]
-            : ROW_LABEL[r.view],
-      ),
-      "Account",
-    ]);
+    expect(labels(html)).toEqual(["Profile", "Account"]);
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Profile");
   });
 
   it("collapsed: every label a title, one pill, the same seams", () => {
-    const html = render(FLAT_ROUTES.visits, { collapsed: true, organizations: SOLO });
+    const html = render(FLAT_ROUTES.visits, { collapsed: true, places: SOLO });
     expect(rows(html)).toHaveLength(RAIL_ROWS.length + 1);
     expect(html).toContain('title="Visits"');
     expect(html).toContain('title="Settings"');

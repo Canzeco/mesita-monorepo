@@ -5,7 +5,8 @@
 //
 // Replaces place-row-contract.test.ts (MESITA-1608). Two of that file's
 // guards had to go rather than move — it asserted the row rendered
-// `place.organizationName` and "No organization", and that Requested used the
+// `place.organizationName` and "No organization" (both gone with the layer,
+// MESITA-1892), and that Requested used the
 // literal `Requested ${requests}` template. Pato's identity rule deletes the
 // org line, and Requested is now a column with a number in it. A guard removed
 // with nothing in its place is how a rule quietly stops being enforced, so the

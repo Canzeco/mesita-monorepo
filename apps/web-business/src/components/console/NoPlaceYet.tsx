@@ -1,52 +1,23 @@
 import Link from "next/link";
 import { Store } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { canAddPlace } from "@/lib/active-organization";
-import { SHELL_ROUTES, orgPlacesHref, orgPlacesNewHref } from "@/lib/console-routes";
+import { SHELL_ROUTES } from "@/lib/console-routes";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
-import type { Organization } from "@/lib/api/organizations";
 
-// What a place page shows when the organization holds no place yet
-// (MESITA-1832). One next step, for the role that may take it; the rail's
-// five rows stay above it, muted, so the console never shrinks.
-export function NoPlaceYet({ org }: { org: Organization | null }) {
-  const icon = <Store className="h-5 w-5" />;
-  if (!org) {
-    return (
-      <EmptyState
-        icon={icon}
-        title="No organization yet"
-        description="Create one, then add the place it runs."
-        action={
-          <Link href={SHELL_ROUTES.orgNew} className={PILL_BUTTON_CLASS}>
-            Create organization
-          </Link>
-        }
-      />
-    );
-  }
-  if (canAddPlace(org.myRole)) {
-    return (
-      <EmptyState
-        icon={icon}
-        title="No place yet"
-        description="Search for the place. If Mesita has it, add it to this organization. If not, create it."
-        action={
-          <Link href={orgPlacesNewHref(org.id)} className={PILL_BUTTON_CLASS}>
-            Add place
-          </Link>
-        }
-      />
-    );
-  }
+// What a flat address shows when the caller holds no place yet (MESITA-1832).
+// One next step, and it is the same one for everybody now (MESITA-1892):
+// claiming a place mints the claimer's own owner row, so there is no role to
+// check and no organization to be an owner of first. The rail's Add place row
+// stays above this card, so the console never shrinks.
+export function NoPlaceYet() {
   return (
     <EmptyState
-      icon={icon}
+      icon={<Store className="h-5 w-5" />}
       title="No place yet"
-      description="This organization holds no place. Its owner can add one."
+      description="Search for your place. If Mesita already has it, claim it. If not, create it."
       action={
-        <Link href={orgPlacesHref(org.id)} className={PILL_BUTTON_CLASS}>
-          All places
+        <Link href={SHELL_ROUTES.placesNew} className={PILL_BUTTON_CLASS}>
+          Add place
         </Link>
       }
     />

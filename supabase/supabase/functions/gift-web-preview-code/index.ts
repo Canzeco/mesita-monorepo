@@ -9,18 +9,25 @@
 // itself is the whole authentication, money-path-efs.smoke.test.ts's
 // PUBLIC_CHECK_EFS list is where the contract is pinned.
 //
-// WHAT THIS RENDERS, IN ORDER (the issue's own instruction): org identity
-// leads, then the amount. "If the lot is still pending, say so before they
+// WHAT THIS RENDERS, IN ORDER (the issue's own instruction): the venue's
+// identity leads, then the amount. MESITA-1677 wrote "org identity" because
+// the lot was the organization's; MESITA-1892 made it the PLACE's, which is
+// the same instruction pointed at the thing a stranger holding a code
+// actually recognises. "If the lot is still pending, say so before they
 // accept" — checked here via the lot's own activates_at, even though nothing
 // can actually be pending today (consumer-web-buy-credits' "CREDITS ACTIVATE
 // IMMEDIATELY" decision applies here too, since redeem_credit_gift sets
 // activates_at=now the moment it claims). Kept anyway: forward-compatible if
 // the hold ever returns, and it is one boolean, not a feature.
 //
-// NO ORG LOGO — A KNOWN LIMITATION, FLAGGED. organizations has no logo/photo
-// column at all (checked directly against the schema before writing this);
-// adding one is an asset-pipeline/Design decision this issue does not scope.
-// The landing page renders a text monogram from organizationName instead.
+// STILL NO ART ON THE LANDING PAGE — BUT THE REASON CHANGED. MESITA-1677
+// flagged this as a hard limitation: `organizations` had no logo/photo column
+// at all. The place does — `place_profiles.photos` — so the blocker is gone
+// and this response could carry one. It deliberately does not yet: putting a
+// venue's photograph on a PUBLIC, unauthenticated landing page is a Design
+// call (which photo, cropped how, next to whose amount) that MESITA-1892 does
+// not scope. The page keeps its text monogram from placeName; wiring the
+// photo through is a clean follow-up, no longer a schema problem.
 //
 // CLAIMED/CANCELLED CODES ARE NOT A UNIFORM MISS, DELIBERATELY — the one
 // place this EF diverges from validate-web's strict non-differentiation. A
@@ -33,7 +40,7 @@
 // issue explicitly asks for; this preview never touches state.
 //
 // Body:     { code: string }
-// Response: { ok: true, gift: { state: "unclaimed", organizationName, paidCents,
+// Response: { ok: true, gift: { state: "unclaimed", placeName, paidCents,
 //               bonusCents, creditedCents, note, pending, expiresAt } }
 //         | { ok: true, gift: { state: "claimed" | "cancelled" } } (no amounts)
 //         | 404 uniform miss (unknown/implausible code) | 405 | 429
@@ -138,31 +145,31 @@ Deno.serve(async (req) => {
 
   const lotRes = await admin
     .from("credit_lots")
-    .select("organization_id, paid_cents, bonus_cents, activates_at")
+    .select("place_id, paid_cents, bonus_cents, activates_at")
     .eq("id", gift.lot_id)
     .maybeSingle();
   if (lotRes.error || !lotRes.data) {
     return json({ ok: false, error: "gift_preview: lot not found" }, 500);
   }
   const lot = lotRes.data as {
-    organization_id: string;
+    place_id: string;
     paid_cents: number;
     bonus_cents: number;
     activates_at: string;
   };
-  const orgRes = await admin
-    .from("organizations")
+  const placeRes = await admin
+    .from("place_profiles")
     .select("name")
-    .eq("id", lot.organization_id)
+    .eq("id", lot.place_id)
     .maybeSingle();
-  const organizationName = (orgRes.data as { name?: string } | null)?.name ??
+  const placeName = (placeRes.data as { name?: string } | null)?.name ??
     "Mesita";
 
   return json({
     ok: true,
     gift: {
       state: "unclaimed",
-      organizationName,
+      placeName,
       paidCents: lot.paid_cents,
       bonusCents: lot.bonus_cents,
       creditedCents: lot.paid_cents + lot.bonus_cents,

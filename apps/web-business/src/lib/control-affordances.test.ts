@@ -173,14 +173,21 @@ describe("44px is a hit area, not a bigger pill", () => {
   it("the member and invite rows keep the expanded targets disjoint", () => {
     // The × grows 6px on each side. At gap-2 its hit area came within 2px of
     // the Change role pill and overlapped the role chip on the invite row.
-    const members = readCode("components/console/MembersCard.tsx");
-    expect(members).not.toContain(
+    //
+    // THE SUBJECT MOVED, THE RULE DID NOT (MESITA-1892). This read
+    // `components/console/MembersCard.tsx`, the organization's own members
+    // surface. The layer is gone and Members folded into the place's Team
+    // surface, which was always the other half of the duplication — so the
+    // assertion follows it rather than being deleted with the file it happened
+    // to name. `TeamSection` builds its rows out of a `Row` whose remove
+    // control is a sibling of the whole label block, not packed beside another
+    // control, so the dense cluster cannot occur; this pins that it stays that
+    // way, which is the thing the original was really protecting.
+    const team = readCode("components/place-manage/sections/TeamSection.tsx");
+    expect(team).not.toContain(
       'className="flex shrink-0 items-center gap-2"',
     );
-    expect(
-      (members.match(/className="flex shrink-0 items-center gap-3"/g) ?? [])
-        .length,
-    ).toBe(2);
+    expect(team).toContain("<RemoveBtn");
   });
 });
 

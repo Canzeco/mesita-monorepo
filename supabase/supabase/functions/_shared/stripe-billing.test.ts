@@ -6,7 +6,7 @@
 // resolvePlanPrice() is the self-provisioning price resolver. The contract we
 // lock here:
 //   • the catalog is the source of truth for the plan mapping (consumer
-//     Premium monthly / the org's yearly Mesita Membership / the legacy
+//     Premium monthly / the place's yearly Mesita Membership / the older
 //     per-place Verified year), amounts from DB;
 //   • a cached stripe_price_id that still matches the DB row is a fast-path
 //     hit — no product/price is created (idempotent);
@@ -30,8 +30,10 @@ Deno.test("STRIPE_CATALOG: every sold plan maps to its own DB row", () => {
   assertEquals(byId["consumer_premium"].lookupKey, "consumer_premium_monthly");
   assertEquals(byId["consumer_premium"].interval, "month");
 
-  // The org's yearly Mesita Membership (MESITA-1877) — what is SOLD now.
-  assertEquals(byId["business_partner_membership"].table, "org_plans");
+  // The place's yearly Mesita Membership (MESITA-1877, re-scoped to the place
+  // by MESITA-1892 — `org_plans` became `membership_plans` with the layer it
+  // was named for) — what is SOLD now.
+  assertEquals(byId["business_partner_membership"].table, "membership_plans");
   assertEquals(byId["business_partner_membership"].rowKey, "membership");
   assertEquals(
     byId["business_partner_membership"].lookupKey,
@@ -57,8 +59,8 @@ Deno.test("STRIPE_CATALOG: lookup keys are unique (idempotency anchors)", () => 
 // resolvePlanPrice caches the provisioned price id back onto table.rowKey.
 // Two entries sharing one lookup row would each overwrite the other's id,
 // fail their own verification on the next read, and mint a fresh Stripe price
-// on EVERY checkout — which is why the Membership got org_plans rather than
-// borrowing place_plans.pro at the same MX$1,000.
+// on EVERY checkout — which is why the Membership got membership_plans rather
+// than borrowing place_plans.pro at the same MX$1,000.
 Deno.test("STRIPE_CATALOG: one lookup row per entry", () => {
   const rows = STRIPE_CATALOG.map((e) => `${e.table}.${e.rowKey}`);
   assertEquals(new Set(rows).size, rows.length);

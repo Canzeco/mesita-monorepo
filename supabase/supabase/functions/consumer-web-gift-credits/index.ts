@@ -3,10 +3,12 @@
 // Naming: caller-verb-words. Caller = consumer, verb = gift, words = credits.
 //
 // Charges the SENDER's saved platform card, cloned onto the target place's
-// ORGANIZATION's connected Stripe account — the exact same direct-charge
-// mechanics as consumer-web-buy-credits, through
-// chargeGiftCreditsWithMesitaPay (_shared/mesita-pay-charge.ts). What
-// differs from Buy: the resulting lot has NO owner (consumer_id NULL) —
+// connected Stripe account — the exact same direct-charge mechanics as
+// consumer-web-buy-credits, through chargeGiftCreditsWithMesitaPay
+// (_shared/mesita-pay-charge.ts). The gifted lot is the PLACE's, like every
+// other lot since MESITA-1892: it spends at the venue the sender chose, and
+// the code says which one. What differs from Buy: the resulting lot has NO
+// owner (consumer_id NULL) —
 // GIFTING IS ISSUANCE, NOT TRANSFER (MESITA-1677, restating MESITA-1380's
 // no-transfers-between-consumers exclusion): the sender's own balance is
 // never touched, a fresh lot is minted instead, addressed by a hashed claim
@@ -67,8 +69,8 @@ import {
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
 import {
-  resolveChargeableOrganizationForCredits,
-  resolveOrganizationCurrency,
+  resolveChargeablePlaceForCredits,
+  resolvePlaceCurrency,
 } from "../_shared/credits-readiness.ts";
 import { chargeGiftCreditsWithMesitaPay } from "../_shared/mesita-pay-charge.ts";
 import {
@@ -179,7 +181,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const visitsConfig = await loadVisitsConfig(admin);
-  const chargeable = await resolveChargeableOrganizationForCredits(
+  const chargeable = await resolveChargeablePlaceForCredits(
     admin,
     visitsConfig.payCredits,
     placeId,
@@ -211,10 +213,20 @@ Deno.serve(async (req) => {
   const claimExpiresAt = new Date(
     now.getTime() + GIFT_CLAIM_WINDOW_DAYS * DAY_MS,
   ).toISOString();
-  const currency = await resolveOrganizationCurrency(
-    admin,
-    chargeable.organizationId,
-  );
+  const currency = await resolvePlaceCurrency(admin, chargeable.placeId);
+  // null means the currency READ failed, not that the place has none —
+  // see resolvePlaceCurrency. Refuse rather than charge a guessed
+  // denomination.
+  if (!currency) {
+    return json(
+      {
+        ok: false,
+        code: "currency_unavailable",
+        error: "Couldn't confirm this place's currency — try again shortly.",
+      },
+      500,
+    );
+  }
 
   const stripeKey = stripeSecretKey();
 
@@ -223,7 +235,7 @@ Deno.serve(async (req) => {
   if (cardsMockMode(stripeKey)) {
     const mockIntentId = `mock_pi_${crypto.randomUUID()}`;
     const created = await admin.rpc("create_credit_gift", {
-      p_organization_id: chargeable.organizationId,
+      p_place_id: chargeable.placeId,
       p_sender_id: authRes.user.id,
       p_paid_cents: paidCents,
       p_bonus_cents: bonusCents,
@@ -283,7 +295,7 @@ Deno.serve(async (req) => {
   }
 
   const outcome = await chargeGiftCreditsWithMesitaPay(stripe, admin, {
-    organizationId: chargeable.organizationId,
+    placeId: chargeable.placeId,
     connectedAccountId: chargeable.connectedAccountId,
     senderId: authRes.user.id,
     platformCustomerId,
@@ -333,7 +345,7 @@ Deno.serve(async (req) => {
   // the SAME codeHash already pinned on the intent's metadata above, so this
   // call and the webhook backstop can only ever converge on the same gift.
   const created = await admin.rpc("create_credit_gift", {
-    p_organization_id: chargeable.organizationId,
+    p_place_id: chargeable.placeId,
     p_sender_id: authRes.user.id,
     p_paid_cents: paidCents,
     p_bonus_cents: bonusCents,

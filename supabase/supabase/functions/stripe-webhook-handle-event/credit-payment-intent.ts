@@ -16,6 +16,18 @@
 // edit between the charge and this event silently change the terms of a
 // purchase that already happened.
 //
+// WHICH IS WHY THE RENAMED KEY GETS ITS OWN BRANCH. The lot used to hang off
+// an organization, and the pinned tenant key was that organization's id;
+// MESITA-1892 made it the place's. Metadata is frozen on the intent at charge
+// time, so an intent confirmed before the rename can still be delivered after
+// it — a 3DS challenge finished hours later, or a Stripe retry of an event we
+// 500ed on. `pinnedTerms` reports that shape as its own case and refuses,
+// loudly and without throwing: there is nothing left to map the old id from,
+// the foreign key would reject it, and a throw here would retry the same
+// doomed event forever. It is detected by the ABSENCE of a place id rather
+// than by reading the retired key, which is simpler and catches any pinned
+// purchase that cannot name a place, whatever else it carries.
+//
 // Idempotent by construction: create_credit_lot is unique on
 // stripe_payment_intent_id (20260908101212), so this handler racing the
 // synchronous "confirm reader" — or a Stripe retry of the same event —
@@ -51,7 +63,7 @@ export function isCreditPurchaseIntentEvent(event: Stripe.Event): boolean {
 }
 
 function pinnedTerms(intent: Stripe.PaymentIntent): {
-  organizationId: string;
+  placeId: string;
   consumerId: string;
   paidCents: number;
   bonusCents: number;
@@ -60,20 +72,33 @@ function pinnedTerms(intent: Stripe.PaymentIntent): {
   expiresAt: string;
 } | null {
   const m = intent.metadata ?? {};
-  const organizationId = m.organization_id;
+  const placeId = m.place_id;
+  if (!placeId) {
+    // Either the pre-MESITA-1892 shape (see the header) or metadata we never
+    // wrote. Reported and dropped: there is no tenant to write the lot
+    // against, and no later delivery will improve it.
+    console.error(
+      `[credit-payment-intent] ${intent.id} pins no place — the shape charged ` +
+        `before MESITA-1892, or metadata that was never ours. NOT recorded. ` +
+        `The synchronous confirm reader in consumer-web-buy-credits wrote the ` +
+        `lot at charge time unless that request crashed; check credit_lots ` +
+        `for this payment intent.`,
+    );
+    return null;
+  }
   const consumerId = m.consumer_id;
   const activatesAt = m.activates_at;
   const expiresAt = m.expires_at;
   const paidCents = Number(m.paid_cents);
   const bonusCents = Number(m.bonus_cents ?? "0");
   if (
-    !organizationId || !consumerId || !activatesAt || !expiresAt ||
+    !consumerId || !activatesAt || !expiresAt ||
     !Number.isFinite(paidCents)
   ) {
     return null;
   }
   return {
-    organizationId,
+    placeId,
     consumerId,
     paidCents,
     bonusCents: Number.isFinite(bonusCents) ? bonusCents : 0,
@@ -130,7 +155,7 @@ export async function handleCreditPurchaseIntentSucceeded(
     // lot + gift row instead. `terms.consumerId` here is the SENDER
     // (chargeGiftCreditsWithMesitaPay's own metadata convention).
     const created = await admin.rpc("create_credit_gift", {
-      p_organization_id: terms.organizationId,
+      p_place_id: terms.placeId,
       p_sender_id: terms.consumerId,
       p_paid_cents: terms.paidCents,
       p_bonus_cents: terms.bonusCents,
@@ -161,7 +186,7 @@ export async function handleCreditPurchaseIntentSucceeded(
   }
 
   const lot = await admin.rpc("create_credit_lot", {
-    p_organization_id: terms.organizationId,
+    p_place_id: terms.placeId,
     p_consumer_id: terms.consumerId,
     p_paid_cents: terms.paidCents,
     p_bonus_cents: terms.bonusCents,

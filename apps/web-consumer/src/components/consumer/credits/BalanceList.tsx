@@ -1,13 +1,14 @@
 "use client";
 
 import { BalanceCard, CARD_PX } from "./BalanceCard";
-import type { CreditOrgBalance } from "@/lib/api/credits";
+import type { CreditPlaceBalance } from "@/lib/api/credits";
 
-// The balances, as a list of cards — one per ORGANIZATION now
-// (consumer-web-list-credit-balances, MESITA-1674).
+// The balances, as a list of cards — one per PLACE
+// (consumer-web-list-credit-balances, MESITA-1674; org-scoped until
+// MESITA-1892 made the place the only tenant).
 //
-// RANKING LIVES ON THE SERVER, NOT HERE. rankOrgBalances
-// (_shared/credits-balances.ts) already orders every page it hands back —
+// RANKING LIVES ON THE SERVER, NOT HERE. The ranker in
+// _shared/credits-balances.ts already orders every page it hands back —
 // spendable first, then pending, then dead money, ties broken by amount then
 // name — and pagination is keyset over THAT order. A second, client-side sort
 // would silently disagree with page boundaries the server already drew, so
@@ -22,14 +23,14 @@ export function BalanceList({
   nowMs,
   onOpen,
 }: {
-  balances: CreditOrgBalance[];
+  balances: CreditPlaceBalance[];
   nowMs: number;
-  onOpen: (balance: CreditOrgBalance) => void;
+  onOpen: (balance: CreditPlaceBalance) => void;
 }) {
   return (
     <ul className="flex w-full flex-col gap-3">
       {balances.map((balance) => (
-        <li key={balance.organizationId}>
+        <li key={balance.placeId}>
           <BalanceCard
             balance={balance}
             nowMs={nowMs}

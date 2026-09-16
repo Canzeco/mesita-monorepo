@@ -1,13 +1,17 @@
 // The console shell. One frame over every screen.
 //
-// The layout resolves the caller's organizations once — each with its places
-// and the caller's role — and hands the whole viewer to the chrome. WHICH
-// organization and WHICH place are on screen is not decided here: a layout
-// cannot read the pathname, and the pathname is what names them now
-// (MESITA-1807, lib/rail-scope.ts). What this file adds is what the pathname
-// cannot carry on a fresh request: the two rail cookies (last place, last
-// organization), read raw and plausibility-checked, so the first frame paints
-// the right boxes without a round trip.
+// The layout resolves the caller's places once — each with its role, its
+// photo and its two tier flags — and hands the whole viewer to the chrome.
+// WHICH place is on screen is not decided here: a layout cannot read the
+// pathname, and the pathname is what names it now (MESITA-1807,
+// lib/rail-scope.ts). What this file adds is what the pathname cannot carry on
+// a fresh request: the rail cookie (last place), read raw and
+// plausibility-checked, so the first frame paints the right rows without a
+// round trip.
+//
+// ONE COOKIE AND ONE LIST (MESITA-1892). There were two of each — an
+// organization cookie beside the place one, and a list of organizations each
+// holding places. The layer is gone, so the shell reads the places directly.
 //
 // The nav is a lateral rail as of MESITA-1710; AppShell owns the frame and is
 // the only scroller. See its docblock for why `TOPNAV_OCCUPIED_PX` no longer
@@ -20,13 +24,12 @@ import { AppShell } from "@/components/console/AppShell";
 import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import {
-  RAIL_ORG_COOKIE,
   RAIL_PLACE_COOKIE,
   SIDEBAR_COLLAPSED_COOKIE,
   plausibleId,
 } from "@/lib/sidebar-prefs";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
-import { apiConsoleViewer, type ConsoleViewer } from "@/lib/api/organizations";
+import { apiConsoleViewer, type ConsoleViewer } from "@/lib/api/console";
 
 export const metadata: Metadata = {
   title: "Console",
@@ -52,14 +55,14 @@ export default async function ShellLayout({
   if (!user) redirect("/signin");
 
   // A failure must not blank the console — and must not read as "you have
-  // no organizations" either (MESITA-1793's law: a fetch failure never says
-  // "create one"). The rail gets the flag and says so; each page reports its
+  // no places" either (MESITA-1793's law: a fetch failure never says
+  // "add one"). The rail gets the flag and says so; each page reports its
   // own error.
   // `membershipPrice: null` is the same honest absence every other field
   // carries here: no price was read, so nothing prints one, and PartnerCard
   // falls back to the label rather than inventing a number.
   let viewer: ConsoleViewer = {
-    organizations: [],
+    places: [],
     isSuperAdmin: false,
     membershipPrice: null,
   };
@@ -68,13 +71,12 @@ export default async function ShellLayout({
     viewer = await apiConsoleViewer(supabase);
   } catch (err) {
     viewerError = true;
-    console.error("[console] business-web-list-organizations:", err);
+    console.error("[console] business-web-list-places:", err);
   }
 
   const jar = await cookies();
   const collapsed = jar.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
   const rememberedPlaceId = plausibleId(jar.get(RAIL_PLACE_COOKIE)?.value);
-  const rememberedOrgId = plausibleId(jar.get(RAIL_ORG_COOKIE)?.value);
 
   return (
     // Suspense because the header reads searchParams.
@@ -87,24 +89,22 @@ export default async function ShellLayout({
           a hook cannot see a provider its own component renders. */}
       <OpenPlaceProvider>
         <AppShell
-          organizations={viewer.organizations.map((o) => ({
-            id: o.id,
-            name: o.name,
-            myRole: o.myRole,
-            places: o.places,
+          places={viewer.places.map((p) => ({
+            id: p.id,
+            name: p.name,
+            photoUrl: p.photoUrl,
+            myRole: p.myRole,
             // The two tier flags ride the rail's list so a place's ladder can
-            // read its holder's Partner / Mesita Pay state without a second
-            // org-list call (MESITA-1867). Copied as they are: undefined on a
-            // stale payload stays undefined, which the ladder reads as
-            // unknown, never as off.
-            partnered: o.partnered,
-            mesitaPayEnabled: o.mesitaPayEnabled,
+            // read them without a second console-viewer call (MESITA-1867).
+            // Copied as they are: undefined on a stale payload stays
+            // undefined, which the ladder reads as unknown, never as off.
+            partnered: p.partnered,
+            mesitaPayEnabled: p.mesitaPayEnabled,
           }))}
           isSuperAdmin={viewer.isSuperAdmin}
           viewerError={viewerError}
           accountLabel={user.email ?? "Account"}
           rememberedPlaceId={rememberedPlaceId}
-          rememberedOrgId={rememberedOrgId}
           defaultCollapsed={collapsed}
         >
           {/* FLUID: no max-width (MESITA-1558). Two things depend on that and

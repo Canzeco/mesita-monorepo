@@ -11,14 +11,14 @@ import {
   canResumeOnboarding,
   paymentAccountState,
   type PaymentAccount,
-} from "@/lib/api/organizations";
+} from "@/lib/api/console";
 import { ConnectReturnNotice } from "./ConnectReturnNotice";
 
 const CARD = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
 
 function account(over: Partial<PaymentAccount> = {}): PaymentAccount {
   return {
-    organization_id: "org-1",
+    place_id: "p-1",
     stripe_account_id: "acct_1",
     livemode: false,
     charges_enabled: false,

@@ -33,7 +33,7 @@ type Run = "ids" | "all";
 // GENERAL_STATE_FACTS compiled, rendered "no" on every row, and said so with
 // total confidence — a silent wrong answer with nothing to catch it. Owned
 // (MESITA-1608) is exactly that case here: admin-web-search-places reads the
-// `profiles` view, which carries no organization_id, so this table genuinely
+// `profiles` view, which carries no claim column, so this table genuinely
 // does not know. It says so.
 function factOn(
   hit: PlaceHit,

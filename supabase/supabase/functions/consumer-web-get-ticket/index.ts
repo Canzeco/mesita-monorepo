@@ -27,7 +27,7 @@ import {
   guestVisitsPolicy,
   loadVisitsConfig,
 } from "../_shared/visits-config.ts";
-import { resolveChargeableOrganizationAccount } from "../_shared/mesita-pay-readiness.ts";
+import { resolveChargeablePlaceAccount } from "../_shared/mesita-pay-readiness.ts";
 
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // first inside the helper and short-circuits, so while it's false —
     // every ticket in production today — this adds zero queries to a poll
     // that runs every consumerPollSeconds.
-    cardRail: (await resolveChargeableOrganizationAccount(
+    cardRail: (await resolveChargeablePlaceAccount(
       admin,
       visitsConfig.payCard,
       row.project_id,

@@ -3,24 +3,26 @@
 // The refund/cancel/adjust primitive support needs on a money feature
 // (MESITA-1679): "a guest disputes a top-up. An org closes. Support must
 // issue or claw back. Without this the first exception is a database
-// console session against live money."
+// console session against live money." MESITA-1892 removed the organization,
+// so "an org closes" reads as what it always meant operationally — a VENUE
+// stops trading and the credits it owes have to be unwound.
 //
 // TWO KINDS, and they never cross:
 //   kind="refund" — real money is coming back via Stripe. This EF ONLY
-//     calls stripe.refunds.create on the organization's connected account —
-//     it never writes credit_ledger itself. The resulting charge.refunded
+//     calls stripe.refunds.create on the PLACE's connected account — it
+//     never writes credit_ledger itself. The resulting charge.refunded
 //     webhook (stripe-webhook-handle-event/credit-refund.ts) is the ONLY
 //     writer of a 'refund' ledger row, so the ledger can never claim money
 //     returned before Stripe has actually agreed. The response here is
 //     PENDING: the balance updates asynchronously once the webhook lands.
-//   kind="adjust" — a claw-back with no Stripe leg (an org closes, a bonus
+//   kind="adjust" — a claw-back with no Stripe leg (a place closes, a bonus
 //     was granted in error). This EF calls reverse_credit_lot directly —
 //     either against ONE lot, or, when lotId is omitted in favor of
-//     organizationId + consumerId, against every one of that guest's live
-//     lots at that organization in one sweep (the "org closes" case). Each
-//     lot's claw-back is its own atomic RPC call; the sweep as a whole is
-//     NOT cross-lot atomic (see the loop below for why that's an accepted
-//     trade-off for a rare, retryable, idempotent-per-lot admin action).
+//     placeId + consumerId, against every one of that guest's live lots at
+//     that place in one sweep (the "place closes" case). Each lot's claw-back
+//     is its own atomic RPC call; the sweep as a whole is NOT cross-lot
+//     atomic (see the loop below for why that's an accepted trade-off for a
+//     rare, retryable, idempotent-per-lot admin action).
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -44,7 +46,7 @@ import { stripeSecretKey } from "../_shared/stripe-env.ts";
 
 type Body = {
   lotId?: string;
-  organizationId?: string;
+  placeId?: string;
   consumerId?: string;
   kind?: "refund" | "adjust";
   amountCents?: number | null;
@@ -53,7 +55,7 @@ type Body = {
 
 type LotRow = {
   id: string;
-  organization_id: string;
+  place_id: string;
   stripe_payment_intent_id: string | null;
   paid_cents: number;
   bonus_cents: number;
@@ -100,7 +102,7 @@ Deno.serve(async (req) => {
 
     const lotRes = await admin
       .from("credit_lots")
-      .select("id, organization_id, stripe_payment_intent_id, paid_cents, bonus_cents, spent_cents")
+      .select("id, place_id, stripe_payment_intent_id, paid_cents, bonus_cents, spent_cents")
       .eq("id", body.lotId)
       .maybeSingle();
     if (lotRes.error) return jsonError(`lot_read: ${lotRes.error.message}`, 500);
@@ -110,18 +112,18 @@ Deno.serve(async (req) => {
       return jsonError("This lot carries no Stripe payment intent — nothing to refund via Stripe. Use kind=adjust instead.", 400);
     }
 
-    const orgAccountRes = await admin
-      .from("organization_payment_accounts")
+    const placeAccountRes = await admin
+      .from("place_payment_accounts")
       .select("stripe_account_id")
-      .eq("organization_id", lot.organization_id)
+      .eq("place_id", lot.place_id)
       .maybeSingle();
-    if (orgAccountRes.error) {
-      return jsonError(`org_account_read: ${orgAccountRes.error.message}`, 500);
+    if (placeAccountRes.error) {
+      return jsonError(`place_account_read: ${placeAccountRes.error.message}`, 500);
     }
     const connectedAccountId =
-      (orgAccountRes.data as { stripe_account_id?: string } | null)?.stripe_account_id ?? null;
+      (placeAccountRes.data as { stripe_account_id?: string } | null)?.stripe_account_id ?? null;
     if (!connectedAccountId) {
-      return jsonError("This lot's organization has no connected Stripe account on file", 400);
+      return jsonError("This lot's place has no connected Stripe account on file", 400);
     }
 
     const stripeKey = stripeSecretKey();
@@ -175,18 +177,18 @@ Deno.serve(async (req) => {
     return json({ ok: true, kind: "adjust", ...result });
   }
 
-  // Sweep mode: every live lot a consumer holds at one organization — the
-  // "org closes" case. Not cross-lot atomic: each reverse_credit_lot call is
+  // Sweep mode: every live lot a consumer holds at one place — the "place
+  // closes" case. Not cross-lot atomic: each reverse_credit_lot call is
   // its own transaction, and a failure partway leaves the remainder for a
   // retry (safe, because every call is idempotent on its own reference).
   // Cross-lot atomicity is what spend_credits needs because a GUEST is
   // waiting on one consistent answer; here an OPERATOR is running a rare,
   // supervised action and can simply run it again.
-  if (body.organizationId && body.consumerId) {
+  if (body.placeId && body.consumerId) {
     const lotsRes = await admin
       .from("credit_lots")
       .select("id, paid_cents, bonus_cents, spent_cents")
-      .eq("organization_id", body.organizationId)
+      .eq("place_id", body.placeId)
       .eq("consumer_id", body.consumerId);
     if (lotsRes.error) return jsonError(`lots_read: ${lotsRes.error.message}`, 500);
     const lots = (lotsRes.data as Pick<LotRow, "id" | "paid_cents" | "bonus_cents" | "spent_cents">[]) ?? [];
@@ -209,7 +211,7 @@ Deno.serve(async (req) => {
   }
 
   return jsonError(
-    "adjust needs either lotId, or organizationId + consumerId to sweep every live lot",
+    "adjust needs either lotId, or placeId + consumerId to sweep every live lot",
     400,
   );
 });

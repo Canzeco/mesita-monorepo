@@ -4,12 +4,18 @@
 //
 //   clear    -> stamps claim_reviewed_at/by. Ownership is untouched — this
 //               is "I looked, it's a real operator," nothing more.
-//   reverse  -> calls release_place_from_org (same RPC business-web-
-//               release-place uses): the place drops back to the public
-//               pool, the claimer's owner row from this tenure is deleted,
-//               plan resets to free. Blocked while a Partnership
+//   reverse  -> calls release_place (same RPC business-web-release-place
+//               uses): the place drops back to the public pool, the
+//               claimer's owner row from this tenure is deleted, plan
+//               resets to free, and the merchant identity the claimer wrote
+//               onto the place (partnered, legal_name, rfc, billing
+//               customer) is cleared with it. Blocked while a Partnership
 //               subscription is genuinely live, same as the business path
 //               — an admin reversal is not a way around that guard.
+//
+// MESITA-1892: the claim used to file the place under an organization, and
+// both the lookup and the RPC named it. `claimed_by` was always the real
+// evidence that a claim happened, so it is now the only thing read.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -53,14 +59,14 @@ Deno.serve(async (req) => {
 
   const { data: place, error: lookupError } = await admin
     .from("places")
-    .select("organization_id, claimed_by, claim_reviewed_at")
+    .select("claimed_by, claim_reviewed_at")
     .eq("id", placeId)
     .maybeSingle();
   if (lookupError) {
     return json({ ok: false, error: `claim_lookup: ${lookupError.message}` }, 500);
   }
-  const row = place as { organization_id: string | null; claimed_by: string | null; claim_reviewed_at: string | null } | null;
-  if (!row || !row.organization_id || !row.claimed_by) {
+  const row = place as { claimed_by: string | null; claim_reviewed_at: string | null } | null;
+  if (!row || !row.claimed_by) {
     return json({ ok: false, error: "That place has no active claim", code: "not_claimed" }, 409);
   }
   if (row.claim_reviewed_at) {
@@ -85,9 +91,8 @@ Deno.serve(async (req) => {
     return json({ ok: true, decision: "clear" });
   }
 
-  const { data, error } = await admin.rpc("release_place_from_org", {
+  const { data, error } = await admin.rpc("release_place", {
     p_place_id: placeId,
-    p_organization_id: row.organization_id,
   });
   if (error) return json({ ok: false, error: error.message }, 500);
   const result = data as { ok: boolean; code?: string };

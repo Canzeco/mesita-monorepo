@@ -80,7 +80,7 @@ Deno.test("succeeded: calls create_credit_lot with every pinned term from metada
   const { admin, rpcCalls } = fakeAdmin();
   const event = paymentIntentEvent({
     mesita_kind: "credit_purchase",
-    organization_id: "org_1",
+    place_id: "place_1",
     consumer_id: "c_1",
     paid_cents: "50000",
     bonus_cents: "5000",
@@ -92,7 +92,7 @@ Deno.test("succeeded: calls create_credit_lot with every pinned term from metada
   assertEquals(rpcCalls.length, 1);
   assertEquals(rpcCalls[0].fn, "create_credit_lot");
   assertEquals(rpcCalls[0].args, {
-    p_organization_id: "org_1",
+    p_place_id: "place_1",
     p_consumer_id: "c_1",
     p_paid_cents: 50000,
     p_bonus_cents: 5000,
@@ -116,7 +116,7 @@ Deno.test("succeeded: an RPC error throws — the caller rolls back the dedupe m
   } as unknown as SupabaseClient;
   const event = paymentIntentEvent({
     mesita_kind: "credit_purchase",
-    organization_id: "org_1",
+    place_id: "place_1",
     consumer_id: "c_1",
     paid_cents: "50000",
     activates_at: "2026-09-08T13:00:00.000Z",
@@ -138,6 +138,49 @@ Deno.test("failed: never throws and never writes — no state to roll back for a
   assertEquals(rpcCalls.length, 0);
 });
 
+// ─── The pre-MESITA-1892 metadata shape ─────────────────────────────────
+// Metadata is frozen on the PaymentIntent at charge time, so an intent
+// confirmed while the lot still hung off an organization can be delivered
+// after that layer was removed — a 3DS challenge finished hours later, or a
+// Stripe retry of an event we 500ed on. Such an intent pins a tenant id that
+// no longer means anything, and pins no place. The handler must refuse it as
+// its own case: writing silently is how a paid lot lands on the wrong tenant,
+// and throwing is how one doomed event retries forever.
+
+Deno.test("succeeded: an intent with every term but no place writes nothing and does not throw", async () => {
+  const { admin, rpcCalls } = fakeAdmin();
+  const event = paymentIntentEvent({
+    mesita_kind: "credit_purchase",
+    consumer_id: "c_1",
+    paid_cents: "50000",
+    bonus_cents: "5000",
+    currency: "MXN",
+    activates_at: "2026-09-08T13:00:00.000Z",
+    expires_at: "2026-12-07T10:00:00.000Z",
+  });
+  await handleCreditPurchaseIntentSucceeded(admin, event);
+  assertEquals(rpcCalls.length, 0);
+});
+
+Deno.test("succeeded: a gift with every term but no place writes nothing either", async () => {
+  // The gift branch reads the same pinned terms, so the refusal has to happen
+  // before it forks — otherwise the owner-less lot lands on nothing.
+  const { admin, rpcCalls } = fakeAdmin();
+  const event = paymentIntentEvent({
+    mesita_kind: "credit_purchase",
+    consumer_id: "sender_1",
+    paid_cents: "50000",
+    activates_at: "2026-09-08T13:00:00.000Z",
+    expires_at: "2026-03-07T10:00:00.000Z",
+    gift: "1",
+    gift_code_hash: "deadbeef",
+    gift_claim_expires_at: "2026-03-07T10:00:00.000Z",
+    gift_expiry_days: "90",
+  });
+  await handleCreditPurchaseIntentSucceeded(admin, event);
+  assertEquals(rpcCalls.length, 0);
+});
+
 // ─── The gift branch (MESITA-1677) ──────────────────────────────────────
 // Same event type, same mesita_kind — disambiguated by `gift: "1"` alone, so
 // these tests exist to prove that ONE extra field steers the whole handler
@@ -147,7 +190,7 @@ Deno.test("succeeded: a gift-flagged intent calls create_credit_gift, not create
   const { admin, rpcCalls } = fakeAdmin();
   const event = paymentIntentEvent({
     mesita_kind: "credit_purchase",
-    organization_id: "org_1",
+    place_id: "place_1",
     consumer_id: "sender_1", // the SENDER, per chargeGiftCreditsWithMesitaPay's convention
     paid_cents: "50000",
     bonus_cents: "2500",
@@ -164,7 +207,7 @@ Deno.test("succeeded: a gift-flagged intent calls create_credit_gift, not create
   assertEquals(rpcCalls.length, 1);
   assertEquals(rpcCalls[0].fn, "create_credit_gift");
   assertEquals(rpcCalls[0].args, {
-    p_organization_id: "org_1",
+    p_place_id: "place_1",
     p_sender_id: "sender_1",
     p_paid_cents: 50000,
     p_bonus_cents: 2500,
@@ -181,7 +224,7 @@ Deno.test("succeeded: gift_note absent/blank normalizes to null, matching pinned
   const { admin, rpcCalls } = fakeAdmin();
   const event = paymentIntentEvent({
     mesita_kind: "credit_purchase",
-    organization_id: "org_1",
+    place_id: "place_1",
     consumer_id: "sender_1",
     paid_cents: "50000",
     activates_at: "2026-09-08T13:00:00.000Z",
@@ -209,7 +252,7 @@ Deno.test("succeeded: a gift collision (a different failure than idempotent succ
   } as unknown as SupabaseClient;
   const event = paymentIntentEvent({
     mesita_kind: "credit_purchase",
-    organization_id: "org_1",
+    place_id: "place_1",
     consumer_id: "sender_1",
     paid_cents: "50000",
     activates_at: "2026-09-08T13:00:00.000Z",
@@ -227,7 +270,7 @@ Deno.test("succeeded: a non-gift intent is unaffected by the gift metadata field
   const { admin, rpcCalls } = fakeAdmin();
   const event = paymentIntentEvent({
     mesita_kind: "credit_purchase",
-    organization_id: "org_1",
+    place_id: "place_1",
     consumer_id: "c_1",
     paid_cents: "50000",
     activates_at: "2026-09-08T13:00:00.000Z",

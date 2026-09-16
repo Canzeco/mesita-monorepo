@@ -1,30 +1,34 @@
 // Mesita Credits charge-readiness — the ONE place this chain is computed,
-// mirroring _shared/mesita-pay-readiness.ts (MESITA-1414) so a future
-// consumer-web-get-* balance read and consumer-web-buy-credits' actual charge
-// attempt can never disagree about whether a place's organization is
-// chargeable (MESITA-1676).
+// mirroring _shared/mesita-pay-readiness.ts (MESITA-1414) so a balance read
+// and consumer-web-buy-credits' actual charge attempt can never disagree
+// about whether a place is chargeable (MESITA-1676).
 //
-//   place_profiles.credits_enabled  (operator intent bit, place-scoped —
-//                                     the org has no capability bit of its
-//                                     own yet, unlike mesita_pay_enabled)
+//   place_profiles.credits_enabled  (operator intent bit)
 //   ∧ visits_config.payCredits      (global rail switch)
 //   ∧ isConnectChargeReady          (Stripe-derived Connect capability, on
-//                                     the place's ORGANIZATION — MESITA-1545)
+//                                     the PLACE's own account — MESITA-1892)
 //
-// KEYED BY PLACE, NOT ORGANIZATION, on purpose: a guest reaches Buy from a
-// place they know (there is no org-level browsing surface yet — the Wallet's
-// own balance list is still an emulator, MESITA-1674), so the client always
-// has a placeId, never an organizationId it could be trusted to supply. The
-// LOT that results is org-scoped (spendable at any of that organization's
-// places), which is a fact about what gets written, not about how the
-// request is addressed — same distinction resolveChargeableOrganizationAccount
-// draws for the ticket rail.
+// THE CHAIN USED TO STRADDLE TWO ROWS. `credits_enabled` was the place's,
+// while the Connect account hung off the place's ORGANIZATION, so this file
+// had to resolve places → organization → account and could return a balance
+// scoped to something the caller never named. The org layer is gone
+// (MESITA-1892): the account is the place's own row in
+// `place_payment_accounts`, so all three facts are now facts about ONE place.
+//
+// KEYED BY PLACE, AND THE LOT IS THE PLACE'S TOO. A guest reaches Buy from a
+// place they know, so the client always has a placeId — that was already
+// true. What changed is the other half: `credit_lots.place_id` means the lot
+// that results is spendable at THAT venue and nowhere else. The request and
+// the debt finally name the same thing, which is why there is no longer a
+// distinction here between "how the request is addressed" and "what gets
+// written" — the same collapse resolveChargeablePlaceAccount describes for
+// the ticket rail.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isConnectChargeReady } from "./payment-account-doc.ts";
 
-export type ChargeableOrganizationForCredits = {
-  organizationId: string;
+export type ChargeablePlaceForCredits = {
+  placeId: string;
   connectedAccountId: string;
 };
 
@@ -32,38 +36,27 @@ export type ChargeableOrganizationForCredits = {
  * Resolves the connected Stripe account a Credits purchase at `placeId` would
  * charge through and fund, or null if any leg of the chain is closed.
  * `payCredits` is passed in (from visits_config) rather than read here —
- * mirrors resolveChargeableOrganizationAccount's shape exactly.
+ * mirrors resolveChargeablePlaceAccount's shape exactly.
  */
-export async function resolveChargeableOrganizationForCredits(
+export async function resolveChargeablePlaceForCredits(
   admin: SupabaseClient,
   payCredits: boolean,
   placeId: string | null,
-): Promise<ChargeableOrganizationForCredits | null> {
+): Promise<ChargeablePlaceForCredits | null> {
   if (!payCredits || !placeId) return null;
-  const [place, org] = await Promise.all([
-    admin
-      .from("place_profiles")
-      .select("credits_enabled")
-      .eq("id", placeId)
-      .maybeSingle(),
-    admin
-      .from("places")
-      .select("organization_id")
-      .eq("id", placeId)
-      .maybeSingle(),
-  ]);
+  const place = await admin
+    .from("place_profiles")
+    .select("credits_enabled")
+    .eq("id", placeId)
+    .maybeSingle();
   const intent =
     (place.data as { credits_enabled?: boolean } | null)?.credits_enabled ===
       true;
   if (!intent) return null;
-  const organizationId =
-    (org.data as { organization_id?: string | null } | null)
-      ?.organization_id ?? null;
-  if (!organizationId) return null;
   const account = await admin
-    .from("organization_payment_accounts")
+    .from("place_payment_accounts")
     .select("stripe_account_id, charges_enabled, details_submitted")
-    .eq("organization_id", organizationId)
+    .eq("place_id", placeId)
     .maybeSingle();
   const row = account.data as
     | {
@@ -73,112 +66,97 @@ export async function resolveChargeableOrganizationForCredits(
     }
     | null;
   if (!isConnectChargeReady(row)) return null;
-  return { organizationId, connectedAccountId: row!.stripe_account_id };
+  return { placeId, connectedAccountId: row!.stripe_account_id };
 }
 
-// ── The org-level fact (MESITA-1674's "Also": a place-scoped bit becoming an
-// org fact) ──────────────────────────────────────────────────────────────
+// ── The batched form of the SAME chain ────────────────────────────────────
 //
-// `place_profiles.credits_enabled` is place-scoped and `organizations` has no
-// capability bit of its own for Credits — unlike Mesita Pay, where
-// `organizations.mesita_pay_enabled` already IS the org fact and ANDs DOWN
-// into each place's own bit. Credits has nothing to AND down from yet, so the
-// question this issue asks — "any place? all? a new column?" — is answered
-// ANY: an organization accepts Credits if AT LEAST ONE of its places has
-// opted in, the same semantics consumer-web-list-credit-places already uses
-// to decide whether an organization belongs in the Buy picker (a place
-// appears there iff its org clears this same chain). Reusing "any" here next
-// to that EF is what keeps the two from silently drifting into different
-// answers for "does this org take Credits" — the exact unenforced-config bug
-// root CLAUDE.md names. ALL was rejected: an organization can hold places
-// that never sell Credits (a food-truck chain's kiosk, say) without that
-// costing every OTHER place at the org its own opt-in. A new
-// `organizations.credits_enabled` column was rejected too — it would need its
-// own writer and its own drift-with-place-bits story for a fact this query
-// already answers correctly today.
+// MESITA-1674 asked "does an organization take Credits — any place? all? a
+// new column?" and this file answered ANY, because `credits_enabled` was
+// place-scoped and organizations had no capability bit of their own. That
+// question no longer exists: with the org layer gone (MESITA-1892) there is
+// nothing above a place to aggregate to, so "does this place take Credits"
+// is the only question left and every leg of it lives on that place's own
+// rows. placesAcceptingCredits is therefore not a different rule from
+// resolveChargeablePlaceForCredits — it is the same three legs, evaluated
+// for a list, which is what keeps the Buy picker and the charge attempt from
+// drifting into different answers (the exact unenforced-config bug root
+// CLAUDE.md names).
 //
-// BATCHED, NOT ONE ROUND TRIP PER ORG. consumer-web-list-credit-balances
-// calls this once per page of organizations (bounded by DEFAULT_PAGE_SIZE),
-// never once per lot.
+// BATCHED, NOT ONE ROUND TRIP PER PLACE. consumer-web-list-credit-balances
+// calls this once per page of places (bounded by DEFAULT_PAGE_SIZE), never
+// once per lot.
 
 /**
- * Which of `organizationIds` currently accept a NEW Credits purchase — ANY of
- * that organization's places is a credits_enabled acceptor AND the org's
- * Connect account is charge-ready. `payCredits` is passed in (from
- * visits_config) rather than read here, mirroring every other resolver in
- * this file.
+ * Which of `placeIds` currently accept a NEW Credits purchase — the place's
+ * own `credits_enabled` bit AND its own Connect account being charge-ready.
+ * `payCredits` is passed in (from visits_config) rather than read here,
+ * mirroring every other resolver in this file.
  */
-export async function organizationsAcceptingCredits(
+export async function placesAcceptingCredits(
   admin: SupabaseClient,
-  organizationIds: readonly string[],
+  placeIds: readonly string[],
   payCredits: boolean,
 ): Promise<ReadonlySet<string>> {
-  if (!payCredits || organizationIds.length === 0) return new Set();
+  if (!payCredits || placeIds.length === 0) return new Set();
 
-  const places = await admin
-    .from("places")
-    .select("id, organization_id")
-    .in("organization_id", organizationIds);
-  if (places.error) return new Set();
-  const rows = (places.data ?? []) as { id: string; organization_id: string | null }[];
-  if (rows.length === 0) return new Set();
-
-  const placeIds = rows.map((r) => r.id);
   const acceptors = await admin
     .from("place_profiles")
     .select("id, credits_enabled")
     .in("id", placeIds)
     .eq("credits_enabled", true);
   if (acceptors.error) return new Set();
-  const acceptingPlaceIds = new Set(
-    ((acceptors.data ?? []) as { id: string }[]).map((r) => r.id),
+  const acceptingPlaceIds = ((acceptors.data ?? []) as { id: string }[]).map(
+    (r) => r.id,
   );
-  if (acceptingPlaceIds.size === 0) return new Set();
-
-  const candidateOrgIds = new Set(
-    rows
-      .filter((r) => r.organization_id && acceptingPlaceIds.has(r.id))
-      .map((r) => r.organization_id as string),
-  );
-  if (candidateOrgIds.size === 0) return new Set();
+  if (acceptingPlaceIds.length === 0) return new Set();
 
   const accounts = await admin
-    .from("organization_payment_accounts")
-    .select("organization_id, stripe_account_id, charges_enabled, details_submitted")
-    .in("organization_id", [...candidateOrgIds]);
+    .from("place_payment_accounts")
+    .select("place_id, stripe_account_id, charges_enabled, details_submitted")
+    .in("place_id", acceptingPlaceIds);
   if (accounts.error) return new Set();
 
   const ready = new Set<string>();
   for (
     const row of (accounts.data ?? []) as {
-      organization_id: string;
+      place_id: string;
       charges_enabled: boolean;
       details_submitted: boolean;
     }[]
   ) {
-    if (isConnectChargeReady(row)) ready.add(row.organization_id);
+    if (isConnectChargeReady(row)) ready.add(row.place_id);
   }
   return ready;
 }
 
 /**
- * The ISO 4217 currency a Credits charge on this organization is priced in,
- * uppercased for Stripe. Falls back to MXN — the market's currency and the
- * column's own default — when the org predates the column or holds blank.
+ * The ISO 4217 currency a Credits charge at this place is priced in,
+ * uppercased for Stripe, or NULL when the query itself failed.
  *
- * Lives beside resolveChargeableOrganizationForCredits for the same reason
- * that function exists: buy and gift both charge the same organization, and
- * the two must never disagree about it. They each carried this query.
+ * Lives beside resolveChargeablePlaceForCredits for the same reason that
+ * function exists: buy and gift both charge the same place, and the two must
+ * never disagree about it. They each carried this query.
+ *
+ * A FAILED READ IS NOT "MXN". Blank or absent falls back to MXN — the
+ * market's currency and the column's own default — because that is a real
+ * answer about a real row. A PostgREST error is not an answer at all, and
+ * guessing a denomination is guessing what the guest's card gets charged in,
+ * so this returns null and the caller refuses the purchase. `currency` moved
+ * from `organizations` to the doored `places` table with the org layer
+ * (MESITA-1892); read-surface.test.ts is what insisted the difference be
+ * visible here, for exactly the reason MESITA-1712 cost.
  */
-export async function resolveOrganizationCurrency(
+export async function resolvePlaceCurrency(
   admin: SupabaseClient,
-  organizationId: string,
-): Promise<string> {
-  const { data } = await admin
-    .from("organizations")
+  placeId: string,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("places")
     .select("currency")
-    .eq("id", organizationId)
+    .eq("id", placeId)
     .maybeSingle();
+  if (error) return null;
   const currency = (data as { currency?: string | null } | null)?.currency;
   return currency && currency.trim() ? currency.toUpperCase() : "MXN";
 }

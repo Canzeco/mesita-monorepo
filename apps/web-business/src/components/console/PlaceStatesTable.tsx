@@ -5,7 +5,7 @@
 //   Rows are places. Columns are states. The left column is identity and holds
 //   the image and the name — nothing else. Everything else is a state.
 //
-// That is Pato's rule verbatim, and it is why the address and the organization
+// That is Pato's rule verbatim, and it is why the address and the holder
 // line are gone from the row. Dropping the org is not a loss: Owned is the
 // state form of that same fact. Dropping the address IS a real loss, and it
 // was raised and kept anyway — see IDENTITY below for what carries the weight
@@ -80,7 +80,7 @@ import {
   STATES_HEAD_STICKY,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import type { ConsolePlace } from "@/lib/api/organizations";
+import type { ConsolePlace } from "@/lib/api/console";
 
 /** The rendered thumb box, in CSS pixels. Also what placeThumbUrl doubles for
  *  the retina request. */

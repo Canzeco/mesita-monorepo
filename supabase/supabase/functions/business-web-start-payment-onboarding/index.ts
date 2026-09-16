@@ -1,11 +1,19 @@
 // Supabase Edge Function — business-web-start-payment-onboarding (business console)
 //
-// Creates (if missing) the ORGANIZATION's Stripe CONNECT account — the
-// merchant of record is the organization (MESITA-1545) — PLATFORM posture,
+// Creates (if missing) the PLACE's Stripe CONNECT account — the merchant of
+// record is the place (MESITA-1545 made it the organization; MESITA-1892
+// removed that layer and the place inherited the role) — PLATFORM posture,
 // typeless-Standard controller + requested capabilities (the law lives in
-// _shared/stripe-connect.ts) — and returns a Stripe-hosted onboarding
-// Account Link. Org-owner-only: onboarding binds the organization's own
-// Stripe relationship.
+// _shared/stripe-connect.ts) — and returns a Stripe-hosted onboarding Account
+// Link. Owner-only: onboarding binds the place's own Stripe relationship, and
+// the person who signs a merchant agreement is the person who owns the place.
+//
+// ONE WIDENING, STATED: `requireOrgRole` had no super-admin bypass, and
+// `requireOwner` does. An operator can now open onboarding for a place they
+// are not a member of. That is the place-scoped equivalent this codebase has
+// (auth-membership.ts) and the bypass is uniform across every owner door, so
+// it is adopted rather than special-cased here — but it IS a wider door than
+// the one it replaces, and this comment is where that is written down.
 //
 // No charges here, ever. This is the ACCOUNT layer only; the charge path
 // (direct charges + application fees) is the gateway PR's scope. Live keys
@@ -26,8 +34,12 @@ import {
   readJson,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
+import {
+  adminClient,
+  getAuthedUser,
+  readEFEnv,
+  requireOwner,
+} from "../_shared/auth.ts";
 import {
   liveChargesBlocked,
 } from "../_shared/stripe-billing.ts";
@@ -49,7 +61,7 @@ import {
 } from "../_shared/stripe-connect.ts";
 import {
   deterministicConnectPrefill,
-  loadOrgPlacesForPrefill,
+  loadPlaceForPrefill,
 } from "../_shared/stripe-connect-prefill.ts";
 import {
   isStripeKeyRejection,
@@ -66,15 +78,15 @@ import {
 } from "./failure-copy.ts";
 
 type Body = {
-  orgId?: string;
-  /** The place console knows its placeId, not the org that holds it — when
-   *  orgId is omitted this EF resolves it server-side (clients never query
-   *  the DB). Ignored when orgId is present. */
+  /** The merchant. One account per place (`place_payment_accounts` is keyed
+   *  on it), so there is nothing else to resolve — the orgId this used to
+   *  accept, and the server-side place→org lookup behind it, are both gone
+   *  with the layer. */
   placeId?: string;
   returnUrl?: string;
   refreshUrl?: string;
   /** ISO-3166-1 alpha-2, allowlisted (MESITA_CONNECT_COUNTRIES). Defaults to
-   *  MX — every organization onboarded so far is Mexican — but it is validated, not
+   *  MX — every place onboarded so far is Mexican — but it is validated, not
    *  trusted, because Stripe bakes it into the account permanently. */
   country?: string;
   /** Stripe's `business_type` — the persona física / persona moral fork,
@@ -84,7 +96,7 @@ type Body = {
   /** THROW THE EXISTING ACCOUNT AWAY (MESITA-1865). Country is per-account
    *  permanent at Stripe, and both permanent answers are given by someone who
    *  has not seen the hosted flow yet — so a wrong one used to be terminal for
-   *  the organization. Honoured only while Stripe's OWN object says the account
+   *  the merchant. Honoured only while Stripe's OWN object says the account
    *  never submitted details and never charged; the mirror is not consulted for
    *  this, because a stale row would delete an account that just finished KYC. */
   restart?: boolean;
@@ -140,22 +152,9 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const admin = adminClient(envRes.env);
 
-  const bodyOrgId = (bodyRes.body.orgId ?? "").trim();
-  const bodyPlaceId = (bodyRes.body.placeId ?? "").trim();
-  if (!bodyOrgId && !bodyPlaceId) {
-    return json({ ok: false, error: "orgId or placeId is required" }, 400);
-  }
-  let orgId = bodyOrgId;
-  if (!orgId) {
-    const resolved = await orgIdForPlace(admin, bodyPlaceId);
-    if (!resolved) {
-      return json({
-        ok: false,
-        error: "This place has no organization to connect Stripe under yet.",
-        code: "place_has_no_organization",
-      }, 400);
-    }
-    orgId = resolved;
+  const placeId = (bodyRes.body.placeId ?? "").trim();
+  if (!placeId) {
+    return json({ ok: false, error: "placeId is required" }, 400);
   }
 
   // Country is PERMANENT on the account Stripe is about to create, so it is
@@ -191,7 +190,7 @@ Deno.serve(async (req) => {
     }, 400);
   }
 
-  const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
+  const roleRes = await requireOwner(admin, authRes.user, placeId);
   if (!roleRes.ok) return roleRes.response;
 
   const secret = resolveStripeSecret();
@@ -221,9 +220,9 @@ Deno.serve(async (req) => {
   const mockMode = isMockConnect(stripeKey);
 
   const existingRes = await admin
-    .from("organization_payment_accounts")
+    .from("place_payment_accounts")
     .select()
-    .eq("organization_id", orgId)
+    .eq("place_id", placeId)
     .maybeSingle();
   if (existingRes.error) {
     return json({ ok: false, error: `account_read: ${existingRes.error.message}` }, 500);
@@ -259,9 +258,9 @@ Deno.serve(async (req) => {
     }
     const inserted = await writePaymentAccount(admin, {
       mode: "insert",
-      organizationId: orgId,
+      placeId,
       row: {
-        stripe_account_id: mockConnectAccountId(orgId),
+        stripe_account_id: mockConnectAccountId(placeId),
         livemode: false,
       },
     });
@@ -373,17 +372,17 @@ Deno.serve(async (req) => {
       if (live.details_submitted === true || live.charges_enabled === true || closed) {
         await writePaymentAccount(admin, {
           mode: "update",
-          by: "organization_id",
-          id: orgId,
+          by: "place_id",
+          id: placeId,
           patch: accountSnapshotFromStripe(live, livemode),
         });
         return json({
           ok: false,
           error: closed
             // Stripe closed the ENTITY, not the paperwork. Minting a second
-            // account for the same organization is working around that
-            // decision, so it routes to a person like every other rejected.*
-            // surface (MESITA-1645).
+            // account for the same place is working around that decision, so
+            // it routes to a person like every other rejected.* surface
+            // (MESITA-1645).
             ? "Stripe closed this account. Write to us and we’ll help you from here."
             : "This Stripe account has already been submitted, so it can’t be replaced from here. Write to us and we’ll sort it out.",
           code: closed ? "account_closed" : "onboarding_already_submitted",
@@ -409,31 +408,23 @@ Deno.serve(async (req) => {
   // Prefill MUST land on accounts.create: Express + requirement_collection
   // stripe locks KYC after the first Account Link, which is why Software
   // showed up for restaurants — we never sent MCC, Stripe used Canzeco's.
-  const { data: orgRow } = await admin
-    .from("organizations")
-    .select("name, legal_name, rfc")
-    .eq("id", orgId)
-    .maybeSingle();
-  const org = (orgRow as {
-    name?: string | null;
-    legal_name?: string | null;
-    rfc?: string | null;
-  } | null) ?? null;
-  const legalName = (org?.legal_name ?? "").trim();
-
-  const { places, error: placesErr } = await loadOrgPlacesForPrefill(admin, orgId);
+  // ONE read for the whole merchant: the legal identity (`places.legal_name`,
+  // `places.rfc` — they landed there when the organization layer was removed)
+  // and the Atlas profile, both from _shared/stripe-connect-prefill.ts. Fail
+  // open: a read error is logged and prefill falls back to its defaults rather
+  // than blocking an onboarding the owner is waiting on.
+  const { merchant, places, error: placesErr } = await loadPlaceForPrefill(
+    admin,
+    placeId,
+  );
   if (placesErr) {
     console.error("[start-payment-onboarding] place prefill read:", placesErr);
   }
-  // CREATE is Atlas-only. Stripe keys idempotency on org+country; an LLM
+  const legalName = merchant.legalName;
+  // CREATE is Atlas-only. Stripe keys idempotency on place+country; an LLM
   // fail-open or a shuffled places read would change the body, 409 the
   // replay, and leave the first connected account orphaned.
-  const orgPrefill = {
-    name: (org?.name ?? "").trim(),
-    legalName,
-    rfc: org?.rfc ?? null,
-  };
-  const prefill = deterministicConnectPrefill(orgPrefill, places);
+  const prefill = deterministicConnectPrefill(merchant, places);
 
   let account: Stripe.Account;
   try {
@@ -443,7 +434,7 @@ Deno.serve(async (req) => {
     // account on the owner's next press.
     account = await stripe.accounts.create(
       connectAccountCreateParams({
-        orgId,
+        placeId,
         country,
         entityType,
         legalName,
@@ -453,7 +444,7 @@ Deno.serve(async (req) => {
       }),
       {
         idempotencyKey: connectAccountIdempotencyKey(
-          orgId,
+          placeId,
           country,
           replacedAccountId,
         ),
@@ -468,13 +459,13 @@ Deno.serve(async (req) => {
   const written = existing
     ? await writePaymentAccount(admin, {
       mode: "update",
-      by: "organization_id",
-      id: orgId,
+      by: "place_id",
+      id: placeId,
       patch: { stripe_account_id: account.id, ...snapshot },
     })
     : await writePaymentAccount(admin, {
       mode: "insert",
-      organizationId: orgId,
+      placeId,
       row: { stripe_account_id: account.id, ...snapshot },
     });
   if (!written.ok || !written.row) {

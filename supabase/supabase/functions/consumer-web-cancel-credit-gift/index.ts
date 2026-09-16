@@ -7,9 +7,9 @@
 // shared is unrecoverable — the sender cannot get it back and nobody can
 // claim it. Cancelling an UNCLAIMED gift returns its lot to the sender's own
 // wallet (cancel_credit_gift, 20260908160648) — NOT a Stripe refund, because
-// the organization already holds the funds; only who owns the resulting
-// balance changes. Codes stay hashed throughout: recoverability comes from
-// this cancel path, never from re-revealing the secret.
+// the PLACE already holds the funds; only who owns the resulting balance
+// changes. Codes stay hashed throughout: recoverability comes from this
+// cancel path, never from re-revealing the secret.
 //
 // Only the SENDER of a still-UNCLAIMED gift may cancel it — the RPC refuses
 // identically for "already claimed", "already cancelled", and "not yours",

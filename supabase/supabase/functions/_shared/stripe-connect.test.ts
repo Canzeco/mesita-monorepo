@@ -112,7 +112,7 @@ Deno.test("the pairing rule is VACUOUS for a non-Express dashboard", () => {
 
 Deno.test("accounts.create params carry the frozen controller and capabilities", () => {
   const params = connectAccountCreateParams({
-    orgId: "org-1",
+    placeId: "place-1",
     country: "MX",
     entityType: "company",
     legalName: "Cabaret Social Room SA de CV",
@@ -120,7 +120,10 @@ Deno.test("accounts.create params carry the frozen controller and capabilities",
   assertEquals(params.country, "MX");
   assertEquals(params.controller, MESITA_CONNECT_CONTROLLER);
   assertEquals(params.capabilities, MESITA_CONNECT_CAPABILITIES);
-  assertEquals(params.metadata, { organization_id: "org-1" });
+  // NOTHING READS THIS KEY BACK — the mirror is found by stripe_account_id —
+  // so MESITA-1892 could rename it outright. It is the Stripe dashboard's
+  // answer to "whose account is this", and the answer is the place.
+  assertEquals(params.metadata, { place_id: "place-1" });
   assertEquals(params.business_type, "company");
   assertEquals(params.company?.name, "Cabaret Social Room SA de CV");
   // NEVER the legacy `type` key: it forces fees.payer=application_express and
@@ -130,7 +133,7 @@ Deno.test("accounts.create params carry the frozen controller and capabilities",
 
 Deno.test("accounts.create params carry MCC/url/RFC so hosted onboarding is not Software", () => {
   const params = connectAccountCreateParams({
-    orgId: "org-1",
+    placeId: "place-1",
     country: "MX",
     entityType: "company",
     legalName: "Cabaret Social Room SA de CV",
@@ -154,7 +157,7 @@ Deno.test("accounts.create params carry MCC/url/RFC so hosted onboarding is not 
 
 Deno.test("an individual's RFC is not sent — Stripe v17 has no individual.tax_id", () => {
   const params = connectAccountCreateParams({
-    orgId: "org-1",
+    placeId: "place-1",
     country: "MX",
     entityType: "individual",
     legalName: "Someone",
@@ -166,7 +169,7 @@ Deno.test("an individual's RFC is not sent — Stripe v17 has no individual.tax_
 
 Deno.test("an individual gets no company.name — Stripe ignores it there", () => {
   const params = connectAccountCreateParams({
-    orgId: "org-1",
+    placeId: "place-1",
     country: "MX",
     entityType: "individual",
     legalName: "Someone",
@@ -177,7 +180,7 @@ Deno.test("an individual gets no company.name — Stripe ignores it there", () =
 
 Deno.test("a resume with no entity type sends neither key", () => {
   const params = connectAccountCreateParams({
-    orgId: "org-1",
+    placeId: "place-1",
     country: "US",
     entityType: null,
     legalName: "",
@@ -186,45 +189,45 @@ Deno.test("a resume with no entity type sends neither key", () => {
   assertEquals(params.company, undefined);
 });
 
-Deno.test("the idempotency key is stable per org+country, and varies by both", () => {
+Deno.test("the idempotency key is stable per place+country, and varies by both", () => {
   // A lost response must not mint a second permanent account on retry.
   assertEquals(
-    connectAccountIdempotencyKey("org-1", "MX"),
-    connectAccountIdempotencyKey("org-1", "MX"),
+    connectAccountIdempotencyKey("place-1", "MX"),
+    connectAccountIdempotencyKey("place-1", "MX"),
   );
   assert(
-    connectAccountIdempotencyKey("org-1", "MX") !==
-      connectAccountIdempotencyKey("org-1", "US"),
+    connectAccountIdempotencyKey("place-1", "MX") !==
+      connectAccountIdempotencyKey("place-1", "US"),
   );
   assert(
-    connectAccountIdempotencyKey("org-1", "MX") !==
-      connectAccountIdempotencyKey("org-2", "MX"),
+    connectAccountIdempotencyKey("place-1", "MX") !==
+      connectAccountIdempotencyKey("place-2", "MX"),
   );
 });
 
 Deno.test("a restart's key names the account it replaces, so the same country can be re-minted", () => {
-  // Without this the restart is a silent no-op: same org, same country, same
-  // key — Stripe replays and hands back the account that was just deleted
-  // (MESITA-1865).
+  // Without this the restart is a silent no-op: same place, same country,
+  // same key — Stripe replays and hands back the account that was just
+  // deleted (MESITA-1865).
   assert(
-    connectAccountIdempotencyKey("org-1", "MX", "acct_dead") !==
-      connectAccountIdempotencyKey("org-1", "MX"),
+    connectAccountIdempotencyKey("place-1", "MX", "acct_dead") !==
+      connectAccountIdempotencyKey("place-1", "MX"),
   );
   // Still deterministic: retrying THE SAME restart must replay, not mint a
   // second permanent account.
   assertEquals(
-    connectAccountIdempotencyKey("org-1", "MX", "acct_dead"),
-    connectAccountIdempotencyKey("org-1", "MX", "acct_dead"),
+    connectAccountIdempotencyKey("place-1", "MX", "acct_dead"),
+    connectAccountIdempotencyKey("place-1", "MX", "acct_dead"),
   );
   // Two generations of restart are two keys.
   assert(
-    connectAccountIdempotencyKey("org-1", "MX", "acct_dead") !==
-      connectAccountIdempotencyKey("org-1", "MX", "acct_deader"),
+    connectAccountIdempotencyKey("place-1", "MX", "acct_dead") !==
+      connectAccountIdempotencyKey("place-1", "MX", "acct_deader"),
   );
   // null/undefined are "no restart", not a distinct generation.
   assertEquals(
-    connectAccountIdempotencyKey("org-1", "MX", null),
-    connectAccountIdempotencyKey("org-1", "MX"),
+    connectAccountIdempotencyKey("place-1", "MX", null),
+    connectAccountIdempotencyKey("place-1", "MX"),
   );
 });
 
@@ -505,7 +508,7 @@ Deno.test("the onboarding HANDLER builds its client from the Connect version, no
   );
 });
 
-Deno.test("the onboarding HANDLER prefills from org places before accounts.create", async () => {
+Deno.test("the onboarding HANDLER prefills from the place before accounts.create", async () => {
   const src = await Deno.readTextFile(
     new URL("../business-web-start-payment-onboarding/index.ts", import.meta.url),
   );
@@ -596,18 +599,30 @@ Deno.test("the business console's copy of the terminal-reason rule has not drift
   // isTerminalDisabledReason over the same mirror column. Two copies of one
   // rule is how `unfinished` and `restricted` disagreed in the first place, so
   // the duplicate is pinned rather than trusted.
-  const src = await Deno.readTextFile(
-    new URL(
-      "../../../../apps/web-business/src/lib/api/organizations.ts",
-      import.meta.url,
-    ),
+  //
+  // FOUND BY SCANNING, NOT BY FILENAME. This named
+  // `lib/api/organizations.ts`, which is exactly the kind of name MESITA-1892
+  // deletes — and a pin that dies with its file stops guarding the rule at the
+  // moment the rule is most likely to be retyped. The scan asserts the copy
+  // still EXISTS somewhere in the console's api layer and that EVERY copy of
+  // it matches, which is the invariant; where it lives is the console's call.
+  const apiDir = new URL(
+    "../../../../apps/web-business/src/lib/api/",
+    import.meta.url,
   );
+  const carriers: string[] = [];
+  for await (const entry of Deno.readDir(apiDir)) {
+    if (!entry.isFile || !entry.name.endsWith(".ts")) continue;
+    const src = await Deno.readTextFile(new URL(entry.name, apiDir));
+    if (!src.includes("function isTerminalDisabledReason(")) continue;
+    carriers.push(entry.name);
+    assert(
+      src.includes(`reason.startsWith("rejected.") || reason === "platform_paused"`),
+      `web-business ${entry.name}'s terminal-reason rule no longer matches _shared/stripe-connect.ts`,
+    );
+  }
   assert(
-    src.includes("function isTerminalDisabledReason("),
+    carriers.length > 0,
     "web-business lost its copy of the terminal-reason rule",
-  );
-  assert(
-    src.includes(`reason.startsWith("rejected.") || reason === "platform_paused"`),
-    "web-business's terminal-reason rule no longer matches _shared/stripe-connect.ts",
   );
 });

@@ -6,19 +6,26 @@
 // The Buy Credits sheet's "Where" picker needs a real list — the mock ladder
 // it shipped against (CREDIT_PLACES) is invented. Returns the places a guest
 // could buy Mesita Credits at TODAY: credits_enabled ∧ payCredits ∧ the
-// place's organization is Connect charge-ready — the exact chain
-// resolveChargeableOrganizationForCredits computes per-place at charge time,
-// computed here for a LIST instead of one placeId (MESITA-1676). Both read
-// through the same table shape on purpose: a place that appears in this list
-// and then 409s at Buy would be the unenforced-config bug in a new outfit.
+// place's own Connect account is charge-ready — the exact chain
+// resolveChargeablePlaceForCredits computes for one placeId at charge time,
+// computed here for a LIST instead (MESITA-1676). Both read through the same
+// table shape on purpose: a place that appears in this list and then 409s at
+// Buy would be the unenforced-config bug in a new outfit.
 //
-// The catalog is empty as of 2026-09-06 (0 organizations hold a connected
-// account yet), so this returns [] in every environment until an operator
-// completes Connect onboarding for at least one organization — the correct
-// empty state, not a bug.
+// THE PICKER AND THE LOT NAME THE SAME THING NOW. Until MESITA-1892 this had
+// to hop place → organization → account and hand the client an
+// `organizationId` alongside each place, because the lot the purchase would
+// write was the ORGANIZATION's. The place is the sole tenant boundary now:
+// the account hangs off the place, the lot hangs off the place, and a row
+// here is just `{ id, name }`.
+//
+// The catalog is empty as of 2026-09-06 (no place holds a connected account
+// yet), so this returns [] in every environment until an operator completes
+// Connect onboarding for at least one place — the correct empty state, not a
+// bug.
 //
 // Body:     {}
-// Response: { ok: true, places: [{ id, name, organizationId }] }
+// Response: { ok: true, places: [{ id, name }] }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
@@ -62,53 +69,29 @@ Deno.serve(async (req) => {
   const candidates = (acceptors.data ?? []) as { id: string; name: string }[];
   if (candidates.length === 0) return json({ ok: true, places: [] });
 
-  const orgLookup = await admin
-    .from("places")
-    .select("id, organization_id")
-    .in("id", candidates.map((c) => c.id));
-  if (orgLookup.error) {
-    return json(
-      { ok: false, error: `credit_places_org: ${orgLookup.error.message}` },
-      500,
-    );
-  }
-  const orgByPlace = new Map<string, string>();
-  for (
-    const row of (orgLookup.data ?? []) as {
-      id: string;
-      organization_id: string | null;
-    }[]
-  ) {
-    if (row.organization_id) orgByPlace.set(row.id, row.organization_id);
-  }
-  const organizationIds = [...new Set(orgByPlace.values())];
-  if (organizationIds.length === 0) return json({ ok: true, places: [] });
-
   const accounts = await admin
-    .from("organization_payment_accounts")
-    .select("organization_id, stripe_account_id, charges_enabled, details_submitted")
-    .in("organization_id", organizationIds);
+    .from("place_payment_accounts")
+    .select("place_id, stripe_account_id, charges_enabled, details_submitted")
+    .in("place_id", candidates.map((c) => c.id));
   if (accounts.error) {
     return json(
       { ok: false, error: `credit_places_accounts: ${accounts.error.message}` },
       500,
     );
   }
-  const readyOrgs = new Set(
+  const readyPlaces = new Set(
     ((accounts.data ?? []) as {
-      organization_id: string;
+      place_id: string;
       charges_enabled: boolean;
       details_submitted: boolean;
     }[])
       .filter((row) => isConnectChargeReady(row))
-      .map((row) => row.organization_id),
+      .map((row) => row.place_id),
   );
 
   const places = candidates
-    .map((c) => ({ id: c.id, name: c.name, organizationId: orgByPlace.get(c.id) ?? null }))
-    .filter((p): p is { id: string; name: string; organizationId: string } =>
-      p.organizationId !== null && readyOrgs.has(p.organizationId)
-    );
+    .filter((c) => readyPlaces.has(c.id))
+    .map((c) => ({ id: c.id, name: c.name }));
 
   return json({ ok: true, places });
 });

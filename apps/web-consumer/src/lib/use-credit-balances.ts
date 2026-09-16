@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiListCreditBalances,
-  type CreditOrgBalance,
+  type CreditPlaceBalance,
 } from "@/lib/api/credits";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -18,8 +18,12 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // than trusting the guest's device clock outright.
 const TICK_MS = 60_000;
 
+// ONE BALANCE PER PLACE (MESITA-1892). The wire key is `places`, because that
+// is the entity the EF groups by; this hook exposes it as `balances`, because
+// that is what the caller holds — the same rename CreditsClient used to do
+// with a local alias.
 export type CreditBalancesApi = {
-  organizations: CreditOrgBalance[];
+  balances: CreditPlaceBalance[];
   loading: boolean;
   loadingMore: boolean;
   error: string | null;
@@ -32,7 +36,7 @@ export type CreditBalancesApi = {
 
 export function useCreditBalances(): CreditBalancesApi {
   const supabase = useBrowserSupabase();
-  const [organizations, setOrganizations] = useState<CreditOrgBalance[]>([]);
+  const [balances, setBalances] = useState<CreditPlaceBalance[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -64,7 +68,7 @@ export function useCreditBalances(): CreditBalancesApi {
     try {
       const res = await apiListCreditBalances(supabase);
       if (!aliveRef.current) return;
-      setOrganizations(res.organizations);
+      setBalances(res.places);
       setCursor(res.nextCursor);
       clockOffsetMsRef.current = res.serverNowMs - Date.now();
       setNowMs(res.serverNowMs);
@@ -95,11 +99,11 @@ export function useCreditBalances(): CreditBalancesApi {
     try {
       const res = await apiListCreditBalances(supabase, { cursor });
       if (!aliveRef.current) return;
-      // Appended, never replaced: a second page is MORE organizations, not a
-      // reload of the first. The server ranking is stable across pages
-      // (rankOrgBalances's tiebreaks depend only on each org's own totals and
-      // name, never on the requesting page), so there is no dedupe question.
-      setOrganizations((prev) => [...prev, ...res.organizations]);
+      // Appended, never replaced: a second page is MORE balances, not a
+      // reload of the first. The server ranking is stable across pages (its
+      // tiebreaks depend only on each place's own totals and name, never on
+      // the requesting page), so there is no dedupe question.
+      setBalances((prev) => [...prev, ...res.places]);
       setCursor(res.nextCursor);
     } catch {
       if (!aliveRef.current) return;
@@ -110,7 +114,7 @@ export function useCreditBalances(): CreditBalancesApi {
   }, [cursor, loadingMore, supabase]);
 
   return {
-    organizations,
+    balances,
     loading,
     loadingMore,
     error,
