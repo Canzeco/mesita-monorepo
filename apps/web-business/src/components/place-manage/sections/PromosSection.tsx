@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type ReactNode } from "react";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, SlidersHorizontal } from "lucide-react";
@@ -14,6 +15,7 @@ import { findPlace } from "@/lib/active-place";
 import { SHELL_ROUTES, placePayHref } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
+  setPlacePlan,
   setPlaceRails,
   setPlaceStrategy,
   type AdminPlace,
@@ -41,6 +43,7 @@ import {
   offeringRows,
   paintRows,
   railWriteFailure,
+  rejoinFailure,
   rowsForZone,
   shouldRenderConfig,
   tierFlag,
@@ -126,10 +129,23 @@ export function PromosSection({
   // place to subscribe again and lock its Pay rung "Off".
   const placePartnered = tierFlag(railPlace?.partnered);
   const placeMesitaPay = tierFlag(railPlace?.mesitaPayEnabled);
-  // Re-join is owner-only: the subscription it re-enters is the owner's.
-  const isOwner = railPlace?.myRole === "owner";
+  // ONE ROLE READ, TWO VERDICTS. Re-join is owner-only (the subscription it
+  // re-enters is the owner's) and so is the Mesita Pay rung
+  // (`business-web-set-place-rails` takes `requireOwner` for that one key) —
+  // but they want the unknown case answered differently, so both derive from
+  // the same read rather than growing two.
+  const myRole = railPlace?.myRole ?? null;
+  // A button, so unknown means DON'T OFFER IT: nothing is lost by a missing
+  // door, and a 403 after a press is worse.
+  const isOwner = myRole === "owner";
+  // A row's state, so unknown means DON'T CLAIM: `null` leaves the rung as it
+  // was rather than telling an owner the switch is not theirs.
+  const ownsPay = myRole === null ? null : myRole === "owner";
 
+  const router = useRouter();
   const [switchPending, startSwitch] = useTransition();
+  const [rejoinBusy, setRejoinBusy] = useState(false);
+  const [rejoinError, setRejoinError] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
   const [railBusy, setRailBusy] = useState<keyof PlaceRails | null>(null);
@@ -176,6 +192,7 @@ export function PromosSection({
     rewardLaneHeld,
     placePartnered,
     placeMesitaPay,
+    isOwner: ownsPay,
     forfeited,
   };
   const rows = offeringRows(ladderInput);
@@ -195,6 +212,34 @@ export function PromosSection({
   const revertPlace = (prev: AdminPlace) => {
     setV(prev);
     onSaved(prev);
+  };
+
+  // RE-JOIN (MESITA-1891). The one join door, and the two facts that make it
+  // pressable at all: the caller owns this place, and the console has READ
+  // `places.partnered` as true. Both are re-checked server-side — the EF 409s
+  // `place_not_partnered` and then 403s a non-owner — so this predicate is
+  // what decides whether a button renders, never whether the write is allowed.
+  const canRejoin = !member && placePartnered === true && isOwner;
+
+  const commitRejoin = async () => {
+    if (rejoinBusy) return;
+    setRejoinBusy(true);
+    setRejoinError(null);
+    // NOT optimistic, unlike the rails: a join rewrites the plan, the strikes
+    // and the forfeit stamp at once, so the only honest local state is the
+    // row the EF hands back.
+    const r = await setPlacePlan(place.id, "pro");
+    setRejoinBusy(false);
+    if (!r.ok) {
+      console.error("[controls] setPlacePlan join failed:", r.error);
+      setRejoinError(rejoinFailure(r.code ?? null));
+      return;
+    }
+    applyPlace(r.data);
+    // THE PARTNER CHIP IS SERVER-COMPUTED, and nothing in `../actions` calls
+    // revalidatePath — so without this the rail, the products catalogue and
+    // the place heading keep saying "not a partner" until the next navigation.
+    router.refresh();
   };
 
   const commitSwitch = (target: StrategyId) => {
@@ -413,6 +458,9 @@ export function PromosSection({
         member={member}
         setupHref={setupHref}
         isOwner={isOwner}
+        onRejoin={canRejoin ? () => void commitRejoin() : undefined}
+        rejoinPending={rejoinBusy}
+        rejoinError={rejoinError}
       />
     ) : null;
 
@@ -433,9 +481,11 @@ export function PromosSection({
           <p className="text-muted-foreground mt-2 text-sm leading-snug">
             {prereq.text}
             {/* Only the SETUP fix carries a link; a re-join is this place's
-                own door (unbuilt — the line says when it lands), and a link to
-                the setup there would send a forfeited place to subscribe
-                twice. */}
+                own door, and a link to the setup there would send a forfeited
+                place to subscribe twice. The button for it lives in the
+                Visits box below, which is why this line names WHO can press
+                it rather than where it is — the same engine paints five
+                zones and only one of them carries that box. */}
             {prereq.action === "setup" && (
               <>
                 {" "}

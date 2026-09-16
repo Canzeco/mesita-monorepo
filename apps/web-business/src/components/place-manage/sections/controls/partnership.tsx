@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { ErrorNote } from "@/components/ErrorNote";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { STRATEGY_BY_ID, type StrategyId } from "@/lib/business/strategies";
 import { type AdminPlace } from "../../actions";
 import {
@@ -49,27 +51,34 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 // (or was), where the three steps mean something; the pitch is what a
 // non-member needs.
 //
-// ── WHY THERE IS NO RE-JOIN BUTTON YET ───────────────────────────────────
+// ── THE RE-JOIN BUTTON (MESITA-1891) ─────────────────────────────────────
 //
 // Forfeit drops this place to plan=free and stamps `plan_forfeited_at`, while
 // the Membership it bought is untouched — so the way back is a re-join, never
-// "turn the subscription off and on".
+// "turn the subscription off and on". The same door serves a DROPPED place —
+// out of the partnership while the Membership is live — which reads plan=free
+// without a forfeit stamp.
 //
-// THE DOOR IS GUARDED NOW, AND STILL UNWIRED. MESITA-1889 made the one join
-// door (`setPlacePlan` → `business-web-set-partnership {action:"join"}`)
-// refuse unless the holder was `partnered` AND the caller owned it; MESITA-1892
-// removed the holder, so it asks the PLACE those same two questions (409
-// `place_not_partnered`, then 403). Either way it can no longer let an editor
-// put a place on plan=pro for nothing under a paid tier. Only the button is
-// left, and it belongs to MESITA-1891. The plan had it render disabled
-// meanwhile — but a disabled primary button is a knob that pretends, the exact
-// thing the house law (SoonStrip.tsx) forbids and the reason the Partner modal
-// has no Continue button. So the door's honest state is one line: the page's
-// top line says when re-join lands, and this box says what re-joining will do
-// and whose action it is (the owner's — the Membership it re-enters is the
-// owner's). The same door serves a DROPPED place — out of the partnership
-// while the Membership is live — which reads plan=free without a forfeit
-// stamp.
+// THE DOOR WAS GUARDED FIRST AND WIRED SECOND, on purpose. MESITA-1889 made
+// the one join door (`setPlacePlan` → `business-web-set-partnership
+// {action:"join"}`) refuse unless the holder was `partnered` AND the caller
+// owned it; MESITA-1892 removed the holder, so it asks the PLACE those same
+// two questions (409 `place_not_partnered`, then 403). Only then could a
+// button exist without handing an editor a free plan=pro under a paid tier.
+// Until this issue the honest state was one line saying when it landed; a
+// DISABLED primary button was never an option, because a knob that pretends
+// is what the house law (SoonStrip.tsx) forbids.
+//
+// THIS COMPONENT STAYS HOOK-FREE. `onRejoin` and `rejoinPending` come from
+// `PromosSection`, which already holds this place's row, its role and the
+// router — and which is where the `router.refresh()` after a successful join
+// has to happen, because the Partner chip is computed on the SERVER and
+// nothing in `place-manage/actions.ts` revalidates. Keeping the write out of
+// here also keeps this box renderable by `renderToStaticMarkup`, which is the
+// only way its six pill states are tested at all.
+//
+// WHOSE ACTION IT IS: the owner's, because the Membership it re-enters is the
+// owner's. Everyone else keeps the sentence.
 
 // ─── Lifecycle banner — this place's progress on the three Tutorial steps ─
 //
@@ -247,6 +256,9 @@ export function PartnershipBody({
   member,
   setupHref,
   isOwner,
+  onRejoin,
+  rejoinPending = false,
+  rejoinError = null,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
@@ -258,6 +270,14 @@ export function PartnershipBody({
   /** Owner of this place. Re-join is owner-only because the subscription it
    *  re-enters is the owner's; everyone else reads. */
   isOwner: boolean;
+  /** PRESENT ⇒ this caller may re-join: an owner, of a place whose Membership
+   *  the console has actually READ as live. Absent is not "no" — it is also
+   *  "the rail has not answered yet", which is why the button is gated on the
+   *  handler rather than on `isOwner` alone. */
+  onRejoin?: () => void;
+  rejoinPending?: boolean;
+  /** This place's failed join, in operator words. Never a raw EF string. */
+  rejoinError?: string | null;
 }) {
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
@@ -331,15 +351,41 @@ export function PartnershipBody({
           </p>
         )}
 
-        {/* NO BUTTON — see the docblock. The door's honest state is one
-            line: what re-joining will do, whose action it is, and when it
-            lands. */}
-        {forfeited && (
-          <p className="text-muted-foreground text-xs leading-snug">
-            {isOwner
-              ? "Re-join lands with the next release — it clears the strikes and the forfeit; the yearly subscription is untouched."
-              : "An owner re-joins this place when re-join lands with the next release; the yearly subscription is untouched."}
-          </p>
+        {/* THE DOOR. One sentence saying what re-joining does, then either the
+            button or who may press it — never both, and never a disabled one.
+            A caller with no handler and no rank reads the sentence alone: the
+            page's top line is their door. */}
+        {(forfeited || onRejoin != null) && (
+          <div className="flex flex-col gap-2">
+            <p className="text-muted-foreground text-xs leading-snug">
+              {forfeited
+                ? "Re-joining clears the strikes and the forfeit; the yearly subscription is untouched."
+                : "Re-joining puts this place back in the partnership; the yearly subscription is untouched."}
+            </p>
+            {onRejoin ? (
+              <button
+                type="button"
+                onClick={onRejoin}
+                disabled={rejoinPending}
+                className={cx(
+                  CTA_BUTTON_CLASS,
+                  "self-start",
+                  rejoinPending && "cursor-default opacity-60",
+                )}
+              >
+                {rejoinPending ? "Re-joining…" : "Re-join this place"}
+              </button>
+            ) : !isOwner ? (
+              <p className="text-muted-foreground text-xs leading-snug">
+                An owner re-joins this place.
+              </p>
+            ) : null}
+            {/* Always mounted: a live region that appears with its message
+                does not announce. */}
+            <div aria-live="polite">
+              {rejoinError && <ErrorNote message={rejoinError} />}
+            </div>
+          </div>
         )}
 
         {canDrop && (

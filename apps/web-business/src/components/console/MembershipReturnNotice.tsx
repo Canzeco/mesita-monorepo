@@ -12,6 +12,13 @@
 // orderings. Promising more would be a green banner over a not-yet-partnered
 // screen, which is the worst of both.
 //
+// "managed" is the Billing Portal's return_url (MESITA-1891), and it is the
+// same race in the other direction: a cancellation lands in Stripe first and
+// reaches `partner_memberships` through the webhook, so this must not claim
+// the change is already reflected here. It says they are back and the page
+// catches up, which is true whether they cancelled, paid an invoice or only
+// looked.
+//
 // "cancelled" is Stripe's own cancel_url, reached by backing out of Checkout.
 // Nothing was charged and nothing changed, and saying so plainly is the whole
 // job — an owner who left on purpose does not need persuading, and one who
@@ -21,7 +28,12 @@ export function MembershipReturnNotice({
 }: {
   membership?: string;
 }) {
-  if (membership !== "return" && membership !== "cancelled") return null;
+  if (
+    membership !== "return" && membership !== "cancelled" &&
+    membership !== "managed"
+  ) {
+    return null;
+  }
   return (
     <div
       role="status"
@@ -29,7 +41,9 @@ export function MembershipReturnNotice({
     >
       {membership === "return"
         ? "Payment received — thank you. Your partnership turns on as soon as Stripe confirms it, usually within a few seconds; reload if this page still shows the price."
-        : "No payment was taken and nothing changed. The membership is still here whenever you want it."}
+        : membership === "managed"
+          ? "Back from Stripe. Anything you changed there — a cancellation, a new card — shows here as soon as Stripe confirms it, usually within a few seconds."
+          : "No payment was taken and nothing changed. The membership is still here whenever you want it."}
     </div>
   );
 }

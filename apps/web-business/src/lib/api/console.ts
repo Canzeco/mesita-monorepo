@@ -483,6 +483,35 @@ export async function apiStartMembership(
   };
 }
 
+/** Opens Stripe's own Billing Portal for the place's Mesita Membership
+ *  (MESITA-1891). Owner-only, enforced by the EF.
+ *
+ *  It is the CANCEL door, and Mesita writes no cancellation logic: the portal
+ *  moves the subscription in Stripe and the webhook mirrors what comes back,
+ *  exactly as it mirrors a renewal. Invoices and the card on file ride along.
+ *
+ *  `url` is null with `mock` true — MOCK_SUBSCRIPTION is on, or no Stripe
+ *  secret is configured, so there is no subscription in Stripe to manage. The
+ *  caller says so in one line rather than redirecting nowhere; same contract
+ *  as `apiGetPaymentDashboardLink`'s mock account. */
+export async function apiManageMembership(
+  client: SupabaseClient,
+  input: {
+    placeId: string;
+    /** ABSOLUTE. Stripe rejects a relative return_url, and no browser sets an
+     *  Origin on the console's server-action hop (MESITA-1643). */
+    returnUrl: string;
+  },
+): Promise<{ url: string | null; mock: boolean }> {
+  const res = await invokeEF<{ url?: string | null; mock?: boolean }>(
+    client,
+    "business-web-manage-membership",
+    input,
+    "Couldn't open the billing portal.",
+  );
+  return { url: res.url ?? null, mock: res.mock === true };
+}
+
 /** The Place screen's payload. `listed` / `enriched` / `verified` arrive
  *  DERIVED from the EF rather than computed here: the same three facts are
  *  read by admin surfaces off the same helpers, and a state that disagrees

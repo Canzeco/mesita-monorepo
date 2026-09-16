@@ -26,6 +26,7 @@ import { headers } from "next/headers";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiGetPaymentDashboardLink,
+  apiManageMembership,
   apiStartMembership,
   apiStartPaymentOnboarding,
   apiUpdateLegalIdentity,
@@ -262,4 +263,63 @@ export async function startMembershipAction(
   }
   if (checkoutUrl) redirect(checkoutUrl);
   return { error: "Couldn't start the membership checkout." };
+}
+
+/**
+ * The owner manages — and cancels — the place's Mesita Membership
+ * (MESITA-1891), in Stripe's own Billing Portal.
+ *
+ * MESITA WRITES NO CANCELLATION LOGIC. A Cancel button of our own would be a
+ * second writer racing the `customer.subscription.updated` that Stripe sends
+ * moments later saying the same thing; the portal moves the subscription and
+ * the webhook mirrors it, so `partner_memberships` keeps one writer. Invoices
+ * and the card on file come free with the same session.
+ *
+ * A FORM AND A REDIRECT, like the two above it: `redirect()` throws
+ * NEXT_REDIRECT and MUST stay outside the try, or errMsg would swallow it and
+ * the card would show a nonsense error instead of going to Stripe
+ * (MESITA-1793).
+ *
+ * The mock answer is a NOTE, not an error. With MOCK_SUBSCRIPTION on there is
+ * no Stripe subscription behind the partnership, so there is nothing to
+ * manage and nothing went wrong — the same shape
+ * `openPaymentsDashboardAction` uses for a mock Connect account. Nothing here
+ * reads or writes MOCK_SUBSCRIPTION, STRIPE_MODE or STRIPE_ALLOW_LIVE; those
+ * are the operator's (MESITA-37).
+ */
+export async function manageMembershipAction(
+  _prev: PaymentsActionState,
+  formData: FormData,
+): Promise<PaymentsActionState> {
+  const placeId = String(formData.get("placeId") ?? "").trim();
+  if (!placeId) return { error: "Missing place.", note: null };
+
+  const origin = await consoleOrigin();
+  if (!origin) {
+    return {
+      error:
+        "Couldn't work out where to send you back to. Reload and try again.",
+      note: null,
+    };
+  }
+
+  const supabase = await createServerSupabase();
+  let url: string | null = null;
+  try {
+    ({ url } = await apiManageMembership(supabase, {
+      placeId,
+      returnUrl:
+        `${origin}${placePageHref(placeId, "products")}?membership=managed`,
+    }));
+  } catch (e) {
+    return {
+      error: errMsg(e, "Couldn't open the billing portal."),
+      note: null,
+    };
+  }
+  if (url) redirect(url);
+  return {
+    error: null,
+    note: "This partnership isn't billed through Stripe in this environment.",
+  };
 }

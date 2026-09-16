@@ -474,7 +474,14 @@ export async function setPlacePlan(
       ...(rates ?? {}),
     },
   );
-  if (!r.ok) return { ok: false, error: r.error };
+  // `code` RIDES ALONG, like the two Connect actions above it. The join door
+  // 409s `place_not_partnered` when the place has no live Mesita Membership
+  // behind it (MESITA-1889), and `rejoinFailure` branches on exactly that code
+  // to say so instead of "try again". Dropping it here type-checked — the
+  // failure arm's `code` is optional — and made that branch permanently
+  // unreachable: `r.code` was `undefined` at every call site, so the one
+  // refusal a second press cannot fix printed the retry sentence anyway.
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return { ok: true, data: r.data.place };
 }
 

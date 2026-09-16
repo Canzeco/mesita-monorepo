@@ -17,7 +17,12 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type Stripe from "npm:stripe@17";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { resolvePlanPrice, STRIPE_CATALOG, liveChargesBlocked } from "./stripe-billing.ts";
+import {
+  liveChargesBlocked,
+  readPlaceBillingCustomer,
+  resolvePlanPrice,
+  STRIPE_CATALOG,
+} from "./stripe-billing.ts";
 
 // ─── Catalog contract ────────────────────────────────────────────────────
 
@@ -311,4 +316,61 @@ Deno.test("resolvePlanPrice: Verified yearly provisions with year interval", asy
   assertEquals(res.priceCents, 100000);
   assertEquals(createdInterval, "year");
   assertEquals(cached.value, "price_verified");
+});
+
+// ─── readPlaceBillingCustomer (MESITA-1891) ───────────────────────────────
+//
+// The Billing Portal's anchor. It READS and never mints, so each case below
+// pairs with its opposite: the one input that must hand back a customer, and
+// the three that must refuse rather than open an empty Stripe page or leave a
+// stray Customer behind.
+
+function fakePlace(row: Record<string, unknown> | null): SupabaseClient {
+  const builder = {
+    select() {
+      return this;
+    },
+    eq() {
+      return this;
+    },
+    maybeSingle() {
+      return Promise.resolve({ data: row, error: null });
+    },
+  };
+  return { from: () => builder } as unknown as SupabaseClient;
+}
+
+Deno.test("readPlaceBillingCustomer: a stored real customer is the anchor", async () => {
+  const res = await readPlaceBillingCustomer(
+    fakePlace({ stripe_billing_customer_id: "cus_live_1" }),
+    "p-1",
+  );
+  assertEquals(res, { ok: true, customerId: "cus_live_1" });
+});
+
+Deno.test("readPlaceBillingCustomer: no row is place_not_found, not an empty anchor", async () => {
+  const res = await readPlaceBillingCustomer(fakePlace(null), "p-1");
+  assert(!res.ok);
+  assertEquals(res.code, "place_not_found");
+});
+
+Deno.test("readPlaceBillingCustomer: an unanchored place refuses instead of minting", async () => {
+  const res = await readPlaceBillingCustomer(
+    fakePlace({ stripe_billing_customer_id: null }),
+    "p-1",
+  );
+  assert(!res.ok);
+  assertEquals(res.code, "no_billing_customer");
+});
+
+Deno.test("readPlaceBillingCustomer: mock_cus_* reads as absent, never as a customer", async () => {
+  // Handing MOCK_SUBSCRIPTION's placeholder to a live key 400s, so it must
+  // never travel as an anchor — the same rule isMockCustomerId enforces on
+  // the checkout path.
+  const res = await readPlaceBillingCustomer(
+    fakePlace({ stripe_billing_customer_id: "mock_cus_p-1" }),
+    "p-1",
+  );
+  assert(!res.ok);
+  assertEquals(res.code, "no_billing_customer");
 });

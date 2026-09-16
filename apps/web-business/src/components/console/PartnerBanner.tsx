@@ -22,6 +22,11 @@
 // (MESITA-1877) — so the mock's "included with your membership" is still
 // written as partnership here.
 //
+// AND IT CARRIES THE DOOR OUT (MESITA-1891). A settled fact still needs one
+// verb: cancel, or the invoices and the card behind it. That verb is Stripe's
+// Billing Portal, owner-only, and it is the SAME `ManageMembership` the box
+// below renders — the strip is just where a partner actually lands.
+//
 // AND THE STRIP PRINTS THE DATE (MESITA-1877). "Renews yearly" was all the
 // console knew before there was a subscription; now that there is one, the
 // settled fact includes WHEN, and `membershipLine` is the one place that
@@ -31,6 +36,7 @@
 
 import { Check } from "lucide-react";
 import {
+  ManageMembership,
   membershipLine,
   PartnerCard,
 } from "@/components/console/PartnerCard";
@@ -103,6 +109,14 @@ export function PartnerBanner({
           membership,
         )}
       </p>
+      {/* THE DOOR OUT (MESITA-1891). The strip is the partnered face an
+          operator actually meets — `PartnerCard`'s own partnered branch is
+          only reached by its tests — so the Billing Portal link has to be
+          here or it is nowhere. Same component both places, so the two can
+          never offer different doors. It is last on the row and wears the
+          strip's own quiet underline: managing a settled fact must not
+          outrank the fact. */}
+      <ManageMembership placeId={placeId} isOwner={isOwner} />
     </div>
   );
 }

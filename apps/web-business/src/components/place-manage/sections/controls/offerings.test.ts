@@ -3,11 +3,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   LADDER_ZONES,
+  PLACE_NOT_PARTNERED,
   ZONE_ROWS,
   guestSummary,
   ladderScoreMatchesPromotionScore,
   offeringRows,
   paintRows,
+  rejoinFailure,
   rowsForZone,
   tierFlag,
   topPrerequisite,
@@ -418,19 +420,19 @@ describe("the top line: two partner facts, one precedence", () => {
       },
     },
     {
-      name: "not a member, org partnered, forfeited → this place's own re-join, unbuilt",
+      name: "not a member, place partnered, forfeited → this place's own re-join",
       input: { member: false, placePartnered: true, forfeited: true },
       expect: {
         action: "rejoin",
-        text: "This place forfeited the partnership after 3 strikes — re-join lands with the next release.",
+        text: "This place forfeited the partnership after 3 strikes — an owner can re-join it.",
       },
     },
     {
-      name: "not a member, org partnered, not forfeited (a dropped place) → the same door",
+      name: "not a member, place partnered, not forfeited (a dropped place) → the same door",
       input: { member: false, placePartnered: true, forfeited: false },
       expect: {
         action: "rejoin",
-        text: "This place is not in the partnership — re-join lands with the next release.",
+        text: "This place is not in the partnership — an owner can re-join it.",
       },
     },
     {
@@ -463,16 +465,30 @@ describe("the top line: two partner facts, one precedence", () => {
     expect(line?.text).not.toContain("Organization");
   });
 
-  it("a re-join line never points at a door that is not on the page", () => {
-    // The engine paints two zones and only Rewards carries the partnership
-    // box; the re-join door is unbuilt in this PR. So the line says when the
-    // door lands and never "below" — on Capabilities there is nothing below,
-    // and on Rewards there is no button to be below.
+  it("a re-join line names WHO, never where — and never promises a release", () => {
+    // The button exists now (MESITA-1891) and it lives in the Visits box, but
+    // this engine paints five zones and only Visits carries that box. So the
+    // line still never says "below", and it no longer says "lands with the
+    // next release" either: it names the rank that can press it, which is
+    // true on all five.
     for (const forfeited of [true, false]) {
       const line = topPrerequisite({ ...READY, member: false, placePartnered: true, forfeited });
-      expect(line?.text).toContain("lands with the next release");
+      expect(line?.text).toContain("an owner can re-join it");
       expect(line?.text).not.toMatch(/\bbelow\b/);
+      expect(line?.text).not.toContain("next release");
+      expect(line?.text).not.toContain("lands with");
     }
+  });
+
+  // MESITA-1889's 409 is a state, not a retry: the place has no live Mesita
+  // Membership behind it, and a second press cannot change that. Printing
+  // "try again" there would be the impossible retry MESITA-1736 shipped on
+  // the rail switches.
+  it("the join door's refusal discriminates a state from a retry", () => {
+    expect(rejoinFailure(PLACE_NOT_PARTNERED)).toContain("no live Mesita Membership");
+    expect(rejoinFailure(PLACE_NOT_PARTNERED)).not.toContain("try again");
+    expect(rejoinFailure(null)).toContain("try again");
+    expect(rejoinFailure("boom")).toBe(rejoinFailure(null));
   });
 });
 
@@ -630,5 +646,117 @@ describe("an absent org flag is unknown, never off", () => {
     expect(tierFlag(null)).toBeNull();
     expect(tierFlag(true)).toBe(true);
     expect(tierFlag(false)).toBe(false);
+  });
+});
+
+// ── THE PAY RUNG'S RANK (MESITA-1891 review) ──────────────────────────────
+//
+// Two surfaces, one door. `business-web-set-place-rails` takes `requireOwner`
+// for the `mesita_pay` key and `requireEditor` for the other three
+// (MESITA-1892 collapsed the organization's half of the bit into this column
+// and the EF kept the rank that collapse would otherwise have handed to every
+// editor). `MesitaPayCard` matches it — a non-owner gets a static switch and
+// "An owner turns this on." This ladder did not: it handed an editor an
+// operable switch whose write the server refuses. An enabled control that
+// 403s is worse than either answer, so the rung takes the rank too.
+//
+// The predicate is restated here as a literal rather than imported — two
+// install roots, and THAT is the thing under test, exactly as the T5 block
+// above restates web-consumer's.
+describe("the Mesita Pay rung agrees with the door about who may set it", () => {
+  const efAllows = (role: "owner" | "editor" | "viewer", key: string) =>
+    key === "mesita_pay" ? role === "owner" : role !== "viewer";
+
+  const payReady = { ...READY, placeMesitaPay: true };
+  const owner = (over: Partial<LadderInput> = {}) =>
+    rowFor({ ...payReady, isOwner: true, ...over }, "mesita_pay");
+  const editor = (over: Partial<LadderInput> = {}) =>
+    rowFor({ ...payReady, isOwner: false, ...over }, "mesita_pay");
+
+  it("an editor gets no switch, because the EF would refuse the write", () => {
+    expect(efAllows("editor", "mesita_pay")).toBe(false);
+    // `on`/`off` is what LadderRow renders as a button; anything else is not
+    // a control. That is the bit the console and the EF have to agree on.
+    const state = editor().state;
+    expect(state.kind).toBe("not_mine");
+    expect(["on", "off"]).not.toContain(state.kind);
+  });
+
+  it("an owner still gets one — the bijection", () => {
+    expect(efAllows("owner", "mesita_pay")).toBe(true);
+    expect(owner().state.kind).toBe("off");
+    expect(
+      owner({ rails: { ...BASE.rails, mesita_pay: true } }).state.kind,
+    ).toBe("on");
+  });
+
+  it("the other three rails keep editor, on both sides", () => {
+    for (const key of ["accept_prepays", "pickup", "delivery"]) {
+      expect(efAllows("editor", key === "accept_prepays" ? "credits" : key)).toBe(true);
+      expect(rowFor({ ...payReady, isOwner: false }, key).state.kind).toBe("off");
+    }
+  });
+
+  it("unknown rank changes nothing — null is not 'not yours'", () => {
+    // The role is read off the rail's own list, which is absent on a pool
+    // place or a page rendered without the shell. Telling an owner the switch
+    // is not theirs is the same class of lie as telling a paying place it is
+    // off.
+    for (const isOwner of [null, undefined] as const) {
+      expect(rowFor({ ...payReady, isOwner }, "mesita_pay").state.kind).toBe("off");
+    }
+  });
+
+  it("rank never outranks a prerequisite — the card's own branch order", () => {
+    // An editor at a place that has not met the prerequisites must read the
+    // prerequisite, not "Owner only": what is missing is the place's, and it
+    // is the thing anybody can act on.
+    expect(editor({ member: false }).state).toEqual({
+      kind: "locked",
+      needs: "Needs Mesita Partner",
+    });
+    expect(editor({ placeMesitaPay: false }).state.kind).toBe("locked");
+    expect(editor({ connect: { kind: "none" } }).state).toEqual({
+      kind: "locked",
+      needs: "Needs an active Stripe account",
+    });
+    expect(editor({ connectLoading: true }).state.kind).toBe("checking");
+  });
+
+  it("an editor still reads the TRUE state of card acceptance", () => {
+    // THE REGRESSION A `locked` RUNG WOULD HAVE SHIPPED. `locked` renders off,
+    // so a place taking card payments would have told its editor it takes
+    // none — the MESITA-1735 class of bug, on the one rung where it is money —
+    // and manufactured a disagreement line saying guests do not get what they
+    // are already getting.
+    const live = { ...payReady, isOwner: false, rails: { ...BASE.rails, mesita_pay: true } };
+    const row = rowFor(live, "mesita_pay");
+    expect(row.state).toEqual({ kind: "not_mine", word: "Owner only", on: true });
+    expect(row.disagreement).toBeNull();
+    expect(guestSummary(offeringRows(live))).toContain("pay by card");
+    // And it still scores: the place offers it, whoever is looking.
+    expect(row.earned).toBe(true);
+    expect(ladderScoreMatchesPromotionScore(live)).toBe(true);
+  });
+
+  it("and PromosSection actually feeds it the caller's role", () => {
+    // The seam this file cannot cross: the engine can take the rank and the
+    // only caller can still never pass it, which is how the re-join branch
+    // went dead in this same issue. `?? null` is load-bearing — `=== "owner"`
+    // on a missing rail row would hand every unknown reader `false`.
+    const src = readFileSync(
+      path.resolve(__dirname, "../PromosSection.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/isOwner:\s*ownsPay/);
+    expect(src).toMatch(/myRole\s*===\s*null\s*\?\s*null\s*:/);
+  });
+
+  it("a rung nobody may set still paints, under 'Not yours to set'", () => {
+    // `paintRows` ranks `not_mine` last so it lands in that group — the same
+    // shelf `reservations` sits on. Dropping off the page entirely would be
+    // the one failure mode this state can have.
+    const painted = paintRows(rowsForZone(offeringRows({ ...payReady, isOwner: false }), "pay"));
+    expect(painted.map((r) => r.key)).toEqual(["mesita_pay"]);
   });
 });

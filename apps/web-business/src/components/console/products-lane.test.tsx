@@ -14,9 +14,29 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The Pay switch writes and then refreshes (MESITA-1891), so it holds a
+// router. There is no App Router under `renderToStaticMarkup` — `useRouter`
+// throws "invariant expected app router to be mounted" — so the module is
+// stubbed, the same way sidebar-render.test.tsx stubs it. `redirect` is in
+// the factory because `actions/place-setup.ts` imports it by name and an ESM
+// namespace missing a named export fails at link time, long before anything
+// calls it.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: () => {}, refresh: () => {}, replace: () => {} }),
+  usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(""),
+  redirect: () => {
+    throw new Error("NEXT_REDIRECT");
+  },
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
+}));
+
 import { PaymentsCard } from "./PaymentsCard";
-import { PARTNER_PERKS, PartnerCard } from "./PartnerCard";
+import { ManageMembership, PARTNER_PERKS, PartnerCard } from "./PartnerCard";
 import { MesitaPayCard } from "./MesitaPayCard";
 import { SoonStrip } from "./SoonStrip";
 import { CARD_PAYMENTS_LIVE } from "./badges";
@@ -354,7 +374,6 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     // No membership row on the payload — the operator switch, a migration, or
     // a failed billing read. All the console knows is the cadence.
     expect(on).toContain("Renews yearly.");
-    expect(on).toContain("Cancelling from here lands with the next release.");
     expect(on).not.toContain("Become a partner");
     expect(on).not.toContain("An owner subscribes.");
     // And no pill where the CTA is the state: never three atoms for one fact.
@@ -375,8 +394,6 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     });
     expect(html).not.toMatch(/Renews/);
     expect(html).toMatch(/Ends .*2027/);
-    // And it stops offering to do what is already done.
-    expect(html).not.toContain("Cancelling from here lands");
   });
 
   it("past due is still a partner, and says what needs doing", () => {
@@ -475,14 +492,19 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
 // two branches render a control, so the state every new place actually
 // meets — Stripe not Ready — was the one that never showed the switch as a
 // thing you turn on. MESITA-1867 moved that switch from Partner to Mesita
-// Pay; the idiom holds: every branch a track and one line. The switch is
-// `aria-disabled` in every branch this PR, because `mesita_pay_enabled` has
-// no writer of its own until MESITA-1868 — so "unlocked" here means the knob
-// lifts and the line says when it will flip, never that it flips.
-describe("the Mesita Pay switch shows while it is locked", () => {
+// Pay; the idiom holds: every branch a track and one line.
+//
+// MESITA-1891 MADE ONE BRANCH FLIP. `place_profiles.mesita_pay_enabled` has a
+// console writer now — `business-web-set-place-rails`, owner-only on that key
+// — so the OWNER's Ready branch is a real `<button role="switch">` and every
+// other branch is exactly as locked as it was. These pair each live input
+// with the input that must NOT be live, so the pair fails the day the branch
+// stops discriminating.
+describe("the Mesita Pay switch: locked branches show, the owner's flips", () => {
   const pay = (over: Partial<Parameters<typeof MesitaPayCard>[0]> = {}) =>
     renderToStaticMarkup(
       <MesitaPayCard
+        placeId="p-1"
         partnered
         stripeReady
         mesitaPayEnabled={false}
@@ -500,25 +522,71 @@ describe("the Mesita Pay switch shows while it is locked", () => {
     ["restricted", "Stripe restricted the account — see above."],
     ["charges_only", "Stripe still needs payouts enabled — see above."],
   ];
+  /** Every branch that must NOT write: the four the issue names — not
+   *  partnered, a failed read, Stripe not charge-ready, insufficient role. */
+  const INERT = () => [
+    pay({ partnered: false }),
+    pay({ partnered: false, mesitaPayEnabled: true }),
+    pay({ loadError: "Couldn't load the Stripe account." }),
+    ...LOCKED_STATES.map(([accountState]) => pay({ stripeReady: false, accountState })),
+    pay({ isOwner: false }),
+    pay({ isOwner: false, mesitaPayEnabled: true }),
+  ];
 
   it("every branch renders a track named Mesita Pay — locked included", () => {
-    const branches = [
-      pay({ partnered: false }),
-      pay({ loadError: "Couldn't load the Stripe account." }),
-      ...LOCKED_STATES.map(([accountState]) => pay({ stripeReady: false, accountState })),
-      pay(),
-      pay({ mesitaPayEnabled: true }),
-      pay({ isOwner: false }),
-      pay({ isOwner: false, mesitaPayEnabled: true }),
-    ];
-    for (const html of branches) {
+    for (const html of [...INERT(), pay(), pay({ mesitaPayEnabled: true })]) {
       expect(html).toContain("h-6 w-11");
       expect(html).toContain('aria-label="Mesita Pay"');
       expect(html).toContain('role="switch"');
-      expect(html).toContain('aria-disabled="true"');
       // The pill is gone: one control, one line, never a third atom.
       expect(html).not.toContain("type-label");
     }
+  });
+
+  // THE BIJECTION THIS ISSUE IS ABOUT. Four inert branches against the one
+  // live one: every inert branch is `aria-disabled` and is not a button, and
+  // the owner's Ready branch is a button and is not `aria-disabled`. Asserting
+  // only the live half would pass on a card that let an editor write.
+  it("only the owner's Ready branch is operable; every other branch is aria-disabled", () => {
+    for (const html of INERT()) {
+      expect(html).toContain('aria-disabled="true"');
+      expect(html).not.toContain("<button");
+    }
+    for (const html of [pay(), pay({ mesitaPayEnabled: true })]) {
+      expect(html).not.toContain('aria-disabled="true"');
+      expect(html).toContain("<button");
+      expect(html).toContain('type="button"');
+    }
+  });
+
+  it("no branch promises a next release any more", () => {
+    for (const html of [...INERT(), pay(), pay({ mesitaPayEnabled: true })]) {
+      expect(html).not.toContain("next release");
+      expect(html).not.toContain("lands with");
+    }
+  });
+
+  // The control is only as good as the door behind it, and neither the door
+  // nor the refresh survives a static render — so the source is the witness,
+  // the same way the buy button's form is.
+  it("the write is the ONE rails door, and it refreshes the server's copy", () => {
+    const code = stripComments(
+      readFileSync(path.join(__dirname, "./MesitaPayCard.tsx"), "utf8"),
+    );
+    // One caller per endpoint: the Capabilities ladder's own server action,
+    // never a second one pointed at the same EF.
+    expect(code).toContain('from "@/components/place-manage/actions"');
+    expect(code).toContain("setPlaceRails(placeId, { mesita_pay: next })");
+    // The bit is read server-side by the rail, the catalogue card and this
+    // page; without the refresh they disagree until the next navigation.
+    expect(code).toContain("router.refresh()");
+    // A raw Edge Function string never reaches the DOM.
+    expect(code).toContain('railWriteFailure("Mesita Pay", next)');
+    expect(code).toContain("console.error(");
+    // And the local copy loses to a fresher server render: the page remounts
+    // the card on the bit it was seeded with.
+    expect(PAY_SRC).toContain("key={`mesita-pay-${place.mesitaPayEnabled === true}`}");
+    expect(PAY_SRC).toContain("placeId={id}");
   });
 
   it("locked reads off, carries the lock, and names the rung the account is on", () => {
@@ -567,18 +635,16 @@ describe("the Mesita Pay switch shows while it is locked", () => {
     expect(partner).toContain("bg-background shadow");
   });
 
-  it("unlocked keeps the live track, no lock in the knob, and is honest about the release", () => {
+  it("an editor keeps the live-looking track and the line naming who may move it", () => {
     const owner = pay();
     const editor = pay({ isOwner: false });
     for (const html of [owner, editor]) {
       expect(html).toContain("bg-background shadow");
       expect(html).not.toContain("lucide-lock");
-      expect(html).toContain('aria-disabled="true"');
     }
-    expect(owner).toContain("Switch lands with the next release.");
-    expect(owner).not.toContain("An owner turns this on.");
+    // The rank is the only difference, and the line is where it is said.
     expect(editor).toContain("An owner turns this on.");
-    expect(editor).not.toContain("next release");
+    expect(owner).not.toContain("An owner turns this on.");
   });
 
   it("the on/off line follows CARD_PAYMENTS_LIVE, so it cannot contradict the Ready caption", () => {
@@ -601,5 +667,55 @@ describe("the Mesita Pay switch shows while it is locked", () => {
     }
     expect(on).not.toContain("Turn on so");
     expect(off).not.toContain("Places can turn on card payments");
+  });
+});
+
+// MESITA-1891. The partnered face used to end on "Cancelling from here lands
+// with the next release." It lands: one owner-only EF mints a Stripe Billing
+// Portal session and the console links to it, so Mesita writes no
+// cancellation logic at all — the webhook already mirrors what comes back.
+describe("the way out of a Membership is Stripe's own portal", () => {
+  const PORTAL_SRC = stripComments(
+    readFileSync(path.join(__dirname, "./PartnerCard.tsx"), "utf8"),
+  );
+  const BANNER_SRC = stripComments(
+    readFileSync(path.join(__dirname, "./PartnerBanner.tsx"), "utf8"),
+  );
+  const manage = (isOwner: boolean) =>
+    renderToStaticMarkup(<ManageMembership placeId="p-1" isOwner={isOwner} />);
+
+  it("nothing in the console still promises the cancel", () => {
+    for (const src of [PORTAL_SRC, BANNER_SRC, PAGE_SRC]) {
+      expect(src).not.toContain("next release");
+    }
+  });
+
+  it("the owner gets the door; everyone else reads who has it — the bijection", () => {
+    const owner = manage(true);
+    const editor = manage(false);
+    expect(owner).toContain("Manage membership");
+    expect(owner).toContain("<form");
+    expect(owner).toContain('name="placeId"');
+    expect(owner).not.toContain("An owner manages the membership.");
+    expect(editor).toContain("An owner manages the membership.");
+    expect(editor).not.toContain("Manage membership");
+    expect(editor).not.toContain("<form");
+  });
+
+  it("a form and a redirect, disabled while the session is minted", () => {
+    const code = PORTAL_SRC.slice(PORTAL_SRC.indexOf("export function ManageMembership"));
+    // A server action that redirects to Stripe only redirects from a form
+    // submit, never from an onClick handler.
+    expect(code).toContain("<form action={action}");
+    expect(code).toContain("manageMembershipAction");
+    expect(code).toContain("disabled={pending}");
+  });
+
+  // The strip is the partnered face an operator actually meets: products/page
+  // renders PartnerBanner, and PartnerBanner renders PartnerCard only for a
+  // NON-partner. A door only on the card would be a door nobody can reach.
+  it("the door is on the strip a partner actually lands on", () => {
+    expect(BANNER_SRC).toContain("<ManageMembership");
+    expect(PORTAL_SRC).toContain("<ManageMembership");
   });
 });
