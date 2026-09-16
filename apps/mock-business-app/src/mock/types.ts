@@ -56,7 +56,10 @@ export type MockPlace = {
   pay: PayLadder;
   rating: number;
   reviewCount: number;
-  /** Photos on the public profile — the count the Profile view prints. */
+  /** Photos on the public profile. It must AGREE with the place's
+   *  `MockPlaceProfile.photos.length` — Admin prints this number while Profile
+   *  renders that array, and a console where the two disagree is a console
+   *  telling two stories about one gallery. */
   photoCount: number;
   menuCount: number;
 };
@@ -174,4 +177,117 @@ export type MockPoolPlace = {
   city: string;
   verified: boolean;
   claimable: boolean;
+};
+
+// ── THE PROFILE RECORD ──────────────────────────────────────────────────────
+//
+// Everything above is the mock's own vocabulary. This is NOT: the field names
+// below are the REAL column names, because `components/place-manage/` is a
+// snapshot of the business console's Profile and reads them by name. Renaming
+// them to something friendlier would mean rewriting every line of a file whose
+// whole value is that it was not rewritten.
+//
+// It is a sibling of `MockPlace` rather than more fields on it for the same
+// reason: `MockPlace` is what the RAIL, the catalogue and the eight product
+// views read — a flat, invented shape — and merging thirty snake_case columns
+// into it would make every one of those screens look like it reads the DB.
+
+export type MockDay =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
+
+export type MockPlaceProfile = {
+  /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
+  mesita_name: string | null;
+  /** Cached Google Places displayName. Intaker-only write, so: read-only. */
+  google_name: string | null;
+  category: string | null;
+  category_label: string | null;
+  /** Families the Intaker INFERRED. Membership derives live from `category`. */
+  family_keys: string[] | null;
+  /** Canonical Presentation — English. The column is `description`; the FIELD
+   *  is Presentation (Pato, 2026-08-23). */
+  description: string | null;
+  price_level: number | null;
+  currency: string | null;
+  tags: string[];
+  photos: string[];
+  hours: Partial<Record<MockDay, { open: string; close: string }[]>> | null;
+  /** Native — Google Places seed + Intaker synthesis. The update EF rejects
+   *  manual address writes, which is why Location renders read-only. */
+  address: string | null;
+  zone: string | null;
+  city: string | null;
+  lat: number | null;
+  lng: number | null;
+  timezone: string | null;
+  phone: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  whatsapp_url: string | null;
+  /** Native-locked — shown read-only, never patched (MESITA-468). */
+  google_maps_url: string | null;
+  uber_eats_url: string | null;
+  opentable_url: string | null;
+  /** Intaker pipeline state. `generating`/`queued` puts the quiet footnote
+   *  under the completeness meter. */
+  content_state: string | null;
+  /** What `isServingChannel` reads for the Reservations completeness check. */
+  reservation_channel: string | null;
+  /** Menus live at their own address since MESITA-1848, but completeness still
+   *  counts them, so the count travels with the profile. */
+  menu_count: number;
+};
+
+// ── THE ATLAS CATALOG ───────────────────────────────────────────────────────
+//
+// In the real console these arrive from `business-web-get-atlas-fields`, the
+// same vocabulary Atlas Config edits. Here they are a fixture, and a SLICE of
+// the seed rather than a mirror of it: the select and the tag picker read the
+// same at forty rows as at a hundred, and a copy that matched the table row for
+// row would acquire a reason to be re-synced.
+
+export type MockTagOption = {
+  slug: string;
+  label_es: string;
+  label_en: string;
+  facet: string;
+  section: string;
+  sort_order: number;
+};
+
+export type MockTagFacet = {
+  slug: string;
+  emoji: string;
+  label_es: string;
+  label_en: string;
+};
+
+export type MockCategoryOption = {
+  slug: string;
+  label: string;
+  section: string;
+  sort_order: number;
+  /** 1–2 place family parents (multi-parent law). */
+  family_keys?: string[];
+};
+
+export type MockFamilyOption = {
+  slug: string;
+  label: string;
+  emoji: string;
+  sort_order: number;
+};
+
+export type MockFieldLimits = {
+  placeNameMax: number;
+  descriptionMax: number;
+  tagsPerPlaceMax: number;
+  photosMax: number;
 };

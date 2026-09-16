@@ -7,8 +7,8 @@
 // on purpose, which is why they are the two that ship broken.
 //
 // Here the scenario IS the answer. Pick a mode and the console is in it.
-import { PLACES, POOL_PLACES } from "@/mock/fixtures";
-import type { MockPlace, PayLadder, PlaceRole } from "@/mock/types";
+import { PLACES, POOL_PLACES, PROFILES } from "@/mock/fixtures";
+import type { MockPlace, MockPlaceProfile, PayLadder, PlaceRole } from "@/mock/types";
 import type { RailMode } from "@/lib/rail-scope";
 
 export type Scenario = {
@@ -116,6 +116,11 @@ export type World = {
    *  empty array. */
   viewerError: boolean;
   poolPlaces: typeof POOL_PLACES;
+  /** The profile record per place id — the fixture, or what Profile's save bar
+   *  last wrote over it. Keyed rather than nested on `MockPlace` so the rail
+   *  and the eight product views never carry thirty columns they do not read
+   *  (mock/types.ts). */
+  profiles: Record<string, MockPlaceProfile>;
 };
 
 /** Apply the scenario's switches to a place. The FIRST place is the one under
@@ -136,18 +141,55 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
   };
 }
 
-export function resolveWorld(s: Scenario): World {
+/** The profile a place currently has: its fixture, unless Profile's save bar
+ *  has written one. A saved edit REPLACES the record rather than merging into
+ *  it — the form holds every field, so a partial write here could only ever
+ *  come from a bug, and merging would hide it. */
+function profilesWith(
+  edits: Record<string, MockPlaceProfile>,
+): Record<string, MockPlaceProfile> {
+  return { ...PROFILES, ...edits };
+}
+
+export function resolveWorld(
+  s: Scenario,
+  profileEdits: Record<string, MockPlaceProfile> = {},
+): World {
+  const profiles = profilesWith(profileEdits);
   if (s.mode === "unknown") {
-    return { places: [], viewerError: true, poolPlaces: POOL_PLACES };
+    return { places: [], viewerError: true, poolPlaces: POOL_PLACES, profiles };
   }
   if (s.mode === "zero") {
-    return { places: [], viewerError: false, poolPlaces: POOL_PLACES };
+    return { places: [], viewerError: false, poolPlaces: POOL_PLACES, profiles };
   }
   const chosen = s.mode === "solo" ? PLACES.slice(0, 1) : PLACES;
   return {
-    places: chosen.map((p, i) => withOverrides(p, s, i === 0)),
+    // A SAVED PROFILE MOVES THE PLACE, not just the form: the name the rail
+    // and the heading print is `mesita_name` falling back to `google_name`
+    // (the real column is GENERATED as exactly that coalesce), and the photo
+    // count Admin prints is the gallery's length. Re-deriving them here is
+    // what makes the save bar's promise visible outside the card it was
+    // pressed in.
+    places: chosen.map((p, i) => withProfile(withOverrides(p, s, i === 0), profiles[p.id])),
     viewerError: false,
     poolPlaces: POOL_PLACES,
+    profiles,
+  };
+}
+
+function withProfile(place: MockPlace, profile: MockPlaceProfile | undefined): MockPlace {
+  if (!profile) return place;
+  return {
+    ...place,
+    name: (profile.mesita_name ?? "").trim() || (profile.google_name ?? "").trim() || place.name,
+    category: profile.category_label ?? place.category,
+    street: profile.address ?? place.street,
+    city: profile.city ?? place.city,
+    phone: profile.phone ?? place.phone,
+    website: profile.website_url ?? place.website,
+    photoUrl: profile.photos[0] ?? place.photoUrl,
+    photoCount: profile.photos.length,
+    menuCount: profile.menu_count,
   };
 }
 
