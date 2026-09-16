@@ -118,11 +118,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="bg-background fixed inset-0 flex flex-col">
       {/* THE STRIP. Above the rail, not inside main: it must be unmissable and
           it must not change main's own layout, because the whole point of this
-          app is that what you see below is what the console looks like. */}
+          app is that what you see below is what the console looks like.
+
+          IT NAMES NO ADDRESS (MESITA-1904). It used to end "invented data on
+          :3006", which was true while the app only ever ran locally and became
+          false the day it was deployed — on the hosted copy it named a port the
+          reader was not on. A strip whose entire job is to be believed cannot
+          carry a claim the reader can check and find wrong: one false detail
+          costs it the sentence that matters, and the sentence that matters is
+          "none of this is real". So it states only what is true in both
+          places. */}
       <div className="flex h-7 shrink-0 items-center justify-center gap-2 bg-[color:var(--brand-pink-700)] px-3 text-[11px] font-semibold tracking-wide text-white">
         <span className="rounded-sm bg-white/25 px-1.5">MOCK</span>
         <span className="truncate">
-          Nothing here is real. No backend, no account, no place — invented data on :3006.
+          Nothing here is real. No backend, no account, no place — every name and
+          number on this screen is invented.
         </span>
       </div>
 
