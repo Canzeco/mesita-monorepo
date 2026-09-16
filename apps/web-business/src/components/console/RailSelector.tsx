@@ -41,9 +41,10 @@
 // rail, so it keeps the page's own tokens — a dark menu floating over a light
 // screen is a different surface pretending to be this one.
 //
-// AT `w-16` IT IS ITS CHIP, and the chip is already the icon's size, so the
-// collapsed rail is one unbroken column of marks. The accessible name rides
-// the trigger's `aria-label`, which is on it at every width.
+// IT SITS UNDER THE RAIL'S HEAD, not in it (MESITA-1909): the lockup names the
+// product and this names the venue, and stacking the two nouns keeps them from
+// reading as one title. The accessible name rides the trigger's `aria-label`,
+// never the subject's own name.
 
 import { cn } from "@/lib/utils";
 import { ChevronsUpDown, Search } from "lucide-react";
@@ -191,7 +192,6 @@ export function RailSelector({
   chip,
   switchable,
   pending,
-  collapsed,
   autoFocusRef,
   onEscapeKeyDown,
   onOpenChange,
@@ -204,7 +204,6 @@ export function RailSelector({
   chip: React.ReactNode;
   switchable: boolean;
   pending: boolean;
-  collapsed: boolean;
   /** Where the caret goes when the menu opens, when the menu has a field in
    *  it at all. Unset — every selector that has nothing to search — and Radix
    *  keeps its own behaviour: focus the first row. */
@@ -236,20 +235,15 @@ export function RailSelector({
           "text-sidebar-foreground text-sm font-semibold lg:text-[13px]",
           "hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent",
           FOCUS_RING,
-          collapsed && "justify-center px-0 py-2",
         )}
       >
         {chip}
-        {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1 truncate">{name}</span>
-            {switchable && (
-              <ChevronsUpDown
-                aria-hidden
-                className="text-sidebar-muted h-3 w-3 shrink-0"
-              />
-            )}
-          </>
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+        {switchable && (
+          <ChevronsUpDown
+            aria-hidden
+            className="text-sidebar-muted h-3 w-3 shrink-0"
+          />
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent

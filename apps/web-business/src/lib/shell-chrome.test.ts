@@ -144,20 +144,47 @@ describe("the unsaved-edits guard reaches the rail", () => {
     expect(body).toContain("onNavigate?.();");
   });
 
-  // MESITA-1842. Pato: "no mesita logo, fuck it." Both wordmarks are gone —
-  // the rail's and the mobile topbar's — so the guard rule that covered them
-  // has nothing to cover, and the only thing worth pinning is that they did
-  // not come back. The desktop app's own title bar already says the product's
-  // name; a second, quieter copy of it cost the rail its top row.
-  it("neither the rail nor the topbar renders a wordmark", () => {
-    for (const f of ["components/console/Sidebar.tsx", "components/console/AppShell.tsx"]) {
+  // MESITA-1842 deleted BOTH wordmarks on Pato's "no mesita logo, fuck it" —
+  // the rail's and the mobile topbar's. MESITA-1909 puts ONE back, in the
+  // RAIL, after the shape was tried in apps/mock-business-app and he said
+  // "merge". The split is the point, so it is pinned on both sides.
+  it("the rail heads with the lockup; the topbar still says the scope", () => {
+    const rail = readCode("components/console/Sidebar.tsx");
+    expect(rail).toContain("MesitaLogo");
+    // A LABEL, NOT A LINK, so it is not a destination the guard would have to
+    // cover: no landing href ever came back with it.
+    expect(rail).not.toContain("landingHref");
+
+    // THE TOPBAR IS NOT PART OF THE REVERSAL. What belongs in a 44px strip
+    // above a CLOSED drawer is the thing the drawer is hiding — and the rail's
+    // own head is inside that drawer, where opening it is what shows it.
+    const shell = readCode("components/console/AppShell.tsx");
+    expect(shell).not.toContain("MesitaLogo");
+    expect(shell).not.toContain("MesitaMark");
+    expect(shell).not.toContain("landingHref");
+    expect(shell).toContain("scopeLine");
+  });
+
+  // ONE WIDTH (MESITA-1909). Collapse was the only door to the chips-only
+  // rail, so deleting the button without deleting `w-16` would leave a second
+  // layout that has to stay true and can never be seen. The cookie goes with
+  // it: a cookie nobody reads is a cookie somebody will one day read by
+  // mistake.
+  it("the rail has one width, one control-free column, and no collapse cookie", () => {
+    for (const f of [
+      "components/console/Sidebar.tsx",
+      "components/console/AppShell.tsx",
+      "components/console/RailSelector.tsx",
+    ]) {
       const src = readCode(f);
-      expect(src, f).not.toContain("MesitaLogo");
-      expect(src, f).not.toContain("MesitaMark");
-      expect(src, f).not.toContain("landingHref");
+      expect(src, f).not.toContain("collapsed");
+      expect(src, f).not.toContain("w-16");
+      expect(src, f).not.toContain("PanelLeft");
     }
-    // The topbar says the SCOPE instead — the sentence the closed drawer hides.
-    expect(readCode("components/console/AppShell.tsx")).toContain("scopeLine");
+    expect(readCode("lib/sidebar-prefs.ts")).not.toContain(
+      'SIDEBAR_COLLAPSED_COOKIE = "',
+    );
+    expect(readCode("app/(shell)/layout.tsx")).not.toContain("defaultCollapsed");
   });
 
   it("the provider wraps the shell, so the topbar can see the guard", () => {
@@ -259,10 +286,12 @@ describe("the rail is six nouns and one indent", () => {
     expect(rail()).toContain(
       'const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2"',
     );
-    // ONE SEAM NOW (MESITA-1879): the rail is one flat column, so the only
-    // boundary left is the one over Account — the person, below the business.
-    // It was two while two selectors each opened a group.
-    expect((rail().match(/className=\{SECTION_SEAM\}/g) ?? []).length).toBe(1);
+    // ONE SEAM DECLARED ONCE, and the groups plus the foot all draw it. It
+    // moved from a bare `className={SECTION_SEAM}` to `cn(SECTION_SEAM, …)`
+    // when Account left the scroller for the pinned footer (MESITA-1909), so
+    // what is pinned is the constant's single definition, not its spelling at
+    // one call site.
+    expect((rail().match(/SECTION_SEAM/g) ?? []).length).toBeGreaterThan(1);
     expect(rail()).not.toContain('className="mt-3"');
   });
 
@@ -405,12 +434,14 @@ describe("the rail is six nouns and one indent", () => {
     // And nothing hand-writes a row list beside it.
     expect(nav).not.toContain("ORG_RAIL_TARGETS.map");
     expect(nav).not.toContain("placeRows.map((tab)");
-    // ACCOUNT IS LAST, inside the landmark, under the one seam: the column
-    // reads the business top to bottom, then you (MESITA-1879 reverses
-    // MESITA-1844's row one).
-    const iAccount = nav.indexOf("href={SHELL_ROUTES.account}");
+    // ACCOUNT IS LAST, AND NO LONGER INSIDE THE LANDMARK (MESITA-1909). It
+    // trailed the rows in the scroller until the foot became its own pinned
+    // band; the column still reads the business top to bottom, then you, but
+    // the person now sits in the same place whatever the rows do above.
+    expect(nav).not.toContain("href={SHELL_ROUTES.account}");
+    const iAccount = r.indexOf("href={SHELL_ROUTES.account}");
     expect(iAccount).toBeGreaterThan(-1);
-    expect(iAccount).toBeGreaterThan(nav.indexOf("rows.map((row, i)"));
+    expect(iAccount).toBeGreaterThan(r.indexOf("</nav>"));
     // The contract carries the order, and Payments and Credits are not in it.
     const routes = readCode("lib/console-routes.ts");
     for (const target of ["settings", "products", "customers", "activity"]) {
@@ -739,19 +770,26 @@ describe("the rail is six nouns and one indent", () => {
     );
   });
 
-  // ONE FOOTER, AND ONLY THE RAIL'S OWN CONTROL IN IT (MESITA-1844). Account
-  // moved to row one, so the footer is one button under one seam and the
-  // rail's empty space falls ABOVE it — which reads as room to spare, where
-  // space between two footer items reads as a layout that failed.
-  it("the footer is Collapse alone, pinned, under the rail's one seam", () => {
+  // THREE BANDS, AND EACH HOLDS ONE KIND OF THING (MESITA-1909): the lockup
+  // above `<nav>`, the rows inside it, Account below it. The footer used to be
+  // Collapse — the rail's own control dressed as a row — and Account trailed
+  // the rows, which put the person in a different place on every scope. Now
+  // the slack falls between the work and you.
+  it("the head is the lockup and the foot is Account, both outside the nav", () => {
     const r = rail();
+    const head = r.slice(r.indexOf("<aside"), r.indexOf("<nav"));
     const footer = r.slice(r.indexOf("</nav>"));
-    expect(footer).toContain("onToggleCollapse");
-    expect(footer).not.toContain("SHELL_ROUTES.account");
+    expect(head).toContain("MesitaLogo");
+    expect(head).toContain("shrink-0");
+    expect(footer).toContain("SHELL_ROUTES.account");
     expect(footer).toContain("shrink-0");
-    expect((footer.match(/border-t/g) ?? []).length).toBe(1);
-    // And the nav above it carries none: one seam in the whole column.
-    expect((r.slice(r.indexOf("<nav"), r.indexOf("</nav>")).match(/border-t/g) ?? []).length).toBe(0);
+    // STILL GUARDED from the footer: leaving a dirty place by this row asks
+    // first, exactly as it did when the row sat in the column.
+    expect(footer).toContain("onGuardedNavigate");
+    // The foot wears the column's own seam constant — not a hairline of its
+    // own, which is how the rail once ended up with two different rules.
+    expect(footer).toContain("SECTION_SEAM");
+    expect((footer.match(/border-t/g) ?? []).length).toBe(0);
   });
 
   it("focus travels on the brand's ring, not the browser's", () => {
