@@ -25,15 +25,25 @@ export function Table<T extends { id: string }>({
   columns,
   rows,
   empty,
+  minWidth = 640,
 }: {
   columns: Column<T>[];
   rows: T[];
   empty?: React.ReactNode;
+  /** The width below which this table SCROLLS instead of squeezing, in px.
+   *
+   *  It is a prop and an inline style rather than a `min-w-[…]` class because
+   *  the right floor is a property of the COLUMN SET, not of the component: a
+   *  three-column table is comfortable at 640, and the nine-column Customers
+   *  table at 640 does not scroll — it compresses, wraps a phone number over
+   *  four lines and triples every row's height. A table that wraps instead of
+   *  scrolling is the failure this number exists to prevent. */
+  minWidth?: number;
 }) {
   if (rows.length === 0 && empty) return <>{empty}</>;
   return (
     <div className="border-border overflow-x-auto rounded-xl border">
-      <table className="w-full min-w-[640px] border-collapse text-sm">
+      <table className="w-full border-collapse text-sm" style={{ minWidth }}>
         <thead className={cn(STATES_HEAD_STICKY, STATES_HEAD_BG)}>
           <tr>
             {columns.map((c) => (

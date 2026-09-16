@@ -174,11 +174,28 @@ export type MockMember = {
   state: "active" | "invited";
 };
 
-/** Socioeconomic class, on AMAI's levels — the axis a promotion in Mexico is
- *  actually bought against, and the reason a place would want this column at
- *  all. Stored as the LABEL because there is nothing to translate: "C+" is
- *  what the segment is called in every language this console speaks. */
-export type MockClass = "A/B" | "C+" | "C" | "C-" | "D+";
+/** THE GUEST'S MESITA CLASS — Mesita's own ladder, not a census bracket.
+ *
+ *  This column shipped once as an AMAI socioeconomic level (A/B, C+, C…) and
+ *  that was simply wrong: "class" already means something exact in this
+ *  product. The consumer ladder is Bronze < Silver < Gold < Diamond
+ *  (`classes.rank` in the DB still carries the legacy keys standard <
+ *  influencer < premium < aura), and a business reading "Class" on a guest
+ *  will read the ladder its own guests can see on their phones.
+ *
+ *  Stored as the GUEST-FACING label, because that is the word both sides of
+ *  the product use. The legacy key belongs in the DB, not on a mock screen. */
+export type MockClass = "Bronze" | "Silver" | "Gold" | "Diamond";
+
+/** THE GUEST'S SUBSCRIPTION, which is not their class — the consumer app says
+ *  so in as many words on its own Plan screen: "A subscription, not a class."
+ *
+ *  The two are coupled but not the same, and the coupling is why the column
+ *  earns its place: paying gets you Gold, so Bronze and Silver are always
+ *  Free and Gold is always Premium — but Diamond is invite-only and outranks
+ *  Gold, so a Diamond guest may or may not be paying Mesita, and Class alone
+ *  cannot tell you which. That case is the whole reason to print Plan. */
+export type MockPlan = "Free" | "Premium";
 
 export type MockSex = "f" | "m";
 
@@ -189,15 +206,20 @@ export const SEX_LABEL: Record<MockSex, string> = {
 
 /** A guest of ONE place.
  *
- *  AGE, CLASS AND SEX ARE NOT THINGS THE PLACE COLLECTED. They come off the
- *  guest's own Mesita profile, which is why every guest has them rather than
- *  only the ones who filled in a card at the till — and why this console shows
- *  them and never offers to edit them.
+ *  AGE, CLASS, SEX AND PLAN ARE NOT THINGS THE PLACE COLLECTED. They come off
+ *  the guest's own Mesita profile, which is why every guest has them rather
+ *  than only the ones who filled in a card at the till — and why this console
+ *  shows them and never offers to edit them.
  *
- *  The WhatsApp number is the exception: it is the one fact here the place
- *  has to BUY, one guest at a time, and buying it is what makes sending that
- *  guest a promotion possible. So the field is always present and
- *  `whatsappBought` decides whether the screen may print it. */
+ *  The PHONE NUMBER is the exception: it is the one fact here the place has to
+ *  BUY, one guest at a time, and buying it is what makes reaching that guest
+ *  with a promotion possible. So the field is always present and `phoneBought`
+ *  decides whether the screen may print it.
+ *
+ *  It is a PHONE, not a WhatsApp. WhatsApp is one channel you could reach the
+ *  number on, and naming it after that channel promises an integration nobody
+ *  has decided on — and collides with `whatsapp_url`, the PLACE's own WhatsApp
+ *  on Profile, which is a different thing entirely. */
 export type MockCustomer = {
   id: string;
   placeId: string;
@@ -206,11 +228,20 @@ export type MockCustomer = {
   age: number;
   class: MockClass;
   sex: MockSex;
+  plan: MockPlan;
+  /** The handle WITHOUT the @, or null when the guest never connected one.
+   *  Public either way — this is the one contact fact on the row that costs
+   *  nothing, which is exactly what makes the bought phone number legible as
+   *  the thing that does. A Silver guest always has one: Silver IS the class
+   *  Instagram earns. */
+  instagram: string | null;
   visits: number;
+  /** Centavos, across every visit. Integer money, as everywhere else here. */
+  spendCents: number;
   /** Invented, like every number in fixtures.ts — and never printed unless
-   *  `whatsappBought`. */
-  whatsapp: string;
-  whatsappBought: boolean;
+   *  `phoneBought`. */
+  phone: string;
+  phoneBought: boolean;
 };
 
 /** A place in the POOL: real to Mesita, held by nobody. The catalogue lists

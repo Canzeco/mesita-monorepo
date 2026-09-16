@@ -179,10 +179,10 @@ const INTENTS: Intent[] = [
     },
   },
   {
-    match: /\b(customer|customers|guest|guests|whatsapp|cliente)\b/,
+    match: /\b(customer|customers|guest|guests|phone|cliente)\b/,
     answer: {
       reply:
-        "Customers is who came, how often, and the one fact you buy one guest at a time — their WhatsApp number.",
+        "Customers is who came, how often, what they spent, the class and plan they carry — and the one fact you buy one guest at a time, their phone number.",
       door: {
         label: "Open Customers",
         href: (id: string) => placePageHref(id, "customers"),
