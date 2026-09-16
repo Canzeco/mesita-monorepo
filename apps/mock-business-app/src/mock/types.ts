@@ -211,10 +211,11 @@ export const SEX_LABEL: Record<MockSex, string> = {
  *  than only the ones who filled in a card at the till — and why this console
  *  shows them and never offers to edit them.
  *
- *  The PHONE NUMBER is the exception: it is the one fact here the place has to
- *  BUY, one guest at a time, and buying it is what makes reaching that guest
- *  with a promotion possible. So the field is always present and `phoneBought`
- *  decides whether the screen may print it.
+ *  THE CONTACT is the exception — the handle and the phone number together.
+ *  It is the one thing here the place has to BUY, one guest at a time, and
+ *  having it is what makes reaching that guest with a promotion possible. Both
+ *  fields are always present and `contactUnlocked` decides whether the screen
+ *  may print either.
  *
  *  It is a PHONE, not a WhatsApp. WhatsApp is one channel you could reach the
  *  number on, and naming it after that channel promises an integration nobody
@@ -230,18 +231,23 @@ export type MockCustomer = {
   sex: MockSex;
   plan: MockPlan;
   /** The handle WITHOUT the @, or null when the guest never connected one.
-   *  Public either way — this is the one contact fact on the row that costs
-   *  nothing, which is exactly what makes the bought phone number legible as
-   *  the thing that does. A Silver guest always has one: Silver IS the class
-   *  Instagram earns. */
+   *  Locked behind the same purchase as the phone — see `contactUnlocked`. A
+   *  Silver guest always has one: Silver IS the class Instagram earns. */
   instagram: string | null;
   visits: number;
   /** Centavos, across every visit. Integer money, as everywhere else here. */
   spendCents: number;
   /** Invented, like every number in fixtures.ts — and never printed unless
-   *  `phoneBought`. */
+   *  `contactUnlocked`. */
   phone: string;
-  phoneBought: boolean;
+  /** ONE purchase, BOTH ways to reach the guest.
+   *
+   *  The handle and the number are not sold separately, because they are not
+   *  two products — they are the answer to one question, "how do I reach this
+   *  guest", and splitting them would put two verbs in one row and make the
+   *  reviewer price each half. A guest with no handle unlocks to a number and
+   *  an em dash: unlocking reveals what exists, it does not invent a handle. */
+  contactUnlocked: boolean;
 };
 
 /** A place in the POOL: real to Mesita, held by nobody. The catalogue lists

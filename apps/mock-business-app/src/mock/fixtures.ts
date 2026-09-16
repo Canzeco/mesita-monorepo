@@ -392,9 +392,9 @@ export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) =>
     spendCents: 22_000 + Math.floor(rnd() * 480_000),
     phone: `+52 81 5555 ${String(1200 + Math.floor(rnd() * 8000)).padStart(4, "0")}`,
     // TWO of sixteen, and scattered rather than at the top, so the unlocked
-    // state is on screen at first paint and the column visibly MIXES. A table
-    // that is locked all the way down reads as a column that does not work.
-    phoneBought: i === 3 || i === 10,
+    // state is on screen at first paint and the columns visibly MIX. A table
+    // locked all the way down reads as a pair of columns that do not work.
+    contactUnlocked: i === 3 || i === 10,
   };
 });
 

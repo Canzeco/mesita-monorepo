@@ -182,7 +182,7 @@ const INTENTS: Intent[] = [
     match: /\b(customer|customers|guest|guests|phone|cliente)\b/,
     answer: {
       reply:
-        "Customers is who came, how often, what they spent, the class and plan they carry — and the one fact you buy one guest at a time, their phone number.",
+        "Customers is who came, how often, what they spent, the class and plan they carry — and the contact you unlock one guest at a time, handle and phone together.",
       door: {
         label: "Open Customers",
         href: (id: string) => placePageHref(id, "customers"),
