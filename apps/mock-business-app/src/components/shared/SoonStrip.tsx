@@ -1,9 +1,9 @@
 // SOON LIVES ON THE PAGE, never on the rail row.
 //
 // A dimmed row in the column would make the rail a place where some entries are
-// real and some are not, and at `w-16` — chips only — a dim chip is
-// indistinguishable from a disabled one. So every row is live, and the page it
-// opens is where the product says it is not here yet.
+// real and some are not — and the rail has no second vocabulary to say which is
+// which. So every row is live, and the page it opens is where the product says
+// it is not here yet.
 //
 // It deliberately does NOT take `shadow-card`: rank on this console comes from
 // depth, which is what lets a strip and a Section share one type size.

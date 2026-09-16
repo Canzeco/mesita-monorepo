@@ -1,6 +1,29 @@
 "use client";
 
-// THE RAIL. One dark column, one row shape, one list.
+// THE RAIL. One dark column, a head, one row shape, one list, a foot.
+//
+// ── THE SHAPE (MESITA-1905) ───────────────────────────────────────────────
+//
+//   ┌──────────────────┐
+//   │  Mesita          │  the HEAD: the lockup, pinned, scrolls with nothing
+//   ├──────────────────┤
+//   │  Lumbre y Sal ⌄  │  the place this column is about
+//   │  Settings        │
+//   │  …               │  the rows, and the only thing that scrolls
+//   │                  │  the slack falls HERE, between the work and you
+//   ├──────────────────┤
+//   │  Account         │  the FOOT: the person, pinned
+//   └──────────────────┘
+//
+// THE HEAD SAYS THE PRODUCT, THE FOOT SAYS THE PERSON, and the scroller
+// between them says the business. Each band answers a different question, so
+// none of them can be mistaken for a row of another's list — which is why the
+// logo is NOT the first entry in `nav` and Account is NOT the last one.
+//
+// THE SLACK BELONGS TO THE MIDDLE. Account is pinned rather than trailing the
+// rows, so a console with three rows and a console with eleven put the person
+// in the same place. A footer that floats up under a short list is how an
+// operator learns to hunt for their own name.
 //
 // ── THE LAWS IT KEEPS ──────────────────────────────────────────────────────
 //
@@ -16,8 +39,12 @@
 //
 // ROWS NEVER DIM. A product that is not live still gets a live row, and the
 // PAGE says it is not here yet (SoonStrip). A dimmed row makes the column a
-// place where some entries are real and some are not — and at `w-16`, where
-// only the chips show, dim and disabled are the same picture.
+// place where some entries are real and some are not.
+//
+// ONE WIDTH. There is no chips-only rail and no control to reach one
+// (MESITA-1905): Collapse was the only door to `w-16`, and a mode nobody can
+// open is a second design to keep true for nothing. The rail is `w-60` on
+// desktop and the drawer below `lg`.
 //
 // HIDDEN IS NOT PROTECTED. `tabsForAccess` drops rows a viewer may not see;
 // `PlaceTabGate` is what actually refuses the address.
@@ -35,8 +62,6 @@ import {
   CreditCard,
   Gift,
   LayoutGrid,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   RotateCw,
   Settings,
@@ -49,6 +74,7 @@ import {
   UtensilsCrossed,
   Wallet,
 } from "lucide-react";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
   PLACE_PAGE_LABEL,
   RAIL_GROUP_STARTS,
@@ -125,7 +151,6 @@ function NavRow({
   label,
   Icon,
   active,
-  collapsed,
   onNavigate,
   title,
 }: {
@@ -133,7 +158,6 @@ function NavRow({
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
-  collapsed: boolean;
   onNavigate?: () => void;
   title?: string;
 }) {
@@ -142,13 +166,14 @@ function NavRow({
       href={href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      // A given title wins at every width; otherwise the label is a tooltip
-      // only where the label is not on screen.
-      title={title ?? (collapsed ? label : undefined)}
-      className={cn(ROW_BASE, active ? ROW_ACTIVE : ROW_REST, collapsed && "justify-center px-0 py-2")}
+      // Only a GIVEN title renders one. The label is on screen at every width
+      // this rail has, so a tooltip repeating it would be a second copy of the
+      // row's own text.
+      title={title}
+      className={cn(ROW_BASE, active ? ROW_ACTIVE : ROW_REST)}
     >
       <Icon className={ICON} />
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className="truncate">{label}</span>
     </Link>
   );
 }
@@ -157,20 +182,14 @@ function NavRow({
 function MutedRow({
   label,
   Icon,
-  collapsed,
 }: {
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
-  collapsed: boolean;
 }) {
   return (
-    <div
-      role="status"
-      title={collapsed ? label : undefined}
-      className={cn(ROW_BASE, "text-sidebar-muted", collapsed && "justify-center px-0 py-2")}
-    >
+    <div role="status" className={cn(ROW_BASE, "text-sidebar-muted")}>
       <Icon className={ICON} />
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className="truncate">{label}</span>
     </div>
   );
 }
@@ -180,8 +199,6 @@ export function Sidebar({
   places,
   isSuperAdmin,
   accountLabel,
-  collapsed,
-  onToggleCollapse,
   onNavigate,
   onPickPlace,
   onRetry,
@@ -190,8 +207,6 @@ export function Sidebar({
   places: readonly RailPlace[];
   isSuperAdmin: boolean;
   accountLabel: string;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
   onNavigate?: () => void;
   onPickPlace: (id: string) => void;
   onRetry: () => void;
@@ -234,21 +249,30 @@ export function Sidebar({
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
+      {/* THE HEAD. The lockup is a LABEL, not a link: every address this rail
+          reaches is below it, and a logo that navigates somewhere would be a
+          ninth destination wearing different clothes. It takes the rail's own
+          foreground so it reads as part of the dark column rather than as a
+          sticker on it, and it is inset by a row's own padding so its mark
+          lines up with the glyph column underneath. */}
+      <div className="flex shrink-0 items-center px-2.5 pt-1 pb-3">
+        <MesitaLogo variant="horizontal" className="text-sidebar-foreground h-5 w-auto" />
+      </div>
+
       <nav
         aria-label="Console"
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
       >
         {scope.mode === "unknown" && (
           <>
-            <MutedRow label="Places unavailable" Icon={Store} collapsed={collapsed} />
+            <MutedRow label="Places unavailable" Icon={Store} />
             <button
               type="button"
               onClick={onRetry}
-              title={collapsed ? "Try again" : undefined}
-              className={cn(ROW_BASE, ROW_REST, "w-full", collapsed && "justify-center px-0 py-2")}
+              className={cn(ROW_BASE, ROW_REST, "w-full")}
             >
               <RotateCw className={ICON} />
-              <span className={collapsed ? "sr-only" : "truncate"}>Try again</span>
+              <span className="truncate">Try again</span>
             </button>
           </>
         )}
@@ -259,18 +283,12 @@ export function Sidebar({
             label="Add your place"
             Icon={Plus}
             active={onAddPlace}
-            collapsed={collapsed}
             onNavigate={onNavigate}
           />
         )}
 
         {showSelector && (
-          <RailSelector
-            current={scope.place}
-            places={places}
-            collapsed={collapsed}
-            onPick={onPickPlace}
-          />
+          <RailSelector current={scope.place} places={places} onPick={onPickPlace} />
         )}
 
         {/* MULTI WITH NOTHING SELECTED: the selector is up, and the rows are
@@ -282,7 +300,6 @@ export function Sidebar({
             label="All places"
             Icon={LayoutGrid}
             active={pathname === SHELL_ROUTES.places}
-            collapsed={collapsed}
             onNavigate={onNavigate}
           />
         )}
@@ -300,7 +317,6 @@ export function Sidebar({
                   label={PLACE_PAGE_LABEL[row.target]}
                   Icon={PAGE_ICON[row.target]}
                   active={currentPage === row.target}
-                  collapsed={collapsed}
                   onNavigate={onNavigate}
                 />
               ) : row.kind === "product" ? (
@@ -313,7 +329,6 @@ export function Sidebar({
                       ? currentPage === "customers"
                       : currentView === (row.product as PlaceTab)
                   }
-                  collapsed={collapsed}
                   onNavigate={onNavigate}
                 />
               ) : (
@@ -322,7 +337,6 @@ export function Sidebar({
                   label={PLACE_TAB_LABEL[row.view]}
                   Icon={RAIL_ICON[row.view]}
                   active={currentView === row.view}
-                  collapsed={collapsed}
                   onNavigate={onNavigate}
                 />
               );
@@ -343,35 +357,24 @@ export function Sidebar({
               <Fragment key={key}>{node}</Fragment>
             );
           })}
-
-        {/* THE PERSON, LAST. Above the rail's own control and below one seam:
-            the column reads the business top to bottom, then you. It renders in
-            every state, including the failed read. */}
-        <div className={SECTION_SEAM}>
-          <NavRow
-            href={SHELL_ROUTES.account}
-            label="Account"
-            title={`Account · ${accountLabel}`}
-            Icon={UserRound}
-            active={onAccount}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-        </div>
       </nav>
 
-      <div className="border-sidebar-border/50 mt-2 flex shrink-0 flex-col gap-0.5 border-t pt-2">
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          title={collapsed ? "Expand menu" : "Collapse menu"}
-          aria-label={collapsed ? "Expand menu" : "Collapse menu"}
-          aria-expanded={!collapsed}
-          className={cn(ROW_BASE, ROW_REST, "w-full", collapsed && "justify-center px-0 py-2")}
-        >
-          {collapsed ? <PanelLeftOpen className={ICON} /> : <PanelLeftClose className={ICON} />}
-          <span className={collapsed ? "sr-only" : "truncate"}>Collapse</span>
-        </button>
+      {/* THE FOOT: the person, pinned, alone (MESITA-1905). Account used to
+          trail the rows inside the scroller, which put it in a different place
+          on every scope — and it shared the footer with Collapse, which made
+          the rail's own control look like a destination. Now the band holds
+          exactly one row and that row is you. It renders in every state,
+          including the failed read: whatever went wrong with the places, the
+          person is still signed in. */}
+      <div className={cn(SECTION_SEAM, "shrink-0")}>
+        <NavRow
+          href={SHELL_ROUTES.account}
+          label="Account"
+          title={`Account · ${accountLabel}`}
+          Icon={UserRound}
+          active={onAccount}
+          onNavigate={onNavigate}
+        />
       </div>
     </aside>
   );
