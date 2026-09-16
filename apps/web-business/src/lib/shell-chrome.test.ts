@@ -190,12 +190,14 @@ describe("the unsaved-edits guard reaches the rail", () => {
   });
 });
 
-// The rail carries destinations and nothing else. The organization SELECTOR
-// is the RAIL's again (MESITA-1848, "better three sections"): the Organization
-// page's in 1822, Account's in 1832, the page's again in 1847, and here it
-// heads the group of pages it scopes. Pato has rejected a tree twice (1714,
-// 1715) and boxes once (1815); what he keeps coming back to is a selector
-// beside the thing it selects.
+// The rail carries destinations and nothing else. The PLACE selector is the
+// RAIL's (MESITA-1848, "better three sections"): it moved between the page and
+// Account four times (1822, 1832, 1847, 1848) before settling beside the group
+// of pages it scopes. Pato has rejected a tree twice (1714, 1715) and boxes
+// once (1815); what he keeps coming back to is a selector beside the thing it
+// selects. There was a second selector, for the organization, until
+// MESITA-1892 — one option to select is a control over nothing, and with the
+// layer gone there is no second scope at all.
 describe("the rail is six nouns and one indent", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 

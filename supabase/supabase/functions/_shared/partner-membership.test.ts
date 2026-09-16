@@ -11,6 +11,11 @@ import {
   MEMBERSHIP_PLAN_KEY,
   membershipOutcome,
 } from "./partner-membership.ts";
+// The router lives in the webhook's own directory, not in _shared: it is the
+// webhook's reading of a Stripe object, and only the webhook routes. Imported
+// here so the test can CALL it — the alternative is grepping its source, which
+// passes happily through a refactor that widens the predicate.
+import { membershipRouteFor } from "../stripe-webhook-handle-event/partner-membership.ts";
 import { STRIPE_CATALOG } from "./stripe-billing-catalog.ts";
 
 const read = async (path: string) =>
@@ -125,11 +130,52 @@ Deno.test("the membership router discriminates by KIND, not by having an id", as
   // mere presence routed it. Since MESITA-1892 a Membership and a Verified
   // subscription BOTH carry place_id — routing on "has an id" would hand one
   // to the other's reconciler, which is a money bug either way round.
-  const router = codeOnly(
-    await read("../stripe-webhook-handle-event/partner-membership.ts"),
+  //
+  // THIS CALLS THE ROUTER. It used to grep the source for the expression, and
+  // that is not the same thing: a refactor that renames a local variable
+  // breaks the grep while the behaviour is untouched, and — far worse — a
+  // refactor that quietly widens the predicate leaves every grep passing.
+  // The one function standing between a Membership and place_subscriptions
+  // deserves inputs and outputs.
+  const asSub = (metadata: Record<string, string>) =>
+    ({ metadata } as unknown as Parameters<typeof membershipRouteFor>[0]);
+
+  assertEquals(
+    membershipRouteFor(asSub({ mesita_kind: "business_membership", place_id: "p1" })),
+    { kind: "membership", placeId: "p1" },
   );
-  assertStringIncludes(router, "MEMBERSHIP_METADATA_KIND");
-  assertStringIncludes(router, "metaString(meta.plan_key) === MEMBERSHIP_PLAN_KEY");
+  assertEquals(
+    membershipRouteFor(asSub({ plan_key: MEMBERSHIP_PLAN_KEY, place_id: "p1" })),
+    { kind: "membership", placeId: "p1" },
+    "either half of the kind is enough — the door stamps both",
+  );
+
+  // THE BUG THE KIND CHECK EXISTS TO PREVENT: the place's own Verified plan
+  // carries a place_id too (business-web-change-subscription stamps
+  // `{ place_id, plan_key }`), and it must NOT route as a Membership.
+  assertEquals(
+    membershipRouteFor(asSub({ place_id: "p1", plan_key: "pro" })),
+    { kind: "not_membership" },
+    "a place-plan subscription is not a Membership just because it names a place",
+  );
+  assertEquals(
+    membershipRouteFor(asSub({ place_id: "p1" })),
+    { kind: "not_membership" },
+    "an id alone routes nothing",
+  );
+
+  // A Membership by kind that names no place is the pre-1892 shape. It must
+  // refuse rather than fall through to a resolver that guesses from the
+  // customer.
+  assertEquals(
+    membershipRouteFor(asSub({ mesita_kind: "business_membership" })),
+    { kind: "unroutable" },
+  );
+  assertEquals(
+    membershipRouteFor(asSub({ mesita_kind: "business_membership", place_id: "  " })),
+    { kind: "unroutable" },
+    "whitespace is not an id",
+  );
 
   // And the door stamps both halves of what the router reads.
   const door = codeOnly(
@@ -272,9 +318,16 @@ Deno.test("a revoke asks STRIPE when the mirror says nothing is left", async () 
   // `stripe_events` does not serialize them.
   assertStringIncludes(hook, "placeHasAnotherLiveSubscription(stripe, sub, placeId)");
   assertStringIncludes(hook, "BILLABLE_STRIPE_STATUSES");
-  // Matched on the place, not on the customer alone: revoking a partnership
-  // because of an unrelated subscription is the same mistake inverted.
-  assertStringIncludes(hook, 's.metadata?.place_id === placeId');
+  // MATCHED ON THE PLACE *AND* THE KIND. This matched `metadata.organization_id`
+  // until MESITA-1892, and only Memberships carried that key — so "another
+  // subscription for the same tenant" could only ever mean another MEMBERSHIP.
+  // Re-pointing it at `place_id` silently widened it, because the place's own
+  // Verified plan carries one: without the kind check, a place holding both
+  // answers "something else is live" when its Membership is cancelled, the
+  // revoke downgrades to a no-op, and the place stays `partnered` having
+  // stopped paying. Both halves, or the guard is the bug.
+  assertStringIncludes(hook, 'metaString(s.metadata?.place_id) === placeId');
+  assertStringIncludes(hook, "isMembershipMetadata(s.metadata)");
   // And it is asked ONLY on the revoke path — never on the renewals that are
   // almost every delivery.
   const guardAt = hook.indexOf("placeHasAnotherLiveSubscription(stripe, sub, placeId)");

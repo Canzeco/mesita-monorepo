@@ -731,7 +731,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Mesita Credits — buy path (MESITA-1676). Charges the guest's saved card,
-# cloned onto the target place's organization's connected Stripe account
+# cloned onto the target place's connected Stripe account
 # (mesita-pay-charge.ts), and writes an org-scoped credit_lots row through
 # the create_credit_lot RPC. The webhook's Connect branch is the reliability
 # backstop for the same charge (stripe-webhook-handle-event).
@@ -739,13 +739,13 @@ verify_jwt = true
 verify_jwt = true
 
 # The Buy sheet's "Where" picker: places that accept Mesita Credits AND whose
-# organization is Connect charge-ready today.
+# place is Connect charge-ready today.
 [functions.consumer-web-list-credit-places]
 verify_jwt = true
 
 # Gift Credits (MESITA-1677) — issuance only (MESITA-1380: no transfers
 # between consumers). The sender's own card is charged, cloned onto the
-# target place's organization exactly like Buy; the resulting lot has no
+# target place exactly like Buy; the resulting lot has no
 # owner until a stranger redeems its hashed code. All four are JWT-gated —
 # the PUBLIC half of gifting is gift-web-preview-code, above, a different
 # actor prefix entirely. Redeem stays behind the auth wall on purpose
@@ -763,7 +763,7 @@ verify_jwt = true
 verify_jwt = true
 
 # The Wallet's real balance read (MESITA-1674): the calling consumer's own
-# credit_lots, grouped by organization and paginated.
+# credit_lots, grouped by place and paginated.
 [functions.consumer-web-list-credit-balances]
 verify_jwt = true
 
@@ -779,7 +779,7 @@ verify_jwt = true
 verify_jwt = true
 
 # The operator side of Credits (MESITA-1679). Liability is the exposure view
-# — issued value, outstanding balance, per-organization exposure, breakage.
+# — issued value, outstanding balance, per-place exposure, breakage.
 # The spend report is visibility only: Mesita has no POS to reconcile
 # at_place spend against. Refund is the support primitive; its "refund" kind
 # only calls Stripe, and the webhook remains the sole writer of a refund
@@ -801,13 +801,13 @@ verify_jwt = true
 verify_jwt = false
 
 # Stripe Connect PLATFORM account layer (no charges). The merchant of record
-# is the ORGANIZATION (MESITA-1545). Org-owner-only onboarding starter:
-# creates the organization's connected account + returns the Stripe-hosted
+# is the PLACE (MESITA-1545, re-scoped by MESITA-1892). Owner-only
+# onboarding starter: creates the place's connected account + returns the Stripe-hosted
 # Account Link.
 [functions.business-web-start-payment-onboarding]
 verify_jwt = true
 
-# Any-member read of the organization's Connect mirror; refresh-through from
+# Any-member read of the place's Connect mirror; refresh-through from
 # Stripe by default while the webhook endpoint is missing (MESITA-1531).
 [functions.business-web-get-payment-account]
 verify_jwt = true
@@ -819,7 +819,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Super-admin read of a place's Connect mirror (resolved through its
-# organization) + the pay-readiness AND chain (intent bit ∧ payCard rail ∧
+# place) + the pay-readiness AND chain (intent bit ∧ payCard rail ∧
 # Stripe capability); refresh-on-read.
 [functions.admin-web-get-place-payment-account]
 verify_jwt = true

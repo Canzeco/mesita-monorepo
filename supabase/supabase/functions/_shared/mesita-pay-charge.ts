@@ -309,11 +309,20 @@ export function chargeCreditsWithMesitaPay(
     // event/index.ts) — a restaurant's own Stripe traffic carries neither and
     // still falls through untouched.
     // `place_id` is the routing key the webhook backstop replays the lot
-    // with. It said `organization_id` until MESITA-1892, and
-    // credit-payment-intent.ts still reads the old key: an intent confirmed
-    // before the rename can still be delivered after it (a 3DS challenge
-    // finished hours later, a Stripe retry), and dropping it would lose a lot
-    // the guest has already paid for.
+    // with. It named the ORGANIZATION until MESITA-1892, and the backstop
+    // does NOT read that retired key: `credit-payment-intent.ts` refuses an
+    // intent that pins no place, logs the intent id, and records nothing.
+    //
+    // THAT IS A DELIBERATE NARROW LOSS, not an oversight. Metadata is frozen
+    // on the Stripe object, so an intent confirmed before the rename and
+    // delivered after it — a 3DS challenge finished hours later, a Stripe
+    // retry — names a tenant that no longer exists, and there is nothing to
+    // map it to. Reading the old key would mean keeping the dead column alive
+    // to look one up, which is the compatibility layer this issue exists to
+    // refuse. The backstop is a BACKSTOP: `consumer-web-buy-credits` writes
+    // the lot synchronously at charge time, so this only bites an intent whose
+    // charge request also crashed, in the window between the two. There were
+    // zero credit lots and no live credits intents when the rename landed.
     metadata: {
       mesita_kind: "credit_purchase",
       place_id: args.placeId,

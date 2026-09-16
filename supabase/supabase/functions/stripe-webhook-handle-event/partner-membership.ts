@@ -74,15 +74,27 @@ function metaString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+/** IS THIS THING A MEMBERSHIP? One answer, two readers.
+ *
+ *  `membershipRouteFor` asks it of the object being handled;
+ *  `placeHasAnotherLiveSubscription` asks it of every OTHER live subscription
+ *  the customer holds. Those two must agree, because between them they decide
+ *  whether a cancelled Membership revokes a partnership — and before
+ *  MESITA-1892 they agreed for free, since a Membership was the only
+ *  subscription that carried an `organization_id` at all. `place_id` is not
+ *  that: the place's own Verified plan carries one too. */
+function isMembershipMetadata(meta: Stripe.Metadata | null | undefined): boolean {
+  const m = meta ?? {};
+  return metaString(m.mesita_kind) === MEMBERSHIP_METADATA_KIND ||
+    metaString(m.plan_key) === MEMBERSHIP_PLAN_KEY;
+}
+
 export function membershipRouteFor(
   obj: Stripe.Checkout.Session | Stripe.Subscription,
 ): MembershipRoute {
-  const meta = obj.metadata ?? {};
-  const isMembership = metaString(meta.mesita_kind) === MEMBERSHIP_METADATA_KIND ||
-    metaString(meta.plan_key) === MEMBERSHIP_PLAN_KEY;
-  if (!isMembership) return { kind: "not_membership" };
+  if (!isMembershipMetadata(obj.metadata)) return { kind: "not_membership" };
 
-  const placeId = metaString(meta.place_id);
+  const placeId = metaString((obj.metadata ?? {}).place_id);
   return placeId ? { kind: "membership", placeId } : { kind: "unroutable" };
 }
 
@@ -99,10 +111,20 @@ const BILLABLE_STRIPE_STATUSES = ["active", "trialing", "past_due"] as const;
  * and it is right in the ordinary ordering; this one is right in every
  * ordering, because Stripe is where the subscriptions actually are.
  *
- * Matched on `metadata.place_id`, not on the customer alone: one customer
- * could one day hold something else, and revoking a partnership because of an
- * unrelated subscription would be the same class of mistake in the opposite
- * direction.
+ * Matched on `metadata.place_id` AND the membership KIND, not on the customer
+ * alone: one customer holds other subscriptions, and treating an unrelated one
+ * as a reason to keep a partnership is the same class of mistake in the
+ * opposite direction.
+ *
+ * THE KIND CHECK IS NOT BELT AND BRACES — it is the whole guard now.
+ * This matched `metadata.organization_id` until MESITA-1892, and that key was
+ * carried by Memberships and by nothing else, so "another subscription for the
+ * same tenant" could only ever mean another MEMBERSHIP. Re-pointing it at
+ * `place_id` silently widened it: `business-web-change-subscription` stamps
+ * `{ place_id, plan_key }` on the place's own Verified plan. Without the kind
+ * check, a place that holds both would answer "yes, another live subscription"
+ * when its Membership is cancelled — the revoke would downgrade to a no-op and
+ * the place would stay `partnered` having stopped paying for it.
  *
  * A FAILED READ THROWS. Answering "no other subscription" because Stripe was
  * briefly unreachable would null four rate columns and the monthly cap on the
@@ -127,7 +149,9 @@ async function placeHasAnotherLiveSubscription(
       limit: 100,
     });
     const other = page.data.some((s) =>
-      s.id !== sub.id && s.metadata?.place_id === placeId
+      s.id !== sub.id &&
+      metaString(s.metadata?.place_id) === placeId &&
+      isMembershipMetadata(s.metadata)
     );
     if (other) return true;
   }

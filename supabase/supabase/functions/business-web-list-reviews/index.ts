@@ -95,16 +95,27 @@ Deno.serve(async (req) => {
   // The 404 and the 403 answer two different questions, so both reads happen
   // — in parallel, because neither needs the other. `orgIdForPlace` used to
   // collapse them: a place in no organization was reported as "not found"
-  // whether it existed or not.
+  // whether it existed or not, which is the honest answer to neither caller.
+  //
+  // THE 403 IS ANSWERED FIRST. Both reads run together, but a caller who is
+  // not a member is told only that, whether the id exists or not — otherwise
+  // the pair of status codes is an oracle for which place ids are real. That
+  // matters less here than it would for the organization this replaced, since
+  // a place's existence is public by design (the consumer catalog lists them,
+  // and `business-web-list-places` scope=public answers any bearer token), so
+  // this is the cheap posture rather than a hole being closed. The 404 stays
+  // reachable for the caller it was written for: `requireMembership` passes a
+  // super-admin with no membership row, and an operator's console asking about
+  // an id that is genuinely gone deserves to be told so.
   const [placeRow, roleRes] = await Promise.all([
     admin.from("places").select("id").eq("id", placeId).maybeSingle(),
     requireMembership(admin, authRes.user, placeId),
   ]);
+  if (!roleRes.ok) return roleRes.response;
   if (placeRow.error) return json({ ok: false, error: placeRow.error.message }, 500);
   if (!placeRow.data) {
     return json({ ok: false, error: "Place not found" }, 404);
   }
-  if (!roleRes.ok) return roleRes.response;
 
   // A super-admin reads as an owner would; otherwise the role IS the row.
   const mayLinkVisit = roleRes.membership.isSuperAdmin ||
