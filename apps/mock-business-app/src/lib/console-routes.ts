@@ -18,6 +18,10 @@ import type { PlaceTab } from "@/lib/place-tabs";
 
 export const SHELL_ROUTES = {
   root: "/",
+  // THE PERSON'S PAGE IS CALLED SETTINGS NOW (MESITA-1935). `/account` survives
+  // only as a redirect onto it: the address shipped, and a deleted address is a
+  // 404 for anyone who reached it once.
+  settings: "/settings",
   account: "/account",
   places: "/places",
   placesNew: "/places/new",
@@ -100,7 +104,24 @@ export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "page", target: "products" },
   { kind: "place", view: "profile" },
   { kind: "page", target: "activity" },
-  { kind: "page", target: "settings" },
+  // SETTINGS LEFT THE SCROLLER FOR THE FOOT (MESITA-1935). Pato: *"put accounts
+  // in setting. make it clearer. check instagram sidebar as reference."*
+  // Instagram pins the entry that holds Settings AND Log out at the BOTTOM,
+  // below a gap, which is the band this rail already had — so the two
+  // configuration destinations became one, and it is the pinned one.
+  //
+  // It could not simply absorb Account where it stood. These rows render in
+  // only two of the rail's four shapes (`showRows` needs solo|multi AND a place
+  // id); in `unknown` and `zero` the scroller is a single button. Only the foot
+  // renders in every state, and Sign out lives on that page and nowhere else,
+  // so a Settings row inside THIS array would have taken the console's only
+  // exit away from a failed read — the same objection that refused the literal
+  // sketch in MESITA-1933.
+  //
+  // `/places/<id>/settings` keeps its address, its `pagesForAccess` gate and
+  // its `notFound`. The gate is called by the PAGE and never derived from this
+  // array, so leaving here costs it nothing; it is reached from the Places
+  // section of `/settings`, which lists every place you hold.
 ];
 
 export function placePageHref(placeId: string, page: PlacePage): string {
@@ -162,7 +183,17 @@ export const FLAT_ROUTES = {
   // The ninth product owes a flat twin like every other view (MESITA-1929).
   capital: "/capital",
   admin: "/admin",
-  settings: "/settings",
+  // `/settings` IS NOT A FLAT NAME ANY MORE (MESITA-1935). It used to resolve
+  // onto `/places/<id>/settings` like every other page twin. It is now a REAL
+  // page — the person's Settings, which the rail's foot links — and a static
+  // segment shadows `[flat]` in Next's router, so leaving the entry here would
+  // have been a dead line claiming an address it no longer wins.
+  //
+  // The reassignment is deliberate, not collateral: the rail says Settings and
+  // means the person, so a typed `/settings` that meant a VENUE's team would
+  // contradict the only Settings a reader can see. The place's own page keeps
+  // its canonical `/places/<id>/settings` and is reached from the Places
+  // section of `/settings`.
   products: "/products",
   customers: "/customers",
   activity: "/activity",

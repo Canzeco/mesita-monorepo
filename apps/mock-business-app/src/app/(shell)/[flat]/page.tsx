@@ -2,10 +2,15 @@
 
 // THE FLAT NAMES — one file, resolving all of them.
 //
-// `/profile`, `/orders`, `/settings` and the rest name a VIEW without naming a
+// `/profile`, `/orders`, `/products` and the rest name a VIEW without naming a
 // place. They exist for bookmarks, typed URLs and links written before the
 // address carried an id; the rail links the canonical address, so a click never
 // comes through here.
+//
+// `/settings` IS NO LONGER ONE OF THEM (MESITA-1935). It is a real page now —
+// the person's Settings — and a static segment beats `[flat]` in the router, so
+// it would never have reached this file anyway. It left `FLAT_ROUTES` rather
+// than sitting there as a line that resolves nothing.
 //
 // The resolution is a 307, never a 308: which place a flat name means depends on
 // what the operator last opened, and a browser that cached the answer would keep

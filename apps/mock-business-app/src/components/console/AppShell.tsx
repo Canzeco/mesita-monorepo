@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <Sidebar
       scope={scope}
       isSuperAdmin={scenario.isSuperAdmin}
-      accountLabel={viewer.email}
+      viewerLabel={viewer.email}
       onNavigate={() => setDrawer(false)}
       // The retry a failed read offers. In the real console it re-runs the
       // Edge Function; here it puts the scenario back on a shape that has
