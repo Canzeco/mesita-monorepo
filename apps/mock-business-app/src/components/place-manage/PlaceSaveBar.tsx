@@ -92,7 +92,7 @@ export function PlaceSaveBar() {
             type="button"
             onClick={saveAll}
             disabled={savePending || !isDirty}
-            className="bg-foreground text-background shadow-save hover:bg-ink-hover inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+            className="bg-foreground text-paper shadow-save hover:bg-ink-hover inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
           >
             {savePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             Save changes

@@ -248,7 +248,7 @@ function TagsModal({
                           className={
                             "border-border flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border " +
                             (isOn
-                              ? "bg-foreground border-transparent text-background"
+                              ? "bg-foreground border-transparent text-paper"
                               : "bg-card")
                           }
                         >
@@ -268,7 +268,7 @@ function TagsModal({
           <button
             type="button"
             onClick={onClose}
-            className="bg-foreground text-background shadow-save hover:bg-ink-hover inline-flex h-9 items-center rounded-full px-5 text-sm font-semibold transition active:scale-[0.98]"
+            className="bg-foreground text-paper shadow-save hover:bg-ink-hover inline-flex h-9 items-center rounded-full px-5 text-sm font-semibold transition active:scale-[0.98]"
           >
             Done
           </button>

@@ -37,7 +37,7 @@ import {
 export type Rank = "lead" | "quiet";
 
 const RANK_CHIP: Record<Rank, string> = {
-  lead: "bg-foreground text-background inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+  lead: "bg-foreground text-paper inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
   quiet: "text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center",
 };
 

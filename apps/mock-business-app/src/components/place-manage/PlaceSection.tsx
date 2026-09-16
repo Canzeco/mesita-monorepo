@@ -816,7 +816,7 @@ function PhotosEditor({
               />
             </button>
             {idx === 0 && (
-              <span className="bg-foreground/90 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide uppercase backdrop-blur-sm">
+              <span className="bg-foreground/90 text-paper absolute top-2 left-2 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide uppercase backdrop-blur-sm">
                 Hero
               </span>
             )}
