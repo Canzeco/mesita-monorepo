@@ -13,21 +13,9 @@
 // place's name AND its views, so a row restating both would be chrome saying
 // what the column beside it already says.
 import { Suspense, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "@/components/console/Sidebar";
-import {
-  flatPlacePageFromPathname,
-  flatViewFromPathname,
-  isFlatHome,
-  isPlaceHomePathname,
-  isPlacePayPathname,
-  placePageFromPathname,
-  placePageHref,
-  placePayHref,
-  placeRootHref,
-} from "@/lib/console-routes";
-import { placeTabFromPathname, placeTabHref, tabsForAccess } from "@/lib/place-tabs";
 import { MockPanel } from "@/components/console/MockPanel";
 import { useMock } from "@/mock/MockStore";
 import { resolveRailScope } from "@/lib/rail-scope";
@@ -36,7 +24,6 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { world, scenario, setScenario, lastPlaceId, rememberPlace, viewer } = useMock();
 
   // THE DRAWER CLOSES BY DERIVING, NOT BY AN EFFECT. It holds the pathname it
@@ -60,61 +47,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (scope.place && scope.placeIsCurrent) rememberPlace(scope.place.id);
   }, [scope.place, scope.placeIsCurrent, rememberPlace]);
 
-  /** SWITCHING PLACES IS A NAVIGATION, not a preference.
-   *
-   *  Writing `lastPlaceId` alone did nothing at all: while a place address was
-   *  open the pathname still named the OLD place, so the effect above resolved
-   *  the scope from it and wrote that id straight back over the pick. The
-   *  switcher looked live and moved nothing.
-   *
-   *  It carries the ADDRESS across, so switching from one venue's Orders lands
-   *  on the other's Orders rather than dumping the operator back on Profile —
-   *  unless the new place's role cannot open it, in which case Profile is the
-   *  honest landing and beats a switch that 404s. `rememberPlace` is left to
-   *  the effect: the pathname is about to name the new place, and two writers
-   *  for one fact is what caused this bug. */
-  function pickPlace(id: string) {
-    const target = world.places.find((p) => p.id === id);
-    if (!target) return;
-    // THE PAYMENTS SUB-STEP FIRST, because it is the one address whose PAGE is
-    // not its whole name: `placePageFromPathname` reads `/products/pay` as
-    // `products`, so asking it alone would answer the catalogue and drop an
-    // operator off the Stripe account they were looking at. `isPlacePayPathname`
-    // exists precisely to tell the two apart.
-    if (isPlacePayPathname(pathname)) {
-      router.push(placePayHref(id));
-      return;
-    }
-    // HOME CARRIES ACROSS TOO, and it has to be asked for BY NAME: the bare
-    // place address has no fourth segment, so the page and view readers below
-    // both answer null for it and the fallback would land the operator on
-    // Profile — a switch away from Home that silently opens a form.
-    if (isPlaceHomePathname(pathname) || isFlatHome(pathname)) {
-      router.push(placeRootHref(id));
-      return;
-    }
-    const page = placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
-    if (page) {
-      router.push(placePageHref(id, page));
-      return;
-    }
-    const view = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
-    const allowed = tabsForAccess({
-      held: true,
-      role: target.myRole,
-      isSuperAdmin: scenario.isSuperAdmin,
-    });
-    router.push(placeTabHref(id, view && allowed.includes(view) ? view : "profile"));
-  }
-
+  // `pickPlace` WENT WITH THE SELECTOR (MESITA-1918). It carried the open
+  // ADDRESS across a switch — the other venue's Orders rather than its Profile
+  // — and the only caller was the rail's menu. The catalogue switches with a
+  // plain link to the place's root, so the carry-across is gone with the
+  // control that needed it: a list of venues you pick from lands you at the
+  // top of the one you picked, which is what a list has always done.
   const rail = (
     <Sidebar
       scope={scope}
-      places={world.places}
       isSuperAdmin={scenario.isSuperAdmin}
       accountLabel={viewer.email}
       onNavigate={() => setDrawer(false)}
-      onPickPlace={pickPlace}
       // The retry a failed read offers. In the real console it re-runs the
       // Edge Function; here it puts the scenario back on a shape that has
       // places, which is the same promise kept the only way this app can.

@@ -19,7 +19,7 @@ import { useMock } from "@/mock/MockStore";
 import { Section } from "@/components/shared/Section";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
-import { PlaceChip } from "@/components/console/RailSelector";
+import { PlaceChip } from "@/components/console/PlaceChip";
 import {
   STATES_COL_CELL,
   STATES_COL_HEAD,

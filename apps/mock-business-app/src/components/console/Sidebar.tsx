@@ -69,6 +69,7 @@ import {
   CreditCard,
   Gift,
   House,
+  Layers,
   LayoutGrid,
   Plus,
   RotateCw,
@@ -105,9 +106,8 @@ import {
   type PlaceTab,
 } from "@/lib/place-tabs";
 import { flatViewFromPathname } from "@/lib/console-routes";
-import type { RailPlace, RailScope } from "@/lib/rail-scope";
+import type { RailScope } from "@/lib/rail-scope";
 import { cn } from "@/lib/utils";
-import { RailSelector } from "@/components/console/RailSelector";
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
@@ -247,19 +247,18 @@ function MutedRow({
 
 export function Sidebar({
   scope,
-  places,
   isSuperAdmin,
   accountLabel,
   onNavigate,
-  onPickPlace,
   onRetry,
 }: {
   scope: RailScope;
-  places: readonly RailPlace[];
+  // NO `places` (MESITA-1918): the rail took the whole portfolio only to fill
+  // the selector's menu. It needs the SCOPE now — which venue is open, and
+  // what this viewer may see of it.
   isSuperAdmin: boolean;
   accountLabel: string;
   onNavigate?: () => void;
-  onPickPlace: (id: string) => void;
   onRetry: () => void;
 }) {
   const pathname = usePathname();
@@ -295,7 +294,6 @@ export function Sidebar({
   // THE FOUR SHAPES. `unknown` is NOT `zero` with a sad face: it offers a
   // retry and never the word "add", because a failed read has not established
   // that the caller holds nothing.
-  const showSelector = scope.mode === "solo" || scope.mode === "multi";
   const showRows = (scope.mode === "solo" || scope.mode === "multi") && placeId !== null;
 
   return (
@@ -338,18 +336,23 @@ export function Sidebar({
           />
         )}
 
-        {showSelector && (
-          <RailSelector current={scope.place} places={places} onPick={onPickPlace} />
-        )}
+        {/* THE SELECTOR LEFT THE RAIL (MESITA-1918). Pato: *"now remove the
+            place selector from the top"*. It headed the column from
+            MESITA-1899, on the reasoning that the rail otherwise "opened cold
+            on Settings, naming nothing it was about" — a hole since filled by
+            the lockup (MESITA-1909) and the two section titles (MESITA-1915).
+            The VENUE is named on the page, by `PlaceHeading`.
 
-        {/* MULTI WITH NOTHING SELECTED: the selector is up, and the rows are
-            not — because every one of them would need a place id the console
-            has correctly refused to guess. */}
-        {showSelector && !showRows && (
+            WHAT IS LEFT IS ONE DOOR, AT `multi` ONLY. The selector's menu held
+            the only link to the catalogue, and with one place there is nothing
+            to switch between — the row would open a list of the venue you are
+            already in. It is a row, not the selector returning: no menu, no
+            chip, no venue name. */}
+        {scope.mode === "multi" && (
           <NavRow
             href={SHELL_ROUTES.places}
             label="All places"
-            Icon={LayoutGrid}
+            Icon={Layers}
             active={pathname === SHELL_ROUTES.places}
             onNavigate={onNavigate}
           />
