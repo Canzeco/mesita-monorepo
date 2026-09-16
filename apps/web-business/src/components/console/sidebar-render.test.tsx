@@ -114,8 +114,6 @@ const ROW_LABEL: Record<string, string> = {
   settings: "Settings",
   products: "Products",
   activity: "Activity",
-  menus: "Menus",
-  reviews: "Reviews",
 };
 /** The eleven, in `RAIL_ROWS` order, then Account at the foot. A product row
  *  takes the PRODUCT vocabulary's label, not a copy of it here — the rail, the
@@ -179,16 +177,13 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
   // not own is the two-pill bug; an address lighting a row that is not its
   // own is the same bug, quieter.
   //
-  // MENUS AND REVIEWS JOINED THIS LIST (MESITA-1885): the product rail has
-  // room for the place once, so they fold under Profile. They keep their
-  // addresses and every viewer who could open them still can — `tabsForAccess`
-  // is the gate, and a row was never it.
+  // MENUS AND REVIEWS LEFT THIS LIST (MESITA-1919) by leaving the contract
+  // entirely. MESITA-1885 folded them under Profile in the RAIL while they
+  // kept addresses of their own; they are cards on Profile now, so there is
+  // no address to be rowless at — `/places/<id>/menus` 404s like any other
+  // name `PlaceTabGate` does not recognise.
   const ROWLESS = [
-    view("menus"),
-    view("reviews"),
     view("admin"),
-    FLAT_ROUTES.menus,
-    FLAT_ROUTES.reviews,
     FLAT_ROUTES.admin,
     // The catalogue and its ceremony are above every place (MESITA-1892), and
     // neither is a row in the solo shape — the empty state is where Add place

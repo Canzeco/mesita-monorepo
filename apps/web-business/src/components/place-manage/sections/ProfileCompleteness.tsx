@@ -36,7 +36,7 @@ type CompletenessCheck = {
   /** Cross-view section id — the chip becomes a LINK through
    *  `placeSectionHref`, which is the only kind of destination that survives
    *  a view being split out from under it. */
-  tab?: "promos" | "menus";
+  tab?: "promos";
 };
 
 // Weights sum to exactly 100. Photos weigh most — they carry the consumer
@@ -94,13 +94,15 @@ const CHECKS: readonly CompletenessCheck[] = [
       (p.products?.menu?.length ?? 0) > 0 ||
       (p.menus?.length ?? 0) > 0 ||
       !!p.menu_pdf_url,
-    // A LINK, not a scroll (MESITA-1883). This was `scrollId:
-    // "place-products"` — the id `MenusSection` renders — until MESITA-1848
-    // gave Menus its own address. From that day the target was on a different
-    // page, so the chip called `getElementById`, got null, and returned:
-    // a button that did nothing at all, on the one card whose entire job is
-    // telling an operator what to go and fix.
-    tab: "menus",
+    // A SCROLL AGAIN (MESITA-1919), and this is the bug's full arc. It was
+    // `scrollId: "place-products"` — the id `MenusSection` renders — until
+    // MESITA-1848 gave Menus its own address; from that day the target was on
+    // a different page, so the chip called `getElementById`, got null, and
+    // returned: a button that did nothing at all, on the one card whose entire
+    // job is telling an operator what to go and fix. MESITA-1883 made it a
+    // `tab` link to stop the silence. Profile renders `MenusSection` again, so
+    // the id resolves on this page and the cheaper answer is correct once more.
+    scrollId: "place-products",
   },
   {
     label: "Reservations",

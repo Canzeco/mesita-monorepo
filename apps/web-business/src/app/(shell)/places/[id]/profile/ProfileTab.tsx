@@ -12,6 +12,9 @@
 
 import { PlaceSection } from "@/components/place-manage/sections/PlaceSection";
 import { ProfileCompleteness } from "@/components/place-manage/sections/ProfileCompleteness";
+import { MenusSection } from "@/components/place-manage/sections/MenusSection";
+import { ReviewsSummary } from "@/components/place-manage/sections/ReviewsSummary";
+import { MesitaReviewsList } from "@/components/place-manage/sections/MesitaReviewsList";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 
 export function ProfileTab() {
@@ -19,7 +22,15 @@ export function ProfileTab() {
   return (
     <div className="flex flex-col gap-4">
       <ProfileCompleteness place={place} />
-      <PlaceSection place={place} />
+      <PlaceSection place={place}>
+        {/* The `children` seam this card has always documented, filled again
+            (MESITA-1919). Menus is editable and saves through the one bar;
+            the two Reviews boxes are read-only and close the masonry, which
+            is what PlaceSection's own comment says they are for. */}
+        <MenusSection place={place} />
+        <ReviewsSummary place={place} />
+        <MesitaReviewsList key={place.id} placeId={place.id} />
+      </PlaceSection>
     </div>
   );
 }

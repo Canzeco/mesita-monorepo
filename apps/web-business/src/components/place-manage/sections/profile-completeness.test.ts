@@ -83,14 +83,22 @@ describe("ProfileCompleteness chips land somewhere real", () => {
     }
   });
 
-  it("the Menu chip is a LINK, because Menus is its own view now", () => {
-    // The specific regression, pinned: Menus has had its own address since
-    // MESITA-1848, so this check must never go back to a scroll.
+  it("the Menu chip is a SCROLL, because Menus is a card on Profile again", () => {
+    // THE FULL ARC OF ONE BUG, pinned so it cannot be walked backwards.
+    // `scrollId` was correct until MESITA-1848 moved Menus to its own address,
+    // wrong-and-silent from that day (getElementById → null → return), a `tab`
+    // link from MESITA-1883, and correct again from MESITA-1919 — because
+    // Profile renders MenusSection once more.
+    //
+    // The assertion that does the work is the LAST one: it is not enough that
+    // this entry says `scrollId`, the id has to be rendered by a file Profile
+    // actually mounts. That is the same invariant the generic test above
+    // enforces for every chip, restated here on the one that has broken twice.
     const menu = code.slice(code.indexOf('label: "Menu"'));
     const entry = menu.slice(0, menu.indexOf("},"));
-    expect(entry).toContain('tab: "menus"');
-    expect(entry).not.toContain("scrollId");
-    expect(sectionsByView().menus ?? []).toContain("MenusSection");
+    expect(entry).toContain('scrollId: "place-products"');
+    expect(entry).not.toContain("tab:");
+    expect(sectionsByView().profile ?? []).toContain("MenusSection");
   });
 
   it("any check carrying a tab renders as a link, not just promos", () => {

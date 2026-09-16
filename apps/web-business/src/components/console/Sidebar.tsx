@@ -115,12 +115,10 @@ import {
   Plus,
   Settings,
   ShoppingBag,
-  Star,
   Store,
   Ticket,
   UserRound,
   Users,
-  UtensilsCrossed,
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -320,8 +318,6 @@ const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   credits: Wallet,
   // Kept for the two views that lost their rows and not their addresses: the
   // place heading and the flat resolvers still read this table.
-  menus: UtensilsCrossed,
-  reviews: Star,
 };
 
 function NavRow({

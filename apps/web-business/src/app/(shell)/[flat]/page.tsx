@@ -1,11 +1,16 @@
 // THE FLAT ADDRESSES, in ONE file (MESITA-1842).
 //
-// `/profile`, `/menus`, `/reviews`, `/visits`, `/orders`, `/reservations`,
-// `/pay`, `/credits`, `/admin`, `/settings`, `/products`, `/customers`,
-// `/activity` — each a 307 onto the canonical address for the remembered
-// place. They were ten directories holding one line each, and adding the
-// eleventh meant remembering to create a directory, a page and a loading
-// boundary that no compiler would have missed.
+// `/profile`, `/visits`, `/orders`, `/reservations`, `/pay`, `/credits`,
+// `/admin`, `/settings`, `/products`, `/customers`, `/activity` — each a 307
+// onto the canonical address for the remembered place. They were ten
+// directories holding one line each, and adding the eleventh meant
+// remembering to create a directory, a page and a loading boundary that no
+// compiler would have missed.
+//
+// `/menus` and `/reviews` LEFT in MESITA-1919, and left no rule behind: they
+// are cards on Profile now, so the names simply stop resolving. A forward
+// would have been the MESITA-1839 shape — a rule outliving the address it was
+// written for, shadowing whatever takes the name next.
 //
 // THIRTEEN NAMES, ONE SUBJECT (MESITA-1892). Four of them used to resolve an
 // ORGANIZATION and nine a place; the organization is gone and its four pages
