@@ -24,6 +24,30 @@
 // edit would never run a test that lived there. Same cross-package idiom as
 // config-section-callers.test.ts next door.
 //
+// THE DB LEG IS PINNED HERE TOO, BECAUSE pgTAP DOES NOT PIN IT.
+//
+// `schema_invariants.test.sql` compares the LIVE catalog to its own hardcoded
+// slug array, and `place-taxonomy.test.ts` compares FAMILIES to a SECOND
+// hardcoded array. Both are green while they disagree with each other, so
+// "FAMILIES agrees with pgTAP" was never a fact anyone checked — it was two
+// hand-maintained lists that happened to match. A migration that adds a family
+// row and updates only the pgTAP array would leave FAMILIES, web and mobile on
+// the old list with every check green: the wellness_spa failure this file
+// exists to prevent, moved one file upstream. Labels, emoji and sort_order
+// were weaker still — pgTAP asserts only the `undefined` label, so the seven
+// guest-facing labels and emoji were compared to nothing outside TypeScript.
+//
+// So this file reads the two SQL sources directly and joins the literals:
+//   · the pgTAP `array[...]::text[]` slug list  → FAMILIES slugs, in order
+//   · `seed_place_families()`'s INSERT rows      → FAMILIES slug+label+emoji
+//                                                  +sort_order, in order
+// The seed is what actually writes the catalog, so pinning it pins what the
+// DB will hold; the pgTAP array is what asserts the DB holds it. With both
+// joined to FAMILIES, the four copies are one chain.
+//
+// Every parser here throws when it matches nothing. A regex that quietly
+// returns [] is a vacuous test, which is worse than no test at all.
+//
 // The last test in this file is the token gate MESITA-1857 asks for: zero
 // `super_categor` outside the migration ledger.
 
@@ -33,6 +57,15 @@ import { FAMILIES } from "./place-taxonomy.ts";
 const REPO_ROOT = new URL("../../../../", import.meta.url);
 const WEB_FAMILIES = new URL("apps/web-consumer/src/lib/place-families.ts", REPO_ROOT);
 const MOBILE_FAMILIES = new URL("apps/mobile-consumer/src/lib/place-families.ts", REPO_ROOT);
+const PGTAP = new URL("supabase/supabase/tests/database/schema_invariants.test.sql", REPO_ROOT);
+const MIGRATIONS = new URL("supabase/supabase/migrations/", REPO_ROOT);
+
+/** The three persisted discovery-filter stores — mobile has no test runner. */
+const FILTER_STORES = [
+  "apps/mobile-consumer/src/lib/use-discovery-filters.ts",
+  "apps/web-consumer/src/lib/use-discovery-filters.ts",
+  "apps/web-consumer/src/lib/use-map-filters.ts",
+] as const;
 
 type Family = { key: string; label: string; emoji: string };
 
@@ -68,9 +101,10 @@ Deno.test("web and mobile ship the SAME eight families as the DB twin", async ()
     "mobile-consumer",
   );
 
-  // place-taxonomy.ts is the DB twin: pgTAP pins FAMILIES' slugs and order
-  // against the live `public.place_families` catalog, so agreeing with it is
-  // agreeing with the database.
+  // place-taxonomy.ts is the DB twin. It is joined to the real catalog by the
+  // two SQL tests below (pgTAP's slug array and seed_place_families()'s INSERT
+  // rows), NOT by pgTAP alone — pgTAP only compares the live DB to its own
+  // literal and never looks at FAMILIES.
   const db = FAMILIES.map((f) => ({ key: f.slug, label: f.label, emoji: f.emoji }));
 
   assertEquals(
@@ -114,6 +148,134 @@ Deno.test("both consumer apps filter on the seven, never on Undefined", async ()
         "(Pato, 2026-08-29: nobody goes out looking for an unclassified place)",
     );
   }
+});
+
+Deno.test("every persisted filter store hydrates from the seven, not all eight", async () => {
+  // Mobile has no test runner, so the shape is read from source. A store that
+  // accepts a key its sheet does not render leaves the guest with a filter
+  // they can see the effect of (empty deck, lit dot) and no pill to clear.
+  for (const rel of FILTER_STORES) {
+    const src = await Deno.readTextFile(new URL(rel, REPO_ROOT));
+    const decl = src.match(/const KNOWN_FAMILY_KEYS[^;]*;/);
+    if (!decl) {
+      throw new Error(
+        `${rel}: no KNOWN_FAMILY_KEYS declaration found — this pin went blind`,
+      );
+    }
+    assertEquals(
+      /FILTERABLE_PLACE_FAMILIES\s*\.?\s*map\(/.test(decl[0]),
+      true,
+      `${rel}: KNOWN_FAMILY_KEYS must be built from FILTERABLE_PLACE_FAMILIES, ` +
+        `not PLACE_FAMILIES — a persisted "undefined" would survive hydrate and ` +
+        "narrow the deck to nothing with no pill to clear it (MESITA-1857).\n  " +
+        decl[0],
+    );
+  }
+});
+
+// ── the DB leg ─────────────────────────────────────────────────────────────
+
+/**
+ * The slug list pgTAP asserts the live catalog holds, in sort_order. Anchored
+ * on the assertion's own subquery so it cannot drift onto one of the other
+ * `array[...]::text[]` literals in that file.
+ */
+function parsePgtapFamilySlugs(sql: string): string[] {
+  const m = sql.match(
+    /\(\s*select\s+array_agg\s*\(\s*slug\s+order\s+by\s+sort_order\s*\)\s+from\s+public\.place_families\s*\)\s*,\s*array\[([\s\S]*?)\]::text\[\]/i,
+  );
+  if (!m) {
+    throw new Error(
+      "schema_invariants.test.sql: no `array_agg(slug order by sort_order) from public.place_families` " +
+        "assertion found — the pgTAP catalog pin moved or was deleted, and this test went blind",
+    );
+  }
+  const slugs = [...m[1]!.matchAll(/'([a-z_]+)'/g)].map((x) => x[1]!);
+  if (slugs.length === 0) {
+    throw new Error("schema_invariants.test.sql: family slug array parsed empty");
+  }
+  return slugs;
+}
+
+type SeedRow = { slug: string; label: string; emoji: string; sort_order: number };
+
+/**
+ * The rows `seed_place_families()` writes. The seed is the migration ledger's
+ * newest definition of that function, not a fixed filename: a later migration
+ * that redefines it is what the DB will actually run, so that is the one that
+ * has to agree with FAMILIES.
+ */
+async function parseSeedFamilies(): Promise<{ file: string; rows: SeedRow[] }> {
+  const names: string[] = [];
+  for await (const e of Deno.readDir(MIGRATIONS)) {
+    if (e.isFile && e.name.endsWith(".sql")) names.push(e.name);
+  }
+  if (names.length === 0) {
+    throw new Error("supabase/supabase/migrations/ holds no .sql files — the path moved");
+  }
+  names.sort();
+
+  for (const name of names.reverse()) {
+    const src = await Deno.readTextFile(new URL(name, MIGRATIONS));
+    if (!/function\s+public\.seed_place_families\s*\(\s*\)/i.test(src)) continue;
+    const body = src.match(
+      /insert\s+into\s+public\.place_families\s*\([^)]*\)\s*values([\s\S]*?);/i,
+    );
+    if (!body) {
+      throw new Error(
+        `${name}: defines seed_place_families() but no ` +
+          "`insert into public.place_families (...) values` block was found — the seed's shape moved",
+      );
+    }
+    const row = /\(\s*'([a-z_]+)'\s*,\s*'([^']+)'\s*,\s*'([^']+)'\s*,\s*(\d+)\s*\)/g;
+    const rows: SeedRow[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = row.exec(body[1]!)) !== null) {
+      rows.push({
+        slug: m[1]!,
+        label: m[2]!,
+        emoji: m[3]!,
+        sort_order: Number(m[4]!),
+      });
+    }
+    if (rows.length === 0) {
+      throw new Error(`${name}: seed_place_families() INSERT parsed zero rows`);
+    }
+    return { file: name, rows };
+  }
+  throw new Error(
+    "no migration defines seed_place_families() — the seed was renamed and this pin went blind",
+  );
+}
+
+Deno.test("pgTAP's hardcoded catalog array IS FAMILIES' slugs, in order", async () => {
+  const sql = await Deno.readTextFile(PGTAP);
+  assertEquals(
+    parsePgtapFamilySlugs(sql),
+    FAMILIES.map((f) => f.slug as string),
+    "supabase/tests/database/schema_invariants.test.sql pins the live catalog to a literal " +
+      "that disagrees with _shared/place-taxonomy.ts. pgTAP compares the DB to ITS OWN array " +
+      "and place-taxonomy.test.ts compares FAMILIES to a SECOND array; without this test the " +
+      "two literals can diverge and every check still passes.",
+  );
+});
+
+Deno.test("seed_place_families() writes exactly FAMILIES — slug, label, emoji, order", async () => {
+  const { file, rows } = await parseSeedFamilies();
+  assertEquals(
+    rows,
+    FAMILIES.map((f) => ({
+      slug: f.slug as string,
+      label: f.label,
+      emoji: f.emoji,
+      sort_order: f.sort_order,
+    })),
+    `supabase/migrations/${file} seeds a catalog that disagrees with ` +
+      "_shared/place-taxonomy.ts. The seed is what public.place_families actually ends up " +
+      "holding (Reset calls it), and labels/emoji/sort_order are compared to NOTHING in pgTAP " +
+      "except the `undefined` label — so this assertion is the only thing standing between a " +
+      "renamed family in SQL and seven guest-facing pills that still say the old word.",
+  );
 });
 
 // ── the token gate ─────────────────────────────────────────────────────────
