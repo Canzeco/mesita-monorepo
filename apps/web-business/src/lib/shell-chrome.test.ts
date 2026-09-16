@@ -266,21 +266,26 @@ describe("the rail is six nouns and one indent", () => {
     expect(rail()).not.toContain('className="mt-3"');
   });
 
-  it("renders a selector only where one has something to select", () => {
-    // MESITA-1879. The selector is still in this file and still renders —
-    // the franchise path is DEFERRED, not deleted — behind the condition that
-    // makes its question real: two places. The operator this console is built
-    // for never sees it, which is the whole change.
+  it("renders ONE selector, and it heads the rail wherever a place is known", () => {
+    // MESITA-1899 reversed MESITA-1879's condition. The selector used to
+    // render only at `multi`, on the reasoning that a control over one thing
+    // selects nothing — true while the ORGANIZATION selector still headed the
+    // column. MESITA-1892 deleted that one with the layer, so at solo (the
+    // shape every real operator is in) the rail opened naming nothing.
+    // It heads `solo` and `multi` now; `zero` and `unknown` still get none.
     const r = rail();
     expect(r).not.toContain("GroupHeader");
     expect(r).not.toContain("TINY_LABEL_CLASS");
     // ONE SELECTOR (MESITA-1892). There were two — an organization and one of
-    // its places — and the layer is gone, so the only question left is which
-    // place, and only for an operator who holds more than one.
+    // its places — and the layer is gone, so the only subject left is the
+    // place. Still exactly one: heading the rail at solo did not add a second.
     expect((r.match(/<RailSelector/g) ?? []).length).toBe(1);
     expect(r).not.toContain('label="Switch organization"');
     expect(r).toContain('label="Switch place"');
-    expect(r).toContain('scope.mode === "multi" &&');
+    expect(r).toContain('scope.mode === "solo" || scope.mode === "multi"');
+    // And the two states that must NOT get one keep their own branches: a
+    // failed read must never name a place, and zero has none to name.
+    expect(r).toContain('scope.mode === "zero" &&');
     // Account is NOT one: there is one of you, so a chevron would be a
     // control with nothing to control. Pato: "(No subitems)".
     const account = r.slice(r.indexOf("href={SHELL_ROUTES.account}"));
@@ -717,13 +722,13 @@ describe("the rail is six nouns and one indent", () => {
 
   it("the selectors: a name at n=1, and the transition is the pending clock", () => {
     const sw = readCode("components/console/Sidebar.tsx");
-    // A selector with nothing to switch does not RENDER at all any more
-    // (MESITA-1879). MESITA-1818 made it a name without a chevron; the flat
-    // rail goes one step further, because a name with no question attached is
-    // still a row spent on saying what the operator already knows. The
-    // condition moved out of the prop and into the render, so `switchable` is
-    // unconditional wherever a selector appears at all.
-    expect(sw).toContain('scope.mode === "multi" &&');
+    // The condition lives in the RENDER, not in the prop — `switchable` is
+    // unconditional wherever a selector appears at all, so this file's job is
+    // only to pin WHERE that is. MESITA-1818 made it a name without a
+    // chevron, MESITA-1879 stopped rendering it at one place, and MESITA-1899
+    // put it back: with the organization selector gone (MESITA-1892) a name
+    // at n=1 is the rail's head, not a row spent restating what is known.
+    expect(sw).toContain('scope.mode === "solo" || scope.mode === "multi"');
     expect(sw).not.toContain("switchable={places.length >= 2}");
     expect(sw).toContain("const pendingId = isPending ? choice : null;");
     expect(sw).not.toContain("choice.at === pathname");
