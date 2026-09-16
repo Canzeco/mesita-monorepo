@@ -5,9 +5,16 @@ import { DEFAULT_CONFIG } from "../catalog";
 
 // Matrix — the first Discovery subpage (Pato, 2026-09-08). It holds the two
 // things that are neither a mode nor a source: the locked mode × entity ×
-// pool × source × signal matrix, and the weights that rank what any source
-// returns. The matrix used to sit on top of Modes and Signals at the bottom
-// of Sources; both were guests on pages that did not describe them.
+// pool × source × signal matrix, and the signal library beneath it — what
+// each signal computes and the shape numbers that bend its curve. The matrix
+// used to sit on top of Modes and Signals at the bottom of Sources; both were
+// guests on pages that did not describe them.
+//
+// THE EXPONENTS ARE NOT HERE ANY MORE (MESITA-1859). A weight is not a
+// property of a signal, it is a property of a signal IN A MODE — Scroll and
+// Map can now want different ones — so the weights became one table on
+// Discovery Modes and this page kept the shape numbers, which are the same
+// for every mode.
 //
 // The matrix card says "Locked." about ITSELF, not about this page. Signals
 // below it are fully editable and keep their own slice Save.

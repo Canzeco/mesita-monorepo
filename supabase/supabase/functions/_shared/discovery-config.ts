@@ -1,12 +1,15 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
-// Admin: Modes (Fast + Deep + Map live; Swipe ranks via Lineup; Home Soon) · Modules (Google types,
-// three Google boxes, Places Lineup, Social Lineup Soon, Perplexity Soon).
+// Keys: weights · weightsByMode · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
+// Admin: Modes (Word, Map and Scroll live, each with its own weight column) ·
+// Sources (Google types, three Google boxes, Places Lineup, Socials Soon).
 // `params` rides with `weights` — same Lineup table, different numbers.
 //
-//   weights    one exponent per earned signal (`w` in `s^w`).
+//   weights    one exponent per earned signal (`w` in `s^w`). Word's vector,
+//              and the fallback under every mode that has no column.
+//   weightsByMode  the same vector PER WIRED MODE (MESITA-1859). Map and
+//              Scroll are the two that rank, so they are the two columns.
 //   params     shape numbers. The console edits maxKm and closedFloor;
 //              the rest stay on the blob as the function's defaults.
 //   slotting   the bought lane: whether promoting places get slots at all, and
@@ -65,6 +68,10 @@ import {
   type SignalKey,
   type SignalParamBag,
 } from "./discovery-signals.ts";
+import {
+  WEIGHTED_MODE_KEYS,
+  type WeightedModeKey,
+} from "./discovery-matrix.ts";
 import { num, bool } from "./config-coerce.ts";
 
 export type SignalParams = Record<SignalKey, SignalParamBag>;
@@ -247,43 +254,49 @@ export type GeneralConfig = {
   minReviews: number;
 };
 
-export type SwipePartnerLevel =
-  | "none"
-  | "partner"
-  | "conservative"
-  | "aggressive"
-  | "dominant";
-
-export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
-
 /**
- * Swipe admission knobs. Radius, reviews, closing buffer, and type-adjacent
- * flags cut the pool. Ranking is Places Lineup under the Swipe mask
- * (`weights` / `params`). weightProximity, starsExponent, logDivisor,
- * partnerBias, and randomnessMax stay on the blob, unread.
+ * Scroll admission knobs. Radius, reviews and closing buffer cut the pool;
+ * ranking is Places Lineup under the Scroll mask (`weightsByMode.swipe`).
+ *
+ * THE FIVE 2026-08-26 RANKING KNOBS ARE GONE (MESITA-1859). weightProximity,
+ * starsExponent, logDivisor, partnerBias and randomnessMax had carried the
+ * retired two-signal SUM, and had sat here unread since the blend replaced it.
+ * A dead `weightProximity` beside a live per-mode Proximity exponent reads as
+ * a second, competing dial — so they are deleted from the type, the defaults
+ * and the normalizer, which drops them from the blob on the next save.
+ *
+ * `categoryFilter` is the sixth unread field. It stays on the blob and gets no
+ * control (the ConfigSoon law forbids staging a knob nobody reads); deleting
+ * it is a one-line follow-up.
  */
 export type SwipeConfig = {
   radiusKm: number;
   closingBufferMin: number;
-  /** Popularity weight is 1 minus this. */
-  weightProximity: number;
-  starsExponent: number;
-  logDivisor: number;
-  partnerBias: SwipePartnerBias;
-  /**
-   * High end of a per-place Uniform[1, max] multiplier after bias.
-   * 1 = off. Stops the deck freezing the same order every load.
-   */
-  randomnessMax: number;
-  /** Guest category-filter default. Off keeps the feed open. */
+  /** Guest category-filter default. Off keeps the feed open. UNREAD. */
   categoryFilter: boolean;
   minReviews: number;
-  /** ISO time of the last Swipe-slice save. Null until the first Save. */
+  /** ISO time of the last Scroll-slice save. Null until the first Save. */
   savedAt: string | null;
 };
 
 export type DiscoveryConfig = {
+  /**
+   * The global exponent vector. STILL LOAD-BEARING after MESITA-1859: it is
+   * Word's only vector (`orderDeepLineup` in consumer-search-lane.ts) and the
+   * per-mode fallback that makes a missing mode key harmless. No console edits
+   * it directly any more; it is what a wired mode falls back to.
+   */
   weights: Record<SignalKey, number>;
+  /**
+   * Per-mode exponents, one column per wired mode (MESITA-1859). Under `Π s^w`
+   * only the ratios WITHIN a mode mean anything, so "proximity matters twice
+   * as much on the Map as on Scroll" was previously unsayable — a mode could
+   * only switch a signal off.
+   *
+   * The mask is NOT folded in here: `weightsForMode` applies
+   * `modeSignalState` first and this bag second. See discovery-matrix.ts.
+   */
+  weightsByMode: Record<WeightedModeKey, Record<SignalKey, number>>;
   params: SignalParams;
   slotting: {
     enabled: boolean;
@@ -471,21 +484,6 @@ export const SWIPE_RADIUS_KM_MIN = 1;
 export const SWIPE_RADIUS_KM_MAX = 50;
 export const SWIPE_CLOSING_BUFFER_MIN = 0;
 export const SWIPE_CLOSING_BUFFER_MAX = 180;
-export const SWIPE_STARS_EXPONENT_MIN = 1;
-export const SWIPE_STARS_EXPONENT_MAX = 3;
-export const SWIPE_LOG_DIVISOR_MIN = 1;
-export const SWIPE_LOG_DIVISOR_MAX = 20;
-export const SWIPE_PARTNER_BIAS_MIN = 1;
-export const SWIPE_PARTNER_BIAS_MAX = 2;
-export const SWIPE_RANDOMNESS_MAX_MIN = 1;
-export const SWIPE_RANDOMNESS_MAX_MAX = 2;
-export const SWIPE_PARTNER_LEVELS = [
-  "none",
-  "partner",
-  "conservative",
-  "aggressive",
-  "dominant",
-] as const satisfies readonly SwipePartnerLevel[];
 
 /**
  * The three supers the strip has always asked for stay on; the four it could
@@ -563,23 +561,10 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
-  none: 1,
-  partner: 1.25,
-  conservative: 1.5,
-  aggressive: 1.75,
-  dominant: 2,
-};
-
 /** Closing buffer 30 min — discussed, not settled; operator-editable. */
 export const DEFAULT_SWIPE: SwipeConfig = {
   radiusKm: 5,
   closingBufferMin: 30,
-  weightProximity: 0.7,
-  starsExponent: 1.5,
-  logDivisor: 10,
-  partnerBias: DEFAULT_SWIPE_PARTNER_BIAS,
-  randomnessMax: 1.3,
   categoryFilter: false,
   minReviews: 1,
   savedAt: null,
@@ -668,18 +653,34 @@ export const SIGNAL_PARAM_BOUNDS: Record<
   randomness: {},
 };
 
+const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
+  proximity: 1,
+  timing: 1,
+  category: 1,
+  popularity: 1,
+  name: 1,
+  summary: 1,
+  enriched: 1,
+  partnered: 1,
+  randomness: 0.35,
+};
+
+/**
+ * Day zero is byte-identical to the global vector, per wired mode — so the
+ * first deploy of MESITA-1859 changes no deck anywhere. The point of the split
+ * is that an operator can now MOVE one column without moving the other, not
+ * that the two start apart.
+ */
+export const DEFAULT_WEIGHTS_BY_MODE: Record<
+  WeightedModeKey,
+  Record<SignalKey, number>
+> = Object.fromEntries(
+  WEIGHTED_MODE_KEYS.map((mode) => [mode, { ...DEFAULT_WEIGHTS }]),
+) as Record<WeightedModeKey, Record<SignalKey, number>>;
+
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
-  weights: {
-    proximity: 1,
-    timing: 1,
-    category: 1,
-    popularity: 1,
-    name: 1,
-    summary: 1,
-    enriched: 1,
-    partnered: 1,
-    randomness: 0.35,
-  },
+  weights: DEFAULT_WEIGHTS,
+  weightsByMode: DEFAULT_WEIGHTS_BY_MODE,
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: {
     enabled: true,
@@ -912,18 +913,6 @@ function normalizeSavedAt(raw: unknown): string | null {
 
 export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const biasRaw = (r.partnerBias ?? {}) as Record<string, unknown>;
-  const partnerBias = {} as SwipePartnerBias;
-  for (const key of SWIPE_PARTNER_LEVELS) {
-    partnerBias[key] = Math.round(
-      num(
-        biasRaw[key],
-        DEFAULT_SWIPE.partnerBias[key],
-        SWIPE_PARTNER_BIAS_MIN,
-        SWIPE_PARTNER_BIAS_MAX,
-      ) * 100,
-    ) / 100;
-  }
   return {
     radiusKm: Math.round(
       num(r.radiusKm, DEFAULT_SWIPE.radiusKm, SWIPE_RADIUS_KM_MIN, SWIPE_RADIUS_KM_MAX) * 10,
@@ -936,30 +925,6 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
         SWIPE_CLOSING_BUFFER_MAX,
       ),
     ),
-    weightProximity: Math.round(
-      num(r.weightProximity, DEFAULT_SWIPE.weightProximity, 0, 1) * 100,
-    ) / 100,
-    starsExponent: Math.round(
-      num(
-        r.starsExponent,
-        DEFAULT_SWIPE.starsExponent,
-        SWIPE_STARS_EXPONENT_MIN,
-        SWIPE_STARS_EXPONENT_MAX,
-      ) * 100,
-    ) / 100,
-    logDivisor: Math.round(
-      num(r.logDivisor, DEFAULT_SWIPE.logDivisor, SWIPE_LOG_DIVISOR_MIN, SWIPE_LOG_DIVISOR_MAX) *
-        100,
-    ) / 100,
-    partnerBias,
-    randomnessMax: Math.round(
-      num(
-        r.randomnessMax,
-        DEFAULT_SWIPE.randomnessMax,
-        SWIPE_RANDOMNESS_MAX_MIN,
-        SWIPE_RANDOMNESS_MAX_MAX,
-      ) * 100,
-    ) / 100,
     categoryFilter: bool(r.categoryFilter, DEFAULT_SWIPE.categoryFilter),
     minReviews: Math.round(num(r.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
     savedAt: normalizeSavedAt(r.savedAt),
@@ -1093,6 +1058,31 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     weights[key] = Math.round(v * 100) / 100;
   }
 
+  // Per-mode exponents (MESITA-1859). REBUILT KEY BY KEY, like every other
+  // branch here — which is exactly why it has to exist at all: a key this loop
+  // forgets is silently dropped on the next unrelated Save, and nothing goes
+  // red.
+  //
+  // A MISSING COLUMN FALLS BACK TO THIS BLOB'S OWN VECTOR, never to the
+  // in-code defaults. The difference is the whole migration: the live config
+  // has hand-tuned global exponents, and seeding a column from
+  // DISCOVERY_DEFAULTS would quietly revert every one of them on the first
+  // read after this deploys. Falling back to `weights` makes a pre-1859 blob
+  // score byte-identically to yesterday.
+  const rawByMode = (r.weightsByMode ?? {}) as Record<string, unknown>;
+  const weightsByMode = {} as Record<WeightedModeKey, Record<SignalKey, number>>;
+  for (const mode of WEIGHTED_MODE_KEYS) {
+    // No legacy fold here: this bag was born at MESITA-1859, after the
+    // `mesita_level` split, so it can never carry the retired key.
+    const bag = (rawByMode[mode] ?? {}) as Record<string, unknown>;
+    const col = {} as Record<SignalKey, number>;
+    for (const key of SIGNAL_KEYS) {
+      const v = num(bag[key], weights[key], WEIGHT_MIN, weightMaxFor(key));
+      col[key] = Math.round(v * 100) / 100;
+    }
+    weightsByMode[mode] = col;
+  }
+
   const rawFilters = (r.filters ?? {}) as Record<string, unknown>;
   const rawEngines = (r.engines ?? {}) as Record<string, unknown>;
 
@@ -1123,6 +1113,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
 
   return {
     weights: weights as Record<SignalKey, number>,
+    weightsByMode,
     params,
     slotting: {
       enabled: bool(rawSlotting.enabled, DISCOVERY_DEFAULTS.slotting.enabled),

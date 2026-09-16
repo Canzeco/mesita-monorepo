@@ -31,6 +31,8 @@ import {
   SIGNALS,
   snapMapReloadPair,
   WEIGHT_MAX,
+  WEIGHT_MIN,
+  WEIGHTED_MODE_KEYS,
   weightMaxFor,
 } from "./catalog";
 
@@ -104,6 +106,54 @@ describe("Discovery function APIs", () => {
     // The legacy key itself is PRESERVED now (MESITA-1858, the additive
     // window) — it is the fold that matters, not the deletion.
     expect(cfg.weights).toHaveProperty("semantic");
+  });
+
+  it("only Map and Scroll earn a weight column", () => {
+    // A mode earns one when it has a live weightsForMode caller AND a mask
+    // over one signal. Word satisfies the first and fails the second — a
+    // one-factor Π s^w is a monotone transform, so its exponent provably
+    // cannot reorder. The EF twin's contract test asserts both halves; this
+    // side just has to agree with it, because the keys are PERSISTED.
+    expect([...WEIGHTED_MODE_KEYS]).toEqual(["map", "swipe"]);
+    for (const mode of WEIGHTED_MODE_KEYS) {
+      expect(DISCOVERY_MODE_KEYS).toContain(mode);
+    }
+    expect(WEIGHTED_MODE_KEYS).not.toContain("word");
+    expect(WEIGHTED_MODE_KEYS).not.toContain("catalog");
+  });
+
+  it("a per-mode column round-trips, clamps, and seeds from the blob's own vector", () => {
+    const tuned = coerceConfig({
+      weightsByMode: { map: { proximity: 2, partnered: 4 } },
+    });
+    expect(tuned.weightsByMode.map.proximity).toBe(2);
+    // Partnered caps at 2, not the uniform 4, on every mode.
+    expect(tuned.weightsByMode.map.partnered).toBe(2);
+    expect(tuned.weightsByMode.swipe).toEqual(DEFAULT_CONFIG.weights);
+
+    // THE MIGRATION. The live blob has hand-tuned GLOBAL exponents and no
+    // per-mode bag at all. Seeding a missing column from DEFAULT_CONFIG would
+    // revert every one of them the first time this page loaded, silently.
+    const legacy = coerceConfig({ weights: { proximity: 1.5 } });
+    for (const mode of WEIGHTED_MODE_KEYS) {
+      expect(legacy.weightsByMode[mode], mode).toEqual(legacy.weights);
+      expect(legacy.weightsByMode[mode].proximity, mode).toBe(1.5);
+    }
+    // Two decimals, or the 0.05-step field leaves the page permanently dirty.
+    expect(
+      coerceConfig({ weightsByMode: { swipe: { timing: 1.7000000000000002 } } })
+        .weightsByMode.swipe.timing,
+    ).toBe(1.7);
+    // Below the floor clamps up, not to NaN — a non-finite exponent would
+    // turn the WHOLE signal off in the blend, scoring every place exactly 1.
+    expect(
+      coerceConfig({ weightsByMode: { swipe: { timing: -3, category: "x" } } })
+        .weightsByMode.swipe,
+    ).toMatchObject({ timing: WEIGHT_MIN, category: DEFAULT_CONFIG.weights.category });
+    // A mode nothing ranks is not stored at all.
+    expect(
+      Object.keys(coerceConfig({ weightsByMode: { word: { name: 3 } } }).weightsByMode).sort(),
+    ).toEqual([...WEIGHTED_MODE_KEYS].sort());
   });
 
   it("nine sources and a locked mode → source matrix", () => {
@@ -431,32 +481,52 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).swipe).toEqual(DEFAULT_SWIPE);
     expect(
       coerceConfig({
-        swipe: {
-          radiusKm: 99,
-          weightProximity: 4,
-          partnerBias: { dominant: 9 },
-          minReviews: -2,
-          randomnessMax: 9,
-        },
+        swipe: { radiusKm: 99, minReviews: -2, closingBufferMin: 999 },
       }).swipe,
     ).toMatchObject({
       radiusKm: 50,
-      weightProximity: 1,
-      partnerBias: { ...DEFAULT_SWIPE.partnerBias, dominant: 2 },
       minReviews: 0,
-      closingBufferMin: 30,
-      randomnessMax: 2,
+      closingBufferMin: 180,
     });
   });
 
-  it("swipe() is parked with the rest of Home", () => {
+  it("the five retired swipe ranking knobs do not survive a coerce", () => {
+    // MESITA-1859 DELETED them, it did not merely stop rendering them. A blob
+    // still carrying `weightProximity: 0.7` beside a live per-mode Proximity
+    // exponent forces the next reader to work out which one the deck obeys.
+    const swipe = coerceConfig({
+      swipe: {
+        weightProximity: 0.7,
+        starsExponent: 1.5,
+        logDivisor: 10,
+        partnerBias: { dominant: 2 },
+        randomnessMax: 1.3,
+      },
+    }).swipe as unknown as Record<string, unknown>;
+    for (
+      const dead of [
+        "weightProximity",
+        "starsExponent",
+        "logDivisor",
+        "partnerBias",
+        "randomnessMax",
+      ]
+    ) {
+      expect(dead in swipe, dead).toBe(false);
+    }
+  });
+
+  it("swipe() is LIVE — Home shipped, and the catalog entry says so", () => {
+    // It read PARKED until MESITA-1859, on copy dated 2026-08-28. ScrollDeck
+    // is live in web-consumer and consumer-web-recommend-swipe is called on
+    // every load; a PARKED row under a live console card is the same
+    // dishonesty the ConfigSoon header exists to prevent.
     const swipe = ENGINES.find((e) => e.key === "swipe");
-    expect(swipe?.state).toBe("PARKED");
-    expect(swipe?.process).toMatch(/Parked/i);
-    expect(swipe?.process).toMatch(/Soon/);
+    expect(swipe?.state).toBe("LIVE");
+    expect(swipe?.process).not.toMatch(/Parked/i);
+    expect(swipe?.process).not.toMatch(/Soon/);
     expect(swipe?.process).toMatch(/Places Lineup/);
-    expect(swipe?.process).toMatch(/Swipe mask/);
-    expect(swipe?.process).not.toMatch(/slot bought/);
+    expect(swipe?.process).toMatch(/Scroll mask/);
     expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
@@ -575,8 +645,11 @@ describe("Discovery function APIs", () => {
     expect(chat?.apis).toEqual(["OpenAI"]);
   });
 
-  it("Home engines are Soon — Swipe · Catalog · Chat · Social · Favorites", () => {
-    for (const key of ["swipe", "catalog", "chat", "social", "favorites"] as const) {
+  it("Swipe left the parked list when Home shipped; the other four stayed", () => {
+    // MESITA-1859: Scroll is the one Home surface with a live engine behind
+    // it. Feed's rails rank by cosine and the rest have no engine at all.
+    expect(ENGINES.find((e) => e.key === "swipe")?.state).toBe("LIVE");
+    for (const key of ["catalog", "chat", "social", "favorites"] as const) {
       expect(ENGINES.find((e) => e.key === key)?.state, key).toBe("PARKED");
     }
   });
@@ -755,14 +828,46 @@ describe("Discovery page box order", () => {
     expect(map).not.toContain("Reload after waiting");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
-    expect(swipe).toContain('title="Swipe is coming soon"');
-    expect(swipe).toContain("ConfigSoon");
+    // Scroll graduated (MESITA-1859). You cannot have "coming soon" above a
+    // live exponent column, and that copy was dated 2026-08-28 — before Home
+    // shipped.
+    expect(swipe).not.toContain("coming soon");
+    expect(swipe).not.toContain("ConfigSoon");
+    expect(swipe).not.toContain("Home is parked");
+    expect(swipe).toContain('title="Scroll"');
+    expect(swipe).toContain("SectionCard");
+    expect(swipe).toContain('kind="enforced"');
+    expect(swipe).toContain("consumer-web-recommend-swipe admits the pool");
+    // Exactly the three fields that have a reader — and NOT the exponents.
+    expect(swipe).toContain('label="Radius (km)"');
+    expect(swipe).toContain('label="Minimum Google reviewers"');
+    expect(swipe).toContain('label="Closing buffer (min)"');
+    // No exponent input on this card, and no control for the one admission
+    // field nothing reads.
+    expect(swipe).not.toContain("weightMaxFor");
+    expect(swipe).not.toContain("categoryFilter");
+    expect(swipe).not.toContain("weightProximity");
+    expect(swipe).toContain('updateDiscoveryConfig(cfg, ["swipe"])');
     expect(catalog).toContain('title="Catalog is coming soon"');
     expect(catalog).toContain("ConfigSoon");
     expect(chat).toContain('title="Chat is coming soon"');
     expect(chat).toContain("ConfigSoon");
     expect(surfaces).toContain('title="Favorites is coming soon"');
     expect(surfaces).toContain("ConfigSoon");
+    // A mode that cannot be tuned says so in ONE SENTENCE where the control
+    // would be — never a staged column (MESITA-1859), following the
+    // FloorSoonNote precedent on Search Sources.
+    const noWeights = readFileSync(join(__dirname, "NoWeightsNote.tsx"), "utf8");
+    expect(noWeights).toContain("Weights: none.");
+    for (const src of [catalog, chat, surfaces]) {
+      expect(src).toContain("NoWeightsNote");
+    }
+    expect(catalog).toContain("cosine similarity");
+    expect(surfaces).toContain("signal mask is empty");
+    // …and none of them grows an input.
+    for (const src of [catalog, chat, surfaces]) {
+      expect(src).not.toContain("weightMaxFor");
+    }
     expect(surfaces).not.toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Name"');
     expect(surfaces).not.toContain('title="Swipe"');
@@ -780,8 +885,45 @@ describe("Discovery page box order", () => {
     expect(signals).not.toContain("modeSignalState");
     expect(signals).not.toContain("DISCOVERY_MODE_KEYS");
     expect(signals).toContain('kind="enforced"');
-    expect(signals).toContain("Swipe read the mode mask");
+    // The exponents left this card at MESITA-1859: a weight is a property of
+    // a signal IN A MODE, and one column of inputs could not say which.
+    expect(signals).toContain("Scroll read these shape numbers");
     expect(signals).not.toContain("Swipe keeps its own sum");
+    expect(signals).not.toContain("weightMaxFor");
+    expect(signals).not.toContain("cfg.weights");
+    expect(signals).toContain("Signal weights by mode");
+
+    // ONE TABLE, on the page about modes. Signal rows, wired-mode columns.
+    const weights = readFileSync(join(__dirname, "ModeWeightsClient.tsx"), "utf8");
+    expect(modesPage).toContain("ModeWeightsClient");
+    expect(matrixPage).not.toContain("ModeWeightsClient");
+    expect(weights).toContain('title="Signal weights by mode"');
+    expect(weights).toContain("LIBRARY_SIGNALS");
+    expect(weights).toContain("WEIGHTED_MODE_KEYS");
+    // The mask is consulted before anything is rendered, and a masked-off
+    // cell is an em-dash, never a disabled 0.
+    expect(weights).toContain("modeSignalState");
+    expect(weights).toContain("—");
+    expect(weights).not.toContain(">0</span>");
+    // Every input names its signal AND its mode, or it is ~14 boxes all
+    // called "Weight".
+    expect(weights).toContain("aria-label={`${label} weight · ${modeLabel}`}");
+    // The visible range, because weightMaxFor clamps silently.
+    expect(weights).toContain("{WEIGHT_MIN}–{max}");
+    // One Save per column, each on its OWN slice.
+    expect(weights).toContain('map: "weightsMap"');
+    expect(weights).toContain('swipe: "weightsScroll"');
+    // Reset and Revert, and nothing else — no preset library.
+    expect(weights).toContain("Reset to defaults");
+    expect(weights).toContain("Revert to saved");
+    // No preset library: no dropdown, no named presets, no CRUD.
+    expect(weights).not.toContain("<select");
+    expect(weights).not.toContain("PRESETS");
+    // The matrix's own proven responsive bleed.
+    expect(weights).toContain("-mx-4");
+    expect(weights).toContain("min-w-[52rem]");
+    expect(acts).toContain('"weightsMap"');
+    expect(acts).toContain('"weightsScroll"');
     expect(googleSources).toContain("Google Places Autocomplete Search");
     expect(googleSources).toContain("Google Places Nearby Search");
     expect(googleSources).toContain("Google Places Text Search");

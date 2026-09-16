@@ -2,10 +2,12 @@
 //
 // The engine key stays `swipe`; the surface is Home's Scroll pill since
 // MESITA-1697. Admission cuts first; the blend then scores under
-// weightsForMode("swipe"): proximity, timing, category, popularity,
-// enriched, partnered, randomness. Name, Summary, and Social stay 0. The
-// 2026-08-26 two-signal SUM and partnerBias / randomnessMax multipliers are
-// retired — those knobs stay on the blob, unread.
+// the Scroll column of `weightsByMode` under the Scroll mask: proximity,
+// timing, category, popularity, enriched, partnered, randomness. Name,
+// Summary and Social stay 0. The 2026-08-26 two-signal SUM and its
+// partnerBias / randomnessMax multipliers are gone — MESITA-1859 deleted
+// those five unread fields off the blob rather than leave them beside a live
+// per-mode exponent.
 //
 //   1. ADMIT  — ready, review floor, operator radius, Map type batteries,
 //               open now + closing buffer, then guest predicates.
@@ -34,8 +36,11 @@ import {
 } from "./discovery-blend.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
 import { toLineupPlace, toPromotingFields } from "./discovery-place.ts";
-import type { DiscoveryFilters, SwipeConfig } from "./discovery-config.ts";
-import type { SignalKey } from "./discovery-signals.ts";
+import type {
+  DiscoveryConfig,
+  DiscoveryFilters,
+  SwipeConfig,
+} from "./discovery-config.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
 
 /** Query predicates Swipe owns. Map type batteries stay a separate cut. */
@@ -71,10 +76,17 @@ export function admitSwipeTiming<T>(
   });
 }
 
+/**
+ * Scroll's exponent vector: the Scroll column, under the Scroll mask.
+ *
+ * The EF calls THIS, never `weightsForMode` directly — the mode key belongs to
+ * one named function per mode so the console's "who reads this column" badge
+ * stays checkable, and discovery-swipe.test.ts pins both halves of that.
+ */
 export function swipeLineupWeights(
-  global: Record<SignalKey, number>,
+  cfg: Pick<DiscoveryConfig, "weights" | "weightsByMode">,
 ): SignalWeights {
-  return weightsForMode("swipe", global);
+  return weightsForMode("swipe", cfg.weights, cfg.weightsByMode);
 }
 
 export type SwipeRankOpts = {

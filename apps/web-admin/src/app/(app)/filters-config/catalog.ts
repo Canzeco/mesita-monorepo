@@ -96,23 +96,20 @@ export type NameConfig = {
   deep: NameDeepConfig;
 };
 
-export type SwipePartnerLevel =
-  | "none"
-  | "partner"
-  | "conservative"
-  | "aggressive"
-  | "dominant";
-
-export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
-
+/**
+ * Scroll admission knobs. Mirrors SwipeConfig in _shared/discovery-config.ts.
+ *
+ * THE FIVE 2026-08-26 RANKING KNOBS ARE GONE (MESITA-1859): weightProximity,
+ * starsExponent, logDivisor, partnerBias and randomnessMax carried the retired
+ * two-signal SUM and had sat unread since the blend replaced it. A dead
+ * `weightProximity` beside a live per-mode Proximity exponent reads as a
+ * second, competing dial. `categoryFilter` is the sixth unread field; it stays
+ * on the blob and gets no control.
+ */
 export type SwipeConfig = {
   radiusKm: number;
   closingBufferMin: number;
-  weightProximity: number;
-  starsExponent: number;
-  logDivisor: number;
-  partnerBias: SwipePartnerBias;
-  randomnessMax: number;
+  /** Guest category-filter default. UNREAD — rendered nowhere. */
   categoryFilter: boolean;
   minReviews: number;
   savedAt: string | null;
@@ -130,7 +127,10 @@ export type GeneralConfig = {
 };
 
 export type DiscoveryConfig = {
+  /** Word's vector, and the fallback under every mode with no column. */
   weights: Record<SignalKey, number>;
+  /** One exponent vector per wired mode (MESITA-1859). Mask stays outer. */
+  weightsByMode: Record<WeightedModeKey, Record<SignalKey, number>>;
   params: SignalParams;
   slotting: { enabled: boolean; everyNth: number };
   filters: DiscoveryFilters;
@@ -273,6 +273,27 @@ export type DiscoveryFilters = {
 const WIRED_ENGINE_KEYS = ["swipe"] as const;
 export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 
+/**
+ * Mirrors WEIGHTED_MODE_KEYS in _shared/discovery-matrix.ts — the modes that
+ * earn a column in the weights table on Discovery Modes (MESITA-1859).
+ *
+ * A mode is here when BOTH halves hold: some non-test file calls
+ * `weightsForMode` for it, AND its mask carries more than one signal. Word
+ * satisfies the first and fails the second — its mask is `["name"]`, and a
+ * one-factor `s^w` is a monotone transform of `s`, so no exponent can reorder
+ * a Word result. Feed ranks by cosine; Chat and Favorites have no engine, and
+ * Favorites' mask is empty besides.
+ *
+ * Map is CONDITIONALLY real: consumer-web-list-places skips the reorder
+ * entirely when Google fill returned rows, which is why its column's badge
+ * reads Fallback rather than Enforced.
+ *
+ * The EF twin's own contract test asserts both halves. These are PERSISTED
+ * keys: `swipe` is the stored key and Scroll is only its label.
+ */
+export const WEIGHTED_MODE_KEYS = ["map", "swipe"] as const;
+export type WeightedModeKey = (typeof WEIGHTED_MODE_KEYS)[number];
+
 /** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
@@ -358,25 +379,11 @@ const NAME_MESITA_COUNT_DEFAULT = 3;
 const NAME_GOOGLE_COUNT_DEFAULT = 3;
 const NAME_DEEP_COUNT_DEFAULT = 9;
 
-const SWIPE_RADIUS_KM_MIN = 1;
-const SWIPE_RADIUS_KM_MAX = 50;
+/** Exported since MESITA-1859 gave Scroll a live card with three fields. */
+export const SWIPE_RADIUS_KM_MIN = 1;
+export const SWIPE_RADIUS_KM_MAX = 50;
 const SWIPE_CLOSING_BUFFER_MIN = 0;
-const SWIPE_CLOSING_BUFFER_MAX = 180;
-const SWIPE_STARS_EXPONENT_MIN = 1;
-const SWIPE_STARS_EXPONENT_MAX = 3;
-const SWIPE_LOG_DIVISOR_MIN = 1;
-const SWIPE_LOG_DIVISOR_MAX = 20;
-const SWIPE_PARTNER_BIAS_MIN = 1;
-const SWIPE_PARTNER_BIAS_MAX = 2;
-const SWIPE_RANDOMNESS_MAX_MIN = 1;
-const SWIPE_RANDOMNESS_MAX_MAX = 2;
-const SWIPE_PARTNER_LEVELS = [
-  "none",
-  "partner",
-  "conservative",
-  "aggressive",
-  "dominant",
-] as const satisfies readonly SwipePartnerLevel[];
+export const SWIPE_CLOSING_BUFFER_MAX = 180;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 const CHAT_PROMPT_MAX = 12_000;
 
@@ -508,22 +515,9 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
-  none: 1,
-  partner: 1.25,
-  conservative: 1.5,
-  aggressive: 1.75,
-  dominant: 2,
-};
-
 export const DEFAULT_SWIPE: SwipeConfig = {
   radiusKm: 5,
   closingBufferMin: 30,
-  weightProximity: 0.7,
-  starsExponent: 1.5,
-  logDivisor: 10,
-  partnerBias: DEFAULT_SWIPE_PARTNER_BIAS,
-  randomnessMax: 1.3,
   categoryFilter: false,
   minReviews: 1,
   savedAt: null,
@@ -552,18 +546,33 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   randomness: {},
 };
 
+const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
+  proximity: 1,
+  timing: 1,
+  category: 1,
+  popularity: 1,
+  name: 1,
+  summary: 1,
+  enriched: 1,
+  partnered: 1,
+  randomness: 0.35,
+};
+
+/**
+ * Mirrors DISCOVERY_DEFAULTS.weightsByMode. Day zero equals the global vector
+ * per wired mode, so the first deploy moves no deck. The `Reset to defaults`
+ * ghost button on each column writes this back.
+ */
+export const DEFAULT_WEIGHTS_BY_MODE: Record<
+  WeightedModeKey,
+  Record<SignalKey, number>
+> = Object.fromEntries(
+  WEIGHTED_MODE_KEYS.map((mode) => [mode, { ...DEFAULT_WEIGHTS }]),
+) as Record<WeightedModeKey, Record<SignalKey, number>>;
+
 export const DEFAULT_CONFIG: DiscoveryConfig = {
-  weights: {
-    proximity: 1,
-    timing: 1,
-    category: 1,
-    popularity: 1,
-    name: 1,
-    summary: 1,
-    enriched: 1,
-    partnered: 1,
-    randomness: 0.35,
-  },
+  weights: DEFAULT_WEIGHTS,
+  weightsByMode: DEFAULT_WEIGHTS_BY_MODE,
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: { enabled: true, everyNth: 5 },
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
@@ -602,9 +611,9 @@ export const ENGINES: {
     label: "Swipe",
     fn: "swipe()",
     input: "Ready pool + guest geo.",
-    process: "Parked. Home is Soon. When the deck runs, Places Lineup ranks under the Swipe mask. Admission stays radius, reviews, open+buffer, and type batteries.",
-    output: "Ordered Home deck, when unparked.",
-    state: "PARKED",
+    process: "Live. Home's Scroll pill is the ranked deck. Places Lineup ranks under the Scroll mask, reading the Scroll column of the per-mode weights table. Admission stays radius, reviews, open+buffer, and type batteries. Slotting moves a promoting place into every Nth position after the blend.",
+    output: "Ordered Home deck.",
+    state: "LIVE",
     wired: "swipe",
     apis: [],
   },
@@ -1234,6 +1243,23 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     weights[key] = Math.round(v * 100) / 100;
   }
 
+  // Per-mode exponents (MESITA-1859). Mirrors normalizeDiscoveryConfig's own
+  // branch EXACTLY, including the fallback: a missing column seeds from THIS
+  // BLOB's vector, never from DEFAULT_CONFIG. The live config carries
+  // hand-tuned global exponents, and seeding from the in-code defaults would
+  // quietly revert every one of them the first time the page loaded.
+  const rawByMode = (r.weightsByMode ?? {}) as Record<string, unknown>;
+  const weightsByMode = {} as Record<WeightedModeKey, Record<SignalKey, number>>;
+  for (const mode of WEIGHTED_MODE_KEYS) {
+    const bag = (rawByMode[mode] ?? {}) as Record<string, unknown>;
+    const col = {} as Record<SignalKey, number>;
+    for (const key of SIGNAL_KEYS) {
+      const v = num(bag[key], weights[key], WEIGHT_MIN, weightMaxFor(key));
+      col[key] = Math.round(v * 100) / 100;
+    }
+    weightsByMode[mode] = col;
+  }
+
   const f = (r.filters ?? {}) as Record<string, unknown>;
   const e = (r.engines ?? {}) as Record<string, unknown>;
 
@@ -1271,6 +1297,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
 
   return {
     weights: weights as Record<SignalKey, number>,
+    weightsByMode,
     params,
     slotting: {
       enabled: typeof s.enabled === "boolean" ? s.enabled : DEFAULT_CONFIG.slotting.enabled,
@@ -1315,18 +1342,6 @@ function coerceSavedAt(raw: unknown): string | null {
 
 function coerceSwipe(raw: unknown): SwipeConfig {
   const s = (raw ?? {}) as Record<string, unknown>;
-  const biasRaw = (s.partnerBias ?? {}) as Record<string, unknown>;
-  const partnerBias = {} as SwipePartnerBias;
-  for (const key of SWIPE_PARTNER_LEVELS) {
-    partnerBias[key] = Math.round(
-      num(
-        biasRaw[key],
-        DEFAULT_SWIPE.partnerBias[key],
-        SWIPE_PARTNER_BIAS_MIN,
-        SWIPE_PARTNER_BIAS_MAX,
-      ) * 100,
-    ) / 100;
-  }
   return {
     radiusKm: Math.round(
       num(s.radiusKm, DEFAULT_SWIPE.radiusKm, SWIPE_RADIUS_KM_MIN, SWIPE_RADIUS_KM_MAX) * 10,
@@ -1339,30 +1354,6 @@ function coerceSwipe(raw: unknown): SwipeConfig {
         SWIPE_CLOSING_BUFFER_MAX,
       ),
     ),
-    weightProximity: Math.round(
-      num(s.weightProximity, DEFAULT_SWIPE.weightProximity, 0, 1) * 100,
-    ) / 100,
-    starsExponent: Math.round(
-      num(
-        s.starsExponent,
-        DEFAULT_SWIPE.starsExponent,
-        SWIPE_STARS_EXPONENT_MIN,
-        SWIPE_STARS_EXPONENT_MAX,
-      ) * 100,
-    ) / 100,
-    logDivisor: Math.round(
-      num(s.logDivisor, DEFAULT_SWIPE.logDivisor, SWIPE_LOG_DIVISOR_MIN, SWIPE_LOG_DIVISOR_MAX) *
-        100,
-    ) / 100,
-    partnerBias,
-    randomnessMax: Math.round(
-      num(
-        s.randomnessMax,
-        DEFAULT_SWIPE.randomnessMax,
-        SWIPE_RANDOMNESS_MAX_MIN,
-        SWIPE_RANDOMNESS_MAX_MAX,
-      ) * 100,
-    ) / 100,
     categoryFilter: typeof s.categoryFilter === "boolean"
       ? s.categoryFilter
       : DEFAULT_SWIPE.categoryFilter,
