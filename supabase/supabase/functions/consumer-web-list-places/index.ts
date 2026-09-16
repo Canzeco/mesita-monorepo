@@ -552,7 +552,7 @@ Deno.serve(async (req) => {
     );
     const lineupOpts = {
       center,
-      weights: mapLineupWeights(cfg.weights),
+      weights: mapLineupWeights(cfg),
       // The bought lane, live since MESITA-1855. Applied inside each listed
       // lane, never over the concatenation — see reorderListedLanes.
       slotting: cfg.slotting,

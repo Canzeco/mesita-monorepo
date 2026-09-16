@@ -199,36 +199,50 @@ Deno.test("swipe knobs default on an old blob and clamp", () => {
     swipe: {
       radiusKm: 99,
       closingBufferMin: -4,
-      weightProximity: 2,
-      starsExponent: 0.2,
-      logDivisor: 99,
-      partnerBias: { none: 0.5, dominant: 9 },
       categoryFilter: "yes",
       minReviews: -1,
-      randomnessMax: 9,
       savedAt: "not-a-date",
     },
   });
   assertEquals(clamped.swipe.radiusKm, 50);
   assertEquals(clamped.swipe.closingBufferMin, 0);
-  assertEquals(clamped.swipe.weightProximity, 1);
-  assertEquals(clamped.swipe.starsExponent, 1);
-  assertEquals(clamped.swipe.logDivisor, 20);
-  assertEquals(clamped.swipe.partnerBias.none, 1);
-  assertEquals(clamped.swipe.partnerBias.dominant, 2);
-  assertEquals(clamped.swipe.partnerBias.partner, 1.25);
   assertEquals(clamped.swipe.categoryFilter, false);
   assertEquals(clamped.swipe.minReviews, 0);
-  assertEquals(clamped.swipe.randomnessMax, 2);
-  assertEquals(
-    normalizeDiscoveryConfig({ swipe: { randomnessMax: 0.4 } }).swipe.randomnessMax,
-    1,
-  );
   assertEquals(clamped.swipe.savedAt, null);
   assertEquals(
     normalizeDiscoveryConfig({ swipe: { savedAt: "2026-08-26T18:00:00.000Z" } }).swipe.savedAt,
     "2026-08-26T18:00:00.000Z",
   );
+});
+
+// THE FIVE UNREAD RANKING KNOBS ARE DELETED (MESITA-1859), not merely
+// unrendered. A blob that still carries them must come back WITHOUT them, or
+// `weightProximity: 0.7` sits in jsonb next to a live per-mode Proximity
+// exponent and the next reader has to work out which one the deck obeys.
+Deno.test("the retired swipe ranking knobs do not survive a normalize", () => {
+  const swipe = normalizeDiscoveryConfig({
+    swipe: {
+      radiusKm: 7,
+      weightProximity: 0.7,
+      starsExponent: 1.5,
+      logDivisor: 10,
+      partnerBias: { none: 1, dominant: 2 },
+      randomnessMax: 1.3,
+    },
+  }).swipe as Record<string, unknown>;
+  for (
+    const dead of [
+      "weightProximity",
+      "starsExponent",
+      "logDivisor",
+      "partnerBias",
+      "randomnessMax",
+    ]
+  ) {
+    assertEquals(dead in swipe, false, dead);
+  }
+  // The admission knobs beside them are untouched.
+  assertEquals(swipe.radiusKm, 7);
 });
 
 Deno.test("normalize folds semantic weight and params onto summary", () => {

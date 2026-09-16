@@ -43,6 +43,14 @@ export type DiscoverySlice =
   | "mapSupers"
   | "mapFloors"
   | "mapPull"
+  // Narrow weight slices (MESITA-1859). The weights table on Discovery Modes
+  // has ONE SAVE PER COLUMN, and `weights`, `params` and `slotting` all ride
+  // the single `signals` slice below — so a per-column save of the whole
+  // slice would be the mapSupers/mapFloors/mapPull incident again, one floor
+  // up: saving Map would silently revert Scroll, the signal params, and the
+  // slotting config. Each column writes only its own mode key.
+  | "weightsMap"
+  | "weightsScroll"
   | "nameFast"
   | "nameDeep"
   | "swipe"
@@ -63,6 +71,8 @@ export async function updateDiscoveryConfig(
         "social",
         "chat",
         "map",
+        "weightsMap",
+        "weightsScroll",
         "nameFast",
         "nameDeep",
         "swipe",
@@ -95,6 +105,16 @@ export async function updateDiscoveryConfig(
     swipe: keys.has("swipe")
       ? { ...config.swipe, savedAt: new Date().toISOString() }
       : live.config.swipe,
+    // Per-mode, never whole-slice: `weightsMap` touches `map` and nothing
+    // else, so the two columns cannot overwrite each other.
+    weightsByMode: {
+      ...live.config.weightsByMode,
+      ...(keys.has("weightsMap") ? { map: config.weightsByMode.map } : null),
+      ...(keys.has("weightsScroll") ? { swipe: config.weightsByMode.swipe } : null),
+    },
+    // The global vector stays on `signals`. No console edits it directly any
+    // more — it is Word's vector and the per-mode fallback — but a params save
+    // must not drop it.
     weights: keys.has("signals") ? config.weights : live.config.weights,
     params: keys.has("signals") ? config.params : live.config.params,
     slotting: keys.has("signals") ? config.slotting : live.config.slotting,

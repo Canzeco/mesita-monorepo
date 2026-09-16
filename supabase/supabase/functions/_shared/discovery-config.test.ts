@@ -46,6 +46,10 @@ import {
   SIGNAL_LABELS,
   SIGNALS,
 } from "./discovery-signals.ts";
+import {
+  WEIGHTED_MODE_KEYS,
+  weightsForMode,
+} from "./discovery-matrix.ts";
 
 const CATALOG_SRC = Deno.readTextFileSync(
   new URL(
@@ -165,6 +169,26 @@ Deno.test("the admin console mirrors the ceiling it renders — non-empty, and b
   }
 });
 
+Deno.test("both packages agree on the wired-mode column set", () => {
+  // Mode keys are PERSISTED. `swipe` is the stored key and Scroll only its
+  // label, and these two files pin each OTHER — a rename on one side alone
+  // does not fail a type check anywhere, it silently resets live config to
+  // the in-code defaults on the next read.
+  const listed = CATALOG_SRC.match(/export const WEIGHTED_MODE_KEYS = \[([^\]]*)\]/);
+  assert(listed, "could not find WEIGHTED_MODE_KEYS in catalog.ts");
+  const twin = [...listed[1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+  assertEquals(twin, [...WEIGHTED_MODE_KEYS]);
+  // …and the admin twin rebuilds the same bag key by key, with the same
+  // fallback: a missing column seeds from THIS BLOB's vector, never from the
+  // in-code defaults. Seeding from defaults would revert every hand-tuned
+  // global exponent the first time the console loaded.
+  assertEquals(
+    CATALOG_SRC.includes("num(bag[key], weights[key], WEIGHT_MIN, weightMaxFor(key))"),
+    true,
+    "catalog.ts must mirror the weightsByMode clamp and its fallback",
+  );
+});
+
 Deno.test("both packages agree on the nine signal keys", () => {
   // Mode keys and signal keys are PERSISTED. A rename on one side alone does
   // not fail a type check — it silently resets live config to defaults.
@@ -192,6 +216,9 @@ Deno.test("every Record<SignalKey, ...> map in this package has full key coverag
     DEFAULT_SIGNAL_PARAMS,
     SIGNAL_PARAM_BOUNDS,
     "DISCOVERY_DEFAULTS.weights": DISCOVERY_DEFAULTS.weights,
+    "DISCOVERY_DEFAULTS.weightsByMode.map": DISCOVERY_DEFAULTS.weightsByMode.map,
+    "DISCOVERY_DEFAULTS.weightsByMode.swipe":
+      DISCOVERY_DEFAULTS.weightsByMode.swipe,
   };
   for (const [label, map] of Object.entries(maps)) {
     assertEquals(Object.keys(map).sort(), expected, `${label} is missing a signal key`);
@@ -290,4 +317,86 @@ Deno.test("dropping a legacy key logs ONCE, structured", () => {
   assertEquals(payload.foldedTo, ["enriched", "partnered"]);
   // Structured, not interpolated: a grep-able object, not a sentence.
   assertEquals(typeof payload, "object");
+});
+
+// ── Per-mode exponents (MESITA-1859) ────────────────────────────────────────
+//
+// `weightsByMode` is rebuilt key by key like every other branch of the
+// normalizer, which is why these tests exist: a key the loop forgets is
+// dropped on the next unrelated Save, nothing throws, and no test goes red
+// unless one asserts the survival directly.
+
+Deno.test("a per-mode exponent round-trips, clamped to that signal's ceiling", () => {
+  const cfg = normalizeDiscoveryConfig({
+    weightsByMode: { map: { proximity: 2, partnered: 4 } },
+  });
+  assertEquals(cfg.weightsByMode.map.proximity, 2);
+  // Partnered's ceiling is 2, not the uniform 4 — money may not become a sort
+  // key from the console, on any mode.
+  assertEquals(cfg.weightsByMode.map.partnered, 2);
+  // Scroll is untouched by a Map-only blob.
+  assertEquals(
+    cfg.weightsByMode.swipe,
+    DISCOVERY_DEFAULTS.weightsByMode.swipe,
+  );
+  // Rounded to two decimals, or the admin field (step 0.05) would leave the
+  // page permanently dirty against its own saved value.
+  assertEquals(
+    normalizeDiscoveryConfig({ weightsByMode: { swipe: { timing: 1.7000000000000002 } } })
+      .weightsByMode.swipe.timing,
+    1.7,
+  );
+});
+
+Deno.test("a pre-1859 blob with no weightsByMode scores exactly as it did", () => {
+  // THE MIGRATION, IN ONE ASSERTION. The live blob carries HAND-TUNED global
+  // exponents. Seeding a missing column from DISCOVERY_DEFAULTS instead of
+  // from this blob's own vector would revert every one of them on the first
+  // read after deploy — a silent re-tune of the live deck, with nothing in
+  // any log. So 1.5 has to come back as 1.5, on both columns.
+  const cfg = normalizeDiscoveryConfig({ weights: { proximity: 1.5 } });
+  for (const mode of WEIGHTED_MODE_KEYS) {
+    assertEquals(cfg.weightsByMode[mode], cfg.weights);
+    assertEquals(cfg.weightsByMode[mode].proximity, 1.5);
+  }
+  // An untouched blob lands on the shipped defaults, unchanged.
+  for (const mode of WEIGHTED_MODE_KEYS) {
+    assertEquals(
+      normalizeDiscoveryConfig({}).weightsByMode[mode],
+      DISCOVERY_DEFAULTS.weights,
+    );
+  }
+  // …and the mode that ranks reads the same numbers it read yesterday.
+  assertEquals(
+    weightsForMode("swipe", cfg.weights, cfg.weightsByMode),
+    weightsForMode("swipe", cfg.weights),
+  );
+});
+
+Deno.test("an unrelated Save does not lose a per-mode exponent", () => {
+  // The same shape as the mesita_level incident above: the console saves the
+  // CHAT PROMPT, and the save path round-trips the whole blob through this
+  // normalizer. A forgotten branch silently reverts every tuned column.
+  const stored = {
+    weightsByMode: { swipe: { proximity: 2.25 }, map: { timing: 0.5 } },
+    chat: { prompt: "before" },
+  };
+  const first = normalizeDiscoveryConfig(stored);
+  const afterSave = normalizeDiscoveryConfig({ ...first, chat: { prompt: "after" } });
+  assertEquals(afterSave.weightsByMode.swipe.proximity, 2.25);
+  assertEquals(afterSave.weightsByMode.map.timing, 0.5);
+  assertEquals(afterSave.chat.prompt, "after");
+});
+
+Deno.test("only the wired modes are stored — no column for a mode nothing ranks", () => {
+  const cfg = normalizeDiscoveryConfig({
+    weightsByMode: { word: { name: 3 }, catalog: { proximity: 3 }, favorites: { timing: 3 } },
+  });
+  assertEquals(Object.keys(cfg.weightsByMode).sort(), [...WEIGHTED_MODE_KEYS].sort());
+  // Word's stored number is not merely unused, it is not stored at all — and
+  // Word still ranks off the global vector.
+  assertEquals(
+    weightsForMode("word", cfg.weights, cfg.weightsByMode).name,
+    DISCOVERY_DEFAULTS.weights.name,
+  );
 });

@@ -4,10 +4,14 @@ import { Blocks, Compass, LayoutGrid, Search } from "lucide-react";
 // Search Sources). The prefix is frozen: /filters-config. Tabs live here so
 // layout, redirects, and deep links share one list.
 //
-// Matrix  = how modes, sources and signals relate, plus the signal weights.
-//           Neither a mode nor a source, which is why it owns a page rather
-//           than riding on top of one (Pato, 2026-09-08).
-// Modes   = ways guests look (each names the sources it may call).
+// Matrix  = how modes, sources and signals relate, plus the shape numbers
+//           behind each signal. Neither a mode nor a source, which is why it
+//           owns a page rather than riding on top of one (Pato, 2026-09-08).
+//           THE WEIGHTS LEFT THIS PAGE at MESITA-1859: there is no longer one
+//           exponent per signal, there is one per signal PER MODE, and a
+//           per-mode number belongs on the page about modes.
+// Modes   = ways guests look (each names the sources it may call), plus the
+//           signal-weights table — the one control that spans modes.
 // Sources = the nine searches themselves. Google types live here.
 //
 // THE SECOND TAB IS SEARCH SOURCES, NOT DISCOVERY SOURCES (Pato,

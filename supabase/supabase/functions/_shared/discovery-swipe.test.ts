@@ -12,7 +12,7 @@ import { weightsForMode } from "./discovery-matrix.ts";
 
 const NOW = new Date("2026-08-21T18:00:00Z");
 const GEO = { lat: 25.67, lng: -100.31 };
-const WEIGHTS = swipeLineupWeights(DISCOVERY_DEFAULTS.weights);
+const WEIGHTS = swipeLineupWeights(DISCOVERY_DEFAULTS);
 const PARAMS = DISCOVERY_DEFAULTS.params;
 /** Merit order only. These tests are about the blend, not the bought lane. */
 const SLOT_OFF = { enabled: false, everyNth: 0 };
@@ -54,8 +54,15 @@ function row(
 }
 
 Deno.test("swipe mask matches the locked matrix", () => {
-  const swipe = swipeLineupWeights(DISCOVERY_DEFAULTS.weights);
-  assertEquals(swipe, weightsForMode("swipe", DISCOVERY_DEFAULTS.weights));
+  const swipe = swipeLineupWeights(DISCOVERY_DEFAULTS);
+  assertEquals(
+    swipe,
+    weightsForMode(
+      "swipe",
+      DISCOVERY_DEFAULTS.weights,
+      DISCOVERY_DEFAULTS.weightsByMode,
+    ),
+  );
   assertEquals(swipe.name, 0);
   assertEquals(swipe.summary, 0);
   assertEquals(swipe.enriched, DISCOVERY_DEFAULTS.weights.enriched);
@@ -145,11 +152,35 @@ Deno.test("recommend-swipe ranks with the Swipe mask, not the old sum", async ()
   const src = await Deno.readTextFile(
     new URL("../consumer-web-recommend-swipe/index.ts", import.meta.url),
   );
+  // The mode key lives in ONE named function per mode, so the console's
+  // "who reads this column" badge stays checkable against the code.
   assertEquals(src.includes("swipeLineupWeights"), true);
   assertEquals(src.includes("weightsForMode"), false);
-  assertEquals(src.includes("weightProximity"), false);
-  assertEquals(src.includes("partnerBias"), false);
   assertEquals(src.includes("swipeBlend"), false);
+  // The whole config goes in, because the Scroll column lives on it
+  // (MESITA-1859). Passing `cfg.weights` alone would compile and would
+  // silently ignore every per-mode number an operator ever saved.
+  assertEquals(src.includes("swipeLineupWeights(cfg)"), true);
+  assertEquals(src.includes("swipeLineupWeights(cfg.weights)"), false);
+});
+
+Deno.test("swipeLineupWeights reads the stored Scroll column, and Map's cannot reach it", () => {
+  const tuned = {
+    ...DISCOVERY_DEFAULTS,
+    weightsByMode: {
+      ...DISCOVERY_DEFAULTS.weightsByMode,
+      swipe: { ...DISCOVERY_DEFAULTS.weightsByMode.swipe, proximity: 2.5 },
+      map: { ...DISCOVERY_DEFAULTS.weightsByMode.map, proximity: 0.25 },
+    },
+  };
+  assertEquals(swipeLineupWeights(tuned).proximity, 2.5);
+  // Untouched signals still read the Scroll column's own default.
+  assertEquals(
+    swipeLineupWeights(tuned).timing,
+    DISCOVERY_DEFAULTS.weightsByMode.swipe.timing,
+  );
+  // The mask still wins over anything stored.
+  assertEquals(swipeLineupWeights(tuned).name, 0);
 });
 
 // ── The bought lane on Scroll (MESITA-1855) ──────────────────────────────────

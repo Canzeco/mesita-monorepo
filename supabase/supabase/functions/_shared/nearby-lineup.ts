@@ -14,7 +14,7 @@ import {
 } from "./discovery-blend.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
 import { toLineupPlace, toPromotingFields } from "./discovery-place.ts";
-import type { SignalKey } from "./discovery-signals.ts";
+import type { DiscoveryConfig } from "./discovery-config.ts";
 import {
   isMesitaPartnerRow,
   type MesitaNearbyRow,
@@ -45,10 +45,18 @@ export function mapLineupIntent(types: readonly string[]): {
   return { categories: [...types], families };
 }
 
+/**
+ * Map's exponent vector: the Map column, under the Map mask.
+ *
+ * CONDITIONALLY READ, and the console says so. `consumer-web-list-places`
+ * skips `reorderListedLanes` entirely when the Google-fill branch returned
+ * rows, so this vector ranks only when Google fill came back empty — which is
+ * why the Map column's badge is `fallback`, not `enforced`.
+ */
 export function mapLineupWeights(
-  global: Record<SignalKey, number>,
+  cfg: Pick<DiscoveryConfig, "weights" | "weightsByMode">,
 ): SignalWeights {
-  return weightsForMode("map", global);
+  return weightsForMode("map", cfg.weights, cfg.weightsByMode);
 }
 
 function toMapLineupPlace(row: Record<string, unknown>) {

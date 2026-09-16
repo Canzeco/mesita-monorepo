@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
         rows as unknown as Record<string, unknown>[],
       ),
       guestGeo,
-      swipeLineupWeights(cfg.weights),
+      swipeLineupWeights(cfg),
       // The bought lane, live since MESITA-1855. `ranked: false` already
       // bypasses this whole branch, so slotting never runs on pool order.
       cfg.slotting,

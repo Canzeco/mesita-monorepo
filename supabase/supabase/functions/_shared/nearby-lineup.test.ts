@@ -89,7 +89,7 @@ Deno.test("a far partner outside takeClosest never enters", () => {
   assertEquals(ids.includes("near-p"), true);
   const reordered = reorderListedLanes(merged, {
     center: CENTER,
-    weights: mapLineupWeights(DISCOVERY_DEFAULTS.weights),
+    weights: mapLineupWeights(DISCOVERY_DEFAULTS),
     slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
   });
@@ -123,7 +123,7 @@ Deno.test("a cafe never jumps a partner after Lineup", () => {
   const merged = mergeNearbyCatalog([cafe, partner], [], CENTER, LANES);
   const out = reorderListedLanes(merged, {
     center: CENTER,
-    weights: mapLineupWeights(DISCOVERY_DEFAULTS.weights),
+    weights: mapLineupWeights(DISCOVERY_DEFAULTS),
     slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
     ...mapLineupIntent(["restaurant", "cafe"]),
@@ -160,7 +160,7 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
     content_state: "queued",
   };
   const merged = mergeNearbyCatalog([lo, hi], [], CENTER, LANES);
-  const enrichedOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS.weights) };
+  const enrichedOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS) };
   for (const key of Object.keys(enrichedOnly) as (keyof typeof enrichedOnly)[]) {
     enrichedOnly[key] = 0;
   }
@@ -187,7 +187,7 @@ Deno.test("Google lane stays distance order", () => {
   const merged = mergeNearbyCatalog([], google, CENTER, LANES);
   const out = reorderListedLanes(merged, {
     center: CENTER,
-    weights: mapLineupWeights(DISCOVERY_DEFAULTS.weights),
+    weights: mapLineupWeights(DISCOVERY_DEFAULTS),
     slotting: SLOT_OFF,
     params: DISCOVERY_DEFAULTS.params,
   });
@@ -200,7 +200,7 @@ Deno.test("Google lane stays distance order", () => {
 });
 
 Deno.test("Map mask zeros randomness against the blob default", () => {
-  assertEquals(mapLineupWeights(DISCOVERY_DEFAULTS.weights).randomness, 0);
+  assertEquals(mapLineupWeights(DISCOVERY_DEFAULTS).randomness, 0);
   assertEquals(DISCOVERY_DEFAULTS.weights.randomness, 0.35);
 });
 
@@ -240,7 +240,7 @@ Deno.test("throw during blend returns the closest-N merge order", () => {
   const poisoned = [bad, ...merged.slice(1)];
   const out = reorderListedLanes(poisoned, {
     center: CENTER,
-    weights: mapLineupWeights(DISCOVERY_DEFAULTS.weights),
+    weights: mapLineupWeights(DISCOVERY_DEFAULTS),
     slotting: SLOT_OFF,
   });
   assertEquals(out, poisoned);
