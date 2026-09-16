@@ -3,28 +3,51 @@
 // THE BAR YOU TALK TO. Pato, 2026-09-16: *"home, include bar to talk to
 // chatbot for easier shit"*.
 //
+// ── WHY IT IS A DARK BAND (MESITA-1931) ────────────────────────────────────
+//
+// It shipped as a white card among white cards and Pato's whole review was
+// *"MAKE A BETTER DESIGN WHAT THE FUCK IS THAT"*. He was right: four containers
+// with the same radius, border, fill and gap, so nothing on Home was first —
+// and the one thing the screen exists for was the quietest object on it, grey
+// placeholder over a grey DISABLED arrow, indistinguishable from a switched-off
+// search field.
+//
+// The band is now the only dark object on a pink page, so the eye lands here
+// and nowhere else. It is the same move the Wallet needed (MESITA-1825, which
+// ate "wtf is that" twice): the fix for two things that look identical is a
+// CHROME RANK, never a third box.
+//
+// IT PAINTS WITH THE DOCK TOKENS, NOT `--sidebar-*`. The two resolve to the
+// same ink today — `--sidebar` IS `var(--dock)` — and that is exactly why the
+// distinction has to be kept: `--sidebar-*` is the RAIL's private vocabulary,
+// and a page surface borrowing it would make "the rail paints only with
+// sidebar tokens" unenforceable the day either one moves.
+//
+// THE ANSWERS LIVE INSIDE THE BAND. A reply rendered as a light card below it
+// would be a fifth box, and the conversation would visibly detach from the
+// thing that produced it. Inside, the band grows as you talk and stays one
+// object. The chips and the disclosure moved in for the same reason — the
+// disclosure used to float between the chips and the first card, belonging to
+// neither.
+//
 // ── WHAT IT IS TODAY ───────────────────────────────────────────────────────
 //
 // A ROUTER MADE OF WORDS. You say what you want changed; it names the screen
-// that holds it and opens the door. That is the whole behaviour, and it is
-// deliberately the whole behaviour: this package has no backend and may not
-// grow one, so a bar that appeared to reach an agent would be the one lie the
-// mock is not allowed to tell (see the package CLAUDE.md — every name, number
-// and photo here is invented and must stay invented).
+// that holds it and opens the door. That is deliberately the whole behaviour:
+// this package has no backend and may not grow one, so a bar that appeared to
+// reach an agent would be the one lie the mock is not allowed to tell.
 //
 // It earns its place anyway. "change my hours" → Profile, one hop, no hunt
-// through a rail of twelve rows. An operator who never learns where Hours
-// lives still gets there.
+// down a rail of twelve rows.
 //
 // ── WHAT IT BECOMES ────────────────────────────────────────────────────────
 //
 // The same bar, answering from the agent instead of from `INTENTS`, and
-// WRITING rather than pointing. That is a separate issue because it has real
-// questions this one does not: which agent stack, and what the agent may write
-// — editing a profile by talking crosses the same gate `PlaceTabGate` enforces
-// for humans, so the agent needs the CALLER's identity, never service-role
-// blanket rights. The shape here is chosen to survive that swap: one intent in,
-// one sentence and one door out.
+// WRITING rather than pointing (MESITA-1911). That issue has real questions
+// this one does not: which agent stack, and what the agent may write — talking
+// crosses the same gate `PlaceTabGate` enforces for humans, so it needs the
+// CALLER's identity, never service-role blanket rights. The shape here is
+// chosen to survive the swap: one intent in, one sentence and one door out.
 //
 // ── WHY THE TRANSCRIPT DIES ON NAVIGATION ──────────────────────────────────
 //
@@ -37,8 +60,20 @@ import Link from "next/link";
 import { ArrowUp, Sparkles, X } from "lucide-react";
 import { placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
-import { FOCUS_RING_CLASS, GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+
+// THE BAND'S OWN FOCUS RING. `FOCUS_RING_CLASS` offsets against
+// `--background`, the light page — drawn on this ink it would ring a control
+// in a colour that is nowhere near it. Same two laws as the shared one:
+// `outline-hidden` (NOT `outline-none`, which leaves forced-colors users with
+// no indicator at all), and a real ring put back in the same string.
+const BAND_FOCUS =
+  "outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dock";
+
+const BAND_CHIP = cn(
+  "border-dock-border bg-dock-surface text-dock-foreground hover:bg-dock-surface-hover inline-flex items-center rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition",
+  BAND_FOCUS,
+);
 
 type Answer = {
   /** What a real agent would DO, said in the operator's own words. Never a
@@ -93,7 +128,8 @@ const INTENTS: Intent[] = [
   {
     match: /\b(menu|menus|carta|dish|dishes|plato)\b/,
     answer: {
-      reply: "Menus are a card on the profile — a PDF or a Drive link, and guests open whichever is newest.",
+      reply:
+        "Menus sit on the profile now — a PDF or a link, and guests open whichever is newest.",
       door: PROFILE("Open Profile › Menus"),
     },
   },
@@ -133,8 +169,8 @@ const INTENTS: Intent[] = [
     match: /\b(reward|rewards|cashback|loyalty|points|premio)\b/,
     answer: {
       reply:
-        "Rewards is one strategy at a time, set on its own screen — the dial is there and nowhere else, so two screens can never disagree about what a guest earns.",
-      door: { label: "Open Rewards", href: (id: string) => placeTabHref(id, "rewards") },
+        "Rewards is the dial on Visits — what a guest earns for closing a bill here, set in one place so two screens can never disagree about it.",
+      door: { label: "Open Visits", href: (id: string) => placeTabHref(id, "visits") },
     },
   },
   {
@@ -164,25 +200,26 @@ const INTENTS: Intent[] = [
     },
   },
   {
-    match: /\b(visit|visits|bill|check|cuenta|ticket)\b/,
+    match: /\b(visit|visits|bill|check|cuenta|ticket|tender)\b/,
     answer: {
       reply:
-        "A visit is a bill closed at the table. The reward applies before the total is shown, which is the only moment a guest believes it.",
+        "A visit is a bill closed at the table, and it can be settled by more than one tender at once. The reward applies before the total is shown, which is the only moment a guest believes it.",
       door: { label: "Open Visits", href: (id: string) => placeTabHref(id, "visits") },
     },
   },
   {
-    match: /\b(review|reviews|rating|stars|reseña)\b/,
+    match: /\b(review|reviews|rating|stars|rese(ñ|n)a)\b/,
     answer: {
-      reply: "Scores and reach are a card on the profile — Google and Mesita, Instagram and Facebook.",
+      reply:
+        "Reviews sit on the profile, in guests' own words, and a reply is public. I'd draft one and let you send it.",
       door: PROFILE("Open Profile › Reviews"),
     },
   },
   {
-    match: /\b(customer|customers|guest|guests|phone|cliente)\b/,
+    match: /\b(customer|customers|guest|guests|whatsapp|cliente)\b/,
     answer: {
       reply:
-        "Customers is who came, how often, what they spent, the class and plan they carry — and the contact you unlock one guest at a time, handle and phone together.",
+        "Customers is who came, how often, and the one fact you buy one guest at a time — their phone number.",
       door: {
         label: "Open Customers",
         href: (id: string) => placePageHref(id, "customers"),
@@ -242,34 +279,40 @@ export function AskBar({ placeId }: { placeId: string }) {
   function ask(said: string) {
     const text = said.trim();
     if (!text) return;
-    // NEWEST FIRST, directly under the bar. A transcript that grew downward
-    // would put the answer you are reading furthest from the box you typed in,
-    // and Home has a page below this that would keep being pushed away.
+    // NEWEST FIRST, directly under the composer. A transcript that grew
+    // downward would put the answer you are reading furthest from the box you
+    // typed in, and Home has a page below this that would keep being pushed
+    // away.
     setTurns((prev) => [{ id: nextId.current++, said: text, answer: answerFor(text) }, ...prev]);
     setDraft("");
     inputRef.current?.focus();
   }
 
   return (
-    <section aria-labelledby="ask-heading" className="flex flex-col gap-2">
+    // THE BAND IS FULL WIDTH. No max-width here and none coming: the console is
+    // fluid, and a 640px box centred in a 1700px page is the shape that has
+    // been deleted from this codebase twice.
+    <section
+      aria-labelledby="ask-heading"
+      className="bg-dock text-dock-foreground flex w-full flex-col gap-3 rounded-2xl p-3.5 sm:p-4"
+    >
       <h2 id="ask-heading" className="sr-only">
         Ask Mesita
       </h2>
 
-      {/* THE BAR IS FULL WIDTH. No max-width here and none coming: the console
-          is fluid, and a 640px box centred in a 1700px page is the shape that
-          has been deleted from this codebase twice. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           ask(draft);
         }}
-        className={cn(
-          "border-border bg-card shadow-card flex w-full items-center gap-2.5 rounded-2xl border py-2 pr-2 pl-3.5",
-          "focus-within:border-foreground/30 transition",
-        )}
+        // THE COMPOSER IS THE BRIGHTEST SURFACE IN THE BAND after the button.
+        // It sat at `dock-surface` — the same value as the chips and the
+        // answers — and a flat band is the same mistake as a flat page: the
+        // field you type in has to be the thing that looks typed-in-able, and
+        // on a dark ground that is a step in luminance, not a border alone.
+        className="border-dock-foreground/20 bg-dock-surface-hover focus-within:border-dock-foreground/40 flex w-full items-center gap-3 rounded-xl border py-2 pr-2 pl-3.5 transition"
       >
-        <Sparkles className="text-muted-foreground h-4 w-4 shrink-0" />
+        <Sparkles className="text-primary h-4 w-4 shrink-0" />
         <label htmlFor="ask" className="sr-only">
           Tell Mesita what to change
         </label>
@@ -280,32 +323,30 @@ export function AskBar({ placeId }: { placeId: string }) {
           onChange={(e) => setDraft(e.target.value)}
           autoComplete="off"
           placeholder="Tell Mesita what to change…"
-          // The bar carries the focus ring on the FORM, not the field: the ring
-          // belongs around the whole control an operator sees, and a second one
-          // inside it would draw a box within a box.
-          className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
+          // The ring lives on the FORM, not the field: it belongs around the
+          // whole control an operator sees, and a second one inside would draw
+          // a box within a box.
+          className="placeholder:text-dock-muted min-h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-hidden"
         />
         <button
           type="submit"
           disabled={draft.trim().length === 0}
           aria-label="Ask"
           className={cn(
-            "bg-foreground text-background flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:opacity-90 disabled:opacity-30",
-            FOCUS_RING_CLASS,
+            // PINK AT REST, never grey. The disabled state is the same button
+            // at 45% — a control that turns grey when empty is the exact thing
+            // that made this read as a switched-off search field.
+            "bg-primary text-primary-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:opacity-90 disabled:opacity-55",
+            BAND_FOCUS,
           )}
         >
           <ArrowUp className="h-4 w-4" />
         </button>
       </form>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {OPENERS.map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => ask(o)}
-            className={GHOST_PILL_BUTTON_CLASS}
-          >
+          <button key={o} type="button" onClick={() => ask(o)} className={BAND_CHIP}>
             {o}
           </button>
         ))}
@@ -313,7 +354,10 @@ export function AskBar({ placeId }: { placeId: string }) {
           <button
             type="button"
             onClick={() => setTurns([])}
-            className="text-muted-foreground hover:text-foreground ml-auto inline-flex items-center gap-1 text-[12px] font-semibold transition"
+            className={cn(
+              "text-dock-muted hover:text-dock-foreground ml-auto inline-flex items-center gap-1 rounded-full text-[12px] font-semibold transition",
+              BAND_FOCUS,
+            )}
           >
             <X className="h-3.5 w-3.5" />
             Clear
@@ -321,38 +365,31 @@ export function AskBar({ placeId }: { placeId: string }) {
         )}
       </div>
 
-      {/* THE DISCLOSURE, ALWAYS ON, NEVER A TOOLTIP. It is the same law the
-          MOCK strip keeps at the top of the window: this app is publicly
-          reachable, and a bar that let a stranger believe it had just edited a
-          real venue would be the worst thing on the page.
-          It is a FOOTNOTE and dressed as one. `TINY_LABEL_CLASS` — uppercase,
-          tracked — is the console's SECTION label, and wearing it here made a
-          caveat shout over the answers it was a caveat about. */}
-      <p className="text-muted-foreground px-0.5 text-[11px] leading-snug">
-        Scripted — it opens the screen that holds the answer; it does not write.
-      </p>
-
       {turns.length > 0 && (
-        <ol aria-live="polite" className="mt-1 flex flex-col gap-2">
+        <ol aria-live="polite" className="flex flex-col gap-2">
           {turns.map((t) => (
             <li
               key={t.id}
-              className="border-border bg-card shadow-card flex flex-col gap-2 rounded-2xl border p-3.5"
+              className="border-dock-border bg-dock-surface flex flex-col items-start gap-2 rounded-xl border p-3.5"
             >
               <p className="text-[13px] font-semibold">{t.said}</p>
-              <p className="text-muted-foreground text-[13px] leading-relaxed">
-                {t.answer.reply}
-              </p>
-              <Link
-                href={t.answer.door.href(placeId)}
-                className={cn(GHOST_PILL_BUTTON_CLASS, "self-start")}
-              >
+              <p className="text-dock-muted text-[13px] leading-relaxed">{t.answer.reply}</p>
+              <Link href={t.answer.door.href(placeId)} className={BAND_CHIP}>
                 {t.answer.door.label}
               </Link>
             </li>
           ))}
         </ol>
       )}
+
+      {/* THE DISCLOSURE, ALWAYS ON, NEVER A TOOLTIP, and now INSIDE the band it
+          is about. It is the same law the MOCK strip keeps at the top of the
+          window: this app is publicly reachable, and a bar that let a stranger
+          believe it had just edited a real venue would be the worst thing on
+          the page. */}
+      <p className="text-dock-muted text-[11px] leading-snug">
+        Scripted — it opens the screen that holds the answer; it does not write.
+      </p>
     </section>
   );
 }
