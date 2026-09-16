@@ -4,9 +4,9 @@
 // for one pathname pass every regex and light up together on screen. This
 // file renders the real Sidebar over a pathname matrix with a mocked router
 // and counts `aria-current="page"` — exactly one, on every route, in every
-// viewer state — and proves the rail at zero, at one, on a pool place, and at
-// `w-16`. It is the strongest proof this app has: no browser can get past the
-// OTP wall.
+// viewer state — and proves the rail at zero, at one, on a pool place, and in
+// its three bands. It is the strongest proof this app has: no browser can get
+// past the OTP wall.
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { resolveRailScope, type RailPlace } from "@/lib/rail-scope";
@@ -53,7 +53,6 @@ type Over = {
   places?: RailPlace[];
   isSuperAdmin?: boolean;
   viewerError?: boolean;
-  collapsed?: boolean;
   rememberedPlaceId?: string | null;
   lastPlaceId?: string | null;
 };
@@ -82,8 +81,6 @@ function render(pathname: string, over: Over = {}): string {
       isSuperAdmin={over.isSuperAdmin ?? false}
       viewerError={over.viewerError ?? false}
       accountLabel="pato@canzeco.com"
-      collapsed={over.collapsed ?? false}
-      onToggleCollapse={() => {}}
     />,
   );
 }
@@ -93,18 +90,18 @@ const hrefs = (html: string) => (html.match(/href="([^"]*)"/g) ?? []).map((m) =>
 const pillText = (html: string) =>
   (html.match(/<a[^>]*aria-current="page"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? "").replace(/<[^>]+>/g, "");
 const navOf = (html: string) => html.slice(html.indexOf("<nav"), html.indexOf("</nav>"));
-/** The footer — Collapse alone since MESITA-1844, pinned so the rail's empty
- *  space falls above it rather than between two footer items. */
+/** The footer — ACCOUNT alone since MESITA-1909, pinned so the rail's slack
+ *  falls between the rows and the person rather than below a control. */
 const footerOf = (html: string) => html.slice(html.indexOf("</nav>"));
+/** The head — the lockup, above `<nav>` and outside it. */
+const headOf = (html: string) => html.slice(0, html.indexOf("<nav"));
 const rows = (html: string) => html.match(/<a [^>]*href="[^"]*"/g) ?? [];
 /** Every DESTINATION label, in render order. The selector renders its
  *  subject's name in a different span, so it never appears here — a name is
  *  not a place to go (MESITA-1848). */
 const labels = (html: string) =>
   (html.match(/<span class="truncate">([^<]*)<\/span>/g) ?? [])
-    .map((m) => m.replace(/<[^>]+>/g, ""))
-    // `Collapse` is the rail's own control, not a destination.
-    .filter((l) => l !== "Collapse");
+    .map((m) => m.replace(/<[^>]+>/g, ""));
 
 // THE ROW LIST IS NOT WRITTEN HERE. It is `RAIL_ROWS` in console-routes, and
 // this file derives its expectations from it — so a row added there without a
@@ -246,8 +243,13 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     for (const gone of ["Capabilities", "Terminal", "Places", "Admin", "Menus", "Reviews"]) {
       expect(labels(html), gone).not.toContain(gone);
     }
-    // NO WORDMARK (MESITA-1842). Pato: "no mesita logo, fuck it."
-    expect(html).not.toContain("<svg viewBox=\"0 0 293.03 100\"");
+    // THE WORDMARK IS BACK, IN THE HEAD (MESITA-1909, reversing MESITA-1842's
+    // "no mesita logo, fuck it"). It is the horizontal lockup and it is NOT a
+    // row: `labels` reads `<span class="truncate">`, and the head has none, so
+    // the list above is unchanged by its return.
+    expect(html).toContain('<svg viewBox="0 0 293.03 100"');
+    expect(labels(html)).not.toContain("Mesita");
+    // And the rail still names no product line of its own beside it.
     expect(html).not.toContain(">business<");
     // CREDITS IS A ROW AGAIN, AND THE PAYMENTS PAGE IS STILL NOT ONE. Both
     // were rows, both became products (MESITA-1845, MESITA-1869), and
@@ -283,15 +285,15 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     expect(n).not.toContain("border-l");
     expect(n).not.toContain("list-disc");
     // PATO'S BLANK LINES, as seams (MESITA-1885): one over each group the
-    // rail opens, plus the one over Account — the person, below the business.
-    // Derived from `RAIL_GROUP_STARTS` so a group added to the contract
-    // without a hairline fails here. The footer's own, over Collapse, is
-    // counted separately below.
+    // rail opens, and NO LONGER one over Account — that seam went to the
+    // footer with the row (MESITA-1909), and is counted there below. Derived
+    // from `RAIL_GROUP_STARTS` so a group added to the contract without a
+    // hairline fails here.
     //
     // THEY CARRY NO NAMES. MESITA-1842 headed the rail's groups and
     // MESITA-1844 deleted the headers two issues later; a blank line is not a
     // heading, so a seam is a rule and nothing else.
-    expect((n.match(/border-t/g) ?? []).length).toBe(RAIL_GROUP_STARTS.length + 1);
+    expect((n.match(/border-t/g) ?? []).length).toBe(RAIL_GROUP_STARTS.length);
     expect((footerOf(render(view("profile"), { rememberedPlaceId: "p-1" })).match(/border-t/g) ?? []).length).toBe(1);
     // The seam is a wrapper's border, never a row's: a row that grew a rule
     // would be a second row shape.
@@ -543,21 +545,45 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     expect(pillText(html)).toBe("Profile");
   });
 
-  it("collapsed: every label a title, one pill, the same seams", () => {
-    const html = render(FLAT_ROUTES.visits, { collapsed: true, places: SOLO });
+  // THREE BANDS (MESITA-1909): head, scroller, foot. Each answers a different
+  // question, so this pins that none of them leaks into another — the lockup
+  // is not a row of `nav`, and Account is not its last row.
+  it("the head is the lockup, outside the nav, and links nowhere", () => {
+    const head = headOf(render(FLAT_ROUTES.visits, { places: SOLO }));
+    expect(head).toContain('aria-label="Mesita"');
+    // A LABEL, NOT A LINK. An anchor here would be a destination the guard
+    // cannot cover, because it is not a NavRow.
+    expect(head).not.toContain("<a ");
+    // And the nav below carries no second copy of it.
+    expect(navOf(render(FLAT_ROUTES.visits, { places: SOLO }))).not.toContain(
+      'aria-label="Mesita"',
+    );
+  });
+
+  it("the foot is Account alone, pinned, under the column's last seam", () => {
+    const html = render(FLAT_ROUTES.visits, { places: SOLO });
+    const foot = footerOf(html);
+    expect(foot).toContain(SHELL_ROUTES.account);
+    expect(foot).toContain('title="Account · pato@canzeco.com"');
+    expect((foot.match(/<a /g) ?? []).length).toBe(1);
+    expect((foot.match(/border-t/g) ?? []).length).toBe(1);
+    // ACCOUNT LEFT THE SCROLLER, so the nav keeps only Pato's group seams —
+    // one fewer than when Account trailed the rows inside it.
+    expect((navOf(html).match(/border-t/g) ?? []).length).toBe(RAIL_GROUP_STARTS.length);
+    // Still every row, still one pill: moving the row changed where it sits,
+    // not what the column reaches.
     expect(rows(html)).toHaveLength(RAIL_ROWS.length + 1);
-    expect(html).toContain('title="Visits"');
-    expect(html).toContain('title="Settings"');
-    expect(html).toContain('title="Account · pato@canzeco.com"');
     expect(pills(html)).toHaveLength(1);
-    // Every row has a glyph, which is the whole reason `w-16` is legible —
-    // and at this width the glyph is ALL there is, which is why the product
-    // rows had to take the catalogue's marks rather than a generic one.
-    const n = navOf(html);
-    // THE SEAMS SURVIVE COLLAPSE. At `w-16` Pato's groups are the only thing
-    // left separating eleven glyphs, so losing them here would be worse than
-    // losing them expanded.
-    expect((n.match(/border-t/g) ?? []).length).toBe(RAIL_GROUP_STARTS.length + 1);
-    expect((footerOf(html).match(/border-t/g) ?? []).length).toBe(1);
+  });
+
+  // NOTHING IS A TOOLTIP OF ITSELF (MESITA-1909). Every label is on screen at
+  // the one width this rail has, so the only `title` left is the one that says
+  // something the row does not: Account's email.
+  it("no row repeats its own label in a tooltip", () => {
+    const html = render(FLAT_ROUTES.visits, { places: SOLO });
+    expect(html).not.toContain('title="Visits"');
+    expect(html).not.toContain('title="Settings"');
+    expect(html).toContain('title="Account · pato@canzeco.com"');
+    expect(html).not.toContain("sr-only");
   });
 });

@@ -48,7 +48,6 @@ import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import {
   RAIL_COOKIE_ATTRS,
   RAIL_PLACE_COOKIE,
-  SIDEBAR_COLLAPSED_COOKIE,
 } from "@/lib/sidebar-prefs";
 import type { RailPlace } from "@/lib/rail-scope";
 import { useRailScope } from "@/lib/use-rail-scope";
@@ -62,7 +61,6 @@ export function AppShell({
   viewerError,
   accountLabel,
   rememberedPlaceId,
-  defaultCollapsed = false,
   children,
 }: {
   places: readonly RailPlace[];
@@ -73,25 +71,24 @@ export function AppShell({
    *  only — a shared layout does not re-run on client navigations, which is
    *  why the session's own memory (OpenPlaceProvider) beats it. */
   rememberedPlaceId: string | null;
-  /** Read from the cookie by the server layout, so the rail paints at its
-   *  final width on the first frame. */
-  defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
   const scope = useRailScope({ places, rememberedPlaceId, viewerError });
-  // THE MOBILE TOPBAR STATES THE SCOPE (MESITA-1842). Pato: "no mesita logo,
-  // fuck it." The wordmark used to sit here and in the rail; the desktop app's
-  // own title bar already says "Mesita Business", so both were a quieter second
-  // copy of something the OS renders better. What belongs in a 44px bar above
-  // a CLOSED drawer is the thing the drawer is hiding: which place every
-  // screen beneath it is about. It was two names joined by a dot while an
-  // organization sat above the place (MESITA-1892); one subject, one name.
+  // THE MOBILE TOPBAR STATES THE SCOPE (MESITA-1842), AND STILL DOES
+  // (MESITA-1909). The wordmark used to sit here AND in the rail; Pato deleted
+  // both on "no mesita logo, fuck it", and has now put one back — in the RAIL
+  // only. This bar keeps the scope line, because what belongs in a 44px strip
+  // above a CLOSED drawer is the thing the drawer is hiding: which place every
+  // screen beneath it is about. The rail's own head is inside the drawer,
+  // where it is the first thing you see when you open it; repeating it out
+  // here would spend the one line this bar has on the word you already know.
+  // It was two names joined by a dot while an organization sat above the place
+  // (MESITA-1892); one subject, one name.
   const scopeLine = scope.place?.name ?? null;
-  // Two independent pieces of state, easy to confuse: `open` is the mobile
-  // drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
-  // collapses — at that size the whole rail is already hidden by default.
+  // ONE PIECE OF CHROME STATE: the mobile drawer. There was a second — the
+  // desktop rail's icon-only width — and MESITA-1909 deleted the control that
+  // reached it, so the width, its cookie and its transition went too.
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   // Remember the scope for the next fresh request — but only the place that
@@ -159,14 +156,6 @@ export function AppShell({
 
   const close = () => setOpen(false);
 
-  const toggleCollapsed = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    // A year-long cookie rather than localStorage: the server layout reads it
-    // during render, so a reload comes back at the width you left it.
-    document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; ${RAIL_COOKIE_ATTRS}`;
-  };
-
   const railProps = {
     scope,
     places,
@@ -178,18 +167,12 @@ export function AppShell({
   return (
     <RailScopeProvider value={{ scope, places, isSuperAdmin }}>
     <div className="fixed inset-0 flex overflow-clip">
-      {/* Desktop rail — visible lg+. The column owns the width; the rail fills it. */}
-      <div
-        className={
-          "hidden shrink-0 transition-[width] duration-200 ease-out lg:flex " +
-          (collapsed ? "w-16" : "w-60")
-        }
-      >
-        <Sidebar
-          {...railProps}
-          collapsed={collapsed}
-          onToggleCollapse={toggleCollapsed}
-        />
+      {/* Desktop rail — visible lg+. ONE WIDTH (MESITA-1909): the chips-only
+          `w-16` went with the Collapse button that was its only door, and the
+          width transition went with the second width. The column owns the
+          width; the rail fills it. */}
+      <div className="hidden w-60 shrink-0 lg:flex">
+        <Sidebar {...railProps} />
       </div>
 
       {/* Drawer — below lg.

@@ -1,17 +1,31 @@
 "use client";
 
-// The whole navigation: ONE FLAT COLUMN (MESITA-1879).
+// The whole navigation: ONE FLAT COLUMN (MESITA-1879) IN THREE BANDS
+// (MESITA-1909).
 //
+//   ▲ Mesita            the HEAD: the lockup, pinned, a label — not a link
+//   ═════════════════════
+//   ▣ Lumbre y Sal ⌄    the place this column is about
 //   ⚙ Settings          → /places/<id>/settings     the team: members, keys
 //   ▁ Activity          → /places/<id>/activity
 //   ▦ Products          → /places/<id>/products     the catalogue
 //   ⌂ Profile           → /places/<id>/profile
 //   👥 Customers        → /places/<id>/customers
 //   … the five remaining products
-//   ─────────────────────
-//   ○ Account           → /account                  the person
+//                       the SLACK falls here, between the work and you
 //   ═════════════════════
-//   ◧ Collapse          the rail's own control
+//   ○ Account           → /account   the FOOT: the person, pinned, alone
+//
+// THE HEAD SAYS THE PRODUCT, THE FOOT SAYS THE PERSON, and the scroller
+// between them says the business. Each band answers a different question, so
+// none can be mistaken for an entry in another's list — which is why the logo
+// is not the first row of `nav` and Account is not its last. Account is PINNED
+// rather than trailing the rows, so it sits in the same place under a viewer's
+// three rows as under an owner's eleven.
+//
+// ONE WIDTH. There is no chips-only rail and no control to reach one: Collapse
+// was the only door to `w-16`, and a mode nobody can open is a second design
+// kept true for nothing. `w-60` on desktop, the drawer below `lg`.
 //
 // EVERY ROW IS ABOUT THE ONE PLACE (MESITA-1892). Three of them used to be an
 // organization's addresses and the column said so nowhere — because an
@@ -86,8 +100,6 @@ import {
   Gift,
   Layers,
   LayoutGrid,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   Settings,
   ShoppingBag,
@@ -100,6 +112,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
   MENU_CHIP,
   MENU_EMPTY,
@@ -154,10 +167,6 @@ type SidebarProps = {
   accountLabel: string;
   /** Closes the mobile drawer on navigation. Absent on the desktop rail. */
   onNavigate?: () => void;
-  /** Icon-only rail. Desktop instance only — the drawer is always full. */
-  collapsed?: boolean;
-  /** Absent on the drawer instance, which has no collapsed state to toggle. */
-  onToggleCollapse?: () => void;
 };
 
 // Focus travels through this rail on Tab, so the ring is the brand's, not the
@@ -316,17 +325,15 @@ function NavRow({
   label,
   Icon,
   active,
-  collapsed,
   onNavigate,
   onGuardedNavigate,
   title,
 }: {
   href: string;
-  /** The accessible name: the tooltip at `w-16`, the sr-only text. */
+  /** The row's visible text, and its accessible name. */
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
-  collapsed: boolean;
   onNavigate?: () => void;
   onGuardedNavigate?: GuardNav;
   title?: string;
@@ -345,17 +352,14 @@ function NavRow({
         onNavigate?.();
       }}
       aria-current={active ? "page" : undefined}
-      // A given title wins at every width (the Account row's email); else
-      // the label is the tooltip only where the label is not on screen.
-      title={title ?? (collapsed ? label : undefined)}
-      className={cn(
-        ROW_BASE,
-        active ? ROW_ACTIVE : ROW_REST,
-        collapsed && "justify-center px-0 py-2",
-      )}
+      // Only a GIVEN title renders one — the Account row's email. The label is
+      // on screen at every width this rail has, so a tooltip repeating it
+      // would be a second copy of the row's own text.
+      title={title}
+      className={cn(ROW_BASE, active ? ROW_ACTIVE : ROW_REST)}
     >
       <Icon className={ICON} />
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className="truncate">{label}</span>
     </Link>
   );
 }
@@ -364,24 +368,14 @@ function NavRow({
 function MutedRow({
   label,
   Icon,
-  collapsed,
 }: {
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
-  collapsed: boolean;
 }) {
   return (
-    <div
-      role="status"
-      title={collapsed ? label : undefined}
-      className={cn(
-        ROW_BASE,
-        "text-sidebar-muted",
-        collapsed && "justify-center px-0 py-2",
-      )}
-    >
+    <div role="status" className={cn(ROW_BASE, "text-sidebar-muted")}>
       <Icon className={ICON} />
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className="truncate">{label}</span>
     </div>
   );
 }
@@ -393,8 +387,6 @@ export function Sidebar({
   viewerError,
   accountLabel,
   onNavigate,
-  collapsed = false,
-  onToggleCollapse,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -555,6 +547,24 @@ export function Sidebar({
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
+      {/* THE HEAD (MESITA-1909). The lockup is a LABEL, not a link: every
+          address this rail reaches is below it, and a logo that navigated
+          somewhere would be a destination wearing different clothes — and one
+          the guard could not cover, since it is not a NavRow. It takes the
+          rail's own foreground so it reads as part of the dark column rather
+          than as a sticker on it, and it is inset by a row's own padding so the
+          mark lines up with the glyph column underneath.
+
+          MESITA-1842 deleted this on *"no mesita logo, fuck it"* and the shape
+          that replaced it grew a head again anyway — the place selector
+          (MESITA-1899). Two nouns stacked is what Pato asked for on 2026-09-16
+          after seeing it in the mock: the product, then the venue. The mobile
+          topbar is NOT part of this and keeps its scope line: what belongs
+          above a CLOSED drawer is the thing the drawer is hiding. */}
+      <div className="flex shrink-0 items-center px-2.5 pt-1 pb-3">
+        <MesitaLogo variant="horizontal" className="text-sidebar-foreground h-5 w-auto" />
+      </div>
+
       <nav
         aria-label="Console"
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
@@ -566,7 +576,6 @@ export function Sidebar({
           <MutedRow
             label="Couldn't load your places"
             Icon={AlertCircle}
-            collapsed={collapsed}
           />
         ) : (
           <>
@@ -605,7 +614,6 @@ export function Sidebar({
                   chip={<PlaceChip name={placeName} photoUrl={shownPlace?.photoUrl} />}
                   switchable
                   pending={pendingPlace !== null}
-                  collapsed={collapsed}
                   autoFocusRef={placeSearch ? placeSearchRef : undefined}
                   onOpenChange={closePlaceMenu}
                   onEscapeKeyDown={escapePlaceMenu}
@@ -666,7 +674,6 @@ export function Sidebar({
                 label="Add your place"
                 Icon={Plus}
                 active={onAddPlace}
-                collapsed={collapsed}
                 onNavigate={onNavigate}
                 onGuardedNavigate={guardNav ?? undefined}
               />
@@ -678,7 +685,6 @@ export function Sidebar({
               // Account already wears and nothing else.
               const seam = opensGroup(i) ? SECTION_SEAM : undefined;
               const common = {
-                collapsed,
                 onNavigate,
                 onGuardedNavigate: guardNav ?? undefined,
               };
@@ -732,48 +738,31 @@ export function Sidebar({
         {/* THE PERSON, LAST (MESITA-1879). Above the rail's own control and
             below one seam: the column reads the business top to bottom, then
             you. It renders in every state, including the failed read. */}
-        <div className={SECTION_SEAM}>
-          <NavRow
-            href={SHELL_ROUTES.account}
-            label="Account"
-            title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
-            Icon={UserRound}
-            active={onAccount}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-            onGuardedNavigate={guardNav ?? undefined}
-          />
-        </div>
       </nav>
 
-      {/* THE RAIL'S OWN CONTROL, pinned to the bottom and alone there. Account
-          moved to row one (MESITA-1844), so the footer is one button under one
-          seam, and the rail's empty space falls above it — which reads as room
-          to spare rather than as a layout that failed. */}
-      {onToggleCollapse && (
-        <div className="border-sidebar-border/50 mt-2 flex shrink-0 flex-col gap-0.5 border-t pt-2">
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={collapsed ? "Expand menu" : "Collapse menu"}
-            aria-label={collapsed ? "Expand menu" : "Collapse menu"}
-            aria-expanded={!collapsed}
-            className={cn(
-              ROW_BASE,
-              ROW_REST,
-              "w-full",
-              collapsed && "justify-center px-0 py-2",
-            )}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className={ICON} />
-            ) : (
-              <PanelLeftClose className={ICON} />
-            )}
-            <span className={collapsed ? "sr-only" : "truncate"}>Collapse</span>
-          </button>
-        </div>
-      )}
+      {/* THE FOOT (MESITA-1909): the person, pinned, ALONE. Account trailed the
+          rows inside the scroller, which put it in a different place on every
+          scope — low under a partner owner's eleven rows, high under a viewer's
+          three — and the footer belonged to Collapse, which made the rail's own
+          control look like a destination. Now the band holds exactly one row
+          and that row is you, so the rail's slack falls between the work and
+          you rather than below a control.
+
+          It renders in every state, INCLUDING the failed read: whatever went
+          wrong with the places, the person is still signed in. It is still
+          guarded — leaving a dirty place by this row asks first, like any
+          other. */}
+      <div className={cn(SECTION_SEAM, "shrink-0")}>
+        <NavRow
+          href={SHELL_ROUTES.account}
+          label="Account"
+          title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
+          Icon={UserRound}
+          active={onAccount}
+          onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
+        />
+      </div>
     </aside>
   );
 }

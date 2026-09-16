@@ -25,7 +25,6 @@ import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import {
   RAIL_PLACE_COOKIE,
-  SIDEBAR_COLLAPSED_COOKIE,
   plausibleId,
 } from "@/lib/sidebar-prefs";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
@@ -75,7 +74,6 @@ export default async function ShellLayout({
   }
 
   const jar = await cookies();
-  const collapsed = jar.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
   const rememberedPlaceId = plausibleId(jar.get(RAIL_PLACE_COOKIE)?.value);
 
   return (
@@ -84,9 +82,9 @@ export default async function ShellLayout({
     // to be there instantly, and a flashing skeleton rail is worse than a
     // quiet one.
     <Suspense fallback={<div className="bg-background fixed inset-0" />}>
-      {/* The provider wraps the SHELL, not sits inside it: the mobile
-          wordmark lives in AppShell's own topbar and needs the guard too, and
-          a hook cannot see a provider its own component renders. */}
+      {/* The provider wraps the SHELL, not sits inside it: AppShell's own
+          topbar carries the scope line and needs the guard too, and a hook
+          cannot see a provider its own component renders. */}
       <OpenPlaceProvider>
         <AppShell
           places={viewer.places.map((p) => ({
@@ -105,7 +103,6 @@ export default async function ShellLayout({
           viewerError={viewerError}
           accountLabel={user.email ?? "Account"}
           rememberedPlaceId={rememberedPlaceId}
-          defaultCollapsed={collapsed}
         >
           {/* FLUID: no max-width (MESITA-1558). Two things depend on that and
             neither is cosmetic — a full-bleed child cancels SHELL_GUTTER with

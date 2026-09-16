@@ -1,11 +1,16 @@
-// The rail's cookies. Cookies rather than localStorage, all three: the console
-// shell is a server component, so reading them during render paints the rail
-// at its final shape on the first frame — no expand-then-snap flash, no
-// setState in an effect to reconcile it.
+// The rail's cookie. A cookie rather than localStorage: the console shell is a
+// server component, so reading it during render paints the rail at its final
+// shape on the first frame — no snap, no setState in an effect to reconcile it.
 //
-// Their own names, not admin's. Both consoles are served from *.mesita.ai and
-// a shared cookie name would let one collapse the other.
-export const SIDEBAR_COLLAPSED_COOKIE = "business_sidebar_collapsed";
+// Its own name, not admin's. Both consoles are served from *.mesita.ai and a
+// shared cookie name would let one overwrite the other.
+//
+// THERE WAS A COLLAPSE COOKIE (MESITA-1909). `business_sidebar_collapsed`
+// remembered the rail's icon-only width; the control that reached that width
+// is gone, so the cookie is gone rather than left writing a value nothing
+// reads — a cookie nobody reads is a cookie somebody will one day read by
+// mistake. Browsers still holding the old one simply never send it anywhere
+// that looks.
 
 // WHICH PLACE YOU WERE LAST IN (MESITA-1807). Every flat address resolves to
 // it, `/` lands on it after a reload, and the rail shows it while you are on
