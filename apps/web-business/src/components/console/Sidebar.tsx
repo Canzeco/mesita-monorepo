@@ -576,16 +576,34 @@ export function Sidebar({
           />
         ) : (
           <>
-            {/* A SELECTOR ONLY WHERE THERE IS SOMETHING TO SELECT
-                (MESITA-1879). The rail is flat for the operator this console
-                is built for — one place — and the control does not render for
-                them. It stays in the code, and in the render, for the operator
-                who genuinely has the question. */}
-            {scope.mode === "multi" && (
-              // TWO OR MORE PLACES. The console does not choose one — the
-              // selector names which venue these rows are about, and says
-              // "Pick a place" while nothing does. A row lighting under an
-              // unnamed place would be lying about what is being edited.
+            {/* THE SELECTOR IS THE RAIL'S HEAD, at one place or many
+                (MESITA-1899). It rendered only at `multi` until now, on the
+                reasoning that a control over one thing selects nothing
+                (MESITA-1879) — which was true while the ORGANIZATION selector
+                sat above it and gave the column a head regardless. MESITA-1892
+                deleted that selector with the layer, so for every operator
+                this console actually has (exactly one place) the rail opened
+                cold on Settings, naming nothing it was about. Pato, 2026-09-16:
+                *"where do you select the place"* → *"always show the place
+                selector"*.
+
+                At `solo` the control is a HEADER that happens to open: the
+                venue's photo and name, and a menu holding that one place plus
+                the All places footer — which is also how a solo operator
+                reaches the catalogue without typing an address. */}
+            {(scope.mode === "solo" || scope.mode === "multi") && (
+              // ONE PLACE OR MANY. The console does not choose for you at
+              // `multi` — the selector names which venue these rows are about,
+              // and says "Pick a place" while nothing does. A row lighting
+              // under an unnamed place would be lying about what is being
+              // edited. At `solo` the name is never null, so that fallback is
+              // the multi-only branch it reads as.
+              //
+              // `zero` and `unknown` stay out, for opposite reasons: `zero`
+              // has no place to name and keeps the Add ceremony below, and
+              // `unknown` means the read FAILED — naming a place we never read
+              // would be a fabrication, which is the one thing the rail's
+              // empty states exist to avoid.
               <div className="mb-1">
                 <RailSelector
                   label="Switch place"

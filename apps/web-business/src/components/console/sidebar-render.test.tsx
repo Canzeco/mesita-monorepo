@@ -472,11 +472,22 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     expect(labels(html)).toEqual(ALL_LABELS);
     expect(html).not.toContain("opacity-60");
     expect(pillText(html)).toBe("Visits");
-    // NO SELECTOR. One place: the control has nothing to select, and a
-    // control over nothing is the thing MESITA-1879 removed. The
-    // organization's own selector went with the layer (MESITA-1892).
+    // THE SELECTOR RENDERS HERE NOW (MESITA-1899), reversing this test.
+    //
+    // It used to assert the opposite — "one place: the control has nothing to
+    // select, and a control over nothing is the thing MESITA-1879 removed."
+    // That was right while the ORGANIZATION selector still sat above it: the
+    // column had a head either way. MESITA-1892 deleted that selector along
+    // with the layer, and solo is the shape every real operator is in, so the
+    // rail opened cold on Settings naming nothing. The control is the head
+    // now, not a switcher.
+    expect(html).toContain('aria-label="Switch place"');
+    // It names the ONE place, never the multi-shape's "Pick a place" —
+    // at solo there is nothing unresolved to prompt about.
+    expect(html).toContain(">Strana Del Valle<");
+    expect(html).not.toContain(">Pick a place<");
+    // The organization's selector is still gone, and stays gone.
     expect(html).not.toContain('aria-label="Switch organization"');
-    expect(html).not.toContain('aria-label="Switch place"');
   });
 
   it("multi — two places: the selector comes back, and nothing is picked for you", () => {
