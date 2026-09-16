@@ -161,9 +161,22 @@ export type MockReservation = {
   note: string | null;
 };
 
+/** One review, on either platform.
+ *
+ *  `source` is which platform wrote it, and it is what keeps the two lists on
+ *  Profile apart. It is NOT a filter over one pile: `REVIEWS` and
+ *  `GOOGLE_REVIEWS` are separate arrays for a reason — Home counts unanswered
+ *  reviews, and a Google row in that count would be a blocker the operator
+ *  cannot clear from inside Mesita.
+ *
+ *  `reply` is always null on a Google row for the same reason: Google's own
+ *  owner replies are written on Google, not here, and rendering an empty
+ *  Reply affordance over a row Mesita cannot write to is a lie about what the
+ *  console can do. */
 export type MockReview = {
   id: string;
   placeId: string;
+  source: "google" | "mesita";
   guest: string;
   at: string;
   stars: number;

@@ -1,26 +1,36 @@
 "use client";
 
-// A SNAPSHOT of apps/web-business/src/components/place-manage/sections/
-// ReviewsSummary.tsx — the aggregate tiles a place is judged on.
+// DIGITAL PRESENCE — how big this place is on the internet, in four numbers.
+//
+// It was called "Reviews" and it was the only reputation card on Profile: four
+// aggregate tiles plus Mesita's sub-score row, and not one word anybody wrote.
+// MESITA-1930 split that into three passive boxes — this one, then the Google
+// reviews, then the Mesita ones — so the name had to move with the contents.
+// "Reviews snapshot" was on the table and would have lied about half the card:
+// Instagram and Facebook are FOLLOWER COUNTS, not reviews. Digital Presence is
+// the only name that covers what is in the box (Pato's call, 2026-09-16).
 //
 // FOUR TILES (Pato live 2026-09-02): Google · Mesita · Instagram · Facebook.
 // Scores are half the reputation an operator is asked about; reach is the
-// other half. The two Mesita sub-score rows stay beneath, because only Mesita
-// has a breakdown — Google publishes none.
+// other half. That order stays: the two scores, then the two reaches.
+//
+// THE SUB-SCORES LEFT. Food/Service/Ambience/Value are Mesita's breakdown and
+// Mesita's alone — Google publishes none — so on a four-platform card they
+// read as a Mesita-only footnote. They are the header of the Mesita Reviews
+// box now, where they are the only thing in the box that is not one guest.
 //
 // Read-only and `auto` — every number is enrichment- or guest-written. There
 // is nothing to save, so the card registers no dirty section and the save bar
 // never learns it exists.
 //
-// It is on PROFILE now (MESITA-1917), which is where the real file's own
-// header always said it belonged: "Profile is the only surface where an
-// operator can read a place's standing today."
+// A SNAPSHOT of apps/web-business/src/components/place-manage/sections/
+// ReviewsSummary.tsx, which still carries both halves under the old name.
 
-import { Lock, Star } from "lucide-react";
+import { Globe, Lock, Star } from "lucide-react";
 import { SectionCard } from "@/components/admin-ui/manage";
 import type { MockPlaceProfile } from "@/mock/types";
 
-function compact(n: number): string {
+export function compact(n: number): string {
   if (n < 1_000) return n.toLocaleString();
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   return `${(n / 1_000).toFixed(1)}K`;
@@ -32,7 +42,7 @@ function reviewWord(n: number): string {
 
 /** Five glyphs, rounded to the nearest whole star. Decoration for the number
  *  beside it — the number is the fact, so this carries no label of its own. */
-function Stars({ value }: { value: number }) {
+export function Stars({ value }: { value: number }) {
   const filled = Math.round(Math.min(Math.max(value, 0), 5));
   return (
     <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
@@ -47,6 +57,17 @@ function Stars({ value }: { value: number }) {
           }
         />
       ))}
+    </span>
+  );
+}
+
+/** The `auto` pill every box in this trio wears. One per card, not one per
+ *  number: nothing in any of the three is editable, so the card says it once. */
+export function AutoPill() {
+  return (
+    <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 type-meta">
+      <Lock className="h-3 w-3" />
+      auto
     </span>
   );
 }
@@ -131,23 +152,7 @@ function Reach({
   );
 }
 
-function SubScore({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-muted-foreground type-label">{label}</span>
-      <span
-        className={
-          "text-sm font-semibold tabular-nums " +
-          (value == null ? "text-muted-foreground" : "text-foreground")
-        }
-      >
-        {value == null ? "—" : value.toFixed(1)}
-      </span>
-    </div>
-  );
-}
-
-export function ReviewsSummary({ place }: { place: MockPlaceProfile }) {
+export function DigitalPresence({ place }: { place: MockPlaceProfile }) {
   const googleStars = place.google_stars_overall;
   const googleCount = place.google_review_count ?? 0;
   const mesitaCount = place.mesita_review_count ?? 0;
@@ -155,30 +160,13 @@ export function ReviewsSummary({ place }: { place: MockPlaceProfile }) {
   // must never render a fabricated 5.0.
   const mesitaStars = mesitaCount > 0 ? place.mesita_stars_overall : null;
 
-  const subScores =
-    mesitaCount > 0
-      ? ([
-          { label: "Food", value: place.mesita_stars_food },
-          { label: "Service", value: place.mesita_stars_service },
-          { label: "Ambience", value: place.mesita_stars_ambience },
-          { label: "Value", value: place.mesita_stars_value },
-        ] as const)
-      : null;
-
   return (
     <SectionCard
-      icon={<Star className="h-4 w-4" />}
+      icon={<Globe className="h-4 w-4" />}
       tint="violet"
-      title="Reviews"
-      subtitle="What guests scored this place, and how many follow it."
-      action={
-        // Same `auto` pill the read-only fields on this tab wear — nothing on
-        // this card is editable, and the whole card says so once.
-        <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 type-meta">
-          <Lock className="h-3 w-3" />
-          auto
-        </span>
-      }
+      title="Digital Presence"
+      subtitle="Where this place shows up, and how many people are looking."
+      action={<AutoPill />}
     >
       {/* Scores first, reach second — the order the operator is asked about
           them, and the order they carry weight. Two per row at every width
@@ -197,16 +185,6 @@ export function ReviewsSummary({ place }: { place: MockPlaceProfile }) {
         <Reach label="Instagram" followers={place.instagram_followers_count} />
         <Reach label="Facebook" followers={place.facebook_followers} />
       </div>
-
-      {/* The four sub-scores are Mesita's alone — Google has no breakdown —
-          so they only appear once Mesita itself has been reviewed. */}
-      {subScores ? (
-        <div className="border-border/60 mt-3 grid grid-cols-2 gap-3 rounded-xl border px-3.5 py-3 sm:grid-cols-4">
-          {subScores.map((s) => (
-            <SubScore key={s.label} label={s.label} value={s.value} />
-          ))}
-        </div>
-      ) : null}
     </SectionCard>
   );
 }

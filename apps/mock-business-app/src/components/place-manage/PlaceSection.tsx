@@ -65,7 +65,7 @@ import {
   ALLOWED_IMAGE_ACCEPT,
   validateUploadFile,
 } from "@/lib/place-upload-utils";
-import { ReviewsSummary } from "./ReviewsSummary";
+import { ReviewBoxes } from "./ReviewBoxes";
 import { FIELD_LIMITS } from "@/mock/atlas";
 import type { MockDay, MockPlaceProfile } from "@/mock/types";
 
@@ -729,10 +729,12 @@ export function PlaceSection({
           always documented, filled again since MESITA-1917. */}
       {children}
 
-      {/* Reviews closes the masonry (Pato live 2026-09-01): every card above
-          is something an operator sets, this one is the only thing the world
-          says back. Read-only, so it sits after the editable set. */}
-      <ReviewsSummary place={place} />
+      {/* Reputation closes the masonry (Pato live 2026-09-01): every card
+          above is something an operator sets, these are the only things the
+          world says back. Read-only, so they sit after the editable set.
+          THREE boxes since MESITA-1930, and one wrapper rather than three
+          siblings so the masonry cannot deal them into three columns. */}
+      <ReviewBoxes place={place} />
 
       {metaFor !== null && (
         <MediaMetaDialog
