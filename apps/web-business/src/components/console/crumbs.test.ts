@@ -12,7 +12,6 @@ import {
   placeHref,
   placePageHref,
   placePayHref,
-  placeTerminalHref,
 } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 
@@ -27,37 +26,29 @@ describe("crumbsFor", () => {
     expect(crumbsFor(SHELL_ROUTES.placesNew, names)).toEqual(["Places", "Add"]);
   });
 
-  it("Terminal is a STEP inside Products, and never an empty trail", () => {
-    // `/places/<id>/products/terminal` is deliberately not a PAGE —
-    // `placePageFromPathname` answers null so the Products ROW does not light
-    // there (MESITA-1885). That made it match nothing here and return `[]`,
-    // which renders a header with no crumbs at all: a page that reads as
-    // being outside the console.
-    expect(crumbsFor(placeTerminalHref("p"), names)).toEqual([
-      "Strana Del Valle",
-      "Products",
-      "Terminal",
-    ]);
-    // And it names the place even when the scope has not resolved one.
-    expect(crumbsFor(placeTerminalHref("p"), unnamed)).toEqual([
-      "Place",
-      "Products",
-      "Terminal",
-    ]);
-    // THE BIJECTION: the catalogue itself is still two crumbs, so the leaf is
-    // a real difference and not a label this test would accept anywhere.
-    expect(crumbsFor(placePageHref("p", "products"), names)).not.toContain(
+  it("Terminal's address names nothing, because Terminal is gone", () => {
+    // `/places/<id>/products/terminal` was the ONE sub-step that was not a
+    // PAGE: `placePageFromPathname` answered null so the Products ROW would
+    // not light there (MESITA-1885), which left it matching nothing here and
+    // returning `[]` — a header with no crumbs, reading as a page outside the
+    // console. It got the ceremony shape instead.
+    //
+    // MESITA-1900 retires the product, so the special case is deleted and the
+    // address is an unknown segment again. This pins that it names the PLACE
+    // and stops — never the word Terminal, which would mean the label
+    // outlived the product.
+    expect(crumbsFor("/places/p/products/terminal", names)).not.toContain(
       "Terminal",
     );
   });
 
-  it("Mesita Pay is the other step inside Products", () => {
+  it("Mesita Payments is the one step inside Products", () => {
     // It reads as its PAGE (the Products row stays lit) and still names
     // itself, which is the pair the rail and the header have to agree on.
     expect(crumbsFor(placePayHref("p"), names)).toEqual([
       "Strana Del Valle",
       "Products",
-      "Mesita Pay",
+      "Mesita Payments",
     ]);
   });
 

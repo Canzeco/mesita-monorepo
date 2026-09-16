@@ -242,7 +242,7 @@ export type LadderInput = {
 
 const NEEDS_PARTNER = "Needs Mesita Partner";
 const NEEDS_STRIPE = "Needs an active Stripe account";
-const NEEDS_PAY = "Needs Mesita Pay";
+const NEEDS_PAY = "Needs Mesita Payments";
 // The product's own switch is off, one level up in Products. Not "Needs
 // Mesita Pay in Products": the Reason chip is `w-[9.5rem] sm:w-[11rem]` and
 // that overflows it, and the row's own label already says Mesita Pay — the
@@ -537,14 +537,14 @@ function disagreementOf(
         row.state.needs === NEEDS_ORG_PAY;
       return {
         reason: `You asked for ${row.label}, but guests do not get it yet — ${row.state.needs.toLowerCase()}.`,
-        fixLabel: "Mesita Pay",
+        fixLabel: "Mesita Payments",
         fix: inSetup ? "setup" : null,
       };
     }
     if (row.state.kind === "blocked") {
       return {
         reason: `You asked for ${row.label}, but Stripe turned it off.`,
-        fixLabel: "Mesita Pay",
+        fixLabel: "Mesita Payments",
         fix: "setup",
       };
     }
@@ -628,23 +628,45 @@ export function guestSummary(rows: readonly OfferingRow[]): string {
 //
 // `mesita_pay` is the RUNG an operator flips day to day; the switch that
 // unlocks it and the Stripe account behind that live at
-// `/places/<id>/products/pay`, and the Pay view links up to them. Two screens,
-// one product: buying it, and running it. The split was organization-versus-
-// place until MESITA-1892 and is setup-versus-use now, which is the same split
-// every other card on the catalogue draws.
+// `/places/<id>/products/pay`, and the Payments view links up to them. Two
+// screens, one product: buying it, and running it. The split was
+// organization-versus-place until MESITA-1892 and is setup-versus-use now,
+// which is the same split every other card on the catalogue draws.
+
+// ── REWARDS TAKES ITS ROW BACK, AND VISITS KEEPS NONE (MESITA-1900) ───────
+//
+// Pato's 2026-09-16 product list separates Rewards from Visits and files it
+// under MONEY, beside Payments and Credits. So `visit_rewards` — which was
+// Rewards' row before MESITA-1885 folded the two together, and Visits' only
+// row after — is the `rewards` zone now, and the strategy cards it renders go
+// with it.
+//
+// VISITS' ROW SET IS EMPTY ON PURPOSE, and it is the honest shape. Visits has
+// never had a switch: no `visits_enabled` column, no rung, on for every
+// partner (MESITA-1882). The one row it carried was another product's dial.
+// What is left on that view is the internal "How this place is run" box, which
+// is what Visits is actually about.
+//
+// A ZONE WITH NO ROWS MUST NOT RUN `guestSummary`. Over an empty set that
+// function answers "Right now, nothing is live for guests." — false about a
+// partner whose visit checkout works, and the same class of lie MESITA-1882
+// and MESITA-1884 each paid for once. `PromosSection` states the container's
+// own truth on Visits instead.
 export const LADDER_ZONES = [
   "visits",
   "orders",
   "reservations",
+  "rewards",
   "pay",
   "credits",
 ] as const;
 export type LadderZone = (typeof LADDER_ZONES)[number];
 
 export const ZONE_ROWS: Record<LadderZone, readonly LadderRowKey[]> = {
-  visits: ["visit_rewards"],
+  visits: [],
   orders: ["pickup", "delivery"],
   reservations: ["reservations"],
+  rewards: ["visit_rewards"],
   pay: ["mesita_pay"],
   credits: ["accept_prepays", "sell_prepays"],
 };
@@ -695,7 +717,7 @@ export type TopPrerequisite =
  *                                           (except Stripe, below)
  *   !member ∧ placePartnered = false        → subscribe in Products (link)
  *   !member ∧ placePartnered = true ∧ forfeited → re-join this place (the
- *                                           button lives in the Visits box)
+ *                                           button lives in the Rewards box)
  *   !member ∧ placePartnered = true ∧ !forfeited → same door (a dropped place
  *                                           whose subscription is still live)
  *   !member ∧ placePartnered unknown        → nothing — the rail has not
@@ -704,13 +726,15 @@ export type TopPrerequisite =
  *
  * The re-join lines used to end "— re-join it below", then "— re-join lands
  * with the next release" while the door was unbuilt. The door is built
- * (MESITA-1891) and the button is in the Visits box — but this engine paints
- * five zones and only Visits carries that box, so the line still never says
- * "below". It names WHO can re-join instead, which is true on all five.
+ * (MESITA-1891) and the button is in the Rewards box — Visits' until
+ * MESITA-1900 moved the Partnership body to the view it prices — but this
+ * engine paints six zones and only one carries that box, so the line still
+ * never says "below". It names WHO can re-join instead, which is true on all
+ * six.
  *
- * The Stripe line is Mesita Pay's concern, so it only shows once the Mesita
- * Pay switch is known ON: with it off (or unknown) the rung already says "Off
- * in Products" / "Checking…", and a page that nags a Partner-only place to
+ * The Stripe line is Mesita Payments' concern, so it only shows once that
+ * switch is known ON: with it off (or unknown) the rung already says "Off in
+ * Products" / "Checking…", and a page that nags a Partner-only place to
  * connect Stripe would be re-selling the add-on.
  */
 /** An OPTIONAL payload flag, read as the ladder wants it: absent is
@@ -725,7 +749,7 @@ export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
       return {
         action: "setup",
         // No "here": this line paints on every zone, and Visit Rewards lives
-        // on Visits while Accept Prepays lives on Credits.
+        // on Rewards while Accept Prepays lives on Credits.
         text: "Become a Mesita Partner in Products — it unlocks Visit Rewards and Accept Prepays.",
       };
     }

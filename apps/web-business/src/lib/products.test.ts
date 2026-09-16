@@ -17,7 +17,10 @@ import { PRODUCT_KEYS } from "@/components/console/ProductCatalog";
 import { PRODUCT_ORDER, buildProductCards } from "./products";
 import { PLACE_TABS, placeTabHref, type PlaceTab } from "./place-tabs";
 import { placePayHref } from "./console-routes";
-import type { ProductKey } from "@/lib/product-keys";
+import {
+  PRODUCT_KEYS as VOCABULARY_KEYS,
+  type ProductKey,
+} from "@/lib/product-keys";
 
 /** The caller's own shape: a view in, an address out. The page builds this
  *  from the place it is about; the test builds it from a fixed id. */
@@ -56,26 +59,38 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     expect(PRODUCT_ORDER).toHaveLength(8);
   });
 
-  it("is Pato's eight, and Rewards is not among them (MESITA-1884)", () => {
-    // Pato, 2026-09-15: "Profile · Costumers · Visits · Orders · Reservations
-    // · Payments · Credits · Terminal". Rewards left because it is a dial
-    // inside Visits, not a thing anyone buys — asserted here as ABSENCE,
-    // because a re-added ninth card would otherwise only break a length.
+  it("is Pato's eight, in his three groups (MESITA-1900)", () => {
+    // Pato, 2026-09-16: "Profile / Costumers // Visits / Orders /
+    // Reservations // Rewards / Payments / Credits", written as three groups
+    // with a blank line between them.
+    //
+    // TWO CARDS SWAPPED AND THE COUNT DID NOT. MESITA-1884 removed Rewards on
+    // *"should i separate visits and rewards into two?? i don't think so."*
+    // and Customers took the slot; this list puts Rewards back and drops
+    // Terminal. The ORDER is asserted rather than the set, because where
+    // Rewards sits is the argument — money, beside Payments and Credits, not
+    // at the table beside Visits.
     expect(PRODUCT_ORDER).toEqual([
       "profile",
       "customers",
       "visits",
       "orders",
       "reservations",
+      "rewards",
       "pay",
       "credits",
-      "terminal",
     ]);
-    expect(PRODUCT_ORDER).not.toContain("rewards");
-    expect(PRODUCT_KEYS).not.toContain("rewards");
-    for (const card of Object.values(build({ partnered: true }))) {
-      expect(card.name, card.key).not.toBe("Mesita Rewards");
-    }
+    expect(PRODUCT_ORDER).not.toContain("terminal");
+    expect(PRODUCT_KEYS).not.toContain("terminal");
+  });
+
+  it("there is ONE vocabulary, and the grid re-exports it (MESITA-1900)", () => {
+    // `ProductCatalog.tsx` held a second `PRODUCT_KEYS` of its own after
+    // MESITA-1885 split the vocabulary out, so the list existed twice and
+    // each reader picked one. This import comes from the COMPONENT and the
+    // one below from the split file; same array identity or they are two
+    // lists again.
+    expect(PRODUCT_KEYS).toBe(VOCABULARY_KEYS);
   });
 
   it("renders all eight in EVERY state, so no read can hide a product", () => {
@@ -104,7 +119,8 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // place views are exactly the two that carry no verb, in both directions:
     // a product losing its view without losing its verb would 404 an operator
     // from the catalogue.
-    const noView: readonly ProductKey[] = ["customers", "terminal"];
+    // Customers is the ONLY one since MESITA-1900 retired Terminal.
+    const noView: readonly ProductKey[] = ["customers"];
     const cards = build({ partnered: true });
     for (const key of PRODUCT_ORDER) {
       if (noView.includes(key)) {
@@ -306,24 +322,19 @@ describe("Mesita Pay's verb is the one that stays on this page", () => {
   });
 });
 
-describe("Mesita Terminal is honest about not existing", () => {
-  it("is Soon in every state, with no verb and no count", () => {
-    for (const input of [{}, { partnered: true }, { place: null }]) {
-      const t = build(input).terminal;
-      expect(t.state).toBe("soon");
-      expect(t.action).toBeNull();
-      expect(t.note).toContain("not available yet");
-    }
-  });
-
-  it("shares Soon with Customers, and with NOTHING that has a column", () => {
+describe("Soon is Customers ALONE (MESITA-1900)", () => {
+  it("shares Soon with NOTHING that has a column", () => {
     // The set is closed on purpose. Every other card reads a column or a
     // subscription, and a card with a real fact behind it that paints Soon is
     // a product quietly withdrawn from sale by a typo.
+    //
+    // Terminal was the other member and left with the product. `spec.soon`
+    // stays a FIELD rather than collapsing back to `key === "customers"`: it
+    // was that hardcode once, and MESITA-1884 had to undo it the moment a
+    // second product was unbuilt.
     const cards = Object.values(build({ partnered: true }));
     expect(cards.filter((c) => c.state === "soon").map((c) => c.key)).toEqual([
       "customers",
-      "terminal",
     ]);
   });
 });
@@ -351,19 +362,22 @@ describe("Mesita Customers is free, unbuilt, and says both (MESITA-1884)", () =>
   });
 });
 
-describe("Visits absorbed Rewards WITHOUT inheriting its state (MESITA-1884)", () => {
-  // Pato: "should i separate visits and rewards into two?? i don't think so."
+describe("Visits and Rewards are two cards, and neither borrows (MESITA-1900)", () => {
+  // Pato, 2026-09-16, separated what MESITA-1884 merged on *"should i separate
+  // visits and rewards into two?? i don't think so."*
   //
-  // THE TRAP THE MERGE HAD TO AVOID, and the reason this suite is long.
-  // MESITA-1882 fixed a Rewards card that claimed Enabled at strategy Zero —
-  // 0% to every guest, no Partner badge in the guest app, reported as "on" by
-  // the one screen whose job is saying what is on. The obvious merge takes
-  // `visitRewards` as the merged card's state, and that lies the OTHER way: a
-  // partner whose checkout works — guests scan, the bill closes, money moves —
-  // would read "Not enabled" because the discount is zero.
+  // THE TRAP IS THE SAME ONE, AND THE SPLIT IS WHAT DISARMS IT. MESITA-1882
+  // fixed a Rewards card that claimed Enabled at strategy Zero — 0% to every
+  // guest, no Partner badge in the guest app, reported as "on" by the one
+  // screen whose job is saying what is on. MESITA-1884 then refused to give
+  // VISITS' card the dial's state, because that lies the other way: a partner
+  // whose checkout works — guests scan, the bill closes, money moves — would
+  // have read "Not enabled" because the discount is zero.
   //
-  // So the two facts stay two: Visits' STATE is the container's, and the dial
-  // is its second sentence. Every test below is the bijection between them.
+  // Two cards, two states, neither borrowed. Visits' state is the container's
+  // and Rewards' is `visitRewards`, where "Not on here yet" is the dial's own
+  // truth and accuses nothing. Every test below is the bijection between
+  // them.
 
   it("stays Enabled for a partner whose rewards are at Zero", () => {
     // The card must NOT move with the dial. This is the assertion that fails
@@ -395,34 +409,51 @@ describe("Visits absorbed Rewards WITHOUT inheriting its state (MESITA-1884)", (
     expect(build({ partnered: false }).visits.state).toBe("locked");
   });
 
-  it("says what the dial is set to, and the sentence MOVES with it", () => {
-    // The state is fixed, so the note is the only place the rewards fact can
-    // live — which makes "the note differs" the whole contract. Asserting
-    // only one half would pass for a hardcoded string, which is what this
-    // note was before MESITA-1884.
+  it("REWARDS' card moves with the dial, which is the other half", () => {
+    // The bijection MESITA-1884 could not have: the same two reads that must
+    // NOT move Visits must move Rewards, or the split bought nothing and the
+    // dial is once again a fact with no card of its own.
     const zero = build({
       partnered: true,
       place: place({ visitRewards: false }),
-    }).visits;
+    }).rewards;
     const on = build({
       partnered: true,
       place: place({ visitRewards: true }),
-    }).visits;
+    }).rewards;
 
-    expect(zero.note).toBe("Included with Mesita Partner. No rewards set yet.");
-    expect(on.note).toBe("Included with Mesita Partner. Rewards are on.");
-    expect(zero.note).not.toBe(on.note);
-    // And the state did NOT move with it — the two halves of the trap, in
-    // one assertion.
-    expect(zero.state).toBe(on.state);
+    expect(zero.state).toBe("off");
+    expect(on.state).toBe("enabled");
+    expect(zero.action?.href).toBe(placeTabHref("p-1", "rewards"));
   });
 
-  it("A FAILED READ FABRICATES NO REWARDS CLAUSE EITHER", () => {
-    // The rule the whole file exists to hold, applied to the one note that is
-    // built by string concatenation and could therefore smuggle a claim in.
-    const visits = build({ partnered: true, place: null }).visits;
-    expect(visits.note).toBe("Included with Mesita Partner.");
-    expect(visits.note).not.toMatch(/rewards/i);
+  it("Rewards is Partner-gated, and reads Locked rather than Off", () => {
+    // Conservative and Aggressive are what the Membership prices, so a
+    // non-partner has no switch to be walked to — the ladder grammar every
+    // partner-gated card on this page uses.
+    const card = build({ partnered: false, place: place({ visitRewards: true }) })
+      .rewards;
+    expect(card.state).toBe("locked");
+    expect(card.action).toBeNull();
+  });
+
+  it("VISITS' note is one sentence again, and names no dial", () => {
+    // The rewards clause rode this note from MESITA-1884 until the split. A
+    // note reporting another product's dial would be the second place that
+    // fact lives, which is the drift every comment in `products.ts` is about.
+    for (const p of [place({ visitRewards: false }), place({ visitRewards: true }), null]) {
+      const visits = build({ partnered: true, place: p }).visits;
+      expect(visits.note, JSON.stringify(p)).toBe("Included with Mesita Partner.");
+      expect(visits.note).not.toMatch(/rewards/i);
+    }
+  });
+
+  it("A FAILED READ FABRICATES NO REWARDS STATE", () => {
+    // The rule the whole file exists to hold, now applied to the card that
+    // actually reads the column: `place: null` is a read that FAILED, and Off
+    // is the most believable fabrication there is.
+    const rewards = build({ partnered: true, place: null }).rewards;
+    expect(rewards.note).toBeNull();
   });
 
   it("never promises cashback — nothing accumulates on Mesita", () => {

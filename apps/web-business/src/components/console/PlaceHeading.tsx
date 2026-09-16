@@ -42,7 +42,6 @@ import { PartnerPill, PlaceStateBadge } from "@/components/console/badges";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
 import {
   PLACE_PAGE_LABEL,
-  isPlaceTerminalPathname,
   placePageFromPathname,
 } from "@/lib/console-routes";
 
@@ -64,17 +63,16 @@ export function PlaceHeading({
   // copy too many, and the bare URL redirects now rather than rendering.
   const tab = placeTabFromPathname(pathname);
   const page = placePageFromPathname(pathname);
-  // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE. `placePageFromPathname`
-  // answers "products" for `products/pay` (the sub-step reads as its page) and
-  // null for `products/terminal`, so the one address that would otherwise be
-  // titleless names itself here.
+  // EVERY PLACE ADDRESS NAMES ITSELF AGAIN (MESITA-1900). `products/terminal`
+  // was the one that could not: `placePageFromPathname` answers "products" for
+  // `products/pay` (the sub-step reads as its page) and answered null for
+  // Terminal, so the heading had to special-case it. Terminal is gone and the
+  // special case with it.
   const viewLabel = tab
     ? PLACE_TAB_LABEL[tab]
-    : isPlaceTerminalPathname(pathname)
-      ? "Terminal"
-      : page
-        ? PLACE_PAGE_LABEL[page]
-        : null;
+    : page
+      ? PLACE_PAGE_LABEL[page]
+      : null;
 
   return (
     <div className="flex flex-col gap-1">

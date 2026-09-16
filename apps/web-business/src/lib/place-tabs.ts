@@ -65,9 +65,21 @@ import { PRODUCT_LABEL } from "@/lib/product-keys";
 // moved between products and none was invented — `offerings.test.ts` proves
 // every guest row still belongs to exactly one zone.
 //
-// `/places/<id>/capabilities` and `/places/<id>/rewards` forward, temporarily:
-// this answer has moved four times and a 308 caches today's in every browser
-// forever.
+// `/places/<id>/capabilities` forwards, temporarily: this answer has moved
+// four times and a 308 caches today's in every browser forever.
+//
+// ── REWARDS IS A VIEW AGAIN, AND ITS FORWARD HAD TO DIE (MESITA-1900) ─────
+//
+// Pato's 2026-09-16 product list separates Rewards from Visits and files it
+// under money, so `visit_rewards` and its strategy cards are the `rewards`
+// zone and `/places/<id>/rewards` is a real page again.
+//
+// THE FORWARD MESITA-1887 ADDED FOR IT IS DELETED IN THE SAME COMMIT. A
+// `next.config.ts` rule runs BEFORE filesystem routes, so leaving it would
+// make this view unreachable with every check green — `/settings` in
+// MESITA-1839 and `/credits` in MESITA-1885, twice recorded and once more
+// here. It was `permanent: false`, which is the only reason deleting it is
+// enough: no browser cached the answer.
 export const PLACE_TABS = [
   "profile",
   "menus",
@@ -75,15 +87,18 @@ export const PLACE_TABS = [
   "visits",
   "orders",
   "reservations",
+  "rewards",
   "pay",
   "credits",
   "admin",
 ] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
-/** The five product views take their label from the PRODUCT vocabulary, not
+/** The six product views take their label from the PRODUCT vocabulary, not
  *  from a second list here: the rail row, the card and the page heading are
- *  one noun or an operator learns that one of the three is lying. */
+ *  one noun or an operator learns that one of the three is lying. It is why
+ *  `pay` reads "Payments" on all three at once (MESITA-1900) without a single
+ *  string changing in this file. */
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   profile: "Profile",
   menus: "Menus",
@@ -91,6 +106,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   visits: PRODUCT_LABEL.visits,
   orders: PRODUCT_LABEL.orders,
   reservations: PRODUCT_LABEL.reservations,
+  rewards: PRODUCT_LABEL.rewards,
   pay: PRODUCT_LABEL.pay,
   credits: PRODUCT_LABEL.credits,
   admin: "Admin",
@@ -111,14 +127,18 @@ export type ViewerAccess = {
  *
  *  pool place            → Profile only (it carries Claim)
  *  held · viewer         → Profile + Menus + Reviews (the read surfaces)
- *  held · owner/editor   → + the five PRODUCT views
+ *  held · owner/editor   → + the six PRODUCT views
  *  super-admin           → + Admin (operator internals)
  *
  *  THE PRODUCT VIEWS INHERIT CAPABILITIES' AND REWARDS' ACCESS EXACTLY
  *  (MESITA-1885). Splitting one write surface into five must not hand a
  *  viewer a switch, and must not take one from an editor: every row that was
- *  owner/editor-only still is, and the read set is untouched. Five entries
- *  where there were two is the whole diff.
+ *  owner/editor-only still is, and the read set is untouched.
+ *
+ *  SIX SINCE MESITA-1900, and the sixth is Rewards taking back the access it
+ *  had as a view of its own before MESITA-1885 folded it into Visits: the
+ *  `visit_rewards` switch was owner/editor-only in every one of those shapes,
+ *  so a view that carries it is owner/editor-only too.
  *
  *  Two callers, one rule (MESITA-1779). The place layout resolves it
  *  server-side for the place you are ON (`visibleTabs` in lib/place-view.ts
@@ -138,6 +158,7 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
           "visits",
           "orders",
           "reservations",
+          "rewards",
           "pay",
           "credits",
         ];

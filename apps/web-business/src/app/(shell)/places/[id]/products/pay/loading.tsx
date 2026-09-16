@@ -4,7 +4,7 @@
 export default function MesitaPayLoading() {
   return (
     <>
-      <span className="sr-only">Loading Mesita Pay…</span>
+      <span className="sr-only">Loading Mesita Payments…</span>
       <div aria-hidden="true" className="flex flex-col gap-1">
         <div className="bg-muted h-8 w-48 animate-pulse rounded" />
         <div className="bg-muted h-4 w-96 animate-pulse rounded" />

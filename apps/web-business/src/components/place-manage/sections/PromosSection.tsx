@@ -57,15 +57,21 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // The place's ladder — rendered ONCE per zone, and a zone is a PRODUCT
 // (MESITA-1841, re-cut by MESITA-1885).
 //
-// ONE ENGINE, FIVE VIEWS. `zone` selects which rungs and which trailing blocks
-// this renders: Visits owns Visit Rewards, its strategy ladder, the
-// Partnership body that prices it and the internal "How this place is run"
-// box; Orders owns pickup and delivery; Reservations, Pay and Credits own
-// theirs. The rungs depend on one another (Partner unlocks Visit Rewards and
-// Mesita Pay; Stripe unlocks the money rungs), so the COMPUTATION is never
-// split — two copies of a dependency ladder is two copies that can disagree.
-// `ZONE_ROWS` in controls/offerings.ts owns the mapping and a test proves it
-// is total.
+// ONE ENGINE, SIX VIEWS (MESITA-1900). `zone` selects which rungs and which
+// trailing blocks this renders: Rewards owns Visit Rewards, its strategy
+// ladder and the Partnership body that prices them; Visits owns NO rung and
+// keeps the internal "How this place is run" box; Orders owns pickup and
+// delivery; Reservations, Payments and Credits own theirs. The rungs depend on
+// one another (Partner unlocks Visit Rewards and Mesita Payments; Stripe
+// unlocks the money rungs), so the COMPUTATION is never split — two copies of
+// a dependency ladder is two copies that can disagree. `ZONE_ROWS` in
+// controls/offerings.ts owns the mapping and a test proves it is total.
+//
+// THE TWO BLOCKS WENT TO DIFFERENT VIEWS, and that is the whole of what
+// MESITA-1900 moved here. They rode Visits together from MESITA-1885, but they
+// are about different subjects: the Partnership body prices Conservative and
+// Aggressive (its own docblock calls it *"Rewards' own box"*), while "How this
+// place is run" is how visits are run here. Each is now on the view it names.
 //
 // WHY FIVE AND NOT TWO. Pato put all eight products in the rail, and Orders,
 // Reservations and Credits were three rows on the one Capabilities page —
@@ -202,7 +208,17 @@ export function PromosSection({
   // narrows, so the summary line describes the view you are actually on.
   const zoneRows = rowsForZone(rows, zone);
   const painted = paintRows(zoneRows);
-  const summary = guestSummary(zoneRows);
+  // A ZONE WITH NO RUNGS DOES NOT GET THE LADDER'S SENTENCE (MESITA-1900).
+  // `guestSummary` over an empty set answers "Right now, nothing is live for
+  // guests." — which is false about a partner whose visit checkout works, and
+  // exactly the class of lie MESITA-1882 and MESITA-1884 each paid for once.
+  // Visits is that zone: it has no switch, no column and, since Rewards took
+  // `visit_rewards` back, no row. So it states the container's own fact and
+  // the ladder states the rest.
+  const summary =
+    zoneRows.length === 0
+      ? "Guests can close their bill here. Visits is on for every Mesita Partner."
+      : guestSummary(zoneRows);
   const prereq = topPrerequisite(ladderInput);
 
   const applyPlace = (next: AdminPlace) => {
@@ -341,7 +357,7 @@ export function PromosSection({
             key={key}
             row={byKey.mesita_pay}
             disagreementAction={fixFor("mesita_pay")}
-            {...railProps("mesita_pay", "mesita_pay", "Mesita Pay")}
+            {...railProps("mesita_pay", "mesita_pay", "Mesita Payments")}
           />
         );
       case "visit_rewards":
@@ -446,11 +462,12 @@ export function PromosSection({
     }
   };
 
-  // Rewards' own box — every pill state. Placed above the rows for a
+  // Rewards' own box — every pill state, and since MESITA-1900 it renders on
+  // the view whose name it has always carried. Placed above the rows for a
   // non-member (the pitch, right under the door line) and below them for a
   // member (the rows are the point once you are in).
   const partnershipBody =
-    zone === "visits" ? (
+    zone === "rewards" ? (
       <PartnershipBody
         place={v}
         pillState={pillState}
@@ -483,9 +500,9 @@ export function PromosSection({
             {/* Only the SETUP fix carries a link; a re-join is this place's
                 own door, and a link to the setup there would send a forfeited
                 place to subscribe twice. The button for it lives in the
-                Visits box below, which is why this line names WHO can press
-                it rather than where it is — the same engine paints five
-                zones and only one of them carries that box. */}
+                Rewards box, which is why this line names WHO can press it
+                rather than where it is — the same engine paints six zones and
+                only one of them carries that box. */}
             {prereq.action === "setup" && (
               <>
                 {" "}
@@ -493,7 +510,7 @@ export function PromosSection({
                   href={setupHref}
                   className="text-foreground font-semibold underline underline-offset-4"
                 >
-                  Mesita Pay
+                  Mesita Payments
                 </Link>
               </>
             )}
@@ -517,7 +534,7 @@ export function PromosSection({
         {member && partnershipBody && <div className="mt-4">{partnershipBody}</div>}
 
         <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
-          {zone === "visits"
+          {zone === "rewards"
             ? "Turning Visit Rewards on saves instantly. A strategy is confirmed in its card."
             : "Capability switches save instantly. Channel picks wait for Save."}
         </p>
@@ -529,6 +546,12 @@ export function PromosSection({
           is ABOUT — `VisitsCard` is how visits are run here — and because
           Visits is the container the other products attach to, which makes it
           the place's own room.
+
+          IT STAYED WHEN THE PARTNERSHIP BODY LEFT (MESITA-1900). Rewards took
+          `visit_rewards` and the box that prices it; this one is about how
+          visits are RUN, so it did not travel. With no rung left on the view,
+          it is what Visits shows besides its one sentence — which is the true
+          shape of a product that has never had a switch.
 
           `TeamSection` LEFT IT (MESITA-1892). MESITA-1885 put the team here
           and said in the same breath that the box "had to pick one rather than

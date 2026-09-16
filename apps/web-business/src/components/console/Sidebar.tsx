@@ -83,9 +83,9 @@ import {
   CalendarCheck,
   ChartNoAxesColumn,
   CreditCard,
+  Gift,
   Layers,
   LayoutGrid,
-  Nfc,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -126,7 +126,6 @@ import {
   ZERO_PLACE_ROWS,
   flatPlacePageFromPathname,
   flatViewFromPathname,
-  isPlaceTerminalPathname,
   placePageFromPathname,
   placePageHref,
   productRowHref,
@@ -269,9 +268,9 @@ const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   visits: Ticket,
   orders: ShoppingBag,
   reservations: CalendarCheck,
+  rewards: Gift,
   pay: CreditCard,
   credits: Wallet,
-  terminal: Nfc,
   // Kept for the two views that lost their rows and not their addresses: the
   // place heading and the flat resolvers still read this table.
   menus: UtensilsCrossed,
@@ -425,9 +424,6 @@ export function Sidebar({
   // one row keeping a clause after another row took the subject.
   const onAccount = pathname === SHELL_ROUTES.account;
   const onAddPlace = pathname === SHELL_ROUTES.placesNew;
-  // Terminal's page is under `products/` and is NOT the catalogue, so
-  // `placePageFromPathname` answers null for it and this answers instead.
-  const onTerminal = isPlaceTerminalPathname(pathname);
   // The view you are on, whichever address you came by: the canonical
   // `/places/<id>/<view>` or the flat resolver still in flight (MESITA-1839).
   const currentView = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
@@ -473,12 +469,12 @@ export function Sidebar({
   //               the gate cannot disagree.
   //
   // A PRODUCT ROW IS FILTERED BY THE TAB IT OPENS (MESITA-1885), not by being
-  // a product: six of the eight are place views, so an editor-only switch must
-  // not be listed for a viewer. Customers is a place PAGE and Terminal a
-  // product sub-page, so both answer from the page filter instead of a matrix
-  // they are not in.
+  // a product: seven of the eight are place views, so an editor-only switch
+  // must not be listed for a viewer. Customers is a place PAGE, so it answers
+  // from the page filter instead of a matrix it is not in — it is the only one
+  // left since Terminal's sub-page went with Terminal (MESITA-1900).
   const productListed = (product: ProductKey) =>
-    product === "customers" || product === "terminal"
+    product === "customers"
       ? !foreign
       : noPlace || placeTabs.includes(product as PlaceTab);
   const rows = (scope.mode === "zero" ? ZERO_PLACE_ROWS : RAIL_ROWS).filter((r) =>
@@ -498,14 +494,12 @@ export function Sidebar({
     return RAIL_GROUP_STARTS.includes(full);
   };
 
-  // WHICH PRODUCT ROW LIGHTS (MESITA-1885). Two of the eight do not open a
-  // place view, so each answers from the space its address is actually in —
-  // and `products` itself must NOT light for them, or the catalogue row and a
-  // product row would be on together. `onTerminal` is what keeps
-  // `/products/terminal` off the Products row.
+  // WHICH PRODUCT ROW LIGHTS (MESITA-1885). One of the eight does not open a
+  // place view, so it answers from the space its address is actually in — and
+  // `products` itself must NOT light for it, or the catalogue row and a
+  // product row would be on together.
   const productRowActive = (product: ProductKey) => {
     if (product === "customers") return placePage === "customers";
-    if (product === "terminal") return onTerminal;
     return currentView === (product as PlaceTab);
   };
 

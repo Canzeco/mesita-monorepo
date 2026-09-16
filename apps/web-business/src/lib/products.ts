@@ -25,24 +25,36 @@
 //                        subscription IS the state — so it is ALWAYS ON for a
 //                        partner, the Profile pattern, never an on/off card
 //                        (MESITA-1882). Visits is not a capability; it is the
-//                        container Rewards, Pay and Credits attach to, which
-//                        is why it has no column, no rail row and no ladder
-//                        rung anywhere else in this console either.
-//                        REWARDS IS NOW ITS SECOND SENTENCE (MESITA-1884) —
-//                        see `rewardsClause` for why that is a note and never
-//                        a state.
+//                        container Rewards, Payments and Credits attach to,
+//                        which is why it has no column, no ladder rung and no
+//                        second sentence: `rewardsClause` went with Rewards
+//                        when Rewards became a card again (MESITA-1900).
+//   Mesita Rewards       `visit_rewards`, per place. Partner-gated, because
+//                        Conservative and Aggressive are what the Membership
+//                        prices. THE CARD'S STATE IS THE DIAL'S, and that is
+//                        only honest now that the dial has a card of its own:
+//                        a Rewards card at 0% reads "Not on here yet", which
+//                        is what it is. MESITA-1882's bug was the opposite —
+//                        Enabled at Zero — and MESITA-1884 feared this state
+//                        because back then it was VISITS' card, where "Not
+//                        enabled" would have accused a working checkout.
 //   Mesita Orders        `pickup_orders_enabled` OR `delivery_orders_enabled`,
 //                        per place. One card, because an operator thinks
 //                        "orders" and the two columns are its two shapes.
 //   Mesita Reservations  `reservations_enabled`, per place.
-//   Mesita Pay           `place_profiles.mesita_pay_enabled`, on top of
+//   Mesita Payments      `place_profiles.mesita_pay_enabled`, on top of
 //                        Partner. Its switch lives with the Stripe account it
 //                        needs, at `products/pay`, which is why it is the one
 //                        card whose verb stays on this page's own sub-step.
+//                        The NOUN is Payments since MESITA-1900 and the KEY is
+//                        still `pay`; see `lib/product-keys.ts`.
 //   Mesita Credits       `credits_enabled`, per place. Partner-gated too —
 //                        Accept Prepays is in PARTNER_PERKS — so a
 //                        non-partner reads Locked, not Not enabled.
-//   Mesita Terminal      hardware. NOT BUILT: Soon, no count, no verb.
+//
+// MESITA TERMINAL IS GONE (MESITA-1900). Pato's list drops it. It was the one
+// card with no engine, no column and no switch, and `soon` was the whole of
+// its spec — so nothing about it is worth keeping behind a flag.
 //
 // ── THE TWO RULES THIS FILE EXISTS TO HOLD ────────────────────────────────
 //
@@ -65,7 +77,11 @@
 // row instead of a fold: a read that failed still prints nothing.
 import type { ConsolePlace } from "@/lib/api/console";
 import type { PlaceTab } from "@/lib/place-tabs";
-import type { ProductCard, ProductKey } from "@/components/console/ProductCatalog";
+import type { ProductCard } from "@/components/console/ProductCatalog";
+// THE KEY COMES FROM THE VOCABULARY, NOT FROM THE GRID (MESITA-1900). It used
+// to come from `ProductCatalog.tsx`, which held a second copy of the list;
+// `lib/product-keys.ts` is the only copy now and the component re-exports it.
+import type { ProductKey } from "@/lib/product-keys";
 
 export type { ProductCard, ProductKey };
 
@@ -80,13 +96,14 @@ type ProductSpec = {
   /** Mesita Partner unlocks it. */
   needsPartner: boolean;
   /** The per-place column(s) behind it, or null when the product is not a
-   *  per-place switch (Profile, Pay, Terminal). */
+   *  per-place switch (Profile, Visits, Payments). */
   atPlace: PlacePredicate | null;
   /** NOT BUILT, and the sentence that says so. A `soon` spec outranks every
    *  other branch below — no gate, no count, no verb — because a product that
    *  does not exist cannot be locked, off, or enabled. It used to be a
    *  hardcoded `key === "terminal"`, which is fine for one and a lie waiting
-   *  for the second (MESITA-1884 brought Customers). */
+   *  for the second (MESITA-1884 brought Customers, and MESITA-1900 retired
+   *  Terminal — the field outlived the product it was written for). */
   soon: string | null;
 };
 
@@ -135,8 +152,16 @@ const SPECS: readonly ProductSpec[] = [
     soon: null,
   },
   {
+    key: "rewards",
+    name: "Mesita Rewards",
+    blurb: "Give guests a reason to come back, priced by you.",
+    needsPartner: true,
+    atPlace: (p) => p.visitRewards === true,
+    soon: null,
+  },
+  {
     key: "pay",
-    name: "Mesita Pay",
+    name: "Mesita Payments",
     blurb: "Accept card payments for visits and orders.",
     needsPartner: true,
     atPlace: null,
@@ -149,14 +174,6 @@ const SPECS: readonly ProductSpec[] = [
     needsPartner: true,
     atPlace: (p) => p.credits === true,
     soon: null,
-  },
-  {
-    key: "terminal",
-    name: "Mesita Terminal",
-    blurb: "Take in-person payments with Mesita hardware.",
-    needsPartner: false,
-    atPlace: null,
-    soon: "Mesita hardware is not available yet.",
   },
 ];
 
@@ -177,39 +194,33 @@ export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 // hand is a second place for a spelling to drift.
 //
 // WHAT REPLACED IT IS A CONSTRUCTION, NOT A CONVENTION. `PLACE_TABS` and
-// `PRODUCT_KEYS` agree on all six per-place products, and
-// `console-routes.test.ts` asserts that set equality in BOTH directions —
-// so `placeHref(key as PlaceTab)` is checked by a test rather than trusted.
-// The two that are not place views (Customers, Terminal) never ask: they are
-// `soon`, they carry no verb, and `productRowHref` in lib/console-routes is
-// the one function that knows their addresses.
+// `PRODUCT_KEYS` agree on all seven per-place products — Rewards joined them
+// in MESITA-1900 — and `console-routes.test.ts` asserts that set equality in
+// BOTH directions, so `placeHref(key as PlaceTab)` is checked by a test rather
+// than trusted. The ONE that is not a place view is Customers: it is `soon`,
+// it carries no verb, and `productRowHref` in lib/console-routes is the one
+// function that knows its address.
 
-// ── REWARDS IS A SENTENCE INSIDE VISITS, NEVER A STATE (MESITA-1884) ──────
+// ── THE TWO FACTS ARE TWO CARDS AGAIN (MESITA-1900) ───────────────────────
 //
-// Pato: *"should i separate visits and rewards into two?? i don't think so."*
-// He is right, and the merge has exactly one trap in it.
+// MESITA-1884 made Rewards a SENTENCE inside Visits — `rewardsClause`, a note
+// reading "Rewards are on." or "No rewards set yet." — on Pato's *"should i
+// separate visits and rewards into two?? i don't think so."* Pato's 2026-09-16
+// list separates them, and the clause is deleted rather than kept beside the
+// card: a fact stated in two places is the drift every comment on this page is
+// about.
 //
-// THE TRAP: give the merged card the DIAL's state and it lies the other way.
-// MESITA-1882 fixed a Rewards card that claimed Enabled at Zero. Fold Rewards
-// into Visits by taking `visitRewards` as the card's state, and a partner
-// whose visit checkout works perfectly — guests scan, the bill closes, money
-// moves — reads **"Not enabled"** because the discount happens to be 0%. That
-// is a fresh lie pointing the opposite way, on the same screen, about the same
-// two facts.
+// THE TRAP MESITA-1884 NAMED IS STILL REAL, AND THE SPLIT IS WHAT DISARMS IT.
+// The trap was: give VISITS' card the dial's state and a partner whose
+// checkout works perfectly reads "Not enabled" because the discount happens to
+// be 0%. That was true while one card carried both facts. Two cards, two
+// states, neither borrowed — Visits' state is the container's (on for every
+// partner, there is no column) and Rewards' is `visitRewards`, where "Not on
+// here yet" is the dial's own truth and accuses nothing.
 //
-// So the two facts stay two. Visits' STATE is the container's (on for every
-// partner, there is no column), and the dial goes in the second sentence,
-// where "no rewards set yet" is information and not an accusation that
-// checkout is broken.
-//
-// It obeys the same no-fabrication rule as every note on this page: a failed
-// read drops the clause rather than claiming nothing is set.
-function rewardsClause(place: ConsolePlace | null): string {
-  if (!place) return "";
-  return place.visitRewards === true
-    ? "Rewards are on."
-    : "No rewards set yet.";
-}
+// A FAILED READ STILL PRINTS NOTHING. Rewards goes through the same `atPlace`
+// branch as Orders, Reservations and Credits, which drops the note rather than
+// claiming a switch is off.
 
 export function buildProductCards(input: {
   partnered: boolean;
@@ -230,8 +241,8 @@ export function buildProductCards(input: {
 }): ProductCard[] {
   const { partnered, mesitaPayEnabled, place, placeHref, payHref } = input;
   // A product's own view, by its own name. Every card that reaches this has a
-  // place view — the two that do not are `soon` and return above, carrying no
-  // verb at all.
+  // place view — the one that does not (Customers) is `soon` and returns
+  // above, carrying no verb at all.
   const viewHref = (key: ProductKey) => placeHref(key as PlaceTab);
 
   return SPECS.map((spec): ProductCard => {
@@ -273,9 +284,10 @@ export function buildProductCards(input: {
       };
     }
 
-    // Mesita Pay: the one card whose verb stays on this page's own sub-step,
-    // because the switch and the Stripe account it needs are one subject and
-    // live together at `products/pay`.
+    // Mesita Payments: the one card whose verb stays on this page's own
+    // sub-step, because the switch and the Stripe account it needs are one
+    // subject and live together at `products/pay` — the KEY that address is
+    // spelled with is `pay` and stays `pay` (lib/product-keys.ts).
     if (spec.key === "pay") {
       return {
         key: spec.key,
@@ -309,16 +321,21 @@ export function buildProductCards(input: {
     // WHAT IS LEFT IS VISITS, AND ONLY VISITS.
     //
     // Visits keeps no count because it has nothing to count: there is no
-    // `visits_enabled` column (two tests assert its absence), no rail row and
-    // no ladder rung. The subscription IS the state, so this is the Profile
-    // shape — always on, one verb, no off — and the note says which
-    // subscription rather than implying a switch the place does not have.
+    // `visits_enabled` column (two tests assert its absence) and no ladder
+    // rung. The subscription IS the state, so this is the Profile shape —
+    // always on, one verb, no off — and the note says which subscription
+    // rather than implying a switch the place does not have.
+    //
+    // IT IS ONE SENTENCE AGAIN (MESITA-1900). The rewards clause that rode
+    // here since MESITA-1884 is Rewards' own card now, and a note that
+    // reported another product's dial would be the second place that fact
+    // lives.
     return {
       key: spec.key,
       name: spec.name,
       blurb: spec.blurb,
       state: "enabled",
-      note: `Included with Mesita Partner. ${rewardsClause(place)}`.trim(),
+      note: "Included with Mesita Partner.",
       action: { label: "Manage", href: viewHref(spec.key) },
     };
   });

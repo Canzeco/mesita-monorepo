@@ -37,7 +37,6 @@ import {
   SHELL_ROUTES,
   flatPlacePageFromPathname,
   flatViewFromPathname,
-  isPlaceTerminalPathname,
   placeIdFromPathname,
   placePageFromPathname,
 } from "@/lib/console-routes";
@@ -71,20 +70,14 @@ export function crumbsFor(
 
   if (placeIdFromPathname(pathname)) {
     const trail = [names.placeName ?? "Place"];
-    // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE (MESITA-1885), so
-    // `placePageFromPathname` answers null for it on purpose — the Products
-    // row must not light there. That would leave it matching nothing and
-    // returning a one-crumb trail, so it gets the ceremony shape — place ·
-    // section · leaf — which is what it is: a step inside Products.
-    if (isPlaceTerminalPathname(pathname)) {
-      return [...trail, PLACE_PAGE_LABEL.products, "Terminal"];
-    }
     const page = placePageFromPathname(pathname);
     if (page) {
       trail.push(PLACE_PAGE_LABEL[page]);
-      // Mesita Pay's setup is the one other sub-step, and it reads as its own
-      // page so the rail's Products row stays lit while you stand in it.
-      if (/\/products\/pay\/?$/.test(pathname)) trail.push("Mesita Pay");
+      // Mesita Payments' setup is the ONE sub-step left (MESITA-1900 retired
+      // Terminal's), and it reads as its own page so the rail's Products row
+      // stays lit while you stand in it. The segment is `pay` and the crumb
+      // says Payments: the label moved, the address did not.
+      if (/\/products\/pay\/?$/.test(pathname)) trail.push("Mesita Payments");
       return trail;
     }
     const view = placeTabFromPathname(pathname);

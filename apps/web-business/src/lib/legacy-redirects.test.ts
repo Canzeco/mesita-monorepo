@@ -20,7 +20,6 @@ import {
   placePageHref,
   placePayHref,
   placeRootHref,
-  placeTerminalHref,
 } from "./console-routes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
@@ -144,14 +143,17 @@ describe("the legacy console's URLs all still resolve", () => {
   // page was unreachable and the rail's Settings row 308'd to Account. CI was
   // green the whole time, because this file pinned the redirect rather than
   // the reachability. Now it pins the absence.
-  it("the two retired place segments land on Visits, and nothing chains", async () => {
+  it("the ONE retired place segment lands on Visits, and nothing chains", async () => {
     // MESITA-1885 retired `capabilities` and `rewards` as views: the rail
     // lists all eight products and three of them were rows on the one
     // Capabilities page, so each product took a view of its own.
+    //
+    // REWARDS CAME BACK (MESITA-1900) and its two rules left in the same
+    // commit — see the assertions at the foot of this test. Capabilities did
+    // not: its six rows are six products, and landing on the container beats
+    // guessing one of them.
     const all = await rules();
-    for (const gone of ["capabilities", "rewards"]) {
-      expect(resolve(`/places/abc/${gone}`, all), gone).toBe("/places/abc/visits");
-    }
+    expect(resolve("/places/abc/capabilities", all)).toBe("/places/abc/visits");
     // The absence IS the assertion: a rule here would shadow the live page.
     expect(resolve("/settings", all)).toBeNull();
     // AND `/places/<id>/settings` IS A LIVE PAGE NOW (MESITA-1892). It was
@@ -169,14 +171,22 @@ describe("the legacy console's URLs all still resolve", () => {
     // green, which is `/settings` in MESITA-1839 exactly.
     expect(resolve("/credits", all)).toBeNull();
     expect(resolve("/places/abc/credits", all)).toBeNull();
-    // THE FLAT TWINS FORWARD TOO, and forgetting them is the mirror of the
+    // THE FLAT TWIN FORWARDS TOO, and forgetting it is the mirror of the
     // MESITA-1839 trap this file is mostly about: there a rule SHADOWED a
     // live address, here a MISSING rule strands a retired one. `/capabilities`
-    // and `/rewards` were live flat resolvers until MESITA-1885, and a name
-    // dropped from `FLAT_ROUTES` does not fall through to anything — the
-    // `[flat]` segment answers 404 for a name not in the contract, on purpose.
+    // was a live flat resolver until MESITA-1885, and a name dropped from
+    // `FLAT_ROUTES` does not fall through to anything — the `[flat]` segment
+    // answers 404 for a name not in the contract, on purpose.
     expect(resolve("/capabilities", all)).toBe("/visits");
-    expect(resolve("/rewards", all)).toBe("/visits");
+    // AND BOTH REWARDS RULES ARE GONE (MESITA-1900), which is the trap this
+    // file exists for, seen from the shadow side. Pato's product list makes
+    // Rewards a view again; `rewards` is back in `FLAT_ROUTES` and
+    // `/places/<id>/rewards` is a route file. Either rule surviving would
+    // 307 both addresses onto Visits forever, with every check green —
+    // `/settings` in MESITA-1839, `/credits` in MESITA-1885, and this is the
+    // third.
+    expect(resolve("/rewards", all)).toBeNull();
+    expect(resolve("/places/abc/rewards", all)).toBeNull();
   });
 
   it("a place's Activity is its own page again — no rule may catch it", async () => {
@@ -300,12 +310,17 @@ describe("every redirect forwards somewhere this repo serves", () => {
       expect(rule.destination.startsWith("/orgs/")).toBe(false);
       expect(rule.destination).not.toBe("/organization");
       expect(rule.destination).not.toBe("/configuration");
-      // MESITA-1885 deleted these two views; MESITA-1892 made the third a
-      // live page. A redirect onto a deleted route is the `/unit/*` →
-      // `/place/*` chain again, and it fails silently because no test walks a
-      // LEGACY source to its own destination — except the ones above, which do.
+      // MESITA-1885 deleted `capabilities` as a view; MESITA-1892 made
+      // `settings` a live page. A redirect onto a deleted route is the
+      // `/unit/*` → `/place/*` chain again, and it fails silently because no
+      // test walks a LEGACY source to its own destination — except the ones
+      // above, which do.
+      //
+      // `/places/:id/rewards` LEFT THIS LIST (MESITA-1900) for the opposite
+      // reason: it is a live route again, so a rule pointing AT it would be
+      // fine and a rule pointing FROM it is the one that must not exist. The
+      // test above asserts that absence.
       expect(rule.destination).not.toBe("/places/:id/capabilities");
-      expect(rule.destination).not.toBe("/places/:id/rewards");
       expect(rule.destination).not.toBe("/places/:id/settings");
     }
   });
@@ -360,7 +375,6 @@ describe("no live address is swallowed by the redirect table", () => {
       expect(resolve(href, all), `${href} is caught by a redirect`).toBeNull();
     }
     expect(resolve(placePayHref("abc"), all)).toBeNull();
-    expect(resolve(placeTerminalHref("abc"), all)).toBeNull();
     // The bare place address is the Stripe catcher and must never forward.
     expect(resolve(placeRootHref("abc"), all)).toBeNull();
     expect(resolve(`${placeRootHref("abc")}?connect=return`, all)).toBeNull();

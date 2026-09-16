@@ -50,6 +50,7 @@ import {
   CalendarCheck,
   Check,
   CreditCard,
+  Gift,
   Lock,
   Minus,
   ShoppingBag,
@@ -61,31 +62,29 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// THE EIGHT, IN PATO'S ORDER (2026-09-15): *"Profile · Costumers · Visits ·
-// Orders · Reservations · Payments · Credits · Terminal"*, with the
+// THE EIGHT, IN PATO'S ORDER (2026-09-16): *"Profile · Costumers // Visits ·
+// Orders · Reservations // Rewards · Payments · Credits"*, with the
 // partnership above the grid and not in it.
 //
-// REWARDS IS NOT HERE ANY MORE, and that is the whole point of MESITA-1884.
-// Pato: *"should i separate visits and rewards into two?? i don't think so."*
-// A reward is a DIAL INSIDE Visits — no price, no purchase, and its only
-// state is the rate you set — so selling it as a ninth card sold the same
-// thing twice. MESITA-1882 had already paid for that mistake once, when the
-// two cards computed byte-identically and the only difference a merchant
-// could see was the icon.
+// THE VOCABULARY IS `lib/product-keys.ts`, AND THIS FILE ONLY RE-EXPORTS IT
+// (MESITA-1900). MESITA-1885 split the keys out so modules that must not pull
+// a "use client" grid into their bundle could still name a product — and then
+// left the original list HERE as well. Two lists, and every reader had to pick
+// one: `lib/products.ts` took the type from this component, `lib/place-tabs.ts`
+// took the labels from the split file. A vocabulary that exists twice is the
+// exact failure the split was for, so there is one list and this is not it.
 //
-// CUSTOMERS TOOK ITS SLOT, and it is `soon`, not free: the engine is not
-// built. See `lib/products.ts` for why the chip says the harder word.
-export const PRODUCT_KEYS = [
-  "profile",
-  "customers",
-  "visits",
-  "orders",
-  "reservations",
-  "pay",
-  "credits",
-  "terminal",
-] as const;
-export type ProductKey = (typeof PRODUCT_KEYS)[number];
+// REWARDS IS BACK, AND TERMINAL IS GONE. MESITA-1884 removed the Rewards card
+// on Pato's *"should i separate visits and rewards into two?? i don't think
+// so."* — a reward being a DIAL inside Visits rather than a thing you buy.
+// Pato's 2026-09-16 list separates them and files Rewards under MONEY, beside
+// Payments and Credits: it is what the place gives back. The card's state is
+// the dial's now, which is honest in the direction MESITA-1882 was not — a
+// Rewards card at 0% reads Not on here yet, and nothing on this page claims
+// visit checkout is broken because of it.
+export { PRODUCT_KEYS } from "@/lib/product-keys";
+export type { ProductKey } from "@/lib/product-keys";
+import type { ProductKey } from "@/lib/product-keys";
 
 /** The five things a card may claim. Every one is read, never assumed. */
 export type ProductState = "free" | "enabled" | "off" | "locked" | "soon";
@@ -101,7 +100,8 @@ export type ProductCard = {
    *  standing in for a read that failed. */
   note: string | null;
   /** Where the product is actually turned on. Null when there is nothing to
-   *  open — Terminal is not built, and Profile is on by construction. */
+   *  open — Customers is not built, and a locked product has no switch to
+   *  walk an operator to. */
   action: { label: string; href: string } | null;
 };
 
@@ -110,15 +110,17 @@ export type ProductCard = {
  *  a grid is a toy, and this screen is where an operator spends money. */
 const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
   profile: { Icon: Store, tint: "bg-teal-500/10 text-teal-700" },
-  // Customers inherits the pink Rewards left behind: eight products, eight
-  // tints, and no gap where a retired card used to be.
   customers: { Icon: Users, tint: "bg-pink-500/10 text-pink-700" },
   visits: { Icon: Ticket, tint: "bg-rose-500/10 text-rose-700" },
   orders: { Icon: ShoppingBag, tint: "bg-amber-500/10 text-amber-700" },
   reservations: { Icon: CalendarCheck, tint: "bg-sky-500/10 text-sky-700" },
+  // Rewards takes the slate Terminal left behind rather than the pink it wore
+  // before MESITA-1884 — Customers has that now, and moving a live card's
+  // colour to give a returning one its old wash would recolour two cards to
+  // settle one. Eight products, eight tints, no gap.
+  rewards: { Icon: Gift, tint: "bg-slate-500/10 text-slate-700" },
   pay: { Icon: CreditCard, tint: "bg-violet-500/10 text-violet-700" },
   credits: { Icon: Wallet, tint: "bg-emerald-500/10 text-emerald-700" },
-  terminal: { Icon: CreditCard, tint: "bg-slate-500/10 text-slate-700" },
 };
 
 /** The state, as the operator reads it. One word where one will do — the

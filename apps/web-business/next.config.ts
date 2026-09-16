@@ -56,30 +56,38 @@ const nextConfig: NextConfig = {
       // — so leaving the rule would make that page unreachable with every
       // check green, which is `/settings` in MESITA-1839 exactly. It was safe
       // to delete because it was `permanent: false`: no browser cached it.
+      // `/places/:id/rewards` AND `/rewards` ARE NOT HERE ANY MORE
+      // (MESITA-1900), and their absence is the assertion — the same shape as
+      // `/settings` above. Pato's 2026-09-16 product list separates Rewards
+      // from Visits, so `/places/<id>/rewards` is a live view again and
+      // `rewards` is back in `FLAT_ROUTES`. A config rule runs BEFORE
+      // filesystem routes, so leaving either rule would make the view
+      // unreachable with every check green: `/settings` in MESITA-1839 and
+      // `/credits` in MESITA-1885, and this table has now recorded the trap
+      // four times. Both were `permanent: false`, which is the only reason
+      // deleting them is enough — a 308 would have cached the forward in every
+      // browser that followed it.
+      //
+      // CAPABILITIES STAYS FORWARDED. Its six rows are six products; landing
+      // on the container beats guessing one of them, and Visits is the
+      // container.
       {
         source: "/places/:id/capabilities",
         destination: "/places/:id/visits",
         permanent: false,
       },
-      {
-        source: "/places/:id/rewards",
-        destination: "/places/:id/visits",
-        permanent: false,
-      },
-      // AND THEIR FLAT TWINS, which is the half that is easy to forget. Both
-      // were live flat resolvers until MESITA-1885 — `/capabilities` and
-      // `/rewards` are in operators' bookmarks and in old links — and a name
-      // dropped from `FLAT_ROUTES` does not fall through to anything: the
-      // `[flat]` segment answers 404 for a name not in the contract, on
-      // purpose, so that a typo never renders a generic page.
+      // AND ITS FLAT TWIN, which is the half that is easy to forget.
+      // `/capabilities` was a live flat resolver until MESITA-1885 and is in
+      // operators' bookmarks and in old links — and a name dropped from
+      // `FLAT_ROUTES` does not fall through to anything: the `[flat]` segment
+      // answers 404 for a name not in the contract, on purpose, so that a typo
+      // never renders a generic page.
       //
       // So retiring a flat name WITHOUT adding its forward turns a working
       // bookmark into a 404, which is the mirror of the MESITA-1839 trap this
       // table's own comments are about: there a rule shadowed a live address,
-      // here a missing rule strands a retired one. Both land on Visits, for
-      // the reason the place-scoped rules above give.
+      // here a missing rule strands a retired one.
       { source: "/capabilities", destination: "/visits", permanent: false },
-      { source: "/rewards", destination: "/visits", permanent: false },
       // `/places/:id/activity` IS GONE FROM THIS TABLE TOO (MESITA-1892).
       // Activity left the place for the organization in MESITA-1841 and this
       // rule forwarded it to the flat address; the organization is gone and
