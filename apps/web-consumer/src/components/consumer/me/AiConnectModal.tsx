@@ -139,14 +139,14 @@ export function AiConnectModal({
     <LocalSheet open={open} onClose={onClose} ariaLabel="AI Connector">
       <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-600">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Bot className="h-5 w-5" />
           </span>
           <div>
             <h2 className="font-display flex items-center gap-2 text-xl font-semibold tracking-tight">
               AI Connector
               <span className="border-border text-muted-foreground type-meta inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
-                <Crown className="h-2.5 w-2.5 text-amber-600" />
+                <Crown className="h-2.5 w-2.5 text-muted-foreground" />
                 Premium
               </span>
             </h2>
@@ -167,8 +167,8 @@ export function AiConnectModal({
         </p>
 
         {!canConnect && (
-          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
-            <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-muted px-4 py-3">
+            <Crown className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
             <p className="text-xs leading-relaxed text-amber-950">
               You’re on {CLASS_FLOOR.label} with the Free plan. Subscribe to
               Premium — or reach {REACH_ENTRY_CLASS.label} via Instagram — to

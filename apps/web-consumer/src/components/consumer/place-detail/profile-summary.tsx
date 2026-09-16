@@ -71,7 +71,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             label={`${googleCount} Google`}
             icon={
               <Star
-                className="h-3 w-3 fill-amber-500 text-amber-500"
+                className="h-3 w-3 fill-foreground text-muted-foreground"
                 strokeWidth={0}
               />
             }
@@ -79,12 +79,12 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
           <ProfileStat
             value={igFollowers}
             label="Instagram"
-            icon={<Instagram className="h-3 w-3 text-pink-500" />}
+            icon={<Instagram className="h-3 w-3 text-muted-foreground" />}
           />
           <ProfileStat
             value={fbFollowers}
             label="Facebook"
-            icon={<Facebook className="h-3 w-3 text-blue-600" />}
+            icon={<Facebook className="h-3 w-3 text-muted-foreground" />}
           />
         </div>
       </div>
@@ -97,13 +97,13 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
       <div className="flex flex-wrap items-center gap-1.5">
         {place.is_enriching && (
           <span
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-emerald-900"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-foreground"
             aria-live="polite"
           >
             <Spinner
               size="sm"
               label="Enriching"
-              className="h-3 w-3 border-emerald-300 border-t-emerald-600"
+              className="h-3 w-3 border-border border-t-emerald-600"
             />
             Enriching
           </span>
@@ -157,13 +157,13 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             <Clock
               className={cn(
                 "h-3 w-3 shrink-0",
-                isOpen ? "text-emerald-600" : "text-muted-foreground",
+                isOpen ? "text-foreground" : "text-muted-foreground",
               )}
             />
             <span
               className={cn(
                 "font-semibold",
-                isOpen ? "text-emerald-700" : undefined,
+                isOpen ? "text-foreground" : undefined,
               )}
             >
               {stateValue}

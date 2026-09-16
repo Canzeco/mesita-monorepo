@@ -98,8 +98,8 @@ function Chip({
     <span
       className={cn(
         "type-label inline-flex items-center gap-1 rounded-full px-2 py-1 font-semibold",
-        tone === "reward" && "bg-amber-500/10 text-amber-600",
-        tone === "story" && "bg-fuchsia-500/10 text-fuchsia-600",
+        tone === "reward" && "bg-muted text-muted-foreground",
+        tone === "story" && "bg-muted text-muted-foreground",
         tone === "muted" && "bg-muted text-muted-foreground",
       )}
     >
@@ -217,7 +217,7 @@ export function InstagramStoriesBox({
     <ActivityBox
       title="Instagram stories"
       icon={Instagram}
-      iconColor="text-fuchsia-400"
+      iconColor="text-muted-foreground"
       loading={loading}
       items={sorted}
       sort={sort}
@@ -344,7 +344,7 @@ export function FeaturedVisitsBox({
  */
 export function FeaturedOrdersBox() {
   return (
-    <Box title="Featured orders" icon={ShoppingBag} iconColor="text-sky-400">
+    <Box title="Featured orders" icon={ShoppingBag} iconColor="text-muted-foreground">
       <EmptyRail
         icon={ShoppingBag}
         title="Ordering isn't live yet"
@@ -389,7 +389,7 @@ export function FeaturedReservationsBox({
     <ActivityBox
       title="Featured reservations"
       icon={CalendarCheck}
-      iconColor="text-emerald-400"
+      iconColor="text-muted-foreground"
       loading={loading}
       items={sorted}
       sort={sort}

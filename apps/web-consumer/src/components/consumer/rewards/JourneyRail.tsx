@@ -52,7 +52,7 @@ export function JourneyRail({
                 className={cn(
                   "h-[3px] w-full rounded-full transition-colors",
                   amber
-                    ? "bg-amber-500"
+                    ? "bg-foreground"
                     : done
                       ? "bg-pink-gradient"
                       : "bg-border",
@@ -62,7 +62,7 @@ export function JourneyRail({
                 className={cn(
                   "type-meta truncate leading-none",
                   amber
-                    ? "font-bold text-amber-800"
+                    ? "font-bold text-foreground"
                     : current
                       ? "text-foreground font-bold"
                       : done
@@ -77,7 +77,7 @@ export function JourneyRail({
           const shell = cn(
             "flex min-h-11 w-full min-w-[52px] flex-col items-start justify-center gap-1.5 rounded-xl border px-1.5 text-left transition",
             amber
-              ? "border-amber-500/40 bg-amber-500/10"
+              ? "border-border bg-muted"
               : current
                 ? "border-primary/30 bg-primary/5"
                 : "border-border bg-card",

@@ -370,14 +370,14 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
     const off = partner();
     // The pill's dot is its signature: "Partner" alone also appears in the
     // third perk, so the word cannot be the witness.
-    expect(on).toContain("bg-violet-500");
+    expect(on).toContain("--tier-gold");
     // No membership row on the payload — the operator switch, a migration, or
     // a failed billing read. All the console knows is the cadence.
     expect(on).toContain("Renews yearly.");
     expect(on).not.toContain("Become a partner");
     expect(on).not.toContain("An owner subscribes.");
     // And no pill where the CTA is the state: never three atoms for one fact.
-    expect(off).not.toContain("bg-violet-500");
+    expect(off).not.toContain("--tier-gold");
     expect(off).not.toContain("Renews yearly.");
   });
 
@@ -405,7 +405,7 @@ describe("Mesita Partner is a price, a door, and a price list", () => {
         cancelAtPeriodEnd: false,
       },
     });
-    expect(html).toContain("bg-violet-500");
+    expect(html).toContain("--tier-gold");
     expect(html).toContain("Payment due");
     // LAPSE ≠ DROP: nothing here may read as the partnership being over.
     expect(html).not.toMatch(/expired|no longer|cancelled|canceled/i);

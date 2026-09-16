@@ -51,7 +51,7 @@ function StarGroup({
               className={cn(
                 starClass,
                 on
-                  ? "fill-amber-400 text-amber-400"
+                  ? "fill-foreground text-muted-foreground"
                   : "text-muted-foreground/35",
               )}
               strokeWidth={on ? 0 : 1.5}
@@ -161,7 +161,7 @@ export function TicketReviewForm({
             className={cn(
               "type-label font-normal tabular-nums",
               noteLen >= NOTE_MIN
-                ? "text-emerald-600"
+                ? "text-muted-foreground"
                 : "text-muted-foreground",
             )}
           >

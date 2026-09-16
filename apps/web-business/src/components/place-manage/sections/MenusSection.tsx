@@ -761,7 +761,7 @@ function SourceCard({
       className={
         "flex items-start gap-3 rounded-xl border p-3.5 text-left transition disabled:opacity-50 " +
         (active
-          ? "border-pink-400/60 bg-card ring-1 ring-pink-400/30"
+          ? "border-border bg-card ring-1 ring-foreground"
           : "border-border bg-card hover:border-foreground/40")
       }
     >

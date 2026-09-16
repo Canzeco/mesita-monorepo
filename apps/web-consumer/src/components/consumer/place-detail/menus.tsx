@@ -24,7 +24,7 @@ export function MenusBox({ place }: { place: PlaceDetail }) {
 
   if (menus.length === 0) {
     return (
-      <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
+      <Box title="Menu" icon={Utensils} iconColor="text-muted-foreground">
         <div className="flex flex-col items-center gap-3 py-3 text-center">
           <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
             <Utensils className="h-5 w-5" strokeWidth={2} />
@@ -43,13 +43,13 @@ export function MenusBox({ place }: { place: PlaceDetail }) {
   }
   return (
     <>
-      <Box title="Menu" icon={Utensils} iconColor="text-amber-400">
-        <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50 px-3 py-2">
+      <Box title="Menu" icon={Utensils} iconColor="text-muted-foreground">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
           <Info
-            className="h-3.5 w-3.5 shrink-0 text-amber-600"
+            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
             strokeWidth={2.25}
           />
-          <p className="type-body leading-snug font-medium text-amber-900">
+          <p className="type-body leading-snug font-medium text-foreground">
             Reference only — current product prices may differ at the place.
           </p>
         </div>

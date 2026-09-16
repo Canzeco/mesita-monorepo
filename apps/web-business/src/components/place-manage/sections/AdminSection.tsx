@@ -149,7 +149,7 @@ function MetaCard({ place }: { place: AdminPlace }) {
                 className={
                   "inline-flex items-center rounded-full px-2 py-0.5 type-meta font-semibold " +
                   (by === "ai"
-                    ? "bg-sky-500/10 text-sky-700"
+                    ? "bg-muted text-foreground"
                     : "bg-card text-muted-foreground border-border/70 border")
                 }
               >

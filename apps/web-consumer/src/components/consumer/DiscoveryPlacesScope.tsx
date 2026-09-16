@@ -145,7 +145,7 @@ export function DiscoveryPlacesScope({
       {scope === "google" ? (
         <p
           role="note"
-          className="mt-2 flex items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-2 type-body text-amber-900 ring-1 ring-amber-400/30"
+          className="mt-2 flex items-start gap-1.5 rounded-xl bg-muted px-2.5 py-2 type-body text-foreground ring-1 ring-foreground"
         >
           <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
           <span>

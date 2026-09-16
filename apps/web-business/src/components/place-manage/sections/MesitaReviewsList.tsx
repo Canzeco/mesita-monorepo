@@ -23,7 +23,7 @@ function Stars({ value }: { value: number }) {
           className={
             "h-3 w-3 " +
             (i < filled
-              ? "fill-amber-400 text-amber-400"
+              ? "fill-foreground text-muted-foreground"
               : "text-muted-foreground/30")
           }
         />

@@ -69,7 +69,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
 
   if (!offersRewards) {
     return (
-      <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
+      <Box title="Reward" icon={Sparkles} iconColor="text-muted-foreground">
         <div className="flex flex-col items-center gap-3 py-3 text-center">
           <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
             <Gift className="h-5 w-5" strokeWidth={2} />
@@ -108,7 +108,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
 
   return (
     <>
-      <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
+      <Box title="Reward" icon={Sparkles} iconColor="text-muted-foreground">
         {/* Hero — what you can get. Never why (MESITA-860). */}
         <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
           <p className="font-display text-3xl leading-none font-semibold">

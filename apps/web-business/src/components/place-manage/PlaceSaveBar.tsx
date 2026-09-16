@@ -56,13 +56,13 @@ export function PlaceSaveBar() {
             </>
           ) : saveOk && !isDirty ? (
             <>
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm font-semibold">Saved</span>
             </>
           ) : (
             <>
               <span
-                className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500"
+                className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-foreground"
                 aria-hidden
               />
               <span className="min-w-0">

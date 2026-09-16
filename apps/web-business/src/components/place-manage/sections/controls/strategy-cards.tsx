@@ -26,30 +26,30 @@ const CARD_ART: Record<
 > = {
   zero: {
     src: "/promos/strategy-zero.jpg",
-    fallback: "from-slate-800 to-slate-500",
+    fallback: "from-foreground to-foreground",
     cta: "",
-    accent: "text-slate-500",
+    accent: "text-muted-foreground",
   },
   conservative: {
     src: "/promos/strategy-conservative.jpg",
-    fallback: "from-emerald-900 to-teal-500",
-    cta: "from-emerald-600 to-teal-500",
-    accent: "text-emerald-600",
+    fallback: "from-foreground to-foreground",
+    cta: "from-foreground to-foreground",
+    accent: "text-muted-foreground",
   },
   aggressive: {
     src: "/promos/strategy-aggressive.jpg",
-    fallback: "from-red-800 to-orange-500",
-    cta: "from-red-600 to-orange-500",
-    accent: "text-orange-600",
+    fallback: "from-red-800 to-foreground",
+    cta: "from-red-600 to-foreground",
+    accent: "text-muted-foreground",
   },
   // No art file yet — the gradient IS the fallback, which is why it exists.
   // Violet reads as the rung above orange without colliding with any other
   // strategy on the rail.
   dominant: {
     src: "/promos/strategy-dominant.jpg",
-    fallback: "from-violet-900 to-fuchsia-500",
-    cta: "from-violet-600 to-fuchsia-500",
-    accent: "text-violet-600",
+    fallback: "from-foreground to-foreground",
+    cta: "from-foreground to-foreground",
+    accent: "text-muted-foreground",
   },
 };
 
@@ -401,7 +401,7 @@ export function ProductModal({
                 : !member || paid
                   ? cx(
                       "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
-                      art.cta || "from-slate-600 to-slate-500",
+                      art.cta || "from-foreground to-foreground",
                     )
                   : "border-border text-foreground hover:bg-muted border",
             )}

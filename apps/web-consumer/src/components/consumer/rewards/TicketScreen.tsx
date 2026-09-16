@@ -830,7 +830,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           className={cn(
             "type-meta shrink-0 rounded-full px-2 py-0.5 font-bold tracking-widest uppercase",
             saved
-              ? "bg-emerald-500/10 text-emerald-700"
+              ? "bg-muted text-foreground"
               : cancelled
                 ? "bg-muted text-muted-foreground"
                 : "bg-foreground/8 text-foreground/70",
@@ -853,8 +853,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       {/* D3 — the send-back banner: amber, inline, names the FIX. The copy
           carries the whole message alone; colour is not the message. */}
       {fix ? (
-        <div className="mb-2 shrink-0 rounded-xl bg-amber-500/12 px-3 py-2">
-          <p className="text-xs leading-snug font-semibold text-amber-800">
+        <div className="mb-2 shrink-0 rounded-xl bg-muted px-3 py-2">
+          <p className="text-xs leading-snug font-semibold text-foreground">
             {placeName} sent it back — {FIX_COPY[fix].title.toLowerCase()}.
             {ticket.fix_note ? ` “${ticket.fix_note}”` : ""}
           </p>
@@ -1621,8 +1621,8 @@ function RewardLanes({
         </div>
         {capPesos ? (
           <div className="border-border border-t px-2.5 py-1.5">
-            <div className="flex items-center gap-2 rounded-xl bg-amber-500/[0.08] px-2 py-1.5">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-amber-500/15 text-xs font-bold text-amber-700">
+            <div className="flex items-center gap-2 rounded-xl bg-foreground/[0.08] px-2 py-1.5">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-foreground">
                 !
               </span>
               <div className="min-w-0 flex-1">
@@ -1712,14 +1712,14 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
         onClick={onOpen}
         className={cn(
           "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-          done ? "bg-emerald-500/8" : "bg-muted/40 active:scale-[0.99]",
+          done ? "bg-muted" : "bg-muted/40 active:scale-[0.99]",
         )}
       >
         <span
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-lg",
             done
-              ? "bg-emerald-500/15 text-emerald-700"
+              ? "bg-muted text-foreground"
               : "bg-muted/60 text-muted-foreground",
           )}
         >
@@ -1733,7 +1733,7 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
           <span
             className={cn(
               "type-body block leading-tight font-bold",
-              done ? "text-emerald-800" : "text-foreground",
+              done ? "text-foreground" : "text-muted-foreground",
             )}
           >
             {done ? "Thanks — visit rated" : "Rate your visit"}

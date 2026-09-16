@@ -149,7 +149,7 @@ export function TaskProof({
     <div className="flex flex-col gap-3">
       {/* Order first (D8): the task is something you do while the food comes,
           not a toll you pay at the door. */}
-      <p className="rounded-xl bg-amber-500/12 px-3 py-2 text-center text-xs leading-snug font-bold text-amber-800">
+      <p className="rounded-xl bg-muted px-3 py-2 text-center text-xs leading-snug font-bold text-foreground">
         <UtensilsCrossed className="mr-1 inline size-3.5 align-[-2px]" />
         Order first — do this while your food comes.
       </p>
@@ -251,7 +251,7 @@ export function TaskProof({
         {phase === "confirming" ? (
           <Loader2 className="size-4 animate-spin" />
         ) : phase === "success" ? (
-          <Check className="size-4 text-emerald-600" strokeWidth={3} />
+          <Check className="size-4 text-muted-foreground" strokeWidth={3} />
         ) : null}
         {phase === "confirming"
           ? "Sending your proof…"

@@ -143,9 +143,9 @@ export function ReservationDetailBody({
           className={cn(
             "type-body rounded-2xl px-3 py-2.5 leading-snug",
             r.state === "booking" || r.state === "created"
-              ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
+              ? "bg-muted text-foreground ring-1 ring-foreground"
               : r.state === "failed"
-                ? "bg-rose-50 text-rose-900 ring-1 ring-rose-400/30"
+                ? "bg-muted text-foreground ring-1 ring-foreground"
                 : "bg-muted text-muted-foreground",
           )}
         >
@@ -197,7 +197,7 @@ export function ReservationDetailBody({
             );
           })}
           {confirmError && (
-            <p className="text-xs font-medium text-red-600">{confirmError}</p>
+            <p className="text-xs font-medium text-destructive">{confirmError}</p>
           )}
         </section>
       )}

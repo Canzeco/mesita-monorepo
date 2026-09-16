@@ -41,7 +41,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
     ["Value", rating(place.mesita_reviews.value)],
   ];
   return (
-    <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">
+    <Box title="Reviews summary" icon={Star} iconColor="text-muted-foreground">
       {/* Mesita box. Layout:
             • Header row — pink "m" glyph + label + total review count.
             • Hero overall — pink-tinted square card on the left with the
@@ -60,13 +60,13 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-pink-500/10 ring-1 ring-pink-500/30">
+          <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-muted ring-1 ring-foreground">
             <div className="flex items-baseline gap-1">
               <span className="font-display text-foreground text-2xl leading-none font-semibold">
                 {formatRating(overall)!}
               </span>
               <Star
-                className="h-3 w-3 fill-amber-400 text-amber-400"
+                className="h-3 w-3 fill-foreground text-muted-foreground"
                 strokeWidth={0}
               />
             </div>
@@ -138,7 +138,7 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Google reviews"
       icon={Star}
-      iconColor="text-amber-400"
+      iconColor="text-muted-foreground"
       right={`${formatCompactCount(place.google.count, true)} total`}
     >
       <ReviewSortChips
@@ -180,7 +180,7 @@ export function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
       <Box
         title="Mesita reviews"
         icon={MessageCircle}
-        iconColor="text-pink-400"
+        iconColor="text-muted-foreground"
         right={`${place.mesita_reviews.total} total`}
       >
         <div className="flex flex-col items-center gap-3 py-3 text-center">
@@ -203,7 +203,7 @@ export function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Mesita reviews"
       icon={MessageCircle}
-      iconColor="text-pink-400"
+      iconColor="text-muted-foreground"
       right={`${place.mesita_reviews.total} total`}
     >
       <ReviewSortChips

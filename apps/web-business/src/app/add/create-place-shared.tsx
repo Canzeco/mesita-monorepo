@@ -52,8 +52,8 @@ export const PREDICTION_BADGE: Record<
   verified_partner_other: {
     label: "Mesita partner",
     Icon: CheckCircle2,
-    iconClass: "bg-amber-100 text-amber-700",
-    badgeClass: "bg-amber-100 text-amber-700",
+    iconClass: "bg-muted text-foreground",
+    badgeClass: "bg-muted text-foreground",
   },
   verified_partner_self: {
     label: "You own this",
@@ -101,7 +101,7 @@ export function StateBadge({
   const cls = {
     muted: "bg-muted text-muted-foreground",
     info: "bg-secondary/15 text-secondary",
-    warn: "bg-amber-100 text-amber-700",
+    warn: "bg-muted text-foreground",
     secondary: "bg-secondary/15 text-secondary",
   }[tone];
   return (
@@ -125,10 +125,10 @@ export function newSessionToken(): string {
 
 export function MockCodePill({ code }: { code: string }) {
   return (
-    <p className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-amber-200/70 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-800">
+    <p className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-border bg-muted px-3 py-1 text-[11px] font-medium text-foreground">
       <AlertTriangle className="h-3 w-3" />
       Mock mode · type{" "}
-      <span className="font-mono font-bold tracking-[0.18em] text-amber-900">
+      <span className="font-mono font-bold tracking-[0.18em] text-foreground">
         {code}
       </span>
     </p>

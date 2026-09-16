@@ -67,7 +67,7 @@ const CARDS = [
     id: "businesses",
     audience: "Know a restaurant or bar?",
     line: "Refer it, or run one — setup takes ~8 minutes.",
-    gradient: "bg-gradient-to-br from-amber-400 to-orange-500",
+    gradient: "bg-gradient-to-br from-foreground to-foreground",
     Icon: UtensilsCrossed,
     share: {
       title: "Mesita for restaurants",
@@ -80,7 +80,7 @@ const CARDS = [
     id: "influencers",
     audience: "An influencer, or know one?",
     line: "20% of Mesita's equity is reserved for influencers.",
-    gradient: "bg-gradient-to-br from-fuchsia-500 to-purple-600",
+    gradient: "bg-gradient-to-br from-foreground to-foreground",
     Icon: Megaphone,
     share: {
       title: "Mesita for influencers",
@@ -93,7 +93,7 @@ const CARDS = [
     id: "agencies",
     audience: "Know a marketing agency?",
     line: "Refer one, or run one — add Mesita to the stack.",
-    gradient: "bg-gradient-to-br from-sky-400 to-blue-600",
+    gradient: "bg-gradient-to-br from-foreground to-foreground",
     Icon: Briefcase,
     share: {
       title: "Mesita for marketing agencies",

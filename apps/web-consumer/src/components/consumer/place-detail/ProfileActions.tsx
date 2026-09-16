@@ -68,14 +68,14 @@ export function ProfileActions({
             //
             // SOLID, not a tint (Pato, live 2026-08-17: "different background
             // color when saved, the save button looks like shit"). The old
-            // `bg-red-500/12` was a 12% wash on a WHITE band sitting directly
+            // `bg-destructive/12` was a 12% wash on a WHITE band sitting directly
             // above the pink tab body — at that opacity it landed in the same
             // pale-pink family as the page itself, so it read as a smudge
             // rather than a state, and the thin /50 border was doing all the
             // work. A toggle's ON state should be the loudest thing in its
             // row: solid fill, white label, white filled heart.
             saved &&
-              "shadow-danger border-red-600 bg-red-600 text-white hover:border-red-700 hover:bg-red-700",
+              "shadow-danger border-destructive bg-destructive text-white hover:border-destructive hover:bg-destructive",
           )}
         >
           <Heart

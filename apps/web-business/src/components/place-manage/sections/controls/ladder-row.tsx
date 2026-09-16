@@ -101,7 +101,7 @@ function Reason({
       className={cx(
         "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-label font-semibold",
         tone === "warn"
-          ? "bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200"
+          ? "bg-muted text-foreground dark:bg-muted dark:text-muted-foreground"
           : "text-muted-foreground bg-muted",
       )}
     >

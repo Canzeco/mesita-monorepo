@@ -28,8 +28,8 @@ export function RemoveConfirmDialog({
       ariaLabel="Remove from saved"
     >
       <div className="flex flex-col p-5">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10">
-          <Heart className="h-6 w-6 fill-rose-500 text-rose-500" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+          <Heart className="h-6 w-6 fill-foreground text-muted-foreground" />
         </div>
         <h3 className="font-display mt-3 text-lg font-semibold tracking-tight">
           Remove from saved?
@@ -50,7 +50,7 @@ export function RemoveConfirmDialog({
           <button
             type="button"
             onClick={() => shown && onConfirm(shown)}
-            className="flex-1 rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white transition hover:bg-rose-600 active:scale-[0.98]"
+            className="flex-1 rounded-xl bg-foreground py-3 text-sm font-semibold text-white transition hover:bg-foreground active:scale-[0.98]"
           >
             Yes, remove
           </button>

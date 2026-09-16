@@ -203,16 +203,37 @@ describe("the browser surfaces this console used to leave at their defaults", ()
 
   it("all four surfaces read one token", () => {
     // Ring, caret and selection are the same colour by construction, so they
-    // cannot drift and the dark block's lighter pink carries through without
-    // a second declaration.
+    // cannot drift and the dark block's own ring carries through without a
+    // second declaration.
     expect(css).toContain("caret-color: var(--ring);");
     expect(css).toContain("color-mix(in oklab, var(--ring) 22%, transparent)");
   });
 
-  it("--ring is still the brand pink in both themes", () => {
+  it("--ring is achromatic ink in both themes, and reaches no brand token", () => {
+    // This used to assert `var(--brand-pink)`. The console went achromatic on
+    // Pato's instruction (MESITA-1936), so the guard is REPOINTED rather than
+    // deleted — what it protects is unchanged: both themes declare a ring, and
+    // neither reaches back into the brand ramp, which is still generated from
+    // brand.json and still pink.
     const rings = css.match(/^\s*--ring:.*$/gm) ?? [];
     expect(rings.length).toBe(2);
-    for (const line of rings) expect(line).toMatch(/var\(--brand-pink/);
+    for (const line of rings) {
+      expect(line).toMatch(/oklch\([0-9.]+ 0 0\)/);
+      expect(line).not.toMatch(/brand-pink/);
+    }
+  });
+
+  it("the rail's ring is its OWN token, not the page's", () => {
+    // `--sidebar-ring` and `--sidebar-primary` were LITERAL pink, never
+    // `var(--brand-pink)`, so a de-pinking that chases the ramp leaves a hot
+    // pink ring sitting in the dark rail with every other check green. This is
+    // the assertion that would have caught it.
+    const sidebarRings =
+      css.match(/^\s*--sidebar-(ring|primary):.*$/gm) ?? [];
+    expect(sidebarRings.length).toBeGreaterThan(0);
+    for (const line of sidebarRings) {
+      expect(line).toMatch(/oklch\([0-9.]+ 0 0\)/);
+    }
   });
 });
 

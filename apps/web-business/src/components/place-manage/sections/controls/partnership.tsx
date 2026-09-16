@@ -125,13 +125,13 @@ function LifecycleBanner({
             aria-hidden
             className={cx(
               "h-2 w-2 shrink-0 self-center rounded-full",
-              warn ? "bg-amber-500" : "bg-emerald-500",
+              warn ? "bg-destructive" : "bg-foreground",
             )}
           />
           <span className="font-display font-semibold tracking-tight">
             Partner live
           </span>
-          <span className={warn ? "text-amber-800 dark:text-amber-200" : "text-muted-foreground"}>
+          <span className={warn ? "text-destructive" : "text-muted-foreground"}>
             {warn
               ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits the partnership.`
               : "All three steps done — joined, strategy set, checks honored."}
@@ -204,7 +204,7 @@ function LifecycleBanner({
           >
             {s.state === "done" ? (
               <Check
-                className="h-3.5 w-3.5 shrink-0 text-emerald-600"
+                className="text-foreground h-3.5 w-3.5 shrink-0"
                 aria-hidden
               />
             ) : (
@@ -212,7 +212,7 @@ function LifecycleBanner({
                 aria-hidden
                 className={cx(
                   "h-1.5 w-1.5 shrink-0 rounded-full",
-                  s.state === "upcoming" ? "bg-border" : "bg-amber-500",
+                  s.state === "upcoming" ? "bg-border" : "bg-foreground",
                 )}
               />
             )}
@@ -237,7 +237,7 @@ function LifecycleBanner({
             // earns destructive red.
             active.state === "blocked" && forfeited
               ? "text-destructive"
-              : "text-amber-800",
+              : "text-foreground",
           )}
         >
           {active.detail}
@@ -320,8 +320,8 @@ export function PartnershipBody({
             className={cx(
               "rounded-xl px-3 py-2 text-xs leading-snug",
               stateNote.tone === "live" &&
-                "bg-emerald-500/10 text-emerald-800",
-              stateNote.tone === "warn" && "bg-amber-500/10 text-amber-900",
+                "bg-muted text-foreground",
+              stateNote.tone === "warn" && "bg-muted text-foreground",
               stateNote.tone === "blocked" &&
                 "bg-destructive/10 text-destructive",
             )}
@@ -418,8 +418,8 @@ export function MembershipStatePill({ state }: { state: MembershipPillState }) {
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-meta font-bold tracking-wide uppercase",
         state === "forfeited" && "bg-destructive/10 text-destructive",
-        amber && "bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200",
-        liveish && "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+        amber && "bg-muted text-foreground dark:bg-muted dark:text-muted-foreground",
+        liveish && "bg-muted text-foreground dark:text-muted-foreground",
         state === "not_member" && "bg-muted text-muted-foreground",
       )}
     >
@@ -427,8 +427,8 @@ export function MembershipStatePill({ state }: { state: MembershipPillState }) {
         className={cx(
           "h-1.5 w-1.5 rounded-full",
           state === "forfeited" && "bg-destructive",
-          amber && "bg-amber-500",
-          liveish && "bg-emerald-500",
+          amber && "bg-foreground",
+          liveish && "bg-foreground",
           state === "not_member" && "bg-muted-foreground/50",
         )}
       />

@@ -77,7 +77,7 @@ export function PartnerBanner({
     <div className="border-border bg-card shadow-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border p-4">
       <span
         aria-hidden
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-white"
       >
         <Check className="h-4 w-4" strokeWidth={3} />
       </span>
@@ -90,12 +90,12 @@ export function PartnerBanner({
           partnership is intact and nothing has been taken away. */}
       {membership?.state === "past_due"
         ? (
-          <span className="inline-flex items-center rounded-full bg-amber-500/14 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
             Payment due
           </span>
         )
         : (
-          <span className="inline-flex items-center rounded-full bg-emerald-500/12 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
             Active
           </span>
         )}

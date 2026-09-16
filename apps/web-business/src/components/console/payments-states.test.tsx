@@ -73,9 +73,22 @@ describe("one word no longer means two opposite things", () => {
   });
 
   it("does not paint waiting as a debt", () => {
-    // Amber means "you owe something". Waiting on Stripe is not that.
-    expect(renderToStaticMarkup(<StatePill state="unfinished" />)).toContain("amber");
-    expect(renderToStaticMarkup(<StatePill state="in_review" />)).not.toContain("amber");
+    // The guarantee is unchanged; only the mechanism moved (MESITA-1936). Amber
+    // used to mean "you owe something" and waiting on Stripe is not that. The
+    // console is achromatic now, so the owner's move is the FILLED pill — the
+    // one shape that pulls the eye — and Stripe's move is a DASHED outline,
+    // which is what this app already means by "not here yet".
+    const unfinished = renderToStaticMarkup(<StatePill state="unfinished" />);
+    const inReview = renderToStaticMarkup(<StatePill state="in_review" />);
+
+    expect(unfinished).toContain("bg-foreground");
+    expect(unfinished).not.toContain("dashed");
+
+    expect(inReview).toContain("dashed");
+    expect(inReview).not.toContain("bg-foreground");
+
+    // And whatever the spellings, the two must never be the same object.
+    expect(unfinished).not.toBe(inReview);
   });
 
   it("offers Resume on the owner's move and NOT on Stripe's", () => {

@@ -98,7 +98,7 @@ export function VerificationCard({
               className={
                 "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold tabular-nums " +
                 (verified
-                  ? "bg-emerald-500/10 text-emerald-700"
+                  ? "bg-muted text-foreground"
                   : "bg-muted text-muted-foreground")
               }
               aria-label={`Verified: ${chip}`}

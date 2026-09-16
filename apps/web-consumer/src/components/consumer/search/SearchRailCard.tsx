@@ -90,7 +90,7 @@ export function RailCard({
             <>
               {place.google_rating != null && (
                 <span className="flex items-center gap-1">
-                  <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
+                  <Star className="h-2.5 w-2.5 shrink-0 fill-foreground text-muted-foreground" />
                   {formatRating(place.google_rating)}
                 </span>
               )}
@@ -117,13 +117,13 @@ export function RailCard({
               <span
                 className={cn(
                   "h-1.5 w-1.5 shrink-0 rounded-full",
-                  isOpen ? "bg-emerald-500" : "bg-muted-foreground/40",
+                  isOpen ? "bg-foreground" : "bg-muted-foreground/40",
                 )}
               />
               <span
                 className={cn(
                   "truncate",
-                  isOpen ? "text-emerald-600" : "text-muted-foreground",
+                  isOpen ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {openingLabel}

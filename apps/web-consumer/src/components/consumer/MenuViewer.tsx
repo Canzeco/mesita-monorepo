@@ -70,7 +70,7 @@ function MenuViewerBody({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="border-border flex shrink-0 items-center gap-2 border-b px-4 py-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
           {menu.kind === "image" ? (
             <Utensils className="h-4 w-4" strokeWidth={2} />
           ) : (

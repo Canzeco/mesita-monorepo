@@ -23,7 +23,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Location"
       icon={MapPin}
-      iconColor="text-pink-500"
+      iconColor="text-muted-foreground"
       right={formatDistanceKm(place.distance_km)}
     >
       <div
@@ -58,7 +58,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-200/70 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-950 transition hover:bg-amber-100/70"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5 text-xs font-semibold text-amber-950 transition hover:bg-muted"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -73,7 +73,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
           href={uberUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-300/70 bg-zinc-100 px-3 py-2.5 text-xs font-semibold text-zinc-900 transition hover:bg-zinc-200/70"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5 text-xs font-semibold text-foreground transition hover:bg-muted"
         >
           {/* decision: Pato — Uber badge = black bg + white letters */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -121,13 +121,13 @@ function HoursDayRow({
     <li
       className={cn(
         "border-border/50 flex min-w-0 items-center justify-between gap-3 border-b px-3 py-2.5 text-xs leading-tight last:border-b-0",
-        isToday && "bg-violet-50/80",
+        isToday && "bg-muted/80",
       )}
     >
       <span
         className={cn(
           "shrink-0 font-semibold",
-          isToday ? "text-violet-800" : "text-foreground",
+          isToday ? "text-foreground font-semibold" : "text-muted-foreground",
         )}
       >
         {row.day}
@@ -164,7 +164,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Time"
       icon={Clock}
-      iconColor="text-violet-400"
+      iconColor="text-muted-foreground"
       right={
         tz ? (
           <span className="max-w-[12rem] truncate" title={tz}>
@@ -177,7 +177,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
         <span
           className={cn(
             "font-semibold",
-            place.open_now ? "text-emerald-700" : "text-muted-foreground",
+            place.open_now ? "text-foreground" : "text-muted-foreground",
           )}
         >
           {place.open_now ? "Open" : "Closed"}
