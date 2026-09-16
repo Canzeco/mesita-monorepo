@@ -1,12 +1,14 @@
 name: mock-business-app CI
 
-# The mock console. It is never deployed — no Vercel project, no domain — so
-# this workflow is the ONLY thing that ever builds it, and a harness that
-# stopped compiling would otherwise be discovered by the next person who tried
-# to use it, on the morning they needed it.
+# The mock console. It HAS a Vercel project since MESITA-1903, so this workflow
+# is no longer the only thing that builds it — but it is still the only thing
+# that LINTS and TYPECHECKS it, and it is what catches a break on a pull request
+# rather than on the deployment that follows the merge.
 #
-# NOT a required check on main, deliberately: nothing ships from this package,
-# and blocking a console fix on a mock's build is the tail wagging the dog.
+# NOT a required check on main, deliberately: nothing a customer touches ships
+# from this package, and blocking a console fix on a mock's build is the tail
+# wagging the dog. A red build here means the hosted mock is stale, not that
+# main is broken.
 
 on:
   push:
