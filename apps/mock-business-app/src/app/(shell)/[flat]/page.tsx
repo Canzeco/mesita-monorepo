@@ -19,7 +19,9 @@ import {
   SHELL_ROUTES,
   flatPlacePageFromPathname,
   flatViewFromPathname,
+  isFlatHome,
   placePageHref,
+  placeRootHref,
 } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { useMock } from "@/mock/MockStore";
@@ -32,13 +34,16 @@ export default function FlatRoute({ params }: { params: Promise<{ flat: string }
   const known = FLAT_ROUTE_LIST.includes(`/${flat}`);
   const view = flatViewFromPathname(`/${flat}`);
   const page = flatPlacePageFromPathname(`/${flat}`);
+  // `/home` is neither, and both readers above return null for it on purpose —
+  // it means the place's BARE address, which is the one flat name with no
+  // segment after the id.
+  const home = isFlatHome(`/${flat}`);
 
   useEffect(() => {
     if (!known || !hydrated) return;
     const held = world.places.find((p) => p.id === lastPlaceId);
     // NEVER PICK ONE SILENTLY. A caller holding several and nothing remembered
-    // gets the list; `places[0]` is a place they never chose, and `/profile` is
-    // a form.
+    // gets the list; `places[0]` is a place they never chose.
     const target = held ?? (world.places.length === 1 ? world.places[0] : null);
     if (!target) {
       // A FAILED READ IS NOT AN EMPTY PORTFOLIO, and `world.places` is empty
@@ -54,9 +59,13 @@ export default function FlatRoute({ params }: { params: Promise<{ flat: string }
       return;
     }
     router.replace(
-      page ? placePageHref(target.id, page) : placeTabHref(target.id, view!),
+      home
+        ? placeRootHref(target.id)
+        : page
+          ? placePageHref(target.id, page)
+          : placeTabHref(target.id, view!),
     );
-  }, [known, hydrated, world, lastPlaceId, router, view, page]);
+  }, [known, hydrated, world, lastPlaceId, router, view, page, home]);
 
   if (!known) notFound();
 

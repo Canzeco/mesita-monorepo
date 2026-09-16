@@ -19,10 +19,13 @@ import { Sidebar } from "@/components/console/Sidebar";
 import {
   flatPlacePageFromPathname,
   flatViewFromPathname,
+  isFlatHome,
+  isPlaceHomePathname,
   isPlacePayPathname,
   placePageFromPathname,
   placePageHref,
   placePayHref,
+  placeRootHref,
 } from "@/lib/console-routes";
 import { placeTabFromPathname, placeTabHref, tabsForAccess } from "@/lib/place-tabs";
 import { MockPanel } from "@/components/console/MockPanel";
@@ -64,8 +67,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    *  the scope from it and wrote that id straight back over the pick. The
    *  switcher looked live and moved nothing.
    *
-   *  It carries the VIEW across, so switching from one venue's Orders lands on
-   *  the other's Orders rather than dumping the operator back on Profile —
+   *  It carries the ADDRESS across, so switching from one venue's Orders lands
+   *  on the other's Orders rather than dumping the operator back on Profile —
    *  unless the new place's role cannot open it, in which case Profile is the
    *  honest landing and beats a switch that 404s. `rememberPlace` is left to
    *  the effect: the pathname is about to name the new place, and two writers
@@ -80,6 +83,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // exists precisely to tell the two apart.
     if (isPlacePayPathname(pathname)) {
       router.push(placePayHref(id));
+      return;
+    }
+    // HOME CARRIES ACROSS TOO, and it has to be asked for BY NAME: the bare
+    // place address has no fourth segment, so the page and view readers below
+    // both answer null for it and the fallback would land the operator on
+    // Profile — a switch away from Home that silently opens a form.
+    if (isPlaceHomePathname(pathname) || isFlatHome(pathname)) {
+      router.push(placeRootHref(id));
       return;
     }
     const page = placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
