@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(106);
+select plan(122);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -896,6 +896,35 @@ select is_empty(
 --
 -- Extension-owned objects are excluded on purpose: pgTAP itself installs into
 -- `public` here, and the claim is about the schema this repo writes.
+--
+-- THE PATTERN, AND WHY IT IS NOT `%organization%` AND NOT `%org%` EITHER.
+-- These three sweeps matched the literal substring `organization` until an
+-- audit pointed out that FOUR of the layer's own names sail straight through
+-- one: `org_plans`, `org_mesita_pay_enabled`, `claim_place_into_org` and
+-- `release_place_from_org`. The layer abbreviated itself and the sweep did not
+-- know.
+--
+-- The obvious widening, `%org%`, is wrong in the other direction — and the
+-- third sweep is where it bites, because that one reads FUNCTION BODIES, which
+-- are prose as much as SQL. `%org%` condemns a comment that says the lots are
+-- "organized by expiry", a country list with Georgia in it, an "organic" menu
+-- tag. A sweep that a truthful author cannot satisfy gets deleted, not fixed.
+--
+-- The layer only ever spelled itself two ways, so that is what the regex
+-- matches: the whole word `organization`, or `org`/`orgs` as a COMPLETE TOKEN
+-- — fenced on both sides by a separator, where an underscore IS one and a
+-- letter is not. `org_plans`, `_from_org` and a bare `org` in prose all fail
+-- it; `organic`, `reorganize`, `Georgia` and `morgue` all pass.
+--
+-- THE FENCE IS SPELLED OUT BY HAND, and `[[:alnum:]]` is deliberately NOT used
+-- for it. The first draft of this pattern fenced with `[^[:alnum:]]` and
+-- immediately failed on `seed_place_tags`, which seeds the Spanish place tag
+-- `'Orgánico'`: under this database's ctype `á` is not alnum, so it counted as
+-- a separator and `Org` + `á` read as a complete token. The class below names
+-- ASCII letters and digits AND every code point above 0x7F, so an accented
+-- letter is a letter — which is the only reading that is true of a schema
+-- whose seed data is half in Spanish. The same literal appears in all three
+-- sweeps on purpose: a shared helper would be one more thing to keep honest.
 
 select is_empty(
   $$select c.relname
@@ -903,37 +932,40 @@ select is_empty(
       join pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public'
        and c.relkind in ('r', 'p', 'v', 'm', 'f')
-       and c.relname ilike '%organization%'
+       and c.relname ~* '(^|[^A-Za-z0-9\u0080-\uffff])orgs?([^A-Za-z0-9\u0080-\uffff]|$)|organization'
        and not exists (
          select 1 from pg_depend d
           where d.objid = c.oid and d.deptype = 'e'
        )$$,
-  'no organization table, view or matview survives in public (MESITA-1892 removed the layer, it did not rename it)'
+  'no organization table, view or matview survives in public, abbreviated or not (MESITA-1892 removed the layer, it did not rename it)'
 );
 
 select is_empty(
   $$select c.table_name || '.' || c.column_name
       from information_schema.columns c
      where c.table_schema = 'public'
-       and c.column_name ilike '%organization%'$$,
-  'no organization column survives in public (an unused FK is the layer growing back)'
+       and c.column_name ~* '(^|[^A-Za-z0-9\u0080-\uffff])orgs?([^A-Za-z0-9\u0080-\uffff]|$)|organization'$$,
+  'no organization column survives in public, abbreviated or not (an unused FK is the layer growing back)'
 );
 
 -- The tables are gone; a function body that still SAYS organization is the
 -- same layer surviving as vocabulary, and it is how the next reader learns a
--- concept the product does not have.
+-- concept the product does not have. This is the sweep the token rule above
+-- was designed around — a body is prose as much as SQL, and `claim_place_into_org`
+-- was invisible to the old one while "organized" would have been condemned by
+-- the naive fix.
 select is_empty(
   $$select p.proname
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and p.prokind = 'f'
-       and p.prosrc ilike '%organization%'
+       and p.prosrc ~* '(^|[^A-Za-z0-9\u0080-\uffff])orgs?([^A-Za-z0-9\u0080-\uffff]|$)|organization'
        and not exists (
          select 1 from pg_depend d
           where d.objid = p.oid and d.deptype = 'e'
        )$$,
-  'no function body in public still mentions an organization'
+  'no function body in public still mentions an organization, abbreviated or not'
 );
 
 -- The same five, named. The sweep above would catch any of them, but it fails
@@ -982,6 +1014,163 @@ select ok(
     select 1 from pg_policy where polrelid = 'public.place_guest_customers'::regclass
   ),
   'place_guest_customers is EF-only: RLS on with zero policies'
+);
+
+-- ━━━ CRITERION 2 — every tenant-owned record is scoped to a place ━━━━━━━━━━
+--
+-- The acceptance criterion says "scoped to a place, directly or through an
+-- ENFORCED relationship", and the emphasis is the whole test. Asserting that a
+-- `place_id` column EXISTS proves nothing: a nullable place_id lets a tenant
+-- record float free, which is precisely the state the organization layer used
+-- to hold (`places.organization_id` was nullable for years), and a place_id
+-- with no foreign key lets it point at a place that was deleted last month.
+-- So each of these tables is asserted twice — the column cannot be null, and
+-- the database itself resolves it to a real place.
+--
+-- These use pgTAP's own `col_not_null` / `fk_ok` / `col_is_pk` rather than a
+-- hand-rolled catalog query on purpose: a `::regclass` cast naming a table
+-- that got dropped RAISES 42P01 and takes the whole file down, reporting
+-- nothing at all. These helpers fail one line and keep going.
+
+-- Money. A prepaid balance is a debt to a guest AT A VENUE (MESITA-1892); a
+-- lot that is not resolvable to one place is a balance nobody can be asked to
+-- honour. `on delete restrict`, not cascade: deleting a place must not be able
+-- to delete somebody's money.
+select col_not_null(
+  'public', 'credit_lots', 'place_id',
+  'credit_lots.place_id is NOT NULL (a prepaid balance with no venue is money nobody owes)'
+);
+
+select fk_ok(
+  'public', 'credit_lots', 'place_id', 'public', 'places', 'id',
+  'credit_lots.place_id is a real foreign key to places (scoping is the database''s job, not the caller''s)'
+);
+
+-- Billing. The yearly Mesita Membership a place buys.
+select col_not_null(
+  'public', 'partner_memberships', 'place_id',
+  'partner_memberships.place_id is NOT NULL (a subscription that bills nobody in particular)'
+);
+
+select fk_ok(
+  'public', 'partner_memberships', 'place_id', 'public', 'places', 'id',
+  'partner_memberships.place_id is a real foreign key to places'
+);
+
+-- ONE LIVE MEMBERSHIP PER PLACE, and the index has to be on the NEW column:
+-- the migration dropped the org-scoped version and rebuilt it, and a rebuild
+-- that kept the old predicate would let a place carry two live subscriptions
+-- and be charged twice. `active` and `past_due` are both live — past_due is a
+-- failed payment, not a cancellation, and Stripe will retry it.
+select ok(
+  exists (
+    select 1 from pg_index i
+      join pg_class c on c.oid = i.indexrelid
+     where c.relname = 'partner_memberships_one_live'
+       and i.indrelid = to_regclass('public.partner_memberships')
+       and i.indisunique
+       and i.indnkeyatts = 1
+       and (select a.attname from pg_attribute a
+             where a.attrelid = i.indrelid and a.attnum = i.indkey[0]) = 'place_id'
+       and pg_get_expr(i.indpred, i.indrelid) like '%active%'
+       and pg_get_expr(i.indpred, i.indrelid) like '%past_due%'
+  ),
+  'partner_memberships_one_live is a unique index on (place_id) covering active and past_due (one live membership per place, or the place gets billed twice)'
+);
+
+-- The merchant account. One place, one Stripe Connect account — stated as the
+-- PRIMARY KEY rather than a unique index, because "at most one" is the shape
+-- of the row, not a rule bolted onto it.
+select col_is_pk(
+  'public', 'place_payment_accounts', array['place_id'],
+  'place_payment_accounts is keyed BY the place (one place, one merchant account)'
+);
+
+select fk_ok(
+  'public', 'place_payment_accounts', 'place_id', 'public', 'places', 'id',
+  'place_payment_accounts.place_id is a real foreign key to places'
+);
+
+-- The other direction, and it is a money rule: two places sharing one Stripe
+-- Connect account means two operators' payouts landing in one bank account.
+select col_is_unique(
+  'public', 'place_payment_accounts', array['stripe_account_id'],
+  'place_payment_accounts.stripe_account_id is unique (one connected account never serves two places)'
+);
+
+-- Guest identity on the connected account. The composite key IS the scoping:
+-- the same guest is a DIFFERENT Stripe customer at every place, because the
+-- connected account is different, and collapsing that to one row per consumer
+-- would charge the wrong merchant.
+select col_is_pk(
+  'public', 'place_guest_customers', array['place_id', 'consumer_id'],
+  'place_guest_customers is keyed by (place_id, consumer_id) — a guest is one Stripe customer PER PLACE'
+);
+
+select fk_ok(
+  'public', 'place_guest_customers', 'place_id', 'public', 'places', 'id',
+  'place_guest_customers.place_id is a real foreign key to places'
+);
+
+select fk_ok(
+  'public', 'place_guest_customers', 'consumer_id', 'public', 'consumers', 'id',
+  'place_guest_customers.consumer_id is a real foreign key to consumers'
+);
+
+-- WHAT THE ORGANIZATION ROW ITSELF HELD, now columns of the place. Derived
+-- from the list rather than asserted one by one, so the failure names the
+-- column that went missing: losing any of these silently is the operator's
+-- partnership, legal identity, tax ID or Stripe customer disappearing.
+select is_empty(
+  $$select c from unnest(array[
+      'partnered', 'legal_name', 'rfc', 'stripe_billing_customer_id'
+    ]) c
+    where not exists (
+      select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'places'
+         and column_name = c
+    )$$,
+  'places carries every fact the organization row used to hold (partnered, legal_name, rfc, stripe_billing_customer_id)'
+);
+
+-- `partnered` is an ENTITLEMENT — every Partner door reads it as a boolean.
+-- Nullable, it becomes three-valued, and `not partnered` stops meaning "not a
+-- partner" in exactly the readers that gate ticket creation.
+select col_not_null(
+  'public', 'places', 'partnered',
+  'places.partnered is NOT NULL (an entitlement that can be unknown is a door that opens by accident)'
+);
+
+-- ━━━ org_plans became membership_plans ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--
+-- The plan catalogue was never org-owned data — only its NAME was
+-- organizational, so MESITA-1892 renamed it instead of dropping it. That makes
+-- it the one piece of the layer's vocabulary with a live successor, and two
+-- Edge Functions call `.from("membership_plans")` by that exact string: a
+-- rename that lands on one side only is a 404 at checkout, not a test failure.
+
+select has_table(
+  'public', 'membership_plans',
+  'membership_plans exists (the Membership plan vocabulary two Edge Functions read by name)'
+);
+
+select hasnt_table(
+  'public', 'org_plans',
+  'org_plans is gone (renamed, not copied — two catalogues would drift and one of them prices real subscriptions)'
+);
+
+-- AND THE RENAME REACHED THE SURVIVOR REGISTRY. admin_reset_database TRUNCATES
+-- every public table that admin_reset_preserve does not name, so a registry
+-- row still saying `org_plans` does not merely go stale — it drops the plan
+-- catalogue, and its Stripe price ids, on the next Reset. The sweep above
+-- ("every admin_reset_preserve row names a live public table") would catch the
+-- stale row; this catches the missing one, which is the half that loses data.
+select ok(
+  exists (
+    select 1 from public.admin_reset_preserve
+     where table_name = 'membership_plans'
+  ),
+  'admin_reset_preserve names membership_plans (an unregistered table is TRUNCATED by the next admin reset)'
 );
 
 -- THE LAST-OWNER BACKSTOP, re-pointed rather than reinvented. MESITA-1550 put
