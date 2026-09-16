@@ -76,9 +76,14 @@ export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "product", product: "profile" },
   { kind: "product", product: "customers" },
   { kind: "product", product: "visits" },
+  // REWARDS SITS UNDER VISITS (MESITA-1928), which reverses MESITA-1900's
+  // filing of it with the money group. A reward is earned by closing a bill at
+  // a table and by nothing else — never by an order, which is prepaid and has
+  // no table — so the dial belongs beside the container it pays out on rather
+  // than beside the Stripe account.
+  { kind: "product", product: "rewards" },
   { kind: "product", product: "orders" },
   { kind: "product", product: "reservations" },
-  { kind: "product", product: "rewards" },
   { kind: "product", product: "pay" },
   { kind: "product", product: "credits" },
 ];

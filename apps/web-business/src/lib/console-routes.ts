@@ -255,14 +255,18 @@ export const RAIL_ROWS: readonly RailRow[] = [
   // Free, and always on. Profile is the venue; Customers is its guests.
   { kind: "product", product: "profile" },
   { kind: "product", product: "customers" },
-  // At the table.
+  // At the table — and REWARDS IS ONE OF THEM AGAIN (MESITA-1928). Pato: "move
+  // rewards below visits". MESITA-1900 filed it with the money group on the
+  // reasoning that Rewards is what a place PAYS rather than the container
+  // guests arrive through; the container argument wins, because a reward is
+  // earned by closing a bill at a table and by nothing else. An order is
+  // prepaid and has no table, so it can never earn one.
   { kind: "product", product: "visits" },
+  { kind: "product", product: "rewards" },
   { kind: "product", product: "orders" },
   { kind: "product", product: "reservations" },
-  // Money. REWARDS HEADS IT AND TERMINAL IS GONE (MESITA-1900): Pato's list
-  // files Rewards with what a place PAYS rather than with the container guests
-  // arrive through, and drops the one row whose address was a Soon strip.
-  { kind: "product", product: "rewards" },
+  // Money. Terminal is gone (MESITA-1900): it was the one row whose address
+  // was a Soon strip.
   { kind: "product", product: "pay" },
   { kind: "product", product: "credits" },
 ];
