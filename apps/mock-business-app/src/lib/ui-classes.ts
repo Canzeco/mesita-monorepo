@@ -44,6 +44,18 @@ export const ICON_BUTTON_CLASS = `border-border bg-card text-muted-foreground ho
 
 export const CTA_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
+// A SECOND action that must not read as a second choice. A ghost pill beside a
+// CTA is the same silhouette in a lighter colour, so the eye weighs them
+// equally and a repair tool ends up competing with the way out (Payments:
+// "Re-check with Stripe" next to "Open Stripe dashboard"). Dropping the
+// border drops the competition.
+//
+// It carries the two laws above BY CONSTRUCTION, which is the whole reason it
+// is a constant: the obvious inline spelling of "just a text button" omits
+// both, so demoting a pill would silently cost a keyboard user their ring and
+// a thumb its 44px.
+export const QUIET_LINK_BUTTON_CLASS = `text-muted-foreground hover:text-foreground decoration-border hover:decoration-foreground/40 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium underline underline-offset-4 transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+
 export const SECTION_TITLE_CLASS =
   "font-display text-xl font-semibold tracking-tight";
 

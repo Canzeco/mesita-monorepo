@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 export function Section({
   id,
   title,
+  titleClassName,
   description,
   right,
   children,
@@ -22,7 +23,13 @@ export function Section({
   lane = false,
 }: {
   id?: string;
-  title: string;
+  /** A node, not just a string: a card whose heading IS its status wants the
+   *  badge inside the heading rather than stranded at the far right edge of a
+   *  1690px card (MESITA-1916). */
+  title: React.ReactNode;
+  /** Overrides the heading's type scale. The default stays 14px — this is for
+   *  the one card per screen whose heading is the thing you came to read. */
+  titleClassName?: string;
   description?: string;
   right?: React.ReactNode;
   children: React.ReactNode;
@@ -32,7 +39,12 @@ export function Section({
   const header = (
     <div className={cn("min-w-0", lane ? "flex flex-col gap-3" : "flex-1")}>
       <div>
-        <h3 className="font-display text-sm font-semibold tracking-tight">
+        <h3
+          className={cn(
+            "font-display text-sm font-semibold tracking-tight",
+            titleClassName,
+          )}
+        >
           {title}
         </h3>
         {description && (
