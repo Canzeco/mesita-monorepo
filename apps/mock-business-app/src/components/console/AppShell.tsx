@@ -19,8 +19,10 @@ import { Sidebar } from "@/components/console/Sidebar";
 import {
   flatPlacePageFromPathname,
   flatViewFromPathname,
+  isPlacePayPathname,
   placePageFromPathname,
   placePageHref,
+  placePayHref,
 } from "@/lib/console-routes";
 import { placeTabFromPathname, placeTabHref, tabsForAccess } from "@/lib/place-tabs";
 import { MockPanel } from "@/components/console/MockPanel";
@@ -72,6 +74,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   function pickPlace(id: string) {
     const target = world.places.find((p) => p.id === id);
     if (!target) return;
+    // THE PAYMENTS SUB-STEP FIRST, because it is the one address whose PAGE is
+    // not its whole name: `placePageFromPathname` reads `/products/pay` as
+    // `products`, so asking it alone would answer the catalogue and drop an
+    // operator off the Stripe account they were looking at. `isPlacePayPathname`
+    // exists precisely to tell the two apart.
+    if (isPlacePayPathname(pathname)) {
+      router.push(placePayHref(id));
+      return;
+    }
     const page = placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
     if (page) {
       router.push(placePageHref(id, page));
