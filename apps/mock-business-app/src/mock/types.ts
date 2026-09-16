@@ -159,13 +159,43 @@ export type MockMember = {
   state: "active" | "invited";
 };
 
+/** Socioeconomic class, on AMAI's levels — the axis a promotion in Mexico is
+ *  actually bought against, and the reason a place would want this column at
+ *  all. Stored as the LABEL because there is nothing to translate: "C+" is
+ *  what the segment is called in every language this console speaks. */
+export type MockClass = "A/B" | "C+" | "C" | "C-" | "D+";
+
+export type MockSex = "f" | "m";
+
+export const SEX_LABEL: Record<MockSex, string> = {
+  f: "Woman",
+  m: "Man",
+};
+
+/** A guest of ONE place.
+ *
+ *  AGE, CLASS AND SEX ARE NOT THINGS THE PLACE COLLECTED. They come off the
+ *  guest's own Mesita profile, which is why every guest has them rather than
+ *  only the ones who filled in a card at the till — and why this console shows
+ *  them and never offers to edit them.
+ *
+ *  The WhatsApp number is the exception: it is the one fact here the place
+ *  has to BUY, one guest at a time, and buying it is what makes sending that
+ *  guest a promotion possible. So the field is always present and
+ *  `whatsappBought` decides whether the screen may print it. */
 export type MockCustomer = {
   id: string;
   placeId: string;
   name: string;
+  /** Years, from the birthday on the guest's profile. */
+  age: number;
+  class: MockClass;
+  sex: MockSex;
   visits: number;
-  lastSeen: string;
-  spendCents: number;
+  /** Invented, like every number in fixtures.ts — and never printed unless
+   *  `whatsappBought`. */
+  whatsapp: string;
+  whatsappBought: boolean;
 };
 
 /** A place in the POOL: real to Mesita, held by nobody. The catalogue lists
