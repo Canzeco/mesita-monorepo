@@ -29,7 +29,7 @@ const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
 
 const CHIP_CLASS =
-  "rounded-full bg-amber-500/10 px-2 py-0.5 type-meta font-semibold text-amber-700";
+  "rounded-full border border-foreground/25 px-2 py-0.5 type-meta font-semibold text-foreground";
 
 /** The five channels a place can serve reservations through, `none` included
  *  — picking "no door" is a decision, and the check passes on it. */
@@ -144,17 +144,16 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
   const enriching =
     place.content_state === "generating" || place.content_state === "queued";
 
-  // Chip hue tracks the band so the banner reads at a glance.
+  // The band used to be four hues and NOTHING else, so at greyscale 70% and 20%
+  // were the same object. The BAR carries the band by width — it always did —
+  // and the chip carries the only binary that matters, done or not, with the
+  // Gauge/Check glyph swap below.
   const chip = complete
-    ? "bg-emerald-500/10 text-emerald-600"
-    : pct >= 70
-      ? "bg-sky-500/10 text-sky-600"
-      : pct >= 40
-        ? "bg-amber-500/10 text-amber-600"
-        : "bg-rose-500/10 text-rose-600";
+    ? "bg-foreground text-background"
+    : "bg-muted text-muted-foreground";
 
   return (
-    <section className="border-border bg-card shadow-card mb-4 rounded-2xl border p-5 sm:p-6 lg:mb-5">
+    <section className="border-border bg-card mb-4 rounded-2xl border p-5 sm:p-6 lg:mb-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
         <div className="flex items-center gap-3">
           <span
@@ -189,12 +188,12 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
             aria-label="Profile completeness"
           >
             <div
-              className="bg-pink-gradient h-full rounded-full transition-all"
+              className="bg-foreground h-full rounded-full transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>
           {complete ? (
-            <p className="flex items-center gap-1.5 type-label font-semibold text-emerald-700">
+            <p className="flex items-center gap-1.5 type-label text-foreground font-semibold">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Profile complete — everything a guest needs is filled in.
             </p>
@@ -208,7 +207,7 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
                   <button
                     key={c.label}
                     type="button"
-                    className={CHIP_CLASS + " transition hover:bg-amber-500/20"}
+                    className={CHIP_CLASS + " underline underline-offset-2 transition hover:bg-muted"}
                     onClick={() => scrollToSection(c.scrollId!)}
                   >
                     {c.hint}

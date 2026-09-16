@@ -67,8 +67,11 @@ import { cn } from "@/lib/utils";
 // in a colour that is nowhere near it. Same two laws as the shared one:
 // `outline-hidden` (NOT `outline-none`, which leaves forced-colors users with
 // no indicator at all), and a real ring put back in the same string.
+// Since MESITA-1934 the ring is WHITE, not `--primary`. The page ring is ink
+// and so is this band, so ring-primary here would have been an ink ring in an
+// ink gap on an ink ground — six controls with no focus indicator at all.
 const BAND_FOCUS =
-  "outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dock";
+  "outline-hidden focus-visible:ring-2 focus-visible:ring-dock-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-dock";
 
 const BAND_CHIP = cn(
   "border-dock-border bg-dock-surface text-dock-foreground hover:bg-dock-surface-hover inline-flex items-center rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition",
@@ -312,7 +315,7 @@ export function AskBar({ placeId }: { placeId: string }) {
         // on a dark ground that is a step in luminance, not a border alone.
         className="border-dock-foreground/20 bg-dock-surface-hover focus-within:border-dock-foreground/40 flex w-full items-center gap-3 rounded-xl border py-2 pr-2 pl-3.5 transition"
       >
-        <Sparkles className="text-primary h-4 w-4 shrink-0" />
+        <Sparkles className="text-dock-foreground/70 h-4 w-4 shrink-0" />
         <label htmlFor="ask" className="sr-only">
           Tell Mesita what to change
         </label>
@@ -333,10 +336,18 @@ export function AskBar({ placeId }: { placeId: string }) {
           disabled={draft.trim().length === 0}
           aria-label="Ask"
           className={cn(
-            // PINK AT REST, never grey. The disabled state is the same button
-            // at 45% — a control that turns grey when empty is the exact thing
-            // that made this read as a switched-off search field.
-            "bg-primary text-primary-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:opacity-90 disabled:opacity-55",
+            // ALIVE AT REST, never grey — the law survives MESITA-1934, the
+            // colour does not. A control that turns grey when empty is what
+            // made this read as a switched-off search field.
+            //
+            // It INVERTS rather than going ink: `bg-primary` is now #171717 and
+            // this button sits on the ink band, which measures 1.17:1 — the
+            // circle would simply not be there, and disabled:opacity-55 would
+            // then fade an already-invisible fill, collapsing rest, disabled and
+            // the band into one object. On a dark ground the brightest thing is
+            // white, so white is what "alive" looks like here. Disabled keeps a
+            // real 3:1 step down instead of an invisible one.
+            "bg-dock-foreground text-dock flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-white disabled:bg-dock-foreground/55",
             BAND_FOCUS,
           )}
         >

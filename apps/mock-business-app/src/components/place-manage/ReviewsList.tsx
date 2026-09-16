@@ -82,7 +82,7 @@ function ReviewCard({ review }: { review: MockReview }) {
 export function ReviewsList({
   title,
   subtitle,
-  tint,
+  source,
   reviews,
   emptyTitle,
   emptyHint,
@@ -90,7 +90,7 @@ export function ReviewsList({
 }: {
   title: string;
   subtitle: string;
-  tint: "amber" | "violet";
+  source: "google" | "mesita";
   reviews: MockReview[];
   emptyTitle: string;
   emptyHint: string;
@@ -100,13 +100,12 @@ export function ReviewsList({
   return (
     <SectionCard
       icon={
-        tint === "amber" ? (
+        source === "google" ? (
           <Star className="h-4 w-4" />
         ) : (
           <MessageSquare className="h-4 w-4" />
         )
       }
-      tint={tint}
       title={title}
       subtitle={subtitle}
       action={<AutoPill />}

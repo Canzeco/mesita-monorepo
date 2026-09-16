@@ -75,18 +75,18 @@ export function ReviewBoxes({ place }: { place: MockPlaceProfile }) {
       <DigitalPresence place={place} />
 
       <ReviewsList
+        source="google"
         title="Google Reviews"
         subtitle="What people wrote on Maps, including the ones who never used Mesita."
-        tint="amber"
         reviews={google}
         emptyTitle="Nothing scraped yet"
         emptyHint="Google reviews land here once this place has been enriched. Nothing to do — it is not a step anybody takes."
       />
 
       <ReviewsList
+        source="mesita"
         title="Mesita Reviews"
         subtitle="What guests scored after a visit here, and the four things they scored."
-        tint="violet"
         reviews={mesita}
         emptyTitle="No reviews yet"
         emptyHint="A guest can only review a visit Mesita settled. The first one arrives on its own."

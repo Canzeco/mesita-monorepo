@@ -66,7 +66,7 @@ export function Section({
         // `main` is the only scroller, so scroll-mt is what keeps a linked-to
         // heading clear of the chrome above it.
         id && "scroll-mt-6",
-        "border-border bg-card shadow-card rounded-2xl border p-4",
+        "border-border bg-card rounded-2xl border p-4",
         lane
           ? "grid grid-cols-1 gap-3 lg:grid-cols-[288px_minmax(0,1fr)] lg:gap-8"
           : "flex flex-col gap-3",

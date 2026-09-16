@@ -12,6 +12,23 @@
 // forced-colors repaint that turns a transparent outline into a real system
 // ring. Anything here that kills the outline MUST put a ring back in the same
 // string.
+// THIRD LAW, added with MESITA-1934 (the achromatic palette).
+//
+// HOVER on a FILLED control is a FILL STEP, never opacity. `hover:opacity-90`
+// on hot pink read instantly because it shifted CHROMA; on ink it is a 1.32:1
+// change nobody sees — and worse, opacity fades the white LABEL too, so a
+// hovered black pill reads as greying OUT. That is backwards feedback. Filled
+// controls step to `--ink-hover` (#404040, a real 1.73:1) and keep a pure
+// white label.
+//
+// DISABLED on a filled control is a DIFFERENT OBJECT, not a faded one.
+// `disabled:opacity-60` on ink over the page renders #727272, and
+// `--muted-foreground` is #5d5d5d — a disabled primary button and ordinary
+// caption text were about to become the same grey, on a console built almost
+// entirely out of 10-13px captions. Filled goes to the muted fill; outline
+// controls keep a single opacity. There is ONE value per family: this file
+// used to carry four (40, 50, 55, 60) for one state, which colour hid and
+// greyscale would not have.
 export const FOCUS_RING_CLASS =
   "outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
@@ -36,13 +53,13 @@ export const INFO_BOX_CLASS =
 export const TINY_LABEL_CLASS =
   "text-muted-foreground text-[10px] font-semibold uppercase tracking-[0.14em]";
 
-export const PILL_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const PILL_BUTTON_CLASS = `bg-foreground text-background hover:bg-ink-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition disabled:bg-muted disabled:text-muted-foreground ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
-export const GHOST_PILL_BUTTON_CLASS = `border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const GHOST_PILL_BUTTON_CLASS = `border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-50 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 export const ICON_BUTTON_CLASS = `border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border transition disabled:opacity-50 ${FOCUS_RING_CLASS} ${ICON_TOUCH_TARGET_CLASS}`;
 
-export const CTA_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const CTA_BUTTON_CLASS = `bg-foreground text-background hover:bg-ink-hover inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:bg-muted disabled:text-muted-foreground ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // A SECOND action that must not read as a second choice. A ghost pill beside a
 // CTA is the same silhouette in a lighter colour, so the eye weighs them
@@ -54,7 +71,7 @@ export const CTA_BUTTON_CLASS = `bg-foreground text-background inline-flex items
 // is a constant: the obvious inline spelling of "just a text button" omits
 // both, so demoting a pill would silently cost a keyboard user their ring and
 // a thumb its 44px.
-export const QUIET_LINK_BUTTON_CLASS = `text-muted-foreground hover:text-foreground decoration-border hover:decoration-foreground/40 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium underline underline-offset-4 transition disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const QUIET_LINK_BUTTON_CLASS = `text-muted-foreground hover:text-foreground decoration-border hover:decoration-foreground/40 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium underline underline-offset-4 transition disabled:opacity-50 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 export const SECTION_TITLE_CLASS =
   "font-display text-xl font-semibold tracking-tight";

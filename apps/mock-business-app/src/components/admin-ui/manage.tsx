@@ -21,36 +21,30 @@ import {
   splitStoredPhone,
 } from "@/lib/phone-countries";
 
-/** Fixed tint palette for card icon chips — differentiated, never loud. */
-export type Tint =
-  | "rose"
-  | "pink"
-  | "amber"
-  | "sky"
-  | "violet"
-  | "emerald"
-  | "teal"
-  | "orange"
-  | "indigo"
-  | "slate";
+// HIERARCHY IS WHAT YOU DENY RANK TO (MESITA-1934).
+//
+// This was a ten-hue tint table, and it was the ONLY thing separating the ten
+// cards on Profile — every one of them is the same border, fill, radius and
+// padding, differentiated by a 36px coloured chip. Greyscale ten hues and you
+// get ten identical white cards, which is the exact failure this codebase has
+// already eaten twice ("four containers with the same radius, border, fill and
+// gap, so nothing was first").
+//
+// Ten differentiated things is not a hierarchy. Two ranks is. One card per
+// screen is `lead` and wears a filled ink chip; every other card drops the chip
+// SURFACE entirely and shows a bare icon, which is what makes the lead one read
+// as first without a single hue.
+export type Rank = "lead" | "quiet";
 
-const TINT_CHIP: Record<Tint, string> = {
-  rose: "bg-rose-500/10 text-rose-600",
-  pink: "bg-pink-500/10 text-pink-600",
-  amber: "bg-amber-500/10 text-amber-600",
-  sky: "bg-sky-500/10 text-sky-600",
-  violet: "bg-violet-500/10 text-violet-600",
-  emerald: "bg-emerald-500/10 text-emerald-600",
-  teal: "bg-teal-500/10 text-teal-600",
-  orange: "bg-orange-500/10 text-orange-600",
-  indigo: "bg-indigo-500/10 text-indigo-600",
-  slate: "bg-muted text-muted-foreground",
+const RANK_CHIP: Record<Rank, string> = {
+  lead: "bg-foreground text-background inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+  quiet: "text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center",
 };
 
 export function SectionCard({
   id,
   icon,
-  tint = "slate",
+  rank = "quiet",
   title,
   subtitle,
   action,
@@ -59,8 +53,8 @@ export function SectionCard({
   /** Optional scroll/focus target (e.g. completeness Menu → Menus). */
   id?: string;
   icon?: React.ReactNode;
-  /** Icon-chip hue — keep sibling cards on different tints. */
-  tint?: Tint;
+  /** ONE `lead` card per screen; everything else is `quiet`. */
+  rank?: Rank;
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
@@ -69,16 +63,13 @@ export function SectionCard({
   return (
     <section
       id={id}
-      className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6"
+      className="border-border bg-card rounded-2xl border p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {icon != null && (
             <span
-              className={
-                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
-                TINT_CHIP[tint]
-              }
+              className={RANK_CHIP[rank]}
             >
               {icon}
             </span>

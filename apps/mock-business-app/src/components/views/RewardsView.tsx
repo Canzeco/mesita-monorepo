@@ -333,7 +333,7 @@ export function RewardsView() {
                               className="px-3 py-2.5 text-right"
                             >
                               <span
-                                className={cn(NUM, peak && "text-[color:var(--brand-pink-text)]")}
+                                className={cn(NUM, peak && "text-foreground")}
                               >
                                 {total}%
                               </span>
@@ -416,7 +416,7 @@ export function RewardsView() {
           that looks identical before and after a click cannot answer the one
           question an owner asks on a money screen: did that take? */}
       {dirty && (
-        <div className="border-border bg-card shadow-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
+        <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">
               {rung !== saved.rung &&

@@ -51,7 +51,7 @@ const STATE_COLUMNS = [
 function Cell({ on }: { on: boolean }) {
   return on ? (
     <>
-      <Check className="mx-auto h-4 w-4 text-emerald-600" aria-hidden />
+      <Check className="text-foreground mx-auto h-4 w-4" aria-hidden />
       <span className="sr-only">yes</span>
     </>
   ) : (
@@ -210,7 +210,7 @@ export default function PlacesPage() {
                     {p.category} · {p.city}
                   </p>
                 </div>
-                {p.verified ? <Badge tone="good">Verified</Badge> : <Badge>Unverified</Badge>}
+                {p.verified ? <Badge tone="on">Verified</Badge> : <Badge tone="off">Unverified</Badge>}
                 <Link href={placeTabHref(p.id, "profile")} className={GHOST_PILL_BUTTON_CLASS}>
                   Open
                 </Link>

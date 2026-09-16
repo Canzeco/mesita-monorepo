@@ -120,7 +120,7 @@ export function membershipChip(
   state: MembershipState,
 ): { label: string; tone: string } | null {
   if (state === "past_due") {
-    return { label: "Payment due", tone: "bg-amber-500/15 text-amber-700" };
+    return { label: "Payment due", tone: "bg-[color:var(--tier-gold)]/18 text-[color:var(--tier-gold-ink)]" };
   }
   if (state === "cancelling") {
     return { label: "Ending", tone: "bg-muted text-muted-foreground" };

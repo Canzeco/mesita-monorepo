@@ -21,24 +21,40 @@ import type { ProductState } from "@/lib/products";
 const BASE =
   "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap";
 
+// STATE IS A SHAPE, NOT A GREY (MESITA-1934).
+//
+// These tones used to be hues: On and Free were emerald, Off was grey, Soon was
+// amber. Send all three to greyscale and On, Off, Free and Soon become ONE chip
+// — on the catalogue screen whose entire job is saying which products are on.
+// PlaceFacts lost the same way: Verified and Unverified were the same object.
+//
+// So the axis is FILL / OUTLINE / DASHED, which survives greyscale, print, and a
+// colourblind operator, and which this app already speaks: SoonStrip and
+// EmptyState are both `border-dashed`, so dashed already means "not here yet"
+// here. Three greys at 11px would have been the weakest axis available.
+//
+// `gold` and `bad` are the two RESERVED signals and keep their chroma: a tier
+// the product names out loud, and the one thing that says "this destroys
+// something".
+const TONES: Record<string, string> = {
+  on: "bg-foreground text-background",
+  off: "border-border text-muted-foreground border",
+  soon: "border-border text-muted-foreground border border-dashed",
+  neutral: "bg-muted text-muted-foreground",
+  gold: "bg-[color:var(--tier-gold)]/18 text-[color:var(--tier-gold-ink)]",
+  bad: "bg-destructive/10 text-destructive",
+};
+
 export function Badge({
   tone = "neutral",
   children,
   className,
 }: {
-  tone?: "neutral" | "good" | "warn" | "bad" | "brand" | "gold";
+  tone?: "neutral" | "on" | "off" | "soon" | "gold" | "bad";
   children: React.ReactNode;
   className?: string;
 }) {
-  const tones: Record<string, string> = {
-    neutral: "bg-muted text-muted-foreground",
-    good: "bg-emerald-500/12 text-emerald-700",
-    warn: "bg-amber-500/15 text-amber-700",
-    bad: "bg-destructive/10 text-destructive",
-    brand: "bg-primary/12 text-[color:var(--brand-pink-text)]",
-    gold: "bg-[color:var(--tier-gold)]/18 text-amber-800",
-  };
-  return <span className={cn(BASE, tones[tone], className)}>{children}</span>;
+  return <span className={cn(BASE, TONES[tone], className)}>{children}</span>;
 }
 
 export function PlaceFacts({
@@ -50,19 +66,19 @@ export function PlaceFacts({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {verified && <Badge tone="good">Verified</Badge>}
+      {verified && <Badge tone="on">Verified</Badge>}
       {partnered && <Badge tone="gold">Partner</Badge>}
-      {!verified && !partnered && <Badge>Unverified</Badge>}
+      {!verified && !partnered && <Badge tone="off">Unverified</Badge>}
     </div>
   );
 }
 
-const PRODUCT_TONE: Record<ProductState, "good" | "neutral" | "warn" | "gold"> = {
-  free: "good",
-  enabled: "good",
-  off: "neutral",
+const PRODUCT_TONE: Record<ProductState, "on" | "off" | "soon" | "gold"> = {
+  free: "on",
+  enabled: "on",
+  off: "off",
   locked: "gold",
-  soon: "warn",
+  soon: "soon",
 };
 
 const PRODUCT_WORD: Record<ProductState, string> = {

@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           costs it the sentence that matters, and the sentence that matters is
           "none of this is real". So it states only what is true in both
           places. */}
-      <div className="flex h-7 shrink-0 items-center justify-center gap-2 bg-[color:var(--brand-pink-700)] px-3 text-[11px] font-semibold tracking-wide text-white">
+      <div className="flex h-7 shrink-0 items-center justify-center gap-2 bg-[color:var(--mock-strip)] px-3 text-[11px] font-semibold tracking-wide text-white">
         <span className="rounded-sm bg-white/25 px-1.5">MOCK</span>
         <span className="truncate">
           Nothing here is real. No backend, no account, no place — every name and

@@ -423,7 +423,7 @@ export function PlaceSection({
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       <SectionCard
         icon={<Store className="h-4 w-4" />}
-        tint="rose"
+        rank="lead"
         title="Basics"
         subtitle="What this place is."
       >
@@ -488,7 +488,6 @@ export function PlaceSection({
           The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
-        tint="sky"
         title="Location"
         subtitle="Where it sits."
       >
@@ -523,7 +522,6 @@ export function PlaceSection({
 
       <SectionCard
         icon={<Clock className="h-4 w-4" />}
-        tint="amber"
         title="Hours"
         subtitle="When it opens."
       >
@@ -591,7 +589,7 @@ export function PlaceSection({
                   }
                   className={
                     "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
-                    (h.closed ? "bg-border" : "bg-pink-gradient")
+                    (h.closed ? "bg-input" : "bg-foreground")
                   }
                 >
                   <span
@@ -609,7 +607,6 @@ export function PlaceSection({
 
       <SectionCard
         icon={<Globe className="h-4 w-4" />}
-        tint="indigo"
         title="Channels"
       >
         {/* One column, one list — links and contacts are all just channels;
@@ -686,7 +683,6 @@ export function PlaceSection({
 
       <SectionCard
         icon={<Images className="h-4 w-4" />}
-        tint="orange"
         title="Photos"
         action={
           <span
@@ -820,7 +816,7 @@ function PhotosEditor({
               />
             </button>
             {idx === 0 && (
-              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide text-white uppercase shadow-card">
+              <span className="bg-foreground/90 text-background absolute top-2 left-2 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide uppercase backdrop-blur-sm">
                 Hero
               </span>
             )}
@@ -850,7 +846,7 @@ function PhotosEditor({
                   type="button"
                   disabled={busy}
                   onClick={() => onRemove(idx)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-red-500/70"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-destructive/70"
                   aria-label="Remove photo"
                 >
                   <X className="h-3.5 w-3.5" />
