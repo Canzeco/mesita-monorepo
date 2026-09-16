@@ -396,7 +396,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     expect(html).not.toContain(">pato@canzeco.com<");
   });
 
-  it("a VIEWER loses the five rows they could never open, and no others", () => {
+  it("a VIEWER loses the seven rows they could never open, and no others", () => {
     // THE ROWS FOLLOW THE MATRIX, and MESITA-1885 is when that started to
     // show. Capabilities and Rewards always withheld themselves from a
     // viewer, and neither was a row — so a viewer's column used to be
@@ -413,8 +413,9 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     const html = render(FLAT_ROUTES.profile, { places: viewer, rememberedPlaceId: "p-1" });
     const seen = labels(html);
 
-    // The six that write are gone…
-    for (const gone of ["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits"]) {
+    // The SEVEN that write are gone — Capital joined them in MESITA-1929, as
+    // an offer a place accepts rather than a reading it takes…
+    for (const gone of ["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits", "Capital"]) {
       expect(seen, gone).not.toContain(gone);
     }
     // …and EVERYTHING ELSE stayed. The bijection, because "a viewer sees
@@ -422,7 +423,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     expect(seen).toEqual(
       ALL_LABELS.filter(
         (l) =>
-          !["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits"].includes(l),
+          !["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits", "Capital"].includes(l),
       ),
     );
     // A viewer still reaches every READ surface, including the one product
@@ -577,7 +578,7 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     expect(RAIL_ROWS[RAIL_GROUP_STARTS[0]].kind).toBe("product");
     // No product row opens a group of its own any more: the three sub-groups
     // Pato cut (free / at-the-table / money) were three lists in one section.
-    expect(RAIL_ROWS.filter((r) => r.kind === "product")).toHaveLength(8);
+    expect(RAIL_ROWS.filter((r) => r.kind === "product")).toHaveLength(9);
   });
 
   it("two section heads, in column order, and neither is a row", () => {

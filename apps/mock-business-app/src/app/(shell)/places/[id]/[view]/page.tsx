@@ -23,6 +23,7 @@ import { ReservationsView } from "@/components/views/ReservationsView";
 import { RewardsView } from "@/components/views/RewardsView";
 import { PayView } from "@/components/views/PayView";
 import { CreditsView } from "@/components/views/CreditsView";
+import { CapitalView } from "@/components/views/CapitalView";
 import { AdminView } from "@/components/views/AdminView";
 
 const VIEWS: Record<PlaceTab, () => React.ReactElement | null> = {
@@ -33,6 +34,7 @@ const VIEWS: Record<PlaceTab, () => React.ReactElement | null> = {
   rewards: RewardsView,
   pay: PayView,
   credits: CreditsView,
+  capital: CapitalView,
   admin: AdminView,
 };
 

@@ -57,6 +57,7 @@ import {
   Store,
   Ticket,
   Users,
+  Landmark,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -121,6 +122,11 @@ const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
   rewards: { Icon: Gift, tint: "bg-slate-500/10 text-slate-700" },
   pay: { Icon: CreditCard, tint: "bg-violet-500/10 text-violet-700" },
   credits: { Icon: Wallet, tint: "bg-emerald-500/10 text-emerald-700" },
+  // Capital takes the last unused hue (MESITA-1929), and the BANK'S FRONT for
+  // its mark — the same glyph the landing page gives it, because one product
+  // drawn two ways is how an operator learns to distrust both drawings. Nine
+  // products, nine tints, still no gap.
+  capital: { Icon: Landmark, tint: "bg-indigo-500/10 text-indigo-700" },
 };
 
 /** The state, as the operator reads it. One word where one will do — the

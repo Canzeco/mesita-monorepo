@@ -110,6 +110,7 @@ import {
   ChartNoAxesColumn,
   CreditCard,
   Gift,
+  Landmark,
   Layers,
   LayoutGrid,
   Plus,
@@ -316,6 +317,11 @@ const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   rewards: Gift,
   pay: CreditCard,
   credits: Wallet,
+  // THE BANK'S FRONT (MESITA-1929), not a coin or a stack of notes: Capital
+  // is a facility a place is OFFERED, not money on a table. Same mark the
+  // landing page already uses for it — one idea drawn two ways is how an
+  // operator learns to distrust both drawings.
+  capital: Landmark,
   // Kept for the two views that lost their rows and not their addresses: the
   // place heading and the flat resolvers still read this table.
 };

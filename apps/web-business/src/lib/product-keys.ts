@@ -49,6 +49,9 @@ export const PRODUCT_KEYS = [
   "rewards",
   "pay",
   "credits",
+  // THE NINTH (MESITA-1929). Pato, on the catalogue: "where is Capital,
+  // include Capital there". It lived only on the marketing site until now.
+  "capital",
 ] as const;
 export type ProductKey = (typeof PRODUCT_KEYS)[number];
 
@@ -94,4 +97,5 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   // rung and the setup page.
   pay: "Payments",
   credits: "Credits",
+  capital: "Capital",
 };

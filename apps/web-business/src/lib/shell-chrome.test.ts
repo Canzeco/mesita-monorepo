@@ -708,6 +708,13 @@ describe("the rail is six nouns and one indent", () => {
     // three. A viewer losing a SURFACE would break this; a viewer losing two
     // ADDRESSES to the surface that contains them does not.
     expect(tabsForAccess({ held: true, role: "viewer", isSuperAdmin: false })).toEqual(["profile"]);
+    //
+    // CAPITAL JOINS THE WRITE SET, NOT THE READ SET (MESITA-1929), and the
+    // viewer line above is the assertion that proves it: the ninth product is
+    // an offer a place ACCEPTS, so it belongs with the surfaces an owner or
+    // editor can act on, and a viewer still reads Profile alone. Nothing is
+    // built behind it yet, which is why the page is a Soon strip — but the
+    // matrix must grant it now or the row would 404 the moment it is.
     expect(tabsForAccess({ held: true, role: "editor", isSuperAdmin: false })).toEqual([
       "profile",
       "visits",
@@ -716,6 +723,7 @@ describe("the rail is six nouns and one indent", () => {
       "rewards",
       "pay",
       "credits",
+      "capital",
     ]);
     expect(tabsForAccess({ held: false, role: null, isSuperAdmin: true })).toEqual([
       "profile",

@@ -16,7 +16,7 @@ import type { ConsolePlace } from "@/lib/api/console";
 import { PRODUCT_KEYS } from "@/components/console/ProductCatalog";
 import { PRODUCT_ORDER, buildProductCards } from "./products";
 import { PLACE_TABS, placeTabHref, type PlaceTab } from "./place-tabs";
-import { placePayHref } from "./console-routes";
+import { RAIL_ROWS, placePayHref } from "./console-routes";
 import {
   PRODUCT_KEYS as VOCABULARY_KEYS,
   type ProductKey,
@@ -56,30 +56,41 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // with no card — and the second renders `undefined` straight into a
     // className. The bijection is the assertion, in both directions.
     expect([...PRODUCT_ORDER].sort()).toEqual([...PRODUCT_KEYS].sort());
-    expect(PRODUCT_ORDER).toHaveLength(8);
+    expect(PRODUCT_ORDER).toHaveLength(9);
   });
 
-  it("is Pato's eight, in his three groups (MESITA-1900)", () => {
+  it("is Pato's list, and the RAIL prints the same order (MESITA-1929)", () => {
     // Pato, 2026-09-16: "Profile / Costumers // Visits / Orders /
     // Reservations // Rewards / Payments / Credits", written as three groups
     // with a blank line between them.
     //
-    // TWO CARDS SWAPPED AND THE COUNT DID NOT. MESITA-1884 removed Rewards on
-    // *"should i separate visits and rewards into two?? i don't think so."*
-    // and Customers took the slot; this list puts Rewards back and drops
-    // Terminal. The ORDER is asserted rather than the set, because where
-    // Rewards sits is the argument — money, beside Payments and Credits, not
-    // at the table beside Visits.
+    // WHERE REWARDS SITS IS THE ARGUMENT, and it reversed (MESITA-1928).
+    // MESITA-1900 filed it with money — "beside Payments and Credits, not at
+    // the table beside Visits" — and Pato moved it back to the table: a reward
+    // is earned by closing a bill AT A TABLE and by nothing else, since an
+    // order is prepaid and has none.
+    //
+    // CAPITAL IS NINTH (MESITA-1929): "where is Capital, include Capital
+    // there". It is money and it is not built, so it is last and it is Soon.
     expect(PRODUCT_ORDER).toEqual([
       "profile",
       "customers",
       "visits",
+      "rewards",
       "orders",
       "reservations",
-      "rewards",
       "pay",
       "credits",
+      "capital",
     ]);
+    // AND THE RAIL PRINTS THAT SAME ORDER. Two arrays, one story: `SPECS`
+    // carries card copy and `RAIL_ROWS` carries rows, and MESITA-1928 moved
+    // one without the other — for a commit the console answered "where does
+    // Rewards belong" two different ways. This is the assertion that would
+    // have caught it.
+    expect(
+      RAIL_ROWS.filter((r) => r.kind === "product").map((r) => r.product),
+    ).toEqual(PRODUCT_ORDER);
     expect(PRODUCT_ORDER).not.toContain("terminal");
     expect(PRODUCT_KEYS).not.toContain("terminal");
   });
@@ -103,7 +114,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       { place: null },
       { partnered: true, mesitaPayEnabled: true },
     ]) {
-      expect(Object.keys(build(input))).toHaveLength(8);
+      expect(Object.keys(build(input))).toHaveLength(9);
     }
   });
 
@@ -120,9 +131,22 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // a product losing its view without losing its verb would 404 an operator
     // from the catalogue.
     // Customers is the ONLY one since MESITA-1900 retired Terminal.
+    //
+    // THE BIJECTION IS OVER BUILT PRODUCTS (MESITA-1929). `products.ts` gives a
+    // Soon card `action: null` unconditionally — "a soon card cannot be locked,
+    // cannot be off, and must never be counted" — so Capital carries a page and
+    // no verb, and that is not the failure this test hunts. The failure is a
+    // verb pointing at a view that does not exist, which would 404 an operator
+    // out of the catalogue; a card with NO verb cannot 404 anyone. So a Soon
+    // card is asserted to be verbless and then left alone, and the two-way
+    // check runs over the products that are actually built.
     const noView: readonly ProductKey[] = ["customers"];
     const cards = build({ partnered: true });
     for (const key of PRODUCT_ORDER) {
+      if (cards[key].state === "soon") {
+        expect(cards[key].action, key).toBeNull();
+        continue;
+      }
       if (noView.includes(key)) {
         expect(cards[key].action, key).toBeNull();
         expect(PLACE_TABS, key).not.toContain(key);
@@ -332,9 +356,13 @@ describe("Soon is Customers ALONE (MESITA-1900)", () => {
     // stays a FIELD rather than collapsing back to `key === "customers"`: it
     // was that hardcode once, and MESITA-1884 had to undo it the moment a
     // second product was unbuilt.
+    // CAPITAL JOINED IT (MESITA-1929), which is exactly what the paragraph
+    // above predicted would happen: `spec.soon` stayed a field so a second
+    // unbuilt product would cost one line here instead of a rewrite.
     const cards = Object.values(build({ partnered: true }));
     expect(cards.filter((c) => c.state === "soon").map((c) => c.key)).toEqual([
       "customers",
+      "capital",
     ]);
   });
 });

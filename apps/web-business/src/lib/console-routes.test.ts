@@ -78,7 +78,7 @@ describe("SHELL_ROUTES are the addresses that name no place", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the place's ten views, then its four pages", () => {
+  it("is the place's nine views, then its four pages", () => {
     // The order is the declaration's: the views, then the pages. MESITA-1841
     // added `capabilities` (was `settings`), `rewards`, `organization` and
     // `credits`, and moved `activity` out of the first group. MESITA-1845
@@ -115,6 +115,11 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "rewards",
       "pay",
       "credits",
+      // MESITA-1929 ADDS `capital`, the ninth product. It is not a redirect
+      // source and never was, so the name exists in one place only — which is
+      // the check two lines below, and the reason this is an addition rather
+      // than a trap.
+      "capital",
       "admin",
       "settings",
       "products",
