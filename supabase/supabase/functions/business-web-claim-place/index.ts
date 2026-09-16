@@ -36,9 +36,16 @@
 // organization used to inherit plan=pro Zero, because Partner was an org fact
 // that cascaded onto everything it held. Partner is a fact about the PLACE
 // now (`places.partnered`), so a freshly claimed place is simply not a
-// partner yet — its new owner turns it on through business-web-set-partner-status,
-// which is Stripe-locked. Nothing on the wire changes: the response never
-// carried a partnership field.
+// partner yet — its new owner buys the yearly Mesita Membership
+// (`business-web-start-membership`), which is the ONE door that writes the
+// entitlement and is deliberately NOT Stripe-locked: Stripe has already taken
+// the money by the time the webhook entitles anything. Nothing on the wire
+// changes: the response never carried a partnership field.
+//
+// This named `business-web-set-partner-status` until MESITA-1897 — an endpoint
+// that never existed. MESITA-1892 renamed the operator switch to it, then
+// MESITA-1889 landed first and retired that switch outright, so the rename was
+// dropped in the merge and the comment kept pointing at the name.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {

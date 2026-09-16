@@ -5,8 +5,16 @@
 // PLACE between `plan=free` and `plan=pro Zero`, and nothing else.
 //
 // WHO CALLS IT. `_shared/partner-membership.ts` — the Mesita Membership's
-// entitlement writer (MESITA-1877) — and `business-web-claim-place`, which
-// joins a newly claimed place that is already partnered.
+// entitlement writer (MESITA-1877) — and nothing else.
+//
+// IT SAID `business-web-claim-place` TOO, and that was wrong on the day it
+// shipped (MESITA-1897). Claiming used to join a place into a partnered
+// organization, inheriting plan=pro Zero from the container; MESITA-1892 made
+// Partner a fact about the place, so a freshly claimed place is simply not a
+// partner yet. That EF imports nothing from here and writes no partnership
+// patch — it calls `claim_place` and `writeApprovedVerification`, and says so
+// in its own header. Two headers disagreeing about who calls whom is how the
+// next reader ends up trusting the wrong one.
 //
 // It used to cascade a whole ORGANIZATION's portfolio; MESITA-1892 removed
 // that layer, so a Membership now buys one place and the cascade is a single
