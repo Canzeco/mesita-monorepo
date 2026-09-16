@@ -13,9 +13,16 @@
 // place's name AND its views, so a row restating both would be chrome saying
 // what the column beside it already says.
 import { Suspense, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "@/components/console/Sidebar";
+import {
+  flatPlacePageFromPathname,
+  flatViewFromPathname,
+  placePageFromPathname,
+  placePageHref,
+} from "@/lib/console-routes";
+import { placeTabFromPathname, placeTabHref, tabsForAccess } from "@/lib/place-tabs";
 import { MockPanel } from "@/components/console/MockPanel";
 import { useMock } from "@/mock/MockStore";
 import { resolveRailScope } from "@/lib/rail-scope";
@@ -24,6 +31,7 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { world, scenario, setScenario, lastPlaceId, rememberPlace, viewer } = useMock();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -48,6 +56,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (scope.place && scope.placeIsCurrent) rememberPlace(scope.place.id);
   }, [scope.place, scope.placeIsCurrent, rememberPlace]);
 
+  /** SWITCHING PLACES IS A NAVIGATION, not a preference.
+   *
+   *  Writing `lastPlaceId` alone did nothing at all: while a place address was
+   *  open the pathname still named the OLD place, so the effect above resolved
+   *  the scope from it and wrote that id straight back over the pick. The
+   *  switcher looked live and moved nothing.
+   *
+   *  It carries the VIEW across, so switching from one venue's Orders lands on
+   *  the other's Orders rather than dumping the operator back on Profile —
+   *  unless the new place's role cannot open it, in which case Profile is the
+   *  honest landing and beats a switch that 404s. `rememberPlace` is left to
+   *  the effect: the pathname is about to name the new place, and two writers
+   *  for one fact is what caused this bug. */
+  function pickPlace(id: string) {
+    const target = world.places.find((p) => p.id === id);
+    if (!target) return;
+    const page = placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
+    if (page) {
+      router.push(placePageHref(id, page));
+      return;
+    }
+    const view = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
+    const allowed = tabsForAccess({
+      held: true,
+      role: target.myRole,
+      isSuperAdmin: scenario.isSuperAdmin,
+    });
+    router.push(placeTabHref(id, view && allowed.includes(view) ? view : "profile"));
+  }
+
   const rail = (
     <Sidebar
       scope={scope}
@@ -57,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       collapsed={collapsed}
       onToggleCollapse={() => setCollapsed((v) => !v)}
       onNavigate={() => setDrawer(false)}
-      onPickPlace={(id) => rememberPlace(id)}
+      onPickPlace={pickPlace}
       // The retry a failed read offers. In the real console it re-runs the
       // Edge Function; here it puts the scenario back on a shape that has
       // places, which is the same promise kept the only way this app can.

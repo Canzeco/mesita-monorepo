@@ -7,7 +7,7 @@
 // running yet. The table below it is what the page will be — shown so that the
 // shape can be argued about before it is built, and labelled so that nobody
 // mistakes it for live.
-import { useHeldPlace } from "@/components/console/PlaceScope";
+import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { SoonStrip } from "@/components/shared/SoonStrip";
@@ -20,8 +20,15 @@ import type { MockCustomer } from "@/mock/types";
 import { day, money } from "@/lib/format";
 
 export default function PlaceCustomersPage() {
-  const place = useHeldPlace();
+  const place = useHeldPlaceOrNull();
   const { scenario } = useMock();
+  // THE GATE THESE PAGES WERE MISSING. They are static segments beside
+  // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
+  // or the scenario flipped to a failed read while one of them was open, used
+  // to reach the body with no place at all. It sits after the hooks and before
+  // the first `place.` — a guard below a dereference is not a guard.
+  if (!place) return <NotHeld />;
+
   const rows = listFor(CUSTOMERS.filter((c) => c.placeId === place.id), scenario);
 
   const columns: Column<MockCustomer>[] = [

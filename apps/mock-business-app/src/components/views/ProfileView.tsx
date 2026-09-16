@@ -6,7 +6,7 @@
 // renders for a place the caller holds no membership on, and there it is
 // READ-ONLY: a claim is what mints the owner row, so until then there is
 // nothing to save against.
-import { usePlaceScope } from "@/components/console/PlaceScope";
+import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
 import { Tiles } from "@/components/shared/Tiles";
 import { Badge } from "@/components/shared/Badges";
@@ -58,7 +58,9 @@ export function ProfileView() {
     );
   }
 
-  if (!place) return null;
+  // Neither held nor in the pool: the read failed. A blank page was the old
+  // answer, which reads as a place with nothing in it.
+  if (!place) return <NotHeld />;
 
   const readOnly = place.myRole === "viewer";
 

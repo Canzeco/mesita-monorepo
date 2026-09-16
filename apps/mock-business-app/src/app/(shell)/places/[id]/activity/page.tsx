@@ -4,7 +4,7 @@
 //
 // It is a PAGE under the place, not a view of it, and it came back to the place
 // after a spell under a layer that no longer exists.
-import { useHeldPlace } from "@/components/console/PlaceScope";
+import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { Tiles } from "@/components/shared/Tiles";
@@ -17,8 +17,15 @@ import { money, since } from "@/lib/format";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 export default function PlaceActivityPage() {
-  const place = useHeldPlace();
+  const place = useHeldPlaceOrNull();
   const { scenario, now } = useMock();
+  // THE GATE THESE PAGES WERE MISSING. They are static segments beside
+  // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
+  // or the scenario flipped to a failed read while one of them was open, used
+  // to reach the body with no place at all. It sits after the hooks and before
+  // the first `place.` — a guard below a dereference is not a guard.
+  if (!place) return <NotHeld />;
+
   const events = listFor(ACTIVITY.filter((e) => e.placeId === place.id), scenario);
 
   const payouts = events.filter((e) => e.kind === "payout");

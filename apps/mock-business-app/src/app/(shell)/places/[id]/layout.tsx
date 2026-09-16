@@ -45,6 +45,7 @@ export default function PlaceLayout({
       value={{
         place,
         pool: pool ? { id: pool.id, name: pool.name, category: pool.category, city: pool.city } : null,
+        readFailed: world.viewerError,
         tabs: tabsForAccess({
           held: place !== null,
           role: place?.myRole ?? null,

@@ -13,7 +13,7 @@
 // `products/pay` rather than a ninth card.
 import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
-import { useHeldPlace, usePlaceScope } from "@/components/console/PlaceScope";
+import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards } from "@/lib/products";
@@ -23,8 +23,15 @@ import { CTA_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 export default function ProductsPage() {
-  const place = useHeldPlace();
+  const place = useHeldPlaceOrNull();
   const { tabs } = usePlaceScope();
+  // THE GATE THESE PAGES WERE MISSING. They are static segments beside
+  // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
+  // or the scenario flipped to a failed read while one of them was open, used
+  // to reach the body with no place at all. It sits after the hooks and before
+  // the first `place.` — a guard below a dereference is not a guard.
+  if (!place) return <NotHeld />;
+
 
   const cards = buildProductCards({
     partnered: place.partnered,

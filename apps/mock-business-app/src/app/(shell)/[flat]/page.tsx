@@ -41,7 +41,16 @@ export default function FlatRoute({ params }: { params: Promise<{ flat: string }
     // a form.
     const target = held ?? (world.places.length === 1 ? world.places[0] : null);
     if (!target) {
-      router.replace(world.places.length === 0 ? SHELL_ROUTES.placesNew : SHELL_ROUTES.places);
+      // A FAILED READ IS NOT AN EMPTY PORTFOLIO, and `world.places` is empty
+      // for both. Landing `unknown` on the Add ceremony would tell an operator
+      // they hold nothing on the morning the read merely did not happen — the
+      // one sentence this whole app's law forbids. The catalogue is where a
+      // failed read goes, because it is the only screen that can SAY so.
+      router.replace(
+        world.viewerError || world.places.length > 0
+          ? SHELL_ROUTES.places
+          : SHELL_ROUTES.placesNew,
+      );
       return;
     }
     router.replace(
