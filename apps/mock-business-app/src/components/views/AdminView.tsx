@@ -50,7 +50,7 @@ export function AdminView() {
             ["Promoting", place.promoting, "The place is buying reach in Discovery."],
           ].map(([label, on, why]) => (
             <li key={String(label)} className="border-border flex items-start gap-3 rounded-xl border px-3 py-2.5">
-              <Badge tone={on ? "good" : "neutral"}>{on ? "yes" : "no"}</Badge>
+              <Badge tone={on ? "on" : "neutral"}>{on ? "yes" : "no"}</Badge>
               <div className="min-w-0">
                 <p className="text-sm font-medium">{String(label)}</p>
                 <p className="text-muted-foreground text-[12px] leading-snug">{String(why)}</p>
@@ -68,7 +68,7 @@ export function AdminView() {
         <ul className="flex flex-col gap-1.5">
           {["Embedded", "Photos fetched", "Hours parsed", "Tags assigned", "Geocoded"].map((step, i) => (
             <li key={step} className="flex items-center gap-2 text-[13px]">
-              <Badge tone={i < 4 ? "good" : "warn"}>{i < 4 ? "done" : "queued"}</Badge>
+              <Badge tone={i < 4 ? "on" : "soon"}>{i < 4 ? "done" : "queued"}</Badge>
               <span>{step}</span>
             </li>
           ))}

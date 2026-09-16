@@ -72,7 +72,7 @@ export function Stars({ value }: { value: number }) {
           className={
             "h-3 w-3 " +
             (i < filled
-              ? "fill-amber-400 text-amber-400"
+              ? "fill-foreground text-foreground"
               : "text-muted-foreground/30")
           }
         />
@@ -218,7 +218,6 @@ export function DigitalPresence({ place }: { place: MockPlaceProfile }) {
   return (
     <SectionCard
       icon={<Globe className="h-4 w-4" />}
-      tint="violet"
       title="Digital Presence"
       subtitle="Where this place shows up, and how many people are looking."
       action={<AutoPill />}

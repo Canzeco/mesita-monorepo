@@ -210,7 +210,6 @@ export function MenusSection({ place }: { place: MockPlaceProfile }) {
       // masonry column and was also orange, which is the one thing the tint
       // palette's own contract asks you not to do ("keep sibling cards on
       // different tints").
-      tint="teal"
       title="Menus"
     >
       <input
@@ -390,7 +389,7 @@ function MenuItemCard({
                   href={item.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-secondary inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+                  className="text-secondary decoration-border hover:decoration-foreground/40 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
                 >
                   Open file <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -424,7 +423,7 @@ function MenuItemCard({
               href={normalizeHttpsUrl(item.url)}
               target="_blank"
               rel="noreferrer"
-              className="text-secondary mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium hover:underline"
+              className="text-secondary decoration-border hover:decoration-foreground/40 mt-2 inline-flex w-fit items-center gap-1.5 text-sm font-medium underline underline-offset-4"
             >
               Open link <ExternalLink className="h-3.5 w-3.5" />
             </a>
@@ -464,8 +463,8 @@ function SourceCard({
       className={
         "flex items-start gap-2.5 rounded-xl border p-3 text-left transition disabled:opacity-50 " +
         (active
-          ? "border-primary/60 bg-primary/[0.04]"
-          : "border-border hover:border-primary/40")
+          ? "border-foreground bg-muted ring-foreground ring-1"
+          : "border-border hover:border-foreground/40")
       }
     >
       <span

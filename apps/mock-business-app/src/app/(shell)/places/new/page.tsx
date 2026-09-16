@@ -74,7 +74,7 @@ export default function AddPlacePage() {
                   <p className="truncate text-sm font-medium">{p.name}</p>
                   <p className="text-muted-foreground truncate text-[11px]">{p.category} · {p.city}</p>
                 </div>
-                <Badge tone="good">Already yours</Badge>
+                <Badge tone="on">Already yours</Badge>
                 <Link href={placeRootHref(p.id)} className={GHOST_PILL_BUTTON_CLASS}>
                   Open
                 </Link>
@@ -91,7 +91,7 @@ export default function AddPlacePage() {
                   <p className="truncate text-sm font-medium">{p.name}</p>
                   <p className="text-muted-foreground truncate text-[11px]">{p.category} · {p.city}</p>
                 </div>
-                {p.verified ? <Badge tone="good">Verified</Badge> : <Badge>Unverified</Badge>}
+                {p.verified ? <Badge tone="on">Verified</Badge> : <Badge tone="off">Unverified</Badge>}
                 {p.claimable ? (
                   <button type="button" className={GHOST_PILL_BUTTON_CLASS}>Claim</button>
                 ) : (

@@ -58,13 +58,13 @@ export function PlaceSaveBar() {
             </>
           ) : saveOk && !isDirty ? (
             <>
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+              <CheckCircle2 className="text-foreground h-4 w-4 shrink-0" />
               <span className="text-sm font-semibold">Saved</span>
             </>
           ) : (
             <>
               <span
-                className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500"
+                className="bg-foreground h-2 w-2 shrink-0 animate-pulse rounded-full"
                 aria-hidden
               />
               <span className="min-w-0">
@@ -92,7 +92,7 @@ export function PlaceSaveBar() {
             type="button"
             onClick={saveAll}
             disabled={savePending || !isDirty}
-            className="bg-pink-gradient shadow-save inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+            className="bg-foreground text-background shadow-save hover:bg-ink-hover inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
           >
             {savePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             Save changes
@@ -102,7 +102,7 @@ export function PlaceSaveBar() {
 
       {saveError ? (
         <div className="pointer-events-auto absolute inset-x-4 bottom-full mb-2 flex justify-center">
-          <div className="border-border bg-card shadow-card w-full max-w-2xl rounded-xl border px-4 py-2">
+          <div className="border-border bg-card w-full max-w-2xl rounded-xl border px-4 py-2">
             <ErrorNote message={saveError} />
           </div>
         </div>

@@ -121,7 +121,7 @@ import { cn } from "@/lib/utils";
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
 const ROW_BASE =
-  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px] outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px] outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 const ROW_REST =
   "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground";
 // The active row is a SOLID pill, not a tint: on the dark rail it is the

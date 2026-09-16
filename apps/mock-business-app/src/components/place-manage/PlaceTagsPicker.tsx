@@ -99,7 +99,7 @@ export function PlaceTagsPicker({
         <ul className="flex flex-wrap gap-1.5">
           {value.map((slug) => (
             <li key={slug}>
-              <span className="border-pink-200/80 bg-pink-500/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
+              <span className="border-border bg-muted text-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
                 {labelFor(slug)}
                 <button
                   type="button"
@@ -248,7 +248,7 @@ function TagsModal({
                           className={
                             "border-border flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border " +
                             (isOn
-                              ? "bg-pink-gradient border-transparent text-white"
+                              ? "bg-foreground border-transparent text-background"
                               : "bg-card")
                           }
                         >
@@ -268,7 +268,7 @@ function TagsModal({
           <button
             type="button"
             onClick={onClose}
-            className="bg-pink-gradient shadow-save inline-flex h-9 items-center rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-105 active:scale-[0.98]"
+            className="bg-foreground text-background shadow-save hover:bg-ink-hover inline-flex h-9 items-center rounded-full px-5 text-sm font-semibold transition active:scale-[0.98]"
           >
             Done
           </button>

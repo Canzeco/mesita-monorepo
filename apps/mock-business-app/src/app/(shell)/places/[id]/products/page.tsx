@@ -73,7 +73,7 @@ export default function ProductsPage() {
           return (
             <div
               key={card.key}
-              className="border-border bg-card shadow-card flex flex-col gap-2 rounded-2xl border p-4"
+              className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-display text-sm font-semibold tracking-tight">{card.name}</p>

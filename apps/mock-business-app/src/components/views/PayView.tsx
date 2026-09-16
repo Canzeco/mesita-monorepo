@@ -58,7 +58,7 @@ type PayState = {
   /** The card's heading. It carries the state in TEXT — the pill beside it is
    *  a second telling for the eye, never the only one. */
   headline: string;
-  tone: "neutral" | "warn" | "good" | "bad";
+  tone: "neutral" | "soon" | "on" | "bad";
   /** Second person, present tense: what is true for this place right now. */
   lede: string;
   /** Third person: what this rung MEANS. Lives in the disclosure, and must
@@ -93,7 +93,7 @@ const STATES: PayState[] = [
   {
     id: "started",
     headline: "Stripe still needs something",
-    tone: "warn",
+    tone: "soon",
     lede:
       "You started the account and Stripe is still missing a few answers. Picking up where you left off does not restart anything you already sent.",
     reference:
@@ -108,7 +108,7 @@ const STATES: PayState[] = [
   {
     id: "pending",
     headline: "Stripe is reviewing this account",
-    tone: "warn",
+    tone: "soon",
     lede:
       "Everything is submitted. There is nothing to do until Stripe answers, and a second submission does not make it faster.",
     reference: "Everything is submitted and Stripe is checking it.",
@@ -122,7 +122,7 @@ const STATES: PayState[] = [
   {
     id: "enabled",
     headline: "Payments are on",
-    tone: "good",
+    tone: "on",
     lede:
       "Guests can pay by card on visits and orders. The money goes straight to this place's Stripe account, on Stripe's schedule — Mesita never holds it.",
     reference: "Charges and payouts are live.",

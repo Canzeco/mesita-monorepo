@@ -9,184 +9,145 @@
  * The values below WILL drift from the brand as it moves. That is the deal a
  * mock makes: it is here to be looked at, not to be the source of anything.
  * Re-snapshot it by hand when the console's own palette moves.
+ *
+ * AS OF MESITA-1934 IT NO LONGER SNAPSHOTS THE BRAND AT ALL, ON PURPOSE. The
+ * brand is still pink (assets/brand/brand.json, hue 5) and web-business is
+ * still painted with it; this app is achromatic. That is the widest this file
+ * has ever drifted, and it is a decision rather than rot — do not "fix" it by
+ * re-snapshotting web-business, and do not carry these values back the other
+ * way without Pato. Because the app is absent from `brand.targets.web`,
+ * `brand.yml` cannot fail on the difference.
  */
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* ── THE ACHROMATIC SYSTEM (MESITA-1934) ──────────────────────────────────
+   Pato 2026-09-16: *"FUCK THE PINK COLORS OF MESITA. MAKE A MORE MINIMALISTIC
+   COLOR DESIGN, LIKE IN INSTAGRAM, BLACK AND WHITE."*
+
+   THE RULE, and it is the whole file: every neutral keeps its LIGHTNESS and
+   loses its CHROMA. Chroma survives in exactly three places — where a third
+   party owns the colour, where money is at risk, or where a tier is named.
+   Never on state, never on hierarchy, never on hover.
+
+   It was never a pink-ACCENT problem. The accent was ~5% of the pixels; the
+   other 95% was neutrals that all carried chroma. Measured off the running
+   app: --foreground rendered #260409, the rail #220005 (a dark wine, not
+   black), the page #fff7f8, and every hairline #ebd9db. Swapping --primary
+   alone would have removed the 5% and kept the 95%.
+
+   THREE light values, not five. Page and cards are the SAME white and every
+   separation is a #dbdbdb hairline, because five near-identical light tones is
+   mush — and #fafafa/#fff/#f5f5f5/#e5e5e5/#dbdbdb is the default palette of
+   every generated UI on the internet. This app already believed in hairlines:
+   SCOPE_CARD_CLASS is built on divide-y, PartnerBanner separates with a w-px
+   seam, and Account shipped as one card of rows.
+
+   Instagram's own secondary grey is deliberately NOT used. #8e8e8e measures
+   3.14:1 and FAILS WCAG AA, and this console is built out of type-label (11px,
+   x74) and type-meta (10px, x28). Copying it literally would have been an
+   accessibility regression sold as fidelity. */
 
 :root {
   --radius: 0.875rem;
 
-  /* --- Mesita brand · generated from assets/brand/brand.json --- */
-  --brand-pink-50: oklch(0.971 0.014 5); /* #fef2f4 · 1.09:1 on white */
-  --brand-pink-100: oklch(0.941 0.03 5); /* #fee4e9 · 1.2:1 on white */
-  --brand-pink-200: oklch(0.892 0.059 5); /* #ffccd6 · 1.41:1 on white */
-  --brand-pink-300: oklch(0.823 0.104 5); /* #ffa9bc · 1.8:1 on white */
-  --brand-pink-400: oklch(0.74 0.167 5); /* #ff789d · 2.49:1 on white */
-  --brand-pink-500: oklch(0.65 0.24 5); /* #fb2b7b · 3.66:1 on white */
-  --brand-pink-600: oklch(0.585 0.235 5); /* #e10069 · 4.77:1 on white */
-  --brand-pink-700: oklch(0.51 0.205 5); /* #bb0056 · 6.47:1 on white */
-  --brand-pink-800: oklch(0.43 0.17 5); /* #940543 · 8.89:1 on white */
-  --brand-pink-900: oklch(0.36 0.135 5); /* #710b34 · 11.67:1 on white */
-  --brand-pink-950: oklch(0.265 0.095 5); /* #47071f · 15.93:1 on white */
+  /* The three lights, the quiet, the ink. Every other value in this file is
+     one of these or a reserved signal. */
+  --paper: oklch(1 0 0); /* #ffffff · page AND cards, the same white */
+  --fill: oklch(0.985 0 0); /* #fafafa · wells and inputs, the ONLY fill */
+  --hairline: oklch(0.891 0 0); /* #dbdbdb · every separation */
+  --quiet: oklch(0.48 0 0); /* #5d5d5d · 6.58:1 on white. The old #775254 was 6.38, so captions gain contrast — this token kept its exact lightness and dropped only its chroma. */
+  --ink: oklch(0.205 0 0); /* #171717 · text, rail, band, primary */
+  --ink-hover: oklch(0.371 0 0); /* #404040 · a real 1.73:1 fill step */
 
-  /* THE Mesita pink. Logo fill, primary buttons, active states. */
-  --brand-pink: var(--brand-pink-500);
-  /* Pink text at body size on white — clears AA (4.77:1). --brand-pink does NOT (3.66:1). */
-  --brand-pink-text: var(--brand-pink-600);
-  /* Pressed states, pink on tinted surfaces. */
-  --brand-pink-deep: var(--brand-pink-700);
+  /* THE ONLY PURE BLACK IN THE APP, AND IT MEANS WARNING.
+     The MOCK strip is the one thing between this app and a stranger who did
+     not ask to be here, so it cannot be the same value as the rail directly
+     below it: two identical black slabs read as chrome, not as a warning. The
+     rail is --ink; this is #000; nothing else may take it. It also cannot go
+     on reading a brand token — it used to paint with var(--brand-pink-700),
+     and deleting that ramp without this line would have made the background
+     declaration INVALID and rendered the strip white-on-white, on a public
+     URL, with no gate to catch it. */
+  --mock-strip: oklch(0 0 0);
 
-  /* Both endpoints were outside sRGB and silently clipped by the browser,
-     so the ramp rendered differently per display. Snapped to the in-gamut
-     chroma ceiling at each lightness. */
-  --gradient-pink: linear-gradient(
-    135deg,
-    oklch(0.72 0.199 355),
-    oklch(0.6 0.241 5)
-  );
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
 
-  /* Three-stop brand wash for full-bleed panels and tiles (auth panes, 404, badges).
-     Renamed from --gradient-peacock (a pre-pivot bird name on a pink
-     gradient); its first stop was also clipping out of sRGB. */
-  --gradient-brand: linear-gradient(
-    135deg,
-    oklch(0.68 0.221 5),
-    oklch(0.62 0.24 0) 50%,
-    oklch(0.65 0.22 355)
-  );
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  /* Its only readers are two links in MenusSection, which is why it is a
+     mid-grey and why those links carry an underline at rest: a #404040 link one
+     step off #171717 body text, undecorated, is a link nobody finds. */
+  --secondary: var(--ink-hover);
+  --secondary-foreground: var(--paper);
 
-  /* Mesita — pink-red palette */
-  --background: oklch(0.985 0.012 10);
-  --foreground: oklch(0.18 0.06 15);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.06 15);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.06 15);
+  --muted: var(--fill);
+  --muted-foreground: var(--quiet);
+  --border: var(--hairline);
+  --input: var(--fill);
+  --ring: var(--ink);
 
-  /* Hot pink-red primary (buttons, brand) */
-  --primary: var(--brand-pink);
-  --primary-foreground: oklch(0.99 0.005 10);
-
-  /* Deeper rose for accents / "part" italics */
-  --secondary: var(--brand-pink-deep);
-  --secondary-foreground: oklch(0.99 0.005 10);
-
-  --muted: oklch(0.96 0.012 10);
-  --muted-foreground: oklch(0.48 0.05 15);
-  --accent: oklch(0.75 0.2 355);
-  --accent-foreground: oklch(0.18 0.06 15);
+  /* ── RESERVED SIGNALS ───────────────────────────────────────────────────
+     The only chroma left. Red is the sole thing that says "this destroys
+     something"; gold is a tier the product names out loud (Bronze/Silver/
+     Gold/Diamond). The third reserved family — the platform marks in Digital
+     Presence — needs no token at all: they are SVGs in public/channels/, so
+     they were never at risk from a repaint, and going fully monochrome would
+     have meant ADDING a grayscale filter, not removing a colour. */
   --destructive: oklch(0.58 0.24 28);
-  --destructive-foreground: oklch(0.99 0.005 10);
-  --border: oklch(0.9 0.02 10);
-  --input: oklch(0.94 0.015 10);
-  --ring: var(--brand-pink);
-
+  --destructive-foreground: var(--paper);
   --tier-gold: oklch(0.84 0.16 88);
+  /* Gold needs an INK as well as a fill. The badge used to set text-amber-800,
+     an actual Tailwind amber sitting inside a palette that claims to be
+     achromatic. */
+  --tier-gold-ink: oklch(0.42 0.11 78);
 
-  /* WhatsApp validator green — brand-matched to WhatsApp */
-  --whatsapp: oklch(0.66 0.17 152);
-  --whatsapp-deep: oklch(0.48 0.13 158);
-  --gradient-whatsapp: linear-gradient(
-    135deg,
-    oklch(0.72 0.17 152),
-    oklch(0.52 0.14 158)
-  );
+  /* Depth is additive here, not load-bearing: Section already carries a
+     hairline AND a shadow, so the cards survive on the hairline alone. What is
+     left is kept for the two surfaces that genuinely float — Modal and the
+     photo dialog — and re-based to neutral, because a chroma-0 shadow at the
+     old alpha reads heavier and colder than the warm ink it replaces. */
+  --shadow-elev: 0 25px 60px -15px oklch(0 0 0 / 0.14);
 
-  --gradient-hero:
-    radial-gradient(
-      1200px 600px at 20% -10%,
-      oklch(0.85 0.16 5 / 0.55),
-      transparent 60%
-    ),
-    radial-gradient(
-      900px 500px at 90% 10%,
-      oklch(0.85 0.18 355 / 0.5),
-      transparent 60%
-    ),
-    linear-gradient(180deg, oklch(0.99 0.012 10), oklch(0.96 0.02 5));
-  --gradient-gold: linear-gradient(
-    135deg,
-    oklch(0.86 0.14 90),
-    oklch(0.72 0.16 60)
-  );
-  --gradient-card: linear-gradient(
-    180deg,
-    oklch(1 0 0 / 0.95),
-    oklch(0.97 0.012 10 / 0.85)
-  );
-  /* Multi-stop "celebration" gradient used on the Welcome rate pill —
-     violet → magenta → peach, distinct from the brand pink so the
-     Welcome (first-visit, one-time) rate visually pops against the
-     per-tier rate cards. */
-  --gradient-welcome: linear-gradient(
-    90deg,
-    oklch(0.72 0.18 305),
-    oklch(0.7 0.24 5) 50%,
-    oklch(0.82 0.16 60)
-  );
-  --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
-  --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
-
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
   /* THE RAIL IS DARK (MESITA-1831, Pato 2026-09-13: "more contrast, sidebar
-     menu must be dark"). The sidebar tokens are the dock tokens below — the
-     brand's warm ink, declared for the retired bottom shell and unused since
-     it left. Rows at rest are --sidebar-muted (58% white, ≈7.5:1 on the ink),
-     full white on hover (≈16:1); the pill inverts to an off-white fill with
-     ink text. The ring stays the brand pink. Nothing in the rail may paint
-     with a page token (text-muted-foreground, bg-foreground): on this ground
-     those are ink on ink. */
+     menu must be dark") — and it is --ink, NOT pure black. Two measurements
+     decided that. --dock-surface is the rail's hover fill, white at 10%: over
+     #000 it composites to #1a1a1a, a 1.20:1 step you cannot see; over #171717
+     it is #2e2e2e, 1.73:1, which you can. And --dock paints the AskBar band as
+     well as the rail, so pure black would put two identical black slabs on a
+     white page and break the law in AskBar.tsx that the band is the one dark
+     object on Home.
+
+     Rows at rest are --dock-muted (64% white, 7.84:1 on the ink), full white on
+     hover, and the active pill inverts to white with ink text. Those three
+     states always rode on LUMINANCE, never on hue, so the repaint does not
+     touch them. Nothing in the rail may paint with a page token
+     (text-muted-foreground, bg-foreground): on this ground those are ink on ink. */
+  --dock: var(--ink);
+  --dock-foreground: oklch(0.98 0 0);
+  --dock-muted: oklch(1 0 0 / 0.64);
+  --dock-border: oklch(1 0 0 / 0.16);
+  --dock-surface: oklch(1 0 0 / 0.1);
+  --dock-surface-hover: oklch(1 0 0 / 0.18);
+
   --sidebar: var(--dock);
   --sidebar-foreground: var(--dock-foreground);
   --sidebar-muted: var(--dock-muted);
-  --sidebar-primary: oklch(0.65 0.24 5);
-  --sidebar-primary-foreground: oklch(0.99 0.005 10);
   --sidebar-accent: var(--dock-surface);
   --sidebar-accent-foreground: var(--dock-foreground);
   --sidebar-border: var(--dock-border);
-  --sidebar-ring: oklch(0.65 0.24 5);
-
-  /* Bottom shell — high contrast against the light page body */
-  --dock: oklch(0.16 0.065 15);
-  --dock-foreground: oklch(0.98 0.008 10);
-  --dock-muted: oklch(0.98 0.008 10 / 0.58);
-  --dock-border: oklch(1 0 0 / 0.14);
-  --dock-surface: oklch(1 0 0 / 0.1);
-  --dock-surface-hover: oklch(1 0 0 / 0.16);
-}
-
-.dark {
-  --background: oklch(0.18 0.03 10);
-  --foreground: oklch(0.98 0.005 10);
-  --card: oklch(0.24 0.035 10);
-  --card-foreground: oklch(0.98 0.005 10);
-  --popover: oklch(0.24 0.035 10);
-  --popover-foreground: oklch(0.98 0.005 10);
-  --primary: var(--brand-pink-400);
-  --primary-foreground: oklch(0.99 0.005 10);
-  --secondary: var(--brand-pink-500);
-  --secondary-foreground: oklch(0.99 0.005 10);
-  --muted: oklch(0.28 0.025 10);
-  --muted-foreground: oklch(0.7 0.04 10);
-  --accent: oklch(0.4 0.12 355);
-  --accent-foreground: oklch(0.98 0.005 10);
-  --destructive: oklch(0.7 0.19 28);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: var(--brand-pink-400);
-
-  --dock: oklch(0.1 0.02 10);
-  --dock-foreground: oklch(0.98 0.005 10);
-  --dock-muted: oklch(0.98 0.005 10 / 0.55);
-  --dock-border: oklch(1 0 0 / 0.12);
-  --dock-surface: oklch(1 0 0 / 0.08);
-  --dock-surface-hover: oklch(1 0 0 / 0.14);
+  /* WHITE, and deliberately not var(--ring). The page ring is ink, and an ink
+     ring on the ink rail is no ring at all. This token used to be a LITERAL
+     oklch(0.65 0.24 5) rather than var(--brand-pink), so deleting the brand
+     ramp would have left a hot-pink focus ring in the rail with every check
+     green. Sidebar.tsx pairs it with ring-offset-sidebar, because a white ring
+     drawn flush against the white active pill only makes the pill 2px fatter. */
+  --sidebar-ring: oklch(1 0 0);
 }
 
 @theme inline {
@@ -208,23 +169,18 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  --color-tier-gold: var(--tier-gold);
+  --color-tier-gold-ink: var(--tier-gold-ink);
+  --color-mock-strip: var(--mock-strip);
+  --color-ink-hover: var(--ink-hover);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-muted: var(--sidebar-muted);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
@@ -250,18 +206,16 @@
     /* The three browser surfaces a design system usually forgets (MESITA-1862).
        Left at their defaults they are the operating system's opinion, not
        ours, and they are the cheapest "designed, not assembled" tell there
-       is. All three read `--ring`, not `--brand-pink` directly, so the four
-       surfaces stay one colour and the dark block's lighter pink carries
-       through without a second declaration. The scrollbar value is not
+       is. All three read `--ring`, so the four surfaces stay one colour with
+       no second declaration anywhere. The scrollbar value is not
        invented here — it is web-consumer's (globals.css,
        `.scrollbar-always`), so the two consoles agree. */
     caret-color: var(--ring);
     scrollbar-color: var(--border) transparent;
   }
-  /* Selection: the ring colour at 22%, and NO `color` override. The text
-     underneath is already high-contrast on both themes; forcing a foreground
-     here is what breaks the dark block above, where the same pink sits on a
-     near-black page. */
+  /* Selection: the ring colour at 22%, and NO `color` override — the text
+     underneath is already 17.9:1 on the page, so overriding its foreground
+     could only make it worse. */
   ::selection {
     background-color: color-mix(in oklab, var(--ring) 22%, transparent);
   }
@@ -275,28 +229,10 @@
 }
 
 @layer utilities {
-  .bg-hero {
-    background: var(--gradient-hero);
-  }
-  .bg-brand {
-    background: var(--gradient-brand);
-  }
-  .bg-gold {
-    background: var(--gradient-gold);
-  }
-  .bg-card-soft {
-    background: var(--gradient-card);
-  }
-  .bg-pink-gradient {
-    background: var(--gradient-pink);
-  }
-  .bg-welcome-gradient {
-    background: var(--gradient-welcome);
-  }
   /* The manage-single type + surface vocabulary, ported from web-admin
      with MESITA-1537: the Place screen mounts admin's Single Place
      components verbatim, and they lean on these 142 times (type-label x74,
-     type-meta x28, type-body x18, shadow-card x18, shadow-save x4).
+     type-meta x28, type-body x18, x18, shadow-save x4).
      Tailwind DROPS unknown classes silently, so without these every
      10-11px micro-label renders at inherited ~14-16px and every card goes
      flat — it compiles, deploys, and looks broken. */
@@ -319,19 +255,8 @@
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
-  .shadow-card {
-    box-shadow:
-      0 1px 2px oklch(0.18 0.06 15 / 0.05),
-      0 16px 40px -28px oklch(0.18 0.06 15 / 0.22);
-  }
   .shadow-save {
-    box-shadow: 0 8px 20px -8px oklch(0.65 0.24 5 / 0.55);
-  }
-  .text-pink-gradient {
-    background: var(--gradient-pink);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    box-shadow: 0 8px 20px -8px oklch(0 0 0 / 0.3);
   }
   .scrollbar-none {
     -ms-overflow-style: none;
@@ -344,32 +269,8 @@
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
-  .shadow-glow {
-    box-shadow: var(--shadow-glow);
-  }
   .shadow-elev {
     box-shadow: var(--shadow-elev);
-  }
-  .text-gold {
-    color: var(--tier-gold);
-  }
-  .bg-tier-gold {
-    background: var(--gradient-gold);
-  }
-  .bg-whatsapp {
-    background: var(--whatsapp);
-  }
-  .bg-whatsapp-gradient {
-    background: var(--gradient-whatsapp);
-  }
-  .text-whatsapp {
-    color: var(--whatsapp);
-  }
-  .text-whatsapp-deep {
-    color: var(--whatsapp-deep);
-  }
-  .border-whatsapp {
-    border-color: var(--whatsapp);
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;

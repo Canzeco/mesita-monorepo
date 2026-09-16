@@ -5,8 +5,12 @@
 // which. So every row is live, and the page it opens is where the product says
 // it is not here yet.
 //
-// It deliberately does NOT take `shadow-card`: rank on this console comes from
-// depth, which is what lets a strip and a Section share one type size.
+// It ranks BELOW a Section, and since MESITA-1934 it does that with a DASHED
+// hairline and no fill at all, not with depth. The console used to rank by
+// shadow; the achromatic palette removed every shadow but the two that really
+// float, so the mechanism had to move. Dashed already means "not here yet" in
+// this app — EmptyState uses the same border — so the strip and a Section can
+// still share one type size and read as different ranks.
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +26,7 @@ export function SoonStrip({
   return (
     <div
       className={cn(
-        "border-border bg-muted/40 flex items-start gap-3 rounded-2xl border border-dashed p-4",
+        "border-border flex items-start gap-3 rounded-2xl border border-dashed p-4",
         className,
       )}
     >

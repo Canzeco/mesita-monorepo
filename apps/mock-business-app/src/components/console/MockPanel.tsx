@@ -131,7 +131,7 @@ export function MockPanel() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         title="Scenario (.)"
-        className="bg-foreground text-background focus-visible:ring-ring fixed right-4 bottom-4 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg outline-hidden transition hover:opacity-90 focus-visible:ring-2"
+        className="bg-foreground text-background focus-visible:ring-ring fixed right-4 bottom-4 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg outline-hidden transition hover:bg-ink-hover focus-visible:ring-2"
       >
         {open ? <X className="h-5 w-5" /> : <SlidersHorizontal className="h-5 w-5" />}
         <span className="sr-only">Scenario</span>

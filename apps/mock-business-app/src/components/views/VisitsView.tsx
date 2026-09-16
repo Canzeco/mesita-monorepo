@@ -20,9 +20,9 @@ import type { MockTender, MockVisit } from "@/mock/types";
 import { dayTime, money } from "@/lib/format";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
-const STATE_TONE: Record<MockVisit["state"], "good" | "warn" | "bad"> = {
-  settled: "good",
-  open: "warn",
+const STATE_TONE: Record<MockVisit["state"], "on" | "soon" | "bad"> = {
+  settled: "on",
+  open: "soon",
   voided: "bad",
 };
 

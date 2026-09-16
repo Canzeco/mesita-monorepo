@@ -20,10 +20,10 @@ import type { MockReservation } from "@/mock/types";
 import { dayTime } from "@/lib/format";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
-const STATE_TONE: Record<MockReservation["state"], "good" | "warn" | "bad" | "neutral"> = {
-  confirmed: "good",
-  seated: "good",
-  requested: "warn",
+const STATE_TONE: Record<MockReservation["state"], "on" | "soon" | "bad" | "neutral"> = {
+  confirmed: "on",
+  seated: "on",
+  requested: "soon",
   no_show: "bad",
   canceled: "neutral",
 };

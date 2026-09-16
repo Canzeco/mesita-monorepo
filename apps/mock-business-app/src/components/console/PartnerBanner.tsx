@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 export function PartnerBanner({ place }: { place: MockPlace }) {
   if (!place.partnered) {
     return (
-      <div className="border-border bg-card shadow-card rounded-2xl border p-4">
+      <div className="border-border bg-card rounded-2xl border p-4">
         <PartnerCard place={place} />
       </div>
     );
@@ -43,7 +43,7 @@ export function PartnerBanner({ place }: { place: MockPlace }) {
   const chip = membershipChip(place.membership);
 
   return (
-    <div className="border-border bg-card shadow-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-4 py-3">
+    <div className="border-border bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-4 py-3">
       <h2 className="font-display text-sm font-semibold tracking-tight">
         Membership
       </h2>

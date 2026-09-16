@@ -16,11 +16,11 @@ import type { MockOrder } from "@/mock/types";
 import { dayTime, money } from "@/lib/format";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
-const STATE_TONE: Record<MockOrder["state"], "good" | "warn" | "bad" | "neutral" | "brand"> = {
-  placed: "warn",
-  preparing: "warn",
-  ready: "brand",
-  collected: "good",
+const STATE_TONE: Record<MockOrder["state"], "on" | "soon" | "bad" | "neutral" | "on"> = {
+  placed: "soon",
+  preparing: "soon",
+  ready: "on",
+  collected: "on",
   canceled: "bad",
 };
 
@@ -58,10 +58,10 @@ export function OrdersView() {
           lane
         >
           <div className="flex flex-wrap gap-2">
-            <Badge tone={place.pickupOrders ? "good" : "neutral"}>
+            <Badge tone={place.pickupOrders ? "on" : "neutral"}>
               Pickup · {place.pickupOrders ? "on" : "off"}
             </Badge>
-            <Badge tone={place.deliveryOrders ? "good" : "neutral"}>
+            <Badge tone={place.deliveryOrders ? "on" : "neutral"}>
               Delivery · {place.deliveryOrders ? "on" : "off"}
             </Badge>
           </div>

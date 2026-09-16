@@ -75,7 +75,7 @@ export default function PlaceSettingsPage() {
                   <p className="text-muted-foreground truncate text-[11px]">{m.email}</p>
                 </div>
                 <Badge tone={m.role === "owner" ? "gold" : "neutral"}>{m.role}</Badge>
-                {m.state === "invited" && <Badge tone="warn">invited</Badge>}
+                {m.state === "invited" && <Badge tone="soon">invited</Badge>}
                 {canManage && m.name !== "You" && (
                   <button type="button" aria-label={`Remove ${m.name}`} title={`Remove ${m.name}`} className={ICON_BUTTON_CLASS}>
                     <X className="h-3.5 w-3.5" />
