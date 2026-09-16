@@ -86,6 +86,10 @@ export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "product", product: "reservations" },
   { kind: "product", product: "pay" },
   { kind: "product", product: "credits" },
+  // CAPITAL IS LAST, and it is money (MESITA-1929): cash now against meals the
+  // place will serve later. A Soon product still gets a LIVE row — the rail
+  // never dims, and the PAGE is where a product says it is not here yet.
+  { kind: "product", product: "capital" },
 ];
 
 /** Where the seams fall, as the INDEX of each row that opens a group —
@@ -230,6 +234,8 @@ export const FLAT_ROUTES = {
   rewards: "/rewards",
   pay: "/pay",
   credits: "/credits",
+  // The ninth product owes a flat twin like every other view (MESITA-1929).
+  capital: "/capital",
   admin: "/admin",
   settings: "/settings",
   products: "/products",

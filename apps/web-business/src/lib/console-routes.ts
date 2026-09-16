@@ -269,6 +269,10 @@ export const RAIL_ROWS: readonly RailRow[] = [
   // was a Soon strip.
   { kind: "product", product: "pay" },
   { kind: "product", product: "credits" },
+  // CAPITAL IS LAST, and it is money (MESITA-1929): cash now against meals the
+  // place will serve later. A Soon product still gets a LIVE row — the rail
+  // never dims, and the PAGE is where a product says it is not here yet.
+  { kind: "product", product: "capital" },
 ];
 
 /** Where the seam falls, as the INDEX of each row that opens a group. Derived
@@ -501,6 +505,8 @@ export const FLAT_ROUTES = {
   rewards: "/rewards",
   pay: "/pay",
   credits: "/credits",
+  // The ninth product owes a flat twin like every other view (MESITA-1929).
+  capital: "/capital",
   admin: "/admin",
   // The place's four PAGES. `payments` has no flat twin: it is not an address
   // at all any more (MESITA-1869), and the redirect table owns the name — a
@@ -560,6 +566,7 @@ const PLACE_TAB_NAMES = [
   "rewards",
   "pay",
   "credits",
+  "capital",
   "admin",
 ] as const;
 

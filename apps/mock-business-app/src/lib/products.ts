@@ -55,6 +55,14 @@ const SPECS: readonly ProductSpec[] = [
     soon: null,
   },
   {
+    key: "rewards",
+    name: "Mesita Rewards",
+    blurb: "Give guests a reason to come back, priced by you.",
+    needsPartner: true,
+    atPlace: (p) => p.visitRewards,
+    soon: null,
+  },
+  {
     key: "orders",
     name: "Mesita Orders",
     blurb: "Receive pickup and delivery orders with checkout.",
@@ -68,14 +76,6 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Manage table bookings with your preferred provider.",
     needsPartner: false,
     atPlace: (p) => p.reservations,
-    soon: null,
-  },
-  {
-    key: "rewards",
-    name: "Mesita Rewards",
-    blurb: "Give guests a reason to come back, priced by you.",
-    needsPartner: true,
-    atPlace: (p) => p.visitRewards,
     soon: null,
   },
   {
@@ -93,6 +93,17 @@ const SPECS: readonly ProductSpec[] = [
     needsPartner: true,
     atPlace: (p) => p.credits,
     soon: null,
+  },
+  {
+    key: "capital",
+    name: "Mesita Capital",
+    // THE LANDING PAGE'S OWN WORDS, on purpose: the pitch an owner read before
+    // signing up is the pitch they meet inside. "Not a loan" is load-bearing —
+    // Mesita buys inventory forward, it does not lend.
+    blurb: "Take cash now against meals you have not served yet.",
+    needsPartner: false,
+    atPlace: null,
+    soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
 ];
 

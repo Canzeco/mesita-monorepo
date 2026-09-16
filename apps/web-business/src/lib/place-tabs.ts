@@ -94,6 +94,9 @@ export const PLACE_TABS = [
   "rewards",
   "pay",
   "credits",
+  // `PLACE_TABS` ⊇ `PRODUCT_KEYS` is pinned both ways, so the ninth product
+  // owes a tab (MESITA-1929) even while its page is a Soon strip.
+  "capital",
   "admin",
 ] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
@@ -111,6 +114,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   rewards: PRODUCT_LABEL.rewards,
   pay: PRODUCT_LABEL.pay,
   credits: PRODUCT_LABEL.credits,
+  capital: PRODUCT_LABEL.capital,
   admin: "Admin",
 };
 
@@ -164,6 +168,7 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
           "rewards",
           "pay",
           "credits",
+          "capital",
         ];
   if (access.isSuperAdmin) tabs.push("admin");
   return tabs;

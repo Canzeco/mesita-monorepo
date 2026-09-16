@@ -14,7 +14,7 @@
 // organization's places" — plural, about a holder above the venue. There is no
 // holder: a place carries its own guests, its own payments and its own keys.
 export const SOON_STRIPS: Record<
-  "customers" | "payments" | "developers",
+  "customers" | "payments" | "developers" | "capital",
   { title: string; line: string }
 > = {
   // TERMINAL LEFT WITH ITS PRODUCT (MESITA-1900). MESITA-1885 gave it this
@@ -42,6 +42,14 @@ export const SOON_STRIPS: Record<
   // from here."* Same rule that moved Prepaid Credits out of this map one
   // issue ago: an entry nobody renders is how a vocabulary starts describing
   // a screen that no longer exists.
+  // CAPITAL (MESITA-1929). It is the ninth product and the second Soon: a
+  // business model the landing page sells and the console cannot yet deliver.
+  // The line says what it IS rather than what it will do, because "not a loan"
+  // is the part an owner must not misread.
+  capital: {
+    title: "Capital",
+    line: "Cash now against meals you have not served yet — an advance sale, never a loan.",
+  },
   developers: {
     title: "Developers",
     line: "API keys and what an agent needs to read and drive this place.",

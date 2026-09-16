@@ -136,6 +136,14 @@ const SPECS: readonly ProductSpec[] = [
     soon: null,
   },
   {
+    key: "rewards",
+    name: "Mesita Rewards",
+    blurb: "Give guests a reason to come back, priced by you.",
+    needsPartner: true,
+    atPlace: (p) => p.visitRewards === true,
+    soon: null,
+  },
+  {
     key: "orders",
     name: "Mesita Orders",
     blurb: "Receive pickup and delivery orders with checkout.",
@@ -149,14 +157,6 @@ const SPECS: readonly ProductSpec[] = [
     blurb: "Manage table bookings with your preferred provider.",
     needsPartner: false,
     atPlace: (p) => p.reservations === true,
-    soon: null,
-  },
-  {
-    key: "rewards",
-    name: "Mesita Rewards",
-    blurb: "Give guests a reason to come back, priced by you.",
-    needsPartner: true,
-    atPlace: (p) => p.visitRewards === true,
     soon: null,
   },
   {
@@ -175,9 +175,29 @@ const SPECS: readonly ProductSpec[] = [
     atPlace: (p) => p.credits === true,
     soon: null,
   },
+  {
+    key: "capital",
+    name: "Mesita Capital",
+    // THE LANDING PAGE'S OWN WORDS (MESITA-1929), on purpose: the pitch an
+    // owner read before signing up is the pitch they meet inside. "Not a loan"
+    // is load-bearing — Mesita buys inventory forward, it does not lend, and a
+    // console that implies otherwise contradicts its own marketing site.
+    blurb: "Take cash now against meals you have not served yet.",
+    needsPartner: false,
+    atPlace: null,
+    soon: "An advance sale of food, never a loan. Nothing is live yet.",
+  },
 ];
 
-/** The catalogue's order — the mock's, read left to right, top to bottom. */
+/** The catalogue's order — the mock's, read left to right, top to bottom.
+ *
+ *  IT MUST MATCH THE RAIL'S, and `products.test.ts` asserts that rather than
+ *  trusting it. The two are different arrays — `SPECS` carries card copy,
+ *  `RAIL_ROWS` carries rows — and MESITA-1928 proved they drift: it moved
+ *  Rewards under Visits in the rail and left the catalogue printing it beside
+ *  Payments, so for one commit the console gave two answers to "where does
+ *  Rewards belong". A card and a row for one product in two places is the same
+ *  bug as a product with two icons. */
 export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 
 // ── `PRODUCT_VIEW` IS DELETED, AND THE ROOMS ARE WHY (MESITA-1885) ────────
