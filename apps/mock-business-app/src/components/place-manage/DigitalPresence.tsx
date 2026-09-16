@@ -72,6 +72,25 @@ export function AutoPill() {
   );
 }
 
+/** The four marks, from `public/channels` — the same Simple Icons set the
+ *  Channels card two columns over labels its fields with, plus Mesita's own
+ *  flame (a hand-copy of the brand's `mark-color.svg`, not a new `MesitaLogo`
+ *  variant: that file is itself a hand-copied snapshot, so a variant added
+ *  there would vanish the next time the brand moves and it is re-copied).
+ *
+ *  GOOGLE WEARS THE MAPS PIN, because Google reviews ARE Maps reviews: Maps
+ *  is where the count is scraped from and where an operator who wants to read
+ *  one gets sent.
+ *
+ *  16px, not the Channels card's 14px — `MesitaLogo.tsx` puts the bare mark's
+ *  floor at 16, and four marks at one size read as four peers. */
+const MARK: Record<string, string> = {
+  Google: "/channels/googlemaps.svg",
+  Mesita: "/channels/mesita.svg",
+  Instagram: "/channels/instagram.svg",
+  Facebook: "/channels/facebook.svg",
+};
+
 /** One metric well — big number, optional star row, hint line. Shared so a
  *  score and a follower count read as peers on the same 2×2 grid. */
 function Tile({
@@ -92,7 +111,14 @@ function Tile({
 }) {
   return (
     <div className="border-border/60 bg-muted/40 flex min-w-0 flex-col gap-1.5 rounded-xl border px-3.5 py-3">
-      <p className="text-muted-foreground type-label">{label}</p>
+      <p className="text-muted-foreground flex items-center gap-1.5 type-label">
+        {/* Static 16px brand SVG — next/image adds nothing here. Decorative:
+            the label beside it already says "Instagram", and a screen reader
+            saying it twice is worse than not saying it at all. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={MARK[label]} alt="" aria-hidden className="h-4 w-4 shrink-0" />
+        {label}
+      </p>
       <p className="flex items-center gap-2" aria-label={ariaLabel}>
         <span
           className={
