@@ -217,7 +217,9 @@ Deno.test("Mesita Places Search signals match the admin matrix", () => {
   assertEquals(modeSignalState("swipe", "enriched"), "on");
   assertEquals(modeSignalState("chat", "enriched"), "on");
   assertEquals(modeSignalState("catalog", "partnered"), "on");
-  assertEquals(modeSignalState("map", "partnered"), "on");
+  // Map prices partnership by splitting lanes, not by an exponent — see the
+  // DISCOVERY_MODE_SIGNAL_ZERO entry. Its own test is below.
+  assertEquals(modeSignalState("map", "partnered"), "zero");
   assertEquals(modeSignalState("swipe", "partnered"), "on");
   assertEquals(modeSignalState("chat", "partnered"), "on");
   assertEquals(
@@ -233,7 +235,7 @@ Deno.test("weightsForMode zeros off and Map randomness against defaults", () => 
   assertEquals(map.summary, 0);
   assertEquals(map.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(map.enriched, DISCOVERY_DEFAULTS.weights.enriched);
-  assertEquals(map.partnered, DISCOVERY_DEFAULTS.weights.partnered);
+  assertEquals(map.partnered, 0);
   const word = weightsForMode("word", DISCOVERY_DEFAULTS.weights);
   assertEquals(word.name, DISCOVERY_DEFAULTS.weights.name);
   for (const key of SIGNAL_KEYS) {
@@ -313,6 +315,31 @@ Deno.test(
       );
     }
     assertEquals(DISCOVERY_MODE_SIGNALS.word.length, 1);
+  },
+);
+
+Deno.test(
+  "Map prices partnership by splitting lanes, not by an exponent — so Partnered is zero there",
+  () => {
+    // `reorderListedLanes` (nearby-lineup.ts) splits the listed rows with
+    // `isMesitaPartnerRow` BEFORE it blends, and blends each lane on its own.
+    // On those rows the predicate reduces to `isPaidPlan(row.plan)` —
+    // PLACE_CARD_COLUMNS has no `partner` key — and `partnered()` is 1 on any
+    // non-free plan, 0.2 otherwise. A constant factor inside a lane, and s^w
+    // over a constant is a constant: the exponent cannot move a row. Same
+    // argument that denies Word a column, applied per signal.
+    assertEquals(modeSignalState("map", "partnered"), "zero");
+    for (const w of [0, 0.5, 1, 2]) {
+      assertEquals(
+        weightsForMode("map", DISCOVERY_DEFAULTS.weights, {
+          map: { partnered: w },
+        }).partnered,
+        0,
+        `a stored ${w} must not reach the engine`,
+      );
+    }
+    // Scroll ranks one deck with no lane split, so there the exponent is real.
+    assertEquals(modeSignalState("swipe", "partnered"), "on");
   },
 );
 

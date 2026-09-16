@@ -234,10 +234,37 @@ export const DISCOVERY_MODE_SIGNALS: Record<
   favorites: [],
 };
 
+/**
+ * ON THE MASK, PINNED TO EXPONENT 0. The signal is part of this mode's product,
+ * but on THIS mode its exponent provably cannot reorder the result, so the
+ * console renders a labelled em-dash, stores nothing, and `weightsForMode`
+ * returns 0. Same rule as Word's missing column — a knob that changes nothing
+ * is a knob that lies.
+ *
+ * map / randomness  Map is a pin field. A shuffled pin is a moved pin.
+ *
+ * map / partnered   MAP PRICES PARTNERSHIP BY SPLITTING LANES, NOT BY AN
+ *                   EXPONENT. Map's only ranking path is `reorderListedLanes`
+ *                   (_shared/nearby-lineup.ts): it splits the listed rows with
+ *                   `isMesitaPartnerRow` into a partners lane and an extra
+ *                   lane, then blends each lane INDEPENDENTLY. On those rows
+ *                   the predicate reduces to `isPaidPlan(row.plan)` —
+ *                   PLACE_CARD_COLUMNS carries no `partner` key and the
+ *                   `profiles` view has no such column, so the `row.partner`
+ *                   branches never fire — and `partnered()` returns exactly 1
+ *                   for any non-free plan and 0.2 otherwise. Within a lane it
+ *                   is therefore a CONSTANT factor, and `s^w` over a constant
+ *                   is a constant: no value of w moves a single row. The one
+ *                   escape, an empty-string plan that `isPaidPlan` calls paid
+ *                   while `partnered()` floors at 0.2, is closed by the schema
+ *                   — places.plan is NOT NULL DEFAULT 'free' over the enum
+ *                   free|pro|ultra. The order is IDENTICAL either way, which
+ *                   is why zeroing it is safe; do not "restore" it.
+ */
 export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
   Record<DiscoveryModeKey, readonly SignalKey[]>
 > = {
-  map: ["randomness"],
+  map: ["randomness", "partnered"],
 };
 
 /**

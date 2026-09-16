@@ -349,7 +349,6 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("chat", "enriched")).toBe("on");
     expect(modeSignalState("word", "enriched")).toBe("off");
     expect(modeSignalState("catalog", "partnered")).toBe("on");
-    expect(modeSignalState("map", "partnered")).toBe("on");
     expect(modeSignalState("swipe", "partnered")).toBe("on");
     expect(modeSignalState("chat", "partnered")).toBe("on");
     expect(modeSignalState("word", "partnered")).toBe("off");
@@ -357,6 +356,17 @@ describe("Discovery function APIs", () => {
     expect(
       SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
     ).toBe(true);
+  });
+
+  it("Map prices partnership by splitting lanes, not by an exponent", () => {
+    // The EF's `reorderListedLanes` splits listed rows on `isMesitaPartnerRow`
+    // BEFORE it blends, and blends each lane independently — so `partnered()`
+    // is a constant factor inside a lane and `s^w` over a constant cannot move
+    // a row. The cell is the labelled em-dash, not an input an operator can
+    // save and watch change nothing.
+    expect(modeSignalState("map", "partnered")).toBe("zero");
+    // Scroll ranks one deck with no lane split: there the exponent is real.
+    expect(modeSignalState("swipe", "partnered")).toBe("on");
   });
 
   it("map() is closest N of the selected Places set", () => {

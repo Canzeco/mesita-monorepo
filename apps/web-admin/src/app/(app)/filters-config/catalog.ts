@@ -1011,11 +1011,25 @@ const DISCOVERY_MODE_SIGNALS: Record<
   favorites: [],
 };
 
-/** Present on the mode with weight 0 — off, not missing. Map Randomness. */
+/**
+ * Present on the mode with weight 0 — off, not missing. The cell renders the
+ * labelled em-dash and stores nothing, because on this mode the exponent
+ * provably cannot reorder the result.
+ *
+ * Map / Randomness  a pin field. A shuffled pin is a moved pin.
+ * Map / Partnered   Map prices partnership by SPLITTING LANES, not by an
+ *                   exponent: `reorderListedLanes` (EF `_shared/
+ *                   nearby-lineup.ts`) splits listed rows on
+ *                   `isMesitaPartnerRow` and blends each lane independently,
+ *                   so `partnered()` is a constant factor inside a lane and
+ *                   `s^w` over a constant cannot move a row. The EF twin's
+ *                   entry carries the full argument. Editable here, it was a
+ *                   knob an operator could save and watch change nothing.
+ */
 const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
   Record<DiscoveryModeKey, readonly SignalKey[]>
 > = {
-  map: ["randomness"],
+  map: ["randomness", "partnered"],
 };
 
 export function modeReturnsEntity(
