@@ -7,7 +7,7 @@ import { GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import { copyText } from '@/lib/clipboard';
 
 const MESITA_CONTACT_EMAIL = 'support@mesita.ai';
-export const DEFAULT_SHARE_URL = 'https://www.mesita.ai';
+export const DEFAULT_SHARE_URL = 'https://mesita.ai';
 const FLASH_DURATION_MS = 1600;
 
 export type GiftCard = {

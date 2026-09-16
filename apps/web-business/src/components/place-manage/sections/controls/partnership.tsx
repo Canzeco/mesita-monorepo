@@ -52,21 +52,24 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 // ── WHY THERE IS NO RE-JOIN BUTTON YET ───────────────────────────────────
 //
 // Forfeit drops this place to plan=free and stamps `plan_forfeited_at`, while
-// the subscription (`places.partnered`) is untouched — so the way back is a
-// re-join, never "turn the subscription off and on". The door is not wired:
-// the one join door (`setPlacePlan` → `business-web-set-partnership
-// {action:"join"}`) is guarded by `requireEditor` and never reads
-// `places.partnered`, so the first console caller of it would let any editor
-// put any place on plan=pro for nothing, under a paid tier. The plan had the
-// button render disabled until the backend issue guards that door (partnered ∧
-// owner) — but a disabled primary button is a knob that pretends, the exact
+// the Membership it bought is untouched — so the way back is a re-join, never
+// "turn the subscription off and on".
+//
+// THE DOOR IS GUARDED NOW, AND STILL UNWIRED. MESITA-1889 made the one join
+// door (`setPlacePlan` → `business-web-set-partnership {action:"join"}`)
+// refuse unless the holder was `partnered` AND the caller owned it; MESITA-1892
+// removed the holder, so it asks the PLACE those same two questions (409
+// `place_not_partnered`, then 403). Either way it can no longer let an editor
+// put a place on plan=pro for nothing under a paid tier. Only the button is
+// left, and it belongs to MESITA-1891. The plan had it render disabled
+// meanwhile — but a disabled primary button is a knob that pretends, the exact
 // thing the house law (SoonStrip.tsx) forbids and the reason the Partner modal
 // has no Continue button. So the door's honest state is one line: the page's
 // top line says when re-join lands, and this box says what re-joining will do
-// and whose action it is (the owner's — the subscription it re-enters is the
-// owner's). PR 2 adds the button when it does something. The same door serves
-// a DROPPED place — out of the partnership while the subscription is live —
-// which reads plan=free without a forfeit stamp.
+// and whose action it is (the owner's — the Membership it re-enters is the
+// owner's). The same door serves a DROPPED place — out of the partnership
+// while the Membership is live — which reads plan=free without a forfeit
+// stamp.
 
 // ─── Lifecycle banner — this place's progress on the three Tutorial steps ─
 //

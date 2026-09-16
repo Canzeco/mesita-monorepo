@@ -1,10 +1,10 @@
-// Super Category inference: OpenAI classifier over the Atlas list (the
-// seven real supers in place_super_categories; never `undefined`). Used
-// when the place has no classified Atlas category yet. Once Category is
-// known, family_keys is that category's FULL membership (1–2 supers).
-// The classifier may return one or two supers; a WRONG super is worse
-// than none, so it stays conservative — empty means the caller falls
-// back to ['undefined'] (resolveEnrichedFamilyKeys is total).
+// Family inference: OpenAI classifier over the Atlas list (the seven real
+// families in place_families; never `undefined`). Used when the place has
+// no classified Atlas category yet. Once Category is known, family_keys is
+// that category's FULL membership (1–2 families). The classifier may return
+// one or two; a WRONG family is worse than none, so it stays conservative —
+// empty means the caller falls back to ['undefined']
+// (resolveEnrichedFamilyKeys is total).
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import {
@@ -15,12 +15,12 @@ import {
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_CLASSIFIER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 
-export type SuperCategoryOption = {
+export type FamilyOption = {
   slug: string;
   label: string;
 };
 
-type SuperSignals = {
+type FamilySignals = {
   name: string;
   address?: string | null;
   category?: string | null;
@@ -31,31 +31,31 @@ type SuperSignals = {
 // Exported so admin Intake can RENDER them (intake-prompts.ts → the console).
 // The console shows these exact values, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
-export const SUPER_CATEGORY_INSTRUCTIONS =
-  "You classify a place into ONE or TWO Super Categories from a fixed list. " +
-  'Respond with a single JSON object {"super_categories":["<slug>"]} ' +
+export const FAMILY_INSTRUCTIONS =
+  "You classify a place into ONE or TWO families from a fixed list. " +
+  'Respond with a single JSON object {"families":["<slug>"]} ' +
   "where every slug is copied verbatim from the list. Most places get " +
   "exactly one; return two ONLY when the place genuinely lives in both " +
   "(a breakfast café is restaurants and cafes_bakeries; a karaoke bar is " +
   "bars_nightlife and experiences). Only classify when confident — a " +
-  "wrong Super is worse than none. Never invent slugs. Never return " +
+  "wrong family is worse than none. Never invent slugs. Never return " +
   "more than two.";
 
-export function buildSuperCategoryInput(catalog: string, placeLines: string): string {
-  return `Super Categories (slug — label):\n${catalog}\n\n` +
+export function buildFamilyInput(catalog: string, placeLines: string): string {
+  return `Families (slug — label):\n${catalog}\n\n` +
     `Place:\n${placeLines}\n\n` +
-    `Return {"super_categories":["<one or two slugs from the list>"]}.`;
+    `Return {"families":["<one or two slugs from the list>"]}.`;
 }
 
-export async function inferPlaceSuperCategories(
+export async function inferPlaceFamilies(
   openaiKey: string | undefined,
-  supers: SuperCategoryOption[],
-  signals: SuperSignals,
+  families: FamilyOption[],
+  signals: FamilySignals,
   model = DEFAULT_CLASSIFIER_MODEL,
 ): Promise<FamilyKey[]> {
-  if (!openaiKey || supers.length === 0) return [];
-  const valid = new Set(supers.map((s) => s.slug));
-  const catalog = supers.map((s) => `${s.slug} — ${s.label}`).join("\n");
+  if (!openaiKey || families.length === 0) return [];
+  const valid = new Set(families.map((f) => f.slug));
+  const catalog = families.map((f) => `${f.slug} — ${f.label}`).join("\n");
   const placeLines = [
     `Name: ${signals.name}`,
     signals.address ? `Address: ${signals.address}` : "",
@@ -66,8 +66,8 @@ export async function inferPlaceSuperCategories(
     .filter(Boolean)
     .join("\n");
 
-  const systemContent = SUPER_CATEGORY_INSTRUCTIONS;
-  const userPrompt = buildSuperCategoryInput(catalog, placeLines);
+  const systemContent = FAMILY_INSTRUCTIONS;
+  const userPrompt = buildFamilyInput(catalog, placeLines);
 
   try {
     const r = await fetch(OPENAI_URL, {
@@ -91,19 +91,19 @@ export async function inferPlaceSuperCategories(
       choices?: { message?: { content?: string } }[];
     };
     const content = data.choices?.[0]?.message?.content ?? "";
-    let parsed: { super_categories?: unknown; super_category?: unknown };
+    let parsed: { families?: unknown; family?: unknown };
     try {
       parsed = JSON.parse(content) as {
-        super_categories?: unknown;
-        super_category?: unknown;
+        families?: unknown;
+        family?: unknown;
       };
     } catch {
       return [];
     }
-    const raw = Array.isArray(parsed.super_categories)
-      ? parsed.super_categories
-      : typeof parsed.super_category === "string"
-      ? [parsed.super_category]
+    const raw = Array.isArray(parsed.families)
+      ? parsed.families
+      : typeof parsed.family === "string"
+      ? [parsed.family]
       : [];
     return sanitizeFamilyKeys(raw).filter((slug) => valid.has(slug));
   } catch {

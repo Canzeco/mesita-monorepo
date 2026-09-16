@@ -287,6 +287,83 @@ describe("the rail is six nouns and one indent", () => {
     expect(account.slice(0, account.indexOf("/>"))).not.toContain("Selector");
   });
 
+  // MESITA-1803. The place picker grows a search field past a count, and the
+  // count is ONE exported number. These are the pairings a compiler cannot
+  // see: the rail reading the constant, and the two lines without which a
+  // field inside a Radix menu does not work at all.
+  it("the picker's threshold is read, never retyped", () => {
+    const r = rail();
+    expect(r).toContain("PLACE_SEARCH_MIN");
+    // The failure this catches: someone inlines the digit, the constant and
+    // the rail drift, and the field appears at a count no test names.
+    expect(r).not.toMatch(/places\.length >= \d/);
+    expect(r).not.toMatch(/places\.length >= 8/);
+    // The field is above the radio group, never inside it — a search row
+    // inside a radio group is announced as one of the options.
+    const picker = r.slice(r.indexOf('label="Switch place"'));
+    expect(picker.indexOf("<MenuSearch")).toBeGreaterThan(-1);
+    expect(picker.indexOf("<MenuSearch")).toBeLessThan(
+      picker.indexOf("<DropdownMenuRadioGroup"),
+    );
+    // And the way out stays outside the filter: "All places" is rendered
+    // unconditionally, so a query that matches nothing still has a door.
+    const footer = picker.slice(picker.indexOf("<DropdownMenuSeparator"));
+    expect(footer).toContain("All places");
+    expect(footer).not.toContain("placeSearch &&");
+  });
+
+  it("the menu's field survives Radix's typeahead and its own focus", () => {
+    const sel = readCode("components/console/RailSelector.tsx");
+    // Without stopPropagation the menu's typeahead eats every keystroke aimed
+    // at the input; without onOpenAutoFocus the caret opens on a row instead
+    // of the field. Both are one line, and both look removable.
+    expect(sel).toContain("e.stopPropagation()");
+    expect(sel).toContain("onOpenAutoFocus");
+    // The field's keyboard is ONE exported function, which is what lets
+    // components/console/rail-selector.test.ts press keys at it rather than
+    // read this file. Inlining it back into the JSX puts the arrow keys
+    // beyond reach of any test again.
+    expect(sel).toContain("export function handleMenuSearchKeyDown");
+    expect(sel).toContain("onKeyDown={handleMenuSearchKeyDown}");
+  });
+
+  // MESITA-1803, the second pass. Three failures the first build shipped, and
+  // the wiring that answers each. What CAN be proven by calling a function is
+  // proven in components/console/rail-selector.test.ts; these two are props
+  // crossing a component boundary, which only the source shows.
+  it("Escape is answered where Radix asks, not where the field is", () => {
+    const sel = readCode("components/console/RailSelector.tsx");
+    const rail = readCode("components/console/Sidebar.tsx");
+    // FAILURE PREVENTED: the two-stage Escape silently stops working. Radix
+    // dismisses from a document CAPTURE listener, so a bubble-phase handler
+    // on the input never runs — the query could never clear, the menu just
+    // closed. `DismissableLayer` calls `onEscapeKeyDown` BEFORE it checks
+    // `defaultPrevented`, so the answer has to be the content's prop.
+    expect(sel).toContain("onEscapeKeyDown?: (event: KeyboardEvent) => void");
+    expect(sel).toContain("onEscapeKeyDown={onEscapeKeyDown}");
+    expect(rail).toContain("onEscapeKeyDown={escapePlaceMenu}");
+    expect(rail).toMatch(/escapePlaceMenu[\s\S]{0,200}e\.preventDefault\(\)/);
+    // And the stage that lived in the input — where it could never fire — is
+    // gone, not merely duplicated.
+    expect(sel).not.toContain('if (value === "") return;');
+  });
+
+  it("the query dies with the menu, by every route out", () => {
+    const sel = readCode("components/console/RailSelector.tsx");
+    const rail = readCode("components/console/Sidebar.tsx");
+    // FAILURE PREVENTED: a typed query outliving the menu. Clearing it inside
+    // `pickPlace` covered ONE of four exits — Escape, a click outside and the
+    // trigger all left it standing, and the next open showed a list filtered
+    // by a word nobody could see. `onOpenChange` is every exit at once.
+    expect(sel).toContain("onOpenChange?: (open: boolean) => void");
+    expect(sel).toContain("<DropdownMenu modal={false} onOpenChange={onOpenChange}>");
+    expect(rail).toContain("onOpenChange={closePlaceMenu}");
+    expect(rail).toMatch(/closePlaceMenu[\s\S]{0,160}setPlaceQuery\(""\)/);
+    // The reset that only covered picking a place is gone, not doubled up.
+    const pick = rail.slice(rail.indexOf("const pickPlace"));
+    expect(pick.slice(0, pick.indexOf("};"))).not.toContain("setPlaceQuery");
+  });
+
   // MESITA-1848. The ceremonies live in the selectors' MENUS, never as rows:
   // a rail row is a destination, and "Create organization" is a thing you do
   // to the subject the selector names.

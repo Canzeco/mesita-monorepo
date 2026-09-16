@@ -9,7 +9,7 @@ import { SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
 import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
 import { PRESENTATION_INSTRUCTIONS } from "./enrich-synthesis.ts";
 import { CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
-import { SUPER_CATEGORY_INSTRUCTIONS } from "./infer-super-categories.ts";
+import { FAMILY_INSTRUCTIONS } from "./infer-families.ts";
 
 Deno.test("every prompt-bearing Intake step is on the payload, in pipeline order", () => {
   const keys = intakePromptsMeta().map((p) => p.key);
@@ -17,7 +17,7 @@ Deno.test("every prompt-bearing Intake step is on the payload, in pipeline order
     "scout",
     "resolver",
     "category",
-    "super_category",
+    "family",
     "presentation",
   ]);
 });
@@ -31,7 +31,7 @@ Deno.test("the payload ships the SAME instructions the pipeline sends", () => {
   assertEquals(byKey.get("resolver")!.instructions, RESOLVER_INSTRUCTIONS);
   assertEquals(byKey.get("presentation")!.instructions, PRESENTATION_INSTRUCTIONS);
   assertEquals(byKey.get("category")!.instructions, CATEGORY_INSTRUCTIONS);
-  assertEquals(byKey.get("super_category")!.instructions, SUPER_CATEGORY_INSTRUCTIONS);
+  assertEquals(byKey.get("family")!.instructions, FAMILY_INSTRUCTIONS);
 });
 
 Deno.test("the two named agents are Scout and Resolver, and nothing else is named", () => {

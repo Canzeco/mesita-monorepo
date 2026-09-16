@@ -237,6 +237,23 @@
     @apply bg-background text-foreground;
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
+    /* The three browser surfaces a design system usually forgets (MESITA-1862).
+       Left at their defaults they are the operating system's opinion, not
+       ours, and they are the cheapest "designed, not assembled" tell there
+       is. All three read `--ring`, not `--brand-pink` directly, so the four
+       surfaces stay one colour and the dark block's lighter pink carries
+       through without a second declaration. The scrollbar value is not
+       invented here — it is web-consumer's (globals.css,
+       `.scrollbar-always`), so the two consoles agree. */
+    caret-color: var(--ring);
+    scrollbar-color: var(--border) transparent;
+  }
+  /* Selection: the ring colour at 22%, and NO `color` override. The text
+     underneath is already high-contrast on both themes; forcing a foreground
+     here is what breaks the dark block above, where the same pink sits on a
+     near-black page. */
+  ::selection {
+    background-color: color-mix(in oklab, var(--ring) 22%, transparent);
   }
   h1,
   h2,

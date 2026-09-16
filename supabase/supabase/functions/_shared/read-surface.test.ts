@@ -315,21 +315,18 @@ const PLACES_READ_ALLOWLIST = [
   "admin-web-list-place-claims/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-plan/index.ts",
-  "business-web-change-subscription/index.ts",
   "business-web-get-overview/index.ts",
   "business-web-get-place/index.ts",
   "business-web-list-reviews/index.ts", // place-exists 404 before requireMembership; it used to resolve the org that held the place (MESITA-1892)
   "business-web-list-places/index.ts",
   "business-web-release-place/index.ts",
   "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
-  "_shared/place-partnership.ts", // reads the place's own plan/listing_type before the join/drop patch (MESITA-1798, re-scoped by MESITA-1892)
-  "_shared/partner-membership.ts", // the same read, driven by the Mesita Membership's Stripe state (MESITA-1877)
+  "_shared/partner-membership.ts", // the cascade, driven by the Mesita Membership's Stripe state (MESITA-1877)
   "business-web-update-legal-identity/index.ts", // reads the row back after writing legal_name/rfc (MESITA-1892)
   "business-web-update-place/index.ts",
   "business-web-verify-place/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-discount-quote/index.ts",
-  "stripe-webhook-handle-event/index.ts",
 ];
 
 Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", async () => {
@@ -373,7 +370,6 @@ const PAYMENT_ACCOUNT_READ_ALLOWLIST = [
   "business-web-get-payment-dashboard-link/index.ts",
   "business-web-start-payment-onboarding/index.ts",
   "consumer-web-list-credit-places/index.ts",
-  "_shared/place-partnership.ts", // Stripe Ready lock on the Partner switch (MESITA-1798)
 ];
 
 Deno.test("PAYMENT ACCOUNT READ: no new raw reader of place_payment_accounts outside the allowlist", async () => {

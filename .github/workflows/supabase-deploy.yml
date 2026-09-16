@@ -68,6 +68,11 @@ jobs:
       # only ever ADDS, so a folder deleted in the repo stays callable in the
       # cloud forever unless its slug is named here — the third of the three
       # deletions, same as every entry above.
+      # MESITA-1889: the two entitlement doors the org Mesita Membership
+      # replaced. business-web-set-org-partnership coupled `partnered` and
+      # `mesita_pay_enabled` into one write; business-web-change-subscription
+      # sold a per-place Verified subscription no app called. Their source is
+      # archived under retired/edge-functions/.
       - name: Delete leftover retired functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -111,6 +116,7 @@ jobs:
             admin-web-update-visits-config
             business-web-accept-org-invite
             business-web-add-org-member
+            business-web-change-subscription
             business-web-create-organization
             business-web-list-org-members
             business-web-list-organizations

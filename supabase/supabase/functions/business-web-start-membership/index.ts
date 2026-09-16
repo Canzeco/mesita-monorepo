@@ -6,10 +6,11 @@
 // Membership buys one place — the tenant boundary and the billing boundary
 // are the same line again.
 //
-// This replaces nothing yet: `business-web-change-subscription` still sells
-// the older per-place Verified SKU, and MESITA-1868 retires it. What it does
-// replace is the honest placeholder the console has been showing since
-// MESITA-1867 — "Checkout lands with the next release."
+// This is now the ONLY paid door into the partnership: MESITA-1889 retired
+// the per-PLACE Verified checkout (`business-web-change-subscription`) and
+// the operator switch (`business-web-set-org-partnership`), so
+// `places.partnered` has exactly one writer — this EF under
+// MOCK_SUBSCRIPTION, and the Stripe webhook for real money.
 //
 // Body: { placeId: string, successUrl?: string, cancelUrl?: string }
 // Response: { ok: true, checkout_url: string, mock?: true }

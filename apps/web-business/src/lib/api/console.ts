@@ -483,30 +483,6 @@ export async function apiStartMembership(
   };
 }
 
-/** The `partnered` bit, and nothing else (MESITA-1892).
- *
- *  DELIBERATELY NOT `business-web-set-partnership`, which is a different door:
- *  that one sets the place's PLAN and rate strategy (join / drop / strategy).
- *  This one writes `places.partnered`, the entitlement the Membership buys.
- *  Two money doors one letter apart is how the wrong one gets edited, so the
- *  names are a word apart instead.
- *
- *  It no longer answers `mesitaPayEnabled`: `_shared/place-rails.ts` is the
- *  single writer of `place_profiles.mesita_pay_enabled`, and an endpoint that
- *  reports a bit it does not write is a second source of truth waiting. */
-export async function apiSetPartnerStatus(
-  client: SupabaseClient,
-  placeId: string,
-  partnered: boolean,
-): Promise<{ partnered: boolean; joined: boolean; dropped: boolean }> {
-  return invokeEF(
-    client,
-    "business-web-set-partner-status",
-    { placeId, partnered },
-    "Couldn't update Partner.",
-  );
-}
-
 /** The Place screen's payload. `listed` / `enriched` / `verified` arrive
  *  DERIVED from the EF rather than computed here: the same three facts are
  *  read by admin surfaces off the same helpers, and a state that disagrees

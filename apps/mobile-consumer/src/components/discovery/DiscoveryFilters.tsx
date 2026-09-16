@@ -28,7 +28,7 @@ import {
   type CategoryOption,
   type RandomnessLevel,
 } from '@/lib/discovery-filters-engine';
-import { PLACE_FAMILIES } from '@/lib/place-families';
+import { FILTERABLE_PLACE_FAMILIES } from '@/lib/place-families';
 import {
   resetDiscoveryFilters,
   setDiscoveryContext,
@@ -243,7 +243,7 @@ export function DiscoveryFilters({
 
         <FilterModule label="What">
           <View className="flex-row flex-wrap gap-1.5">
-            {PLACE_FAMILIES.map((family) => (
+            {FILTERABLE_PLACE_FAMILIES.map((family) => (
               <Pill
                 key={family.key}
                 active={filters.familyKeys.includes(family.key)}

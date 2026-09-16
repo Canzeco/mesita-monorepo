@@ -21,11 +21,18 @@
 //   update-org-member-role → business-web-update-member-role
 //   list-org-members       → business-web-list-members
 //   accept-org-invite      → business-web-accept-invite
-// The other two were RENAMED, not duplicated, so their new names must exist:
+// ONE was RENAMED, not duplicated, so its new name must exist:
 //   update-organization    → business-web-update-legal-identity
-//   set-org-partnership    → business-web-set-partner-status
-// That second assertion is the one that catches a half-done rename — a deleted
-// folder with nothing put in its place reads as a clean retirement otherwise.
+// That assertion is the one that catches a half-done rename — a deleted folder
+// with nothing put in its place reads as a clean retirement otherwise.
+//
+// `set-org-partnership` IS NOT ON THAT LIST, and the reason matters. This
+// branch renamed it to `business-web-set-partner-status`; MESITA-1889 landed
+// first and RETIRED the operator switch outright, because the Membership is
+// the one door that writes the entitlement and a second door is how two
+// answers to one question start disagreeing. So the rename was dropped rather
+// than merged: it is a pure retirement, archived under
+// retired/edge-functions/business-web-set-org-partnership by MESITA-1889.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
@@ -45,10 +52,9 @@ const RETIRED = [
   "business-web-update-organization",
 ] as const;
 
-/** The two that were renamed rather than dropped. */
+/** The one that was renamed rather than dropped. */
 const SUCCESSORS = [
   "business-web-update-legal-identity",
-  "business-web-set-partner-status",
 ] as const;
 
 async function folders(): Promise<Set<string>> {
@@ -80,13 +86,13 @@ Deno.test("MESITA-1892: config.toml declares no organization functions", async (
   );
 });
 
-Deno.test("MESITA-1892: the two renamed endpoints exist under their new names", async () => {
+Deno.test("MESITA-1892: the renamed endpoint exists under its new name", async () => {
   const present = await folders();
   const missing = SUCCESSORS.filter((n) => !present.has(n));
   assertEquals(
     missing,
     [],
-    `renamed endpoints with no folder — a half-done rename: ${missing.join(", ")}`,
+    `renamed endpoint with no folder — a half-done rename: ${missing.join(", ")}`,
   );
 
   const text = await Deno.readTextFile(CONFIG_TOML);
@@ -96,7 +102,7 @@ Deno.test("MESITA-1892: the two renamed endpoints exist under their new names", 
   assertEquals(
     undeclared,
     [],
-    `renamed endpoints missing their config.toml block: ${undeclared.join(", ")}`,
+    `renamed endpoint missing its config.toml block: ${undeclared.join(", ")}`,
   );
 });
 

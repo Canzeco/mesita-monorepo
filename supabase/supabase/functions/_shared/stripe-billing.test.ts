@@ -41,8 +41,10 @@ Deno.test("STRIPE_CATALOG: every sold plan maps to its own DB row", () => {
   );
   assertEquals(byId["business_partner_membership"].interval, "year");
 
-  // The older per-place SKU it supersedes, kept while places still bill on it
-  // (business-web-change-subscription; MESITA-1868 retires that door).
+  // The per-PLACE SKU it supersedes. Its door is retired (MESITA-1889
+  // archived business-web-change-subscription), but the entry STAYS: it
+  // anchors the provisioned Stripe price, and deleting it would orphan that
+  // price and any subscription still billing on it.
   assertEquals(byId["business_verified"].table, "place_plans");
   assertEquals(byId["business_verified"].rowKey, "pro");
   assertEquals(byId["business_verified"].lookupKey, "business_verified_yearly");

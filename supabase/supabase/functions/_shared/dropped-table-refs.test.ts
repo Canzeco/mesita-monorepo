@@ -23,6 +23,10 @@
 // names it just vacated go IN, so this guard keeps catching the MESITA-1602
 // failure class against the new names instead of quietly going blind.
 //
+// MESITA-1857: `place_super_categories` -> `place_families`. The name goes in
+// here for the same reason `projects` did — a `.from("place_super_categories")`
+// that survives the sweep 42P01s at run time and nowhere else.
+//
 // MESITA-1892 removed the organization layer, and this guard meets BOTH of its
 // halves at once. The five organization tables go IN. And `place_payment_accounts`
 // comes OUT: it was retired with the MESITA-1590 rename and is a real table again
@@ -64,6 +68,7 @@ const DROPPED_TABLES = [
   "organization_members",
   "organization_payment_accounts",
   "organizations",
+  "place_super_categories",
   "plans",
   "playground_reservations",
   "project_invites",

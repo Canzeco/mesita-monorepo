@@ -15,11 +15,16 @@ import {
   type DiscoveryPlacesScope,
   type DiscoveryReviewFloor,
 } from "@/lib/discovery-filters-engine";
-import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
+import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 const STORAGE_KEY = "mesita_discovery_filters_v6";
 
-const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
+// Hydrate from the FILTERABLE seven, not all eight — see the mobile twin.
+// A persisted key the sheet no longer renders is a filter the guest cannot
+// see or clear (MESITA-1857).
+const KNOWN_FAMILY_KEYS = new Set<string>(
+  FILTERABLE_PLACE_FAMILIES.map((f) => f.key),
+);
 
 function readPersisted(): DiscoveryFilters {
   if (typeof window === "undefined") return DISCOVERY_FILTER_DEFAULTS;

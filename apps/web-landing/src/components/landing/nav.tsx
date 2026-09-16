@@ -5,10 +5,10 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 
 const NAV_LINKS = [
-  { href: "#catalog", label: "Catalog" },
-  { href: "#agents", label: "Agents" },
-  { href: "#rewards", label: "Rewards" },
-  { href: "#money", label: "Money" },
+  { href: "/#catalog", label: "Catalog" },
+  { href: "/#agents", label: "Agents" },
+  { href: "/#rewards", label: "Rewards" },
+  { href: "/#money", label: "Money" },
 ];
 
 function Nav() {
@@ -20,13 +20,13 @@ function Nav() {
         </Link>
         <nav className="text-muted-foreground hidden items-center gap-7 text-sm md:flex">
           {NAV_LINKS.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               className="hover:text-foreground transition"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="flex items-center gap-2">

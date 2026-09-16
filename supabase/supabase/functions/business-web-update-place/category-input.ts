@@ -10,7 +10,7 @@ import {
 import { optString } from "./place-update-utils.ts";
 
 function familyKeysForCategory(hit: PlaceCategory): string[] | null {
-  const live = sanitizeFamilyKeys(hit.super_category_slugs);
+  const live = sanitizeFamilyKeys(hit.family_keys);
   const keys = live.length > 0 ? live : familiesForAtlasCategory(hit.slug);
   return keys.length > 0 ? keys : null;
 }
@@ -29,7 +29,7 @@ export async function resolveCategoryInput(
   }
   const { data, error } = await admin
     .from("place_categories")
-    .select("slug, label, super_category_slugs");
+    .select("slug, label, family_keys");
   if (error) {
     return { ok: false, error: `category_lookup: ${error.message}` };
   }

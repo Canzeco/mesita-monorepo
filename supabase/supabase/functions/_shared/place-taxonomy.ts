@@ -1,24 +1,26 @@
-// Atlas Super Category + Category law. Search map Filters cut on Super
-// Category only. THE LAW (2026-08-29, final):
-//   · Eight Super Categories: seven real guest pills + `undefined`
+// Place family + Atlas category law. Search map Filters cut on FAMILY only.
+// THE LAW (2026-08-29, final; the word became `family` everywhere in
+// MESITA-1857 — DB, EFs and consoles all say it now):
+//   · Eight families: seven real guest pills + `undefined`
 //     (label "Undefined", ❓), the leftover/create-path bucket — always last.
 //   · CATEGORY side is MULTI-PARENT: each Mesita category belongs to one
-//     or TWO supers (breakfast is restaurants AND cafés; karaoke is bars
+//     or TWO families (breakfast is restaurants AND cafés; karaoke is bars
 //     AND experiences). Never more than two; `undefined` only ever alone.
 //   · GOOGLE side is EXCLUSIVE: every Table A type maps to exactly one
-//     super or `other` (google-type-super.ts owns that map + batteries).
-//   · family_keys is TOTAL: every place resolves to at least one super —
+//     family or `other` (google-type-super.ts owns that map + batteries).
+//   · family_keys is TOTAL: every place resolves to at least one family —
 //     Atlas membership → stored keys → Google type map → ['undefined'].
 //     No place is ever pill-less.
-// The eight slugs here are the live catalog (`public.place_super_categories`)
-// — keep this file lock-step with `seed_place_super_categories` /
-// `seed_place_categories`.
+// The eight slugs here are the live catalog (`public.place_families`) — keep
+// this file lock-step with `seed_place_families` / `seed_place_categories`,
+// and with the two consumer twins (`place-families-parity.test.ts` pins all
+// three).
 //
 // Places start with category='undefined' and family_keys=['undefined'].
 // Contents enrichment infers a classified Category; family_keys becomes
 // that category's FULL membership (1–2 keys). While category stays
-// `undefined`, the classifier may infer 1–2 supers directly; failing
-// that, ['undefined'] stands. Super `undefined` is not Google `other`
+// `undefined`, the classifier may infer 1–2 families directly; failing
+// that, ['undefined'] stands. Family `undefined` is not Google `other`
 // (hotels/shops stay ineligible).
 
 import {
@@ -28,7 +30,7 @@ import {
 
 export type { FamilyKey };
 
-export const SUPER_CATEGORIES: readonly {
+export const FAMILIES: readonly {
   slug: FamilyKey;
   label: string;
   emoji: string;
@@ -44,9 +46,9 @@ export const SUPER_CATEGORIES: readonly {
   { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 999 },
 ];
 
-const SUPER_SLUGS = new Set<string>(SUPER_CATEGORIES.map((s) => s.slug));
-const SUPER_ORDER = new Map<FamilyKey, number>(
-  SUPER_CATEGORIES.map((s) => [s.slug, s.sort_order]),
+const FAMILY_SLUGS = new Set<string>(FAMILIES.map((s) => s.slug));
+const FAMILY_ORDER = new Map<FamilyKey, number>(
+  FAMILIES.map((s) => [s.slug, s.sort_order]),
 );
 
 const R = "restaurants" as const;
@@ -59,7 +61,7 @@ const W = "wellness_beauty" as const;
 const U = "undefined" as const;
 
 /**
- * Atlas category slug → 1–2 Super Categories (multi-parent). The seven
+ * Atlas category slug → 1–2 place families (multi-parent). The seven
  * doubles: breakfast, brunch (R+C) · karaoke, casino, winery (N+E) ·
  * board_game_cafe (C+E) · movie_theater (A+E).
  *
@@ -67,7 +69,7 @@ const U = "undefined" as const;
  * `venue` is banned in our vocabulary (MESITA-1591) but this key must match
  * Google's API literally.
  */
-export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]>> =
+export const ATLAS_CATEGORY_FAMILIES: Readonly<Record<string, readonly FamilyKey[]>> =
   {
     mexican: [R],
     taco: [R],
@@ -173,12 +175,12 @@ export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]
   };
 
 export function isFamilyKey(value: string): value is FamilyKey {
-  return SUPER_SLUGS.has(value);
+  return FAMILY_SLUGS.has(value);
 }
 
 /**
- * Unique valid supers, catalog order, at most TWO (place membership).
- * `undefined` never rides along with a real super — real supers win.
+ * Unique valid families, catalog order, at most TWO (place membership).
+ * `undefined` never rides along with a real family — real families win.
  */
 export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
   if (!Array.isArray(raw)) return [];
@@ -190,12 +192,12 @@ export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
   }
   if (seen.size > 1) seen.delete("undefined");
   return [...seen]
-    .sort((a, b) => (SUPER_ORDER.get(a) ?? 99) - (SUPER_ORDER.get(b) ?? 99))
+    .sort((a, b) => (FAMILY_ORDER.get(a) ?? 99) - (FAMILY_ORDER.get(b) ?? 99))
     .slice(0, 2);
 }
 
 /**
- * Guest Super pills: unique catalog slugs, any count (OR). Not place
+ * Guest family pills: unique catalog slugs, any count (OR). Not place
  * membership — a guest may select Restaurants and Wellness together.
  */
 export function readGuestFamilyKeys(raw: unknown): FamilyKey[] {
@@ -207,7 +209,7 @@ export function readGuestFamilyKeys(raw: unknown): FamilyKey[] {
     if (isFamilyKey(slug)) seen.add(slug);
   }
   return [...seen].sort(
-    (a, b) => (SUPER_ORDER.get(a) ?? 99) - (SUPER_ORDER.get(b) ?? 99),
+    (a, b) => (FAMILY_ORDER.get(a) ?? 99) - (FAMILY_ORDER.get(b) ?? 99),
   );
 }
 
@@ -217,7 +219,7 @@ export function familiesForAtlasCategory(
   if (!category) return [];
   const slug = category.trim().toLowerCase();
   if (!slug) return [];
-  return sanitizeFamilyKeys(ATLAS_CATEGORY_SUPERS[slug] ?? []);
+  return sanitizeFamilyKeys(ATLAS_CATEGORY_FAMILIES[slug] ?? []);
 }
 
 export type FamilyPlace = {
@@ -226,7 +228,7 @@ export type FamilyPlace = {
 };
 
 /**
- * Super Categories for a place on the wire or in a predicate. TOTAL:
+ * Families for a place on the wire or in a predicate. TOTAL:
  * Atlas membership (1–2) wins when the category is in the catalog; stored
  * keys win when membership is empty (leftover slugs); else the Google
  * primaryType map (Nearby pins); else ['undefined'] — every place lands
@@ -248,7 +250,7 @@ export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
 
 /**
  * After semantics infers both fields: a known Atlas category keeps its
- * FULL membership (1–2 supers, including `undefined` → Super undefined).
+ * FULL membership (1–2 families, including `undefined` → family undefined).
  * Inference fills family_keys only when the category has no membership
  * yet; when inference comes back empty too, ['undefined'] stands — the
  * write stays total, never null.

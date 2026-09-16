@@ -6,6 +6,12 @@
 // scale. Weights and params persist on discovery_config. Slotting is a
 // post-blend position pass, not a weight. Mesita Level is the merged
 // partnership + promotion row.
+//
+// THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
+// a strip of six unlabelled circles — which modes read this signal — under
+// the description. The Matrix table on this same page already draws that
+// grid with a header over every column and the signal's name down the side,
+// so the strip repeated it without the labels that made it readable.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -27,15 +33,11 @@ import {
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
-import { Flag } from "./DiscoveryFlags";
 import {
-  DISCOVERY_MODE_KEYS,
-  DISCOVERY_MODE_LABELS,
   LIBRARY_SIGNALS,
   SIGNALS,
   WEIGHT_MIN,
   weightMaxFor,
-  modeSignalState,
   type DiscoveryConfig,
   type SignalKey,
 } from "./catalog";
@@ -163,19 +165,6 @@ export function SignalsConfigClient({
                     <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                       {spec.input} {spec.output}
                     </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      {DISCOVERY_MODE_KEYS.map((mode) => {
-                        const state = modeSignalState(mode, spec.key);
-                        return (
-                          <Flag
-                            key={mode}
-                            on={state === "on"}
-                            shape="circle"
-                            label={`${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
-                          />
-                        );
-                      })}
-                    </div>
                   </div>
                 </div>
                 <div className="mt-3 grid gap-3">

@@ -6,9 +6,10 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: two subpages — DISCOVERY MODES and SEARCH SOURCES. Mode →
-// what it can answer with → sources it may call → signals. Index redirects
-// to Modes. The locked matrix is on Modes. The second tab says Search, not
+// Live HTML: three subpages — MATRIX, DISCOVERY MODES and SEARCH SOURCES.
+// Mode → what it can answer with → sources it may call → signals. Index
+// redirects to Matrix, which is where the locked matrix has lived since
+// MESITA-1675 moved it off Modes. The third tab says Search, not
 // Discovery (Pato, 2026-09-02): all nine Sources are searches, and the
 // matrix band already read Search Sources. The route stays /sources.
 //
@@ -22,23 +23,25 @@
 //             (Pato, 2026-09-05): Google Places ⊃ Mesita Enriched Places ⊃
 //             Mesita Partner Places; inner membership paints, it does not
 //             add pins. N is the GUEST's How many, not a console knob. Chat calls Text Search, Nearby, and
-//             the two Flexible sources. Favorites calls no source and gates
-//             on no pool — bookmarks may include Mesita Listed Create stubs
-//             (not enriched). Google category knobs live on Search
+//             the two Flexible sources. Favorites calls no source, and the
+//             only ring it requires is Google Places — it is NOT gated on
+//             enrichment, because bookmarks may include unenriched Create
+//             stubs. Google category knobs live on Search
 //             Sources, not here. General sits first, under the matrix:
 //             the post-Google wipe (Active + a review floor) every mode
 //             runs on what a Google Places query returned.
 //   ENTITIES  what a mode can answer with: Places always, Locations on Word
-//             only. Autocomplete is the one source that returns regions and
-//             cities, in the SAME call as the places.
-//   SOURCES   the Search Sources subpage: Super Categories strip (seven
+//             only, Socials on Catalog and Chat. Autocomplete is the one
+//             source that returns regions and cities, in the SAME call as
+//             the places; Socials is spec-only until an events engine exists.
+//   SOURCES   the Search Sources subpage: Families strip (seven
 //             params, one list written onto Fast / Deep / Map) ·
 //             the three Google Places searches · the four Mesita Places
 //             searches (Name · Nearby · Browse · Flexible) · the two Mesita
-//             Social searches (Browse · Flexible). Mesita Places Name and
+//             Socials searches (Browse · Flexible). Mesita Places Name and
 //             Nearby are live without knobs of their own — their counts sit
 //             on the Word and Map mode boxes — so the four Soon boxes are
-//             Browse, Flexible, and both Social ones.
+//             Browse, Flexible, and both Socials ones.
 //   SIGNALS   eight earned signals: Name · Summary · Category · Proximity ·
 //             Timing · Mesita Level · Popularity · Randomness. Slotting
 //             stays a post-blend position pass. Old `semantic` folds to
@@ -155,8 +158,8 @@ export type SocialConfig = {
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
 // the SUPER, not Google's slug (MESITA-1695): twenty-two switches in Google's
-// vocabulary, capped by an ordered "first N", is what let four whole Supers
-// sit invisibly off. Order is the guest's — SUPER_CATEGORIES sort_order.
+// vocabulary, capped by an ordered "first N", is what let four whole families
+// sit invisibly off. Order is the guest's — FAMILIES sort_order.
 export const SUPER_PARAM_KEYS = [
   "restaurants",
   "cafes_bakeries",
@@ -192,8 +195,8 @@ export type MapConfig = {
 
 /**
  * The seven params the operator actually sees. `label` and `emoji` are
- * verbatim from SUPER_CATEGORIES in _shared/place-taxonomy.ts; `battery` is
- * the Google slugs that Super sends, shown read-only so the box says what it
+ * verbatim from FAMILIES in _shared/place-taxonomy.ts; `battery` is
+ * the Google slugs that family sends, shown read-only so the box says what it
  * bills without asking anyone to toggle Google's vocabulary.
  */
 export const SUPER_FIELDS: {
@@ -779,12 +782,18 @@ export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
 /**
  * What a mode can put IN FRONT OF THE GUEST. A Place is a place; a Location
  * is a region or a city — name, type, and the coordinates the next step
- * needs (Pato, 2026-09-02). Black square = the mode can answer with that
- * entity.
+ * needs (Pato, 2026-09-02). A Social is an event a place hosts, which is a
+ * different answer from the place itself and never merges into one list with
+ * it (MESITA-1856). Filled square = the mode can answer with that entity.
+ *
+ * Socials is SPEC-ONLY today: both Socials sources are Soon and no events
+ * engine exists behind either, so the row states the shape of the answer,
+ * not a lane that runs.
  */
 export const DISCOVERY_ENTITIES = [
-  { key: "place", label: "Places" },
   { key: "location", label: "Locations" },
+  { key: "place", label: "Places" },
+  { key: "social", label: "Socials" },
 ] as const;
 
 export type DiscoveryEntityKey = (typeof DISCOVERY_ENTITIES)[number]["key"];
@@ -795,36 +804,64 @@ export type DiscoveryEntityKey = (typeof DISCOVERY_ENTITIES)[number]["key"];
  * that can hand back a Location is exactly the mode that calls Autocomplete:
  * Word. Text Search returns Places even when the query reads like a city, so
  * Word's Location rows only ever come from its Autocomplete query.
+ *
+ * Socials follows the same rule one band down: the modes that can answer with
+ * an event are exactly the modes that call a Socials source — Catalog rails
+ * them, Chat is asked about them.
  */
 const DISCOVERY_MODE_ENTITIES: Record<
   DiscoveryModeKey,
   readonly DiscoveryEntityKey[]
 > = {
-  word: ["place", "location"],
+  word: ["location", "place"],
   map: ["place"],
-  catalog: ["place"],
+  catalog: ["place", "social"],
   swipe: ["place"],
-  chat: ["place"],
+  chat: ["place", "social"],
   favorites: ["place"],
 };
 
+/**
+ * THE THREE NESTED PLACE TYPES, in the code's own words: `nearby-places.ts`
+ * opens with `Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner
+ * Places`, and `PlacesScope = "partners" | "mesita" | "google"` IS this band.
+ * `Mesita Listed` retired at MESITA-1856: listing is a row existing, which no
+ * mode gates on — enrichment is the gate every mode actually runs.
+ */
 export const DISCOVERY_POOLS = [
   { key: "google", label: "Google Places" },
-  { key: "listed", label: "Mesita Listed" },
-  { key: "enriched", label: "Mesita Enriched" },
+  { key: "enriched", label: "Mesita Enriched Places" },
+  { key: "partner", label: "Mesita Partnered Places" },
 ] as const;
 
 export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
 
-/** Black square = the mode requires that pool. Grey = not a gate. */
+/**
+ * Filled square = the mode requires that ring. Hollow = not a gate.
+ *
+ * Relabelling alone would have left two of the three rows dead for every
+ * mode, so the mapping moved with the labels (MESITA-1856):
+ *
+ *   Map        all three — it is the one mode whose GUEST picks the ring,
+ *              and `keepListedForScope` refuses an unenriched row before it
+ *              even reads the scope, so Enriched is Map's floor and
+ *              Partnered its narrowest ring.
+ *   Catalog    Google + Enriched. `filters.requireReady` defaults true and
+ *   Swipe      Scroll hardcodes it; requireReady IS the enrichment gate —
+ *              discovery-filters turns it into `content_state = 'ready'`.
+ *   Favorites  Google alone: a bookmark is always a Google-sourced place,
+ *              and it is NOT gated on enrichment — bookmarks may include
+ *              unenriched Create stubs.
+ *   Word, Chat no ring gate at all; they answer from whatever came back.
+ */
 const DISCOVERY_MODE_POOLS: Record<
   DiscoveryModeKey,
   readonly DiscoveryPoolKey[]
 > = {
   word: [],
-  map: [],
-  catalog: ["google", "listed"],
-  swipe: ["google", "listed"],
+  map: ["google", "enriched", "partner"],
+  catalog: ["google", "enriched"],
+  swipe: ["google", "enriched"],
   chat: [],
   favorites: ["google"],
 };
@@ -846,9 +883,25 @@ export const DISCOVERY_SOURCES = [
   "Google Places Nearby Search",
   "Mesita Places Name Search",
   "Mesita Places Nearby Search",
+  "Mesita Places Browse Search",
   "Mesita Places Flexible Search",
-  "Mesita Social Browse Search",
-  "Mesita Social Flexible Search",
+  "Mesita Socials Browse Search",
+  "Mesita Socials Flexible Search",
+] as const;
+
+/**
+ * THE ONE SOURCE NO MODE CALLS, named out loud (MESITA-1856).
+ *
+ * Mesita Places Browse Search lost its only caller at MESITA-1697, when
+ * Catalog became Flexible. It left this list then, which made the Matrix
+ * report eight sources while Search Sources rendered nine boxes — the box
+ * never went anywhere, and a map that under-reports the territory by one is
+ * worse than a row of empty marks. So the row is back, off for every mode,
+ * and the contract test asserts exactly that: a source is either called by
+ * some mode, or it is listed here.
+ */
+export const DISCOVERY_SOURCES_NO_CALLER = [
+  "Mesita Places Browse Search",
 ] as const;
 
 /**
@@ -861,16 +914,19 @@ export const DISCOVERY_SOURCES = [
  *
  *   Name      a string, matched on `places.name_embedding`   → Word
  *   Nearby    a centre and a radius, closest-N               → Map
- *   Browse    no query at all, the catalog itself            → Catalog
- *   Flexible  an arbitrary set of predicates                 → Swipe, Chat
+ *   Browse    no query at all, the catalog itself            → no mode today
+ *   Flexible  an arbitrary set of predicates                 → Swipe, Catalog, Chat
  *
- * SWIPE IS FLEXIBLE, NOT BROWSE, and the difference is the guest's own filter
- * sheet: Swipe admits on four predicates it was handed, Catalog admits on
- * nothing and rails whatever the catalog holds.
+ * CATALOG BECAME FLEXIBLE AT MESITA-1697: Home's Feed grew a filter control
+ * and the Feed's list lane now cuts its pool with `applyDeckPredicates`
+ * before it plans a rail, so it stopped admitting on nothing. That left
+ * Places Browse with no caller at all — it keeps its row and its Soon box
+ * because it is what any future engine that rails the catalog with no guest
+ * input would be (see DISCOVERY_SOURCES_NO_CALLER).
  *
- * THE SOCIAL SOURCES OUTLIVED THE SOCIAL MODE. Social answers with events a
- * place hosts, not with places, and it lost its own surface when the mode
- * list became six — so its two sources hang off the two modes that can carry
+ * THE SOCIALS SOURCES OUTLIVED THE SOCIAL MODE. Socials answer with events a
+ * place hosts, not with places, and they lost their own surface when the mode
+ * list became six — so the two sources hang off the two modes that can carry
  * an event: Catalog rails it, Chat is asked about it. Both stay Soon; there
  * is no events engine.
  */
@@ -881,18 +937,18 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", "Mesita Places Nearby Search"],
-  catalog: ["Mesita Places Flexible Search", "Mesita Social Browse Search"],
+  catalog: ["Mesita Places Flexible Search", "Mesita Socials Browse Search"],
   swipe: ["Mesita Places Flexible Search"],
   chat: [
     "Google Places Text Search",
     "Google Places Nearby Search",
     "Mesita Places Flexible Search",
-    "Mesita Social Flexible Search",
+    "Mesita Socials Flexible Search",
   ],
   favorites: [],
 } as const;
 
-/** Green circle = the mode may call that signal. Section 8.3 order. */
+/** Filled circle = the mode may call that signal. Section 8.3 order. */
 const DISCOVERY_MODE_SIGNALS: Record<
   DiscoveryModeKey,
   readonly SignalKey[]

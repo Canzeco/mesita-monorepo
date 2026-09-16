@@ -10,14 +10,18 @@ import {
   DEFAULT_NAME,
   DEFAULT_SOCIAL,
   DEFAULT_SWIPE,
+  DISCOVERY_ENTITIES,
   DISCOVERY_MODE_KEYS,
   DISCOVERY_MODE_SOURCES,
+  DISCOVERY_POOLS,
   DISCOVERY_SOURCES,
+  DISCOVERY_SOURCES_NO_CALLER,
   ENGINES,
   GOOGLE_PULL_STOPS,
   LIBRARY_SIGNALS,
   modeCallsSource,
   modeRequiresPool,
+  modeReturnsEntity,
   modeSignalState,
   SUPER_FIELDS,
   SIGNAL_KEYS,
@@ -86,7 +90,7 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
 
-  it("eight sources and a locked mode → source matrix", () => {
+  it("nine sources and a locked mode → source matrix", () => {
     expect([...DISCOVERY_MODE_KEYS]).toEqual([
       "word",
       "map",
@@ -101,9 +105,10 @@ describe("Discovery function APIs", () => {
       "Google Places Nearby Search",
       "Mesita Places Name Search",
       "Mesita Places Nearby Search",
+      "Mesita Places Browse Search",
       "Mesita Places Flexible Search",
-      "Mesita Social Browse Search",
-      "Mesita Social Flexible Search",
+      "Mesita Socials Browse Search",
+      "Mesita Socials Flexible Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.word).toEqual([
       "Google Places Autocomplete Search",
@@ -116,47 +121,150 @@ describe("Discovery function APIs", () => {
     ]);
     // Catalog is FLEXIBLE for Places since MESITA-1697 — Home's Feed grew a
     // filter control and consumer-web-list-catalog cuts its pool with the
-    // guest's predicates before planning a rail. Social's rails stay Browse:
+    // guest's predicates before planning a rail. Socials rails stay Browse:
     // no predicate reaches them, and no events engine exists to take one.
-    // "Mesita Places Browse Search" left DISCOVERY_SOURCES with it: this file
-    // asserts every source is claimed by some mode, and Catalog was its only
-    // caller.
+    // "Mesita Places Browse Search" lost its only caller there and keeps its
+    // row anyway (MESITA-1856) — the Sources page still renders its box, and
+    // a matrix that reports one source fewer than the page is a worse map
+    // than one empty row.
     expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
       "Mesita Places Flexible Search",
-      "Mesita Social Browse Search",
+      "Mesita Socials Browse Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Flexible Search"]);
     expect(DISCOVERY_MODE_SOURCES.chat).toEqual([
       "Google Places Text Search",
       "Google Places Nearby Search",
       "Mesita Places Flexible Search",
-      "Mesita Social Flexible Search",
+      "Mesita Socials Flexible Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.favorites).toEqual([]);
     // The pin biases Autocomplete and Text Search; a bias is not a call.
     expect(modeCallsSource("word", "Google Places Nearby Search")).toBe(false);
     // Perplexity was on the old module list twice and is not retrieval we do.
     expect(DISCOVERY_SOURCES.some((s) => s.includes("Perplexity"))).toBe(false);
-    // A Source nothing calls is not a Source.
+    // A Source has a caller, or it is NAMED as one that has none. An empty
+    // row is allowed; an empty row nobody declared is a mode list that lost
+    // a source by accident.
+    expect([...DISCOVERY_SOURCES_NO_CALLER]).toEqual([
+      "Mesita Places Browse Search",
+    ]);
     for (const source of DISCOVERY_SOURCES) {
+      const called = DISCOVERY_MODE_KEYS.some((mode) =>
+        modeCallsSource(mode, source),
+      );
+      const declaredCallerless = (
+        DISCOVERY_SOURCES_NO_CALLER as readonly string[]
+      ).includes(source);
+      expect(called, source).toBe(!declaredCallerless);
+    }
+    for (const source of DISCOVERY_SOURCES_NO_CALLER) {
       expect(
-        DISCOVERY_MODE_KEYS.some((mode) => modeCallsSource(mode, source)),
+        (DISCOVERY_SOURCES as readonly string[]).includes(source),
         source,
       ).toBe(true);
     }
   });
 
-  it("pool mask is Google Places + Listed on Feed · Scroll; Favorites requires Google Places", () => {
+  // DISCOVERY_MODE_SOURCES is `as const` with no type annotation, so a mode
+  // list may name a string that is in no source list and still compile — the
+  // mode would just call nothing. The test above walks sources → modes; this
+  // one walks modes → sources, which is the direction the Socials rename
+  // could have broken silently (MESITA-1856).
+  it("no mode names a source that does not exist", () => {
+    for (const mode of DISCOVERY_MODE_KEYS) {
+      for (const source of DISCOVERY_MODE_SOURCES[mode] as readonly string[]) {
+        expect(
+          (DISCOVERY_SOURCES as readonly string[]).includes(source),
+          `${mode} → ${source}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  // THE TWIN PINS ITSELF. supabase/.../discovery-matrix.ts holds the same
+  // three bands and nothing imports across the two packages (Vercel's root is
+  // apps/web-admin), so each side duplicates the literals and a one-sided
+  // edit goes red on one side.
+  it("result entities are Locations · Places · Socials, in that order", () => {
+    expect(DISCOVERY_ENTITIES.map((e) => e.key)).toEqual([
+      "location",
+      "place",
+      "social",
+    ]);
+    expect(DISCOVERY_ENTITIES.map((e) => e.label)).toEqual([
+      "Locations",
+      "Places",
+      "Socials",
+    ]);
+    for (const mode of DISCOVERY_MODE_KEYS) {
+      expect(modeReturnsEntity(mode, "place"), mode).toBe(true);
+      expect(modeReturnsEntity(mode, "location"), mode).toBe(
+        modeCallsSource(mode, "Google Places Autocomplete Search"),
+      );
+      // An entity comes from a source: the modes that answer with a Social
+      // are exactly the modes that call a Socials source. Both are Soon, so
+      // the row is spec-only until an events engine exists.
+      expect(modeReturnsEntity(mode, "social"), mode).toBe(
+        modeCallsSource(mode, "Mesita Socials Browse Search") ||
+          modeCallsSource(mode, "Mesita Socials Flexible Search"),
+      );
+    }
+    expect(modeReturnsEntity("catalog", "social")).toBe(true);
+    expect(modeReturnsEntity("chat", "social")).toBe(true);
+    expect(modeReturnsEntity("map", "social")).toBe(false);
+  });
+
+  it("three nested place types: Map picks the ring, Feed and Scroll need enrichment", () => {
+    // The band IS `Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner
+    // Places` from nearby-places.ts, in that order. `listed` retired at
+    // MESITA-1856: a row existing is not a gate any mode runs.
+    expect(DISCOVERY_POOLS.map((p) => p.key)).toEqual([
+      "google",
+      "enriched",
+      "partner",
+    ]);
+    expect(DISCOVERY_POOLS.map((p) => p.label)).toEqual([
+      "Google Places",
+      "Mesita Enriched Places",
+      "Mesita Partnered Places",
+    ]);
+    expect(
+      (DISCOVERY_POOLS as readonly { key: string }[]).some(
+        (p) => p.key === "listed",
+      ),
+    ).toBe(false);
+    // Map is the one mode whose GUEST picks the ring — PlacesScope is
+    // exactly these three — and keepListedForScope refuses an unenriched row
+    // before it reads the scope at all.
+    expect(modeRequiresPool("map", "google")).toBe(true);
+    expect(modeRequiresPool("map", "enriched")).toBe(true);
+    expect(modeRequiresPool("map", "partner")).toBe(true);
+    // requireReady defaults true and Scroll hardcodes it, and requireReady
+    // IS the enrichment gate. Neither mode reaches for partners only.
+    expect(modeRequiresPool("catalog", "google")).toBe(true);
+    expect(modeRequiresPool("catalog", "enriched")).toBe(true);
+    expect(modeRequiresPool("catalog", "partner")).toBe(false);
     expect(modeRequiresPool("swipe", "google")).toBe(true);
-    expect(modeRequiresPool("swipe", "listed")).toBe(true);
+    expect(modeRequiresPool("swipe", "enriched")).toBe(true);
+    expect(modeRequiresPool("swipe", "partner")).toBe(false);
+    // A bookmark is always a Google-sourced place, and it is NOT gated on
+    // enrichment: Create stubs get bookmarked too.
     expect(modeRequiresPool("favorites", "google")).toBe(true);
-    expect(modeRequiresPool("favorites", "listed")).toBe(false);
     expect(modeRequiresPool("favorites", "enriched")).toBe(false);
-    expect(modeRequiresPool("catalog", "listed")).toBe(true);
-    expect(modeRequiresPool("word", "listed")).toBe(false);
-    expect(modeRequiresPool("chat", "google")).toBe(false);
-    expect(modeRequiresPool("map", "enriched")).toBe(false);
-    expect(modeRequiresPool("swipe", "enriched")).toBe(false);
+    expect(modeRequiresPool("favorites", "partner")).toBe(false);
+    // Word and Chat answer from whatever came back; no ring gate at all.
+    for (const pool of DISCOVERY_POOLS) {
+      expect(modeRequiresPool("word", pool.key), pool.key).toBe(false);
+      expect(modeRequiresPool("chat", pool.key), pool.key).toBe(false);
+    }
+    // No row is dead: every place type is required by at least one mode.
+    for (const pool of DISCOVERY_POOLS) {
+      expect(
+        DISCOVERY_MODE_KEYS.some((mode) => modeRequiresPool(mode, pool.key)),
+        pool.key,
+      ).toBe(true);
+    }
   });
 
   it("signals light Word Name, Chat Summary, Map without Randomness", () => {
@@ -329,9 +437,9 @@ describe("Discovery function APIs", () => {
     expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
-  it("the category param is seven Supers, and categoryCount is gone", () => {
-    // MESITA-1695: the operator's noun is the Super, not Google's slug, and
-    // the ordered "first N" cap that hid four whole Supers is deleted. A
+  it("the category param is seven families, and categoryCount is gone", () => {
+    // MESITA-1695: the operator's noun is the family, not Google's slug, and
+    // the ordered "first N" cap that hid four whole families is deleted. A
     // stored blob carrying it must not resurrect it.
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
     expect("categoryCount" in DEFAULT_GENERAL).toBe(false);
@@ -340,7 +448,7 @@ describe("Discovery function APIs", () => {
     ).toBe(false);
     expect(SUPER_FIELDS.length).toBe(7);
     expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(7);
-    // Every Super names the Google battery it bills, so the box can say what
+    // Every family names the Google battery it bills, so the box can say what
     // it spends without asking anyone to toggle Google's vocabulary.
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
     // The three the strip has always billed are on; the four it could not see
@@ -355,9 +463,9 @@ describe("Discovery function APIs", () => {
     ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
   });
 
-  it("coerceConfig folds a pre-1695 Google-slug blob up into Supers", () => {
+  it("coerceConfig folds a pre-1695 Google-slug blob up into families", () => {
     // THE LIVE BLOB: five slugs true, nothing else stored. It has to land on
-    // exactly the three F&B Supers or the console shows a different answer
+    // exactly the three F&B families or the console shows a different answer
     // than the Edge Functions read.
     const folded = coerceConfig({
       map: {
@@ -475,7 +583,7 @@ describe("Discovery page box order", () => {
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
-    const supersStrip = readFileSync(join(__dirname, "SuperCategoriesClient.tsx"), "utf8");
+    const supersStrip = readFileSync(join(__dirname, "FamiliesClient.tsx"), "utf8");
     const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
@@ -507,7 +615,7 @@ describe("Discovery page box order", () => {
     expect(chrome).toContain("DISCOVERY_TABS");
     expect(chrome).toContain("tab?.label");
     expect(page).toContain("redirect(DISCOVERY_MATRIX_HREF)");
-    expect(page).not.toContain("SuperCategoriesClient");
+    expect(page).not.toContain("FamiliesClient");
     expect(page).not.toContain("ConfigSection");
     expect(nextConfig).toContain('destination: "/filters-config/modes"');
     expect(nextConfig).not.toContain('destination: "/filters-config",');
@@ -515,9 +623,9 @@ describe("Discovery page box order", () => {
     expect(nextConfig).toContain('source: "/filters-config/modules"');
     expect(nextConfig).toContain('destination: "/filters-config/sources"');
 
-    // The param is the Super (MESITA-1695). Google's slugs are printed under
+    // The param is the family (MESITA-1695). Google's slugs are printed under
     // each switch as the battery it bills, never as twenty-two switches.
-    expect(supersStrip).toContain('title="Super Categories"');
+    expect(supersStrip).toContain('title="Families"');
     expect(supersStrip).toContain("SUPER_FIELDS");
     expect(supersStrip).not.toContain("NEARBY_TYPE_FIELDS");
     expect(supersStrip).not.toContain("Categories available");
@@ -642,7 +750,11 @@ describe("Discovery page box order", () => {
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
     expect(signals).toContain("mesita_level");
-    expect(signals).toContain("modeSignalState");
+    // The per-card mode dot strip is gone (MESITA-1856): the Matrix table on
+    // this same page draws that grid with column headers, and six unlabelled
+    // circles under a card repeated it without them.
+    expect(signals).not.toContain("modeSignalState");
+    expect(signals).not.toContain("DISCOVERY_MODE_KEYS");
     expect(signals).toContain('kind="enforced"');
     expect(signals).toContain("Swipe read the mode mask");
     expect(signals).not.toContain("Swipe keeps its own sum");
@@ -655,8 +767,8 @@ describe("Discovery page box order", () => {
     expect(mesitaSources).toContain("Mesita Places Nearby Search");
     expect(mesitaSources).toContain("Mesita Places Browse Search");
     expect(mesitaSources).toContain("Mesita Places Flexible Search");
-    expect(mesitaSources).toContain("Mesita Social Browse Search");
-    expect(mesitaSources).toContain("Mesita Social Flexible Search");
+    expect(mesitaSources).toContain("Mesita Socials Browse Search");
+    expect(mesitaSources).toContain("Mesita Socials Flexible Search");
     // Name and Nearby ship today without knobs of their own; the other four
     // have no engine, so they are the only Soon boxes on this strip.
     expect(mesitaSources.match(/ConfigSoon\n/g)?.length).toBe(4);
@@ -677,9 +789,21 @@ describe("Discovery page box order", () => {
     expect(matrix).toContain("modeSignalState");
     expect(matrix).not.toContain("zero=");
     expect(matrix).not.toContain("Map Randomness is 0");
-    const flags = readFileSync(join(__dirname, "DiscoveryFlags.tsx"), "utf8");
-    expect(flags).not.toContain("zero");
-    expect(flags).not.toContain("modules");
+    // ONE grammar, in ink. Fill carries the boolean on all four bands; the
+    // emerald/rose pair that encoded it by hue alone is gone, and with it the
+    // only saturated colour on the page (MESITA-1856).
+    const marks = readFileSync(join(__dirname, "DiscoveryMarks.tsx"), "utf8");
+    expect(marks).not.toContain("zero");
+    expect(marks).not.toContain("modules");
+    expect(marks).not.toContain("emerald");
+    expect(marks).not.toContain("rose");
+    expect(marks).not.toContain("export function Flag");
+    expect(marks).toContain("bg-foreground");
+    // A mark is not a bare title: title is no accessible name and never
+    // reaches the keyboard, so each one carries its label in text too.
+    expect(marks).toContain("sr-only");
+    expect(() => readFileSync(join(__dirname, "DiscoveryFlags.tsx"))).toThrow();
+    expect(matrix).not.toContain("Flag");
     expect(matrix).not.toContain(">0</span>");
     expect(name).toContain("ModeSourceChips");
     expect(name).not.toContain("TypeBatteries");
@@ -708,17 +832,17 @@ describe("Discovery page box order", () => {
       last = idx;
     }
     expect(modesJsx).not.toContain("SocialConfigClient");
-    // Super Categories stay on Sources; the wipe stays on Modes. Two boxes,
+    // Families stay on Sources; the wipe stays on Modes. Two boxes,
     // two questions — never fold one into the other.
-    expect(modesJsx).not.toContain("SuperCategoriesClient");
+    expect(modesJsx).not.toContain("FamiliesClient");
     expect(modesJsx).not.toContain("GeneralGateConfigClient");
     expect(sourcesJsx).not.toContain("GeneralGateConfigClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    // NINE BOXES AND NOTHING ELSE. The Super Categories strip is a shared
+    // NINE BOXES AND NOTHING ELSE. The Families strip is a shared
     // battery above them, not a source, so it does not spend one of the nine.
-    const sourceOrder = ["SuperCategoriesClient", "GoogleSourceCards", "MesitaSourceCards"];
+    const sourceOrder = ["FamiliesClient", "GoogleSourceCards", "MesitaSourceCards"];
     expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
     expect(sourcesJsx).not.toContain("PoolQualityFloorCard");
     expect(sourcesJsx).not.toContain("SignalsConfigClient");

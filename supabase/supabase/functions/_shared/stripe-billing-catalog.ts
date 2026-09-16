@@ -12,12 +12,15 @@
 // remains a legacy plan key for existing places but is not self-provisioned.
 //
 // WHAT IS SOLD is `business_partner_membership`: one yearly subscription that
-// makes a PLACE a Partner. MESITA-1877 sold it per organization, one
-// subscription covering every place the org held; MESITA-1892 removed that
-// layer, so the Membership is bought per place and the price buys exactly the
-// place that paid. `business_verified` is the older per-place SKU
-// (business-web-change-subscription), kept because places already bill on it;
-// MESITA-1868 retires that door.
+// makes a PLACE a Partner. MESITA-1877 sold it per ORGANIZATION, one
+// subscription covering every place that organization held; MESITA-1892
+// removed the layer, so the Membership is bought per place and the price buys
+// exactly the place that paid.
+//
+// `business_verified` is the per-PLACE SKU that preceded it. MESITA-1889
+// retired its door (business-web-change-subscription), but the ENTRY stays: it
+// anchors the Stripe price already provisioned for it, and any subscription
+// still billing on that price.
 //
 // EVERY ENTRY OWNS ITS LOOKUP ROW. resolvePlanPrice caches the provisioned
 // price id back onto `table`.`rowKey`, so two entries sharing one row would

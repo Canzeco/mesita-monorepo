@@ -139,6 +139,32 @@
   --wash-gold: linear-gradient(180deg, oklch(0.87 0.13 97 / 0.14), transparent 85%);
   --wash-diamond: linear-gradient(180deg, oklch(0.88 0.07 205 / 0.14), transparent 85%);
 
+  /* THE GUILLOCHE — the engraved rosette lattice a security document prints
+     behind its field grid (MESITA-1820). The ONE genuinely new material the
+     passport's data page introduced; Docs › Design §D carries its vocabulary
+     line, because that page's rule is that a pattern not in the map does not
+     ship.
+     Two offset repeating-radial-gradients of hairline rings read as engraving
+     at any zoom and cost no asset. The ink is `currentColor`, so the metal is
+     chosen by the call site's `text-<metal>` utility and the pattern stays
+     parametric per class — never hardcode bronze.
+     12% is the alpha ceiling: the field values above it are `text-foreground`
+     on `bg-card` and stay >=4.5:1 on every metal, gold and diamond included,
+     which is the pair that fails first (MESITA-1142). Suppressed entirely when
+     the class is unknown — an unknown class has no metal to engrave. */
+  --guilloche-ink: color-mix(in oklab, currentColor 12%, transparent);
+  --guilloche:
+    repeating-radial-gradient(
+      circle at 18% 118%,
+      var(--guilloche-ink) 0 0.6px,
+      transparent 0.6px 8px
+    ),
+    repeating-radial-gradient(
+      circle at 82% -18%,
+      var(--guilloche-ink) 0 0.6px,
+      transparent 0.6px 8px
+    );
+
   --gradient-hero:
     radial-gradient(
       1200px 600px at 20% -10%,
@@ -389,6 +415,11 @@
   }
   .wash-diamond {
     background: var(--wash-diamond);
+  }
+  /* Tint it at the call site with `text-bronze` / `text-silver` / … —
+     `classInkClass` in consumer-data.ts is the only map that spells them. */
+  .guilloche {
+    background-image: var(--guilloche);
   }
   .border-whatsapp {
     border-color: var(--whatsapp);

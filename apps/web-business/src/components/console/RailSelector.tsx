@@ -46,7 +46,7 @@
 // the trigger's `aria-label`, which is on it at every width.
 
 import { cn } from "@/lib/utils";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +70,121 @@ export const MENU_CHIP =
 export const SELECTOR_CHIP =
   "h-4 w-4 lg:h-3.5 lg:w-3.5 shrink-0 overflow-hidden rounded-[4px] flex items-center justify-center text-[8px] font-semibold leading-none";
 
+/** The line a filter leaves behind when it matches nothing. Muted, one row
+ *  tall, in the menu's own page tokens — and here, not in the rail, for the
+ *  same reason every other class on this page is here (MESITA-1831). */
+export const MENU_EMPTY = "text-muted-foreground px-2 py-1.5 text-[13px]";
+
+/** Every row a menu will let you land on, whatever its role: a plain
+ *  `menuitem`, a `menuitemradio` (the places), a `menuitemcheckbox`. Radix
+ *  marks an unavailable one `data-disabled`, and focusing that row is a dead
+ *  end, so it is excluded here exactly as Radix excludes it. */
+export const MENU_ITEM_SELECTOR = '[role^="menuitem"]:not([data-disabled])';
+
+/** Which end of the list a key asks for, or `null` when the key is not one of
+ *  the four. ArrowDown and Home enter at the top; ArrowUp and End at the
+ *  bottom — the same four keys Radix itself calls FIRST_LAST_KEYS. */
+export function menuJumpEdge(key: string): "first" | "last" | null {
+  if (key === "ArrowDown" || key === "Home") return "first";
+  if (key === "ArrowUp" || key === "End") return "last";
+  return null;
+}
+
+/** Hand focus from a field inside a menu to that menu's first or last row.
+ *  `from` is the field; the menu is whatever `[data-radix-menu-content]`
+ *  contains it, which is the same anchor Radix uses to decide a key happened
+ *  "inside" the menu. Returns whether there was a row to take it. */
+export function focusMenuEdge(
+  from: Element | null | undefined,
+  edge: "first" | "last",
+): boolean {
+  const content = from?.closest("[data-radix-menu-content]");
+  const items = content?.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR);
+  if (!items || items.length === 0) return false;
+  const target = edge === "first" ? items[0] : items[items.length - 1];
+  target.focus();
+  return true;
+}
+
+/** THE FIELD'S WHOLE KEYBOARD, in one exported function so a test can press
+ *  a key at it (components/console/rail-selector.test.ts) instead of reading
+ *  this file and hoping. Four keys leave for the rows, three belong to the
+ *  menu (Enter picks, Tab is Radix's, Escape is answered by the content's
+ *  `onEscapeKeyDown`), and everything else is typing and must not reach the
+ *  menu's typeahead. */
+export function handleMenuSearchKeyDown(
+  e: React.KeyboardEvent<HTMLInputElement>,
+): void {
+  const edge = menuJumpEdge(e.key);
+  if (edge) {
+    // preventDefault FIRST: otherwise the caret walks the query instead of
+    // the operator walking the rows.
+    e.preventDefault();
+    focusMenuEdge(e.currentTarget, edge);
+    return;
+  }
+  if (e.key === "Enter" || e.key === "Tab" || e.key === "Escape") return;
+  e.stopPropagation();
+}
+
+/** A FIELD INSIDE A MENU, which Radix does not expect.
+ *
+ *  Three things make it work, and all three are invisible until they are
+ *  missing:
+ *
+ *  TYPEAHEAD. `DropdownMenu` listens for printable keys on the content and
+ *  jumps to the row that starts with them. Left alone it eats every character
+ *  aimed at this input — you type "cafe" and the menu hops to four different
+ *  rows while the field stays empty. `stopPropagation` on the keystrokes that
+ *  belong to the input is what stops that. Enter and Tab are deliberately NOT
+ *  stopped, and neither is Escape: those belong to the menu.
+ *
+ *  ARROWS, MOVED BY HAND. The first build let ArrowDown/ArrowUp/Home/End fall
+ *  through on the assumption Radix would carry focus from the field to a row.
+ *  IT DOES NOT: `@radix-ui/react-menu` guards that handler with
+ *  `event.target !== contentRef.current` — the target here is the INPUT, so
+ *  the handler returns — and RovingFocusGroup only answers arrows on an item
+ *  that already has focus. Tab is preventDefaulted by the content itself. The
+ *  field was a keyboard trap: with eight places on screen there was no key
+ *  that reached one. So the jump is made explicitly, and from the first row
+ *  onward Radix's own roving focus takes over.
+ *
+ *  FOCUS ON OPEN. Radix focuses the first ITEM when the menu opens, which
+ *  would put the caret nowhere. The selector's `autoFocusRef` sends it here.
+ *
+ *  ESCAPE IS NOT HERE. It cannot be: `useEscapeKeydown` listens on the
+ *  DOCUMENT in the CAPTURE phase, so the menu is already dismissed by the time
+ *  a bubble-phase handler on this input runs. A two-stage Escape — clear the
+ *  query, then close — has to be asked for where Radix asks: the content's
+ *  `onEscapeKeyDown`, which `RailSelector` forwards. */
+export function MenuSearch({
+  value,
+  onChange,
+  placeholder,
+  inputRef,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder: string;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <div className="bg-popover sticky top-0 z-10 flex items-center gap-2 px-2 py-1.5">
+      <Search aria-hidden className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        aria-label={placeholder}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleMenuSearchKeyDown}
+        className="placeholder:text-muted-foreground flex-1 bg-transparent text-[13px] outline-none"
+      />
+    </div>
+  );
+}
+
 export function RailSelector({
   label,
   name,
@@ -77,6 +192,9 @@ export function RailSelector({
   switchable,
   pending,
   collapsed,
+  autoFocusRef,
+  onEscapeKeyDown,
+  onOpenChange,
   children,
 }: {
   /** The accessible name — "Switch place". Never the subject's own name,
@@ -87,10 +205,26 @@ export function RailSelector({
   switchable: boolean;
   pending: boolean;
   collapsed: boolean;
+  /** Where the caret goes when the menu opens, when the menu has a field in
+   *  it at all. Unset — every selector that has nothing to search — and Radix
+   *  keeps its own behaviour: focus the first row. */
+  autoFocusRef?: React.RefObject<HTMLInputElement | null>;
+  /** THE ONLY PLACE ESCAPE CAN BE ANSWERED. Radix dismisses on a
+   *  document-level CAPTURE listener, so nothing inside the menu — an input's
+   *  own `onKeyDown` least of all — gets the key first. `DismissableLayer`
+   *  calls this BEFORE it checks `defaultPrevented`, so a caller that wants
+   *  Escape to mean something else this once (clear the query, keep the menu)
+   *  calls `preventDefault()` here and the menu stays open. */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  /** Every close, by every route: Escape, a click outside, a pick, the
+   *  trigger again. A menu with state of its own (a typed query) resets it
+   *  here, because resetting on the ONE path that was thought of leaves the
+   *  next open wearing a filter nobody typed. */
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }) {
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         aria-label={label}
         aria-busy={pending || undefined}
@@ -122,6 +256,14 @@ export function RailSelector({
         align="start"
         sideOffset={6}
         className="w-64 motion-reduce:animate-none"
+        onEscapeKeyDown={onEscapeKeyDown}
+        onOpenAutoFocus={
+          autoFocusRef &&
+          ((e: Event) => {
+            e.preventDefault();
+            autoFocusRef.current?.focus();
+          })
+        }
       >
         {children}
       </DropdownMenuContent>

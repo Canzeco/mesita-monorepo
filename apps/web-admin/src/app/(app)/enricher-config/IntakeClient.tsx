@@ -532,7 +532,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Super Category · Category · Tags · Presentation · Orders Enabled · Reservations Enabled · Mesita Name · Semantic Summary."
+                blurb="Family · Category · Tags · Presentation · Orders Enabled · Reservations Enabled · Mesita Name · Semantic Summary."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -540,7 +540,7 @@ export function IntakeClient({
                 </KnobElsewhere>
                 <PromptDisclosure prompt={promptFor("presentation")} />
                 <PromptDisclosure prompt={promptFor("category")} />
-                <PromptDisclosure prompt={promptFor("super_category")} />
+                <PromptDisclosure prompt={promptFor("family")} />
               </FunctionModule>
               <FunctionModule
                 id="f-embedding"

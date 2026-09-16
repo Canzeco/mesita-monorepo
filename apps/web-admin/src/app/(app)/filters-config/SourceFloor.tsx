@@ -17,7 +17,7 @@
 // so a Mesita box mirrors a key that also governs the three Google ones.
 //
 // A SOON SOURCE NEVER GETS AN INPUT. The four have no engine, so a live field
-// there would have to write some other slice — editing "Mesita Social Browse
+// there would have to write some other slice — editing "Mesita Socials Browse
 // Search" would silently move the Home rails. It prints the state instead.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -99,7 +99,7 @@ export function FloorMirror({
  * The floor line for a Soon source. One sentence in ConfigSoon's footer, never
  * a control: Pato's 2026-08-21 law for an engine that does not exist is that
  * the knobs are DELETED from the markup, not staged. A field here would also
- * have to write some other source's key, so editing "Mesita Social Browse
+ * have to write some other source's key, so editing "Mesita Socials Browse
  * Search" would move the Home rails.
  */
 export function FloorSoonNote() {
@@ -343,7 +343,7 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
         Pull {GOOGLE_PULL_STOPS[0]} is one Nearby Search (New) POST with every
         enabled type. Pull 40 or 60 paginates Legacy Nearby with{" "}
         <span className="text-foreground font-semibold">next_page_token</span>,
-        then filters to the Super battery and distance-sorts. Each page spends
+        then filters to the family battery and distance-sorts. Each page spends
         one per-IP quota unit.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">

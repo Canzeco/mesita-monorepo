@@ -45,6 +45,14 @@
 //   • supabase/functions/consumer-web-create-reservation (canBook — the REAL gate)
 //   • apps/mobile-consumer/src/lib/api/auth.ts → isOnboarded / needsLastName
 // Change one, change all four.
+//
+// `ONBOARD_STEPS` below is mirrored BY HAND in one more place —
+// apps/mobile-consumer/src/app/onboard.tsx — for the same reason the gate is:
+// the two packages are independent install roots with no shared module. The
+// drift alarm for that copy lives in __tests__/onboarding-gate.test.ts and
+// greps the mobile screen for the three headlines.
+
+import { MIN_SIGNUP_AGE } from "@/lib/utils";
 
 type OnboardableProfile = {
   first_name?: string | null;
@@ -77,6 +85,84 @@ export function consumerCanBrowse(
   return Boolean(
     profile?.first_name && profile?.birthday && isConsumerSex(profile?.sex),
   );
+}
+
+// ONE QUESTION PER SCREEN (MESITA-1830). The three things `consumerCanBrowse`
+// demands used to be stacked on a single screen, which is exactly where people
+// bail: three demands, no sense of how many are left, and sex — now required —
+// reading as a fourth interrogation line rather than the last of three.
+//
+// So the gate's field list and the SCREEN's step list are the same list, in
+// the same order, declared once here. A step is a question with a headline and
+// a reason; the reason is what a guest is owed before typing a birthday into a
+// stranger's app. The age in step 2 is INTERPOLATED, never typed: MIN_SIGNUP_AGE
+// has moved once already (MESITA-727) and a literal here would rot silently.
+//
+// Step 3 carries no dek on purpose. "Last one." is the whole message, and a
+// justification under a two-option choice reads as an apology for asking.
+export type OnboardStepKey = "first_name" | "birthday" | "sex";
+
+export type OnboardStep = {
+  readonly key: OnboardStepKey;
+  readonly headline: string;
+  readonly dek: string | null;
+};
+
+export const ONBOARD_STEPS: readonly OnboardStep[] = [
+  {
+    key: "first_name",
+    headline: "What should we call you?",
+    dek: "The app greets you by it.",
+  },
+  {
+    key: "birthday",
+    headline: "When's your birthday?",
+    dek: `We check you're ${MIN_SIGNUP_AGE} or over, and we'll remember it.`,
+  },
+  { key: "sex", headline: "Last one.", dek: null },
+];
+
+/**
+ * Where a returning half-finished profile reopens: the index of the first
+ * question it has not answered, or `ONBOARD_STEPS.length` when it answers all
+ * three (i.e. exactly when `consumerCanBrowse` passes — the two must agree, or
+ * the form opens on a step the gate does not care about).
+ *
+ * This is only meaningful because each step PERSISTS as it is answered. A flow
+ * abandoned after the birthday genuinely resumes at sex rather than appearing
+ * to; `consumer-web-update-profile` patches only the keys a request carries,
+ * so a lone `first_name` is a legal write.
+ */
+export function firstIncompleteOnboardStep(
+  profile: OnboardableProfile | null | undefined,
+): number {
+  if (!profile?.first_name) return 0;
+  if (!profile?.birthday) return 1;
+  if (!isConsumerSex(profile?.sex)) return 2;
+  return ONBOARD_STEPS.length;
+}
+
+/**
+ * Where the step lands when a per-step write resolves: one forward, but ONLY
+ * if the guest is still on the step that write belongs to.
+ *
+ * Back is deliberately live during a save — it is not disabled on web, and on
+ * Android the hardware Back cannot be — so "Continue, then Back" is a real
+ * sequence, not a stress test. Advancing unconditionally on resolve made that
+ * sequence silently undo itself: the guest pressed Back, saw the previous
+ * question, and half a second later the EF answered and yanked them forward
+ * again, with no event they could connect it to.
+ *
+ * `from` is read when the write STARTS, `current` is the live step. They
+ * differ exactly when the guest has moved in the meantime, and then the
+ * advance is dropped. The write is never dropped — the field is saved either
+ * way, which is the whole point of persisting per step.
+ *
+ * Hand-mirrored in apps/mobile-consumer/src/app/onboard.tsx for the same
+ * reason ONBOARD_STEPS is: independent install roots, no shared module.
+ */
+export function stepAfterSave(from: number, current: number): number {
+  return current === from ? from + 1 : current;
 }
 
 /** The booking gate: enough to put a name on a table. */

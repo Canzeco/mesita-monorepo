@@ -19,7 +19,7 @@ import {
   type DiscoveryZoneLevel,
   type RandomnessLevel,
 } from '@/lib/discovery-filters-engine';
-import { PLACE_FAMILIES, type FamilyKey } from '@/lib/place-families';
+import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from '@/lib/place-families';
 
 // v4 = v3 + `ask` (the intent's That axis, MESITA-699), since dropped — Memo
 // owns the ask and carries it on its own call. The key stays v4 because
@@ -29,7 +29,15 @@ import { PLACE_FAMILIES, type FamilyKey } from '@/lib/place-families';
 // Old keys ignored.
 const STORAGE_KEY = 'mesita_discovery_filters_v4';
 
-const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
+// Hydrate from the FILTERABLE seven, not all eight. A persisted key the
+// sheet no longer renders is a filter the guest cannot see or clear: it
+// keeps the red dot lit and narrows the deck (live data: `undefined` is
+// zero places, so the deck goes empty) with no pill to switch off. Dropping
+// it on hydrate is the same path that correctly drops the retired
+// `wellness_spa` key (MESITA-1857).
+const KNOWN_FAMILY_KEYS = new Set<string>(
+  FILTERABLE_PLACE_FAMILIES.map((f) => f.key),
+);
 const ZONE_LEVELS = new Set<string>(DISCOVERY_ZONE_LEVELS);
 const CONTEXTS = new Set<string>(DISCOVERY_CONTEXTS);
 

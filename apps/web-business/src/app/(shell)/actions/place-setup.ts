@@ -26,7 +26,6 @@ import { headers } from "next/headers";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiGetPaymentDashboardLink,
-  apiSetPartnerStatus,
   apiStartMembership,
   apiStartPaymentOnboarding,
   apiUpdateLegalIdentity,
@@ -194,38 +193,12 @@ export async function openPaymentsDashboardAction(
   return { error: null, note: "This account has no Stripe dashboard (mock)." };
 }
 
-export type SetPartnerStatusState = {
-  error: string | null;
-  partnered: boolean;
-};
-
-/** The owner flips the place's Partner bit (`places.partnered`).
- *
- *  DELIBERATELY NOT `business-web-set-partnership`, which is the place's PLAN
- *  and rate strategy. Two money doors one letter apart is how the wrong one
- *  gets edited, so this one is named for the bit it writes and writes nothing
- *  else — the Mesita Pay switch is `_shared/place-rails.ts`'s to write. */
-export async function setPartnerStatusAction(
-  placeId: string,
-  partnered: boolean,
-): Promise<SetPartnerStatusState> {
-  if (!placeId) return { error: "Missing place.", partnered: false };
-  const supabase = await createServerSupabase();
-  try {
-    const r = await apiSetPartnerStatus(supabase, placeId, partnered);
-    revalidatePath("/", "layout");
-    return { error: null, partnered: r.partnered };
-  } catch (e) {
-    const code = (e as { code?: string | null })?.code ?? null;
-    return {
-      error:
-        code === "stripe_not_ready"
-          ? "Connect Stripe first — Partner needs a Ready account."
-          : errMsg(e, "Couldn't update Partner."),
-      partnered: false,
-    };
-  }
-}
+// THE PARTNER SWITCH IS NOT HERE, and this note is the reason nobody adds it
+// back. `setPartnerStatusAction` lived here and posted to an EF that wrote
+// `partnered` directly. MESITA-1889 retired that door — the yearly Mesita
+// Membership is the one thing that buys the entitlement, and a second writer is
+// how a switch and a subscription start disagreeing about whether a place is a
+// Partner. `startMembershipAction` below is the door.
 
 export type StartMembershipState = { error: string | null };
 

@@ -29,9 +29,9 @@ import {
 } from "./enrich-synthesis.ts";
 import { buildCategoryInput, CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
 import {
-  buildSuperCategoryInput,
-  SUPER_CATEGORY_INSTRUCTIONS,
-} from "./infer-super-categories.ts";
+  buildFamilyInput,
+  FAMILY_INSTRUCTIONS,
+} from "./infer-families.ts";
 
 /** One prompt-bearing step, as the console renders it. */
 export type IntakePrompt = {
@@ -176,20 +176,20 @@ function categoryPrompt(): IntakePrompt {
   };
 }
 
-function superCategoryPrompt(): IntakePrompt {
+function familyPrompt(): IntakePrompt {
   return {
-    key: "super_category",
+    key: "family",
     fn: null,
     agent: null,
-    label: "Super Category inference",
+    label: "Family inference",
     vendor: "OpenAI",
     vendorNote:
       "One chat-completions call in JSON mode, temperature 0. Same shape as " +
-      "Category, but a place may hold one or two Supers.",
-    writes: "The place's Super Categories — the family keys Discovery filters on.",
-    instructions: SUPER_CATEGORY_INSTRUCTIONS,
-    input: buildSuperCategoryInput(
-      "{slug} — {label}\n… one line per live Super Category",
+      "Category, but a place may hold one or two families.",
+    writes: "The place's families — the family keys Discovery filters on.",
+    instructions: FAMILY_INSTRUCTIONS,
+    input: buildFamilyInput(
+      "{slug} — {label}\n… one line per live family",
       "Name: {place name}\nAddress: {address}\nAtlas category: {category}\n" +
         "Summary: {editorial summary}\nDetails: {details}",
     ),
@@ -210,7 +210,7 @@ export function intakePromptsMeta(): IntakePrompt[] {
     scoutPrompt(),
     resolverPrompt(),
     categoryPrompt(),
-    superCategoryPrompt(),
+    familyPrompt(),
     presentationPrompt(),
   ];
 }

@@ -34,7 +34,7 @@
 //                  "Saturday at noon"), using the SAME split-shift/overnight
 //                  math as the detail modal (computeOpenState). No hours table
 //                  = can't confirm open = excluded for now/at.
-//   · what       — super-categories (place families) OR concrete category
+//   · what       — place families OR concrete category
 //                  slugs; OR across the two tiers.
 //   · randomness — 0..4 deck-ordering level (low → max / full shuffle); NOT a
 //                  predicate — only the Swipe host applies it (orderByRandomness);
@@ -187,7 +187,7 @@ export function formatHourLabel(hour: number): string {
 export type DiscoveryFilters = {
   /** What to prioritize — any · visit · order (order parked, unselectable). */
   context: DiscoveryContext;
-  /** Super-categories: multi-select place families; empty = no constraint. */
+  /** Multi-select place families; empty = no constraint. */
   familyKeys: FamilyKey[];
   /** Concrete category slugs; ORed with familyKeys. Empty = no constraint. */
   categories: string[];

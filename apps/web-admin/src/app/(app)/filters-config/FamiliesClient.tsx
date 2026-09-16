@@ -1,8 +1,8 @@
 "use client";
 
-// Shared Super Categories — live. Seven params, the same seven the guest sees
+// Shared Families — live. Seven params, the same seven the guest sees
 // as pills, written onto all three Google callers (Fast / Deep / Map) as one
-// list. Each Super sends its whole Google battery; the operator never toggles
+// list. Each family sends its whole Google battery; the operator never toggles
 // a Google slug, and there is no ordered "first N" cap on top (MESITA-1695).
 
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -22,7 +22,7 @@ import {
   type SuperParamKey,
 } from "./catalog";
 
-export function SuperCategoriesClient({
+export function FamiliesClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
@@ -104,8 +104,8 @@ export function SuperCategoriesClient({
 
       <SectionCard
         icon={<SlidersHorizontal className="text-primary h-4 w-4" />}
-        title="Super Categories"
-        subtitle="Which Super Categories Autocomplete, Nearby and Text Search ask Google for. One list for all three, and it shapes what a call RETURNS, never how many calls happen — one request carries the whole battery. Governs the no-pill map, Word Fast and Deep, Swipe admission and Add eligibility; a guest who picks a Super pill bypasses it."
+        title="Families"
+        subtitle="Which Families Autocomplete, Nearby and Text Search ask Google for. One list for all three, and it shapes what a call RETURNS, never how many calls happen — one request carries the whole battery. Governs the no-pill map, Word Fast and Deep, Swipe admission and Add eligibility; a guest who picks a family pill bypasses it."
         state={
           <KnobState
             kind="enforced"
@@ -114,7 +114,7 @@ export function SuperCategoriesClient({
         }
       >
         <p className="text-muted-foreground mt-5 type-meta">
-          The operator&rsquo;s noun is the Super, not Google&rsquo;s slug. Each
+          The operator&rsquo;s noun is the family, not Google&rsquo;s slug. Each
           one sends the Google types listed under it — that mapping is code,
           pinned to the taxonomy, and not an operator knob.
         </p>
