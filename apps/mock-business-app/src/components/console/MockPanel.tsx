@@ -18,7 +18,13 @@ import { useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useMock } from "@/mock/MockStore";
 import { PRESETS, type Scenario } from "@/mock/scenario";
-import { PAY_LADDER_LABEL, type PayLadder, type PlaceRole } from "@/mock/types";
+import {
+  MEMBERSHIP_STATE_LABEL,
+  PAY_LADDER_LABEL,
+  type MembershipState,
+  type PayLadder,
+  type PlaceRole,
+} from "@/mock/types";
 import type { RailMode } from "@/lib/rail-scope";
 import { GHOST_PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -207,6 +213,25 @@ export function MockPanel() {
               Stripe sets a disabled reason on day zero, so “never started” and
               “switched off” arrive looking identical. They are separate rungs
               here so the two screens can be compared.
+            </p>
+          </Group>
+
+          <Group label="Mesita Membership">
+            <Choice<MembershipState>
+              value={scenario.membership}
+              onPick={(membership) => set({ membership })}
+              options={(Object.keys(MEMBERSHIP_STATE_LABEL) as MembershipState[]).map((k) => ({
+                id: k,
+                label: MEMBERSHIP_STATE_LABEL[k],
+              }))}
+            />
+            <p className="text-muted-foreground text-[11px] leading-snug">
+              What the subscription is DOING, which is not whether the place is
+              a partner. Payment due still entitles — Stripe is retrying, and
+              nothing is taken away. No subscription is the place an operator
+              switched on by hand: it has no date, so none is shown. Off the
+              Partner switch below, this reads No subscription whatever you
+              pick here.
             </p>
           </Group>
 

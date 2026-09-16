@@ -91,7 +91,9 @@ import {
   CTA_BUTTON_CLASS,
   ERROR_BOX_CLASS,
   PRIMARY_BUTTON_CLASS,
+  QUIET_LINK_BUTTON_CLASS,
 } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 /**
  * What the subscription lets each place turn on. Rendered by the box and by
@@ -239,10 +241,17 @@ export function ManageMembership({
   return (
     <form action={action} className="flex flex-col gap-1">
       <input type="hidden" name="placeId" value={placeId} />
+      {/* THE CONSTANT, NOT THE INLINE SPELLING (MESITA-1927). This shipped as
+          `text-xs font-semibold underline` and inherited neither of the two
+          laws: no ring on :focus-visible, and roughly 16px of hit area
+          against the 44px minimum. It is the only control that cancels a
+          subscription or fixes a failed card, so a keyboard user finding
+          nothing on tab and a thumb missing it on a phone are not cosmetic.
+          `QUIET_LINK_BUTTON_CLASS` carries both by construction. */}
       <button
         type="submit"
         disabled={pending}
-        className="text-muted-foreground hover:text-foreground self-start text-xs font-semibold underline underline-offset-4 transition disabled:cursor-default disabled:opacity-60"
+        className={cn(QUIET_LINK_BUTTON_CLASS, "self-start disabled:cursor-default")}
       >
         {pending ? "Opening Stripe…" : "Manage membership"}
       </button>

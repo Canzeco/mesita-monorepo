@@ -7,8 +7,14 @@
 // on purpose, which is why they are the two that ship broken.
 //
 // Here the scenario IS the answer. Pick a mode and the console is in it.
-import { PLACES, POOL_PLACES, PROFILES } from "@/mock/fixtures";
-import type { MockPlace, MockPlaceProfile, PayLadder, PlaceRole } from "@/mock/types";
+import { MEMBERSHIP_RENEWS_AT, PLACES, POOL_PLACES, PROFILES } from "@/mock/fixtures";
+import type {
+  MembershipState,
+  MockPlace,
+  MockPlaceProfile,
+  PayLadder,
+  PlaceRole,
+} from "@/mock/types";
 import type { RailMode } from "@/lib/rail-scope";
 
 export type Scenario = {
@@ -23,6 +29,12 @@ export type Scenario = {
   /** Mesita Partner on the SELECTED place. The gate five of the eight products
    *  read; off, they are Locked and carry no verb. */
   partnered: boolean;
+  /** What the SUBSCRIPTION behind the gate is doing. Its own axis, because
+   *  `partnered` and the membership come apart in both directions — a
+   *  `past_due` place is still a partner, and a partner switched on by an
+   *  operator has no subscription at all. `withOverrides` holds the one pair
+   *  that cannot exist: not partnered, so nothing to be in a state. */
+  membership: MembershipState;
   /** Where this place sits on Stripe's ladder. */
   pay: PayLadder;
   /** The per-place capability switches. */
@@ -41,6 +53,7 @@ export const DEFAULT_SCENARIO: Scenario = {
   role: "owner",
   isSuperAdmin: false,
   partnered: true,
+  membership: "active",
   pay: "enabled",
   pickupOrders: true,
   deliveryOrders: false,
@@ -68,7 +81,25 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
     id: "unpartnered",
     label: "Not a partner",
     hint: "Five of the eight products Locked, no verb on any of them.",
-    patch: { mode: "solo", partnered: false, pay: "never", visitRewards: false, credits: false },
+    patch: { mode: "solo", partnered: false, membership: "none", pay: "never", visitRewards: false, credits: false },
+  },
+  {
+    id: "membership-past-due",
+    label: "Membership past due",
+    hint: "Stripe is retrying the card. Still a partner — LAPSE is not DROP.",
+    patch: { mode: "solo", partnered: true, membership: "past_due" },
+  },
+  {
+    id: "membership-ending",
+    label: "Membership ending",
+    hint: "Cancelled, running to the paid-through date. Never says \u201crenews\u201d.",
+    patch: { mode: "solo", partnered: true, membership: "cancelling" },
+  },
+  {
+    id: "membership-none",
+    label: "Partner, no subscription",
+    hint: "Switched on by an operator. There is no date, so none is shown.",
+    patch: { mode: "solo", partnered: true, membership: "none" },
   },
   {
     id: "multi",
@@ -132,6 +163,14 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
     ...place,
     myRole: s.role,
     partnered: s.partnered,
+    // THE ONE PAIR THAT CANNOT EXIST. A place that is not a partner has no
+    // subscription to be `past_due` or `cancelling` about, so the panel's two
+    // dials cannot be crossed into a state the real console never produces.
+    // Held here rather than in the panel because the panel is not the only
+    // writer — a stored scenario from an older build arrives through
+    // `getScenario`'s spread with whatever it was saved with.
+    membership: s.partnered ? s.membership : "none",
+    renewsAt: s.partnered && s.membership !== "none" ? place.renewsAt ?? MEMBERSHIP_RENEWS_AT : null,
     pay: s.pay,
     pickupOrders: s.pickupOrders,
     deliveryOrders: s.deliveryOrders,

@@ -49,6 +49,32 @@ function gradient(from: string, to: string, glyph: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+/** Days from a FIXED instant, never from `Date.now()`.
+ *
+ *  A clock in a fixture is a moving target: the same screenshot taken an hour
+ *  apart would disagree, and a "2 days ago" that becomes "3 days ago"
+ *  overnight turns every visual diff into noise.
+ *
+ *  IT IS DECLARED HERE, ABOVE `PLACES`, and not beside the other date helpers
+ *  below: `PLACES` calls `daysAhead` while it is being built, and a `const`
+ *  read before its own declaration is a temporal-dead-zone throw rather than
+ *  an undefined — the whole app white-screens on module evaluation. */
+export const MOCK_NOW = new Date("2026-09-16T19:00:00.000Z");
+
+/** The other direction, for a renewal date. Hoisted, so `PLACES` may call it
+ *  from above its own definition. */
+function daysAhead(days: number): string {
+  const d = new Date(MOCK_NOW);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
+}
+
+/** ONE renewal date for the whole app. The fixture below and the scenario
+ *  panel both reach for it, so a place the panel puts back on `active` renews
+ *  on the same day it renewed before — two sources would let the strip print a
+ *  date the fixture never held. A year out, because the Membership is yearly. */
+export const MEMBERSHIP_RENEWS_AT = daysAhead(365);
+
 export const PLACES: MockPlace[] = [
   {
     id: "plc_lumbre",
@@ -63,6 +89,8 @@ export const PLACES: MockPlace[] = [
     verified: true,
     partnered: true,
     promoting: true,
+    membership: "active",
+    renewsAt: MEMBERSHIP_RENEWS_AT,
     pickupOrders: true,
     deliveryOrders: false,
     reservations: true,
@@ -87,6 +115,8 @@ export const PLACES: MockPlace[] = [
     verified: true,
     partnered: false,
     promoting: false,
+    membership: "none",
+    renewsAt: null,
     pickupOrders: true,
     deliveryOrders: true,
     reservations: false,
@@ -111,6 +141,8 @@ export const PLACES: MockPlace[] = [
     verified: true,
     partnered: true,
     promoting: false,
+    membership: "none",
+    renewsAt: null,
     pickupOrders: false,
     deliveryOrders: false,
     reservations: true,
@@ -135,6 +167,8 @@ export const PLACES: MockPlace[] = [
     verified: false,
     partnered: false,
     promoting: false,
+    membership: "none",
+    renewsAt: null,
     pickupOrders: false,
     deliveryOrders: false,
     reservations: false,
@@ -187,13 +221,6 @@ function seeded(seed: number): () => number {
     return s / 0x100000000;
   };
 }
-
-/** Days back from a FIXED instant, never from `Date.now()`.
- *
- *  A clock in a fixture is a moving target: the same screenshot taken an hour
- *  apart would disagree, and a "2 days ago" that becomes "3 days ago"
- *  overnight turns every visual diff into noise. */
-export const MOCK_NOW = new Date("2026-09-16T19:00:00.000Z");
 
 function daysAgo(days: number, hourOffset = 0): string {
   const d = new Date(MOCK_NOW);

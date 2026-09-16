@@ -29,6 +29,31 @@ export const PAY_LADDER_LABEL: Record<PayLadder, string> = {
   restricted: "Restricted",
 };
 
+/** What the Membership subscription is DOING, which is not the same question
+ *  as whether the place is a partner.
+ *
+ *  `partnered` is the GATE — what `lib/products.ts` reads to decide whether a
+ *  card is Locked. This is the SUBSCRIPTION behind it, and the two come apart
+ *  in both directions:
+ *
+ *  LAPSE IS NOT DROP. `past_due` still entitles — Stripe is retrying the card
+ *  and the partnership is intact — so a place can be `partnered` with a
+ *  failing payment. Revoking there would null four rate columns that nothing
+ *  puts back.
+ *
+ *  `none` IS NOT "NOT A PARTNER". It is a partner with no subscription row:
+ *  the place an operator switched on by hand. It has no date, and it must not
+ *  be shown one. A billing read that failed lands here too, for the same
+ *  reason — neither may be told when it renews. */
+export type MembershipState = "active" | "past_due" | "cancelling" | "none";
+
+export const MEMBERSHIP_STATE_LABEL: Record<MembershipState, string> = {
+  active: "Active",
+  past_due: "Payment due",
+  cancelling: "Ending",
+  none: "No subscription",
+};
+
 export type MockPlace = {
   id: string;
   name: string;
@@ -52,6 +77,15 @@ export type MockPlace = {
   verified: boolean;
   partnered: boolean;
   promoting: boolean;
+  /** The subscription behind `partnered` — see `MembershipState`. Held
+   *  alongside the gate rather than folded into it because the products read
+   *  the gate and only the Membership strip reads this. */
+  membership: MembershipState;
+  /** When it renews, ends, or is paid through, depending on `membership`.
+   *  NULL at `none`, and that null is load-bearing: a place partnered by the
+   *  operator switch has no subscription to date. Derived from the fixed
+   *  `MOCK_NOW`, never the wall clock. */
+  renewsAt: string | null;
   /** Per-place capability switches — what `lib/products.ts` reads to decide
    *  whether a card says "On here" or "Not on here yet". */
   pickupOrders: boolean;
