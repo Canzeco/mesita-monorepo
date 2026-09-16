@@ -1,9 +1,20 @@
 // One badge per FACT, and never two badges for one fact.
 //
-// Mesita's three place facts are three, not one: Verified (Mesita checked the
-// place is real), Partner (it pays), Promoting (it is buying reach). They are
-// independent — a verified place need not be a partner, and `isPartner` is the
-// one that gates what a place may switch on.
+// TWO IN THE HEADING, NOT THREE (MESITA-1925). Pato: *"remove the promothing
+// shit"*. Verified (Mesita checked the place is real) and Partner (it pays)
+// are independent, and `isPartner` is the one that gates what a place may
+// switch on — the Membership banner under this heading says so in words.
+//
+// PROMOTING LEFT, and the badge row is the only place it left from. It is a
+// per-request computation (strategy ≠ zero AND an open promo lane) that can
+// flip false under a paid partner with no write at all, so beside two badges
+// that only move when somebody acts it read as a third of the same kind. The
+// real console never had this row (`web-business`'s `PlaceHeading` renders no
+// facts beside the name) and where it does name that fact it calls it "Visit
+// Rewards", not Promoting — so this badge was teaching a word the product
+// does not use. `promoting` stays on `MockPlace`, and stays a column in the
+// `/places` states matrix and a row in AdminView: those screens exist to list
+// every state, which is the point of this app.
 import { cn } from "@/lib/utils";
 import type { ProductState } from "@/lib/products";
 
@@ -33,18 +44,15 @@ export function Badge({
 export function PlaceFacts({
   verified,
   partnered,
-  promoting,
 }: {
   verified: boolean;
   partnered: boolean;
-  promoting: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {verified && <Badge tone="good">Verified</Badge>}
       {partnered && <Badge tone="gold">Partner</Badge>}
-      {promoting && <Badge tone="brand">Promoting</Badge>}
-      {!verified && !partnered && !promoting && <Badge>Unverified</Badge>}
+      {!verified && !partnered && <Badge>Unverified</Badge>}
     </div>
   );
 }

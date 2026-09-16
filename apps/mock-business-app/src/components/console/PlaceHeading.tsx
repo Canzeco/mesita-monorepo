@@ -14,7 +14,7 @@ export function PlaceHeading({
   place,
   view,
 }: {
-  place: Pick<MockPlace, "name" | "photoUrl" | "category" | "city" | "verified" | "partnered" | "promoting">;
+  place: Pick<MockPlace, "name" | "photoUrl" | "category" | "city" | "verified" | "partnered">;
   view: string;
 }) {
   return (
@@ -35,11 +35,7 @@ export function PlaceHeading({
           {view} · {place.category} · {place.city}
         </p>
       </div>
-      <PlaceFacts
-        verified={place.verified}
-        partnered={place.partnered}
-        promoting={place.promoting}
-      />
+      <PlaceFacts verified={place.verified} partnered={place.partnered} />
     </header>
   );
 }

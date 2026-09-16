@@ -42,7 +42,13 @@ export type MockPlace = {
   myRole: PlaceRole;
   /** THE THREE FACTS a place carries, and they are three, not one:
    *  verified (Mesita checked it is real), partner (it pays), promoting (it is
-   *  buying reach). `partner` is the one that gates products. */
+   *  buying reach). `partner` is the one that gates products.
+   *
+   *  ONLY TWO OF THEM WEAR A BADGE (MESITA-1925). `promoting` left the place
+   *  heading — it is computed per request and can flip with no operator write,
+   *  so beside two badges that move only when somebody acts it read as a third
+   *  of the same kind. It is still a fact, and still a column in the `/places`
+   *  states matrix and a row in AdminView. */
   verified: boolean;
   partnered: boolean;
   promoting: boolean;
