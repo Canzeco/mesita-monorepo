@@ -66,7 +66,12 @@ export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "home" },
   { kind: "page", target: "settings" },
-  { kind: "page", target: "activity" },
+  // ACTIVITY LEFT THE RAIL (MESITA-1924). Pato: "remove the activity from
+  // sidebar menu" — said once every product page grew its own Activity half,
+  // which is what made a place-level Activity row redundant as a DESTINATION.
+  // The page keeps its address and its doors (Home, the ask bar): its feed is
+  // the whole place's, every kind of event, which no single product's half
+  // covers. A row is not the same thing as a page.
   { kind: "page", target: "products" },
   { kind: "product", product: "profile" },
   { kind: "product", product: "customers" },

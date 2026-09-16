@@ -8,6 +8,7 @@
 // matters.
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -52,30 +53,34 @@ export function ReservationsView() {
           { label: "No-shows", value: rows.filter((r) => r.state === "no_show").length || null, hint: "In the list below" },
         ]}
       />
-      <Section
-        title="Your provider"
-        description="Mesita shows the bookings and sends the guest. Your provider holds the tables."
-        right={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>Change provider</button>}
-        lane
-      >
-        <p className="text-muted-foreground text-[13px] leading-relaxed">
-          {place.reservations
-            ? "Bookings made in the Mesita app land with your provider immediately. A change made on their side shows up here on the next read."
-            : "Reservations are off for this place, so the guest's app shows no Book button and nothing new can arrive."}
-        </p>
-      </Section>
-      <Section title="Bookings" description="Soonest first, then the ones that have passed.">
-        <Table
-          columns={columns}
-          rows={rows}
-          empty={
-            <EmptyState
-              title="No bookings"
-              hint={place.reservations ? "Nothing booked yet." : "Reservations are off for this place."}
-            />
-          }
-        />
-      </Section>
+      <Half label="Manage">
+        <Section
+          title="Your provider"
+          description="Mesita shows the bookings and sends the guest. Your provider holds the tables."
+          right={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>Change provider</button>}
+          lane
+        >
+          <p className="text-muted-foreground text-[13px] leading-relaxed">
+            {place.reservations
+              ? "Bookings made in the Mesita app land with your provider immediately. A change made on their side shows up here on the next read."
+              : "Reservations are off for this place, so the guest's app shows no Book button and nothing new can arrive."}
+          </p>
+        </Section>
+      </Half>
+      <Half label="Activity">
+        <Section title="Bookings" description="Soonest first, then the ones that have passed.">
+          <Table
+            columns={columns}
+            rows={rows}
+            empty={
+              <EmptyState
+                title="No bookings"
+                hint={place.reservations ? "Nothing booked yet." : "Reservations are off for this place."}
+              />
+            }
+          />
+        </Section>
+      </Half>
     </div>
   );
 }

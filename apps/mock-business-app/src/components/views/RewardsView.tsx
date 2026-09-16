@@ -32,12 +32,16 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
+import { Table, type Column } from "@/components/shared/Table";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Tiles } from "@/components/shared/Tiles";
 import { SoonStrip } from "@/components/shared/SoonStrip";
 import { VISITS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
-import { money } from "@/lib/format";
+import { dayTime, money } from "@/lib/format";
+import type { MockVisit } from "@/mock/types";
 import {
   CAPS_MXN,
   CLASS_KEYS,
@@ -113,7 +117,23 @@ export function RewardsView() {
     scenario,
   );
   const given = visits.reduce((n, v) => n + v.rewardCents, 0);
-  const rewarded = visits.filter((v) => v.rewardCents > 0).length;
+  const earned = visits.filter((v) => v.rewardCents > 0);
+  const rewarded = earned.length;
+  // THE ACTIVITY HALF'S TABLE, and deliberately not the Visits one. Visits
+  // answers "what happened at the table" and carries tenders, credits and a
+  // total; this answers "what did the ladder above actually pay out", so it
+  // shows only the visits that earned something and only the column that says
+  // how much. A second copy of the Visits table here would be two screens
+  // claiming the same subject.
+  //
+  // It is the third table on this page and the only one about the PAST: the
+  // ladder prices the rungs, the stack adds them up, and this is what they
+  // came to. Those two are Manage; this one is Activity (MESITA-1924).
+  const earnedColumns: Column<MockVisit>[] = [
+    { key: "guest", head: "Guest", cell: (v) => <span className="font-medium">{v.guest}</span> },
+    { key: "at", head: "When", cell: (v) => <span className="text-muted-foreground">{dayTime(v.at)}</span> },
+    { key: "reward", head: "Given back", align: "right", cell: (v) => <span className="font-semibold tabular-nums">{money(v.rewardCents)}</span> },
+  ];
 
   function save() {
     setSaved({ rung, cap });
@@ -138,137 +158,21 @@ export function RewardsView() {
           {
             label: "Given back",
             value: visits.length ? money(given) : null,
-            hint: `Across ${rewarded} rewarded visit${rewarded === 1 ? "" : "s"} on the Visits view`,
+            hint: `Across ${rewarded} rewarded visit${rewarded === 1 ? "" : "s"}, listed below`,
           },
         ]}
       />
 
-      <Section
-        title="What this place pays, rung by rung"
-        description="Nine rewards, three groups. Pick a column and every rung follows it — the rates are Mesita's, and a place chooses which column it runs."
-      >
-        <div className={SCROLLPORT}>
-          <table className="w-full min-w-[540px] border-collapse">
-            <caption className="sr-only">
-              What each reward pays, at each strategy. Base is a rate; every
-              other row adds to it.
-            </caption>
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
-                >
-                  Reward
-                </th>
-                {RUNGS.map((r) => (
-                  <th key={r} scope="col" className={cn(HEAD_CELL, "text-right")}>
-                    {/* The HEADER is the picker. A place runs one column, so
-                        choosing the column IS choosing the program. */}
-                    <button
-                      type="button"
-                      aria-pressed={rung === r}
-                      onClick={() => setRung(r)}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase transition",
-                        FOCUS_RING_CLASS,
-                        TOUCH_TARGET_CLASS,
-                        rung === r
-                          ? "border-foreground text-foreground"
-                          : "border-transparent hover:border-foreground/30",
-                      )}
-                    >
-                      {RUNG_LABEL[r]}
-                      {rung === r && (
-                        <Check className="ml-1 inline h-3 w-3" aria-hidden />
-                      )}
-                    </button>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {LADDER.map((row) =>
-                "band" in row ? (
-                  <tr key={row.band}>
-                    <td colSpan={1 + RUNGS.length} className="px-3 pt-4 pb-1">
-                      {/* The LABEL is sticky, not the cell. A colSpan cell is
-                          as wide as the table, so pinning it pins nothing;
-                          swipe right and the band headings slid away, leaving
-                          three unexplained blank rows behind the rates. */}
-                      <span
-                        className={cn(
-                          TINY_LABEL_CLASS,
-                          "bg-card sticky left-0 inline-block",
-                        )}
-                      >
-                        {row.band}
-                      </span>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={row.key} className="border-border border-t">
-                    <th
-                      scope="row"
-                      className={cn(
-                        STATES_COL_CELL,
-                        "px-3 py-2.5 text-left font-medium",
-                      )}
-                    >
-                      <span className="text-sm">{row.name}</span>
-                      <span className="text-muted-foreground block text-[11.5px] leading-snug font-normal">
-                        {row.hint}
-                      </span>
-                    </th>
-                    {RUNGS.map((r) => {
-                      const on = r === rung;
-                      // Off is a column, not a mode: its cells are the same em
-                      // dash Bronze already wears, so the table never dims and
-                      // the page never grows a second layout.
-                      const dash = r === "off" || row.pinned === true;
-                      return (
-                        <td
-                          key={r}
-                          className={cn(
-                            "px-3 py-2.5 text-right",
-                            NUM,
-                            on && "bg-foreground/[0.03]",
-                            dash && "text-muted-foreground font-normal",
-                          )}
-                        >
-                          {r === "off" || row.pinned
-                            ? "—"
-                            : `${row.signed ? "+" : ""}${row.rate(r)}%`}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ),
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Section>
-
-      <Section
-        title="What that stacks to"
-        description="Left to right is the addition: each column adds one more reward to the one before it. The peso under every total is the most it can cost, at this cap."
-      >
-        {off ? (
-          /* The empty state is a feature. Nine dashes and a grid of 0% is not
-             one — it says the page is broken rather than that the place has
-             chosen something. */
-          <p className={INFO_BOX_CLASS}>
-            Nothing is given back here. Guests still find this place, review it
-            and book a table; they just pay the whole bill. Pick a column above
-            to start.
-          </p>
-        ) : (
+      <Half label="Manage">
+        <Section
+          title="What this place pays, rung by rung"
+          description="Nine rewards, three groups. Pick a column and every rung follows it — the rates are Mesita's, and a place chooses which column it runs."
+        >
           <div className={SCROLLPORT}>
-            <table className="w-full min-w-[620px] border-collapse">
+            <table className="w-full min-w-[540px] border-collapse">
               <caption className="sr-only">
-                What a guest of each class pays, as they earn each reward. Every
-                figure is a running total.
+                What each reward pays, at each strategy. Base is a rate; every
+                other row adds to it.
               </caption>
               <thead>
                 <tr>
@@ -276,97 +180,237 @@ export function RewardsView() {
                     scope="col"
                     className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
                   >
-                    Class
+                    Reward
                   </th>
-                  {STEPS.map((s) => (
-                    <th
-                      key={s.key}
-                      scope="col"
-                      className={cn(HEAD_CELL, "text-right")}
-                    >
-                      {s.label}
+                  {RUNGS.map((r) => (
+                    <th key={r} scope="col" className={cn(HEAD_CELL, "text-right")}>
+                      {/* The HEADER is the picker. A place runs one column, so
+                          choosing the column IS choosing the program. */}
+                      <button
+                        type="button"
+                        aria-pressed={rung === r}
+                        onClick={() => setRung(r)}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase transition",
+                          FOCUS_RING_CLASS,
+                          TOUCH_TARGET_CLASS,
+                          rung === r
+                            ? "border-foreground text-foreground"
+                            : "border-transparent hover:border-foreground/30",
+                        )}
+                      >
+                        {RUNG_LABEL[r]}
+                        {rung === r && (
+                          <Check className="ml-1 inline h-3 w-3" aria-hidden />
+                        )}
+                      </button>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {CLASS_KEYS.map((c) => {
-                  const row = stack(rung, c);
-                  return (
-                    <tr key={c} className="border-border border-t">
+                {LADDER.map((row) =>
+                  "band" in row ? (
+                    <tr key={row.band}>
+                      <td colSpan={1 + RUNGS.length} className="px-3 pt-4 pb-1">
+                        {/* The LABEL is sticky, not the cell. A colSpan cell is
+                            as wide as the table, so pinning it pins nothing;
+                            swipe right and the band headings slid away, leaving
+                            three unexplained blank rows behind the rates. */}
+                        <span
+                          className={cn(
+                            TINY_LABEL_CLASS,
+                            "bg-card sticky left-0 inline-block",
+                          )}
+                        >
+                          {row.band}
+                        </span>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={row.key} className="border-border border-t">
                       <th
                         scope="row"
                         className={cn(
                           STATES_COL_CELL,
-                          "px-3 py-2.5 text-left text-sm font-medium",
+                          "px-3 py-2.5 text-left font-medium",
                         )}
                       >
-                        {CLASS_LABEL[c]}
+                        <span className="text-sm">{row.name}</span>
+                        <span className="text-muted-foreground block text-[11.5px] leading-snug font-normal">
+                          {row.hint}
+                        </span>
                       </th>
-                      {row.map((total, i) => {
-                        const peak =
-                          c === "diamond" && i === row.length - 1;
+                      {RUNGS.map((r) => {
+                        const on = r === rung;
+                        // Off is a column, not a mode: its cells are the same em
+                        // dash Bronze already wears, so the table never dims and
+                        // the page never grows a second layout.
+                        const dash = r === "off" || row.pinned === true;
                         return (
                           <td
-                            key={STEPS[i].key}
-                            className="px-3 py-2.5 text-right"
+                            key={r}
+                            className={cn(
+                              "px-3 py-2.5 text-right",
+                              NUM,
+                              on && "bg-foreground/[0.03]",
+                              dash && "text-muted-foreground font-normal",
+                            )}
                           >
-                            <span
-                              className={cn(NUM, peak && "text-[color:var(--brand-pink-text)]")}
-                            >
-                              {total}%
-                            </span>
-                            <span className="text-muted-foreground block text-[11px] font-semibold tabular-nums">
-                              {pesos(capCostCents(total, cap) / 100)}
-                            </span>
+                            {r === "off" || row.pinned
+                              ? "—"
+                              : `${row.signed ? "+" : ""}${row.rate(r)}%`}
                           </td>
                         );
                       })}
                     </tr>
-                  );
-                })}
+                  ),
+                )}
               </tbody>
             </table>
           </div>
-        )}
+        </Section>
 
-        {/* THE CAP IS A CONTROL, not a footnote. It is the only parameter
-            that bounds the ceiling above, and a place that cannot move it reads
-            90% as a catastrophe and turns the whole product off. It is also the
-            only control here that means nothing while the program is Off: a cap
-            bounds a discount, and there is no discount to bound. */}
-        {!off && (
-          <>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={TINY_LABEL_CLASS}>Cap</span>
-              {CAPS_MXN.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  aria-pressed={cap === c}
-                  onClick={() => setCap(c)}
-                  className={cn(
-                    GHOST_PILL_BUTTON_CLASS,
-                    cap === c &&
-                      "border-foreground hover:border-foreground text-foreground",
-                  )}
-                >
-                  {pesos(c)}
-                  {cap === c && (
-                    <Check className="h-3 w-3 shrink-0" aria-hidden />
-                  )}
-                </button>
-              ))}
+        <Section
+          title="What that stacks to"
+          description="Left to right is the addition: each column adds one more reward to the one before it. The peso under every total is the most it can cost, at this cap."
+        >
+          {off ? (
+            /* The empty state is a feature. Nine dashes and a grid of 0% is not
+               one — it says the page is broken rather than that the place has
+               chosen something. */
+            <p className={INFO_BOX_CLASS}>
+              Nothing is given back here. Guests still find this place, review it
+              and book a table; they just pay the whole bill. Pick a column above
+              to start.
+            </p>
+          ) : (
+            <div className={SCROLLPORT}>
+              <table className="w-full min-w-[620px] border-collapse">
+                <caption className="sr-only">
+                  What a guest of each class pays, as they earn each reward. Every
+                  figure is a running total.
+                </caption>
+                <thead>
+                  <tr>
+                    <th
+                      scope="col"
+                      className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
+                    >
+                      Class
+                    </th>
+                    {STEPS.map((s) => (
+                      <th
+                        key={s.key}
+                        scope="col"
+                        className={cn(HEAD_CELL, "text-right")}
+                      >
+                        {s.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {CLASS_KEYS.map((c) => {
+                    const row = stack(rung, c);
+                    return (
+                      <tr key={c} className="border-border border-t">
+                        <th
+                          scope="row"
+                          className={cn(
+                            STATES_COL_CELL,
+                            "px-3 py-2.5 text-left text-sm font-medium",
+                          )}
+                        >
+                          {CLASS_LABEL[c]}
+                        </th>
+                        {row.map((total, i) => {
+                          const peak =
+                            c === "diamond" && i === row.length - 1;
+                          return (
+                            <td
+                              key={STEPS[i].key}
+                              className="px-3 py-2.5 text-right"
+                            >
+                              <span
+                                className={cn(NUM, peak && "text-[color:var(--brand-pink-text)]")}
+                              >
+                                {total}%
+                              </span>
+                              <span className="text-muted-foreground block text-[11px] font-semibold tabular-nums">
+                                {pesos(capCostCents(total, cap) / 100)}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          <p className={INFO_BOX_CLASS}>
-            A percentage is not a peso. Every rate above applies to the first{" "}
-            {pesos(cap)} of the bill, so a guest who earns every rung costs you{" "}
-            {pesos(capCostCents(stack(rung, "diamond")[4], cap) / 100)}, whatever
-            they ordered. That is what keeps a ceiling from being a night.
-          </p>
-          </>
-        )}
-      </Section>
+          )}
+
+          {/* THE CAP IS A CONTROL, not a footnote. It is the only parameter
+              that bounds the ceiling above, and a place that cannot move it reads
+              90% as a catastrophe and turns the whole product off. It is also the
+              only control here that means nothing while the program is Off: a cap
+              bounds a discount, and there is no discount to bound. */}
+          {!off && (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={TINY_LABEL_CLASS}>Cap</span>
+                {CAPS_MXN.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-pressed={cap === c}
+                    onClick={() => setCap(c)}
+                    className={cn(
+                      GHOST_PILL_BUTTON_CLASS,
+                      cap === c &&
+                        "border-foreground hover:border-foreground text-foreground",
+                    )}
+                  >
+                    {pesos(c)}
+                    {cap === c && (
+                      <Check className="h-3 w-3 shrink-0" aria-hidden />
+                    )}
+                  </button>
+                ))}
+              </div>
+            <p className={INFO_BOX_CLASS}>
+              A percentage is not a peso. Every rate above applies to the first{" "}
+              {pesos(cap)} of the bill, so a guest who earns every rung costs you{" "}
+              {pesos(capCostCents(stack(rung, "diamond")[4], cap) / 100)}, whatever
+              they ordered. That is what keeps a ceiling from being a night.
+            </p>
+            </>
+          )}
+        </Section>
+      </Half>
+
+      <Half label="Activity">
+        <Section
+          title="What the ladder paid out"
+          description="Every visit that earned something, newest first. The bill each guest actually paid is on Visits."
+        >
+          <Table
+            columns={earnedColumns}
+            rows={earned}
+            empty={
+              <EmptyState
+                title="Nothing given back yet"
+                hint={
+                  saved.rung === "off"
+                    ? "The program is off, so no visit can earn anything."
+                    : "A visit appears here the first time the tables above pay out."
+                }
+              />
+            }
+          />
+        </Section>
+      </Half>
 
       {/* The commit bar exists only when something changed. A permanent Save
           that looks identical before and after a click cannot answer the one

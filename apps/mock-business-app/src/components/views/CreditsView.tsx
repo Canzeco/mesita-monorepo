@@ -21,6 +21,7 @@
 import { useState } from "react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -67,52 +68,54 @@ export function CreditsView() {
         ]}
       />
 
-      <Section
-        title="What guests are holding"
-        description="One page at a time. Credits bought here can only be spent here."
-        right={
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className={GHOST_PILL_BUTTON_CLASS}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={page >= lastPage}
-              onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-              className={GHOST_PILL_BUTTON_CLASS}
-            >
-              Next
-            </button>
-          </div>
-        }
-      >
-        <Table
-          columns={columns}
-          rows={rows}
-          empty={
-            <EmptyState
-              title="No balances"
-              hint={
-                place.credits
-                  ? "Nobody is holding credits for this place yet."
-                  : "Credits are off for this place, so none can be sold."
-              }
-            />
+      <Half label="Activity">
+        <Section
+          title="What guests are holding"
+          description="One page at a time. Credits bought here can only be spent here."
+          right={
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                className={GHOST_PILL_BUTTON_CLASS}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={page >= lastPage}
+                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                className={GHOST_PILL_BUTTON_CLASS}
+              >
+                Next
+              </button>
+            </div>
           }
-        />
-        <p className={INFO_BOX_CLASS}>
-          There is no outstanding total on this screen, on purpose. This list is
-          paginated and the balance endpoint returns no aggregate, so any total
-          computed here would be the total of the page you happen to be on —
-          which reads as the total of the place. When the number matters, it has
-          to come from a source that can count all of them.
-        </p>
-      </Section>
+        >
+          <Table
+            columns={columns}
+            rows={rows}
+            empty={
+              <EmptyState
+                title="No balances"
+                hint={
+                  place.credits
+                    ? "Nobody is holding credits for this place yet."
+                    : "Credits are off for this place, so none can be sold."
+                }
+              />
+            }
+          />
+          <p className={INFO_BOX_CLASS}>
+            There is no outstanding total on this screen, on purpose. This list is
+            paginated and the balance endpoint returns no aggregate, so any total
+            computed here would be the total of the page you happen to be on —
+            which reads as the total of the place. When the number matters, it has
+            to come from a source that can count all of them.
+          </p>
+        </Section>
+      </Half>
     </div>
   );
 }
