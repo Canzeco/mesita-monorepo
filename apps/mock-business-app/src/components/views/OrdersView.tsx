@@ -4,6 +4,7 @@
 // placed, which is what makes a no-show cost the guest and not the kitchen.
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -50,46 +51,50 @@ export function OrdersView() {
         ]}
       />
 
-      <Section
-        title="Channels"
-        description="Turn a channel off and the button disappears from the guest's app. Orders already placed still have to be finished."
-        lane
-      >
-        <div className="flex flex-wrap gap-2">
-          <Badge tone={place.pickupOrders ? "good" : "neutral"}>
-            Pickup · {place.pickupOrders ? "on" : "off"}
-          </Badge>
-          <Badge tone={place.deliveryOrders ? "good" : "neutral"}>
-            Delivery · {place.deliveryOrders ? "on" : "off"}
-          </Badge>
-        </div>
-        {channelsOff && (
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            Both channels are off, so nothing new can arrive. The list below is
-            history.
-          </p>
-        )}
-        <button type="button" className={`${GHOST_PILL_BUTTON_CLASS} self-start`}>
-          Change channels
-        </button>
-      </Section>
+      <Half label="Manage">
+        <Section
+          title="Channels"
+          description="Turn a channel off and the button disappears from the guest's app. Orders already placed still have to be finished."
+          lane
+        >
+          <div className="flex flex-wrap gap-2">
+            <Badge tone={place.pickupOrders ? "good" : "neutral"}>
+              Pickup · {place.pickupOrders ? "on" : "off"}
+            </Badge>
+            <Badge tone={place.deliveryOrders ? "good" : "neutral"}>
+              Delivery · {place.deliveryOrders ? "on" : "off"}
+            </Badge>
+          </div>
+          {channelsOff && (
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              Both channels are off, so nothing new can arrive. The list below is
+              history.
+            </p>
+          )}
+          <button type="button" className={`${GHOST_PILL_BUTTON_CLASS} self-start`}>
+            Change channels
+          </button>
+        </Section>
+      </Half>
 
-      <Section title="Recent orders" description="Newest first.">
-        <Table
-          columns={columns}
-          rows={rows}
-          empty={
-            <EmptyState
-              title="No orders yet"
-              hint={
-                channelsOff
-                  ? "Neither pickup nor delivery is on, so there is nothing for a guest to place."
-                  : "An order appears the moment a guest pays for one."
-              }
-            />
-          }
-        />
-      </Section>
+      <Half label="Activity">
+        <Section title="Recent orders" description="Newest first.">
+          <Table
+            columns={columns}
+            rows={rows}
+            empty={
+              <EmptyState
+                title="No orders yet"
+                hint={
+                  channelsOff
+                    ? "Neither pickup nor delivery is on, so there is nothing for a guest to place."
+                    : "An order appears the moment a guest pays for one."
+                }
+              />
+            }
+          />
+        </Section>
+      </Half>
     </div>
   );
 }

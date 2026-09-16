@@ -133,7 +133,6 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     [page("settings"), "Settings"],
     [page("products"), "Products"],
     [page("customers"), "Customers"],
-    [page("activity"), "Activity"],
     // Mesita Pay's setup reads as its PAGE, so the Products row stays lit
     // while an operator stands in it (MESITA-1872).
     [placePayHref("p-1"), "Products"],
@@ -154,7 +153,6 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     [FLAT_ROUTES.settings, "Settings"],
     [FLAT_ROUTES.customers, "Customers"],
     [FLAT_ROUTES.products, "Products"],
-    [FLAT_ROUTES.activity, "Activity"],
     [FLAT_ROUTES.profile, "Profile"],
     [FLAT_ROUTES.visits, "Visits"],
     [FLAT_ROUTES.orders, "Orders"],
@@ -185,6 +183,13 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
   const ROWLESS = [
     view("admin"),
     FLAT_ROUTES.admin,
+    // ACTIVITY JOINED THIS LIST (MESITA-1924). Pato: "remove the activity from
+    // sidebar menu", once every product page grew its own Activity half. The
+    // PAGE is untouched and still reached from Home and the ask bar — it is
+    // the whole place's feed, every kind of event, which no one product's half
+    // covers. Only the ROW is gone.
+    page("activity"),
+    FLAT_ROUTES.activity,
     // The catalogue and its ceremony are above every place (MESITA-1892), and
     // neither is a row in the solo shape — the empty state is where Add place
     // earns one.
@@ -301,7 +306,6 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     const html = render(view("profile"), { rememberedPlaceId: "p-1" });
     for (const mark of [
       "lucide-settings", // Settings — the gear (MESITA-1871)
-      "lucide-chart-no-axes-column", // Activity — counts over time
       "lucide-layout-grid", // Products — the catalogue IS a grid of tiles
       // The eight products, wearing the CATALOGUE's marks (MESITA-1885): the
       // same glyph each card carries, because a row and a card naming one
@@ -329,6 +333,10 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // The marks that left WITH their rows. Each still exists in the app on
     // the page it belongs to; none belongs in this column any more.
     for (const gone of [
+      // Activity's mark left with its ROW (MESITA-1924). `chart-no-axes-column`
+      // is still the right glyph for the page and still on it; it just has
+      // nothing to draw in this column any more.
+      "lucide-chart-no-axes-column",
       "lucide-layers", // Places — the catalogue, reached from the empty state
       "lucide-sliders-horizontal", // Capabilities, retired as a view
       "lucide-nfc", // Terminal, retired as a product (MESITA-1900)
@@ -418,8 +426,10 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
       ),
     );
     // A viewer still reaches every READ surface, including the one product
-    // that is not a place view at all.
-    for (const kept of ["Settings", "Activity", "Products", "Profile", "Customers"]) {
+    // that is not a place view at all. Activity is NOT in this list any more
+    // (MESITA-1924): it lost its row for everyone, viewer and owner alike, so
+    // its absence here says nothing about permissions.
+    for (const kept of ["Settings", "Products", "Profile", "Customers"]) {
       expect(seen, kept).toContain(kept);
     }
   });

@@ -8,6 +8,7 @@
 // place, or two screens will disagree about which dial is live.
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -91,33 +92,37 @@ export function VisitsView() {
           { label: "Open now", value: rows.filter((v) => v.state === "open").length || null },
         ]}
       />
-      <Section
-        title="Visit checkout"
-        description="How a bill is closed at the table. The guest scans, the reward applies, and the visit settles."
-        right={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>How it works</button>}
-        lane
-      >
-        <p className="text-muted-foreground text-[13px] leading-relaxed">
-          Every visit below arrived through the guest&rsquo;s own app. There is no
-          terminal to install and nothing for staff to press: the reward is
-          applied before the total is shown, which is the only moment a guest
-          will believe it. A bill can be settled by more than one tender, so
-          <strong> Paid with</strong> lists each one — and those, plus Credits,
-          add up to the total.
-        </p>
-      </Section>
-      <Section title="Recent visits" description="Newest first.">
-        <Table
-          columns={columns}
-          rows={rows}
-          empty={
-            <EmptyState
-              title="No visits yet"
-              hint="A visit appears the first time a guest closes a bill here with Mesita."
-            />
-          }
-        />
-      </Section>
+      <Half label="Manage">
+        <Section
+          title="Visit checkout"
+          description="How a bill is closed at the table. The guest scans, the reward applies, and the visit settles."
+          right={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>How it works</button>}
+          lane
+        >
+          <p className="text-muted-foreground text-[13px] leading-relaxed">
+            Every visit below arrived through the guest&rsquo;s own app. There is no
+            terminal to install and nothing for staff to press: the reward is
+            applied before the total is shown, which is the only moment a guest
+            will believe it. A bill can be settled by more than one tender, so
+            <strong> Paid with</strong> lists each one — and those, plus Credits,
+            add up to the total.
+          </p>
+        </Section>
+      </Half>
+      <Half label="Activity">
+        <Section title="Recent visits" description="Newest first.">
+          <Table
+            columns={columns}
+            rows={rows}
+            empty={
+              <EmptyState
+                title="No visits yet"
+                hint="A visit appears the first time a guest closes a bill here with Mesita."
+              />
+            }
+          />
+        </Section>
+      </Half>
     </div>
   );
 }

@@ -4,6 +4,14 @@
 //
 // It is a PAGE under the place, not a view of it, and it came back to the place
 // after a spell under a layer that no longer exists.
+//
+// IT LOST ITS RAIL ROW (MESITA-1924) and kept everything else. Every product
+// page now carries its own Activity half, so a place-level Activity ROW was a
+// second answer to a question the product pages had started answering better.
+// The PAGE still earns its keep: this feed is every kind of event at the place
+// — guests, intake, rewards, payments — which no single product's half covers.
+// It is reached from Home and from the ask bar. Do not fold this list into
+// Payments: the payments entries are a slice of it, not the whole thing.
 import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
@@ -47,7 +55,7 @@ export default function PlaceActivityPage() {
         ]}
       />
 
-      <Section title="Everything that happened here" description="Newest first. The payments log lives here, not on the Payments view.">
+      <Section title="Everything that happened here" description="Newest first. Every kind of event at this place, including payments — a product's own Activity half shows only its slice.">
         {events.length === 0 ? (
           <EmptyState title="Nothing yet" hint="Activity starts the first time a guest does something here." />
         ) : (

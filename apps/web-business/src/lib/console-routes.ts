@@ -245,7 +245,12 @@ export const RAIL_ROWS: readonly RailRow[] = [
   // where an operator COMPARES the eight and buys one, which is a different
   // job from configuring the one they already have.
   { kind: "page", target: "settings" },
-  { kind: "page", target: "activity" },
+  // ACTIVITY LEFT THE RAIL (MESITA-1924). Pato: "remove the activity from
+  // sidebar menu" — said once every product page grew its own Activity half,
+  // which is what made a place-level Activity row redundant as a DESTINATION.
+  // The page keeps its address and its doors (Home, the ask bar): its feed is
+  // the whole place's, every kind of event, which no single product's half
+  // covers. A row is not the same thing as a page.
   { kind: "page", target: "products" },
   // Free, and always on. Profile is the venue; Customers is its guests.
   { kind: "product", product: "profile" },
