@@ -61,6 +61,16 @@ export type MockPlace = {
   menuCount: number;
 };
 
+/** What actually TOOK money, mirroring `visit_ticket_payments.method`
+ *  (MESITA-1910). Three, not four: Credits is a bill REDUCTION and never a
+ *  tender, and `at_place` is not one either — it existed only because a scalar
+ *  column could not tell cash from card. `mesita_pay` keeps the persisted
+ *  spelling; the noun an operator reads is "Mesita Payments". */
+export type MockTender = {
+  method: "cash" | "card" | "mesita_pay";
+  amountCents: number;
+};
+
 export type MockVisit = {
   id: string;
   placeId: string;
@@ -70,7 +80,20 @@ export type MockVisit = {
    *  real one — a float total is how a peso goes missing. */
   totalCents: number;
   rewardCents: number;
-  method: "card" | "cash" | "credits";
+  /** The OTHER reduction. Credits come off the bill beside the reward, never
+   *  out of the tenders — `20260831121954_credits_rename.sql` freezes it:
+   *  "Credits settle as a bill REDUCTION never a payment method". */
+  creditsCents: number;
+  /** ONE ROW PER TENDER, because a visit can be paid with several amounts at
+   *  once (Pato, 2026-09-16). This was a single `method` chip, which had to
+   *  drop every tender but one — and painted cash and card as different when
+   *  the database stored both as `at_place`.
+   *
+   *  THE ROWS SUM TO `totalCents - creditsCents`, which is the real
+   *  `approved_amount_due_cents - credits_applied_cents`. Zero rows is legal
+   *  and means Credits covered the whole bill; `assertVisitArithmetic` in
+   *  fixtures.ts holds the sum. */
+  tenders: MockTender[];
   state: "open" | "settled" | "voided";
 };
 
