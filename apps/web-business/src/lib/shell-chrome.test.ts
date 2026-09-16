@@ -545,7 +545,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(page).not.toContain("apiGetPaymentAccount");
     expect(page).not.toContain("ConnectReturnNotice");
     expect(page).not.toContain('title="Mesita Partner"');
-    expect(page).not.toContain('title="Mesita Pay"');
+    expect(page).not.toContain('title="Mesita Payments"');
     expect(page).not.toContain('title="Stripe"');
     expect(page).not.toContain('title="Partnership"');
     // PLACES LEFT EARLIER, and stays gone.
@@ -818,6 +818,11 @@ describe("the rail is six nouns and one indent", () => {
     // from them either. MENUS joined the read set in MESITA-1848 for the same
     // reason: it rendered INSIDE Profile, which every held role could open,
     // and splitting a view out must never quietly take a surface away.
+    //
+    // AND IT DID NOT MOVE IN MESITA-1900 EITHER, where Rewards took a sixth
+    // write view back. `visit_rewards` was owner/editor-only as a Rewards
+    // row, as a Capabilities row and as a Visits row; the view that carries
+    // it is owner/editor-only too, and the viewer's three are untouched.
     expect(tabsForAccess({ held: true, role: "viewer", isSuperAdmin: false })).toEqual([
       "profile",
       "menus",
@@ -830,6 +835,7 @@ describe("the rail is six nouns and one indent", () => {
       "visits",
       "orders",
       "reservations",
+      "rewards",
       "pay",
       "credits",
     ]);
@@ -1012,7 +1018,11 @@ describe("every place view has its own loading boundary", () => {
     // already hides their rows for a pool place, and Settings would otherwise
     // throw inside `usePlaceContext`, which a pool place has no provider for.
     expect(gate).toContain("placePageFromPathname(pathname) !== null");
-    expect(gate).toContain("isPlaceTerminalPathname(pathname)");
+    // `isPlaceTerminalPathname` LEFT THIS ASSERTION WITH THE PRODUCT
+    // (MESITA-1900). Terminal's page was the one address `placePageFromPathname`
+    // answered null for while still being a holder's page, so the gate had to
+    // ask a second question. There is no second question now.
+    expect(gate).not.toContain("isPlaceTerminalPathname");
     expect(gate).toContain("if (isPage && !held) notFound();");
   });
 
@@ -1065,7 +1075,7 @@ describe("a product view's first paint is a row list, not a meter (MESITA-1739)"
   // rungs depend on one another, so the computation is never split — only the
   // display is. Two copies of a dependency ladder is two copies that can
   // disagree, and five would be five.
-  it("the five views are ONE component, selected by zone", () => {
+  it("the six views are ONE component, selected by zone", () => {
     const tab = readCode("components/place-manage/ProductLadderTab.tsx");
     expect(tab).toContain("<PromosSection");
     expect(tab).toContain("zone={zone}");
@@ -1074,14 +1084,23 @@ describe("a product view's first paint is a row list, not a meter (MESITA-1739)"
       const page = readCode(`app/(shell)/places/[id]/${zone}/page.tsx`);
       expect(page, zone).toContain(`<ProductLadderTab zone="${zone}" />`);
     }
-    // The old pair is GONE, not orphaned: a route file nobody links to drifts
-    // out of sync with the one that replaced it, and a leftover directory
-    // would answer the address the redirect table now owns.
-    for (const gone of ["capabilities", "rewards"]) {
-      expect(existsSync(path.join(SRC, `app/(shell)/places/[id]/${gone}`)), gone).toBe(
-        false,
-      );
-    }
+    // `capabilities` IS GONE, not orphaned: a route file nobody links to
+    // drifts out of sync with the one that replaced it, and a leftover
+    // directory would answer the address the redirect table now owns.
+    //
+    // `rewards` LEFT THIS LIST (MESITA-1900) because the directory is back and
+    // is in `LADDER_ZONES` above — the loop that asserts every zone has a page
+    // of its own now covers it. The pair that must not BOTH exist is a
+    // directory and a redirect rule, which `legacy-redirects.test.ts` pins.
+    expect(
+      existsSync(path.join(SRC, "app/(shell)/places/[id]/capabilities")),
+    ).toBe(false);
+    // AND TERMINAL'S SUB-PAGE IS GONE (MESITA-1900), for the first reason:
+    // the product is retired, so a surviving route file would be a page
+    // nothing links to, reachable by typing, stating a product not for sale.
+    expect(
+      existsSync(path.join(SRC, "app/(shell)/places/[id]/products/terminal")),
+    ).toBe(false);
     // The mapping is declared once and is TOTAL over the guest rows — a row
     // in neither zone would render nowhere while every source test stayed
     // green (the orphaned-view class, MESITA-1804).

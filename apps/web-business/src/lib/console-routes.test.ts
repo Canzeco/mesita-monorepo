@@ -19,7 +19,6 @@ import {
   flatPlacePageFromPathname,
   flatViewFromPathname,
   isFlatRoute,
-  isPlaceTerminalPathname,
   ownedFromParam,
   placeHref,
   placeIdFromPathname,
@@ -27,7 +26,6 @@ import {
   placePageHref,
   placePayHref,
   placeRootHref,
-  placeTerminalHref,
   placesHref,
   placesNewHref,
   withQuery,
@@ -80,7 +78,7 @@ describe("SHELL_ROUTES are the addresses that name no place", () => {
 });
 
 describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", () => {
-  it("is the place's nine views, then its four pages", () => {
+  it("is the place's ten views, then its four pages", () => {
     // The order is the declaration's: the views, then the pages. MESITA-1841
     // added `capabilities` (was `settings`), `rewards`, `organization` and
     // `credits`, and moved `activity` out of the first group. MESITA-1845
@@ -97,6 +95,13 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // MESITA-1892 CHANGES WHAT THE LAST FOUR RESOLVE, not which they are:
     // `settings`, `products`, `customers` and `activity` resolved an
     // ORGANIZATION and resolve this place's own pages now.
+    //
+    // MESITA-1900 GIVES `rewards` ITS NAME BACK, and the assertion two lines
+    // below is why it is safe: `capabilities` is STILL a redirect source and
+    // still forbidden here, while `rewards` is not one any more — its two
+    // rules left next.config.ts in the same commit this entry arrived. A name
+    // in both places is the MESITA-1839 trap, and `legacy-redirects.test.ts`
+    // walks this whole contract through the table to prove neither is.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
       "menus",
@@ -104,6 +109,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "visits",
       "orders",
       "reservations",
+      "rewards",
       "pay",
       "credits",
       "admin",
@@ -112,9 +118,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       "customers",
       "activity",
     ]);
-    for (const gone of ["capabilities", "rewards"]) {
-      expect(Object.keys(FLAT_ROUTES), gone).not.toContain(gone);
-    }
+    expect(Object.keys(FLAT_ROUTES)).not.toContain("capabilities");
     expect(Object.keys(FLAT_ROUTES)).not.toContain("payments");
     // `places` is a LIVE PAGE now (MESITA-1892), so a flat twin would be
     // shadowed by a real static route rather than merely fail to resolve —
@@ -128,7 +132,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     expect(isFlatRoute("/profile/")).toBe(true);
   });
 
-  // ONE ROUTE FILE FOR ALL THIRTEEN (MESITA-1842). They were ten directories
+  // ONE ROUTE FILE FOR ALL FOURTEEN (MESITA-1842). They were ten directories
   // holding one line each, and adding the eleventh meant remembering to create
   // a directory, a page and a loading boundary that no compiler would miss.
   it("every one is served by the ONE `[flat]` segment, with its own boundary", () => {
@@ -272,14 +276,14 @@ describe("the place's pages (MESITA-1892)", () => {
     expect(placeHref("p-x")).toBe("/places/p-x/profile");
   });
 
-  it("the two sub-steps hang under Products and are not pages", () => {
+  it("the ONE sub-step hangs under Products and is not a page", () => {
+    // Terminal's was the other one, and it went with the product
+    // (MESITA-1900). `isPlaceTerminalPathname` and `placeTerminalHref` are
+    // deleted with it — the two helpers existed only because that one row
+    // could not be addressed like the other seven.
     expect(placePayHref("p-x")).toBe("/places/p-x/products/pay");
-    expect(placeTerminalHref("p-x")).toBe("/places/p-x/products/terminal");
     expect(PLACE_PAGES).not.toContain("pay");
     expect(PLACE_PAGES).not.toContain("terminal");
-    expect(isPlaceTerminalPathname(placeTerminalHref("p-x"))).toBe(true);
-    expect(isPlaceTerminalPathname(placePayHref("p-x"))).toBe(false);
-    expect(isPlaceTerminalPathname(placePageHref("p-x", "products"))).toBe(false);
   });
 
   it("every page is a route file with its own loading boundary", () => {
@@ -291,7 +295,12 @@ describe("the place's pages (MESITA-1892)", () => {
       );
     }
     expect(existsSync(routeFile(placePayHref("p-x"), ID))).toBe(true);
-    expect(existsSync(routeFile(placeTerminalHref("p-x"), ID))).toBe(true);
+    // AND TERMINAL'S IS GONE FROM DISK (MESITA-1900). A retired product whose
+    // route file survives is a page nothing links to and nothing forwards
+    // from — reachable by typing, and stating a product that is not sold.
+    expect(
+      existsSync(routeFile("/places/p-x/products/terminal", ID)),
+    ).toBe(false);
   });
 
   it("labels every page", () => {
@@ -315,14 +324,13 @@ describe("the place's pages (MESITA-1892)", () => {
     expect(placePageFromPathname("/places/p-x/products/")).toBe("products");
   });
 
-  it("is null for a view, for Terminal, and for the bare address", () => {
+  it("is null for a view and for the bare address", () => {
     // THE BARE ADDRESS ANSWERS NULL, which is the one difference from the
     // organization's version of this reader: it is a 307 onto PROFILE, a
     // VIEW, so the row that must not go dark in flight is Profile's.
     expect(placePageFromPathname(placeRootHref("p-x"))).toBeNull();
     expect(placePageFromPathname("/places/p-x/")).toBeNull();
     expect(placePageFromPathname(placeHref("p-x"))).toBeNull();
-    expect(placePageFromPathname(placeTerminalHref("p-x"))).toBeNull();
     expect(placePageFromPathname("/places/p-x/billing")).toBeNull();
     expect(placePageFromPathname("/places/p-x/settings/x")).toBeNull();
     expect(placePageFromPathname(SHELL_ROUTES.places)).toBeNull();
@@ -431,7 +439,6 @@ describe("placeIdFromPathname — the rail's scope", () => {
       expect(placeIdFromPathname(placePageHref("p-x", page))).toBe("p-x");
     }
     expect(placeIdFromPathname(placePayHref("p-x"))).toBe("p-x");
-    expect(placeIdFromPathname(placeTerminalHref("p-x"))).toBe("p-x");
   });
   it("is null on every address that names no place", () => {
     expect(placeIdFromPathname(SHELL_ROUTES.account)).toBeNull();

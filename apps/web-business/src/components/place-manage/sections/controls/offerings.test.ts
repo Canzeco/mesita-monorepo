@@ -222,7 +222,7 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
       "visit_rewards",
     );
     expect(row.disagreement?.fix).toBe("setup");
-    expect(row.disagreement?.fixLabel).toBe("Mesita Pay");
+    expect(row.disagreement?.fixLabel).toBe("Mesita Payments");
     expect(row.disagreement?.fixLabel).not.toContain("Join");
   });
 });
@@ -258,15 +258,26 @@ describe("the ladder's two zones (MESITA-1841)", () => {
     }
   });
 
-  it("a zone IS a product, and each holds exactly its own rows (MESITA-1885)", () => {
+  it("a zone IS a product, and each holds exactly its own rows (MESITA-1900)", () => {
     // The whole re-cut, written out. Capabilities' six rows redistributed to
-    // the four products that own them and `visit_rewards` stayed under Visits.
+    // the four products that own them; `visit_rewards` stayed under Visits
+    // until MESITA-1900, when Pato's product list separated Rewards from
+    // Visits and it went to the product it has always been a dial inside.
+    //
     // Asserted as EQUALITY, not `toContain`: a row quietly gaining a second
     // home would satisfy containment in both places and put one switch on two
     // screens, which is how the console starts disagreeing with itself.
-    expect(ZONE_ROWS.visits).toEqual(["visit_rewards"]);
+    //
+    // VISITS IS EMPTY, AND THAT IS THE POINT. It has never had a switch — no
+    // `visits_enabled` column, no rung, on for every partner (MESITA-1882) —
+    // so the one row it carried was another product's. Asserting `[]` rather
+    // than dropping the line keeps the emptiness DELIBERATE: a zone that
+    // silently lost its rows and a zone that never had any read the same in
+    // `ZONE_ROWS` and mean opposite things.
+    expect(ZONE_ROWS.visits).toEqual([]);
     expect(ZONE_ROWS.orders).toEqual(["pickup", "delivery"]);
     expect(ZONE_ROWS.reservations).toEqual(["reservations"]);
+    expect(ZONE_ROWS.rewards).toEqual(["visit_rewards"]);
     expect(ZONE_ROWS.pay).toEqual(["mesita_pay"]);
     expect(ZONE_ROWS.credits).toEqual(["accept_prepays", "sell_prepays"]);
   });
@@ -292,8 +303,18 @@ describe("the ladder's two zones (MESITA-1841)", () => {
     };
     const all = offeringRows(on);
     expect(guestSummary(rowsForZone(all, "orders"))).not.toMatch(/visit rewards/i);
-    expect(guestSummary(rowsForZone(all, "visits"))).not.toMatch(/pay by card/i);
-    expect(guestSummary(rowsForZone(all, "visits"))).not.toMatch(/book a table/i);
+    expect(guestSummary(rowsForZone(all, "rewards"))).not.toMatch(/pay by card/i);
+    expect(guestSummary(rowsForZone(all, "rewards"))).not.toMatch(/book a table/i);
+    // AND VISITS' ZONE IS THE EMPTY SET, so `guestSummary` answers the
+    // no-rows sentence — "Right now, nothing is live for guests." — which is
+    // FALSE about a partner whose checkout works. `PromosSection` is why that
+    // string never reaches the screen: it states the container's own fact for
+    // a zone with no rungs (MESITA-1900). Pinned here so that anyone who
+    // "simplifies" that branch away sees what it was protecting.
+    expect(rowsForZone(all, "visits")).toEqual([]);
+    expect(guestSummary(rowsForZone(all, "visits"))).toBe(
+      "Right now, nothing is live for guests.",
+    );
   });
 });
 
@@ -339,7 +360,7 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
     });
     expect(rowFor(input, "sell_prepays").state).toEqual({
       kind: "locked",
-      needs: "Needs Mesita Pay",
+      needs: "Needs Mesita Payments",
     });
   });
 
@@ -381,7 +402,7 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
       "mesita_pay",
     );
     expect(row.disagreement?.fix).toBe("setup");
-    expect(row.disagreement?.fixLabel).toBe("Mesita Pay");
+    expect(row.disagreement?.fixLabel).toBe("Mesita Payments");
     expect(row.disagreement?.reason).toContain("off in products");
   });
 

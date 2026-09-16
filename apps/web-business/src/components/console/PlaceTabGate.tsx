@@ -39,10 +39,7 @@
 
 import { notFound, usePathname } from "next/navigation";
 import { placeTabFromPathname } from "@/lib/place-tabs";
-import {
-  isPlaceTerminalPathname,
-  placePageFromPathname,
-} from "@/lib/console-routes";
+import { placePageFromPathname } from "@/lib/console-routes";
 import { usePlaceScope } from "@/app/(shell)/places/[id]/PlaceScope";
 
 export function PlaceTabGate() {
@@ -50,9 +47,7 @@ export function PlaceTabGate() {
   const { tabs, held } = usePlaceScope();
   const tab = placeTabFromPathname(pathname);
   if (tab !== null && !tabs.includes(tab)) notFound();
-  const isPage =
-    placePageFromPathname(pathname) !== null ||
-    isPlaceTerminalPathname(pathname);
+  const isPage = placePageFromPathname(pathname) !== null;
   if (isPage && !held) notFound();
   return null;
 }

@@ -64,23 +64,25 @@ import type { PlaceTab } from "@/lib/place-tabs";
 //                              how an agent drives it. What you SET.
 //             /products        THE CATALOGUE of products — the Mesita Partner
 //                              banner and the eight product cards
-//             /products/pay    Mesita Pay's own controls: the Stripe account,
-//                              a seam, the switch. A SUB-STEP of the
-//                              catalogue, never a rail row
-//             /products/terminal  Mesita Terminal's Soon page
+//             /products/pay    Mesita Payments' own controls: the Stripe
+//                              account, a seam, the switch. A SUB-STEP of the
+//                              catalogue, never a rail row. The segment is
+//                              `pay` and the NOUN is Payments (MESITA-1900):
+//                              the label moved, the persisted spelling did not
 //             /customers       who keeps coming back (Soon)
 //             /activity        this place's numbers
 //
-//   /places/<id>/profile       THE PLACE's nine views
-//             /menus /reviews /visits /orders /reservations /pay /credits
+//   /places/<id>/profile       THE PLACE's ten views
+//             /menus /reviews /visits /orders /reservations /rewards /pay
+//             /credits
 //             /admin           super-admin only
 //
-//   /profile /menus /reviews /visits /orders /reservations /pay /credits
-//   /admin /settings /products /customers /activity
+//   /profile /menus /reviews /visits /orders /reservations /rewards /pay
+//   /credits /admin /settings /products /customers /activity
 //                              307 onto the address above, resolving the
 //                              remembered place. With nothing selected they
 //                              render the one next step (NoPlaceYet) rather
-//                              than forwarding nowhere. ALL THIRTEEN ARE ONE
+//                              than forwarding nowhere. ALL FOURTEEN ARE ONE
 //                              ROUTE FILE (`(shell)/[flat]`): Next resolves
 //                              static segments first, so every real route
 //                              still wins and an unknown name 404s.
@@ -252,10 +254,12 @@ export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "product", product: "visits" },
   { kind: "product", product: "orders" },
   { kind: "product", product: "reservations" },
-  // Money.
+  // Money. REWARDS HEADS IT AND TERMINAL IS GONE (MESITA-1900): Pato's list
+  // files Rewards with what a place PAYS rather than with the container guests
+  // arrive through, and drops the one row whose address was a Soon strip.
+  { kind: "product", product: "rewards" },
   { kind: "product", product: "pay" },
   { kind: "product", product: "credits" },
-  { kind: "product", product: "terminal" },
 ];
 
 /** Where the seam falls, as the INDEX of each row that opens a group. Derived
@@ -269,27 +273,31 @@ export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
     // again inside the products at Pato's two blank lines.
     const changed = prev.kind !== row.kind;
     const productBreak =
-      row.kind === "product" && (row.product === "visits" || row.product === "pay");
+      row.kind === "product" &&
+      (row.product === "visits" || row.product === "rewards");
     if (changed || productBreak) acc.push(i);
     return acc;
   },
   [],
 );
 
-// ── WHERE A PRODUCT ROW LANDS (MESITA-1885) ───────────────────────────────
+// ── WHERE A PRODUCT ROW LANDS (MESITA-1885, re-cut MESITA-1900) ───────────
 //
-// Eight products, THREE kinds of address, and this is the only place that
-// knows which is which:
+// Eight products, TWO kinds of address, and this is the only place that knows
+// which is which:
 //
-//   the place's own view   visits · orders · reservations · pay · credits, and
-//                          profile. Five of them are `ZONE_ROWS` zones — the
-//                          ladder re-cut by product — and Profile is the place
-//                          description it always was.
+//   the place's own view   visits · orders · reservations · rewards · pay ·
+//                          credits, and profile. Six of them are `ZONE_ROWS`
+//                          zones — the ladder re-cut by product — and Profile
+//                          is the place description it always was.
 //   a place PAGE           customers. It is about the guests, which is a
 //                          reading of the venue rather than a switch on it,
 //                          so it has a page and not a view.
-//   a product sub-page     terminal. No engine, no column, no switch: a
-//                          SoonStrip under `products/`.
+//
+// THE THIRD KIND DIED WITH TERMINAL (MESITA-1900). `a product sub-page` was a
+// shape one row wore: Terminal had no engine, no column and no switch, so its
+// address was a SoonStrip under `products/` and two helpers existed to build
+// and recognise it. Pato's list drops the product, so the shape goes with it.
 //
 // PAY IS STILL SPLIT ACROSS TWO SCREENS AND THE ROW TAKES THE VIEW. The Stripe
 // account and the Mesita Pay switch are at `/places/<id>/products/pay` — the
@@ -308,28 +316,10 @@ export function productRowHref(
   placeHref: (tab: PlaceTab) => string,
 ): string {
   if (product === "customers") return placePageHref(placeId, "customers");
-  if (product === "terminal") return placeTerminalHref(placeId);
   // Every other product IS a place tab, and shares its spelling with one —
-  // `PLACE_TABS` and `PRODUCT_KEYS` agree on all six by construction, which
+  // `PLACE_TABS` and `PRODUCT_KEYS` agree on all seven by construction, which
   // `console-routes.test.ts` asserts in both directions rather than trusting.
   return placeHref(product as PlaceTab);
-}
-
-/** Mesita Terminal's page: a Soon strip under `products/`, and a real landing
- *  for the one row that has nothing else to open. */
-export function placeTerminalHref(placeId: string): string {
-  return `${placePageHref(placeId, "products")}/terminal`;
-}
-
-/** Is this Terminal's page? ONE reader for the rule, like every other
- *  segment→row question in this file.
- *
- *  It has to be asked separately because `placePageFromPathname` answers
- *  `null` here ON PURPOSE: `/products/terminal` is not the catalogue, so the
- *  Products row must not light for it. Without this the address would light
- *  NOTHING, which reads as a page outside the console. */
-export function isPlaceTerminalPathname(pathname: string): boolean {
-  return /^\/places\/[^/]+\/products\/terminal\/?$/.test(pathname);
 }
 
 /** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
@@ -436,16 +426,23 @@ export function placePageFromPathname(pathname: string): PlacePage | null {
  *  flat `places` would not merely fail to resolve, it would be shadowed by a
  *  real route. Next resolves static segments before dynamic ones. */
 export const FLAT_ROUTES = {
-  // The place's nine views. Capabilities and Rewards left with their views
-  // (MESITA-1885) and the five PRODUCT views arrived in their place; both old
-  // names are in the redirect table now, and a contract name a config rule
-  // shadows is the MESITA-1839 trap, so neither may come back here.
+  // The place's ten views. Capabilities left with its view (MESITA-1885) and
+  // the PRODUCT views arrived in its place; its old name is in the redirect
+  // table, and a contract name a config rule shadows is the MESITA-1839 trap,
+  // so it may not come back here.
+  //
+  // `rewards` IS BACK (MESITA-1900), and it is back on BOTH sides at once: the
+  // name returns to this contract in the same commit its two redirect rules
+  // leave `next.config.ts`. Either half alone is a dead address — a rule with
+  // no page 307s onto Visits forever, a page with no rule never renders
+  // because the rule wins — which is why this comment names the other half.
   profile: "/profile",
   menus: "/menus",
   reviews: "/reviews",
   visits: "/visits",
   orders: "/orders",
   reservations: "/reservations",
+  rewards: "/rewards",
   pay: "/pay",
   credits: "/credits",
   admin: "/admin",
@@ -504,6 +501,7 @@ const PLACE_TAB_NAMES = [
   "visits",
   "orders",
   "reservations",
+  "rewards",
   "pay",
   "credits",
   "admin",

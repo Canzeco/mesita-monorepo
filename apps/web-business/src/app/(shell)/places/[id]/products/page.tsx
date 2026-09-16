@@ -1,11 +1,12 @@
 // Products — THE CATALOGUE (MESITA-1869), and after MESITA-1872 it is exactly
 // two things: the Mesita Partner banner, and the eight product cards.
 //
-// WHICH EIGHT CHANGED IN MESITA-1884, the shape did not. Pato: *"should i
-// separate visits and rewards into two?? i don't think so."* Rewards left the
-// grid — it is a dial inside Visits, not a thing anyone buys — and Customers
-// took the slot. The partnership stays a BANNER and never becomes a ninth
-// card: *"(partnership, not a product but on top, special)"*.
+// WHICH EIGHT CHANGED AGAIN IN MESITA-1900, the shape did not. MESITA-1884
+// took Rewards OUT of the grid on Pato's *"should i separate visits and
+// rewards into two?? i don't think so."*; his 2026-09-16 list puts it back and
+// drops Terminal, so the count is eight in both eras and two cards swapped.
+// The partnership stays a BANNER and never becomes a ninth card:
+// *"(partnership, not a product but on top, special)"*.
 //
 // Pato, on the live page: *"remove thus shit. just leave the 8 boxes and the 1
 // partnership box shit. payments log go into activity."*
@@ -41,11 +42,11 @@
 //
 // ── WHERE A PRODUCT IS ACTUALLY TURNED ON ─────────────────────────────────
 //
-// Six of the eight carry a verb into one of this place's own views, because
-// that is where their switch is. Mesita Pay's SETUP — the Stripe account and
-// the switch it unlocks — is the sub-step at `products/pay`; Customers and
-// Terminal are `soon`, so they carry no verb at all and their doors are the
-// rail rows they already have.
+// Seven of the eight carry a verb into one of this place's own views, because
+// that is where their switch is. Mesita Payments' SETUP — the Stripe account
+// and the switch it unlocks — is the sub-step at `products/pay`; Customers is
+// `soon`, so it carries no verb at all and its door is the rail row it already
+// has.
 import { notFound, redirect } from "next/navigation";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PartnerBanner } from "@/components/console/PartnerBanner";

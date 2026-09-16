@@ -14,19 +14,14 @@
 // organization's places" — plural, about a holder above the venue. There is no
 // holder: a place carries its own guests, its own payments and its own keys.
 export const SOON_STRIPS: Record<
-  "customers" | "payments" | "developers" | "terminal",
+  "customers" | "payments" | "developers",
   { title: string; line: string }
 > = {
-  // TERMINAL GOT AN ADDRESS (MESITA-1885), because the rail now lists all
-  // eight products and a rail row has to open something real (MESITA-1833).
-  // It is the one product with NO engine and no column at all — the catalogue
-  // card has carried `soon` with no verb since MESITA-1869 — so the page it
-  // opens is this strip and nothing else. Knobs here would be the exact lie
-  // SoonStrip exists to refuse.
-  terminal: {
-    title: "Mesita Terminal",
-    line: "In-person card payments on Mesita hardware. The hardware is not available yet.",
-  },
+  // TERMINAL LEFT WITH ITS PRODUCT (MESITA-1900). MESITA-1885 gave it this
+  // strip because the rail listed all eight products and a rail row has to
+  // open something real (MESITA-1833); Pato's 2026-09-16 list drops the
+  // product, so the row, the page and the strip go together — a strip nobody
+  // renders is how a vocabulary starts describing a screen that is gone.
   // PREPAID CREDITS LEFT (MESITA-1869). It was a strip because it had no
   // engine; it is a CARD now, in the catalogue, because Mesita Credits is a
   // product an operator buys and a place turns on — and a card whose state is

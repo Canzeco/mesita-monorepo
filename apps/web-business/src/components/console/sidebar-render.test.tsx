@@ -19,7 +19,6 @@ import {
   SHELL_ROUTES,
   placePageHref,
   placePayHref,
-  placeTerminalHref,
   productRowHref,
 } from "@/lib/console-routes";
 import { PLACE_TABS, placeTabHref } from "@/lib/place-tabs";
@@ -142,16 +141,17 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     // while an operator stands in it (MESITA-1872).
     [placePayHref("p-1"), "Products"],
     [view("profile"), "Profile"],
-    // THE FIVE PRODUCT VIEWS (MESITA-1885), each lighting its OWN row. Three
-    // of them used to be rows on `capabilities`, so before the split these
-    // three addresses were one address and could not have appeared here.
+    // THE SIX PRODUCT VIEWS (MESITA-1885, Rewards added MESITA-1900), each
+    // lighting its OWN row. Three of them used to be rows on `capabilities`,
+    // so before the split these three addresses were one address and could
+    // not have appeared here — and `/rewards` was a REDIRECT source until
+    // MESITA-1900, so it could not have appeared here either.
     [view("visits"), "Visits"],
     [view("orders"), "Orders"],
     [view("reservations"), "Reservations"],
-    [view("pay"), "Pay"],
+    [view("rewards"), "Rewards"],
+    [view("pay"), "Payments"],
     [view("credits"), "Credits"],
-    // The two products that are NOT place views.
-    [placeTerminalHref("p-1"), "Terminal"],
     // The flat names an operator can still type light the same row while the
     // forward is in flight.
     [FLAT_ROUTES.settings, "Settings"],
@@ -162,7 +162,8 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     [FLAT_ROUTES.visits, "Visits"],
     [FLAT_ROUTES.orders, "Orders"],
     [FLAT_ROUTES.reservations, "Reservations"],
-    [FLAT_ROUTES.pay, "Pay"],
+    [FLAT_ROUTES.rewards, "Rewards"],
+    [FLAT_ROUTES.pay, "Payments"],
     [FLAT_ROUTES.credits, "Credits"],
   ];
   for (const [pathname, label] of ROUTES) {
@@ -211,7 +212,6 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
       ...PLACE_TABS.map(view),
       ...PLACE_PAGES.map(page),
       placePayHref("p-1"),
-      placeTerminalHref("p-1"),
       SHELL_ROUTES.account,
       SHELL_ROUTES.places,
       SHELL_ROUTES.placesNew,
@@ -236,22 +236,35 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // creeping back in a later pass without anyone noticing the column grew.
     //
     // MENUS AND REVIEWS JOINED THEM (MESITA-1885) — they fold under Profile —
-    // and Capabilities and Rewards are not even views any more.
-    for (const gone of ["Capabilities", "Rewards", "Places", "Admin", "Menus", "Reviews"]) {
+    // and Capabilities is not even a view any more.
+    //
+    // REWARDS LEFT THIS LIST (MESITA-1900): Pato's product list puts it back
+    // in the rail, so it is a ROW now and asserting its absence would be this
+    // test pinning the previous era. TERMINAL TOOK ITS PLACE here, for the
+    // opposite reason — the product is retired, and a row creeping back is
+    // exactly what this list is for.
+    for (const gone of ["Capabilities", "Terminal", "Places", "Admin", "Menus", "Reviews"]) {
       expect(labels(html), gone).not.toContain(gone);
     }
     // NO WORDMARK (MESITA-1842). Pato: "no mesita logo, fuck it."
     expect(html).not.toContain("<svg viewBox=\"0 0 293.03 100\"");
     expect(html).not.toContain(">business<");
-    // CREDITS IS A ROW AGAIN, AND PAYMENTS IS STILL NOT ONE. Both were rows,
-    // both became products (MESITA-1845, MESITA-1869), and MESITA-1885 put
-    // the PRODUCTS in the rail — so Credits returns under its product name
-    // and `payments`, which is a reading of money and not a product, does
-    // not. The row that came back says "Pay", the card's noun.
+    // CREDITS IS A ROW AGAIN, AND THE PAYMENTS PAGE IS STILL NOT ONE. Both
+    // were rows, both became products (MESITA-1845, MESITA-1869), and
+    // MESITA-1885 put the PRODUCTS in the rail — so Credits returns under its
+    // product name, while `payments`, a reading of money and not a product,
+    // does not.
+    //
+    // THE ROW NOW SAYS "PAYMENTS" (MESITA-1900), so the LABEL can no longer
+    // stand in for the address. It never should have: the invariant was
+    // always that no row points at `/payments`, and a label assertion was a
+    // proxy that Pato's rename has just falsified. The href is the assertion.
     expect(labels(html)).toContain("Credits");
-    expect(labels(html)).toContain("Pay");
-    expect(labels(html)).not.toContain("Payments");
-    expect(hrefs(html).some((h) => h.includes("payments"))).toBe(false);
+    expect(labels(html)).toContain("Payments");
+    expect(hrefs(html).some((h) => h.includes("/payments"))).toBe(false);
+    // …and the row called Payments is the PRODUCT's view, whose segment is
+    // still `pay`. The label moved; the persisted spelling did not.
+    expect(hrefs(html)).toContain(view("pay"));
     // NO ROW SAYS "SOON": Customers renders at full strength and its page
     // carries the badge (MESITA-1833).
     expect(html).not.toContain("Soon");
@@ -299,9 +312,9 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
       "lucide-ticket", // Visits — the guest's check at the bill
       "lucide-shopping-bag", // Orders — pickup and delivery
       "lucide-calendar-check", // Reservations — a table, booked
-      "lucide-credit-card", // Pay — the card
+      "lucide-gift", // Rewards — what a guest earns, given back
+      "lucide-credit-card", // Payments — the card
       "lucide-wallet", // Credits — money held before it is spent
-      "lucide-nfc", // Terminal — the tap, and the hardware that reads it
       "lucide-user-round", // Account — the person, one of them
     ]) {
       expect(html, mark).toContain(mark);
@@ -311,7 +324,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     for (const gone of [
       "lucide-layers", // Places — the catalogue, reached from the empty state
       "lucide-sliders-horizontal", // Capabilities, retired as a view
-      "lucide-gift", // Rewards, folded into Visits
+      "lucide-nfc", // Terminal, retired as a product (MESITA-1900)
       "lucide-shield", // Admin
       "lucide-utensils-crossed", // Menus, folded under Profile
       "lucide-star", // Reviews, folded under Profile
@@ -336,9 +349,9 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // whose subject is addresses rather than order.
     //
     // A PRODUCT ROW'S ADDRESS COMES FROM `productRowHref`, the one function
-    // that knows the three shapes (MESITA-1885) — derived here too, so the
-    // rail and the contract cannot disagree about where Terminal or Customers
-    // lives.
+    // that knows the two shapes (MESITA-1885; the third died with Terminal in
+    // MESITA-1900) — derived here too, so the rail and the contract cannot
+    // disagree about where Customers lives.
     expect(hrefs(html)).toEqual([
       ...RAIL_ROWS.map((r) =>
         r.kind === "page"
@@ -385,20 +398,21 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     const html = render(FLAT_ROUTES.profile, { places: viewer, rememberedPlaceId: "p-1" });
     const seen = labels(html);
 
-    // The five that write are gone…
-    for (const gone of ["Visits", "Orders", "Reservations", "Pay", "Credits"]) {
+    // The six that write are gone…
+    for (const gone of ["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits"]) {
       expect(seen, gone).not.toContain(gone);
     }
     // …and EVERYTHING ELSE stayed. The bijection, because "a viewer sees
     // fewer rows" passes for a rail that lost all of them.
     expect(seen).toEqual(
       ALL_LABELS.filter(
-        (l) => !["Visits", "Orders", "Reservations", "Pay", "Credits"].includes(l),
+        (l) =>
+          !["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits"].includes(l),
       ),
     );
-    // A viewer still reaches every READ surface, including the two products
-    // that are not place views at all.
-    for (const kept of ["Settings", "Activity", "Products", "Profile", "Customers", "Terminal"]) {
+    // A viewer still reaches every READ surface, including the one product
+    // that is not a place view at all.
+    for (const kept of ["Settings", "Activity", "Products", "Profile", "Customers"]) {
       expect(seen, kept).toContain(kept);
     }
   });
@@ -438,14 +452,14 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
       "Activity",
       "Products",
       "Customers",
-      "Terminal",
       "Profile",
       "Menus",
       "Reviews",
       "Visits",
       "Orders",
       "Reservations",
-      "Pay",
+      "Rewards",
+      "Payments",
       "Credits",
     ]) {
       expect(labels(html), gone).not.toContain(gone);
