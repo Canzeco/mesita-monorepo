@@ -35,7 +35,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { world, scenario, setScenario, lastPlaceId, rememberPlace, viewer } = useMock();
-  const [collapsed, setCollapsed] = useState(false);
 
   // THE DRAWER CLOSES BY DERIVING, NOT BY AN EFFECT. It holds the pathname it
   // was opened on, so any navigation closes it for free — no effect, no
@@ -103,8 +102,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       places={world.places}
       isSuperAdmin={scenario.isSuperAdmin}
       accountLabel={viewer.email}
-      collapsed={collapsed}
-      onToggleCollapse={() => setCollapsed((v) => !v)}
       onNavigate={() => setDrawer(false)}
       onPickPlace={pickPlace}
       // The retry a failed read offers. In the real console it re-runs the
@@ -137,15 +134,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {/* Desktop rail. `w-16` is chips only. */}
-        <div
-          className={cn(
-            "hidden shrink-0 transition-[width] duration-150 lg:block",
-            collapsed ? "w-16" : "w-60",
-          )}
-        >
-          {rail}
-        </div>
+        {/* Desktop rail. ONE WIDTH (MESITA-1905): the chips-only `w-16` went
+            with the Collapse control that was its only door, and with it the
+            width transition — a rail that can only be `w-60` has nothing to
+            animate between. */}
+        <div className="hidden w-60 shrink-0 lg:block">{rail}</div>
 
         {/* Mobile drawer. */}
         {drawer && (

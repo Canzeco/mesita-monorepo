@@ -12,7 +12,9 @@
 // It wears the place's PHOTO, not an icon: a photo is what distinguishes one
 // venue from another, and an icon would be identical on all of them.
 //
-// At `w-16` it collapses to its chip alone, like every row below it.
+// It sits UNDER the rail's head, not in it: the lockup names the product and
+// this names the venue, and stacking them keeps the two nouns from reading as
+// one title.
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronsUpDown, Layers, Plus, Store } from "lucide-react";
@@ -47,12 +49,10 @@ export function PlaceChip({
 export function RailSelector({
   current,
   places,
-  collapsed,
   onPick,
 }: {
   current: RailPlace | null;
   places: readonly RailPlace[];
-  collapsed: boolean;
   onPick: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -94,20 +94,11 @@ export function RailSelector({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        title={collapsed ? label : undefined}
-        className={cn(
-          "text-sidebar-foreground hover:bg-sidebar-accent focus-visible:ring-sidebar-ring flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-semibold outline-hidden transition focus-visible:ring-2",
-          collapsed && "justify-center px-0",
-        )}
+        className="text-sidebar-foreground hover:bg-sidebar-accent focus-visible:ring-sidebar-ring flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-semibold outline-hidden transition focus-visible:ring-2"
       >
         <PlaceChip photoUrl={current?.photoUrl ?? null} />
-        {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1 truncate">{label}</span>
-            <ChevronsUpDown className="text-sidebar-muted h-3.5 w-3.5 shrink-0" aria-hidden />
-          </>
-        )}
-        <span className="sr-only">{collapsed ? label : ""}</span>
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        <ChevronsUpDown className="text-sidebar-muted h-3.5 w-3.5 shrink-0" aria-hidden />
       </button>
 
       {open && (
