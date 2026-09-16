@@ -3,29 +3,28 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/api/profile";
-import type { CreditOrgBalance } from "@/lib/api/credits";
+import type { CreditPlaceBalance } from "@/lib/api/credits";
 import {
-  balanceFace,
+  balanceState,
   daysUntilExpiry,
   formatActivation,
   formatExpiry,
   headlineCents,
   hoursUntilActivation,
-  orgBalanceState,
 } from "@/lib/credits";
 import { cn } from "@/lib/utils";
 
-// One organization's Credits balance, as a card (MESITA-1674: reads
-// consumer-web-list-credit-balances now, not a per-place browser emulator).
+// One place's Credits balance, as a card (MESITA-1674: reads
+// consumer-web-list-credit-balances now, not a browser emulator).
 //
-// ORG-SCOPED MONEY, A PLACE'S FACE WHEN THERE IS ONE (MESITA-1671/1674/1816).
-// The balance is the organization's — one per org, however many places fund
-// it. But while the organization holds exactly ONE place the card wears that
-// place: its name as the title and its own `photos[0]` as the art. That is
-// the carve-out that survived the deck review — the photo is the place's
-// own, not invented identity — and it is exactly what an organization lacks,
-// so a two-or-more-place organization still renders the ink face under its
-// own name. `balanceFace` (lib/credits.ts) is the one reader of the rule.
+// PLACE-SCOPED MONEY, WEARING THE PLACE'S OWN FACE (MESITA-1671/1674/1816/1892).
+// The balance used to be an organization's, and the card borrowed the place's
+// name and `photos[0]` only while that org held exactly one place — the
+// carve-out that survived the deck review, because the photo is the place's
+// OWN identity rather than an invented one. MESITA-1892 removed the
+// organization, so the carve-out is the whole rule: one balance, one venue,
+// its name and its art. There is no faceless holder left to fall back to, and
+// `balanceFace` — the reader that used to choose — is gone.
 //
 // THREE STATES, NOT TWO. Credits used to open Available or Expired only,
 // because the buy path never applied the hold it still carries in the schema.
@@ -33,10 +32,9 @@ import { cn } from "@/lib/utils";
 // still produce one — so a card can now also open "on its way", with the
 // soonest activation time it holds.
 //
-// THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE — unchanged from
-// the per-place card. Both gradients are computed against a pure-white worst
-// case so white text clears AA on any photo that can exist, which matters
-// again the day an organization's own art lands here.
+// THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE — unchanged since
+// the first per-place card. Both gradients are computed against a pure-white
+// worst case, so white text clears AA on any photo that can exist.
 //
 // A COVERED CARD IS A STRIP, NOT A CROPPED CARD — also unchanged; `covered`
 // stays part of the contract even though nothing passes `true` today (the
@@ -76,7 +74,7 @@ export function BalanceCard({
   className,
   style,
 }: {
-  balance: CreditOrgBalance;
+  balance: CreditPlaceBalance;
   nowMs: number;
   /** Another card lies on top of this one, so only the strip is on screen. */
   covered: boolean;
@@ -85,9 +83,8 @@ export function BalanceCard({
   style?: React.CSSProperties;
 }) {
   const [artFailed, setArtFailed] = useState(false);
-  const face = balanceFace(balance);
-  const photoUrl = face.photoUrl;
-  const state = orgBalanceState(balance);
+  const photoUrl = balance.photoUrl;
+  const state = balanceState(balance);
   const headline = headlineCents(balance);
   const daysLeft = balance.nearestExpiryAt
     ? daysUntilExpiry(Date.parse(balance.nearestExpiryAt), nowMs)
@@ -105,7 +102,7 @@ export function BalanceCard({
     ? "on its way"
     : "ready to spend";
   const label =
-    `${face.name}, ${formatCurrency(headline)}, ${stateWord}` +
+    `${balance.placeName}, ${formatCurrency(headline)}, ${stateWord}` +
     (expiringSoon && daysLeft !== null
       ? `, expires in ${formatExpiry(daysLeft)}`
       : state === "pending" && hoursLeft !== null
@@ -153,7 +150,7 @@ export function BalanceCard({
           className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-bold tracking-tight"
           style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
         >
-          {face.name}
+          {balance.placeName}
         </span>
         {!covered ? null : (
           <span className="flex shrink-0 items-center gap-1.5">

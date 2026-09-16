@@ -111,7 +111,7 @@ export async function handleChargeDisputeCreated(
 
   // Freeze the WHOLE remainder — a dispute puts the entire charge in
   // question, not just the disputed amount, and a guest must not be able to
-  // spend a balance that may be reversed out from under the organization.
+  // spend a balance that may be reversed out from under the place.
   const { data, error } = await admin.rpc("reverse_credit_lot", {
     p_lot_id: lot.id,
     p_kind: "adjust",

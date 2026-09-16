@@ -9,7 +9,7 @@ import {
   offeringRows,
   paintRows,
   rowsForZone,
-  orgFlag,
+  tierFlag,
   topPrerequisite,
   type LadderInput,
 } from "./offerings";
@@ -33,11 +33,17 @@ function stripeRow(input: LadderInput) {
   return row;
 }
 
-describe("the stripe rung's copy — org state, not place state (MESITA-1684)", () => {
-  it("says the ORGANIZATION owns the account, never the place", () => {
+describe("the stripe rung's copy — whose account it is (MESITA-1684)", () => {
+  it("says THIS PLACE owns the account (MESITA-1892)", () => {
+    // MESITA-1684 made this line say "your organization owns the account",
+    // because `organization_payment_accounts` was one row per organization
+    // and every place it held shared it — the copy before that claimed the
+    // place owned it, which was simply wrong. `place_payment_accounts` is one
+    // row per PLACE now, so the original sentence is finally true and this
+    // assertion flips with the column.
     const row = stripeRow(BASE);
-    expect(row.detail).toContain("Your organization owns the account");
-    expect(row.detail).not.toContain("The place owns");
+    expect(row.detail).toContain("This place owns the account");
+    expect(row.detail).not.toContain("organization");
   });
 
   it("still names a place-relevant consequence when Stripe needs more detail", () => {
@@ -93,8 +99,8 @@ describe("T5 — the console must not disagree with the consumer app", () => {
 
 describe("T4 — a read in flight is not a verdict", () => {
   it("Stripe and Mesita Pay read Checking, never locked, while connect loads", () => {
-    // orgMesitaPay is KNOWN on here, so the Connect read alone decides.
-    const input: LadderInput = { ...BASE, connectLoading: true, orgMesitaPay: true };
+    // placeMesitaPay is KNOWN on here, so the Connect read alone decides.
+    const input: LadderInput = { ...BASE, connectLoading: true, placeMesitaPay: true };
     expect(rowFor(input, "stripe").state.kind).toBe("checking");
     expect(rowFor(input, "mesita_pay").state.kind).toBe("checking");
   });
@@ -154,9 +160,9 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
     expect(rows[0].disagreement).not.toBeNull();
   });
 
-  it("sends a non-partner whose org is not partnered to subscribe on Organization", () => {
-    const prereq = topPrerequisite({ ...BASE, member: false, orgPartnered: false });
-    expect(prereq?.action).toBe("organization");
+  it("sends a non-partner whose place is not partnered to subscribe in Products", () => {
+    const prereq = topPrerequisite({ ...BASE, member: false, placePartnered: false });
+    expect(prereq?.action).toBe("setup");
     expect(prereq?.text).toContain("Mesita Partner");
     // The partnership is a yearly subscription now (MESITA-1867). The line
     // used to say "it is free"; that claim is the regression this file exists
@@ -166,28 +172,28 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
     expect(prereq?.text).not.toContain("Patner");
   });
 
-  it("offers Organization for Stripe once a partner with the org's Pay on lacks Connect", () => {
+  it("offers the setup page for Stripe once a partner with Mesita Pay on lacks Connect", () => {
     const prereq = topPrerequisite({
       ...BASE,
       member: true,
-      orgMesitaPay: true,
+      placeMesitaPay: true,
       connect: { kind: "none" },
       connectLoading: false,
     });
-    expect(prereq?.action).toBe("organization");
+    expect(prereq?.action).toBe("setup");
     expect(prereq?.text).toContain("Connect Stripe");
   });
 
-  it("says nothing about Stripe while the org's Pay switch is off or unknown", () => {
-    // Rewards is what a guest EARNS; a Partner-only org is not nagged to
-    // connect Stripe here — the Pay rung on Capabilities says "Off on
-    // Organization" instead, and that is the add-on's own page to sell it.
-    for (const orgMesitaPay of [false, null, undefined] as const) {
+  it("says nothing about Stripe while the Mesita Pay switch is off or unknown", () => {
+    // A reward is what a guest EARNS; a Partner-only place is not nagged to
+    // connect Stripe here — the Pay rung says "Off in Products" instead, and
+    // that is the add-on's own page to sell it.
+    for (const placeMesitaPay of [false, null, undefined] as const) {
       expect(
         topPrerequisite({
           ...BASE,
           member: true,
-          orgMesitaPay,
+          placeMesitaPay,
           connect: { kind: "none" },
           connectLoading: false,
         }),
@@ -208,13 +214,13 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
     expect(row.disagreement?.fix).toBe("restore");
   });
 
-  it("sends a locked Visit Rewards row to Organization, never Join above", () => {
+  it("sends a locked Visit Rewards row to the setup page, never Join above", () => {
     const row = rowFor(
       { ...BASE, member: false, visitRewardsLevel: 2 },
       "visit_rewards",
     );
-    expect(row.disagreement?.fix).toBe("organization");
-    expect(row.disagreement?.fixLabel).toBe("Organization");
+    expect(row.disagreement?.fix).toBe("setup");
+    expect(row.disagreement?.fixLabel).toBe("Mesita Pay");
     expect(row.disagreement?.fixLabel).not.toContain("Join");
   });
 });
@@ -280,7 +286,7 @@ describe("the ladder's two zones (MESITA-1841)", () => {
       visitRewardsLevel: 1,
       rails: { ...BASE.rails, mesita_pay: true },
       connect: { kind: "ready" },
-      orgMesitaPay: true,
+      placeMesitaPay: true,
     };
     const all = offeringRows(on);
     expect(guestSummary(rowsForZone(all, "orders"))).not.toMatch(/visit rewards/i);
@@ -319,15 +325,15 @@ describe("the partnership row names the tier, not a price of zero", () => {
 });
 
 describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", () => {
-  it("off on Organization locks Mesita Pay (Off on Organization) and Sell Prepays (Needs Mesita Pay), whatever Stripe says", () => {
+  it("off in Products locks Mesita Pay (Off in Products) and Sell Prepays (Needs Mesita Pay), whatever Stripe says", () => {
     const input: LadderInput = {
       ...READY,
-      orgMesitaPay: false,
+      placeMesitaPay: false,
       rails: { ...BASE.rails, mesita_pay: true },
     };
     expect(rowFor(input, "mesita_pay").state).toEqual({
       kind: "locked",
-      needs: "Off on Organization",
+      needs: "Off in Products",
     });
     expect(rowFor(input, "sell_prepays").state).toEqual({
       kind: "locked",
@@ -335,12 +341,12 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
     });
   });
 
-  it("unknown on Organization is Checking, never locked and never On — even with a ready account and the rail on", () => {
+  it("unknown in Products is Checking, never locked and never On — even with a ready account and the rail on", () => {
     // Hostile QA from the plan: null + ready + rail on must not read "On".
-    for (const orgMesitaPay of [null, undefined] as const) {
+    for (const placeMesitaPay of [null, undefined] as const) {
       const input: LadderInput = {
         ...READY,
-        orgMesitaPay,
+        placeMesitaPay,
         rails: { ...BASE.rails, mesita_pay: true },
       };
       expect(rowFor(input, "mesita_pay").state.kind).toBe("checking");
@@ -348,40 +354,40 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
     }
   });
 
-  it("on on Organization with a ready account is the place's own rail — on or off", () => {
-    const off = rowFor({ ...READY, orgMesitaPay: true }, "mesita_pay");
+  it("on in Products with a ready account is the place's own rail — on or off", () => {
+    const off = rowFor({ ...READY, placeMesitaPay: true }, "mesita_pay");
     expect(off.state).toEqual({ kind: "off" });
     const on = rowFor(
-      { ...READY, orgMesitaPay: true, rails: { ...BASE.rails, mesita_pay: true } },
+      { ...READY, placeMesitaPay: true, rails: { ...BASE.rails, mesita_pay: true } },
       "mesita_pay",
     );
     expect(on.state).toEqual({ kind: "on" });
-    expect(rowFor({ ...READY, orgMesitaPay: true, rails: { ...BASE.rails, mesita_pay: true } }, "sell_prepays").state.kind).toBe("soon");
+    expect(rowFor({ ...READY, placeMesitaPay: true, rails: { ...BASE.rails, mesita_pay: true } }, "sell_prepays").state.kind).toBe("soon");
   });
 
-  it("on on Organization still needs an ACTIVE Stripe account below it", () => {
-    const input: LadderInput = { ...BASE, orgMesitaPay: true, connectLoading: false };
+  it("on in Products still needs an ACTIVE Stripe account below it", () => {
+    const input: LadderInput = { ...BASE, placeMesitaPay: true, connectLoading: false };
     expect(rowFor(input, "mesita_pay").state).toEqual({
       kind: "locked",
       needs: "Needs an active Stripe account",
     });
   });
 
-  it("the org-pay lock's disagreement is fixed on Organization, like Partner and Stripe", () => {
+  it("the Pay-switch lock's disagreement is fixed on the setup page, like Partner and Stripe", () => {
     const row = rowFor(
-      { ...READY, orgMesitaPay: false, rails: { ...BASE.rails, mesita_pay: true } },
+      { ...READY, placeMesitaPay: false, rails: { ...BASE.rails, mesita_pay: true } },
       "mesita_pay",
     );
-    expect(row.disagreement?.fix).toBe("organization");
-    expect(row.disagreement?.fixLabel).toBe("Organization");
-    expect(row.disagreement?.reason).toContain("off on organization");
+    expect(row.disagreement?.fix).toBe("setup");
+    expect(row.disagreement?.fixLabel).toBe("Mesita Pay");
+    expect(row.disagreement?.reason).toContain("off in products");
   });
 
   it("the org switch never gates a rung the partnership alone unlocks", () => {
     // Visit Rewards and Accept Prepays are bill arithmetic — Partner-only.
     const input: LadderInput = {
       ...READY,
-      orgMesitaPay: false,
+      placeMesitaPay: false,
       visitRewardsLevel: 2,
       rails: { ...BASE.rails, credits: true },
     };
@@ -392,7 +398,7 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
 
 describe("the top line: two partner facts, one precedence", () => {
   // `member` is the PLACE's entitlement (plan ≠ free) and gates every rung;
-  // `orgPartnered` only decides which door a non-member is sent to.
+  // `placePartnered` only decides which door a non-member is sent to.
   const cells: {
     name: string;
     input: Partial<LadderInput>;
@@ -400,20 +406,20 @@ describe("the top line: two partner facts, one precedence", () => {
   }[] = [
     {
       name: "member → silent, whatever the org says",
-      input: { member: true, orgPartnered: false, forfeited: false },
+      input: { member: true, placePartnered: false, forfeited: false },
       expect: null,
     },
     {
-      name: "not a member, org not partnered → subscribe on Organization",
-      input: { member: false, orgPartnered: false },
+      name: "not a member, place not partnered → subscribe in Products",
+      input: { member: false, placePartnered: false },
       expect: {
-        action: "organization",
-        text: "Become a Mesita Partner on Organization — it unlocks Visit Rewards and Accept Prepays.",
+        action: "setup",
+        text: "Become a Mesita Partner in Products — it unlocks Visit Rewards and Accept Prepays.",
       },
     },
     {
       name: "not a member, org partnered, forfeited → this place's own re-join, unbuilt",
-      input: { member: false, orgPartnered: true, forfeited: true },
+      input: { member: false, placePartnered: true, forfeited: true },
       expect: {
         action: "rejoin",
         text: "This place forfeited the partnership after 3 strikes — re-join lands with the next release.",
@@ -421,7 +427,7 @@ describe("the top line: two partner facts, one precedence", () => {
     },
     {
       name: "not a member, org partnered, not forfeited (a dropped place) → the same door",
-      input: { member: false, orgPartnered: true, forfeited: false },
+      input: { member: false, placePartnered: true, forfeited: false },
       expect: {
         action: "rejoin",
         text: "This place is not in the partnership — re-join lands with the next release.",
@@ -429,7 +435,7 @@ describe("the top line: two partner facts, one precedence", () => {
     },
     {
       name: "not a member, org unknown → nothing (a wrong door is worse than none)",
-      input: { member: false, orgPartnered: null, forfeited: true },
+      input: { member: false, placePartnered: null, forfeited: true },
       expect: null,
     },
   ];
@@ -444,14 +450,16 @@ describe("the top line: two partner facts, one precedence", () => {
     // Belt and braces: plan wins. A stale `forfeited` next to member=true
     // (admin re-granted the plan by hand) must not paint a re-join line over
     // a place that is in.
-    expect(topPrerequisite({ ...READY, member: true, orgPartnered: true, forfeited: true })).toBeNull();
+    expect(topPrerequisite({ ...READY, member: true, placePartnered: true, forfeited: true })).toBeNull();
   });
 
-  it("a re-join line never carries the Organization door", () => {
+  it("a re-join line never carries the SETUP door", () => {
     // The rejoin action is rendered WITHOUT a link (PromosSection) — a link
-    // to Organization there would send a forfeited place to subscribe twice.
-    const line = topPrerequisite({ ...READY, member: false, orgPartnered: true, forfeited: true });
+    // to the setup page there would send a forfeited place to subscribe
+    // twice.
+    const line = topPrerequisite({ ...READY, member: false, placePartnered: true, forfeited: true });
     expect(line?.action).toBe("rejoin");
+    expect(line?.text).not.toContain("Products");
     expect(line?.text).not.toContain("Organization");
   });
 
@@ -461,7 +469,7 @@ describe("the top line: two partner facts, one precedence", () => {
     // door lands and never "below" — on Capabilities there is nothing below,
     // and on Rewards there is no button to be below.
     for (const forfeited of [true, false]) {
-      const line = topPrerequisite({ ...READY, member: false, orgPartnered: true, forfeited });
+      const line = topPrerequisite({ ...READY, member: false, placePartnered: true, forfeited });
       expect(line?.text).toContain("lands with the next release");
       expect(line?.text).not.toMatch(/\bbelow\b/);
     }
@@ -472,8 +480,8 @@ describe("the ladder's score still agrees with promotionScore over the new field
   it("for every combination of member × org flags × connect × rails × level × forfeit", () => {
     let cases = 0;
     for (const member of [true, false]) {
-      for (const orgMesitaPay of [true, false, null, undefined] as const) {
-        for (const orgPartnered of [true, false, null] as const) {
+      for (const placeMesitaPay of [true, false, null, undefined] as const) {
+        for (const placePartnered of [true, false, null] as const) {
           for (const connectLoading of [true, false]) {
             for (const connect of [{ kind: "none" }, { kind: "ready" }] as const) {
               for (const mesita_pay of [true, false]) {
@@ -483,8 +491,8 @@ describe("the ladder's score still agrees with promotionScore over the new field
                       const input: LadderInput = {
                         ...BASE,
                         member,
-                        orgMesitaPay,
-                        orgPartnered,
+                        placeMesitaPay,
+                        placePartnered,
                         connectLoading,
                         connect,
                         forfeited,
@@ -617,10 +625,10 @@ describe("no \"free\" claim survives in the partnership's copy (MESITA-1867)", (
 // console once collapsed `undefined` to `false` — a stale payload told a
 // paying org's place to subscribe again. Absent is unknown, never off.
 describe("an absent org flag is unknown, never off", () => {
-  it("orgFlag maps undefined/null to null and keeps booleans", () => {
-    expect(orgFlag(undefined)).toBeNull();
-    expect(orgFlag(null)).toBeNull();
-    expect(orgFlag(true)).toBe(true);
-    expect(orgFlag(false)).toBe(false);
+  it("tierFlag maps undefined/null to null and keeps booleans", () => {
+    expect(tierFlag(undefined)).toBeNull();
+    expect(tierFlag(null)).toBeNull();
+    expect(tierFlag(true)).toBe(true);
+    expect(tierFlag(false)).toBe(false);
   });
 });

@@ -673,8 +673,8 @@ export type Database = {
           currency: string
           expires_at: string
           id: string
-          organization_id: string
           paid_cents: number
+          place_id: string
           spent_cents: number
           stripe_payment_intent_id: string | null
         }
@@ -686,8 +686,8 @@ export type Database = {
           currency?: string
           expires_at: string
           id?: string
-          organization_id: string
           paid_cents: number
+          place_id: string
           spent_cents?: number
           stripe_payment_intent_id?: string | null
         }
@@ -699,8 +699,8 @@ export type Database = {
           currency?: string
           expires_at?: string
           id?: string
-          organization_id?: string
           paid_cents?: number
+          place_id?: string
           spent_cents?: number
           stripe_payment_intent_id?: string | null
         }
@@ -713,10 +713,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "credit_lots_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "credit_lots_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -787,25 +787,7 @@ export type Database = {
         }
         Relationships: []
       }
-      nearby_google_attempts: {
-        Row: {
-          created_at: string
-          id: number
-          ip_hash: string
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          ip_hash: string
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          ip_hash?: string
-        }
-        Relationships: []
-      }
-      org_plans: {
+      membership_plans: {
         Row: {
           created_at: string
           currency: string
@@ -832,214 +814,21 @@ export type Database = {
         }
         Relationships: []
       }
-      organization_guest_customers: {
-        Row: {
-          consumer_id: string
-          created_at: string
-          organization_id: string
-          stripe_customer_id: string
-        }
-        Insert: {
-          consumer_id: string
-          created_at?: string
-          organization_id: string
-          stripe_customer_id: string
-        }
-        Update: {
-          consumer_id?: string
-          created_at?: string
-          organization_id?: string
-          stripe_customer_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_guest_customers_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_guest_customers_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organization_invites: {
-        Row: {
-          claimed_at: string | null
-          claimed_by: string | null
-          created_at: string
-          created_by: string
-          email: string
-          expires_at: string
-          id: string
-          organization_id: string
-          role: Database["public"]["Enums"]["member_role"]
-          token: string
-        }
-        Insert: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by: string
-          email: string
-          expires_at?: string
-          id?: string
-          organization_id: string
-          role?: Database["public"]["Enums"]["member_role"]
-          token: string
-        }
-        Update: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by?: string
-          email?: string
-          expires_at?: string
-          id?: string
-          organization_id?: string
-          role?: Database["public"]["Enums"]["member_role"]
-          token?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_invites_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organization_members: {
+      nearby_google_attempts: {
         Row: {
           created_at: string
-          id: string
-          manager_id: string
-          organization_id: string
-          role: Database["public"]["Enums"]["member_role"]
+          id: number
+          ip_hash: string
         }
         Insert: {
           created_at?: string
-          id?: string
-          manager_id: string
-          organization_id: string
-          role?: Database["public"]["Enums"]["member_role"]
+          id?: never
+          ip_hash: string
         }
         Update: {
           created_at?: string
-          id?: string
-          manager_id?: string
-          organization_id?: string
-          role?: Database["public"]["Enums"]["member_role"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_members_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "managers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_members_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organization_payment_accounts: {
-        Row: {
-          charges_enabled: boolean
-          country: string | null
-          created_at: string
-          details_submitted: boolean
-          disabled_reason: string | null
-          livemode: boolean
-          organization_id: string
-          payouts_enabled: boolean
-          requirements_due: Json
-          stripe_account_id: string
-          updated_at: string
-        }
-        Insert: {
-          charges_enabled?: boolean
-          country?: string | null
-          created_at?: string
-          details_submitted?: boolean
-          disabled_reason?: string | null
-          livemode?: boolean
-          organization_id: string
-          payouts_enabled?: boolean
-          requirements_due?: Json
-          stripe_account_id: string
-          updated_at?: string
-        }
-        Update: {
-          charges_enabled?: boolean
-          country?: string | null
-          created_at?: string
-          details_submitted?: boolean
-          disabled_reason?: string | null
-          livemode?: boolean
-          organization_id?: string
-          payouts_enabled?: boolean
-          requirements_due?: Json
-          stripe_account_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_payment_accounts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: true
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      organizations: {
-        Row: {
-          created_at: string
-          currency: string
-          id: string
-          legal_name: string | null
-          mesita_pay_enabled: boolean
-          name: string
-          partnered: boolean
-          rfc: string | null
-          stripe_billing_customer_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          id?: string
-          legal_name?: string | null
-          mesita_pay_enabled?: boolean
-          name: string
-          partnered?: boolean
-          rfc?: string | null
-          stripe_billing_customer_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          id?: string
-          legal_name?: string | null
-          mesita_pay_enabled?: boolean
-          name?: string
-          partnered?: boolean
-          rfc?: string | null
-          stripe_billing_customer_id?: string | null
-          updated_at?: string
+          id?: never
+          ip_hash?: string
         }
         Relationships: []
       }
@@ -1050,7 +839,7 @@ export type Database = {
           currency: string
           current_period_end: string | null
           id: string
-          organization_id: string
+          place_id: string
           plan_key: string
           price_cents: number | null
           state: string
@@ -1064,7 +853,7 @@ export type Database = {
           currency?: string
           current_period_end?: string | null
           id?: string
-          organization_id: string
+          place_id: string
           plan_key: string
           price_cents?: number | null
           state: string
@@ -1078,7 +867,7 @@ export type Database = {
           currency?: string
           current_period_end?: string | null
           id?: string
-          organization_id?: string
+          place_id?: string
           plan_key?: string
           price_cents?: number | null
           state?: string
@@ -1088,17 +877,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "partner_memberships_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "partner_memberships_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "partner_memberships_plan_key_fkey"
             columns: ["plan_key"]
             isOneToOne: false
-            referencedRelation: "org_plans"
+            referencedRelation: "membership_plans"
             referencedColumns: ["key"]
           },
         ]
@@ -1303,6 +1092,42 @@ export type Database = {
         }
         Relationships: []
       }
+      place_guest_customers: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          place_id: string
+          stripe_customer_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          place_id: string
+          stripe_customer_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          place_id?: string
+          stripe_customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_guest_customers_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_guest_customers_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_invites: {
         Row: {
           claimed_at: string | null
@@ -1490,6 +1315,56 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_payment_accounts: {
+        Row: {
+          charges_enabled: boolean
+          country: string | null
+          created_at: string
+          details_submitted: boolean
+          disabled_reason: string | null
+          livemode: boolean
+          payouts_enabled: boolean
+          place_id: string
+          requirements_due: Json
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          livemode?: boolean
+          payouts_enabled?: boolean
+          place_id: string
+          requirements_due?: Json
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          livemode?: boolean
+          payouts_enabled?: boolean
+          place_id?: string
+          requirements_due?: Json
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_payment_accounts_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2120,21 +1995,24 @@ export type Database = {
           free_rate: number | null
           id: string
           last_strike_at: string | null
+          legal_name: string | null
           listing_type: Database["public"]["Enums"]["listing_type"]
           monthly_promo_cap: number | null
-          organization_id: string | null
+          partnered: boolean
           plan: Database["public"]["Enums"]["plan"]
           plan_forfeited_at: string | null
           plan_live_at: string | null
           premium_rate: number | null
           promo_paused_until: string | null
           reward_lane_pending_review_at: string | null
+          rfc: string | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
           slug: string
           staff_channel_pinged_at: string | null
           state: Database["public"]["Enums"]["place_state"]
           strike_count: number
+          stripe_billing_customer_id: string | null
           updated_at: string
           welcome_free_rate: number | null
           welcome_premium_rate: number | null
@@ -2154,21 +2032,24 @@ export type Database = {
           free_rate?: number | null
           id: string
           last_strike_at?: string | null
+          legal_name?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           monthly_promo_cap?: number | null
-          organization_id?: string | null
+          partnered?: boolean
           plan?: Database["public"]["Enums"]["plan"]
           plan_forfeited_at?: string | null
           plan_live_at?: string | null
           premium_rate?: number | null
           promo_paused_until?: string | null
           reward_lane_pending_review_at?: string | null
+          rfc?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug: string
           staff_channel_pinged_at?: string | null
           state?: Database["public"]["Enums"]["place_state"]
           strike_count?: number
+          stripe_billing_customer_id?: string | null
           updated_at?: string
           welcome_free_rate?: number | null
           welcome_premium_rate?: number | null
@@ -2188,21 +2069,24 @@ export type Database = {
           free_rate?: number | null
           id?: string
           last_strike_at?: string | null
+          legal_name?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           monthly_promo_cap?: number | null
-          organization_id?: string | null
+          partnered?: boolean
           plan?: Database["public"]["Enums"]["plan"]
           plan_forfeited_at?: string | null
           plan_live_at?: string | null
           premium_rate?: number | null
           promo_paused_until?: string | null
           reward_lane_pending_review_at?: string | null
+          rfc?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug?: string
           staff_channel_pinged_at?: string | null
           state?: Database["public"]["Enums"]["place_state"]
           strike_count?: number
+          stripe_billing_customer_id?: string | null
           updated_at?: string
           welcome_free_rate?: number | null
           welcome_premium_rate?: number | null
@@ -2213,13 +2097,6 @@ export type Database = {
             columns: ["claimed_by"]
             isOneToOne: false
             referencedRelation: "managers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "places_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -2987,7 +2864,7 @@ export type Database = {
         Args: {
           p_amount_cents: number
           p_consumer_id: string
-          p_organization_id: string
+          p_place_id: string
           p_ticket_id: string
         }
         Returns: Json
@@ -2998,12 +2875,8 @@ export type Database = {
         Args: { p_gift_id: string; p_sender_id: string }
         Returns: Json
       }
-      claim_place_into_org: {
-        Args: {
-          p_claimer: string
-          p_organization_id: string
-          p_place_id: string
-        }
+      claim_place: {
+        Args: { p_claimer: string; p_place_id: string }
         Returns: Json
       }
       close_place_enrichment_run: {
@@ -3027,8 +2900,8 @@ export type Database = {
           p_currency: string
           p_expiry_days: number
           p_note: string
-          p_organization_id: string
           p_paid_cents: number
+          p_place_id: string
           p_sender_id: string
           p_stripe_payment_intent_id: string
         }
@@ -3041,8 +2914,8 @@ export type Database = {
           p_consumer_id: string
           p_currency: string
           p_expires_at: string
-          p_organization_id: string
           p_paid_cents: number
+          p_place_id: string
           p_stripe_payment_intent_id: string
         }
         Returns: Json
@@ -3052,9 +2925,9 @@ export type Database = {
       get_credit_spend_report: {
         Args: never
         Returns: {
-          organization_id: string
-          organization_name: string
           paid_method: string
+          place_id: string
+          place_name: string
           spend_cents: number
           spend_count: number
         }[]
@@ -3082,7 +2955,6 @@ export type Database = {
           run_id: string
         }[]
       }
-      org_mesita_pay_enabled: { Args: { p_org_id: string }; Returns: boolean }
       queue_due_place_enrichments: { Args: never; Returns: number }
       redeem_credit_gift: {
         Args: { p_claimer_id: string; p_code_hash: string }
@@ -3092,10 +2964,7 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: undefined
       }
-      release_place_from_org: {
-        Args: { p_organization_id: string; p_place_id: string }
-        Returns: Json
-      }
+      release_place: { Args: { p_place_id: string }; Returns: Json }
       reverse_credit_lot: {
         Args: {
           p_amount_cents: number
@@ -3114,7 +2983,7 @@ export type Database = {
         Args: {
           p_amount_cents: number
           p_consumer_id: string
-          p_organization_id: string
+          p_place_id: string
           p_reference: string
         }
         Returns: Json

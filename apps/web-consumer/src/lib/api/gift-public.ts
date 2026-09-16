@@ -20,7 +20,7 @@ const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 export type GiftPreview =
   | {
     state: "unclaimed";
-    organizationName: string;
+    placeName: string;
     paidCents: number;
     bonusCents: number;
     creditedCents: number;

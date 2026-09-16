@@ -1,24 +1,38 @@
 // Supabase Edge Function — business-web-list-places
 //
 // Three scopes, one endpoint:
-//   scope: "all"    — THE CONSOLE'S LIST (MESITA-1614): everything an
-//                     organization can act on — what it holds AND what it
-//                     could claim, in one page. Requires organizationId and
-//                     org membership, exactly like "org".
-//   scope: "org"    — the places an organization holds (caller must be in it)
-//   scope: "public" — the PUBLIC POOL, claimable by any organization
+//   scope: "all"    — THE CONSOLE'S LIST (MESITA-1614): everything the caller
+//                     can act on — what they hold AND what they could claim,
+//                     in one page.
+//   scope: "mine"   — the places the caller holds (their place_members rows)
+//   scope: "public" — the PUBLIC POOL, claimable by any business account
+//
+// THE SCOPE USED TO NAME AN ORGANIZATION (MESITA-1892). `scope:"org"` took an
+// `organizationId`, proved membership in it, and filtered on
+// `places.organization_id`. The organization layer is gone: the caller's own
+// `place_members` rows ARE the portfolio, so the scope needs no id at all and
+// is named for whose places it returns. `scope:"mine"` is the same query the
+// console always meant.
 //
 // "all" EXISTS BECAUSE OWNED IS A STATE. The console used to be two screens,
 // and each pre-filtered the fact its own matrix was trying to show: Owned is
-// always true where the query is `.eq(organization_id, org)` and always false
-// where it is `.is(organization_id, null)`. A column that cannot vary is not a
-// column. One list makes Owned — and Partner, and Verified — answer per row.
+// always true in a portfolio query and always false in a pool query. A column
+// that cannot vary is not a column. One list makes Owned — and Partner, and
+// Verified — answer per row.
 //
 // It is also the scope that can afford to tell the truth. `getAuthedUser`
 // accepts ANY bearer token and the backend is a singleton, so scope=public is
 // reachable by every consumer account and withholds Partner / Verified / the
-// intake map for that reason. "all" runs behind `requireOrgRole`, so the
-// caller is a verified business member and every fact ships for every row.
+// intake map for that reason.
+//
+// WHAT PROVES A BUSINESS CALLER NOW. The org check used to do it: you named an
+// organization and we proved you were in it. With no organization to name, the
+// closest place-scoped equivalent is "you hold at least one place" — a
+// `place_members` row, or super-admin. That is NARROWER than the gate it
+// replaces, never wider: an account with no membership anywhere used to be
+// able to create an organization and pass, and now simply reads the pool with
+// the same facts withheld that scope=public withholds. An operator who holds
+// nothing has nothing to compare the pool against anyway.
 //
 // This is the business-side replacement for reading the catalogue through
 // admin-web-search-places, which is super-admin-only: an ordinary business
@@ -29,9 +43,9 @@
 // disagree, a stranger claims a place the listing correctly hid.
 //
 // THE ROW CARRIES THE PLACE, not just its name (MESITA-1562). A row is
-// photo · name · org · states, so the payload ships one thumbnail URL, the
-// holder's NAME, and the state facts — all off columns that are already on
-// the two tables being read. Three rules keep that from getting expensive:
+// photo · name · states, so the payload ships one thumbnail URL and the state
+// facts — all off columns that are already on the two tables being read.
+// Three rules keep that from getting expensive:
 //
 //   1. `photoUrl` is `photos[0]`, ONE string, never the array. PostgREST
 //      cannot slice a text[] in select=, so the array arrives whole and is
@@ -80,6 +94,14 @@
 //      place is held — which is why "all" ships everything even for pool rows.
 //      Getting that backwards would blank half the matrix on the one screen
 //      built to compare the two.
+//
+// THERE IS NO HOLDER NAME ON THE ROW ANY MORE. It used to be the holding
+// organization's `name`, so a row could say who held it without a second
+// request. A place is held by the ACCOUNT that claimed it now, and the only
+// held rows this endpoint ever returns are the caller's own — so a holder
+// name could only ever repeat the caller back at themselves, and joining
+// `managers` to produce one would put another operator's name on a wire that
+// never needed it. `claimedAt` stays: WHEN is still a fact about the place.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -88,8 +110,12 @@ import {
   readJsonOr,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOrgRole } from "../_shared/org-membership.ts";
+import {
+  adminClient,
+  checkSuperAdmin,
+  getAuthedUser,
+  readEFEnv,
+} from "../_shared/auth.ts";
 import { placeIdsWithDirectOwner } from "../_shared/place-claim.ts";
 import { ratesFromPlace, strategyForRates } from "../_shared/promo-strategy.ts";
 import {
@@ -101,14 +127,17 @@ import {
 } from "../_shared/place-state.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import {
+  LIVE_MEMBERSHIP_STATES,
+  MEMBERSHIP_PLAN_KEY,
+} from "../_shared/partner-membership.ts";
+import {
   type FunctionState,
   operatorFunctionStates,
 } from "../_shared/schema-catalog.ts";
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 
 type Body = {
-  scope?: "all" | "org" | "public";
-  organizationId?: string;
+  scope?: "all" | "mine" | "public";
   query?: string;
   limit?: number;
 };
@@ -134,16 +163,44 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const body = await readJsonOr<Body>(req, {});
-  const scope = body.scope === "org" || body.scope === "all"
+  const scope = body.scope === "mine" || body.scope === "all"
     ? body.scope
     : "public";
-  // Everything but the open pool is a MEMBERSHIP read, and both membership
-  // scopes ship the full fact set.
-  const memberScope = scope === "org" || scope === "all";
   const limit = Math.min(Math.max(body.limit ?? 50, 1), MAX_LIMIT);
   const search = (body.query ?? "").trim();
 
   const admin = adminClient(envRes.env);
+
+  // The caller's portfolio, and the pool predicate's owner set. Both are
+  // needed before the query can be shaped, and neither depends on the other.
+  const [myMemberships, superAdmin, directOwners] = await Promise.all([
+    admin
+      .from("place_members")
+      .select("place_id, role")
+      .eq("manager_id", authRes.user.id),
+    checkSuperAdmin(admin, authRes.user),
+    placeIdsWithDirectOwner(admin),
+  ]);
+  if (myMemberships.error) {
+    return json({ ok: false, error: myMemberships.error.message }, 500);
+  }
+  // The caller's own role per place, not just the id set: the console's
+  // Settings and the Team surface both need to know whether THIS reader is an
+  // owner, and the rail draws from the same payload. One read answers both.
+  const myRoleByPlace = new Map<string, "owner" | "editor" | "viewer">();
+  for (
+    const r of (myMemberships.data ?? []) as {
+      place_id: string;
+      role: "owner" | "editor" | "viewer";
+    }[]
+  ) myRoleByPlace.set(r.place_id, r.role);
+  const myPlaceIds = new Set(myRoleByPlace.keys());
+
+  // Everything but the open pool is a MEMBERSHIP read, and both membership
+  // scopes ship the full fact set — to a caller who has proved they are a
+  // business. See "WHAT PROVES A BUSINESS CALLER NOW" in the header.
+  const memberScope = (scope === "mine" || scope === "all") &&
+    (superAdmin || myPlaceIds.size > 0);
 
   let q = admin
     .from("places")
@@ -153,36 +210,34 @@ Deno.serve(async (req) => {
     // boolean anywhere in this schema, it is the strategy those four rates
     // spell, and `zero` IS off.
     .select(
-      `id, state, content_state, organization_id, claimed_at, plan, ` +
+      `id, state, content_state, claimed_at, plan, ` +
         `welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, ` +
-        `place_profiles!inner(${PLACE_PROFILE_EMBED}), organizations(name)`,
+        // WHAT THE ORGANIZATION USED TO CARRY (MESITA-1892). The legal person,
+        // the Partner entitlement and the currency were columns on a row above
+        // the place; they are columns ON it now, so they cost no extra read —
+        // they ride the select that was already happening. Withheld per row
+        // below, not here: a pool row must not leak a venue's RFC.
+        `partnered, legal_name, rfc, currency, ` +
+        `place_profiles!inner(${PLACE_PROFILE_EMBED})`,
     )
     .limit(limit);
 
-  if (memberScope) {
-    const organizationId = body.organizationId;
-    if (!organizationId) {
-      return json(
-        { ok: false, error: `organizationId is required for scope=${scope}` },
-        400,
-      );
+  const mineList = [...myPlaceIds];
+  if (scope === "mine") {
+    if (mineList.length === 0) {
+      return json({ ok: true, scope, places: [] });
     }
-    // Reading an organization's portfolio is a membership fact: any role.
-    const roleRes = await requireOrgRole(admin, authRes.user, organizationId, [
-      "owner",
-      "editor",
-      "viewer",
-    ]);
-    if (!roleRes.ok) return roleRes.response;
-    if (scope === "org") {
-      q = q.eq("organization_id", organizationId);
-    } else {
-      // "all" — held by THIS organization, or held by nobody. PostgREST `or`
-      // takes one string; `is.null` is the null test, not `eq.null`.
-      q = q.or(`organization_id.eq.${organizationId},organization_id.is.null`);
-    }
+    q = q.in("id", mineList);
+  } else if (scope === "all") {
+    // "all" — held by ME, or held by nobody. PostgREST `or` takes one string;
+    // `is.null` is the null test, not `eq.null`. With no memberships there is
+    // no id list to build (`id.in.()` is not valid), and the union collapses
+    // to the pool half.
+    q = mineList.length === 0
+      ? q.is("claimed_at", null)
+      : q.or(`id.in.(${mineList.join(",")}),claimed_at.is.null`);
   } else {
-    q = q.is("organization_id", null);
+    q = q.is("claimed_at", null);
   }
 
   // Escape LIKE wildcards, the way admin-web-search-places does. Raw text
@@ -200,13 +255,16 @@ Deno.serve(async (req) => {
     id: string;
     state: string | null;
     content_state: string | null;
-    organization_id: string | null;
     claimed_at: string | null;
     plan: string | null;
     welcome_free_rate: number | null;
     welcome_premium_rate: number | null;
     free_rate: number | null;
     premium_rate: number | null;
+    partnered: boolean | null;
+    legal_name: string | null;
+    rfc: string | null;
+    currency: string | null;
     place_profiles: {
       name: string;
       address: string | null;
@@ -224,20 +282,30 @@ Deno.serve(async (req) => {
       credits_enabled: boolean | null;
       enrichment: { functions?: Record<string, FunctionState> } | null;
     };
-    organizations: { name: string } | null;
   };
   let rows = (data ?? []) as unknown as Row[];
 
-  // A place with a direct place_members owner is NOT in the pool, even
-  // with organization_id null — it has a real operator who claimed it the
-  // old way. Zero such rows today; the guard is what keeps that true.
-  // The pool predicate, wherever unheld rows appear. A place with a direct
-  // place_members owner is NOT claimable even with organization_id null —
-  // it has a real operator who claimed it the old way. On "all" the filter
-  // must spare this organization's OWN rows, which are held by definition.
+  /** The shared pool predicate, per row: nobody owns it and nobody ever
+   *  claimed it. `claimed_at is null` alone is not enough — a place owned the
+   *  OLD way (created, then verified into an owner row) never passed through
+   *  the pool and would sit in it looking free. */
+  const isHeld = (r: Row) => r.claimed_at !== null || directOwners.has(r.id);
+
+  /** May THIS reader see the held-only facts of THIS place?
+   *
+   *  Narrower than `memberScope` on purpose. `memberScope` asks "has the caller
+   *  proved they are a business", which is enough for commercial facts like
+   *  Partner and Verified. The legal person behind a venue — its RFC, its legal
+   *  name, what it pays Mesita — belongs to the people who hold it, so it is
+   *  gated on a `place_members` row for THAT place. A super-admin holds none
+   *  and sees all, the same bypass every other business endpoint grants. */
+  const canSeeHeldFacts = (id: string) => superAdmin || myPlaceIds.has(id);
+
+  // Wherever unheld rows appear, they must satisfy that predicate. On "all"
+  // the filter must spare the caller's OWN rows, which are held by definition
+  // and would otherwise vanish from their own list.
   if (scope === "public" || scope === "all") {
-    const owned = await placeIdsWithDirectOwner(admin);
-    rows = rows.filter((r) => r.organization_id !== null || !owned.has(r.id));
+    rows = rows.filter((r) => myPlaceIds.has(r.id) || !isHeld(r));
   }
 
   // VERIFIED is ownership PROOF — an approved place_verifications row, the
@@ -270,9 +338,77 @@ Deno.serve(async (req) => {
     }
   }
 
+  // THE BILLING BEHIND `partnered`, for the places the caller actually holds.
+  // At most one live row per place by construction (`partner_memberships_one_live`
+  // is a unique partial index on exactly these two states), so this is a map,
+  // not a list. Best-effort like `verified`: a failed read leaves the map empty
+  // and every row ships `membership: null`, which every consumer already has to
+  // treat as "became a partner some other way" rather than as "not a partner".
+  const heldIds = rows.map((r) => r.id).filter((id) => canSeeHeldFacts(id));
+  const membershipByPlace = new Map<string, {
+    state: string;
+    renewsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  }>();
+  if (heldIds.length > 0) {
+    for (const idPart of chunked(heldIds, ID_CHUNK)) {
+      const { data: ms, error: mErr } = await admin
+        .from("partner_memberships")
+        .select("place_id, state, current_period_end, cancel_at_period_end")
+        .in("place_id", idPart)
+        .in("state", LIVE_MEMBERSHIP_STATES);
+      if (mErr) {
+        console.error("[list-places] partner_memberships:", mErr.message);
+        membershipByPlace.clear();
+        break;
+      }
+      for (
+        const m of (ms ?? []) as {
+          place_id: string;
+          state: string;
+          current_period_end: string | null;
+          cancel_at_period_end: boolean;
+        }[]
+      ) {
+        membershipByPlace.set(m.place_id, {
+          state: m.state,
+          renewsAt: m.current_period_end,
+          cancelAtPeriodEnd: m.cancel_at_period_end === true,
+        });
+      }
+    }
+  }
+
+  // ONE PRICE FOR THE WHOLE CONSOLE, off `membership_plans` — the same row the
+  // Stripe price is provisioned from, so what an owner reads is what Stripe
+  // bills. It is a CATALOG fact, not a place's, so it rides the envelope
+  // rather than every row. It used to reach the console on the organizations
+  // payload; that payload is gone and this is the call that replaced it.
+  let membershipPrice: { priceCents: number; currency: string } | null = null;
+  if (memberScope) {
+    const { data: plan, error: planErr } = await admin
+      .from("membership_plans")
+      .select("price_cents, currency")
+      .eq("key", MEMBERSHIP_PLAN_KEY)
+      .maybeSingle();
+    if (planErr) {
+      console.error("[list-places] membership_plans:", planErr.message);
+    } else if (plan) {
+      const row = plan as { price_cents: number; currency: string };
+      membershipPrice = { priceCents: row.price_cents, currency: row.currency };
+    }
+  }
+
   return json({
     ok: true,
     scope,
+    // THE SHELL'S ENVELOPE (MESITA-1892). These two are console-wide facts, not
+    // facts about any place, and they reached the shell on the organizations
+    // payload until that endpoint was deleted. They ride here because this is
+    // the one call the shell already makes, and a second round trip to learn
+    // whether the Admin row exists would be a round trip per render.
+    isSuperAdmin: superAdmin,
+    membershipPrice,
     places: rows.map((r) => {
       const p = r.place_profiles;
       return {
@@ -280,11 +416,6 @@ Deno.serve(async (req) => {
         name: p.name,
         address: p.address,
         zone: p.zone,
-        organizationId: r.organization_id,
-        // The holder's NAME, so a row can say who holds it without a second
-        // request. Null in the pool — a pooled place is held by nobody, and
-        // the console renders that as "None" rather than inventing a holder.
-        organizationName: r.organizations?.name ?? null,
         claimedAt: r.claimed_at,
         // ONE url. See rule 1 in the header.
         photoUrl: Array.isArray(p.photos) && p.photos.length > 0
@@ -306,11 +437,10 @@ Deno.serve(async (req) => {
         // Created — the identity spine, off the same helper the Place screen
         // and the admin catalog use.
         seeded: isPlaceSeeded(p.google_place_id),
-        // Owned — this place sits in an organization. Constant per scope
-        // today (org lists filter on it, the pool filters on its absence);
-        // shipped anyway so both screens render one column set, and so it
-        // becomes meaningful the moment an unfiltered list exists.
-        owned: r.organization_id !== null,
+        // Owned — somebody holds this place. It is the pool predicate read
+        // the other way round, so the one fact cannot answer differently to
+        // the list and to the claim.
+        owned: isHeld(r),
         // Partner — plan !== free. Withheld on the pool: what an unheld place
         // pays is not a guest's business.
         partner: memberScope ? isPaidPlan(r.plan) : undefined,
@@ -356,6 +486,28 @@ Deno.serve(async (req) => {
         reservations: p.reservations_enabled === true,
         mesitaPay: p.mesita_pay_enabled === true,
         credits: p.credits_enabled === true,
+        // ── HELD ONLY ───────────────────────────────────────────────────
+        //
+        // What the organization row carried, on the place that carries it
+        // now. `undefined`, never null, on a row this reader does not hold:
+        // absent says "not shipped", null would say "read and empty", and the
+        // console renders those differently.
+        ...(canSeeHeldFacts(r.id)
+          ? {
+            myRole: myRoleByPlace.get(r.id),
+            legalName: r.legal_name,
+            rfc: r.rfc,
+            currency: r.currency ?? "MXN",
+            partnered: r.partnered === true,
+            // THE ONE PAY BIT (MESITA-1892). Same column as `mesitaPay`
+            // above, shipped again under the name the held surface reads it
+            // by — the org half was folded into it, so there is one switch
+            // and both names answer from it rather than from two columns
+            // that could disagree.
+            mesitaPayEnabled: p.mesita_pay_enabled === true,
+            membership: membershipByPlace.get(r.id) ?? null,
+          }
+          : {}),
       };
     }),
   });

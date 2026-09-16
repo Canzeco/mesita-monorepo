@@ -8,13 +8,19 @@
 // than double-spending.
 //
 // Gate is credits_enabled (place) AND payCredits (rail) — NOT
-// resolveChargeableOrganizationForCredits from _shared/credits-readiness.ts,
-// which also requires Stripe Connect charge-readiness. That chain answers
-// "can this org receive a NEW Credits purchase" (MESITA-1676); spending an
-// existing balance never touches Stripe at all under at_place, and even
-// under mesita_pay the charge (if any) is computed separately on the net
-// amount. Reusing the buy-readiness chain here would wrongly block spend at
-// an org that accepts Credits but has no live Connect account.
+// resolveChargeablePlaceForCredits from _shared/credits-readiness.ts, which
+// also requires Stripe Connect charge-readiness. That chain answers "can this
+// place receive a NEW Credits purchase" (MESITA-1676); spending an existing
+// balance never touches Stripe at all under at_place, and even under
+// mesita_pay the charge (if any) is computed separately on the net amount.
+// Reusing the buy-readiness chain here would wrongly block spend at a place
+// that accepts Credits but has no live Connect account.
+//
+// ONE PLACE LOOKUP, NOT TWO (MESITA-1892). This used to read the ticket's
+// place AND that place's organization, because the balance being spent hung
+// off the organization and the RPC took its id. credit_lots is the place's
+// now, so the ticket's own place_id is the whole scope: the guest spends what
+// they are owed at the venue they are sitting in.
 //
 // Caller: consumer. Verb: apply. Noun: ticket-credits.
 //
@@ -80,15 +86,14 @@ Deno.serve(async (req) => {
     );
   }
   const placeId = ticket.place_id as string | null;
-  const [place, org] = await Promise.all([
-    admin.from("place_profiles").select("credits_enabled").eq("id", placeId).maybeSingle(),
-    admin.from("places").select("organization_id").eq("id", placeId).maybeSingle(),
-  ]);
+  const place = await admin
+    .from("place_profiles")
+    .select("credits_enabled")
+    .eq("id", placeId)
+    .maybeSingle();
   const creditsEnabled =
     (place.data as { credits_enabled?: boolean } | null)?.credits_enabled === true;
-  const organizationId =
-    (org.data as { organization_id?: string | null } | null)?.organization_id ?? null;
-  if (!creditsEnabled || !organizationId) {
+  if (!placeId || !creditsEnabled) {
     return json(
       { ok: false, code: "not_chargeable", error: "Credits aren't accepted here." },
       409,
@@ -98,7 +103,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin.rpc("apply_ticket_credits", {
     p_ticket_id: ticket.id,
     p_consumer_id: authRes.user.id,
-    p_organization_id: organizationId,
+    p_place_id: placeId,
     p_amount_cents: amountCents,
   });
   if (error) return jsonError(`apply_ticket_credits: ${error.message}`, 500);

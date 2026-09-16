@@ -18,14 +18,14 @@
 // viewer, and this is that tab's writer.
 //
 // JOIN IS NOT FREE ANY MORE (MESITA-1889). `plan=pro` is Mesita Partner, and
-// an organization becomes a Partner by buying the yearly Mesita Membership
+// a place becomes a Partner by buying the yearly Mesita Membership
 // (MESITA-1877). So `join` carries two extra gates that `drop` and `strategy`
-// deliberately do not: the place's holder ORGANIZATION must be `partnered`
-// (409 org_not_partnered), and the caller must be an OWNER of it (403).
+// deliberately do not: the PLACE must be `partnered` (409 place_not_partnered),
+// and the caller must be an OWNER of it (403).
 // Without the first, any editor could hand its place the paid entitlement for
-// nothing; without the second, an editor could spend the organization's
-// membership on a place its owner never chose. The partnered check runs
-// FIRST so a non-owner at a non-partnered org hears the real reason.
+// nothing; without the second, an editor could spend an owner's Membership on
+// a plan the owner never chose. The partnered check runs FIRST so a non-owner
+// at a place that never bought the Membership hears the real reason.
 // Dropping and switching strategy stay at editor — they are the Capabilities
 // tab, and locking them would break it for every editor.
 //
@@ -50,8 +50,8 @@ import {
   getAuthedUser,
   readEFEnv,
   requireEditor,
+  requireOwner,
 } from "../_shared/auth.ts";
-import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
   const { data: current, error: readCurrent } = await admin
     .from("places")
     .select(
-      "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, plan_forfeited_at",
+      "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, plan_forfeited_at, partnered",
     )
     .eq("id", placeId)
     .maybeSingle();
@@ -192,46 +192,40 @@ Deno.serve(async (req) => {
   const actor = authRes.user.email ?? authRes.user.id;
   const patch: Record<string, unknown> = {};
 
-  // The entitlement gate (MESITA-1889). `join` grants plan=pro — Mesita
-  // Partner — and the only thing that buys Partner is the organization's
-  // yearly Mesita Membership. Order matters: the partnered check before the
-  // role check, so a non-owner at a non-partnered org is told what is
-  // actually missing.
+  // The entitlement gate (MESITA-1889, re-scoped by MESITA-1892). `join` grants
+  // plan=pro — Mesita Partner — and the only thing that buys Partner is the
+  // yearly Mesita Membership. It asked the holder ORGANIZATION two questions;
+  // there is no holder above the place any more, so it asks the place the same
+  // two: is it partnered, and does the caller own it.
+  //
+  // ORDER MATTERS, and it survived the re-scope: the partnered check runs
+  // BEFORE the role check, so a non-owner at a place that never bought the
+  // Membership is told what is actually missing.
+  //
+  // WITHOUT THE FIRST an editor could put a place on a paid tier for nothing.
+  // Without the second, an editor could spend an owner's Membership on a plan
+  // the owner never chose. `current` is already read above, and `partnered`
+  // rides that same select, so this costs no extra round trip — which is the
+  // one thing that got simpler when the layer went.
   if (action === "join") {
-    const orgId = await orgIdForPlace(admin, placeId);
-    if (!orgId) {
+    if ((row.partnered as boolean | null) !== true) {
       return json(
         {
           ok: false,
-          code: "org_not_partnered",
-          error: "Only a place held by a Mesita Partner organization can join.",
-        },
-        409,
-      );
-    }
-    const { data: org, error: orgErr } = await admin
-      .from("organizations")
-      .select("partnered")
-      .eq("id", orgId)
-      .maybeSingle();
-    if (orgErr) {
-      return json({ ok: false, error: `org_read: ${orgErr.message}` }, 500);
-    }
-    if ((org as { partnered?: boolean } | null)?.partnered !== true) {
-      return json(
-        {
-          ok: false,
-          code: "org_not_partnered",
+          code: "place_not_partnered",
           error:
-            "This organization is not a Mesita Partner. Buy the Mesita Membership first.",
+            "This place is not a Mesita Partner. Buy the Mesita Membership first.",
         },
         409,
       );
     }
-    const orgRoleRes = await requireOrgRole(admin, authRes.user, orgId, [
-      "owner",
-    ]);
-    if (!orgRoleRes.ok) return orgRoleRes.response;
+    const ownerRes = await requireOwner(
+      admin,
+      authRes.user,
+      placeId,
+      "Only this place's owner can join it to the partnership.",
+    );
+    if (!ownerRes.ok) return ownerRes.response;
   }
 
   if (action === "strategy") {

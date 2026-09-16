@@ -114,8 +114,16 @@ jobs:
             admin-web-update-rewards-config
             admin-web-update-verification-config
             admin-web-update-visits-config
-            business-web-set-org-partnership
+            business-web-accept-org-invite
+            business-web-add-org-member
             business-web-change-subscription
+            business-web-create-organization
+            business-web-list-org-members
+            business-web-list-organizations
+            business-web-remove-org-member
+            business-web-set-org-partnership
+            business-web-update-org-member-role
+            business-web-update-organization
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"

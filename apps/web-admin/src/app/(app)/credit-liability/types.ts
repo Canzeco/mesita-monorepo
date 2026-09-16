@@ -14,21 +14,21 @@ export type CreditLiabilityByCurrency = {
   lotCount: number;
 };
 
-export type CreditLiabilityByOrganization = {
-  organizationId: string;
-  organizationName: string;
+export type CreditLiabilityByPlace = {
+  placeId: string;
+  placeName: string;
   currency: string;
   issuedCents: number;
   outstandingCents: number;
   lotCount: number;
-  /** true when a lot's own currency disagrees with its organization's —
-   *  nothing upstream enforces the two match; this surfaces the drift. */
+  /** true when a lot's own currency disagrees with its place's — nothing
+   *  upstream enforces the two match; this surfaces the drift. */
   currencyMismatch: boolean;
 };
 
 export type CreditLiability = {
   byCurrency: CreditLiabilityByCurrency[];
-  byOrganization: CreditLiabilityByOrganization[];
+  byPlace: CreditLiabilityByPlace[];
   /** null = the forfeit-vs-return decision is still open; the expiry sweep
    *  is a documented no-op until this is set. 'forfeit' | 'return_paid'. */
   expiryDisposition: string | null;

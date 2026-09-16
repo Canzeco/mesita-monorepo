@@ -2,9 +2,15 @@
 
 // Claim and release — one button, wherever a place is shown.
 //
-// Both lists and the Place screen offer the same two moves, so they share
+// The catalogue and the Place screen offer the same two moves, so they share
 // this component and cannot drift apart: the same wording, the same
 // pending copy, the same failure surfaced in the same place.
+//
+// IT CARRIES ONE ID (MESITA-1892). Claim used to post a place AND the
+// organization it was joining, because `claim_place_into_org` needed a target
+// and the caller had to be its owner. `claim_place(p_place_id, p_claimer)`
+// mints the caller's own owner row, so there is one subject and the form has
+// one field.
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -20,14 +26,13 @@ const INITIAL: PlaceActionState = { error: null };
 export function PlaceHoldButton({
   action,
   placeId,
-  organizationId,
   allowed,
 }: {
   action: "claim" | "release";
   placeId: string;
-  organizationId: string;
-  /** False when the caller's org role may not perform this action. The
-   *  button is hidden rather than shown-and-rejected: the EF would 403,
+  /** False when the caller's role may not perform this action — which, since
+   *  MESITA-1892, only Release ever answers: claiming needs no membership.
+   *  The button is hidden rather than shown-and-rejected: the EF would 403,
    *  and offering a control that cannot work is worse than omitting it. */
   allowed: boolean;
 }) {
@@ -37,7 +42,7 @@ export function PlaceHoldButton({
   );
 
   // Tell the rail the portfolio moved. The rail draws its places from the
-  // organization list the SHELL LAYOUT fetched (MESITA-1779), and
+  // viewer the SHELL LAYOUT fetched (MESITA-1779), and
   // `revalidatePath` in the action re-renders the current route, so one
   // explicit `router.refresh()` here is what re-runs that layout and hands
   // the rail the place you just claimed — no client refetch, no reload.
@@ -58,7 +63,6 @@ export function PlaceHoldButton({
   return (
     <form action={formAction} className="shrink-0 text-right">
       <input type="hidden" name="placeId" value={placeId} />
-      <input type="hidden" name="organizationId" value={organizationId} />
       <button
         type="submit"
         disabled={pending}

@@ -3,28 +3,29 @@
 // index.ts so the ranking rule is unit-testable without a live DB — the same
 // split credits-readiness.ts and credits-packages.ts already use.
 //
-// ORG-SCOPED, MIRRORING THE SCHEMA. credit_lots is org-scoped (MESITA-1671):
-// a guest's Credits at one organization are ONE balance no matter how many
-// lots fund it or how many of that org's places they were bought at. This
-// module groups a flat lot list (one consumer's rows, however many
-// organizations they span) into one summary per organization.
+// PLACE-SCOPED, MIRRORING THE SCHEMA. credit_lots is place-scoped
+// (MESITA-1892): a guest's Credits at one venue are ONE balance no matter how
+// many lots fund it. This module groups a flat lot list (one consumer's rows,
+// however many places they span) into one summary per place.
 //
 // BALANCE IS STILL DERIVED, NEVER CACHED. Same rule the schema comment on
 // credit_lots makes: nothing here is written back. `remainingCents` is
 // computed fresh from paid/bonus/spent every time this module runs.
 //
-// THE ORGANIZATION IS THE MONEY BOUNDARY, NOT ALWAYS THE FACE (MESITA-1816).
-// Pato, 2026-09-13: "too complex for one organization to manage multiple
-// places too. It's just too enterprise." The ledger stays org-scoped — the
-// organization is who owes the guest — but while it holds exactly ONE place
-// the guest never needs the word: every balance carries `placeCount` and,
-// at one, that `place` (name and its own photo), so the Wallet can title the
-// card with the place and show the place's art. At two or more the card is
-// the organization's, as before.
+// THE PLACE IS BOTH THE MONEY BOUNDARY AND THE FACE — THE BRANCH IS GONE.
+// MESITA-1816 made a one-place organization's balance wear that place's name
+// and photo, and kept an else-branch for the enterprise case: at two or more
+// places the card fell back to the organization's own identity. Pato,
+// 2026-09-13: "too complex for one organization to manage multiple places
+// too. It's just too enterprise." MESITA-1892 took him at his word and
+// deleted the layer, so the else-branch has no world left to describe —
+// `placeCount` and the nullable `place` collapse into the balance simply
+// BEING a place: who owes the guest, what the card is titled, and whose photo
+// it wears are now one fact, not three that had to be reconciled.
 
 export type CreditLotRow = {
   id: string;
-  organizationId: string;
+  placeId: string;
   paidCents: number;
   bonusCents: number;
   spentCents: number;
@@ -50,23 +51,20 @@ export type CreditLotSummary = {
   expired: boolean;
 };
 
-/** The one place a single-place organization holds, for the card's face. */
-export type CreditBalancePlace = {
-  id: string;
+/** The place's own identity, for the card's face. */
+export type CreditBalanceFace = {
   name: string;
   /** `photos[0]`, ONE string — the same rule business-web-list-places states. Null when the place has none. */
   photoUrl: string | null;
 };
 
-export type CreditOrgBalance = {
-  organizationId: string;
-  organizationName: string;
-  /** How many places the organization holds today. 0 is possible (a place released after the purchase) and renders as the organization. */
-  placeCount: number;
-  /** The organization's ONE place when placeCount === 1, else null. The Wallet wears it as the balance's face (MESITA-1816). */
-  place: CreditBalancePlace | null;
+export type CreditPlaceBalance = {
+  placeId: string;
+  placeName: string;
+  /** The place's `photos[0]`, or null. The Wallet wears it as the balance's face. */
+  photoUrl: string | null;
   currency: string;
-  /** Sum of remainingCents across every lot — spendable, pending or expired. An org with only dead lots still reports what was there, the same continuity the old per-place BalanceCard kept. */
+  /** Sum of remainingCents across every lot — spendable, pending or expired. A place with only dead lots still reports what was there, the same continuity the old per-place BalanceCard kept. */
   totalCents: number;
   /** Sum of remainingCents across lots that are neither pending nor expired: spendable right now. */
   spendableCents: number;
@@ -78,7 +76,7 @@ export type CreditOrgBalance = {
   nearestExpiryAt: string | null;
   /** Soonest activatesAt among pending lots, or null when none are pending. Drives "activates in Nh". */
   nearestActivationAt: string | null;
-  /** Whether Buy would still work at this organization today (organizationsAcceptingCredits). A balance renders regardless — this only gates the "buy more" affordance. */
+  /** Whether Buy would still work at this place today (placesAcceptingCredits). A balance renders regardless — this only gates the "buy more" affordance. */
   acceptsMoreCredits: boolean;
   /** Newest first. */
   lots: CreditLotSummary[];
@@ -101,30 +99,30 @@ export function summarizeLot(row: CreditLotRow, nowMs: number): CreditLotSummary
   };
 }
 
-/** Every place an organization holds, name-sorted; the caller builds it from
- *  one `places` read across all the organizations on the page. */
-export type OrgPlaces = ReadonlyMap<string, readonly CreditBalancePlace[]>;
+/** Name and photo per place, built by the caller from ONE place_profiles read
+ *  across every place on the page. A place missing here still gets a balance —
+ *  money the guest is owed never depends on the face resolving. */
+export type PlaceFaces = ReadonlyMap<string, CreditBalanceFace>;
 
-export function groupCreditLotsByOrganization(
+export function groupCreditLotsByPlace(
   rows: CreditLotRow[],
-  orgNames: ReadonlyMap<string, string>,
+  faces: PlaceFaces,
   acceptsMore: ReadonlySet<string>,
   nowMs: number,
-  orgPlaces: OrgPlaces = new Map(),
-): CreditOrgBalance[] {
-  const byOrg = new Map<string, CreditLotSummary[]>();
-  const currencyByOrg = new Map<string, string>();
+): CreditPlaceBalance[] {
+  const byPlace = new Map<string, CreditLotSummary[]>();
+  const currencyByPlace = new Map<string, string>();
   for (const row of rows) {
-    const list = byOrg.get(row.organizationId) ?? [];
+    const list = byPlace.get(row.placeId) ?? [];
     list.push(summarizeLot(row, nowMs));
-    byOrg.set(row.organizationId, list);
-    if (!currencyByOrg.has(row.organizationId)) {
-      currencyByOrg.set(row.organizationId, row.currency);
+    byPlace.set(row.placeId, list);
+    if (!currencyByPlace.has(row.placeId)) {
+      currencyByPlace.set(row.placeId, row.currency);
     }
   }
 
-  const out: CreditOrgBalance[] = [];
-  for (const [organizationId, lots] of byOrg) {
+  const out: CreditPlaceBalance[] = [];
+  for (const [placeId, lots] of byPlace) {
     let totalCents = 0;
     let spendableCents = 0;
     let pendingCents = 0;
@@ -143,20 +141,19 @@ export function groupCreditLotsByOrganization(
         nearestExpiryMs = Math.min(nearestExpiryMs, Date.parse(lot.expiresAt));
       }
     }
-    const places = orgPlaces.get(organizationId) ?? [];
+    const face = faces.get(placeId) ?? null;
     out.push({
-      organizationId,
-      organizationName: orgNames.get(organizationId) ?? "A Mesita organization",
-      placeCount: places.length,
-      place: places.length === 1 ? places[0] : null,
-      currency: currencyByOrg.get(organizationId) ?? "MXN",
+      placeId,
+      placeName: face?.name ?? "A Mesita place",
+      photoUrl: face?.photoUrl ?? null,
+      currency: currencyByPlace.get(placeId) ?? "MXN",
       totalCents,
       spendableCents,
       pendingCents,
       paidCents,
       nearestExpiryAt: Number.isFinite(nearestExpiryMs) ? new Date(nearestExpiryMs).toISOString() : null,
       nearestActivationAt: Number.isFinite(nearestActivationMs) ? new Date(nearestActivationMs).toISOString() : null,
-      acceptsMoreCredits: acceptsMore.has(organizationId),
+      acceptsMoreCredits: acceptsMore.has(placeId),
       lots: [...lots].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
     });
   }
@@ -164,20 +161,20 @@ export function groupCreditLotsByOrganization(
 }
 
 /**
- * Spendable orgs first, then pending-only, then dead money — the same
+ * Spendable places first, then pending-only, then dead money — the same
  * three-tier "spendable sinks last when expired" rule BalanceList's
- * rankBalances applied per-place, now per-organization, with a middle tier
- * for money that exists but has not matured yet. Ties break on totalCents
- * desc, then name asc, so the order is fully deterministic across pages —
- * required for the offset cursor below to mean the same thing on every call.
+ * rankBalances applied per-place, with a middle tier for money that exists
+ * but has not matured yet. Ties break on totalCents desc, then name asc, so
+ * the order is fully deterministic across pages — required for the offset
+ * cursor below to mean the same thing on every call.
  */
-export function rankOrgBalances(orgs: CreditOrgBalance[]): CreditOrgBalance[] {
-  const tier = (o: CreditOrgBalance) => (o.spendableCents > 0 ? 0 : o.pendingCents > 0 ? 1 : 2);
-  return [...orgs].sort((a, b) => {
+export function rankPlaceBalances(places: CreditPlaceBalance[]): CreditPlaceBalance[] {
+  const tier = (p: CreditPlaceBalance) => (p.spendableCents > 0 ? 0 : p.pendingCents > 0 ? 1 : 2);
+  return [...places].sort((a, b) => {
     const t = tier(a) - tier(b);
     if (t !== 0) return t;
     if (b.totalCents !== a.totalCents) return b.totalCents - a.totalCents;
-    return a.organizationName.localeCompare(b.organizationName);
+    return a.placeName.localeCompare(b.placeName);
   });
 }
 
@@ -192,19 +189,19 @@ export function clampLimit(raw: unknown): number {
 }
 
 /**
- * Offset-style cursor over the already-ranked list. "Twenty orgs" is the
+ * Offset-style cursor over the already-ranked list. "Twenty places" is the
  * named design case this exists for (MESITA-1674's Also) — the contract had
  * no limit before this. Ranking is recomputed once per request over this
- * consumer's own lots, which credit_lots_consumer_org_idx already makes a
+ * consumer's own lots, which credit_lots_consumer_place_idx already makes a
  * cheap indexed scan, so there is no case here for standing up a SQL view or
  * a keyset cursor only this one read would use — an opaque decimal offset is
  * simplest, and correct as long as the caller treats it as opaque.
  */
-export function paginateOrgBalances(
-  ranked: CreditOrgBalance[],
+export function paginatePlaceBalances(
+  ranked: CreditPlaceBalance[],
   cursor: string | null,
   limit: number,
-): { page: CreditOrgBalance[]; nextCursor: string | null } {
+): { page: CreditPlaceBalance[]; nextCursor: string | null } {
   const parsed = cursor ? parseInt(cursor, 10) : 0;
   const offset = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   const page = ranked.slice(offset, offset + limit);

@@ -148,39 +148,67 @@ Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist
 // ── PLACE ROW (places) — MESITA-1284: this table was missing from every
 // ratchet in this file (both this ivory-tower ratchet and the DELETION LAW
 // list below), so a new direct writer/deleter of places went completely
-// unratcheted by CI. Empty on purpose, VERIFIED by running findWriters()
-// against this branch, not assumed: every real write to "places" goes
-// through `_shared/place-doc.ts`'s writePlace() as a parameterized dispatch
-// (`admin.from(args.table)`), which this literal-string scan cannot and
-// should not match — so an empty allowlist here is the correct, current
-// baseline, not an oversight. If this test ever fails, it means a NEW file
-// wrote `.from("places")` directly, bypassing the door.
+// unratcheted by CI. It was EMPTY of real writers until MESITA-1892, VERIFIED
+// by running findWriters() rather than assumed: every real write to "places"
+// went through `_shared/place-doc.ts`'s writePlace() as a parameterized
+// dispatch (`admin.from(args.table)`), which this literal-string scan cannot
+// and should not match.
+//
+// MESITA-1892 PUT REAL WRITERS ON IT, and they are on this list on purpose
+// rather than pushed through the door. The organization layer held four
+// columns — `partnered`, `legal_name`, `rfc`, `stripe_billing_customer_id` —
+// and they landed on `places` when the tenant boundary moved. Three of the
+// four have a writer that needs something writePlace() cannot give it:
+//
+//   • `partnered` is flipped by a GUARDED update that then reports what
+//     actually moved (joined / dropped). writePlace() returns the row it
+//     wrote, not a count of what changed, so the switch would have to
+//     re-derive its own answer — and a switch that re-derives its answer is
+//     a switch that can report a join it did not perform.
+//   • `stripe_billing_customer_id` is claimed by COMPARE-AND-SET
+//     (`.is(col, null)`), which is the whole race guard: two concurrent
+//     checkouts must not mint two Stripe Customers for one place. An
+//     unconditional door write would let the loser overwrite the winner's
+//     anchor, and billing history would fork silently.
+//
+// So the rule this list now states is narrower than "everything goes through
+// the door" and more honest: a raw `.from("places")` write is allowed only
+// where the door would cost a guarantee, and each entry says which one.
 const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [
   // WINDOWING FALSE POSITIVE, verified by reading the source (per this
-  // file's own header rule, not assumed): auth-membership.ts touches
-  // `places` exactly once, at checkMembership's `.from("places")
-  // .select(...)` — a READ, resolving the caller's organization path to a
-  // place. The only `.update()` in the file is the super_admins lazy
-  // user_id backfill 58 lines further down, on a different table; the
-  // scan's character window spans both and reports the file as a writer.
-  // business-web-{claim,release}-place DO write places and are correctly
-  // absent here: they go through _shared/place-doc.ts writePlace().
-  "_shared/auth-membership.ts",
-  // WINDOWING FALSE POSITIVE, verified by reading the source (same rule as
-  // the entry above): business-web-verify-place touches `places` exactly
-  // once, at `.from("places").select("id, organization_id")` — a READ, and
-  // the whole point of it is that the holder comes from the place row
-  // rather than from the caller's request body. It writes nothing there.
-  // The write the scan's window catches is the `.from("place_verifications")
-  // .insert(...)` roughly 40 lines further down, on a different table: the
-  // approved proof row, which is the only thing this function creates.
+  // file's own header rule, not assumed): business-web-verify-place touches
+  // `places` exactly once, and that once is a READ — the point of it being
+  // that the place names its own holder rather than the caller's body naming
+  // one. It writes nothing there. The write the scan's window catches is the
+  // `.from("place_verifications").insert(...)` roughly 40 lines further
+  // down, on a different table: the approved proof row, which is the only
+  // thing this function creates.
   //
   // COST, stated plainly: an allowlist entry exempts the whole FILE, so a
   // future real write to `places` from this function would not be caught
-  // here. That is the same trade the entry above already makes. The
-  // alternative -- spacing the insert past the scan's 2000-char window --
-  // is contorting a handler to satisfy a scanner, which is worse.
+  // here. The alternative -- spacing the insert past the scan's 2000-char
+  // window -- is contorting a handler to satisfy a scanner, which is worse.
   "business-web-verify-place/index.ts",
+  // REAL WRITERS of places.partnered, guarded update + moved count (see the
+  // section comment). The place-scoped switch and the Stripe-driven
+  // entitlement write the same bit from two directions, which is why both
+  // are here and neither owns it alone.
+  "_shared/place-partnership.ts",
+  "_shared/partner-membership.ts",
+  // REAL WRITERS of places.stripe_billing_customer_id, compare-and-set (see
+  // the section comment). `stripe-billing.ts` mints the Customer at
+  // checkout; the webhook fills the same hole from the event, for a
+  // subscription that was created outside that path.
+  "_shared/stripe-billing.ts",
+  "stripe-webhook-handle-event/partner-membership.ts",
+  // REAL WRITER of places.legal_name / places.rfc. NOT through writePlace()
+  // for one reason: the 23505 from `places_rfc_unique` has to reach the
+  // handler as an error OBJECT so `isDuplicateRfcError` can narrow it by
+  // constraint name and answer with the one sentence an owner can act on. A
+  // door returning `{ ok: false, error: string }` has already flattened the
+  // code away, and every other unique index on `places` would then read as
+  // "RFC taken".
+  "business-web-update-legal-identity/index.ts",
 ];
 
 Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () => {

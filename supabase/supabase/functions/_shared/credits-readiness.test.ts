@@ -1,17 +1,16 @@
-// resolveChargeableOrganizationForCredits is the ONE place the Credits
-// readiness chain is computed (MESITA-1676) — mirrors
-// mesita-pay-readiness.test.ts's fixture shape exactly.
+// resolveChargeablePlaceForCredits is the ONE place the Credits readiness
+// chain is computed (MESITA-1676, re-scoped to the place by MESITA-1892) —
+// mirrors mesita-pay-readiness.test.ts's fixture shape exactly.
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
-  organizationsAcceptingCredits,
-  resolveChargeableOrganizationForCredits,
+  placesAcceptingCredits,
+  resolveChargeablePlaceForCredits,
 } from "./credits-readiness.ts";
 
 type Fixture = {
   place?: { credits_enabled: boolean } | null;
-  organizationId?: string | null;
   account?:
     | { stripe_account_id: string; charges_enabled: boolean; details_submitted: boolean }
     | null;
@@ -29,14 +28,6 @@ function fakeAdmin(fx: Fixture): SupabaseClient {
     maybeSingle: () => {
       if (chain._table === "place_profiles") {
         return Promise.resolve({ data: fx.place ?? null, error: null });
-      }
-      if (chain._table === "places") {
-        return Promise.resolve({
-          data: fx.organizationId === undefined
-            ? null
-            : { organization_id: fx.organizationId },
-          error: null,
-        });
       }
       return Promise.resolve({ data: fx.account ?? null, error: null });
     },
@@ -57,7 +48,7 @@ Deno.test("payCredits=false short-circuits before any query", async () => {
       throw new Error("should not query");
     },
   } as unknown as SupabaseClient;
-  const res = await resolveChargeableOrganizationForCredits(admin, false, "place_1");
+  const res = await resolveChargeablePlaceForCredits(admin, false, "place_1");
   assertEquals(res, null);
   assertEquals(queried, false);
 });
@@ -65,67 +56,62 @@ Deno.test("payCredits=false short-circuits before any query", async () => {
 Deno.test("no placeId -> null", async () => {
   const admin = fakeAdmin({});
   assertEquals(
-    await resolveChargeableOrganizationForCredits(admin, true, null),
+    await resolveChargeablePlaceForCredits(admin, true, null),
     null,
   );
 });
 
-Deno.test("credits_enabled=false -> null, org never checked", async () => {
+Deno.test("credits_enabled=false -> null, the account is never checked", async () => {
   const admin = fakeAdmin({ place: { credits_enabled: false } });
   assertEquals(
-    await resolveChargeableOrganizationForCredits(admin, true, "place_1"),
+    await resolveChargeablePlaceForCredits(admin, true, "place_1"),
     null,
   );
 });
 
-Deno.test("no organization (pooled place) -> null", async () => {
-  const admin = fakeAdmin({
-    place: { credits_enabled: true },
-    organizationId: null,
-  });
+Deno.test("no connected account on the place -> null", async () => {
+  const admin = fakeAdmin({ place: { credits_enabled: true }, account: null });
   assertEquals(
-    await resolveChargeableOrganizationForCredits(admin, true, "place_1"),
+    await resolveChargeablePlaceForCredits(admin, true, "place_1"),
     null,
   );
 });
 
-Deno.test("organization has an account but it's not charge-ready -> null", async () => {
+Deno.test("the place has an account but it's not charge-ready -> null", async () => {
   const admin = fakeAdmin({
     place: { credits_enabled: true },
-    organizationId: "org_1",
     account: { stripe_account_id: "acct_1", charges_enabled: false, details_submitted: true },
   });
   assertEquals(
-    await resolveChargeableOrganizationForCredits(admin, true, "place_1"),
+    await resolveChargeablePlaceForCredits(admin, true, "place_1"),
     null,
   );
 });
 
-Deno.test("full chain ready -> the organization + connected account id", async () => {
+Deno.test("full chain ready -> the place + connected account id", async () => {
   const admin = fakeAdmin({
     place: { credits_enabled: true },
-    organizationId: "org_1",
     account: { stripe_account_id: "acct_1", charges_enabled: true, details_submitted: true },
   });
   assertEquals(
-    await resolveChargeableOrganizationForCredits(admin, true, "place_1"),
-    { organizationId: "org_1", connectedAccountId: "acct_1" },
+    await resolveChargeablePlaceForCredits(admin, true, "place_1"),
+    { placeId: "place_1", connectedAccountId: "acct_1" },
   );
 });
 
-// ── organizationsAcceptingCredits: the ANY-place org fact ──────────────────
-// (MESITA-1674's "Also": a place-scoped bit becoming an org fact.)
+// ── placesAcceptingCredits: the same three legs, for a list ────────────────
+// There is no aggregation left to get wrong. MESITA-1674 had to decide
+// whether ANY or ALL of an organization's places made the ORG an acceptor;
+// with the layer gone (MESITA-1892) a place answers only for itself.
 
 type BulkFixture = {
-  places?: { id: string; organization_id: string | null }[];
   acceptors?: { id: string }[];
-  accounts?: { organization_id: string; charges_enabled: boolean; details_submitted: boolean }[];
+  accounts?: { place_id: string; charges_enabled: boolean; details_submitted: boolean }[];
 };
 
 function fakeBulkAdmin(fx: BulkFixture): SupabaseClient {
   const chain = {
     _table: "",
-    _eqCalled: false,
     select() {
       return this;
     },
@@ -133,15 +119,12 @@ function fakeBulkAdmin(fx: BulkFixture): SupabaseClient {
       return this;
     },
     eq() {
-      this._eqCalled = true;
       return this;
     },
     then(resolve: (v: { data: unknown; error: null }) => void) {
       // The query builder is awaited directly (no .maybeSingle()), so this
       // fake is thenable rather than exposing a separate terminal method.
-      if (chain._table === "places") {
-        resolve({ data: fx.places ?? [], error: null });
-      } else if (chain._table === "place_profiles") {
+      if (chain._table === "place_profiles") {
         resolve({ data: fx.acceptors ?? [], error: null });
       } else {
         resolve({ data: fx.accounts ?? [], error: null });
@@ -156,7 +139,7 @@ function fakeBulkAdmin(fx: BulkFixture): SupabaseClient {
   } as unknown as SupabaseClient;
 }
 
-Deno.test("organizationsAcceptingCredits: payCredits=false short-circuits before any query", async () => {
+Deno.test("placesAcceptingCredits: payCredits=false short-circuits before any query", async () => {
   let queried = false;
   const admin = {
     from() {
@@ -164,46 +147,38 @@ Deno.test("organizationsAcceptingCredits: payCredits=false short-circuits before
       throw new Error("should not query");
     },
   } as unknown as SupabaseClient;
-  const out = await organizationsAcceptingCredits(admin, ["org_1"], false);
+  const out = await placesAcceptingCredits(admin, ["place_1"], false);
   assertEquals([...out], []);
   assertEquals(queried, false);
 });
 
-Deno.test("organizationsAcceptingCredits: empty id list short-circuits too", async () => {
+Deno.test("placesAcceptingCredits: empty id list short-circuits too", async () => {
   const admin = { from: () => { throw new Error("should not query"); } } as unknown as SupabaseClient;
-  const out = await organizationsAcceptingCredits(admin, [], true);
+  const out = await placesAcceptingCredits(admin, [], true);
   assertEquals([...out], []);
 });
 
-Deno.test("organizationsAcceptingCredits: ANY one accepting place is enough for the whole org", async () => {
+Deno.test("placesAcceptingCredits: opted in AND charge-ready is the whole rule", async () => {
   const admin = fakeBulkAdmin({
-    places: [
-      { id: "place_1", organization_id: "org_1" },
-      { id: "place_2", organization_id: "org_1" },
-    ],
-    // Only place_1 opted in; place_2 never did.
+    // place_2 never opted in, so it is never even asked about an account.
     acceptors: [{ id: "place_1" }],
-    accounts: [{ organization_id: "org_1", charges_enabled: true, details_submitted: true }],
+    accounts: [{ place_id: "place_1", charges_enabled: true, details_submitted: true }],
   });
-  const out = await organizationsAcceptingCredits(admin, ["org_1"], true);
-  assertEquals([...out], ["org_1"]);
+  const out = await placesAcceptingCredits(admin, ["place_1", "place_2"], true);
+  assertEquals([...out], ["place_1"]);
 });
 
-Deno.test("organizationsAcceptingCredits: a place opting in does not carry a NON-charge-ready org", async () => {
+Deno.test("placesAcceptingCredits: opting in does not carry a NON-charge-ready place", async () => {
   const admin = fakeBulkAdmin({
-    places: [{ id: "place_1", organization_id: "org_1" }],
     acceptors: [{ id: "place_1" }],
-    accounts: [{ organization_id: "org_1", charges_enabled: false, details_submitted: true }],
+    accounts: [{ place_id: "place_1", charges_enabled: false, details_submitted: true }],
   });
-  const out = await organizationsAcceptingCredits(admin, ["org_1"], true);
+  const out = await placesAcceptingCredits(admin, ["place_1"], true);
   assertEquals([...out], []);
 });
 
-Deno.test("organizationsAcceptingCredits: no accepting place anywhere -> empty, no account query needed", async () => {
-  const admin = fakeBulkAdmin({
-    places: [{ id: "place_1", organization_id: "org_1" }],
-    acceptors: [],
-  });
-  const out = await organizationsAcceptingCredits(admin, ["org_1"], true);
+Deno.test("placesAcceptingCredits: no accepting place anywhere -> empty, no account query needed", async () => {
+  const admin = fakeBulkAdmin({ acceptors: [] });
+  const out = await placesAcceptingCredits(admin, ["place_1"], true);
   assertEquals([...out], []);
 });

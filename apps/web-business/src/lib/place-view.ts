@@ -27,7 +27,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   apiGetConsolePlace,
   type ConsolePlaceView,
-} from "@/lib/api/organizations";
+} from "@/lib/api/console";
 import { getPlaceAndRole } from "@/components/place-manage/actions";
 import type { AdminPlace } from "@/components/place-manage/actions";
 
@@ -49,8 +49,8 @@ export const getManagePlace = cache(
 
 /** Which tabs this caller may see on this place — the server's reading of
  *  the ONE matrix in lib/place-tabs (`tabsForAccess`), which the rail applies
- *  to every held place from the viewer's org role (MESITA-1779). A pool place
- *  has no manage payload and gets Profile alone; a place held by another org
+ *  to every held place from the viewer's own role (MESITA-1779). A pool place
+ *  has no manage payload and gets Profile alone; a place held by someone else
  *  never reaches here, because get-place answers 404. */
 export function visibleTabs(
   view: ConsolePlaceView,

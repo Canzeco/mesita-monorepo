@@ -4,18 +4,22 @@
 //
 // THIS IS WHERE THE ROUTE READOUT WENT. The console is driven in a chromeless
 // desktop window, so the address bar — the one thing every browser gives you
-// for free — is not on screen, and "which page is this, with which org?" had
-// no answer anywhere in the product. The old top bar answered it; the rail
+// for free — is not on screen, and "which page is this, about which place?"
+// had no answer anywhere in the product. The old top bar answered it; the rail
 // cannot, because a 240px column has no room for a uuid.
 //
 // So the two halves of the question split by where they belong:
 //   rail    what site is this, what section am I in
 //   header  whose data am I looking at, and what exactly is this URL
 //
-// The crumb mirrors the rail's own nesting (MESITA-1807): the organization
-// first, then the page — or the place, then its view — so the two chrome
-// surfaces never disagree about where you are. Both read ONE scope
-// (lib/use-rail-scope.ts), resolved once in AppShell.
+// The crumb mirrors the rail's own nesting (MESITA-1807): the place, then the
+// page or view it is showing — so the two chrome surfaces never disagree about
+// where you are. Both read ONE scope (lib/use-rail-scope.ts), resolved once in
+// AppShell.
+//
+// ONE SUBJECT (MESITA-1892). The trail used to open with the ORGANIZATION and
+// then name the place under it; there is no organization, so the place is the
+// first crumb on every address that has one.
 //
 // A Link, not a span: an anchor is what makes the browser's own "copy link
 // address" work, which is most of the point of seeing a route at all. It
@@ -29,13 +33,13 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  FLAT_ROUTES,
-  ORG_TARGET_LABEL,
+  PLACE_PAGE_LABEL,
   SHELL_ROUTES,
+  flatPlacePageFromPathname,
   flatViewFromPathname,
-  isOrgTerminalPathname,
-  orgTargetFromPathname,
+  isPlaceTerminalPathname,
   placeIdFromPathname,
+  placePageFromPathname,
 } from "@/lib/console-routes";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
 import type { RailScope } from "@/lib/rail-scope";
@@ -45,46 +49,44 @@ import { useOpenPlace } from "@/components/console/OpenPlace";
 /** The trail, as words. */
 export function crumbsFor(
   pathname: string,
-  names: { orgName: string | null; placeName: string | null },
+  names: { placeName: string | null },
 ): string[] {
   if (pathname === SHELL_ROUTES.account) return ["Account"];
-  if (pathname === SHELL_ROUTES.orgNew) return ["Create organization"];
+  // The catalogue is about no ONE place, which is why it sits above them all.
+  if (pathname === SHELL_ROUTES.places) return ["Places"];
+  if (pathname === SHELL_ROUTES.placesNew) return ["Places", "Add"];
+
   // The flat addresses (MESITA-1832, resolvers since MESITA-1839): they name
   // no subject, so the crumb supplies the one the shell resolved.
-  if (pathname === FLAT_ROUTES.products) {
-    return [...(names.orgName ? [names.orgName] : []), "Products"];
-  }
-  const flat = flatViewFromPathname(pathname);
+  const flatView = flatViewFromPathname(pathname);
+  const flatPage = flatPlacePageFromPathname(pathname);
+  const flat = flatView
+    ? PLACE_TAB_LABEL[flatView]
+    : flatPage
+      ? PLACE_PAGE_LABEL[flatPage]
+      : null;
   if (flat) {
-    const trail = names.orgName ? [names.orgName] : [];
-    if (names.placeName) trail.push(names.placeName);
-    trail.push(PLACE_TAB_LABEL[flat]);
-    return trail;
+    return [...(names.placeName ? [names.placeName] : []), flat];
   }
-  // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE (MESITA-1885), so
-  // `orgTargetFromPathname` answers null for it on purpose — the Products row
-  // must not light there. That leaves it matching nothing below, and a
-  // pathname that matches nothing returns an EMPTY trail: a header with no
-  // crumbs at all, which reads as a page outside the console.
-  //
-  // It gets the ceremony shape — organization · section · leaf — the same one
-  // `/places/new` uses, because that is what it is: a step inside Products.
-  if (isOrgTerminalPathname(pathname)) {
-    return [names.orgName ?? "Organization", ORG_TARGET_LABEL.products, "Terminal"];
-  }
-  const target = orgTargetFromPathname(pathname);
-  if (target) {
-    // The organization's NAME, then the page — every organization address is
-    // a named page now (MESITA-1848), Settings included, so there is no
-    // bare-name target left to special-case.
-    const trail = [names.orgName ?? "Organization"];
-    trail.push(ORG_TARGET_LABEL[target]);
-    if (/\/places\/new\/?$/.test(pathname)) trail.push("Add");
-    return trail;
-  }
+
   if (placeIdFromPathname(pathname)) {
-    const trail = names.orgName ? [names.orgName] : [];
-    trail.push(names.placeName ?? "Place");
+    const trail = [names.placeName ?? "Place"];
+    // TERMINAL IS UNDER `products/` AND IS NOT THE CATALOGUE (MESITA-1885), so
+    // `placePageFromPathname` answers null for it on purpose — the Products
+    // row must not light there. That would leave it matching nothing and
+    // returning a one-crumb trail, so it gets the ceremony shape — place ·
+    // section · leaf — which is what it is: a step inside Products.
+    if (isPlaceTerminalPathname(pathname)) {
+      return [...trail, PLACE_PAGE_LABEL.products, "Terminal"];
+    }
+    const page = placePageFromPathname(pathname);
+    if (page) {
+      trail.push(PLACE_PAGE_LABEL[page]);
+      // Mesita Pay's setup is the one other sub-step, and it reads as its own
+      // page so the rail's Products row stays lit while you stand in it.
+      if (/\/products\/pay\/?$/.test(pathname)) trail.push("Mesita Pay");
+      return trail;
+    }
     const view = placeTabFromPathname(pathname);
     if (view) trail.push(PLACE_TAB_LABEL[view]);
     return trail;
@@ -106,10 +108,7 @@ export function ConsoleHeader({ scope }: { scope: RailScope }) {
       : openPlace?.id === scope.foreignPlaceId
         ? openPlace.name
         : null;
-  const crumbs = crumbsFor(pathname, {
-    orgName: scope.org?.name ?? null,
-    placeName,
-  });
+  const crumbs = crumbsFor(pathname, { placeName });
 
   // What the address bar would have said. The query rides along: `?owned=`
   // and `?connect=` are half the answer on the pages that read them.

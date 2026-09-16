@@ -3,6 +3,10 @@
 //
 // UPDATE-only by stripe_account_id: an account we don't know (not ours, or
 // another universe's) is a DETECTED, acknowledged no-op — never an insert.
+// THE ACCOUNT'S OWN METADATA IS NEVER READ. It says `place_id` since
+// MESITA-1892 and said `organization_id` before, and neither matters here:
+// the mirror row is found by the Stripe account id, which does not change
+// when the tenant model does. That is why a months-old account still lands.
 // Known benign race: the account.updated burst fired by accounts.create can
 // reach us before the EF's row insert commits; the event is then swallowed
 // with its dedupe row retained (only handler THROWS delete it). Harmless —

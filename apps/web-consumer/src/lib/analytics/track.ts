@@ -12,7 +12,7 @@ export type AnalyticsEvent =
   | "ticket_created"
   | "plan_open"
   // MESITA-1674 — the Wallet's real balance list is paginated (twenty
-  // organizations is a named design case), and this is the only new
+  // balances is a named design case), and this is the only new
   // interaction the read adds. NOTE: analytics-events-paired.test.ts's
   // extractor stops at the first literal semicolon after `AnalyticsEvent =`
   // — keep any comment inside this union semicolon-free.

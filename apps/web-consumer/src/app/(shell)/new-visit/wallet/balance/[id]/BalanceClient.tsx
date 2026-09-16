@@ -9,28 +9,27 @@ import {
   WalletScreen,
 } from "@/components/consumer/wallet/WalletScreen";
 import { formatCurrency } from "@/lib/api/profile";
-import type { CreditLot, CreditOrgBalance } from "@/lib/api/credits";
+import type { CreditLot, CreditPlaceBalance } from "@/lib/api/credits";
 import {
-  balanceFace,
+  balanceState,
   formatActivation,
   formatExpiry,
   formatWhen,
   headlineCents,
-  orgBalanceState,
   spendableAtCopy,
 } from "@/lib/credits";
 import { useCreditBalances } from "@/lib/use-credit-balances";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// One organization's Credits, opened (MESITA-1674: real balances now).
+// One place's Credits, opened (MESITA-1674: real balances now).
 //
-// THE ID IN THE URL IS AN ORGANIZATION ID, not a per-lot id — a balance IS
-// an organization's aggregate (credit_lots is org-scoped, MESITA-1671), the
-// same unit the list screen renders one card per. `walletBalancePath` did
-// not change; what it addresses did. THE TITLE IS NOT ALWAYS THE ORGANIZATION
-// (MESITA-1816): a one-place organization's balance is titled with the place
-// and says "spendable at" that place; the organization is named only when
-// it holds two or more — see `balanceFace` in lib/credits.ts.
+// THE ID IN THE URL IS A PLACE ID, not a per-lot id — a balance IS a place's
+// aggregate (credit_lots is place-scoped since MESITA-1892; it was org-scoped
+// from MESITA-1671), the same unit the list screen renders one card per.
+// `walletBalancePath` has never changed; what it addresses has, twice. The
+// title is simply the place now: MESITA-1816's rule that a one-place
+// organization borrows its place's name outlived the organization, and with
+// nothing left to choose between there is no `balanceFace` to ask.
 //
 // IT IS ALSO THE ONLY TERM LEFT THAT CAN CLOSE THE SPEND CONTROLS — this line
 // survives from the pre-1674 file almost verbatim, and the state it describes
@@ -68,8 +67,8 @@ function LotRow({ lot }: { lot: CreditLot }) {
   );
 }
 
-function BalanceBody({ balance, nowMs }: { balance: CreditOrgBalance; nowMs: number }) {
-  const state = orgBalanceState(balance);
+function BalanceBody({ balance, nowMs }: { balance: CreditPlaceBalance; nowMs: number }) {
+  const state = balanceState(balance);
   const headline = headlineCents(balance);
   const daysLeft = balance.nearestExpiryAt
     ? (Date.parse(balance.nearestExpiryAt) - nowMs) / 86_400_000
@@ -116,13 +115,7 @@ function BalanceBody({ balance, nowMs }: { balance: CreditOrgBalance; nowMs: num
           </div>
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground text-xs">Spendable at</dt>
-            <dd className="text-sm font-semibold">
-              {balance.placeCount === 1 && balance.place
-                ? balance.place.name
-                : balance.placeCount >= 2
-                  ? `${balance.organizationName} — any of its ${balance.placeCount} places`
-                  : balance.organizationName}
-            </dd>
+            <dd className="text-sm font-semibold">{balance.placeName}</dd>
           </div>
           {daysLeft !== null && (
             <div className="flex items-center justify-between gap-3">
@@ -153,14 +146,12 @@ function BalanceBody({ balance, nowMs }: { balance: CreditOrgBalance; nowMs: num
   );
 }
 
-export function BalanceClient({ organizationId }: { organizationId: string }) {
+export function BalanceClient({ placeId }: { placeId: string }) {
   const credits = useCreditBalances();
-  const balance =
-    credits.organizations.find((o) => o.organizationId === organizationId) ??
-    null;
+  const balance = credits.balances.find((b) => b.placeId === placeId) ?? null;
 
-  // The requested org may sit past the first page (a deep link, a reload with
-  // more than DEFAULT_PAGE_SIZE organizations already bought). Page through
+  // The requested place may sit past the first page (a deep link, a reload
+  // with more than DEFAULT_PAGE_SIZE balances already bought). Page through
   // automatically until it turns up or the list runs out, rather than making
   // the guest scroll the list first to "warm" this screen.
   useEffect(() => {
@@ -170,7 +161,7 @@ export function BalanceClient({ organizationId }: { organizationId: string }) {
   }, [credits, balance]);
 
   const stillSearching = !balance && (credits.loading || credits.hasMore || credits.loadingMore);
-  const title = balance ? balanceFace(balance).name : "Balance";
+  const title = balance ? balance.placeName : "Balance";
 
   return (
     <WalletScreen title={title}>

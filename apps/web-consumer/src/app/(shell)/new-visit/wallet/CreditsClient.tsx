@@ -17,7 +17,7 @@ import {
   CardsDisclosure,
   useConsumerCards,
 } from "@/components/consumer/me/CardList";
-import type { CreditOrgBalance } from "@/lib/api/credits";
+import type { CreditPlaceBalance } from "@/lib/api/credits";
 import { formatCurrency } from "@/lib/api/profile";
 import { useCreditBalances } from "@/lib/use-credit-balances";
 import {
@@ -87,8 +87,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // underneath it is optional. That fear is the whole reason Pay was cut from
 // the wallet's main actions in the first place.
 //
-// THE DECK IS GONE, THE CARD IS NOT. See BalanceList: org scope, pending lots
-// and twenty balances each break an overlapping deck on their own, but the
+// THE DECK IS GONE, THE CARD IS NOT. See BalanceList: pending lots and twenty
+// balances each break an overlapping deck on their own, but the
 // contrast engineering and the display-face numerals live in `BalanceCard` and
 // are untouched. What was deleted is the pile, not the object.
 //
@@ -178,11 +178,11 @@ export function CreditsClient() {
     else if (cards === "cancelled") toast("Card setup cancelled.");
   }, []);
 
-  const openBalanceCard = (balance: CreditOrgBalance) => {
+  const openBalanceCard = (balance: CreditPlaceBalance) => {
     trackEvent(supabase, "balance_card_tap", {
       balance_cents: balance.spendableCents,
     });
-    router.push(walletBalancePath(balance.organizationId));
+    router.push(walletBalancePath(balance.placeId));
   };
 
   const loadMore = () => {
@@ -192,11 +192,11 @@ export function CreditsClient() {
     void credits.loadMore();
   };
 
-  const balances = credits.organizations;
+  const balances = credits.balances;
   // 0, not Date.now(): calling an impure function during render is rejected
   // outright (react-hooks/purity), and this fallback is never actually
   // shown — useCreditBalances sets nowMs in the same call that sets
-  // `organizations`, so by the time balances.length > 0 renders below, nowMs
+  // `balances`, so by the time balances.length > 0 renders below, nowMs
   // is already real.
   const nowMs = credits.nowMs ?? 0;
 
@@ -242,8 +242,8 @@ export function CreditsClient() {
           // for someone who was given Credits and holds nothing, so a
           // per-balance Redeem is unreachable by definition. Gift is global
           // because gifting is ISSUANCE (MESITA-1677): you buy a balance for
-          // someone else, so it starts by choosing an organization exactly as
-          // Buy does and needs no source balance selected first.
+          // someone else, so it starts by choosing a place exactly as Buy
+          // does and needs no source balance selected first.
           actions={
             <>
               <HeadAction href={CONSUMER_ROUTES.newVisit.walletGift}>

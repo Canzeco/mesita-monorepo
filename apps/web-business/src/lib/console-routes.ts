@@ -13,8 +13,9 @@ import type { PlaceTab } from "@/lib/place-tabs";
 //
 // It rode every href as `?org=<id>` once: a query parameter every link had to
 // carry, every page had to re-resolve, and the layout above the rail could not
-// read at all. Dropping it on ONE link switched a multi-org operator's context
-// out from under them. MESITA-1807 moved it into the path and that stopped.
+// read at all. Dropping it on ONE link switched a multi-place operator's
+// context out from under them. MESITA-1807 moved it into the path and that
+// stopped.
 //
 // MESITA-1832 then moved it OUT of the path again, into two cookies, so the
 // pages could be flat (`/profile`, `/reviews`, …) for the one-place owner the
@@ -33,97 +34,79 @@ import type { PlaceTab } from "@/lib/place-tabs";
 // one hop — the flat address is for bookmarks, typed URLs and Stripe's stored
 // return links.
 //
-// TWO SUBJECTS, AND NEITHER SAYS ITS NAME TWICE (MESITA-1841, MESITA-1842):
+// ── ONE SUBJECT (MESITA-1892) ─────────────────────────────────────────────
 //
-//   /                          the resolver — your current place, else your
-//                              organization, else Create (a 307, never cached)
-//   /account                   the person: you, the org switcher, the place
-//                              switcher. The one page with no scope.
-//   /orgs/new                  Create organization — the ceremony
+// There were two, and half this file was about the other one. `/orgs/<id>/…`
+// held the organization's settings, its catalogue of products, its Stripe
+// account, its customers and its numbers; `/places/<id>/…` held the venue's
+// own views. The organization is gone — `partnered`, `legal_name`, `rfc`, the
+// payment account and the members all live on `places` now — so every one of
+// those addresses became the PLACE's, at the same segment under a different
+// parent. Nothing was merged and nothing was invented; the layer was removed
+// and the addresses fell one level:
 //
-//   /orgs/<id>                 NOT a page: a 307 onto `/settings`, the one
+//   /                          the resolver — your current place, else the
+//                              catalogue (a 307, never cached)
+//   /account                   the person: you, and the way out. The one page
+//                              with no scope, and now the only switcher-free
+//                              one there is.
+//
+//   /places                    THE CATALOGUE — the states matrix, the
+//                              ?owned= filters, Claim and Release. It is not
+//                              about ONE place, which is exactly why it sits
+//                              above them all rather than under one.
+//   /places/new                Add place — the search-and-claim ceremony
+//
+//   /places/<id>               NOT a page: a 307 onto Profile, and the one
 //                              address that catches Stripe's stored
-//                              `?connect=` and hands the query to Payments.
-//   /orgs/<id>/settings       THE ORGANIZATION's own setup — members and
-//                              developers. What you SET, nothing else.
-//            /products         THE CATALOGUE — the Mesita Partner banner and
-//                              the eight product cards, and nothing else
-//            /products/pay     Mesita Pay's own controls: the Stripe account,
+//                              `?connect=` and hands the query to Pay.
+//   /places/<id>/settings      THE PLACE's own setup — who may touch it, and
+//                              how an agent drives it. What you SET.
+//             /products        THE CATALOGUE of products — the Mesita Partner
+//                              banner and the eight product cards
+//             /products/pay    Mesita Pay's own controls: the Stripe account,
 //                              a seam, the switch. A SUB-STEP of the
 //                              catalogue, never a rail row
-//            /places           the whole catalogue: the states matrix, the
-//                              ?owned= filters, Claim and Release
-//            /customers        who keeps coming back (Soon)
-//            /activity         the organization's numbers, by place
-//            /places/new       Add place
-//            /switch?to=       NOT a page: the org switcher's mechanism —
-//                              writes the org cookie, clears the place cookie,
-//                              forwards. A page cannot set a cookie on the way
-//                              through, which is the only reason it exists.
+//             /products/terminal  Mesita Terminal's Soon page
+//             /customers       who keeps coming back (Soon)
+//             /activity        this place's numbers
 //
-//   /places/<id>/profile       THE PLACE, six views
-//              /menus
-//              /reviews
-//              /capabilities   what a guest CAN do here
-//              /rewards        what a guest EARNS here
-//              /admin          super-admin only
+//   /places/<id>/profile       THE PLACE's nine views
+//             /menus /reviews /visits /orders /reservations /pay /credits
+//             /admin           super-admin only
 //
-//   /profile /menus /reviews /capabilities /rewards /admin
-//   /settings /products /customers /activity
+//   /profile /menus /reviews /visits /orders /reservations /pay /credits
+//   /admin /settings /products /customers /activity
 //                              307 onto the address above, resolving the
-//                              remembered place/organization. With nothing
-//                              selected they render the one next step
-//                              (NoPlaceYet) rather than forwarding nowhere.
-//                              ALL TEN ARE ONE ROUTE FILE (`(shell)/[flat]`):
-//                              Next resolves static segments first, so every
-//                              real route still wins and an unknown name 404s.
+//                              remembered place. With nothing selected they
+//                              render the one next step (NoPlaceYet) rather
+//                              than forwarding nowhere. ALL THIRTEEN ARE ONE
+//                              ROUTE FILE (`(shell)/[flat]`): Next resolves
+//                              static segments first, so every real route
+//                              still wins and an unknown name 404s.
 //
-// `/orgs/<id>/organization` IS `/orgs/<id>/settings` (MESITA-1846 → 1848 →
-// 1852 → 1871). The segment existed (MESITA-1846) so that every organization
-// row would be a named address rather than one raw uuid among four names —
-// that reasoning stands and every rename since has kept it. What kept moving
-// is the NAME: `organization` said the group's own noun twice in one column,
-// so MESITA-1852 called it `configuration` — and it called it that, rather
-// than `settings`, for exactly one reason: `/settings` was owned by a
-// PERMANENT legacy redirect onto `/capabilities` (MESITA-1841), so the page it
-// named could never carry a flat twin, and a contract name a config rule
-// shadows is the MESITA-1839 trap that took a live page down for a day.
+// WHAT WENT WITH THE LAYER. `/orgs/new` (there is no legal person to create),
+// `/orgs/<id>/switch` (the switcher's cookie mechanism — one cookie left, and
+// the place switcher is a plain link), and `/accept-org-invite` (its twin
+// `/accept-invite` already existed and takes a `place_invites` token). Every
+// `/orgs/…` address forwards from `next.config.ts`.
 //
-// MESITA-1871 TAKES THE NAME BACK by removing the cause. Pato: *"rename
-// configuration to settings."* The 308 was CHECKED, not assumed —
-// `curl -I business.mesita.ai/settings` answered `308` with
-// `cache-control: public, max-age=0, must-revalidate`, so every browser
-// revalidates before following it and deleting the rule frees the name at
-// once. `/places/<id>/settings` → `/places/<id>/capabilities` STAYS: it is a
-// different path, and still the retired spelling of a place view.
+// `/places` AND `/places/new` ARE LIVE ADDRESSES AGAIN, and freeing them cost
+// two PERMANENT redirect rules. Both forwarded to `/` from MESITA-1807, and a
+// config rule runs BEFORE filesystem routes — so leaving either would make the
+// catalogue and the ceremony unreachable with every check green, which is
+// `/settings` in MESITA-1839 exactly. `legacy-redirects.test.ts` walks every
+// address in this file through that table.
 //
-// `/orgs/<id>/credits` IS GONE TOO (MESITA-1845), and this one MERGED rather
-// than moved: Payments has a rail row again, and Prepaid Credits is the
-// `SoonStrip` at the foot of that page, which is where it lived before
-// MESITA-1841 gave it a room of its own. Both spellings forward, TEMPORARILY —
-// a 308 would cache an answer that has already moved twice.
+// `/places/<id>/settings` AND `/places/<id>/activity` COST TWO MORE, for the
+// same reason and in the same commit: both were redirect sources (a retired
+// place view, and Activity's move up to the organization), and both are the
+// place's own pages now.
 //
-// `/orgs/<id>/payments` IS GONE NOW TOO (MESITA-1869), and Credits' forward
-// follows it onto Products. Payments was a page holding two Soon strips: what
-// it was FOR — what guests paid, and what reached the account — is a reading
-// of a product that is not built, and the two things on it anybody could act
-// on (the Stripe account, the Partner subscription) are PRODUCTS. Pato,
-// 2026-09-15, listing the organization's rows: *"Configuration (here have
-// members shit) · Products (here have partner and all the products to
-// activate, remember that profile is free) · Places · Costumers · Activity."*
-// Payments is not on that list. Its address forwards, TEMPORARILY, for the
-// same reason every rename on this page does.
-//
-// `orgs/[orgId]/layout.tsx` resolves membership ONCE, server-side; a foreign
-// id and a nonexistent id both answer 404, so the path is never an oracle for
-// which organizations exist. The rail derives its scope from the pathname
-// (lib/rail-scope.ts).
-//
-// NOTHING IN next.config.ts MAY SHADOW A LIVE ADDRESS. `/settings` did, for a
-// day (MESITA-1839): a MESITA-1564-era rule forwarded it to `/account`, config
-// redirects run before filesystem routes, and the Settings page was therefore
-// unreachable while CI stayed green. `legacy-redirects.test.ts` walks every
-// address in this file — canonical AND flat — through that table.
+// `places/[id]/layout.tsx` resolves the 404 verdict ONCE, server-side; a place
+// you do not hold and one that does not exist both answer 404, so the path is
+// never an oracle for which places exist. The rail derives its scope from the
+// pathname (lib/rail-scope.ts).
 //
 // `/` is a TEMPORARY redirect, never a permanent one: a 308 would be cached by
 // browsers forever, and where `/` lands depends on which place you opened last.
@@ -131,78 +114,55 @@ import type { PlaceTab } from "@/lib/place-tabs";
 export const SHELL_ROUTES = {
   root: "/",
   account: "/account",
-  orgNew: "/orgs/new",
+  places: "/places",
+  placesNew: "/places/new",
 } as const;
 
-// ── The organization ──────────────────────────────────────────────────────
+// ── The place's pages ─────────────────────────────────────────────────────
 //
-// The organization's pages, in the order the rail lists them under the
-// ORGANIZATION SELECTOR (MESITA-1848). ORG_PAGES, ORG_TARGETS and
-// ORG_RAIL_TARGETS are now ONE list: every organization address is a rail row
-// and every rail row is a real address, so the two cannot drift. Members is
-// not among them — it is CONTENT on Settings (MESITA-1847), not a door.
+// The pages a place has BESIDES its views, in the order the rail lists them.
+// `PLACE_PAGES`, the contract's targets and the rail's targets are ONE list:
+// every page address is a rail row and every rail row is a real address, so
+// the two cannot drift. Members is not among them — it is CONTENT on Settings
+// (MESITA-1847), not a door.
+//
+// `places` LEFT THIS LIST (MESITA-1892) and did not become a place page. The
+// catalogue is the states matrix over every place you hold AND every place
+// you could claim; scoping it under one place would be asking a venue to list
+// its siblings. It is `SHELL_ROUTES.places`, above them all.
+//
+// `credits` IS NOT ONE EITHER (MESITA-1845, and it is a place VIEW since
+// MESITA-1885) — `/places/<id>/credits` is a product view, and this list is
+// the pages that are not views.
 
-/** The segments BENEATH `/orgs/<id>`.
- *
- *  `credits` IS NOT ONE (MESITA-1845). Pato, asked where Credits goes once
- *  Payments has a rail row again: *"merge."* It was a `SoonStrip` at the foot
- *  of Payments until MESITA-1841 spent a row on it; the row is gone and the
- *  strip is back where it came from, so the segment forwards instead of
- *  resolving — TEMPORARILY, because this answer has now moved twice. */
-export const ORG_PAGES = [
+/** The segments BENEATH `/places/<id>` that are PAGES rather than views. */
+export const PLACE_PAGES = [
   "settings",
   "products",
-  "places",
   "customers",
   "activity",
 ] as const;
-export type OrgPage = (typeof ORG_PAGES)[number];
+export type PlacePage = (typeof PLACE_PAGES)[number];
 
-/** Everything the organization addresses. There is no bare-name target any
- *  more (MESITA-1848): the group is HEADED "Organization" by its selector, so
- *  a page repeating that noun was the redundancy this pass has been deleting.
- *  Its page is `settings`. */
-export const ORG_TARGETS = ORG_PAGES;
-export type OrgTarget = (typeof ORG_TARGETS)[number];
-
-export const ORG_TARGET_LABEL: Record<OrgTarget, string> = {
+export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   settings: "Settings",
   products: "Products",
-  places: "Places",
   customers: "Customers",
   activity: "Activity",
 };
 
-/** The FIVE the rail lists, in Pato's order (MESITA-1869).
- *
- *  CUSTOMERS IS NEW, and it is a live row, not a dimmed one: Pato's list
- *  writes it "(Soon)", and MESITA-1833 is his own law that the rail may never
- *  paint a working row as dead. The Soon badge lives on the page.
- *
- *  PRODUCTS TOOK PAYMENTS' PLACE, and its slot in the order — second, right
- *  under Configuration. It is the catalogue: the partnership, the eight
- *  products and the Stripe account. Payments had a row for four issues and
- *  never had a page worth opening.
- *
- *  CREDITS IS NOT HERE, and has no address either: it is a PRODUCT now, a
- *  card in the catalogue. See ORG_PAGES.
- *
- *  PLACES stays the row the place's five views sit under. */
-export const ORG_RAIL_TARGETS = ORG_PAGES;
-export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
-
 // ── THE RAIL, AS ONE ARRAY (MESITA-1879) ──────────────────────────────────
 //
-// ONE PLACE PER ORGANIZATION, and the ontology goes quiet. Pato, 2026-09-15:
-// *"You can now only manage one place for organization … we still have the
-// ontological structure for orgs and places in the future … so hidden keep the
-// org and place it. but i only see it like simpler."*
+// ONE PLACE, and the ontology goes quiet. Pato, 2026-09-15: *"You can now only
+// manage one place for organization … we still have the ontological structure
+// for orgs and places in the future … so hidden keep the org and place it. but
+// i only see it like simpler."*
 //
-// So the two selectors go and the rows flatten into one column at one depth.
-// The organization is still what most of these addresses are ABOUT — Settings,
-// Products, Customers and Activity are all `/orgs/<id>/…` — but an operator
-// who holds exactly one place has no question the word "Organization" answers,
-// and a selector with one option to select is a control over nothing.
+// MESITA-1892 took the last step he was describing: the organization is not
+// hidden any more, it is gone, and every row in this column is about the one
+// place. The rows did not move and the seams did not move — the only thing
+// that changed is that `{ kind: "org" }` became `{ kind: "page" }`, because
+// Settings, Products, Customers and Activity are the PLACE's pages now.
 //
 // WHY SEVEN AND NOT FIVE. Pato drew five, with Products holding everything
 // configurable. At the review gate he took seven: Menus and Reviews came back
@@ -212,31 +172,30 @@ export type OrgRailTarget = (typeof ORG_RAIL_TARGETS)[number];
 // making the work smaller, which is how Pay › Wallet and business `/account`
 // each ate two extra passes.
 //
-// CAPABILITIES, REWARDS, PLACES AND ADMIN KEEP THEIR ADDRESSES AND LOSE THEIR
-// ROWS. Capabilities and Rewards are reached from the product cards that
-// already link into the place (`lib/products.ts`, `PRODUCT_VIEW`); Places from
-// Add place and the zero-place empty state; Admin by typing it. Hiding a row
-// changes NOTHING about access: `tabsForAccess` is still the one matrix and
-// `PlaceTabGate` still 404s a withheld tab.
+// CAPABILITIES, REWARDS, THE CATALOGUE AND ADMIN KEEP THEIR ADDRESSES AND
+// LOSE THEIR ROWS. Capabilities and Rewards are reached from the product cards
+// that already link into the place (`lib/products.ts`, `PRODUCT_VIEW`); the
+// catalogue from Add place and the zero-place empty state; Admin by typing it.
+// Hiding a row changes NOTHING about access: `tabsForAccess` is still the one
+// matrix and `PlaceTabGate` still 404s a withheld tab.
 //
 // THIS ARRAY IS THE ONLY STATEMENT OF THE ROW LIST. The rail renders it, the
 // contract test walks it, and every other mention in a docblock or a plan is
 // prose about it. Two lists is how the rail ended up meaning three different
 // things in one document.
 
-/** A rail row names an organization page, a place view, or a PRODUCT. The
- *  three spaces do not overlap, so the union is unambiguous and one lookup
- *  serves the whole column.
+/** A rail row names a place PAGE, a place VIEW, or a PRODUCT. The three
+ *  spaces do not overlap, so the union is unambiguous and one lookup serves
+ *  the whole column.
  *
- *  A PRODUCT ROW IS NOT A PLACE ROW EVEN WHEN IT OPENS A PLACE VIEW
- *  (MESITA-1885). Five of the eight products are configured on the place and
- *  three are not — Customers is an organization page, Pay's organization half
- *  is another, Terminal is a Soon page — so "product" is the subject and
- *  `productRowHref` is the one function that knows which address each one
- *  actually has. Keying them by `PlaceRailView` would have forced the three
+ *  A PRODUCT ROW IS NOT A VIEW ROW EVEN WHEN IT OPENS A VIEW (MESITA-1885).
+ *  Six of the eight products are configured on a view and two are not —
+ *  Customers is a place page, Terminal is a Soon page — so "product" is the
+ *  subject and `productRowHref` is the one function that knows which address
+ *  each one actually has. Keying them by `PlaceRailView` would have forced the
  *  exceptions into a shape that does not fit them. */
 export type RailRow =
-  | { kind: "org"; target: OrgTarget }
+  | { kind: "page"; target: PlacePage }
   | { kind: "place"; view: PlaceRailView }
   | { kind: "product"; product: ProductKey };
 
@@ -275,11 +234,6 @@ export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 // MENUS AND REVIEWS LEFT. They are the place's own description — Profile —
 // and this rail has room for the place once. Both keep their addresses and
 // every viewer who could open them still can.
-//
-// THIS ARRAY IS THE ONLY STATEMENT OF THE ROW LIST. The rail renders it, the
-// contract test walks it, and every other mention in a docblock or a plan is
-// prose about it. Two lists is how the rail ended up meaning three different
-// things in one document.
 
 /** THE RAIL, in Pato's order and his groups. Account is not here: it is the
  *  person, it sits below the last seam, and it is the one row every state
@@ -288,10 +242,10 @@ export const RAIL_ROWS: readonly RailRow[] = [
   // The business itself. Products stays a row of its own: the catalogue is
   // where an operator COMPARES the eight and buys one, which is a different
   // job from configuring the one they already have.
-  { kind: "org", target: "settings" },
-  { kind: "org", target: "activity" },
-  { kind: "org", target: "products" },
-  // Free, and always on. Profile is the place; Customers is the organization.
+  { kind: "page", target: "settings" },
+  { kind: "page", target: "activity" },
+  { kind: "page", target: "products" },
+  // Free, and always on. Profile is the venue; Customers is its guests.
   { kind: "product", product: "profile" },
   { kind: "product", product: "customers" },
   // At the table.
@@ -311,7 +265,7 @@ export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
   (acc, row, i) => {
     const prev = RAIL_ROWS[i - 1];
     if (!prev) return acc;
-    // A group opens where the SUBJECT changes (business → products), and
+    // A group opens where the SUBJECT changes (pages → products), and
     // again inside the products at Pato's two blank lines.
     const changed = prev.kind !== row.kind;
     const productBreak =
@@ -331,27 +285,30 @@ export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
 //                          profile. Five of them are `ZONE_ROWS` zones — the
 //                          ladder re-cut by product — and Profile is the place
 //                          description it always was.
-//   an organization page   customers. It is about the guests of every place
-//                          the organization holds, so there is no place to
-//                          scope it to.
+//   a place PAGE           customers. It is about the guests, which is a
+//                          reading of the venue rather than a switch on it,
+//                          so it has a page and not a view.
 //   a product sub-page     terminal. No engine, no column, no switch: a
 //                          SoonStrip under `products/`.
 //
-// PAY IS SPLIT ACROSS TWO LEVELS AND THE ROW TAKES THE PLACE'S. The
-// organization's Stripe account and its `mesita_pay_enabled` switch are at
-// `/orgs/<id>/products/pay`; the rung an operator flips per place is on the
-// place. The row points where the work is, and the place view links up.
+// PAY IS STILL SPLIT ACROSS TWO SCREENS AND THE ROW TAKES THE VIEW. The Stripe
+// account and the Mesita Pay switch are at `/places/<id>/products/pay` — the
+// SETUP, reached from the product card; the rung an operator flips day to day
+// is the `pay` view. Both are the place's now (MESITA-1892), so the split is
+// no longer org-versus-place: it is buying a product versus running it, which
+// is the same split every other card makes. The row points where the work is,
+// and the view links up to the setup.
 //
 // `placeHref` is the caller's, because only the rail knows which place is
 // selected — and what to do when none is (the flat twin, which renders the
 // next step rather than forwarding nowhere).
 export function productRowHref(
   product: ProductKey,
-  orgId: string,
+  placeId: string,
   placeHref: (tab: PlaceTab) => string,
 ): string {
-  if (product === "customers") return orgHref(orgId, "customers");
-  if (product === "terminal") return orgTerminalHref(orgId);
+  if (product === "customers") return placePageHref(placeId, "customers");
+  if (product === "terminal") return placeTerminalHref(placeId);
   // Every other product IS a place tab, and shares its spelling with one —
   // `PLACE_TABS` and `PRODUCT_KEYS` agree on all six by construction, which
   // `console-routes.test.ts` asserts in both directions rather than trusting.
@@ -360,95 +317,79 @@ export function productRowHref(
 
 /** Mesita Terminal's page: a Soon strip under `products/`, and a real landing
  *  for the one row that has nothing else to open. */
-export function orgTerminalHref(orgId: string): string {
-  return `${ORGS}/${encodeURIComponent(orgId)}/products/terminal`;
+export function placeTerminalHref(placeId: string): string {
+  return `${placePageHref(placeId, "products")}/terminal`;
 }
 
 /** Is this Terminal's page? ONE reader for the rule, like every other
  *  segment→row question in this file.
  *
- *  It has to be asked separately because `orgTargetFromPathname` answers
+ *  It has to be asked separately because `placePageFromPathname` answers
  *  `null` here ON PURPOSE: `/products/terminal` is not the catalogue, so the
  *  Products row must not light for it. Without this the address would light
  *  NOTHING, which reads as a page outside the console. */
-export function isOrgTerminalPathname(pathname: string): boolean {
-  return /^\/orgs\/[^/]+\/products\/terminal\/?$/.test(pathname);
+export function isPlaceTerminalPathname(pathname: string): boolean {
+  return /^\/places\/[^/]+\/products\/terminal\/?$/.test(pathname);
 }
 
 /** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
- *  second array.
+ *  second array — and with the organization gone it keeps nothing.
  *
- *  It drops the PLACE rows and keeps every organization row. The place rows go
- *  because a place row with no place opens a page about nothing, which is the
- *  "a row lands somewhere real" law (MESITA-1833) failing quietly. The
- *  organization rows stay because each is a real page that works with no place
- *  at all — and because Products is where the eight cards say "Add a place"
- *  and link to the ceremony. A rail with no door to the one thing a new
- *  operator came to do is a worse empty state than a muted row ever was. */
+ *  It used to keep every ORGANIZATION row, because each was a real page that
+ *  worked with no place at all. There is no such row any more: a page of a
+ *  place, a view of a place and a product configured on a place all need one,
+ *  and a row with no subject opens a page about nothing, which is the "a row
+ *  lands somewhere real" law (MESITA-1833) failing quietly.
+ *
+ *  So the predicate changed and the shape did not — still a filter, still one
+ *  array. The door a new operator needs is the Add place row the rail renders
+ *  above these (`SHELL_ROUTES.placesNew`), which is where the pool and the
+ *  ceremony both are. A rail with no door to the one thing a new operator came
+ *  to do is a worse empty state than a muted row ever was. */
 export const ZERO_PLACE_ROWS: readonly RailRow[] = RAIL_ROWS.filter(
-  (r) =>
-    r.kind === "org" ||
-    // THE TWO PRODUCTS THAT ARE NOT PLACE VIEWS SURVIVE (MESITA-1885). The
-    // filter is about whether a row opens a page ABOUT A PLACE, not about
-    // whether it is a product: Customers is the organization's guests and
-    // Terminal is a Soon page, and both work perfectly with no place at all.
-    // The other six are place views and would open a page about nothing.
-    (r.kind === "product" && (r.product === "customers" || r.product === "terminal")),
+  (r) => r.kind !== "page" && r.kind !== "place" && r.kind !== "product",
 );
 
-// THERE ARE NO DOORS LEFT (MESITA-1847). `members` was the last organization
-// address with no rail row, reached through a chevron on the Organization
-// page — and Pato: *"members and places in organization i mean, fuck nested
-// things display shit there."* The people are ON that page now, so the
-// address has nothing left to be, and `ORG_RAIL_TARGETS` is the whole
-// vocabulary again. `/members` and `/orgs/<id>/members` forward.
+// THERE ARE NO DOORS LEFT (MESITA-1847). `members` was the last address with
+// no rail row, reached through a chevron — and Pato: *"members and places in
+// organization i mean, fuck nested things display shit there."* The people are
+// ON Settings now, so the address has nothing left to be, and `PLACE_PAGES` is
+// the whole vocabulary again. `/members` and `/orgs/<id>/members` forward.
 
-const ORGS = "/orgs";
+const PLACES = SHELL_ROUTES.places;
 
-/** An organization address. EVERY target is a named segment (MESITA-1846),
- *  Organization included — the rail draws its five as siblings, so their
- *  addresses look alike. The bare `${ORGS}/<id>` is a forwarder onto the
- *  default, and the one thing that catches Stripe's stored `?connect=`. */
-export function orgHref(orgId: string, target: OrgTarget = "settings"): string {
-  return `${ORGS}/${encodeURIComponent(orgId)}/${target}`;
+/** A place PAGE's address. EVERY page is a named segment (MESITA-1846), so
+ *  the rail draws its rows as siblings and their addresses look alike. The
+ *  bare `${PLACES}/<id>` is a forwarder onto Profile, and the one thing that
+ *  catches Stripe's stored `?connect=`. */
+export function placePageHref(placeId: string, page: PlacePage): string {
+  return `${PLACES}/${encodeURIComponent(placeId)}/${page}`;
 }
 
-/** The bare `/orgs/<id>`: not a page, and not a row the rail can light. It is
- *  the organization's natural URL, where Stripe's months-old Account Links
- *  land, and a 307 onto `orgHref(id)`. */
-export function orgRootHref(orgId: string): string {
-  return `${ORGS}/${encodeURIComponent(orgId)}`;
+/** The bare `/places/<id>`: not a page, and not a row the rail can light. It
+ *  is the place's natural URL, where Stripe's months-old Account Links land,
+ *  and a 307 onto Profile. */
+export function placeRootHref(placeId: string): string {
+  return `${PLACES}/${encodeURIComponent(placeId)}`;
 }
 
-/** The switcher's mechanism: writes the org cookie, clears the place cookie,
- *  forwards to `?to=<flat>`. A route handler, never a page — a page cannot set
- *  a cookie on the way through, which is the whole reason this address exists
- *  instead of the bare one (MESITA-1842). */
-export function orgSwitchHref(orgId: string, to: string): string {
-  return `${ORGS}/${encodeURIComponent(orgId)}/switch?to=${encodeURIComponent(to)}`;
+/** The catalogue, optionally pre-filtered. No filter = both halves, which is
+ *  the comparison view the merge (MESITA-1614) exists to protect. */
+export function placesHref(owned?: PlacesOwned | null): string {
+  return owned ? `${PLACES}?owned=${owned}` : PLACES;
 }
 
-/** The organization's places list, optionally pre-filtered. No filter =
- *  both halves, which is the comparison view the merge (MESITA-1614) exists
- *  to protect. */
-export function orgPlacesHref(
-  orgId: string,
-  owned?: PlacesOwned | null,
-): string {
-  const list = orgHref(orgId, "places");
-  return owned ? `${list}?owned=${owned}` : list;
-}
-
-/** Add place — the ceremony under the organization's list. */
-export function orgPlacesNewHref(orgId: string): string {
-  return `${orgHref(orgId, "places")}/new`;
+/** Add place — the ceremony beside the catalogue. */
+export function placesNewHref(): string {
+  return SHELL_ROUTES.placesNew;
 }
 
 /** Mesita Pay's controls — the Stripe account, a seam, the switch
  *  (MESITA-1872). A SUB-STEP of the catalogue, exactly the shape Add place
  *  already is: an address beneath the page it belongs to, reached from that
- *  page, lighting that page's rail row. It is deliberately NOT in ORG_PAGES —
- *  the rail must not grow a ninth row for one product's setup.
+ *  page, lighting that page's rail row. It is deliberately NOT in
+ *  PLACE_PAGES — the rail must not grow a fifth page row for one product's
+ *  setup.
  *
  *  It replaces a `#mesita-pay` anchor into a Section at the foot of the
  *  catalogue. Pato took that Section off the page (*"just leave the 8 boxes
@@ -456,44 +397,33 @@ export function orgPlacesNewHref(orgId: string): string {
  *  exists scrolls nowhere SILENTLY, which is the worst kind of dead link. A
  *  link that navigates cannot fail that way, and it is shareable, which the
  *  anchor never was. It is also where Stripe's stored `?connect=` lands. */
-export function orgPayHref(orgId: string): string {
-  return `${orgHref(orgId, "products")}/pay`;
+export function placePayHref(placeId: string): string {
+  return `${placePageHref(placeId, "products")}/pay`;
 }
 
-/** Which organization a pathname is scoped to, or null. `/orgs/new` is the
- *  ceremony, not an id. */
-export function orgIdFromPathname(pathname: string): string | null {
-  const match = pathname.match(/^\/orgs\/([^/]+)(?:\/.*)?$/);
-  if (!match) return null;
-  const id = decodeURIComponent(match[1]);
-  return id === "new" ? null : id;
-}
-
-/** Which organization address a pathname is, or null when it is not one.
+/** Which PAGE of a place a pathname is, or null when it is not one.
  *
- *  A SUB-STEP READS AS ITS PAGE. The Add place ceremony
- *  (`/orgs/<id>/places/new`) reads as Places, and Mesita Pay's controls
- *  (`/orgs/<id>/products/pay`, MESITA-1872) read as Products: each is the
+ *  A SUB-STEP READS AS ITS PAGE. Mesita Pay's controls
+ *  (`/places/<id>/products/pay`, MESITA-1872) read as Products: it is the
  *  page's own next step, and a rail that went dark while an operator stood in
  *  one would be saying they had left the section they were plainly still in.
- *  `/switch` is never an address the rail lights — it is a redirect that
- *  exists for a few milliseconds. */
-export function orgTargetFromPathname(pathname: string): OrgTarget | null {
+ *
+ *  THE BARE `/places/<id>` ANSWERS NULL, which is the one difference from the
+ *  organization's version of this reader. That address is a 307 onto PROFILE,
+ *  a view — so the row that must not go dark in flight is Profile's, and
+ *  `placeTabFromPathname` is the reader that answers for it. Claiming
+ *  "settings" here would light the wrong row for the whole forward. */
+export function placePageFromPathname(pathname: string): PlacePage | null {
   const match = pathname.match(
-    /^\/orgs\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/,
+    /^\/places\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/,
   );
   if (!match || match[1] === "new") return null;
   const [, , second, third] = match;
-  // The bare `/orgs/<id>` is a 307 onto Configuration; it answers that so
-  // the row does not go dark for the instant the forward is in flight, which
-  // reads as a glitch — the courtesy every flat resolver already gets.
-  if (!second) return "settings";
-  if (second === "switch") return null;
-  if (second === "places") return third === undefined || third === "new" ? "places" : null;
+  if (!second) return null;
   if (second === "products") return third === undefined || third === "pay" ? "products" : null;
   if (third !== undefined) return null;
-  return (ORG_TARGETS as readonly string[]).includes(second)
-    ? (second as OrgTarget)
+  return (PLACE_PAGES as readonly string[]).includes(second)
+    ? (second as PlacePage)
     : null;
 }
 
@@ -501,12 +431,12 @@ export function orgTargetFromPathname(pathname: string): OrgTarget | null {
 
 /** The scope-free names, all served by ONE route file (`(shell)/[flat]`).
  *
- *  `places` is deliberately NOT among them: `/places` is the place segment's
- *  own root and `next.config.ts` forwards it, so a flat `places` could never
- *  resolve — and a name in the contract that cannot resolve is worse than no
- *  name at all. The organization's list is reached from its page. */
+ *  `places` is deliberately NOT among them, and for the opposite reason it
+ *  used to be: `/places` is now a LIVE page of its own — the catalogue — so a
+ *  flat `places` would not merely fail to resolve, it would be shadowed by a
+ *  real route. Next resolves static segments before dynamic ones. */
 export const FLAT_ROUTES = {
-  // The place's nine. Capabilities and Rewards left with their views
+  // The place's nine views. Capabilities and Rewards left with their views
   // (MESITA-1885) and the five PRODUCT views arrived in their place; both old
   // names are in the redirect table now, and a contract name a config rule
   // shadows is the MESITA-1839 trap, so neither may come back here.
@@ -519,15 +449,13 @@ export const FLAT_ROUTES = {
   pay: "/pay",
   credits: "/credits",
   admin: "/admin",
-  // The organization's four. `places` has no flat twin: it is the place
-  // segment's own root (see below), so a flat `places` could never resolve.
-  // `payments` has none either, and for the opposite reason: it is not an
-  // address at all any more (MESITA-1869), and the redirect table owns the
-  // name — a contract name a config rule shadows is the MESITA-1839 trap.
+  // The place's four PAGES. `payments` has no flat twin: it is not an address
+  // at all any more (MESITA-1869), and the redirect table owns the name — a
+  // contract name a config rule shadows is the MESITA-1839 trap.
   //
   // `settings` HAS one again (MESITA-1871): the permanent rule that claimed
   // `/settings` for `/capabilities` is deleted, so the name resolves instead
-  // of being shadowed. That rule is why MESITA-1852 had to call this page
+  // of being shadowed. That rule is why MESITA-1852 had to call the page
   // `configuration` in the first place.
   settings: "/settings",
   products: "/products",
@@ -564,8 +492,8 @@ export function flatViewFromPathname(pathname: string): PlaceTab | null {
   return null;
 }
 
-/** The place tabs, spelled here so `flatViewFromPathname` can tell a place
- *  twin from an organization one without importing `PLACE_TABS` as a VALUE —
+/** The place tabs, spelled here so `flatViewFromPathname` can tell a view's
+ *  twin from a page's without importing `PLACE_TABS` as a VALUE —
  *  `lib/place-tabs` is the module that may import this one, never the reverse
  *  (`placeHref` below is written literally for the same reason).
  *  `console-routes.test.ts` asserts the two lists are the same set. */
@@ -581,29 +509,33 @@ const PLACE_TAB_NAMES = [
   "admin",
 ] as const;
 
-/** Which ORGANIZATION address a flat pathname is, or null — the same courtesy
- *  for the four rows above the place group. */
-export function flatOrgTargetFromPathname(pathname: string): OrgTarget | null {
+/** Which PAGE a flat pathname is, or null — the same courtesy for the four
+ *  rows that are not views. */
+export function flatPlacePageFromPathname(pathname: string): PlacePage | null {
   const seg = pathname.replace(/\/$/, "");
-  for (const target of ORG_TARGETS) {
-    // `places` has no flat twin — it is the place segment's own root, so a
-    // flat `places` could never resolve. A name in FLAT_ROUTES is the only
-    // one that does.
-    if (!(target in FLAT_ROUTES)) continue;
-    if (seg === `/${target}`) return target;
+  for (const page of PLACE_PAGES) {
+    if (seg === `/${page}`) return page;
   }
   return null;
 }
 
-// ── The list's two filters (MESITA-1710) ──────────────────────────────────
+// ── The catalogue's two filters (MESITA-1710) ─────────────────────────────
 //
-// `Org Places` and `Public Places` are SAVED FILTERS on the one merged list:
-// `?owned=org` and `?owned=public` against `/orgs/<id>/places`. MESITA-1614
-// survives every change since untouched — the split is still a filter, the
-// Owned column is still the fact, and the unfiltered list still shows both
-// halves together so they can be compared.
+// `My Places` and `Public Places` are SAVED FILTERS on the one merged list:
+// `?owned=mine` and `?owned=public` against `/places`. MESITA-1614 survives
+// every change since untouched — the split is still a filter, the Owned column
+// is still the fact, and the unfiltered list still shows both halves together
+// so they can be compared.
+//
+// `org` WAS THE FIRST VALUE'S NAME until MESITA-1892, and it had to change
+// with the fact underneath it: Owned used to mean "an organization holds this"
+// and means "you hold this" now. A stale `?owned=org` in a bookmark is
+// unrecognised, and `ownedFromParam` answers null for anything unrecognised —
+// which shows the FULL list. That is the safe direction and the reason the
+// rule is written that way; the dangerous one is a filter that empties a
+// non-empty catalogue and reads as data loss.
 
-export const PLACES_OWNED = ["org", "public"] as const;
+export const PLACES_OWNED = ["mine", "public"] as const;
 export type PlacesOwned = (typeof PLACES_OWNED)[number];
 
 /** Read `?owned=` off a search param. Anything unrecognised is null — an
@@ -628,16 +560,17 @@ export function placeHref(placeId: string): string {
   return `/places/${encodeURIComponent(placeId)}/profile`;
 }
 
-/** Is this pathname a Place screen? The nav needs to know, because a place
- *  route is the one route that is neither an organization address nor Account. */
+/** Which place a pathname is scoped to, or null. The catalogue (`/places`)
+ *  and its ceremony (`/places/new`) name none — `new` is refused by name, and
+ *  it was never a place id.
+ *
+ *  IT READS THROUGH EVERY DEPTH (MESITA-1892). It used to allow one optional
+ *  view segment, which was the whole shape the place had; a place has PAGES
+ *  under it now, and `/places/<id>/products/pay` is three deep. A reader that
+ *  stopped at two would answer null there, and the rail would lose its scope
+ *  on the one screen Stripe returns to. */
 export function placeIdFromPathname(pathname: string): string | null {
-  // One OPTIONAL view segment (MESITA-1537): /places/<id> and
-  // /places/<id>/<view> are all the Place screen. The segment is optional
-  // because the bare URL still resolves — it is a 307 onto Profile
-  // (MESITA-1732) and a bookmark can still land on it. `new` is refused by
-  // name: `/places/new` was the claim ceremony until MESITA-1807 and still
-  // forwards from next.config.ts; it was never a place id.
-  const match = pathname.match(/^\/places\/([^/]+)(?:\/[^/]+)?\/?$/);
+  const match = pathname.match(/^\/places\/([^/]+)(?:\/.*)?$/);
   if (!match) return null;
   const id = decodeURIComponent(match[1]);
   return id === "new" ? null : id;
@@ -645,12 +578,12 @@ export function placeIdFromPathname(pathname: string): string | null {
 
 /** Re-attach a page's whole query string to another path.
  *
- *  Used by the console root, the bare place URL and the Organization page,
- *  all of which forward. The query is not decoration there: Stripe stores an
- *  Account Link's return_url when the link is minted, so a link created before
- *  MESITA-1727 shipped still points at `/?org=<id>&connect=return`. Drop the
- *  query and the operator finishes Stripe onboarding on a screen that knows
- *  neither which organization they onboarded nor that they just came back.
+ *  Used by the console root and the bare place URL, both of which forward. The
+ *  query is not decoration there: Stripe stores an Account Link's return_url
+ *  when the link is minted, so a link created before MESITA-1727 shipped still
+ *  points at `/?org=<id>&connect=return`. Drop the query and the operator
+ *  finishes Stripe onboarding on a screen that knows neither which place they
+ *  onboarded nor that they just came back.
  *
  *  Repeated keys are preserved in order, because Next types a repeated param
  *  as an array and dropping the extras would silently change what the

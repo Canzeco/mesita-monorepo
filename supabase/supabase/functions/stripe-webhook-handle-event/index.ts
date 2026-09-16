@@ -18,17 +18,25 @@
 // One endpoint, five surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
 //     flips a consumer to/from Premium on the back of the paid door.
-//   • organization_id → the organization's yearly Mesita Membership
-//     (MESITA-1877, partner-membership.ts). The ONLY writer that flips
-//     organizations.partnered on the back of the paid door. Matched BEFORE
-//     place_id in both branches below: a membership carries no place_id, and
-//     the place branch's resolver falls back to the customer.
+//   • Mesita Membership → the place's yearly partnership (MESITA-1877,
+//     re-scoped by MESITA-1892; partner-membership.ts). The ONLY writer that
+//     flips places.partnered on the back of the paid door. Matched BEFORE the
+//     place-plan branch below, and no longer by which id it carries: BOTH
+//     kinds now name a place, so `membershipRouteFor` discriminates on
+//     mesita_kind / plan_key. It also names the Memberships sold before
+//     MESITA-1892, which were stamped with a dissolved organization and can
+//     name no place — acked and logged, never guessed at, since the place
+//     branch's resolver would otherwise fall back to the CUSTOMER and
+//     reconcile a Membership onto someone's plan.
 //   • place_id     → a LEGACY per-place subscription (Verified / plan=pro;
 //     ultra legacy), MIRRORED ONLY. Since MESITA-1889 this branch writes
-//     `place_subscriptions` and never `places.plan`: the org's Membership is
-//     the one entitlement door, and the per-place checkout that fed this one
-//     is retired (retired/edge-functions/business-web-change-subscription).
-//   • Connect account.updated → organization_payment_accounts mirror (PLATFORM
+//     `place_subscriptions` and never `places.plan`: the Membership is the one
+//     entitlement door, and the per-place checkout that fed this one is
+//     retired (retired/edge-functions/business-web-change-subscription). That
+//     is also why the branch order above matters twice over — a legacy
+//     subscription that is only mirrored must never be mistaken for the
+//     Membership that actually entitles.
+//   • Connect account.updated → place_payment_accounts mirror (PLATFORM
 //     account layer, connect-account.ts).
 //   • Connect payment_intent.{succeeded,payment_failed} → Mesita Pay's
 //     reliability backstop (MESITA-1414, ticket-payment-intent.ts) — the
@@ -92,7 +100,7 @@ import {
   handleChargeRefunded,
 } from "./credit-refund.ts";
 import {
-  organizationIdFor,
+  membershipRouteFor,
   reconcilePartnerMembership,
 } from "./partner-membership.ts";
 
@@ -249,14 +257,18 @@ async function handleStripeEvent(
           : session.subscription?.id ?? null;
       if (!subscriptionId) break;
 
-      // An ORGANIZATION's Mesita Membership (MESITA-1877) — the yearly
-      // partnership — is the most specific kind and is matched first: a
-      // membership session carries organization_id and never place_id, so a
-      // later check could not have caught it.
-      const membershipOrgId = organizationIdFor(session);
-      if (membershipOrgId) {
+      // A place's Mesita Membership (MESITA-1877) — the yearly partnership —
+      // is the most specific kind and is matched first. Since MESITA-1892 a
+      // Membership session carries place_id just like a Verified one, so the
+      // kind is what tells them apart, not the presence of an id.
+      const membership = membershipRouteFor(session);
+      if (membership.kind === "membership") {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        await reconcilePartnerMembership(admin, stripe, membershipOrgId, sub);
+        await reconcilePartnerMembership(admin, stripe, membership.placeId, sub);
+        break;
+      }
+      if (membership.kind === "unroutable") {
+        logUnroutableMembership(event);
         break;
       }
 
@@ -285,13 +297,17 @@ async function handleStripeEvent(
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
 
-      // The organization's Membership renewing, lapsing or ending. Matched
-      // before the place lookup below because `resolvePlaceId` falls back to
-      // the customer, and an org that ALSO has a place subscription on file
-      // would otherwise have its membership reconciled onto a place.
-      const membershipOrgId = organizationIdFor(sub);
-      if (membershipOrgId) {
-        await reconcilePartnerMembership(admin, stripe, membershipOrgId, sub);
+      // The place's Membership renewing, lapsing or ending. Matched before
+      // the place-plan lookup below because `resolvePlaceId` falls back to the
+      // CUSTOMER, and a place that ALSO bills the older Verified SKU would
+      // otherwise have its Membership reconciled as a plan change.
+      const membership = membershipRouteFor(sub);
+      if (membership.kind === "membership") {
+        await reconcilePartnerMembership(admin, stripe, membership.placeId, sub);
+        break;
+      }
+      if (membership.kind === "unroutable") {
+        logUnroutableMembership(event);
         break;
       }
 
@@ -313,6 +329,29 @@ async function handleStripeEvent(
       // Unhandled event types are acknowledged and ignored.
       break;
   }
+}
+
+// A Membership sold BEFORE MESITA-1892 was stamped with the id of the
+// organization that bought it, and there is no such thing any more. Stripe
+// re-sends that same subscription object on every renewal, lapse and
+// cancellation for the rest of its year, so this is a state the handler will
+// actually meet — the migration rewrote our rows, not Stripe's objects.
+//
+// Acked, never guessed. Falling through would hand the object to
+// `resolvePlaceId`, whose last resort is the CUSTOMER — reconciling a
+// Membership as some place's plan change. Picking a place out of a dissolved
+// holding would be a guess about money. Doing nothing leaves the mirror and
+// the partnership exactly as they stand, and puts the subscription id where an
+// operator can re-stamp its metadata.
+function logUnroutableMembership(event: Stripe.Event): void {
+  const obj = event.data.object as { id?: string };
+  console.error(
+    `[stripe-webhook-handle-event] ${event.type} (${event.id}) is a Membership ` +
+      `that names no place — the shape sold before MESITA-1892, with nothing ` +
+      `left to reconcile onto. Acknowledged, NOTHING written. Stamp ` +
+      `metadata.place_id on Stripe object ${obj.id ?? "<unknown>"} to let the ` +
+      `next delivery land.`,
+  );
 }
 
 // ─── Consumer side ──────────────────────────────────────────────────────────

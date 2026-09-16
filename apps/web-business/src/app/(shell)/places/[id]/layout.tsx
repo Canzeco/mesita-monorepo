@@ -1,5 +1,12 @@
-// The place surface — Profile · Reviews · Activity · Settings · Admin — for
-// THE PLACE THE ADDRESS NAMES (MESITA-1839).
+// The place surface — its nine views AND its four pages — for THE PLACE THE
+// ADDRESS NAMES (MESITA-1839, widened MESITA-1892).
+//
+// THE PAGES ARRIVED WHEN THE ORGANIZATION LEFT. Settings, Products, Customers
+// and Activity hung off `/orgs/<id>/…` and had a membership layout of their
+// own; the layer is gone, so they are segments under this one and inherit its
+// 404 verdict, its heading and its `PlaceContext`. `PlaceTabGate` does not
+// refuse them and must not: they are not tabs, `placeTabFromPathname` answers
+// null for each, and the gate only ever speaks about a name it recognises.
 //
 // THE ID IS BACK IN THE PATH, and the reason is the one MESITA-1807 already
 // wrote down about `?org=`: scope that is not in the URL is scope the URL
@@ -74,7 +81,7 @@ export default async function PlaceLayout({
     <PublishOpenPlace
       id={id}
       name={view.place.name}
-      holderOrgId={view.holder?.organizationId ?? null}
+      held={view.holder !== null}
       tabs={tabs}
     />
   );

@@ -26,8 +26,16 @@ select plan(11);
 -- does not have to track whatever else Supabase adds to it.
 insert into auth.users (id) values ('22222222-2222-2222-2222-222222222222');
 
-insert into public.organizations (id, name)
-values ('11111111-1111-1111-1111-111111111111', 'pgTAP org');
+-- The place is the tenant a balance is spendable at (MESITA-1892). It takes
+-- two rows, not one: `places.id` carries an FK to `place_profiles.id`, so the
+-- profile row has to exist first. `place_profiles.name` is GENERATED from
+-- mesita_name/google_name and cannot be written directly, which is why the
+-- fixture sets google_name; `slug` is the only other NOT NULL column without a
+-- default, so these four values are the whole minimal place.
+insert into public.place_profiles (id, google_name)
+values ('11111111-1111-1111-1111-111111111111', 'pgTAP credits place');
+insert into public.places (id, slug)
+values ('11111111-1111-1111-1111-111111111111', 'pgtap-credits-place');
 
 -- consumers_code_format_check is `^[0-9]{4}-[0-9]{4}$`. A readable fixture
 -- like 'PGTAP00001' is rejected, and the failure reads as a broken schema

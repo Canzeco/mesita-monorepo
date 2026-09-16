@@ -49,10 +49,14 @@ import { cn } from "@/lib/utils";
 const STATE_PILL =
   "border-border text-muted-foreground shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold";
 
+// NO `canAdd` (MESITA-1892). It was owner-of-the-ORGANIZATION, and hid both
+// verbs from an editor because `claim_place_into_org` would have 403'd them.
+// `claim_place(p_place_id, p_claimer)` mints the caller's own owner row, so
+// there is no role above the place to check and the verb renders for every
+// signed-in manager.
 export function AddPlaceRow({
   prediction,
   state,
-  canAdd,
   pending,
   error,
   onCreate,
@@ -61,7 +65,6 @@ export function AddPlaceRow({
   prediction: PlacePrediction;
   /** Null while this row's lookup is still in flight. */
   state: RowState | null;
-  canAdd: boolean;
   pending: boolean;
   error: string | null;
   onCreate: () => void;
@@ -103,7 +106,7 @@ export function AddPlaceRow({
         ) : (
           <>
             <span className={STATE_PILL}>{state.label}</span>
-            {state.kind === "create" && canAdd && (
+            {state.kind === "create" && (
               <button
                 type="button"
                 onClick={onCreate}
@@ -113,7 +116,7 @@ export function AddPlaceRow({
                 {pending ? "Creating…" : "Create"}
               </button>
             )}
-            {state.kind === "claim" && canAdd && (
+            {state.kind === "claim" && (
               <button
                 type="button"
                 onClick={() => onClaim(state.place.id)}

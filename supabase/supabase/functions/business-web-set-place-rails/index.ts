@@ -11,6 +11,19 @@
 // never locked out of the door their console does not use). A viewer who
 // types the URL gets the same 403 the tab row already implies.
 //
+// EXCEPT MESITA PAY, WHICH IS OWNER-ONLY (MESITA-1892). Not a new rule — the
+// rule it used to get for free. Card acceptance was TWO bits ANDed into one
+// effective capability: this endpoint's `place_profiles.mesita_pay_enabled`
+// (editor) and `organizations.mesita_pay_enabled`, whose only writer was
+// `business-web-set-org-partnership` behind `requireOrgRole(["owner"])`. An
+// editor could flip their half and nothing happened until an owner flipped
+// the other. Removing the organization collapsed the two into this one
+// column, and without this branch that collapse would have handed every
+// editor the power to start charging a restaurant's guests — a widening the
+// schema change caused and nobody asked for.
+//
+// The other three rails keep editor: they were never gated above it.
+//
 // Body: { placeId | projectId, mesita_pay?, credits?, pickup?, delivery? } —
 //       booleans, at least one present.
 // Response: { ok: true, rails: { mesita_pay, credits, pickup, delivery } } —
@@ -26,6 +39,7 @@ import {
   getAuthedUser,
   readEFEnv,
   requireEditor,
+  requireOwner,
 } from "../_shared/auth.ts";
 import { type RailBody, readRailPlaceId, setPlaceRails } from "../_shared/place-rails.ts";
 
@@ -48,12 +62,25 @@ Deno.serve(async (req) => {
   if (!idRes.ok) return idRes.response;
 
   const admin = adminClient(envRes.env);
-  const roleRes = await requireEditor(
-    admin,
-    authRes.user,
-    idRes.placeId,
-    "Only this place's owners and editors can change what it offers.",
-  );
+
+  // The Mesita Pay rail carries the higher rank, and the check is on the KEY
+  // BEING SET, not on the whole body: a request that touches only credits or
+  // orders is still an editor's to make. `requireOwner` is a strict superset
+  // of `requireEditor` here (owner + super-admin), so one guard answers.
+  const touchesMesitaPay = bodyRes.body.mesita_pay !== undefined;
+  const roleRes = touchesMesitaPay
+    ? await requireOwner(
+      admin,
+      authRes.user,
+      idRes.placeId,
+      "Only this place's owner can turn card payments on or off.",
+    )
+    : await requireEditor(
+      admin,
+      authRes.user,
+      idRes.placeId,
+      "Only this place's owners and editors can change what it offers.",
+    );
   if (!roleRes.ok) return roleRes.response;
 
   return await setPlaceRails(admin, idRes.placeId, bodyRes.body);

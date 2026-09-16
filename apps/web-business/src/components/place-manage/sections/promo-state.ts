@@ -51,8 +51,9 @@ export type PromotingSnapshot = MembershipSnapshot & {
 export type MembershipPillState =
   "not_member" | "pending" | "live" | "paused" | "forfeited" | "review";
 
-// A place on any paid plan holds the Partnership (plan != free) — joined
-// under the organization's Mesita Partner subscription (MESITA-1867).
+// A place on any paid plan holds the Partnership (plan != free) — joined by
+// its OWN yearly Mesita Membership (MESITA-1867; place-scoped since
+// MESITA-1892, when the subscription stopped being the organization's).
 export function isMemberPlan(plan: unknown): boolean {
   return !!plan && plan !== "free";
 }

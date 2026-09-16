@@ -21,7 +21,7 @@
 //             the per-place three.
 //   off       the same fact, false. The verb points at where it is turned on.
 //   locked    true-but-unreachable: the product needs Mesita Partner and the
-//             organization is not one. A lock, never a disabled Enable button.
+//             place is not one. A lock, never a disabled Enable button.
 //   soon      not built. Mesita Terminal (no hardware) and Mesita Customers
 //             (no engine). A product that will be FREE still shows Soon while
 //             it does not exist: "free" is a price, and a price is not a
@@ -42,7 +42,7 @@
 //
 // The filter is why this is a client component at all. Three pills, one piece
 // of state, no round trip — and "Not enabled" is the view an operator with a
-// fresh organization actually wants, because it is the to-do list.
+// fresh place actually wants, because it is the to-do list.
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -248,7 +248,7 @@ export function ProductCatalog({ products }: { products: readonly ProductCard[] 
       </div>
 
       {visible.length === 0 ? (
-        // Reachable: a fresh organization filtered to Enabled sees Profile
+        // Reachable: a fresh place filtered to Enabled sees Profile
         // only, and a fully-enabled one filtered to Not enabled sees nothing.
         // A grid that silently empties reads as a failed load.
         <p className="text-muted-foreground border-border rounded-2xl border border-dashed p-6 text-center text-[13px]">

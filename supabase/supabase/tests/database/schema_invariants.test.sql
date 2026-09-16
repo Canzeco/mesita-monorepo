@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(104);
+select plan(129);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -63,10 +63,13 @@ select ok(
 -- MESITA-1704: the three checks above passed for a full day while `profiles`
 -- was 42501 for every guest. A privilege on a VIEW says the role may reach it;
 -- a `security_invoker` view then re-checks the role against everything its
--- BODY touches, and nothing above can see the body. MESITA-1689 appended one
--- derived column reading `places.organization_id` and `public.organizations` —
--- neither of which a client role held — and the consumer app answered
--- "permission denied for table places" in a red band over the Search map.
+-- BODY touches, and nothing above can see the body. The column that did it was
+-- a derived one reading a tenant table above the place — neither half of which
+-- a client role held — and the consumer app answered "permission denied for
+-- table places" in a red band over the Search map. That tenant layer is gone
+-- (MESITA-1892) and `mesita_pay_enabled` is now a plain column of
+-- `place_profiles`, but the lesson is about the NEXT derived column, not that
+-- one, so the probe stays.
 --
 -- So: run the read. This is the only assertion in the file that proves the
 -- guest browse works rather than that a privilege bit is set.
@@ -297,7 +300,12 @@ select is_empty(
      where c.table_schema = 'public'
        and c.table_name = 'places'
        and c.column_name in (
-         'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
+         -- MESITA-1892 moved the merchant's legal identity onto `places`
+         -- from a table no client role could reach at all. `places` is
+         -- column-granted, so the same secrecy now has to be stated as the
+         -- ABSENCE of a grant — which is exactly what this slot checks.
+         'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social',
+         'rfc', 'legal_name', 'stripe_billing_customer_id'
        )
        and (
          has_column_privilege('anon', 'public.places', c.column_name, 'SELECT')
@@ -305,7 +313,7 @@ select is_empty(
            'authenticated', 'public.places', c.column_name, 'SELECT'
          )
        )$$,
-  'anon and authenticated have no SELECT on existing PIN / CFDI columns'
+  'anon and authenticated have no SELECT on existing PIN / CFDI / legal-identity columns'
 );
 
 select ok(
@@ -339,12 +347,18 @@ select is_empty(
 );
 
 -- The other half of MESITA-1704: the repair must never become "open the table".
--- organizations is EF-only, and it has RLS on with zero policies, so a column
--- grant here would not even error — every place would just read pay-disabled.
+-- The pay bit used to be ANDed with a tenant table's copy of it, reached
+-- through a security-definer function because no client role could read that
+-- table. MESITA-1892 folded that half into `place_profiles`, so nothing in the
+-- view's body is EF-only any more — but the tables that replaced the tenant
+-- layer still are, and a future column appended to `profiles` must never be
+-- answered by reaching into one of them.
 select ok(
-  not has_table_privilege('anon', 'public.organizations', 'SELECT')
-  and not has_table_privilege('authenticated', 'public.organizations', 'SELECT'),
-  'organizations stays closed to the client roles (profiles reads the org bit through a security-definer function instead)'
+  not has_table_privilege('anon', 'public.place_payment_accounts', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.place_payment_accounts', 'SELECT')
+  and not has_table_privilege('anon', 'public.place_guest_customers', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.place_guest_customers', 'SELECT'),
+  'the place-scoped tenant tables stay closed to the client roles (nothing on public.profiles may read one)'
 );
 
 select ok(
@@ -938,38 +952,358 @@ select is_empty(
   'vault.secrets has no retired n8n / serper / tripadvisor rows'
 );
 
--- MESITA-1550: organization_invites exists, EF-only, no client policies.
+-- ━━━ MESITA-1892 — the place is the only tenant ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+-- THE ACCEPTANCE CRITERION, STATED AS A TEST. The organization layer is not
+-- renamed, not parked behind a compatibility view, not left as an unused
+-- column — it is gone. 20260915234500 asserts this at the moment it runs; the
+-- whole reason this file exists is that a LATER migration can quietly undo an
+-- assertion that already passed, and a resurrected tenant layer is exactly the
+-- kind of thing a well-meaning migration brings back.
+--
+-- Extension-owned objects are excluded on purpose: pgTAP itself installs into
+-- `public` here, and the claim is about the schema this repo writes.
+--
+-- THE PATTERN, AND WHY IT IS NOT `%organization%` AND NOT `%org%` EITHER.
+-- These three sweeps matched the literal substring `organization` until an
+-- audit pointed out that FOUR of the layer's own names sail straight through
+-- one: `org_plans`, `org_mesita_pay_enabled`, `claim_place_into_org` and
+-- `release_place_from_org`. The layer abbreviated itself and the sweep did not
+-- know.
+--
+-- The obvious widening, `%org%`, is wrong in the other direction — and the
+-- third sweep is where it bites, because that one reads FUNCTION BODIES, which
+-- are prose as much as SQL. `%org%` condemns a comment that says the lots are
+-- "organized by expiry", a country list with Georgia in it, an "organic" menu
+-- tag. A sweep that a truthful author cannot satisfy gets deleted, not fixed.
+--
+-- The layer only ever spelled itself two ways, so that is what the regex
+-- matches: the whole word `organization`, or `org`/`orgs` as a COMPLETE TOKEN
+-- — fenced on both sides by a separator, where an underscore IS one and a
+-- letter is not. `org_plans`, `_from_org` and a bare `org` in prose all fail
+-- it; `organic`, `reorganize`, `Georgia` and `morgue` all pass.
+--
+-- THE FENCE IS SPELLED OUT BY HAND, and `[[:alnum:]]` is deliberately NOT used
+-- for it. The first draft of this pattern fenced with `[^[:alnum:]]` and
+-- immediately failed on `seed_place_tags`, which seeds the Spanish place tag
+-- `'Orgánico'`: under this database's ctype `á` is not alnum, so it counted as
+-- a separator and `Org` + `á` read as a complete token. The class below names
+-- ASCII letters and digits AND every code point above 0x7F, so an accented
+-- letter is a letter — which is the only reading that is true of a schema
+-- whose seed data is half in Spanish. The same literal appears in all three
+-- sweeps on purpose: a shared helper would be one more thing to keep honest.
+
+select is_empty(
+  $$select c.relname
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and c.relkind in ('r', 'p', 'v', 'm', 'f')
+       and c.relname ~* '(^|[^A-Za-z0-9\u0080-\uffff])orgs?([^A-Za-z0-9\u0080-\uffff]|$)|organization'
+       and not exists (
+         select 1 from pg_depend d
+          where d.objid = c.oid and d.deptype = 'e'
+       )$$,
+  'no organization table, view or matview survives in public, abbreviated or not (MESITA-1892 removed the layer, it did not rename it)'
+);
+
+select is_empty(
+  $$select c.table_name || '.' || c.column_name
+      from information_schema.columns c
+     where c.table_schema = 'public'
+       and c.column_name ~* '(^|[^A-Za-z0-9\u0080-\uffff])orgs?([^A-Za-z0-9\u0080-\uffff]|$)|organization'$$,
+  'no organization column survives in public, abbreviated or not (an unused FK is the layer growing back)'
+);
+
+-- The tables are gone; a function body that still SAYS organization is the
+-- same layer surviving as vocabulary, and it is how the next reader learns a
+-- concept the product does not have. This is the sweep the token rule above
+-- was designed around — a body is prose as much as SQL, and `claim_place_into_org`
+-- was invisible to the old one while "organized" would have been condemned by
+-- the naive fix.
+select is_empty(
+  $$select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.prokind = 'f'
+       and p.prosrc ~* '(^|[^A-Za-z0-9\u0080-\uffff])orgs?([^A-Za-z0-9\u0080-\uffff]|$)|organization'
+       and not exists (
+         select 1 from pg_depend d
+          where d.objid = p.oid and d.deptype = 'e'
+       )$$,
+  'no function body in public still mentions an organization, abbreviated or not'
+);
+
+-- The same five, named. The sweep above would catch any of them, but it fails
+-- saying "one organization relation survived"; this one fails saying WHICH,
+-- and it is also the only place in the repo that writes down what the layer
+-- consisted of, for whoever reads this file after the migration scrolls away.
+select is_empty(
+  $$select t from unnest(array[
+      'public.organizations', 'public.organization_members',
+      'public.organization_invites', 'public.organization_guest_customers',
+      'public.organization_payment_accounts'
+    ]) t
+    where to_regclass(t) is not null$$,
+  'every table of the organization layer is dropped'
+);
+
+-- WHAT THE ORGANIZATION TABLES WERE PROVING, re-pointed. MESITA-1550 asserted
+-- organizations and organization_invites were EF-only — RLS on, zero policies,
+-- no client SELECT — because a merchant's identity and a pending invite are
+-- not the guest's business. The two tables that inherited that data inherit
+-- the posture; their client SELECT is asserted with the profiles body, above.
+
 select has_table(
-  'public', 'organization_invites',
-  'organization_invites stores pending org-member email invites'
+  'public', 'place_payment_accounts',
+  'place_payment_accounts stores the Stripe Connect account a place gets paid through'
 );
 
 select ok(
   (select relrowsecurity from pg_class
-    where oid = 'public.organization_invites'::regclass),
-  'organization_invites has RLS enabled (EF-only; no client policies)'
+    where oid = 'public.place_payment_accounts'::regclass)
+  and not exists (
+    select 1 from pg_policy where polrelid = 'public.place_payment_accounts'::regclass
+  ),
+  'place_payment_accounts is EF-only: RLS on with zero policies (RLS and no policy denies every non-service role)'
+);
+
+select has_table(
+  'public', 'place_guest_customers',
+  'place_guest_customers stores which Stripe customer a guest is on the place''s connected account'
 );
 
 select ok(
-  not has_table_privilege('anon', 'public.organization_invites', 'SELECT')
-    and not has_table_privilege('authenticated', 'public.organization_invites', 'SELECT'),
-  'client roles have no SELECT on organization_invites'
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_guest_customers'::regclass)
+  and not exists (
+    select 1 from pg_policy where polrelid = 'public.place_guest_customers'::regclass
+  ),
+  'place_guest_customers is EF-only: RLS on with zero policies'
 );
 
--- MESITA-1550: the ≥1-owner backstop is a real constraint trigger, not an
--- app-level count — this is the thing the app-level count-then-act check at
--- the place level cannot be (place_members_one_owner_per_place is a
--- partial unique index and enforces the OPPOSITE invariant, at-most-one).
+-- ━━━ CRITERION 2 — every tenant-owned record is scoped to a place ━━━━━━━━━━
+--
+-- The acceptance criterion says "scoped to a place, directly or through an
+-- ENFORCED relationship", and the emphasis is the whole test. Asserting that a
+-- `place_id` column EXISTS proves nothing: a nullable place_id lets a tenant
+-- record float free, which is precisely the state the organization layer used
+-- to hold (`places.organization_id` was nullable for years), and a place_id
+-- with no foreign key lets it point at a place that was deleted last month.
+-- So each of these tables is asserted twice — the column cannot be null, and
+-- the database itself resolves it to a real place.
+--
+-- These use pgTAP's own `col_not_null` / `fk_ok` / `col_is_pk` rather than a
+-- hand-rolled catalog query on purpose: a `::regclass` cast naming a table
+-- that got dropped RAISES 42P01 and takes the whole file down, reporting
+-- nothing at all. These helpers fail one line and keep going.
+
+-- Money. A prepaid balance is a debt to a guest AT A VENUE (MESITA-1892); a
+-- lot that is not resolvable to one place is a balance nobody can be asked to
+-- honour. `on delete restrict`, not cascade: deleting a place must not be able
+-- to delete somebody's money.
+select col_not_null(
+  'public', 'credit_lots', 'place_id',
+  'credit_lots.place_id is NOT NULL (a prepaid balance with no venue is money nobody owes)'
+);
+
+select fk_ok(
+  'public', 'credit_lots', 'place_id', 'public', 'places', 'id',
+  'credit_lots.place_id is a real foreign key to places (scoping is the database''s job, not the caller''s)'
+);
+
+-- Billing. The yearly Mesita Membership a place buys.
+select col_not_null(
+  'public', 'partner_memberships', 'place_id',
+  'partner_memberships.place_id is NOT NULL (a subscription that bills nobody in particular)'
+);
+
+select fk_ok(
+  'public', 'partner_memberships', 'place_id', 'public', 'places', 'id',
+  'partner_memberships.place_id is a real foreign key to places'
+);
+
+-- ONE LIVE MEMBERSHIP PER PLACE, and the index has to be on the NEW column:
+-- the migration dropped the org-scoped version and rebuilt it, and a rebuild
+-- that kept the old predicate would let a place carry two live subscriptions
+-- and be charged twice. `active` and `past_due` are both live — past_due is a
+-- failed payment, not a cancellation, and Stripe will retry it.
 select ok(
   exists (
-    select 1 from pg_trigger t
-    where t.tgname = 'organization_members_owner_backstop'
-      and t.tgrelid = 'public.organization_members'::regclass
-      and t.tgconstraint <> 0
-      and t.tgdeferrable
-      and t.tginitdeferred
+    select 1 from pg_index i
+      join pg_class c on c.oid = i.indexrelid
+     where c.relname = 'partner_memberships_one_live'
+       and i.indrelid = to_regclass('public.partner_memberships')
+       and i.indisunique
+       and i.indnkeyatts = 1
+       and (select a.attname from pg_attribute a
+             where a.attrelid = i.indrelid and a.attnum = i.indkey[0]) = 'place_id'
+       and pg_get_expr(i.indpred, i.indrelid) like '%active%'
+       and pg_get_expr(i.indpred, i.indrelid) like '%past_due%'
   ),
-  'organization_members_owner_backstop is a deferred constraint trigger (closes the last-owner-removal race)'
+  'partner_memberships_one_live is a unique index on (place_id) covering active and past_due (one live membership per place, or the place gets billed twice)'
+);
+
+-- The merchant account. One place, one Stripe Connect account — stated as the
+-- PRIMARY KEY rather than a unique index, because "at most one" is the shape
+-- of the row, not a rule bolted onto it.
+select col_is_pk(
+  'public', 'place_payment_accounts', array['place_id'],
+  'place_payment_accounts is keyed BY the place (one place, one merchant account)'
+);
+
+select fk_ok(
+  'public', 'place_payment_accounts', 'place_id', 'public', 'places', 'id',
+  'place_payment_accounts.place_id is a real foreign key to places'
+);
+
+-- The other direction, and it is a money rule: two places sharing one Stripe
+-- Connect account means two operators' payouts landing in one bank account.
+select col_is_unique(
+  'public', 'place_payment_accounts', array['stripe_account_id'],
+  'place_payment_accounts.stripe_account_id is unique (one connected account never serves two places)'
+);
+
+-- Guest identity on the connected account. The composite key IS the scoping:
+-- the same guest is a DIFFERENT Stripe customer at every place, because the
+-- connected account is different, and collapsing that to one row per consumer
+-- would charge the wrong merchant.
+select col_is_pk(
+  'public', 'place_guest_customers', array['place_id', 'consumer_id'],
+  'place_guest_customers is keyed by (place_id, consumer_id) — a guest is one Stripe customer PER PLACE'
+);
+
+select fk_ok(
+  'public', 'place_guest_customers', 'place_id', 'public', 'places', 'id',
+  'place_guest_customers.place_id is a real foreign key to places'
+);
+
+select fk_ok(
+  'public', 'place_guest_customers', 'consumer_id', 'public', 'consumers', 'id',
+  'place_guest_customers.consumer_id is a real foreign key to consumers'
+);
+
+-- WHAT THE ORGANIZATION ROW ITSELF HELD, now columns of the place. Derived
+-- from the list rather than asserted one by one, so the failure names the
+-- column that went missing: losing any of these silently is the operator's
+-- partnership, legal identity, tax ID or Stripe customer disappearing.
+select is_empty(
+  $$select c from unnest(array[
+      'partnered', 'legal_name', 'rfc', 'stripe_billing_customer_id'
+    ]) c
+    where not exists (
+      select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'places'
+         and column_name = c
+    )$$,
+  'places carries every fact the organization row used to hold (partnered, legal_name, rfc, stripe_billing_customer_id)'
+);
+
+-- `partnered` is an ENTITLEMENT — every Partner door reads it as a boolean.
+-- Nullable, it becomes three-valued, and `not partnered` stops meaning "not a
+-- partner" in exactly the readers that gate ticket creation.
+select col_not_null(
+  'public', 'places', 'partnered',
+  'places.partnered is NOT NULL (an entitlement that can be unknown is a door that opens by accident)'
+);
+
+-- ━━━ org_plans became membership_plans ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--
+-- The plan catalogue was never org-owned data — only its NAME was
+-- organizational, so MESITA-1892 renamed it instead of dropping it. That makes
+-- it the one piece of the layer's vocabulary with a live successor, and two
+-- Edge Functions call `.from("membership_plans")` by that exact string: a
+-- rename that lands on one side only is a 404 at checkout, not a test failure.
+
+select has_table(
+  'public', 'membership_plans',
+  'membership_plans exists (the Membership plan vocabulary two Edge Functions read by name)'
+);
+
+select hasnt_table(
+  'public', 'org_plans',
+  'org_plans is gone (renamed, not copied — two catalogues would drift and one of them prices real subscriptions)'
+);
+
+-- AND THE RENAME REACHED THE SURVIVOR REGISTRY. admin_reset_database TRUNCATES
+-- every public table that admin_reset_preserve does not name, so a registry
+-- row still saying `org_plans` does not merely go stale — it drops the plan
+-- catalogue, and its Stripe price ids, on the next Reset. The sweep above
+-- ("every admin_reset_preserve row names a live public table") would catch the
+-- stale row; this catches the missing one, which is the half that loses data.
+select ok(
+  exists (
+    select 1 from public.admin_reset_preserve
+     where table_name = 'membership_plans'
+  ),
+  'admin_reset_preserve names membership_plans (an unregistered table is TRUNCATED by the next admin reset)'
+);
+
+-- THE LAST-OWNER BACKSTOP, re-pointed rather than reinvented. MESITA-1550 put
+-- a DEFERRED CONSTRAINT TRIGGER on organization_members because ≥1 owner is a
+-- claim about the rows that REMAIN after a statement, which an app-level
+-- count-then-act cannot make. The place side states the other direction of the
+-- same fact — at most one owner per place — and a partial unique index CAN say
+-- that, atomically, with no trigger. Asserting the index that exists beats
+-- inventing a trigger to keep the shape of an assertion whose table is gone.
+select ok(
+  exists (
+    select 1 from pg_index i
+      join pg_class c on c.oid = i.indexrelid
+     where c.relname = 'place_members_one_owner_per_place'
+       and i.indrelid = 'public.place_members'::regclass
+       and i.indisunique
+       and i.indpred is not null
+  ),
+  'place_members_one_owner_per_place is a partial unique index (one owner per place, enforced by the database)'
+);
+
+-- THE RFC RULE, both halves, on its new table. _shared/place-rfc.ts matches
+-- `places_rfc_unique` BY NAME to turn a 23505 into a sentence a merchant can
+-- act on, so the index name is contract, not decoration.
+select ok(
+  exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.places'::regclass
+       and conname = 'places_rfc_shape'
+       and contype = 'c'
+  ),
+  'places_rfc_shape still checks the RFC shape (a malformed tax ID must never reach a CFDI)'
+);
+
+select ok(
+  exists (
+    select 1 from pg_index i
+      join pg_class c on c.oid = i.indexrelid
+     where c.relname = 'places_rfc_unique'
+       and i.indrelid = 'public.places'::regclass
+       and i.indisunique
+       and i.indpred is not null
+  ),
+  'places_rfc_unique is a partial unique index (one RFC is one merchant; NULL means not paid yet)'
+);
+
+-- THE PAY BIT IS ONE BIT NOW. It was `place AND organization`; the second half
+-- was folded into place_profiles before the layer went, so the capability
+-- every reader sees is unchanged and stated in exactly one column.
+select has_column(
+  'public', 'profiles', 'mesita_pay_enabled',
+  'profiles still exposes mesita_pay_enabled (every Pay door reads it here)'
+);
+
+select is(
+  (select count(*)::int
+     from pg_depend d
+     join pg_rewrite r
+       on r.oid = d.objid and d.classid = 'pg_rewrite'::regclass
+     join pg_attribute a
+       on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
+    where r.ev_class = 'public.profiles'::regclass
+      and d.refobjid = 'public.place_profiles'::regclass
+      and a.attname = 'mesita_pay_enabled'),
+  1,
+  'profiles.mesita_pay_enabled reads place_profiles.mesita_pay_enabled and nothing else (one bit, one writer)'
 );
 
 select * from finish();

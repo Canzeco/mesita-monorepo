@@ -244,46 +244,74 @@ export function isMockCustomerId(id: string | null | undefined): boolean {
   return !!id && id.startsWith("mock_");
 }
 
-// ─── The organization's Stripe customer anchor ──────────────────────────────
+// ─── The place's Stripe customer anchor ─────────────────────────────────────
 //
-// The sibling of ensureConsumerCustomer, for the org side (MESITA-1877). It
-// resolves the customer an organization PAYS MESITA as, for the yearly Mesita
-// Membership.
+// The sibling of ensureConsumerCustomer, for the business side (MESITA-1877,
+// re-scoped to the place by MESITA-1892). It resolves the customer a place
+// PAYS MESITA as, for the yearly Mesita Membership.
 //
-// TWO STRIPE IDENTITIES, AND THEY MUST NEVER MEET. `organizations
-// .stripe_billing_customer_id` is a Customer on Mesita's own account — the org
-// as a buyer. `organization_payment_accounts.stripe_account_id` is a CONNECT
-// account — the org as a seller, where guests' money lands. Handing the second
-// where the first belongs bills a restaurant on its own account, which is a
-// bug that looks like it worked.
+// TWO STRIPE IDENTITIES, AND THEY MUST NEVER MEET. `places
+// .stripe_billing_customer_id` is a Customer on Mesita's own account — the
+// place as a buyer. `place_payment_accounts.stripe_account_id` is a CONNECT
+// account — the place as a seller, where guests' money lands. Handing the
+// second where the first belongs bills a restaurant on its own account, which
+// is a bug that looks like it worked.
 //
-// Anchored on `organizations`, not on the subscription row, for the same
-// reason the consumer anchor is: the customer outlives any one subscription,
-// so a lapsed member who re-subscribes keeps one billing history rather than
-// silently getting a second customer.
+// Anchored on `places`, not on the subscription row, for the same reason the
+// consumer anchor is: the customer outlives any one subscription, so a lapsed
+// member who re-subscribes keeps one billing history rather than silently
+// getting a second customer.
 
-export async function ensureOrgBillingCustomer(
+export type PlaceBillingCustomer =
+  | { ok: true; customerId: string }
+  | { ok: false; code: "place_not_found"; error: string };
+
+/**
+ * IT READS ITS OWN NAME. The caller used to pass one, which meant the checkout
+ * EF had to read `places` itself just to label a Stripe Customer — a second
+ * raw read of the tenant row, in a file whose job is selling. One read here
+ * answers all three questions it needs: does the place exist, is it already
+ * anchored, and what is it called. The trade name is a generated column on
+ * `place_profiles`, embedded rather than fetched separately.
+ */
+export async function ensurePlaceBillingCustomer(
   admin: SupabaseClient,
   stripe: Stripe,
-  orgId: string,
-  orgName: string | null,
-): Promise<string> {
-  const { data: org } = await admin
-    .from("organizations")
-    .select("stripe_billing_customer_id")
-    .eq("id", orgId)
+  placeId: string,
+): Promise<PlaceBillingCustomer> {
+  const { data: place } = await admin
+    .from("places")
+    .select("stripe_billing_customer_id, place_profiles(name)")
+    .eq("id", placeId)
     .maybeSingle();
+  if (!place) {
+    // No row, so nothing to anchor onto. Refused here rather than at the
+    // `partner_memberships` foreign key three writes later, where the same
+    // mistake reads as a 500.
+    return {
+      ok: false,
+      code: "place_not_found",
+      error: `No place ${placeId}.`,
+    };
+  }
   const anchored =
-    (org as { stripe_billing_customer_id?: string | null } | null)
-      ?.stripe_billing_customer_id ?? null;
-  if (anchored && !isMockCustomerId(anchored)) return anchored;
+    (place as { stripe_billing_customer_id?: string | null })
+      .stripe_billing_customer_id ?? null;
+  if (anchored && !isMockCustomerId(anchored)) {
+    return { ok: true, customerId: anchored };
+  }
+
+  const embedded = (place as { place_profiles?: { name?: string | null } | { name?: string | null }[] })
+    .place_profiles;
+  const placeName =
+    (Array.isArray(embedded) ? embedded[0]?.name : embedded?.name) ?? null;
 
   // TWO CONCURRENT CHECKOUTS MUST NOT MINT TWO CUSTOMERS, and the unique index
   // cannot stop them: it is on the customer ID, so two different ids for the
-  // same organization both satisfy it and the later write simply wins, leaving
-  // the other caller transacting on an orphan. Two guards, in this order:
+  // same place both satisfy it and the later write simply wins, leaving the
+  // other caller transacting on an orphan. Two guards, in this order:
   //
-  //   1. An IDEMPOTENCY KEY on the org. Stripe replays the same Customer for
+  //   1. An IDEMPOTENCY KEY on the place. Stripe replays the same Customer for
   //      every call carrying it, so the racing callers get ONE object rather
   //      than two that then have to be reconciled.
   //   2. A compare-and-set anchor. The update only fires while the column is
@@ -291,37 +319,39 @@ export async function ensureOrgBillingCustomer(
   //      matched no row re-reads and adopts the winner. That also stops a
   //      later call from overwriting an anchor that already has history.
   const customer = await stripe.customers.create({
-    name: orgName ?? undefined,
-    metadata: { organization_id: orgId, mesita_kind: "business" },
-  }, { idempotencyKey: `org-billing-customer-${orgId}` });
+    name: placeName ?? undefined,
+    metadata: { place_id: placeId, mesita_kind: "business" },
+  }, { idempotencyKey: `place-billing-customer-${placeId}` });
 
   const { data: claimed, error } = await admin
-    .from("organizations")
+    .from("places")
     .update({ stripe_billing_customer_id: customer.id })
-    .eq("id", orgId)
+    .eq("id", placeId)
     .is("stripe_billing_customer_id", null)
     .select("stripe_billing_customer_id")
     .maybeSingle();
-  if (!error && claimed) return customer.id;
+  if (!error && claimed) return { ok: true, customerId: customer.id };
 
   // We lost the race, or the column already held a mock id. Re-read: the
   // winner is the anchor, and a mock placeholder is replaced rather than
   // returned, since handing `mock_cus_*` to a live key 400s.
   const { data: raced } = await admin
-    .from("organizations")
+    .from("places")
     .select("stripe_billing_customer_id")
-    .eq("id", orgId)
+    .eq("id", placeId)
     .maybeSingle();
   const winner =
     (raced as { stripe_billing_customer_id?: string | null } | null)
       ?.stripe_billing_customer_id ?? null;
-  if (winner && !isMockCustomerId(winner)) return winner;
+  if (winner && !isMockCustomerId(winner)) {
+    return { ok: true, customerId: winner };
+  }
 
   await admin
-    .from("organizations")
+    .from("places")
     .update({ stripe_billing_customer_id: customer.id })
-    .eq("id", orgId);
-  return customer.id;
+    .eq("id", placeId);
+  return { ok: true, customerId: customer.id };
 }
 
 export async function ensureConsumerCustomer(

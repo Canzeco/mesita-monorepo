@@ -16,11 +16,11 @@
 //   Mesita Customers     who keeps coming back. It WILL be free, exactly like
 //                        Profile — Pato wrote it "Costumers (Free)" — and it
 //                        is `soon` anyway, because the engine is not built
-//                        (`/orgs/<id>/customers` is a SoonStrip page). A price
-//                        is not a reason to paint a green chip on an empty
-//                        page, so the chip says the harder word and the note
-//                        carries the price. No verb: Customers has its own
-//                        rail row, so the door already exists.
+//                        (`/places/<id>/customers` is a SoonStrip page). A
+//                        price is not a reason to paint a green chip on an
+//                        empty page, so the chip says the harder word and the
+//                        note carries the price. No verb: Customers has its
+//                        own rail row, so the door already exists.
 //   Mesita Visits        guest checks at the bill. Partner-gated, and the
 //                        subscription IS the state — so it is ALWAYS ON for a
 //                        partner, the Profile pattern, never an on/off card
@@ -35,8 +35,10 @@
 //                        per place. One card, because an operator thinks
 //                        "orders" and the two columns are its two shapes.
 //   Mesita Reservations  `reservations_enabled`, per place.
-//   Mesita Pay           the ORG switch `mesita_pay_enabled`, on top of
-//                        Partner. The one product turned on at this level.
+//   Mesita Pay           `place_profiles.mesita_pay_enabled`, on top of
+//                        Partner. Its switch lives with the Stripe account it
+//                        needs, at `products/pay`, which is why it is the one
+//                        card whose verb stays on this page's own sub-step.
 //   Mesita Credits       `credits_enabled`, per place. Partner-gated too —
 //                        Accept Prepays is in PARTNER_PERKS — so a
 //                        non-partner reads Locked, not Not enabled.
@@ -44,16 +46,24 @@
 //
 // ── THE TWO RULES THIS FILE EXISTS TO HOLD ────────────────────────────────
 //
-// A NULL PLACES READ PRINTS NO NUMBER. `places: null` means the read failed,
-// and every per-place card drops its note rather than printing "On at 0 of 0".
-// Zero is the most believable fabrication on a catalogue screen, and a
-// fabricated number is what SoonStrip's law forbids outright.
+// A NULL PLACE READ PRINTS NOTHING. `place: null` means the read failed, and
+// every card drops its note rather than printing "Off". Off is the most
+// believable fabrication on a catalogue screen, and a fabricated state is what
+// SoonStrip's law forbids outright.
 //
-// PARTNER-GATED BEATS OFF. A product the organization cannot reach yet reads
+// PARTNER-GATED BEATS OFF. A product the place cannot reach yet reads
 // `locked` with the prerequisite as its note — never `off` with an Enable
 // button that would walk an operator to a switch they cannot move. That is
 // the ladder grammar Capabilities already uses (offerings.ts), in a grid.
-import type { ConsolePlace } from "@/lib/api/organizations";
+//
+// ── THE COUNT BECAME A STATE (MESITA-1892) ────────────────────────────────
+//
+// Every per-place card used to print an aggregate — "On at 2 of 5 places" —
+// because the catalogue was the ORGANIZATION's and an organization held
+// several. There is no holder: the catalogue is one place's, so the fact a
+// card states is whether the product is on HERE. Same rule underneath, one
+// row instead of a fold: a read that failed still prints nothing.
+import type { ConsolePlace } from "@/lib/api/console";
 import type { PlaceTab } from "@/lib/place-tabs";
 import type { ProductCard, ProductKey } from "@/components/console/ProductCatalog";
 
@@ -174,17 +184,6 @@ export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 // `soon`, they carry no verb, and `productRowHref` in lib/console-routes is
 // the one function that knows their addresses.
 
-/** "On at 2 of 5 places", or null when the places could not be read. Singular
- *  where it matters: "1 place" reads as a sentence, "1 places" reads as a bug
- *  and is the first thing anyone notices on a screen like this. */
-function placeNote(on: number, total: number): string {
-  const places = total === 1 ? "1 place" : `${total} places`;
-  if (total === 0) return "No places yet.";
-  if (on === 0) return `Off at all ${places}.`;
-  if (on === total) return `On at ${on === 1 ? "your one place" : `all ${places}`}.`;
-  return `On at ${on} of ${places}.`;
-}
-
 // ── REWARDS IS A SENTENCE INSIDE VISITS, NEVER A STATE (MESITA-1884) ──────
 //
 // Pato: *"should i separate visits and rewards into two?? i don't think so."*
@@ -203,50 +202,37 @@ function placeNote(on: number, total: number): string {
 // where "no rewards set yet" is information and not an accusation that
 // checkout is broken.
 //
-// It obeys the same no-fabrication rule as every count on this page: a failed
-// read and an organization with no places both drop the clause rather than
-// print a zero.
-function rewardsClause(places: readonly ConsolePlace[] | null): string {
-  if (!places || places.length === 0) return "Every place has one.";
-  const on = places.filter((p) => p.visitRewards === true).length;
-  if (on === 0) return "No rewards set yet.";
-  if (on < places.length) return `Rewards on at ${on} of ${places.length} places.`;
-  return places.length === 1
-    ? "Rewards on at your one place."
-    : `Rewards on at all ${places.length} places.`;
+// It obeys the same no-fabrication rule as every note on this page: a failed
+// read drops the clause rather than claiming nothing is set.
+function rewardsClause(place: ConsolePlace | null): string {
+  if (!place) return "";
+  return place.visitRewards === true
+    ? "Rewards are on."
+    : "No rewards set yet.";
 }
 
 export function buildProductCards(input: {
   partnered: boolean;
   mesitaPayEnabled: boolean;
-  /** Null means the read FAILED. An empty array means the organization holds
-   *  no place — two different facts, and a card says two different things. */
-  places: readonly ConsolePlace[] | null;
+  /** THE PLACE this catalogue is about, or null when the read FAILED. Null is
+   *  the only absence there is now (MESITA-1892): the catalogue lives at
+   *  `/places/<id>/products`, so a page that renders at all has a place, and
+   *  the caller with none never reaches here — the flat `/products` answers
+   *  with `NoPlaceYet` instead of forwarding nowhere. */
+  place: ConsolePlace | null;
   /** Where a card's verb lands, given the VIEW that product is configured on
-   *  — which, since MESITA-1885, is the view of the same name. The caller
-   *  decides what a view means when there is no single place to name: the Add
-   *  ceremony with none, the list with several, so this module never has to
-   *  know which. It replaced a flat `placeHome` that sent every per-place
-   *  product to Profile, a screen holding none of their switches
-   *  (MESITA-1879). */
+   *  — which, since MESITA-1885, is the view of the same name. It replaced a
+   *  flat `placeHome` that sent every per-place product to Profile, a screen
+   *  holding none of their switches (MESITA-1879). */
   placeHref: (view: PlaceTab) => string;
-  /** The organization holds NO place, so `placeHref` returns the Add
-   *  ceremony. The verb has to say so: "Enable" on a button that opens Add
-   *  place is a promise the next screen does not keep. */
-  noPlaces: boolean;
-  /** Mesita Pay's own box, at the foot of this same page. */
+  /** Mesita Pay's own sub-step, under this same page. */
   payHref: string;
 }): ProductCard[] {
-  const { partnered, mesitaPayEnabled, places, placeHref, payHref, noPlaces } =
-    input;
-  /** Every per-place verb lands on the view that actually holds its switch. */
+  const { partnered, mesitaPayEnabled, place, placeHref, payHref } = input;
   // A product's own view, by its own name. Every card that reaches this has a
   // place view — the two that do not are `soon` and return above, carrying no
   // verb at all.
   const viewHref = (key: ProductKey) => placeHref(key as PlaceTab);
-  const total = places?.length ?? 0;
-  /** Every verb that lands on a place says what the next screen actually is. */
-  const verb = (word: string) => (noPlaces ? "Add a place" : word);
 
   return SPECS.map((spec): ProductCard => {
     // SOON FIRST, and it outranks everything below: nothing further down
@@ -272,7 +258,7 @@ export function buildProductCards(input: {
         blurb: spec.blurb,
         state: "free",
         note: "Always free. Every place has one.",
-        action: { label: verb("Manage"), href: viewHref(spec.key) },
+        action: { label: "Manage", href: viewHref(spec.key) },
       };
     }
 
@@ -287,7 +273,9 @@ export function buildProductCards(input: {
       };
     }
 
-    // Mesita Pay: the one ORG-level switch, so its verb stays on this page.
+    // Mesita Pay: the one card whose verb stays on this page's own sub-step,
+    // because the switch and the Stripe account it needs are one subject and
+    // live together at `products/pay`.
     if (spec.key === "pay") {
       return {
         key: spec.key,
@@ -295,25 +283,24 @@ export function buildProductCards(input: {
         blurb: spec.blurb,
         state: mesitaPayEnabled ? "enabled" : "off",
         note: mesitaPayEnabled
-          ? "On for the organization. Each place turns it on too."
-          : "Set up the organization's Stripe account first.",
+          ? "On here. Guests can pay by card."
+          : "Set up this place's Stripe account first.",
         action: { label: mesitaPayEnabled ? "Manage" : "Set up", href: payHref },
       };
     }
 
-    // The per-place three: the state is the COUNT, and no count means no
-    // claim — a failed read drops the note instead of printing a zero.
+    // The per-place three: the state is this place's own column, and a failed
+    // read drops the note instead of claiming the switch is off.
     if (spec.atPlace) {
-      const on = places ? places.filter(spec.atPlace).length : 0;
-      const enabled = places !== null && on > 0;
+      const enabled = place !== null && spec.atPlace(place);
       return {
         key: spec.key,
         name: spec.name,
         blurb: spec.blurb,
         state: enabled ? "enabled" : "off",
-        note: places ? placeNote(on, total) : null,
+        note: place ? (enabled ? "On here." : "Not on here yet.") : null,
         action: {
-          label: verb(enabled ? "Manage" : "Enable"),
+          label: enabled ? "Manage" : "Enable",
           href: viewHref(spec.key),
         },
       };
@@ -331,8 +318,8 @@ export function buildProductCards(input: {
       name: spec.name,
       blurb: spec.blurb,
       state: "enabled",
-      note: `Included with Mesita Partner. ${rewardsClause(places)}`,
-      action: { label: verb("Manage"), href: viewHref(spec.key) },
+      note: `Included with Mesita Partner. ${rewardsClause(place)}`.trim(),
+      action: { label: "Manage", href: viewHref(spec.key) },
     };
   });
 }

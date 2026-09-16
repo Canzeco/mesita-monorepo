@@ -1,14 +1,20 @@
 // Supabase Edge Function — admin-web-list-place-claims
 //
-// MESITA-1544: claim_place_into_org (business-web-claim-place) grants
-// ownership instantly and atomically — no evidence, no admin gate. That
-// stays true; this EF is the audit trail layered on top so a super-admin
-// can catch a bad claim after the fact instead of before it.
+// MESITA-1544: claim_place (business-web-claim-place) grants ownership
+// instantly and atomically — no evidence, no admin gate. That stays true;
+// this EF is the audit trail layered on top so a super-admin can catch a bad
+// claim after the fact instead of before it.
 //
-// Queue mode (default): unreviewed claims — organization_id and claimed_by
-// set, claim_reviewed_at still null — newest first (places_unreviewed_
-// claims_idx). includeReviewed=true also returns cleared claims as history,
-// same shape as admin-web-list-verifications's state filter.
+// Queue mode (default): unreviewed claims — claimed_by set, claim_reviewed_at
+// still null — newest first (places_unreviewed_claims_idx, rebuilt on exactly
+// those two columns by MESITA-1892). includeReviewed=true also returns cleared
+// claims as history, same shape as admin-web-list-verifications's state filter.
+//
+// THE CLAIM NO LONGER NAMES A HOLDER. It used to file the place under an
+// organization, and this queue showed that organization beside the claimer so
+// an admin could tell a real operator from a land grab. The layer is gone
+// (MESITA-1892): the claimer IS the holder, `claimed_by` is the evidence, and
+// the `managers` join below is the one identity there is to show.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -43,15 +49,14 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
   const limit = Math.min(200, Math.max(1, body.limit ?? 100));
 
-  // FKs: claimed_by -> managers, organization_id -> organizations, id ->
-  // places (1:1, same trap admin-web-list-verifications documents: places
-  // has to come in through its own relation, never embedded via places).
+  // FKs: claimed_by -> managers, id -> place_profiles (1:1, same trap
+  // admin-web-list-verifications documents: the profile has to come in
+  // through its own relation, never embedded via places).
   let query = admin
     .from("places")
     .select(
-      "id, claimed_by, claimed_at, claim_reviewed_at, claim_reviewed_by, organization:organizations(id, name), claimer:managers!claimed_by(full_name, email), place:place_profiles(name, address, google_place_id)",
+      "id, claimed_by, claimed_at, claim_reviewed_at, claim_reviewed_by, claimer:managers!claimed_by(full_name, email), place:place_profiles(name, address, google_place_id)",
     )
-    .not("organization_id", "is", null)
     .not("claimed_by", "is", null)
     .order("claimed_at", { ascending: false })
     .limit(limit);
@@ -74,11 +79,9 @@ Deno.serve(async (req) => {
       claimed_at: string;
       claim_reviewed_at: string | null;
       claim_reviewed_by: string | null;
-      organization: { id: string; name: string } | { id: string; name: string }[] | null;
       claimer: { full_name: string | null; email: string | null } | { full_name: string | null; email: string | null }[] | null;
       place: { name: string | null; address: string | null; google_place_id: string | null } | { name: string | null; address: string | null; google_place_id: string | null }[] | null;
     };
-    const org = one(r.organization);
     const claimer = one(r.claimer);
     const place = one(r.place);
     return {
@@ -87,7 +90,6 @@ Deno.serve(async (req) => {
       claimed_at: r.claimed_at,
       claim_reviewed_at: r.claim_reviewed_at,
       claim_reviewed_by: r.claim_reviewed_by,
-      organization: org,
       claimer: {
         full_name: claimer?.full_name ?? null,
         email: claimer?.email ?? null,

@@ -220,7 +220,7 @@ export function SwipeDeck() {
     return (
       <EmptyState
         title="No places yet"
-        body="The catalog is empty. As partners onboard, their places will show up here."
+        body="The catalog is empty. As places join Mesita, they'll show up here."
       />
     );
   }

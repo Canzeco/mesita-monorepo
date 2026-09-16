@@ -1,24 +1,31 @@
 // Supabase Edge Function — business-web-release-place
 //
-// Returns a place from an organization to the PUBLIC POOL.
+// Returns a claimed place to the PUBLIC POOL.
 //
-// Auth: OWNER of the holding organization. Not editor: release is how a
-// place leaves, and an editor who could release could also re-claim it
-// into an organization of their own — a hostile transfer with no owner
-// involved.
+// Auth: OWNER of the place. Not editor: release is how a place leaves, and an
+// editor who could release could also re-claim it as themselves — a hostile
+// transfer with no owner involved. That law is unchanged by MESITA-1892; only
+// what "owner" is proven against moved, from the holding organization's
+// membership to the place's own `place_members` row.
 //
-// Release is a CONFIRMED, atomic act (release_place_from_org RPC):
-// blocked while a Partnership subscription is genuinely live (active or
-// past_due and not winding down — "Cancel Partnership first"), resets the
-// plan to free so the next claimer inherits nothing paid, and deletes only
-// TENURE-ERA membership rows (created at-or-after this claim; rows that
-// predate the claim survive). The org keeps its Stripe account
-// (MESITA-1545) — releasing still touches no Connect money.
+// Release is a CONFIRMED, atomic act (release_place RPC): blocked while a
+// Partnership subscription is genuinely live (active or past_due and not
+// winding down — "Cancel Partnership first"), resets the plan to free so the
+// next claimer inherits nothing paid, and deletes only TENURE-ERA membership
+// rows (created at-or-after this claim; rows that predate the claim survive).
+//
+// WHAT RELEASE NOW CLEARS TOO. The merchant identity used to belong to the
+// organization, which kept it (and its Stripe account — MESITA-1545) when a
+// place was released. The place is the merchant now, so `partnered`,
+// `legal_name`, `rfc` and `stripe_billing_customer_id` are wiped with the
+// claim: they were the released operator's, and the operator is who just let
+// go. The CONNECT account (`place_payment_accounts`) is deliberately NOT
+// touched — releasing still moves no money and detaches no Stripe account.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOrgRole } from "../_shared/org-membership.ts";
+import { requireOwner } from "../_shared/auth-membership.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
@@ -38,25 +45,37 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  const { data: placeRow } = await admin
+  // Rank BEFORE state: a stranger asking about a place they do not own must
+  // not learn from the error whether it is claimed.
+  const ownerRes = await requireOwner(admin, authRes.user, placeId);
+  if (!ownerRes.ok) return ownerRes.response;
+
+  // `claimed_at` is what a release undoes, and the RPC refuses a row without
+  // it. Checking here buys the operator a sentence instead of a bare
+  // race_lost. Note the case this covers beyond "already public": a place
+  // owned the OLD way (created, then verified into an owner row) never passed
+  // through the pool, so it has an owner and no claim — there is nothing to
+  // release, and saying so is the honest answer.
+  const { data: placeRow, error: readErr } = await admin
     .from("places")
-    .select("organization_id")
+    .select("claimed_at")
     .eq("id", placeId)
     .maybeSingle();
-  const holdingOrg = (placeRow as { organization_id: string | null } | null)?.organization_id ?? null;
-  if (!holdingOrg) {
+  if (readErr) return json({ ok: false, error: readErr.message }, 500);
+  if (!placeRow) return json({ ok: false, error: "No such place" }, 404);
+  if ((placeRow as { claimed_at: string | null }).claimed_at === null) {
     return json(
-      { ok: false, error: "That place is already public", code: "already_public" },
+      {
+        ok: false,
+        error: "That place is not held through a claim — there is nothing to release.",
+        code: "already_public",
+      },
       409,
     );
   }
 
-  const roleRes = await requireOrgRole(admin, authRes.user, holdingOrg, ["owner"]);
-  if (!roleRes.ok) return roleRes.response;
-
-  const { data, error } = await admin.rpc("release_place_from_org", {
+  const { data, error } = await admin.rpc("release_place", {
     p_place_id: placeId,
-    p_organization_id: holdingOrg,
   });
   if (error) return json({ ok: false, error: error.message }, 500);
   const result = data as { ok: boolean; code?: string };
@@ -75,5 +94,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Release failed", code: "race_lost" }, 409);
   }
 
-  return json({ ok: true, place: { id: placeId, organization_id: null } });
+  return json({ ok: true, place: { id: placeId, claimedAt: null } });
 });

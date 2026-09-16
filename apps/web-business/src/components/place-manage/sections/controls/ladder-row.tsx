@@ -25,11 +25,12 @@ import { type OfferingRow } from "./offerings";
 // value in the control column: that column stays one control so aria-checked
 // stays one bit, and so a lock chip and a switch stay on the same axis.
 
-// THE ONE TRACK (MESITA-1867). The Organization screen's Partner switch grew
-// its own copy of this span (MESITA-1798), then taught it to lock
-// (MESITA-1864); the Mesita Pay box would have been a third. It is exported
-// from here once instead — `MesitaPayCard` imports it — so a locked knob looks
-// the same on Organization as on Capabilities.
+// THE ONE TRACK (MESITA-1867). The Partner switch grew its own copy of this
+// span (MESITA-1798), then taught it to lock (MESITA-1864); the Mesita Pay box
+// would have been a third. It is exported from here once instead —
+// `MesitaPayCard` imports it — so a locked knob looks the same wherever it
+// appears. The switch lived on an Organization screen until MESITA-1892 and
+// lives on the place's Settings now; the reason for one copy did not move.
 //
 // `cn`, not `cx`, for the classes: `cx` is a plain join, and a join that
 // emits `bg-muted` next to `bg-background shadow` leaves the winner to

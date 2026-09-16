@@ -9,10 +9,9 @@ import {
   strategyForPlace,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { useOpenPlace } from "@/components/console/OpenPlace";
 import { useRailScopeContext } from "@/components/console/RailScopeContext";
-import { findOrg } from "@/lib/active-organization";
-import { SHELL_ROUTES, orgHref as orgPageHref } from "@/lib/console-routes";
+import { findPlace } from "@/lib/active-place";
+import { SHELL_ROUTES, placePayHref } from "@/lib/console-routes";
 import {
   getPlacePaymentAccount,
   setPlaceRails,
@@ -22,7 +21,6 @@ import {
 } from "../actions";
 import { OrdersCard } from "./OrdersCard";
 import { ReservationsCard } from "./ReservationsCard";
-import { TeamSection } from "./TeamSection";
 import { VisitsCard } from "./VisitsCard";
 import { GroupLabel, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -45,7 +43,7 @@ import {
   railWriteFailure,
   rowsForZone,
   shouldRenderConfig,
-  orgFlag,
+  tierFlag,
   topPrerequisite,
   type ConnectState,
   type LadderRowKey,
@@ -75,23 +73,26 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // prerequisite that unlocks the most rows, then the rows. The 0–7 meter
 // left — ProfileCompleteness owns the meter where it belongs, and a
 // coincidence with §11.2's seven capabilities is still a coincidence.
-// Partnership is a PlaceHeading chip + one line; Partner and Stripe
-// live on Organization. Nested configs stay MOUNTED (shouldRenderConfig).
+// Partnership is a PlaceHeading chip + one line; Partner and Stripe live on
+// the place's own Products pages. Nested configs stay MOUNTED
+// (shouldRenderConfig).
 //
-// TWO TIERS ON ORGANIZATION (MESITA-1867). Mesita Partner is the org's
-// yearly subscription and the gate for Rewards; Mesita Pay is an optional
-// add-on (the Stripe account and an org switch) and the gate for the Pay
-// rung. The ladder reads the holder org's two flags off `RailScopeContext`
-// — the shell already holds the org list on every route, so this is zero
-// extra reads — and `null` when the holder is not in it, which the engine
-// renders as Checking…, never off. The rungs still gate on the PLACE's own
-// `member` (`plan ≠ free`); the org flags steer the top line and the Pay
-// rung only (offerings.ts explains the precedence).
+// TWO TIERS, BOTH THE PLACE'S (MESITA-1867, place-scoped MESITA-1892). Mesita
+// Partner is the yearly subscription and the gate for Rewards; Mesita Pay is
+// an optional add-on (the Stripe account and its switch) and the gate for the
+// Pay rung. Both flags were the holding ORGANIZATION's and are `places.partnered`
+// and `place_profiles.mesita_pay_enabled` now. The ladder still reads them off
+// `RailScopeContext` — the shell already holds the viewer's places on every
+// route, so this is zero extra reads — and `null` when this place is not in
+// that list (a pool place, a page rendered without the shell), which the
+// engine renders as Checking…, never off. The rungs still gate on the PLACE's
+// own `member` (`plan ≠ free`); these two steer the top line and the Pay rung
+// only (offerings.ts explains the precedence).
 //
-// THE PARTNERSHIP BODY RENDERS FOR EVERY PILL STATE on Rewards. It used to be
+// THE PARTNERSHIP BODY RENDERS FOR EVERY PILL STATE on Visits. It used to be
 // member-gated, and a forfeited place reads plan=free — so the forfeited
 // copy and its Re-join door were dead on arrival. Non-members get it ABOVE
-// the rows, as the pitch (the top line's Organization link is the one door);
+// the rows, as the pitch (the top line's Mesita Pay link is the one door);
 // members keep it below, as before.
 
 export function PromosSection({
@@ -106,24 +107,27 @@ export function PromosSection({
 }) {
   const [v, setV] = useState(place);
   const { dirtyLabels } = usePlaceContext();
-  // "Organization for Stripe" is a door to the holder's organization page,
-  // where the Stripe Account box lives. The holder is published by the place
-  // layout (MESITA-1807); before it lands, the root resolver answers for it.
-  const holderOrgId = useOpenPlace()?.holderOrgId ?? null;
-  const orgHref = holderOrgId ? orgPageHref(holderOrgId) : SHELL_ROUTES.root;
-  // The holder's two tier flags, off the rail's org list (MESITA-1867). Null
-  // when the holder is not in the viewer's list — a pool place, a page
+  // THE PREREQUISITE DOOR IS THIS PLACE'S OWN SETUP (MESITA-1892). It pointed
+  // at the holding organization's page, where the Stripe Account box lived;
+  // the account is `place_payment_accounts` now and its box is the place's
+  // `products/pay` sub-step, so the door is one level in rather than one level
+  // up. `place.id` is the page's own subject, so nothing has to be published
+  // before the link resolves — which is what the root-resolver fallback used
+  // to be for.
+  const setupHref = place.id ? placePayHref(place.id) : SHELL_ROUTES.root;
+  // The place's two tier flags, off the rail's own list (MESITA-1867). Null
+  // when this place is not in the viewer's list — a pool place, a page
   // rendered without the shell — and null is "unknown", never "off".
-  const railOrgs = useRailScopeContext()?.organizations ?? [];
-  const holderOrg = findOrg(railOrgs, holderOrgId);
+  const railPlaces = useRailScopeContext()?.places ?? [];
+  const railPlace = findPlace(railPlaces, place.id);
   // `?? null`, never `=== true`: both flags are OPTIONAL on the payload
   // ("UNDEFINED when the payload predates the EF — absent is not false",
-  // lib/api/organizations.ts), and collapsing undefined to false would send
-  // a paying org's place to subscribe again and lock its Pay rung "Off".
-  const orgPartnered = orgFlag(holderOrg?.partnered);
-  const orgMesitaPay = orgFlag(holderOrg?.mesitaPayEnabled);
+  // lib/api/console.ts), and collapsing undefined to false would send a paying
+  // place to subscribe again and lock its Pay rung "Off".
+  const placePartnered = tierFlag(railPlace?.partnered);
+  const placeMesitaPay = tierFlag(railPlace?.mesitaPayEnabled);
   // Re-join is owner-only: the subscription it re-enters is the owner's.
-  const isOwner = holderOrg?.myRole === "owner";
+  const isOwner = railPlace?.myRole === "owner";
 
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
@@ -170,8 +174,8 @@ export function PromosSection({
     connect,
     connectLoading,
     rewardLaneHeld,
-    orgPartnered,
-    orgMesitaPay,
+    placePartnered,
+    placeMesitaPay,
     forfeited,
   };
   const rows = offeringRows(ladderInput);
@@ -261,10 +265,10 @@ export function PromosSection({
   const fixFor = (key: LadderRowKey): ReactNode => {
     const d = byKey[key]?.disagreement;
     if (!d) return null;
-    if (d.fix === "organization") {
+    if (d.fix === "setup") {
       return (
         <Link
-          href={orgHref}
+          href={setupHref}
           className="text-foreground font-semibold underline underline-offset-4"
         >
           {d.fixLabel}
@@ -407,7 +411,7 @@ export function PromosSection({
         pillState={pillState}
         storedStrategy={storedStrategy}
         member={member}
-        orgHref={orgHref}
+        setupHref={setupHref}
         isOwner={isOwner}
       />
     ) : null;
@@ -428,18 +432,18 @@ export function PromosSection({
         {prereq && (
           <p className="text-muted-foreground mt-2 text-sm leading-snug">
             {prereq.text}
-            {/* Only the Organization fix carries a link; a re-join is this
-                place's own door (unbuilt — the line says when it lands), and
-                a link to Organization there would send a forfeited place to
-                subscribe twice. */}
-            {prereq.action === "organization" && (
+            {/* Only the SETUP fix carries a link; a re-join is this place's
+                own door (unbuilt — the line says when it lands), and a link to
+                the setup there would send a forfeited place to subscribe
+                twice. */}
+            {prereq.action === "setup" && (
               <>
                 {" "}
                 <Link
-                  href={orgHref}
+                  href={setupHref}
                   className="text-foreground font-semibold underline underline-offset-4"
                 >
-                  Organization
+                  Mesita Pay
                 </Link>
               </>
             )}
@@ -472,9 +476,16 @@ export function PromosSection({
       {/* THE INTERNAL ZONE IS VISITS' NOW (MESITA-1885). It was Capabilities'
           alone, and Capabilities is five views; the box had to pick one rather
           than be split or repeated. It goes to Visits because that is what it
-          is ABOUT — `VisitsCard` is how visits are run here, and `TeamSection`
-          is who runs them — and because Visits is the container the other
-          products attach to, which makes it the place's own room.
+          is ABOUT — `VisitsCard` is how visits are run here — and because
+          Visits is the container the other products attach to, which makes it
+          the place's own room.
+
+          `TeamSection` LEFT IT (MESITA-1892). MESITA-1885 put the team here
+          and said in the same breath that the box "had to pick one rather than
+          be split or repeated", because there was no place-level Settings page
+          to put it on. There is one now, and who may open this place is what
+          the word Settings covers — so the team is at `settings` and this box
+          is how visits are run, which is the half that was always about Visits.
 
           The eyebrow says whose it is rather than repeating the page: the
           card's own title already says what this is. */}
@@ -493,7 +504,6 @@ export function PromosSection({
           >
             <div className="divide-border/60 mt-2 flex flex-col divide-y">
               <VisitsCard place={v} />
-              <TeamSection place={v} />
             </div>
           </SectionCard>
         </section>

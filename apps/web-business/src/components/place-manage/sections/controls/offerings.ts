@@ -27,24 +27,34 @@ const CAP = Object.fromEntries(
 // this tab already had.
 //
 // TWO TIERS, ONE LADDER (MESITA-1867, Pato 2026-09-15). The partnership was
-// one free org switch, locked until Stripe was Ready — so the Stripe Connect
+// one free switch, locked until Stripe was Ready — so the Stripe Connect
 // onboarding (KYC, invoices) was the price of admission to REWARDS, which
-// never needed a charge path. It is now two levels, both on Organization:
+// never needed a charge path. It is now two levels, and since MESITA-1892
+// both of them are the PLACE's own, on its Products pages:
 //
-//   Mesita Partner   the organization's YEARLY partnership; every place it
-//                    holds is in. Unlocks Visit Rewards and Accept Prepays —
-//                    arithmetic on the bill, no PSP.
-//   Mesita Pay       an optional add-on ON TOP of Partner: the org's Stripe
-//                    account and an org-level switch. Unlocks the place's
-//                    Mesita Pay rung and, through it, Sell Prepays.
+//   Mesita Partner   the place's YEARLY partnership (`places.partnered`).
+//                    Unlocks Visit Rewards and Accept Prepays — arithmetic on
+//                    the bill, no PSP.
+//   Mesita Pay       an optional add-on ON TOP of Partner: the place's Stripe
+//                    account (`place_payment_accounts`) and the
+//                    `place_profiles.mesita_pay_enabled` switch. Unlocks this
+//                    ladder's Mesita Pay rung and, through it, Sell Prepays.
 //
 // The rungs still gate on `member` — the PLACE's entitlement (`plan ≠ free`),
-// which admin may grant independently of the org. The org's two flags arrive
-// as `orgPartnered` / `orgMesitaPay` and do two things only: the Pay rung
-// reads the org switch as a gate above Stripe, and the top line reads
-// `orgPartnered` to say WHICH door a non-member needs (subscribe on
-// Organization, or re-join this one place). Both are `null` when unknown,
-// and unknown is "Checking…", never "off".
+// which admin may grant independently. The two tier flags arrive as
+// `placePartnered` / `placeMesitaPay` — they were `orgPartnered` / `orgMesitaPay`
+// until MESITA-1892, and the prefix was the last thing left of a layer whose
+// facts had already moved onto the place. They do two things only: the Pay rung reads
+// the switch as a gate above Stripe, and the top line reads `placePartnered` to
+// say WHICH door a non-member needs (subscribe, or re-join this place). Both
+// are `null` when unknown, and unknown is "Checking…", never "off".
+//
+// THE TWO NAMES KEPT THEIR `org` PREFIX ON PURPOSE. They are the SETUP tier's
+// facts as opposed to this ladder's own rungs, and `partnered` / `mesitaPay`
+// on their own would read as the rung two lines below each of them. Renaming
+// them to `setupPartnered` / `setupMesitaPay` is a clean follow-up; doing it
+// inside the layer removal would put a rename nobody asked for in the middle
+// of a diff that already touches every file here.
 //
 // TWO CORRECTIONS to the ladder as briefed, both auto-decided in the
 // 2026-09-02 /autoplan run and recorded in its audit trail:
@@ -64,21 +74,18 @@ const CAP = Object.fromEntries(
 // web-admin has no jsdom, and `renderToStaticMarkup` never runs effects, so
 // anything that matters has to be decidable without React.
 //
-// STRIPE IS ORG STATE, READ HERE (Pato, 2026-09-08: "org has own states,
-// places has own states"). `organizationPaymentAccounts` is one row per
-// ORGANIZATION (MESITA-1545, `organization_id` unique) — every place that
-// org holds shares the same account, which is also why the Organization
-// screen's own Stripe Account section exists. This ladder's `stripe` rung
-// only READS that shared state to gate what a specific place can do next;
-// its copy used to claim "the place owns the account", which was simply
-// wrong. Onboarding lives on Organization (PaymentsCard). A place-level
-// Connect form was a duplicate ask on a page about what guests can do
-// (MESITA-1739); the account it would create is the org's either way.
+// STRIPE IS THE PLACE'S STATE, READ HERE. `place_payment_accounts` is one row
+// per PLACE (MESITA-1892; it was `organization_payment_accounts`, one row per
+// organization, shared by every place it held — MESITA-1545). The merchant of
+// record is the venue now, so "the place owns the account" is finally true;
+// this ladder's `stripe` rung still only READS that state to gate what the
+// place can do next. Onboarding lives on the place's `products/pay` page
+// (PaymentsCard). A Connect form on THIS tab was a duplicate ask on a page
+// about what guests can do (MESITA-1739), and it still would be.
 
-/** What Stripe says about the organization's connected account (shared by
- *  every place it holds), reduced to the four states the ladder can act on.
- *  `none` also covers "payload predates the mirror" — absent is not the
- *  same as refused, but both mean not ready. */
+/** What Stripe says about this place's connected account, reduced to the four
+ *  states the ladder can act on. `none` also covers "payload predates the
+ *  mirror" — absent is not the same as refused, but both mean not ready. */
 export type ConnectState =
   | { kind: "none" }
   | { kind: "incomplete"; requirementsDue: string[] }
@@ -158,11 +165,11 @@ export type LadderBand = "money" | "service";
 export type RowDisagreement = {
   reason: string;
   fixLabel: string;
-  /** `organization` = the Organization page (the subscription, the Stripe
-   *  account, or the Mesita Pay switch — all three live there). `restore` =
-   *  a Mesita review the operator cannot lift. `null` = the fix is another
-   *  row on this page. */
-  fix: "organization" | "restore" | null;
+  /** `setup` = the place's Mesita Pay page (the subscription is a click away
+   *  on Products, the Stripe account and the Mesita Pay switch are on it).
+   *  `restore` = a Mesita review the operator cannot lift. `null` = the fix is
+   *  another row on this page. */
+  fix: "setup" | "restore" | null;
 };
 
 export type OfferingRow = {
@@ -200,17 +207,18 @@ export type LadderInput = {
   /** Ghost-partner hold (MESITA-1311): Visit Rewards is on but guests get
    *  nothing until restore. */
   rewardLaneHeld?: boolean;
-  /** The holder organization's Mesita Partner subscription (MESITA-1867).
-   *  Read off the rail's org list, so `null`/undefined means the holder is
-   *  not in the viewer's list (or the payload predates the flag) — unknown,
-   *  which only ever silences the top line. Never a gate on a rung: the
-   *  place's own `member` is the entitlement fact. */
-  orgPartnered?: boolean | null;
-  /** The holder organization's Mesita Pay switch (MESITA-1867). `false`
-   *  locks the place's Mesita Pay rung ABOVE Stripe — the org opted out, so
-   *  the account's state is moot. `null`/undefined is "Checking…", never
-   *  off: a stale payload must not tell a paying org its switch is down. */
-  orgMesitaPay?: boolean | null;
+  /** This place's Mesita Partner subscription (`places.partnered`,
+   *  MESITA-1867 / MESITA-1892). Read off the rail's own list, so
+   *  `null`/undefined means the place is not in the viewer's list (or the
+   *  payload predates the flag) — unknown, which only ever silences the top
+   *  line. Never a gate on a rung: the place's own `member` is the
+   *  entitlement fact. */
+  placePartnered?: boolean | null;
+  /** This place's Mesita Pay switch (`place_profiles.mesita_pay_enabled`).
+   *  `false` locks the Mesita Pay rung ABOVE Stripe — the product is off, so
+   *  the account's state is moot. `null`/undefined is "Checking…", never off:
+   *  a stale payload must not tell a paying place its switch is down. */
+  placeMesitaPay?: boolean | null;
   /** This place lost the partnership to a third strike (`plan_forfeited_at`).
    *  A forfeited place reads `member=false` (the strike patch drops `plan`),
    *  so without this the top line could not tell "never joined" from
@@ -221,10 +229,11 @@ export type LadderInput = {
 const NEEDS_PARTNER = "Needs Mesita Partner";
 const NEEDS_STRIPE = "Needs an active Stripe account";
 const NEEDS_PAY = "Needs Mesita Pay";
-// The org's Mesita Pay switch is off. Not "Needs Mesita Pay on Organization":
-// the Reason chip is `w-[9.5rem] sm:w-[11rem]` and that overflows it, and the
-// row's own label already says Mesita Pay — the chip only has to say where.
-const NEEDS_ORG_PAY = "Off on Organization";
+// The product's own switch is off, one level up in Products. Not "Needs
+// Mesita Pay in Products": the Reason chip is `w-[9.5rem] sm:w-[11rem]` and
+// that overflows it, and the row's own label already says Mesita Pay — the
+// chip only has to say where.
+const NEEDS_ORG_PAY = "Off in Products";
 
 function railState(on: boolean): RowState {
   return on ? { kind: "on" } : { kind: "off" };
@@ -234,18 +243,18 @@ function railState(on: boolean): RowState {
  * The ladder, in dependency order, as rows an operator reads top to bottom.
  *
  * ```
- *   Mesita Partner ─────────────────── the org's yearly partnership (Organization)
+ *   Mesita Partner ─────────────────── the place's yearly partnership (Products)
  *        │
  *        ├── Visit Rewards ───────────── needs Mesita Partner
  *        ├── Accept Prepays ──────────── needs Mesita Partner (redeem ≠ charge)
  *        │
- *        ├── Mesita Pay on Organization ── the org's add-on switch (Organization)
+ *        ├── Mesita Pay in Products ──── the add-on switch (Products › Pay)
  *        │            │
- *        └── Stripe account ──────────── the org's, charge-ready (Organization)
+ *        └── Stripe account ──────────── this place's, charge-ready (Products › Pay)
  *                     │                  (a SIBLING of the switch: `stripeState`
  *                     │                   never reads the switch — both feed the
  *                     │                   rung below)
- *                     └── Mesita Pay (place) ── needs the org switch on
+ *                     └── Mesita Pay (rung) ── needs the Products switch on
  *                              │                AND an ACTIVE Stripe account
  *                              └── Sell Prepays ─── needs Mesita Pay
  *
@@ -274,15 +283,15 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
 
   // Mesita Pay is the first rung where money actually moves, so it needs the
   // account to be CHARGE-READY, not merely present — and, above that, the
-  // org's own Mesita Pay switch (MESITA-1867). Order: Partner, then the org
+  // product's own switch in Products (MESITA-1867). Order: Partner, then that
   // switch (an explicit `false` is a verdict, and one that makes the Stripe
-  // state moot), then the two reads still in flight (the Connect mirror, or
-  // an org flag the rail has not answered), then Stripe, then the rail.
+  // state moot), then the two reads still in flight (the Connect mirror, or a
+  // tier flag the rail has not answered), then Stripe, then the rail.
   const payState: RowState = !member
     ? { kind: "locked", needs: NEEDS_PARTNER }
-    : input.orgMesitaPay === false
+    : input.placeMesitaPay === false
       ? { kind: "locked", needs: NEEDS_ORG_PAY }
-      : checking || input.orgMesitaPay == null
+      : checking || input.placeMesitaPay == null
         ? { kind: "checking" }
         : connect.kind !== "ready"
           ? { kind: "locked", needs: NEEDS_STRIPE }
@@ -292,7 +301,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     {
       key: "partnership",
       label: "Mesita Partner",
-      detail: "The organization's yearly partnership — the gate for everything below.",
+      detail: "This place's yearly partnership — the gate for everything below.",
       band: "money",
       state: member ? { kind: "on" } : { kind: "off" },
       points: 1,
@@ -304,7 +313,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       detail:
         connect.kind === "incomplete" && connect.requirementsDue.length > 0
           ? `Stripe still needs ${connect.requirementsDue.length} detail${connect.requirementsDue.length === 1 ? "" : "s"} before this place can be paid.`
-          : "Where guest payments land. Your organization owns the account and the Stripe dashboard — every place it holds shares it.",
+          : "Where guest payments land. This place owns the account and the Stripe dashboard.",
       band: "money",
       state: stripeState,
       points: null,
@@ -486,23 +495,24 @@ function disagreementOf(
       };
     }
     if (row.state.kind === "locked") {
-      // All three org-side prerequisites are fixed on the Organization page:
-      // the subscription, the Stripe account, and the Mesita Pay switch.
-      const onOrganization =
+      // All three setup-tier prerequisites are fixed on the place's Mesita Pay
+      // page: the Stripe account and the Mesita Pay switch are ON it, and the
+      // subscription is the banner one click up on Products.
+      const inSetup =
         row.state.needs === NEEDS_PARTNER ||
         row.state.needs === NEEDS_STRIPE ||
         row.state.needs === NEEDS_ORG_PAY;
       return {
         reason: `You asked for ${row.label}, but guests do not get it yet — ${row.state.needs.toLowerCase()}.`,
-        fixLabel: "Organization",
-        fix: onOrganization ? "organization" : null,
+        fixLabel: "Mesita Pay",
+        fix: inSetup ? "setup" : null,
       };
     }
     if (row.state.kind === "blocked") {
       return {
         reason: `You asked for ${row.label}, but Stripe turned it off.`,
-        fixLabel: "Organization",
-        fix: "organization",
+        fixLabel: "Mesita Pay",
+        fix: "setup",
       };
     }
     return {
@@ -575,10 +585,12 @@ export function guestSummary(rows: readonly OfferingRow[]): string {
 // still proves EVERY guest row belongs to exactly one zone, which is the one
 // failure mode this split can have.
 //
-// `mesita_pay` is the per-PLACE rung; the ORGANIZATION's own switch and its
-// Stripe account stay at `/orgs/<id>/products/pay`, and the Pay view links up
-// to it. Two levels, two screens, one product — which is what the catalogue
-// card already says: "On for the organization. Each place turns it on too."
+// `mesita_pay` is the RUNG an operator flips day to day; the switch that
+// unlocks it and the Stripe account behind that live at
+// `/places/<id>/products/pay`, and the Pay view links up to them. Two screens,
+// one product: buying it, and running it. The split was organization-versus-
+// place until MESITA-1892 and is setup-versus-use now, which is the same split
+// every other card on the catalogue draws.
 export const LADDER_ZONES = [
   "visits",
   "orders",
@@ -621,62 +633,62 @@ export function paintRows(rows: readonly OfferingRow[]): OfferingRow[] {
 }
 
 export type TopPrerequisite =
-  /** The fix is on the Organization page — the line carries a link. */
-  | { action: "organization"; text: string }
-  /** The fix is THIS place's own re-join, never Organization — no link. The
+  /** The fix is on the place's own setup page — the line carries a link. */
+  | { action: "setup"; text: string }
+  /** The fix is THIS place's own re-join, never the setup page — no link. The
    *  door is not built yet, so the line says when it lands instead of
-   *  pointing anywhere: this engine renders on two zones, and only Rewards
-   *  carries the partnership box, so "below" would point at nothing on
-   *  Capabilities. */
+   *  pointing anywhere: this engine renders on five zones, and only Visits
+   *  carries the partnership box, so "below" would point at nothing on the
+   *  other four. */
   | { action: "rejoin"; text: string };
 
 /**
  * The one prerequisite that unlocks the most rows. One line, not a card.
  *
  * TWO "PARTNER" FACTS, ONE PRECEDENCE (MESITA-1867). `member` is the place's
- * entitlement (`plan ≠ free`) and is what every rung gates on; the org's
- * `orgPartnered` only decides which DOOR a non-member is sent to. The cells,
- * each pinned in offerings.test.ts:
+ * entitlement (`plan ≠ free`) and is what every rung gates on; `placePartnered`
+ * — `places.partnered`, the subscription — only decides which DOOR a
+ * non-member is sent to. The cells, each pinned in offerings.test.ts:
  *
- *   member                                → silent, whatever the org says
+ *   member                                → silent, whatever the tier says
  *                                           (except Stripe, below)
- *   !member ∧ orgPartnered = false        → subscribe on Organization (link)
- *   !member ∧ orgPartnered = true ∧ forfeited → re-join this place (unbuilt;
+ *   !member ∧ placePartnered = false        → subscribe in Products (link)
+ *   !member ∧ placePartnered = true ∧ forfeited → re-join this place (unbuilt;
  *                                           the line says when it lands)
- *   !member ∧ orgPartnered = true ∧ !forfeited → same door (a dropped place,
- *                                           org still in)
- *   !member ∧ orgPartnered unknown        → nothing — the rail has not
+ *   !member ∧ placePartnered = true ∧ !forfeited → same door (a dropped place
+ *                                           whose subscription is still live)
+ *   !member ∧ placePartnered unknown        → nothing — the rail has not
  *                                           answered, and a wrong door is
  *                                           worse than no line
  *
  * The re-join lines used to end "— re-join it below." That promised a button
- * that was inert on Rewards and absent on Capabilities (the same engine
- * paints both), so they now carry the one sentence every unbuilt door on
- * this console uses. The Rewards box adds what re-joining will do and whose
- * action it is; this line never says "below".
+ * that was inert on one zone and absent on the others (the same engine paints
+ * them all), so they now carry the one sentence every unbuilt door on this
+ * console uses. The Visits box adds what re-joining will do and whose action
+ * it is; this line never says "below".
  *
- * The Stripe line is Mesita Pay's concern, so it only shows once the org's
- * Pay switch is known ON: with it off (or unknown) the Capabilities rung
- * already says "Off on Organization" / "Checking…", and a Rewards page that
- * nags a Partner-only org to connect Stripe would be re-selling the add-on.
+ * The Stripe line is Mesita Pay's concern, so it only shows once the Mesita
+ * Pay switch is known ON: with it off (or unknown) the rung already says "Off
+ * in Products" / "Checking…", and a page that nags a Partner-only place to
+ * connect Stripe would be re-selling the add-on.
  */
 /** An OPTIONAL payload flag, read as the ladder wants it: absent is
  *  unknown (null → "Checking…"), never off. */
-export function orgFlag(v: boolean | null | undefined): boolean | null {
+export function tierFlag(v: boolean | null | undefined): boolean | null {
   return v == null ? null : v;
 }
 
 export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
   if (!input.member) {
-    if (input.orgPartnered === false) {
+    if (input.placePartnered === false) {
       return {
-        action: "organization",
-        // No "here": this line paints on BOTH zones, and Visit Rewards lives
-        // on Rewards while Accept Prepays lives on Capabilities.
-        text: "Become a Mesita Partner on Organization — it unlocks Visit Rewards and Accept Prepays.",
+        action: "setup",
+        // No "here": this line paints on every zone, and Visit Rewards lives
+        // on Visits while Accept Prepays lives on Credits.
+        text: "Become a Mesita Partner in Products — it unlocks Visit Rewards and Accept Prepays.",
       };
     }
-    if (input.orgPartnered === true) {
+    if (input.placePartnered === true) {
       return {
         action: "rejoin",
         text: input.forfeited
@@ -686,12 +698,12 @@ export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
     }
     return null;
   }
-  if (input.orgMesitaPay !== true) return null;
+  if (input.placeMesitaPay !== true) return null;
   if (input.connectLoading) return null;
   if (input.connect.kind !== "ready") {
     return {
-      action: "organization",
-      text: "Connect Stripe on Organization so guests can pay by card here.",
+      action: "setup",
+      text: "Connect Stripe in Products so guests can pay by card here.",
     };
   }
   return null;
@@ -767,10 +779,11 @@ export function connectStartFailure(
   if (code === STRIPE_LIVE_BLOCKED) {
     return "Stripe onboarding is off: Mesita is on live keys with real charges disabled, so connecting would open a live account. Flipping that is a human step (MESITA-37) \u2014 retrying won't change it.";
   }
-  // The EF resolves the org from placeId (MESITA-1563) and refuses here when
-  // the place has none \u2014 a fact, not a transient failure, so its own message
-  // (already written for an operator) is worth showing verbatim.
-  if (code === "place_has_no_organization" && message) return message;
+  // `place_has_no_organization` WAS HANDLED HERE (MESITA-1563): the EF
+  // resolved the organization from the placeId and refused when the place was
+  // in the pool. There is no organization to resolve (MESITA-1892), so the EF
+  // cannot answer that code and the branch is gone rather than kept as a dead
+  // string match.
   // Stripe named the problem; say what it said. Everything this endpoint can
   // fail on is configuration ("you can only create new accounts if you've
   // signed up for Connect", "this looks like the ID of an API key"), so a

@@ -10,9 +10,17 @@
 // a dispute. That is why it ships in the same PR as the controller flip and
 // not "later".
 //
-// Auth: owner of the ORGANIZATION — the merchant of record (MESITA-1545).
-// Deliberately no super-admin exemption: org membership is a business fact
-// (org-membership.ts), and an operator acting on an org should join it.
+// Auth: owner of the PLACE — the merchant of record (MESITA-1545 put that on
+// the organization; MESITA-1892 removed the layer and the place inherited it).
+//
+// THE SUPER-ADMIN EXEMPTION CAME BACK, and that is a real change, not a
+// tidy-up. `requireOrgRole` had none on purpose — org membership was a
+// business fact, and an operator acting on an org was expected to join it.
+// The place-scoped `requireOwner` (auth-membership.ts) treats a super-admin as
+// an owner everywhere, uniformly, and this door adopts that rather than
+// inventing a second owner rule for one EF. What it costs: an operator can
+// mint a login link into a restaurant's own Stripe dashboard without being on
+// its team. The link is still single-use, short-lived and never stored.
 //
 // Single-use and short-lived: the returned URL grants access to the account
 // holder's Stripe data, so it is never cached, never stored, and never sent
@@ -26,8 +34,12 @@ import {
   readJson,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
+import {
+  adminClient,
+  getAuthedUser,
+  readEFEnv,
+  requireOwner,
+} from "../_shared/auth.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
@@ -41,10 +53,9 @@ import {
 } from "../_shared/payment-account-doc.ts";
 
 type Body = {
-  orgId?: string;
-  /** The place console knows its placeId, not the org that holds it — when
-   *  orgId is omitted this EF resolves it server-side. Ignored when orgId is
-   *  present. */
+  /** The merchant. One Connect account per place, so there is nothing left to
+   *  resolve: the `orgId` this used to accept, and the place→org lookup behind
+   *  it, went with the organization layer. */
   placeId?: string;
 };
 
@@ -62,44 +73,31 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const admin = adminClient(envRes.env);
 
-  const bodyOrgId = (bodyRes.body.orgId ?? "").trim();
-  const bodyPlaceId = (bodyRes.body.placeId ?? "").trim();
-  if (!bodyOrgId && !bodyPlaceId) {
-    return json({ ok: false, error: "orgId or placeId is required" }, 400);
-  }
-  let orgId = bodyOrgId;
-  if (!orgId) {
-    const resolved = await orgIdForPlace(admin, bodyPlaceId);
-    if (!resolved) {
-      return json({
-        ok: false,
-        error: "This place has no organization to connect Stripe under yet.",
-        code: "place_has_no_organization",
-      }, 400);
-    }
-    orgId = resolved;
+  const placeId = (bodyRes.body.placeId ?? "").trim();
+  if (!placeId) {
+    return json({ ok: false, error: "placeId is required" }, 400);
   }
 
-  const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
+  const roleRes = await requireOwner(admin, authRes.user, placeId);
   if (!roleRes.ok) return roleRes.response;
 
   const rowRes = await admin
-    .from("organization_payment_accounts")
+    .from("place_payment_accounts")
     .select()
-    .eq("organization_id", orgId)
+    .eq("place_id", placeId)
     .maybeSingle();
   if (rowRes.error) {
     return json({ ok: false, error: `account_read: ${rowRes.error.message}` }, 500);
   }
   const row = (rowRes.data as PaymentAccountRow | null) ?? null;
 
-  // Nothing to open. This is a normal state (the organization has never onboarded),
+  // Nothing to open. This is a normal state (the place has never onboarded),
   // so it answers with a code the console can branch on rather than an error
   // string it would have to pattern-match.
   if (!row) {
     return json({
       ok: false,
-      error: "This organization has no Stripe account yet.",
+      error: "This place has no Stripe account yet.",
       code: "not_onboarded",
     }, 409);
   }
@@ -125,7 +123,7 @@ Deno.serve(async (req) => {
     return json({
       ok: false,
       error:
-        "This organization's Stripe account belongs to the other Stripe environment.",
+        "This place's Stripe account belongs to the other Stripe environment.",
       code: "account_wrong_universe",
     }, 409);
   }
@@ -153,8 +151,8 @@ Deno.serve(async (req) => {
       // Free the mirror from the staleness that put the button there at all.
       await writePaymentAccount(admin, {
         mode: "update",
-        by: "organization_id",
-        id: orgId,
+        by: "place_id",
+        id: placeId,
         patch: accountSnapshotFromStripe(account, keyIsLive(stripeKey)),
       });
     } catch (refreshErr) {

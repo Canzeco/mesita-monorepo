@@ -1,34 +1,35 @@
-// Mesita Membership — the yearly subscription that makes an organization a
-// Partner (MESITA-1877).
+// Mesita Membership — the yearly subscription that makes a PLACE a Partner
+// (MESITA-1877, re-scoped to the place by MESITA-1892).
 //
 // THE NAME. The thing you buy is the Membership; the thing you become is a
-// Partner. `partner-membership.ts`, not `org-membership.ts`: that file already
-// exists and answers "is this caller IN this organization, and how strongly" —
-// membership of PEOPLE. Two files a letter apart meaning person-in-org and
-// org-pays-Mesita is how a money path gets edited by accident.
+// Partner. The name also used to keep this file apart from `org-membership.ts`,
+// which answered "is this caller IN this organization" — membership of PEOPLE.
+// That file is gone with the org layer, and the name stays because it is the
+// right one: this is the membership a venue BUYS, not a person's place in a
+// team (that is `place_members`).
 //
-// THE SHAPE. `partner_memberships` is BILLING; `organizations.partnered` is
-// ENTITLEMENT. The console, the profiles view and the guest lane all read the
-// second. This file is the only place that derives one from the other, so
-// there is exactly one answer to "is this organization a partner because it
-// paid".
+// THE SHAPE. `partner_memberships` is BILLING; `places.partnered` is
+// ENTITLEMENT. The console and the guest lane read the second. This file is
+// the only place that derives one from the other, so there is exactly one
+// answer to "is this place a partner because it paid".
 //
 // ── LAPSE ≠ DROP ──────────────────────────────────────────────────────────
 //
 // A yearly MX card declines. Stripe moves the subscription to `past_due` and
 // starts dunning; it may well recover on the third retry a week later. If that
 // moment dropped the partnership, `dropPlacePatch` would null four rate columns
-// and the monthly cap on EVERY held place — and recovering the card a week
-// later would bring those places back at ZERO rates, the operator's whole
-// discount configuration gone, silently, because a bank said no once.
+// and the monthly cap on the place — and recovering the card a week later would
+// bring it back at ZERO rates, the operator's whole discount configuration
+// gone, silently, because a bank said no once.
 //
 // So the ladder is:
 //
-//   active / trialing   entitle — partnered, every held place joined at
-//                       plan=pro Zero (the existing joinPlacePatch).
+//   active / trialing   entitle — partnered, the place joined at plan=pro Zero
+//                       (the existing joinPlacePatch).
 //   past_due            entitle, AND CHANGE NOTHING ELSE. Still a partner;
 //                       Stripe is dunning; the console reads the mirror row's
-//                       state to say the payment is due. No place is touched.
+//                       state to say the payment is due. The place is not
+//                       touched.
 //   canceled / unpaid   revoke — the year genuinely ended. (`unpaid` is where
 //                       Stripe lands AFTER the whole retry schedule failed, so
 //                       it is an ending, not a wobble.)
@@ -41,19 +42,20 @@
 // downgrades an entitlement that came through the paid door) applied to the
 // one case where this file could otherwise get it wrong.
 //
-// WHAT THIS FILE NEVER WRITES: `organizations.mesita_pay_enabled`. Paying for
+// WHAT THIS FILE NEVER WRITES: `place_profiles.mesita_pay_enabled`. Paying for
 // the Membership does not switch card payments on — that is the add-on, with
 // its own switch and its own Stripe Ready lock (MESITA-1867 undid the coupling
-// in the console; MESITA-1868 gives Pay its own writer). Buying a partnership
-// must never start charging a restaurant's guests.
+// in the console; MESITA-1868 gives Pay its own writer, and MESITA-1892 made
+// `place-rails.ts` the ONLY writer of that bit). Buying a partnership must
+// never start charging a restaurant's guests.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   type PlacePartnershipRow,
   writePlacePartnership,
-} from "./org-partnership.ts";
+} from "./place-partnership.ts";
 
-/** The one row in `org_plans` — the yearly Mesita Membership. */
+/** The one row in `membership_plans` — the yearly Mesita Membership. */
 export const MEMBERSHIP_PLAN_KEY = "membership";
 
 /** Its entry in the Stripe catalog (stripe-billing-catalog.ts). */
@@ -84,8 +86,10 @@ export type ApplyMembershipResult =
   | {
     ok: true;
     partnered: boolean;
-    placesJoined: number;
-    placesDropped: number;
+    /** Did this call move the place onto the pro plan, or off it? A replayed
+     *  webhook reports false for both, because nothing moved. */
+    joined: boolean;
+    dropped: boolean;
   }
   | { ok: false; error: string };
 
@@ -94,75 +98,72 @@ export type ApplyMembershipResult =
  * `joinPlacePatch` / `dropPlacePatch` return null for a place already in the
  * target state, so a replayed webhook writes nothing at all.
  *
- * THIS IS THE ONLY WRITER of `organizations.partnered`. It deliberately never
- * went through the operator switch's body, which refused without a Ready
- * Connect account — the Membership is not Stripe-locked — and wrote
- * `mesita_pay_enabled` in the same statement. MESITA-1889 retired that door
- * and deleted its body, so this function is now the last one standing.
+ * THIS IS THE ONLY WRITER of `places.partnered`. It deliberately never went
+ * through the operator switch's body, which refused without a Ready Connect
+ * account — the Membership is not Stripe-locked, because Stripe has already
+ * taken the money by the time this runs — and wrote `mesita_pay_enabled` in
+ * the same statement. MESITA-1889 retired that door and deleted its body;
+ * MESITA-1892 did not resurrect it under a place-shaped name. One entitlement,
+ * one writer.
  */
 export async function applyMembershipEntitlement(
   admin: SupabaseClient,
-  orgId: string,
+  placeId: string,
   outcome: MembershipOutcome,
 ): Promise<ApplyMembershipResult> {
   if (outcome === "mirror") {
     const { data, error } = await admin
-      .from("organizations")
+      .from("places")
       .select("partnered")
-      .eq("id", orgId)
+      .eq("id", placeId)
       .maybeSingle();
-    if (error) return { ok: false, error: `org_read: ${error.message}` };
+    if (error) return { ok: false, error: `place_read: ${error.message}` };
     return {
       ok: true,
       partnered: (data as { partnered?: boolean } | null)?.partnered === true,
-      placesJoined: 0,
-      placesDropped: 0,
+      joined: false,
+      dropped: false,
     };
   }
 
   const partnered = outcome === "entitle";
 
-  const { data: org, error: orgErr } = await admin
-    .from("organizations")
-    .update({ partnered })
-    .eq("id", orgId)
-    .select("id, partnered")
-    .single();
-  if (orgErr || !org) {
-    return { ok: false, error: `org_update: ${orgErr?.message ?? "no row"}` };
-  }
-
-  const { data: places, error: placesErr } = await admin
+  // Read the plan columns BEFORE the write: the join / drop decision and the
+  // "did anything move" answer both come from the row as it stands.
+  const { data: before, error: readErr } = await admin
     .from("places")
     .select("id, plan, listing_type, plan_forfeited_at")
-    .eq("organization_id", orgId);
-  if (placesErr) {
-    return { ok: false, error: `places_read: ${placesErr.message}` };
+    .eq("id", placeId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: `place_read: ${readErr.message}` };
+  if (!before) return { ok: false, error: "place_read: no row" };
+
+  const row = before as PlacePartnershipRow;
+  const currentPlan = row.plan ?? "free";
+  // Counted from the same predicates join/dropPlacePatch use, so the answer
+  // reports what actually moved rather than that a row was visited.
+  const willChange = partnered
+    ? currentPlan === "free" || !!row.plan_forfeited_at
+    : currentPlan !== "free";
+
+  const { data: place, error: placeErr } = await admin
+    .from("places")
+    .update({ partnered })
+    .eq("id", placeId)
+    .select("id, partnered")
+    .single();
+  if (placeErr || !place) {
+    return { ok: false, error: `place_update: ${placeErr?.message ?? "no row"}` };
   }
 
-  let placesJoined = 0;
-  let placesDropped = 0;
-  for (const place of (places ?? []) as PlacePartnershipRow[]) {
-    const currentPlan = place.plan ?? "free";
-    // Counted BEFORE the write, from the same predicates join/dropPlacePatch
-    // use, so the numbers report what actually moved rather than how many
-    // rows were visited.
-    const willChange = partnered
-      ? currentPlan === "free" || !!place.plan_forfeited_at
-      : currentPlan !== "free";
-    const write = await writePlacePartnership(admin, place, partnered);
-    if (!write.ok) return { ok: false, error: `place_update: ${write.error}` };
-    if (willChange) {
-      if (partnered) placesJoined += 1;
-      else placesDropped += 1;
-    }
-  }
+  const write = await writePlacePartnership(admin, row, partnered);
+  if (!write.ok) return { ok: false, error: `place_update: ${write.error}` };
 
   return {
     ok: true,
-    partnered: (org as { partnered: boolean }).partnered === true,
-    placesJoined,
-    placesDropped,
+    partnered: (place as { partnered: boolean }).partnered === true,
+    joined: willChange && partnered,
+    dropped: willChange && !partnered,
   };
 }
 
@@ -176,7 +177,7 @@ export type PartnerMembershipRow = {
 };
 
 /** A `mock_*` id is MOCK_SUBSCRIPTION's placeholder, never a Stripe
- *  subscription. It must not read as one on the real path: an org that got a
+ *  subscription. It must not read as one on the real path: a place that got a
  *  mock grant while the flag was on would otherwise be a permanent partner
  *  with nothing billable behind it, unable to buy even when it wanted to.
  *  Same rule `business-web-change-subscription` applies to place rows. */
@@ -185,13 +186,13 @@ export function isMockSubscriptionId(id: string | null | undefined): boolean {
 }
 
 /**
- * The organization's live membership, or null. At most one row by
- * construction — `partner_memberships_one_live` is a unique partial index on
- * exactly these two states.
+ * The place's live membership, or null. At most one row by construction —
+ * `partner_memberships_one_live` is a unique partial index on exactly these
+ * two states.
  */
 export async function readLiveMembership(
   admin: SupabaseClient,
-  orgId: string,
+  placeId: string,
 ): Promise<
   { ok: true; row: PartnerMembershipRow | null } | { ok: false; error: string }
 > {
@@ -200,7 +201,7 @@ export async function readLiveMembership(
     .select(
       "state, stripe_subscription_id, current_period_end, cancel_at_period_end, price_cents, currency",
     )
-    .eq("organization_id", orgId)
+    .eq("place_id", placeId)
     .in("state", LIVE_MEMBERSHIP_STATES)
     .maybeSingle();
   if (error) return { ok: false, error: error.message };

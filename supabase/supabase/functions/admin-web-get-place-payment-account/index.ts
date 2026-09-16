@@ -2,10 +2,17 @@
 //
 // Super-admin read of a place's Stripe Connect mirror plus the full
 // pay-readiness verdict:
-//   intent      places.mesita_pay_enabled   (operator intent bit, #1409)
-//   global_rail visits_config.payCard       (staged rail switch)
-//   capability  isConnectChargeReady(row)   (charges_enabled ∧ details_submitted)
+//   intent      place_profiles.mesita_pay_enabled (operator intent bit, #1409)
+//   global_rail visits_config.payCard             (staged rail switch)
+//   capability  isConnectChargeReady(row)         (charges_enabled ∧ details_submitted)
 // The verdict is informational — nothing consumes it until the gateway PR.
+//
+// THREE LEGS, THREE ROWS, ONE PLACE (MESITA-1892). The intent leg used to be
+// the place's bit ANDed with its organization's, and the mirror row hung off
+// the organization — so this EF resolved a holder before it could read an
+// account, and a place with no holder had no account by definition. The org
+// half was folded into `place_profiles.mesita_pay_enabled` at migration time
+// and `place_payment_accounts` is keyed on the place, so both hops are gone.
 //
 // `refresh: true` re-reads the account from Stripe and upserts the snapshot
 // (refresh-on-read): the Connect webhook endpoint is an optimization whose
@@ -63,27 +70,13 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  // The merchant of record is the ORGANIZATION (MESITA-1545): the place's
-  // account is its organization's account. A pooled place has none.
-  const orgRes = await admin
-    .from("places")
-    .select("organization_id")
-    .eq("id", placeId)
+  // The merchant of record is the PLACE, and its Connect mirror is one row
+  // keyed on it. A place that has never onboarded simply has no row.
+  const rowRes = await admin
+    .from("place_payment_accounts")
+    .select()
+    .eq("place_id", placeId)
     .maybeSingle();
-  if (orgRes.error) {
-    return json({ ok: false, error: `org_read: ${orgRes.error.message}` }, 500);
-  }
-  const orgId =
-    (orgRes.data as { organization_id?: string | null } | null)
-      ?.organization_id ?? null;
-
-  const rowRes = orgId
-    ? await admin
-      .from("organization_payment_accounts")
-      .select()
-      .eq("organization_id", orgId)
-      .maybeSingle()
-    : { data: null, error: null };
   if (rowRes.error) {
     return json({ ok: false, error: `account_read: ${rowRes.error.message}` }, 500);
   }
@@ -102,8 +95,8 @@ Deno.serve(async (req) => {
       const snapshot = accountSnapshotFromStripe(account, keyIsLive(stripeKey!));
       const written = await writePaymentAccount(admin, {
         mode: "update",
-        by: "organization_id",
-        id: orgId!,
+        by: "place_id",
+        id: placeId,
         patch: snapshot,
       });
       if (written.ok && written.row) row = written.row;
@@ -119,7 +112,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // The pay-readiness chain — the AND the intent-bit comments promise.
+  // The pay-readiness chain — the AND the intent-bit column comment promises.
   const placeRes = await admin
     .from("place_profiles")
     .select("mesita_pay_enabled")

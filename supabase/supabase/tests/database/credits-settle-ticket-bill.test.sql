@@ -22,18 +22,21 @@ select plan(16);
 
 -- ── Fixtures ────────────────────────────────────────────────────────────
 insert into auth.users (id) values ('aaaaaaaa-0000-0000-0000-000000000001');
-insert into public.organizations (id, name)
-  values ('aaaaaaaa-0000-0000-0000-000000000002', 'pgTAP settle-bill org');
 insert into public.consumers (id, code)
   values ('aaaaaaaa-0000-0000-0000-000000000001', '9999-0003');
+
+-- ONE tenant now (MESITA-1892): the place that holds the ticket is the same
+-- place the credits are spendable at, so this fixture is the whole boundary.
+-- `places.id` carries an FK to `place_profiles.id`, hence the order; `name` is
+-- GENERATED from mesita_name/google_name and cannot be written directly.
 insert into public.place_profiles (id, google_name)
   values ('aaaaaaaa-0000-0000-0000-000000000003', 'pgTAP settle-bill place');
 insert into public.places (id, slug)
   values ('aaaaaaaa-0000-0000-0000-000000000003', 'pgtap-settle-bill-place');
 
--- A lot: 900 principal + 100 bonus, matured, funding this org.
+-- A lot: 900 principal + 100 bonus, matured, funding this place.
 select public.create_credit_lot(
-  'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001',
+  'aaaaaaaa-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000001',
   900, 100, 'MXN', now() - interval '1 hour', now() + interval '90 days', 'pi_settle_bill');
 
 -- An approved ticket, amount due 1000, tip_cents left NULL on purpose — the
@@ -56,7 +59,7 @@ values (
 -- ── Regression: NULL tip_cents must not zero the cap ───────────────────
 select is(
   ((public.apply_ticket_credits('aaaaaaaa-0000-0000-0000-000000000004',
-     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002', 1100)
+     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000003', 1100)
    )->>'cap')::int,
   1000,
   'a null tip_cents does not zero the cap (greatest(0, x - coalesce(tip,0)))');
@@ -64,21 +67,21 @@ select is(
 -- ── Error paths ──────────────────────────────────────────────────────────
 select is(
   ((public.apply_ticket_credits('99999999-9999-9999-9999-999999999999',
-     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002', 100)
+     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000003', 100)
    )->>'code'),
   'not_found',
   'a nonexistent ticket returns not_found');
 
 select is(
   ((public.apply_ticket_credits('aaaaaaaa-0000-0000-0000-000000000004',
-     '99999999-9999-9999-9999-999999999999','aaaaaaaa-0000-0000-0000-000000000002', 100)
+     '99999999-9999-9999-9999-999999999999','aaaaaaaa-0000-0000-0000-000000000003', 100)
    )->>'code'),
   'not_found',
   'the wrong consumer_id also returns not_found, never leaking whose ticket it is');
 
 select is(
   ((public.apply_ticket_credits('aaaaaaaa-0000-0000-0000-000000000005',
-     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002', 100)
+     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000003', 100)
    )->>'code'),
   'stale_state',
   'a ticket that is not approved refuses with stale_state');
@@ -86,7 +89,7 @@ select is(
 -- ── The happy path, and the single-shot idempotency it depends on ────────
 select is(
   ((public.apply_ticket_credits('aaaaaaaa-0000-0000-0000-000000000004',
-     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002', 400)
+     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000003', 400)
    )->>'ok')::boolean,
   true,
   'an apply within the cap and the balance succeeds');
@@ -112,7 +115,7 @@ select is(
 -- THE double-spend regression: a retry with the SAME amount must be a no-op.
 select is(
   ((public.apply_ticket_credits('aaaaaaaa-0000-0000-0000-000000000004',
-     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002', 400)
+     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000003', 400)
    )->>'idempotent')::boolean,
   true,
   'a retry with the same amount is flagged idempotent, not a fresh spend');
@@ -122,7 +125,7 @@ select is(
 -- new one, and never a second spend.
 select is(
   ((public.apply_ticket_credits('aaaaaaaa-0000-0000-0000-000000000004',
-     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000002', 999)
+     'aaaaaaaa-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000003', 999)
    )->>'creditsAppliedCents')::int,
   400,
   'a retry with a different amount returns the ORIGINAL applied amount, not the new one');
@@ -170,10 +173,10 @@ select ok(
 -- sets it later, in the real flow, not this RPC).
 select is(
   (select spend_cents::int from public.get_credit_spend_report()
-    where organization_id = 'aaaaaaaa-0000-0000-0000-000000000002'
+    where place_id = 'aaaaaaaa-0000-0000-0000-000000000003'
       and paid_method = 'unknown'),
   400,
-  'get_credit_spend_report attributes the spend to this organization, unknown rail (paid_method not yet set)');
+  'get_credit_spend_report attributes the spend to this place, unknown rail (paid_method not yet set)');
 
 select ok(
   not has_function_privilege('authenticated', 'public.get_credit_spend_report()', 'execute')

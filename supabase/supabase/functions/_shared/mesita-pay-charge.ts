@@ -13,8 +13,8 @@
 //      would imply) on every single visit, attach the clone to a Customer
 //      that lives on the CONNECTED account and reuse that Customer across
 //      visits — Pato's decision (2026-09-02): the guest gets one durable,
-//      dashboard-visible Customer per organization, cached in
-//      organization_guest_customers. A fresh PaymentMethod is still cloned
+//      dashboard-visible Customer per PLACE, cached in
+//      place_guest_customers. A fresh PaymentMethod is still cloned
 //      and attached on every charge (clones can't be reused regardless),
 //      but the CUSTOMER identity — and the disclosure the guest already saw
 //      — stays the same visit over visit.
@@ -22,16 +22,18 @@
 //      with the attached clone.
 //
 // DIRECT charges only (never destination) — the frozen law in
-// stripe-connect.ts. The organization is merchant of record; funds settle to
-// its connected account; Mesita's application_fee_amount (if any) is the
-// only money that ever touches the platform.
+// stripe-connect.ts. The PLACE is merchant of record (MESITA-1892 removed the
+// organization that used to hold that role, and with it the second Stripe
+// identity a charge had to be routed through); funds settle to the place's
+// connected account; Mesita's application_fee_amount (if any) is the only
+// money that ever touches the platform.
 
 import type Stripe from "npm:stripe@17";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
-  getOrganizationGuestCustomer,
-  writeOrganizationGuestCustomer,
-} from "./organization-guest-customer-doc.ts";
+  getPlaceGuestCustomer,
+  writePlaceGuestCustomer,
+} from "./place-guest-customer-doc.ts";
 
 /** What a browser needs to finish a 3DS challenge on a DIRECT charge. The
  *  connected account id is not optional decoration: the intent lives on that
@@ -68,21 +70,21 @@ export type ChargeOutcome =
 
 /**
  * Resolves (creating if needed) the connected-account Customer this guest
- * clones onto for charges at `organizationId`, per the cache described
- * above. Returns the connected-account customer id.
+ * clones onto for charges at `placeId`, per the cache described above.
+ * Returns the connected-account customer id.
  */
 async function resolveConnectedCustomer(
   stripe: Stripe,
   admin: SupabaseClient,
   args: {
-    organizationId: string;
+    placeId: string;
     consumerId: string;
     connectedAccountId: string;
   },
 ): Promise<string> {
-  const cached = await getOrganizationGuestCustomer(
+  const cached = await getPlaceGuestCustomer(
     admin,
-    args.organizationId,
+    args.placeId,
     args.consumerId,
   );
   if (cached) return cached.stripe_customer_id;
@@ -91,18 +93,18 @@ async function resolveConnectedCustomer(
     { metadata: { consumer_id: args.consumerId, mesita_kind: "guest_clone" } },
     { stripeAccount: args.connectedAccountId },
   );
-  const written = await writeOrganizationGuestCustomer(admin, {
-    organizationId: args.organizationId,
+  const written = await writePlaceGuestCustomer(admin, {
+    placeId: args.placeId,
     consumerId: args.consumerId,
     stripeCustomerId: customer.id,
   });
   if (!written.ok) {
-    // A concurrent charge by the same guest at the same org won the upsert
+    // A concurrent charge by the same guest at the same place won the upsert
     // first (or the write itself failed) — re-read and converge on
     // whichever id is now cached rather than leave two live customers.
-    const raced = await getOrganizationGuestCustomer(
+    const raced = await getPlaceGuestCustomer(
       admin,
-      args.organizationId,
+      args.placeId,
       args.consumerId,
     );
     if (raced) return raced.stripe_customer_id;
@@ -125,7 +127,7 @@ async function cloneCardAndChargeDirect(
   stripe: Stripe,
   admin: SupabaseClient,
   args: {
-    organizationId: string;
+    placeId: string;
     connectedAccountId: string;
     consumerId: string;
     platformCustomerId: string;
@@ -141,7 +143,7 @@ async function cloneCardAndChargeDirect(
   },
 ): Promise<ChargeOutcome> {
   const connectedCustomerId = await resolveConnectedCustomer(stripe, admin, {
-    organizationId: args.organizationId,
+    placeId: args.placeId,
     consumerId: args.consumerId,
     connectedAccountId: args.connectedAccountId,
   });
@@ -238,7 +240,7 @@ export function chargeTicketWithMesitaPay(
   stripe: Stripe,
   admin: SupabaseClient,
   args: {
-    organizationId: string;
+    placeId: string;
     connectedAccountId: string;
     consumerId: string;
     ticketId: string;
@@ -265,9 +267,10 @@ export function chargeTicketWithMesitaPay(
 
 /**
  * Charges the guest's saved card, direct, on a Credits purchase's target
- * organization (MESITA-1676). `paidCents` is what Stripe actually moves —
- * `bonusCents` never reaches Stripe, it is the organization's own top-up on
- * top of a real charge. Every money term (`paidCents`, `bonusCents`,
+ * place (MESITA-1676; the target was the organization until MESITA-1892 made
+ * the place the only tenant). `paidCents` is what Stripe actually moves —
+ * `bonusCents` never reaches Stripe, it is the place's own top-up on top of a
+ * real charge. Every money term (`paidCents`, `bonusCents`,
  * `activatesAt`, `expiresAt`) must already be resolved SERVER-side from
  * `controls_config` by the caller and is carried here ONLY to ride the
  * PaymentIntent's metadata: the webhook backstop has nothing else to read
@@ -279,7 +282,7 @@ export function chargeCreditsWithMesitaPay(
   stripe: Stripe,
   admin: SupabaseClient,
   args: {
-    organizationId: string;
+    placeId: string;
     connectedAccountId: string;
     consumerId: string;
     platformCustomerId: string;
@@ -293,7 +296,7 @@ export function chargeCreditsWithMesitaPay(
   },
 ): Promise<ChargeOutcome> {
   return cloneCardAndChargeDirect(stripe, admin, {
-    organizationId: args.organizationId,
+    placeId: args.placeId,
     connectedAccountId: args.connectedAccountId,
     consumerId: args.consumerId,
     platformCustomerId: args.platformCustomerId,
@@ -305,9 +308,24 @@ export function chargeCreditsWithMesitaPay(
     // the credits handler instead of the ticket one (stripe-webhook-handle-
     // event/index.ts) — a restaurant's own Stripe traffic carries neither and
     // still falls through untouched.
+    // `place_id` is the routing key the webhook backstop replays the lot
+    // with. It named the ORGANIZATION until MESITA-1892, and the backstop
+    // does NOT read that retired key: `credit-payment-intent.ts` refuses an
+    // intent that pins no place, logs the intent id, and records nothing.
+    //
+    // THAT IS A DELIBERATE NARROW LOSS, not an oversight. Metadata is frozen
+    // on the Stripe object, so an intent confirmed before the rename and
+    // delivered after it — a 3DS challenge finished hours later, a Stripe
+    // retry — names a tenant that no longer exists, and there is nothing to
+    // map it to. Reading the old key would mean keeping the dead column alive
+    // to look one up, which is the compatibility layer this issue exists to
+    // refuse. The backstop is a BACKSTOP: `consumer-web-buy-credits` writes
+    // the lot synchronously at charge time, so this only bites an intent whose
+    // charge request also crashed, in the window between the two. There were
+    // zero credit lots and no live credits intents when the rename landed.
     metadata: {
       mesita_kind: "credit_purchase",
-      organization_id: args.organizationId,
+      place_id: args.placeId,
       consumer_id: args.consumerId,
       paid_cents: String(args.paidCents),
       bonus_cents: String(args.bonusCents),
@@ -321,8 +339,8 @@ export function chargeCreditsWithMesitaPay(
 /**
  * Charges the SENDER's saved card to fund a Gift Credits code (MESITA-1677).
  * Same direct-charge mechanics as `chargeCreditsWithMesitaPay` — `consumerId`
- * here is the SENDER, who pays and clones onto the organization's connected
- * account; the resulting lot has no owner until the code is claimed.
+ * here is the SENDER, who pays and clones onto the place's connected account;
+ * the resulting lot has no owner until the code is claimed.
  *
  * DELIBERATELY REUSES `mesita_kind: "credit_purchase"` rather than minting a
  * second event-routing value. stripe-webhook-handle-event/index.ts's
@@ -335,7 +353,7 @@ export function chargeGiftCreditsWithMesitaPay(
   stripe: Stripe,
   admin: SupabaseClient,
   args: {
-    organizationId: string;
+    placeId: string;
     connectedAccountId: string;
     senderId: string;
     platformCustomerId: string;
@@ -351,7 +369,7 @@ export function chargeGiftCreditsWithMesitaPay(
   },
 ): Promise<ChargeOutcome> {
   return cloneCardAndChargeDirect(stripe, admin, {
-    organizationId: args.organizationId,
+    placeId: args.placeId,
     connectedAccountId: args.connectedAccountId,
     consumerId: args.senderId,
     platformCustomerId: args.platformCustomerId,
@@ -361,7 +379,7 @@ export function chargeGiftCreditsWithMesitaPay(
     idempotencyKey: args.idempotencyKey,
     metadata: {
       mesita_kind: "credit_purchase",
-      organization_id: args.organizationId,
+      place_id: args.placeId,
       consumer_id: args.senderId,
       paid_cents: String(args.paidCents),
       bonus_cents: String(args.bonusCents),

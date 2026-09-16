@@ -24,7 +24,7 @@ export type ReverseCreditLotInput = {
   kind: "refund" | "adjust";
   reason: string;
   lotId?: string;
-  organizationId?: string;
+  placeId?: string;
   consumerId?: string;
   amountCents?: number;
 };

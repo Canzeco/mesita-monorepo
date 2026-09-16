@@ -1,6 +1,6 @@
 "use client";
 
-// The Organization screen's Mesita Pay switch (MESITA-1867).
+// Mesita Pay's switch, on the product's own setup page (MESITA-1867).
 //
 // This is the switch that used to be PartnerCard. MESITA-1798 drew it as a
 // `role="switch"` row in the Capabilities-ladder grammar with Stripe Ready
@@ -10,16 +10,16 @@
 // switch it unlocks are one subject. All of that holds — it just stopped
 // being the Partner switch. Partner is a yearly subscription now
 // (PartnerCard.tsx); THIS is the optional add-on on top of it: card payments
-// inside Mesita, through the organization's own Stripe account, and it is the
-// thing Stripe Ready actually gates.
+// inside Mesita, through the place's own Stripe account, and it is the thing
+// Stripe Ready actually gates.
 //
-// IT IS `aria-disabled` IN THIS PR, EVEN WHEN STRIPE IS READY. The column it
-// mirrors, `organizations.mesita_pay_enabled`, has no writer of its own yet:
-// today the only thing that sets it is the old Partner switch's EF, which
-// also writes `partnered` and joins every place — the coupling this issue
-// undoes. MESITA-1868 adds the owner-only writer gated on partnered ∧ Stripe
-// Ready; until then the track shows the flag honestly and the sentence says
-// the switch lands with the next release. No `useState`, no `key=` remount:
+// IT IS `aria-disabled`, EVEN WHEN STRIPE IS READY. The column it mirrors,
+// `place_profiles.mesita_pay_enabled`, has exactly one writer and it is not a
+// console door: `_shared/place-rails.ts` (MESITA-1892 folded the organization
+// half of the bit into it, so there is one switch again where there were two).
+// MESITA-1868 adds the owner-only writer gated on partnered ∧ Stripe Ready;
+// until then the track shows the flag honestly and the sentence says the
+// switch lands with the next release. No `useState`, no `key=` remount:
 // nothing here writes, so nothing needs re-seeding.
 //
 // A FLAT BRANCH CHAIN, in dependency order, each branch a track and one line

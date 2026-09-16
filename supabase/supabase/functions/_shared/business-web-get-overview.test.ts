@@ -2,8 +2,17 @@
 //
 // This EF is the Place screen's hard load, and it used to run seven queries in
 // a row for an ordinary operator — p50 472ms measured over 24h, on a project
-// where a call costs far more than the query inside it. Three of those reads
-// need only the user id and now start together.
+// where a call costs far more than the query inside it. The reads that need
+// only the user id now start together.
+//
+// There were THREE of them when MESITA-1876 overlapped them; there are two.
+// The third resolved the caller's organizations, and MESITA-1892 did not make
+// it faster — it deleted the tables under it. `place_members` is the whole of
+// tenancy now, which is a SHAPE claim this file can pin: ONE membership read,
+// not two unioned. The token ratchet that keeps the layer itself from coming
+// back lives in `_shared/no-organization-layer.test.ts` and covers every EF,
+// so this file states the thing that is specific to this handler and does not
+// restate a wall that is already built.
 //
 // A SOURCE TEST, deliberately. There is no way to assert "these ran in
 // parallel" from outside without a live database and a stopwatch; what CAN be
@@ -24,16 +33,26 @@ const CODE = SRC.split("\n")
   .join("\n");
 
 Deno.test("the reads that need only the user id start before the branch", () => {
-  for (const started of ["superAdminP", "memberRowsP", "orgRowsP", "rewardsConfigP", "pinRowP"]) {
+  for (const started of ["superAdminP", "memberRowsP", "rewardsConfigP", "pinRowP"]) {
     assertEquals(CODE.includes(`const ${started}`), true, `${started} is kicked off`);
   }
   // The branch reads the promise, never the table again. `await admin.from(
   // "place_members"…)` at the old call site is the regression this catches.
   assertEquals(CODE.includes("await memberRowsP"), true);
-  assertEquals(CODE.includes("await orgRowsP"), true);
   assertEquals(CODE.includes("await rewardsConfigP"), true);
   assertEquals(CODE.includes('await admin\n      .from("place_members")'), false);
-  assertEquals(CODE.includes('await admin\n      .from("organization_members")'), false);
+});
+
+Deno.test("the sidebar's places come from ONE membership read", () => {
+  // The second path (MESITA-1537 / D1) resolved the caller's holders, then the
+  // places those holders held, and UNIONED that with the direct place_members
+  // roles — which is why the union had a role-precedence rule of its own. That
+  // whole branch is gone (MESITA-1892). What is easy to re-add by accident is
+  // a second membership query somewhere down the branch, and the cost is not
+  // just the round trip MESITA-1876 removed: two readers of the same grant is
+  // two answers to "what role is this caller", and the owner branch is what
+  // attaches the Staff Check PIN.
+  assertEquals((CODE.match(/from\("place_members"\)/g) ?? []).length, 1);
 });
 
 Deno.test("app_config no longer blocks the response at the end", () => {
@@ -57,7 +76,7 @@ Deno.test("the pin row is speculated on the requested id, with a real fallback",
 });
 
 Deno.test("a speculative read can never take the isolate down", () => {
-  // A super-admin takes neither membership result, and the pin promise is
+  // A super-admin takes the membership result nowhere, and the pin promise is
   // discarded when `active` falls back. A floating promise that rejects is an
   // unhandled rejection: a 500 with no body, for a super-admin, on a transient
   // blip, in a branch nobody reads.
@@ -66,7 +85,7 @@ Deno.test("a speculative read can never take the isolate down", () => {
   // always awaited on the HAPPY path, and every early return above it — the
   // super-admin 400, the 404, the two 500s — leaves it floating. An error
   // response is when a second unhandled rejection is least welcome.
-  for (const speculative of ["memberRowsP", "orgRowsP", "pinRowP", "rewardsConfigP"]) {
+  for (const speculative of ["memberRowsP", "pinRowP", "rewardsConfigP"]) {
     const at = CODE.indexOf(`const ${speculative}`);
     const decl = CODE.slice(at, at + 260);
     assertEquals(

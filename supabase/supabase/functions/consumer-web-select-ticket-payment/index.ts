@@ -7,8 +7,9 @@
 //   - `at_place`: the guest pays the place directly, at the register, by
 //     whatever instrument it accepts. No PSP.
 //   - `mesita_pay` (MESITA-1414): the gateway. Clones the guest's saved
-//     platform card onto the place's organization's connected Stripe
-//     account and runs a DIRECT charge (_shared/mesita-pay-charge.ts) —
+//     platform card onto the PLACE's own connected Stripe account — the
+//     organization that used to hold that account is gone (MESITA-1892) —
+//     and runs a DIRECT charge (_shared/mesita-pay-charge.ts) —
 //     confirmed synchronously, so a success closes the ticket immediately
 //     via the same closeTicketAndEnqueueReview the staff check page uses,
 //     no register touch needed. A decline, a card needing extra bank
@@ -42,7 +43,7 @@ import { writeTicket } from "../_shared/ticket-doc.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
 import { parseSelectTicketPaymentMethod } from "../_shared/select-ticket-payment-method.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
-import { resolveChargeableOrganizationAccount } from "../_shared/mesita-pay-readiness.ts";
+import { resolveChargeablePlaceAccount } from "../_shared/mesita-pay-readiness.ts";
 import { chargeTicketWithMesitaPay } from "../_shared/mesita-pay-charge.ts";
 import {
   ensureConsumerCustomer,
@@ -190,7 +191,7 @@ Deno.serve(async (req) => {
     }
 
     const visitsConfig = await loadVisitsConfig(admin);
-    const chargeable = await resolveChargeableOrganizationAccount(
+    const chargeable = await resolveChargeablePlaceAccount(
       admin,
       visitsConfig.payCard,
       ticket.place_id as string | null,
@@ -262,7 +263,7 @@ Deno.serve(async (req) => {
     }
 
     const outcome = await chargeTicketWithMesitaPay(stripe, admin, {
-      organizationId: chargeable.organizationId,
+      placeId: chargeable.placeId,
       connectedAccountId: chargeable.connectedAccountId,
       consumerId: authRes.user.id,
       ticketId: ticket.id as string,
