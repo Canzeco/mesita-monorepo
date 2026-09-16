@@ -6,12 +6,15 @@
 //   ▲ Mesita            the HEAD: the lockup, pinned, a label — not a link
 //   ═════════════════════
 //   ▣ Lumbre y Sal ⌄    the place this column is about
+//   ▤ MANAGE            a section head: an eyebrow, never a row
 //   ⚙ Settings          → /places/<id>/settings     the team: members, keys
 //   ▁ Activity          → /places/<id>/activity
 //   ▦ Products          → /places/<id>/products     the catalogue
+//   ═════════════════════
+//   ▦ YOUR PRODUCTS     the eight, WHOLE, under one title (MESITA-1915)
 //   ⌂ Profile           → /places/<id>/profile
 //   👥 Customers        → /places/<id>/customers
-//   … the five remaining products
+//   … the six remaining products
 //                       the SLACK falls here, between the work and you
 //   ═════════════════════
 //   ○ Account           → /account   the FOOT: the person, pinned, alone
@@ -22,6 +25,14 @@
 // is not the first row of `nav` and Account is not its last. Account is PINNED
 // rather than trailing the rows, so it sits in the same place under a viewer's
 // three rows as under an owner's eleven.
+//
+// TWO SECTIONS, TWO TITLES (MESITA-1915). A rule in this column separates
+// SECTIONS and nothing else — Pato cut the three that split the products into
+// free / at-the-table / money, because the eight are ONE thing. A head is an
+// eyebrow, never a row: no address, no pill, no glyph column. This reverses
+// MESITA-1844, which deleted the headers MESITA-1842 added, on the reasoning
+// that eight rows under THREE titles is three lists. Two titles over two
+// sections is the version that holds.
 //
 // ONE WIDTH. There is no chips-only rail and no control to reach one: Collapse
 // was the only door to `w-16`, and a mode nobody can open is a second design
@@ -94,6 +105,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
+  Briefcase,
   CalendarCheck,
   ChartNoAxesColumn,
   CreditCard,
@@ -134,9 +146,11 @@ import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/con
 import {
   FLAT_ROUTES,
   RAIL_GROUP_STARTS,
+  RAIL_SECTIONS,
   RAIL_ROWS,
   SHELL_ROUTES,
   ZERO_PLACE_ROWS,
+  railSectionOf,
   flatPlacePageFromPathname,
   flatViewFromPathname,
   placePageFromPathname,
@@ -205,6 +219,44 @@ const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
 // ROW ONE GETS NO RULE ABOVE IT. The rail carries no wordmark (MESITA-1842),
 // so a seam over row one would separate the column from the window's edge.
 const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
+// AN EYEBROW, NOT A ROW (MESITA-1915). Smaller, uppercase, tracked, muted, and
+// with no hover, no pill, no address — so the one row shape stays the one row
+// shape and a head can never be mistaken for somewhere to go. Its glyph sits
+// in a narrower box than a row's, which is what keeps the labels beneath it
+// reading as a list under a title rather than as siblings of it.
+const HEAD_BASE =
+  "flex items-center gap-2 px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted/80";
+const HEAD_ICON = "h-3 w-3 shrink-0";
+
+const SECTION_ICON: Record<
+  (typeof RAIL_SECTIONS)[number]["key"],
+  React.ComponentType<{ className?: string }>
+> = {
+  // THE BUSINESS ITSELF — what you configure, read and shop for. Picking this
+  // mark is mostly a list of what it may NOT be, and the column's icon table
+  // already wrote that list: not `sliders-horizontal` (retired Capabilities
+  // wore it, and a dead row's glyph returning as a title is exactly the drift
+  // the table exists to stop), not `building2` or `cog` or `settings-2` (named
+  // there as marks that never belonged — each one a second gear or a second
+  // venue), and not Profile's own `store`, which is this place's PUBLIC page.
+  // A briefcase is the business rather than a tool for it, which is why it
+  // collides with none of them.
+  manage: Briefcase,
+  // THE SAME MARK THE CATALOGUE ROW WEARS, deliberately: the row is the door
+  // to the eight and the section is the eight, and one idea drawn two ways is
+  // how an operator learns to distrust both drawings.
+  products: LayoutGrid,
+};
+
+function SectionHead({ section }: { section: (typeof RAIL_SECTIONS)[number] }) {
+  const Icon = SECTION_ICON[section.key];
+  return (
+    <p className={HEAD_BASE}>
+      <Icon className={HEAD_ICON} aria-hidden />
+      {section.label}
+    </p>
+  );
+}
 // The full route is prefetched on hover (MESITA-1779): the click then paints
 // the body at once instead of the skeleton. The prop works at runtime in
 // app/ and is missing from Link's public type, so it is spread in.
@@ -561,7 +613,7 @@ export function Sidebar({
           after seeing it in the mock: the product, then the venue. The mobile
           topbar is NOT part of this and keeps its scope line: what belongs
           above a CLOSED drawer is the thing the drawer is hiding. */}
-      <div className="flex shrink-0 items-center px-2.5 pt-1 pb-3">
+      <div className="border-sidebar-border/50 flex shrink-0 items-center border-b px-2.5 pt-1 pb-3">
         <MesitaLogo variant="horizontal" className="text-sidebar-foreground h-5 w-auto" />
       </div>
 
@@ -679,11 +731,13 @@ export function Sidebar({
               />
             )}
             {rows.map((row, i) => {
-              // PATO'S BLANK LINES, as hairlines. The rail's groups carry no
-              // NAMES — MESITA-1842 headed them and MESITA-1844 deleted the
-              // headers two issues later — so a group opens with the same seam
-              // Account already wears and nothing else.
+              // A SECTION OPENS WITH A RULE AND A TITLE (MESITA-1915). The
+              // rule is the same hairline Account wears; the title is an
+              // eyebrow, not a row. The FIRST section takes the title without
+              // the rule — the head band above it already drew one, and two
+              // hairlines with a lockup between them is a boxed logo.
               const seam = opensGroup(i) ? SECTION_SEAM : undefined;
+              const head = i === 0 || opensGroup(i) ? railSectionOf(row) : null;
               const common = {
                 onNavigate,
                 onGuardedNavigate: guardNav ?? undefined,
@@ -725,8 +779,9 @@ export function Sidebar({
               // gets NO wrapper either: an empty div per row is depth the
               // column does not need, and this file's own depth test counts
               // it.
-              return seam ? (
+              return seam || head ? (
                 <div key={key} className={seam}>
+                  {head && <SectionHead section={head} />}
                   {node}
                 </div>
               ) : (

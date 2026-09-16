@@ -16,6 +16,7 @@ import {
   PLACE_PAGES,
   RAIL_GROUP_STARTS,
   RAIL_ROWS,
+  RAIL_SECTIONS,
   SHELL_ROUTES,
   placePageHref,
   placePayHref,
@@ -318,6 +319,14 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
       "lucide-credit-card", // Payments — the card
       "lucide-wallet", // Credits — money held before it is spent
       "lucide-user-round", // Account — the person, one of them
+      // THE TWO SECTION HEADS (MESITA-1915). Not rows, and their marks say so.
+      // Manage wears a BRIEFCASE — the business itself. Every nearer mark is
+      // banned below as a second gear or a second venue, which is the whole
+      // reason this one is a briefcase and not a tool. Products' head wears
+      // the catalogue's own `layout-grid`, the SAME mark as its row: the row
+      // is the door to the eight and the section IS the eight, and one idea
+      // drawn two ways is what this table exists to prevent.
+      "lucide-briefcase",
     ]) {
       expect(html, mark).toContain(mark);
     }
@@ -548,6 +557,38 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
   // THREE BANDS (MESITA-1909): head, scroller, foot. Each answers a different
   // question, so this pins that none of them leaks into another — the lockup
   // is not a row of `nav`, and Account is not its last row.
+  // THE EIGHT PRODUCTS ARE ONE SECTION (MESITA-1915), and this is the
+  // assertion that says so. The seam COUNT elsewhere in this file derives from
+  // `RAIL_GROUP_STARTS`, so it would follow the contract wherever it went and
+  // catch nothing; the number itself is what Pato asked for — *"products whole
+  // products is ONE sections"* — so the number is pinned here.
+  it("one line inside the column, and the eight products sit whole under it", () => {
+    expect(RAIL_GROUP_STARTS).toHaveLength(1);
+    // And it falls exactly where the pages end and the products begin.
+    expect(RAIL_ROWS[RAIL_GROUP_STARTS[0] - 1].kind).toBe("page");
+    expect(RAIL_ROWS[RAIL_GROUP_STARTS[0]].kind).toBe("product");
+    // No product row opens a group of its own any more: the three sub-groups
+    // Pato cut (free / at-the-table / money) were three lists in one section.
+    expect(RAIL_ROWS.filter((r) => r.kind === "product")).toHaveLength(8);
+  });
+
+  it("two section heads, in column order, and neither is a row", () => {
+    const n = navOf(render(view("profile"), { rememberedPlaceId: "p-1" }));
+    const heads = (n.match(/<p class="[^"]*uppercase[^"]*">.*?<\/p>/g) ?? []).map((h) =>
+      h.replace(/<[^>]+>/g, "").trim(),
+    );
+    expect(heads).toEqual(RAIL_SECTIONS.map((x) => x.label));
+    // A HEAD IS NOT A ROW: it is a <p>, never an <a>, so it carries no address
+    // and cannot take the pill. `labels` reads the ROW span, so no head's text
+    // may appear there — and neither head's text is a row label, which is also
+    // why the second section is "Your products" and not "Products": that word
+    // is taken, by the catalogue row one line above the head.
+    for (const { label } of RAIL_SECTIONS) {
+      expect(labels(n), label).not.toContain(label);
+    }
+    expect(n).not.toMatch(/<a [^>]*>\s*<svg[^>]*lucide-briefcase/);
+  });
+
   it("the head is the lockup, outside the nav, and links nowhere", () => {
     const head = headOf(render(FLAT_ROUTES.visits, { places: SOLO }));
     expect(head).toContain('aria-label="Mesita"');
