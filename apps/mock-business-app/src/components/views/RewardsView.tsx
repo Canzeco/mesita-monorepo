@@ -10,19 +10,24 @@
 // REWARDS ARE VISIT-ONLY. A reward is earned by showing up and closing a bill,
 // never by placing an order — an order is prepaid and has no table to reward.
 //
-// ── FOUR STRATEGIES, NOT ONE ───────────────────────────────────────────────
+// ── TWO TABLES, AND WHY IT CANNOT BE ONE ───────────────────────────────────
 //
-// This page shipped as ONE dial printing ONE rate, which described a product
-// Mesita stopped selling at v12. Four reasons are priced — class, welcome,
-// Instagram story, Google review — each gets its own strategy here, and the
-// arithmetic between them is ADDITION, not choice. `lib/rewards.ts` holds the
-// ladders and the reasoning; this file draws them.
+// Rewards add. The page therefore owes two facts, and they want different
+// columns:
 //
-// THE RUNNING TOTAL IS THE POINT. Four independent controls hide the only
-// number that matters — what they come to on one bill — and an owner who sets
-// four dials without ever seeing 85% is an owner who will see it for the first
-// time on a ticket. So the stack is rendered under the dials, at its floor and
-// at its ceiling, and it moves while you pick.
+//   the LADDER — what every rung pays          → columns are STRATEGIES
+//   the STACK  — what those rungs add up to    → columns are STEPS
+//
+// One table carries one set of columns, so a single table drops either the
+// strategy comparison or the climb. Hence two cards, ladder first: you read the
+// price list, then you read the bill (MESITA-1923; the operator's twin of the
+// ladder is web-admin `rewards-config/TiersClient.tsx`).
+//
+// THE STACK IS THE POINT. Nine rungs with no running total is the screen that
+// gets this decision made wrong: an owner who sets a program without ever
+// seeing 90% is an owner who meets it on a ticket. And a ceiling shown without
+// its CAP misleads in the other direction, so the cap is a control here, not a
+// footnote — at MX$500 that 90% guest costs MX$450, whatever they ordered.
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
@@ -34,61 +39,74 @@ import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import { money } from "@/lib/format";
 import {
-  ALL_OFF,
-  BONUS,
-  CLASS_BASE,
+  CAPS_MXN,
+  CLASS_KEYS,
   CLASS_LABEL,
-  DEFAULT_PICKS,
-  REASONS,
+  DEFAULT_CAP,
+  LADDER,
   RUNGS,
   RUNG_LABEL,
-  ceiling,
-  countOn,
+  STEPS,
+  capCostCents,
   stack,
-  type Picks,
-  type ReasonKey,
+  type CapMxn,
   type Rung,
 } from "@/lib/rewards";
 import {
   CTA_BUTTON_CLASS,
   FOCUS_RING_CLASS,
+  GHOST_PILL_BUTTON_CLASS,
   INFO_BOX_CLASS,
-  SCOPE_CARD_CLASS,
+  STATES_COL_CELL,
+  STATES_COL_HEAD,
   TINY_LABEL_CLASS,
+  TOUCH_TARGET_CLASS,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-/** What one rung prints on its pill. The class row pays a LADDER, so it shows
- *  its span; a bonus pays one number and wears a `+`, because the plus is the
- *  whole argument — these are not alternatives to the base, they land on top
- *  of it. */
-function face(key: ReasonKey, rung: Rung): string {
-  if (rung === "off") return "—";
-  if (key !== "class") return `+${BONUS[key][rung]}%`;
-  return `${CLASS_BASE[rung].bronze}–${CLASS_BASE[rung].diamond}%`;
+/** The scrollport both tables ride. The padding sits on the SCROLLER, not the
+ *  table, so the swipe reaches the edge of the glass on a phone and the first
+ *  label is not flush against it. Mirrors the admin's own solution. */
+const SCROLLPORT = "-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0";
+const HEAD_CELL =
+  "text-muted-foreground border-border border-b px-3 py-2 text-[10px] font-semibold tracking-[0.14em] uppercase";
+/** Whole pesos with a thousands separator. `moneyShort` renders MX$1,000 as
+ *  "$1.0k", which is the wrong shape for a cap an owner is choosing between,
+ *  and `money` adds two decimals no rate ever needs. */
+function pesos(n: number): string {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
-const ROW_CLASS =
-  "flex min-w-0 flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:gap-4";
+const NUM = "font-display text-base font-semibold tracking-tight tabular-nums";
 
 export function RewardsView() {
   const place = useHeldPlace();
   const { scenario } = useMock();
 
-  // The picks are seeded from the place's switch and RE-SEEDED when it moves.
-  // Compared during render rather than synced in an effect: `setState` inside
-  // `useEffect` is a lint ERROR on Next 16, and the effect would also paint one
-  // frame of the old place's dials. The old page seeded once and never looked
-  // again, so flipping Rewards off in the panel left the rate sitting there.
+  // SAVED is what this place is running; the other two are the draft. The
+  // seed is compared during render rather than synced in an effect — setState
+  // in useEffect is a lint error on Next 16, and an effect would also paint one
+  // frame of the previous place's program.
   const seed = `${place.id}:${place.visitRewards}`;
   const [seeded, setSeeded] = useState(seed);
-  const [picks, setPicks] = useState<Picks>(
-    place.visitRewards ? DEFAULT_PICKS : ALL_OFF,
-  );
+  const initial: Rung = place.visitRewards ? "aggressive" : "off";
+  const [saved, setSaved] = useState<{ rung: Rung; cap: CapMxn }>({
+    rung: initial,
+    cap: DEFAULT_CAP,
+  });
+  const [rung, setRung] = useState<Rung>(initial);
+  const [cap, setCap] = useState<CapMxn>(DEFAULT_CAP);
+  const [justSaved, setJustSaved] = useState(false);
   if (seeded !== seed) {
     setSeeded(seed);
-    setPicks(place.visitRewards ? DEFAULT_PICKS : ALL_OFF);
+    setSaved({ rung: initial, cap: DEFAULT_CAP });
+    setRung(initial);
+    setCap(DEFAULT_CAP);
+    setJustSaved(false);
   }
+
+  const dirty = rung !== saved.rung || cap !== saved.cap;
+  const off = rung === "off";
 
   const visits = listFor(
     VISITS.filter((v) => v.placeId === place.id),
@@ -96,35 +114,26 @@ export function RewardsView() {
   );
   const given = visits.reduce((n, v) => n + v.rewardCents, 0);
   const rewarded = visits.filter((v) => v.rewardCents > 0).length;
-  const on = countOn(picks);
 
-  // The floor and the ceiling of what is picked right now: a regular who did
-  // nothing but turn up, and the guest who earned every rung there is.
-  const floor = stack(picks, "bronze", {
-    firstVisit: false,
-    story: false,
-    google: false,
-  });
-  const peak = stack(picks, "diamond", {
-    firstVisit: true,
-    story: true,
-    google: true,
-  });
+  function save() {
+    setSaved({ rung, cap });
+    setJustSaved(true);
+    // Plain timeout in the handler, never an effect. React drops a setState on
+    // an unmounted component, so this needs no teardown.
+    setTimeout(() => setJustSaved(false), 4000);
+  }
 
   return (
     <div className="flex flex-col gap-4">
+      {/* TWO tiles, not four. The ceiling used to sit here and it is the last
+          cell of the stack table now: a tile that repeats a number six inches
+          below it is the noise that stops people reading either. */}
       <Tiles
         tiles={[
-          { label: "Rewards", value: on > 0 ? "On" : "Off" },
           {
-            label: "Strategies on",
-            value: `${on} of 4`,
-            hint: "Class, welcome, story, review",
-          },
-          {
-            label: "Most a guest can reach",
-            value: `${ceiling(picks)}%`,
-            hint: "Diamond, first visit, story and review",
+            label: "Strategy",
+            value: RUNG_LABEL[saved.rung],
+            hint: dirty ? "Unsaved change below" : undefined,
           },
           {
             label: "Given back",
@@ -135,136 +144,277 @@ export function RewardsView() {
       />
 
       <Section
-        title="What this place gives back, and for what"
-        description="Four strategies, one per reason. They are not alternatives: every rung a guest earns is ADDED to the same bill, so the dials move one number together."
-        lane
+        title="What this place pays, rung by rung"
+        description="Nine rewards, three groups. Pick a column and every rung follows it — the rates are Mesita's, and a place chooses which column it runs."
       >
-        <div className={SCOPE_CARD_CLASS}>
-          {REASONS.map((r) => (
-            <div key={r.key} className={ROW_CLASS}>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{r.name}</p>
-                <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
-                  {r.earns}
-                </p>
-              </div>
-              {/* A grid on a phone so three pills split the width evenly
-                  instead of overflowing it, their own size from `sm` up. */}
-              <div
-                className="grid w-full shrink-0 grid-cols-3 gap-2 sm:w-auto"
-                role="group"
-                aria-label={`${r.name} strategy`}
-              >
-                {RUNGS.map((rung) => {
-                  const picked = picks[r.key] === rung;
-                  return (
+        <div className={SCROLLPORT}>
+          <table className="w-full min-w-[540px] border-collapse">
+            <caption className="sr-only">
+              What each reward pays, at each strategy. Base is a rate; every
+              other row adds to it.
+            </caption>
+            <thead>
+              <tr>
+                <th
+                  scope="col"
+                  className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
+                >
+                  Reward
+                </th>
+                {RUNGS.map((r) => (
+                  <th key={r} scope="col" className={cn(HEAD_CELL, "text-right")}>
+                    {/* The HEADER is the picker. A place runs one column, so
+                        choosing the column IS choosing the program. */}
                     <button
-                      key={rung}
                       type="button"
-                      aria-pressed={picked}
-                      aria-label={`${r.name}: ${RUNG_LABEL[rung]}`}
-                      onClick={() =>
-                        setPicks((p) => ({ ...p, [r.key]: rung }))
-                      }
+                      aria-pressed={rung === r}
+                      onClick={() => setRung(r)}
                       className={cn(
-                        "rounded-xl border px-2.5 py-2 text-left transition sm:w-28",
+                        "rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase transition",
                         FOCUS_RING_CLASS,
-                        picked
-                          ? "border-foreground bg-foreground/[0.03]"
-                          : "border-border hover:border-foreground/30",
+                        TOUCH_TARGET_CLASS,
+                        rung === r
+                          ? "border-foreground text-foreground"
+                          : "border-transparent hover:border-foreground/30",
                       )}
                     >
-                      <span className="flex items-center justify-between gap-1">
-                        {/* NOT `TINY_LABEL_CLASS`: uppercase at 0.14em tracking
-                            makes "Conservative" wider than its own pill. */}
-                        <span className="text-muted-foreground truncate text-[10px] font-semibold sm:text-[11px]">
-                          {RUNG_LABEL[rung]}
-                        </span>
-                        {picked && (
-                          <Check className="h-3 w-3 shrink-0" aria-hidden />
-                        )}
-                      </span>
-                      {/* `whitespace-nowrap`, or a phone breaks "10–25%" across
-                          two lines and the three pills stop being one row. */}
-                      <span className="font-display mt-0.5 block text-base font-semibold tracking-tight whitespace-nowrap tabular-nums sm:text-lg">
-                        {face(r.key, rung)}
-                      </span>
+                      {RUNG_LABEL[r]}
+                      {rung === r && (
+                        <Check className="ml-1 inline h-3 w-3" aria-hidden />
+                      )}
                     </button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {LADDER.map((row) =>
+                "band" in row ? (
+                  <tr key={row.band}>
+                    <td colSpan={1 + RUNGS.length} className="px-3 pt-4 pb-1">
+                      {/* The LABEL is sticky, not the cell. A colSpan cell is
+                          as wide as the table, so pinning it pins nothing;
+                          swipe right and the band headings slid away, leaving
+                          three unexplained blank rows behind the rates. */}
+                      <span
+                        className={cn(
+                          TINY_LABEL_CLASS,
+                          "bg-card sticky left-0 inline-block",
+                        )}
+                      >
+                        {row.band}
+                      </span>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={row.key} className="border-border border-t">
+                    <th
+                      scope="row"
+                      className={cn(
+                        STATES_COL_CELL,
+                        "px-3 py-2.5 text-left font-medium",
+                      )}
+                    >
+                      <span className="text-sm">{row.name}</span>
+                      <span className="text-muted-foreground block text-[11.5px] leading-snug font-normal">
+                        {row.hint}
+                      </span>
+                    </th>
+                    {RUNGS.map((r) => {
+                      const on = r === rung;
+                      // Off is a column, not a mode: its cells are the same em
+                      // dash Bronze already wears, so the table never dims and
+                      // the page never grows a second layout.
+                      const dash = r === "off" || row.pinned === true;
+                      return (
+                        <td
+                          key={r}
+                          className={cn(
+                            "px-3 py-2.5 text-right",
+                            NUM,
+                            on && "bg-foreground/[0.03]",
+                            dash && "text-muted-foreground font-normal",
+                          )}
+                        >
+                          {r === "off" || row.pinned
+                            ? "—"
+                            : `${row.signed ? "+" : ""}${row.rate(r)}%`}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section
+        title="What that stacks to"
+        description="Left to right is the addition: each column adds one more reward to the one before it. The peso under every total is the most it can cost, at this cap."
+      >
+        {off ? (
+          /* The empty state is a feature. Nine dashes and a grid of 0% is not
+             one — it says the page is broken rather than that the place has
+             chosen something. */
+          <p className={INFO_BOX_CLASS}>
+            Nothing is given back here. Guests still find this place, review it
+            and book a table; they just pay the whole bill. Pick a column above
+            to start.
+          </p>
+        ) : (
+          <div className={SCROLLPORT}>
+            <table className="w-full min-w-[620px] border-collapse">
+              <caption className="sr-only">
+                What a guest of each class pays, as they earn each reward. Every
+                figure is a running total.
+              </caption>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
+                  >
+                    Class
+                  </th>
+                  {STEPS.map((s) => (
+                    <th
+                      key={s.key}
+                      scope="col"
+                      className={cn(HEAD_CELL, "text-right")}
+                    >
+                      {s.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {CLASS_KEYS.map((c) => {
+                  const row = stack(rung, c);
+                  return (
+                    <tr key={c} className="border-border border-t">
+                      <th
+                        scope="row"
+                        className={cn(
+                          STATES_COL_CELL,
+                          "px-3 py-2.5 text-left text-sm font-medium",
+                        )}
+                      >
+                        {CLASS_LABEL[c]}
+                      </th>
+                      {row.map((total, i) => {
+                        const peak =
+                          c === "diamond" && i === row.length - 1;
+                        return (
+                          <td
+                            key={STEPS[i].key}
+                            className="px-3 py-2.5 text-right"
+                          >
+                            <span
+                              className={cn(NUM, peak && "text-[color:var(--brand-pink-text)]")}
+                            >
+                              {total}%
+                            </span>
+                            <span className="text-muted-foreground block text-[11px] font-semibold tabular-nums">
+                              {pesos(capCostCents(total, cap) / 100)}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </div>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* THE CAP IS A CONTROL, not a footnote. It is the only parameter
+            that bounds the ceiling above, and a place that cannot move it reads
+            90% as a catastrophe and turns the whole product off. It is also the
+            only control here that means nothing while the program is Off: a cap
+            bounds a discount, and there is no discount to bound. */}
+        {!off && (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={TINY_LABEL_CLASS}>Cap</span>
+              {CAPS_MXN.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={cap === c}
+                  onClick={() => setCap(c)}
+                  className={cn(
+                    GHOST_PILL_BUTTON_CLASS,
+                    cap === c &&
+                      "border-foreground hover:border-foreground text-foreground",
+                  )}
+                >
+                  {pesos(c)}
+                  {cap === c && (
+                    <Check className="h-3 w-3 shrink-0" aria-hidden />
+                  )}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-
-        {/* THE STACK. Same arithmetic the bill engine runs, on what is picked
-            above — the floor of the program and its ceiling, side by side,
-            because the gap between them is the thing four dials make invisible. */}
-        <div className="border-border grid grid-cols-1 gap-3 rounded-2xl border border-dashed p-4 sm:grid-cols-2">
-          <StackCase
-            label="A Bronze regular, fourth visit, nothing earned"
-            terms={floor.terms}
-            total={floor.total}
-          />
-          <StackCase
-            label={`A ${CLASS_LABEL.diamond} guest's first visit, story posted, review left`}
-            terms={peak.terms}
-            total={peak.total}
-          />
-        </div>
-
-        <button type="button" className={cn(CTA_BUTTON_CLASS, "self-start")}>
-          Save the strategies
-        </button>
-
-        <p className={INFO_BOX_CLASS}>
-          A percentage is not a peso. Every rate above applies to the first
-          stretch of the bill only — the place&rsquo;s cap — which is what keeps
-          an 85% ceiling from being an 85% night. The cap is not on this page
-          yet, and setting four dials without it is the one thing this screen
-          cannot let an owner do. There is a fifth rung the engine already
-          prices, a Mesita review, that no guest surface lists; it gets no dial
-          here until it does.
-        </p>
+          <p className={INFO_BOX_CLASS}>
+            A percentage is not a peso. Every rate above applies to the first{" "}
+            {pesos(cap)} of the bill, so a guest who earns every rung costs you{" "}
+            {pesos(capCostCents(stack(rung, "diamond")[4], cap) / 100)}, whatever
+            they ordered. That is what keeps a ceiling from being a night.
+          </p>
+          </>
+        )}
       </Section>
+
+      {/* The commit bar exists only when something changed. A permanent Save
+          that looks identical before and after a click cannot answer the one
+          question an owner asks on a money screen: did that take? */}
+      {dirty && (
+        <div className="border-border bg-card shadow-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              {rung !== saved.rung &&
+                `${RUNG_LABEL[rung]}, from ${RUNG_LABEL[saved.rung]}`}
+              {rung !== saved.rung && cap !== saved.cap && " · "}
+              {cap !== saved.cap &&
+                `Cap ${pesos(cap)}, from ${pesos(saved.cap)}`}
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-[12px]">
+              Applies to the next bill closed here. Nothing retroactive, ever.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setRung(saved.rung);
+                setCap(saved.cap);
+              }}
+              className={GHOST_PILL_BUTTON_CLASS}
+            >
+              Cancel
+            </button>
+            <button type="button" onClick={save} className={CTA_BUTTON_CLASS}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+      {!dirty && justSaved && (
+        <p className="text-muted-foreground flex items-center gap-2 px-1 text-[12px]">
+          <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Saved. The next bill closed here runs {RUNG_LABEL[saved.rung]},
+          capped at the first {pesos(saved.cap)}.
+        </p>
+      )}
 
       <SoonStrip title="Rewards on orders is not a thing, and will not be">
         A reward is earned by turning up. An order is prepaid and has no table,
         so there is nothing to reward and nobody standing there to see it
         happen. Use Credits for the prepaid case.
       </SoonStrip>
-    </div>
-  );
-}
-
-/** One worked bill: the rungs that fired, then what they come to. The terms are
- *  printed as a SUM rather than summarised, because "50 + 10 + 10 + 15" is the
- *  sentence an owner needs to have read once. */
-function StackCase({
-  label,
-  terms,
-  total,
-}: {
-  label: string;
-  terms: { key: string; name: string; rate: number }[];
-  total: number;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className={TINY_LABEL_CLASS}>{label}</p>
-      <p className="font-display mt-1 text-3xl font-semibold tracking-tight tabular-nums">
-        {total}%
-      </p>
-      <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-        {terms.length === 0
-          ? "Nothing is on — this guest pays the full bill."
-          : terms.map((t, i) => (
-              <span key={t.key}>
-                {i > 0 && " + "}
-                <span className="tabular-nums">{t.rate}%</span> {t.name}
-              </span>
-            ))}
-      </p>
     </div>
   );
 }

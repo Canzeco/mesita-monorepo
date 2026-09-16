@@ -1,47 +1,44 @@
-// THE FOUR STRATEGIES, AND THE FACT THAT THEY ADD UP.
+// THE REWARD LADDER, AND THE FACT THAT IT ADDS UP.
 //
-// Rewards is not one dial. The bill engine has resolved a ticket ADDITIVELY
-// since v12 (MESITA-1705, supabase `_shared/rewards-config.ts`):
+// The bill engine has resolved a ticket ADDITIVELY since v12 (MESITA-1705,
+// supabase `_shared/rewards-config.ts`):
 //
-//   rate = base(strategy × class) + welcome + story + google + mesita
+//   rate = base + welcome + class step + every earned action bonus
 //
-// so a first visit by a Diamond guest who posts a story and leaves a Google
-// review is not "the rate" — it is four rungs stacked on the same bill. A
-// console that prints ONE number for that is not simplifying the product, it
-// is describing a different one.
+// clamped at 100%, then bounded in pesos by the place's cap. Nine priced rungs,
+// added. A console that prints ONE number for that is describing a different
+// product, which is what this page did until MESITA-1923.
 //
-// ── WHY EACH REASON GETS ITS OWN STRATEGY ──────────────────────────────────
+// ── BASE IS NOT CLASS ──────────────────────────────────────────────────────
 //
-// A place picks one strategy today and that strategy writes every row at once.
-// It barely moves four of them: the live defaults (`DEFAULT_PROMOS`, web-business
-// `lib/rewards/promos.ts`) ship Conservative and Aggressive with byte-identical
-// bonuses — `{ welcome: 10, mesita: 5, story: 10, google: 15 }` on both — even
-// though the file beside them says "a place on Aggressive pays more for a Google
-// review than one on Conservative". They are v11's free column, carried across
-// the cutover so nobody's bill changed that day, and never re-laddered since.
-// One control bound to four numbers, three of which it cannot change.
+// Storage keeps one number per (strategy × class) — `grid[class]` — but the
+// operator EDITS two: a base and a class step, with bronze pinned at zero
+// (web-admin `rewards-config/promos.ts`, Components section):
 //
-// ── THE NUMBERS BELOW, AND WHAT THEY ARE ALLOWED TO BE ─────────────────────
+//   grid[s][class] = base[s] + classStep[s][class]
 //
-// The class base is the SHIPPED ladder, unchanged. The three bonuses are this
-// page's proposal, and they move DOWNWARD from what ships: Aggressive keeps the
-// live number and Conservative steps one grid stop below it. That direction is
-// forced, not chosen. The model pins the CEILING of both bonuses — Google sits
-// at the 15 its 95% worst case allows, and Story may not pass 10, because a
-// story a guest can post nightly must never out-pay a review they can only
-// leave once. There is no room above; there is room below. So Conservative
-// becomes the cheaper posture it always claimed to be.
+// The two are trivially isomorphic, and only the split form can be a table: you
+// cannot show Base as a row if Base is welded to Bronze. Base 20% + Diamond
+// +30% is exactly the 50% that ships today.
 //
-// Every rung here is on the engine's 5% grid, Aggressive ≥ Conservative in every
-// row, and Google out-pays Story at both rungs.
+// ── WHERE THE NUMBERS COME FROM ────────────────────────────────────────────
 //
-// Class is priced ONCE, in the base. None of the three bonuses vary by class —
-// that is the v12 model, not an omission here: the per-class story override was
-// deleted with the `influencer` class it keyed on.
+// The base ladder and the three action bonuses are the shipped `DEFAULT_PROMOS`
+// decomposed (web-business `lib/rewards/promos.ts`), with ONE proposal on top:
+// Conservative steps one grid stop below Aggressive on Welcome, Story and
+// Google. That direction is forced, not chosen. The live defaults ship the two
+// strategies with byte-identical bonuses, and the ceiling is pinned from above
+// — Google sits at the 15 its 95% worst case allows, and Story may not pass 10,
+// because a story a guest can post nightly must never out-pay a review they can
+// only leave once. There is no room above; there is room below.
+//
+// Mesita review is the exception: flat on both columns, exactly as it ships.
+// That is not an oversight and not a bug — see MESITA-1921, which asks whether
+// the rung is a product at all, given no guest surface lists it.
 
-/** What one strategy can be set to. `off` is the absence of that reason, not
- *  the bottom of its ladder — an action whose bonus is 0 is not offered at all,
- *  which is exactly what `offersAction()` reads in the real engine. */
+/** What a place can set. `off` is the absence of the program, not the bottom of
+ *  its ladder: an action whose bonus is 0 is not offered, which is what
+ *  `offersAction()` reads in the real engine. */
 export type Rung = "off" | "conservative" | "aggressive";
 export type PaidRung = Exclude<Rung, "off">;
 
@@ -68,140 +65,157 @@ export const CLASS_LABEL: Record<ClassKey, string> = {
   diamond: "Diamond",
 };
 
-/** The four things a place pays for. `class` is the standing rate every guest
- *  gets on every visit; the other three are earned, once each, on top of it. */
-export type ReasonKey = "class" | "welcome" | "story" | "google";
-export const REASON_KEYS: readonly ReasonKey[] = [
-  "class",
-  "welcome",
-  "story",
-  "google",
-];
+export type ActionKey = "mesita" | "story" | "google";
 
-/** The shipped base ladder (visits), unchanged from `DEFAULT_PROMOS`. */
-export const CLASS_BASE: Record<PaidRung, Record<ClassKey, number>> = {
-  conservative: { bronze: 10, silver: 15, gold: 20, diamond: 25 },
-  aggressive: { bronze: 20, silver: 30, gold: 40, diamond: 50 },
+/** The standing rate every guest gets on every visit, before class. */
+export const BASE: Record<PaidRung, number> = {
+  conservative: 10,
+  aggressive: 20,
 };
 
-/** The three bonuses. Aggressive is the live number; Conservative is one 5%
- *  stop below it — see the header for why the ladder can only grow downward. */
-export const BONUS: Record<
-  Exclude<ReasonKey, "class">,
-  Record<PaidRung, number>
-> = {
-  welcome: { conservative: 5, aggressive: 10 },
+/** First ever visit to this place. Once per guest, forever. */
+export const WELCOME: Record<PaidRung, number> = {
+  conservative: 5,
+  aggressive: 10,
+};
+
+/** What class ADDS to the base. Bronze is the zero rung by definition. */
+export const CLASS_STEP: Record<PaidRung, Record<ClassKey, number>> = {
+  conservative: { bronze: 0, silver: 5, gold: 10, diamond: 15 },
+  aggressive: { bronze: 0, silver: 10, gold: 20, diamond: 30 },
+};
+
+/** Earned at the table. Every one a guest earns is added. */
+export const ACTION: Record<ActionKey, Record<PaidRung, number>> = {
+  mesita: { conservative: 5, aggressive: 5 },
   story: { conservative: 5, aggressive: 10 },
   google: { conservative: 10, aggressive: 15 },
 };
 
-export type Reason = {
-  key: ReasonKey;
-  name: string;
-  /** How a guest lands on this rung — one line, in the guest's terms. */
-  earns: string;
-};
+/** One row of the ladder. `band` rows carry no rate; they label the group. */
+export type LadderRow =
+  | { band: string }
+  | {
+      key: string;
+      name: string;
+      hint: string;
+      /** Base is the floor; everything else is an adder and wears a `+`. */
+      signed: boolean;
+      /** Bronze adds nothing BY DEFINITION, so it prints an em dash at every
+       *  rung. A zero is a rate; an em dash is "this rung adds nothing". */
+      pinned?: boolean;
+      rate: (rung: PaidRung) => number;
+    };
 
-export const REASONS: readonly Reason[] = [
+export const LADDER: readonly LadderRow[] = [
+  { band: "Standing" },
   {
-    key: "class",
-    name: "Class",
-    earns:
-      "Every guest, every visit. The only rung priced by who the guest is — Bronze through Diamond.",
+    key: "base",
+    name: "Base",
+    hint: "Every guest, every visit",
+    signed: false,
+    rate: (r) => BASE[r],
   },
   {
     key: "welcome",
     name: "Welcome",
-    earns: "Their first ever visit to this place. Once per guest, forever.",
+    hint: "Their first ever visit here. Once per guest",
+    signed: true,
+    rate: (r) => WELCOME[r],
+  },
+  { band: "Class" },
+  ...CLASS_KEYS.map((c) => ({
+    key: `class.${c}`,
+    name: CLASS_LABEL[c],
+    hint:
+      c === "bronze"
+        ? "The floor class. Adds nothing by definition"
+        : c === "silver"
+          ? "2,000+ Instagram followers"
+          : c === "gold"
+            ? "A higher reach band"
+            : "20,000+ followers, or a direct invite",
+    signed: true,
+    pinned: c === "bronze",
+    rate: (r: PaidRung) => CLASS_STEP[r][c],
+  })),
+  { band: "Actions" },
+  {
+    key: "action.mesita",
+    name: "Mesita review",
+    hint: "Once per place. Flat across strategies today",
+    signed: true,
+    rate: (r) => ACTION.mesita[r],
   },
   {
-    key: "story",
+    key: "action.story",
     name: "Instagram story",
-    earns:
-      "A tagged story, posted at the table and verified. Repeatable — a guest can earn it every visit.",
+    hint: "Tagged, at the table, verified. Repeatable",
+    signed: true,
+    rate: (r) => ACTION.story[r],
   },
   {
-    key: "google",
+    key: "action.google",
     name: "Google review",
-    earns:
-      "A review left at the table. Once per place, and it stays up after they leave.",
+    hint: "Once per place, and it stays up after they leave",
+    signed: true,
+    rate: (r) => ACTION.google[r],
   },
 ];
 
-/** What every strategy is set to. */
-export type Picks = Record<ReasonKey, Rung>;
+// ── The cap ────────────────────────────────────────────────────────────────
+//
+// A percentage is not a peso. Every rate applies to the FIRST cap-pesos of the
+// bill, which is what keeps a 90% ceiling from being a 90% night: at MX$500 the
+// most generous guest there is costs MX$450, whatever they ordered. The three
+// legal caps are the product's (`DISCOUNT_CAPS_MXN`, web-business
+// `lib/business/strategies.ts`).
 
-/** What a place that has never touched this page is running: the live defaults
- *  — Conservative base, every bonus on at its live number. */
-export const DEFAULT_PICKS: Picks = {
-  class: "conservative",
-  welcome: "aggressive",
-  story: "aggressive",
-  google: "aggressive",
-};
+export const CAPS_MXN = [200, 500, 1000] as const;
+export type CapMxn = (typeof CAPS_MXN)[number];
+export const DEFAULT_CAP: CapMxn = 500;
 
-export const ALL_OFF: Picks = {
-  class: "off",
-  welcome: "off",
-  story: "off",
-  google: "off",
-};
-
-/** What one reason pays at one rung, for one class. Off is 0 — and 0 means the
- *  rung is not offered, not that it pays nothing. */
-export function rateFor(key: ReasonKey, rung: Rung, cls: ClassKey): number {
-  if (rung === "off") return 0;
-  return key === "class" ? CLASS_BASE[rung][cls] : BONUS[key][rung];
+/** The most a percentage can cost at this cap, in CENTAVOS — money is an
+ *  integer until the moment it is printed. `cap * pct` is `cap * 100 * pct/100`
+ *  with the round-trip removed. */
+export function capCostCents(pct: number, cap: CapMxn): number {
+  return cap * pct;
 }
 
-/** What a guest earned on this visit. Everything true here is added. */
-export type Earned = {
-  firstVisit: boolean;
-  story: boolean;
-  google: boolean;
-};
+// ── The stack ──────────────────────────────────────────────────────────────
+//
+// The climb, in the order the engine adds: base and class first (they always
+// fire), then Welcome, then each action. Every step is a RUNNING total, which
+// is what makes reading a row left to right the same act as adding.
 
-export type StackTerm = { key: ReasonKey; name: string; rate: number };
+export type StepKey = "base" | "welcome" | "story" | "google" | "mesita";
+export const STEPS: readonly { key: StepKey; label: string }[] = [
+  { key: "base", label: "Base" },
+  { key: "welcome", label: "+ Welcome" },
+  { key: "story", label: "+ Story" },
+  { key: "google", label: "+ Google" },
+  { key: "mesita", label: "+ Mesita" },
+];
 
-/** The bill engine's arithmetic, on the picks above: every reason the guest
- *  earned, added, clamped at 100. The peso cap is what actually bounds the
- *  money, and this console does not set it yet — see the page. */
-export function stack(
-  picks: Picks,
-  cls: ClassKey,
-  earned: Earned,
-): { terms: StackTerm[]; total: number } {
-  const taken: ReasonKey[] = ["class"];
-  if (earned.firstVisit) taken.push("welcome");
-  if (earned.story) taken.push("story");
-  if (earned.google) taken.push("google");
-
-  const terms = taken
-    .map((key) => ({
-      key,
-      name: REASONS.find((r) => r.key === key)!.name,
-      rate: rateFor(key, picks[key], cls),
-    }))
-    .filter((t) => t.rate > 0);
-
-  const total = Math.min(
-    100,
-    terms.reduce((sum, t) => sum + t.rate, 0),
-  );
-  return { terms, total };
+/** The five running totals for one class, clamped exactly as the engine clamps. */
+export function stack(rung: Rung, cls: ClassKey): number[] {
+  if (rung === "off") return STEPS.map(() => 0);
+  const clamp = (n: number) => Math.min(100, n);
+  let t = BASE[rung] + CLASS_STEP[rung][cls];
+  const out = [clamp(t)];
+  t += WELCOME[rung];
+  out.push(clamp(t));
+  t += ACTION.story[rung];
+  out.push(clamp(t));
+  t += ACTION.google[rung];
+  out.push(clamp(t));
+  t += ACTION.mesita[rung];
+  out.push(clamp(t));
+  return out;
 }
 
-/** The most any guest can reach on these picks: Diamond, first visit, story
- *  posted, review left. The number an owner needs to have seen BEFORE they set
- *  four dials independently — it is the one thing four separate controls hide. */
-export function ceiling(picks: Picks): number {
-  return stack(picks, "diamond", {
-    firstVisit: true,
-    story: true,
-    google: true,
-  }).total;
-}
-
-export function countOn(picks: Picks): number {
-  return REASON_KEYS.filter((k) => picks[k] !== "off").length;
+/** The most any guest can reach: Diamond, first visit, every action earned. */
+export function ceiling(rung: Rung): number {
+  const row = stack(rung, "diamond");
+  return row[row.length - 1];
 }
