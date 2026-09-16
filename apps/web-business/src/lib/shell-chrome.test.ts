@@ -861,15 +861,16 @@ describe("the rail is six nouns and one indent", () => {
     // write view back. `visit_rewards` was owner/editor-only as a Rewards
     // row, as a Capabilities row and as a Visits row; the view that carries
     // it is owner/editor-only too, and the viewer's three are untouched.
-    expect(tabsForAccess({ held: true, role: "viewer", isSuperAdmin: false })).toEqual([
-      "profile",
-      "menus",
-      "reviews",
-    ]);
+    //
+    // THE READ SET STILL DID NOT MOVE IN MESITA-1919, which is the point of
+    // asserting it here rather than counting to three. Menus and Reviews went
+    // back INSIDE Profile — the direction MESITA-1848 came from — so a viewer
+    // reads exactly what they read before through one address instead of
+    // three. A viewer losing a SURFACE would break this; a viewer losing two
+    // ADDRESSES to the surface that contains them does not.
+    expect(tabsForAccess({ held: true, role: "viewer", isSuperAdmin: false })).toEqual(["profile"]);
     expect(tabsForAccess({ held: true, role: "editor", isSuperAdmin: false })).toEqual([
       "profile",
-      "menus",
-      "reviews",
       "visits",
       "orders",
       "reservations",
@@ -1312,7 +1313,7 @@ describe("the container stays uncapped", () => {
 describe("tab hrefs", () => {
   it("carry no organization: the place id names its holder (MESITA-1807)", () => {
     expect(placeTabHref("p-1", "credits")).toBe("/places/p-1/credits");
-    expect(placeTabHref("p-1", "reviews")).toBe("/places/p-1/reviews");
+    expect(placeTabHref("p-1", "visits")).toBe("/places/p-1/visits");
   });
   it("agree with placeHref, which is Profile's address", () => {
     // placeHref writes the segment literally, because lib/place-tabs imports

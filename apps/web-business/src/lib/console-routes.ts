@@ -486,8 +486,6 @@ export const FLAT_ROUTES = {
   // no page 307s onto Visits forever, a page with no rule never renders
   // because the rule wins — which is why this comment names the other half.
   profile: "/profile",
-  menus: "/menus",
-  reviews: "/reviews",
   visits: "/visits",
   orders: "/orders",
   reservations: "/reservations",

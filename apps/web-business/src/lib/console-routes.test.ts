@@ -102,10 +102,13 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     // rules left next.config.ts in the same commit this entry arrived. A name
     // in both places is the MESITA-1839 trap, and `legacy-redirects.test.ts`
     // walks this whole contract through the table to prove neither is.
+    //
+    // MESITA-1919 TAKES `menus` AND `reviews` OUT, and the same assertion two
+    // lines below is why that is safe rather than a new trap: neither is a
+    // redirect source, so neither name exists in two places. They are cards on
+    // Profile now — an address that stopped existing, not one that moved.
     expect(Object.keys(FLAT_ROUTES)).toEqual([
       "profile",
-      "menus",
-      "reviews",
       "visits",
       "orders",
       "reservations",
