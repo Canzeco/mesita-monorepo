@@ -1,20 +1,18 @@
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
-import { PULSE_TOTAL } from "./pulse-pieces.ts";
 import {
   category,
   clamp01,
   daypartScore,
+  enriched,
+  ENRICHED_OFF,
   NEUTRAL,
+  partnered,
+  PARTNERED_OFF,
   popularity,
   proximity,
   PROXIMITY_MAX_KM,
   randomness,
   name,
-  LEVEL_ENRICHMENT_FLOOR,
-  LEVEL_LISTED,
-  LEVEL_PARTNER,
-  LEVEL_PROMOTING,
-  mesitaLevel,
   summary,
   SIGNAL_BLURBS,
   SIGNAL_KEYS,
@@ -23,6 +21,7 @@ import {
   timing,
   type SignalPlace,
 } from "./discovery-signals.ts";
+import { toSignalPlace } from "./discovery-place.ts";
 
 const place = (over: Partial<SignalPlace> = {}): SignalPlace => ({
   lat: 19.4326,
@@ -71,8 +70,8 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
-  assertEquals(SIGNAL_KEYS.length, 8);
+Deno.test("the library, the labels and the blurbs name the same nine signals", () => {
+  assertEquals(SIGNAL_KEYS.length, 9);
   // Docs > Discovery section 8.3 order. Presentation only: the blend is a
   // product of s^w, so nothing downstream may read a signal by index.
   assertEquals([...SIGNAL_KEYS], [
@@ -81,7 +80,8 @@ Deno.test("the library, the labels and the blurbs name the same eight signals", 
     "category",
     "proximity",
     "timing",
-    "mesita_level",
+    "enriched",
+    "partnered",
     "popularity",
     "randomness",
   ]);
@@ -90,13 +90,23 @@ Deno.test("the library, the labels and the blurbs name the same eight signals", 
   assertEquals(Object.keys(SIGNAL_BLURBS).sort(), [...SIGNAL_KEYS].sort());
 });
 
-Deno.test("Mesita Level is the key; bare level and the merged pair are not", () => {
-  assert((SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
+Deno.test("Enriched and Partnered are the keys; the retired names are not", () => {
+  // Replaces the MESITA-1408-era "Mesita Level is the key" assertion. The
+  // naming rules it protected all still hold — only the winning name changed.
+  assert((SIGNAL_KEYS as readonly string[]).includes("enriched"));
+  assert((SIGNAL_KEYS as readonly string[]).includes("partnered"));
   // Never bare `level` — `places.price_level` and the door profile own that word.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("level"));
+  // Split into the two binaries (MESITA-1858). The key is PERSISTED, so this
+  // is the assertion that says the rename actually completed on this side.
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
+  // Never bare `partner` either — that is the consumer wire boolean
+  // (place-family-keys.ts), and two spellings of one fact is how they drift.
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("partner"));
+  // Promotion buys a lane-2 POSITION, never an exponent (MESITA-1855).
   assert(!(SIGNAL_KEYS as readonly string[]).includes("promoting"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
-  // Merged into mesita_level (MESITA-1408).
+  // Merged away at MESITA-1408 and not resurrected by the split.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("partnership"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("promotion"));
   // Left the library — Social Lineup never wrote a place-level index.
@@ -340,128 +350,118 @@ Deno.test("summary unembedded floor is an operator knob", () => {
   assertEquals(summary(place({ embedding: null }), { queryVector: q }, { unembedded: 0.2 }), 0.2);
 });
 
-// ── Mesita Level ─────────────────────────────────────────────────────────────
+// ── Enriched ──────────────────────────────────────────────
 
-Deno.test("Mesita Level climbs from catalog row to actively promoting", () => {
-  // Floor: neither fact true.
-  assertEquals(mesitaLevel(place()), LEVEL_LISTED);
-  assertEquals(mesitaLevel(place({ plan: "free" })), LEVEL_LISTED);
-  assertEquals(
-    mesitaLevel(place({ plan: "free", promoting: false })),
-    LEVEL_LISTED,
-  );
-  // Middle: exactly one.
-  assertEquals(mesitaLevel(place({ plan: "pro" })), LEVEL_PARTNER);
-  assertEquals(mesitaLevel(place({ plan: "PRO" })), LEVEL_PARTNER);
-  assertEquals(
-    mesitaLevel(place({ plan: "free", promoting: true })),
-    LEVEL_PARTNER,
-  );
-  // Top: both.
-  assertEquals(
-    mesitaLevel(place({ plan: "pro", promoting: true })),
-    LEVEL_PROMOTING,
-  );
-  assert(LEVEL_LISTED > 0, "a catalog row is demoted, not deleted");
-  assert(LEVEL_LISTED < LEVEL_PARTNER && LEVEL_PARTNER < LEVEL_PROMOTING);
+Deno.test("Enriched is binary: a place Mesita wrote a profile for, or the floor", () => {
+  assertEquals(enriched(place({ enriched: true })), 1);
+  assertEquals(enriched(place({ enriched: false })), ENRICHED_OFF);
 });
 
-Deno.test("Mesita Level rungs are geometric, so each step is equal under s^w", () => {
-  assertAlmostEquals(LEVEL_PARTNER / LEVEL_LISTED, LEVEL_PROMOTING / LEVEL_PARTNER, 1e-12);
+Deno.test("an absent enrichment fact reads OFF, and is always a finite number", () => {
+  // The opposite of the retired intakeHighWater rule, deliberately: high-water
+  // was an opt-in side-read, while `enriched` is set by the projection every
+  // ranking engine runs through. Absent means the row said nothing, and "no
+  // evidence Mesita touched this" is honestly the floor, not full credit.
+  const absent = enriched(place());
+  assertEquals(absent, ENRICHED_OFF);
+  assert(Number.isFinite(absent), "enriched() must never return undefined or NaN");
+  // Anything that is not the boolean true is off. No truthiness games.
+  const weird = place() as unknown as Record<string, unknown>;
+  weird.enriched = "ready";
+  assertEquals(enriched(weird as unknown as SignalPlace), ENRICHED_OFF);
 });
 
-Deno.test("Mesita Level reproduces the old partnership x promotion product", () => {
-  // The merge changes what the axis is called, not the order guests see:
-  // at the old default weights of 1 and 1 the product of the two retired
-  // signals equalled the single Level score for every input combination.
-  const PARTNERSHIP = { none: 0.2, partner: 1 };
-  const PROMOTION = { none: 0.2, live: 1 };
-  for (const plan of ["free", "pro"]) {
-    for (const promoting of [false, true]) {
-      const legacy = (plan === "free" ? PARTNERSHIP.none : PARTNERSHIP.partner) *
-        (promoting ? PROMOTION.live : PROMOTION.none);
-      assertAlmostEquals(mesitaLevel(place({ plan, promoting })), legacy, 1e-12);
-    }
-  }
+Deno.test("a synthesized Google row scores OFF, not enriched", () => {
+  // consumer-web-list-places stamps `content_state: "ready"` on a Google-only
+  // hit Mesita never touched. The PROJECTION excludes it by name
+  // (discovery-place.ts), so the signal sees `enriched: false` and this is the
+  // end-to-end statement of that. The same synthesis on the consumer WIRE is a
+  // separate pre-existing bug with its own issue and is not touched here.
+  const googleRow = toSignalPlace({
+    lat: 19.4326,
+    lng: -99.1332,
+    content_state: "ready",
+    googleOnly: true,
+  });
+  assertEquals(googleRow.enriched, false);
+  assertEquals(enriched(googleRow), ENRICHED_OFF);
 });
 
-// ── Mesita Level: Intake high-water fold (MESITA-1598) ──────────────────────
+// ── Partnered ─────────────────────────────────────────────
 
-Deno.test("undefined/null intakeHighWater is UNKNOWN, not a penalty — old behavior exactly", () => {
-  // Every surface that hasn't wired the side-read yet must score identically
-  // to before this fold existed. This is the backward-compat contract.
-  for (const plan of ["free", "pro"]) {
-    for (const promoting of [false, true]) {
-      const withoutField = mesitaLevel(place({ plan, promoting }));
-      const withUndefined = mesitaLevel(
-        place({ plan, promoting, intakeHighWater: undefined }),
-      );
-      const withNull = mesitaLevel(
-        place({ plan, promoting, intakeHighWater: null }),
-      );
-      assertEquals(withUndefined, withoutField);
-      assertEquals(withNull, withoutField);
-    }
-  }
+Deno.test("Partnered is binary: a paid plan, or the floor", () => {
+  assertEquals(partnered(place({ plan: "pro" })), 1);
+  assertEquals(partnered(place({ plan: "PRO" })), 1);
+  assertEquals(partnered(place({ plan: "premium" })), 1);
+  assertEquals(partnered(place({ plan: "free" })), PARTNERED_OFF);
+  assertEquals(partnered(place({ plan: "FREE" })), PARTNERED_OFF);
 });
 
-Deno.test("a fully-enriched place (highWater = PULSE_TOTAL) scores its bare money rung", () => {
+Deno.test("the empty-string plan scores OFF — the isPaidPlan('') trap", () => {
+  // `isPaidPlan` is `(plan ?? "free").toLowerCase() !== "free"`, so the
+  // coalesce catches null and undefined and NOT the empty string: calling it
+  // raw would answer TRUE for `""` and hand a free place the partner
+  // multiplier. `places.plan` is a NOT NULL enum defaulting to 'free', so an
+  // empty string only ever reaches here from a synthesized row or a fixture —
+  // exactly where it would go unnoticed.
+  assertEquals(partnered(place({ plan: "" })), PARTNERED_OFF);
+  assertEquals(partnered(place({ plan: "   " })), PARTNERED_OFF);
+});
+
+Deno.test("an absent or null plan scores OFF, never undefined", () => {
+  assertEquals(partnered(place({ plan: null })), PARTNERED_OFF);
+  const absent = partnered(place());
+  assertEquals(absent, PARTNERED_OFF);
+  assert(Number.isFinite(absent), "partnered() must never return undefined or NaN");
+});
+
+Deno.test("Partnered does not read `promoting` — a discount buys a slot, not an exponent", () => {
+  // MESITA-1855 wired lane 2, so the promoting rung left the exponent
+  // entirely (MESITA-1858). Replaces "Mesita Level climbs from catalog row to
+  // actively promoting": the climb is gone on purpose.
   assertEquals(
-    mesitaLevel(place({ plan: "free", intakeHighWater: PULSE_TOTAL })),
-    LEVEL_LISTED,
+    partnered(place({ plan: "free", promoting: true })),
+    PARTNERED_OFF,
   );
   assertEquals(
-    mesitaLevel(place({ plan: "pro", intakeHighWater: PULSE_TOTAL })),
-    LEVEL_PARTNER,
-  );
-  assertEquals(
-    mesitaLevel(place({ plan: "pro", promoting: true, intakeHighWater: PULSE_TOTAL })),
-    LEVEL_PROMOTING,
+    partnered(place({ plan: "pro", promoting: true })),
+    partnered(place({ plan: "pro", promoting: false })),
   );
 });
 
-Deno.test("a confirmed-unenriched place (highWater = 0) is demoted below the bare rung", () => {
-  const bare = mesitaLevel(place({ plan: "pro" }));
-  const thin = mesitaLevel(place({ plan: "pro", intakeHighWater: 0 }));
-  assert(thin < bare, "an unenriched partner must score below an unknown one");
-  assertAlmostEquals(thin, LEVEL_PARTNER * LEVEL_ENRICHMENT_FLOOR, 1e-12);
+// ── The two together ──────────────────────────────────────────
+
+Deno.test("no off-value is 0 — a hard zero deletes a place from a multiplicative blend", () => {
+  assert(ENRICHED_OFF > 0, "a place Mesita has not written up is demoted, not deleted");
+  assert(PARTNERED_OFF > 0, "a free place is demoted, not deleted");
+  assert(ENRICHED_OFF < 1 && PARTNERED_OFF < 1, "an off-value that is 1 is not a signal");
 });
 
-Deno.test("MESITA-1598's own scenario: a fully-enriched free place outranks a completely unenriched partner", () => {
-  const enrichedFree = mesitaLevel(
-    place({ plan: "free", intakeHighWater: PULSE_TOTAL }),
-  );
-  const thinPartner = mesitaLevel(
-    place({ plan: "pro", intakeHighWater: 0 }),
-  );
+Deno.test("the four (partner x enriched) products, written by hand", () => {
+  // The before/after table published with MESITA-1858, at w = 1 for each.
+  // Hand-written on purpose: deriving them from the functions under test is
+  // how a ladder replacement passes while being a different ladder.
+  const combo = (paid: boolean, isEnriched: boolean) =>
+    partnered(place({ plan: paid ? "pro" : "free" })) *
+    enriched(place({ enriched: isEnriched }));
+  assertAlmostEquals(combo(false, false), 0.03, 1e-12); // 0.2  x 0.15
+  assertAlmostEquals(combo(false, true), 0.2, 1e-12); //  0.2  x 1
+  assertAlmostEquals(combo(true, false), 0.15, 1e-12); // 1    x 0.15
+  assertAlmostEquals(combo(true, true), 1, 1e-12); //     1    x 1
+});
+
+Deno.test("MESITA-1598's own scenario survives the split: an enriched free place outranks an unenriched partner", () => {
+  // The replacement for the Intake high-water test of the same name. The
+  // gradient collapsed to a binary, but the ORDER the decision named is
+  // exactly preserved — that is what makes this a refactor and not a re-tune.
+  const enrichedFree = partnered(place({ plan: "free" })) *
+    enriched(place({ enriched: true }));
+  const thinPartner = partnered(place({ plan: "pro" })) *
+    enriched(place({ enriched: false }));
   assert(
     enrichedFree > thinPartner,
-    `expected enriched free (${enrichedFree}) > thin partner (${thinPartner})`,
+    `expected enriched free (${enrichedFree}) > unenriched partner (${thinPartner})`,
   );
-  // The same shape holds a rung up: a well-enriched partner can outrank an
-  // unenriched promoting place too — the principle isn't special-cased to
-  // just the one boundary the decision named.
-  const enrichedPartner = mesitaLevel(
-    place({ plan: "pro", intakeHighWater: PULSE_TOTAL }),
-  );
-  const thinPromoting = mesitaLevel(
-    place({ plan: "pro", promoting: true, intakeHighWater: 0 }),
-  );
-  assert(enrichedPartner > thinPromoting);
-});
-
-Deno.test("Intake high-water scales linearly between the floor and full credit", () => {
-  const half = mesitaLevel(place({ plan: "pro", intakeHighWater: PULSE_TOTAL / 2 }));
-  const expected = LEVEL_PARTNER *
-    (LEVEL_ENRICHMENT_FLOOR + (1 - LEVEL_ENRICHMENT_FLOOR) * 0.5);
-  assertAlmostEquals(half, expected, 1e-12);
-});
-
-Deno.test("intakeHighWater is clamped — an out-of-range or malformed value never breaks [0,1]", () => {
-  const over = mesitaLevel(place({ plan: "pro", intakeHighWater: PULSE_TOTAL * 5 }));
-  const negative = mesitaLevel(place({ plan: "pro", intakeHighWater: -3 }));
-  assertEquals(over, LEVEL_PARTNER); // clamps to the fraction=1 case
-  assertAlmostEquals(negative, LEVEL_PARTNER * LEVEL_ENRICHMENT_FLOOR, 1e-12); // clamps to 0
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────

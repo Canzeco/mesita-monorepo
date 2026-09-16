@@ -1,13 +1,13 @@
-// DISCOVERY BLEND — how the eight earned signals compose, and where the bought
+// DISCOVERY BLEND — how the nine earned signals compose, and where the bought
 // lane attaches (Docs › Discovery §A, MESITA-1196).
 //
 // TWO LANES, AND THEY NEVER MIX.
 //
-//   Lane 1 · EARNED    blend() — the product of `s^w` across the eight
+//   Lane 1 · EARNED    blend() — the product of `s^w` across the nine
 //                      signals in discovery-signals.ts. It cannot read a rate
-//                      or strategy. Mesita Level may read `plan`, the
-//                      computed `promoting` boolean, and (MESITA-1598)
-//                      Intake high-water; nothing else may.
+//                      or strategy. Partnered may read `plan`; nothing else
+//                      may. No signal reads `promoting` any more
+//                      (MESITA-1858) — that fact is lane 2's entirely.
 //   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list
 //                      that moves promoting places forward into fixed slot
 //                      positions. It cannot read a score, because it does not
@@ -31,6 +31,12 @@
 // looking for as long as nobody greps for the caller. `nearby-lineup.test.ts`
 // now asserts `discoveryRank` HAS a non-test caller, which is the assertion
 // that would have caught it.
+//
+// AND THE PROMOTING EXPONENT IS GONE (MESITA-1858). With lane 2 actually
+// running, `mesita_level` split into `enriched` and `partnered`, and the
+// promoting rung left the exponent entirely. Paying still moves one — a
+// deliberate, capped `partnered` — but a live DISCOUNT now buys only a
+// position, which is what this header always claimed it did.
 //
 // WHERE IT ATTACHES. Scroll slots over its single ranked deck, which is what
 // slotPromoted takes. Map slots INSIDE each of its listed lanes, never over
@@ -61,7 +67,7 @@
 // the library returns a hard 0 except Proximity past its maximum — see the
 // deletion-vs-demotion note in discovery-signals.ts.
 //
-// THE PRODUCT IS NOT NORMALIZED and does not need to be. Eight signals near 0.8
+// THE PRODUCT IS NOT NORMALIZED and does not need to be. Nine signals near 0.8
 // multiply to ~0.17, which looks alarming and means nothing: only the ORDER is
 // consumed. Taking a geometric mean (the nth root) would rescale every score
 // identically and change no comparison, at the cost of a pow() per place. The
@@ -92,7 +98,7 @@ export type SignalParamsByKey = Partial<Record<SignalKey, SignalParamBag>>;
  * `parts` records what each signal CONTRIBUTED, which for a disabled signal is
  * NEUTRAL — not what it would have said if it were on. That distinction is
  * load-bearing in both directions: a disabled signal is never CALLED (so a
- * pool of a thousand places does not pay for eight signals when the operator
+ * pool of a thousand places does not pay for nine signals when the operator
  * switched four off, and Randomness cannot spend a `Math.random()` whose value
  * is thrown away), and the debug payload therefore reports the blend that
  * actually ran rather than a hypothetical one. A part that reads 1 means "this

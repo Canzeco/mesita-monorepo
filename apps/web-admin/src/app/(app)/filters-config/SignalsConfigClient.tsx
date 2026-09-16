@@ -1,11 +1,13 @@
 "use client";
 
-// Mesita Places Search Signals — the eight earned signals every Mesita
+// Mesita Places Search Signals — the nine earned signals every Mesita
 // Places source is ranked by (Docs > Discovery 8.3). Sources retrieve;
 // Lineup ranks; these are what it reads. Engines do not invent a second
 // scale. Weights and params persist on discovery_config. Slotting is a
-// post-blend position pass, not a weight. Mesita Level is the merged
-// partnership + promotion row.
+// post-blend position pass, not a weight. Mesita Level split into the two
+// binary rows Enriched and Partnered (MESITA-1858): one reads the enrichment
+// state, the other reads `plan`. Disjoint facts, so no double-count — which
+// is the thing the MESITA-1408 merge existed to prevent.
 //
 // THE CARDS DO NOT REDRAW THE MATRIX (MESITA-1856). Each card used to carry
 // a strip of six unlabelled circles — which modes read this signal — under
@@ -21,6 +23,7 @@ import {
   Dices,
   FileText,
   MapPin,
+  Sparkles,
   Star,
   Tags,
   Type,
@@ -49,7 +52,8 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   timing: Clock,
   category: Tags,
   popularity: Star,
-  mesita_level: BadgeCheck,
+  enriched: Sparkles,
+  partnered: BadgeCheck,
   randomness: Dices,
 };
 

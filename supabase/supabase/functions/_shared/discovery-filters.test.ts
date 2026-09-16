@@ -13,6 +13,7 @@ import {
   WIRED_ENGINE_KEYS,
   type DiscoveryFilters,
 } from "./discovery-config.ts";
+import { SIGNAL_KEYS } from "./discovery-signals.ts";
 
 /** Records every predicate instead of talking to PostgREST. */
 type Call = { op: string; col: string; val: unknown };
@@ -176,7 +177,8 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.weights.proximity, 2);
   assertEquals(cfg.weights.summary, 1);
   assertEquals(cfg.weights.name, 1);
-  assertEquals(cfg.weights.mesita_level, 1);
+  assertEquals(cfg.weights.enriched, 1);
+  assertEquals(cfg.weights.partnered, 1);
   assertEquals(cfg.slotting.everyNth, 7);
   // ...and the new sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
@@ -237,7 +239,8 @@ Deno.test("normalize folds semantic weight and params onto summary", () => {
   assertEquals(cfg.weights.summary, 2.4);
   assertEquals(cfg.params.summary.unembedded, 0.15);
   assertEquals(cfg.weights.name, 1);
-  assertEquals(cfg.weights.mesita_level, 1);
+  assertEquals(cfg.weights.enriched, 1);
+  assertEquals(cfg.weights.partnered, 1);
   const kept = normalizeDiscoveryConfig({
     weights: { semantic: 2, summary: 0.5 },
   });
@@ -494,17 +497,29 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp",
   assertEquals(missingAuto.name.deep.googleCount, 20);
 });
 
-Deno.test("a blob carrying the retired partnership/promotion/social weights normalizes to Mesita Level", () => {
+Deno.test("the retired partnership/promotion/social weights bind to nothing, but are no longer erased", () => {
   const cfg = normalizeDiscoveryConfig({
     weights: { partnership: 2, promotion: 3, social: 4, proximity: 1.5 },
     params: { partnership: {}, promotion: {}, social: {} },
   });
-  // The weights map is rebuilt from SIGNAL_KEYS, so retired keys cannot survive.
-  assertEquals(Object.hasOwn(cfg.weights, "partnership"), false);
-  assertEquals(Object.hasOwn(cfg.weights, "promotion"), false);
-  assertEquals(Object.hasOwn(cfg.weights, "social"), false);
+  // WHAT CHANGED AT MESITA-1858: the weights map is ADDITIVE for one release,
+  // so an unknown key rides along instead of being deleted. That is the whole
+  // mitigation for the deploy window — web-admin ships on merge, the Edge
+  // Functions ship by hand, and in between a whole-blob Save from the old
+  // side must not evict a key the new side is about to need.
+  const kept = cfg.weights as unknown as Record<string, number>;
+  assertEquals(kept.partnership, 2);
+  assertEquals(kept.promotion, 3);
+  assertEquals(kept.social, 4);
+  // NO LONGER TRUE, deliberately: these keys used to be asserted absent.
+  // They bind to no signal either way — `blend` iterates SIGNAL_KEYS — so
+  // preservation is inert storage, not a resurrected signal.
+  assertEquals((SIGNAL_KEYS as readonly string[]).includes("partnership"), false);
+  // `params` is still rebuilt from SIGNAL_KEYS: a param bag for a signal that
+  // does not exist cannot be read by anything and has no deploy-window risk.
   assertEquals(Object.hasOwn(cfg.params, "partnership"), false);
-  // The merged axis arrives at its default rather than inheriting either number.
-  assertEquals(cfg.weights.mesita_level, DISCOVERY_DEFAULTS.weights.mesita_level);
+  // The replacement axes arrive at their defaults rather than inheriting a number.
+  assertEquals(cfg.weights.enriched, DISCOVERY_DEFAULTS.weights.enriched);
+  assertEquals(cfg.weights.partnered, DISCOVERY_DEFAULTS.weights.partnered);
   assertEquals(cfg.weights.proximity, 1.5);
 });

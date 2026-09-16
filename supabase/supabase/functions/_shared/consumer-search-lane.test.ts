@@ -392,17 +392,18 @@ Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
   ]);
 });
 
-Deno.test("orderDeepLineup: intake_high_water (MESITA-1601) reorders when Level is weighted", () => {
-  // Same name-embedding, same plan (moneyRung ties) — only Intake high-water
-  // differs, so a Level-only weight isolates the enrichment term. This is
-  // the wiring `fetchEmbedPool` provides via `attachIntakeHighWater`: absent
-  // in the query itself, merged onto the row before it ever reaches here.
-  const hi = { ...listed("hi", "Hi", QUERY, "pro"), intake_high_water: 10 };
-  const lo = { ...listed("lo", "Lo", QUERY, "pro"), intake_high_water: 0 };
-  const levelOnly = weights(0);
-  levelOnly.mesita_level = 4;
+Deno.test("orderDeepLineup: the enrichment fact reorders when Enriched is weighted", () => {
+  // REPLACES "intake_high_water (MESITA-1601) reorders when Level is
+  // weighted". Same name-embedding, same plan (so Partnered ties) — only the
+  // enrichment fact differs, which isolates the Enriched term. It rides on
+  // the row (`content_state`), not on the `attachIntakeHighWater` side-read;
+  // that side-read is still wired here with no live reader (MESITA-1858).
+  const hi = listed("hi", "Hi", QUERY, "pro", "ready");
+  const lo = listed("lo", "Lo", QUERY, "pro", "queued");
+  const enrichedOnly = weights(0);
+  enrichedOnly.enriched = 2;
   assertEquals(
-    orderDeepLineup([lo, hi], QUERY, levelOnly).map((r) => r.id),
+    orderDeepLineup([lo, hi], QUERY, enrichedOnly).map((r) => r.id),
     ["hi", "lo"],
   );
 });
