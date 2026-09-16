@@ -15,6 +15,7 @@
 // wide value, and a rating of exactly 4.5 everywhere hides the half-star.
 import type {
   MockActivityEvent,
+  MockClass,
   MockCreditBalance,
   MockCustomer,
   MockMember,
@@ -24,6 +25,7 @@ import type {
   MockPoolPlace,
   MockReservation,
   MockReview,
+  MockSex,
   MockVisit,
 } from "@/mock/types";
 
@@ -153,11 +155,24 @@ export const POOL_PLACES: MockPoolPlace[] = [
   { id: "plc_pool_d", name: "Mercadito Sur", category: "Market", city: "Santa Catarina", verified: true, claimable: true },
 ];
 
-const GUESTS = [
-  "Ana Robles", "Beto Lanz", "Camila Duarte", "Diego Mena", "Elisa Ponce",
-  "Fermín Rico", "Gaby Ochoa", "Hugo Vela", "Irene Salas", "Joaquín Paz",
-  "Karla Nieto", "Lalo Bravo", "Mariana Cid", "Néstor Gil", "Olivia Rangel",
-  "Paco Serna", "Quique Otero", "Rosa Tamez", "Sergio Luna", "Tania Prado",
+/** The invented guests, and each one's sex ALONGSIDE the name rather than
+ *  rolled for separately.
+ *
+ *  A sex column filled from the same `rnd()` as everything else would sooner or
+ *  later print "Ana Robles · Man", and a reviewer who sees that files it
+ *  against the COLUMN — they have no way to know it was the fixture lying. The
+ *  pairing is what keeps the demographics arguable. */
+const GUESTS: Array<{ name: string; sex: MockSex }> = [
+  { name: "Ana Robles", sex: "f" }, { name: "Beto Lanz", sex: "m" },
+  { name: "Camila Duarte", sex: "f" }, { name: "Diego Mena", sex: "m" },
+  { name: "Elisa Ponce", sex: "f" }, { name: "Fermín Rico", sex: "m" },
+  { name: "Gaby Ochoa", sex: "f" }, { name: "Hugo Vela", sex: "m" },
+  { name: "Irene Salas", sex: "f" }, { name: "Joaquín Paz", sex: "m" },
+  { name: "Karla Nieto", sex: "f" }, { name: "Lalo Bravo", sex: "m" },
+  { name: "Mariana Cid", sex: "f" }, { name: "Néstor Gil", sex: "m" },
+  { name: "Olivia Rangel", sex: "f" }, { name: "Paco Serna", sex: "m" },
+  { name: "Quique Otero", sex: "m" }, { name: "Rosa Tamez", sex: "f" },
+  { name: "Sergio Luna", sex: "m" }, { name: "Tania Prado", sex: "f" },
 ];
 
 /** Deterministic pseudo-randomness. A fixture that changed on every reload
@@ -200,7 +215,7 @@ export const VISITS: MockVisit[] = build(ALL_IDS, 14, (placeId, i, rnd) => {
   return {
     id: `vst_${placeId}_${i}`,
     placeId,
-    guest: GUESTS[Math.floor(r * GUESTS.length)],
+    guest: GUESTS[Math.floor(r * GUESTS.length)].name,
     at: daysAgo(Math.floor(i / 2), (i % 2) * 5 + 2),
     totalCents: 18_000 + Math.floor(rnd() * 96_000),
     rewardCents: Math.floor(rnd() * 5_500),
@@ -214,7 +229,7 @@ export const ORDERS: MockOrder[] = build(ALL_IDS, 11, (placeId, i, rnd) => {
   return {
     id: `ord_${placeId}_${i}`,
     placeId,
-    guest: GUESTS[Math.floor(rnd() * GUESTS.length)],
+    guest: GUESTS[Math.floor(rnd() * GUESTS.length)].name,
     at: daysAgo(Math.floor(i / 3), (i % 3) * 3 + 1),
     channel: r > 0.55 ? "pickup" : "delivery",
     items: 1 + Math.floor(rnd() * 6),
@@ -229,7 +244,7 @@ export const RESERVATIONS: MockReservation[] = build(ALL_IDS, 9, (placeId, i, rn
   return {
     id: `rsv_${placeId}_${i}`,
     placeId,
-    guest: GUESTS[Math.floor(rnd() * GUESTS.length)],
+    guest: GUESTS[Math.floor(rnd() * GUESTS.length)].name,
     at: daysAgo(i < 4 ? -(4 - i) : i - 4, 6),
     party: 2 + Math.floor(rnd() * 7),
     state: i < 3 ? "confirmed" : i === 3 ? "requested" : r > 0.85 ? "no_show" : r > 0.75 ? "canceled" : "seated",
@@ -251,7 +266,7 @@ export const REVIEWS: MockReview[] = build(ALL_IDS, 7, (placeId, i, rnd) => {
   return {
     id: `rvw_${placeId}_${i}`,
     placeId,
-    guest: GUESTS[Math.floor(rnd() * GUESTS.length)],
+    guest: GUESTS[Math.floor(rnd() * GUESTS.length)].name,
     at: daysAgo(i * 3 + 1),
     stars: r > 0.75 ? 5 : r > 0.4 ? 4 : r > 0.2 ? 3 : 2,
     body: REVIEW_BODIES[i % REVIEW_BODIES.length],
@@ -273,19 +288,40 @@ export const MENUS: MockMenu[] = PLACES.flatMap((p) =>
 export const CREDIT_BALANCES: MockCreditBalance[] = build(ALL_IDS, 23, (placeId, i, rnd) => ({
   id: `crb_${placeId}_${i}`,
   placeId,
-  guest: `${GUESTS[i % GUESTS.length]}${i >= GUESTS.length ? " Jr." : ""}`,
+  guest: `${GUESTS[i % GUESTS.length].name}${i >= GUESTS.length ? " Jr." : ""}`,
   balanceCents: Math.floor(rnd() * 240_000),
   lastMoveAt: daysAgo(i),
 }));
 
-export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) => ({
-  id: `cus_${placeId}_${i}`,
-  placeId,
-  name: `${GUESTS[i % GUESTS.length]}${i >= GUESTS.length ? " Jr." : ""}`,
-  visits: 1 + Math.floor(rnd() * 19),
-  lastSeen: daysAgo(i * 2),
-  spendCents: 22_000 + Math.floor(rnd() * 480_000),
-}));
+/** Skewed, not uniform. A class column where every level is equally common
+ *  says nothing about the room — the whole reason to look at it is to find out
+ *  that a Del Valle restaurant is two thirds A/B and C+, and a flat draw would
+ *  hide exactly that. */
+function classFor(r: number): MockClass {
+  if (r > 0.62) return "A/B";
+  if (r > 0.34) return "C+";
+  if (r > 0.16) return "C";
+  if (r > 0.06) return "C-";
+  return "D+";
+}
+
+export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) => {
+  const guest = GUESTS[i % GUESTS.length];
+  return {
+    id: `cus_${placeId}_${i}`,
+    placeId,
+    name: `${guest.name}${i >= GUESTS.length ? " Jr." : ""}`,
+    age: 19 + Math.floor(rnd() * 49),
+    class: classFor(rnd()),
+    sex: guest.sex,
+    visits: 1 + Math.floor(rnd() * 19),
+    whatsapp: `+52 81 5555 ${String(1200 + Math.floor(rnd() * 8000)).padStart(4, "0")}`,
+    // TWO of sixteen, and scattered rather than at the top, so the unlocked
+    // state is on screen at first paint and the column visibly MIXES. A table
+    // that is locked all the way down reads as a column that does not work.
+    whatsappBought: i === 3 || i === 10,
+  };
+});
 
 export const MEMBERS: MockMember[] = [
   { id: "mem_1", placeId: "plc_lumbre", name: "You", email: "you@mock.mesita.ai", role: "owner", state: "active" },
