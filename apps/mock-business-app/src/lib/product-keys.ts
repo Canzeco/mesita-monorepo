@@ -7,8 +7,9 @@
 //
 // THE ORDER IS PATO'S (2026-09-16): *"Profile · Costumers // Visits · Orders ·
 // Reservations // Rewards · Payments · Credits"* — three groups with a blank
-// line between them. The blank lines are the rail's seams
-// (`RAIL_GROUP_STARTS`) and carry no headings.
+// line between them. Those groups were the RAIL's seams until MESITA-1933 took
+// the products off the rail; they order the CATALOGUE now, and the rail's only
+// product is Profile.
 export const PRODUCT_KEYS = [
   "profile",
   "customers",

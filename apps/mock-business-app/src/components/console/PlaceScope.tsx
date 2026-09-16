@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { MockPlace } from "@/mock/types";
 import type { PlaceTab } from "@/lib/place-tabs";
+import type { PlacePage } from "@/lib/console-routes";
 
 export type PlaceScopeValue = {
   place: MockPlace | null;
@@ -21,6 +22,11 @@ export type PlaceScopeValue = {
   /** The views this caller may open here. `PlaceTabGate` refuses everything
    *  outside it, because a view reachable by typing its address is a view. */
   tabs: PlaceTab[];
+  /** The PAGES this caller may open here — the four static segments beside
+   *  `[view]`, which no tab gate ever sees. Each one refuses its own address
+   *  from this list; see `pagesForAccess` for why it had to be written down
+   *  (MESITA-1933). */
+  pages: PlacePage[];
   /** The places read FAILED. Not the same fact as "this place is not yours",
    *  and this is the flag that keeps the two apart below. */
   readFailed: boolean;
@@ -55,7 +61,12 @@ export function usePlaceScope(): PlaceScopeValue {
  *  through NO tab gate at all, so for them a missing place is an ordinary
  *  state — a pool id typed into the bar, or the panel flipped to "Read
  *  failed" while one of them was open. They take `useHeldPlaceOrNull` and
- *  render `<NotHeld />`, which is the gate they were missing. */
+ *  render `<NotHeld />`, which is the gate they were missing.
+ *
+ *  THAT IS HALF THE GATE, AND `pages` IS THE OTHER HALF. `NotHeld` answers
+ *  "held or not"; it has never answered "held as WHAT", and until MESITA-1933
+ *  nothing did for these five — the rail's product rows were carrying the role
+ *  check for the whole console by accident. */
 export function useHeldPlace(): MockPlace {
   const { place } = usePlaceScope();
   if (!place) throw new Error("This view requires a held place");

@@ -11,10 +11,9 @@
 //   THE RAIL IS ONE ARRAY. `RAIL_ROWS` is the only row list, in Pato's order
 //   and his three groups. Moving a row is an edit to one line here.
 //
-// Both imports are TYPE-ONLY and vocabulary-only, deliberately: nothing in
-// this file may reach the data layer, and in this app there is no data layer
-// to reach.
-import type { ProductKey } from "@/lib/product-keys";
+// The import is TYPE-ONLY and vocabulary-only, deliberately: nothing in this
+// file may reach the data layer, and in this app there is no data layer to
+// reach.
 import type { PlaceTab } from "@/lib/place-tabs";
 
 export const SHELL_ROUTES = {
@@ -40,143 +39,69 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   activity: "Activity",
 };
 
-/** A rail row names HOME, a place PAGE, a place VIEW, or a PRODUCT.
+/** A rail row names a place PAGE or a place VIEW.
  *
- *  Home carries no target because it HAS no target to carry: it is the place
- *  itself, at the place's own bare address, and a field naming which part of
- *  the place it meant would be the beginning of a second Home. */
+ *  TWO KINDS FOR FOUR ROWS, not one. A page and a view are different ADDRESS
+ *  SHAPES — `/places/<id>/products` is a static segment, `/places/<id>/profile`
+ *  goes through the `[view]` gate — and they light from different readers. A
+ *  single string kind would make the rail GUESS which, and guessing wrong is a
+ *  404 three files from its cause.
+ *
+ *  `kind: "home"` and `kind: "product"` are gone (MESITA-1933). See below. */
 export type RailRow =
-  | { kind: "home" }
   | { kind: "page"; target: PlacePage }
-  | { kind: "place"; view: PlaceRailView }
-  | { kind: "product"; product: ProductKey };
+  | { kind: "place"; view: PlaceRailView };
 
 /** The place views that keep a rail row OF THEIR OWN — NOT `PLACE_TABS`.
- *  Menus, Reviews and Admin keep their addresses and lost their rows. */
+ *  Profile is the only one, and the eight beside it are products: a product is
+ *  reached from the catalogue now, never from a row. */
 export const PLACE_RAIL_VIEWS = ["profile"] as const;
 export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 
-/** THE RAIL, in Pato's order and his groups. Account is not here: it is the
- *  person, and it renders last in every state including the failed read.
+/** THE RAIL — FOUR ROWS, in Pato's order (MESITA-1933).
  *
- *  HOME IS FIRST AND ALONE (MESITA-1914). Its seam costs nothing to declare —
- *  `home` is a kind of its own, so `RAIL_GROUP_STARTS` derives the rule under
- *  it exactly as it derives the other three. The console used to open on
- *  Settings, which made an operator's first screen a thing to configure. */
+ *  Pato, 2026-09-16, with a drawing: *"this must be the sidebar menu, super
+ *  simple… the sidebarmenu must only have that. almost all the setup will be
+ *  in products, easy peasy. since almost all is passive."*
+ *
+ *  It was TWELVE. What left, and why none of it lost an address:
+ *
+ *    THE NINE PRODUCTS  Visits, Rewards, Orders, Reservations, Payments,
+ *      Credits, Capital and Customers left with Profile staying. Eight of the
+ *      nine are passive at a typical place, so nine rows earned one click
+ *      between them. The catalogue at `/places/<id>/products` already links
+ *      every card to its own view — that is the door, and it always was.
+ *    HOME  keeps the screen and loses the row. The VENUE row above this list
+ *      is its door: the one thing in the column that is unambiguously THIS
+ *      PLACE, at the place's own bare address. MESITA-1914's rule holds — the
+ *      console still opens on Home — without a fifth row for an address the
+ *      venue already names.
+ *    ALL PLACES  was a `multi`-only row. The venue row's caret is that door at
+ *      every mode now, and `/account` has carried a second one all along.
+ *    THE TWO SECTION HEADS  had two rows and two rows to separate. A title
+ *      over a pair is a label pretending to be a taxonomy.
+ *
+ *  ACCOUNT IS NOT HERE, and neither is the venue: one is the PERSON and one is
+ *  the SUBJECT, and this array is the list of places you GO. Both are pinned
+ *  bands in `Sidebar.tsx`, which is why the scroller holds exactly what Pato
+ *  drew.
+ *
+ *  ACTIVITY IS BACK, reversing MESITA-1924. It left because every product page
+ *  had grown its own Activity half, which made a place-level row a second
+ *  answer. With the product rows gone there are no halves to be second to, and
+ *  this feed is the whole place's — every kind of event, which no one
+ *  product's half covers.
+ *
+ *  THE ORDER IS PRODUCTS FIRST, and that is the argument: the catalogue is
+ *  where an operator turns the place on. It is a bet on passivity — the day a
+ *  place works Orders every service, two clicks per lookup is what brings a
+ *  row back. */
 export const RAIL_ROWS: readonly RailRow[] = [
-  { kind: "home" },
-  { kind: "page", target: "settings" },
-  // ACTIVITY LEFT THE RAIL (MESITA-1924). Pato: "remove the activity from
-  // sidebar menu" — said once every product page grew its own Activity half,
-  // which is what made a place-level Activity row redundant as a DESTINATION.
-  // The page keeps its address and its doors (Home, the ask bar): its feed is
-  // the whole place's, every kind of event, which no single product's half
-  // covers. A row is not the same thing as a page.
   { kind: "page", target: "products" },
-  { kind: "product", product: "profile" },
-  { kind: "product", product: "customers" },
-  { kind: "product", product: "visits" },
-  // REWARDS SITS UNDER VISITS (MESITA-1928), which reverses MESITA-1900's
-  // filing of it with the money group. A reward is earned by closing a bill at
-  // a table and by nothing else — never by an order, which is prepaid and has
-  // no table — so the dial belongs beside the container it pays out on rather
-  // than beside the Stripe account.
-  { kind: "product", product: "rewards" },
-  { kind: "product", product: "orders" },
-  { kind: "product", product: "reservations" },
-  { kind: "product", product: "pay" },
-  { kind: "product", product: "credits" },
-  // CAPITAL IS LAST, and it is money (MESITA-1929): cash now against meals the
-  // place will serve later. A Soon product still gets a LIVE row — the rail
-  // never dims, and the PAGE is where a product says it is not here yet.
-  { kind: "product", product: "capital" },
+  { kind: "place", view: "profile" },
+  { kind: "page", target: "activity" },
+  { kind: "page", target: "settings" },
 ];
-
-/** Where the seams fall, as the INDEX of each row that opens a group —
- *  DERIVED from the array above rather than hand-typed beside it, so a row
- *  that moves cannot leave a seam behind where it used to be. */
-// ── THE TWO SECTIONS (MESITA-1915) ─────────────────────────────────────────
-//
-// A rule in this column separates SECTIONS, and there are two of them: what
-// you MANAGE about the venue, and the PRODUCTS you run on it. They are not a
-// third list bolted beside `RAIL_ROWS` — a row's `kind` already says which
-// side of the line it falls on, so the sections are that fact NAMED, and
-// `RAIL_GROUP_STARTS` below derives the line from the same fact.
-//
-// THEY ARE HEADED AGAIN, which reverses MESITA-1844. Pato headed the rail's
-// groups in MESITA-1842 and deleted the headers two issues later, because a
-// column of eight rows under THREE titles is three lists. It is two titles
-// over two sections now — and the eight products sit whole under one of them,
-// which is the thing that was actually wrong.
-//
-// A HEAD IS NOT A ROW. It is an eyebrow: no address, no pill, no hover, no
-// glyph column. The one row shape is untouched.
-// THE SECOND ONE IS NOT CALLED "PRODUCTS", and the reason is one line above
-// it in the column: `Products` is already a ROW — the catalogue, where an
-// operator compares the eight and buys one — and it is the LAST row of the
-// first section. A head reading "Products", wearing the catalogue's own mark,
-// directly under a row reading "Products" wearing the same mark is two
-// different things spelled and drawn identically, one line apart. "Your
-// products" is the eight this place actually runs; the catalogue is where you
-// get them.
-export const RAIL_SECTIONS = [
-  { key: "manage", label: "Manage" },
-  { key: "products", label: "Your products" },
-] as const;
-export type RailSectionKey = (typeof RAIL_SECTIONS)[number]["key"];
-
-/** Which section a row falls in.
- *
- *  ONE KIND IS NAMED AND THE REST FALL THROUGH, deliberately. Written the
- *  other way round — `kind === "page"` is Manage, everything else is products
- *  — a row kind added later lands silently in the PRODUCTS section, under a
- *  title that does not describe it, and draws a line where nobody asked for
- *  one. That is not hypothetical: `kind: "home"` arrived in the mock one issue
- *  after this rule was written. Products are the closed set; the rest is what
- *  you manage, whatever it is called next. */
-export function railSectionOf(row: RailRow): (typeof RAIL_SECTIONS)[number] {
-  return row.kind === "product" ? RAIL_SECTIONS[1] : RAIL_SECTIONS[0];
-}
-
-export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
-  (acc, row, i) => {
-    const prev = RAIL_ROWS[i - 1];
-    if (!prev) return acc;
-    // ONE RULE (MESITA-1915): a group opens where the SECTION changes, and
-    // nowhere else. It had a second — Pato's two blank lines inside the
-    // products, at `visits` and at `rewards` — and he cut them on sight: *"the
-    // lines only for to separate section stuff, (products whole products is
-    // ONE sections)"*. A rule that sometimes means "new section" and sometimes
-    // means "same section, new mood" teaches an operator to read neither, and
-    // at eight rows the three sub-groups were three lists.
-    //
-    // IT ASKS THE SECTION, NOT THE `kind`. Comparing kinds directly drew a
-    // line between two rows of the SAME section the moment a third kind
-    // existed — `kind: "home"` landed in the mock while this was in review,
-    // and would have opened a group above Settings that names nothing.
-    if (railSectionOf(prev).key !== railSectionOf(row).key) acc.push(i);
-    return acc;
-  },
-  [],
-);
-
-/** Every product has a place address. Customers is the exception and the only
- *  one: it is a PAGE under the place, not a view of it. */
-export function productRowHref(
-  product: ProductKey,
-  placeId: string,
-  placeHref: (tab: PlaceTab) => string,
-): string {
-  if (product === "customers") return placePageHref(placeId, "customers");
-  return placeHref(product as PlaceTab);
-}
-
-/** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
- *  second list — at zero places every row names a place that does not exist,
- *  so the filter keeps none of them and the rail is Add place and Account. */
-export const ZERO_PLACE_ROWS: readonly RailRow[] = RAIL_ROWS.filter(
-  () => false,
-);
 
 export function placePageHref(placeId: string, page: PlacePage): string {
   return `/places/${encodeURIComponent(placeId)}/${page}`;

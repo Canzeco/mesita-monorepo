@@ -195,8 +195,13 @@ export function MockPanel() {
               ]}
             />
             <p className="text-muted-foreground text-[11px] leading-snug">
-              A viewer sees three views. The other six are hidden from the rail
-              AND refused at their addresses — hidden is not protected.
+              A viewer sees Profile and nothing else. The eight other views and
+              all four Manage pages are dropped from the rail AND refused at
+              their addresses — hidden is not protected. The pages only got
+              their half of that gate in MESITA-1933: until the products left
+              the rail, `tabsForAccess` on the product rows was the whole
+              console&rsquo;s role check, and Products, Activity and Settings
+              had none of their own.
             </p>
           </Group>
 

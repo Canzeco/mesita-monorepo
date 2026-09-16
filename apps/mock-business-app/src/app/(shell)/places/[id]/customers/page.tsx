@@ -37,7 +37,8 @@
 // nobody has decided on, on a console where `whatsapp_url` already means the
 // PLACE's own WhatsApp over on Profile.
 import { useState } from "react";
-import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
+import { notFound } from "next/navigation";
+import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { SoonStrip } from "@/components/shared/SoonStrip";
@@ -68,6 +69,7 @@ function maskedHandle(handle: string): string {
 
 export default function PlaceCustomersPage() {
   const place = useHeldPlaceOrNull();
+  const { pages } = usePlaceScope();
   const { scenario } = useMock();
   // Unlocking is local and free here, because there is nothing behind this app
   // to charge. It is wired anyway: a verb that does nothing leaves the reviewer
@@ -80,6 +82,11 @@ export default function PlaceCustomersPage() {
   // to reach the body with no place at all. It sits after the hooks and before
   // the first `place.` — a guard below a dereference is not a guard.
   if (!place) return <NotHeld />;
+  // AND HELD AS WHAT (MESITA-1933). Customers lost its rail row with the other
+  // eight products, so it is reached from the catalogue — and the row leaving
+  // took the `tabsForAccess` call that had been this page's only role check.
+  // Every `PlacePage` gets the gate, not just the three still on the rail.
+  if (!pages.includes("customers")) notFound();
 
   // Sorted HERE, not assumed. The card has said "sorted by visits" since the
   // day it shipped and the fixture handed it index order — a caption that
