@@ -11,17 +11,17 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export { inferPlaceCategory } from "./categories-infer.ts";
-export { inferPlaceSuperCategories } from "./infer-super-categories.ts";
+export { inferPlaceFamilies } from "./infer-families.ts";
 
 export type PlaceCategory = {
   slug: string;
   label: string;
   section: string;
   sort_order: number;
-  super_category_slugs?: string[];
+  family_keys?: string[];
 };
 
-export type PlaceSuperCategory = {
+export type PlaceFamily = {
   slug: string;
   label: string;
   emoji: string;
@@ -36,19 +36,19 @@ export async function fetchPlaceCategories(
 ): Promise<PlaceCategory[]> {
   const { data, error } = await admin
     .from("place_categories")
-    .select("slug, label, section, sort_order, super_category_slugs")
+    .select("slug, label, section, sort_order, family_keys")
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
   return data as PlaceCategory[];
 }
 
-export async function fetchPlaceSuperCategories(
+export async function fetchPlaceFamilies(
   admin: SupabaseClient,
-): Promise<PlaceSuperCategory[]> {
+): Promise<PlaceFamily[]> {
   const { data, error } = await admin
-    .from("place_super_categories")
+    .from("place_families")
     .select("slug, label, emoji, sort_order")
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
-  return data as PlaceSuperCategory[];
+  return data as PlaceFamily[];
 }

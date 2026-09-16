@@ -6,7 +6,7 @@
 // redoes this properly minutes later with rich grounding).
 //
 // Every output is validated against the LIVE vocabularies exactly like the
-// enrich-time classifiers: category must be a live slug, supers resolve
+// enrich-time classifiers: category must be a live slug, families resolve
 // through the multi-parent membership law, tags filter to the catalog.
 // Mesita Name is returned as a CANDIDATE — only the mesita-name-door may
 // land it (gate D2).
@@ -14,7 +14,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   fetchPlaceCategories,
-  fetchPlaceSuperCategories,
+  fetchPlaceFamilies,
 } from "./categories.ts";
 import { fetchPlaceTags } from "./tags.ts";
 import { resolveEnrichedFamilyKeys } from "./place-taxonomy.ts";
@@ -61,16 +61,16 @@ export async function synthesizeDoorProfile(
   openaiKey: string,
   signals: DoorSignals,
 ): Promise<DoorProfile | null> {
-  const [categories, supers, tagVocab, models] = await Promise.all([
+  const [categories, families, tagVocab, models] = await Promise.all([
     fetchPlaceCategories(admin),
-    fetchPlaceSuperCategories(admin),
+    fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
   ]);
-  if (categories.length === 0 || supers.length === 0) return null;
+  if (categories.length === 0 || families.length === 0) return null;
 
   const realCategories = categories.filter((c) => c.slug !== "undefined");
-  const realSupers = supers.filter((s) => s.slug !== "undefined");
+  const realFamilies = families.filter((f) => f.slug !== "undefined");
   const categorySlugs = new Set(realCategories.map((c) => c.slug));
   const tagSlugs = new Set(tagVocab.map((t) => t.slug));
 
@@ -92,7 +92,7 @@ export async function synthesizeDoorProfile(
     "You are Mesita's create-door profiler. From the thin Google signals " +
     "provided, return ONE JSON object with EXACTLY these keys: " +
     '{"category":"<slug from the category list>",' +
-    '"super_categories":["<1-2 slugs from the super list>"],' +
+    '"families":["<1-2 slugs from the family list>"],' +
     '"tags":["<0-' + String(MAX_INFERRED_TAGS) + ' slugs from the tag list>"],' +
     '"presentation":"<2-3 short English paragraphs separated by \\n\\n>",' +
     '"reservations_likely":<boolean>,' +
@@ -116,7 +116,7 @@ export async function synthesizeDoorProfile(
     "facts, ratings, or prices — thin sources mean shorter honest text.";
   const userPrompt =
     `Categories:\n${realCategories.map((c) => c.slug).join(", ")}\n\n` +
-    `Super Categories:\n${realSupers.map((s) => s.slug).join(", ")}\n\n` +
+    `Families:\n${realFamilies.map((f) => f.slug).join(", ")}\n\n` +
     `Tags:\n${tagVocab.map((t) => t.slug).join(", ")}\n\n` +
     `Place:\n${placeLines}`;
 
@@ -157,7 +157,7 @@ export async function synthesizeDoorProfile(
     })();
     const familyKeys = resolveEnrichedFamilyKeys(
       category,
-      Array.isArray(parsed.super_categories) ? parsed.super_categories : [],
+      Array.isArray(parsed.families) ? parsed.families : [],
     );
     const tags = (Array.isArray(parsed.tags) ? parsed.tags : [])
       .map((t) => (typeof t === "string" ? t.trim().toLowerCase() : ""))

@@ -52,7 +52,7 @@ export type PlaceHit = {
   google_name: string | null;
   category: string | null;
   category_label: string | null;
-  /** Super Categories: Intaker-inferred (stored); membership derives live. */
+  /** Families: Intaker-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
   state: string | null;
   address: string | null;

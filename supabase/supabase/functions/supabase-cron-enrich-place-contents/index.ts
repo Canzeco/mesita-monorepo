@@ -50,9 +50,9 @@ import {
 import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
 import {
   fetchPlaceCategories,
-  fetchPlaceSuperCategories,
+  fetchPlaceFamilies,
   inferPlaceCategory,
-  inferPlaceSuperCategories,
+  inferPlaceFamilies,
 } from "../_shared/categories.ts";
 import {
   familiesForAtlasCategory,
@@ -172,18 +172,18 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
     // About first (above), then category, then tags — each step feeds the next.
     // Category + tags both ground primarily on the synthesized About.
-    const [categoryList, superList, tagVocabulary, models] = await Promise.all([
+    const [categoryList, familyList, tagVocabulary, models] = await Promise.all([
       fetchPlaceCategories(admin),
-      fetchPlaceSuperCategories(admin),
+      fetchPlaceFamilies(admin),
       fetchPlaceTags(admin),
       loadModelsConfig(admin),
     ]);
-    // Super `undefined` is a catalog membership, not a classifier target —
+    // Family `undefined` is a catalog membership, not a classifier target —
     // never offer the leftover slug (thin-signal places would land there).
-    // Same for the Super candidates: the classifier picks among the seven
-    // real supers or stays silent (resolve falls back to ['undefined']).
+    // Same for the family candidates: the classifier picks among the seven
+    // real families or stays silent (resolve falls back to ['undefined']).
     const realCategories = categoryList.filter((c) => c.slug !== "undefined");
-    const realSupers = superList.filter((s) => s.slug !== "undefined");
+    const realFamilies = familyList.filter((f) => f.slug !== "undefined");
     const aboutText =
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
@@ -195,16 +195,16 @@ serveEnrichStage("contents", async (admin, env, row) => {
       // produced nothing (thin harvest).
       description: aboutText || igBio || null,
     };
-    const [inferredCategory, inferredSupers] = await Promise.all([
+    const [inferredCategory, inferredFamilies] = await Promise.all([
       inferPlaceCategory(
         OPENAI_KEY,
         realCategories,
         classifySignals,
         enricherModel,
       ),
-      inferPlaceSuperCategories(
+      inferPlaceFamilies(
         OPENAI_KEY,
-        realSupers,
+        realFamilies,
         { ...classifySignals, category },
         enricherModel,
       ),
@@ -216,13 +216,13 @@ serveEnrichStage("contents", async (admin, env, row) => {
       )?.label ??
         humanizeCategorySlug(inferredCategory) ?? inferredCategory;
     }
-    const resolvedSupers = resolveEnrichedFamilyKeys(
+    const resolvedFamilies = resolveEnrichedFamilyKeys(
       (place.category ?? category) as string | null,
-      inferredSupers,
+      inferredFamilies,
     );
     // Total write: resolveEnrichedFamilyKeys never returns empty — a place
     // always lands under at least one pill (['undefined'] at worst).
-    place.family_keys = resolvedSupers;
+    place.family_keys = resolvedFamilies;
     const categoryForTags = (place.category ?? category) as string | null;
     inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
       name,
@@ -238,11 +238,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
       slug: inferredCategory,
       candidates: realCategories.length,
     };
-    sources.super_categories = {
-      ok: resolvedSupers.length > 0,
-      slugs: resolvedSupers,
-      inferred: inferredSupers,
-      candidates: realSupers.length,
+    sources.families = {
+      ok: resolvedFamilies.length > 0,
+      slugs: resolvedFamilies,
+      inferred: inferredFamilies,
+      candidates: realFamilies.length,
       // membership = derived from the classified category's 1–2 parents;
       // inferred = classifier picked (category still undefined/leftover);
       // fallback = nothing known, ['undefined'] stands (❓ Other pill).
@@ -250,7 +250,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
           (place.category ?? category) as string | null,
         ).length > 0
         ? "membership"
-        : resolvedSupers.length === 1 && resolvedSupers[0] === "undefined"
+        : resolvedFamilies.length === 1 && resolvedFamilies[0] === "undefined"
         ? "fallback"
         : "inferred",
     };

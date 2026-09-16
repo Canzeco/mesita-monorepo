@@ -13,7 +13,7 @@ import {
   type MapPlacesScope,
   parsePlacesScope,
 } from "@/lib/map-filters-engine";
-import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
+import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v6: v5 held `resultLimit` (How many). That stop is operator
 // `map.pinCount` again; this key holds Super Category, Places scope and
@@ -21,7 +21,12 @@ import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 // How many from a v5 session instead of pretending it is still a guest
 // knob. sessionStorage, so the cost of the bump is one forgotten sheet state.
 const STORAGE_KEY = "mesita_map_filters_v6";
-const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
+// Hydrate from the FILTERABLE seven, not all eight — see the mobile twin.
+// A persisted key the sheet no longer renders is a filter the guest cannot
+// see or clear (MESITA-1857).
+const KNOWN_FAMILY_KEYS = new Set<string>(
+  FILTERABLE_PLACE_FAMILIES.map((f) => f.key),
+);
 
 function readPersisted(): MapFilters {
   if (typeof window === "undefined") return MAP_FILTER_DEFAULTS;

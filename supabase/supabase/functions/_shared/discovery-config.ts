@@ -140,13 +140,14 @@ export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
  * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the seven
- * guest Super Categories, in `SUPER_CATEGORIES` sort order — the same seven,
- * in the same order, the guest sees as pills on the Filters sheet.
+ * guest families, in `FAMILIES` sort order — the same seven, in the same
+ * order, the guest sees as pills on the Filters sheet.
  *
  * Google's own type slugs are not a param. Twenty-two switches asked the
  * operator to think in Google's vocabulary, and the ordered "first N" cap on
  * top of them (`general.categoryCount`, now deleted) silently forced four
- * whole Supers off. One Super on = its whole `GOOGLE_SEARCH_TYPES` battery on.
+ * whole families off. One family on = its whole `GOOGLE_SEARCH_TYPES`
+ * battery on.
  *
  * Super `undefined` is NOT here: its battery is empty, so a toggle for it
  * could never change a Google call. `google-type-super.test.ts` pins this list

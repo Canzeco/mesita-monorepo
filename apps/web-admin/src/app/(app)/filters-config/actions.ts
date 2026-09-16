@@ -36,7 +36,7 @@ export type DiscoverySlice =
   | "chat"
   | "map"
   // Narrow map slices (MESITA-1681, widened by MESITA-1695). Search Sources
-  // holds THREE boxes that write `map`: the Super Categories strip, Google
+  // holds THREE boxes that write `map`: the Families strip, Google
   // Nearby's floor, and Google Nearby's pull. Whole-slice saves from three
   // seeds on one page mean the last Save wipes the others, so each writes only
   // its own fields. `map` stays for the Map mode box, which owns the rest.
