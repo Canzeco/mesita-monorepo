@@ -112,7 +112,11 @@ Deno.serve(async (req) => {
     }
     live = read.row;
   }
-  if (membershipPortalIsMock(stripeKey, live)) {
+  // The `!stripeKey` half is repeated here on purpose: the gate already
+  // answers true without a key, but only an inline check narrows the type
+  // for `new Stripe(stripeKey)` below. Keeping the gate as the one place that
+  // decides, and this as the one place that proves the key exists.
+  if (!stripeKey || membershipPortalIsMock(stripeKey, live)) {
     return json({ ok: true, url: null, mock: true });
   }
 
