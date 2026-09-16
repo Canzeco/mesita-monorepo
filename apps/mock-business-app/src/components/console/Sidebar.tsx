@@ -1,20 +1,19 @@
 "use client";
 
-// THE RAIL. One dark column, a head, a venue, FOUR rows, a foot.
+// THE RAIL. One dark column, a head, a venue, THREE rows, a foot.
 //
-// ── THE SHAPE (MESITA-1933) ───────────────────────────────────────────────
+// ── THE SHAPE (MESITA-1933, then MESITA-1935) ─────────────────────────────
 //
 //   ┌──────────────────┐
 //   │  mesita.         │  the HEAD: the lockup, pinned, scrolls with nothing
 //   ├──────────────────┤
 //   │  ▣ Lumbre y Sal ⌄│  the VENUE: the subject. Name → Home, caret → places
 //   │  ▦ Products      │  ┐
-//   │  ▤ Profile       │  │ THE FOUR. The only thing that scrolls.
-//   │  ▥ Activity      │  │
-//   │  ⚙ Settings      │  ┘
+//   │  ▤ Profile       │  │ THE THREE. The only thing that scrolls.
+//   │  ▥ Activity      │  ┘
 //   │                  │  the slack falls HERE, between the work and you
 //   ├──────────────────┤
-//   │  ○ Account       │  the FOOT: the person, pinned
+//   │  ⚙ Settings      │  the FOOT: you and your places, pinned
 //   └──────────────────┘
 //
 // Pato, 2026-09-16, with a drawing: *"this must be the sidebar menu, super
@@ -30,7 +29,21 @@
 // THE HEAD SAYS THE PRODUCT, THE FOOT SAYS THE PERSON, and the scroller between
 // them says the business. Each band answers a different question, so none can
 // be mistaken for a row of another's list — which is why the logo is not the
-// first entry in `RAIL_ROWS` and Account is not the last one.
+// first entry in `RAIL_ROWS` and Settings is not the last one.
+//
+// ONE CONFIGURATION DESTINATION, NOT TWO (MESITA-1935). Pato: *"put accounts in
+// setting. make it clearer. check instagram sidebar as reference."* There used
+// to be a Settings row in the scroller AND an Account row pinned under it, and
+// a reader had to learn which one held what. Instagram pins the single entry
+// that holds Settings AND Log out at the bottom, below a gap — the band this
+// rail already had — so Settings moved into it and Account's contents moved
+// into Settings.
+//
+// IT HAD TO BE THE FOOT, not the scroller. `showRows` draws `RAIL_ROWS` only in
+// the `solo` and `multi` shapes; `unknown` and `zero` get one button and no
+// rows. This band renders in all four, and Sign out lives on its page and
+// nowhere else — a Settings row in the scroller would be a console you cannot
+// leave the moment the places stop reading.
 //
 // THE VENUE IS NOT A ROW EITHER, and it is not the selector returning
 // (MESITA-1918 deleted a MENU). It is the SUBJECT of the column: the one thing
@@ -46,9 +59,9 @@
 // rule holds — the console still opens on Home — without a fifth row naming an
 // address the venue already names.
 //
-// THE SLACK BELONGS TO THE MIDDLE. Account is pinned rather than trailing the
-// rows, so a console with one row and a console with four put the person in the
-// same place. A footer that floats up under a short list is how an operator
+// THE SLACK BELONGS TO THE MIDDLE. The foot is pinned rather than trailing the
+// rows, so a console with one row and a console with three put the person in
+// the same place. A footer that floats up under a short list is how an operator
 // learns to hunt for their own name.
 //
 // ── THE LAWS IT KEEPS ──────────────────────────────────────────────────────
@@ -89,7 +102,6 @@ import {
   RotateCw,
   Settings,
   Store,
-  UserRound,
   Users,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -142,17 +154,19 @@ const VENUE_CARET =
   "flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl transition lg:h-8 lg:min-h-0 lg:w-8 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 
 // THE MARKS NAME THE SUBJECT, NOT THE LABEL:
-//   Account   UserRound          the PERSON, one of them
+//   Settings  Settings           the cog, and the foot wears it too — one
+//                                destination, so one mark
 //   Customers Users              PEOPLE, plural — the pairing IS the meaning
 //   Products  LayoutGrid         the CATALOGUE: a grid of tiles, which is
 //                                literally what the page is
 //   Activity  ChartNoAxesColumn  counts over time; a squiggle reads medical
 //   Profile   Store              the PLACE's public page, not a document
 //
-// EXHAUSTIVE OVER `PlacePage`, INCLUDING THE ONE WITH NO ROW. Customers lost
-// its row with the eight other products and kept its page, so its mark sits
-// here unused — and a page added to the contract still has to pick one rather
-// than render blank the day it gets a row.
+// EXHAUSTIVE OVER `PlacePage`, INCLUDING THE ONES WITH NO ROW. Customers lost
+// its row with the eight other products; `settings` lost its row to the foot
+// (MESITA-1935) and its mark went WITH it rather than being duplicated. Both
+// keep their pages, so both keep a mark here — a page added to the contract
+// still has to pick one rather than render blank the day it gets a row.
 const PAGE_ICON: Record<PlacePage, React.ComponentType<{ className?: string }>> = {
   settings: Settings,
   products: LayoutGrid,
@@ -267,7 +281,7 @@ function VenueRow({
 export function Sidebar({
   scope,
   isSuperAdmin,
-  accountLabel,
+  viewerLabel,
   onNavigate,
   onRetry,
 }: {
@@ -276,7 +290,8 @@ export function Sidebar({
   // the selector's menu. It needs the SCOPE now — which venue is open, and
   // what this viewer may see of it.
   isSuperAdmin: boolean;
-  accountLabel: string;
+  /** The person's own name, for the foot row's tooltip only. */
+  viewerLabel: string;
   onNavigate?: () => void;
   onRetry: () => void;
 }) {
@@ -289,7 +304,7 @@ export function Sidebar({
   const currentPage: PlacePage | null =
     placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
 
-  const onAccount = pathname === SHELL_ROUTES.account;
+  const onSettings = pathname === SHELL_ROUTES.settings;
   const onAddPlace = pathname === SHELL_ROUTES.placesNew;
 
   // WHICH ROWS THIS CALLER MAY SEE, from ONE access object and TWO matrices.
@@ -399,21 +414,25 @@ export function Sidebar({
           })}
       </nav>
 
-      {/* THE FOOT: the person, pinned, alone (MESITA-1905). Account used to
-          trail the rows inside the scroller, which put it in a different place
-          on every scope — and it shared the footer with Collapse, which made
-          the rail's own control look like a destination. Now the band holds
-          exactly one row and that row is you. It renders in every state,
-          including the failed read: whatever went wrong with the places, the
-          person is still signed in — and Sign out lives on that page and
-          nowhere else, so a rail without this band is a console with no exit. */}
+      {/* THE FOOT: configuration, pinned, alone (MESITA-1905, MESITA-1935).
+          It used to be Account, with Settings a row up in the scroller; two
+          rows that both meant configuration is what a reader had to
+          disambiguate every time, so they are one row now and the page behind
+          it is the person first and their places second.
+
+          IT RENDERS IN EVERY STATE, including the failed read: whatever went
+          wrong with the places, the person is still signed in — and Sign out
+          lives on that page and nowhere else, so a rail without this band is a
+          console with no exit. That is precisely why Settings came DOWN here
+          instead of Account going UP into `RAIL_ROWS`, which draws nothing at
+          all in two of the four shapes. */}
       <div className={cn(SECTION_SEAM, "shrink-0")}>
         <NavRow
-          href={SHELL_ROUTES.account}
-          label="Account"
-          title={`Account · ${accountLabel}`}
-          Icon={UserRound}
-          active={onAccount}
+          href={SHELL_ROUTES.settings}
+          label="Settings"
+          title={`Settings · ${viewerLabel}`}
+          Icon={Settings}
+          active={onSettings}
           onNavigate={onNavigate}
         />
       </div>
