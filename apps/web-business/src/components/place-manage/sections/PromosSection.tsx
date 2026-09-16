@@ -43,7 +43,7 @@ import {
   railWriteFailure,
   rowsForZone,
   shouldRenderConfig,
-  orgFlag,
+  tierFlag,
   topPrerequisite,
   type ConnectState,
   type LadderRowKey,
@@ -124,8 +124,8 @@ export function PromosSection({
   // ("UNDEFINED when the payload predates the EF — absent is not false",
   // lib/api/console.ts), and collapsing undefined to false would send a paying
   // place to subscribe again and lock its Pay rung "Off".
-  const orgPartnered = orgFlag(railPlace?.partnered);
-  const orgMesitaPay = orgFlag(railPlace?.mesitaPayEnabled);
+  const placePartnered = tierFlag(railPlace?.partnered);
+  const placeMesitaPay = tierFlag(railPlace?.mesitaPayEnabled);
   // Re-join is owner-only: the subscription it re-enters is the owner's.
   const isOwner = railPlace?.myRole === "owner";
 
@@ -174,8 +174,8 @@ export function PromosSection({
     connect,
     connectLoading,
     rewardLaneHeld,
-    orgPartnered,
-    orgMesitaPay,
+    placePartnered,
+    placeMesitaPay,
     forfeited,
   };
   const rows = offeringRows(ladderInput);

@@ -42,8 +42,10 @@ const CAP = Object.fromEntries(
 //
 // The rungs still gate on `member` — the PLACE's entitlement (`plan ≠ free`),
 // which admin may grant independently. The two tier flags arrive as
-// `orgPartnered` / `orgMesitaPay` and do two things only: the Pay rung reads
-// the switch as a gate above Stripe, and the top line reads `orgPartnered` to
+// `placePartnered` / `placeMesitaPay` — they were `orgPartnered` / `orgMesitaPay`
+// until MESITA-1892, and the prefix was the last thing left of a layer whose
+// facts had already moved onto the place. They do two things only: the Pay rung reads
+// the switch as a gate above Stripe, and the top line reads `placePartnered` to
 // say WHICH door a non-member needs (subscribe, or re-join this place). Both
 // are `null` when unknown, and unknown is "Checking…", never "off".
 //
@@ -211,12 +213,12 @@ export type LadderInput = {
    *  payload predates the flag) — unknown, which only ever silences the top
    *  line. Never a gate on a rung: the place's own `member` is the
    *  entitlement fact. */
-  orgPartnered?: boolean | null;
+  placePartnered?: boolean | null;
   /** This place's Mesita Pay switch (`place_profiles.mesita_pay_enabled`).
    *  `false` locks the Mesita Pay rung ABOVE Stripe — the product is off, so
    *  the account's state is moot. `null`/undefined is "Checking…", never off:
    *  a stale payload must not tell a paying place its switch is down. */
-  orgMesitaPay?: boolean | null;
+  placeMesitaPay?: boolean | null;
   /** This place lost the partnership to a third strike (`plan_forfeited_at`).
    *  A forfeited place reads `member=false` (the strike patch drops `plan`),
    *  so without this the top line could not tell "never joined" from
@@ -287,9 +289,9 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
   // tier flag the rail has not answered), then Stripe, then the rail.
   const payState: RowState = !member
     ? { kind: "locked", needs: NEEDS_PARTNER }
-    : input.orgMesitaPay === false
+    : input.placeMesitaPay === false
       ? { kind: "locked", needs: NEEDS_ORG_PAY }
-      : checking || input.orgMesitaPay == null
+      : checking || input.placeMesitaPay == null
         ? { kind: "checking" }
         : connect.kind !== "ready"
           ? { kind: "locked", needs: NEEDS_STRIPE }
@@ -644,18 +646,18 @@ export type TopPrerequisite =
  * The one prerequisite that unlocks the most rows. One line, not a card.
  *
  * TWO "PARTNER" FACTS, ONE PRECEDENCE (MESITA-1867). `member` is the place's
- * entitlement (`plan ≠ free`) and is what every rung gates on; `orgPartnered`
+ * entitlement (`plan ≠ free`) and is what every rung gates on; `placePartnered`
  * — `places.partnered`, the subscription — only decides which DOOR a
  * non-member is sent to. The cells, each pinned in offerings.test.ts:
  *
  *   member                                → silent, whatever the tier says
  *                                           (except Stripe, below)
- *   !member ∧ orgPartnered = false        → subscribe in Products (link)
- *   !member ∧ orgPartnered = true ∧ forfeited → re-join this place (unbuilt;
+ *   !member ∧ placePartnered = false        → subscribe in Products (link)
+ *   !member ∧ placePartnered = true ∧ forfeited → re-join this place (unbuilt;
  *                                           the line says when it lands)
- *   !member ∧ orgPartnered = true ∧ !forfeited → same door (a dropped place
+ *   !member ∧ placePartnered = true ∧ !forfeited → same door (a dropped place
  *                                           whose subscription is still live)
- *   !member ∧ orgPartnered unknown        → nothing — the rail has not
+ *   !member ∧ placePartnered unknown        → nothing — the rail has not
  *                                           answered, and a wrong door is
  *                                           worse than no line
  *
@@ -672,13 +674,13 @@ export type TopPrerequisite =
  */
 /** An OPTIONAL payload flag, read as the ladder wants it: absent is
  *  unknown (null → "Checking…"), never off. */
-export function orgFlag(v: boolean | null | undefined): boolean | null {
+export function tierFlag(v: boolean | null | undefined): boolean | null {
   return v == null ? null : v;
 }
 
 export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
   if (!input.member) {
-    if (input.orgPartnered === false) {
+    if (input.placePartnered === false) {
       return {
         action: "setup",
         // No "here": this line paints on every zone, and Visit Rewards lives
@@ -686,7 +688,7 @@ export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
         text: "Become a Mesita Partner in Products — it unlocks Visit Rewards and Accept Prepays.",
       };
     }
-    if (input.orgPartnered === true) {
+    if (input.placePartnered === true) {
       return {
         action: "rejoin",
         text: input.forfeited
@@ -696,7 +698,7 @@ export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
     }
     return null;
   }
-  if (input.orgMesitaPay !== true) return null;
+  if (input.placeMesitaPay !== true) return null;
   if (input.connectLoading) return null;
   if (input.connect.kind !== "ready") {
     return {
