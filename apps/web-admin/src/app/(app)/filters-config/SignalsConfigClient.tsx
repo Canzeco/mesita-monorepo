@@ -144,7 +144,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Mesita Places Search Signals"
-        subtitle="What ranks every Mesita Places source. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
+        subtitle="What ranks every Mesita Places source. Nine earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
         state={
           <KnobState
             kind="enforced"
@@ -181,10 +181,13 @@ export function SignalsConfigClient({
                       type="number"
                       inputMode="decimal"
                       min={WEIGHT_MIN}
-                      // Per-signal, not the uniform ceiling: Level is capped at
-                      // what the merge shipped (MESITA-1410). The EF clamps
-                      // server-side regardless; this stops the dial from
-                      // offering a number the backend would silently refuse.
+                      // Per-signal, not the uniform ceiling: the cap keys on
+                      // the two rows Mesita Level split into — Enriched and
+                      // Partnered — each carrying the 2 the merge shipped
+                      // (MESITA-1410, MESITA-1858), so money's exponent
+                      // ceiling did not silently double on merge day. The EF
+                      // clamps server-side regardless; this stops the dial
+                      // from offering a number the backend would refuse.
                       max={weightMaxFor(spec.key)}
                       step={0.05}
                       value={cfg.weights[spec.key]}

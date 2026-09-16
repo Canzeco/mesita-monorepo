@@ -267,13 +267,34 @@ Deno.test("a live discount no longer moves the earned score at all", () => {
   assertEquals(live.score, quiet.score);
 });
 
-Deno.test("the Enriched weight lifts a place Mesita wrote up", () => {
+Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits", () => {
+  // BOTH ROWS ARE ENRICHED, because that is the only population this signal
+  // ever scores: Map admits a listed row only through `isEnrichedListedRow`
+  // and Scroll's pool is `.eq("content_state", "ready")`. An `enriched: false`
+  // row here would make the assertion green by construction — production
+  // never ranks one. What must move the blend is the difference between a
+  // thin profile and a finished one, both admitted.
   const w: SignalWeights = { ...WEIGHTS_OFF, enriched: 1 };
-  const bare = blend({ ...project(row("bare", 4.5)), enriched: false }, {}, w);
-  const rich = blend({ ...project(row("rich", 4.5)), enriched: true }, {}, w);
-  assert(rich.score > bare.score, `rich ${rich.score} must beat bare ${bare.score}`);
-  assertEquals(bare.parts.enriched, ENRICHED_OFF);
-  assertEquals(rich.parts.enriched, 1);
+  const thin = blend(
+    { ...project(row("thin", 4.5)), enriched: true, intakeHighWater: 2 },
+    {},
+    w,
+  );
+  const full = blend(
+    { ...project(row("full", 4.5)), enriched: true, intakeHighWater: 10 },
+    {},
+    w,
+  );
+  assert(full.score > thin.score, `full ${full.score} must beat thin ${thin.score}`);
+  assertEquals(full.parts.enriched, 1);
+  assertAlmostEquals(thin.parts.enriched, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.2, 1e-12);
+  // The floor still holds at the bottom of the gradient: demote, never delete.
+  const created = blend(
+    { ...project(row("created", 4.5)), enriched: true, intakeHighWater: 0 },
+    {},
+    w,
+  );
+  assertAlmostEquals(created.parts.enriched, ENRICHED_OFF, 1e-12);
 });
 
 Deno.test("slotting off is a no-op", () => {

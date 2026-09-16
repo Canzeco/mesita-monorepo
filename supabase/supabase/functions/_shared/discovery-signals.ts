@@ -23,11 +23,13 @@
 // signal. Since MESITA-1855 lane 2 is wired, so promotion buys a POSITION —
 // which is what discovery-blend.ts's header always said money must do.
 //
-// WHAT THE SPLIT GIVES UP, DELIBERATELY: the continuous enrichment gradient
-// from `intake_high_water` (MESITA-1598) collapses to a binary. Direction
-// kept, resolution lost. `intakeHighWater` stays on SignalPlace and
-// `attachIntakeHighWater` stays wired at its three call sites so restoring
-// the gradient is a re-wire, not a rebuild — no live signal reads it today.
+// THE ENRICHMENT GRADIENT SURVIVES THE SPLIT. MESITA-1858 first wrote
+// `enriched` as a pure binary and deferred the `intake_high_water` gradient
+// (MESITA-1598) to a later issue. Review caught that the binary reads the
+// SAME predicate the ranked lanes admit on, so it is a constant 1 wherever it
+// is scored — a dead axis and a live regression against the old ladder. The
+// gradient is therefore kept, off `intakeHighWater` and
+// `attachIntakeHighWater` at their three call sites. Details at `enriched`.
 //
 // The keys are `enriched` and `partnered`, never bare `level`, `partner` or
 // `partnership`. `places.price_level` is Google's field and
@@ -69,6 +71,7 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
+import { PULSE_TOTAL } from "./pulse-pieces.ts";
 
 /**
  * The nine earned signals, in Notion Docs > Discovery section 8.3 order:
@@ -156,10 +159,11 @@ export type SignalPlace = {
   promoting?: boolean;
   /**
    * How far the Intake queue got, 0..PULSE_TOTAL (`pulseOf`,
-   * pulse-pieces.ts). NO SIGNAL READS THIS ANY MORE (MESITA-1858): the
-   * continuous enrichment gradient MESITA-1598 added collapsed into the
-   * `enriched` binary. The field and `attachIntakeHighWater` are retained on
-   * purpose so restoring the gradient is a re-wire rather than a rebuild.
+   * pulse-pieces.ts). `enriched` reads this; nothing else may. It is the
+   * gradient MESITA-1598 added and MESITA-1858 restored — the binary alone is
+   * a constant on every lane that admits only enriched rows (see `enriched`).
+   * A surface has to opt in by running `attachIntakeHighWater`; absent, the
+   * signal falls back to the binary.
    */
   intakeHighWater?: number | null;
 };
@@ -457,15 +461,44 @@ export function summary(
  * and there is deliberately no second predicate here: two answers to "is this
  * place enriched" is how the consumer wire and the ranker drift apart.
  *
- * BINARY, ON PURPOSE (MESITA-1858). MESITA-1598 had this as a continuous
- * gradient off Intake high-water; the split keeps the direction and gives up
- * the resolution. Restoring the gradient is a re-wire — `intakeHighWater` and
- * `attachIntakeHighWater` are still here — not a rebuild.
+ * GRADED WHERE THE ROW CARRIES A HIGH-WATER NUMBER, binary where it does not.
+ *
+ * MESITA-1858 wrote this as a pure binary and called the lost resolution a
+ * deferred item. IT IS NOT DEFERRABLE, because the binary reads the SAME
+ * PREDICATE THE RANKED LANES ADMIT ON, so on every surface that can score it
+ * the answer is a constant 1:
+ *
+ *   - Map filters every listed row through `keepListedForScope` →
+ *     `isEnrichedListedRow`, a copy of `isEnrichedPlace`, BEFORE
+ *     `reorderListedLanes` ranks anything.
+ *   - Scroll's pool query is `.eq("content_state", "ready")`.
+ *   - Word masks this signal to 0 and never scores it at all.
+ *
+ * A constant signal cannot reorder a deck, and the Discovery console would be
+ * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
+ * the retired `mesita_level` folded `intake_high_water` (0..PULSE_TOTAL), a
+ * fact that is NOT the admission predicate, so it did discriminate among
+ * admitted rows — two ready partner rows at one point on the Map, high-water
+ * 10 and 2, ranked 3.1x apart and would now tie, handing the order to
+ * whatever Postgres returned.
+ *
+ * So the gradient is restored here, verbatim: `ENRICHED_OFF + (1 -
+ * ENRICHED_OFF) * hw / PULSE_TOTAL`, which is MESITA-1598's own
+ * `0.15 + 0.85 * hw/10`. MESITA-1858 kept `intakeHighWater` and
+ * `attachIntakeHighWater` wired for exactly this, and the issue's note that
+ * the collapse was deliberate was written believing the binary would still
+ * separate enriched from unenriched places in a deck — which it cannot,
+ * because an unenriched place never enters one. Pato reverses this in one
+ * line by deleting the high-water branch.
+ *
+ * AN EXPLICIT `enriched: false` STAYS AT THE FLOOR whatever the side-read
+ * says. That is the googleOnly exclusion the projection makes by name; a
+ * synthesized row must not be able to climb on a number fetched by id.
  *
  * ABSENT READS OFF, NOT UNKNOWN. The opposite of `intakeHighWater`'s old
- * rule, and deliberately: high-water was a side-read a surface had to opt
+ * rule, and deliberately: high-water is a side-read a surface has to opt
  * into, while `enriched` is set by the projection every ranking engine runs
- * through. An absent value now means the row genuinely said nothing, and the
+ * through. An absent value means the row genuinely said nothing, and the
  * honest score for "we have no evidence Mesita touched this" is the floor.
  */
 
@@ -483,6 +516,13 @@ export function enriched(
   _intent?: SignalIntent,
   _params?: SignalParamBag,
 ): number {
+  if (place.enriched === false) return clamp01(ENRICHED_OFF);
+  const highWater = place.intakeHighWater;
+  if (typeof highWater === "number" && Number.isFinite(highWater)) {
+    return clamp01(
+      ENRICHED_OFF + (1 - ENRICHED_OFF) * clamp01(highWater / PULSE_TOTAL),
+    );
+  }
   return clamp01(place.enriched === true ? 1 : ENRICHED_OFF);
 }
 

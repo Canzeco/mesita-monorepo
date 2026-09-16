@@ -116,9 +116,9 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
  * other field — it is NOT selected by `EARNED_LANE_COLUMNS` (`places.
  * enrichment` sits behind the `profiles` view and isn't in the public
  * projection), so a row only carries it when the caller ran
- * `attachIntakeHighWater` first. NO SIGNAL READS IT TODAY (MESITA-1858
- * collapsed the gradient into the `enriched` binary); it is carried on
- * purpose so restoring the gradient is a re-wire, not a rebuild.
+ * `attachIntakeHighWater` first. THE `enriched` SIGNAL READS IT (MESITA-1858
+ * kept the gradient: the binary alone is a constant on every lane that admits
+ * only enriched rows). A row without it scores the binary instead.
  */
 export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
   return {
@@ -141,10 +141,10 @@ export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
  * `toLineupPlace` already knows how to read off any other column. Call this
  * AFTER the main admission query and BEFORE ranking.
  *
- * RETAINED WITH NO LIVE READER (MESITA-1858). The binary `enriched` signal
- * replaced the gradient this feeds; keeping the side-read and its three call
- * sites wired is what makes restoring the gradient a re-wire rather than a
- * rebuild. Deleting it is the one change that would make that PR unreversible.
+ * THIS IS WHAT MAKES `enriched` AN AXIS (MESITA-1858). The signal's binary
+ * half reads the same predicate the ranked lanes admit on, so without this
+ * side-read it answers 1 for every row it is ever handed. The gradient it
+ * feeds is the only part of the signal that can reorder an admitted pool.
  *
  * One batched query regardless of pool size — never N+1, and it never joins
  * into the ranking query itself, so a surface that doesn't call this pays

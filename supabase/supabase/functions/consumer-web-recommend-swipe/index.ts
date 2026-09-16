@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
 
   const ordered = cfg.engines.swipe.ranked
     ? rankSwipeDeck(
-      // The retired Intake fold (MESITA-1598) needs `intake_high_water`
+      // The `enriched` gradient (MESITA-1598) needs `intake_high_water`
       // on the row — `profiles` doesn't carry it, so one batched side-read
       // merges it in before ranking. Skipped entirely when ranking is off.
       await attachIntakeHighWater(

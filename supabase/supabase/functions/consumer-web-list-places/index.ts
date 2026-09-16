@@ -531,12 +531,12 @@ Deno.serve(async (req) => {
       guestMinReviews,
     );
     const googleForMerge = wantGoogleNearby ? admitted.google : [];
-    // Retained side-read with no live reader (MESITA-1858): Intake
-    // high-water (MESITA-1598) needs `intake_high_water` on the row, and
-    // `profiles` doesn't carry it. One batched side-read merges it in before
-    // ranking, same pattern as consumer-web-recommend-swipe. Kept wired so
-    // restoring the enrichment GRADIENT is a re-wire, not a rebuild. Skipped
-    // when the Google-fill branch below keeps distance order instead.
+    // The `enriched` signal's gradient (MESITA-1598, kept at MESITA-1858)
+    // needs `intake_high_water` on the row, and `profiles` doesn't carry it.
+    // One batched side-read merges it in before ranking, same pattern as
+    // consumer-web-recommend-swipe. WITHOUT THIS every listed row scores the
+    // same 1 — `keepListedForScope` already admitted only enriched rows.
+    // Skipped when the Google-fill branch below keeps distance order instead.
     const willReorder = !(wantGoogleNearby && googleForMerge.length > 0);
     const listedForCatalog = willReorder && efEnv.ok
       ? await attachIntakeHighWater(
