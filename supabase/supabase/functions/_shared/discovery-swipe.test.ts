@@ -58,7 +58,8 @@ Deno.test("swipe mask matches the locked matrix", () => {
   assertEquals(swipe, weightsForMode("swipe", DISCOVERY_DEFAULTS.weights));
   assertEquals(swipe.name, 0);
   assertEquals(swipe.summary, 0);
-  assertEquals(swipe.mesita_level, DISCOVERY_DEFAULTS.weights.mesita_level);
+  assertEquals(swipe.enriched, DISCOVERY_DEFAULTS.weights.enriched);
+  assertEquals(swipe.partnered, DISCOVERY_DEFAULTS.weights.partnered);
   assertEquals(swipe.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(swipe.randomness, DISCOVERY_DEFAULTS.weights.randomness);
   assertEquals(weightsForMode("map", DISCOVERY_DEFAULTS.weights).randomness, 0);
@@ -155,8 +156,9 @@ Deno.test("recommend-swipe ranks with the Swipe mask, not the old sum", async ()
 //
 // All weights zero, so every place scores exactly 1 under `Π s^w` and merit
 // order is the incoming order. Anything that moves was moved by slotting.
-// With the real mask, Mesita Level already lifts a promoting place and these
-// assertions would pass whether or not lane 2 ran.
+// Before MESITA-1858 the real mask lifted a promoting place on MERIT, so
+// these assertions would have passed whether or not lane 2 ran. No signal
+// reads `promoting` now; the zeroed weights stay for legibility.
 
 const ZERO_WEIGHTS = Object.fromEntries(
   Object.keys(DISCOVERY_DEFAULTS.weights).map((k) => [k, 0]),

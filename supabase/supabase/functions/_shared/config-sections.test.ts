@@ -154,13 +154,17 @@ const CASES: Record<string, SectionCase> = {
       assertEquals((c.slotting as Row).everyNth, 4);
       assert(c.weights && typeof c.weights === "object", "weights missing");
     },
-    // The weights map is rebuilt from SIGNAL_KEYS, so a retired signal cannot
-    // survive in jsonb — it is dropped rather than refused.
+    // NO LONGER DROPPED (MESITA-1858): the weights map is ADDITIVE for one
+    // release, so an unknown key is PRESERVED rather than deleted — that is
+    // the mitigation for the web-admin-ships-before-the-EFs deploy window.
+    // It is still coerced, not stored as sent: 9 lands clamped at WEIGHT_MAX,
+    // and an unknown key binds to no signal because `blend` iterates
+    // SIGNAL_KEYS. Preservation is inert storage, not a live weight.
     invalid: { config: { weights: { a_signal_that_was_retired: 9 } } },
     refuse: {
       clamped: (saved) => {
         const weights = (saved.config as Row).weights as Row;
-        assertEquals(weights.a_signal_that_was_retired, undefined);
+        assertEquals(weights.a_signal_that_was_retired, 4);
       },
     },
   },
