@@ -1,0 +1,62 @@
+name: mock-business-app CI
+
+# The mock console. It is never deployed — no Vercel project, no domain — so
+# this workflow is the ONLY thing that ever builds it, and a harness that
+# stopped compiling would otherwise be discovered by the next person who tried
+# to use it, on the morning they needed it.
+#
+# NOT a required check on main, deliberately: nothing ships from this package,
+# and blocking a console fix on a mock's build is the tail wagging the dog.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mock-business-app/**"
+      - ".github/workflows/mock-business-app.yml"
+  pull_request:
+    paths:
+      - "apps/mock-business-app/**"
+      - ".github/workflows/mock-business-app.yml"
+
+concurrency:
+  group: mock-business-app-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/mock-business-app
+
+jobs:
+  check:
+    name: lint · typecheck · build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/mock-business-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
