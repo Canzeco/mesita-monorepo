@@ -74,11 +74,12 @@ function scopeFor(pathname: string, over: Over = {}) {
 }
 
 function render(pathname: string, over: Over = {}): string {
-  const { places, scope } = scopeFor(pathname, over);
+  // The PLACES still shape the scope — `multi` vs `solo` is a count — but the
+  // rail no longer takes the list itself (MESITA-1918).
+  const { scope } = scopeFor(pathname, over);
   return renderToStaticMarkup(
     <Sidebar
       scope={scope}
-      places={places}
       isSuperAdmin={over.isSuperAdmin ?? false}
       viewerError={over.viewerError ?? false}
       accountLabel="pato@canzeco.com"
@@ -113,8 +114,6 @@ const ROW_LABEL: Record<string, string> = {
   settings: "Settings",
   products: "Products",
   activity: "Activity",
-  menus: "Menus",
-  reviews: "Reviews",
 };
 /** The eleven, in `RAIL_ROWS` order, then Account at the foot. A product row
  *  takes the PRODUCT vocabulary's label, not a copy of it here — the rail, the
@@ -494,34 +493,35 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     expect(labels(html)).toEqual(ALL_LABELS);
     expect(html).not.toContain("opacity-60");
     expect(pillText(html)).toBe("Visits");
-    // THE SELECTOR RENDERS HERE NOW (MESITA-1899), reversing this test.
-    //
-    // It used to assert the opposite — "one place: the control has nothing to
-    // select, and a control over nothing is the thing MESITA-1879 removed."
-    // That was right while the ORGANIZATION selector still sat above it: the
-    // column had a head either way. MESITA-1892 deleted that selector along
-    // with the layer, and solo is the shape every real operator is in, so the
-    // rail opened cold on Settings naming nothing. The control is the head
-    // now, not a switcher.
-    expect(html).toContain('aria-label="Switch place"');
-    // It names the ONE place, never the multi-shape's "Pick a place" —
-    // at solo there is nothing unresolved to prompt about.
-    expect(html).toContain(">Strana Del Valle<");
-    expect(html).not.toContain(">Pick a place<");
-    // The organization's selector is still gone, and stays gone.
+    // NO SELECTOR, AND NO VENUE NAMED AT ALL (MESITA-1918). Pato: *"now
+    // remove the place selector from the top"*. MESITA-1899 had put it here on
+    // the reasoning that the rail "opened cold on Settings, naming nothing it
+    // was about" — that hole was filled since, by the lockup (MESITA-1909) and
+    // the two section titles (MESITA-1915). The VENUE is named on the page, by
+    // `PlaceHeading`; the rail carries destinations.
+    expect(html).not.toContain('aria-label="Switch place"');
     expect(html).not.toContain('aria-label="Switch organization"');
+    expect(html).not.toContain(">Strana Del Valle<");
+    expect(html).not.toContain(">Pick a place<");
+    // AND NO CATALOGUE DOOR AT SOLO: one place is nothing to switch between,
+    // so the row would open a list of the venue you are already in.
+    expect(labels(html)).not.toContain("All places");
   });
 
-  it("multi — two places: the selector comes back, and nothing is picked for you", () => {
-    // The franchise path is DEFERRED, not deleted. `RailSelector` still
-    // renders, still switches, still guards — behind the one condition where
-    // the question is real.
+  it("multi — two places: a catalogue ROW, and nothing is picked for you", () => {
+    // The franchise path is DEFERRED, not deleted — but it is a DOOR now, not
+    // a selector (MESITA-1918). The menu's footer was this console's only link
+    // to `/places`, and Account names the person and nothing else by its own
+    // law, so deleting the selector without this row would strand a two-place
+    // operator on whichever venue the address happened to name.
     const html = render(SHELL_ROUTES.account, { places: MANY });
-    expect(html).toContain('aria-label="Switch place"');
-    expect(html).toContain(">Pick a place<");
+    expect(html).not.toContain('aria-label="Switch place"');
+    expect(html).not.toContain(">Pick a place<");
+    expect(labels(html)).toContain("All places");
+    expect(hrefs(html)).toContain(SHELL_ROUTES.places);
     // The rows still render; none of them lights, because no address names a
     // place and the rail refuses to choose one.
-    expect(labels(html)).toEqual(ALL_LABELS);
+    expect(labels(html)).toEqual(["All places", ...ALL_LABELS]);
     expect(pillText(html)).toBe("Account");
     // With no place named, every row falls back to its FLAT twin, which
     // resolves at request time rather than pointing at a place the rail
@@ -535,8 +535,9 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // has no row to light. A product view is the right subject here anyway —
     // it is what most of this rail now is.
     const html = render(view("visits"), { places: MANY });
-    expect(html).toContain('aria-label="Switch place"');
-    expect(html).toContain(">Strana Del Valle<");
+    expect(html).not.toContain('aria-label="Switch place"');
+    // The rail names no venue in any shape now; the page's h1 does.
+    expect(html).not.toContain(">Strana Del Valle<");
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Visits");
   });

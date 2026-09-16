@@ -101,8 +101,8 @@
 // part of this column, so it keeps the page's own tokens.
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Fragment, useRef, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
+import { Fragment } from "react";
 import {
   AlertCircle,
   Briefcase,
@@ -123,23 +123,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import {
-  MENU_CHIP,
-  MENU_EMPTY,
-  MENU_ITEM,
-  MENU_MUTED,
-  MenuSearch,
-  RailSelector,
-  SELECTOR_CHIP,
-} from "@/components/console/RailSelector";
-import {
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { PLACE_SEARCH_MIN, filterPlaces } from "@/lib/place-search";
-import { placeThumbUrl } from "@/lib/place-thumb";
 import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
@@ -164,11 +147,14 @@ import {
   tabsForAccess,
   type PlaceTab,
 } from "@/lib/place-tabs";
-import type { RailPlace, RailScope } from "@/lib/rail-scope";
+import type { RailScope } from "@/lib/rail-scope";
 
 type SidebarProps = {
   scope: RailScope;
-  places: readonly RailPlace[];
+  // NO `places` (MESITA-1918). The rail took the whole portfolio only to fill
+  // the selector's menu; with the selector gone the column needs the SCOPE and
+  // nothing else — which venue is open, and what this viewer may see of it.
+  // The list still reaches the shell, which resolves the scope from it.
   isSuperAdmin: boolean;
   /** The places could not be read. NOT the zero state: a fetch failure must
    *  never read "add one" (MESITA-1793's law). */
@@ -334,40 +320,6 @@ const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   // place heading and the flat resolvers still read this table.
 };
 
-function PlaceChip({
-  name,
-  photoUrl,
-  menu = false,
-}: {
-  name: string | null;
-  photoUrl?: string | null;
-  menu?: boolean;
-}) {
-  const px = menu ? 20 : 16;
-  const src = placeThumbUrl(photoUrl ?? null, px);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- a small thumb through the resizer; next/image's layout cost is not worth a chip
-      <img
-        src={src}
-        alt=""
-        width={px}
-        height={px}
-        className={cn("object-cover", menu ? "h-5 w-5 shrink-0 rounded-md" : SELECTOR_CHIP)}
-      />
-    );
-  }
-  void name;
-  return (
-    <span
-      aria-hidden
-      className={menu ? MENU_CHIP : cn(SELECTOR_CHIP, "bg-sidebar-accent text-sidebar-muted")}
-    >
-      <Store className={menu ? "h-3 w-3" : "h-2.5 w-2.5"} />
-    </span>
-  );
-}
-
 function NavRow({
   href,
   label,
@@ -430,28 +382,20 @@ function MutedRow({
 
 export function Sidebar({
   scope,
-  places,
   isSuperAdmin,
   viewerError,
   accountLabel,
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const guardNav = useOpenPlaceGuard();
   const openPlace = useOpenPlace();
-  // THE TRANSITION IS THE CLOCK (MESITA-1818): a chosen name shows only while
-  // the push it started is in flight, so the rail never claims a scope the
-  // server has not answered for yet.
-  const [choice, setChoice] = useState<string | null>(null);
-  // THE PICKER'S FILTER (MESITA-1803), and it is inert below
-  // `PLACE_SEARCH_MIN` places: the state exists, nothing reads it, no field
-  // renders. The query is the rail's because the menu unmounts on close and
-  // would otherwise forget mid-choice.
-  const [placeQuery, setPlaceQuery] = useState("");
-  const placeSearchRef = useRef<HTMLInputElement>(null);
-  const [isPending, startTransition] = useTransition();
-  const pendingId = isPending ? choice : null;
+  // NO STATE OF ITS OWN ANY MORE (MESITA-1918). The rail held four pieces —
+  // the pending switch (MESITA-1818's clock), the picker's query, its input
+  // ref and a transition — and every one of them existed for the selector.
+  // With the selector gone the column is a pure function of the pathname and
+  // the scope, which is what a list of destinations should have been all
+  // along.
 
   // WHICH PAGE, by either spelling: the canonical `/places/<id>/<page>` or the
   // flat resolver still in flight. Both light the same row — an operator who
@@ -543,56 +487,6 @@ export function Sidebar({
     return currentView === (product as PlaceTab);
   };
 
-  // The selector guards BEFORE it shows a pending name: an operator must not
-  // see the new place while still sitting on the old one's unsaved edits.
-  const go = (href: string, id: string) => {
-    if (guardNav?.(href)) return;
-    setChoice(id);
-    startTransition(() => router.push(href));
-  };
-  const pickPlace = (id: string) => {
-    if (id !== scope.place?.id) go(placeTabHref(id, "profile"), id);
-  };
-  // EVERY CLOSE ENDS THE NARROWING, not just the one that picks a place.
-  // Clearing inside `pickPlace` covered a single route out of four: Escape, a
-  // click outside and the trigger itself all left the query standing, and the
-  // next open was a menu already filtered by a word typed minutes ago with
-  // nothing on screen to say so.
-  const closePlaceMenu = (open: boolean) => {
-    if (!open) setPlaceQuery("");
-  };
-  // ESCAPE, IN TWO STAGES, AND ONLY FROM HERE. Radix's dismiss listener is on
-  // the document in the capture phase, so the field's own handler never sees
-  // the key; `DismissableLayer` calls this first and honours a
-  // `preventDefault()`. A non-empty query absorbs Escape and clears; an empty
-  // one — which is every state below PLACE_SEARCH_MIN, where no field renders
-  // at all — falls through and the menu closes, as it always did.
-  const escapePlaceMenu = (e: KeyboardEvent) => {
-    if (placeQuery !== "") {
-      e.preventDefault();
-      setPlaceQuery("");
-    }
-  };
-  // A LIST LONG ENOUGH TO NEED A FIELD, and the rows left after one is typed.
-  // The threshold is read, never retyped (lib/place-search.ts).
-  // MESITA-1892: there is no holder above the place, so the list the menu
-  // searches is the caller's own portfolio — the same `places` every other
-  // branch here reads, not an organization's holding.
-  const placeSearch = places.length >= PLACE_SEARCH_MIN;
-  const shownPlaces = placeSearch
-    ? filterPlaces(places, placeQuery)
-    : places;
-
-  const pendingPlace = pendingId
-    ? (places.find((p) => p.id === pendingId) ?? null)
-    : null;
-  // A place opened from the catalogue that the caller holds no membership on:
-  // the pathname names it, only the layout's publish knows its name.
-  const foreignName =
-    foreign && openPlace?.id === scope.foreignPlaceId ? openPlace.name : null;
-  const shownPlace = pendingPlace ?? scope.place;
-  const placeName = shownPlace?.name ?? foreignName;
-
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
       {/* THE HEAD (MESITA-1909). The lockup is a LABEL, not a link: every
@@ -627,85 +521,39 @@ export function Sidebar({
           />
         ) : (
           <>
-            {/* THE SELECTOR IS THE RAIL'S HEAD, at one place or many
-                (MESITA-1899). It rendered only at `multi` until now, on the
-                reasoning that a control over one thing selects nothing
-                (MESITA-1879) — which was true while the ORGANIZATION selector
-                sat above it and gave the column a head regardless. MESITA-1892
-                deleted that selector with the layer, so for every operator
-                this console actually has (exactly one place) the rail opened
-                cold on Settings, naming nothing it was about. Pato, 2026-09-16:
-                *"where do you select the place"* → *"always show the place
-                selector"*.
+            {/* THE SELECTOR LEFT THE RAIL (MESITA-1918). Pato: *"now remove
+                the place selector from the top"*. It headed the column from
+                MESITA-1899 — his own call, and the reason given was that the
+                rail otherwise "opened cold on Settings, naming nothing it was
+                about". It does not open cold any more: the lockup heads it
+                (MESITA-1909) and two titles name its halves (MESITA-1915), so
+                the job the selector was doing up here is done by things that
+                are still here. The VENUE is named on the page, by
+                `PlaceHeading`, on every screen. The rail carries destinations;
+                the page carries the subject. Switching lives on `/places`,
+                reached from Account and from the row below. */}
+            {/* THE ONE DOOR THE SELECTOR WAS HIDING (MESITA-1918). Its menu
+                footer was this console's ONLY link to the catalogue — Account
+                names the person and nothing else by its own law, so deleting
+                the selector without this would strand a two-place operator on
+                whichever venue the address happened to name.
 
-                At `solo` the control is a HEADER that happens to open: the
-                venue's photo and name, and a menu holding that one place plus
-                the All places footer — which is also how a solo operator
-                reaches the catalogue without typing an address. */}
-            {(scope.mode === "solo" || scope.mode === "multi") && (
-              // ONE PLACE OR MANY. The console does not choose for you at
-              // `multi` — the selector names which venue these rows are about,
-              // and says "Pick a place" while nothing does. A row lighting
-              // under an unnamed place would be lying about what is being
-              // edited. At `solo` the name is never null, so that fallback is
-              // the multi-only branch it reads as.
-              //
-              // `zero` and `unknown` stay out, for opposite reasons: `zero`
-              // has no place to name and keeps the Add ceremony below, and
-              // `unknown` means the read FAILED — naming a place we never read
-              // would be a fabrication, which is the one thing the rail's
-              // empty states exist to avoid.
-              <div className="mb-1">
-                <RailSelector
-                  label="Switch place"
-                  name={placeName ?? "Pick a place"}
-                  chip={<PlaceChip name={placeName} photoUrl={shownPlace?.photoUrl} />}
-                  switchable
-                  pending={pendingPlace !== null}
-                  autoFocusRef={placeSearch ? placeSearchRef : undefined}
-                  onOpenChange={closePlaceMenu}
-                  onEscapeKeyDown={escapePlaceMenu}
-                >
-                  {/* ABOVE THE GROUP, NEVER INSIDE IT (MESITA-1803): a field
-                      inside a radio group is announced as one of the choices.
-                      It appears only past PLACE_SEARCH_MIN places; below
-                      that this menu is exactly what it was. */}
-                  {placeSearch && (
-                    <MenuSearch
-                      value={placeQuery}
-                      onChange={setPlaceQuery}
-                      placeholder="Search places"
-                      inputRef={placeSearchRef}
-                    />
-                  )}
-                  <DropdownMenuRadioGroup
-                    value={shownPlace?.id ?? ""}
-                    onValueChange={pickPlace}
-                  >
-                    {shownPlaces.map((p) => (
-                      <DropdownMenuRadioItem key={p.id} value={p.id} className={MENU_ITEM}>
-                        <PlaceChip name={p.name} photoUrl={p.photoUrl} menu />
-                        <span className="truncate">{p.name}</span>
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  {placeSearch && shownPlaces.length === 0 && (
-                    <p className={MENU_EMPTY}>No places match.</p>
-                  )}
-                  {/* The footer is OUTSIDE the filter, always: when nothing
-                      matches it is the only way out of the menu. */}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className={MENU_MUTED}>
-                    <Link
-                      href={SHELL_ROUTES.places}
-                      onClick={(e) => guardNav?.(SHELL_ROUTES.places, e)}
-                    >
-                      <Layers className="h-3.5 w-3.5" />
-                      All places
-                    </Link>
-                  </DropdownMenuItem>
-                </RailSelector>
-              </div>
+                AT `multi` ONLY. With one place there is nothing to switch to
+                and the row would be a door to a page listing the venue you are
+                already in; production holds one place per operator, so the
+                column Pato drew is the column he gets. It is a ROW, not the
+                selector coming back: no menu, no chip, no venue name, no
+                pending clock — it goes to the catalogue and the catalogue does
+                the switching. */}
+            {scope.mode === "multi" && (
+              <NavRow
+                href={SHELL_ROUTES.places}
+                label="All places"
+                Icon={Layers}
+                active={pathname === SHELL_ROUTES.places}
+                onNavigate={onNavigate}
+                onGuardedNavigate={guardNav ?? undefined}
+              />
             )}
             {scope.mode === "zero" && (
               // THE ONE CEREMONY THAT EARNS A ROW, and only while it is the
