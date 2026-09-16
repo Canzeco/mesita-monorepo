@@ -265,17 +265,66 @@ export const RAIL_ROWS: readonly RailRow[] = [
 /** Where the seam falls, as the INDEX of each row that opens a group. Derived
  *  from the array above rather than written twice — a hand-kept list of
  *  indices is a list that survives exactly one row move. */
+// ── THE TWO SECTIONS (MESITA-1915) ─────────────────────────────────────────
+//
+// A rule in this column separates SECTIONS, and there are two of them: what
+// you MANAGE about the venue, and the PRODUCTS you run on it. They are not a
+// third list bolted beside `RAIL_ROWS` — a row's `kind` already says which
+// side of the line it falls on, so the sections are that fact NAMED, and
+// `RAIL_GROUP_STARTS` below derives the line from the same fact.
+//
+// THEY ARE HEADED AGAIN, which reverses MESITA-1844. Pato headed the rail's
+// groups in MESITA-1842 and deleted the headers two issues later, because a
+// column of eight rows under THREE titles is three lists. It is two titles
+// over two sections now — and the eight products sit whole under one of them,
+// which is the thing that was actually wrong.
+//
+// A HEAD IS NOT A ROW. It is an eyebrow: no address, no pill, no hover, no
+// glyph column. The one row shape is untouched.
+// THE SECOND ONE IS NOT CALLED "PRODUCTS", and the reason is one line above
+// it in the column: `Products` is already a ROW — the catalogue, where an
+// operator compares the eight and buys one — and it is the LAST row of the
+// first section. A head reading "Products", wearing the catalogue's own mark,
+// directly under a row reading "Products" wearing the same mark is two
+// different things spelled and drawn identically, one line apart. "Your
+// products" is the eight this place actually runs; the catalogue is where you
+// get them.
+export const RAIL_SECTIONS = [
+  { key: "manage", label: "Manage" },
+  { key: "products", label: "Your products" },
+] as const;
+export type RailSectionKey = (typeof RAIL_SECTIONS)[number]["key"];
+
+/** Which section a row falls in.
+ *
+ *  ONE KIND IS NAMED AND THE REST FALL THROUGH, deliberately. Written the
+ *  other way round — `kind === "page"` is Manage, everything else is products
+ *  — a row kind added later lands silently in the PRODUCTS section, under a
+ *  title that does not describe it, and draws a line where nobody asked for
+ *  one. That is not hypothetical: `kind: "home"` arrived in the mock one issue
+ *  after this rule was written. Products are the closed set; the rest is what
+ *  you manage, whatever it is called next. */
+export function railSectionOf(row: RailRow): (typeof RAIL_SECTIONS)[number] {
+  return row.kind === "product" ? RAIL_SECTIONS[1] : RAIL_SECTIONS[0];
+}
+
 export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
   (acc, row, i) => {
     const prev = RAIL_ROWS[i - 1];
     if (!prev) return acc;
-    // A group opens where the SUBJECT changes (pages → products), and
-    // again inside the products at Pato's two blank lines.
-    const changed = prev.kind !== row.kind;
-    const productBreak =
-      row.kind === "product" &&
-      (row.product === "visits" || row.product === "rewards");
-    if (changed || productBreak) acc.push(i);
+    // ONE RULE (MESITA-1915): a group opens where the SECTION changes, and
+    // nowhere else. It had a second — Pato's two blank lines inside the
+    // products, at `visits` and at `rewards` — and he cut them on sight: *"the
+    // lines only for to separate section stuff, (products whole products is
+    // ONE sections)"*. A rule that sometimes means "new section" and sometimes
+    // means "same section, new mood" teaches an operator to read neither, and
+    // at eight rows the three sub-groups were three lists.
+    //
+    // IT ASKS THE SECTION, NOT THE `kind`. Comparing kinds directly drew a
+    // line between two rows of the SAME section the moment a third kind
+    // existed — `kind: "home"` landed in the mock while this was in review,
+    // and would have opened a group above Settings that names nothing.
+    if (railSectionOf(prev).key !== railSectionOf(row).key) acc.push(i);
     return acc;
   },
   [],

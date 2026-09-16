@@ -8,9 +8,12 @@
 //   │  Mesita          │  the HEAD: the lockup, pinned, scrolls with nothing
 //   ├──────────────────┤
 //   │  Lumbre y Sal ⌄  │  the place this column is about
+//   │  ▤ MANAGE        │  a section head: an eyebrow, never a row
 //   │  Home            │  where the console opens
-//   │  Settings        │
-//   │  …               │  the rows, and the only thing that scrolls
+//   │  Settings …      │
+//   ├──────────────────┤
+//   │  ▦ YOUR PRODUCTS │  the eight, whole, under ONE title (MESITA-1915)
+//   │  Profile …       │  the rows, and the only thing that scrolls
 //   │                  │  the slack falls HERE, between the work and you
 //   ├──────────────────┤
 //   │  Account         │  the FOOT: the person, pinned
@@ -34,9 +37,11 @@
 // `RAIL_GROUP_STARTS` is derived, not typed beside it.
 //
 // ONE ROW SHAPE. No indent, one glyph, one label, no id, no count, no badge.
-// The groups are unnamed SEAMS — they were headed once and the headers were
-// deleted two issues later, because a column of eight rows under three titles
-// is three lists.
+// A section HEAD is not a row and never wears it (MESITA-1915): it is an
+// eyebrow — smaller, uppercase, muted, unclickable. The groups were headed
+// once before and the headers were deleted two issues later, because a column
+// of eight rows under THREE titles is three lists. There are TWO titles over
+// TWO sections now, and the eight products sit whole under one of them.
 //
 // ROWS NEVER DIM. A product that is not live still gets a live row, and the
 // PAGE says it is not here yet (SoonStrip). A dimmed row makes the column a
@@ -58,6 +63,7 @@ import { Fragment, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Briefcase,
   CalendarCheck,
   ChartNoAxesColumn,
   CreditCard,
@@ -81,6 +87,7 @@ import {
   PLACE_PAGE_LABEL,
   RAIL_GROUP_STARTS,
   RAIL_ROWS,
+  RAIL_SECTIONS,
   SHELL_ROUTES,
   flatPlacePageFromPathname,
   isPlaceHomePathname,
@@ -88,6 +95,7 @@ import {
   placePageHref,
   placeRootHref,
   productRowHref,
+  railSectionOf,
   type PlacePage,
 } from "@/lib/console-routes";
 import { PRODUCT_LABEL, type ProductKey } from "@/lib/product-keys";
@@ -114,6 +122,42 @@ const ROW_REST =
 // what makes "you are here" survive a glance down it.
 const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
 const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
+// AN EYEBROW, NOT A ROW (MESITA-1915). Smaller, uppercase, tracked, muted, and
+// with no hover, no pill, no address — so the one row shape stays the one row
+// shape and a head can never be mistaken for somewhere to go.
+const HEAD_BASE =
+  "flex items-center gap-2 px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted/80";
+const HEAD_ICON = "h-3 w-3 shrink-0";
+
+const SECTION_ICON: Record<
+  (typeof RAIL_SECTIONS)[number]["key"],
+  React.ComponentType<{ className?: string }>
+> = {
+  // THE BUSINESS ITSELF — what you configure, read and shop for. Picking this
+  // mark is mostly a list of what it may NOT be, and the column's icon table
+  // already wrote that list: not `sliders-horizontal` (retired Capabilities
+  // wore it, and a dead row's glyph returning as a title is exactly the drift
+  // the table exists to stop), not `building2` or `cog` or `settings-2` (named
+  // there as marks that never belonged — each one a second gear or a second
+  // venue), and not Profile's own `store`, which is this place's PUBLIC page.
+  // A briefcase is the business rather than a tool for it, which is why it
+  // collides with none of them.
+  manage: Briefcase,
+  // THE SAME MARK THE CATALOGUE ROW WEARS, deliberately: the row is the door
+  // to the eight and the section is the eight, and one idea drawn two ways is
+  // how an operator learns to distrust both drawings.
+  products: LayoutGrid,
+};
+
+function SectionHead({ section }: { section: (typeof RAIL_SECTIONS)[number] }) {
+  const Icon = SECTION_ICON[section.key];
+  return (
+    <p className={HEAD_BASE}>
+      <Icon className={HEAD_ICON} aria-hidden />
+      {section.label}
+    </p>
+  );
+}
 
 // THE MARKS NAME THE SUBJECT, NOT THE LABEL:
 //   Account   UserRound          the PERSON, one of them
@@ -266,7 +310,7 @@ export function Sidebar({
           foreground so it reads as part of the dark column rather than as a
           sticker on it, and it is inset by a row's own padding so its mark
           lines up with the glyph column underneath. */}
-      <div className="flex shrink-0 items-center px-2.5 pt-1 pb-3">
+      <div className="border-sidebar-border/50 flex shrink-0 items-center border-b px-2.5 pt-1 pb-3">
         <MesitaLogo variant="horizontal" className="text-sidebar-foreground h-5 w-auto" />
       </div>
 
@@ -320,7 +364,12 @@ export function Sidebar({
             if (row.kind === "product" && row.product !== "customers") {
               if (!allowed.has(row.product as PlaceTab)) return null;
             }
+            // A SECTION OPENS WITH A RULE AND A TITLE (MESITA-1915). The
+            // FIRST takes the title without the rule — the head band above it
+            // already drew one, and two hairlines with a lockup between them
+            // is a boxed logo.
             const seam = opensGroup(i) ? SECTION_SEAM : undefined;
+            const head = i === 0 || opensGroup(i) ? railSectionOf(row) : null;
             const node =
               row.kind === "home" ? (
                 // HOME HAS NO MATRIX ROW. `tabsForAccess` is a list of VIEWS,
@@ -374,8 +423,9 @@ export function Sidebar({
             // THE SEAM IS A WRAPPER'S BORDER, NEVER A ROW'S — a row that grew a
             // rule would be a second row shape. A row with no seam gets no
             // wrapper either.
-            return seam ? (
+            return seam || head ? (
               <div key={key} className={seam}>
+                {head && <SectionHead section={head} />}
                 {node}
               </div>
             ) : (
