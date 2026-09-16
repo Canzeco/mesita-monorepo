@@ -306,28 +306,6 @@ export const RESERVATIONS: MockReservation[] = build(ALL_IDS, 9, (placeId, i, rn
   };
 });
 
-const REVIEW_BODIES = [
-  "Service was quick and the room was full but never loud. Came back twice this month.",
-  "Good food, slow kitchen on a Saturday. Worth the wait if you are not in a hurry.",
-  "The reward applied at the table without me asking. That is the part I liked.",
-  "Parking is the only complaint. Everything else was better than I expected.",
-  "Solid. Not remarkable, not a mistake either.",
-  "Took the family. Kids ate, nobody complained, which is the highest rating I give.",
-];
-
-export const REVIEWS: MockReview[] = build(ALL_IDS, 7, (placeId, i, rnd) => {
-  const r = rnd();
-  return {
-    id: `rvw_${placeId}_${i}`,
-    placeId,
-    guest: GUESTS[Math.floor(rnd() * GUESTS.length)].name,
-    at: daysAgo(i * 3 + 1),
-    stars: r > 0.75 ? 5 : r > 0.4 ? 4 : r > 0.2 ? 3 : 2,
-    body: REVIEW_BODIES[i % REVIEW_BODIES.length],
-    reply: i === 1 ? "Thank you — we added two more staff on weekends since." : null,
-  };
-});
-
 export const CREDIT_BALANCES: MockCreditBalance[] = build(ALL_IDS, 23, (placeId, i, rnd) => ({
   id: `crb_${placeId}_${i}`,
   placeId,
@@ -682,3 +660,73 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     facebook_followers: null,
   },
 };
+
+const REVIEW_BODIES = [
+  "Service was quick and the room was full but never loud. Came back twice this month.",
+  "Good food, slow kitchen on a Saturday. Worth the wait if you are not in a hurry.",
+  "The reward applied at the table without me asking. That is the part I liked.",
+  "Parking is the only complaint. Everything else was better than I expected.",
+  "Solid. Not remarkable, not a mistake either.",
+  "Took the family. Kids ate, nobody complained, which is the highest rating I give.",
+];
+
+const GOOGLE_REVIEW_BODIES = [
+  "Been coming here for years. Still the same people behind the counter, which says something.",
+  "Fine. Nothing to complain about and nothing I would drive across town for.",
+  "Waited 40 minutes for a table with a reservation. Food was good, the front desk was not.",
+  "Best in the area, and I have tried all of them. Ask for the corner table.",
+  "Prices went up and the portions did not. Two stars is generous.",
+  "Went for a birthday. They did not make a fuss about it and I appreciated that.",
+  "Clean, fast, good coffee. Wifi is terrible if you plan to work.",
+  "Closed when Google said it was open. Drove 25 minutes for nothing.",
+];
+
+/** The places whose profile says somebody has scored them. A fixture that
+ *  built rows for every place would put seven guest reviews under a tile that
+ *  reads "no reviews yet" — the two sit one on top of the other on Profile
+ *  now, so a reviewer would have to pick which one is lying. `plc_norte` is
+ *  the unenriched, unreviewed place and it stays that way all the way down. */
+const MESITA_REVIEWED = ALL_IDS.filter((id) => (PROFILES[id].mesita_review_count ?? 0) > 0);
+const GOOGLE_SCRAPED = ALL_IDS.filter((id) => (PROFILES[id].google_review_count ?? 0) > 0);
+
+export const REVIEWS: MockReview[] = build(MESITA_REVIEWED, 7, (placeId, i, rnd) => {
+  const r = rnd();
+  return {
+    id: `rvw_${placeId}_${i}`,
+    placeId,
+    source: "mesita",
+    guest: GUESTS[Math.floor(rnd() * GUESTS.length)].name,
+    at: daysAgo(i * 3 + 1),
+    stars: r > 0.75 ? 5 : r > 0.4 ? 4 : r > 0.2 ? 3 : 2,
+    body: REVIEW_BODIES[i % REVIEW_BODIES.length],
+    reply: i === 1 ? "Thank you — we added two more staff on weekends since." : null,
+  };
+});
+
+/** What Google carries, written by people who never touched Mesita.
+ *
+ *  A SEPARATE ARRAY, not a `source` filter over `REVIEWS`, because Home counts
+ *  `reply === null` to raise the "unanswered reviews" blocker — and a Google
+ *  row in that count would be a blocker no operator can clear from inside the
+ *  console. Nothing here is replyable, so nothing here is ever a blocker.
+ *
+ *  Its own voice too. A Google reviewer has no idea a reward exists, so the
+ *  Mesita bodies would be wrong in their mouths; these read like what a place
+ *  actually gets on Maps — older, blunter, and further apart in score. The
+ *  spread is deliberate: the aggregate tile above says 4.6, and a scroller
+ *  where every card is 5 would make that number look wrong. */
+export const GOOGLE_REVIEWS: MockReview[] = build(GOOGLE_SCRAPED, 8, (placeId, i, rnd) => {
+  const r = rnd();
+  return {
+    id: `grv_${placeId}_${i}`,
+    placeId,
+    source: "google",
+    guest: GUESTS[(i * 3 + 5) % GUESTS.length].name,
+    // Sparser than Mesita's: Google collects a review a place earns by
+    // existing, Mesita collects one it earns at a visit it just settled.
+    at: daysAgo(i * 11 + 4),
+    stars: r > 0.62 ? 5 : r > 0.34 ? 4 : r > 0.16 ? 3 : r > 0.06 ? 2 : 1,
+    body: GOOGLE_REVIEW_BODIES[i % GOOGLE_REVIEW_BODIES.length],
+    reply: null,
+  };
+});
