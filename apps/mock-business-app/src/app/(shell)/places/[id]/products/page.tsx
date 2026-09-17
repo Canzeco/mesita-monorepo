@@ -14,27 +14,9 @@
 // destination is written down per product in `lib/products.ts` instead of cast
 // out of the key. Customers is a page, Payments is the sub-step `products/pay`,
 // and every Soon product but Capital has nothing at all to open.
-import {
-  ArrowRight,
-  CalendarCheck,
-  CreditCard,
-  Gift,
-  Globe,
-  Landmark,
-  Lock,
-  Megaphone,
-  MessageCircle,
-  Nfc,
-  PhoneCall,
-  ScanBarcode,
-  ShoppingBag,
-  Sparkles,
-  Store,
-  Ticket,
-  Users,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+// THE ONLY LUCIDE LEFT ON THIS PAGE. The sixteen product marks are emoji
+// (MESITA-1952); the arrow and the lock are structure, not identity.
+import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
@@ -48,49 +30,47 @@ import type { ProductKey } from "@/lib/product-keys";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-// THE MARK, AND ONLY THE MARK (MESITA-1946).
+// THE MARK, AND ONLY THE MARK (MESITA-1946) — AN EMOJI SINCE MESITA-1952.
 //
-// Pato: *"maybe some icon to each product"*. `web-business` has carried these
-// nine glyphs since the catalogue shipped, each in a tinted chip — teal for
-// Profile, violet for Payments, and so on. THE GLYPHS COME ACROSS UNCHANGED
-// and the TINTS DO NOT: one product drawn two ways is how an operator learns
-// to distrust both drawings, and this app has no hues to draw them in
-// (MESITA-1934). Nine washes of the same grey would be the tint table with its
-// only job removed.
+// Pato: *"maybe some icon to each product"*, then, at the same grid once it
+// had gone grey: *"add fuckjing emojis or something"*.
 //
-// So the chip is one muted square on every card and the GLYPH is the whole of
-// the identity. That is also why the chip does not brighten when a product is
-// on: state is the badge's fact, and Badges.tsx's first line is that there is
-// never a second badge for one fact. A mark that changed with state would be
-// exactly that — and on a screen whose entire job is saying which products are
-// on, a second, quieter state signal is the one that gets misread.
-const PRODUCT_MARK: Record<ProductKey, LucideIcon> = {
-  profile: Store,
-  website: Globe,
-  customers: Users,
-  ads: Megaphone,
-  visits: Ticket,
-  rewards: Gift,
-  orders: ShoppingBag,
-  reservations: CalendarCheck,
-  pay: CreditCard,
-  // THE READER, NOT A SECOND CARD (MESITA-1946). Terminal wore `CreditCard`
-  // before MESITA-1900 removed it, back when Payments wore something else;
-  // giving it back now would put the same glyph on two cards in one grid,
-  // which is the tint table's failure in monochrome. `Nfc` is the tap, which
-  // is the part of Terminal that is not Payments.
-  terminal: Nfc,
-  // THE ITEMS, which is the half of the counter Terminal is not: `Nfc` is the
-  // tap, `ScanBarcode` is what was rung up before anybody tapped anything.
-  pos: ScanBarcode,
-  credits: Wallet,
-  // The BANK'S FRONT, the same glyph the landing page gives Capital.
-  capital: Landmark,
-  whatsapp: MessageCircle,
-  phone: PhoneCall,
-  intelligence: Sparkles,
+// The lucide glyphs came across from `web-business` and the TINTS did not,
+// because this app has no hues to draw them in (MESITA-1934) — which left
+// sixteen grey squares holding sixteen grey marks, the tint table with its
+// only job removed. An emoji carries its own colour and costs the palette
+// nothing: no hue to allocate, nothing for a seventeenth product to run out
+// of, and the square stays one muted wash on every card.
+//
+// THE CHIP STILL DOES NOT BRIGHTEN WHEN A PRODUCT IS ON. State is the badge's
+// fact, and Badges.tsx's first line is that there is never a second badge for
+// one fact — on a screen whose whole job is saying which products are on, a
+// quieter second state signal is the one that gets misread.
+const PRODUCT_MARK: Record<ProductKey, string> = {
+  profile: "\u{1F3EA}",
+  website: "\u{1F310}",
+  customers: "\u{1F465}",
+  ads: "\u{1F4E3}",
+  visits: "\u{1F39F}\u{FE0F}",
+  rewards: "\u{1F381}",
+  orders: "\u{1F6CD}\u{FE0F}",
+  reservations: "\u{1F4C5}",
+  pay: "\u{1F4B3}",
+  // THE READER, NOT A SECOND CARD: 📲 is the tap, which is the part of
+  // Terminal that is not Payments — never a second 💳 in the same grid.
+  terminal: "\u{1F4F2}",
+  // THE ITEMS, the half of the counter Terminal is not: 🧾 is what was rung up
+  // before anybody tapped anything.
+  pos: "\u{1F9FE}",
+  // A COIN, NOT A WALLET — Pay › Wallet is the guest's; credits are a balance
+  // the place sold.
+  credits: "\u{1FA99}",
+  // The BANK'S FRONT, the same mark the landing page gives Capital.
+  capital: "\u{1F3E6}",
+  whatsapp: "\u{1F4AC}",
+  phone: "\u{1F4DE}",
+  intelligence: "\u{2728}",
 };
-
 export default function ProductsPage() {
   const place = useHeldPlaceOrNull();
   const { tabs, pages } = usePlaceScope();
@@ -145,7 +125,7 @@ export default function ProductsPage() {
           const allowed =
             card.key === "customers" ||
             (tabs as readonly string[]).includes(card.key);
-          const Mark = PRODUCT_MARK[card.key];
+          const mark = PRODUCT_MARK[card.key];
           return (
             <div
               key={card.key}
@@ -160,7 +140,9 @@ export default function ProductsPage() {
                       "bg-muted text-foreground flex items-center justify-center",
                     )}
                   >
-                    <Mark className="h-5 w-5" strokeWidth={1.75} />
+                    {/* `leading-none`: an emoji's line box is taller than the
+                        glyph, so without it the mark sits low in its square. */}
+                    <span className="text-[22px] leading-none">{mark}</span>
                   </span>
                   {/* ONE STEP UP (MESITA-1950). Pato: *"make the name a bit
                       larger here"*. At `text-base` the product's name was the
