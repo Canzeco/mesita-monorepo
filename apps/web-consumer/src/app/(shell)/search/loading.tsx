@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/shared";
 
 // /search Suspense fallback. Mirror SearchClient's silhouette: full-bleed
-// map, query pill + Filters button, catalog rail. Super Category lives
+// map, query pill + Filters button, catalog rail. Family lives
 // in the Filters sheet, not on the chrome.
 
 export default function SearchLoading() {

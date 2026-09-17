@@ -25,7 +25,7 @@
 // THE TRIGGER IS FULL WIDTH. It was written against Search's Filters
 // control — same 44px height, border, `shadow-elev`, blur and
 // primary-filled applied state, but full width rather than a third of
-// the map's chrome row. Search's sheet is Super Category · Places ·
+// the map's chrome row. Search's sheet is Family · Places ·
 // Popularity; this one is Feed's DiscoveryFilters.
 //
 // It sits OUTSIDE the scroller: a filter control that scrolls away is

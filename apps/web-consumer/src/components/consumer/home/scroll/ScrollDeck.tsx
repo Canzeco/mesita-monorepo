@@ -44,7 +44,7 @@ import {
 } from "./scroll-position";
 
 // SCROLL — Home's lead mode (MESITA-1697). One place per screen, vertical.
-// Filters match the map (MESITA-1792): Super Category, Places scope, Google
+// Filters match the map (MESITA-1792): Family, Places scope, Google
 // review floor, plus connect location. The CARD is unchanged
 // (`PlaceSwipeCardFace`), only the way you get to the next one.
 //

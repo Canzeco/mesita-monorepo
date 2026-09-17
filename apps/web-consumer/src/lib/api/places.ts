@@ -51,7 +51,7 @@ export type Place = {
   slug: string;
   name: string;
   category: string | null;
-  /** Super Category from the EF. Exactly one when classified. */
+  /** Family from the EF. Exactly one when classified. */
   family_keys?: string[];
   category_label?: string | null;
   vibe: string | null;
@@ -214,7 +214,7 @@ export type ViewportPlaces = {
 /**
  * Search map catalog: closest N around a camera.
  *
- * Web Search posts Places scope, Super Category and Popularity
+ * Web Search posts Places scope, Family and Popularity
  * (MESITA-1790). How many stays operator `map.pinCount`. `google: true`
  * is not the ring — it is web Search saying it CAN render a Google-only
  * stub. Mobile and the Pay picker omit it and get listed rows.
@@ -405,7 +405,7 @@ export type SuggestPlacesMode = "fast" | "deep" | "mesita";
 /**
  * Name search for the consumer /search bar and pickers.
  * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
- * Map Filters never ride this call — power and Super Category are map-only.
+ * Map Filters never ride this call — power and Family are map-only.
  * Country is always Any: Autocomplete and Text Search do not take a region.
  */
 export async function apiSuggestPlaces(

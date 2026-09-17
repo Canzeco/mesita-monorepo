@@ -11,7 +11,7 @@
 //                   floor) PLUS the first Google photo mirrored into
 //                   place-images so a Created place can show a thumb.
 //   4 description → the DOOR Description (gate D1): ONE batched prompt over
-//                   the thin Google signals infers Super Category, Category,
+//                   the thin Google signals infers Family, Category,
 //                   Tags, Presentation, Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   SKIPPED when the create queues a full Enrich — the
@@ -133,7 +133,7 @@ export async function createMinimalPlace(opts: {
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
   // identity spine directly (no EF hop); category stays 'undefined' and
   // family_keys ['undefined'] until the Intaker pipeline's contents stage infers
-  // Super Category + Category. No
+  // Family + Category. No
   // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {

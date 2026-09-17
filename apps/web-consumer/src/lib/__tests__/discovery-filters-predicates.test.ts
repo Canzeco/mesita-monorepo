@@ -47,7 +47,7 @@ describe("no predicate set is a pass-through, not a filter", () => {
   });
 });
 
-describe("Super Category", () => {
+describe("Family", () => {
   it("keeps a place whose family is selected", () => {
     const taco = place({ id: "taco", family_keys: ["restaurants"] });
     const spa = place({ id: "spa", family_keys: ["wellness_beauty"] });

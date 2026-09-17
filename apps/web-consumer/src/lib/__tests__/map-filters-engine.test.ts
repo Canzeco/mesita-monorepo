@@ -121,7 +121,7 @@ describe("applyMapFilters", () => {
     ]);
   });
 
-  it("counts leaving the default ring, each Super Category, or Popularity as one filter", () => {
+  it("counts leaving the default ring, each Family, or Popularity as one filter", () => {
     expect(mapFilterCount(filters({ placesScope: "google" }))).toBe(1);
     expect(mapFilterCount(filters({ placesScope: "partners" }))).toBe(1);
     expect(
@@ -157,7 +157,7 @@ describe("applyMapFilters", () => {
     ).toEqual([]);
   });
 
-  it("cuts on Super Category only — never a concrete type slug", () => {
+  it("cuts on Family only — never a concrete type slug", () => {
     const bar = place({
       id: "bar",
       category: "night_club",
@@ -178,7 +178,7 @@ describe("applyMapFilters", () => {
     ).toEqual(["taco"]);
   });
 
-  it("Google stubs match Super Category from family_keys", () => {
+  it("Google stubs match Family from family_keys", () => {
     const cafe = place({
       id: "g-cafe",
       googleOnly: true,

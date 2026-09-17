@@ -1,4 +1,4 @@
-// Exclusive Google Table A type → one Mesita Super Category.
+// Exclusive Google Table A type → one Mesita Family.
 // The GOOGLE side is exclusive: every Table A slug maps to exactly one
 // Super, or `other` (ineligible for Mesita map / not a guest pill).
 // Google families are NOT the join: Food and Drink splits across

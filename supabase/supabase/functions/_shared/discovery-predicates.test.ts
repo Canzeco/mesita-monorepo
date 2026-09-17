@@ -50,7 +50,7 @@ Deno.test("garbage filters degrade to no predicate rather than throwing", () => 
   }
 });
 
-Deno.test("Super Category cuts Atlas slugs; a double-parent category matches both pills", () => {
+Deno.test("Family cuts Atlas slugs; a double-parent category matches both pills", () => {
   const rows = [
     place({ id: "taco", category: "taco" }),
     place({ id: "brunch", category: "brunch" }),

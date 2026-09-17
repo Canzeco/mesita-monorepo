@@ -129,7 +129,7 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
 });
 
-// MESITA-1683: the strip drifted to five keys covering three Super Categories
+// MESITA-1683: the strip drifted to five keys covering three Families
 // while the law had seven and 22 types, and nothing caught it. This is the
 // fix — the list is pinned to the taxonomy, so adding a Super or a battery
 // entry without touching NEARBY_TYPE_KEYS fails here instead of quietly

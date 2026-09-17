@@ -102,7 +102,7 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
-  /** Super Categories (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
+  /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
   family_keys: string[] | null;
   vibe: string | null;
   price_level: number | null;

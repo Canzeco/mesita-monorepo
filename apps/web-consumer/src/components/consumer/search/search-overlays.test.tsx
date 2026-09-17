@@ -175,7 +175,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     // How many stays operator pinCount. The guest posts Places scope,
-    // Super Category and Popularity; a guest cap here would be a second
+    // Family and Popularity; a guest cap here would be a second
     // answer to pinCount.
     expect(read("SearchClient.tsx")).not.toContain("resultLimit");
     expect(read("SearchClient.tsx")).toContain("placesScope");

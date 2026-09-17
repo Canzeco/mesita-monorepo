@@ -42,7 +42,7 @@ function hit(over: Partial<NearbyHit> = {}): NearbyHit {
 }
 
 Deno.test("defaults admit everything and fire the three billed Supers", () => {
-  // Not every type any more: the strip covers all seven Super Categories
+  // Not every type any more: the strip covers all seven Families
   // since MESITA-1683, and the four it could not see before default OFF, so
   // growing the list bills nothing new until an operator opts in.
   // Battery order follows the Super param order, not the old slug list.

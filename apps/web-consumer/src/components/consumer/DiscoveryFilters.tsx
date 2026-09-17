@@ -20,7 +20,7 @@ import { DiscoveryPlacesScope } from "./DiscoveryPlacesScope";
 import { cn } from "@/lib/utils";
 
 // Feed + Scroll Filters. Same three guest params as the Search map
-// (Super Category, Places scope, Google review floor) plus one extra:
+// (Family, Places scope, Google review floor) plus one extra:
 // connect current location. Dense on purpose — the sheet should not scroll.
 
 export function DiscoveryFilters({
@@ -71,7 +71,7 @@ export function DiscoveryFilters({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Super Category" dense>
+          <FilterModule label="Family" dense>
             <div className="flex flex-wrap gap-1">
               {FILTERABLE_PLACE_FAMILIES.map((family) => (
                 <Pill

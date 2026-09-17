@@ -37,7 +37,7 @@
 //     gray Google, blue user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
 //   • Top overlay: the search bar (two thirds) + labelled Filters (one
-//     third: Super Category, Places scope, Popularity). How many is
+//     third: Family, Places scope, Popularity). How many is
 //     operator `map.pinCount`.
 //   • Bottom overlay: the catalog rail around the camera, hidden while
 //     querying. Closest first. A guest pan auto-reloads after reloadMinKm
@@ -187,7 +187,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Filters, a labelled third of the top row (Pato, 2026-09-12 then
-  // MESITA-1797). Super Category, Places scope and Popularity ride this
+  // MESITA-1797). Family, Places scope and Popularity ride this
   // store and the nearby call. How many is operator `map.pinCount`.
   // The server is the one selector — this component never recuts the catalog.
   const filters = useMapFilters();
@@ -501,7 +501,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
-  // Places scope, Super Category and Popularity all change the Nearby
+  // Places scope, Family and Popularity all change the Nearby
   // engine. How many stays the operator's pinCount. The query bar never
   // reads these filters.
   useEffect(() => {
@@ -834,7 +834,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after Places scope + Super Category. */}
+      {/* Base layer — pins are the nearby catalog after Places scope + Family. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}

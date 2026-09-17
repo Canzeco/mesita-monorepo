@@ -18,7 +18,7 @@ import { FilterModule, Pill } from "@/components/consumer/discovery-filter-contr
 import { SearchPlacesScope } from "./SearchPlacesScope";
 import { SearchPopularity } from "./SearchPopularity";
 
-// Search-map Filters sheet. Super Category + Places + Popularity, DENSE.
+// Search-map Filters sheet. Family + Places + Popularity, DENSE.
 // How many (closest N) is operator `map.pinCount`, not a guest knob.
 //
 // Places is THREE NESTED SETS (Pato, 2026-09-05):
@@ -75,7 +75,7 @@ export function SearchMapFilters({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
-          <FilterModule label="Super Category" dense>
+          <FilterModule label="Family" dense>
             <div className="flex flex-wrap gap-1">
               {FILTERABLE_PLACE_FAMILIES.map((family) => (
                 <Pill

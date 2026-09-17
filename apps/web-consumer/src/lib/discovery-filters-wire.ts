@@ -1,6 +1,6 @@
 // The guest's predicates, on the wire (MESITA-1153, shape MESITA-1792).
 //
-// Web sends Super Category, Places scope, and Google review floor. The EF
+// Web sends Family, Places scope, and Google review floor. The EF
 // still reads the retired visit/when/distance fields so a deployed Expo binary
 // that posts the old payload keeps working.
 
