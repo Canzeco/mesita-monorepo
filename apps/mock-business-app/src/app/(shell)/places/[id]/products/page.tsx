@@ -162,7 +162,12 @@ export default function ProductsPage() {
                   >
                     <Mark className="h-5 w-5" strokeWidth={1.75} />
                   </span>
-                  <p className="font-display min-w-0 text-base font-semibold tracking-tight">
+                  {/* ONE STEP UP (MESITA-1950). Pato: *"make the name a bit
+                      larger here"*. At `text-base` the product's name was the
+                      same size as the sentence describing it two lines below —
+                      the thing you are CHOOSING BETWEEN, drawn at the rank of
+                      the thing explaining it. */}
+                  <p className="font-display min-w-0 text-lg font-semibold tracking-tight">
                     {card.name}
                   </p>
                 </div>
