@@ -65,7 +65,8 @@ import {
   SCOPE_CARD_CLASS,
   TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
-import { ACTIVITY, ORDERS, RESERVATIONS, REVIEWS, VISITS } from "@/mock/fixtures";
+import { ORDERS, RESERVATIONS, REVIEWS, VISITS } from "@/mock/fixtures";
+import { buildLedgers, LOG_LABEL } from "@/mock/logs";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import { PAY_LADDER_LABEL, type MockPlace } from "@/mock/types";
@@ -160,7 +161,12 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
     scenario,
   );
   const reviews = listFor(REVIEWS.filter((r) => r.placeId === place.id), scenario);
-  const events = listFor(ACTIVITY.filter((e) => e.placeId === place.id), scenario).slice(0, 5);
+  // THE SAME ROWS THE ACTIVITY PAGE SHOWS, and five of them (MESITA-1939).
+  // Home used to read its own `ACTIVITY` fixture, which meant the five lines
+  // here and the tables one click away were two unrelated inventions about one
+  // place. `everything` is the union of the eight logs, so this strip is now a
+  // literal preview of the page its heading links to.
+  const events = buildLedgers(place.id, scenario, now).everything.slice(0, 5);
 
   const openVisits = visits.filter((v) => v.state === "open");
   const working = orders.filter(
@@ -305,10 +311,13 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
                 key={e.id}
                 className="border-border flex items-center gap-3 border-b py-2.5 last:border-0"
               >
-                <Badge>{e.kind}</Badge>
+                <Badge>{LOG_LABEL[e.log]}</Badge>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium">{e.title}</p>
-                  <p className="text-muted-foreground truncate text-[11px]">{e.detail}</p>
+                  <p className="text-muted-foreground truncate text-[11px]">
+                    {e.detail}
+                    {e.origin && <span> · from {e.origin.label}</span>}
+                  </p>
                 </div>
                 {e.amountCents !== null && (
                   <p className="text-[13px] font-semibold tabular-nums">{money(e.amountCents)}</p>

@@ -18,22 +18,13 @@ import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import type { MockTender, MockVisit } from "@/mock/types";
 import { dayTime, money } from "@/lib/format";
+import { TENDER_LABEL } from "@/lib/tender";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 const STATE_TONE: Record<MockVisit["state"], "on" | "soon" | "bad"> = {
   settled: "on",
   open: "soon",
   voided: "bad",
-};
-
-/** The stored key is `mesita_pay` and the noun an operator reads is Payments,
- *  the same split `lib/product-keys.ts` makes for the product itself. Cash and
- *  Card are two words now because they are two rows; the database stored both
- *  as `at_place` until MESITA-1910, which is why one chip could not say which. */
-const TENDER_LABEL: Record<MockTender["method"], string> = {
-  cash: "Cash",
-  card: "Card",
-  mesita_pay: "Payments",
 };
 
 /** PAID WITH IS A BREAKDOWN, NOT A TAG. A visit can be settled by several

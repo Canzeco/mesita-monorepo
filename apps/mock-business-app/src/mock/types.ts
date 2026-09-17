@@ -200,22 +200,90 @@ export type MockCreditBalance = {
   lastMoveAt: string;
 };
 
-export type MockActivityEvent = {
+/** A guest LOOKING at this place — the only thing in this console that happens
+ *  without anybody deciding to do business.
+ *
+ *  It is the top of the funnel and the one log with NO PRODUCT behind it:
+ *  there is nothing called Mesita Views to switch on, and a place with every
+ *  other product off still collects these. `surface` is Discovery's own
+ *  vocabulary, so a console reading "swipe" is reading the word the engine
+ *  uses rather than a synonym invented for a screen.
+ *
+ *  A VIEW NEVER WRITES ANYWHERE ELSE, and that is why it leads the book. Eight
+ *  logs where every one feeds another would teach that the fan-out is the
+ *  rule; it is not, and this is the control. */
+export type MockPlaceView = {
   id: string;
   placeId: string;
   at: string;
-  kind:
-    | "visit"
-    | "order"
-    | "reservation"
-    | "review"
-    | "payout"
-    | "credit"
-    | "member"
-    | "profile";
-  title: string;
-  detail: string;
-  amountCents: number | null;
+  surface: "search" | "map" | "swipe" | "link" | "qr";
+  /** NULL WHEN THE VIEWER WAS SIGNED OUT, and most of them are. A log that
+   *  invented a name for every view would make the place look far better known
+   *  than it is, and would put a stranger's name on a row nobody can act on. */
+  guest: string | null;
+  outcome: "viewed" | "saved" | "directions" | "called" | "shared";
+};
+
+/** MONEY LEAVING FOR THE BANK.
+ *
+ *  It is the one record in this file with no product page to live on — no
+ *  screen in the console lists payouts — so it exists only as rows in the
+ *  Payments log, and it is the only source there whose direction is OUT. */
+export type MockPayout = {
+  id: string;
+  placeId: string;
+  at: string;
+  /** The account's last four. One bank per place, so two places must not print
+   *  the same four digits. */
+  last4: string;
+  amountCents: number;
+  state: "paid" | "in_transit";
+};
+
+/** A GUEST BUYING CREDITS, which is the cleanest fan-out this product has: one
+ *  purchase is money IN (Payments) and credit MINTED (Credits), and neither
+ *  log on its own is the event.
+ *
+ *  It is not `MockCreditBalance`. That is a standing balance — where the money
+ *  IS — and this is a movement — how it got there. A balance cannot be a log
+ *  row and a log row cannot be summed into a balance, which is exactly the
+ *  confusion that would put a grand total back on the Credits screen. */
+export type MockCreditPurchase = {
+  id: string;
+  placeId: string;
+  at: string;
+  guest: string;
+  amountCents: number;
+  /** Bought FOR SOMEBODY ELSE. Gifting is why this product exists on the
+   *  consumer side, so the log has to be able to say it. */
+  gift: boolean;
+};
+
+/** SOMEBODY CHANGED SOMETHING — the only log written by the console itself
+ *  rather than by a guest, which is the whole reason it carries a `who`.
+ *
+ *  `from` is null when there was nothing there before: a photo added, a
+ *  teammate invited, a description written for the first time. Printing "—"
+ *  for that is honest; printing "None" would invent a prior value. */
+export type MockSettingChange = {
+  id: string;
+  placeId: string;
+  at: string;
+  who: string;
+  /** WHERE TO GO AND CHANGE IT BACK. A change log whose rows cannot be traced
+   *  to a screen is a list of regrets. */
+  area:
+    | "profile"
+    | "hours"
+    | "menus"
+    | "team"
+    | "orders"
+    | "reservations"
+    | "rewards"
+    | "credits";
+  what: string;
+  from: string | null;
+  to: string;
 };
 
 export type MockMember = {

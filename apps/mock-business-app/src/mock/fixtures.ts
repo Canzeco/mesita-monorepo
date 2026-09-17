@@ -14,20 +14,23 @@
 // 1000 / 2000 / 3000 tells a reviewer nothing about how the column handles a
 // wide value, and a rating of exactly 4.5 everywhere hides the half-star.
 import type {
-  MockActivityEvent,
   MockClass,
   MockCreditBalance,
+  MockCreditPurchase,
   MockCustomer,
   MockMember,
   MockOrder,
   MockDay,
+  MockPayout,
   MockPlan,
   MockPlace,
   MockPlaceProfile,
+  MockPlaceView,
   MockProfileMenu,
   MockPoolPlace,
   MockReservation,
   MockReview,
+  MockSettingChange,
   MockSex,
   MockVisit,
 } from "@/mock/types";
@@ -413,27 +416,111 @@ export const MEMBERS: MockMember[] = [
   { id: "mem_7", placeId: "plc_norte", name: "You", email: "you@mock.mesita.ai", role: "viewer", state: "active" },
 ];
 
-const ACTIVITY_SHAPES: Array<Pick<MockActivityEvent, "kind" | "title" | "detail"> & { amount: boolean }> = [
-  { kind: "visit", title: "Visit settled", detail: "Closed at the table", amount: true },
-  { kind: "order", title: "Order collected", detail: "Pickup", amount: true },
-  { kind: "payout", title: "Payout sent", detail: "To ••••4417", amount: true },
-  { kind: "review", title: "New review", detail: "4 stars", amount: false },
-  { kind: "credit", title: "Credits issued", detail: "Gift purchase", amount: true },
-  { kind: "reservation", title: "Reservation confirmed", detail: "Party of 4", amount: false },
-  { kind: "member", title: "Teammate invited", detail: "Viewer", amount: false },
-  { kind: "profile", title: "Profile updated", detail: "Hours changed", amount: false },
+// ── THE LOGS THAT HAVE NO PRODUCT PAGE ──────────────────────────────────────
+//
+// Everything above this line is a record some screen in the console already
+// renders. The four below exist because the Activity page is the LEDGER BOOK
+// (MESITA-1939) and a book with holes in it is not one: a place is looked at,
+// pays out to a bank, sells credit and gets reconfigured, and until now the
+// console could not show a single one of those as a row.
+//
+// THERE IS NO `ACTIVITY` FIXTURE ANY MORE. It was eight invented one-liners —
+// "Visit settled", "Payout sent" — with a random amount stapled on, which meant
+// the feed's numbers could not agree with any table in this console, because
+// nothing connected them. `mock/logs.ts` PROJECTS the feed out of the records
+// instead, so the one-liner and the ticket are the same row read at two
+// resolutions and neither can drift from the other.
+
+const VIEW_SURFACES: MockPlaceView["surface"][] = ["search", "map", "swipe", "link", "qr"];
+
+// WEIGHTED TOWARDS "VIEWED", because that is the truth of a funnel: most
+// people look and leave. A uniform draw over five outcomes would paint a place
+// where a third of viewers call it, and a console teaching that would set
+// every expectation on this screen wrong.
+const VIEW_OUTCOMES: MockPlaceView["outcome"][] = [
+  "viewed", "viewed", "viewed", "viewed", "saved", "viewed", "directions",
+  "viewed", "viewed", "called", "viewed", "shared",
 ];
 
-export const ACTIVITY: MockActivityEvent[] = build(ALL_IDS, 18, (placeId, i, rnd) => {
-  const shape = ACTIVITY_SHAPES[i % ACTIVITY_SHAPES.length];
+export const PLACE_VIEWS: MockPlaceView[] = build(ALL_IDS, 22, (placeId, i, rnd) => {
+  const r = rnd();
   return {
-    id: `act_${placeId}_${i}`,
+    id: `viw_${placeId}_${i}`,
     placeId,
-    at: daysAgo(Math.floor(i / 2), (i % 2) * 7 + 1),
-    kind: shape.kind,
-    title: shape.title,
-    detail: shape.detail,
-    amountCents: shape.amount ? 12_000 + Math.floor(rnd() * 180_000) : null,
+    at: daysAgo(Math.floor(i / 4), (i % 4) * 5 + 1),
+    surface: VIEW_SURFACES[Math.floor(r * VIEW_SURFACES.length)],
+    // Most viewers are signed out. See the type: naming them all would make
+    // the place look better known than it is.
+    guest: r > 0.68 ? GUESTS[Math.floor(rnd() * GUESTS.length)].name : null,
+    outcome: VIEW_OUTCOMES[i % VIEW_OUTCOMES.length],
+  };
+});
+
+/** One bank account per place, and four different sets of digits — two places
+ *  printing the same last four would read as one account paying both. */
+const BANK_LAST4 = ["4417", "0286", "9134", "7752"];
+
+// THE NEWEST ONE IS HOURS OLD, NOT DAYS, and that is placement rather than
+// realism: the Activity page caps each log at six rows, payouts are the only
+// money going OUT, and a weekly cadence buried the whole direction under a
+// week of payments taken. A Payments table where every row says In teaches
+// that the column has one value. Six days between the rest keeps the cadence.
+export const PAYOUTS: MockPayout[] = build(ALL_IDS, 3, (placeId, i, rnd) => ({
+  id: `pyo_${placeId}_${i}`,
+  placeId,
+  at: i === 0 ? daysAgo(0, 3) : daysAgo(i * 6 + 1, 4),
+  last4: BANK_LAST4[ALL_IDS.indexOf(placeId) % BANK_LAST4.length],
+  amountCents: 42_000 + Math.floor(rnd() * 310_000),
+  // THE NEWEST ONE IS STILL MOVING. A payouts log where every row is final
+  // hides the state an operator actually writes in about.
+  state: i === 0 ? "in_transit" : "paid",
+}));
+
+// THE DENOMINATIONS A GUEST ACTUALLY BUYS — round numbers, because a credit
+// purchase is a person picking an amount off a sheet, not a bill being
+// totalled. Every other money column in this file is deliberately ragged for
+// the opposite reason; this one is round because rounding IS the fact.
+const CREDIT_DENOMINATIONS = [50_000, 100_000, 25_000, 200_000, 75_000, 150_000];
+
+export const CREDIT_PURCHASES: MockCreditPurchase[] = build(ALL_IDS, 6, (placeId, i, rnd) => {
+  const r = rnd();
+  return {
+    id: `crp_${placeId}_${i}`,
+    placeId,
+    at: daysAgo(i * 2 + 1, (i % 2) * 6 + 3),
+    guest: GUESTS[Math.floor(r * GUESTS.length)].name,
+    amountCents: CREDIT_DENOMINATIONS[i % CREDIT_DENOMINATIONS.length],
+    gift: r > 0.62,
+  };
+});
+
+// Nine changes, spread over the eight areas a place is configured in, with the
+// `from` deliberately null on three of them — a photo added, a teammate
+// invited, a description written — because "there was nothing here before" is
+// a real shape this column has to render.
+const SETTING_SHAPES: Array<Omit<MockSettingChange, "id" | "placeId" | "at" | "who">> = [
+  { area: "hours", what: "Sunday hours", from: "Closed", to: "9:00 – 17:00" },
+  { area: "profile", what: "Photos", from: null, to: "One added" },
+  { area: "team", what: "Néstor Gil", from: null, to: "Invited as Viewer" },
+  { area: "orders", what: "Delivery", from: "On", to: "Off" },
+  { area: "rewards", what: "Strategy", from: "Conservative", to: "Aggressive" },
+  { area: "menus", what: "Lunch menu", from: "3 items", to: "5 items" },
+  { area: "credits", what: "Credits", from: "Off", to: "On" },
+  { area: "profile", what: "Description", from: null, to: "Rewritten" },
+  { area: "reservations", what: "Provider", from: "None", to: "OpenTable" },
+];
+
+export const SETTING_CHANGES: MockSettingChange[] = build(ALL_IDS, 9, (placeId, i, rnd) => {
+  // THE AUTHOR COMES FROM THE TEAM, not from a name pool. A change log
+  // attributed to somebody who is not on this place's team is the one kind of
+  // wrong an operator would notice immediately and never trust again.
+  const team = MEMBERS.filter((m) => m.placeId === placeId && m.state === "active");
+  return {
+    id: `set_${placeId}_${i}`,
+    placeId,
+    at: daysAgo(i + 1, (i % 3) * 4 + 2),
+    who: team.length ? team[Math.floor(rnd() * team.length)].name : "You",
+    ...SETTING_SHAPES[i % SETTING_SHAPES.length],
   };
 });
 
