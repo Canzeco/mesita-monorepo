@@ -37,15 +37,15 @@ export type Tint =
   | "slate";
 
 const TINT_CHIP: Record<Tint, string> = {
-  rose: "bg-muted text-muted-foreground",
-  pink: "bg-muted text-muted-foreground",
-  amber: "bg-muted text-muted-foreground",
-  sky: "bg-muted text-muted-foreground",
-  violet: "bg-muted text-muted-foreground",
-  emerald: "bg-muted text-muted-foreground",
-  teal: "bg-muted text-muted-foreground",
-  orange: "bg-muted text-muted-foreground",
-  indigo: "bg-muted text-muted-foreground",
+  rose: "bg-rose-500/10 text-rose-600",
+  pink: "bg-pink-500/10 text-pink-600",
+  amber: "bg-amber-500/10 text-amber-600",
+  sky: "bg-sky-500/10 text-sky-600",
+  violet: "bg-violet-500/10 text-violet-600",
+  emerald: "bg-emerald-500/10 text-emerald-600",
+  teal: "bg-teal-500/10 text-teal-600",
+  orange: "bg-orange-500/10 text-orange-600",
+  indigo: "bg-indigo-500/10 text-indigo-600",
   slate: "bg-muted text-muted-foreground",
 };
 
@@ -373,12 +373,12 @@ export function SaveBar({
         <span className="text-xs" aria-live="polite">
           {dirty && !pending ? (
             <span className="text-muted-foreground inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-foreground" aria-hidden />
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
               {dirtyLabel ?? "Unsaved changes"}
             </span>
           ) : ok && !pending ? (
             <span className="text-muted-foreground inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" /> Saved
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Saved
             </span>
           ) : null}
         </span>
@@ -623,7 +623,7 @@ export function CopyIdButton({ id }: { id: string }) {
     >
       {copied ? (
         <>
-          <Check className="h-3.5 w-3.5 text-muted-foreground" /> Copied
+          <Check className="h-3.5 w-3.5 text-green-600" /> Copied
         </>
       ) : (
         <>

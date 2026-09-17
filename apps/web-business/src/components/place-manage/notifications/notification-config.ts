@@ -32,10 +32,10 @@ export type Tone = {
 
 export const TONES = {
   indigo: {
-    tile: "bg-muted text-muted-foreground",
-    kicker: "text-muted-foreground",
-    chip: "bg-muted text-foreground",
-    dot: "bg-foreground",
+    tile: "bg-indigo-500/10 text-indigo-600",
+    kicker: "text-indigo-600",
+    chip: "bg-indigo-500/10 text-indigo-700",
+    dot: "bg-indigo-500",
   },
   // Was violet until 2026-08-03. Validated against the categorical checks
   // (dataviz validator, light surface): violet-600 vs indigo-600 scored ΔE
@@ -45,28 +45,28 @@ export const TONES = {
   // also carries an icon + text label, which is what makes the one remaining
   // 6–8 band WARN (emerald↔amber) legal.
   rose: {
-    tile: "bg-muted text-muted-foreground",
-    kicker: "text-muted-foreground",
-    chip: "bg-muted text-foreground",
-    dot: "bg-foreground",
+    tile: "bg-rose-500/10 text-rose-600",
+    kicker: "text-rose-600",
+    chip: "bg-rose-500/10 text-rose-700",
+    dot: "bg-rose-500",
   },
   amber: {
-    tile: "bg-muted text-muted-foreground",
-    kicker: "text-muted-foreground",
-    chip: "bg-muted text-foreground",
-    dot: "bg-foreground",
+    tile: "bg-amber-500/10 text-amber-600",
+    kicker: "text-amber-600",
+    chip: "bg-amber-500/10 text-amber-700",
+    dot: "bg-amber-500",
   },
   emerald: {
-    tile: "bg-muted text-muted-foreground",
-    kicker: "text-muted-foreground",
-    chip: "bg-muted text-foreground",
-    dot: "bg-foreground",
+    tile: "bg-emerald-500/10 text-emerald-600",
+    kicker: "text-emerald-600",
+    chip: "bg-emerald-500/10 text-emerald-700",
+    dot: "bg-emerald-500",
   },
   sky: {
-    tile: "bg-muted text-muted-foreground",
-    kicker: "text-muted-foreground",
-    chip: "bg-muted text-foreground",
-    dot: "bg-foreground",
+    tile: "bg-sky-500/10 text-sky-600",
+    kicker: "text-sky-600",
+    chip: "bg-sky-500/10 text-sky-700",
+    dot: "bg-sky-500",
   },
   muted: {
     tile: "bg-muted text-muted-foreground",
