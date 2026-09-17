@@ -150,7 +150,7 @@ export function AskAiPanel({
         "flex flex-col overflow-hidden",
         layout === "overlay"
           ? cn(
-              "border-primary/30 bg-background/95 shadow-elev absolute inset-x-3 top-[68px] max-h-[88%] min-h-[72%] rounded-2xl border backdrop-blur-xl",
+              "border-primary/30 bg-paper/95 shadow-elev absolute inset-x-3 top-[68px] max-h-[88%] min-h-[72%] rounded-2xl border backdrop-blur-xl",
               Z_IN_FRAME_OVERLAY,
             )
           : "h-full min-h-0",
@@ -163,7 +163,7 @@ export function AskAiPanel({
           type="button"
           onClick={onClose}
           aria-label="Close Ask AI"
-          className="border-border bg-background/90 text-foreground hover:bg-muted shadow-rest absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-sm transition active:scale-95"
+          className="border-border bg-paper/90 text-foreground hover:bg-muted shadow-rest absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-sm transition active:scale-95"
         >
           <X className="h-5 w-5" />
         </button>
@@ -177,7 +177,7 @@ export function AskAiPanel({
           onClick={clearThread}
           aria-label="Clear chat"
           className={cn(
-            "border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-rest absolute top-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur-sm transition active:scale-95",
+            "border-border bg-paper/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-rest absolute top-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur-sm transition active:scale-95",
             layout === "overlay" ? "right-12" : "right-2",
           )}
         >

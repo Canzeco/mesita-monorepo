@@ -81,7 +81,7 @@ export const INFO_BOX_CLASS =
 // Primary submit button. Used for the bottom-of-form action — full-width,
 // pill-shaped, dark-foreground fill. Use cn() to merge in `flex-1`, etc.
 // Already 48px tall, so it needs no hit area — only the ring.
-export const PRIMARY_BUTTON_CLASS = `flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-background transition disabled:opacity-60 ${FOCUS_RING_CLASS}`;
+export const PRIMARY_BUTTON_CLASS = `flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-semibold text-paper transition disabled:opacity-60 ${FOCUS_RING_CLASS}`;
 
 // Tiny uppercase eyebrow label — used for section eyebrows ("PENDING
 // INVITES"), "Read-only" badges, stat tile captions, etc. Single source
@@ -93,7 +93,7 @@ export const TINY_LABEL_CLASS =
 // "Add staff", etc.). Dark fill, 12px text, pill-shaped. For a
 // full-width form submit use PRIMARY_BUTTON_CLASS instead.
 // ~30px of paint (py-1.5 on 12px text), so it carries the 44px hit area.
-export const PILL_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const PILL_BUTTON_CLASS = `bg-foreground text-paper inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition hover:opacity-90 disabled:opacity-60 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // Compact icon button (32px circle) — for trash / send / copy actions on
 // list rows. Border ring + subtle hover so it doesn't compete with the
@@ -108,7 +108,7 @@ export const ICON_BUTTON_CLASS = `border-border bg-card text-muted-foreground ho
 // ~41px of paint — under 44 by three pixels, which the issue did not name and
 // which is exactly the kind of near-miss that gets the same finding filed
 // again next pass. It takes the hit area too.
-export const CTA_BUTTON_CLASS = `bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const CTA_BUTTON_CLASS = `bg-foreground text-paper inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // Section / empty-state title — display face, xl, tight tracking.
 export const SECTION_TITLE_CLASS =

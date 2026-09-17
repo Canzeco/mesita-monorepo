@@ -74,18 +74,40 @@
      3.14:1 and FAILS WCAG AA. `--muted-foreground` keeps its exact lightness
      (0.48) and drops only its chroma, so captions GAIN contrast: #5d5d5d at
      6.58:1, where the old #775254 was 6.38. */
-  /* THE PAGE IS GREY SO THE CARDS CAN BE WHITE (MESITA-1938, adopted here when
-     this branch merged main). This branch was cut with page and card BOTH
-     white and every separation a hairline. The mock shipped the better answer
-     first: white is reserved for a surface that CARRIES something — a card, a
-     popover, a modal — and the page sits a step below it, so a card is lifted
-     by tone instead of by a shadow this palette no longer has.
+  /* ── AND THE SECOND LIGHT GOES UNDER THE CARDS (MESITA-1948) ────────────
+     Pato 2026-09-16, hours after MESITA-1934 shipped the system above: *"in
+     general make the background a bit gray, and then the other stuff white or
+     vice versa, but a bit of contrast."* MESITA-1938 applied it to the mock;
+     this is the same call, landing here.
 
-     These are the mock's values, not new ones. The three apps are one system
-     and the mock leads it. */
-  --paper: oklch(1 0 0); /* #ffffff · cards, popovers, modals */
-  --page: oklch(0.952 0 0); /* the ground they sit on */
-  --fill: var(--page); /* wells and inputs read as the page, not as a card */
+     MESITA-1934 spent all three lights INSIDE the card — page and cards the
+     same white, the second light a #fafafa well nobody could see at 1.04:1,
+     and the whole burden of separation on one hairline. Still three lights;
+     one of them moved to the GROUND.
+
+     `--paper` is what a SURFACE IS MADE OF and `--page` is what it SITS ON.
+     They are separate names because `--background` was doing both jobs and
+     only one of them survives this change: 28 `text-background` uses in this
+     app mean "the white on an ink fill" (`bg-foreground text-background`,
+     `PRIMARY_BUTTON_CLASS`, EnterpriseAuthLayout's aside). Repointing
+     `--background` alone would have turned every one of those labels
+     grey-on-black, in an app with no visual QA path. They read `text-paper`
+     now, which is correct in BOTH modes — see `.dark`. */
+  --paper: oklch(1 0 0); /* #ffffff · cards, popovers, modals, ink-fill labels */
+
+  /* #efefef · the ground every card sits on. 1.15:1 under the card, which is
+     the step you can see across a wide console; 1.04:1 — Instagram's own — is
+     an unfilled promise at this width. It is not #e5e5e5 either: at 1.26:1 the
+     #dbdbdb hairline drawn AROUND a card falls into the page behind it, and
+     this palette separates with hairlines. */
+  --page: oklch(0.952 0 0);
+
+  /* Wells, inputs and hovers are THE PAGE SHOWING THROUGH A CARD, not a fourth
+     light. One grey with one meaning — recessed — so a focused input going to
+     `--paper` is the same move as a card lifting off the page. The old #fafafa
+     fill measured 1.04:1 against the white card it sat inside. */
+  --fill: var(--page);
+
   --background: var(--page);
   --foreground: oklch(0.205 0 0);
   --card: var(--paper);
@@ -93,10 +115,11 @@
   --popover: var(--paper);
   --popover-foreground: oklch(0.205 0 0);
 
-  /* Ink, not pink. The dark pill was already `bg-foreground text-background`
-     in ui-classes; this is the same ink, now reachable as --primary too. */
+  /* Ink, not pink. The dark pill was already `bg-foreground` + the surface
+     colour in ui-classes (`text-background` then, `text-paper` since
+     MESITA-1948); this is the same ink, now reachable as --primary too. */
   --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: var(--paper);
 
   /* The hover step for FILLED controls. `hover:opacity-90` read instantly on
      hot pink because it shifted CHROMA; on ink it is 1.32:1 and it fades the
@@ -104,7 +127,7 @@
   --ink-hover: oklch(0.371 0 0);
 
   --secondary: oklch(0.371 0 0);
-  --secondary-foreground: oklch(1 0 0);
+  --secondary-foreground: var(--paper);
 
   --muted: var(--fill);
   --muted-foreground: oklch(0.48 0 0);
@@ -119,7 +142,7 @@
      the product names out loud (Bronze/Silver/Gold/Diamond); WhatsApp is a
      third party's own mark. Nothing else may carry a hue. */
   --destructive: oklch(0.58 0.24 28);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive-foreground: var(--paper);
 
   --tier-gold: oklch(0.84 0.16 88);
   /* Gold needs an INK as well as a fill, or a badge reaches for a Tailwind
@@ -223,20 +246,31 @@
    block is a structural one; a block left pink would be a second palette
    waiting to contradict the first the day somebody wires a toggle. */
 .dark {
-  --background: oklch(0.205 0 0);
+  /* THE SAME TWO NAMES, AND DARK ALREADY HAD THE STEP (MESITA-1948): the page
+     was 0.205 under a 0.269 card before this issue touched anything, so only
+     LIGHT moves. What is new here is the vocabulary, which `text-paper` needs
+     in order to resolve at all.
+     `--paper` is the CARD's grey, not white — which is exactly right for the
+     46 relabelled sites: `bg-foreground text-paper` in dark is a 0.269 label
+     on a 0.98 fill, dark-on-light, the mirror of white-on-ink in light. */
+  --paper: oklch(0.269 0 0);
+  --page: oklch(0.205 0 0);
+  --fill: var(--page);
+
+  --background: var(--page);
   --foreground: oklch(0.98 0 0);
-  --card: oklch(0.269 0 0);
+  --card: var(--paper);
   --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.269 0 0);
+  --popover: var(--paper);
   --popover-foreground: oklch(0.98 0 0);
   --primary: oklch(0.98 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary-foreground: var(--paper);
   --ink-hover: oklch(0.87 0 0);
   --secondary: oklch(0.708 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.269 0 0);
+  --secondary-foreground: var(--paper);
+  --muted: var(--fill);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: var(--fill);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.7 0.19 28);
   --border: oklch(1 0 0 / 10%);
@@ -259,6 +293,14 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --color-background: var(--background);
+  /* PAPER IS NOT BACKGROUND, and since MESITA-1948 they are not even the same
+     colour. Every `text-background` in this app was a label on an INK FILL: it
+     meant "the white the card is made of", and it was only ever correct while
+     the page happened to be that white. They are `text-paper` now. `page` is
+     exported too so a full-bleed band can paint the ground on purpose rather
+     than by inheriting it. */
+  --color-paper: var(--paper);
+  --color-page: var(--page);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);

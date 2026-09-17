@@ -229,7 +229,7 @@ function EditProfileForm({
               )}
             </span>
           </span>
-          <span className="border-background bg-foreground text-background shadow-rest absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 transition group-active:scale-95">
+          <span className="border-paper bg-foreground text-paper shadow-rest absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 transition group-active:scale-95">
             <Camera className="h-3.5 w-3.5" />
           </span>
         </button>

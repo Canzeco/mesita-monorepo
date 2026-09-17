@@ -118,7 +118,7 @@ export function DiscoveryFilters({
                       "inline-flex min-h-9 flex-1 items-center justify-center px-1 text-center type-meta whitespace-nowrap tabular-nums transition",
                       index > 0 && "border-border border-l",
                       active
-                        ? "bg-foreground text-background font-bold"
+                        ? "bg-foreground text-paper font-bold"
                         : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground font-semibold",
                     )}
                   >
@@ -171,7 +171,7 @@ export function DiscoveryFilters({
           <button
             type="button"
             onClick={resetDiscoveryFilters}
-            className="bg-foreground text-background flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
+            className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
           >
             No matches — reset filters
           </button>

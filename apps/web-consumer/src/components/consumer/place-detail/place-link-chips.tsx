@@ -77,7 +77,7 @@ export function ChannelChips({ chips }: { chips: ChannelChip[] }) {
               "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
               key in CHANNEL_CLAY
                 ? CHANNEL_CLAY[key as keyof typeof CHANNEL_CLAY]
-                : "border-border bg-background text-foreground hover:bg-muted",
+                : "border-border bg-paper text-foreground hover:bg-muted",
             )}
           >
             {logo ? (

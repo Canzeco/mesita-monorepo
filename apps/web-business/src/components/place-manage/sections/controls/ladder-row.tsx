@@ -33,10 +33,10 @@ import { type OfferingRow } from "./offerings";
 // lives on the place's Settings now; the reason for one copy did not move.
 //
 // `cn`, not `cx`, for the classes: `cx` is a plain join, and a join that
-// emits `bg-muted` next to `bg-background shadow` leaves the winner to
+// emits `bg-muted` next to `bg-paper shadow` leaves the winner to
 // stylesheet order. `cn` (tailwind-merge) keeps the last `bg-*` only, and the
 // ternary below never asks it to — but the render test that pins the literal
-// "bg-background shadow" on an unlocked knob, and its absence on a locked one,
+// "bg-paper shadow" on an unlocked knob, and its absence on a locked one,
 // is what proves the two can never both emit.
 export function Track({
   on,
@@ -64,7 +64,7 @@ export function Track({
           on ? "translate-x-[22px]" : "translate-x-0.5",
           // A locked knob carries no shadow: shadow is what makes the thumb
           // look liftable, and this one is not.
-          locked ? "bg-muted" : "bg-background shadow",
+          locked ? "bg-muted" : "bg-paper shadow",
         )}
       >
         {busy && <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />}

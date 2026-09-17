@@ -79,7 +79,7 @@ export function SearchPopularity({
                 "inline-flex min-h-9 flex-1 items-center justify-center px-1 text-center type-meta whitespace-nowrap tabular-nums transition",
                 index > 0 && "border-border border-l",
                 active
-                  ? "bg-foreground text-background font-bold"
+                  ? "bg-foreground text-paper font-bold"
                   : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground font-semibold",
               )}
             >

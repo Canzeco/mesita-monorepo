@@ -49,9 +49,9 @@ describe("business EnterpriseAuthLayout", () => {
     expect(html).toMatch(/<aside class="[^"]*\bhidden\b[^"]*\blg:flex\b[^"]*"/);
   });
 
-  it("uses the solid bg-foreground/text-background pair, not a gradient token", () => {
+  it("uses the solid bg-foreground/text-paper pair, not a gradient token", () => {
     const html = render();
-    expect(html).toMatch(/<aside class="[^"]*\bbg-foreground\b[^"]*\btext-background\b[^"]*"/);
+    expect(html).toMatch(/<aside class="[^"]*\bbg-foreground\b[^"]*\btext-paper\b[^"]*"/);
     expect(html).not.toMatch(/bg-primary|bg-brand|bg-hero/);
   });
 

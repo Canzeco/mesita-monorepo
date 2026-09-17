@@ -74,18 +74,31 @@
      3.14:1 and FAILS WCAG AA. `--muted-foreground` keeps its exact lightness
      and drops only its chroma, so captions GAIN contrast: #5d5d5d at 6.58:1,
      where the old #775254 was 6.38. This app is read on a phone, outdoors. */
-  /* THE PAGE IS GREY SO THE CARDS CAN BE WHITE (MESITA-1938, adopted here when
-     this branch merged main). This branch was cut with page and card BOTH
-     white and every separation a hairline. The mock shipped the better answer
-     first: white is reserved for a surface that CARRIES something — a card, a
-     popover, a modal — and the page sits a step below it, so a card is lifted
-     by tone instead of by a shadow this palette no longer has.
+  /* ── AND THE SECOND LIGHT GOES UNDER THE CARDS (MESITA-1948) ────────────
+     Pato 2026-09-16, hours after MESITA-1934 shipped the system above: *"in
+     general make the background a bit gray, and then the other stuff white or
+     vice versa, but a bit of contrast."* MESITA-1938 applied it to the mock;
+     this is the same call, landing here.
 
-     These are the mock's values, not new ones. The three apps are one system
-     and the mock leads it. */
-  --paper: oklch(1 0 0); /* #ffffff · cards, popovers, modals */
-  --page: oklch(0.952 0 0); /* the ground they sit on */
-  --fill: var(--page); /* wells and inputs read as the page, not as a card */
+     MESITA-1934 spent all three lights INSIDE the card — page and cards the
+     same white, the second light a #fafafa well nobody could see at 1.04:1,
+     and the whole burden of separation on one hairline. Still three lights;
+     one of them moved to the GROUND. On a phone, outdoors, that step is worth
+     more than it is on a desk: a white card on a white page is held together
+     by a hairline the sun washes out first.
+
+     `--paper` is what a SURFACE IS MADE OF and `--page` is what it SITS ON.
+     They are separate names because `--background` was doing both jobs and
+     only one survives: 18 `text-background` uses in this app mean "the white
+     on an ink fill". Repointing `--background` alone would have turned every
+     one of those labels grey-on-black, in an app with no visual QA path. */
+  --paper: oklch(1 0 0); /* #ffffff · cards, sheets, popovers, ink-fill labels */
+  --page: oklch(0.952 0 0); /* #efefef · the ground every card sits on */
+  /* Wells, inputs and hovers are THE PAGE SHOWING THROUGH A CARD, not a fourth
+     light — so a focused input going to `--paper` is the same move as a card
+     lifting off the page. */
+  --fill: var(--page);
+
   --background: var(--page);
   --foreground: oklch(0.205 0 0);
   --card: var(--paper);
@@ -94,7 +107,7 @@
   --popover-foreground: oklch(0.205 0 0);
 
   --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: var(--paper);
 
   /* The hover step for FILLED controls. `hover:opacity-90` read instantly on
      hot pink because it shifted CHROMA; on ink it is 1.32:1 and it fades the
@@ -102,7 +115,7 @@
   --ink-hover: oklch(0.371 0 0);
 
   --secondary: oklch(0.371 0 0);
-  --secondary-foreground: oklch(1 0 0);
+  --secondary-foreground: var(--paper);
 
   --muted: var(--fill);
   --muted-foreground: oklch(0.48 0 0);
@@ -110,7 +123,7 @@
   --accent-foreground: oklch(0.205 0 0);
   /* RESERVED: the one thing that says "this destroys something". */
   --destructive: oklch(0.58 0.24 28);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive-foreground: var(--paper);
   --border: oklch(0.891 0 0);
   --input: var(--fill);
   --ring: oklch(0.205 0 0);
@@ -365,6 +378,12 @@
      disagree again (MESITA-1217). Mirrored to Docs > Design §D. */
   --radius-panel: 24px;
   --color-background: var(--background);
+  /* PAPER IS NOT BACKGROUND, and since MESITA-1948 they are not even the same
+     colour. Every `text-background` in this app was a label on an INK FILL: it
+     meant "the white the card is made of", and it was only ever correct while
+     the page happened to be that white. They are `text-paper` now. */
+  --color-paper: var(--paper);
+  --color-page: var(--page);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);

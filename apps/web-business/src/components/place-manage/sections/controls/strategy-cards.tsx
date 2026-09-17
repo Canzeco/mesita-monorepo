@@ -444,7 +444,7 @@ function Step({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="bg-foreground text-background mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full type-label font-bold tabular-nums">
+      <span className="bg-foreground text-paper mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full type-label font-bold tabular-nums">
         {n}
       </span>
       <div className="flex flex-col">
