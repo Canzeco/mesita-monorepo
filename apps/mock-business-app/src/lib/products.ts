@@ -227,7 +227,14 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "pos",
-    name: "Point of Sale",
+    // PHYSICAL POS, NOT "Point of Sale" (MESITA-1958). Pato: *"rename point of
+    // sale to Physical POS"*, which is what his original list said and which
+    // MESITA-1955 overrode on the argument that the till needed spelling out.
+    // The pairing is the better argument: Physical Terminal and Physical POS
+    // are the two boxes on your counter, and spelling one out while the other
+    // keeps its qualifier broke the only rhyme the money row had. The blurb
+    // spells out the till anyway.
+    name: "Physical POS",
     // *"maybe include POS, but for the future"* (Pato, 2026-09-16). FOR THE
     // FUTURE IS A REAL DISTINCTION and the note carries it: everything else
     // here is unbuilt, but POS is the only one he put behind the others, and a
@@ -277,7 +284,18 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "line",
-    name: "Mesita Host",
+    // CALL CENTER (MESITA-1958, Pato in caps). THIS RE-OPENS WHAT MESITA-1951
+    // CLOSED and the next person should know that before flipping it back: the
+    // two bots merged into one product precisely because naming them for their
+    // CHANNELS ("Mesita WhatsApp Bot", "Mesita Phone Bot") made one product
+    // look like two, and "Call Center" names a channel again — while the blurb
+    // right below it says the thing answers a WhatsApp too, which in Mexico is
+    // the number.
+    //
+    // It is Pato's word and it buys something real: nobody has to be told what
+    // a call center is, which "Host" and "AI Line" both needed. The blurb is
+    // carrying the second channel.
+    name: "Call Center",
     // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
     // card reads as a WhatsApp widget. The two things it replaced were named
     // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
@@ -291,7 +309,12 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "intelligence",
-    name: "Market Intelligence",
+    // MARKETING, NOT MARKET (MESITA-1958). Pato: *"rename market intelligence
+    // to marketing intelligence"*. "Market" points OUTWARD — the category, the
+    // competition, what the neighbourhood is doing — and this product reads
+    // nothing outside: its own note says it reads what your other products
+    // record. Marketing is the work it feeds.
+    name: "Marketing Intelligence",
     blurb:
       "What to change and why: who to bring back, what to charge, and where this place is quietly losing guests.",
     tab: null,

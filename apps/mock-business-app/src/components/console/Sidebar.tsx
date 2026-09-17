@@ -136,25 +136,36 @@ import { cn } from "@/lib/utils";
 // column you scan all day, and it had the smallest type in the app sitting on
 // the darkest ground, where contrast sensitivity is already worst.
 //
-// THE GLYPH STOPS AT 20px while the label sits at 15px: the ask was the FONT
-// both times, and a mark that scales with it gives back the scannability the
-// icons are carrying on a dark column.
+// THE GLYPH STOPS AT 20px while the label sits at `text-sm`: all three asks
+// named the FONT, and a mark that scales with it gives back the scannability
+// the icons are carrying on a dark column. It is deliberately larger than
+// its label — the old rail had a 14px glyph beside a 13px word, which is a
+// mark you have to look for.
 const ICON = "h-5 w-5 shrink-0";
 
-// 15px, NOT 17 (MESITA-1957). Pato, once he could finally see it: *"maybe
-// font smaller now, since words are a bit larger"*. 17px was one step past
-// the target — a rail row is a LABEL, not body copy, and at 17px on a 223px
-// column six words stop reading as a list of destinations and start reading
-// as content, which is the same failure as 13px from the other side.
+// `text-sm`, AFTER 17 AND 15 (MESITA-1958). Three size calls in a row —
+// *"more bigger"*, *"font bigger"*, then *"a bit smaller"* twice — and this
+// is where it stops, because 14px is not another arbitrary step: it is the
+// app's base body size AND the size this rail already used on a phone before
+// MESITA-1956 touched it. The `text-[Npx]` arbitrary value is gone with it,
+// so nobody has to guess where the number came from.
+//
+// A rail row is a LABEL, not body copy: at 17px on a 223px column six words
+// stopped reading as a list of destinations and started reading as content,
+// which is the same failure as 13px from the other side.
 //
 // THE `lg:` DOWNSHIFTS STAY DELETED, and that is the part that matters. The
 // defect MESITA-1956 fixed was the rail being a DIFFERENT size on desktop
-// than on a phone — 13px under a cursor, 14px under a finger. One size at
-// every width is the rule; 15px is only where that one size sits. `min-h-11`
-// still holds the 44px touch target on a phone; desktop reaches the same row
-// height through `lg:py-2.5` instead.
+// than on a phone — `lg:text-[13px]` under a cursor, `text-sm` under a
+// finger, the smallest type in the app on the darkest ground. One size at
+// every width is the RULE; every pass since has only moved where that one
+// size sits, and it has landed back on the mobile value. Net against the old
+// rail: desktop 13px → 14px, mobile unchanged, the two finally agree.
+//
+// `min-h-11` still holds the 44px touch target on a phone; desktop reaches
+// the same row height through `lg:py-2.5` instead.
 const ROW_BASE =
-  "flex items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition min-h-11 lg:min-h-0 lg:py-2.5 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+  "flex items-center gap-3 rounded-xl px-3 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2.5 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 const ROW_REST =
   "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground";
 // The active row is a SOLID pill, not a tint: on the dark rail it is the
@@ -172,7 +183,7 @@ const VENUE_LINE = "flex items-center gap-1";
 // whole hierarchy of the column. Left behind, the place NAME would end up
 // smaller than the links under it.
 const VENUE_NAME =
-  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-[15px] font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-sm font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 // 44×44 under the finger, 32×32 under the cursor. A caret sized to the glyph
 // it draws is a 14px target, which is the whole reason this constant exists.
 const VENUE_CARET =
