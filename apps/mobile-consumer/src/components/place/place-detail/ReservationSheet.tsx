@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
+import { COLORS } from '@/constants/brand';
 import {
   apiCreateReservation,
   apiListReservations,
@@ -322,7 +323,7 @@ export function ReservationSheet({
       {done ? (
         <View className="items-center py-4">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <PhoneCall color="#ec006c" size={26} />
+            <PhoneCall color={COLORS.foreground} size={26} />
           </View>
           <Text className="mt-4 font-display text-xl font-semibold text-foreground">
             {rescheduling ? 'Reservation updated' : 'Reservation requested'}
@@ -411,7 +412,7 @@ export function ReservationSheet({
 
           {/* Time — horizontal scroll, 2 rows (:00 top / :30 bottom). Past
               slots stay muted so the strip never jumps. Out-of-hours stay
-              tappable (dashed/amber); ClosedSlotNotice warns. */}
+              tappable (dashed outline); ClosedSlotNotice warns. */}
           <View>
             <Text className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Time
@@ -543,8 +544,12 @@ export function ReservationSheet({
           ) : null}
 
           {error ? (
-            <View className="rounded-xl bg-red-500/10 px-3 py-2">
-              <Text className="text-[13px] font-medium text-red-600">
+            // RESERVED (MESITA-1954): the only chroma left in this sheet. Greyed,
+            // a failed booking would read as the same box as the DuplicateBanner
+            // note — a failure and a heads-up in one grey. Stock `red-500/600`
+            // moves to the destructive token.
+            <View className="rounded-xl bg-destructive/10 px-3 py-2">
+              <Text className="text-[13px] font-medium text-destructive">
                 {error}
               </Text>
             </View>
@@ -589,6 +594,13 @@ function TimeSlotButton({
   const past = isSlotPast(date, slot.time);
   const active = slot.time === selected && !past;
   const closed = slot.state === 'closed';
+  // Achromatic (MESITA-1954). Amber on a SELECTED slot meant "they look closed
+  // at this time" and pink meant "a normal pick" — two opposite meanings that
+  // greyscale into one chip. The dash carries it instead, and it now rides
+  // EVERY closed slot rather than switching off at the moment it is needed
+  // (it was `closed && !active`, i.e. gone exactly when amber took over).
+  // Dashed ink edge = they look closed, ask anyway · filled ink = a normal
+  // pick — the same vocabulary as ReservationCard / ReservationDetailBody.
   return (
     <Pressable
       onPress={() => onSelect(slot.time)}
@@ -608,7 +620,7 @@ function TimeSlotButton({
         { height: 42, justifyContent: 'center', alignItems: 'center' },
         past
           ? { opacity: 0.45 }
-          : closed && !active
+          : closed
             ? { borderStyle: 'dashed' }
             : undefined,
       ]}
@@ -617,7 +629,7 @@ function TimeSlotButton({
           ? 'border-border bg-muted'
           : closed
             ? active
-              ? 'border-amber-500 bg-amber-500/15'
+              ? 'border-foreground bg-muted'
               : 'border-border bg-card'
             : active
               ? 'border-primary bg-primary'
@@ -665,9 +677,14 @@ function ClosedSlotNotice({
   const dayHours = hoursLabelForDate(date, hours);
 
   return (
-    <View className="flex-row items-start gap-2.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-3 py-3">
-      <AlertTriangle color="#d97706" size={16} />
-      <Text className="flex-1 text-[12.5px] leading-snug text-amber-900">
+    // Achromatic (MESITA-1954): amber-500/10 greys to the very value the
+    // DuplicateBanner below already wears (border-border bg-muted), so the
+    // warning would become the fifth identical rounded-2xl in the column. The
+    // dashed ink edge — this screen's "waiting on the place" mark, worn by the
+    // closed slot chips right above it — and the AlertTriangle carry it now.
+    <View className="flex-row items-start gap-2.5 rounded-2xl border border-dashed border-foreground bg-card px-3 py-3">
+      <AlertTriangle color={COLORS.foreground} size={16} />
+      <Text className="flex-1 text-[12.5px] leading-snug text-foreground">
         <Text className="font-semibold">
           {placeName} looks closed at {timeLabel(time)} on {weekdayName(date)}.
         </Text>{' '}
@@ -709,7 +726,7 @@ function DuplicateBanner({
     <View className="rounded-2xl border border-border bg-muted px-3 py-3">
       <View className="flex-row items-start gap-2.5">
         <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-          <CalendarClock color="#ec006c" size={16} />
+          <CalendarClock color={COLORS.foreground} size={16} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-[13px] font-semibold text-foreground">

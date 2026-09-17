@@ -24,6 +24,7 @@ import Animated, {
 // Compiler immutability rule does not understand that contract.
 /* eslint-disable react-hooks/immutability */
 
+import { COLORS } from '@/constants/brand';
 import { ReservationSheet } from '@/components/place/place-detail/ReservationSheet';
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
@@ -196,7 +197,7 @@ export function SwipeDeck() {
   if (deckQuery.isLoading && !overridePlaces) {
     return (
       <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color="#fb2b7b" size="large" />
+        <ActivityIndicator color={COLORS.primary} size="large" />
       </View>
     );
   }
@@ -283,7 +284,7 @@ function FilterEmptyState({
   return (
     <View className="flex-1 items-center justify-center gap-4 px-8">
       <View className="size-14 items-center justify-center rounded-2xl bg-muted">
-        <SlidersHorizontal color="#775254" size={24} />
+        <SlidersHorizontal color={COLORS.mutedForeground} size={24} />
       </View>
       <Text className="text-center font-display text-2xl font-semibold text-foreground">
         Nothing matches your filters
@@ -308,7 +309,7 @@ function FilterEmptyState({
           accessibilityLabel="Reset filters"
           className="flex-row items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 active:opacity-90"
         >
-          <RotateCcw color="#fff7f8" size={16} />
+          <RotateCcw color={COLORS.background} size={16} />
           <Text className="text-sm font-semibold text-background">
             Reset filters
           </Text>

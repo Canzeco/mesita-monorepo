@@ -12,7 +12,12 @@ import {
   SectionLabel,
 } from '@/components/discovery/discovery-filter-controls';
 import { DiscoveryZoneField } from '@/components/discovery/discovery-zone-field';
-import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENTS,
+  GRADIENT_DIAGONAL,
+  SHADOW_GLOW,
+} from '@/constants/brand';
 import {
   DISCOVERY_CONTEXTS,
   DISCOVERY_CONTEXT_META,
@@ -79,7 +84,7 @@ export function DiscoveryFilters({
       <View className="flex-row items-center justify-between px-4 pb-3 pt-3">
         <View className="flex-row items-center gap-2.5">
           <View className="h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-            <SlidersHorizontal color="#fb2b7b" size={16} />
+            <SlidersHorizontal color={COLORS.primary} size={16} />
           </View>
           <Text className="font-display text-lg font-semibold tracking-tight text-foreground">
             Filters
@@ -99,7 +104,7 @@ export function DiscoveryFilters({
             accessibilityLabel="Close"
             className="h-8 w-8 items-center justify-center rounded-full active:bg-muted/60"
           >
-            <X color="#775254" size={16} />
+            <X color={COLORS.mutedForeground} size={16} />
           </Pressable>
         </View>
       </View>
@@ -189,7 +194,11 @@ export function DiscoveryFilters({
               onClick={() => setDiscoveryWhen({ mode: 'now' })}
             >
               <Clock
-                color={when.mode === 'now' ? '#fff' : '#775254'}
+                color={
+                  when.mode === 'now'
+                    ? COLORS.primaryForeground
+                    : COLORS.mutedForeground
+                }
                 size={14}
               />
               <PillText active={when.mode === 'now'}>Now</PillText>

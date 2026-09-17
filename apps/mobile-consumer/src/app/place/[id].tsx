@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceDetailBody } from '@/components/place/PlaceDetailBody';
+import { COLORS } from '@/constants/brand';
 import { apiFetchPlaceDetail } from '@/lib/api/places';
 import {
   removeSavedPlacePreview,
@@ -34,7 +35,7 @@ export default function PlaceDetailScreen() {
           accessibilityLabel="Back"
           className="size-10 items-center justify-center rounded-full bg-muted active:opacity-80"
         >
-          <ArrowLeft color="#260409" size={20} />
+          <ArrowLeft color={COLORS.foreground} size={20} />
         </Pressable>
         <View className="min-w-0 flex-1 flex-row items-center justify-center gap-1.5">
           <Text
@@ -43,9 +44,15 @@ export default function PlaceDetailScreen() {
           >
             {place?.name ?? 'Place'}
           </Text>
+          {/* MESITA-1954: the disc was a sky blue nobody names (bg-[#0EA5E9]) —
+              partner is a status, not a tier, so it takes the ink token, the
+              same call web's PartnerMark and PlaceSwipeCard:97 made. Nothing
+              collapses: a non-partner header renders NO disc, so presence is
+              the separator, and a filled ink disc carrying a white ✓ is the
+              highest-contrast mark in a bg-card header, not a grey bullet. */}
           {place?.listing_type === 'partner' ? (
             <View
-              className="size-4 items-center justify-center rounded-full bg-[#0EA5E9]"
+              className="size-4 items-center justify-center rounded-full bg-primary"
               accessibilityLabel="Mesita Partner"
             >
               <Text className="text-[9px] font-bold text-white">✓</Text>
@@ -56,11 +63,11 @@ export default function PlaceDetailScreen() {
 
       {query.isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#fb2b7b" size="large" />
+          <ActivityIndicator color={COLORS.primary} size="large" />
         </View>
       ) : !place ? (
         <View className="flex-1 items-center justify-center gap-3 px-8">
-          <Store color="#775254" size={28} />
+          <Store color={COLORS.mutedForeground} size={28} />
           <Text className="font-display text-xl font-semibold text-foreground">
             Place not found
           </Text>

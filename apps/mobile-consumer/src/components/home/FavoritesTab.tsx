@@ -11,6 +11,7 @@ import {
 
 import { EmptyState } from '@/components/ui/EmptyState';
 import { requestHomeMode } from '@/components/swipe/home-mode-intent';
+import { COLORS } from '@/constants/brand';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import type { Place } from '@/lib/api/places';
 import { pairs } from '@/lib/grid-pairs';
@@ -112,7 +113,7 @@ export function FavoritesTab() {
   if (!hydrated || (deckQuery.isLoading && places.length === 0)) {
     return (
       <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color="#fb2b7b" />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }
@@ -149,7 +150,7 @@ export function FavoritesTab() {
               accessibilityLabel="Change sort order"
               className="flex-row items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1"
             >
-              <ArrowUpDown color="#775254" size={12} />
+              <ArrowUpDown color={COLORS.mutedForeground} size={12} />
               <Text className="text-[11px] font-semibold text-muted-foreground">
                 {sort === 'recent' ? 'Recent' : 'Open first'}
               </Text>
@@ -197,8 +198,12 @@ export function FavoritesTab() {
             className="w-full rounded-2xl border border-border bg-card p-5"
             onPress={(e) => e.stopPropagation()}
           >
-            <View className="size-12 items-center justify-center rounded-2xl bg-rose-500/10">
-              <Heart color="#f43f5e" fill="#f43f5e" size={24} />
+            <View className="size-12 items-center justify-center rounded-2xl bg-muted">
+              <Heart
+                color={COLORS.mutedForeground}
+                fill={COLORS.foreground}
+                size={24}
+              />
             </View>
             <Text className="mt-3 font-display text-lg font-semibold text-foreground">
               Remove from saved?
@@ -217,7 +222,7 @@ export function FavoritesTab() {
               </Pressable>
               <Pressable
                 onPress={() => pendingRemove && confirmRemove(pendingRemove)}
-                className="flex-1 items-center rounded-xl bg-rose-500 py-3"
+                className="flex-1 items-center rounded-xl bg-primary py-3"
               >
                 <Text className="text-sm font-semibold text-white">
                   Yes, remove

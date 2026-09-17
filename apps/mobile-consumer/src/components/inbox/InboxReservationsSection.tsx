@@ -3,7 +3,7 @@ import { CalendarCheck, type LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { ReservationsList } from '@/components/reservations/ReservationsList';
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
 
 // Inbox > Reservations — ONE feed (Pato, 2026-08-17: "remove upcoming and
 // history, all in the same feed"), web parity.
@@ -56,7 +56,7 @@ function ReservationsEmptyState({
           SHADOW_GLOW,
         ]}
       >
-        <Icon color="#fff" size={28} strokeWidth={2} />
+        <Icon color={COLORS.primaryForeground} size={28} strokeWidth={2} />
       </LinearGradient>
       <View className="items-center gap-1.5">
         <Text className="font-display text-center text-xl font-semibold text-foreground">

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SHADOW_ELEV } from '@/constants/brand';
+import { COLORS, SHADOW_ELEV } from '@/constants/brand';
 import { subscribeToToasts, toast, type Toast } from '@/lib/toast';
 
 // Top-anchored toast stack — web Toaster parity (above gesture chrome).
@@ -38,17 +38,25 @@ export function Toaster() {
 function ToastCard({ t }: { t: Toast }) {
   const Icon =
     t.tone === 'success' ? Check : t.tone === 'error' ? AlertCircle : null;
+  // Success loses its green (#059669) — state never keeps chroma — and lands
+  // on muted-foreground, the neutral nearest its lightness and the value
+  // web-consumer's Toaster took in MESITA-1936. The Check/AlertCircle split
+  // above is what separates the two tones now, which matters because
+  // greyscaling #059669 and #dc2626 by lightness would have landed them under
+  // 10 L* apart at 16px: one grey glyph for opposite outcomes. Error keeps its
+  // hue — a failed action is the danger case — and moves off stock red-600
+  // onto the destructive token.
   const iconColor =
     t.tone === 'success'
-      ? '#059669'
+      ? COLORS.mutedForeground
       : t.tone === 'error'
-        ? '#dc2626'
-        : '#260409';
+        ? COLORS.destructive
+        : COLORS.foreground;
 
   return (
     <View
       className={`w-full max-w-sm flex-row items-center gap-3 rounded-lg border bg-card/95 px-4 py-2.5 ${
-        t.tone === 'error' ? 'border-red-500/40' : 'border-border'
+        t.tone === 'error' ? 'border-destructive/40' : 'border-border'
       }`}
       style={SHADOW_ELEV}
     >
@@ -56,15 +64,22 @@ function ToastCard({ t }: { t: Toast }) {
       <Text className="flex-1 text-sm leading-snug text-foreground">
         {t.message}
       </Text>
+      {/* The action label ('Undo' on a destructive removal) was text-secondary
+          pink — no border, no fill, so the hue was the only mark that it was
+          tappable. Grey it reads as a caption FAINTER than the message beside
+          it, the exact opposite of what it is, so it becomes the filled ink
+          chip: the one thing in the toast that wants a tap. bg-ink-hover is
+          the pressed step because opacity on ink fades the white label with
+          the fill. */}
       {t.action ? (
         <Pressable
           onPress={() => {
             t.action?.onClick();
             toast.dismiss(t.id);
           }}
-          className="rounded-full px-3 py-1 active:bg-muted"
+          className="rounded-full bg-primary px-3 py-1 active:bg-ink-hover"
         >
-          <Text className="text-xs font-semibold text-secondary">
+          <Text className="text-xs font-semibold text-primary-foreground">
             {t.action.label}
           </Text>
         </Pressable>
@@ -74,7 +89,7 @@ function ToastCard({ t }: { t: Toast }) {
         accessibilityLabel="Dismiss"
         className="rounded-full p-1 active:bg-muted"
       >
-        <X color="#775254" size={12} />
+        <X color={COLORS.mutedForeground} size={12} />
       </Pressable>
     </View>
   );

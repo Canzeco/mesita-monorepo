@@ -2,7 +2,7 @@ import { Search as SearchIcon, X } from 'lucide-react-native';
 import type { RefObject } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
-import { SHADOW_ELEV } from '@/constants/brand';
+import { COLORS, SHADOW_ELEV } from '@/constants/brand';
 
 type SearchBarProps = {
   query: string;
@@ -38,14 +38,14 @@ export function SearchBar({
         className="h-12 flex-row items-center rounded-full border border-border bg-card/95 pl-4"
         style={SHADOW_ELEV}
       >
-        <SearchIcon color="#775254" size={16} />
+        <SearchIcon color={COLORS.mutedForeground} size={16} />
         <TextInput
           ref={inputRef}
           value={query}
           onChangeText={onChangeQuery}
           onFocus={onFocus}
           placeholder="Search places…"
-          placeholderTextColor="#77525466"
+          placeholderTextColor={`${COLORS.mutedForeground}66`}
           className="min-w-0 flex-1 px-3 text-sm text-foreground"
           autoCorrect={false}
           returnKeyType="search"
@@ -57,7 +57,7 @@ export function SearchBar({
             accessibilityLabel="Clear search"
             className="h-11 w-11 items-center justify-center"
           >
-            <X color="#775254" size={16} />
+            <X color={COLORS.mutedForeground} size={16} />
           </Pressable>
         ) : null}
         <View className="h-5 w-px bg-border" />

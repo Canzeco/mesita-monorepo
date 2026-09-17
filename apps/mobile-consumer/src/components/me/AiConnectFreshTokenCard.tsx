@@ -1,6 +1,7 @@
 import { Alert, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
+import { COLORS } from '@/constants/brand';
 import type { McpTokenMinted } from '@/lib/api/mcp-tokens';
 import { copyText } from '@/lib/clipboard';
 
@@ -36,22 +37,22 @@ export function FreshTokenCard({ fresh }: { fresh: McpTokenMinted }) {
       style={{
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         overflow: 'hidden',
       }}
     >
       <View
         style={{
           borderBottomWidth: 1,
-          borderBottomColor: 'rgba(235,217,219,0.6)',
+          borderBottomColor: 'rgba(219,219,219,0.6)',
           padding: 14,
         }}
       >
-        <Text style={{ fontWeight: '700', fontSize: 15, color: '#260409' }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: COLORS.foreground }}>
           New token
         </Text>
-        <Text style={{ color: '#775254', fontSize: 12 }}>
+        <Text style={{ color: COLORS.mutedForeground, fontSize: 12 }}>
           Copy now — Mesita won’t show the full token again
         </Text>
       </View>
@@ -59,12 +60,12 @@ export function FreshTokenCard({ fresh }: { fresh: McpTokenMinted }) {
         <Text
           selectable
           style={{
-            backgroundColor: '#faeff0',
+            backgroundColor: COLORS.muted,
             padding: 12,
             borderRadius: 10,
             fontFamily: 'monospace',
             fontSize: 12,
-            color: '#260409',
+            color: COLORS.foreground,
           }}
         >
           {fresh.token}
@@ -80,7 +81,7 @@ export function FreshTokenCard({ fresh }: { fresh: McpTokenMinted }) {
         </Button>
         <Text
           style={{
-            color: '#775254',
+            color: COLORS.mutedForeground,
             fontWeight: '700',
             letterSpacing: 1,
             fontSize: 11,
@@ -91,12 +92,12 @@ export function FreshTokenCard({ fresh }: { fresh: McpTokenMinted }) {
         <Text
           selectable
           style={{
-            backgroundColor: '#faeff0',
+            backgroundColor: COLORS.muted,
             padding: 12,
             borderRadius: 10,
             fontFamily: 'monospace',
             fontSize: 12,
-            color: '#260409',
+            color: COLORS.foreground,
           }}
         >
           {fresh.mcp_url}

@@ -111,13 +111,19 @@ export function SearchResultsPanel({
                 ? "We couldn't reach Mesita. Check your connection and try again."
                 : searchError}
           </Text>
+          {/* Retry is the affirmative inside a panel nobody wants to be in, so
+              it is a SOLID ink chip, not a tint. bg-primary/10 was a 10% wash
+              of one hue sitting on a 10% wash of another (bg-destructive/10)
+              and only ever read as a button because those hues differed; with
+              primary achromatic the two washes are one pale surface and a
+              border-less, shadow-less control disappears into it. (MESITA-1954) */}
           <Pressable
             onPress={onRetry}
             accessibilityRole="button"
             accessibilityLabel="Retry search"
-            className="self-start rounded-lg bg-primary/10 px-3 py-2"
+            className="self-start rounded-lg bg-primary px-3 py-2"
           >
-            <Text className="text-sm font-semibold text-primary">Retry</Text>
+            <Text className="text-sm font-semibold text-primary-foreground">Retry</Text>
           </Pressable>
         </View>
       ) : null}

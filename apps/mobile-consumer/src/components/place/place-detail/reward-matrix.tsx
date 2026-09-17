@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import { classProperLabel } from '@/lib/consumer-classes';
 import type { PlaceStrategy } from '@/lib/promo-rates';
 import {
@@ -37,15 +38,25 @@ export function RewardStep({
 }) {
   return (
     <View className="flex-row gap-3">
+      {/* The accent step (the one that actually pays) was marked by hue alone:
+          a violet tint against a pink one, a blue glyph against the brand
+          pink. Achromatic, that is four identical circles — so the mark moves
+          to lightness and stroke weight, which survive the greyscale. */}
       <View
         className={`relative mt-0.5 size-7 items-center justify-center rounded-full ${
-          accent ? 'bg-violet-500/10' : 'bg-pink-500/10'
+          accent ? 'bg-foreground/10' : 'bg-muted'
         }`}
       >
-        <Icon color={accent ? '#2563eb' : '#fb2b7b'} size={14} strokeWidth={2} />
+        <Icon
+          color={accent ? COLORS.foreground : COLORS.mutedForeground}
+          size={14}
+          strokeWidth={accent ? 2.5 : 2}
+        />
+        {/* done vs pending: the ✓ / number glyph below is the real carrier —
+            never "simplify" it away. The fill only backs it up. */}
         <View
           className={`absolute -top-1 -right-1 size-4 items-center justify-center rounded-full ${
-            done ? 'bg-emerald-500' : 'bg-foreground'
+            done ? 'bg-muted-foreground' : 'bg-foreground'
           }`}
         >
           <Text
@@ -135,12 +146,10 @@ export function YourRewardsHere({
           }`}
           style={{ gap: 10 }}
         >
-          <View
-            className={`size-8 items-center justify-center rounded-lg ${
-              r.mine ? 'bg-primary/10' : 'bg-secondary/10'
-            }`}
-          >
-            <r.Icon size={16} color="#cf0360" strokeWidth={2.25} />
+          {/* One tile tint for every row: `mine` is carried by the row's own
+              fill above and by the "You" pill below, never by this. */}
+          <View className="size-8 items-center justify-center rounded-lg bg-foreground/10">
+            <r.Icon size={16} color={COLORS.secondary} strokeWidth={2.25} />
           </View>
           <View className="min-w-0 flex-1">
             <View className="flex-row items-center" style={{ gap: 6 }}>

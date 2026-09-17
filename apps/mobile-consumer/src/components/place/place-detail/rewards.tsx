@@ -11,7 +11,12 @@ import {
 } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENT_DIAGONAL,
+  GRADIENTS,
+  SHADOW_GLOW,
+} from '@/constants/brand';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import {
   placeOffersMesitaRewards,
@@ -53,10 +58,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
 
   if (!offersRewards) {
     return (
-      <Box title="Reward" icon={Sparkles} iconColor="#f472b6">
+      <Box title="Reward" icon={Sparkles} iconColor={COLORS.mutedForeground}>
         <View className="items-center gap-3 py-3">
           <View className="size-12 items-center justify-center rounded-full bg-muted">
-            <Gift color="#775254" size={20} />
+            <Gift color={COLORS.mutedForeground} size={20} />
           </View>
           <Text className="text-sm font-semibold text-foreground">
             {"This place doesn't offer rewards"}
@@ -95,7 +100,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   const isStandard = classKey === 'standard';
 
   return (
-    <Box title="Reward" icon={Sparkles} iconColor="#f472b6">
+    <Box title="Reward" icon={Sparkles} iconColor={COLORS.mutedForeground}>
       {/* Hero — what you can get. Never why (MESITA-860). */}
       <LinearGradient
         colors={[...GRADIENTS.pink]}
@@ -151,6 +156,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         <YourRewardsHere strategy={strategy} classKey={rewardsKey} />
       </View>
 
+      {/* Both CTAs used to be pink; the pair never rode on hue. It rides on
+          FILL: "Get my ticket" is the filled ink panel that demands the tap,
+          "Go Premium" the hairline card beside it. Ink under white keeps the
+          Ticket glyph and label at full contrast. */}
       <View className="gap-2">
         {isStandard ? (
           <View className="flex-row gap-2">
@@ -171,7 +180,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
                   paddingHorizontal: 16,
                 }}
               >
-                <Ticket color="#fff" size={16} />
+                <Ticket color={COLORS.primaryForeground} size={16} />
                 <Text className="text-sm font-semibold text-white">
                   Get my ticket
                 </Text>
@@ -181,7 +190,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
               onPress={() => router.push(CONSUMER_ROUTES.me)}
               className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3"
             >
-              <Crown color="#260409" size={16} />
+              <Crown color={COLORS.foreground} size={16} />
               <Text className="text-sm font-semibold text-foreground">
                 Go Premium
               </Text>
@@ -205,7 +214,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
                 paddingHorizontal: 16,
               }}
             >
-              <Ticket color="#fff" size={16} />
+              <Ticket color={COLORS.primaryForeground} size={16} />
               <Text className="text-sm font-semibold text-white">
                 Get my ticket
               </Text>

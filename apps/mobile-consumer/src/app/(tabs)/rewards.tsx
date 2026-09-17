@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PayClient } from '@/components/rewards/PayClient';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
+import { COLORS } from '@/constants/brand';
 import { useAuth } from '@/providers/auth';
 
 // Live Rewards page (web PayClient parity) — the tab unparked in #548.
@@ -15,7 +16,7 @@ export default function RewardsScreen() {
     return (
       <ShellWash>
         <SafeAreaView className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#fb2b7b" />
+          <ActivityIndicator color={COLORS.primary} />
         </SafeAreaView>
       </ShellWash>
     );

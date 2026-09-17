@@ -100,31 +100,57 @@ function passportDoorCaptions(input: {
   return { classNote, igNote };
 }
 
+/** THE CLASS LADDER KEEPS ITS HUE (MESITA-1954). Bronze · Silver · Gold ·
+ *  Diamond are four metals the product NAMES OUT LOUD to the guest, which is
+ *  the achromatic rule's "where a tier is named" clause exactly — a metal read
+ *  as a grey is no longer a metal, and greyscaling these would not restyle the
+ *  ladder, it would delete it.
+ *
+ *  WHAT DID CHANGE IS THAT THEY FINALLY CONVERGE ON WEB'S METALS. This file
+ *  painted Diamond amber, Silver red and Gold blue, because the values were
+ *  named for the LEGACY keys (aura/influencer/premium) rather than for the
+ *  metals the guest actually reads (MESITA-1449 renamed the labels and left the
+ *  paint behind). Copied VALUES from web-consumer `globals.css`
+ *  `--gradient-<metal>`, the fill — NOT `--tier-<metal>`, which is the metal as
+ *  INK on card and sits a full lightness step darker. `GRADIENTS.gold` /
+ *  `.influencer` / `.free` in constants/brand.ts are that darker ink anchor and
+ *  are right for a ring nothing prints on (IdentityHero's avatar); they are
+ *  wrong here, where every one of these four surfaces prints a label ON the
+ *  metal — white on `GRADIENTS.gold`'s light stop measures 3.20:1. */
 function classBadgeColors(classKey: string): readonly [string, string] {
-  if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
-  if (classKey === 'influencer') return ['#fecaca', '#ef4444'] as const;
-  if (classKey === 'premium') return ['#bfdbfe', '#2563eb'] as const;
-  return ['#e5e7eb', '#9ca3af'] as const;
+  if (classKey === 'aura') return ['#a0e5ed', '#46b1e3'] as const; // Diamond
+  if (classKey === 'influencer') return ['#dddada', '#aea9a9'] as const; // Silver
+  if (classKey === 'premium') return ['#ecd469', '#ce9700'] as const; // Gold
+  return ['#a6673b', '#964a2f'] as const; // Bronze
 }
 
+/** The ink that prints ON the metal — web's `classBadgeClass` pairing, and it
+ *  is measured rather than eyeballed. The LIGHT stop is the weak end under a
+ *  135° ramp, so it is where the pair has to clear 4.5:1 (the class name is
+ *  10-13px, so AA's large-text 3:1 is not the bar). Bronze is the only metal
+ *  dark enough to carry white — 4.54:1 on its light stop; Silver, Gold and
+ *  Diamond are light metals and carry the foreground ink at ≥12:1. */
 function classBadgeIconColor(classKey: string): string {
-  if (classKey === 'aura') return '#78350f';
-  if (classKey === 'influencer') return '#7f1d1d';
-  if (classKey === 'premium') return '#1e3a8a';
-  return '#171717';
+  if (classKey === 'aura') return COLORS.foreground; // on Diamond
+  if (classKey === 'influencer') return COLORS.foreground; // on Silver
+  if (classKey === 'premium') return COLORS.foreground; // on Gold
+  return '#ffffff'; // on Bronze
 }
 
+/** The wash — web's `--wash-<metal>`: the metal's own light stop at 0.14,
+ *  fading to nothing. Same rgb at both stops on purpose, so the ramp cannot
+ *  pick up a grey cast on the way out. */
 function classWash(classKey: string): readonly [string, string] {
   if (classKey === 'aura') {
-    return ['rgba(245,204,88,0.18)', 'rgba(235,136,31,0.10)'] as const;
+    return ['rgba(160,229,237,0.14)', 'rgba(160,229,237,0)'] as const;
   }
   if (classKey === 'influencer') {
-    return ['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const;
+    return ['rgba(221,218,218,0.14)', 'rgba(221,218,218,0)'] as const;
   }
   if (classKey === 'premium') {
-    return ['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const;
+    return ['rgba(236,212,105,0.14)', 'rgba(236,212,105,0)'] as const;
   }
-  return ['rgba(156,163,175,0.16)', 'rgba(156,163,175,0.06)'] as const;
+  return ['rgba(166,103,59,0.14)', 'rgba(166,103,59,0)'] as const;
 }
 
 function phoneCountry(phone: string | null | undefined) {

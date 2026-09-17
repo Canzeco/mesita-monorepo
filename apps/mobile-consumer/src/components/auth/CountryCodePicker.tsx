@@ -1,5 +1,6 @@
 import { FlatList, Modal, Pressable, Text } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import { COUNTRIES } from '@/lib/countries';
 
 type CountryCodePickerProps = {
@@ -34,7 +35,7 @@ export function CountryCodePicker({
           onPress={(e) => e.stopPropagation()}
           style={{
             maxHeight: '70%',
-            backgroundColor: '#ffffff',
+            backgroundColor: COLORS.card,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
             paddingBottom: 24,
@@ -66,11 +67,18 @@ export function CountryCodePicker({
                   paddingHorizontal: 20,
                   paddingVertical: 12,
                   backgroundColor:
-                    item.code === countryCode ? '#ffe4ef' : 'transparent',
+                    item.code === countryCode ? COLORS.muted : 'transparent',
                 }}
               >
                 <Text style={{ fontSize: 20 }}>{item.flag}</Text>
-                <Text className="text-foreground" style={{ flex: 1, fontSize: 16 }}>
+                <Text
+                  className={
+                    item.code === countryCode
+                      ? 'font-semibold text-foreground'
+                      : 'text-foreground'
+                  }
+                  style={{ flex: 1, fontSize: 16 }}
+                >
                   {item.name}
                 </Text>
                 <Text className="font-semibold text-foreground">

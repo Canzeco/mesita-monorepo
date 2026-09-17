@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { GiftCardDeck } from '@/components/me/GiftCardDeck';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 
 type Props = {
   visible: boolean;
@@ -39,7 +39,7 @@ export function ShareModal({ visible, onClose }: Props) {
             justifyContent: 'center',
           }}
         >
-          <UserPlus color="#fff" size={22} />
+          <UserPlus color={COLORS.primaryForeground} size={22} />
         </LinearGradient>
       </View>
       <GiftCardDeck />

@@ -7,6 +7,7 @@ import { ActiveTokensList } from '@/components/me/AiConnectActiveTokensList';
 import { FreshTokenCard } from '@/components/me/AiConnectFreshTokenCard';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import { COLORS } from '@/constants/brand';
 
 import {
   apiCreateMcpToken,
@@ -88,16 +89,28 @@ export function AiConnectModal({ visible, onClose }: Props) {
             width: 48,
             height: 48,
             borderRadius: 999,
-            backgroundColor: 'rgba(124,58,237,0.1)',
+            // A violet wash under a violet glyph: chroma on decoration, not on
+            // a platform mark — the Bot is generic lucide, not Claude's or
+            // OpenAI's. It keeps its LIGHTNESS: the wash read ~L*93, and the
+            // muted token that would match it exactly IS the page this sheet
+            // sits on (bg-background), so the disc takes card white to stay a
+            // disc at all, and the glyph takes ink.
+            backgroundColor: COLORS.card,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Bot color="#7c3aed" size={22} />
+          <Bot color={COLORS.foreground} size={22} />
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontWeight: '700', fontSize: 20, color: '#260409' }}>
+            <Text
+              style={{
+                fontWeight: '700',
+                fontSize: 20,
+                color: COLORS.foreground,
+              }}
+            >
               AI
             </Text>
             <View
@@ -106,16 +119,22 @@ export function AiConnectModal({ visible, onClose }: Props) {
                 alignItems: 'center',
                 gap: 4,
                 borderWidth: 1,
-                borderColor: '#ebd9db',
+                borderColor: COLORS.border,
                 borderRadius: 999,
                 paddingHorizontal: 8,
                 paddingVertical: 2,
               }}
             >
-              <Crown color="#d97706" size={10} />
+              {/* RESERVED (MESITA-1954): the product NAMES the tier out loud
+                  one glyph to the right, so the Crown keeps its hue — at
+                  tailwind `tier.premium`, which is where web converged. It
+                  reads as near-ink at 10px, and that is the point: the pill's
+                  border and label are already neutral, so this is the only
+                  thing on the pill that is allowed not to be. */}
+              <Crown color="#32191b" size={10} />
               <Text
                 style={{
-                  color: '#775254',
+                  color: COLORS.mutedForeground,
                   fontWeight: '700',
                   letterSpacing: 1,
                   fontSize: 11,
@@ -128,13 +147,28 @@ export function AiConnectModal({ visible, onClose }: Props) {
         </View>
       </View>
 
-      <Text style={{ color: '#775254', lineHeight: 20, fontSize: 14 }}>
+      <Text
+        style={{ color: COLORS.mutedForeground, lineHeight: 20, fontSize: 14 }}
+      >
         Generate a personal access token, then add Mesita as an MCP server in
         Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
         book tables, and check rewards — as you. Available for Gold,
         Silver and Diamond members — not on Bronze.
       </Text>
 
+      {/* THE GATE, RE-SEPARATED BY SHAPE (MESITA-1954). Amber was the only
+          thing saying "you are blocked" here, and the achromatic version of an
+          amber-tinted rounded box is a light rounded box — which is exactly
+          what FreshTokenCard and ActiveTokensList are, two white cards under
+          the same hairline further down this same sheet. Greyed, "you cannot
+          do this" would have read as "here is some more information", the
+          collapse web shipped three times. So the gate stops being a tinted
+          card and becomes an OUTLINE: dashed, in the muted-foreground grey
+          rather than the hairline, over no fill of its own — the vocabulary's
+          "not here yet / waiting on somebody else". Nothing else on the sheet
+          is dashed, and nothing dashed is tappable. The copy then takes full
+          ink against the muted body copy above it — a step in tone, not in
+          weight: the shape is what carries the state. */}
       {!canConnect ? (
         <View
           style={{
@@ -142,13 +176,25 @@ export function AiConnectModal({ visible, onClose }: Props) {
             gap: 12,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: 'rgba(245,158,11,0.25)',
-            backgroundColor: 'rgba(245,158,11,0.1)',
+            borderStyle: 'dashed',
+            borderColor: COLORS.mutedForeground,
+            backgroundColor: COLORS.muted,
             padding: 14,
           }}
         >
-          <Crown color="#b45309" size={16} style={{ marginTop: 2 }} />
-          <Text style={{ flex: 1, color: '#78350f', lineHeight: 18, fontSize: 13 }}>
+          {/* The same tier mark as the eyebrow pill, at the same reserved
+              value: the Crown names Premium, the dashed box carries the
+              state. A hue on the glyph would be naming the tier; a hue on the
+              box would be colouring a state. */}
+          <Crown color="#32191b" size={16} style={{ marginTop: 2 }} />
+          <Text
+            style={{
+              flex: 1,
+              color: COLORS.foreground,
+              lineHeight: 18,
+              fontSize: 13,
+            }}
+          >
             You’re on Bronze. Upgrade to Gold — or reach Silver via
             Instagram — to create an MCP token and let an AI control your
             profile.
@@ -163,8 +209,14 @@ export function AiConnectModal({ visible, onClose }: Props) {
         accessibilityLabel="Create MCP token"
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <KeyRound color="#fff" size={18} />
-          <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
+          <KeyRound color={COLORS.primaryForeground} size={18} />
+          <Text
+            style={{
+              color: COLORS.primaryForeground,
+              fontWeight: '600',
+              fontSize: 14,
+            }}
+          >
             {canConnect ? 'Create MCP token' : 'Premium required'}
           </Text>
         </View>
@@ -174,7 +226,8 @@ export function AiConnectModal({ visible, onClose }: Props) {
 
       <Text
         style={{
-          color: 'rgba(38,4,9,0.55)',
+          // Same alpha, so the eyebrow keeps the exact lightness it had.
+          color: 'rgba(23,23,23,0.55)',
           letterSpacing: 1.6,
           textTransform: 'uppercase',
           fontWeight: '700',
@@ -189,7 +242,9 @@ export function AiConnectModal({ visible, onClose }: Props) {
         onRevoke={(id) => void revoke(id)}
       />
 
-      <Text style={{ color: '#775254', lineHeight: 16, fontSize: 12 }}>
+      <Text
+        style={{ color: COLORS.mutedForeground, lineHeight: 16, fontSize: 12 }}
+      >
         Tools: get profile, suggest/get places, save places, list/create
         reservations, list rewards. Revoke anytime if a client is compromised.
       </Text>

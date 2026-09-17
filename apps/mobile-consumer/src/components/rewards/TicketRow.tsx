@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { ChevronRight, ScanLine } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
 import type { ConsumerTicketRow } from '@/lib/api/tickets';
 
@@ -58,7 +59,7 @@ export function TicketRow({
         />
       ) : (
         <View className="h-12 w-12 items-center justify-center rounded-xl bg-muted">
-          <ScanLine size={20} color="#775254" />
+          <ScanLine size={20} color={COLORS.mutedForeground} />
         </View>
       )}
       <View className="min-w-0 flex-1">
@@ -71,7 +72,7 @@ export function TicketRow({
         </Text>
         <Text
           className={
-            scannedLive ? 'mt-0.5 font-semibold text-emerald-700' : 'mt-0.5 text-muted-foreground'
+            scannedLive ? 'mt-0.5 font-semibold text-foreground' : 'mt-0.5 text-muted-foreground'
           }
           numberOfLines={1}
           style={{ fontSize: 11.5 }}
@@ -80,11 +81,11 @@ export function TicketRow({
         </Text>
       </View>
       {saved > 0 ? (
-        <Text className="font-extrabold text-emerald-700" style={{ fontSize: 13.5 }}>
+        <Text className="font-extrabold text-foreground" style={{ fontSize: 13.5 }}>
           −{formatCurrency(saved)}
         </Text>
       ) : (
-        <ChevronRight size={16} color="#775254" />
+        <ChevronRight size={16} color={COLORS.mutedForeground} />
       )}
     </Pressable>
   );

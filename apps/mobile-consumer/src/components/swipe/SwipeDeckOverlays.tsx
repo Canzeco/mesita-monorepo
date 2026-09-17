@@ -2,8 +2,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Hand, Heart, X } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
+import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 
+// THE COMMITTED DECISION, and the two stamps must not both be dark boxes
+// (MESITA-1954). Saved was a pink gradient with a white border and a pink glow;
+// Skip was an ink scrim with a near-white label. Achromatic, both land as a
+// filled dark rectangle and only the rotation sign tells them apart. They take
+// OPPOSITE POLARITY instead — the same split SwipeDecisionBadge and the action
+// row already use: Saved = solid ink fill / white border / white label,
+// Skip = white card / ink outline / ink label. Both opaque, so either reads on
+// any photo. SHADOW_GLOW is dropped rather than greyed: an ink glow under an
+// ink stamp is a smudge, not a signal, and Skip never had one.
 export function SwipeExitStamp({
   direction,
 }: {
@@ -28,15 +37,18 @@ export function SwipeExitStamp({
               gap: 8,
               borderRadius: 16,
               borderWidth: 3,
-              borderColor: '#fff',
+              borderColor: COLORS.primaryForeground,
               paddingHorizontal: 20,
               paddingVertical: 10,
               transform: [{ rotate: '-8deg' }],
             },
-            SHADOW_GLOW,
           ]}
         >
-          <Heart color="#fff" fill="#fff" size={24} />
+          <Heart
+            color={COLORS.primaryForeground}
+            fill={COLORS.primaryForeground}
+            size={24}
+          />
           <Text className="text-2xl font-black tracking-[0.15em] text-white uppercase">
             Saved
           </Text>
@@ -51,11 +63,11 @@ export function SwipeExitStamp({
       pointerEvents="none"
     >
       <View
-        className="flex-row items-center gap-2 rounded-2xl border-[3px] border-foreground/70 bg-foreground/85 px-5 py-2.5"
+        className="flex-row items-center gap-2 rounded-2xl border-[3px] border-foreground bg-card px-5 py-2.5"
         style={{ transform: [{ rotate: '8deg' }] }}
       >
-        <X color="#fff7f8" size={24} strokeWidth={3} />
-        <Text className="text-2xl font-black tracking-[0.15em] text-background uppercase">
+        <X color={COLORS.foreground} size={24} strokeWidth={3} />
+        <Text className="text-2xl font-black tracking-[0.15em] text-foreground uppercase">
           Skip
         </Text>
       </View>
@@ -70,7 +82,7 @@ export function SwipeTutorialOverlay() {
       pointerEvents="none"
     >
       <View className="items-center gap-5">
-        <Hand color="#fff" size={80} strokeWidth={1.4} />
+        <Hand color={COLORS.primaryForeground} size={80} strokeWidth={1.4} />
         <Text className="text-center text-[13px] font-medium tracking-wide text-white/95">
           Swipe left to skip · right to save
         </Text>

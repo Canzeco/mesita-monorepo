@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GiftCardDeck } from '@/components/me/GiftCardDeck';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
+import { COLORS } from '@/constants/brand';
 
 // Canonical /share referral surface — web /(shell)/share peer (#43).
 export default function ShareScreen() {
@@ -23,7 +24,7 @@ export default function ShareScreen() {
             accessibilityLabel="Back"
             className="h-10 w-10 items-center justify-center rounded-full border border-border bg-card"
           >
-            <ChevronLeft color="#260409" size={18} />
+            <ChevronLeft color={COLORS.foreground} size={18} />
           </Pressable>
           <View className="min-w-0 flex-1">
             <Text

@@ -155,9 +155,21 @@ export function GooglePlaceSheet({
               />
 
               {added ? (
-                <View className="mt-4 flex-row items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-                  <ActivityIndicator color="#047857" size="small" />
-                  <Text className="flex-1 text-xs font-medium leading-relaxed text-emerald-700">
+                /* MESITA-1954: this was an emerald success box facing a pink
+                   CTA, and both sides carry a spinner — greyscaled flat they
+                   would have become the same box with the same spinner. The
+                   two states stay apart by FILL POLARITY and shape: the
+                   affirmative that still wants a tap is the ink-filled 48px
+                   button with a white label; this one is a DASHED ink outline
+                   on white — the fleet's "waiting on somebody else" shape (see
+                   STATE_META in the reservations rail). Dashed rather than a
+                   muted fill because GooglePlacePreview's "isn't on Mesita
+                   yet" box sits directly above it at the same radius and
+                   padding on bg-muted/60, ~2 L* away: filled-on-filled, this
+                   panel would have read as one more paragraph of explainer. */
+                <View className="mt-4 flex-row items-center gap-2.5 rounded-2xl border border-dashed border-foreground bg-card px-4 py-3">
+                  <ActivityIndicator color={COLORS.foreground} size="small" />
+                  <Text className="flex-1 text-xs font-medium leading-relaxed text-foreground">
                     Being added — our AI is generating this place’s profile;
                     it’ll be live on Mesita in about 5 minutes.
                   </Text>
@@ -188,9 +200,12 @@ export function GooglePlaceSheet({
                     }}
                   >
                     {adding ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator
+                        color={COLORS.primaryForeground}
+                        size="small"
+                      />
                     ) : (
-                      <Wand2 color="#fff" size={16} />
+                      <Wand2 color={COLORS.primaryForeground} size={16} />
                     )}
                     <Text className="text-sm font-semibold text-white">
                       {adding ? 'Adding…' : 'Add to Mesita'}

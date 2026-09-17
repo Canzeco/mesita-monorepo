@@ -113,6 +113,9 @@ export function SearchScopeSheet({
                 Limits Google Autocomplete and Text Search. Optional.
               </Text>
             </View>
+            {/* The armed scope is a SOLID ink pill, not a tinted one: pink's
+                border + 10% wash + text carried the whole selection, and all
+                three were hue. Fill vs outline survives the repaint. */}
             <View className="flex-row flex-wrap gap-1.5">
               <Pressable
                 onPress={() => onCountry(null)}
@@ -120,14 +123,14 @@ export function SearchScopeSheet({
                 accessibilityLabel="Any country"
                 className={
                   country == null
-                    ? 'rounded-full border border-primary bg-primary/10 px-2.5 py-1'
+                    ? 'rounded-full border border-primary bg-primary px-2.5 py-1'
                     : 'rounded-full border border-border px-2.5 py-1'
                 }
               >
                 <Text
                   className={
                     country == null
-                      ? 'text-xs font-semibold text-primary'
+                      ? 'text-xs font-semibold text-primary-foreground'
                       : 'text-xs font-semibold text-muted-foreground'
                   }
                 >
@@ -144,14 +147,14 @@ export function SearchScopeSheet({
                     accessibilityLabel={countryLabel(item.code)}
                     className={
                       active
-                        ? 'rounded-full border border-primary bg-primary/10 px-2.5 py-1'
+                        ? 'rounded-full border border-primary bg-primary px-2.5 py-1'
                         : 'rounded-full border border-border px-2.5 py-1'
                     }
                   >
                     <Text
                       className={
                         active
-                          ? 'text-xs font-semibold text-primary'
+                          ? 'text-xs font-semibold text-primary-foreground'
                           : 'text-xs font-semibold text-muted-foreground'
                       }
                     >

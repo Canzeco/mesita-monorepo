@@ -6,7 +6,12 @@ import { Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENT_DIAGONAL,
+  GRADIENTS,
+  SHADOW_ELEV,
+} from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
 import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
@@ -20,18 +25,27 @@ import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
 const ROW_HEIGHT = 44;
 
+// THE CLASS LADDER keeps its hue (MESITA-1954): a tier the product names out
+// loud to the guest is one of the three things chroma survives for. What it
+// stops doing is naming its own metal — the four pairs are now the same
+// GRADIENTS tokens the ring and the wash below take (the legacy-key map
+// ClassRail.tsx already uses), so badge, ring and wash cannot name different
+// metals for one class.
 function classBadgeColors(classKey: string): readonly [string, string] {
-  if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
-  if (classKey === 'influencer') return ['#fecaca', '#ef4444'] as const;
-  if (classKey === 'premium') return ['#bfdbfe', '#2563eb'] as const;
-  return ['#e5e7eb', '#9ca3af'] as const;
+  if (classKey === 'aura') return GRADIENTS.gold;
+  if (classKey === 'influencer') return GRADIENTS.influencer;
+  if (classKey === 'premium') return GRADIENTS.premium;
+  return GRADIENTS.free;
 }
 
+// The ink ON the metal. Web's pairing rule (MESITA-1142): a light or mid metal
+// carries foreground ink, only a dark one carries white — and `premium` is the
+// rung whose token went to an ink ramp, so it is the one that inverts.
 function classBadgeIconColor(classKey: string): string {
-  if (classKey === 'aura') return '#78350f';
-  if (classKey === 'influencer') return '#7f1d1d';
-  if (classKey === 'premium') return '#1e3a8a';
-  return '#171717';
+  if (classKey === 'aura') return COLORS.foreground;
+  if (classKey === 'influencer') return COLORS.foreground;
+  if (classKey === 'premium') return COLORS.primaryForeground;
+  return COLORS.foreground;
 }
 
 export function IdentityHeroSkeleton() {
@@ -94,12 +108,14 @@ export function IdentityHero({
       : classKey === 'influencer'
         ? GRADIENTS.influencer
         : GRADIENTS.premium;
+  // The tier wash = the same metal as the ring above, at the alpha it had:
+  // GRADIENTS.gold · GRADIENTS.influencer · GRADIENTS.premium, as rgba.
   const elevatedWash =
     classKey === 'aura'
-      ? (['rgba(245,204,88,0.18)', 'rgba(235,136,31,0.10)'] as const)
+      ? (['rgba(184,136,10,0.18)', 'rgba(144,107,0,0.10)'] as const)
       : classKey === 'influencer'
-        ? (['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const)
-        : (['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const);
+        ? (['rgba(0,144,201,0.16)', 'rgba(0,114,160,0.10)'] as const)
+        : (['rgba(64,64,64,0.16)', 'rgba(23,23,23,0.12)'] as const);
 
   const identityLine = [name, sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
@@ -178,7 +194,7 @@ export function IdentityHero({
         <Text
           className={
             igConnected
-              ? 'font-semibold text-secondary'
+              ? 'font-semibold text-foreground'
               : 'font-semibold text-muted-foreground'
           }
           style={{ fontSize: 13 }}
@@ -194,7 +210,7 @@ export function IdentityHero({
       accessibilityLabel: `Class: ${classLabel}`,
       content: (
         <View className="flex-row items-center gap-1.5">
-          <ClassIcon color="#260409B3" size={14} strokeWidth={2.25} />
+          <ClassIcon color="#171717B3" size={14} strokeWidth={2.25} />
           <Text
             className="font-semibold text-foreground"
             style={{ fontSize: 13 }}
@@ -229,7 +245,10 @@ export function IdentityHero({
         colors={
           isElevated
             ? elevatedWash
-            : ['rgba(251,43,123,0.12)', 'rgba(255,90,171,0.08)']
+            // Standard/Bronze wears its OWN metal, not ink: the ink ramp is
+            // what `premium` took, and an ink wash here made Gold and Bronze
+            // the same card. GRADIENTS.free, at the alphas the old wash had.
+            : ['rgba(154,148,148,0.12)', 'rgba(117,112,112,0.08)']
         }
         start={GRADIENT_DIAGONAL.start}
         end={GRADIENT_DIAGONAL.end}
@@ -255,7 +274,11 @@ export function IdentityHero({
           style={{ width: 72, height: 72, overflow: 'visible' }}
         >
           <LinearGradient
-            colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
+            // Non-elevated = Standard's metal (GRADIENTS.free), the same
+            // token its badge below takes and the same call CurrentClassCard
+            // makes. GRADIENTS.pink is now the ink ramp, which is premium's
+            // ring reversed — the two rungs would have worn one ring.
+            colors={isElevated ? elevatedRing : [...GRADIENTS.free]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{ borderRadius: 999, padding: 2 }}
@@ -277,12 +300,15 @@ export function IdentityHero({
           </LinearGradient>
 
           {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Class
-              right so Instagram leads Class everywhere (MESITA-956). */}
+              right so Instagram leads Class everywhere (MESITA-956).
+              Instagram's gradient and its mark keep Instagram's colour — a
+              third party owns it (MESITA-1954); not-connected is the flat
+              hairline neutral, so the two states are colour vs no colour. */}
           <LinearGradient
             colors={
               igConnected
                 ? [...GRADIENTS.instagram]
-                : (['#ebd9db', '#ebd9db'] as const)
+                : ([COLORS.border, COLORS.border] as const)
             }
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
@@ -295,7 +321,7 @@ export function IdentityHero({
               borderRadius: 999,
               padding: 2,
               borderWidth: 2,
-              borderColor: '#fff',
+              borderColor: COLORS.card,
             }}
             accessibilityLabel={
               igConnected
@@ -314,7 +340,7 @@ export function IdentityHero({
                 <ChannelMark
                   channel="instagram"
                   size={14}
-                  color={igConnected ? '#c02670' : '#775254'}
+                  color={igConnected ? '#c02670' : COLORS.mutedForeground}
                 />
               )}
             </View>
@@ -332,7 +358,7 @@ export function IdentityHero({
               height: 28,
               borderRadius: 999,
               borderWidth: 2,
-              borderColor: '#fff',
+              borderColor: COLORS.card,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -348,7 +374,7 @@ export function IdentityHero({
 
         <View
           accessibilityLabel="Your identity"
-          className="mt-4 w-full overflow-hidden rounded-xl border border-border/80 bg-white/55"
+          className="mt-4 w-full overflow-hidden rounded-xl border border-border/80 bg-card/55"
         >
           {rows.map((row, i) => {
             const rowClass =

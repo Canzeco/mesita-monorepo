@@ -1,6 +1,7 @@
 import { BadgeCheck, ChevronRight, CircleHelp, Clock, Tags } from 'lucide-react-native';
 import { Linking, Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { FACET_TINT } from '../place-detail-links';
 import { Box } from './shared';
@@ -8,14 +9,14 @@ import { Box } from './shared';
 export function TagsBox({ place }: { place: PlaceDetail }) {
   if (place.tags.length === 0) return null;
   return (
-    <Box title="Tags" icon={Tags} iconColor="#f472b6">
+    <Box title="Tags" icon={Tags} iconColor={COLORS.mutedForeground}>
       <View className="flex-row flex-wrap gap-2">
         {place.tags.map((t) => {
           const tint = FACET_TINT[t.facet] ?? {
-            bg: '#f8fafc',
-            text: '#334155',
-            border: '#e2e8f0',
-            dot: '#94a3b8',
+            bg: COLORS.muted,
+            text: COLORS.foreground,
+            border: COLORS.border,
+            dot: COLORS.mutedForeground,
           };
           return (
             <View
@@ -44,10 +45,43 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   );
 }
 
+// THE ACHROMATIC RE-SEPARATION (MESITA-1954). These three tones used to differ
+// in HUE ALONE — sky for "Mesita Partner", amber for an unclaimed "Web listing",
+// slate for the Created/Updated dates — with bg/border/text/dot lightnesses near
+// identical by construction. Greyed in place they would have rendered as one
+// interchangeable chip: a status claim and a timestamp reading as peers, and the
+// single most load-bearing fact about a place (claimed vs not) lost. That is the
+// exact failure the web repaint shipped. The distinction now rides on FILL and
+// WEIGHT, never on two similar greys:
+//   solid   — the affirmative fact (Mesita Partner): ink pill, white label, filled dot.
+//   outline — a real state nobody must act on (Web listing): hairline pill, hollow dot.
+//   quiet   — metadata, not status (Created / Updated): muted fill, no visible
+//             hairline, muted label.
 const PILL_TONES = {
-  sky: { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd', dot: '#0ea5e9' },
-  amber: { bg: '#fffbeb', text: '#b45309', border: '#fde68a', dot: '#f59e0b' },
-  slate: { bg: '#f8fafc', text: '#334155', border: '#e2e8f0', dot: '#94a3b8' },
+  solid: {
+    bg: COLORS.foreground,
+    text: COLORS.primaryForeground,
+    border: COLORS.foreground,
+    dot: COLORS.primaryForeground,
+    dotBorder: 'transparent',
+    hollowDot: false,
+  },
+  outline: {
+    bg: COLORS.card,
+    text: COLORS.foreground,
+    border: COLORS.border,
+    dot: 'transparent',
+    dotBorder: COLORS.foreground,
+    hollowDot: true,
+  },
+  quiet: {
+    bg: COLORS.muted,
+    text: COLORS.mutedForeground,
+    border: COLORS.muted,
+    dot: COLORS.mutedForeground,
+    dotBorder: 'transparent',
+    hollowDot: false,
+  },
 } as const;
 
 function MetaPill({
@@ -63,7 +97,14 @@ function MetaPill({
       className="flex-row items-center gap-1.5 rounded-full border px-3 py-1.5"
       style={{ backgroundColor: t.bg, borderColor: t.border }}
     >
-      <View className="size-1.5 rounded-full" style={{ backgroundColor: t.dot }} />
+      <View
+        className="size-1.5 rounded-full"
+        style={{
+          backgroundColor: t.dot,
+          borderWidth: t.hollowDot ? 1 : 0,
+          borderColor: t.dotBorder,
+        }}
+      />
       <Text className="text-xs font-semibold" style={{ color: t.text }}>
         {label}
       </Text>
@@ -78,12 +119,15 @@ export function VerificationBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Verification"
       icon={isPartner ? BadgeCheck : CircleHelp}
-      iconColor={isPartner ? '#0ea5e9' : '#f59e0b'}
+      // Partner-blue vs unverified-amber grey out to two mid-greys a 16px glyph
+      // at strokeWidth 1.75 cannot hold apart, so the header now carries the
+      // fact by WEIGHT (ink = present, muted = absent) on top of the glyph swap.
+      iconColor={isPartner ? COLORS.foreground : COLORS.mutedForeground}
     >
       <View className="flex-row flex-wrap gap-2">
         <MetaPill
           label={isPartner ? 'Mesita Partner' : 'Web listing'}
-          tone={isPartner ? 'sky' : 'amber'}
+          tone={isPartner ? 'solid' : 'outline'}
         />
       </View>
       <Text className="text-xs leading-relaxed text-muted-foreground">
@@ -96,12 +140,16 @@ export function VerificationBox({ place }: { place: PlaceDetail }) {
           onPress={() => void Linking.openURL('https://business.mesita.ai/add')}
           accessibilityRole="link"
           accessibilityLabel="Claim ownership — free"
-          className="mt-0.5 min-h-11 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-2"
+          // Stays a quiet surface button: the ink fill in this Box belongs to
+          // the Partner pill, and a second ink pill here would make "claimed"
+          // and "claim it" wear the same chip. Its 44pt row and chevron already
+          // read as the action.
+          className="mt-0.5 min-h-11 flex-row items-center gap-1.5 self-start rounded-full border border-border bg-background px-3 py-2"
         >
-          <Text className="text-xs font-semibold text-slate-700">
+          <Text className="text-xs font-semibold text-foreground">
             Claim ownership — free
           </Text>
-          <ChevronRight color="#334155" size={14} />
+          <ChevronRight color={COLORS.foreground} size={14} />
         </Pressable>
       ) : null}
     </Box>
@@ -116,10 +164,10 @@ export function DatesBox({ place }: { place: PlaceDetail }) {
   const updated = place.updated_label?.trim();
   if (!created && !updated) return null;
   return (
-    <Box title="Dates" icon={Clock} iconColor="#94a3b8">
+    <Box title="Dates" icon={Clock} iconColor={COLORS.mutedForeground}>
       <View className="flex-row flex-wrap gap-2">
-        {created ? <MetaPill label={`Created · ${created}`} tone="slate" /> : null}
-        {updated ? <MetaPill label={`Updated · ${updated}`} tone="slate" /> : null}
+        {created ? <MetaPill label={`Created · ${created}`} tone="quiet" /> : null}
+        {updated ? <MetaPill label={`Updated · ${updated}`} tone="quiet" /> : null}
       </View>
     </Box>
   );

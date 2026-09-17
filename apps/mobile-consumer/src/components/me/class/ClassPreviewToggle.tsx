@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import {
   useEffectiveClass,
   useMockClass,
@@ -23,7 +24,7 @@ export function ClassPreviewToggle() {
       style={{
         borderWidth: 1,
         borderStyle: 'dashed',
-        borderColor: 'rgba(235,217,219,0.9)',
+        borderColor: 'rgba(219,219,219,0.9)',
         borderRadius: 16,
         padding: 12,
         gap: 8,
@@ -32,8 +33,8 @@ export function ClassPreviewToggle() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Text
           style={{
-            backgroundColor: 'rgba(245,158,11,0.15)',
-            color: '#d97706',
+            backgroundColor: COLORS.primary,
+            color: COLORS.primaryForeground,
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 4,
@@ -44,15 +45,15 @@ export function ClassPreviewToggle() {
         >
           DEMO
         </Text>
-        <Text style={{ color: '#775254' }}>Preview</Text>
+        <Text style={{ color: COLORS.mutedForeground }}>Preview</Text>
       </View>
       <View
         style={{
           flexDirection: 'row',
           borderRadius: 12,
           borderWidth: 1,
-          borderColor: '#ebd9db',
-          backgroundColor: '#faeff0',
+          borderColor: COLORS.border,
+          backgroundColor: COLORS.muted,
           padding: 4,
           gap: 4,
         }}
@@ -77,7 +78,7 @@ export function ClassPreviewToggle() {
                 alignItems: 'center',
                 borderRadius: 10,
                 paddingVertical: 10,
-                backgroundColor: active ? '#ffffff' : 'transparent',
+                backgroundColor: active ? COLORS.card : 'transparent',
               }}
             >
               <Text
@@ -85,7 +86,7 @@ export function ClassPreviewToggle() {
                 style={{
                   fontWeight: '600',
                   fontSize: 11,
-                  color: active ? '#260409' : '#775254',
+                  color: active ? COLORS.foreground : COLORS.mutedForeground,
                 }}
               >
                 {opt.label}

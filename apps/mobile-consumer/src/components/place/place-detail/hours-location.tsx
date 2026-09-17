@@ -4,7 +4,12 @@ import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ImageCarousel } from '@/components/place/ImageCarousel';
 import { PopularTimesCard } from '@/components/place/PopularTimesCard';
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENT_DIAGONAL,
+  GRADIENTS,
+  SHADOW_GLOW,
+} from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { buildUberDropoffUrl } from '@/lib/uber-link';
 import { formatDistanceKm } from '@/lib/utils';
@@ -28,12 +33,12 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Location"
       icon={MapPin}
-      iconColor="#ec4899"
+      iconColor={COLORS.mutedForeground}
       right={formatDistanceKm(place.distance_km)}
     >
       <View
         className="aspect-[2/1] items-center justify-center overflow-hidden rounded-xl"
-        style={{ backgroundColor: '#1d1442' }}
+        style={{ backgroundColor: COLORS.muted }}
       >
         <LinearGradient
           colors={[...GRADIENTS.pink]}
@@ -48,7 +53,12 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
             ...SHADOW_GLOW,
           }}
         >
-          <MapPin color="#fff" fill="#fff" size={16} strokeWidth={1.5} />
+          <MapPin
+            color={COLORS.primaryForeground}
+            fill={COLORS.primaryForeground}
+            size={16}
+            strokeWidth={1.5}
+          />
         </LinearGradient>
         <View className="mt-1.5 max-w-[90%] rounded-full bg-black/80 px-2.5 py-0.5">
           <Text className="text-[11px] font-medium text-white" numberOfLines={1}>
@@ -62,19 +72,19 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
       <View className="flex-row gap-2">
         <Pressable
           onPress={() => void Linking.openURL(mapsUrl)}
-          className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-amber-200/70 bg-amber-50 px-3 py-2.5"
+          className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5"
         >
-          <MapPin color="#78350f" size={14} />
-          <Text className="text-xs font-semibold text-amber-950">
+          <MapPin color={COLORS.foreground} size={14} />
+          <Text className="text-xs font-semibold text-foreground">
             Google Maps
           </Text>
         </Pressable>
         <Pressable
           onPress={() => void Linking.openURL(uberUrl)}
-          className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-zinc-300/70 bg-zinc-100 px-3 py-2.5"
+          className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5"
         >
-          <Bike color="#18181b" size={14} />
-          <Text className="text-xs font-semibold text-zinc-900">Ask Uber</Text>
+          <Bike color={COLORS.foreground} size={14} />
+          <Text className="text-xs font-semibold text-foreground">Ask Uber</Text>
         </Pressable>
       </View>
     </Box>
@@ -112,12 +122,19 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
 
   return (
     <>
-      <Box title="Time" icon={Clock} iconColor="#a78bfa" right={tz}>
+      <Box
+        title="Time"
+        icon={Clock}
+        iconColor={COLORS.mutedForeground}
+        right={tz}
+      >
         <Text className="text-xs leading-snug">
           <Text
-            className={`font-semibold ${
-              place.open_now ? 'text-emerald-700' : 'text-muted-foreground'
-            }`}
+            className={
+              place.open_now
+                ? 'font-bold text-foreground'
+                : 'font-medium text-muted-foreground'
+            }
           >
             {place.open_now ? 'Open' : 'Closed'}
           </Text>
@@ -134,12 +151,12 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
                 <View
                   key={row.day}
                   className={`flex-row items-center justify-between gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0 ${
-                    isToday ? 'bg-violet-50/80' : ''
+                    isToday ? 'bg-muted' : ''
                   }`}
                 >
                   <Text
-                    className={`shrink-0 text-xs font-semibold ${
-                      isToday ? 'text-violet-800' : 'text-foreground'
+                    className={`shrink-0 text-xs text-foreground ${
+                      isToday ? 'font-bold' : 'font-semibold'
                     }`}
                   >
                     {row.day}
@@ -149,7 +166,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
                       closed
                         ? 'text-muted-foreground'
                         : isToday
-                          ? 'font-semibold text-violet-950'
+                          ? 'font-semibold text-foreground'
                           : 'text-foreground/85'
                     }`}
                     numberOfLines={1}

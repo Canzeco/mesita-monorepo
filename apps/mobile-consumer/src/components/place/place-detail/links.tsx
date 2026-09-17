@@ -2,6 +2,7 @@ import { Link2, MapPin, Phone, SquareArrowOutUpRight, type LucideIcon } from 'lu
 import { Linking, Pressable, Text, View } from 'react-native';
 
 import { ChannelMark, channelKeyForField } from '@/components/brand/channel-marks';
+import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { CHANNEL_CLAY, CHANNEL_DEFS, RESERVATION_DEFS } from '../place-detail-links';
 import { Box } from './shared';
@@ -40,13 +41,17 @@ export function LinksBox({ place }: { place: PlaceDetail }) {
   if (chips.length === 0) return null;
 
   return (
-    <Box title="Channels" icon={Link2} iconColor="#22d3ee">
+    <Box title="Channels" icon={Link2} iconColor={COLORS.mutedForeground}>
       <View className="flex-row flex-wrap gap-2">
         {chips.map(({ key, label, Icon, url }) => {
+          // Fallback for a key with no clay entry: the card white, the ink, and
+          // the hairline border — the tint that used to draw this edge was a
+          // near-white pink, which greys to the page fill and would leave the
+          // chip edgeless on a white card, so the edge takes the border token.
           const clay = CHANNEL_CLAY[key] ?? {
-            bg: '#fff9fa',
-            text: '#260409',
-            border: '#faeff0',
+            bg: COLORS.card,
+            text: COLORS.foreground,
+            border: COLORS.border,
           };
           const leavesApp = !url.startsWith('tel:');
           // Real brand mark when the field maps to one (whatsapp / instagram /

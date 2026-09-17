@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { DiscountMeter, type DiscountLevel } from './DiscountMeter';
 
 export type ClimbCardData = {
@@ -40,13 +40,18 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
           justifyContent: 'center',
           gap: 6,
           borderRadius: 10,
-          backgroundColor: 'rgba(16,185,129,0.15)',
+          // Reached is an OUTLINED chip with its Check glyph, never a filled
+          // one: the action footer's Button is the only filled ink on this
+          // card, and a state nobody must act on cannot wear a CTA's clothes.
+          borderWidth: 1.5,
+          borderColor: COLORS.foreground,
+          backgroundColor: COLORS.card,
           paddingVertical: 10,
           minHeight: 44,
         }}
       >
-        <Check color="#047857" size={14} strokeWidth={3} />
-        <Text style={{ color: '#047857', fontWeight: '700' }}>
+        <Check color={COLORS.foreground} size={14} strokeWidth={3} />
+        <Text style={{ color: COLORS.foreground, fontWeight: '700' }}>
           {data.reachedLabel}
         </Text>
       </View>
@@ -67,15 +72,15 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
         style={{
           borderRadius: 10,
           borderWidth: 1,
-          borderColor: '#ebd9db',
-          backgroundColor: '#faeff0',
+          borderColor: COLORS.border,
+          backgroundColor: COLORS.muted,
           paddingVertical: 10,
           alignItems: 'center',
           minHeight: 44,
           justifyContent: 'center',
         }}
       >
-        <Text style={{ color: '#775254' }}>{data.note}</Text>
+        <Text style={{ color: COLORS.mutedForeground }}>{data.note}</Text>
       </View>
     );
   }
@@ -85,10 +90,11 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       style={{
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: data.accent ? 'rgba(37,99,235,0.25)' : '#ebd9db',
-        backgroundColor: data.accent
-          ? 'rgba(37,99,235,0.03)'
-          : '#ffffff',
+        // `accent` used to tint this chrome blue. Hierarchy loses its chroma,
+        // and a greyed 3%-alpha wash is invisible anyway — the ladder is
+        // carried by the tier icon tile, the door line and the meter's fill.
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         padding: 20,
       }}
     >
@@ -113,7 +119,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
             colors={
               data.accent
                 ? [...GRADIENTS.pink]
-                : (['#faeff0', '#faeff0'] as const)
+                : ([COLORS.muted, COLORS.muted] as const)
             }
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
@@ -125,7 +131,10 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
               justifyContent: 'center',
             }}
           >
-            <Icon color={data.accent ? '#fff' : '#260409'} size={24} />
+            <Icon
+              color={data.accent ? COLORS.primaryForeground : COLORS.foreground}
+              size={24}
+            />
           </LinearGradient>
         )}
         <View style={{ flex: 1 }}>
@@ -141,13 +150,19 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
               style={{
                 fontWeight: '700',
                 fontSize: 16,
-                color: data.accent ? '#6d4fd8' : '#260409',
+                color: COLORS.foreground,
               }}
             >
               {data.title}
             </Text>
             {data.via ? (
-              <Text style={{ color: '#775254', fontSize: 13, fontWeight: '500' }}>
+              <Text
+                style={{
+                  color: COLORS.mutedForeground,
+                  fontSize: 13,
+                  fontWeight: '500',
+                }}
+              >
                 via {data.via}
               </Text>
             ) : null}
@@ -155,7 +170,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
           {data.door ? (
             <Text
               style={{
-                color: '#775254',
+                color: COLORS.mutedForeground,
                 marginTop: 6,
                 fontSize: 12,
                 lineHeight: 16,
@@ -186,21 +201,15 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
                   borderRadius: 9,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: data.accent
-                    ? 'rgba(139,108,232,0.15)'
-                    : 'rgba(16,185,129,0.15)',
+                  backgroundColor: COLORS.muted,
                 }}
               >
-                <Check
-                  color={data.accent ? '#6d4fd8' : '#047857'}
-                  size={12}
-                  strokeWidth={3}
-                />
+                <Check color={COLORS.foreground} size={12} strokeWidth={3} />
               </View>
               <Text
                 style={{
                   flex: 1,
-                  color: 'rgba(38,4,9,0.85)',
+                  color: 'rgba(23,23,23,0.85)',
                   fontSize: 12.5,
                 }}
               >

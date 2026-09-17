@@ -4,7 +4,7 @@
 // this file carries the same machine (lib/ticket-journey.ts, byte-identical,
 // drift-tested from web), the same money rules (tip pre-discount, ONE
 // amount-due formula mirrored off approved_amount_due_cents), the same F1
-// waiting states, the same amber D3 send-back, and the same staged Pay rows
+// waiting states, the same D3 send-back, and the same staged Pay rows
 // (card-through-Mesita + Credits render, never charge).
 //
 // Live sync = consumer-web-get-ticket polled at 10s while the app is active
@@ -52,7 +52,7 @@ import {
 } from "@/components/rewards/TicketReviewForm";
 import { DefaultAvatar } from "@/components/ui/DefaultAvatar";
 import { FullScreenSheet } from "@/components/ui/FullScreenSheet";
-import { COLORS } from "@/constants/brand";
+import { COLORS, GRADIENTS } from "@/constants/brand";
 import { formatCurrency, submitTicketReview } from "@/lib/api/pay";
 import {
   ACTIVE_TICKET_STATES,
@@ -90,12 +90,19 @@ import {
 import { useAuth } from "@/providers/auth";
 import { cn } from "@/lib/utils";
 
-// Pass gradients by CLASS — same hexes as web's passGradient.
+// Pass gradients by CLASS. RESERVED (MESITA-1954): a class is a tier the
+// product NAMES OUT LOUD to the guest — and the pass is the object a member
+// holds up at the table — so the metals keep their hue. They converge here on
+// web's pinned values (bronze #954c28 · silver #757070 · gold #906b00 ·
+// diamond #0072a0), which is where GRADIENTS.gold and GRADIENTS.influencer
+// already land. What went: the orange first stop all four shared, so the class
+// rode on stops 2–3 alone, and bronze's pink-family ramp, which a sweep run by
+// hue would have stripped while leaving the other three coloured.
 const PASS_GRADIENTS: Record<string, readonly [string, string, string]> = {
-  diamond: ["#ff7a45", "#4aa8ff", "#2f7fd6"],
-  gold: ["#ff7a45", "#ffb03d", "#e0982e"],
-  silver: ["#ff7a45", "#c9ced6", "#98a1ad"],
-  bronze: ["#ff7a45", "#ff4d6d", "#ff2d78"],
+  diamond: ["#2ab3e8", ...GRADIENTS.influencer],
+  gold: ["#d8a422", ...GRADIENTS.gold],
+  silver: ["#b8b3b3", "#918c8c", "#757070"],
+  bronze: ["#c9834f", "#b4703f", "#954c28"],
 };
 function passColors(key: string): readonly [string, string, string] {
   return PASS_GRADIENTS[key] ?? PASS_GRADIENTS.bronze;
@@ -651,16 +658,36 @@ export function TicketScreen({
             </Text>
           ) : null}
         </View>
+        {/* Three money states in one chip, and the ternary already read
+            `cancelled ? "bg-muted" : "bg-muted"` — Cancelled and Live were one
+            pill before this repaint ever touched it. They rank by SHAPE now:
+            Live FILLS (a ticket is open right now), Completed is outlined and
+            carries the Check, Cancelled is flat — no fill, no rule, and the
+            muted tone on the label is the whole of its dimming. An extra
+            opacity on top of that took a 9px uppercase label to 3.0:1 on the
+            #efefef page, under AA, and muted-foreground alone already reads
+            quieter than either of the other two. */}
         <View
           className={cn(
-            "rounded-full px-2 py-0.5",
-            saved ? "bg-emerald-100" : cancelled ? "bg-muted" : "bg-muted",
+            "flex-row items-center gap-1 rounded-full px-2 py-0.5",
+            saved
+              ? "border border-foreground bg-card"
+              : cancelled
+                ? "bg-muted"
+                : "bg-foreground",
           )}
         >
+          {saved ? (
+            <Check size={9} color={COLORS.foreground} strokeWidth={4} />
+          ) : null}
           <Text
             className={cn(
               "font-extrabold uppercase",
-              saved ? "text-emerald-700" : "text-muted-foreground",
+              saved
+                ? "text-foreground"
+                : cancelled
+                  ? "text-muted-foreground"
+                  : "text-white",
             )}
             style={{ fontSize: 9, letterSpacing: 1 }}
           >
@@ -669,7 +696,10 @@ export function TicketScreen({
         </View>
       </View>
 
-      {/* The seven-chip rail (amber = the step a fix returned the guest to). */}
+      {/* The seven-chip rail. The step a fix returned the guest to used to be
+          amber; achromatic it INVERTS — one filled ink chip against six light
+          ones — because "fix this" must not land in the same pale band as
+          "current" and "not reached yet". */}
       <View className="flex-row gap-1 pb-2 pt-1">
         {TICKET_STEPS.map(({ id, label }) => {
           const done = stepIndex(id) <= stepIndex(step);
@@ -684,7 +714,7 @@ export function TicketScreen({
               className={cn(
                 "min-h-[40px] flex-1 justify-center rounded-xl border px-1.5",
                 amber
-                  ? "border-amber-400 bg-amber-100"
+                  ? "border-foreground bg-foreground"
                   : current
                     ? "border-primary/30 bg-primary/5"
                     : "border-border bg-card",
@@ -694,7 +724,7 @@ export function TicketScreen({
               <View
                 className={cn(
                   "h-[3px] w-full rounded-full",
-                  amber ? "bg-amber-500" : done ? "bg-primary" : "bg-border",
+                  amber ? "bg-white" : done ? "bg-primary" : "bg-border",
                 )}
               />
               <Text
@@ -702,7 +732,7 @@ export function TicketScreen({
                 className={cn(
                   "mt-1",
                   amber
-                    ? "font-bold text-amber-800"
+                    ? "font-bold text-white"
                     : current
                       ? "font-bold text-foreground"
                       : done
@@ -718,13 +748,13 @@ export function TicketScreen({
         })}
       </View>
 
-      {/* D3 — the send-back banner: amber, names the FIX. */}
+      {/* D3 — the send-back banner: names the FIX, and it is the one thing on
+          this screen the guest MUST act on. It INVERTS rather than greys — a
+          pale box in a column of pale cards reads as a caption, not a
+          rejection. Same ink mark as the rail step it points at. */}
       {fix ? (
-        <View className="mb-2 rounded-xl bg-amber-100 px-3 py-2">
-          <Text
-            className="font-semibold text-amber-800"
-            style={{ fontSize: 11.5 }}
-          >
+        <View className="mb-2 rounded-xl bg-foreground px-3 py-2">
+          <Text className="font-semibold text-white" style={{ fontSize: 11.5 }}>
             {placeName} sent it back — {FIX_COPY[fix].title.toLowerCase()}.
             {ticket.fix_note ? ` “${ticket.fix_note}”` : ""}
           </Text>
@@ -904,11 +934,15 @@ export function TicketScreen({
 
               <View className="mt-2.5 items-center">
                 <View className="rounded-2xl bg-white p-2.5">
+                  {/* SCAN TARGET, not a theme colour: a camera owns this
+                      contrast. The pair is PINNED near-black on pure white and
+                      does not follow the palette in either direction. #2b1233
+                      was a drifted near-foreground matching no token. */}
                   <QRCode
                     value={checkUrlForCode(ticket.check_code ?? "")}
                     size={158}
                     backgroundColor="#ffffff"
-                    color="#2b1233"
+                    color="#171717"
                   />
                 </View>
               </View>
@@ -1280,17 +1314,25 @@ export function TicketScreen({
                 onPress={() => setReportReason(r.key)}
                 className={cn(
                   "rounded-2xl px-3.5 py-3",
-                  active ? "bg-primary/10" : "bg-muted",
+                  // A radio list rendered without a radio: bg-primary/10 over
+                  // bg-muted is seven points of lightness, so the pick FILLS.
+                  active ? "bg-foreground" : "bg-muted",
                 )}
               >
                 <Text
-                  className="font-bold text-foreground"
+                  className={cn(
+                    "font-bold",
+                    active ? "text-white" : "text-foreground",
+                  )}
                   style={{ fontSize: 13.5 }}
                 >
                   {r.label}
                 </Text>
                 <Text
-                  className="mt-0.5 text-muted-foreground"
+                  className={cn(
+                    "mt-0.5",
+                    active ? "text-white/70" : "text-muted-foreground",
+                  )}
                   style={{ fontSize: 11.5 }}
                 >
                   {r.hint}
@@ -1698,7 +1740,9 @@ function LaneChip({
           >
             {label}
           </Text>
-          {done ? <Check size={10} color="#059669" strokeWidth={4} /> : null}
+          {done ? (
+            <Check size={10} color={COLORS.foreground} strokeWidth={4} />
+          ) : null}
         </View>
         {sub ? (
           <Text
@@ -1999,9 +2043,13 @@ function RewardLanes({
         </View>
         {capPesos ? (
           <View className="border-t border-border px-2.5 py-1.5">
-            <View className="flex-row items-center gap-2 rounded-xl bg-amber-100 px-2 py-1.5">
+            {/* The ceiling on the 26px number directly above. Nobody can act
+                on a cap, so it OUTLINES: the filled ink on this screen belongs
+                to the send-back and to the approval. An ink hairline still
+                reads heavier than the border-border rows around it. */}
+            <View className="flex-row items-center gap-2 rounded-xl border border-foreground bg-card px-2 py-1.5">
               <Text
-                className="font-extrabold text-amber-700"
+                className="font-extrabold text-foreground"
                 style={{ fontSize: 12 }}
               >
                 !
@@ -2069,14 +2117,17 @@ function TaskStep({
         </Text>
         <View
           className={cn(
-            "rounded-full px-2 py-0.5",
-            done ? "bg-emerald-100" : "bg-muted",
+            "flex-row items-center gap-1 rounded-full px-2 py-0.5",
+            done ? "bg-foreground" : "bg-muted",
           )}
         >
+          {done ? (
+            <Check size={9} color={COLORS.primaryForeground} strokeWidth={4} />
+          ) : null}
           <Text
             className={cn(
               "font-extrabold uppercase",
-              done ? "text-emerald-700" : "text-muted-foreground",
+              done ? "text-white" : "text-muted-foreground",
             )}
             style={{ fontSize: 9.5, letterSpacing: 0.8 }}
           >
@@ -2187,11 +2238,15 @@ function StepPay({
 }) {
   return (
     <View className="gap-3">
-      <View className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3.5">
-        <Text className="font-bold text-foreground" style={{ fontSize: 17 }}>
+      {/* The one affirmative moment in the pay flow: the bill is accepted and
+          the discount is locked. It INVERTS — greyed in place it became the
+          same white card as "Waiting on {placeName}" two steps earlier and as
+          the settle list immediately below it. */}
+      <View className="rounded-2xl border border-foreground bg-foreground p-3.5">
+        <Text className="font-bold text-white" style={{ fontSize: 17 }}>
           {placeName} approved it
         </Text>
-        <Text className="mt-1 text-muted-foreground" style={{ fontSize: 12 }}>
+        <Text className="mt-1 text-white/80" style={{ fontSize: 12 }}>
           {pct > 0 ? `${pct}% off is locked. ` : ""}Pay at the table like always
           — the ticket closes the moment they confirm.
         </Text>
@@ -2207,7 +2262,7 @@ function StepPay({
           </Text>
         </View>
         <PayRow
-          icon={<Wallet size={16} color={COLORS.mutedForeground} />}
+          icon={<Wallet size={16} color={COLORS.primaryForeground} />}
           label="At the register"
           sub="Cash or card, straight to the place"
           selected
@@ -2305,7 +2360,11 @@ function PayRow({
       <View
         className={cn(
           "size-8 items-center justify-center rounded-xl",
-          selected ? "bg-primary/10" : "bg-muted",
+          // The live path's tile FILLS: bg-primary/10 over bg-muted was seven
+          // points of lightness, and the two staged rows are left holding only
+          // opacity-50 and the "Soon" pill. A `selected` row therefore hands in
+          // a LIGHT icon — see the "At the register" call site.
+          selected ? "bg-primary" : "bg-muted",
         )}
       >
         {icon}

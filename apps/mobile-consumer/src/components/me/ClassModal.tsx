@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { CLASS_MARK_ICON } from '@/lib/consumer-classes';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { ClassPreviewToggle } from './class/ClassPreviewToggle';
@@ -54,7 +54,7 @@ export function ClassModal({
             justifyContent: 'center',
           }}
         >
-          <CLASS_MARK_ICON color="#fff" size={22} />
+          <CLASS_MARK_ICON color={COLORS.primaryForeground} size={22} />
         </LinearGradient>
       </View>
       <ClassRail />

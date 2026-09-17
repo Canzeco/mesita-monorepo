@@ -5,7 +5,7 @@ import { ChevronRight } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 
 type BoxTint =
@@ -18,29 +18,51 @@ type BoxTint =
   | 'premium'
   | 'destructive';
 
-// Ports web ProfileClient BOX_TINT — each Me option-box icon gets its own
-// tinted tile so the page reads premium, never a flat gray stack.
+// Ports web ProfileClient BOX_TINT — one neutral tile per Me option-box icon.
+//
+// THE TINT AXIS IS COLLAPSED ON PURPOSE (MESITA-1954). It used to read
+// sky/emerald/violet/amber against `muted` so the page "reads premium, never a
+// flat gray stack". Achromatic, those four fills sit at 15–20% alpha and land
+// within a couple of percent of `bg-muted` and of each other — so the honest
+// move is to write the collapse down here rather than leave eight tint names
+// that render as one thing. Web got to the same place first and by argument
+// rather than by repaint (see apps/web-consumer me/profile-sections.tsx,
+// MESITA-1132): seven accents in a vertical stack give seven rows equal
+// emphasis, so nothing leads. Its chip is `bg-muted` + `text-foreground/70`,
+// which is exactly what these two records now hold.
+//
+// The lucide glyph is what identifies a row. The `BoxTint` union is kept whole
+// so no call site has to change, but only two members still carry meaning:
+// `destructive` (danger — reserved hue) and the gradient tiles below.
 const SOLID_TINT: Record<
   Exclude<BoxTint, 'pink' | 'premium'>,
   string
 > = {
-  sky: 'bg-sky-500/15',
-  emerald: 'bg-emerald-500/15',
-  violet: 'bg-violet-500/15',
-  amber: 'bg-amber-400/20',
+  sky: 'bg-muted',
+  emerald: 'bg-muted',
+  violet: 'bg-muted',
+  amber: 'bg-muted',
   muted: 'bg-muted',
+  // RESERVED: red is the one thing that says "this destroys something". It is
+  // also the only tile that differs at all — note no call site passes
+  // tint="destructive" today, so this is the repair path, not live pixels.
   destructive: 'bg-destructive/10',
 };
 
 const ICON_COLOR: Record<BoxTint, string> = {
-  pink: '#ffffff',
-  sky: '#0284c7',
-  emerald: '#059669',
-  violet: '#7c3aed',
-  amber: '#b45309',
-  muted: 'rgba(38,4,9,0.7)',
-  premium: '#ffffff',
-  destructive: '#dc2626',
+  // The label on an ink gradient tile.
+  pink: COLORS.primaryForeground,
+  sky: COLORS.mutedForeground,
+  emerald: COLORS.mutedForeground,
+  violet: COLORS.mutedForeground,
+  amber: COLORS.mutedForeground,
+  // was rgba(38,4,9,0.7) — old ink at 70%, i.e. web's `text-foreground/70`,
+  // which over a tile is this token. One value for all five decorative tints.
+  muted: COLORS.mutedForeground,
+  premium: COLORS.primaryForeground,
+  // RESERVED: danger. Was #dc2626 (stock Tailwind red-600, never a Mesita
+  // value); the token is what `bg-destructive/10` above already tints with.
+  destructive: COLORS.destructive,
 };
 
 function TintedIconTile({
@@ -155,7 +177,7 @@ function BoxShell({
           {summary}
         </Text>
       </View>
-      {!soon ? <ChevronRight color="#775254" size={16} /> : null}
+      {!soon ? <ChevronRight color={COLORS.mutedForeground} size={16} /> : null}
     </Pressable>
   );
 }

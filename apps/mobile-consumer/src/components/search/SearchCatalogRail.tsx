@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { RailCard } from '@/components/search/SearchRailCard';
-import { SHADOW_ELEV } from '@/constants/brand';
+import { COLORS, SHADOW_ELEV } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 
 // 80% active card + 10% neighbor peek each side. First/last pages pad so
@@ -84,7 +84,7 @@ export function IdleCatalogRail({
     return (
       <View className="absolute inset-x-0 z-20" style={{ bottom: bottom + 4 }}>
         <View className="h-28 items-center justify-center">
-          <ActivityIndicator color="#fb2b7b" />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       </View>
     );
@@ -93,8 +93,14 @@ export function IdleCatalogRail({
   if (fetchError) {
     return (
       <View className="absolute inset-x-0 z-20" style={{ bottom: bottom + 4 }}>
-        <View className="mx-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-          <Text className="text-xs text-rose-700">{fetchError}</Text>
+        {/* The fill stays OPAQUE (`bg-card`, was `bg-rose-50`): this box floats
+            over the live map with nothing behind it, so a `bg-destructive/10`
+            wash would put red body text on whatever tile — park, water, a
+            photo — happened to be underneath. Danger keeps its hue in the
+            hairline and the text, which is also what separates this from the
+            neutral "no matches" card ten lines below. (MESITA-1954) */}
+        <View className="mx-4 rounded-xl border border-destructive/30 bg-card px-3 py-2">
+          <Text className="text-xs text-destructive">{fetchError}</Text>
         </View>
       </View>
     );
@@ -122,7 +128,7 @@ export function IdleCatalogRail({
             accessibilityLabel="Clear filters"
             hitSlop={8}
           >
-            <Text className="text-xs font-semibold text-primary">
+            <Text className="text-xs font-semibold text-primary underline">
               Clear filters
             </Text>
           </Pressable>
@@ -145,7 +151,7 @@ export function IdleCatalogRail({
           className="min-h-[44px] flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2"
           style={SHADOW_ELEV}
         >
-          <ChevronUp color="#fb2b7b" size={16} />
+          <ChevronUp color={COLORS.primary} size={16} />
           <Text
             className="text-xs font-semibold text-foreground"
             style={{ fontVariant: ['tabular-nums'] }}
@@ -181,7 +187,7 @@ export function IdleCatalogRail({
           className="flex-row items-center gap-1 rounded-full border border-border bg-card py-1 pl-2.5 pr-1"
           style={SHADOW_ELEV}
         >
-          <MapPin color="#fb2b7b" size={12} />
+          <MapPin color={COLORS.primary} size={12} />
           <Text
             className="text-[11px] font-semibold text-muted-foreground"
             style={{ fontVariant: ['tabular-nums'] }}
@@ -201,7 +207,7 @@ export function IdleCatalogRail({
             hitSlop={8}
             className="h-5 w-5 items-center justify-center rounded-full"
           >
-            <X color="#775254" size={14} />
+            <X color={COLORS.mutedForeground} size={14} />
           </Pressable>
         </View>
       </View>

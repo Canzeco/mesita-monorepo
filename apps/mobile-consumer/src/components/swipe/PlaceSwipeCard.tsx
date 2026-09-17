@@ -13,7 +13,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
-import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import { resolveZoneLabel } from '@/lib/adapters/place-to-detail';
 import type { Place } from '@/lib/api/places';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
@@ -90,11 +90,16 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           >
             {place.name}
           </Text>
-          {/* decision: MESITA-933 — blue ✓ disc only when Mesita partner.
-              Unverified: no disc; "Not Verified" tag in the chip row. */}
+          {/* decision: MESITA-933 — ink ✓ disc only when Mesita partner.
+              Unverified: no disc; "Not Verified" tag in the chip row.
+              MESITA-1954: the disc was a sky blue nobody names (bg-[#0EA5E9]);
+              partner is a status, not a tier, so it takes the ink token —
+              the same call web's SwipeCardInfo made (PartnerMark text-primary).
+              Presence/absence still separates the two states; the white ✓
+              carries the disc where the photo scrim is darkest. */}
           {isVerified ? (
             <View
-              className="size-[18px] items-center justify-center rounded-full bg-[#0EA5E9]"
+              className="size-[18px] items-center justify-center rounded-full bg-primary"
               accessibilityLabel="Mesita Partner"
             >
               <Text className="text-[10px] font-bold text-white">✓</Text>
@@ -104,21 +109,24 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
 
         <View className="flex-row flex-wrap items-center gap-1.5">
           {/* decision: Pato — newly created / still-enriching places show the
-              Enriching chip on the swipe deck too (web SwipeCardInfo parity). */}
+              Enriching chip on the swipe deck too (web SwipeCardInfo parity).
+              MESITA-1954: it was emerald. Greyscaled it would have BECOME
+              MetaChip, so the in-flight state is carried by the spinner plus a
+              DASHED border — the "not settled yet" vocabulary — never by tone. */}
           {place.is_enriching ? (
             <View
-              className="flex-row items-center gap-1.5 rounded-md border border-emerald-300/55 bg-emerald-500/35 px-[9px] py-[3px]"
+              className="flex-row items-center gap-1.5 rounded-md border border-dashed border-white/55 bg-black/45 px-[9px] py-[3px]"
               accessibilityLiveRegion="polite"
             >
-              <ActivityIndicator color="#ecfdf5" size="small" />
-              <Text className="text-[11px] font-semibold text-emerald-50">
+              <ActivityIndicator color="#ffffff" size="small" />
+              <Text className="text-[11px] font-semibold text-white">
                 Enriching
               </Text>
             </View>
           ) : null}
           {!isVerified ? (
             <View className="flex-row items-center rounded-md border border-white/15 bg-black px-[9px] py-[3px]">
-              <Text className="text-[11px] font-semibold text-neutral-300">
+              <Text className="text-[11px] font-semibold text-white/70">
                 Not Verified
               </Text>
             </View>
@@ -130,7 +138,7 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
               <Text className="text-[11px] font-semibold text-white">
                 {ratingLabel}
               </Text>
-              <Star color="#fbbf24" fill="#fbbf24" size={12} />
+              <Star color="#ffffff" fill="#ffffff" size={12} />
               {ratingCountLabel ? (
                 <Text className="text-[11px] text-white/70">
                   ({ratingCountLabel})
@@ -140,7 +148,7 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           ) : null}
           {igFollowersLabel ? (
             <MetaChip>
-              <ChannelMark channel="instagram" color="rgba(251,207,232,0.8)" size={12} />
+              <ChannelMark channel="instagram" color="rgba(255,255,255,0.8)" size={12} />
               <Text className="text-[11px] font-semibold text-white">
                 {igFollowersLabel}
               </Text>
@@ -164,11 +172,20 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           </MetaChip>
           {stateLabel ? (
             <MetaChip>
+              {/* MESITA-1954: open vs closed was emerald vs 70% white — hue
+                  alone, and both greyscale to the same light tone on a photo.
+                  Open is now a FILLED clock at full white, closed a hollow one
+                  dimmed with its label: shape + weight, never two greys.
+                  (getOpeningStateLabel can return "Until 23:00" with no
+                  open/closed word, so the text cannot carry this by itself.) */}
               <Clock
-                color={isOpen ? '#34d399' : 'rgba(255,255,255,0.7)'}
+                color={isOpen ? '#ffffff' : 'rgba(255,255,255,0.7)'}
+                fill={isOpen ? 'rgba(255,255,255,0.4)' : 'transparent'}
                 size={12}
               />
-              <Text className="text-[11px] font-semibold text-white">
+              <Text
+                className={`text-[11px] font-semibold ${isOpen ? 'text-white' : 'text-white/75'}`}
+              >
                 {stateLabel}
               </Text>
             </MetaChip>
@@ -187,14 +204,27 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
                 gap: 6,
               }}
             >
-              <Gift color="#fff" size={12} />
+              {/* FILLED glyph, matching PromoChip's affirmative exactly — the
+                  inline copy here must not drift from the component the
+                  Favorites tile renders. Opaque + border-less + filled is the
+                  trio that keeps a discount unmissable now the ramp is ink. */}
+              <Gift
+                color={COLORS.primaryForeground}
+                fill="rgba(255,255,255,0.4)"
+                size={12}
+              />
               <Text className="text-[11.5px] font-semibold text-white">
                 Up to {promoPercent}% Discount for You
               </Text>
             </LinearGradient>
           ) : isVerified ? (
             <MetaChip>
-              <Gift color="#fff" size={12} />
+              {/* The discount chip above is the only OPAQUE ink chip on the
+                  card (GRADIENTS.pink is the ink ramp now) — the affirmative.
+                  This one stays an outlined MetaChip and its glyph drops to the
+                  0.7 white its siblings wear, so "no reward" reads as a state
+                  nobody acts on rather than a second offer. */}
+              <Gift color="rgba(255,255,255,0.7)" size={12} />
               <Text className="text-[11px] font-semibold text-white">
                 No Reward for You
               </Text>

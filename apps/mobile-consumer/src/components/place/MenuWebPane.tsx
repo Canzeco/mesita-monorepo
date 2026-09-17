@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 
+import { COLORS } from '@/constants/brand';
 import { drivePreviewUrl, type MenuKind } from '@/lib/menu-url';
 
 // Web-export variant (Metro web preview — the sanctioned agent verification
@@ -31,7 +32,7 @@ export function MenuWebPane({
       width: '100%',
       height: '100%',
       border: 0,
-      background: '#ffffff',
+      background: COLORS.card,
     },
     onLoad: () => onReady(0),
     onError: () => onError(),

@@ -171,7 +171,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
                     showActive
                       ? {
                           borderWidth: 1,
-                          borderColor: 'rgba(251, 43, 123, 0.2)',
+                          borderColor: `${COLORS.primary}33`,
                         }
                       : undefined
                   }

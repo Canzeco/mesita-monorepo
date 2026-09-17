@@ -3,6 +3,7 @@ import { CalendarPlus, MapPin, Phone, XCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import { apiCancelReservation } from '@/lib/api/reservations';
 import { placePath } from '@/lib/consumer-route-contract';
 import { toast } from '@/lib/toast';
@@ -46,7 +47,7 @@ export function ReservationActions({
       >
         <View className="flex-row items-center gap-3">
           <View className="h-9 w-9 items-center justify-center rounded-full bg-muted">
-            <MapPin color="#260409" size={16} />
+            <MapPin color={COLORS.foreground} size={16} />
           </View>
           <Text className="text-sm font-semibold text-foreground">
             View place
@@ -72,7 +73,7 @@ export function ReservationActions({
           >
             <View className="flex-row items-center gap-3">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <CalendarPlus color="#260409" size={16} />
+                <CalendarPlus color={COLORS.foreground} size={16} />
               </View>
               <Text className="text-sm font-semibold text-foreground">
                 Add to calendar
@@ -96,7 +97,7 @@ export function ReservationActions({
           >
             <View className="flex-row items-center gap-3">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <Phone color="#260409" size={16} />
+                <Phone color={COLORS.foreground} size={16} />
               </View>
               <Text className="text-sm font-semibold text-foreground">
                 Call place
@@ -115,9 +116,9 @@ export function ReservationActions({
             className="flex-row items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 active:bg-muted disabled:opacity-60"
           >
             {cancelBusy ? (
-              <ActivityIndicator color="#260409" />
+              <ActivityIndicator color={COLORS.foreground} />
             ) : (
-              <XCircle color="#260409" size={16} />
+              <XCircle color={COLORS.foreground} size={16} />
             )}
             <Text className="text-sm font-semibold text-foreground/80">
               {cancelBusy ? 'Cancelling…' : 'Cancel reservation'}

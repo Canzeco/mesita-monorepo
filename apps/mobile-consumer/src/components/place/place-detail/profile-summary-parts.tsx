@@ -5,7 +5,7 @@ import { type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { isElevatedClass } from '@/lib/consumer-classes';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import type { PlaceDetail } from '@/lib/types/place-detail';
@@ -59,10 +59,16 @@ export function ProfileStat({
   return (
     <View className="min-w-0 flex-1 items-center px-0.5">
       <View className="flex-row items-center gap-0.5">
-        {star ? <Star color="#f59e0b" fill="#f59e0b" size={12} /> : null}
-        {ig ? <ChannelMark channel="instagram" size={12} color="#ec4899" /> : null}
-        {fb ? <ChannelMark channel="facebook" size={12} color="#2563eb" /> : null}
-        {gift ? <Gift color="#0ea5e9" size={12} /> : null}
+        {star ? <Star color={COLORS.foreground} fill={COLORS.foreground} size={12} /> : null}
+        {/* The two platform marks wore HOUSE colours — a pink-500 Instagram
+            and a blue-600 Facebook, neither the value its owner publishes. The
+            override goes rather than turning grey: ChannelMark already holds
+            the canonical #E4405F / #0866FF, so the mark is reserved AND can no
+            longer drift. Everything Mesita owns in this row is ink; each stat
+            is told apart by its GLYPH, which is why the amber can go. */}
+        {ig ? <ChannelMark channel="instagram" size={12} /> : null}
+        {fb ? <ChannelMark channel="facebook" size={12} /> : null}
+        {gift ? <Gift color={COLORS.foreground} size={12} /> : null}
         <Text className="text-[17px] font-bold tabular-nums text-foreground">
           {value}
         </Text>
@@ -102,8 +108,24 @@ export function PromoMetaChip({ place }: { place: PlaceDetail }) {
   );
   return (
     <ProfileMetaChip>
-      <Gift color={rate != null ? '#0ea5e9' : '#775254'} size={12} />
-      <Text className="text-[11.5px] font-semibold text-foreground">
+      {/* Reward vs no reward was sky-vs-mauve on one 12px glyph, and #775254
+          IS the greyscale target — repainted flat, the ternary would evaluate
+          to the same string in both branches and a discount would look like
+          its absence. Re-separated with the idiom the Clock chip beside it
+          uses for open vs closed (profile.tsx): money on the table = ink glyph
+          + bold ink label, nothing on the table = muted glyph + medium muted
+          label. ~30 L* apart on the glyph, plus the weight, plus the word. */}
+      <Gift
+        color={rate != null ? COLORS.foreground : COLORS.mutedForeground}
+        size={12}
+      />
+      <Text
+        className={`text-[11.5px] ${
+          rate != null
+            ? 'font-bold text-foreground'
+            : 'font-medium text-muted-foreground'
+        }`}
+      >
         {rate != null ? `${rate}% off` : 'No reward'}
       </Text>
     </ProfileMetaChip>

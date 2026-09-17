@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Switch } from '@/components/ui/Switch';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import {
   useEffectiveClass,
   useMockClass,
@@ -28,7 +28,7 @@ export function MockControls() {
       style={{
         borderWidth: 1,
         borderStyle: 'dashed',
-        borderColor: 'rgba(235,217,219,0.9)',
+        borderColor: 'rgba(219,219,219,0.9)',
         borderRadius: 16,
         padding: 12,
         gap: 8,
@@ -37,8 +37,8 @@ export function MockControls() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Text
           style={{
-            backgroundColor: 'rgba(245,158,11,0.15)',
-            color: '#d97706',
+            backgroundColor: COLORS.primary,
+            color: COLORS.primaryForeground,
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 4,
@@ -51,7 +51,7 @@ export function MockControls() {
           DEMO
         </Text>
         <Text
-          style={{ color: '#775254', flex: 1, fontWeight: '600', fontSize: 12 }}
+          style={{ color: COLORS.mutedForeground, flex: 1, fontWeight: '600', fontSize: 12 }}
         >
           Emulate account states
         </Text>
@@ -64,7 +64,7 @@ export function MockControls() {
           >
             <Text
               style={{
-                color: '#775254',
+                color: COLORS.mutedForeground,
                 fontWeight: '700',
                 textDecorationLine: 'underline',
                 fontSize: 12,
@@ -114,8 +114,8 @@ function EmulateRow({
         gap: 12,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         padding: 12,
       }}
     >
@@ -147,15 +147,15 @@ function EmulateRow({
             justifyContent: 'center',
           }}
         >
-          <Crown color="#fff" size={18} />
+          <Crown color={COLORS.primaryForeground} size={18} />
         </LinearGradient>
       )}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontWeight: '700', fontSize: 15, color: '#260409' }}>
+        <Text style={{ fontWeight: '700', fontSize: 15, color: COLORS.foreground }}>
           {title}
         </Text>
         <Text
-          style={{ color: '#775254', fontSize: 12 }}
+          style={{ color: COLORS.mutedForeground, fontSize: 12 }}
           numberOfLines={1}
         >
           {summary}

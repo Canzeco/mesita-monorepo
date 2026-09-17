@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { Bell, MapPin, Star } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import type { ConsumerNotification } from '@/lib/api/notifications';
 import { formatPayMx } from '@/lib/api/pay';
 
@@ -12,8 +13,8 @@ function kindLabel(kind: string): string {
 }
 
 function KindIcon({ kind, size = 14 }: { kind: string; size?: number }) {
-  if (kind === 'review') return <Star color="#775254" size={size} />;
-  return <Bell color="#775254" size={size} />;
+  if (kind === 'review') return <Star color={COLORS.mutedForeground} size={size} />;
+  return <Bell color={COLORS.mutedForeground} size={size} />;
 }
 
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
@@ -29,8 +30,8 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
         overflow: 'hidden',
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         padding: 12,
       }}
     >
@@ -40,7 +41,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
           width: 64,
           borderRadius: 12,
           overflow: 'hidden',
-          backgroundColor: '#faeff0',
+          backgroundColor: COLORS.muted,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -52,7 +53,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
             contentFit="cover"
           />
         ) : (
-          <MapPin color="#775254" size={20} style={{ opacity: 0.4 }} />
+          <MapPin color={COLORS.mutedForeground} size={20} style={{ opacity: 0.4 }} />
         )}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -62,7 +63,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
             fontSize: 14,
             lineHeight: 18,
             fontFamily: 'Inter_600SemiBold',
-            color: '#260409',
+            color: COLORS.foreground,
           }}
         >
           {p.place_name ?? 'Mesita partner'}
@@ -79,7 +80,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
           <Text
             style={{
               fontSize: 12,
-              color: '#775254',
+              color: COLORS.mutedForeground,
               fontFamily: 'Inter_400Regular',
             }}
           >
@@ -92,9 +93,12 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
               marginTop: 4,
               fontSize: 12,
               fontFamily: 'Inter_500Medium',
-              // Brand --secondary (crimson), matching web notification-row's
-              // text-secondary — was an off-token sky-blue (#0284c7).
-              color: '#cf0360',
+              // --secondary, still matching web notification-row's
+              // text-secondary — which went achromatic in MESITA-1936. It was
+              // crimson here, and before that an off-token sky-blue (#0284c7).
+              // The amount now out-ranks the metadata by lightness (#404040 vs
+              // the #5d5d5d kind label and timestamp) plus its weight step.
+              color: COLORS.secondary,
             }}
           >
             Reward {formatPayMx(reward, p.currency)}
@@ -104,7 +108,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
           style={{
             marginTop: 4,
             fontSize: 10,
-            color: '#775254',
+            color: COLORS.mutedForeground,
             fontFamily: 'Inter_400Regular',
           }}
         >
@@ -127,8 +131,8 @@ export function SkeletonRow() {
         height: 88,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         opacity: 0.7,
       }}
     />

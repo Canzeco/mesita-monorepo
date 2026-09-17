@@ -2,6 +2,8 @@ import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
+
 // Friendly birthday picker — three taps (Day / Month / Year) instead of a
 // free-text field, so a partial selection sticks and the month never offers a
 // bad day. RN port of apps/web-consumer BirthdayPicker: same parse/compose/
@@ -175,7 +177,7 @@ export function BirthdayPicker({
             onPress={(e) => e.stopPropagation()}
             style={{
               maxHeight: '70%',
-              backgroundColor: '#ffffff',
+              backgroundColor: COLORS.card,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               paddingBottom: 24,
@@ -203,7 +205,14 @@ export function BirthdayPicker({
                       justifyContent: 'center',
                       paddingHorizontal: 20,
                       paddingVertical: 12,
-                      backgroundColor: active ? '#ffe4ef' : 'transparent',
+                      // THE SELECTED ROW. The wash was #ffe4ef, a one-off
+                      // pale pink; greyscaled at its own lightness (~#ececec)
+                      // it is a ~6% delta on the white sheet — invisible in a
+                      // 101-row year list, leaving font-semibold as the only
+                      // marker. COLORS.border is the same kind of wash one
+                      // step darker (12 L* off the sheet), so fill + weight
+                      // still separate the chosen day/month/year.
+                      backgroundColor: active ? COLORS.border : 'transparent',
                     }}
                   >
                     <Text
@@ -256,7 +265,7 @@ function Trigger({
       >
         {filled ? text : placeholder}
       </Text>
-      <ChevronDown color="#775254" size={16} />
+      <ChevronDown color={COLORS.mutedForeground} size={16} />
     </Pressable>
   );
 }

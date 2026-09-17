@@ -2,6 +2,8 @@ import { ChevronDown } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
+
 // English only (Mesita core). Spanish TMS is later (MESITA-939).
 
 const LONG_TEXT_THRESHOLD = 600;
@@ -45,7 +47,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
             {expanded ? 'Show less' : 'Show more'}
           </Text>
           <ChevronDown
-            color="#260409"
+            color={COLORS.foreground}
             size={12}
             style={{
               transform: [{ rotate: expanded ? '180deg' : '0deg' }],

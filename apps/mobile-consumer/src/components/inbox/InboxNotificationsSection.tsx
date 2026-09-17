@@ -7,6 +7,7 @@ import {
   NotificationRow,
   SkeletonRow,
 } from '@/components/inbox/NotificationRows';
+import { COLORS } from '@/constants/brand';
 import {
   fetchConsumerNotifications,
   type ConsumerNotification,
@@ -95,7 +96,11 @@ export function InboxNotificationsSection({ userId }: { userId: string }) {
         <View className="gap-4">
           {rows.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
             <View className="items-center rounded-2xl border border-border bg-card px-4 py-8">
-              <Bell color="#775254" size={40} style={{ opacity: 0.5 }} />
+              <Bell
+                color={COLORS.mutedForeground}
+                size={40}
+                style={{ opacity: 0.5 }}
+              />
               <Text className="mt-3 text-sm text-muted-foreground">
                 No notifications yet.
               </Text>

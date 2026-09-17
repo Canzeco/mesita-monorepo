@@ -1,18 +1,27 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL } from '@/constants/brand';
 
 export type DiscountLevel = 'LOW' | 'HIGH' | 'EXTRA' | 'MAX';
 
+// THE LADDER IS ONE INK RAMP, NOT FOUR HUES (MESITA-1954). The rungs used to
+// borrow the class gradients — pink, influencer, premium and a loose amber —
+// so a token-only repaint would have greyed LOW and EXTRA while HIGH stayed
+// blue and MAX stayed amber: the SMALLEST discount reading as "different"
+// instead of "least". The tier's own colour is already on this card, in
+// ClimbCard's icon tile, so the meter is free to do the one job left to it —
+// magnitude. Four rungs, one ramp, each step ~15 L* darker than the last and
+// every one of them well clear of the unfilled track. The `filled` count and
+// the level word stay the primary carriers; the ramp only agrees with them.
 const LEVEL_META: Record<
   DiscountLevel,
   { filled: number; colors: readonly [string, string] }
 > = {
-  LOW: { filled: 1, colors: GRADIENTS.pink },
-  HIGH: { filled: 2, colors: GRADIENTS.influencer },
-  EXTRA: { filled: 3, colors: GRADIENTS.premium },
-  MAX: { filled: 4, colors: ['#f59e0b', '#fbbf24'] },
+  LOW: { filled: 1, colors: ['#a3a3a3', '#8a8a8a'] },
+  HIGH: { filled: 2, colors: ['#7a7a7a', COLORS.mutedForeground] },
+  EXTRA: { filled: 3, colors: ['#525252', COLORS.secondary] },
+  MAX: { filled: 4, colors: ['#2e2e2e', COLORS.foreground] },
 };
 
 /** Qualitative LOW→MAX discount ladder — hero signal on Class climb cards. */
@@ -25,7 +34,7 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
       accessibilityRole="image"
       accessibilityLabel={`Discount Rewards level: ${level} (${filled} of 4)`}
       style={{
-        backgroundColor: '#faeff0',
+        backgroundColor: COLORS.muted,
         borderRadius: 12,
         padding: 10,
       }}
@@ -44,7 +53,7 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
             fontSize: 13,
             fontWeight: '800',
             letterSpacing: 0.4,
-            color: '#260409',
+            color: COLORS.foreground,
           }}
         >
           {level}
@@ -53,7 +62,7 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
           style={{
             fontSize: 10,
             fontWeight: '600',
-            color: '#775254',
+            color: COLORS.mutedForeground,
           }}
         >
           Discount Rewards
@@ -76,7 +85,7 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
                 flex: 1,
                 height: 8,
                 borderRadius: 999,
-                backgroundColor: '#e5d4d6',
+                backgroundColor: COLORS.border,
               }}
             />
           ),

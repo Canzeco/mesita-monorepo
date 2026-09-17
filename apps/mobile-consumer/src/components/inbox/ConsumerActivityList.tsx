@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import {
   ACTIVITY_KIND_META,
   type ConsumerActivity,
@@ -48,7 +49,7 @@ export function ConsumerActivityList({
       })}
       {anonymisedNote ? (
         <View className="flex-row items-center justify-center gap-1.5 pt-1">
-          <Sparkles color="#775254" size={12} />
+          <Sparkles color={COLORS.mutedForeground} size={12} />
           <Text className="text-[11px] text-muted-foreground">
             Anonymised — handles, places, and amounts are shuffled.
           </Text>

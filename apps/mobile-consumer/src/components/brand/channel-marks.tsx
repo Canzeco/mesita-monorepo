@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { COLORS } from '@/constants/brand';
+
 // Channel brand marks — RN port of the web brand SVGs the consumer place
 // detail renders (apps/web-consumer/public/channels/*.svg, wired by
 // apps/web-consumer/src/components/consumer/place-detail-links.ts). Web paints
@@ -46,9 +48,12 @@ type ChannelKey =
 // Canonical brand colour per mark (simple-icons values). X / Threads / Uber
 // ship white in the web files (rendered on tinted chips); their canonical mark
 // colour is black, which is what reads on the light theme — callers can still
-// override via `color`.
+// override via `color`. Every value a platform owns stays exactly as that
+// platform publishes it — MESITA-1954 greys Mesita's colour, not anyone else's.
 const BRAND_COLOR: Record<ChannelKey, string> = {
-  website: '#0EA5E9',
+  // The one entry no third party owns: a generic globe (lucide geometry)
+  // wearing a sky blue nobody named. Achromatic now — it's ink (MESITA-1954).
+  website: COLORS.foreground,
   whatsapp: '#25D366',
   instagram: '#E4405F',
   facebook: '#0866FF',

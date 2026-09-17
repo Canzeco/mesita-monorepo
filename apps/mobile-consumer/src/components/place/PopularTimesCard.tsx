@@ -72,7 +72,7 @@ export function PopularTimesCard({
         {featured.bars.map((v, i) => (
           <LinearGradient
             key={i}
-            colors={['#a855f7', '#ec4899']}
+            colors={[...GRADIENTS.brand]}
             start={{ x: 0.5, y: 1 }}
             end={{ x: 0.5, y: 0 }}
             style={{

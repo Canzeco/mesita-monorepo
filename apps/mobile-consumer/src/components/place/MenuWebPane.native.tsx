@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+import { COLORS } from '@/constants/brand';
 import { drivePreviewUrl, type MenuKind } from '@/lib/menu-url';
 
 // In-app menu visualization for PDF and Google Drive menus — web MenuViewer
@@ -24,29 +25,29 @@ function pdfShellHtml(url: string): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=4, user-scalable=yes" />
 <style>
-  html, body { margin: 0; padding: 0; background: #f8eff0; }
+  html, body { margin: 0; padding: 0; background: ${COLORS.muted}; }
   #pages { padding: 12px 12px 40px; }
   canvas.page {
     display: block;
     width: 100%;
     height: auto;
     margin: 0 auto 12px;
-    background: #ffffff;
+    background: ${COLORS.card};
     border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(38, 4, 9, 0.12);
+    box-shadow: 0 4px 14px rgba(23, 23, 23, 0.12);
   }
   #chip {
     position: fixed;
     bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(38, 4, 9, 0.8);
-    color: #fffaf8;
+    background: rgba(23, 23, 23, 0.8);
+    color: ${COLORS.primaryForeground};
     font: 600 11px -apple-system, system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
     padding: 5px 12px;
     border-radius: 999px;
-    box-shadow: 0 2px 8px rgba(38, 4, 9, 0.2);
+    box-shadow: 0 2px 8px rgba(23, 23, 23, 0.2);
   }
 </style>
 </head>

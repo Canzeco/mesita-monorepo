@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { CLASSES, CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import { useAuth } from '@/providers/auth';
@@ -14,7 +14,8 @@ export function CurrentClassCard() {
   );
   const meta = CLASSES.find((c) => c.id === key)!;
   const isElevated = isElevatedClass(key);
-  // Aura = gold, Influencer = red, Premium = blue (MESITA-929).
+  // Aura = gold, Influencer = diamond blue, Premium = the ink ramp: the
+  // MESITA-929 mapping, whose hues moved to web's metals in MESITA-1954.
   // Keep the readonly tuple shape (see IdentityHero) — spreading into a
   // variable widens it past LinearGradient's `colors` tuple type.
   const elevatedColors =
@@ -57,18 +58,21 @@ export function CurrentClassCard() {
           borderRadius: 12,
           backgroundColor: isElevated
             ? 'rgba(255,255,255,0.2)'
-            : 'rgba(38,4,9,0.06)',
+            : 'rgba(23,23,23,0.06)',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon color={isElevated ? '#fff' : '#260409'} size={20} />
+        <Icon
+          color={isElevated ? COLORS.primaryForeground : COLORS.foreground}
+          size={20}
+        />
       </View>
       <View style={{ flex: 1 }}>
         <Text
           className="font-display font-semibold tracking-tight"
           style={{
-            color: isElevated ? '#fff' : '#260409',
+            color: isElevated ? COLORS.primaryForeground : COLORS.foreground,
             fontSize: 22,
             textShadowColor: isElevated ? 'rgba(0,0,0,0.35)' : 'transparent',
             textShadowOffset: { width: 0, height: 1 },
@@ -80,7 +84,9 @@ export function CurrentClassCard() {
         {via ? (
           <Text
             style={{
-              color: isElevated ? 'rgba(255,255,255,0.95)' : '#775254',
+              color: isElevated
+                ? 'rgba(255,255,255,0.95)'
+                : COLORS.mutedForeground,
               fontSize: 11,
               marginTop: 2,
               textShadowColor: isElevated ? 'rgba(0,0,0,0.3)' : 'transparent',

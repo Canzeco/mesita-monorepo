@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { Switch } from '@/components/ui/Switch';
 import { TextField } from '@/components/ui/TextField';
-import { GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENTS } from '@/constants/brand';
 import { apiClaimInstagram } from '@/lib/api/auth';
 import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
 import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
@@ -98,7 +98,7 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
           style={{
             borderWidth: 1,
             borderStyle: 'dashed',
-            borderColor: 'rgba(235,217,219,0.7)',
+            borderColor: 'rgba(219,219,219,0.7)',
             borderRadius: 16,
             padding: 12,
             opacity: 0.85,
@@ -110,8 +110,8 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
         >
           <Text
             style={{
-              backgroundColor: 'rgba(245,158,11,0.15)',
-              color: '#d97706',
+              backgroundColor: COLORS.primary,
+              color: COLORS.primaryForeground,
               paddingHorizontal: 6,
               paddingVertical: 2,
               borderRadius: 4,
@@ -125,7 +125,7 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
           </Text>
           <Text
             style={{
-              color: '#775254',
+              color: COLORS.mutedForeground,
               fontSize: 11,
               fontWeight: '500',
               flex: 1,
@@ -162,8 +162,8 @@ function WhyConnectModule() {
       style={{
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         padding: 16,
       }}
     >
@@ -171,7 +171,7 @@ function WhyConnectModule() {
         style={{
           fontWeight: '800',
           fontSize: 14,
-          color: '#260409',
+          color: COLORS.foreground,
           letterSpacing: -0.1,
         }}
       >
@@ -189,7 +189,7 @@ function WhyConnectModule() {
                 height: 6,
                 width: 6,
                 borderRadius: 3,
-                backgroundColor: '#c2185b',
+                backgroundColor: COLORS.foreground,
               }}
             />
             <Text
@@ -198,7 +198,7 @@ function WhyConnectModule() {
                 fontSize: 13,
                 fontWeight: '500',
                 lineHeight: 18,
-                color: '#260409',
+                color: COLORS.foreground,
               }}
             >
               {line}
@@ -231,13 +231,13 @@ function ConnectModule({
     {
       key: '1',
       node: (
-        <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
-          DM <Text style={{ fontWeight: '700', color: '#cf0360' }}>@mesita.bot</Text>{' '}
+        <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: COLORS.foreground }}>
+          DM <Text style={{ fontWeight: '700', color: COLORS.foreground }}>@mesita.bot</Text>{' '}
           the word{' '}
           <Text
             style={{
               fontWeight: '700',
-              color: '#cf0360',
+              color: COLORS.foreground,
               fontFamily: 'monospace',
             }}
           >
@@ -249,7 +249,7 @@ function ConnectModule({
     {
       key: '2',
       node: (
-        <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
+        <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: COLORS.foreground }}>
           Paste the 8-digit code here
         </Text>
       ),
@@ -261,8 +261,8 @@ function ConnectModule({
       style={{
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.card,
         padding: 16,
         gap: 12,
       }}
@@ -271,7 +271,7 @@ function ConnectModule({
         style={{
           fontWeight: '800',
           fontSize: 14,
-          color: '#260409',
+          color: COLORS.foreground,
           letterSpacing: -0.1,
         }}
       >
@@ -288,12 +288,12 @@ function ConnectModule({
               width: 24,
               height: 24,
               borderRadius: 999,
-              backgroundColor: 'rgba(207,3,96,0.12)',
+              backgroundColor: 'rgba(64,64,64,0.12)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#cf0360', fontWeight: '800', fontSize: 11 }}>
+            <Text style={{ color: COLORS.secondary, fontWeight: '800', fontSize: 11 }}>
               {i + 1}
             </Text>
           </View>
@@ -324,13 +324,13 @@ function ConnectModule({
         accessibilityLabel="Verify Instagram"
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <BadgeCheck color="#fff" size={16} />
-          <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
+          <BadgeCheck color={COLORS.primaryForeground} size={16} />
+          <Text style={{ color: COLORS.primaryForeground, fontWeight: '600', fontSize: 14 }}>
             Verify
           </Text>
         </View>
       </Button>
-      <Text style={{ textAlign: 'center', color: '#775254', fontSize: 12 }}>
+      <Text style={{ textAlign: 'center', color: COLORS.mutedForeground, fontSize: 12 }}>
         We never ask for your password.
       </Text>
     </View>

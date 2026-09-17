@@ -30,7 +30,7 @@ export function ComingSoonModal({
   variant?: 'default' | 'homeMode';
 }) {
   const homeMode = variant === 'homeMode';
-  const iconBg = homeMode ? 'rgba(251, 43, 123, 0.1)' : COLORS.muted;
+  const iconBg = homeMode ? 'rgba(23, 23, 23, 0.1)' : COLORS.muted;
   const iconColor = homeMode ? COLORS.primary : COLORS.mutedForeground;
   const defaultBody =
     "We're still polishing this. It'll land here shortly — thanks for waiting.";
@@ -54,7 +54,7 @@ export function ComingSoonModal({
           onPress={(e) => e.stopPropagation()}
           className="w-full max-w-[340px] rounded-2xl border border-border bg-card"
           style={{
-            shadowColor: '#260409',
+            shadowColor: COLORS.foreground,
             shadowOpacity: 0.18,
             shadowRadius: 24,
             shadowOffset: { width: 0, height: 12 },

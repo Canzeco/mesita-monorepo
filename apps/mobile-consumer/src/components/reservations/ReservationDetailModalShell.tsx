@@ -4,6 +4,7 @@ import { type ReactNode } from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { COLORS } from '@/constants/brand';
 import { toast } from '@/lib/toast';
 
 export function ReservationDetailModalShell({
@@ -39,7 +40,7 @@ export function ReservationDetailModalShell({
           accessibilityLabel="Back"
           className="size-10 items-center justify-center rounded-full bg-muted active:opacity-80"
         >
-          <ArrowLeft color="#260409" size={20} />
+          <ArrowLeft color={COLORS.foreground} size={20} />
         </Pressable>
         <Text className="min-w-0 flex-1 font-display text-lg font-semibold text-foreground">
           Reservation
@@ -49,7 +50,7 @@ export function ReservationDetailModalShell({
           accessibilityLabel="Share"
           className="h-9 w-9 items-center justify-center rounded-lg border border-border bg-card active:bg-muted"
         >
-          <Share2 color="#260409" size={16} />
+          <Share2 color={COLORS.foreground} size={16} />
         </Pressable>
       </View>
       {children}

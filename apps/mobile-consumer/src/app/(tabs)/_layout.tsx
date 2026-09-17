@@ -2,6 +2,7 @@ import { Redirect, Tabs, useSegments } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
 import { ConsumerTabBar } from '@/components/ui/ConsumerTabBar';
+import { COLORS } from '@/constants/brand';
 import { isMeNestedRoute } from '@/lib/tab-layout';
 import { useAuth } from '@/providers/auth';
 
@@ -34,7 +35,7 @@ export default function TabsLayout() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#fb2b7b" />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }
@@ -59,7 +60,7 @@ export default function TabsLayout() {
       )}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: '#fff7f8' },
+        sceneStyle: { backgroundColor: COLORS.background },
       }}
     >
       <Tabs.Screen name="home" options={{ title: 'Home' }} />
