@@ -19,11 +19,16 @@
 import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
+import {
+  NotHeld,
+  useHeldPlaceOrNull,
+  usePlaceScope,
+} from "@/components/console/PlaceScope";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards } from "@/lib/products";
+import { PRODUCT_BANDS } from "@/lib/product-keys";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
@@ -89,7 +94,6 @@ export default function ProductsPage() {
   // a page, whatever the rail chose to draw.
   if (!pages.includes("products")) notFound();
 
-
   const cards = buildProductCards({
     partnered: place.partnered,
     mesitaPayEnabled: place.pay === "enabled",
@@ -109,7 +113,25 @@ export default function ProductsPage() {
           why it is not a ninth card in the grid. */}
       <PartnerBanner place={place} />
 
-      {/* FOUR ACROSS AGAIN (MESITA-1956). Pato: *"this shit must be four
+      {/* FOUR HEADED BANDS (MESITA-1962). Pato: *"divide in sections"*. The
+          bands were a comment in `product-keys.ts` for two days, next to a
+          note saying the card order is otherwise unexplainable. They are
+          CONTIGUOUS in `PRODUCT_ORDER`, so drawing them moves no card — each
+          group is a slice, not a re-sort.
+
+          THE HEADER IS TEXT, NOT A CARD. Four `Section` boxes on a page of
+          cards would be cards inside cards, which is the named instant-fail
+          for app UI here. An `h2` above each grid keeps the outline whole:
+          AppShell's sr-only `h1`, then these, then the card names, which are
+          `<p>` on purpose.
+
+          EACH BAND IS ITS OWN GRID, so `auto-rows-fr` equalises within a band
+          rather than across all fourteen. That is the one thing this costs
+          against MESITA-1956's "same standard size", and it is the right
+          trade: you compare cards to their row-mates, and a row never crosses
+          a header now.
+
+          FOUR ACROSS (MESITA-1956). Pato: *"this shit must be four
           columns"*, reversing MESITA-1941's "two across at most".
 
           THAT ARGUMENT WAS COUNTED ON EIGHT CARDS — "eight 400px boxes
@@ -137,70 +159,93 @@ export default function ProductsPage() {
           oversight: `ProductCatalog.tsx` is `sm:2 xl:3 2xl:4`, so between
           1280 and 1536 the mock shows four and the real console shows three.
           The mock leads (package CLAUDE.md); re-snapshot by hand. */}
-      <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => {
-          // Hidden from the rail is not hidden from here: the catalogue names
-          // every product this place could have, and says which ones this
-          // caller may open.
-          // NO CAST. Most product keys are not `PlaceTab`s now, so
-          // `key as PlaceTab` would be a lie the compiler accepts — and
-          // one that reads `false` for every product whose destination is not
-          // a view, which is the wrong answer for Payments.
-          const allowed =
-            card.key === "customers" ||
-            (tabs as readonly string[]).includes(card.key);
-          const mark = PRODUCT_MARK[card.key];
-          return (
-            <div
-              key={card.key}
-              className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-6"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      SCOPE_CHIP_CLASS,
-                      "bg-muted text-foreground flex items-center justify-center",
-                    )}
+      {PRODUCT_BANDS.map((band) => {
+        const inBand = band.keys
+          .map((k) => cards.find((c) => c.key === k))
+          .filter((c): c is (typeof cards)[number] => c !== undefined);
+        // A band whose every product vanished draws nothing — a heading over
+        // an empty grid is a promise the page cannot keep.
+        if (inBand.length === 0) return null;
+        return (
+          <section key={band.title} className="flex flex-col gap-3">
+            <h2 className="font-display text-sm font-semibold tracking-tight">
+              {band.title}
+            </h2>
+            <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {inBand.map((card) => {
+                // Hidden from the rail is not hidden from here: the catalogue names
+                // every product this place could have, and says which ones this
+                // caller may open.
+                // NO CAST. Most product keys are not `PlaceTab`s now, so
+                // `key as PlaceTab` would be a lie the compiler accepts — and
+                // one that reads `false` for every product whose destination is not
+                // a view, which is the wrong answer for Payments.
+                const allowed =
+                  card.key === "customers" ||
+                  (tabs as readonly string[]).includes(card.key);
+                const mark = PRODUCT_MARK[card.key];
+                return (
+                  <div
+                    key={card.key}
+                    className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-6"
                   >
-                    {/* `leading-none`: an emoji's line box is taller than the
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            SCOPE_CHIP_CLASS,
+                            "bg-muted text-foreground flex items-center justify-center",
+                          )}
+                        >
+                          {/* `leading-none`: an emoji's line box is taller than the
                         glyph, so without it the mark sits low in its square. */}
-                    <span className="text-[22px] leading-none">{mark}</span>
-                  </span>
-                  {/* ONE STEP UP (MESITA-1950). Pato: *"make the name a bit
+                          <span className="text-[22px] leading-none">
+                            {mark}
+                          </span>
+                        </span>
+                        {/* ONE STEP UP (MESITA-1950). Pato: *"make the name a bit
                       larger here"*. At `text-base` the product's name was the
                       same size as the sentence describing it two lines below —
                       the thing you are CHOOSING BETWEEN, drawn at the rank of
                       the thing explaining it. */}
-                  <p className="font-display min-w-0 text-lg font-semibold tracking-tight">
-                    {card.name}
-                  </p>
-                </div>
-                <ProductStateBadge state={card.state} />
-              </div>
-              <p className="text-muted-foreground flex-1 text-[13px] leading-relaxed">{card.blurb}</p>
-              {card.note && <p className="text-[13px] font-medium">{card.note}</p>}
-              {card.state === "locked" ? (
-                <p className="text-muted-foreground flex items-center gap-1.5 text-[13px]">
-                  <Lock className="h-4 w-4" aria-hidden />
-                  Needs the Membership
-                </p>
-              ) : card.action && allowed ? (
-                <Link
-                  href={card.action.href}
-                  className="text-foreground hover:text-primary inline-flex items-center gap-1.5 text-[13px] font-semibold"
-                >
-                  {card.action.label}
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </Link>
-              ) : card.action ? (
-                <p className="text-muted-foreground text-[13px]">Your role cannot open this.</p>
-              ) : null}
+                        <p className="font-display min-w-0 text-lg font-semibold tracking-tight">
+                          {card.name}
+                        </p>
+                      </div>
+                      <ProductStateBadge state={card.state} />
+                    </div>
+                    <p className="text-muted-foreground flex-1 text-[13px] leading-relaxed">
+                      {card.blurb}
+                    </p>
+                    {card.note && (
+                      <p className="text-[13px] font-medium">{card.note}</p>
+                    )}
+                    {card.state === "locked" ? (
+                      <p className="text-muted-foreground flex items-center gap-1.5 text-[13px]">
+                        <Lock className="h-4 w-4" aria-hidden />
+                        Needs the Membership
+                      </p>
+                    ) : card.action && allowed ? (
+                      <Link
+                        href={card.action.href}
+                        className="text-foreground hover:text-primary inline-flex items-center gap-1.5 text-[13px] font-semibold"
+                      >
+                        {card.action.label}
+                        <ArrowRight className="h-4 w-4" aria-hidden />
+                      </Link>
+                    ) : card.action ? (
+                      <p className="text-muted-foreground text-[13px]">
+                        Your role cannot open this.
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </section>
+        );
+      })}
     </>
   );
 }
