@@ -62,7 +62,12 @@ export default function ProductsPage() {
           why it is not a ninth card in the grid. */}
       <PartnerBanner place={place} />
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {/* TWO ACROSS AT MOST (MESITA-1941). This was four across at xl, and on
+          a fluid console that is eight 400px boxes carrying two sentences
+          each — the catalogue of the whole product read as a chip rack. Two
+          columns give each card room for its blurb, its fact and its verb on
+          one line apiece. */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {cards.map((card) => {
           // Hidden from the rail is not hidden from here: the catalogue names
           // every product this place could have, and says which ones this
@@ -73,29 +78,29 @@ export default function ProductsPage() {
           return (
             <div
               key={card.key}
-              className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-4"
+              className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-6"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="font-display text-sm font-semibold tracking-tight">{card.name}</p>
+                <p className="font-display text-base font-semibold tracking-tight">{card.name}</p>
                 <ProductStateBadge state={card.state} />
               </div>
-              <p className="text-muted-foreground flex-1 text-[12px] leading-snug">{card.blurb}</p>
-              {card.note && <p className="text-[12px] font-medium">{card.note}</p>}
+              <p className="text-muted-foreground flex-1 text-[13px] leading-relaxed">{card.blurb}</p>
+              {card.note && <p className="text-[13px] font-medium">{card.note}</p>}
               {card.state === "locked" ? (
-                <p className="text-muted-foreground flex items-center gap-1.5 text-[12px]">
-                  <Lock className="h-3.5 w-3.5" aria-hidden />
+                <p className="text-muted-foreground flex items-center gap-1.5 text-[13px]">
+                  <Lock className="h-4 w-4" aria-hidden />
                   Needs the Membership
                 </p>
               ) : card.action && allowed ? (
                 <Link
                   href={card.action.href}
-                  className="text-foreground hover:text-primary inline-flex items-center gap-1 text-[12px] font-semibold"
+                  className="text-foreground hover:text-primary inline-flex items-center gap-1.5 text-[13px] font-semibold"
                 >
                   {card.action.label}
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
               ) : card.action ? (
-                <p className="text-muted-foreground text-[12px]">Your role cannot open this.</p>
+                <p className="text-muted-foreground text-[13px]">Your role cannot open this.</p>
               ) : null}
             </div>
           );

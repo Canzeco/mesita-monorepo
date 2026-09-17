@@ -1,6 +1,6 @@
 "use client";
 
-// Settings — TWO boxes, and only two: Team and Developers.
+// Settings — Team, Developers, and the states this place holds.
 //
 // MEMBERS IS CONTENT, NOT A PAGE. The people used to hang off a layer above the
 // place and had an address of their own; nesting them was the complaint that
@@ -9,6 +9,25 @@
 // ONE OWNER/EDITOR/VIEWER SURFACE. There is exactly one place in this console
 // where a role is granted, and this is it — two surfaces granting the same
 // thing is how one of them ends up granting a role the other cannot revoke.
+//
+// ── THE STATES CARD IS THIS APP'S OWN (MESITA-1941) ────────────────────────
+//
+// `web-business` has no such card and this is not a snapshot of one. It does
+// for ONE place what `/places` does across places — list every state this
+// console can switch — because nothing on an operator's own screens ever says
+// what their place IS. AdminView says some of it and is super-admin-only; the
+// place heading wears two badges out of twelve facts.
+//
+// READ-ONLY, and that is the whole design. Every value here is set by Stripe,
+// by an operator, or by the scenario panel, and none of them is set from
+// Settings. Rows that looked like switches would be a second surface granting
+// what one surface already grants — the mistake the Team box above names.
+//
+// FILL MEANS IN FORCE, NOT "ON". A place with no pickup orders shows a FILLED
+// "Off": the word in the pill is the fact, and the fill only says which of the
+// row's values is the live one. Every row prints all of its values, including
+// the ones this place is not in, because the states nobody can reach are the
+// reason this app exists.
 import { X } from "lucide-react";
 import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
@@ -20,12 +39,103 @@ import { MEMBERS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import {
+  MEMBERSHIP_STATE_LABEL,
+  PAY_LADDER_LABEL,
+  type MockPlace,
+} from "@/mock/types";
+import {
   GHOST_PILL_BUTTON_CLASS,
   ICON_BUTTON_CLASS,
   INFO_BOX_CLASS,
   PILL_BUTTON_CLASS,
   TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
+
+type StateRow = {
+  label: string;
+  /** Every value this state can take, in ladder order where it is a ladder. */
+  options: string[];
+  /** The one in force. Must be a member of `options` — a current that names
+   *  nothing would render a row with no fill and no way to tell why. */
+  current: string;
+  note: string;
+};
+
+function stateRows(place: MockPlace): StateRow[] {
+  const yesNo = (on: boolean) => (on ? "Yes" : "No");
+  const onOff = (on: boolean) => (on ? "On" : "Off");
+  const YES_NO = ["Yes", "No"];
+  const ON_OFF = ["On", "Off"];
+
+  return [
+    {
+      label: "Your role",
+      options: ["owner", "editor", "viewer"],
+      current: place.myRole,
+      note: "What this console will open for you. Nothing on this page can raise your own.",
+    },
+    {
+      label: "Verified",
+      options: YES_NO,
+      current: yesNo(place.verified),
+      note: "Mesita checked the place is real.",
+    },
+    {
+      label: "Partner",
+      options: YES_NO,
+      current: yesNo(place.partnered),
+      note: "The place pays. This is the gate five of the eight products read.",
+    },
+    {
+      label: "Promoting",
+      options: YES_NO,
+      current: yesNo(place.promoting),
+      note: "Buying reach in Discovery. Computed per request, so it can flip with nobody acting.",
+    },
+    {
+      label: "Membership",
+      options: Object.values(MEMBERSHIP_STATE_LABEL),
+      current: MEMBERSHIP_STATE_LABEL[place.membership],
+      note: "What the subscription is doing, which is not whether the place is a partner. Payment due still entitles.",
+    },
+    {
+      label: "Payments",
+      options: Object.values(PAY_LADDER_LABEL),
+      current: PAY_LADDER_LABEL[place.pay],
+      note: "This place\u2019s own Stripe account. Not set up and Restricted are different facts that Stripe reports the same way.",
+    },
+    {
+      label: "Pickup orders",
+      options: ON_OFF,
+      current: onOff(place.pickupOrders),
+      note: "Guests order ahead and collect.",
+    },
+    {
+      label: "Delivery orders",
+      options: ON_OFF,
+      current: onOff(place.deliveryOrders),
+      note: "Guests order ahead and it is taken to them.",
+    },
+    {
+      label: "Reservations",
+      options: ON_OFF,
+      current: onOff(place.reservations),
+      note: "Table bookings, through this place\u2019s own provider.",
+    },
+    {
+      label: "Visit rewards",
+      options: ON_OFF,
+      current: onOff(place.visitRewards),
+      note: "A guest earns back on what a visit cost them.",
+    },
+    {
+      label: "Credits",
+      options: ON_OFF,
+      current: onOff(place.credits),
+      note: "The place sells credit that guests spend here later.",
+    },
+  ];
+}
 
 export default function PlaceSettingsPage() {
   const place = useHeldPlaceOrNull();
@@ -47,6 +157,7 @@ export default function PlaceSettingsPage() {
 
   const members = listFor(MEMBERS.filter((m) => m.placeId === place.id), scenario);
   const canManage = place.myRole === "owner";
+  const rows = stateRows(place);
 
   return (
     <>
@@ -106,6 +217,41 @@ export default function PlaceSettingsPage() {
           No keys have been minted for this place. A key is shown once, when it
           is created, and never again — there is nowhere to go and look one up.
         </p>
+      </Section>
+
+      <Section
+        title="States"
+        description="Every state this place can be in, and the one it is in now. Read-only: these are set by Stripe, by an operator, or by the scenario panel — never from this page."
+        lane
+      >
+        <ul className="flex flex-col">
+          {rows.map((row) => (
+            <li
+              key={row.label}
+              className="border-border/60 grid gap-x-5 gap-y-1.5 border-b py-3 last:border-b-0 sm:grid-cols-[220px_minmax(0,1fr)]"
+            >
+              <div className="min-w-0">
+                <p className={TINY_LABEL_CLASS}>{row.label}</p>
+                <p className="text-muted-foreground mt-0.5 max-w-[52ch] text-[12px] leading-snug">
+                  {row.note}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-start gap-1.5">
+                {row.options.map((option) => {
+                  const here = option === row.current;
+                  return (
+                    <Badge key={option} tone={here ? "on" : "off"}>
+                      {option}
+                      {/* The fill is the whole signal for the eye, and a
+                          screen reader gets none of it. */}
+                      {here && <span className="sr-only"> — this place</span>}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </li>
+          ))}
+        </ul>
       </Section>
     </>
   );
