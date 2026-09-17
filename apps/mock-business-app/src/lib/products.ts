@@ -41,10 +41,14 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "customers",
     name: "Mesita Customers",
-    blurb: "See who keeps coming back, and what they spend.",
+    blurb: "See who keeps coming back, and what they spend, month by month.",
     needsPartner: false,
     atPlace: null,
-    soon: "Always free. Nothing is live yet.",
+    // A SUBSCRIPTION, NOT A PURCHASE (MESITA-1941). This card said "Always
+    // free" while the page under it sold a contact at a time; both were the
+    // old model, and a catalogue card that prices a product differently from
+    // its own page is how a venue finds out at the till.
+    soon: "A subscription, not a purchase. Nothing is live yet.",
   },
   {
     key: "visits",

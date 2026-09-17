@@ -105,6 +105,12 @@ function stateRows(place: MockPlace): StateRow[] {
       note: "This place\u2019s own Stripe account. Not set up and Restricted are different facts that Stripe reports the same way.",
     },
     {
+      label: "Customer intelligence",
+      options: ["Subscribed", "Not subscribed"],
+      current: place.customerIntel ? "Subscribed" : "Not subscribed",
+      note: "The Customers catalog is rented, not bought. Off, the list is counted and nobody in it is named.",
+    },
+    {
       label: "Pickup orders",
       options: ON_OFF,
       current: onOff(place.pickupOrders),

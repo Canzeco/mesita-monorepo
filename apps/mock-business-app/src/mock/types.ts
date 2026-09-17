@@ -86,6 +86,20 @@ export type MockPlace = {
    *  operator switch has no subscription to date. Derived from the fixed
    *  `MOCK_NOW`, never the wall clock. */
   renewsAt: string | null;
+  /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Mesita Customers is customer
+   *  INTELLIGENCE and it is RENTED, not bought: while it runs, the place reads
+   *  who its guests are and what they did this month; when it stops, the
+   *  catalog closes and the place keeps nothing. It is its own subscription,
+   *  not part of the Membership — a place can be a partner and not subscribe,
+   *  and the reverse.
+   *
+   *  It replaced a PER-GUEST purchase (`MockCustomer.contactUnlocked`), which
+   *  sold a contact forever. Pato, 2026-09-16: *"you don't buy the data
+   *  forever, you subscribe to a catalog of customers and you can track their
+   *  activity"* — a forever sale of a row that keeps changing is a worse deal
+   *  for both sides, because the place pays once for a phone number that
+   *  stops meaning anything and Mesita is paid once for keeping it true. */
+  customerIntel: boolean;
   /** Per-place capability switches — what `lib/products.ts` reads to decide
    *  whether a card says "On here" or "Not on here yet". */
   pickupOrders: boolean;
@@ -332,11 +346,11 @@ export const SEX_LABEL: Record<MockSex, string> = {
  *  than only the ones who filled in a card at the till — and why this console
  *  shows them and never offers to edit them.
  *
- *  THE CONTACT is the exception — the handle and the phone number together.
- *  It is the one thing here the place has to BUY, one guest at a time, and
- *  having it is what makes reaching that guest with a promotion possible. Both
- *  fields are always present and `contactUnlocked` decides whether the screen
- *  may print either.
+ *  THE CONTACT is the handle and the phone number together. Both fields are
+ *  always present, and `MockPlace.customerIntel` — the subscription — decides
+ *  whether the screen may print either. It is not sold a guest at a time any
+ *  more: reaching a guest is what the catalog is FOR, so it comes with the
+ *  catalog rather than being metered out of it.
  *
  *  It is a PHONE, not a WhatsApp. WhatsApp is one channel you could reach the
  *  number on, and naming it after that channel promises an integration nobody
@@ -358,17 +372,26 @@ export type MockCustomer = {
   visits: number;
   /** Centavos, across every visit. Integer money, as everywhere else here. */
   spendCents: number;
-  /** Invented, like every number in fixtures.ts — and never printed unless
-   *  `contactUnlocked`. */
+  /** Invented, like every number in fixtures.ts — and never printed while the
+   *  catalog is closed. */
   phone: string;
-  /** ONE purchase, BOTH ways to reach the guest.
+  /** THE LAST 30 DAYS, which is the half of this row that MOVES.
    *
-   *  The handle and the number are not sold separately, because they are not
-   *  two products — they are the answer to one question, "how do I reach this
-   *  guest", and splitting them would put two verbs in one row and make the
-   *  reviewer price each half. A guest with no handle unlocks to a number and
-   *  an em dash: unlocking reveals what exists, it does not invent a handle. */
-  contactUnlocked: boolean;
+   *  `visits` and `spendCents` above are lifetime at this place: they only
+   *  grow, so a place reading them alone cannot tell a regular from somebody
+   *  who came eleven times two years ago and never again. These two are what
+   *  a subscription is for — they are worth reading again next month, and the
+   *  lifetime pair is not.
+   *
+   *  ARITHMETIC THAT HOLDS: a quiet guest is 0 and 0 together, never 0 visits
+   *  with money against them, and the month can never exceed the lifetime.
+   *  The loop under `CUSTOMERS` in fixtures.ts throws if either breaks. */
+  visitsPerMonth: number;
+  spendPerMonthCents: number;
+  /** When they were last here. The one column that says "quiet" out loud —
+   *  0 visits this month reads as a missing number, and a date reads as a
+   *  fact. */
+  lastVisitAt: string;
 };
 
 /** A place in the POOL: real to Mesita, held by nobody. The catalogue lists
