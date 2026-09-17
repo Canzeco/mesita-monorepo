@@ -253,7 +253,7 @@ export function ScrollDeck({
     >
       <SlidersHorizontal className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       {appliedCount > 0 && (
-        <span className="bg-foreground text-background type-meta absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold tabular-nums">
+        <span className="bg-foreground text-paper type-meta absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold tabular-nums">
           {appliedCount}
         </span>
       )}

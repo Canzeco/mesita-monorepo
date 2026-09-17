@@ -148,8 +148,8 @@ const STATE_LABEL: Record<ProductState, string> = {
 const STATE_CLASS: Record<ProductState, string> = {
   // FILLED is "this is on". Emerald used to say it; ink says it now, and the
   // one product that can never be off wears the same fill as the ones that are.
-  free: "bg-foreground text-background",
-  enabled: "bg-foreground text-background",
+  free: "bg-foreground text-paper",
+  enabled: "bg-foreground text-paper",
   // OUTLINED, never dashed: not enabled is a CHOICE the operator has not made,
   // not something pending. Grey-never-amber was the old spelling of this same
   // refusal — off is not a debt, and amber stays Stripe's (badges.tsx).

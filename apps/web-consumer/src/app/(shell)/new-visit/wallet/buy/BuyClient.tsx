@@ -177,7 +177,7 @@ export function BuyClient() {
               className={
                 "flex-1 rounded-xl py-2 text-sm font-bold transition " +
                 (target === t
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-paper text-foreground shadow-sm"
                   : "text-muted-foreground")
               }
             >

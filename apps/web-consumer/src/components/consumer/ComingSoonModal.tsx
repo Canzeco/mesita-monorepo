@@ -34,7 +34,7 @@ export function ComingSoonModal({
         <button
           type="button"
           onClick={onClose}
-          className="bg-foreground text-background mt-5 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90 active:scale-[0.99]"
+          className="bg-foreground text-paper mt-5 inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90 active:scale-[0.99]"
         >
           Got it
         </button>

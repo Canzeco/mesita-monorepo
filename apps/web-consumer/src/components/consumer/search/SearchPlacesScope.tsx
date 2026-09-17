@@ -140,7 +140,7 @@ export function SearchPlacesScope({
                   "flex min-h-11 w-full items-center gap-2 rounded-xl border px-2.5 type-meta whitespace-nowrap transition",
                   "focus-visible:ring-primary focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                   active
-                    ? "border-foreground bg-foreground text-background font-bold"
+                    ? "border-foreground bg-foreground text-paper font-bold"
                     : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-semibold",
                 )}
               >

@@ -194,7 +194,7 @@ const STATE_CLASS: Record<PaymentAccountState, string> = {
   // FILLED, because this is the only state on the ladder where the owner has
   // something to do. It replaces amber and keeps amber's whole job: be the one
   // that pulls the eye. Waiting on Stripe must never look like this.
-  unfinished: "bg-foreground text-background",
+  unfinished: "bg-foreground text-paper",
   // DASHED, because it is not the owner's move. A debt they cannot settle
   // should not wear the shape that asks them to settle it.
   in_review: `${PILL_RING} border-dashed border-border text-muted-foreground`,
@@ -204,7 +204,7 @@ const STATE_CLASS: Record<PaymentAccountState, string> = {
   // it must not wear the shape that means "act". Green read as "money is
   // flowing" and this is the same refusal, spelled without a colour.
   live: CARD_PAYMENTS_LIVE
-    ? "bg-foreground text-background"
+    ? "bg-foreground text-paper"
     : "bg-muted text-foreground",
   restricted: "bg-destructive/10 text-destructive",
 };

@@ -188,7 +188,7 @@ export function TaskProof({
         type="button"
         onClick={openTarget}
         disabled={phase === "confirming"}
-        className="bg-foreground text-background flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold transition active:scale-[0.99] disabled:opacity-50"
+        className="bg-foreground text-paper flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold transition active:scale-[0.99] disabled:opacity-50"
       >
         {phase === "opening" ? (
           <Loader2 className="size-4 animate-spin" />

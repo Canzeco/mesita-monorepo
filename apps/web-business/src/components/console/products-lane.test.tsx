@@ -596,7 +596,7 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
       expect(html, accountState).toContain(line);
       expect(html, accountState).toContain("lucide-lock");
       // The locked thumb does not pretend to lift.
-      expect(html, accountState).not.toContain("bg-background shadow");
+      expect(html, accountState).not.toContain("bg-paper shadow");
     }
     // Never "connect first" to someone who did: the four lines discriminate.
     const lines = LOCKED_STATES.map(([accountState]) => pay({ stripeReady: false, accountState }));
@@ -616,10 +616,10 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
     const read = pay();
     expect(failed).toContain("Couldn&#x27;t read the Stripe account.");
     expect(failed).toContain('aria-checked="false"');
-    expect(failed).not.toContain("bg-background shadow");
+    expect(failed).not.toContain("bg-paper shadow");
     expect(failed).not.toContain("connect Stripe first");
     expect(read).not.toContain("read the Stripe account");
-    expect(read).toContain("bg-background shadow");
+    expect(read).toContain("bg-paper shadow");
   });
 
   it("not partnered locks on the subscription, even with the column on (2am test)", () => {
@@ -629,17 +629,17 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
     const partner = pay({ mesitaPayEnabled: true });
     expect(orphanRow).toContain("Needs Mesita Partner first.");
     expect(orphanRow).toContain('aria-checked="false"');
-    expect(orphanRow).not.toContain("bg-background shadow");
+    expect(orphanRow).not.toContain("bg-paper shadow");
     expect(partner).not.toContain("Needs Mesita Partner first.");
     expect(partner).toContain('aria-checked="true"');
-    expect(partner).toContain("bg-background shadow");
+    expect(partner).toContain("bg-paper shadow");
   });
 
   it("an editor keeps the live-looking track and the line naming who may move it", () => {
     const owner = pay();
     const editor = pay({ isOwner: false });
     for (const html of [owner, editor]) {
-      expect(html).toContain("bg-background shadow");
+      expect(html).toContain("bg-paper shadow");
       expect(html).not.toContain("lucide-lock");
     }
     // The rank is the only difference, and the line is where it is said.

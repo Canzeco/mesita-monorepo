@@ -116,7 +116,7 @@ export function ClassModal() {
           <div className="grid grid-cols-2 gap-2">
             <Link
               href={CONSUMER_ROUTES.mePages.instagram}
-              className="bg-foreground text-background type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl px-2 font-semibold transition active:scale-[0.99]"
+              className="bg-foreground text-paper type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl px-2 font-semibold transition active:scale-[0.99]"
             >
               <Instagram className="h-4 w-4 shrink-0" />
               <span className="truncate">Join with Instagram</span>

@@ -278,7 +278,7 @@ function PendingProof({
             type="button"
             onClick={() => setConfirming(true)}
             disabled={pending}
-            className="bg-foreground text-background inline-flex h-9 items-center gap-2 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+            className="bg-foreground text-paper inline-flex h-9 items-center gap-2 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
           >
             {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             Approve
