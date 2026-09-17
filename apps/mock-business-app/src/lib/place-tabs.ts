@@ -38,7 +38,12 @@ export const PLACE_TABS = [
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
-  profile: "Profile",
+  // PROFILE READS THROUGH TOO (MESITA-1963). It was the one product here
+  // spelled as a literal, so the rail said "Profile" while its card said
+  // "Mesita Profile" — the exact drift this issue removed from the other
+  // thirteen. Only `rewards` and `admin` may be literals, because neither is
+  // a product in the catalogue.
+  profile: PRODUCT_LABEL.profile,
   visits: PRODUCT_LABEL.visits,
   orders: PRODUCT_LABEL.orders,
   reservations: PRODUCT_LABEL.reservations,
