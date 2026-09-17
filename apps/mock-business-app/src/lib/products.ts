@@ -245,24 +245,18 @@ const SPECS: readonly ProductSpec[] = [
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
   {
-    key: "whatsapp",
-    name: "Mesita WhatsApp Bot",
+    key: "line",
+    name: "Mesita AI Line",
+    // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
+    // card reads as a WhatsApp widget. The two things it replaced were named
+    // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
+    // what made them look like two products; one line, two ways in.
     blurb:
-      "Answers the hours, the menu and the booking on WhatsApp, so nobody on the floor has to stop and type.",
+      "Answers your number — a call or a WhatsApp — with the hours, the menu and the booking, so the floor never stops to pick up.",
     tab: null,
     needsPartner: false,
     atPlace: null,
     soon: "Nothing is answering yet.",
-  },
-  {
-    key: "phone",
-    name: "Mesita Phone Bot",
-    blurb:
-      "Picks up when the floor is full and takes the booking, instead of letting the line ring out.",
-    tab: null,
-    needsPartner: false,
-    atPlace: null,
-    soon: "Nothing is picking up yet.",
   },
   {
     key: "intelligence",
