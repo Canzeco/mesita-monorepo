@@ -65,7 +65,7 @@ function Choice<T extends string>({
           className={cn(
             "focus-visible:ring-ring rounded-full border px-2.5 py-1 text-[12px] font-semibold outline-hidden transition focus-visible:ring-2",
             o.id === value
-              ? "border-foreground bg-foreground text-background"
+              ? "border-foreground bg-foreground text-paper"
               : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
           )}
         >
@@ -131,7 +131,7 @@ export function MockPanel() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         title="Scenario (.)"
-        className="bg-foreground text-background focus-visible:ring-ring fixed right-4 bottom-4 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg outline-hidden transition hover:bg-ink-hover focus-visible:ring-2"
+        className="bg-foreground text-paper focus-visible:ring-ring fixed right-4 bottom-4 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-lg outline-hidden transition hover:bg-ink-hover focus-visible:ring-2"
       >
         {open ? <X className="h-5 w-5" /> : <SlidersHorizontal className="h-5 w-5" />}
         <span className="sr-only">Scenario</span>
@@ -243,9 +243,15 @@ export function MockPanel() {
           <Group label="Switches on this place">
             <Toggle
               label="Mesita Partner"
-              hint="The gate five of the eight products read. Off, they are Locked and carry no verb."
+              hint="The gate Visits, Rewards, Payments and Credits read. Off, they are Locked and carry no verb."
               on={scenario.partnered}
               onChange={(partnered) => set({ partnered })}
+            />
+            <Toggle
+              label="Customer intelligence"
+              hint="The Customers catalog is a subscription. Off, the list is counted and nobody in it is named."
+              on={scenario.customerIntel}
+              onChange={(customerIntel) => set({ customerIntel })}
             />
             <Toggle label="Pickup orders" on={scenario.pickupOrders} onChange={(v) => set({ pickupOrders: v })} />
             <Toggle label="Delivery orders" on={scenario.deliveryOrders} onChange={(v) => set({ deliveryOrders: v })} />

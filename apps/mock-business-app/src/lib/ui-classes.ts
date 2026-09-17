@@ -53,13 +53,13 @@ export const INFO_BOX_CLASS =
 export const TINY_LABEL_CLASS =
   "text-muted-foreground text-[10px] font-semibold uppercase tracking-[0.14em]";
 
-export const PILL_BUTTON_CLASS = `bg-foreground text-background hover:bg-ink-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition disabled:bg-muted disabled:text-muted-foreground ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const PILL_BUTTON_CLASS = `bg-foreground text-paper hover:bg-ink-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition disabled:bg-muted disabled:text-muted-foreground ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 export const GHOST_PILL_BUTTON_CLASS = `border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-50 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 export const ICON_BUTTON_CLASS = `border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground flex h-8 w-8 items-center justify-center rounded-full border transition disabled:opacity-50 ${FOCUS_RING_CLASS} ${ICON_TOUCH_TARGET_CLASS}`;
 
-export const CTA_BUTTON_CLASS = `bg-foreground text-background hover:bg-ink-hover inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:bg-muted disabled:text-muted-foreground ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
+export const CTA_BUTTON_CLASS = `bg-foreground text-paper hover:bg-ink-hover inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:bg-muted disabled:text-muted-foreground ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
 // A SECOND action that must not read as a second choice. A ghost pill beside a
 // CTA is the same silhouette in a lighter colour, so the eye weighs them

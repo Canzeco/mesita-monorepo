@@ -1,20 +1,32 @@
 // One badge per FACT, and never two badges for one fact.
 //
-// TWO IN THE HEADING, NOT THREE (MESITA-1925). Pato: *"remove the promothing
-// shit"*. Verified (Mesita checked the place is real) and Partner (it pays)
-// are independent, and `isPartner` is the one that gates what a place may
-// switch on — the Membership banner under this heading says so in words.
+// THE FACT ROW IS GONE, AND THE RULE OUTLIVED IT (MESITA-1943). `PlaceFacts`
+// stood in `PlaceHeading` and put Verified and Partner on top of every place
+// view. The heading went because the rail already said the name, the photo and
+// the open view; the two facts went with it because they now read where they
+// are EXPLAINED rather than merely asserted:
 //
-// PROMOTING LEFT, and the badge row is the only place it left from. It is a
-// per-request computation (strategy ≠ zero AND an open promo lane) that can
-// flip false under a paid partner with no write at all, so beside two badges
-// that only move when somebody acts it read as a third of the same kind. The
-// real console never had this row (`web-business`'s `PlaceHeading` renders no
-// facts beside the name) and where it does name that fact it calls it "Visit
-// Rewards", not Promoting — so this badge was teaching a word the product
-// does not use. `promoting` stays on `MockPlace`, and stays a column in the
-// `/places` states matrix and a row in AdminView: those screens exist to list
-// every state, which is the point of this app.
+//   Verified · Partner → Settings › States, one row each, with the sentence
+//     that says what the fact means and who sets it (MESITA-1941). A badge
+//     could only ever say "yes".
+//   Partner, on the catalogue → `PartnerBanner`, beside the membership it is
+//     the status OF. That screen exists to explain the gate; stating the gate
+//     there is the one place it is not an echo.
+//
+// It also removes the trap that made the dark-header proposal expensive:
+// `tone="on"` is `bg-foreground`, so a fact badge rendered on an ink surface
+// was 1.00:1 against its own ground and `gold` fell from 7.8:1 to 1.4:1. Every
+// tone below assumes a WHITE card. Painting one on `--dock` needs a variant
+// here first, not a wrapper around the caller.
+//
+// PROMOTING LEFT FIRST (MESITA-1925). Pato: *"remove the promothing shit"*. It
+// is a per-request computation (strategy ≠ zero AND an open promo lane) that
+// can flip false under a paid partner with no write at all, so beside two
+// badges that only move when somebody acts it read as a third of the same kind
+// — and the product calls that fact "Visit Rewards", never Promoting.
+// `promoting` stays on `MockPlace`, and stays a column in the `/places` states
+// matrix and a row in AdminView: those screens exist to list every state,
+// which is the point of this app.
 import { cn } from "@/lib/utils";
 import type { ProductState } from "@/lib/products";
 
@@ -26,7 +38,7 @@ const BASE =
 // These tones used to be hues: On and Free were emerald, Off was grey, Soon was
 // amber. Send all three to greyscale and On, Off, Free and Soon become ONE chip
 // — on the catalogue screen whose entire job is saying which products are on.
-// PlaceFacts lost the same way: Verified and Unverified were the same object.
+// The place facts lost the same way: Verified and Unverified were one object.
 //
 // So the axis is FILL / OUTLINE / DASHED, which survives greyscale, print, and a
 // colourblind operator, and which this app already speaks: SoonStrip and
@@ -37,7 +49,7 @@ const BASE =
 // the product names out loud, and the one thing that says "this destroys
 // something".
 const TONES: Record<string, string> = {
-  on: "bg-foreground text-background",
+  on: "bg-foreground text-paper",
   off: "border-border text-muted-foreground border",
   soon: "border-border text-muted-foreground border border-dashed",
   neutral: "bg-muted text-muted-foreground",
@@ -55,22 +67,6 @@ export function Badge({
   className?: string;
 }) {
   return <span className={cn(BASE, TONES[tone], className)}>{children}</span>;
-}
-
-export function PlaceFacts({
-  verified,
-  partnered,
-}: {
-  verified: boolean;
-  partnered: boolean;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {verified && <Badge tone="on">Verified</Badge>}
-      {partnered && <Badge tone="gold">Partner</Badge>}
-      {!verified && !partnered && <Badge tone="off">Unverified</Badge>}
-    </div>
-  );
 }
 
 const PRODUCT_TONE: Record<ProductState, "on" | "off" | "soon" | "gold"> = {

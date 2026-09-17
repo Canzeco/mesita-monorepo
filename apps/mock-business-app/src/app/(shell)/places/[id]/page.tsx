@@ -52,7 +52,6 @@ import { use, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AskBar } from "@/components/console/AskBar";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { Badge } from "@/components/shared/Badges";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -65,7 +64,8 @@ import {
   SCOPE_CARD_CLASS,
   TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
-import { ACTIVITY, ORDERS, RESERVATIONS, REVIEWS, VISITS } from "@/mock/fixtures";
+import { ORDERS, RESERVATIONS, REVIEWS, VISITS } from "@/mock/fixtures";
+import { buildLedgers, LOG_LABEL } from "@/mock/logs";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import { PAY_LADDER_LABEL, type MockPlace } from "@/mock/types";
@@ -75,8 +75,11 @@ type Blocker = { label: string; line: string; door: string; href: string };
 
 /** WHAT IS ACTUALLY IN THE WAY, in the order it costs money.
  *
- *  Partner first: it gates five of the eight products, so a place without it
- *  has four other things wrong that are all the same thing. Payments second —
+ *  Partner first: it gates Visits, Rewards, Payments and Credits, so a place
+ *  without it has four other things wrong that are all the same thing. THE
+ *  FOUR ARE NAMED, NEVER COUNTED — "five of the eight" stood here through two
+ *  products arriving and one leaving, and no gate compares a sentence to
+ *  `SPECS` (MESITA-1946). Payments second —
  *  it is the one that stops a guest paying. Then the two that only cost reach. */
 function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
   const out: Blocker[] = [];
@@ -84,7 +87,7 @@ function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
   if (!place.partnered) {
     out.push({
       label: "Not a partner",
-      line: "Five of the eight products are locked here, and none of them carry a verb until Mesita Partner is on.",
+      line: "Visits, Rewards, Payments and Credits are locked here, and none of them carry a verb until Mesita Partner is on.",
       door: "See the catalogue",
       href: placePageHref(place.id, "products"),
     });
@@ -160,7 +163,12 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
     scenario,
   );
   const reviews = listFor(REVIEWS.filter((r) => r.placeId === place.id), scenario);
-  const events = listFor(ACTIVITY.filter((e) => e.placeId === place.id), scenario).slice(0, 5);
+  // THE SAME ROWS THE ACTIVITY PAGE SHOWS, and five of them (MESITA-1939).
+  // Home used to read its own `ACTIVITY` fixture, which meant the five lines
+  // here and the tables one click away were two unrelated inventions about one
+  // place. `everything` is the union of the nine logs, so this strip is now a
+  // literal preview of the page its heading links to.
+  const events = buildLedgers(place, scenario, now).everything.slice(0, 5);
 
   const openVisits = visits.filter((v) => v.state === "open");
   const working = orders.filter(
@@ -206,8 +214,6 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
 
   return (
     <>
-      <PlaceHeading place={place} view="Home" />
-
       <AskBar placeId={place.id} />
 
       {/* THE STATE OF THE PLACE, in one card. Every direct child of
@@ -305,10 +311,13 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
                 key={e.id}
                 className="border-border flex items-center gap-3 border-b py-2.5 last:border-0"
               >
-                <Badge>{e.kind}</Badge>
+                <Badge>{LOG_LABEL[e.log]}</Badge>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-medium">{e.title}</p>
-                  <p className="text-muted-foreground truncate text-[11px]">{e.detail}</p>
+                  <p className="text-muted-foreground truncate text-[11px]">
+                    {e.detail}
+                    {e.origin && <span> · from {e.origin.label}</span>}
+                  </p>
                 </div>
                 {e.amountCents !== null && (
                   <p className="text-[13px] font-semibold tabular-nums">{money(e.amountCents)}</p>

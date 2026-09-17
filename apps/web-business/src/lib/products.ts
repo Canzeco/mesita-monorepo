@@ -6,38 +6,26 @@
 // by a test instead of read off a screenshot. `ProductCatalog.tsx` owns the
 // LOOK (mark, tint, chip); this owns the TRUTH.
 //
-// ── THE EIGHT, AND WHAT EACH ONE'S STATE IS READ FROM ─────────────────────
+// ── WHAT EACH ONE'S STATE IS READ FROM ───────────────────────────────────
 //
 //   Mesita Profile       ALWAYS FREE. Pato: *"remember that profile is
 //                        free."* Every place has a profile the moment it
 //                        exists — there is no column to flip and no price, so
 //                        it is the one card with no off state and no verb but
 //                        Manage.
-//   Mesita Customers     who keeps coming back. It WILL be free, exactly like
-//                        Profile — Pato wrote it "Costumers (Free)" — and it
-//                        is `soon` anyway, because the engine is not built
-//                        (`/places/<id>/customers` is a SoonStrip page). A
-//                        price is not a reason to paint a green chip on an
-//                        empty page, so the chip says the harder word and the
-//                        note carries the price. No verb: Customers has its
-//                        own rail row, so the door already exists.
 //   Mesita Visits        guest checks at the bill. Partner-gated, and the
 //                        subscription IS the state — so it is ALWAYS ON for a
 //                        partner, the Profile pattern, never an on/off card
 //                        (MESITA-1882). Visits is not a capability; it is the
-//                        container Rewards, Payments and Credits attach to,
-//                        which is why it has no column, no ladder rung and no
-//                        second sentence: `rewardsClause` went with Rewards
-//                        when Rewards became a card again (MESITA-1900).
+//                        container Rewards, Payments and Credits attach to.
 //   Mesita Rewards       `visit_rewards`, per place. Partner-gated, because
 //                        Conservative and Aggressive are what the Membership
-//                        prices. THE CARD'S STATE IS THE DIAL'S, and that is
-//                        only honest now that the dial has a card of its own:
-//                        a Rewards card at 0% reads "Not on here yet", which
-//                        is what it is. MESITA-1882's bug was the opposite —
-//                        Enabled at Zero — and MESITA-1884 feared this state
-//                        because back then it was VISITS' card, where "Not
-//                        enabled" would have accused a working checkout.
+//                        prices. THE CARD'S STATE IS THE DIAL'S: a Rewards
+//                        card at 0% reads "Not on here yet", which is what it
+//                        is. MESITA-1882's bug was the opposite — Enabled at
+//                        Zero — and MESITA-1884 feared this state because back
+//                        then it was VISITS' card, where "Not enabled" would
+//                        have accused a working checkout.
 //   Mesita Orders        `pickup_orders_enabled` OR `delivery_orders_enabled`,
 //                        per place. One card, because an operator thinks
 //                        "orders" and the two columns are its two shapes.
@@ -52,9 +40,27 @@
 //                        Accept Prepays is in PARTNER_PERKS — so a
 //                        non-partner reads Locked, not Not enabled.
 //
-// MESITA TERMINAL IS GONE (MESITA-1900). Pato's list drops it. It was the one
-// card with no engine, no column and no switch, and `soon` was the whole of
-// its spec — so nothing about it is worth keeping behind a flag.
+// ── AND NINE OF THE SIXTEEN READ NOTHING, BECAUSE THEY DO NOT EXIST ──────
+//
+// Website, Customers, Ads, Terminal, POS, Capital, WhatsApp Bot, Phone Bot and
+// Intelligence are `soon`. Pato dictated the suite on 2026-09-16 — *"Put all
+// this shit into the suite"*, then *"maybe include POS, but for the future"* —
+// and wrote "(Soon)" beside only three of them. The rest get it anyway, and
+// that is the one place this file does not take the list literally: not one of
+// them has a table, a migration or an Edge Function, and SoonStrip's law is
+// that an unbuilt engine shows Soon, never knobs and never a fake number.
+//
+// A green chip on a WhatsApp bot that cannot answer anything is the most
+// expensive lie this screen could tell: an owner reads it as "already handled"
+// and stops picking up the phone. So seven cards are live and nine say Soon,
+// and that ratio is the point of the screen rather than a defect in it — the
+// catalogue is a price list before it is a control panel.
+//
+// MESITA TERMINAL IS BACK (MESITA-1949), after MESITA-1900 dropped it. What
+// does NOT come back is its rail row and `products/terminal`: MESITA-1900's
+// objection was that it was "the one row whose address was a SoonStrip", and a
+// card is not a row. Nine of the sixteen are catalogue-only for the same
+// reason — see `RAIL_ROWS` and the subsequence assertion in `products.test.ts`.
 //
 // ── THE TWO RULES THIS FILE EXISTS TO HOLD ────────────────────────────────
 //
@@ -62,6 +68,18 @@
 // every card drops its note rather than printing "Off". Off is the most
 // believable fabrication on a catalogue screen, and a fabricated state is what
 // SoonStrip's law forbids outright.
+//
+// A BLURB NAMES THE GUEST, NOT THE COLUMN (MESITA-1949). Every one of these
+// used to be a single clause written from the switch it flips — "Receive
+// pickup and delivery orders with checkout", "Accept card payments for visits
+// and orders". Sixteen of those in a grid is one grey paragraph sixteen times:
+// each opens with a verb Mesita does, none says who is better off, and an
+// operator meeting the catalogue for the first time cannot tell Orders from
+// Visits or Credits from Payments without opening both. So each carries the
+// one fact that separates it from its neighbour — orders are PREPAID, a visit
+// settles the same on cash or card, credits can only be spent here,
+// reservations are held by somebody else's provider. Still one sentence, still
+// ending in a period, both pinned below.
 //
 // PARTNER-GATED BEATS OFF. A product the place cannot reach yet reads
 // `locked` with the prerequisite as its note — never `off` with an Enable
@@ -93,6 +111,17 @@ type ProductSpec = {
   key: ProductKey;
   name: string;
   blurb: string;
+  /** The VIEW this product is turned on in, when it has one.
+   *
+   *  NULL IS THE COMMON CASE NOW, and it is why this field exists at all.
+   *  `PLACE_TABS` ⊇ `PRODUCT_KEYS` used to hold, so a card reached its view
+   *  with `key as PlaceTab` — a cast that was true by CONSTRUCTION while the
+   *  suite was seven views plus Customers, and one that silently survives
+   *  every product added without a view. Nine of the sixteen have none
+   *  (MESITA-1949), so the view is written down per product and the cast is
+   *  gone. Without this, seven new keys render verbs pointing at
+   *  `/places/<id>/undefined` with every check green. */
+  tab: PlaceTab | null;
   /** Mesita Partner unlocks it. */
   needsPartner: boolean;
   /** The per-place column(s) behind it, or null when the product is not a
@@ -111,26 +140,60 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "profile",
     name: "Mesita Profile",
-    blurb: "Manage your places, menus, photos and reviews.",
+    blurb:
+      "Your public page on Mesita — the photos, the menu, the hours and the reviews a guest reads before they pick you.",
+    tab: "profile",
     needsPartner: false,
     atPlace: null,
     soon: null,
   },
   {
-    key: "customers",
-    name: "Mesita Customers",
-    blurb: "See who keeps coming back, and what they spend.",
+    key: "website",
+    name: "Mesita Website",
+    blurb:
+      "A real site on your own domain, built from the profile you already keep here instead of from scratch.",
+    tab: null,
     needsPartner: false,
     atPlace: null,
-    // FREE AND UNBUILT ARE BOTH TRUE, and the chip may only say one of them.
-    // It says the harder one. The price goes in the note, where it costs an
-    // operator nothing to learn it early.
-    soon: "Always free. Nothing is live yet.",
+    soon: "Built from your Mesita profile. Nothing is live yet.",
+  },
+  {
+    key: "customers",
+    name: "Mesita Customers",
+    blurb:
+      "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    // A SUBSCRIPTION, NOT A PURCHASE, AND NO LONGER "ALWAYS FREE".
+    //
+    // This note said "Always free. Nothing is live yet." on Pato's original
+    // *"Costumers (Free)"*. He replaced the model on 2026-09-16: *"you don't
+    // buy the data forever, you subscribe to a catalog of customers and you
+    // can track their activity, visits per month, spent per month"*. Free was
+    // a price for a product that no longer works that way, and this card was
+    // the ONLY place in this console that stated any price for Customers —
+    // `/places/<id>/customers` is a bare SoonStrip that claims nothing. A
+    // catalogue card is where a venue learns what something costs, so leaving
+    // "free" there is how one finds out otherwise at the till.
+    soon: "A subscription, not a purchase. Nothing is live yet.",
+  },
+  {
+    key: "ads",
+    name: "Mesita Ads",
+    blurb:
+      "Reach the people who have not found you yet — Facebook, Instagram and Google, run from here instead of three dashboards.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "Facebook, Instagram and Google. Nothing is connected yet.",
   },
   {
     key: "visits",
     name: "Mesita Visits",
-    blurb: "Close in-person bills with a simple visit checkout.",
+    blurb:
+      "Close the bill at the table, and keep every visit on the record — cash or card, it settles the same way.",
+    tab: "visits",
     needsPartner: true,
     atPlace: null,
     soon: null,
@@ -138,7 +201,9 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "rewards",
     name: "Mesita Rewards",
-    blurb: "Give guests a reason to come back, priced by you.",
+    blurb:
+      "Give a slice of the bill back to the guests who keep showing up — you set the rungs, and you set the price.",
+    tab: "rewards",
     needsPartner: true,
     atPlace: (p) => p.visitRewards === true,
     soon: null,
@@ -146,7 +211,9 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "orders",
     name: "Mesita Orders",
-    blurb: "Receive pickup and delivery orders with checkout.",
+    blurb:
+      "Pickup and delivery, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
+    tab: "orders",
     needsPartner: false,
     atPlace: (p) => p.pickupOrders === true || p.deliveryOrders === true,
     soon: null,
@@ -154,7 +221,9 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "reservations",
     name: "Mesita Reservations",
-    blurb: "Manage table bookings with your preferred provider.",
+    blurb:
+      "The table bookings your own provider already holds, read here beside everything else this place does.",
+    tab: "reservations",
     needsPartner: false,
     atPlace: (p) => p.reservations === true,
     soon: null,
@@ -162,15 +231,54 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "pay",
     name: "Mesita Payments",
-    blurb: "Accept card payments for visits and orders.",
+    // NO TAB, on purpose: the Stripe account is the sub-step `products/pay`,
+    // not a view beside Visits and Orders. `payHref` below is its address.
+    blurb:
+      "This place’s own Stripe account, so a guest can pay by card at the table and the money lands with you.",
+    tab: null,
     needsPartner: true,
     atPlace: null,
     soon: null,
   },
   {
+    key: "terminal",
+    name: "Mesita Terminal",
+    // BACK AFTER MESITA-1900 REMOVED IT, and still Soon for the same reason it
+    // went: there is no hardware. The old blurb ("Take in-person payments with
+    // Mesita hardware") named the box; this one names why a place that already
+    // has Payments would want one.
+    blurb:
+      "A card reader on your counter for the guests who will never open their phone, on the same bill as everyone else.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "Mesita hardware is not available yet.",
+  },
+  {
+    key: "pos",
+    name: "Mesita POS",
+    // *"maybe include POS, but for the future"* (Pato, 2026-09-16). FOR THE
+    // FUTURE IS A REAL DISTINCTION and the note carries it: everything else
+    // here is unbuilt, but POS is the only one he put behind the others, and a
+    // card reading exactly like Terminal's would lose that.
+    //
+    // THE BLURB HAS TO SAY WHAT IT IS NOT. A place that already has Visits and
+    // Terminal can reasonably ask what a third counter product is for, so this
+    // one names the half Mesita does not do today: the items, and the ticket to
+    // the kitchen. Visits closes a bill; POS is what put the bill together.
+    blurb:
+      "The till itself — items rung up, the ticket to the kitchen, and the bill Visits closes, on one system.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "The furthest out of everything here. Nothing is live yet.",
+  },
+  {
     key: "credits",
     name: "Mesita Credits",
-    blurb: "Sell and accept branded credits for visits and orders.",
+    blurb:
+      "Branded money a guest buys once and can only spend here — paid up front, redeemed against a visit or an order.",
+    tab: "credits",
     needsPartner: true,
     atPlace: (p) => p.credits === true,
     soon: null,
@@ -182,22 +290,69 @@ const SPECS: readonly ProductSpec[] = [
     // owner read before signing up is the pitch they meet inside. "Not a loan"
     // is load-bearing — Mesita buys inventory forward, it does not lend, and a
     // console that implies otherwise contradicts its own marketing site.
-    blurb: "Take cash now against meals you have not served yet.",
+    //
+    // MESITA-1949 took the second clause from `web-landing`'s own paragraph
+    // ("Mesita pre-buys a restaurant's future meals at a deep discount and
+    // resells that inventory to guests. The place gets cash now...") rather
+    // than writing a new one: the mechanism is the reason the product is not a
+    // loan, and a card that states only the cash states the half an owner
+    // already believes.
+    blurb:
+      "Mesita pre-buys your future meals at a discount and resells them to guests — you take the cash now.",
+    tab: "capital",
     needsPartner: false,
     atPlace: null,
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
+  {
+    key: "whatsapp",
+    name: "Mesita WhatsApp Bot",
+    blurb:
+      "Answers the hours, the menu and the booking on WhatsApp, so nobody on the floor has to stop and type.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "Nothing is answering yet.",
+  },
+  {
+    key: "phone",
+    name: "Mesita Phone Bot",
+    blurb:
+      "Picks up when the floor is full and takes the booking, instead of letting the line ring out.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "Nothing is picking up yet.",
+  },
+  {
+    key: "intelligence",
+    name: "Mesita Intelligence",
+    blurb:
+      "What to change and why: who to bring back, what to charge, and where this place is quietly losing guests.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    // IT READS THE OTHERS, and that is the honest prerequisite to state. An
+    // advice engine over a place with no visits, no orders and no customer
+    // catalog has nothing to be right about.
+    soon: "Reads what your other products record. Nothing is live yet.",
+  },
 ];
 
-/** The catalogue's order — the mock's, read left to right, top to bottom.
+/** The catalogue's order — Pato's, read left to right, top to bottom.
  *
- *  IT MUST MATCH THE RAIL'S, and `products.test.ts` asserts that rather than
- *  trusting it. The two are different arrays — `SPECS` carries card copy,
- *  `RAIL_ROWS` carries rows — and MESITA-1928 proved they drift: it moved
- *  Rewards under Visits in the rail and left the catalogue printing it beside
- *  Payments, so for one commit the console gave two answers to "where does
- *  Rewards belong". A card and a row for one product in two places is the same
- *  bug as a product with two icons. */
+ *  THE RAIL IS A SUBSET OF IT NOW, NOT A COPY (MESITA-1949). `products.test.ts`
+ *  used to assert the two were EQUAL element for element, because MESITA-1928
+ *  proved they drift: it moved Rewards under Visits in the rail and left the
+ *  catalogue printing it beside Payments, so for one commit the console gave
+ *  two answers to "where does Rewards belong".
+ *
+ *  Nine of the sixteen are catalogue-only, so equality is gone and the drift it
+ *  caught is not: the assertion is a SUBSEQUENCE now. Every rail product is a
+ *  real product AND the rail's relative order is this one, so moving Rewards in
+ *  one list and not the other still fails — what no longer fails is naming a
+ *  product the rail has no row for, which is the whole shape of an unbuilt
+ *  product. */
 export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 
 // ── `PRODUCT_VIEW` IS DELETED, AND THE ROOMS ARE WHY (MESITA-1885) ────────
@@ -213,13 +368,19 @@ export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 // So the map collapsed into the identity, and an identity map written out by
 // hand is a second place for a spelling to drift.
 //
-// WHAT REPLACED IT IS A CONSTRUCTION, NOT A CONVENTION. `PLACE_TABS` and
-// `PRODUCT_KEYS` agree on all seven per-place products — Rewards joined them
-// in MESITA-1900 — and `console-routes.test.ts` asserts that set equality in
-// BOTH directions, so `placeHref(key as PlaceTab)` is checked by a test rather
-// than trusted. The ONE that is not a place view is Customers: it is `soon`,
-// it carries no verb, and `productRowHref` in lib/console-routes is the one
-// function that knows its address.
+// WHAT REPLACED IT WAS A CONSTRUCTION, AND MESITA-1949 MADE IT A FIELD AGAIN.
+// `PLACE_TABS` and `PRODUCT_KEYS` agreed on all seven per-place products, so
+// `placeHref(key as PlaceTab)` was true by coincidence and checked by a test.
+// Nine of the sixteen products have no view at all now, so the coincidence is
+// over and `spec.tab` says it outright.
+//
+// THAT IS NOT THE HAND-WRITTEN MAP COMING BACK. `PRODUCT_VIEW` was a TOTAL
+// `Record<ProductKey, PlaceTab>` — every product forced to name a view, so a
+// spelling could drift in two files at once. `tab` is a property of the
+// product beside its own name and blurb, it is allowed to be null, and the
+// branches below simply do not render a verb without one. The failure it
+// prevents is the one the cast could not: a product with no view rendering a
+// button to `/places/<id>/undefined`.
 
 // ── THE TWO FACTS ARE TWO CARDS AGAIN (MESITA-1900) ───────────────────────
 //
@@ -260,10 +421,12 @@ export function buildProductCards(input: {
   payHref: string;
 }): ProductCard[] {
   const { partnered, mesitaPayEnabled, place, placeHref, payHref } = input;
-  // A product's own view, by its own name. Every card that reaches this has a
-  // place view — the one that does not (Customers) is `soon` and returns
-  // above, carrying no verb at all.
-  const viewHref = (key: ProductKey) => placeHref(key as PlaceTab);
+  /** A verb, but only where there is somewhere to send it. A spec with no tab
+   *  in a branch that wants one would otherwise render a button pointing at
+   *  `/places/<id>/undefined` — which is what `key as PlaceTab` did silently,
+   *  and what every check would have passed. */
+  const viewAction = (spec: ProductSpec, label: string) =>
+    spec.tab ? { label, href: placeHref(spec.tab) } : null;
 
   return SPECS.map((spec): ProductCard => {
     // SOON FIRST, and it outranks everything below: nothing further down
@@ -289,7 +452,7 @@ export function buildProductCards(input: {
         blurb: spec.blurb,
         state: "free",
         note: "Always free. Every place has one.",
-        action: { label: "Manage", href: viewHref(spec.key) },
+        action: viewAction(spec, "Manage"),
       };
     }
 
@@ -331,10 +494,7 @@ export function buildProductCards(input: {
         blurb: spec.blurb,
         state: enabled ? "enabled" : "off",
         note: place ? (enabled ? "On here." : "Not on here yet.") : null,
-        action: {
-          label: enabled ? "Manage" : "Enable",
-          href: viewHref(spec.key),
-        },
+        action: viewAction(spec, enabled ? "Manage" : "Enable"),
       };
     }
 
@@ -356,7 +516,7 @@ export function buildProductCards(input: {
       blurb: spec.blurb,
       state: "enabled",
       note: "Included with Mesita Partner.",
-      action: { label: "Manage", href: viewHref(spec.key) },
+      action: viewAction(spec, "Manage"),
     };
   });
 }

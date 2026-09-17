@@ -42,7 +42,10 @@ export function Table<T extends { id: string }>({
 }) {
   if (rows.length === 0 && empty) return <>{empty}</>;
   return (
-    <div className="border-border overflow-x-auto rounded-xl border">
+    // `bg-card`, because since MESITA-1938 the page under it is grey: a table
+    // dropped straight onto a screen (Activity) has to bring its own white,
+    // and inside a card it is the white that was already there.
+    <div className="border-border bg-card overflow-x-auto rounded-xl border">
       <table className="w-full border-collapse text-sm" style={{ minWidth }}>
         <thead className={cn(STATES_HEAD_STICKY, STATES_HEAD_BG)}>
           <tr>

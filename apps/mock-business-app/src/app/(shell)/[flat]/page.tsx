@@ -2,15 +2,15 @@
 
 // THE FLAT NAMES — one file, resolving all of them.
 //
-// `/profile`, `/orders`, `/products` and the rest name a VIEW without naming a
-// place. They exist for bookmarks, typed URLs and links written before the
-// address carried an id; the rail links the canonical address, so a click never
-// comes through here.
+// `/profile`, `/orders`, `/settings` and the rest name a VIEW or a PAGE without
+// naming a place. They exist for bookmarks, typed URLs and links written before
+// the address carried an id; the rail links the canonical address, so a click
+// never comes through here.
 //
-// `/settings` IS NO LONGER ONE OF THEM (MESITA-1935). It is a real page now —
-// the person's Settings — and a static segment beats `[flat]` in the router, so
-// it would never have reached this file anyway. It left `FLAT_ROUTES` rather
-// than sitting there as a line that resolves nothing.
+// `/settings` IS ONE OF THEM AGAIN (MESITA-1937), and it means the PLACE's. It
+// left this file in MESITA-1935, when a real `(shell)/settings/page.tsx` held
+// the person and shadowed `[flat]` in the router. That page is gone and the
+// person is at `/account`, so this name resolves like every other page twin.
 //
 // The resolution is a 307, never a 308: which place a flat name means depends on
 // what the operator last opened, and a browser that cached the answer would keep

@@ -149,7 +149,7 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
   // and the chip carries the only binary that matters, done or not, with the
   // Gauge/Check glyph swap below.
   const chip = complete
-    ? "bg-foreground text-background"
+    ? "bg-foreground text-paper"
     : "bg-muted text-muted-foreground";
 
   return (

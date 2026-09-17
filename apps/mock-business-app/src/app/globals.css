@@ -36,12 +36,21 @@
    black), the page #fff7f8, and every hairline #ebd9db. Swapping --primary
    alone would have removed the 5% and kept the 95%.
 
-   THREE light values, not five. Page and cards are the SAME white and every
-   separation is a #dbdbdb hairline, because five near-identical light tones is
+   THREE light values, not five, because five near-identical light tones is
    mush — and #fafafa/#fff/#f5f5f5/#e5e5e5/#dbdbdb is the default palette of
    every generated UI on the internet. This app already believed in hairlines:
    SCOPE_CARD_CLASS is built on divide-y, PartnerBanner separates with a w-px
    seam, and Account shipped as one card of rows.
+
+   WHERE THE SECOND LIGHT GOES: UNDER THE CARDS (MESITA-1938). Pato
+   2026-09-16: *"in general make the background a bit gray, and then the other
+   stuff white or vice versa, but a bit of contrast."* MESITA-1934 spent all
+   three lights inside the card — page and cards the same white, the second
+   light a #fafafa well nobody could see at 1.04:1, the whole burden of
+   separation on one hairline. That is the call being reversed: the greys are
+   the same three, but the second one now paints the GROUND. Cards are white,
+   the page is #efefef under them, and a well inside a card is the page showing
+   through. Still three lights, one of them moved.
 
    Instagram's own secondary grey is deliberately NOT used. #8e8e8e measures
    3.14:1 and FAILS WCAG AA, and this console is built out of type-label (11px,
@@ -53,8 +62,22 @@
 
   /* The three lights, the quiet, the ink. Every other value in this file is
      one of these or a reserved signal. */
-  --paper: oklch(1 0 0); /* #ffffff · page AND cards, the same white */
-  --fill: oklch(0.985 0 0); /* #fafafa · wells and inputs, the ONLY fill */
+  --paper: oklch(1 0 0); /* #ffffff · cards, popovers, modals — the surfaces that CARRY something */
+
+  /* #efefef · the ground every card sits on. 1.15:1 under the card, which is
+     the step you can see across a 1700px grid of nine product cards;
+     Instagram's own page measures 1.04:1 against its cards and is, at this
+     width, an unfilled promise. It is not #e5e5e5 either: at 1.26:1 the
+     #dbdbdb hairline drawn AROUND a card falls into the page behind it, and
+     this palette separates with hairlines. */
+  --page: oklch(0.952 0 0);
+
+  /* Wells, inputs and hovers are THE PAGE SHOWING THROUGH A CARD, not a fourth
+     light. One grey with one meaning — recessed — so a focused input going to
+     --paper is the same move as a card lifting off the page. The old #fafafa
+     fill measured 1.04:1 against the white card it sat inside, which is a fill
+     that is not there. */
+  --fill: var(--page);
   --hairline: oklch(0.891 0 0); /* #dbdbdb · every separation */
   --quiet: oklch(0.48 0 0); /* #5d5d5d · 6.58:1 on white. The old #775254 was 6.38, so captions gain contrast — this token kept its exact lightness and dropped only its chroma. */
   --ink: oklch(0.205 0 0); /* #171717 · text, rail, band, primary */
@@ -71,7 +94,7 @@
      URL, with no gate to catch it. */
   --mock-strip: oklch(0 0 0);
 
-  --background: var(--paper);
+  --background: var(--page);
   --foreground: var(--ink);
   --card: var(--paper);
   --card-foreground: var(--ink);
@@ -158,6 +181,14 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --color-background: var(--background);
+  /* PAPER IS NOT BACKGROUND, and since MESITA-1938 they are not even the same
+     colour. Every `text-background` this app had was a label on an INK FILL:
+     it meant "the white the card is made of", and it was only ever correct
+     while the page happened to be that white. Repointing --background alone
+     would have turned every white button label grey-on-black, in a package
+     with no tests. They are `text-paper` now. */
+  --color-paper: var(--paper);
+  --color-page: var(--page);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);

@@ -86,6 +86,29 @@ export type MockPlace = {
    *  operator switch has no subscription to date. Derived from the fixed
    *  `MOCK_NOW`, never the wall clock. */
   renewsAt: string | null;
+  /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Mesita Customers is customer
+   *  INTELLIGENCE and it is RENTED, not bought: while it runs, the place reads
+   *  who its guests are and what they did this month; when it stops, the
+   *  catalog closes and the place keeps nothing. It is its own subscription,
+   *  not part of the Membership — a place can be a partner and not subscribe,
+   *  and the reverse.
+   *
+   *  It replaced a PER-GUEST purchase (`MockCustomer.contactUnlocked`), which
+   *  sold a contact forever. Pato, 2026-09-16: *"you don't buy the data
+   *  forever, you subscribe to a catalog of customers and you can track their
+   *  activity"* — a forever sale of a row that keeps changing is a worse deal
+   *  for both sides, because the place pays once for a phone number that
+   *  stops meaning anything and Mesita is paid once for keeping it true. */
+  customerIntel: boolean;
+  /** WHEN THAT SUBSCRIPTION FIRST STARTED, or null if it never has.
+   *
+   *  NEVER SUBSCRIBED AND STOPPED ARE DIFFERENT FACTS, and one boolean cannot
+   *  hold both — the same trap `PayLadder` exists to avoid, where a fresh
+   *  Stripe account and a shut-down one report identically. `customerIntel`
+   *  false with a date behind it is a catalog that CLOSED, and the
+   *  Subscriptions log says so; false with null never opened, and that log is
+   *  empty. A place switched on by the panel with no date started today. */
+  customerIntelSince: string | null;
   /** Per-place capability switches — what `lib/products.ts` reads to decide
    *  whether a card says "On here" or "Not on here yet". */
   pickupOrders: boolean;
@@ -200,22 +223,90 @@ export type MockCreditBalance = {
   lastMoveAt: string;
 };
 
-export type MockActivityEvent = {
+/** A guest LOOKING at this place — the only thing in this console that happens
+ *  without anybody deciding to do business.
+ *
+ *  It is the top of the funnel and the one log with NO PRODUCT behind it:
+ *  there is nothing called Mesita Views to switch on, and a place with every
+ *  other product off still collects these. `surface` is Discovery's own
+ *  vocabulary, so a console reading "swipe" is reading the word the engine
+ *  uses rather than a synonym invented for a screen.
+ *
+ *  A VIEW NEVER WRITES ANYWHERE ELSE, and that is why it leads the book. Eight
+ *  logs where every one feeds another would teach that the fan-out is the
+ *  rule; it is not, and this is the control. */
+export type MockPlaceView = {
   id: string;
   placeId: string;
   at: string;
-  kind:
-    | "visit"
-    | "order"
-    | "reservation"
-    | "review"
-    | "payout"
-    | "credit"
-    | "member"
-    | "profile";
-  title: string;
-  detail: string;
-  amountCents: number | null;
+  surface: "search" | "map" | "swipe" | "link" | "qr";
+  /** NULL WHEN THE VIEWER WAS SIGNED OUT, and most of them are. A log that
+   *  invented a name for every view would make the place look far better known
+   *  than it is, and would put a stranger's name on a row nobody can act on. */
+  guest: string | null;
+  outcome: "viewed" | "saved" | "directions" | "called" | "shared";
+};
+
+/** MONEY LEAVING FOR THE BANK.
+ *
+ *  It is the one record in this file with no product page to live on — no
+ *  screen in the console lists payouts — so it exists only as rows in the
+ *  Payments log, and it is the only source there whose direction is OUT. */
+export type MockPayout = {
+  id: string;
+  placeId: string;
+  at: string;
+  /** The account's last four. One bank per place, so two places must not print
+   *  the same four digits. */
+  last4: string;
+  amountCents: number;
+  state: "paid" | "in_transit";
+};
+
+/** A GUEST BUYING CREDITS, which is the cleanest fan-out this product has: one
+ *  purchase is money IN (Payments) and credit MINTED (Credits), and neither
+ *  log on its own is the event.
+ *
+ *  It is not `MockCreditBalance`. That is a standing balance — where the money
+ *  IS — and this is a movement — how it got there. A balance cannot be a log
+ *  row and a log row cannot be summed into a balance, which is exactly the
+ *  confusion that would put a grand total back on the Credits screen. */
+export type MockCreditPurchase = {
+  id: string;
+  placeId: string;
+  at: string;
+  guest: string;
+  amountCents: number;
+  /** Bought FOR SOMEBODY ELSE. Gifting is why this product exists on the
+   *  consumer side, so the log has to be able to say it. */
+  gift: boolean;
+};
+
+/** SOMEBODY CHANGED SOMETHING — the only log written by the console itself
+ *  rather than by a guest, which is the whole reason it carries a `who`.
+ *
+ *  `from` is null when there was nothing there before: a photo added, a
+ *  teammate invited, a description written for the first time. Printing "—"
+ *  for that is honest; printing "None" would invent a prior value. */
+export type MockSettingChange = {
+  id: string;
+  placeId: string;
+  at: string;
+  who: string;
+  /** WHERE TO GO AND CHANGE IT BACK. A change log whose rows cannot be traced
+   *  to a screen is a list of regrets. */
+  area:
+    | "profile"
+    | "hours"
+    | "menus"
+    | "team"
+    | "orders"
+    | "reservations"
+    | "rewards"
+    | "credits";
+  what: string;
+  from: string | null;
+  to: string;
 };
 
 export type MockMember = {
@@ -264,11 +355,11 @@ export const SEX_LABEL: Record<MockSex, string> = {
  *  than only the ones who filled in a card at the till — and why this console
  *  shows them and never offers to edit them.
  *
- *  THE CONTACT is the exception — the handle and the phone number together.
- *  It is the one thing here the place has to BUY, one guest at a time, and
- *  having it is what makes reaching that guest with a promotion possible. Both
- *  fields are always present and `contactUnlocked` decides whether the screen
- *  may print either.
+ *  THE CONTACT is the handle and the phone number together. Both fields are
+ *  always present, and `MockPlace.customerIntel` — the subscription — decides
+ *  whether the screen may print either. It is not sold a guest at a time any
+ *  more: reaching a guest is what the catalog is FOR, so it comes with the
+ *  catalog rather than being metered out of it.
  *
  *  It is a PHONE, not a WhatsApp. WhatsApp is one channel you could reach the
  *  number on, and naming it after that channel promises an integration nobody
@@ -290,17 +381,26 @@ export type MockCustomer = {
   visits: number;
   /** Centavos, across every visit. Integer money, as everywhere else here. */
   spendCents: number;
-  /** Invented, like every number in fixtures.ts — and never printed unless
-   *  `contactUnlocked`. */
+  /** Invented, like every number in fixtures.ts — and never printed while the
+   *  catalog is closed. */
   phone: string;
-  /** ONE purchase, BOTH ways to reach the guest.
+  /** THE LAST 30 DAYS, which is the half of this row that MOVES.
    *
-   *  The handle and the number are not sold separately, because they are not
-   *  two products — they are the answer to one question, "how do I reach this
-   *  guest", and splitting them would put two verbs in one row and make the
-   *  reviewer price each half. A guest with no handle unlocks to a number and
-   *  an em dash: unlocking reveals what exists, it does not invent a handle. */
-  contactUnlocked: boolean;
+   *  `visits` and `spendCents` above are lifetime at this place: they only
+   *  grow, so a place reading them alone cannot tell a regular from somebody
+   *  who came eleven times two years ago and never again. These two are what
+   *  a subscription is for — they are worth reading again next month, and the
+   *  lifetime pair is not.
+   *
+   *  ARITHMETIC THAT HOLDS: a quiet guest is 0 and 0 together, never 0 visits
+   *  with money against them, and the month can never exceed the lifetime.
+   *  The loop under `CUSTOMERS` in fixtures.ts throws if either breaks. */
+  visitsPerMonth: number;
+  spendPerMonthCents: number;
+  /** When they were last here. The one column that says "quiet" out loud —
+   *  0 visits this month reads as a missing number, and a date reads as a
+   *  fact. */
+  lastVisitAt: string;
 };
 
 /** A place in the POOL: real to Mesita, held by nobody. The catalogue lists

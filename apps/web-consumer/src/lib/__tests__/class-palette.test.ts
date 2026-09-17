@@ -24,10 +24,22 @@ function oklch(css: string): Oklch {
   return { L: +m[1], C: +m[2], H: +m[3] };
 }
 
-function token(name: string): string {
+/** Reads a token, FOLLOWING `var(--other)` to the literal it ends at.
+ *
+ *  It used to return the raw declaration, which was fine while every semantic
+ *  token held an oklch literal. MESITA-1936 gave the page and the card a shared
+ *  source — `--card: var(--paper)` — so a reader that stops at the first hop
+ *  sees a string that is not a colour and throws before a single assertion
+ *  runs. Resolving is the fix rather than inlining the value again: the whole
+ *  point of the indirection is that `--paper` is named once. */
+function token(name: string, seen: string[] = []): string {
   const m = CSS.match(new RegExp(`--${name}:\\s*([^;]+);`));
   if (!m) throw new Error(`token --${name} not found`);
-  return m[1].trim();
+  const value = m[1].trim();
+  const ref = value.match(/^var\(\s*--([\w-]+)\s*\)$/);
+  if (!ref) return value;
+  if (seen.includes(name)) throw new Error(`token --${name} is a var() cycle`);
+  return token(ref[1], [...seen, name]);
 }
 
 /** Both stops of a `--gradient-*`, light end first. */

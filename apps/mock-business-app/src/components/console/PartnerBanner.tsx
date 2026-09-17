@@ -10,23 +10,30 @@
 // do. That was the bug in the banner this replaces: the loudest surface on
 // the page was the one with no verb on it.
 //
-// AND THE STRIP DOES NOT REPEAT THE HEADING. `PlaceHeading` renders
-// `PlaceFacts` on every place view, so a partnered Products screen already
-// carries a gold **Partner** badge top right. The shipped `web-business`
-// strip opens with a green check, the words "Mesita Partner" and an "Active"
-// chip — the same one fact, twice, a hundred pixels apart, in two colours,
-// against `shared/Badges.tsx`'s opening rule.
+// AND THE STRIP CARRIES THE FACT AGAIN (MESITA-1943). It used to omit the
+// **Partner** badge on purpose: `PlaceHeading` put one top-right of every place
+// view, so stating it here too was the same fact twice, a hundred pixels apart,
+// against `shared/Badges.tsx`'s opening rule. The heading is gone, and this is
+// the screen that inherits the fact rather than the one that loses it — the
+// catalogue is where a partner's eight cards unlock, so the gate belongs above
+// the things it gates.
 //
-// So this strip leads with what the heading CANNOT say: the date. The heading
-// answers what the place IS; the strip answers what the membership is DOING.
-// The chip comes back only when the state is not plain active — see
-// `membershipChip` — because then it is new information rather than an echo.
+// Nothing else on the page says it. Settings › States lists Partner among
+// eleven rows, which is a reference table, not the catalogue's headline; the
+// membership line beside this badge says when it RENEWS, which implies the
+// fact without ever stating it. Deleting the heading without this line would
+// have left the partnered catalogue silently unable to say why it is open.
+//
+// The badge answers what the place IS; the line answers what the membership is
+// DOING. The chip is neither, and comes back only when the state is not plain
+// active — see `membershipChip`.
 import {
   ManageMembership,
   membershipChip,
   membershipLine,
   PartnerCard,
 } from "@/components/console/PartnerCard";
+import { Badge } from "@/components/shared/Badges";
 import type { MockPlace } from "@/mock/types";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +54,11 @@ export function PartnerBanner({ place }: { place: MockPlace }) {
       <h2 className="font-display text-sm font-semibold tracking-tight">
         Membership
       </h2>
+      {/* The fact, in the tone it has always had. `gold` is one of the two
+          reserved chromas — a tier the product names out loud — and it holds
+          7.8:1 on this white card, which is the reason the facts stayed on
+          paper rather than moving onto an ink header. */}
+      <Badge tone="gold">Partner</Badge>
       {chip && (
         <span
           className={cn(

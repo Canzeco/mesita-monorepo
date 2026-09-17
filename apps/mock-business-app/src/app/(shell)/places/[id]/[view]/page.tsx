@@ -14,8 +14,7 @@
 import { use } from "react";
 import { notFound } from "next/navigation";
 import { usePlaceScope } from "@/components/console/PlaceScope";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
-import { PLACE_TABS, PLACE_TAB_LABEL, type PlaceTab } from "@/lib/place-tabs";
+import { PLACE_TABS, type PlaceTab } from "@/lib/place-tabs";
 import { ProfileView } from "@/components/views/ProfileView";
 import { VisitsView } from "@/components/views/VisitsView";
 import { OrdersView } from "@/components/views/OrdersView";
@@ -40,21 +39,17 @@ const VIEWS: Record<PlaceTab, () => React.ReactElement | null> = {
 
 export default function PlaceViewPage({ params }: { params: Promise<{ view: string }> }) {
   const { view } = use(params);
-  const { place, pool, tabs } = usePlaceScope();
+  const { tabs } = usePlaceScope();
 
   if (!(PLACE_TABS as readonly string[]).includes(view)) notFound();
   const tab = view as PlaceTab;
   if (!tabs.includes(tab)) notFound();
 
+  // THE VIEW IS THE WHOLE PAGE (MESITA-1943). The heading that stood here said
+  // the place's name, its photo and this view's label — all three of which the
+  // rail says, 240px left, at the same moment. It also had to invent a subject
+  // for a POOL place, and what it invented was `verified: true` on a place
+  // nobody had checked.
   const View = VIEWS[tab];
-  const subject = place ?? (pool
-    ? { ...pool, photoUrl: null, verified: true, partnered: false, promoting: false }
-    : null);
-
-  return (
-    <>
-      {subject && <PlaceHeading place={subject} view={PLACE_TAB_LABEL[tab]} />}
-      <View />
-    </>
-  );
+  return <View />;
 }

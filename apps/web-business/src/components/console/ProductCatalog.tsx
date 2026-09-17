@@ -49,6 +49,7 @@ import { useMemo, useState } from "react";
 import {
   CalendarCheck,
   Check,
+  Globe,
   CreditCard,
   Gift,
   Lock,
@@ -58,6 +59,12 @@ import {
   Ticket,
   Users,
   Landmark,
+  Megaphone,
+  MessageCircle,
+  Nfc,
+  PhoneCall,
+  ScanBarcode,
+  Sparkles,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -109,24 +116,43 @@ export type ProductCard = {
 /** The mark and its tint, one row per product. The tint is a WASH behind a
  *  foreground-weight glyph, not a saturated fill: eight saturated squares in
  *  a grid is a toy, and this screen is where an operator spends money. */
+// THE TINTS ARE GONE, ALL SIXTEEN (MESITA-1936, landing after MESITA-1949 and
+// doing what that file asked of whichever branch arrived second). This console
+// follows the mock: the hues went in MESITA-1934 and the GLYPH became the whole
+// of a product's identity. `tint` keeps its name and its shape because the wash
+// is still a wash — it is simply the same wash for every product now, which is
+// the property that matters. A seventeenth product cannot arrive needing a hue
+// nobody has left, and sixteen saturated squares in one grid is a toy on the
+// screen where an operator spends money.
 const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
   profile: { Icon: Store, tint: "bg-muted text-foreground" },
+  website: { Icon: Globe, tint: "bg-muted text-foreground" },
   customers: { Icon: Users, tint: "bg-muted text-foreground" },
+  ads: { Icon: Megaphone, tint: "bg-muted text-foreground" },
   visits: { Icon: Ticket, tint: "bg-muted text-foreground" },
-  orders: { Icon: ShoppingBag, tint: "bg-muted text-foreground" },
-  reservations: { Icon: CalendarCheck, tint: "bg-muted text-foreground" },
   // Rewards takes the slate Terminal left behind rather than the pink it wore
   // before MESITA-1884 — Customers has that now, and moving a live card's
   // colour to give a returning one its old wash would recolour two cards to
-  // settle one. Eight products, eight tints, no gap.
+  // settle one.
   rewards: { Icon: Gift, tint: "bg-muted text-foreground" },
+  orders: { Icon: ShoppingBag, tint: "bg-muted text-foreground" },
+  reservations: { Icon: CalendarCheck, tint: "bg-muted text-foreground" },
   pay: { Icon: CreditCard, tint: "bg-muted text-foreground" },
+  // TERMINAL DOES NOT GET ITS OLD GLYPH BACK. It wore `CreditCard` until
+  // MESITA-1900, when Payments wore something else; handing it back now would
+  // put one mark on two cards in the same grid, which is the failure the whole
+  // table exists to prevent. `Nfc` is the TAP — the half of Terminal that is
+  // not Payments — and `ScanBarcode` is what POS rings up before anybody taps.
+  terminal: { Icon: Nfc, tint: "bg-muted text-foreground" },
+  pos: { Icon: ScanBarcode, tint: "bg-muted text-foreground" },
   credits: { Icon: Wallet, tint: "bg-muted text-foreground" },
-  // Capital takes the last unused hue (MESITA-1929), and the BANK'S FRONT for
-  // its mark — the same glyph the landing page gives it, because one product
-  // drawn two ways is how an operator learns to distrust both drawings. Nine
-  // products, nine tints, still no gap.
+  // Capital takes the BANK'S FRONT for its mark (MESITA-1929) — the same glyph
+  // the landing page gives it, because one product drawn two ways is how an
+  // operator learns to distrust both drawings.
   capital: { Icon: Landmark, tint: "bg-muted text-foreground" },
+  whatsapp: { Icon: MessageCircle, tint: "bg-muted text-foreground" },
+  phone: { Icon: PhoneCall, tint: "bg-muted text-foreground" },
+  intelligence: { Icon: Sparkles, tint: "bg-muted text-foreground" },
 };
 
 /** The state, as the operator reads it. One word where one will do — the

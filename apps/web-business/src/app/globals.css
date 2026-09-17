@@ -74,11 +74,23 @@
      3.14:1 and FAILS WCAG AA. `--muted-foreground` keeps its exact lightness
      (0.48) and drops only its chroma, so captions GAIN contrast: #5d5d5d at
      6.58:1, where the old #775254 was 6.38. */
-  --background: oklch(1 0 0);
+  /* THE PAGE IS GREY SO THE CARDS CAN BE WHITE (MESITA-1938, adopted here when
+     this branch merged main). This branch was cut with page and card BOTH
+     white and every separation a hairline. The mock shipped the better answer
+     first: white is reserved for a surface that CARRIES something — a card, a
+     popover, a modal — and the page sits a step below it, so a card is lifted
+     by tone instead of by a shadow this palette no longer has.
+
+     These are the mock's values, not new ones. The three apps are one system
+     and the mock leads it. */
+  --paper: oklch(1 0 0); /* #ffffff · cards, popovers, modals */
+  --page: oklch(0.952 0 0); /* the ground they sit on */
+  --fill: var(--page); /* wells and inputs read as the page, not as a card */
+  --background: var(--page);
   --foreground: oklch(0.205 0 0);
-  --card: oklch(1 0 0);
+  --card: var(--paper);
   --card-foreground: oklch(0.205 0 0);
-  --popover: oklch(1 0 0);
+  --popover: var(--paper);
   --popover-foreground: oklch(0.205 0 0);
 
   /* Ink, not pink. The dark pill was already `bg-foreground text-background`
@@ -94,12 +106,12 @@
   --secondary: oklch(0.371 0 0);
   --secondary-foreground: oklch(1 0 0);
 
-  --muted: oklch(0.985 0 0);
+  --muted: var(--fill);
   --muted-foreground: oklch(0.48 0 0);
-  --accent: oklch(0.985 0 0);
+  --accent: var(--fill);
   --accent-foreground: oklch(0.205 0 0);
   --border: oklch(0.891 0 0);
-  --input: oklch(0.985 0 0);
+  --input: var(--fill);
   --ring: oklch(0.205 0 0);
 
   /* ── RESERVED SIGNALS: the only chroma left on this page ────────────────

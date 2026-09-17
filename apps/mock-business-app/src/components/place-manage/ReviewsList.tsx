@@ -7,7 +7,8 @@
 // which is the half an operator actually reads.
 //
 // SIDEWAYS, NOT STACKED, and the masonry is the reason. These boxes live in a
-// ~440px column beside Basics and Photos; twenty reviews stacked there would
+// column beside Basics and Photos — ~440px at lg, ~700px at the two-column
+// ceiling (MESITA-1940); twenty reviews stacked there would
 // make Profile scroll for a screen and a half and push every other card out of
 // reach. A scroller keeps each box the height of ONE review and puts the rest
 // one swipe away — a card and a half is visible at rest, which is what says

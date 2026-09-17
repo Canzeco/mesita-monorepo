@@ -3,10 +3,14 @@
 // Mesita Payments' Stripe account — a SUB-STEP of the catalogue, not a ninth
 // card. It is also where Stripe's stored `return_url` lands, which is why the
 // bare place address forwards its whole query here.
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PayView } from "@/components/views/PayView";
+import { placePageHref } from "@/lib/console-routes";
+import { QUIET_LINK_BUTTON_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 export default function ProductsPayPage() {
   const place = useHeldPlaceOrNull();
@@ -27,7 +31,25 @@ export default function ProductsPayPage() {
 
   return (
     <>
-      <PlaceHeading place={place} view="Products · Mesita Payments" />
+      {/* A DOOR, NOT A HEADING (MESITA-1943). The heading that stood here went
+          with the other six, but this page is the one that cannot lose its
+          label for free: it is the only address under a place that NO rail row
+          points at, and Stripe's stored `return_url` drops an owner on it weeks
+          after they minted the link. `PayView`'s own title is the ladder state
+          ("Payments are live"), which answers what is happening and not where
+          you are. So what comes back is the half the rail cannot say — the
+          parent and the way up — and not the half it already does. */}
+      {/* `self-start`, because the shell's column STRETCHES its children and
+          `QUIET_LINK_BUTTON_CLASS` carries a 44px `::after` tap target sized
+          `inset-x-0`. Left to stretch, that invisible target is 976px of
+          clickable page for a link eight characters wide. */}
+      <Link
+        href={placePageHref(place.id, "products")}
+        className={cn(QUIET_LINK_BUTTON_CLASS, "self-start")}
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        Products
+      </Link>
       <PayView />
     </>
   );

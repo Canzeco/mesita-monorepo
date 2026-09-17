@@ -369,7 +369,7 @@ function MenuItemCard({
               type="button"
               disabled={pending || uploading}
               onClick={onUpload}
-              className="bg-foreground text-background inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition disabled:opacity-50"
+              className="bg-foreground text-paper inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition disabled:opacity-50"
             >
               {uploading ? (
                 <>

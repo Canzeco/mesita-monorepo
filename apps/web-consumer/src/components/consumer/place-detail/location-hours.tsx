@@ -58,7 +58,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5 text-xs font-semibold text-amber-950 transition hover:bg-muted"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-2.5 text-xs font-semibold text-foreground transition hover:bg-muted"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -138,7 +138,7 @@ function HoursDayRow({
           closed
             ? "text-muted-foreground"
             : isToday
-              ? "font-semibold text-violet-950"
+              ? "font-semibold text-foreground"
               : "text-foreground/85",
         )}
       >

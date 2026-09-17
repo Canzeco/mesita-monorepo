@@ -169,7 +169,7 @@ export function AiConnectModal({
         {!canConnect && (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-muted px-4 py-3">
             <Crown className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-            <p className="text-xs leading-relaxed text-amber-950">
+            <p className="text-xs leading-relaxed text-foreground">
               You’re on {CLASS_FLOOR.label} with the Free plan. Subscribe to
               Premium — or reach {REACH_ENTRY_CLASS.label} via Instagram — to
               create an MCP token and let an AI control your profile.
