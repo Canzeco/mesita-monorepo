@@ -1,7 +1,7 @@
 "use client";
 
 // Search-map filter store. Isolated from Discovery (Swipe): narrowing
-// Places scope, Super Category or Popularity on the map never touches
+// Places scope, Family or Popularity on the map never touches
 // the deck.
 
 import { useSyncExternalStore } from "react";
@@ -16,7 +16,7 @@ import {
 import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v6: v5 held `resultLimit` (How many). That stop is operator
-// `map.pinCount` again; this key holds Super Category, Places scope and
+// `map.pinCount` again; this key holds Family, Places scope and
 // Popularity. Bumping rather than widening the parser drops a forgotten
 // How many from a v5 session instead of pretending it is still a guest
 // knob. sessionStorage, so the cost of the bump is one forgotten sheet state.

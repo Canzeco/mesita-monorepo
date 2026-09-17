@@ -20,7 +20,7 @@ export type Place = {
   slug: string;
   name: string;
   category: string | null;
-  /** Super Category from the EF. Exactly one when classified. */
+  /** Family from the EF. Exactly one when classified. */
   family_keys?: string[];
   category_label?: string | null;
   vibe: string | null;

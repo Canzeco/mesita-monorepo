@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-get-atlas-fields
 //
-// Read-only Intaker vocabulary for the admin console: Super Categories,
+// Read-only Intaker vocabulary for the admin console: Families,
 // place categories, tag catalog, tag facets, and enforced field length limits.
 // Twin of `business-web-get-atlas-fields`; both are a guard plus
 // `_shared/atlas-fields.ts` (MESITA-1740).

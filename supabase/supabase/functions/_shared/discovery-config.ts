@@ -104,7 +104,7 @@ export type SocialConfig = {
  * These toggles shape one call's RESULT SET; they never change call count.
  *
  * ONE ENTRY PER TYPE IN `GOOGLE_SEARCH_TYPES`, in that object's own order, so
- * the strip covers all SEVEN Super Categories rather than the three it knew
+ * the strip covers all SEVEN Families rather than the three it knew
  * when it was five keys long (MESITA-1683). `google-type-super.test.ts` pins
  * this list to that map: the taxonomy is the law, this is its value today.
  *

@@ -29,7 +29,7 @@ const COLUMNS: readonly string[] = [
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
   "category_label",
-  // Super Categories inferred by contents enrichment. NULL until then.
+  // Families inferred by contents enrichment. NULL until then.
   "family_keys",
   "vibe",
   "price_level",

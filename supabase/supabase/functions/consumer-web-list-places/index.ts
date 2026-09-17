@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
   if (isNearby && guestMinReviews > 0) {
     filtered = filtered.gte("google_review_count", guestMinReviews);
   }
-  // Guest Super Category: same reason as Popularity. family_keys is
+  // Guest Family: same reason as Popularity. family_keys is
   // total on the row; overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT
   // with the wrong supers and drop closer matches. The JS familiesForPlace
   // pass still runs for Atlas-inferred rows whose stored keys lag.
