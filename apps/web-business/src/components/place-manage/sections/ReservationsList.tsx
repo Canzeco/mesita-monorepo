@@ -18,13 +18,13 @@ import type { PlaceActivity } from "../actions";
 // apart is how the wrong one gets imported.
 
 const STATE: Record<string, { label: string; chip: string }> = {
-  pending: { label: "Pending", chip: "bg-amber-500/10 text-amber-700" },
-  confirmed: { label: "Confirmed", chip: "bg-emerald-500/10 text-emerald-700" },
-  completed: { label: "Completed", chip: "bg-emerald-500/10 text-emerald-700" },
-  declined: { label: "Declined", chip: "bg-rose-500/10 text-rose-700" },
+  pending: { label: "Pending", chip: "bg-muted text-foreground" },
+  confirmed: { label: "Confirmed", chip: "bg-muted text-foreground" },
+  completed: { label: "Completed", chip: "bg-muted text-foreground" },
+  declined: { label: "Declined", chip: "bg-muted text-foreground" },
   cancelled: { label: "Cancelled", chip: "bg-muted text-muted-foreground" },
-  unreachable: { label: "Unreachable", chip: "bg-sky-500/10 text-sky-700" },
-  unresolved: { label: "Unresolved", chip: "bg-indigo-500/10 text-indigo-700" },
+  unreachable: { label: "Unreachable", chip: "bg-muted text-foreground" },
+  unresolved: { label: "Unresolved", chip: "bg-muted text-foreground" },
 };
 
 function stateOf(s: string | null) {

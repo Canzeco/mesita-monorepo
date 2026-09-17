@@ -343,7 +343,7 @@ export function StepPay({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.06] p-3.5">
+      <div className="rounded-2xl border border-border bg-foreground/[0.06] p-3.5">
         <p className="font-display text-foreground text-base leading-tight font-bold">
           {placeName} approved it
         </p>
@@ -705,7 +705,7 @@ export function LaneChip({
           <span className="truncate">{label}</span>
           {done ? (
             <Check
-              className="size-2.5 shrink-0 text-emerald-600"
+              className="size-2.5 shrink-0 text-muted-foreground"
               strokeWidth={4}
             />
           ) : null}

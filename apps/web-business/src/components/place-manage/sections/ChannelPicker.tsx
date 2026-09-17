@@ -212,7 +212,7 @@ export function ChannelPicker({
                   {contact}
                 </span>
               ) : (
-                <span className="text-amber-700/90 font-medium">
+                <span className="text-foreground/90 font-medium">
                   not set — add under Place → Channels
                 </span>
               )}

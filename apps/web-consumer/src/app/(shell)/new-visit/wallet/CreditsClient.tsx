@@ -114,7 +114,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
  *  `--primary`'s tint on them was competing with the only button that creates
  *  anything.
  *
- *  So the fill is gone from all three. The word stays bold and pink, which is
+ *  So the fill is gone from all three. The word stays bold and INK, which is
  *  what still says "pressable" once the shape is gone.
  *
  *  THE HIT BOX DOES NOT SHRINK WITH THE SHAPE. MESITA-1708 D5 measured the
@@ -124,21 +124,21 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
  *  header's baseline. Padding is not decoration here — deleting it breaks a
  *  measured rule.
  *
- *  `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary` (pink-500, 3.66:1):
- *  this is text on a light surface and 500 fails AA — which matters more now
- *  that the text IS the button. The token has no Tailwind utility and an
- *  arbitrary `text-[...]` trips the off-scale-font-size rule, so it rides an
- *  inline style. globals.css:26 documents the pair. */
+ *  IT RODE `--brand-pink-text` UNTIL MESITA-1936, because 600 cleared AA on a
+ *  light surface where `--primary` (pink-500, 3.66:1) did not — the whole
+ *  reason for the inline style was that the 600 step had no Tailwind utility.
+ *  Achromatic, `--foreground` IS the readable one (17.9:1) and it has a
+ *  utility, so the carve-out collapses: this is `text-foreground` now, and the
+ *  inline style is gone with the token it existed to reach. */
 const ADD_BUTTON_CLASS =
-  "-mx-1 flex shrink-0 items-center gap-1 rounded-lg px-1 py-3 text-sm font-bold transition active:scale-[0.98] disabled:opacity-50";
-const ADD_BUTTON_STYLE = { color: "var(--brand-pink-text)" };
+  "text-foreground -mx-1 flex shrink-0 items-center gap-1 rounded-lg px-1 py-3 text-sm font-bold transition active:scale-[0.98] disabled:opacity-50";
 
 /** THE ONE SOLID BUTTON ON THE SCREEN (MESITA-1708 D4). Buy used to be the
  *  first of three identical pink pills beside Gift and Redeem. It is not their
  *  peer: buying is the only act on this surface that creates anything, and
  *  Redeem — which most guests will never use — was carrying the same weight.
- *  `--primary` is fine as a FILL (the AA problem is pink-500 as text on white,
- *  which is why the links opposite ride --brand-pink-text instead).
+ *  `--primary` is fine as a FILL, and since MESITA-1936 it is ink rather than
+ *  pink, so the AA problem that split it from the links opposite is gone.
  *
  *  FULL WIDTH (MESITA-1825). It sat left-aligned at the bottom of the third of
  *  three equal boxes, which is the least-looked-at pixel on the screen. Now
@@ -153,7 +153,7 @@ const BUY_BUTTON_CLASS =
  *  gone, along with the reason for it: both have real screens. */
 function HeadAction({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} style={ADD_BUTTON_STYLE} className={ADD_BUTTON_CLASS}>
+    <Link href={href} className={ADD_BUTTON_CLASS}>
       {children}
     </Link>
   );
@@ -219,7 +219,7 @@ export function CreditsClient() {
               state={cards}
               label="Add"
               className={ADD_BUTTON_CLASS}
-              style={ADD_BUTTON_STYLE}
+             
             />
           }
         >

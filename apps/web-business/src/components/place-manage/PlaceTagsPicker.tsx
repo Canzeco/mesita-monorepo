@@ -124,7 +124,7 @@ export function PlaceTagsPicker({
         <ul className="flex flex-wrap gap-1.5">
           {value.map((slug) => (
             <li key={slug}>
-              <span className="border-pink-200/80 bg-pink-500/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
+              <span className="border-border bg-foreground/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
                 {labelFor(slug)}
                 <button
                   type="button"

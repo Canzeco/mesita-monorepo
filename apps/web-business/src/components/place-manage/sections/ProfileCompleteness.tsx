@@ -18,7 +18,7 @@ const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
 
 const CHIP_CLASS =
-  "rounded-full bg-amber-500/10 px-2 py-0.5 type-meta font-semibold text-amber-700 transition hover:bg-amber-500/20";
+  "rounded-full bg-muted px-2 py-0.5 type-meta font-semibold text-foreground transition hover:bg-muted";
 
 type CompletenessCheck = {
   label: string;
@@ -144,12 +144,12 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
 
   // Chip hue tracks the band so the banner reads at a glance.
   const chip = complete
-    ? "bg-emerald-500/10 text-emerald-600"
+    ? "bg-muted text-muted-foreground"
     : pct >= 70
-      ? "bg-sky-500/10 text-sky-600"
+      ? "bg-muted text-muted-foreground"
       : pct >= 40
-        ? "bg-amber-500/10 text-amber-600"
-        : "bg-rose-500/10 text-rose-600";
+        ? "bg-muted text-muted-foreground"
+        : "bg-muted text-muted-foreground";
 
   return (
     <section className="border-border bg-card shadow-card mb-4 rounded-2xl border p-5 sm:p-6 lg:mb-5">
@@ -192,7 +192,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
             />
           </div>
           {complete ? (
-            <p className="flex items-center gap-1.5 type-label font-semibold text-emerald-700">
+            <p className="flex items-center gap-1.5 type-label font-semibold text-foreground">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Profile complete — everything a guest needs is filled in.
             </p>

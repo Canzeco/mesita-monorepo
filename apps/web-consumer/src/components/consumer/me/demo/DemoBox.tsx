@@ -72,7 +72,7 @@ export function DemoSegmented<T extends string>({
             className={cn(
               "flex-1 rounded-md px-2 py-1.5 text-center text-xs font-semibold whitespace-nowrap transition",
               active
-                ? "bg-background text-foreground shadow-rest"
+                ? "bg-paper text-foreground shadow-rest"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

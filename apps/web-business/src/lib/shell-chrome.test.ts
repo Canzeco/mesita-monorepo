@@ -647,7 +647,7 @@ describe("the rail is six nouns and one indent", () => {
     const r = rail();
     expect(r).not.toContain("text-muted-foreground");
     expect(r).not.toContain("bg-foreground");
-    expect(r).not.toContain("text-background");
+    expect(r).not.toContain("text-paper");
     expect(r).not.toContain("hover:text-foreground");
     expect(r).toContain('"bg-sidebar-foreground text-sidebar font-semibold"');
     expect(r).toContain("text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground");

@@ -129,7 +129,7 @@ export function FavoriteTile({
             <div className="flex min-w-0 flex-col gap-1">
               {ratingLabel && (
                 <p className="type-label flex items-center gap-1">
-                  <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+                  <Star className="h-3 w-3 shrink-0 fill-foreground text-muted-foreground" />
                   <span className="text-foreground font-semibold">
                     {ratingLabel}
                   </span>
@@ -155,12 +155,12 @@ export function FavoriteTile({
                     <span
                       className={cn(
                         "h-1.5 w-1.5 shrink-0 rounded-full",
-                        isOpen ? "bg-emerald-500" : "bg-muted-foreground/40",
+                        isOpen ? "bg-foreground" : "bg-muted-foreground/40",
                       )}
                     />
                     <span
                       className={
-                        isOpen ? "text-emerald-600" : "text-muted-foreground"
+                        isOpen ? "text-foreground" : "text-muted-foreground"
                       }
                     >
                       {openingLabel}
@@ -195,7 +195,7 @@ export function FavoriteTile({
             <Heart
               className={cn(
                 "h-4 w-4",
-                saved ? "fill-rose-500 text-rose-500" : "text-white",
+                saved ? "fill-foreground text-muted-foreground" : "text-white",
               )}
             />
           </span>

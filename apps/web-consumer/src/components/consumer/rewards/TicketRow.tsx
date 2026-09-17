@@ -95,7 +95,7 @@ export function TicketRow({
           className={cn(
             "mt-0.5 block truncate text-xs",
             !closed && ticket.first_scanned_at
-              ? "font-semibold text-emerald-700"
+              ? "font-semibold text-foreground"
               : "text-muted-foreground",
           )}
         >
@@ -103,7 +103,7 @@ export function TicketRow({
         </span>
       </span>
       {saved > 0 ? (
-        <span className="shrink-0 text-sm font-extrabold text-emerald-700 tabular-nums">
+        <span className="shrink-0 text-sm font-extrabold text-foreground tabular-nums">
           −{formatCurrency(saved)}
         </span>
       ) : (

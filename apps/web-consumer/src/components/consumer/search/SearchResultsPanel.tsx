@@ -219,7 +219,7 @@ function SuggestionRow({
         )}
       </span>
       {added && (
-        <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">
+        <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground">
           Added
         </span>
       )}

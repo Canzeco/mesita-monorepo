@@ -57,11 +57,11 @@ const TINT_CLASSES = {
   primary: "bg-primary/10 text-primary",
   muted: "bg-muted text-foreground/70",
   instagram: [INSTAGRAM_ICON_GRADIENT_CLASS, "text-white"].join(" "),
-  emerald: "bg-emerald-500/10 text-emerald-600",
-  amber: "bg-amber-500/10 text-amber-600",
-  sky: "bg-sky-500/10 text-sky-600",
-  violet: "bg-violet-500/10 text-violet-600",
-  rose: "bg-rose-500/10 text-rose-600",
+  emerald: "bg-muted text-muted-foreground",
+  amber: "bg-muted text-muted-foreground",
+  sky: "bg-muted text-muted-foreground",
+  violet: "bg-muted text-muted-foreground",
+  rose: "bg-muted text-muted-foreground",
   destructive: "bg-destructive/10 text-destructive",
 } as const satisfies Record<RowTint, string>;
 

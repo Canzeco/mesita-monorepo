@@ -8,7 +8,7 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 //
 //   - Left  (50% on lg+, hidden on mobile): branded column with factual,
 //           not sales, copy — what the console does, not why you should
-//           want it. bg-foreground/text-background matches admin's aside
+//           want it. bg-foreground/text-paper matches admin's aside
 //           exactly and matches business's own solid-surface convention
 //           (PRIMARY_BUTTON_CLASS et al. in lib/ui-classes.ts) — not
 //           bg-primary/bg-brand, both of which fail AA contrast on body
@@ -56,13 +56,13 @@ export function EnterpriseAuthLayout({
 
 function LandingPane() {
   return (
-    <aside className="bg-foreground text-background relative hidden flex-col justify-between overflow-hidden p-10 lg:flex">
+    <aside className="bg-foreground text-paper relative hidden flex-col justify-between overflow-hidden p-10 lg:flex">
       <SoftGlow />
       <div className="relative z-10 flex items-center justify-between">
         <Link href="/" className="inline-flex items-center no-underline">
           <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
-        <span className="type-meta font-bold tracking-[0.14em] text-background/70 uppercase">
+        <span className="type-meta font-bold tracking-[0.14em] text-paper/70 uppercase">
           Business
         </span>
       </div>
@@ -95,7 +95,7 @@ function LandingPane() {
         </ul>
       </div>
 
-      <p className="relative z-10 text-xs text-background/70">
+      <p className="relative z-10 text-xs text-paper/70">
         Made in Monterrey · © Mesita
       </p>
     </aside>
@@ -119,7 +119,7 @@ function ValueProp({
       <p className="font-display text-sm font-semibold tracking-[-0.01em]">
         {title}
       </p>
-      <p className="type-body leading-[1.5] text-background/80">{blurb}</p>
+      <p className="type-body leading-[1.5] text-paper/80">{blurb}</p>
     </li>
   );
 }

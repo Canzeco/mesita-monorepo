@@ -23,15 +23,15 @@ export const ACTIVITY_KIND_META: Record<
   ActivityKind,
   { Icon: LucideIcon; bg: string; color: string }
 > = {
-  earned: { Icon: Coins, bg: "bg-pink-500/10", color: "text-pink-600" },
-  saved: { Icon: Bookmark, bg: "bg-amber-500/10", color: "text-amber-600" },
+  earned: { Icon: Coins, bg: "bg-muted", color: "text-muted-foreground" },
+  saved: { Icon: Bookmark, bg: "bg-muted", color: "text-muted-foreground" },
   booked: {
     Icon: CalendarCheck,
-    bg: "bg-emerald-500/10",
-    color: "text-emerald-600",
+    bg: "bg-muted",
+    color: "text-muted-foreground",
   },
-  upgraded: { Icon: Crown, bg: "bg-violet-500/10", color: "text-violet-600" },
-  swiped: { Icon: Heart, bg: "bg-rose-500/10", color: "text-rose-600" },
+  upgraded: { Icon: Crown, bg: "bg-muted", color: "text-muted-foreground" },
+  swiped: { Icon: Heart, bg: "bg-muted", color: "text-muted-foreground" },
 };
 
 export const MY_ACTIVITY: ConsumerActivity[] = [

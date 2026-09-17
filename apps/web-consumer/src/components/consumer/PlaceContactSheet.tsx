@@ -109,7 +109,7 @@ export function PlaceContactSheet({
     >
       <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <MessageCircle className="h-5 w-5" />
           </span>
           <div className="min-w-0">

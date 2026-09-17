@@ -43,7 +43,7 @@ export function ExternalCard({
       <div className="flex items-center gap-1 text-sm font-semibold">
         {icon === "star" ? (
           <Star
-            className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+            className="h-3.5 w-3.5 fill-foreground text-muted-foreground"
             strokeWidth={0}
           />
         ) : (

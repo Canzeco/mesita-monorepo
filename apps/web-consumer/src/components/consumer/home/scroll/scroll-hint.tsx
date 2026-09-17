@@ -72,7 +72,7 @@ export function ScrollHint({ show }: { show: boolean }) {
       aria-hidden
       className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center"
     >
-      <span className="bg-foreground/85 text-background flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
+      <span className="bg-foreground/85 text-paper flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
         <ChevronsDown className="h-3.5 w-3.5 animate-bounce" strokeWidth={2.4} />
         Scroll for more places
       </span>

@@ -89,7 +89,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
           className={
             "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold " +
             (gatesOn > 0
-              ? "bg-amber-500/10 text-amber-700"
+              ? "bg-muted text-foreground"
               : "bg-muted text-muted-foreground")
           }
         >
@@ -139,7 +139,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
           hasError={pin !== "" && !valid}
         />
         {pin !== "" && !valid ? (
-          <span className="mt-1.5 block text-xs font-medium text-amber-700">
+          <span className="mt-1.5 block text-xs font-medium text-foreground">
             Needs all 6 digits.
           </span>
         ) : (
@@ -251,7 +251,7 @@ const PinDigits = forwardRef<
                 (hasError
                   ? "border-destructive/50"
                   : active
-                    ? "border-amber-500 ring-2 ring-amber-500/20"
+                    ? "border-border ring-2 ring-foreground"
                     : filled
                       ? "border-foreground/20"
                       : "border-border") +

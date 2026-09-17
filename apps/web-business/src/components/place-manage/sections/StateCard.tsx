@@ -374,9 +374,9 @@ export function StateCard({
         {/* The drift warning lives HERE: it is a disagreement between
             Partnered and Visit Rewards, the two rows right above it. */}
         {badged !== promoting ? (
-          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-            <p className="type-label leading-relaxed text-amber-900">
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-border bg-muted/60 p-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
+            <p className="type-label leading-relaxed text-foreground">
               <span className="font-semibold">
                 Guest surfaces disagree with Visit Rewards.
               </span>{" "}
@@ -412,15 +412,15 @@ export function StateRow({
   children?: React.ReactNode;
 }) {
   const chipClass = {
-    slate: "bg-slate-500/10 text-slate-700",
-    teal: "bg-teal-500/10 text-teal-700",
-    indigo: "bg-indigo-500/10 text-indigo-700",
-    violet: "bg-violet-500/10 text-violet-700",
-    emerald: "bg-emerald-500/10 text-emerald-700",
-    sky: "bg-sky-500/10 text-sky-700",
-    pink: "bg-pink-500/10 text-pink-600",
-    amber: "bg-amber-500/10 text-amber-700",
-    orange: "bg-orange-500/10 text-orange-700",
+    slate: "bg-muted text-foreground",
+    teal: "bg-muted text-foreground",
+    indigo: "bg-muted text-foreground",
+    violet: "bg-muted text-foreground",
+    emerald: "bg-muted text-foreground",
+    sky: "bg-muted text-foreground",
+    pink: "bg-muted text-muted-foreground",
+    amber: "bg-muted text-foreground",
+    orange: "bg-muted text-foreground",
   }[tint];
 
   return (

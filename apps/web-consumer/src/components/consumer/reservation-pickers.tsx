@@ -116,7 +116,7 @@ export function ReservationDatePicker({
                 d.disabled
                   ? "border-border bg-muted/40 cursor-not-allowed opacity-45"
                   : active
-                    ? "border-pink-500/40 bg-pink-500/10"
+                    ? "border-border bg-muted"
                     : "border-border bg-card",
               )}
             >
@@ -124,7 +124,7 @@ export function ReservationDatePicker({
                 className={cn(
                   "type-meta font-semibold uppercase",
                   active && !d.disabled
-                    ? "text-pink-300"
+                    ? "text-muted-foreground"
                     : "text-muted-foreground",
                 )}
               >
@@ -243,10 +243,10 @@ function TimeSlotButton({
           ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
           : closed
             ? active
-              ? "text-foreground border-amber-500/70 bg-amber-500/15"
+              ? "text-foreground border-border bg-muted"
               : "border-border bg-card text-muted-foreground hover:text-foreground border-dashed"
             : active
-              ? "text-foreground border-pink-500/40 bg-pink-500/10"
+              ? "text-foreground border-border bg-muted"
               : "border-border bg-card text-muted-foreground hover:text-foreground",
       )}
     >
@@ -276,9 +276,9 @@ export function ClosedSlotNotice({
   const dayHours = hoursLabelForDate(date, hours);
 
   return (
-    <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3">
-      <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-amber-600" />
-      <p className="type-body leading-snug text-amber-900">
+    <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-border bg-muted p-3">
+      <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-muted-foreground" />
+      <p className="type-body leading-snug text-foreground">
         <span className="font-semibold">
           {placeName} looks closed at {time} on {weekdayName(date)}.
         </span>{" "}

@@ -120,7 +120,7 @@ export function ScrollCard({
         <ActionButton
           label={`Go to ${place.name}`}
           onClick={onGo}
-          className="border-foreground bg-foreground text-background"
+          className="border-foreground bg-foreground text-paper"
         >
           <Zap className="h-5 w-5" strokeWidth={2.2} aria-hidden />
         </ActionButton>

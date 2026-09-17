@@ -130,8 +130,8 @@ export function IntakeStateCard({ place }: { place: AdminPlace }) {
                 (row.on === "unknown"
                   ? "bg-muted text-muted-foreground"
                   : row.on
-                    ? "bg-emerald-500/10 text-emerald-700"
-                    : "bg-amber-500/10 text-amber-700")
+                    ? "bg-muted text-foreground"
+                    : "bg-muted text-foreground")
               }
               aria-label={`${row.label}: ${
                 row.on === "unknown"

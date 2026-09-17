@@ -98,7 +98,7 @@ export function VerificationCard({
               className={
                 "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold tabular-nums " +
                 (verified
-                  ? "bg-emerald-500/10 text-emerald-700"
+                  ? "bg-muted text-foreground"
                   : "bg-muted text-muted-foreground")
               }
               aria-label={`Verified: ${chip}`}
@@ -278,7 +278,7 @@ function PendingProof({
             type="button"
             onClick={() => setConfirming(true)}
             disabled={pending}
-            className="bg-foreground text-background inline-flex h-9 items-center gap-2 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
+            className="bg-foreground text-paper inline-flex h-9 items-center gap-2 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
           >
             {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
             Approve

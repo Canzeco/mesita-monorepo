@@ -600,7 +600,7 @@ function MenuItemCard({
               type="button"
               disabled={pending || uploading}
               onClick={onUpload}
-              className="bg-foreground text-background inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition disabled:opacity-50"
+              className="bg-foreground text-paper inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition disabled:opacity-50"
             >
               {uploading ? (
                 <>
@@ -761,7 +761,7 @@ function SourceCard({
       className={
         "flex items-start gap-3 rounded-xl border p-3.5 text-left transition disabled:opacity-50 " +
         (active
-          ? "border-pink-400/60 bg-card ring-1 ring-pink-400/30"
+          ? "border-border bg-card ring-1 ring-foreground"
           : "border-border bg-card hover:border-foreground/40")
       }
     >

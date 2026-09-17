@@ -85,16 +85,16 @@ describe("the drawer is a real modal", () => {
 
 // MESITA-1710. The rail is light, and its contrast is a measured claim rather
 // than an inherited one — admin's dark rail ships three AA failures
-// (`text-background/35` eyebrows at ~3.3:1, `/45` collapse at 4.36:1) and this
+// (`text-paper/35` eyebrows at ~3.3:1, `/45` collapse at 4.36:1) and this
 // port must not carry them across.
 describe("the rail is light, and every text token is a measured pair", () => {
   it("uses the sidebar token family, not an inversion", () => {
     expect(rail).toContain("bg-sidebar text-sidebar-foreground");
-    expect(rail).not.toContain('bg-foreground text-background"');
+    expect(rail).not.toContain('bg-foreground text-paper"');
   });
 
   it("never sets text on a bare opacity fraction", () => {
-    // `text-background/35` and friends are how the failures got in: an alpha
+    // `text-paper/35` and friends are how the failures got in: an alpha
     // on a text colour is a contrast ratio nobody computed. Semantic pairs
     // only. (An opacity on a decorative dot or a separator is fine.)
     expect(code(rail)).not.toMatch(/text-(background|foreground)\/\d+/);

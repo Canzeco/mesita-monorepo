@@ -47,31 +47,102 @@
   );
   /* BRAND-TOKENS:END */
 
-  /* Mesita — pink-red palette */
-  --background: oklch(0.985 0.012 10);
-  --foreground: oklch(0.18 0.06 15);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.06 15);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.06 15);
+  /* ── THE ACHROMATIC SEMANTIC LAYER (MESITA-1936) ────────────────────────
+     Pato 2026-09-16: *"make the same colors design change for the consumer app
+     and for the actual business app. Just a style changing mainly colors, but
+     keep the same struct."*
 
-  /* Hot pink-red primary (buttons, brand) */
-  --primary: var(--brand-pink);
-  --primary-foreground: oklch(0.99 0.005 10);
+     THE RULE: every neutral keeps its LIGHTNESS and loses its CHROMA. Chroma
+     survives only where a third party owns the colour, where money is at risk,
+     or where a tier is named — never on state, never on hierarchy, never on
+     hover. On THIS app the third clause does real work: the Class ladder below
+     is four metals the product names out loud, so it keeps every hue it has.
 
-  /* Deeper rose for accents / "part" italics */
-  --secondary: var(--brand-pink-deep);
-  --secondary-foreground: oklch(0.99 0.005 10);
+     THE BRAND IS UNTOUCHED AND STAYS PINK. The `--brand-pink-*` ramp above is
+     GENERATED from assets/brand/brand.json between the BRAND-TOKENS markers;
+     `brand.yml` checks it and nothing here writes to it. This block is the
+     app's OWN layer, which no generator owns — which is why this app can go
+     achromatic while web-landing, web-admin and web-validate keep the brand.
 
-  --muted: oklch(0.96 0.012 10);
-  --muted-foreground: oklch(0.48 0.05 15);
-  --accent: oklch(0.75 0.2 355);
-  --accent-foreground: oklch(0.18 0.06 15);
+     IT WAS NEVER A PINK-ACCENT PROBLEM (measured on the mock in MESITA-1934):
+     the accent was ~5% of the pixels; the other 95% was these neutrals, every
+     one of them tinted — `--foreground` rendered #260409, the page #fff7f8,
+     every hairline #ebd9db. Repointing --primary alone would have removed the
+     5% and kept the 95%.
+
+     Instagram's own secondary grey is deliberately NOT used: #8e8e8e measures
+     3.14:1 and FAILS WCAG AA. `--muted-foreground` keeps its exact lightness
+     and drops only its chroma, so captions GAIN contrast: #5d5d5d at 6.58:1,
+     where the old #775254 was 6.38. This app is read on a phone, outdoors. */
+  /* ── AND THE SECOND LIGHT GOES UNDER THE CARDS (MESITA-1948) ────────────
+     Pato 2026-09-16, hours after MESITA-1934 shipped the system above: *"in
+     general make the background a bit gray, and then the other stuff white or
+     vice versa, but a bit of contrast."* MESITA-1938 applied it to the mock;
+     this is the same call, landing here.
+
+     MESITA-1934 spent all three lights INSIDE the card — page and cards the
+     same white, the second light a #fafafa well nobody could see at 1.04:1,
+     and the whole burden of separation on one hairline. Still three lights;
+     one of them moved to the GROUND. On a phone, outdoors, that step is worth
+     more than it is on a desk: a white card on a white page is held together
+     by a hairline the sun washes out first.
+
+     `--paper` is what a SURFACE IS MADE OF and `--page` is what it SITS ON.
+     They are separate names because `--background` was doing both jobs and
+     only one survives: 18 `text-background` uses in this app mean "the white
+     on an ink fill". Repointing `--background` alone would have turned every
+     one of those labels grey-on-black, in an app with no visual QA path. */
+  --paper: oklch(1 0 0); /* #ffffff · cards, sheets, popovers, ink-fill labels */
+  --page: oklch(0.952 0 0); /* #efefef · the ground every card sits on */
+  /* Wells, inputs and hovers are THE PAGE SHOWING THROUGH A CARD, not a fourth
+     light — so a focused input going to `--paper` is the same move as a card
+     lifting off the page. */
+  --fill: var(--page);
+
+  --background: var(--page);
+  --foreground: oklch(0.205 0 0);
+  --card: var(--paper);
+  --card-foreground: oklch(0.205 0 0);
+  --popover: var(--paper);
+  --popover-foreground: oklch(0.205 0 0);
+
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: var(--paper);
+
+  /* The hover step for FILLED controls. `hover:opacity-90` read instantly on
+     hot pink because it shifted CHROMA; on ink it is 1.32:1 and it fades the
+     white LABEL too, so a hovered black pill reads as greying OUT. */
+  --ink-hover: oklch(0.371 0 0);
+
+  --secondary: oklch(0.371 0 0);
+  --secondary-foreground: var(--paper);
+
+  --muted: var(--fill);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: var(--fill);
+  --accent-foreground: oklch(0.205 0 0);
+  /* RESERVED: the one thing that says "this destroys something". */
   --destructive: oklch(0.58 0.24 28);
-  --destructive-foreground: oklch(0.99 0.005 10);
-  --border: oklch(0.9 0.02 10);
-  --input: oklch(0.94 0.015 10);
-  --ring: var(--brand-pink);
+  --destructive-foreground: var(--paper);
+  --border: oklch(0.891 0 0);
+  --input: var(--fill);
+  --ring: oklch(0.205 0 0);
+
+  /* ── OVERRIDES OF GENERATED TOKENS, AND WHY THIS IS NOT A HAND-EDIT ─────
+     `--gradient-pink` and `--gradient-brand` are declared INSIDE the
+     BRAND-TOKENS block above, which is generated and which `brand.yml`
+     compares byte for byte. They are re-declared HERE, below the marker, so
+     the generated bytes are untouched and the cascade — a later declaration in
+     the same `:root` — decides the value. `deno task sync-brand:check` stays
+     at 0 drifted, which is the whole point: the BRAND is still pink and
+     web-landing, web-admin and web-validate still render it.
+
+     This one pair of lines is most of the repaint's reach. `.bg-pink-gradient`
+     (30 call sites here), `.bg-brand` and `.text-pink-gradient` read these
+     tokens rather than a literal, so every one of them turns to ink without a
+     single component being edited. */
+  --gradient-pink: oklch(0.205 0 0);
+  --gradient-brand: oklch(0.205 0 0);
 
   /* Class identity colors (Classes v2, MESITA-1079). The ladder is now four
      metals — Bronze · Silver · Gold · Diamond — and they are named for what
@@ -165,18 +236,17 @@
       transparent 0.6px 8px
     );
 
-  --gradient-hero:
-    radial-gradient(
-      1200px 600px at 20% -10%,
-      oklch(0.85 0.16 5 / 0.55),
-      transparent 60%
-    ),
-    radial-gradient(
-      900px 500px at 90% 10%,
-      oklch(0.85 0.18 355 / 0.5),
-      transparent 60%
-    ),
-    linear-gradient(180deg, oklch(0.99 0.012 10), oklch(0.96 0.02 5));
+  /* The hero wash was two pink radials over a pink-white page. A gradient with
+     no job but atmosphere is the first thing the achromatic rule takes. */
+  --gradient-hero: linear-gradient(180deg, oklch(1 0 0), oklch(0.985 0 0));
+  /* ── THE CLASS LADDER KEEPS EVERY HUE IT HAS ────────────────────────────
+     Bronze · Silver · Gold · Diamond are four metals the product NAMES OUT
+     LOUD to the guest, on the Passport and in the header chip — which is the
+     third reserved clause exactly: where a tier is named. Greyscaling them
+     would not be a restyle, it would delete the ladder, because a metal read
+     as a grey is no longer a metal. `--gradient-premium` below is the PLAN and
+     is a near-black already (chroma 0.04); it only loses a warmth nobody can
+     see. */
   --gradient-gold: linear-gradient(
     135deg,
     oklch(0.87 0.13 97),
@@ -199,25 +269,28 @@
   );
   --gradient-premium: linear-gradient(
     135deg,
-    oklch(0.35 0.04 15),
-    oklch(0.18 0.05 15)
+    oklch(0.35 0 0),
+    oklch(0.18 0 0)
   );
   --gradient-card: linear-gradient(
     180deg,
     oklch(1 0 0 / 0.95),
-    oklch(0.97 0.012 10 / 0.85)
+    oklch(0.985 0 0 / 0.85)
   );
   /* Elevation. Two tokens were not enough: the app had grown 13 one-off
      shadow-[...] recipes to cover cases they could not express (MESITA-1217).
      rest -> elev -> glow is the LIFT ladder (how high off the page).
      media / sheet-* / danger are about CONTEXT, not height, so they sit
      outside the ladder and are never ranked against it. */
+  /* The ladder survives; only its TINT goes. A chroma-0 shadow at the old
+     alpha reads heavier and colder than warm ink, so the two glows come down
+     with it — they were a pink halo, and a halo is atmosphere, not lift. */
   --shadow-rest:
-    0 1px 2px oklch(0.18 0.06 15 / 0.06),
-    0 6px 16px -10px oklch(0.18 0.06 15 / 0.24);
-  --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
-  --shadow-glow-sm: 0 14px 32px -16px oklch(0.65 0.24 5 / 0.5);
-  --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
+    0 1px 2px oklch(0 0 0 / 0.05),
+    0 6px 16px -10px oklch(0 0 0 / 0.2);
+  --shadow-elev: 0 25px 60px -15px oklch(0 0 0 / 0.14);
+  --shadow-glow-sm: 0 14px 32px -16px oklch(0 0 0 / 0.22);
+  --shadow-glow: 0 30px 80px -20px oklch(0 0 0 / 0.14);
   /* Legibility for white chrome sitting on a photo — the same carve-out
      Docs > Design §D already grants bg-black/NN on media. Not a lift. */
   --shadow-media: 0 1px 4px oklch(0 0 0 / 0.5);
@@ -227,22 +300,28 @@
   --shadow-sheet-left: -16px 0 40px oklch(0 0 0 / 0.25);
   /* Destructive/ON toggle lift, tinted to the red-600 fill it sits under. */
   --shadow-danger: 0 2px 10px -2px oklch(0.58 0.245 27 / 0.5);
-  --swipe-card-panel: oklch(0.52 0.14 250);
-  --swipe-card-panel-foreground: oklch(0.99 0.005 250);
+  /* The swipe card's panel was a blue nobody names — decoration, so ink. */
+  --swipe-card-panel: oklch(0.205 0 0);
+  --swipe-card-panel-foreground: oklch(1 0 0);
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.98 0.01 10);
-  --sidebar-foreground: oklch(0.18 0.06 15);
-  --sidebar-primary: oklch(0.65 0.24 5);
-  --sidebar-primary-foreground: oklch(0.99 0.005 10);
-  --sidebar-accent: oklch(0.95 0.016 10);
-  --sidebar-accent-foreground: oklch(0.18 0.06 15);
-  --sidebar-border: oklch(0.9 0.02 10);
-  --sidebar-ring: oklch(0.65 0.24 5);
+  /* Charts are a RAMP now, not five unrelated hues: a reader of a monochrome
+     app cannot be asked to hold five colour names, and a series ordered by
+     value reads off a lightness ladder without a legend. */
+  --chart-1: oklch(0.205 0 0);
+  --chart-2: oklch(0.371 0 0);
+  --chart-3: oklch(0.48 0 0);
+  --chart-4: oklch(0.63 0 0);
+  --chart-5: oklch(0.77 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.205 0 0);
+  /* LITERAL pink, not `var(--brand-pink)` — a de-pinking that chases the ramp
+     leaves these two behind with every check green. */
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.961 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.891 0 0);
+  --sidebar-ring: oklch(0.205 0 0);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -299,6 +378,12 @@
      disagree again (MESITA-1217). Mirrored to Docs > Design §D. */
   --radius-panel: 24px;
   --color-background: var(--background);
+  /* PAPER IS NOT BACKGROUND, and since MESITA-1948 they are not even the same
+     colour. Every `text-background` in this app was a label on an INK FILL: it
+     meant "the white the card is made of", and it was only ever correct while
+     the page happened to be that white. They are `text-paper` now. */
+  --color-paper: var(--paper);
+  --color-page: var(--page);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -317,6 +402,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-ink-hover: var(--ink-hover);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

@@ -18,10 +18,10 @@
 // for anyone who cannot separate them, and this table is 1,000 cells of
 // exactly that shape. The word is the state; the colour is emphasis.
 //
-// TOKENS, NEVER RAW COLOUR LITERALS. web-admin's twin uses `text-green-700`
+// TOKENS, NEVER RAW COLOUR LITERALS. web-admin's twin uses `text-foreground`
 // with no dark variant, which is safe THERE because web-admin ships no dark
 // theme at all. web-business has `@custom-variant dark` and a full `.dark`
-// block, where `text-green-700` on the dark card ground is about 2.5:1 and
+// block, where `text-foreground` on the dark card ground is about 2.5:1 and
 // fails AA. Every tone below carries its `dark:` pair.
 import { cn } from "@/lib/utils";
 
@@ -59,10 +59,10 @@ export function StateCell({
         value === "unknown"
           ? "bg-muted text-muted-foreground"
           : value
-            ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"
+            ? "bg-muted text-foreground dark:bg-muted dark:text-muted-foreground"
             : falseTone === "neutral"
               ? "bg-muted text-muted-foreground"
-              : "bg-rose-500/10 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300",
+              : "bg-muted text-foreground dark:bg-muted dark:text-muted-foreground",
       )}
     >
       {text}

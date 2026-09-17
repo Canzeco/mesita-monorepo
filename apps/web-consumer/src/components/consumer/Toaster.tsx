@@ -48,9 +48,9 @@ function ToastCard({ t }: { t: Toast }) {
   // variants we used before were tuned for the old dark surface.
   const iconClass =
     t.tone === "success"
-      ? "text-emerald-600"
+      ? "text-muted-foreground"
       : t.tone === "error"
-        ? "text-red-600"
+        ? "text-destructive"
         : "text-foreground";
   return (
     <div
@@ -59,7 +59,7 @@ function ToastCard({ t }: { t: Toast }) {
       aria-atomic="true"
       className={cn(
         "animate-in slide-in-from-top-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 text-sm backdrop-blur duration-200",
-        t.tone === "error" ? "border-red-500/40" : "border-border",
+        t.tone === "error" ? "border-destructive/40" : "border-border",
       )}
     >
       {Icon && (

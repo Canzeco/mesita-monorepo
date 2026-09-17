@@ -889,7 +889,7 @@ function PhotosEditor({
                   type="button"
                   disabled={busy}
                   onClick={() => onRemove(idx)}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-red-500/70"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-white backdrop-blur-sm transition hover:bg-destructive/70"
                   aria-label="Remove photo"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -942,9 +942,9 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 const SOURCE_CHIP: Record<string, string> = {
-  google: "bg-blue-500/10 text-blue-600",
+  google: "bg-muted text-muted-foreground",
   website: "bg-muted text-muted-foreground",
-  instagram: "bg-pink-500/10 text-pink-600",
+  instagram: "bg-muted text-muted-foreground",
 };
 
 // Light markdown-ish renderer: preserves newlines and bolds **…** segments.
@@ -966,9 +966,9 @@ function AnalysisText({ text }: { text: string }) {
 }
 
 const STATE_CHIP: Record<string, string> = {
-  saved: "bg-green-500/10 text-green-600",
-  pending: "bg-amber-500/10 text-amber-600",
-  failed: "bg-red-500/10 text-red-600",
+  saved: "bg-muted text-muted-foreground",
+  pending: "border border-dashed border-border text-muted-foreground",
+  failed: "bg-destructive/10 text-destructive",
 };
 
 // Turn the raw per-source `source_metadata` blob into labelled rows for display.

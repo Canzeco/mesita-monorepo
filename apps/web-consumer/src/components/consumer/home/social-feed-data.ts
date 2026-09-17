@@ -30,20 +30,20 @@ export const SOCIAL_ACTION_META: Record<
   like: {
     label: "Like",
     Icon: Heart,
-    color: "text-rose-600",
-    bg: "bg-rose-500/10",
+    color: "text-muted-foreground",
+    bg: "bg-muted",
   },
   reward: {
     label: "Reward",
     Icon: Sparkles,
-    color: "text-amber-600",
-    bg: "bg-amber-500/10",
+    color: "text-muted-foreground",
+    bg: "bg-muted",
   },
   story: {
     label: "Story",
     Icon: Camera,
-    color: "text-fuchsia-600",
-    bg: "bg-fuchsia-500/10",
+    color: "text-muted-foreground",
+    bg: "bg-muted",
   },
 };
 

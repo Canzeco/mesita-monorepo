@@ -226,7 +226,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
             <button
               type="button"
               onClick={() => void load()}
-              className="bg-foreground text-background inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold transition hover:opacity-90"
+              className="bg-foreground text-paper inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold transition hover:opacity-90"
             >
               Retry
             </button>
@@ -261,7 +261,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
           type="button"
           onClick={invite}
           disabled={busy || !email.trim()}
-          className="bg-foreground text-background inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+          className="bg-foreground text-paper inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
         >
           <UserPlus className="h-3.5 w-3.5" /> Invite
         </button>

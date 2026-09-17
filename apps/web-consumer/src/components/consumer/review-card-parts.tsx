@@ -32,7 +32,7 @@ export function Header({
 
 export function StarRow({ rating }: { rating: number }) {
   return (
-    <div className="flex items-center gap-0.5 text-amber-400">
+    <div className="flex items-center gap-0.5 text-muted-foreground">
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}

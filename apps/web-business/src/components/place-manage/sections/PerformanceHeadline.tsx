@@ -79,7 +79,7 @@ function Step({
         <span
           className={
             "flex h-full items-center rounded-lg pl-3 text-sm font-semibold text-white " +
-            (emphasis ? "bg-emerald-600" : "bg-indigo-600")
+            (emphasis ? "bg-foreground" : "bg-border")
           }
           style={{ width: `${Math.max(pct, value > 0 ? 8 : 0)}%` }}
         >

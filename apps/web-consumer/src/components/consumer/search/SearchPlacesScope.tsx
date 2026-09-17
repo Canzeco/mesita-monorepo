@@ -140,7 +140,7 @@ export function SearchPlacesScope({
                   "flex min-h-11 w-full items-center gap-2 rounded-xl border px-2.5 type-meta whitespace-nowrap transition",
                   "focus-visible:ring-primary focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                   active
-                    ? "border-foreground bg-foreground text-background font-bold"
+                    ? "border-foreground bg-foreground text-paper font-bold"
                     : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-semibold",
                 )}
               >
@@ -168,7 +168,7 @@ export function SearchPlacesScope({
       {scope === "google" ? (
         <p
           role="note"
-          className="mt-2 flex items-start gap-1.5 rounded-xl bg-amber-50 px-2.5 py-2 type-body text-amber-900 ring-1 ring-amber-400/30"
+          className="mt-2 flex items-start gap-1.5 rounded-xl bg-muted px-2.5 py-2 type-body text-foreground ring-1 ring-foreground"
         >
           <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
           <span>

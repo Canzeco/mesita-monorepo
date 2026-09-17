@@ -525,7 +525,7 @@ function AnalyticsTile({
       className={
         "border-border w-[10.5rem] rounded-2xl border p-4 " +
         (urgent
-          ? "border-indigo-200 bg-gradient-to-br from-white to-indigo-50"
+          ? "border-border bg-gradient-to-br from-white to-indigo-50"
           : "from-card to-primary/[0.04] bg-gradient-to-br")
       }
     >

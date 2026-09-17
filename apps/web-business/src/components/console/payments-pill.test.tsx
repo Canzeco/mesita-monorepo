@@ -21,10 +21,17 @@ describe("the payments pill tells the truth about rung 3", () => {
     expect(html).not.toContain("Live");
   });
 
-  it("is not green while it is not live", () => {
-    const html = renderToStaticMarkup(<StatePill state="live" />);
-    expect(html).not.toContain("emerald");
-    expect(html).toContain("sky");
+  it("does not wear the finished shape while it is not live", () => {
+    // Was: not emerald, but sky. The console is achromatic since MESITA-1936,
+    // so "green reads as money is flowing" became "the FILLED ink pill reads as
+    // finished". Ready is a quiet solid fill instead: present, settled, and
+    // visibly not the state that says the owner must act or that money moves.
+    const ready = renderToStaticMarkup(<StatePill state="live" />);
+    const unfinished = renderToStaticMarkup(<StatePill state="unfinished" />);
+    expect(CARD_PAYMENTS_LIVE).toBe(false);
+    expect(ready).toContain("bg-muted");
+    expect(ready).not.toContain("bg-foreground");
+    expect(ready).not.toBe(unfinished);
   });
 
   it("carries a caption saying what Ready costs the owner in waiting", () => {

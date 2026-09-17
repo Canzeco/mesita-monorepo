@@ -343,7 +343,7 @@ export function OnboardForm({
                     className={cn(
                       SEX_CHIP_CLASS,
                       on
-                        ? "border-foreground bg-foreground text-background"
+                        ? "border-foreground bg-foreground text-paper"
                         : "border-border bg-card hover:bg-muted",
                     )}
                   >

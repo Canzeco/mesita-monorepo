@@ -98,7 +98,7 @@ export function SwipeCardInfo({
         {place.is_enriching && (
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-emerald-300/55 bg-emerald-500/35 font-semibold whitespace-nowrap text-emerald-50 backdrop-blur-md",
+              "inline-flex items-center gap-1.5 rounded-md border border-border bg-muted font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md",
               compact ? "type-label px-[9px] py-[3px]" : "px-2.5 py-1 text-xs",
             )}
             aria-live="polite"
@@ -106,7 +106,7 @@ export function SwipeCardInfo({
             <Spinner
               size="sm"
               label="Enriching"
-              className="h-3 w-3 border-emerald-200/40 border-t-emerald-100"
+              className="h-3 w-3 border-border border-t-emerald-100"
             />
             Enriching
           </span>
@@ -141,7 +141,7 @@ export function SwipeCardInfo({
         {ratingLabel && (
           <MetaChip compact={compact}>
             <span className="font-semibold">{ratingLabel}</span>
-            <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" />
+            <Star className="h-3 w-3 shrink-0 fill-foreground text-muted-foreground" />
             {ratingCountLabel && (
               <span className="text-white/70">({ratingCountLabel})</span>
             )}
@@ -149,7 +149,7 @@ export function SwipeCardInfo({
         )}
         {igFollowersLabel && (
           <MetaChip compact={compact}>
-            <Instagram className="h-3 w-3 shrink-0 text-pink-200/80" />
+            <Instagram className="h-3 w-3 shrink-0 text-muted-foreground/80" />
             <span className="font-semibold">{igFollowersLabel}</span>
             <Users className="h-3 w-3 shrink-0 text-white/70" />
           </MetaChip>
@@ -174,7 +174,7 @@ export function SwipeCardInfo({
             <Clock
               className={cn(
                 "h-3 w-3 shrink-0",
-                isOpen ? "text-emerald-400" : "text-white/70",
+                isOpen ? "text-muted-foreground" : "text-white/70",
               )}
             />
             <span className="font-semibold">{stateLabel}</span>

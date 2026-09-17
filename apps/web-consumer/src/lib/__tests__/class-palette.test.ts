@@ -24,10 +24,21 @@ function oklch(css: string): Oklch {
   return { L: +m[1], C: +m[2], H: +m[3] };
 }
 
-function token(name: string): string {
+// IT FOLLOWS `var()`, because the palette has indirection now (MESITA-1948):
+// `--card` is `var(--paper)` and `--background` is `var(--page)`, so reading a
+// token's RAW value stopped being the same as reading its COLOUR. Without this
+// the suite failed to load with "not an oklch color: var(--paper)" — loudly,
+// which is the good failure. The bad one is a test that resolves the alias by
+// hard-coding what it points at today and stops measuring the real value.
+function token(name: string, depth = 0): string {
   const m = CSS.match(new RegExp(`--${name}:\\s*([^;]+);`));
   if (!m) throw new Error(`token --${name} not found`);
-  return m[1].trim();
+  const value = m[1].trim();
+  const alias = value.match(/^var\(\s*--([\w-]+)\s*\)$/);
+  if (!alias) return value;
+  // A cycle would otherwise hang the runner rather than fail it.
+  if (depth > 8) throw new Error(`token --${name} aliases in a loop`);
+  return token(alias[1], depth + 1);
 }
 
 /** Both stops of a `--gradient-*`, light end first. */

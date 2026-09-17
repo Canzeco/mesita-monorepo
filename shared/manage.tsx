@@ -507,7 +507,15 @@ export function ConfirmDialog({
               "inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50 " +
               (danger
                 ? "bg-destructive text-destructive-foreground hover:opacity-90"
-                : "bg-foreground text-background hover:opacity-90")
+                // `text-primary-foreground`, NOT `text-background` (MESITA-1948).
+                // This module is generated into web-admin AND web-business, and
+                // those two no longer agree on what `--background` is: in
+                // web-business it is the grey PAGE now, so a white label on this
+                // ink fill would have gone grey-on-black there while staying
+                // correct in admin. `--primary-foreground` is the label colour
+                // on a filled control in both — near-white in admin, white in
+                // web-business — which is what this pair always meant.
+                : "bg-foreground text-primary-foreground hover:opacity-90")
             }
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}

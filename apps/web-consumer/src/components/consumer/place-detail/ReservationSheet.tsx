@@ -425,7 +425,7 @@ export function ReservationSheet({
             )}
 
             {error && (
-              <p className="type-body mt-3 rounded-xl bg-red-500/10 px-3 py-2 font-medium text-red-600">
+              <p className="type-body mt-3 rounded-xl bg-destructive/10 px-3 py-2 font-medium text-destructive">
                 {error}
               </p>
             )}

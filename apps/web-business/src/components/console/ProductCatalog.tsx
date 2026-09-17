@@ -116,43 +116,43 @@ export type ProductCard = {
 /** The mark and its tint, one row per product. The tint is a WASH behind a
  *  foreground-weight glyph, not a saturated fill: eight saturated squares in
  *  a grid is a toy, and this screen is where an operator spends money. */
-// THE TINTS ARE LIVING ON BORROWED TIME, and the seven new rows take one
-// anyway (MESITA-1949). MESITA-1936 is flattening every one of these to
-// `bg-muted text-foreground` — this console follows the mock, where the hues
-// went in MESITA-1934 and the GLYPH became the whole of a product's identity.
-// That branch is not merged, so this file's own base still says a product mark
-// is a hue, and shipping nine hued marks beside seven grey ones is a screen
-// that looks broken for however long the two take to meet. Sixteen products,
-// sixteen tints, no gap — and whichever lands second flattens seven strings.
+// THE TINTS ARE GONE, ALL SIXTEEN (MESITA-1936, landing after MESITA-1949 and
+// doing what that file asked of whichever branch arrived second). This console
+// follows the mock: the hues went in MESITA-1934 and the GLYPH became the whole
+// of a product's identity. `tint` keeps its name and its shape because the wash
+// is still a wash — it is simply the same wash for every product now, which is
+// the property that matters. A seventeenth product cannot arrive needing a hue
+// nobody has left, and sixteen saturated squares in one grid is a toy on the
+// screen where an operator spends money.
 const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
-  profile: { Icon: Store, tint: "bg-teal-500/10 text-teal-700" },
-  website: { Icon: Globe, tint: "bg-cyan-500/10 text-cyan-700" },
-  customers: { Icon: Users, tint: "bg-pink-500/10 text-pink-700" },
-  ads: { Icon: Megaphone, tint: "bg-orange-500/10 text-orange-700" },
-  visits: { Icon: Ticket, tint: "bg-rose-500/10 text-rose-700" },
+  profile: { Icon: Store, tint: "bg-muted text-foreground" },
+  website: { Icon: Globe, tint: "bg-muted text-foreground" },
+  customers: { Icon: Users, tint: "bg-muted text-foreground" },
+  ads: { Icon: Megaphone, tint: "bg-muted text-foreground" },
+  visits: { Icon: Ticket, tint: "bg-muted text-foreground" },
   // Rewards takes the slate Terminal left behind rather than the pink it wore
   // before MESITA-1884 — Customers has that now, and moving a live card's
   // colour to give a returning one its old wash would recolour two cards to
   // settle one.
-  rewards: { Icon: Gift, tint: "bg-slate-500/10 text-slate-700" },
-  orders: { Icon: ShoppingBag, tint: "bg-amber-500/10 text-amber-700" },
-  reservations: { Icon: CalendarCheck, tint: "bg-sky-500/10 text-sky-700" },
-  pay: { Icon: CreditCard, tint: "bg-violet-500/10 text-violet-700" },
+  rewards: { Icon: Gift, tint: "bg-muted text-foreground" },
+  orders: { Icon: ShoppingBag, tint: "bg-muted text-foreground" },
+  reservations: { Icon: CalendarCheck, tint: "bg-muted text-foreground" },
+  pay: { Icon: CreditCard, tint: "bg-muted text-foreground" },
   // TERMINAL DOES NOT GET ITS OLD GLYPH BACK. It wore `CreditCard` until
   // MESITA-1900, when Payments wore something else; handing it back now would
   // put one mark on two cards in the same grid, which is the failure the whole
   // table exists to prevent. `Nfc` is the TAP — the half of Terminal that is
   // not Payments — and `ScanBarcode` is what POS rings up before anybody taps.
-  terminal: { Icon: Nfc, tint: "bg-stone-500/10 text-stone-700" },
-  pos: { Icon: ScanBarcode, tint: "bg-lime-600/10 text-lime-700" },
-  credits: { Icon: Wallet, tint: "bg-emerald-500/10 text-emerald-700" },
+  terminal: { Icon: Nfc, tint: "bg-muted text-foreground" },
+  pos: { Icon: ScanBarcode, tint: "bg-muted text-foreground" },
+  credits: { Icon: Wallet, tint: "bg-muted text-foreground" },
   // Capital takes the BANK'S FRONT for its mark (MESITA-1929) — the same glyph
   // the landing page gives it, because one product drawn two ways is how an
   // operator learns to distrust both drawings.
-  capital: { Icon: Landmark, tint: "bg-indigo-500/10 text-indigo-700" },
-  whatsapp: { Icon: MessageCircle, tint: "bg-green-600/10 text-green-700" },
-  phone: { Icon: PhoneCall, tint: "bg-blue-500/10 text-blue-700" },
-  intelligence: { Icon: Sparkles, tint: "bg-fuchsia-500/10 text-fuchsia-700" },
+  capital: { Icon: Landmark, tint: "bg-muted text-foreground" },
+  whatsapp: { Icon: MessageCircle, tint: "bg-muted text-foreground" },
+  phone: { Icon: PhoneCall, tint: "bg-muted text-foreground" },
+  intelligence: { Icon: Sparkles, tint: "bg-muted text-foreground" },
 };
 
 /** The state, as the operator reads it. One word where one will do — the
@@ -165,18 +165,27 @@ const STATE_LABEL: Record<ProductState, string> = {
   soon: "Soon",
 };
 
+// STATE IS A SHAPE, NOT A HUE (MESITA-1936). These five used to be three
+// tints, and the comments below are the argument for why the three had to
+// differ at all — greyscale them and this catalogue, whose entire job is
+// saying which products are on, says nothing.
+//
+// Fill / outline / dashed, the vocabulary the mock shipped in MESITA-1934:
 const STATE_CLASS: Record<ProductState, string> = {
-  // Emerald is "this is on and costing you nothing" — the one product that
-  // can never be off wears the same green as the ones that are.
-  free: "bg-emerald-500/12 text-emerald-700",
-  enabled: "bg-emerald-500/12 text-emerald-700",
-  // Grey, never amber: not enabled is a CHOICE the operator has not made, not
-  // a debt they owe. Amber is reserved for Stripe's "you have something to
-  // do" (badges.tsx), and two ladders sharing a colour is how a screen starts
-  // lying quietly.
-  off: "bg-muted text-muted-foreground",
-  locked: "bg-muted text-muted-foreground",
-  soon: "bg-muted text-muted-foreground",
+  // FILLED is "this is on". Emerald used to say it; ink says it now, and the
+  // one product that can never be off wears the same fill as the ones that are.
+  free: "bg-foreground text-paper",
+  enabled: "bg-foreground text-paper",
+  // OUTLINED, never dashed: not enabled is a CHOICE the operator has not made,
+  // not something pending. Grey-never-amber was the old spelling of this same
+  // refusal — off is not a debt, and amber stays Stripe's (badges.tsx).
+  off: "border border-border text-muted-foreground",
+  // GOLD is reserved for a tier the product names out loud, and Locked is
+  // exactly that: it is what Mesita Partner buys.
+  locked:
+    "bg-[color:var(--tier-gold)]/18 text-[color:var(--tier-gold-ink)]",
+  // DASHED means "not here yet" everywhere in this codebase.
+  soon: "border border-dashed border-border text-muted-foreground",
 };
 
 const STATE_GLYPH: Record<ProductState, LucideIcon | null> = {
@@ -221,13 +230,14 @@ const ON_STATES: readonly ProductState[] = ["free", "enabled"];
 // the failure globals.css's own comment warns about: it compiles, deploys, and
 // renders flat.
 //
-// `--brand-pink-text` is the 600 step, and it is the only pink that clears AA
-// at this size (4.77:1 on white; `--brand-pink` itself is 3.66:1 and fails).
-// The wash behind it is the 50, which is what the mock's soft pink button is.
+// THE SOFT PAIR, ACHROMATIC (MESITA-1936). These were the only two strings in
+// this app that reached PAST the semantic layer into the brand ramp itself, so
+// repointing --primary left them pink while everything around them went ink.
+// The ramp is still generated and still pink; nothing here may read it.
 const BRAND_SOFT_ON =
-  "border-[var(--brand-pink-200)] bg-[var(--brand-pink-50)] text-[var(--brand-pink-text)]";
+  "border-border bg-muted text-foreground";
 const BRAND_SOFT_ACTION =
-  "bg-[var(--brand-pink-50)] text-[var(--brand-pink-text)] hover:bg-[var(--brand-pink-100)]";
+  "bg-muted text-foreground hover:bg-[color:var(--border)]";
 
 export function ProductCatalog({ products }: { products: readonly ProductCard[] }) {
   const [filter, setFilter] = useState<FilterKey>("all");

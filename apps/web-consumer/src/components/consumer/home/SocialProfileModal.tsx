@@ -54,7 +54,7 @@ export function SocialProfileModal({
       {shown && (
         <>
           {/* Branded banner moment behind the avatar */}
-          <div className="from-primary/25 via-accent/25 h-20 bg-gradient-to-br to-amber-200/60" />
+          <div className="from-primary/25 via-accent/25 h-20 bg-gradient-to-br to-foreground" />
           <button
             type="button"
             onClick={onClose}

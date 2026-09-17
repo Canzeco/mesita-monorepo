@@ -33,7 +33,7 @@ const PLACE_STATE_LABEL: Record<PlaceState, string> = {
 
 const PLACE_STATE_DOT: Record<PlaceState, string> = {
   listed: "bg-muted-foreground/50",
-  verified: "bg-emerald-500",
+  verified: "bg-foreground",
 };
 
 export function PlaceStateBadge({
@@ -59,13 +59,22 @@ export function PlaceStateBadge({
  * Rendered only while the fact is true — the caller decides. There is no
  * "Not a partner" twin: on the Partner box the CTA IS the not-yet state, and
  * a muted pill beside a price and a button would be three atoms for one
- * fact. Violet because it is neither Listed's grey nor Verified's green nor
- * a payment state's amber — a different ladder, a different hue.
+ * fact.
+ *
+ * IT WAS VIOLET — "neither Listed's grey nor Verified's green nor a payment
+ * state's amber, a different ladder, a different hue". MESITA-1936 took the
+ * hues away, and the dot briefly became `bg-foreground`, which every CTA
+ * button on the screen already wears: the pill's signature stopped being a
+ * signature, and products-lane.test.tsx caught it.
+ *
+ * GOLD, because Partner IS a tier the product names out loud, which is one of
+ * the three places chroma still survives here. Same token the mock's Partner
+ * badge uses, so the two consoles say it the same way.
  */
 export function PartnerPill({ className }: { className?: string }) {
   return (
     <span className={cn(CHIP_CLASS, className)}>
-      <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--tier-gold)]" />
       Partner
     </span>
   );
@@ -162,19 +171,41 @@ export function mesitaPayLockedLine(
   return orphaned ? PAY_LOCKED_LINE.none : PAY_LOCKED_LINE[state];
 }
 
+// THE LADDER IS A SHAPE NOW, NOT A HUE (MESITA-1936).
+//
+// These six states used to be six tints, and the tints were carrying real
+// product distinctions that this file argues for at length: amber meant "you
+// owe an action", and blue-not-green meant "the account is ready but Mesita is
+// not sending money yet". Greyscale six hues and all six become one chip —
+// which is precisely what the tests in payments-states.test.tsx caught.
+//
+// So the mechanism moves to FILL / OUTLINE / DASHED, the vocabulary the mock
+// console shipped in MESITA-1934, and every distinction survives without a hue:
+//
+//   filled ink     the owner's move, and the only one that shouts
+//   solid fill     a settled, finished state
+//   outline        a real state nobody has to act on
+//   dashed         waiting on somebody else — "not here yet", the same thing
+//                  SoonStrip and EmptyState already mean by a dashed border
+//   destructive    reserved, and the one place chroma survives here
+const PILL_RING = "border";
 const STATE_CLASS: Record<PaymentAccountState, string> = {
-  none: "bg-muted text-muted-foreground",
-  // Amber is "you have something to do". Waiting on Stripe is not a debt the
-  // owner can settle, so it is neutral — the same reason the intake matrix
-  // refuses rose for a function that simply has not run.
-  unfinished: "bg-amber-500/15 text-amber-700",
-  in_review: "bg-muted text-muted-foreground",
-  charges_only: "bg-amber-500/15 text-amber-700",
-  // Blue, not emerald, while CARD_PAYMENTS_LIVE is false: green reads as
-  // "money is flowing", and it is not.
+  none: `${PILL_RING} border-border text-muted-foreground`,
+  // FILLED, because this is the only state on the ladder where the owner has
+  // something to do. It replaces amber and keeps amber's whole job: be the one
+  // that pulls the eye. Waiting on Stripe must never look like this.
+  unfinished: "bg-foreground text-paper",
+  // DASHED, because it is not the owner's move. A debt they cannot settle
+  // should not wear the shape that asks them to settle it.
+  in_review: `${PILL_RING} border-dashed border-border text-muted-foreground`,
+  charges_only: `${PILL_RING} border-border text-foreground`,
+  // A SOLID FILL, never the ink one: "Ready" is finished, but while
+  // CARD_PAYMENTS_LIVE is false Mesita is not sending payments through it, so
+  // it must not wear the shape that means "act". Green read as "money is
+  // flowing" and this is the same refusal, spelled without a colour.
   live: CARD_PAYMENTS_LIVE
-    ? "bg-emerald-500/15 text-emerald-700"
-    : "bg-sky-500/15 text-sky-700",
+    ? "bg-foreground text-paper"
+    : "bg-muted text-foreground",
   restricted: "bg-destructive/10 text-destructive",
 };
 

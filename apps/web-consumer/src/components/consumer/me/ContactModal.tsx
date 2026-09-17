@@ -20,7 +20,7 @@ export function ContactModal() {
   return (
     <MeScreen title="Contact us">
       <div className="flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Mail className="h-5 w-5" />
         </span>
         <p className="text-muted-foreground text-xs">

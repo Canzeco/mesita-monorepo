@@ -90,7 +90,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
           className={cn(
             "rounded-xl px-3 py-2 text-xs leading-snug",
             r.state === "booking"
-              ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
+              ? "bg-muted text-foreground ring-1 ring-foreground"
               : "bg-muted text-muted-foreground",
           )}
         >

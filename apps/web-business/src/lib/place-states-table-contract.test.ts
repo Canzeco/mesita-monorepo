@@ -138,15 +138,20 @@ describe("cell contract", () => {
     expect(CELL).toContain('"?"');
   });
 
-  // web-admin has no dark theme, so its raw colour literals were never tested
-  // on a dark ground. web-business ships a full .dark block.
-  it("pairs every colour with a dark variant", () => {
-    const colours = CELL.match(/text-(emerald|rose)-\d{3}/g) ?? [];
-    expect(colours.length).toBeGreaterThan(0);
+  // WAS: "pairs every colour with a dark variant". web-admin has no dark theme,
+  // so its raw colour literals were never tested on a ground where they had to
+  // lighten; web-business ships a full .dark block, so each one needed a twin.
+  //
+  // MESITA-1936 removed the colours instead, which is the stronger answer to
+  // the same problem: a cell painted in semantic tokens cannot disagree with
+  // the dark block, because the tokens are what the dark block redefines. The
+  // assertion is inverted rather than deleted — raw hues are now forbidden
+  // here, and if one comes back it must still carry its dark twin.
+  it("uses semantic tokens, not raw hues — and pairs any that return", () => {
+    const colours = CELL.match(/text-(emerald|rose|amber|sky|violet)-\d{3}/g) ?? [];
+    expect(colours).toEqual([]);
     for (const c of colours) {
-      if (c.startsWith("text-emerald-7") || c.startsWith("text-rose-7")) {
-        expect(CELL).toContain(`dark:${c.replace(/-\d{3}$/, "-300")}`);
-      }
+      expect(CELL).toContain(`dark:${c.replace(/-\d{3}$/, "-300")}`);
     }
   });
 

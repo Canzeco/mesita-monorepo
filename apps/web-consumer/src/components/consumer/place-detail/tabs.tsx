@@ -54,7 +54,7 @@ export function PlaceTabBar({
             className={cn(
               "type-body -mb-px border-b-2 py-3 text-center font-semibold tracking-wide transition",
               active
-                ? "text-foreground border-pink-500"
+                ? "text-foreground border-border"
                 : "text-muted-foreground hover:text-foreground border-transparent",
             )}
           >
