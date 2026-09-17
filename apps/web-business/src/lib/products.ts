@@ -59,7 +59,7 @@
 // MESITA TERMINAL IS BACK (MESITA-1949), after MESITA-1900 dropped it. What
 // does NOT come back is its rail row and `products/terminal`: MESITA-1900's
 // objection was that it was "the one row whose address was a SoonStrip", and a
-// card is not a row. Nine of the sixteen are catalogue-only for the same
+// card is not a row. Most of the suite is catalogue-only for the same
 // reason — see `RAIL_ROWS` and the subsequence assertion in `products.test.ts`.
 //
 // ── THE TWO RULES THIS FILE EXISTS TO HOLD ────────────────────────────────
@@ -72,7 +72,7 @@
 // A BLURB NAMES THE GUEST, NOT THE COLUMN (MESITA-1949). Every one of these
 // used to be a single clause written from the switch it flips — "Receive
 // pickup and delivery orders with checkout", "Accept card payments for visits
-// and orders". Sixteen of those in a grid is one grey paragraph sixteen times:
+// and orders". A dozen of those in a grid is one grey paragraph a dozen times:
 // each opens with a verb Mesita does, none says who is better off, and an
 // operator meeting the catalogue for the first time cannot tell Orders from
 // Visits or Credits from Payments without opening both. So each carries the
@@ -117,7 +117,7 @@ type ProductSpec = {
    *  `PLACE_TABS` ⊇ `PRODUCT_KEYS` used to hold, so a card reached its view
    *  with `key as PlaceTab` — a cast that was true by CONSTRUCTION while the
    *  suite was seven views plus Customers, and one that silently survives
-   *  every product added without a view. Nine of the sixteen have none
+   *  every product added without a view. Most of the suite has none
    *  (MESITA-1949), so the view is written down per product and the cast is
    *  gone. Without this, seven new keys render verbs pointing at
    *  `/places/<id>/undefined` with every check green. */
@@ -305,24 +305,18 @@ const SPECS: readonly ProductSpec[] = [
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
   {
-    key: "whatsapp",
-    name: "Mesita WhatsApp Bot",
+    key: "line",
+    name: "Mesita AI Line",
+    // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
+    // card reads as a WhatsApp widget. The two things it replaced were named
+    // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
+    // what made them look like two products; one line, two ways in.
     blurb:
-      "Answers the hours, the menu and the booking on WhatsApp, so nobody on the floor has to stop and type.",
+      "Answers your number — a call or a WhatsApp — with the hours, the menu and the booking, so the floor never stops to pick up.",
     tab: null,
     needsPartner: false,
     atPlace: null,
     soon: "Nothing is answering yet.",
-  },
-  {
-    key: "phone",
-    name: "Mesita Phone Bot",
-    blurb:
-      "Picks up when the floor is full and takes the booking, instead of letting the line ring out.",
-    tab: null,
-    needsPartner: false,
-    atPlace: null,
-    soon: "Nothing is picking up yet.",
   },
   {
     key: "intelligence",
@@ -347,7 +341,7 @@ const SPECS: readonly ProductSpec[] = [
  *  catalogue printing it beside Payments, so for one commit the console gave
  *  two answers to "where does Rewards belong".
  *
- *  Nine of the sixteen are catalogue-only, so equality is gone and the drift it
+ *  Most of the suite is catalogue-only, so equality is gone and the drift it
  *  caught is not: the assertion is a SUBSEQUENCE now. Every rail product is a
  *  real product AND the rail's relative order is this one, so moving Rewards in
  *  one list and not the other still fails — what no longer fails is naming a
@@ -371,7 +365,7 @@ export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 // WHAT REPLACED IT WAS A CONSTRUCTION, AND MESITA-1949 MADE IT A FIELD AGAIN.
 // `PLACE_TABS` and `PRODUCT_KEYS` agreed on all seven per-place products, so
 // `placeHref(key as PlaceTab)` was true by coincidence and checked by a test.
-// Nine of the sixteen products have no view at all now, so the coincidence is
+// Most products have no view at all now, so the coincidence is
 // over and `spec.tab` says it outright.
 //
 // THAT IS NOT THE HAND-WRITTEN MAP COMING BACK. `PRODUCT_VIEW` was a TOTAL

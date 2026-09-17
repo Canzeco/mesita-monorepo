@@ -60,9 +60,8 @@ import {
   Users,
   Landmark,
   Megaphone,
-  MessageCircle,
+  Headset,
   Nfc,
-  PhoneCall,
   ScanBarcode,
   Sparkles,
   Wallet,
@@ -122,7 +121,7 @@ export type ProductCard = {
 // of a product's identity. `tint` keeps its name and its shape because the wash
 // is still a wash — it is simply the same wash for every product now, which is
 // the property that matters. A seventeenth product cannot arrive needing a hue
-// nobody has left, and sixteen saturated squares in one grid is a toy on the
+// nobody has left, and a grid of saturated squares is a toy on the
 // screen where an operator spends money.
 const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
   profile: { Icon: Store, tint: "bg-muted text-foreground" },
@@ -150,8 +149,11 @@ const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
   // the landing page gives it, because one product drawn two ways is how an
   // operator learns to distrust both drawings.
   capital: { Icon: Landmark, tint: "bg-muted text-foreground" },
-  whatsapp: { Icon: MessageCircle, tint: "bg-muted text-foreground" },
-  phone: { Icon: PhoneCall, tint: "bg-muted text-foreground" },
+  // THE SWITCHBOARD, not a phone and not a chat bubble (MESITA-1951). This one
+  // mark stands where the chat bubble and the handset stood, and picking either
+  // of those back would make the card look like one channel's product again —
+  // which is the whole thing the merge undid.
+  line: { Icon: Headset, tint: "bg-muted text-foreground" },
   intelligence: { Icon: Sparkles, tint: "bg-muted text-foreground" },
 };
 

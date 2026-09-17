@@ -199,8 +199,8 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
 /** The products the rail may carry a row for: the ones that ARE place views,
  *  plus Customers, which is a page.
  *
- *  IT IS NOT `ProductKey` ANY MORE (MESITA-1949). The catalogue names sixteen
- *  products and nine of them have no address at all — Website, Ads, Terminal,
+ *  IT IS NOT `ProductKey` ANY MORE (MESITA-1949).  The catalogue names every product
+ *  Mesita sells and most of them have no address at all — Website, Ads, Terminal,
  *  POS, the two bots, Intelligence, and Capital and Customers for their own
  *  reasons. A rail row must land somewhere real (MESITA-1833), and MESITA-1900
  *  deleted Terminal for being "the one row whose address was a SoonStrip", so
@@ -399,8 +399,8 @@ export function productRowHref(
 ): string {
   if (product === "customers") return placePageHref(placeId, "customers");
   // AND THE CAST IS GONE (MESITA-1949). It read `product as PlaceTab` and was
-  // true by construction while `PLACE_TABS` ⊇ `PRODUCT_KEYS`; nine of the
-  // sixteen products have no view now, so construction stopped holding. The
+  // true by construction while `PLACE_TABS` ⊇ `PRODUCT_KEYS`; most products
+  // have no view now, so construction stopped holding. The
   // narrowing above leaves `RailProduct` minus "customers", which IS a
   // `PlaceTab` by the `Extract` that defines it — so the compiler checks what
   // `console-routes.test.ts` used to assert, and a product with no view can

@@ -19,12 +19,11 @@ import {
   CalendarCheck,
   CreditCard,
   Globe,
+  Headset,
   Landmark,
   Lock,
   Megaphone,
-  MessageCircle,
   Nfc,
-  PhoneCall,
   ScanBarcode,
   ShoppingBag,
   Sparkles,
@@ -84,8 +83,11 @@ const PRODUCT_MARK: Record<ProductKey, LucideIcon> = {
   credits: Wallet,
   // The BANK'S FRONT, the same glyph the landing page gives Capital.
   capital: Landmark,
-  whatsapp: MessageCircle,
-  phone: PhoneCall,
+  // THE SWITCHBOARD, not a phone and not a chat bubble (MESITA-1951). This one
+  // mark stands where the chat bubble and the handset stood, and picking either
+  // of those back would make the card look like one channel's product again —
+  // which is the whole thing the merge undid.
+  line: Headset,
   intelligence: Sparkles,
 };
 

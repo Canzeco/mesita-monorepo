@@ -56,7 +56,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // with no card — and the second renders `undefined` straight into a
     // className. The bijection is the assertion, in both directions.
     expect([...PRODUCT_ORDER].sort()).toEqual([...PRODUCT_KEYS].sort());
-    expect(PRODUCT_ORDER).toHaveLength(16);
+    expect(PRODUCT_ORDER).toHaveLength(15);
   });
 
   it("is Pato's list, and the RAIL is a SUBSEQUENCE of it (MESITA-1949)", () => {
@@ -65,6 +65,10 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // Reservations / Payments / Terminal / Credits / Capital / Whats Bot /
     // Phone Bot / Intelligence (Soon)" — then "maybe include POS, but for the
     // future", which is why POS sits beside Terminal rather than last.
+    //
+    // THE TWO BOTS ARE ONE PRODUCT NOW (MESITA-1951): *"Mesita AI Line
+    // instead"*. It takes the slot the pair occupied rather than going last,
+    // because the position was never about either channel.
     //
     // WHERE REWARDS SITS IS THE ARGUMENT, and it reversed once (MESITA-1928).
     // MESITA-1900 filed it with money — "beside Payments and Credits, not at
@@ -85,8 +89,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       "pos",
       "credits",
       "capital",
-      "whatsapp",
-      "phone",
+      "line",
       "intelligence",
     ]);
 
@@ -98,7 +101,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // different ways. That drift is what this still catches.
     //
     // What it stops catching is a product the rail has no row for, and that is
-    // deliberate (MESITA-1949): nine of the sixteen are catalogue-only. A rail
+    // deliberate (MESITA-1949): most of the suite is catalogue-only. A rail
     // row must land somewhere real (MESITA-1833) and MESITA-1900 deleted
     // Terminal for being "the one row whose address was a SoonStrip", so a
     // Soon product gets a card and no row. `RailProduct` makes that a compile
@@ -134,7 +137,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     expect(PRODUCT_KEYS).toBe(VOCABULARY_KEYS);
   });
 
-  it("renders all sixteen in EVERY state, so no read can hide a product", () => {
+  it("renders EVERY product in EVERY state, so no read can hide one", () => {
     // A catalogue is also a price list: a product this place has not bought is
     // exactly the one it most needs to see. A filter hides it; a failed read
     // must not.
@@ -144,7 +147,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       { place: null },
       { partnered: true, mesitaPayEnabled: true },
     ]) {
-      expect(Object.keys(build(input))).toHaveLength(16);
+      expect(Object.keys(build(input))).toHaveLength(15);
     }
   });
 
@@ -380,7 +383,7 @@ describe("Mesita Pay's verb is the one that stays on this page", () => {
   });
 });
 
-describe("Soon is nine of the sixteen, and every one of them is unbuilt", () => {
+describe("Soon is most of the suite, and every one of them is unbuilt", () => {
   it("is exactly the products with no engine, in catalogue order", () => {
     // The set is closed on purpose. A card with a real fact behind it that
     // paints Soon is a product quietly withdrawn from sale by a typo.
@@ -399,8 +402,7 @@ describe("Soon is nine of the sixteen, and every one of them is unbuilt", () => 
       "terminal",
       "pos",
       "capital",
-      "whatsapp",
-      "phone",
+      "line",
       "intelligence",
     ]);
   });
