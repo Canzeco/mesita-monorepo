@@ -129,7 +129,7 @@ export default function PlacesPage() {
           // than as an account that has not started.
           <EmptyState
             title="You hold no places yet"
-            hint="Add yours and the rail fills in: eight products, all of them about that one venue."
+            hint="Add yours and the console fills in: the whole Mesita suite, all of it about that one venue."
             action={null}
           />
         ) : (

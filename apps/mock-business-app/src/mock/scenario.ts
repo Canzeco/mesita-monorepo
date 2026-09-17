@@ -22,12 +22,12 @@ export type Scenario = {
    *  list: a failed read must never render as "you have no places". */
   mode: RailMode;
   /** The caller's role on the place they are looking at. Drives `tabsForAccess`
-   *  — a viewer sees three views, an editor nine. */
+   *  — a viewer sees Profile alone, an editor every view. */
   role: PlaceRole;
   /** Super-admin adds the Admin view, and nothing else. */
   isSuperAdmin: boolean;
-  /** Mesita Partner on the SELECTED place. The gate five of the eight products
-   *  read; off, they are Locked and carry no verb. */
+  /** Mesita Partner on the SELECTED place. The gate Visits, Rewards, Payments
+   *  and Credits read; off, they are Locked and carry no verb. */
   partnered: boolean;
   /** What the SUBSCRIPTION behind the gate is doing. Its own axis, because
    *  `partnered` and the membership come apart in both directions — a
@@ -85,7 +85,7 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   {
     id: "unpartnered",
     label: "Not a partner",
-    hint: "Five of the eight products Locked, no verb on any of them.",
+    hint: "Visits, Rewards, Payments and Credits Locked, no verb on any of them.",
     patch: { mode: "solo", partnered: false, membership: "none", pay: "never", visitRewards: false, credits: false, customerIntel: false },
   },
   {

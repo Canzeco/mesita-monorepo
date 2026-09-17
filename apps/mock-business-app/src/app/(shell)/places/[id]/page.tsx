@@ -75,8 +75,11 @@ type Blocker = { label: string; line: string; door: string; href: string };
 
 /** WHAT IS ACTUALLY IN THE WAY, in the order it costs money.
  *
- *  Partner first: it gates five of the eight products, so a place without it
- *  has four other things wrong that are all the same thing. Payments second —
+ *  Partner first: it gates Visits, Rewards, Payments and Credits, so a place
+ *  without it has four other things wrong that are all the same thing. THE
+ *  FOUR ARE NAMED, NEVER COUNTED — "five of the eight" stood here through two
+ *  products arriving and one leaving, and no gate compares a sentence to
+ *  `SPECS` (MESITA-1946). Payments second —
  *  it is the one that stops a guest paying. Then the two that only cost reach. */
 function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
   const out: Blocker[] = [];
@@ -84,7 +87,7 @@ function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
   if (!place.partnered) {
     out.push({
       label: "Not a partner",
-      line: "Five of the eight products are locked here, and none of them carry a verb until Mesita Partner is on.",
+      line: "Visits, Rewards, Payments and Credits are locked here, and none of them carry a verb until Mesita Partner is on.",
       door: "See the catalogue",
       href: placePageHref(place.id, "products"),
     });

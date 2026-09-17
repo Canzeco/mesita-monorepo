@@ -1,17 +1,40 @@
 "use client";
 
-// PRODUCTS IS THE CATALOGUE: the gate, then eight cards, and nothing else.
+// PRODUCTS IS THE CATALOGUE: the gate, then the whole suite, and nothing else.
 //
 // A CARD STATES A FACT THE CONSOLE READ. Profile is free on every place;
 // partner-gated products read Locked and carry NO verb, because a button on a
 // product the caller cannot have is an invitation to a 403; a per-place product
-// prints whether it is on HERE; Customers is Soon.
+// prints whether it is on HERE; a product that does not exist is Soon, and
+// most of the suite is.
 //
-// A verb lands on the product's OWN view. There is no "product view" indirection
-// left — `PLACE_TABS` ⊇ `PRODUCT_KEYS`, pinned both ways — except for Customers,
-// which is a page, and Payments, whose Stripe account is the sub-step
-// `products/pay` rather than a ninth card.
-import { ArrowRight, Lock } from "lucide-react";
+// A VERB LANDS WHEREVER THE PRODUCT ACTUALLY LIVES, and that is no longer one
+// place. `PLACE_TABS` ⊇ `PRODUCT_KEYS` held while the suite was six views plus
+// Customers; Pato's full list (MESITA-1946) broke it for good, so the
+// destination is written down per product in `lib/products.ts` instead of cast
+// out of the key. Customers is a page, Payments is the sub-step `products/pay`,
+// and every Soon product but Capital has nothing at all to open.
+import {
+  ArrowRight,
+  CalendarCheck,
+  CreditCard,
+  Gift,
+  Globe,
+  Landmark,
+  Lock,
+  Megaphone,
+  MessageCircle,
+  Nfc,
+  PhoneCall,
+  ScanBarcode,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  Ticket,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
@@ -21,6 +44,52 @@ import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards } from "@/lib/products";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import type { ProductKey } from "@/lib/product-keys";
+import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+
+// THE MARK, AND ONLY THE MARK (MESITA-1946).
+//
+// Pato: *"maybe some icon to each product"*. `web-business` has carried these
+// nine glyphs since the catalogue shipped, each in a tinted chip — teal for
+// Profile, violet for Payments, and so on. THE GLYPHS COME ACROSS UNCHANGED
+// and the TINTS DO NOT: one product drawn two ways is how an operator learns
+// to distrust both drawings, and this app has no hues to draw them in
+// (MESITA-1934). Nine washes of the same grey would be the tint table with its
+// only job removed.
+//
+// So the chip is one muted square on every card and the GLYPH is the whole of
+// the identity. That is also why the chip does not brighten when a product is
+// on: state is the badge's fact, and Badges.tsx's first line is that there is
+// never a second badge for one fact. A mark that changed with state would be
+// exactly that — and on a screen whose entire job is saying which products are
+// on, a second, quieter state signal is the one that gets misread.
+const PRODUCT_MARK: Record<ProductKey, LucideIcon> = {
+  profile: Store,
+  website: Globe,
+  customers: Users,
+  ads: Megaphone,
+  visits: Ticket,
+  rewards: Gift,
+  orders: ShoppingBag,
+  reservations: CalendarCheck,
+  pay: CreditCard,
+  // THE READER, NOT A SECOND CARD (MESITA-1946). Terminal wore `CreditCard`
+  // before MESITA-1900 removed it, back when Payments wore something else;
+  // giving it back now would put the same glyph on two cards in one grid,
+  // which is the tint table's failure in monochrome. `Nfc` is the tap, which
+  // is the part of Terminal that is not Payments.
+  terminal: Nfc,
+  // THE ITEMS, which is the half of the counter Terminal is not: `Nfc` is the
+  // tap, `ScanBarcode` is what was rung up before anybody tapped anything.
+  pos: ScanBarcode,
+  credits: Wallet,
+  // The BANK'S FRONT, the same glyph the landing page gives Capital.
+  capital: Landmark,
+  whatsapp: MessageCircle,
+  phone: PhoneCall,
+  intelligence: Sparkles,
+};
 
 export default function ProductsPage() {
   const place = useHeldPlaceOrNull();
@@ -69,16 +138,34 @@ export default function ProductsPage() {
           // Hidden from the rail is not hidden from here: the catalogue names
           // every product this place could have, and says which ones this
           // caller may open.
+          // NO CAST. Most product keys are not `PlaceTab`s now, so
+          // `key as PlaceTab` would be a lie the compiler accepts — and
+          // one that reads `false` for every product whose destination is not
+          // a view, which is the wrong answer for Payments.
           const allowed =
             card.key === "customers" ||
-            tabs.includes(card.key as PlaceTab);
+            (tabs as readonly string[]).includes(card.key);
+          const Mark = PRODUCT_MARK[card.key];
           return (
             <div
               key={card.key}
               className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-6"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-display text-base font-semibold tracking-tight">{card.name}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      SCOPE_CHIP_CLASS,
+                      "bg-muted text-foreground flex items-center justify-center",
+                    )}
+                  >
+                    <Mark className="h-5 w-5" strokeWidth={1.75} />
+                  </span>
+                  <p className="font-display min-w-0 text-base font-semibold tracking-tight">
+                    {card.name}
+                  </p>
+                </div>
                 <ProductStateBadge state={card.state} />
               </div>
               <p className="text-muted-foreground flex-1 text-[13px] leading-relaxed">{card.blurb}</p>

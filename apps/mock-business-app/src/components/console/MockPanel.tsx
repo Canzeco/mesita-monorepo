@@ -243,7 +243,7 @@ export function MockPanel() {
           <Group label="Switches on this place">
             <Toggle
               label="Mesita Partner"
-              hint="The gate five of the eight products read. Off, they are Locked and carry no verb."
+              hint="The gate Visits, Rewards, Payments and Credits read. Off, they are Locked and carry no verb."
               on={scenario.partnered}
               onChange={(partnered) => set({ partnered })}
             />

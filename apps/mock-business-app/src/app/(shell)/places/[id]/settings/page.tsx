@@ -114,7 +114,7 @@ function stateGroups(
       label: "Partner",
       options: YES_NO,
       current: yesNo(place.partnered),
-      note: "The place pays. This is the gate five of the eight products read.",
+      note: "The place pays. This is the gate Visits, Rewards, Payments and Credits read.",
     },
     {
       label: "Promoting",
