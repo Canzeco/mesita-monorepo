@@ -417,10 +417,24 @@ export function PlaceSection({
     // row-align by design (MESITA-399). Every card roots as a <section>
     // (SectionCard) and gets the gutter margin + break-inside-avoid via
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
-    // xl:columns-3 is for the BUSINESS console (MESITA-1558), which has no
-    // sidebar and a fluid container, so at xl it genuinely has the ~1300px
-    // three ~440px columns need — the measure these cards were drawn at.
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
+    //
+    // TWO COLUMNS IS THE CEILING (MESITA-1940). Pato 2026-09-16, on this
+    // screen: *"make here two columns max instead of 3."* `xl:columns-3` came
+    // from MESITA-1558 and its argument was that three ~440px columns FIT the
+    // business console — no sidebar, fluid container, ~1300px at xl. Fitting
+    // was never the question: the third column turns Profile into nine boxes
+    // of 11-13px type at three left edges, and the cards no longer need the
+    // 440px measure they were drawn at (Digital Presence is four hairline
+    // rows, Reviews is three passive boxes with a sideways scroller).
+    //
+    // NO max-w HERE. Two columns means two FULL-WIDTH columns; a cap on this
+    // container is the `max-w-xl` that has been deleted twice.
+    //
+    // The ceiling makes a VIEWPORT breakpoint inside a card worse, not better:
+    // `sm:`/`md:` fire on the window while the column is now ~700px, so a card
+    // that splits itself in two splits at a width nobody measured. Size a card's
+    // insides with rows or an unconditional grid, never with a screen query.
+    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         rank="lead"
