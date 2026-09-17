@@ -32,7 +32,7 @@
 // states matrix renders. A product whose places could not be read carries no
 // note at all rather than a zero, because zero is a claim.
 //
-// ── WHY THE ICONS LIVE HERE AND THE DATA COMES FROM THE SERVER ────────────
+// ── WHY THE MARKS LIVE HERE AND THE DATA COMES FROM THE SERVER ────────────
 //
 // A React component is not serializable across the server/client boundary, so
 // the page hands over plain data keyed by `ProductKey` and this file owns the
@@ -46,27 +46,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  CalendarCheck,
-  Check,
-  Globe,
-  CreditCard,
-  Gift,
-  Lock,
-  Minus,
-  ShoppingBag,
-  Store,
-  Ticket,
-  Users,
-  Landmark,
-  Megaphone,
-  Headset,
-  Nfc,
-  ScanBarcode,
-  Sparkles,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+// THE ONLY LUCIDE LEFT IS THE STATE CHIP'S (MESITA-1952). Every product mark
+// is an emoji in `LOOK` below; check / dash / lock stay drawn glyphs, because
+// state is a shape and a shape is what a chip can carry at 12px.
+import { Check, Lock, Minus, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // THE EIGHT, IN PATO'S ORDER (2026-09-16): *"Profile · Costumers // Visits ·
@@ -112,51 +95,52 @@ export type ProductCard = {
   action: { label: string; href: string } | null;
 };
 
-/** The mark and its tint, one row per product. The tint is a WASH behind a
- *  foreground-weight glyph, not a saturated fill: eight saturated squares in
- *  a grid is a toy, and this screen is where an operator spends money. */
-// THE TINTS ARE GONE, ALL SIXTEEN (MESITA-1936, landing after MESITA-1949 and
-// doing what that file asked of whichever branch arrived second). This console
-// follows the mock: the hues went in MESITA-1934 and the GLYPH became the whole
-// of a product's identity. `tint` keeps its name and its shape because the wash
-// is still a wash — it is simply the same wash for every product now, which is
-// the property that matters. A seventeenth product cannot arrive needing a hue
-// nobody has left, and a grid of saturated squares is a toy on the
-// screen where an operator spends money.
-const LOOK: Record<ProductKey, { Icon: LucideIcon; tint: string }> = {
-  profile: { Icon: Store, tint: "bg-muted text-foreground" },
-  website: { Icon: Globe, tint: "bg-muted text-foreground" },
-  customers: { Icon: Users, tint: "bg-muted text-foreground" },
-  ads: { Icon: Megaphone, tint: "bg-muted text-foreground" },
-  visits: { Icon: Ticket, tint: "bg-muted text-foreground" },
-  // Rewards takes the slate Terminal left behind rather than the pink it wore
-  // before MESITA-1884 — Customers has that now, and moving a live card's
-  // colour to give a returning one its old wash would recolour two cards to
-  // settle one.
-  rewards: { Icon: Gift, tint: "bg-muted text-foreground" },
-  orders: { Icon: ShoppingBag, tint: "bg-muted text-foreground" },
-  reservations: { Icon: CalendarCheck, tint: "bg-muted text-foreground" },
-  pay: { Icon: CreditCard, tint: "bg-muted text-foreground" },
-  // TERMINAL DOES NOT GET ITS OLD GLYPH BACK. It wore `CreditCard` until
-  // MESITA-1900, when Payments wore something else; handing it back now would
-  // put one mark on two cards in the same grid, which is the failure the whole
-  // table exists to prevent. `Nfc` is the TAP — the half of Terminal that is
-  // not Payments — and `ScanBarcode` is what POS rings up before anybody taps.
-  terminal: { Icon: Nfc, tint: "bg-muted text-foreground" },
-  pos: { Icon: ScanBarcode, tint: "bg-muted text-foreground" },
-  credits: { Icon: Wallet, tint: "bg-muted text-foreground" },
-  // Capital takes the BANK'S FRONT for its mark (MESITA-1929) — the same glyph
-  // the landing page gives it, because one product drawn two ways is how an
-  // operator learns to distrust both drawings.
-  capital: { Icon: Landmark, tint: "bg-muted text-foreground" },
-  // THE SWITCHBOARD, not a phone and not a chat bubble (MESITA-1951). This one
-  // mark stands where the chat bubble and the handset stood, and picking either
-  // of those back would make the card look like one channel's product again —
-  // which is the whole thing the merge undid.
-  line: { Icon: Headset, tint: "bg-muted text-foreground" },
-  intelligence: { Icon: Sparkles, tint: "bg-muted text-foreground" },
+/** THE MARK IS AN EMOJI NOW (MESITA-1952). Pato, at the catalogue: *"add
+ *  fuckjing emojis or something"*.
+ *
+ *  MESITA-1934 took the tints away and made the GLYPH the whole of a product's
+ *  identity; MESITA-1936 brought that here. What it left is a grid of grey
+ *  squares holding grey marks — the tint table with its only job removed, on
+ *  the screen where an operator spends money.
+ *
+ *  An emoji carries its own colour and costs the palette NOTHING: there is no
+ *  hue to allocate, a sixteenth product cannot arrive to find the palette
+ *  spent, and the wash stays the same muted square on every card — which is
+ *  the property the tint table was kept for. The device is already this app's:
+ *  `lib/business/strategies.ts` names the three reward strategies ⭕ 🌿 ⚡ and
+ *  `PlaceTagsPicker` draws every facet with one.
+ *
+ *  THE STATE CHIP KEEPS ITS LUCIDE GLYPHS. State is a shape, not a hue
+ *  (MESITA-1936) — check, dash, lock — and an emoji beside an emoji is two
+ *  marks competing to be the card's identity. */
+const LOOK: Record<ProductKey, { mark: string; tint: string }> = {
+  profile: { mark: "\u{1F3EA}", tint: "bg-muted" },
+  website: { mark: "\u{1F310}", tint: "bg-muted" },
+  customers: { mark: "\u{1F465}", tint: "bg-muted" },
+  ads: { mark: "\u{1F4E3}", tint: "bg-muted" },
+  visits: { mark: "\u{1F39F}\u{FE0F}", tint: "bg-muted" },
+  rewards: { mark: "\u{1F381}", tint: "bg-muted" },
+  orders: { mark: "\u{1F6CD}\u{FE0F}", tint: "bg-muted" },
+  reservations: { mark: "\u{1F4C5}", tint: "bg-muted" },
+  pay: { mark: "\u{1F4B3}", tint: "bg-muted" },
+  // ONE MARK PER CARD, THE RULE THE GLYPH TABLE ALREADY LIVED BY. Terminal is
+  // the TAP and POS is what was rung up before anybody tapped — 📲 and 🧾,
+  // never a second 💳, because one mark on two cards in the same grid is how
+  // an operator learns to distrust both drawings.
+  terminal: { mark: "\u{1F4F2}", tint: "bg-muted" },
+  pos: { mark: "\u{1F9FE}", tint: "bg-muted" },
+  // A COIN, NOT A WALLET: Pay › Wallet is the guest's; credits are a balance
+  // the place sold.
+  credits: { mark: "\u{1FA99}", tint: "bg-muted" },
+  // The BANK'S FRONT, the same mark the landing page gives Capital
+  // (MESITA-1929).
+  capital: { mark: "\u{1F3E6}", tint: "bg-muted" },
+  // NOT A HANDSET AND NOT A CHAT BUBBLE (MESITA-1951): either one would make
+  // the card look like one channel's product again, which is the whole thing
+  // the merge undid. 🤖 is what the name now says out loud.
+  line: { mark: "\u{1F916}", tint: "bg-muted" },
+  intelligence: { mark: "\u{2728}", tint: "bg-muted" },
 };
-
 /** The state, as the operator reads it. One word where one will do — the
  *  card's own note carries the detail, so the chip never becomes a sentence. */
 const STATE_LABEL: Record<ProductState, string> = {
@@ -318,7 +302,7 @@ export function ProductCatalog({ products }: { products: readonly ProductCard[] 
 }
 
 function ProductTile({ product }: { product: ProductCard }) {
-  const { Icon, tint } = LOOK[product.key];
+  const { mark, tint } = LOOK[product.key];
   return (
     <li
       className={cn(
@@ -339,7 +323,9 @@ function ProductTile({ product }: { product: ProductCard }) {
           tint,
         )}
       >
-        <Icon className="h-5 w-5" strokeWidth={2} />
+        {/* `leading-none` because an emoji's line box is taller than its
+            glyph: without it the mark sits low in its own square. */}
+        <span className="text-[22px] leading-none">{mark}</span>
       </span>
 
       <div className="flex min-w-0 flex-col gap-1">
