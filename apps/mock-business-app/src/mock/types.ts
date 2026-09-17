@@ -100,6 +100,15 @@ export type MockPlace = {
    *  for both sides, because the place pays once for a phone number that
    *  stops meaning anything and Mesita is paid once for keeping it true. */
   customerIntel: boolean;
+  /** WHEN THAT SUBSCRIPTION FIRST STARTED, or null if it never has.
+   *
+   *  NEVER SUBSCRIBED AND STOPPED ARE DIFFERENT FACTS, and one boolean cannot
+   *  hold both — the same trap `PayLadder` exists to avoid, where a fresh
+   *  Stripe account and a shut-down one report identically. `customerIntel`
+   *  false with a date behind it is a catalog that CLOSED, and the
+   *  Subscriptions log says so; false with null never opened, and that log is
+   *  empty. A place switched on by the panel with no date started today. */
+  customerIntelSince: string | null;
   /** Per-place capability switches — what `lib/products.ts` reads to decide
    *  whether a card says "On here" or "Not on here yet". */
   pickupOrders: boolean;

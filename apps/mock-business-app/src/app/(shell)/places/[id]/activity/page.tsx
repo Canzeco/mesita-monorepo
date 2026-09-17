@@ -1,6 +1,6 @@
 "use client";
 
-// Activity — THE LEDGER BOOK. Eight logs, one table, and a rail of types.
+// Activity — THE LEDGER BOOK. Nine logs, one table, and a rail of types.
 //
 // Pato, 2026-09-16: *"activity is like the centralized passive feed of
 // everything — you configure in products and then in activity you observe the
@@ -8,7 +8,7 @@
 // actual ticket of each: views, visits, orders, reservations, payments,
 // credits, settings. Certain events might produce events in multiple logs."*
 //
-// `mock/logs.ts` projects every record at this place into eight logs, and this
+// `mock/logs.ts` projects every record at this place into nine logs, and this
 // page renders them as TABLES — the ticket, with its own columns — plus the
 // union of exactly those rows under "Everything". The union is derived from
 // the logs, so this screen has no way to contradict itself.
@@ -61,6 +61,7 @@ import {
   type ReservationLogRow,
   type ReviewLogRow,
   type SettingLogRow,
+  type SubscriptionLogRow,
   type ViewLogRow,
   type VisitLogRow,
 } from "@/mock/logs";
@@ -96,6 +97,9 @@ const LOG_HOME: Record<LogKey, ((placeId: string) => string) | null> = {
   reviews: (id) => placeTabHref(id, "profile"),
   payments: (id) => placePayHref(id),
   credits: (id) => placeTabHref(id, "credits"),
+  // Both products this log bills for live on the catalogue: the Customers card
+  // opens the catalog, and the Membership strip sits above the grid.
+  subscriptions: (id) => placePageHref(id, "products"),
   settings: (id) => placePageHref(id, "settings"),
 };
 
@@ -107,6 +111,9 @@ const LOG_HOME_LABEL: Record<LogKey, string> = {
   reviews: "Profile",
   payments: "Mesita Payments",
   credits: "Mesita Credits",
+  // SHORT, because it rides at the end of a rail that is now nine chips wide:
+  // "Open the Products catalogue" pushed the selected chip off its own row.
+  subscriptions: "Products",
   settings: "this place's Settings",
 };
 
@@ -122,6 +129,8 @@ const TAB_EMPTY_HINT: Record<Tab, string> = {
   reviews: "The first row lands when a guest writes about this place, on Mesita or on Google.",
   payments: "Nothing has moved. Visits, orders and credit sales all write their money here.",
   credits: "Nothing minted, nothing spent. A row lands when a guest buys credit, or puts some against a bill.",
+  subscriptions:
+    "Nothing has ever been billed here. A partner an operator switched on by hand is never charged, and a catalog nobody subscribed to has no history — neither of those is a subscription that ended.",
   settings: "The first row lands the next time somebody on the team changes something about this place.",
 };
 
@@ -141,7 +150,7 @@ export default function PlaceActivityPage() {
   // page reachable by typing its address is a page, whatever the rail drew.
   if (!pages.includes("activity")) notFound();
 
-  const book = buildLedgers(place.id, scenario, now);
+  const book = buildLedgers(place, scenario, now);
   // ONE CAST, and the mapped type on `TAB_SPECS` is what pays for it: each
   // entry's columns were proved against that tab's own row type when the
   // record was written, and TypeScript cannot carry that proof through a `tab`
@@ -250,7 +259,7 @@ function From({ row }: { row: LogRow }) {
   return <span className="text-muted-foreground">{row.origin.label}</span>;
 }
 
-/** THE UNION'S OWN COLUMNS. It cannot borrow a log's — it holds all eight row
+/** THE UNION'S OWN COLUMNS. It cannot borrow a log's — it holds all nine row
  *  types at once — so it prints the two lines every `LogBase` owes plus the
  *  log it came from, and leaves the ticket to the chip that shows it. */
 const EVERY_COLUMNS: LogColumn<LogRow>[] = [
@@ -627,6 +636,63 @@ const SETTING_COLUMNS: LogColumn<SettingLogRow>[] = [
   },
 ];
 
+const SUBSCRIPTION_PRODUCT_LABEL: Record<SubscriptionLogRow["product"], string> = {
+  customers: "Customers",
+  membership: "Membership",
+};
+
+// THE FIVE WORDS THIS LOG CAN SAY, and the last two are not one word twice:
+// `ending` still HAS the product and will lose it, `ended` has lost it. A
+// console that painted them the same would tell a venue that is still paying
+// it has been cut off.
+const SUBSCRIPTION_EVENT = {
+  started: { label: "started", tone: "on" },
+  renewed: { label: "renewed", tone: "on" },
+  payment_failed: { label: "charge failed", tone: "bad" },
+  ending: { label: "ending", tone: "soon" },
+  ended: { label: "closed", tone: "off" },
+} as const;
+
+const SUBSCRIPTION_COLUMNS: LogColumn<SubscriptionLogRow>[] = [
+  when(),
+  {
+    key: "product",
+    head: "Product",
+    cell: (r) => <span className="font-medium">{SUBSCRIPTION_PRODUCT_LABEL[r.product]}</span>,
+    text: (r) => SUBSCRIPTION_PRODUCT_LABEL[r.product],
+  },
+  {
+    key: "event",
+    head: "Event",
+    cell: (r) => (
+      <Badge tone={SUBSCRIPTION_EVENT[r.event].tone}>{SUBSCRIPTION_EVENT[r.event].label}</Badge>
+    ),
+    text: (r) => SUBSCRIPTION_EVENT[r.event].label,
+  },
+  {
+    key: "cadence",
+    head: "Billed",
+    cell: (r) => <Badge tone="off">{r.cadence}</Badge>,
+    text: (r) => r.cadence,
+  },
+  {
+    key: "detail",
+    head: "What it means",
+    className: "w-full",
+    cell: (r) => <span className="text-muted-foreground">{r.detail}</span>,
+    text: (r) => r.detail,
+  },
+  // NO AMOUNT COLUMN, and the absence is the point: neither product has a
+  // price yet, so a column of dashes would read as money nobody moved rather
+  // than as a number nobody has decided.
+  {
+    key: "wrote",
+    head: "Wrote to",
+    cell: (r) => <WroteTo keys={r.wroteTo} />,
+    text: (r) => wroteToText(r.wroteTo),
+  },
+];
+
 /** EVERY TAB'S TABLE, keyed by the tab. It is a `Record` and not nine branches
  *  in the body on purpose: a mapped type over `Tab` refuses to compile the day
  *  a ninth log joins `LOG_KEYS` without columns, which is exactly what "we
@@ -649,5 +715,6 @@ const TAB_SPECS: {
   reviews: { columns: REVIEW_COLUMNS, minWidth: 660 },
   payments: { columns: PAYMENT_COLUMNS, minWidth: 780 },
   credits: { columns: CREDIT_COLUMNS, minWidth: 780 },
+  subscriptions: { columns: SUBSCRIPTION_COLUMNS, minWidth: 860 },
   settings: { columns: SETTING_COLUMNS, minWidth: 740 },
 };

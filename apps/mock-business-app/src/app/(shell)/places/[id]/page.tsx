@@ -163,9 +163,9 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
   // THE SAME ROWS THE ACTIVITY PAGE SHOWS, and five of them (MESITA-1939).
   // Home used to read its own `ACTIVITY` fixture, which meant the five lines
   // here and the tables one click away were two unrelated inventions about one
-  // place. `everything` is the union of the eight logs, so this strip is now a
+  // place. `everything` is the union of the nine logs, so this strip is now a
   // literal preview of the page its heading links to.
-  const events = buildLedgers(place.id, scenario, now).everything.slice(0, 5);
+  const events = buildLedgers(place, scenario, now).everything.slice(0, 5);
 
   const openVisits = visits.filter((v) => v.state === "open");
   const working = orders.filter(
