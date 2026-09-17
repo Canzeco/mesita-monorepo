@@ -12,6 +12,17 @@
 // There is no sticky place bar and no top nav above main. The rail carries the
 // place's name AND its views, so a row restating both would be chrome saying
 // what the column beside it already says.
+//
+// AND SINCE MESITA-1943, NOTHING INSIDE MAIN RESTATES THEM EITHER. `PlaceHeading`
+// was that row with the sticky taken off — photo, name and view label, on the
+// page, at the top of all seven place screens. Pato: *"remove this stupid header
+// or put it in a dark box"*. Painting it dark would have made the duplication
+// LOUDER and cost three things: the Verified pill is `bg-foreground`, which is
+// this file's `--dock` exactly (1.00:1 on its own ground); gold fell 7.8:1 →
+// 1.4:1; and on Home the box landed 16px above `AskBar`, which exists to be the
+// only dark object there. The one screen that could not lose its label for free
+// is `products/pay` — no rail row points at it — and it kept a back door instead
+// of a heading.
 import { Suspense, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -19,8 +30,47 @@ import { Sidebar } from "@/components/console/Sidebar";
 import { MockPanel } from "@/components/console/MockPanel";
 import { useMock } from "@/mock/MockStore";
 import { resolveRailScope } from "@/lib/rail-scope";
+import {
+  PLACE_PAGE_LABEL,
+  isPlacePayPathname,
+  placeIdFromPathname,
+  placePageFromPathname,
+} from "@/lib/console-routes";
+import { PLACE_TABS, PLACE_TAB_LABEL, type PlaceTab } from "@/lib/place-tabs";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+
+/** THE PLACE SCREEN'S `h1`, AND IT IS SCREEN-READER-ONLY (MESITA-1943).
+ *
+ *  Deleting `PlaceHeading` took the visible title off seven screens, which was
+ *  the point — the rail says the name, the photo and the view. What the rail
+ *  cannot be is a HEADING. `Section` renders `h3`, so with the title gone these
+ *  pages opened on an h3 with h1 AND h2 skipped: axe flags it, and VoiceOver's
+ *  rotor has nothing to land on. `apps/web-business`'s own `PlaceHeading`
+ *  carries that exact note as the reason it survived its own PlaceBar.
+ *
+ *  So the outline keeps its root and the page keeps its pixels. It names the
+ *  VIEW as well as the place, because seven screens announcing one title is a
+ *  rotor that cannot tell you that you moved.
+ *
+ *  It is skipped where a screen already draws its own `h1` — `/places`,
+ *  `/places/new`, `/account` — which is exactly where `placeIdFromPathname`
+ *  returns null. The flat names (`/profile`, `/orders`) never reach here: they
+ *  307 onto the canonical address. */
+function placeScreenTitle(pathname: string, name: string): string | null {
+  if (!placeIdFromPathname(pathname)) return null;
+  // Pay first: it lives UNDER `products`, so the page reader below would
+  // answer "Products" for it and lose the sub-step the back link names.
+  if (isPlacePayPathname(pathname)) return `${name} · Products · Mesita Payments`;
+  const page = placePageFromPathname(pathname);
+  if (page) return `${name} · ${PLACE_PAGE_LABEL[page]}`;
+  const seg = pathname.split("/")[3];
+  if (seg && (PLACE_TABS as readonly string[]).includes(seg)) {
+    return `${name} · ${PLACE_TAB_LABEL[seg as PlaceTab]}`;
+  }
+  // The bare address, which is Home.
+  return name;
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -40,6 +90,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     lastPlaceId,
     viewerError: world.viewerError,
   });
+
+  // A POOL PLACE GETS ONE TOO. `scope.place` is null when the caller holds no
+  // membership on the place the address names, but `[view]` still renders
+  // Profile's "Nobody holds this place" for it — a screen with the same h3-only
+  // outline as any other.
+  const subject =
+    scope.place ??
+    (scope.foreignPlaceId
+      ? (world.poolPlaces.find((p) => p.id === scope.foreignPlaceId) ?? null)
+      : null);
+  const title = subject ? placeScreenTitle(pathname, subject.name) : null;
 
   // The rail learns the open place from the ADDRESS, and remembers it for the
   // flat names that carry none.
@@ -126,6 +187,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* THE ONLY SCROLLER. */}
           <main className="min-h-0 flex-1 overflow-y-auto">
+            {title && <h1 className="sr-only">{title}</h1>}
             {/* FLUID: no max-width. A full-bleed child cancels SHELL_GUTTER
                 with SHELL_BLEED and only reaches the column edge if nothing
                 caps it. Readability is protected per-element

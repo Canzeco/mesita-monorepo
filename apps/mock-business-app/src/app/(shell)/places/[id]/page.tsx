@@ -52,7 +52,6 @@ import { use, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AskBar } from "@/components/console/AskBar";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { Badge } from "@/components/shared/Badges";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -212,8 +211,6 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
 
   return (
     <>
-      <PlaceHeading place={place} view="Home" />
-
       <AskBar placeId={place.id} />
 
       {/* THE STATE OF THE PLACE, in one card. Every direct child of
