@@ -41,7 +41,18 @@ import {
   MEMBERSHIP_STATE_LABEL,
   PAY_LADDER_LABEL,
   type MockPlace,
+  type MockPlaceProfile,
 } from "@/mock/types";
+
+/** `public.content_state`, as words. The enum is
+ *  `queued | generating | ready | failed`; the column is nullable and a null
+ *  means the row predates the pipeline, which reads as queued. */
+const CONTENT_STATE_LABEL: Record<string, string> = {
+  queued: "Queued",
+  generating: "Generating",
+  ready: "Ready",
+  failed: "Failed",
+};
 import {
   GHOST_PILL_BUTTON_CLASS,
   ICON_BUTTON_CLASS,
@@ -60,13 +71,33 @@ type StateRow = {
   note: string;
 };
 
-function stateRows(place: MockPlace): StateRow[] {
+/** THREE BOXES, NOT TWELVE ROWS (MESITA-1945). Pato, on the one card that was
+ *  here: *"different states boxes — General States, Intake States"*.
+ *
+ *  Twelve rows under one heading is a reference table you scan, not a list you
+ *  read, and the twelve were never one kind of thing. What the place IS and
+ *  what it is PAYING belong together; the six product switches are the same six
+ *  facts the catalogue's cards state and grouping them says so; and the Intaker
+ *  has a state of its own that no screen in this console has ever named.
+ *
+ *  Pato named two groups. The third is the product switches, which fall out of
+ *  the same cut — folding them back into General is one `concat`. */
+type StateGroup = {
+  title: string;
+  description: string;
+  rows: StateRow[];
+};
+
+function stateGroups(
+  place: MockPlace,
+  profile: MockPlaceProfile | undefined,
+): StateGroup[] {
   const yesNo = (on: boolean) => (on ? "Yes" : "No");
   const onOff = (on: boolean) => (on ? "On" : "Off");
   const YES_NO = ["Yes", "No"];
   const ON_OFF = ["On", "Off"];
 
-  return [
+  const general: StateRow[] = [
     {
       label: "Your role",
       options: ["owner", "editor", "viewer"],
@@ -103,6 +134,9 @@ function stateRows(place: MockPlace): StateRow[] {
       current: PAY_LADDER_LABEL[place.pay],
       note: "This place\u2019s own Stripe account. Not set up and Restricted are different facts that Stripe reports the same way.",
     },
+  ];
+
+  const products: StateRow[] = [
     {
       label: "Customer intelligence",
       options: ["Subscribed", "Not subscribed"],
@@ -140,12 +174,69 @@ function stateRows(place: MockPlace): StateRow[] {
       note: "The place sells credit that guests spend here later.",
     },
   ];
+
+  // THE INTAKER'S OWN STATE, named for the first time. `content_state` is a
+  // real `public.content_state` enum with four values, and this console has
+  // only ever read two of them — `ProfileCompleteness` checks `generating` and
+  // `queued` to explain why its meter lags, then says nothing about which.
+  //
+  // SCHEMA-BACKED ONLY. Every row below reads a field that exists; none of them
+  // is a state invented to fill the box. `failed` in particular is the value an
+  // operator most needs named and the one no screen could reach.
+  const intake: StateRow[] = profile
+    ? [
+        {
+          label: "Content",
+          options: ["Queued", "Generating", "Ready", "Failed"],
+          current: CONTENT_STATE_LABEL[profile.content_state ?? ""] ?? "Queued",
+          note: "Where the Intaker is with this place. Ready is the only one that means the profile below is finished.",
+        },
+        {
+          label: "Name",
+          // A BLANK OVERRIDE IS THE STATE, not a missing value: `mesita_name`
+          // empty MEANS "follow Google", which is why this row can never be
+          // "not set".
+          options: ["Follows Google", "Operator override"],
+          current: profile.mesita_name?.trim()
+            ? "Operator override"
+            : "Follows Google",
+          note: "Whose name this place wears. Clearing the override hands it back to Google, it does not blank it.",
+        },
+        {
+          label: "Google place",
+          options: ["Linked", "Not linked"],
+          current: profile.google_maps_url?.trim() ? "Linked" : "Not linked",
+          note: "Whether a Google listing was ever matched. Not linked means every cached rating and photo below came from somewhere else.",
+        },
+      ]
+    : [];
+
+  return [
+    {
+      title: "General states",
+      description:
+        "What this place is, and what it is paying. Read-only: these are set by Stripe, by an operator, or by the scenario panel — never from this page.",
+      rows: general,
+    },
+    {
+      title: "Product states",
+      description:
+        "Which of the products this place has switched on. The same six facts the catalogue states on its cards, in one list.",
+      rows: products,
+    },
+    {
+      title: "Intake states",
+      description:
+        "Where the Intaker got to, and what it owns. Nothing here is set by hand — the pipeline writes all of it.",
+      rows: intake,
+    },
+  ].filter((g) => g.rows.length > 0);
 }
 
 export default function PlaceSettingsPage() {
   const place = useHeldPlaceOrNull();
   const { pages } = usePlaceScope();
-  const { scenario } = useMock();
+  const { scenario, world } = useMock();
   // THE GATE THESE PAGES WERE MISSING. They are static segments beside
   // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
   // or the scenario flipped to a failed read while one of them was open, used
@@ -162,7 +253,7 @@ export default function PlaceSettingsPage() {
 
   const members = listFor(MEMBERS.filter((m) => m.placeId === place.id), scenario);
   const canManage = place.myRole === "owner";
-  const rows = stateRows(place);
+  const groups = stateGroups(place, world.profiles[place.id]);
 
   return (
     <>
@@ -222,40 +313,52 @@ export default function PlaceSettingsPage() {
         </p>
       </Section>
 
-      <Section
-        title="States"
-        description="Every state this place can be in, and the one it is in now. Read-only: these are set by Stripe, by an operator, or by the scenario panel — never from this page."
-        lane
-      >
-        <ul className="flex flex-col">
-          {rows.map((row) => (
-            <li
-              key={row.label}
-              className="border-border/60 grid gap-x-5 gap-y-1.5 border-b py-3 last:border-b-0 sm:grid-cols-[220px_minmax(0,1fr)]"
-            >
-              <div className="min-w-0">
-                <p className={TINY_LABEL_CLASS}>{row.label}</p>
-                <p className="text-muted-foreground mt-0.5 max-w-[52ch] text-[12px] leading-snug">
-                  {row.note}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-start gap-1.5">
-                {row.options.map((option) => {
-                  const here = option === row.current;
-                  return (
-                    <Badge key={option} tone={here ? "on" : "off"}>
-                      {option}
-                      {/* The fill is the whole signal for the eye, and a
-                          screen reader gets none of it. */}
-                      {here && <span className="sr-only"> — this place</span>}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Section>
+      {groups.map((group) => (
+        <Section
+          key={group.title}
+          title={group.title}
+          description={group.description}
+          lane
+        >
+          <StateList rows={group.rows} />
+        </Section>
+      ))}
     </>
+  );
+}
+
+/** One group's rows. Lifted out of the page when the single States card became
+ *  three (MESITA-1945) — three copies of this markup is how the three boxes
+ *  start disagreeing about what a row looks like. */
+function StateList({ rows }: { rows: StateRow[] }) {
+  return (
+    <ul className="flex flex-col">
+      {rows.map((row) => (
+        <li
+          key={row.label}
+          className="border-border/60 grid gap-x-5 gap-y-1.5 border-b py-3 last:border-b-0 sm:grid-cols-[220px_minmax(0,1fr)]"
+        >
+          <div className="min-w-0">
+            <p className={TINY_LABEL_CLASS}>{row.label}</p>
+            <p className="text-muted-foreground mt-0.5 max-w-[52ch] text-[12px] leading-snug">
+              {row.note}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-start gap-1.5">
+            {row.options.map((option) => {
+              const here = option === row.current;
+              return (
+                <Badge key={option} tone={here ? "on" : "off"}>
+                  {option}
+                  {/* The fill is the whole signal for the eye, and a
+                      screen reader gets none of it. */}
+                  {here && <span className="sr-only"> — this place</span>}
+                </Badge>
+              );
+            })}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
