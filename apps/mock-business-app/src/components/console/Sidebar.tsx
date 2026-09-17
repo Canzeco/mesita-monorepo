@@ -136,17 +136,25 @@ import { cn } from "@/lib/utils";
 // column you scan all day, and it had the smallest type in the app sitting on
 // the darkest ground, where contrast sensitivity is already worst.
 //
-// THE GLYPH STOPS AT 20px while the label goes to 17px: the ask was the FONT,
-// and a mark scaled in lockstep would put a 24px icon beside a six-item list
-// on a 223px column, which reads as a toolbar, not a rail.
+// THE GLYPH STOPS AT 20px while the label sits at 15px: the ask was the FONT
+// both times, and a mark that scales with it gives back the scannability the
+// icons are carrying on a dark column.
 const ICON = "h-5 w-5 shrink-0";
 
-// THE `lg:` DOWNSHIFTS ARE DELETED, not retuned: a row is one size at every
-// width, so the rail cannot read as two different products depending on the
-// window. `min-h-11` still holds the 44px touch target on a phone; desktop
-// reaches the same row height through `lg:py-2.5` instead.
+// 15px, NOT 17 (MESITA-1957). Pato, once he could finally see it: *"maybe
+// font smaller now, since words are a bit larger"*. 17px was one step past
+// the target — a rail row is a LABEL, not body copy, and at 17px on a 223px
+// column six words stop reading as a list of destinations and start reading
+// as content, which is the same failure as 13px from the other side.
+//
+// THE `lg:` DOWNSHIFTS STAY DELETED, and that is the part that matters. The
+// defect MESITA-1956 fixed was the rail being a DIFFERENT size on desktop
+// than on a phone — 13px under a cursor, 14px under a finger. One size at
+// every width is the rule; 15px is only where that one size sits. `min-h-11`
+// still holds the 44px touch target on a phone; desktop reaches the same row
+// height through `lg:py-2.5` instead.
 const ROW_BASE =
-  "flex items-center gap-3 rounded-xl px-3 text-[17px] font-medium transition min-h-11 lg:min-h-0 lg:py-2.5 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+  "flex items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition min-h-11 lg:min-h-0 lg:py-2.5 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 const ROW_REST =
   "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground";
 // The active row is a SOLID pill, not a tint: on the dark rail it is the
@@ -161,10 +169,10 @@ const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
 const VENUE_LINE = "flex items-center gap-1";
 // THE VENUE RISES WITH THE ROWS, and by the same amount — it was already one
 // step heavier than a nav row (semibold, tracking-tight) and that step is the
-// whole hierarchy of the column. Leaving it at 13px while the links went to
-// 17px would have made the place NAME smaller than the things under it.
+// whole hierarchy of the column. Left behind, the place NAME would end up
+// smaller than the links under it.
 const VENUE_NAME =
-  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-[17px] font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-[15px] font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 // 44×44 under the finger, 32×32 under the cursor. A caret sized to the glyph
 // it draws is a 14px target, which is the whole reason this constant exists.
 const VENUE_CARET =
