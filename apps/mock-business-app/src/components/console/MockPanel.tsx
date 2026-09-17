@@ -247,6 +247,12 @@ export function MockPanel() {
               on={scenario.partnered}
               onChange={(partnered) => set({ partnered })}
             />
+            <Toggle
+              label="Customer intelligence"
+              hint="The Customers catalog is a subscription. Off, the list is counted and nobody in it is named."
+              on={scenario.customerIntel}
+              onChange={(customerIntel) => set({ customerIntel })}
+            />
             <Toggle label="Pickup orders" on={scenario.pickupOrders} onChange={(v) => set({ pickupOrders: v })} />
             <Toggle label="Delivery orders" on={scenario.deliveryOrders} onChange={(v) => set({ deliveryOrders: v })} />
             <Toggle label="Reservations" on={scenario.reservations} onChange={(v) => set({ reservations: v })} />

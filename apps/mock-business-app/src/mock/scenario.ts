@@ -37,6 +37,10 @@ export type Scenario = {
   membership: MembershipState;
   /** Where this place sits on Stripe's ladder. */
   pay: PayLadder;
+  /** The Customers subscription on this place. Its own dial, not part of the
+   *  Membership: the catalog is rented, and a partner who does not rent it
+   *  sees the closed form of the table. */
+  customerIntel: boolean;
   /** The per-place capability switches. */
   pickupOrders: boolean;
   deliveryOrders: boolean;
@@ -55,6 +59,7 @@ export const DEFAULT_SCENARIO: Scenario = {
   partnered: true,
   membership: "active",
   pay: "enabled",
+  customerIntel: true,
   pickupOrders: true,
   deliveryOrders: false,
   reservations: true,
@@ -81,7 +86,7 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
     id: "unpartnered",
     label: "Not a partner",
     hint: "Five of the eight products Locked, no verb on any of them.",
-    patch: { mode: "solo", partnered: false, membership: "none", pay: "never", visitRewards: false, credits: false },
+    patch: { mode: "solo", partnered: false, membership: "none", pay: "never", visitRewards: false, credits: false, customerIntel: false },
   },
   {
     id: "membership-past-due",
@@ -100,6 +105,12 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
     label: "Partner, no subscription",
     hint: "Switched on by an operator. There is no date, so none is shown.",
     patch: { mode: "solo", partnered: true, membership: "none" },
+  },
+  {
+    id: "customers-closed",
+    label: "Customers, not subscribed",
+    hint: "The catalog is counted and nobody in it is named. The other half of that table.",
+    patch: { mode: "solo", customerIntel: false },
   },
   {
     id: "multi",
@@ -172,6 +183,7 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
     membership: s.partnered ? s.membership : "none",
     renewsAt: s.partnered && s.membership !== "none" ? place.renewsAt ?? MEMBERSHIP_RENEWS_AT : null,
     pay: s.pay,
+    customerIntel: s.customerIntel,
     pickupOrders: s.pickupOrders,
     deliveryOrders: s.deliveryOrders,
     reservations: s.reservations,

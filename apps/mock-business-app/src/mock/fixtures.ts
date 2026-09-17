@@ -94,6 +94,7 @@ export const PLACES: MockPlace[] = [
     promoting: true,
     membership: "active",
     renewsAt: MEMBERSHIP_RENEWS_AT,
+    customerIntel: true,
     pickupOrders: true,
     deliveryOrders: false,
     reservations: true,
@@ -120,6 +121,7 @@ export const PLACES: MockPlace[] = [
     promoting: false,
     membership: "none",
     renewsAt: null,
+    customerIntel: false,
     pickupOrders: true,
     deliveryOrders: true,
     reservations: false,
@@ -146,6 +148,7 @@ export const PLACES: MockPlace[] = [
     promoting: false,
     membership: "none",
     renewsAt: null,
+    customerIntel: true,
     pickupOrders: false,
     deliveryOrders: false,
     reservations: true,
@@ -172,6 +175,7 @@ export const PLACES: MockPlace[] = [
     promoting: false,
     membership: "none",
     renewsAt: null,
+    customerIntel: false,
     pickupOrders: false,
     deliveryOrders: false,
     reservations: false,
@@ -384,6 +388,23 @@ export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) =>
   const guest = GUESTS[i % GUESTS.length];
   const cls = classFor(rnd());
   const name = `${guest.name}${i >= GUESTS.length ? " Jr." : ""}`;
+  const visits = 1 + Math.floor(rnd() * 19);
+  const spendCents = 22_000 + Math.floor(rnd() * 480_000);
+  // FIVE OF SIXTEEN ARE QUIET, and they are picked by INDEX rather than rolled
+  // for. Two reasons: the ratio is the argument — a catalog where everybody
+  // came back this month sells a fiction, and the row worth acting on is the
+  // regular who stopped — and a rolled threshold moves every later draw in the
+  // stream when it is tuned, so nudging "about a third" once turned five quiet
+  // guests into one. The draws below are made on BOTH branches for the same
+  // reason.
+  const quiet = i % 4 === 1 || i === 6;
+  const monthlyVisits = 1 + Math.floor(rnd() * 3);
+  // NEVER ZERO, and never three weeks for somebody who came three times this
+  // month: `daysAgo(0)` prints "0m ago", which reads as a clock that has not
+  // loaded, and a guest who is here weekly cannot last have been seen 26 days
+  // back. Quiet guests are thrown well past the month on the same draw.
+  const gapDays = 1 + Math.floor(rnd() * 20);
+  const visitsPerMonth = quiet ? 0 : Math.min(visits, monthlyVisits);
   return {
     id: `cus_${placeId}_${i}`,
     placeId,
@@ -396,15 +417,31 @@ export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) =>
     // Silver with an empty cell is a contradiction on screen. Everyone else is
     // a coin the reviewer can watch land both ways.
     instagram: cls === "Silver" || rnd() > 0.55 ? handleFor(name) : null,
-    visits: 1 + Math.floor(rnd() * 19),
-    spendCents: 22_000 + Math.floor(rnd() * 480_000),
+    visits,
+    spendCents,
     phone: `+52 81 5555 ${String(1200 + Math.floor(rnd() * 8000)).padStart(4, "0")}`,
-    // TWO of sixteen, and scattered rather than at the top, so the unlocked
-    // state is on screen at first paint and the columns visibly MIX. A table
-    // locked all the way down reads as a pair of columns that do not work.
-    contactUnlocked: i === 3 || i === 10,
+    visitsPerMonth,
+    // The month's money is the guest's OWN average ticket times the visits
+    // they made, not a fresh roll: a guest who spends 900 pesos a head has to
+    // still spend it in the column that sells the subscription.
+    spendPerMonthCents: visitsPerMonth === 0 ? 0 : Math.min(spendCents, Math.round((spendCents / visits) * visitsPerMonth)),
+    lastVisitAt: quiet ? daysAgo(41 + gapDays * 7) : daysAgo(gapDays),
   };
 });
+
+// THE MONTH AND THE LIFETIME HAVE TO AGREE. A guest with no visits this month
+// and money against them, or a month bigger than the lifetime it is part of,
+// would make the two halves of this table argue — and the argument is invisible
+// unless somebody adds up sixteen rows by hand. Thrown at build time, like the
+// visit arithmetic above.
+for (const c of CUSTOMERS) {
+  const brokenQuiet = c.visitsPerMonth === 0 && c.spendPerMonthCents !== 0;
+  if (brokenQuiet || c.visitsPerMonth > c.visits || c.spendPerMonthCents > c.spendCents) {
+    throw new Error(
+      `MockCustomer ${c.id}: month (${c.visitsPerMonth} visits, ${c.spendPerMonthCents}) does not fit the lifetime (${c.visits} visits, ${c.spendCents})`,
+    );
+  }
+}
 
 export const MEMBERS: MockMember[] = [
   { id: "mem_1", placeId: "plc_lumbre", name: "You", email: "you@mock.mesita.ai", role: "owner", state: "active" },
