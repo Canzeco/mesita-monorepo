@@ -57,14 +57,44 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
  *  404 three files from its cause.
  *
  *  `kind: "home"` and `kind: "product"` are gone (MESITA-1933). See below. */
-export type RailRow =
-  | { kind: "page"; target: PlacePage }
-  | { kind: "place"; view: PlaceRailView };
+export type RailRow = (
+  { kind: "page"; target: PlacePage } | { kind: "place"; view: PlaceRailView }
+) & {
+  /** Draw a hairline ABOVE this row. It marks where the column stops being
+   *  the place's PRODUCTS and starts being the console's own surfaces — two
+   *  different kinds of destination, which is the only thing a seam may ever
+   *  mean here. One array still, one row per entry; the seam is a property of
+   *  a row, not a second list. */
+  seam?: true;
+};
 
 /** The place views that keep a rail row OF THEIR OWN — NOT `PLACE_TABS`.
- *  Profile is the only one, and the eight beside it are products: a product is
- *  reached from the catalogue now, never from a row. */
-export const PLACE_RAIL_VIEWS = ["profile"] as const;
+ *
+ *  FIVE NOW, REVERSING MESITA-1933 (MESITA-1963). That issue took every
+ *  product off the rail on the argument that *"a product is reached from the
+ *  catalogue now, never from a row"*, and it was right while the catalogue was
+ *  the only way to see which of SIXTEEN products a place had. It stopped being
+ *  right when Pato named a six-product MVP: a rail of the products this place
+ *  actually has is the shortest path to the work, and the catalogue goes back
+ *  to being the shop rather than the switchboard.
+ *
+ *  `reservations` IS NOT HERE, and that is Pato's list, not an oversight — it
+ *  is live, it keeps its card and its view, and it is reached from the
+ *  catalogue. `rewards` is not here either: it is the dial INSIDE Visit
+ *  Rewards, never a destination of its own.
+ *
+ *  THESE FIVE RE-ARM A DORMANT GATE. `tabsForAccess` filters `kind: "place"`
+ *  rows and has had only `profile` to filter since MESITA-1933; a viewer now
+ *  loses four rows again rather than none. The three static pages below the
+ *  seam keep going through `pagesForAccess`. Hidden is still not protected —
+ *  `PlaceTabGate` 404s the addresses either way. */
+export const PLACE_RAIL_VIEWS = [
+  "profile",
+  "visits",
+  "orders",
+  "pay",
+  "credits",
+] as const;
 export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 
 /** THE RAIL — FIVE ROWS, in Pato's order (MESITA-1937).
@@ -108,9 +138,22 @@ export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
  *  it is the only one you visit to change how the console behaves rather than
  *  to read what the place did. */
 export const RAIL_ROWS: readonly RailRow[] = [
-  { kind: "page", target: "products" },
+  // THE PRODUCTS THIS PLACE HAS, in Pato's order (MESITA-1963): *"Place
+  // Selector / Mesita Profile / Customer Catalog / Visit Rewards / Online
+  // Orders / Online Payments / Prepaid Credits"*.
   { kind: "place", view: "profile" },
   { kind: "page", target: "customers" },
+  { kind: "place", view: "visits" },
+  { kind: "place", view: "orders" },
+  { kind: "place", view: "pay" },
+  { kind: "place", view: "credits" },
+  // THE CONSOLE'S OWN SURFACES, below the seam. Pato's list named only the six
+  // above; these three stay because dropping them leaves the CATALOGUE — the
+  // only door to the eight Soon products he intends to sell next — and the
+  // place's Team and Developers config reachable only by typing an address.
+  // Products loses its first position and keeps its row: it is the shop now,
+  // not the switchboard.
+  { kind: "page", target: "products", seam: true },
   { kind: "page", target: "activity" },
   { kind: "page", target: "settings" },
 ];

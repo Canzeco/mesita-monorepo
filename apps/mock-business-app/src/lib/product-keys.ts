@@ -69,29 +69,43 @@ export const PRODUCT_KEYS = [
 ] as const;
 export type ProductKey = (typeof PRODUCT_KEYS)[number];
 
-/** What the rail calls each product: THE CARD'S NAME MINUS THE BRAND.
+/** ONE PRODUCT, ONE NAME (MESITA-1963) — the string the rail row, the view
+ *  heading and the catalogue card all use, identically, with no derivation
+ *  between them.
  *
- *  THE PREFIX IS NOT DECORATION ANY MORE (MESITA-1955). The suite says what a
- *  place GETS — Online Orders, Physical Terminal, Prepaid Credits — and only
- *  three keep "Mesita": Profile, Capital and Host, the three where MESITA IS
- *  THE COUNTERPARTY. The rail drops that prefix and nothing else, so "Orders"
- *  never stands in for "Online Orders": the descriptor is the half of the name
- *  that says which orders. */
+ *  IT USED TO BE "THE CARD'S NAME MINUS THE BRAND", on MESITA-1956's argument
+ *  that a view inside a place is not being compared to its neighbours because
+ *  you are already there. THAT ARGUMENT DIED with this rail: six products now
+ *  stack in one column, so the rail IS comparing them, and "Orders" above
+ *  "Payments" above "Credits" says nothing about which is which.
+ *
+ *  AND HAND-KEPT SYNC HAD ALREADY FAILED, which is the better reason. Three
+ *  entries here were stale when this issue opened — `pos` said "Point of Sale"
+ *  after MESITA-1958 made the card Physical POS, `line` said "Host" after
+ *  MESITA-1960 made it Answering Agent, and `intelligence` said "Market
+ *  Intelligence" after the card became Marketing Intelligence. Nothing caught
+ *  it: no gate compares this map to `lib/products.ts`, and the mock has no
+ *  tests. A rename that must be typed in two files eventually is typed in one.
+ *
+ *  SO A RENAME LANDS HERE AND IN `lib/products.ts`, and the two must match
+ *  exactly. `PLACE_TAB_LABEL` reads through this map, so the view headings
+ *  follow for free; `rewards` and `admin` keep their own literals over there
+ *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
-  profile: "Profile",
-  website: "Website",
+  profile: "Mesita Profile",
+  website: "Express Website",
   customers: "Customer Catalog",
   ads: "Omnichannel Ads",
   visits: "Visit Rewards",
   orders: "Online Orders",
-  reservations: "Reservations",
+  reservations: "Online Reservations",
   pay: "Online Payments",
   terminal: "Physical Terminal",
-  pos: "Point of Sale",
+  pos: "Physical POS",
   credits: "Prepaid Credits",
-  capital: "Capital",
-  line: "Host",
-  intelligence: "Market Intelligence",
+  capital: "Mesita Capital",
+  line: "Answering Agent",
+  intelligence: "Marketing Intelligence",
 };
 
 /** THE FOUR BANDS, AS DATA. What the catalogue heads each group with, in

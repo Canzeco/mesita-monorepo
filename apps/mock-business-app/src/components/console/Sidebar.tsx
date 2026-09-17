@@ -89,7 +89,7 @@
 // focus ring: the page's `--ring` is the brand pink drawn against a light
 // background, and the rail has `--sidebar-ring` for the same reason it has its
 // own foreground. Do not unify them.
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -97,9 +97,13 @@ import {
   ChevronDown,
   LayoutGrid,
   Plus,
+  Coins,
+  CreditCard,
   RotateCw,
   Settings,
+  ShoppingBag,
   Store,
+  Ticket,
   UserRound,
   Users,
 } from "lucide-react";
@@ -205,7 +209,10 @@ const VENUE_CARET =
 // (MESITA-1935) — which is exactly why both marks were still here to use. Keep
 // it exhaustive: a page added to the contract has to pick a mark rather than
 // render blank the day it gets a row.
-const PAGE_ICON: Record<PlacePage, React.ComponentType<{ className?: string }>> = {
+const PAGE_ICON: Record<
+  PlacePage,
+  React.ComponentType<{ className?: string }>
+> = {
   settings: Settings,
   products: LayoutGrid,
   customers: Users,
@@ -216,8 +223,21 @@ const PAGE_ICON: Record<PlacePage, React.ComponentType<{ className?: string }>> 
  *  wears — one product drawn two ways is how an operator learns to distrust
  *  both drawings — and the card's tint does not come along: the only colour in
  *  this column is the pill. */
-const VIEW_ICON: Record<PlaceRailView, React.ComponentType<{ className?: string }>> = {
+// FIVE PRODUCTS, FIVE MARKS (MESITA-1963). Each one is the lucide glyph its
+// own catalogue card already carries in `PRODUCT_MARK`'s neighbourhood — one
+// product drawn two ways is how an operator learns to distrust the column.
+// The rail stays lucide and the card stays emoji (MESITA-1952): a mark on a
+// dark 272px column has to survive at 20px in one colour, which an emoji does
+// not.
+const VIEW_ICON: Record<
+  PlaceRailView,
+  React.ComponentType<{ className?: string }>
+> = {
   profile: Store,
+  visits: Ticket,
+  orders: ShoppingBag,
+  pay: CreditCard,
+  credits: Coins,
 };
 
 function NavRow({
@@ -370,7 +390,8 @@ export function Sidebar({
   // THE FOUR SHAPES. `unknown` is NOT `zero` with a sad face: it offers a
   // retry and never the word "add", because a failed read has not established
   // that the caller holds nothing.
-  const showRows = (scope.mode === "solo" || scope.mode === "multi") && placeId !== null;
+  const showRows =
+    (scope.mode === "solo" || scope.mode === "multi") && placeId !== null;
 
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
@@ -381,7 +402,10 @@ export function Sidebar({
           sticker on it, and it is inset by a row's own padding so its mark
           lines up with the glyph column underneath. */}
       <div className="border-sidebar-border/50 flex shrink-0 items-center border-b px-2.5 pt-1 pb-3">
-        <MesitaLogo variant="horizontal" className="text-sidebar-foreground h-5 w-auto" />
+        <MesitaLogo
+          variant="horizontal"
+          className="text-sidebar-foreground h-5 w-auto"
+        />
       </div>
 
       <nav
@@ -424,31 +448,48 @@ export function Sidebar({
 
         {showRows &&
           RAIL_ROWS.map((row) => {
-            // NO WRAPPER. Every row used to be wrapped so a seam or a section
-            // head could hang off it; both are gone, so a row is a row.
+            // STILL NO WRAPPER. A seam is a SIBLING hairline emitted before
+            // its row, not a box around a group: wrapping would put a div
+            // between the nav's flex column and its rows, and every `gap-0.5`
+            // between them with it. The fragment costs nothing and the rows
+            // stay rows.
+            //
+            // A row that is filtered out below takes its seam with it, which
+            // is correct — a viewer who cannot see Products must not be shown
+            // the line that introduces it.
+            const seam = row.seam ? (
+              <div
+                aria-hidden
+                className="border-sidebar-border/50 mx-3 my-2 border-t"
+              />
+            ) : null;
             if (row.kind === "page") {
               if (!allowed.pages.has(row.target)) return null;
               return (
-                <NavRow
-                  key={`page:${row.target}`}
-                  href={placePageHref(placeId ?? "", row.target)}
-                  label={PLACE_PAGE_LABEL[row.target]}
-                  Icon={PAGE_ICON[row.target]}
-                  active={currentPage === row.target}
-                  onNavigate={onNavigate}
-                />
+                <Fragment key={`page:${row.target}`}>
+                  {seam}
+                  <NavRow
+                    href={placePageHref(placeId ?? "", row.target)}
+                    label={PLACE_PAGE_LABEL[row.target]}
+                    Icon={PAGE_ICON[row.target]}
+                    active={currentPage === row.target}
+                    onNavigate={onNavigate}
+                  />
+                </Fragment>
               );
             }
             if (!allowed.views.has(row.view)) return null;
             return (
-              <NavRow
-                key={`place:${row.view}`}
-                href={placeTabHref(placeId ?? "", row.view)}
-                label={PLACE_TAB_LABEL[row.view]}
-                Icon={VIEW_ICON[row.view]}
-                active={currentView === row.view}
-                onNavigate={onNavigate}
-              />
+              <Fragment key={`place:${row.view}`}>
+                {seam}
+                <NavRow
+                  href={placeTabHref(placeId ?? "", row.view)}
+                  label={PLACE_TAB_LABEL[row.view]}
+                  Icon={VIEW_ICON[row.view]}
+                  active={currentView === row.view}
+                  onNavigate={onNavigate}
+                />
+              </Fragment>
             );
           })}
       </nav>
