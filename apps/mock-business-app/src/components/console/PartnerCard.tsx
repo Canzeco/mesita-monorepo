@@ -106,16 +106,16 @@ export function membershipLine(place: Pick<MockPlace, "membership" | "renewsAt">
   return { lead: `Renews ${on}.`, rest: "Product access included." };
 }
 
-/** THE CHIP IS NOT THE STATUS — the heading's Partner badge is.
+/** THE CHIP IS NOT THE STATUS — the banner's Partner badge is.
  *
- *  `PlaceHeading` renders `PlaceFacts` on every place view, so this screen
- *  already carries a gold **Partner** badge top right. A green check and an
- *  "Active" chip a hundred pixels below it is the same single fact twice, in
- *  two colours, and `shared/Badges.tsx` opens with the rule that forbids it.
+ *  `PartnerBanner` states the fact one gap to the left (MESITA-1943; the badge
+ *  used to live in `PlaceHeading`, which is gone). A green check and an
+ *  "Active" chip beside it is the same single fact twice, in two colours, and
+ *  `shared/Badges.tsx` opens with the rule that forbids it.
  *
  *  So the chip appears ONLY when the state is not plain active, because only
- *  then is it carrying something the heading cannot: that Stripe is retrying,
- *  or that this is running out. Null is the common case and the quiet one. */
+ *  then is it carrying something the badge cannot: that Stripe is retrying, or
+ *  that this is running out. Null is the common case and the quiet one. */
 export function membershipChip(
   state: MembershipState,
 ): { label: string; tone: string } | null {

@@ -44,7 +44,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
 import { Table, type Column } from "@/components/shared/Table";
@@ -159,8 +158,6 @@ export default function PlaceActivityPage() {
 
   return (
     <>
-      <PlaceHeading place={place} view="Activity" />
-
       {/* THE CATALOGUE OF TYPES. One row, horizontal, scrolling on its own
           axis below lg — nine chips do not wrap into three ragged lines, and a
           rail that wraps stops reading as one control. The count rides IN the

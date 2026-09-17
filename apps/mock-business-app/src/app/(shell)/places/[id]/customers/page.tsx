@@ -58,7 +58,6 @@
 // PLACE's own WhatsApp over on Profile.
 import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { SoonStrip } from "@/components/shared/SoonStrip";
 import { Table, type Column } from "@/components/shared/Table";
@@ -275,8 +274,6 @@ export default function PlaceCustomersPage() {
 
   return (
     <>
-      <PlaceHeading place={place} view="Customers" />
-
       <SoonStrip title="Mesita Customers is not live yet">
         A subscription when it ships, not a purchase. Nothing below has been
         read from anywhere — it is the shape of the page, put on screen early

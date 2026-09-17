@@ -31,7 +31,6 @@
 import { X } from "lucide-react";
 import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { Section } from "@/components/shared/Section";
 import { Badge } from "@/components/shared/Badges";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -167,8 +166,6 @@ export default function PlaceSettingsPage() {
 
   return (
     <>
-      <PlaceHeading place={place} view="Settings" />
-
       <Section
         title="Team"
         description="Who can see and change this place. An owner can do everything, an editor everything but the team, a viewer nothing but look."

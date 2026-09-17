@@ -17,7 +17,6 @@ import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards } from "@/lib/products";
 import { placePayHref } from "@/lib/console-routes";
@@ -51,8 +50,6 @@ export default function ProductsPage() {
 
   return (
     <>
-      <PlaceHeading place={place} view="Products" />
-
       <MembershipReturnNotice />
 
       {/* THE GATE, ABOVE THE GRID, sized by the decision in it — a box when
