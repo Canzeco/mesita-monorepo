@@ -284,18 +284,27 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "line",
-    // CALL CENTER (MESITA-1958, Pato in caps). THIS RE-OPENS WHAT MESITA-1951
-    // CLOSED and the next person should know that before flipping it back: the
-    // two bots merged into one product precisely because naming them for their
-    // CHANNELS ("Mesita WhatsApp Bot", "Mesita Phone Bot") made one product
-    // look like two, and "Call Center" names a channel again — while the blurb
-    // right below it says the thing answers a WhatsApp too, which in Mexico is
-    // the number.
+    // PHONE AGENT (MESITA-1959), the fifth name this card has worn in a day:
+    // WhatsApp Bot + Phone Bot → AI Line → Mesita Host → Call Center → here.
     //
-    // It is Pato's word and it buys something real: nobody has to be told what
-    // a call center is, which "Host" and "AI Line" both needed. The blurb is
-    // carrying the second channel.
-    name: "Call Center",
+    // WHY IT BEATS CALL CENTER: "Center" implied a ROOM FULL OF PEOPLE, so the
+    // card read as headcount and cost. Every other card in this grid names a
+    // thing the place GETS; that one named a department. An "agent" is one
+    // thing acting on your behalf, which is exactly what this is.
+    //
+    // THE CHANNEL OBJECTION IS REAL BUT WEAKER HERE. MESITA-1951 merged the
+    // two bots because naming them for their CHANNELS made one product look
+    // like two, and "Phone" is a channel. But nobody says *contestar el
+    // teléfono* and means voice only — the phone is the NUMBER people reach
+    // you on, WhatsApp included. The blurb carries both channels out loud.
+    //
+    // THE SHAPE PROBLEM, so this stops recurring: this card names a
+    // REPLACEMENT FOR A PERSON, and English offers three shapes for that — the
+    // channel (Call Center, AI Line, Phone Agent), the role (Host, Reception)
+    // or the category (Answering Service). There is no fourth, and each costs
+    // something. This one pays in channel-specificity and buys instant
+    // clarity. Do not re-open it without a stated defect.
+    name: "Phone Agent",
     // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
     // card reads as a WhatsApp widget. The two things it replaced were named
     // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
