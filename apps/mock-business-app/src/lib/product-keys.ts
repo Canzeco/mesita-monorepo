@@ -70,22 +70,27 @@ export const PRODUCT_KEYS = [
 ] as const;
 export type ProductKey = (typeof PRODUCT_KEYS)[number];
 
-/** What the rail and the catalogue call each product. The rail says the noun
- *  alone; the grid says "Mesita <noun>", where the cards are being compared to
- *  each other and the brand is the point. */
+/** What the rail calls each product: THE CARD'S NAME MINUS THE BRAND.
+ *
+ *  THE PREFIX IS NOT DECORATION ANY MORE (MESITA-1955). The suite says what a
+ *  place GETS — Online Orders, Physical Terminal, Prepaid Credits — and only
+ *  three keep "Mesita": Profile, Capital and Host, the three where MESITA IS
+ *  THE COUNTERPARTY. The rail drops that prefix and nothing else, so "Orders"
+ *  never stands in for "Online Orders": the descriptor is the half of the name
+ *  that says which orders. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Profile",
   website: "Website",
-  customers: "Customers",
-  ads: "Ads",
+  customers: "Guest Catalog",
+  ads: "Omnichannel Ads",
   visits: "Visit Rewards",
-  orders: "Orders",
+  orders: "Online Orders",
   reservations: "Reservations",
-  pay: "Payments",
-  terminal: "Terminal",
-  pos: "POS",
-  credits: "Credits",
+  pay: "Online Payments",
+  terminal: "Physical Terminal",
+  pos: "Point of Sale",
+  credits: "Prepaid Credits",
   capital: "Capital",
-  line: "AI Line",
-  intelligence: "Intelligence",
+  line: "Host",
+  intelligence: "Market Intelligence",
 };

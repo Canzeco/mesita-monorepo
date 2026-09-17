@@ -96,7 +96,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "website",
-    name: "Mesita Website",
+    name: "Website",
     blurb:
       "A real site on your own domain, built from the profile you already keep here instead of from scratch.",
     tab: null,
@@ -106,7 +106,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "customers",
-    name: "Mesita Customers",
+    name: "Guest Catalog",
     blurb:
       "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
     tab: null,
@@ -120,7 +120,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "ads",
-    name: "Mesita Ads",
+    name: "Omnichannel Ads",
     blurb:
       "Reach the people who have not found you yet — Facebook, Instagram and Google, run from here instead of three dashboards.",
     tab: null,
@@ -130,7 +130,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "visits",
-    name: "Mesita Visit Rewards",
+    name: "Visit Rewards",
     // ONE SENTENCE FOR BOTH HALVES (MESITA-1953), in the order they happen:
     // the bill closes, then a slice goes back. The old pair said them
     // separately and the second one ("you set the rungs, you set the price")
@@ -151,7 +151,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "orders",
-    name: "Mesita Orders",
+    name: "Online Orders",
     blurb:
       "Pickup and delivery, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
     tab: "orders",
@@ -161,7 +161,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "reservations",
-    name: "Mesita Reservations",
+    name: "Reservations",
     blurb:
       "The table bookings your own provider already holds, read here beside everything else this place does.",
     tab: "reservations",
@@ -171,7 +171,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "pay",
-    name: "Mesita Payments",
+    name: "Online Payments",
     // NO TAB, on purpose: this place's Stripe account is the sub-step
     // `products/pay`, not a view beside Visits and Orders.
     blurb:
@@ -183,7 +183,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "terminal",
-    name: "Mesita Terminal",
+    name: "Physical Terminal",
     // BACK AFTER MESITA-1900 TOOK IT OUT, on Pato's 2026-09-16 list, and still
     // Soon for the same reason it left: there is no hardware. The old blurb
     // ("Take in-person payments with Mesita hardware") named the box; this one
@@ -197,7 +197,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "pos",
-    name: "Mesita POS",
+    name: "Point of Sale",
     // *"maybe include POS, but for the future"* (Pato, 2026-09-16). FOR THE
     // FUTURE IS A REAL DISTINCTION and the note carries it: everything else
     // here is unbuilt, but POS is the only one he put behind the others, and a
@@ -216,7 +216,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "credits",
-    name: "Mesita Credits",
+    name: "Prepaid Credits",
     blurb:
       "Branded money a guest buys once and can only spend here — paid up front, redeemed against a visit or an order.",
     tab: "credits",
@@ -247,7 +247,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "line",
-    name: "Mesita AI Line",
+    name: "Mesita Host",
     // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
     // card reads as a WhatsApp widget. The two things it replaced were named
     // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
@@ -261,7 +261,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "intelligence",
-    name: "Mesita Intelligence",
+    name: "Market Intelligence",
     blurb:
       "What to change and why: who to bring back, what to charge, and where this place is quietly losing guests.",
     tab: null,

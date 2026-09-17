@@ -97,7 +97,7 @@ export default async function MesitaPayPage({
       <Section
         lane
         title="Needs Mesita Partner"
-        description="Mesita Payments is an add-on on top of this place's yearly partnership."
+        description="Online Payments is an add-on on top of this place's yearly partnership."
       >
         <Link className={CTA_BUTTON_CLASS} href={placePageHref(id, "products")}>
           Back to Products

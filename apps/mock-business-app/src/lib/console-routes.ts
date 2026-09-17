@@ -41,7 +41,10 @@ export type PlacePage = (typeof PLACE_PAGES)[number];
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   settings: "Settings",
   products: "Products",
-  customers: "Customers",
+  // ONE PRODUCT, ONE NOUN (MESITA-1955). Customers is BOTH a page and a
+  // product, so its name sits in two tables: this one feeds the rail row and
+  // the title, `PRODUCT_LABEL` feeds the card. They must say the same thing.
+  customers: "Guest Catalog",
   activity: "Activity",
 };
 
@@ -136,7 +139,7 @@ export function placesNewHref(): string {
   return SHELL_ROUTES.placesNew;
 }
 
-/** Mesita Payments' Stripe account is a SUB-STEP of the catalogue, not a
+/** Online Payments' Stripe account is a SUB-STEP of the catalogue, not a
  *  ninth card: `products/pay`. */
 export function placePayHref(placeId: string): string {
   return `${placePageHref(placeId, "products")}/pay`;

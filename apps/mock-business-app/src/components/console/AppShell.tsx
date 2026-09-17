@@ -61,7 +61,7 @@ function placeScreenTitle(pathname: string, name: string): string | null {
   if (!placeIdFromPathname(pathname)) return null;
   // Pay first: it lives UNDER `products`, so the page reader below would
   // answer "Products" for it and lose the sub-step the back link names.
-  if (isPlacePayPathname(pathname)) return `${name} · Products · Mesita Payments`;
+  if (isPlacePayPathname(pathname)) return `${name} · Products · Online Payments`;
   const page = placePageFromPathname(pathname);
   if (page) return `${name} · ${PLACE_PAGE_LABEL[page]}`;
   const seg = pathname.split("/")[3];

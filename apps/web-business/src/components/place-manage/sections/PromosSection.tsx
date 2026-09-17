@@ -62,7 +62,7 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // ladder and the Partnership body that prices them; Visits owns NO rung and
 // keeps the internal "How this place is run" box; Orders owns pickup and
 // delivery; Reservations, Payments and Credits own theirs. The rungs depend on
-// one another (Partner unlocks Visit Rewards and Mesita Payments; Stripe
+// one another (Partner unlocks Visit Rewards and Online Payments; Stripe
 // unlocks the money rungs), so the COMPUTATION is never split — two copies of
 // a dependency ladder is two copies that can disagree. `ZONE_ROWS` in
 // controls/offerings.ts owns the mapping and a test proves it is total.
@@ -357,7 +357,7 @@ export function PromosSection({
             key={key}
             row={byKey.mesita_pay}
             disagreementAction={fixFor("mesita_pay")}
-            {...railProps("mesita_pay", "mesita_pay", "Mesita Payments")}
+            {...railProps("mesita_pay", "mesita_pay", "Online Payments")}
           />
         );
       case "visit_rewards":
@@ -510,7 +510,7 @@ export function PromosSection({
                   href={setupHref}
                   className="text-foreground font-semibold underline underline-offset-4"
                 >
-                  Mesita Payments
+                  Online Payments
                 </Link>
               </>
             )}

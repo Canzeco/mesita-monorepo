@@ -435,7 +435,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(page).not.toContain("apiGetPaymentAccount");
     expect(page).not.toContain("ConnectReturnNotice");
     expect(page).not.toContain('title="Mesita Partner"');
-    expect(page).not.toContain('title="Mesita Payments"');
+    expect(page).not.toContain('title="Online Payments"');
     expect(page).not.toContain('title="Stripe"');
     expect(page).not.toContain('title="Partnership"');
     // PLACES LEFT EARLIER, and stays gone.

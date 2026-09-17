@@ -205,7 +205,7 @@ export function MockPanel() {
             </p>
           </Group>
 
-          <Group label="Mesita Payments">
+          <Group label="Online Payments">
             <Choice<PayLadder>
               value={scenario.pay}
               onPick={(pay) => set({ pay })}

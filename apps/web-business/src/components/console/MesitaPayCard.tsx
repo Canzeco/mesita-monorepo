@@ -110,7 +110,7 @@ function SwitchRow({
           type="button"
           role="switch"
           aria-checked={on}
-          aria-label="Mesita Payments"
+          aria-label="Online Payments"
           aria-describedby={lineId}
           disabled={busy}
           onClick={() => onToggle(!on)}
@@ -127,7 +127,7 @@ function SwitchRow({
           role="switch"
           aria-checked={on}
           aria-disabled="true"
-          aria-label="Mesita Payments"
+          aria-label="Online Payments"
           aria-describedby={lineId}
           className={ROW_CLASS}
         >
@@ -183,7 +183,7 @@ export function MesitaPayCard({
       // cannot act on a Postgres constraint name and an engineer can read
       // the console.
       console.error(`[mesita-pay] setPlaceRails mesita_pay=${next}:`, r.error);
-      setError(railWriteFailure("Mesita Payments", next));
+      setError(railWriteFailure("Online Payments", next));
       return;
     }
     setOn(r.data.mesita_pay);

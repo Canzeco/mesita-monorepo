@@ -105,12 +105,12 @@ const LOG_HOME: Record<LogKey, ((placeId: string) => string) | null> = {
 
 const LOG_HOME_LABEL: Record<LogKey, string> = {
   views: "",
-  visits: "Mesita Visits",
-  orders: "Mesita Orders",
-  reservations: "Mesita Reservations",
+  visits: "Visit Rewards",
+  orders: "Online Orders",
+  reservations: "Reservations",
   reviews: "Profile",
-  payments: "Mesita Payments",
-  credits: "Mesita Credits",
+  payments: "Online Payments",
+  credits: "Prepaid Credits",
   // SHORT, because it rides at the end of a rail that is now nine chips wide:
   // "Open the Products catalogue" pushed the selected chip off its own row.
   subscriptions: "Products",
@@ -690,7 +690,7 @@ const SETTING_COLUMNS: LogColumn<SettingLogRow>[] = [
 ];
 
 const SUBSCRIPTION_PRODUCT_LABEL: Record<SubscriptionLogRow["product"], string> = {
-  customers: "Customers",
+  customers: "Guest Catalog",
   membership: "Membership",
 };
 
