@@ -1,6 +1,6 @@
 "use client";
 
-// PRODUCTS IS THE CATALOGUE: the gate, then eight cards, and nothing else.
+// PRODUCTS IS THE CATALOGUE: the gate, then nine cards, and nothing else.
 //
 // A CARD STATES A FACT THE CONSOLE READ. Profile is free on every place;
 // partner-gated products read Locked and carry NO verb, because a button on a
@@ -11,7 +11,20 @@
 // left — `PLACE_TABS` ⊇ `PRODUCT_KEYS`, pinned both ways — except for Customers,
 // which is a page, and Payments, whose Stripe account is the sub-step
 // `products/pay` rather than a ninth card.
-import { ArrowRight, Lock } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarCheck,
+  CreditCard,
+  Gift,
+  Landmark,
+  Lock,
+  ShoppingBag,
+  Store,
+  Ticket,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
@@ -21,6 +34,38 @@ import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards } from "@/lib/products";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import type { ProductKey } from "@/lib/product-keys";
+import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+
+// THE MARK, AND ONLY THE MARK (MESITA-1946).
+//
+// Pato: *"maybe some icon to each product"*. `web-business` has carried these
+// nine glyphs since the catalogue shipped, each in a tinted chip — teal for
+// Profile, violet for Payments, and so on. THE GLYPHS COME ACROSS UNCHANGED
+// and the TINTS DO NOT: one product drawn two ways is how an operator learns
+// to distrust both drawings, and this app has no hues to draw them in
+// (MESITA-1934). Nine washes of the same grey would be the tint table with its
+// only job removed.
+//
+// So the chip is one muted square on every card and the GLYPH is the whole of
+// the identity. That is also why the chip does not brighten when a product is
+// on: state is the badge's fact, and Badges.tsx's first line is that there is
+// never a second badge for one fact. A mark that changed with state would be
+// exactly that — and on a screen whose entire job is saying which products are
+// on, a second, quieter state signal is the one that gets misread.
+const PRODUCT_MARK: Record<ProductKey, LucideIcon> = {
+  profile: Store,
+  customers: Users,
+  visits: Ticket,
+  orders: ShoppingBag,
+  reservations: CalendarCheck,
+  rewards: Gift,
+  pay: CreditCard,
+  credits: Wallet,
+  // The BANK'S FRONT, the same glyph the landing page gives Capital.
+  capital: Landmark,
+};
 
 export default function ProductsPage() {
   const place = useHeldPlaceOrNull();
@@ -72,13 +117,27 @@ export default function ProductsPage() {
           const allowed =
             card.key === "customers" ||
             tabs.includes(card.key as PlaceTab);
+          const Mark = PRODUCT_MARK[card.key];
           return (
             <div
               key={card.key}
               className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-6"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-display text-base font-semibold tracking-tight">{card.name}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      SCOPE_CHIP_CLASS,
+                      "bg-muted text-foreground flex items-center justify-center",
+                    )}
+                  >
+                    <Mark className="h-5 w-5" strokeWidth={1.75} />
+                  </span>
+                  <p className="font-display min-w-0 text-base font-semibold tracking-tight">
+                    {card.name}
+                  </p>
+                </div>
                 <ProductStateBadge state={card.state} />
               </div>
               <p className="text-muted-foreground flex-1 text-[13px] leading-relaxed">{card.blurb}</p>

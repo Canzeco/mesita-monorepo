@@ -3,6 +3,27 @@
 // Snapshot of `apps/web-business/src/lib/products.ts`. A card states a fact the
 // console READ: partner-gated products read Locked and carry NO verb, a
 // per-place product prints whether it is on HERE, and Customers is Soon.
+//
+// ── WHAT A BLURB OWES (MESITA-1946) ────────────────────────────────────────
+//
+// Pato: *"add better descriptions"*. The nine below used to be one clause each,
+// written from the COLUMN they flip — "Receive pickup and delivery orders with
+// checkout", "Accept card payments for visits and orders". Set nine of those in
+// a grid and they are one grey paragraph nine times: every card opens with a
+// verb Mesita does, none of them says who is better off, and an operator
+// meeting the catalogue for the first time cannot tell Orders from Visits or
+// Credits from Payments without opening both.
+//
+// So a blurb names the GUEST and the venue, and carries the one fact that
+// distinguishes this product from its neighbour — orders are PREPAID, a visit
+// settles the same whether the guest paid cash or card, credits can only be
+// spent here, reservations are held by somebody else's provider. It is still
+// one sentence, and it still ends in a period: `web-business` pins that shape
+// in `products.test.ts`, and this file is that file's snapshot.
+//
+// THIS IS THE DRIFT THE PACKAGE ALLOWS, and it runs in the mock's direction:
+// `web-business` still carries the old clauses until somebody re-snapshots it
+// by hand.
 import type { PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
 import type { MockPlace } from "@/mock/types";
@@ -33,7 +54,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "profile",
     name: "Mesita Profile",
-    blurb: "Manage your places, menus, photos and reviews.",
+    blurb:
+      "Your public page on Mesita — the photos, the menu, the hours and the reviews a guest reads before they pick you.",
     needsPartner: false,
     atPlace: null,
     soon: null,
@@ -41,7 +63,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "customers",
     name: "Mesita Customers",
-    blurb: "See who keeps coming back, and what they spend, month by month.",
+    blurb:
+      "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
     needsPartner: false,
     atPlace: null,
     // A SUBSCRIPTION, NOT A PURCHASE (MESITA-1941). This card said "Always
@@ -53,7 +76,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "visits",
     name: "Mesita Visits",
-    blurb: "Close in-person bills with a simple visit checkout.",
+    blurb:
+      "Close the bill at the table, and keep every visit on the record — cash or card, it settles the same way.",
     needsPartner: true,
     atPlace: null,
     soon: null,
@@ -61,7 +85,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "rewards",
     name: "Mesita Rewards",
-    blurb: "Give guests a reason to come back, priced by you.",
+    blurb:
+      "Give a slice of the bill back to the guests who keep showing up — you set the rungs, and you set the price.",
     needsPartner: true,
     atPlace: (p) => p.visitRewards,
     soon: null,
@@ -69,7 +94,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "orders",
     name: "Mesita Orders",
-    blurb: "Receive pickup and delivery orders with checkout.",
+    blurb:
+      "Pickup and delivery, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
     needsPartner: false,
     atPlace: (p) => p.pickupOrders || p.deliveryOrders,
     soon: null,
@@ -77,7 +103,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "reservations",
     name: "Mesita Reservations",
-    blurb: "Manage table bookings with your preferred provider.",
+    blurb:
+      "The table bookings your own provider already holds, read here beside everything else this place does.",
     needsPartner: false,
     atPlace: (p) => p.reservations,
     soon: null,
@@ -85,7 +112,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "pay",
     name: "Mesita Payments",
-    blurb: "Accept card payments for visits and orders.",
+    blurb:
+      "This place’s own Stripe account, so a guest can pay by card at the table and the money lands with you.",
     needsPartner: true,
     atPlace: null,
     soon: null,
@@ -93,7 +121,8 @@ const SPECS: readonly ProductSpec[] = [
   {
     key: "credits",
     name: "Mesita Credits",
-    blurb: "Sell and accept branded credits for visits and orders.",
+    blurb:
+      "Branded money a guest buys once and can only spend here — paid up front, redeemed against a visit or an order.",
     needsPartner: true,
     atPlace: (p) => p.credits,
     soon: null,
@@ -103,8 +132,17 @@ const SPECS: readonly ProductSpec[] = [
     name: "Mesita Capital",
     // THE LANDING PAGE'S OWN WORDS, on purpose: the pitch an owner read before
     // signing up is the pitch they meet inside. "Not a loan" is load-bearing —
-    // Mesita buys inventory forward, it does not lend.
-    blurb: "Take cash now against meals you have not served yet.",
+    // Mesita buys inventory forward, it does not lend, so the verb here is
+    // always BUY and the word never appears.
+    //
+    // MESITA-1946 took the second clause from `web-landing`'s own paragraph
+    // ("Mesita pre-buys a restaurant's future meals at a deep discount and
+    // resells that inventory to guests. The place gets cash now...") rather
+    // than writing a new one: the mechanism is the reason the product is not a
+    // loan, and a card that states only the cash states the half an owner
+    // already believes.
+    blurb:
+      "Mesita pre-buys your future meals at a discount and resells them to guests — you take the cash now.",
     needsPartner: false,
     atPlace: null,
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
