@@ -96,13 +96,39 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "website",
-    name: "Website",
+    // EXPRESS (MESITA-1956). Pato, after Storefront, Super and Smart were each
+    // tried and put down: *"Express Website"*. It names how the site ARRIVES,
+    // not what it does, and that is the trade — the transacting is carried by
+    // the blurb, which is why the blurb leads with guests ordering and
+    // booking.
+    //
+    // WHAT EXPRESS BUYS over the two that lost: it is a plain CHECKABLE FACT.
+    // "Super" could only be taken on trust — the one name in this grid that
+    // would be a boast rather than something an operator can verify by reading
+    // it. "Smart" is the adjective every competitor in the category already
+    // prints on the box (Nuxa's Atlas and Butternut both sell "a site from
+    // your Google Business Profile in under two minutes"), so it identifies
+    // nothing. The AI stays out of the NAME for the same reason "AI Line"
+    // lost: it reads as the differentiator today and as filler in 2028.
+    name: "Express Website",
+    // IT IS NOT A BROCHURE, and the blurb has to say that in its first breath
+    // or the card reads as the domain alias it used to describe ("A real site
+    // on your own domain, built from the profile you already keep here") —
+    // which is Profile's own sentence with a DNS field bolted on, and is
+    // exactly why Pato read this card as nothing.
+    //
+    // TWO FACTS, BOTH LOAD-BEARING: an AI writes it from the Google listing
+    // the place already has, so there is no builder to operate and no
+    // templates to pick; and guests TRANSACT on it, which is the whole reason
+    // it is a product beside Online Orders rather than a page beside Profile.
     blurb:
-      "A real site on your own domain, built from the profile you already keep here instead of from scratch.",
+      "An AI builds you a working site from your Google listing — guests order and book on it, and you change it by asking instead of dragging boxes.",
     tab: null,
     needsPartner: false,
     atPlace: null,
-    soon: "Built from your Mesita profile. Nothing is live yet.",
+    // NOT "Built from your Mesita profile" any more: that note described the
+    // alias too, and a Soon note may only state what has not happened yet.
+    soon: "Nothing is built yet.",
   },
   {
     key: "customers",
@@ -161,7 +187,11 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "reservations",
-    name: "Reservations",
+    // *"and reservations call it online reservations"* (Pato, 2026-09-16).
+    // MESITA-1955 left this one bare while its two neighbours took the
+    // qualifier; a lone unqualified noun between Online Orders and Online
+    // Payments reads as the odd one out rather than as the plain case.
+    name: "Online Reservations",
     blurb:
       "The table bookings your own provider already holds, read here beside everything else this place does.",
     tab: "reservations",

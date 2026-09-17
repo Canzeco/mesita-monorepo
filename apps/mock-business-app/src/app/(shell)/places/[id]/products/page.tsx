@@ -109,12 +109,35 @@ export default function ProductsPage() {
           why it is not a ninth card in the grid. */}
       <PartnerBanner place={place} />
 
-      {/* TWO ACROSS AT MOST (MESITA-1941). This was four across at xl, and on
-          a fluid console that is eight 400px boxes carrying two sentences
-          each — the catalogue of the whole product read as a chip rack. Two
-          columns give each card room for its blurb, its fact and its verb on
-          one line apiece. */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* FOUR ACROSS AGAIN (MESITA-1956). Pato: *"this shit must be four
+          columns"*, reversing MESITA-1941's "two across at most".
+
+          THAT ARGUMENT WAS COUNTED ON EIGHT CARDS — "eight 400px boxes
+          carrying two sentences each". The suite is FOURTEEN now, and two
+          columns make it seven rows: a price list you have to scroll twice to
+          finish, which is the one thing the catalogue may not be. An operator
+          has to be able to read the whole suite before they can want any of
+          it, and four columns put all fourteen within one screen.
+
+          `auto-rows-fr` IS WHAT MAKES EVERY CARD THE SAME BOX (Pato: *"all
+          boxes must have same standard size"*). A grid row sizes to its own
+          tallest item by default, so each card matched its ROW-MATES and
+          nothing else: Profile's three-line blurb set row one tall and
+          Physical Terminal's two-line blurb left row three short, which reads
+          as fourteen boxes of assorted sizes rather than one catalogue. `1fr`
+          on every implicit row makes them all equal to the tallest row.
+
+          IT ONLY WORKS BECAUSE THE CARD FILLS ITS CELL. The card is a grid
+          ITEM, so it stretches to the row by default, and `flex-1` on the
+          blurb spends the new slack ABOVE the note and the verb — so the
+          facts and the verbs line up across all fourteen cards instead of
+          floating at fourteen different heights.
+
+          WEB-BUSINESS IS NOT ALIGNED TO THIS and that is a known gap, not an
+          oversight: `ProductCatalog.tsx` is `sm:2 xl:3 2xl:4`, so between
+          1280 and 1536 the mock shows four and the real console shows three.
+          The mock leads (package CLAUDE.md); re-snapshot by hand. */}
+      <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           // Hidden from the rail is not hidden from here: the catalogue names
           // every product this place could have, and says which ones this

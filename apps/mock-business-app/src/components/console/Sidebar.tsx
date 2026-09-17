@@ -129,10 +129,24 @@ import { flatViewFromPathname } from "@/lib/console-routes";
 import type { RailScope } from "@/lib/rail-scope";
 import { cn } from "@/lib/utils";
 
-const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
+// ONE SIZE, AND IT IS THE BIG ONE (MESITA-1956). Pato: *"sidebar menu items
+// more bigger"*, then *"make sidebar menu font bigger"*. The rail used to
+// SHRINK on desktop — 14px glyph and 13px label under a cursor, 16px and 14px
+// under a finger — which is backwards twice over: the desktop rail is the
+// column you scan all day, and it had the smallest type in the app sitting on
+// the darkest ground, where contrast sensitivity is already worst.
+//
+// THE GLYPH STOPS AT 20px while the label goes to 17px: the ask was the FONT,
+// and a mark scaled in lockstep would put a 24px icon beside a six-item list
+// on a 223px column, which reads as a toolbar, not a rail.
+const ICON = "h-5 w-5 shrink-0";
 
+// THE `lg:` DOWNSHIFTS ARE DELETED, not retuned: a row is one size at every
+// width, so the rail cannot read as two different products depending on the
+// window. `min-h-11` still holds the 44px touch target on a phone; desktop
+// reaches the same row height through `lg:py-2.5` instead.
 const ROW_BASE =
-  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px] outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+  "flex items-center gap-3 rounded-xl px-3 text-[17px] font-medium transition min-h-11 lg:min-h-0 lg:py-2.5 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 const ROW_REST =
   "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground";
 // The active row is a SOLID pill, not a tint: on the dark rail it is the
@@ -145,8 +159,12 @@ const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
 // its own hit area and its own ring, because a row with one ring around two
 // destinations tells a keyboard which one it is on by lying.
 const VENUE_LINE = "flex items-center gap-1";
+// THE VENUE RISES WITH THE ROWS, and by the same amount — it was already one
+// step heavier than a nav row (semibold, tracking-tight) and that step is the
+// whole hierarchy of the column. Leaving it at 13px while the links went to
+// 17px would have made the place NAME smaller than the things under it.
 const VENUE_NAME =
-  "flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-sm font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-1.5 lg:text-[13px] outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+  "flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-[17px] font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 // 44×44 under the finger, 32×32 under the cursor. A caret sized to the glyph
 // it draws is a 14px target, which is the whole reason this constant exists.
 const VENUE_CARET =
