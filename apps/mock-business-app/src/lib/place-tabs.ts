@@ -24,8 +24,14 @@ export const PLACE_TABS = [
   "rewards",
   "pay",
   "credits",
-  // `PLACE_TABS` ⊇ `PRODUCT_KEYS` is pinned both ways, so the ninth product
-  // owes a tab (MESITA-1929) even while its page is a Soon strip.
+  // Capital owes a tab (MESITA-1929) even while its page is a Soon strip.
+  //
+  // `PLACE_TABS` ⊇ `PRODUCT_KEYS` IS OVER (MESITA-1946). It held while the
+  // suite was these six views plus Customers, and Pato's fifteen ended it:
+  // Website, Ads, Terminal, the two bots and Intelligence have nothing to
+  // open, and giving each an empty view to keep a containment true would be
+  // six Soon strips nobody asked for. A product names its own view in
+  // `lib/products.ts` now, or names none.
   "capital",
   "admin",
 ] as const;

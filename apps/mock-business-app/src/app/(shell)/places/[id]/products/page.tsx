@@ -1,24 +1,34 @@
 "use client";
 
-// PRODUCTS IS THE CATALOGUE: the gate, then nine cards, and nothing else.
+// PRODUCTS IS THE CATALOGUE: the gate, then the whole suite, and nothing else.
 //
 // A CARD STATES A FACT THE CONSOLE READ. Profile is free on every place;
 // partner-gated products read Locked and carry NO verb, because a button on a
 // product the caller cannot have is an invitation to a 403; a per-place product
-// prints whether it is on HERE; Customers is Soon.
+// prints whether it is on HERE; a product that does not exist is Soon, and
+// most of the suite is.
 //
-// A verb lands on the product's OWN view. There is no "product view" indirection
-// left — `PLACE_TABS` ⊇ `PRODUCT_KEYS`, pinned both ways — except for Customers,
-// which is a page, and Payments, whose Stripe account is the sub-step
-// `products/pay` rather than a ninth card.
+// A VERB LANDS WHEREVER THE PRODUCT ACTUALLY LIVES, and that is no longer one
+// place. `PLACE_TABS` ⊇ `PRODUCT_KEYS` held while the suite was six views plus
+// Customers; Pato's full list (MESITA-1946) broke it for good, so the
+// destination is written down per product in `lib/products.ts` instead of cast
+// out of the key. Customers is a page, Payments is the sub-step `products/pay`,
+// and every Soon product but Capital has nothing at all to open.
 import {
   ArrowRight,
   CalendarCheck,
   CreditCard,
   Gift,
+  Globe,
   Landmark,
   Lock,
+  Megaphone,
+  MessageCircle,
+  Nfc,
+  PhoneCall,
+  ScanBarcode,
   ShoppingBag,
+  Sparkles,
   Store,
   Ticket,
   Users,
@@ -56,15 +66,29 @@ import { cn } from "@/lib/utils";
 // on, a second, quieter state signal is the one that gets misread.
 const PRODUCT_MARK: Record<ProductKey, LucideIcon> = {
   profile: Store,
+  website: Globe,
   customers: Users,
+  ads: Megaphone,
   visits: Ticket,
+  rewards: Gift,
   orders: ShoppingBag,
   reservations: CalendarCheck,
-  rewards: Gift,
   pay: CreditCard,
+  // THE READER, NOT A SECOND CARD (MESITA-1946). Terminal wore `CreditCard`
+  // before MESITA-1900 removed it, back when Payments wore something else;
+  // giving it back now would put the same glyph on two cards in one grid,
+  // which is the tint table's failure in monochrome. `Nfc` is the tap, which
+  // is the part of Terminal that is not Payments.
+  terminal: Nfc,
+  // THE ITEMS, which is the half of the counter Terminal is not: `Nfc` is the
+  // tap, `ScanBarcode` is what was rung up before anybody tapped anything.
+  pos: ScanBarcode,
   credits: Wallet,
   // The BANK'S FRONT, the same glyph the landing page gives Capital.
   capital: Landmark,
+  whatsapp: MessageCircle,
+  phone: PhoneCall,
+  intelligence: Sparkles,
 };
 
 export default function ProductsPage() {
@@ -114,9 +138,13 @@ export default function ProductsPage() {
           // Hidden from the rail is not hidden from here: the catalogue names
           // every product this place could have, and says which ones this
           // caller may open.
+          // NO CAST. Most product keys are not `PlaceTab`s now, so
+          // `key as PlaceTab` would be a lie the compiler accepts — and
+          // one that reads `false` for every product whose destination is not
+          // a view, which is the wrong answer for Payments.
           const allowed =
             card.key === "customers" ||
-            tabs.includes(card.key as PlaceTab);
+            (tabs as readonly string[]).includes(card.key);
           const Mark = PRODUCT_MARK[card.key];
           return (
             <div
