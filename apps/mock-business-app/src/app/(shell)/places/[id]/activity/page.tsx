@@ -155,14 +155,18 @@ export default function PlaceActivityPage() {
   // entry's columns were proved against that tab's own row type when the
   // record was written, and TypeScript cannot carry that proof through a `tab`
   // that is still the union.
-  const spec = TAB_SPECS[tab] as { columns: LogColumn<LogRow>[]; minWidth: number };
+  const spec = TAB_SPECS[tab] as {
+    columns: LogColumn<LogRow>[];
+    csv?: LogColumn<LogRow>[];
+    minWidth: number;
+  };
   const rows = book[tab] as LogRow[];
   const home = tab === "everything" ? null : LOG_HOME[tab]?.(place.id) ?? null;
 
   const exportCsv = () =>
     downloadCsv(
       csvFilename([place.name, TAB_LABEL[tab], csvDay(now)]),
-      toCsv(spec.columns, rows),
+      toCsv(spec.csv ?? spec.columns, rows),
     );
 
   return (
@@ -259,10 +263,72 @@ function From({ row }: { row: LogRow }) {
   return <span className="text-muted-foreground">{row.origin.label}</span>;
 }
 
-/** THE UNION'S OWN COLUMNS. It cannot borrow a log's — it holds all nine row
- *  types at once — so it prints the two lines every `LogBase` owes plus the
- *  log it came from, and leaves the ticket to the chip that shows it. */
+/** THE UNION IS NOT A TABLE (MESITA-1947). Pato: *"the everything log must be
+ *  different, just log type and detail, you cannot standarize everything in
+ *  more columns, its weird"*.
+ *
+ *  He is describing the one difference between this column set and the nine
+ *  below it. Each of those holds ONE log, where a column means the same thing
+ *  in every row — that is what makes a grid worth drawing. This one holds all
+ *  nine row types at once, so a shared column is a promise it cannot keep. It
+ *  showed: of the seventeen rows on the screen he sent, EIGHT printed a dash
+ *  under Amount, and "Seen in QR / Camila Duarte · Looked and left" and
+ *  "Payout on its way / To ••••4417" are not two instances of one What+Detail
+ *  pair.
+ *
+ *  So the union prints what every `LogRow` actually owes — which log it is, and
+ *  its own sentence — and nothing it has to fill in with a dash. */
 const EVERY_COLUMNS: LogColumn<LogRow>[] = [
+  {
+    key: "log",
+    head: "Log",
+    cell: (r) => <Badge>{LOG_LABEL[r.log]}</Badge>,
+    text: (r) => LOG_LABEL[r.log],
+  },
+  {
+    key: "detail",
+    head: "Detail",
+    className: "w-full",
+    // THE JOIN IS IN THE SENTENCE, and so is the money and the moment. Without
+    // the join a card tender and the visit that produced it are two unrelated
+    // rows a minute apart; the difference from the old column set is that a row
+    // with no money simply does not say any, rather than saying "—".
+    cell: (r) => (
+      <div className="flex min-w-0 flex-col gap-0.5 py-0.5">
+        <span className="font-medium">{r.title}</span>
+        <span className="text-muted-foreground text-[12px] leading-snug">
+          {everyLine(r)}
+        </span>
+      </div>
+    ),
+    text: (r) => everyLine(r),
+  },
+];
+
+/** The union row's one line: what happened, what it came from, what it moved,
+ *  and when. Joined here rather than in the cell so the CSV's own Detail column
+ *  and the screen cannot drift apart. */
+function everyLine(r: LogRow): string {
+  return [
+    r.detail,
+    r.origin ? `from ${r.origin.label}` : null,
+    r.amountCents === null ? null : money(r.amountCents),
+    dayTime(r.at),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** WHAT THE UNION EXPORTS, which is NOT what it draws (MESITA-1947).
+ *
+ *  A spreadsheet is the one place the five columns earn themselves: you sort a
+ *  CSV by date and total, and you cannot sort a sentence. The screen lost them
+ *  because nine row types cannot fill them; the export keeps them because a
+ *  blank cell in a CSV costs nothing and a missing column costs the sort.
+ *
+ *  Only the union needs the split. Every other tab exports the columns it
+ *  draws, which is why `csv` is optional on `TAB_SPECS`. */
+const EVERY_CSV_COLUMNS: LogColumn<LogRow>[] = [
   when(),
   {
     key: "log",
@@ -279,27 +345,14 @@ const EVERY_COLUMNS: LogColumn<LogRow>[] = [
   {
     key: "detail",
     head: "Detail",
-    className: "w-full",
-    // THE JOIN, SAID IN THE UNION. Without it a card tender and the visit that
-    // produced it are two unrelated rows a minute apart.
-    cell: (r) => (
-      <span className="text-muted-foreground">
-        {r.detail}
-        {r.origin && <span> · from {r.origin.label}</span>}
-      </span>
-    ),
+    cell: (r) => <span className="text-muted-foreground">{r.detail}</span>,
     text: (r) => (r.origin ? `${r.detail} · from ${r.origin.label}` : r.detail),
   },
   {
     key: "amount",
     head: "Amount",
     align: "right",
-    cell: (r) =>
-      r.amountCents === null ? (
-        <span className="text-muted-foreground">—</span>
-      ) : (
-        <span className="font-semibold">{money(r.amountCents)}</span>
-      ),
+    cell: (r) => <span className="font-semibold">{money(r.amountCents ?? 0)}</span>,
     text: (r) => csvMoney(r.amountCents),
   },
 ];
@@ -704,10 +757,18 @@ const SUBSCRIPTION_COLUMNS: LogColumn<SubscriptionLogRow>[] = [
 const TAB_SPECS: {
   [K in Tab]: {
     columns: LogColumn<K extends "everything" ? LogRow : LedgerBook[Extract<K, LogKey>][number]>[];
+    /** What the export writes, when that is not what the screen draws. Only
+     *  the union sets it (MESITA-1947); everywhere else the two are one list,
+     *  and a second one would be a chance for them to disagree. */
+    csv?: LogColumn<K extends "everything" ? LogRow : LedgerBook[Extract<K, LogKey>][number]>[];
     minWidth: number;
   };
 } = {
-  everything: { columns: EVERY_COLUMNS, minWidth: 820 },
+  // 320, not 820: two columns need a fraction of what five did, and anything
+  // above 375 scrolls a chip and a sentence sideways on a phone — which is the
+  // whole complaint, restaged at one width. The detail cell WRAPS, so this
+  // floor only has to fit the chip and a few words beside it.
+  everything: { columns: EVERY_COLUMNS, csv: EVERY_CSV_COLUMNS, minWidth: 320 },
   views: { columns: VIEW_COLUMNS, minWidth: 560 },
   visits: { columns: VISIT_COLUMNS, minWidth: 900 },
   orders: { columns: ORDER_COLUMNS, minWidth: 780 },
