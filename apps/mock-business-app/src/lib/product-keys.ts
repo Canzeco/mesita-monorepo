@@ -13,13 +13,12 @@
 //   Payments · Terminal · POS · Credits · Capital     the money
 //   AI Line · Intelligence                            the work nobody is doing
 //
-// THOSE FOUR BANDS ARE A READING, NOT A RENDER. His earlier list came with
-// explicit separators (*"Profile · Costumers // Visits · Orders ·
-// Reservations // ..."*) and this one came as flat lines, so the
-// catalogue draws one flat grid in this order and nothing else. The bands are
-// written down here because the order is otherwise unexplainable — Terminal
-// sits between Payments and Credits for a reason, and a later sort that does
-// not know the reason will "fix" it.
+// THE BANDS ARE A RENDER NOW (MESITA-1962). Pato: *"divide in sections"*.
+// They were a comment for two days, while this file said the order is
+// otherwise unexplainable — Terminal sits between Payments and Credits for a
+// reason, and a later sort that does not know the reason will "fix" it. The
+// catalogue draws them as headed groups, so the reason is on the screen
+// instead of load-bearing and invisible. See `PRODUCT_BANDS` below.
 export const PRODUCT_KEYS = [
   "profile",
   // THE SEVEN NEW ONES (MESITA-1946) are `website`, `ads`, `terminal`, `pos`,
@@ -94,3 +93,59 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   line: "Host",
   intelligence: "Market Intelligence",
 };
+
+/** THE FOUR BANDS, AS DATA. What the catalogue heads each group with, in
+ *  `PRODUCT_KEYS` order — the members of each band are CONTIGUOUS there, which
+ *  is why drawing them moves no card and why each list below is a slice rather
+ *  than a re-sort. 4 + 3 + 5 + 2 = 14.
+ *
+ *  THE NAMES ARE PATO'S OWN, from the list he dictated: they say what a band is
+ *  FOR rather than what its members share technically, which is the only way a
+ *  header earns its line. "The work nobody is doing" is the pitch for both
+ *  products under it.
+ *
+ *  A KEY IN NO BAND IS A COMPILE ERROR, not a card that quietly falls off the
+ *  page: `BANDED_KEYS` is typed as the full `ProductKey` union, so adding a
+ *  fifteenth product without placing it fails `tsc`. */
+export const PRODUCT_BANDS: readonly {
+  title: string;
+  keys: readonly ProductKey[];
+}[] = [
+  {
+    title: "What the world sees",
+    keys: ["profile", "website", "customers", "ads"],
+  },
+  {
+    title: "Serving the guest",
+    keys: ["visits", "orders", "reservations"],
+  },
+  {
+    title: "The money",
+    keys: ["pay", "terminal", "pos", "credits", "capital"],
+  },
+  {
+    title: "The work nobody is doing",
+    keys: ["line", "intelligence"],
+  },
+];
+
+/** EVERY BANDED KEY, FLAT — the exhaustiveness check. Typed as `ProductKey`,
+ *  so a key that exists and is unplaced makes this union incomplete and `tsc`
+ *  refuses the file. It is not a runtime list anybody reads. */
+const BANDED_KEYS: { [K in ProductKey]: true } = {
+  profile: true,
+  website: true,
+  customers: true,
+  ads: true,
+  visits: true,
+  orders: true,
+  reservations: true,
+  pay: true,
+  terminal: true,
+  pos: true,
+  credits: true,
+  capital: true,
+  line: true,
+  intelligence: true,
+};
+void BANDED_KEYS;
