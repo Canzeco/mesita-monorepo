@@ -121,7 +121,7 @@ export function SearchMapFilters({
           <button
             type="button"
             onClick={resetMapFilters}
-            className="bg-foreground text-background flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
+            className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition active:scale-[0.99]"
           >
             No matches — reset filters
           </button>

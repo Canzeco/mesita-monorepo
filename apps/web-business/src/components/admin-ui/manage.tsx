@@ -509,7 +509,7 @@ export function ConfirmDialog({
               "inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition disabled:opacity-50 " +
               (danger
                 ? "bg-destructive text-destructive-foreground hover:opacity-90"
-                : "bg-foreground text-background hover:opacity-90")
+                : "bg-foreground text-paper hover:opacity-90")
             }
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}

@@ -102,7 +102,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               if (guardIntent({ kind: "reenrich", run: runFull })) return;
               runFull();
             }}
-            className="bg-foreground text-background inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {runPending ? "Queuing…" : running ? "Enriching…" : "Enrich"}
           </button>

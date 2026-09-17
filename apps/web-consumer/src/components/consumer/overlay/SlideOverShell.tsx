@@ -72,7 +72,7 @@ export function SlideOverShell({ children }: { children: React.ReactNode }) {
         aria-modal="true"
         aria-label="Details"
         className={cn(
-          "bg-background shadow-sheet-left absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden",
+          "bg-paper shadow-sheet-left absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden",
           "transition-transform duration-300 motion-reduce:transition-none",
           OVERLAY_EASE,
           open ? "translate-x-0" : "translate-x-full",

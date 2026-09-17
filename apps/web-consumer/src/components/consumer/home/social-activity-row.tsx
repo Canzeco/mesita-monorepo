@@ -91,7 +91,7 @@ export function SocialActivityRow({
       {place ? (
         <Link
           href={placeHref(place.slug || place.id)}
-          className="border-border bg-background/80 hover:shadow-rest flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2 transition active:scale-[0.99]"
+          className="border-border bg-paper/80 hover:shadow-rest flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2 transition active:scale-[0.99]"
         >
           <PlaceThumb name={place.name} photo={place.photos[0]} />
           <span className="text-foreground type-label max-w-[80px] truncate font-semibold">

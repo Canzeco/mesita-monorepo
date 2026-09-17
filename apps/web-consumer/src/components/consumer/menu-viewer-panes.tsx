@@ -64,7 +64,7 @@ export function EmbedFallback({ url, kind }: { url: string; kind: MenuKind }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
+        className="bg-foreground text-paper inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold"
       >
         Open menu
         <ExternalLink className="h-3.5 w-3.5" />
