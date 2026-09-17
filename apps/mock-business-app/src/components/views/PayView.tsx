@@ -1,6 +1,6 @@
 "use client";
 
-// Mesita Payments — this place's own Stripe Connect account.
+// Online Payments — this place's own Stripe Connect account.
 //
 // ── THE ONE THING THIS SCREEN EXISTS TO GET RIGHT ──────────────────────────
 //

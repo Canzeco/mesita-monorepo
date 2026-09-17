@@ -1,6 +1,6 @@
 "use client";
 
-// Mesita Payments' Stripe account — a SUB-STEP of the catalogue, not a ninth
+// Online Payments' Stripe account — a SUB-STEP of the catalogue, not a ninth
 // card. It is also where Stripe's stored `return_url` lands, which is why the
 // bare place address forwards its whole query here.
 import Link from "next/link";

@@ -67,8 +67,9 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // future", which is why POS sits beside Terminal rather than last.
     //
     // THE TWO BOTS ARE ONE PRODUCT NOW (MESITA-1951): *"Mesita AI Line
-    // instead"*. It takes the slot the pair occupied rather than going last,
-    // because the position was never about either channel.
+    // instead"* — named Mesita Host since MESITA-1955. It takes the slot the
+    // pair occupied rather than going last, because the position was never
+    // about either channel.
     //
     // WHERE REWARDS SITS IS THE ARGUMENT, and it reversed once (MESITA-1928).
     // MESITA-1900 filed it with money — "beside Payments and Credits, not at
@@ -222,9 +223,23 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     }
   });
 
-  it("every card names itself Mesita, and says one thing", () => {
+  // THE PREFIX IS A CLAIM NOW, NOT A HABIT (MESITA-1955). Every card used to
+  // begin "Mesita ", which made the brand the only word fifteen cards had in
+  // common and the one word none of them needed. Pato's rename leaves it on
+  // exactly three — the three where MESITA IS THE COUNTERPARTY: the page lives
+  // on Mesita, the money advanced is Mesita's, and the voice answering the
+  // phone is Mesita's. Asserted as a SET, in both directions, because "some
+  // cards say Mesita" passes for a file that put it back on all fifteen.
+  it("only the three Mesita-is-the-counterparty cards wear the brand", () => {
+    const branded = Object.values(build())
+      .filter((c) => c.name.startsWith("Mesita "))
+      .map((c) => c.key)
+      .sort();
+    expect(branded).toEqual(["capital", "line", "profile"]);
+  });
+
+  it("every card says one thing, and finishes it", () => {
     for (const card of Object.values(build())) {
-      expect(card.name.startsWith("Mesita ")).toBe(true);
       expect(card.blurb.endsWith(".")).toBe(true);
     }
   });
@@ -444,7 +459,7 @@ describe("Soon is most of the suite, and every one of them is unbuilt", () => {
   });
 });
 
-describe("Mesita Customers is a SUBSCRIPTION, unbuilt, and says both", () => {
+describe("Guest Catalog is a SUBSCRIPTION, unbuilt, and says both", () => {
   // Pato wrote it "Costumers (Free)" and then replaced the model on
   // 2026-09-16: *"you don't buy the data forever, you subscribe to a catalog
   // of customers and you can track their activity, visits per month, spent per

@@ -210,7 +210,7 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
     for (const gone of [
       "<PaymentsCard",
       "<MesitaPayCard",
-      'title="Mesita Payments"',
+      'title="Online Payments"',
       "apiGetPaymentAccount",
       "ConnectReturnNotice",
       "SoonStrip",
@@ -536,7 +536,7 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
   it("every branch renders a track named Mesita Pay — locked included", () => {
     for (const html of [...INERT(), pay(), pay({ mesitaPayEnabled: true })]) {
       expect(html).toContain("h-6 w-11");
-      expect(html).toContain('aria-label="Mesita Payments"');
+      expect(html).toContain('aria-label="Online Payments"');
       expect(html).toContain('role="switch"');
       // The pill is gone: one control, one line, never a third atom.
       expect(html).not.toContain("type-label");
@@ -581,7 +581,7 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
     // page; without the refresh they disagree until the next navigation.
     expect(code).toContain("router.refresh()");
     // A raw Edge Function string never reaches the DOM.
-    expect(code).toContain('railWriteFailure("Mesita Payments", next)');
+    expect(code).toContain('railWriteFailure("Online Payments", next)');
     expect(code).toContain("console.error(");
     // And the local copy loses to a fresher server render: the page remounts
     // the card on the bit it was seeded with.

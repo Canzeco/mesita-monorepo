@@ -222,7 +222,7 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
       "visit_rewards",
     );
     expect(row.disagreement?.fix).toBe("setup");
-    expect(row.disagreement?.fixLabel).toBe("Mesita Payments");
+    expect(row.disagreement?.fixLabel).toBe("Online Payments");
     expect(row.disagreement?.fixLabel).not.toContain("Join");
   });
 });
@@ -360,7 +360,7 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
     });
     expect(rowFor(input, "sell_prepays").state).toEqual({
       kind: "locked",
-      needs: "Needs Mesita Payments",
+      needs: "Needs Online Payments",
     });
   });
 
@@ -402,7 +402,7 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
       "mesita_pay",
     );
     expect(row.disagreement?.fix).toBe("setup");
-    expect(row.disagreement?.fixLabel).toBe("Mesita Payments");
+    expect(row.disagreement?.fixLabel).toBe("Online Payments");
     expect(row.disagreement?.reason).toContain("off in products");
   });
 

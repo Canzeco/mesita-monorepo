@@ -73,11 +73,11 @@ export function crumbsFor(
     const page = placePageFromPathname(pathname);
     if (page) {
       trail.push(PLACE_PAGE_LABEL[page]);
-      // Mesita Payments' setup is the ONE sub-step left (MESITA-1900 retired
+      // Online Payments' setup is the ONE sub-step left (MESITA-1900 retired
       // Terminal's), and it reads as its own page so the rail's Products row
       // stays lit while you stand in it. The segment is `pay` and the crumb
       // says Payments: the label moved, the address did not.
-      if (/\/products\/pay\/?$/.test(pathname)) trail.push("Mesita Payments");
+      if (/\/products\/pay\/?$/.test(pathname)) trail.push("Online Payments");
       return trail;
     }
     const view = placeTabFromPathname(pathname);

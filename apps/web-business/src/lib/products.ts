@@ -149,7 +149,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "website",
-    name: "Mesita Website",
+    name: "Website",
     blurb:
       "A real site on your own domain, built from the profile you already keep here instead of from scratch.",
     tab: null,
@@ -159,7 +159,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "customers",
-    name: "Mesita Customers",
+    name: "Guest Catalog",
     blurb:
       "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
     tab: null,
@@ -180,7 +180,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "ads",
-    name: "Mesita Ads",
+    name: "Omnichannel Ads",
     blurb:
       "Reach the people who have not found you yet — Facebook, Instagram and Google, run from here instead of three dashboards.",
     tab: null,
@@ -190,7 +190,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "visits",
-    name: "Mesita Visits",
+    name: "Visits",
     blurb:
       "Close the bill at the table, and keep every visit on the record — cash or card, it settles the same way.",
     tab: "visits",
@@ -200,7 +200,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "rewards",
-    name: "Mesita Rewards",
+    name: "Rewards",
     blurb:
       "Give a slice of the bill back to the guests who keep showing up — you set the rungs, and you set the price.",
     tab: "rewards",
@@ -210,7 +210,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "orders",
-    name: "Mesita Orders",
+    name: "Online Orders",
     blurb:
       "Pickup and delivery, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
     tab: "orders",
@@ -220,7 +220,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "reservations",
-    name: "Mesita Reservations",
+    name: "Reservations",
     blurb:
       "The table bookings your own provider already holds, read here beside everything else this place does.",
     tab: "reservations",
@@ -230,7 +230,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "pay",
-    name: "Mesita Payments",
+    name: "Online Payments",
     // NO TAB, on purpose: the Stripe account is the sub-step `products/pay`,
     // not a view beside Visits and Orders. `payHref` below is its address.
     blurb:
@@ -242,7 +242,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "terminal",
-    name: "Mesita Terminal",
+    name: "Physical Terminal",
     // BACK AFTER MESITA-1900 REMOVED IT, and still Soon for the same reason it
     // went: there is no hardware. The old blurb ("Take in-person payments with
     // Mesita hardware") named the box; this one names why a place that already
@@ -256,7 +256,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "pos",
-    name: "Mesita POS",
+    name: "Point of Sale",
     // *"maybe include POS, but for the future"* (Pato, 2026-09-16). FOR THE
     // FUTURE IS A REAL DISTINCTION and the note carries it: everything else
     // here is unbuilt, but POS is the only one he put behind the others, and a
@@ -275,7 +275,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "credits",
-    name: "Mesita Credits",
+    name: "Prepaid Credits",
     blurb:
       "Branded money a guest buys once and can only spend here — paid up front, redeemed against a visit or an order.",
     tab: "credits",
@@ -306,7 +306,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "line",
-    name: "Mesita AI Line",
+    name: "Mesita Host",
     // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
     // card reads as a WhatsApp widget. The two things it replaced were named
     // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
@@ -320,7 +320,7 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "intelligence",
-    name: "Mesita Intelligence",
+    name: "Market Intelligence",
     blurb:
       "What to change and why: who to bring back, what to charge, and where this place is quietly losing guests.",
     tab: null,

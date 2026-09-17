@@ -8,12 +8,14 @@
 import { describe, expect, it } from "vitest";
 import { crumbsFor } from "./ConsoleHeader";
 import {
+  PLACE_PAGE_LABEL,
   SHELL_ROUTES,
   placeHref,
   placePageHref,
   placePayHref,
 } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
+import { PRODUCT_LABEL } from "@/lib/product-keys";
 
 const names = { placeName: "Strana Del Valle" };
 const unnamed = { placeName: null };
@@ -42,13 +44,13 @@ describe("crumbsFor", () => {
     );
   });
 
-  it("Mesita Payments is the one step inside Products", () => {
+  it("Online Payments is the one step inside Products", () => {
     // It reads as its PAGE (the Products row stays lit) and still names
     // itself, which is the pair the rail and the header have to agree on.
     expect(crumbsFor(placePayHref("p"), names)).toEqual([
       "Strana Del Valle",
       "Products",
-      "Mesita Payments",
+      "Online Payments",
     ]);
   });
 
@@ -70,14 +72,22 @@ describe("crumbsFor", () => {
     // …and with no name resolved yet, the noun rather than an empty trail.
     expect(crumbsFor(placePageHref("p", "customers"), unnamed)).toEqual([
       "Place",
-      "Customers",
+      "Guest Catalog",
     ]);
+  });
+
+  // THE SAME PRODUCT, IN TWO TABLES (MESITA-1955). Customers is a page AND a
+  // product: the crumb reads `PLACE_PAGE_LABEL`, the rail row and the card
+  // read `PRODUCT_LABEL`, and nothing but this line stops one of them being
+  // renamed alone.
+  it("the crumb and the rail call Customers the same thing", () => {
+    expect(PLACE_PAGE_LABEL.customers).toBe(PRODUCT_LABEL.customers);
   });
 
   it("a place view is the place, then the view", () => {
     expect(crumbsFor(placeTabHref("p", "credits"), names)).toEqual([
       "Strana Del Valle",
-      "Credits",
+      "Prepaid Credits",
     ]);
     expect(crumbsFor(placeHref("p"), names)).toEqual([
       "Strana Del Valle",

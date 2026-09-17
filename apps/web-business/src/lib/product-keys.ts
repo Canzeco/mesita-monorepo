@@ -98,25 +98,39 @@ export const PRODUCT_KEYS = [
 ] as const;
 export type ProductKey = (typeof PRODUCT_KEYS)[number];
 
-/** What the rail and the catalogue call each product. "Mesita <noun>" is the
- *  grid's form, where the cards are being compared to each other and the brand
- *  is the point; the rail says the noun alone, because every row in it is
- *  already Mesita's and eight rows of "Mesita …" is a column of one word. */
+/** What the rail calls each product: THE CARD'S NAME MINUS THE BRAND.
+ *
+ *  THE PREFIX IS NOT DECORATION ANY MORE (MESITA-1955). Pato's list renamed
+ *  the suite to say what a place GETS — Online Orders, Physical Terminal,
+ *  Prepaid Credits — and left "Mesita" on exactly three: Profile, Capital and
+ *  Host, the three where MESITA IS THE COUNTERPARTY. The page lives on Mesita,
+ *  the money advanced is Mesita's, and the voice answering the phone is
+ *  Mesita's. Everywhere else the brand was the only word the cards had in
+ *  common, which made a column of one word and said nothing about any of them.
+ *
+ *  So the rail drops only that prefix, never the descriptor: Profile, Capital,
+ *  Host — but Online Orders stays Online Orders, because "Orders" is the half
+ *  of the name that does not say which orders. One product, one noun, in both
+ *  places it is read. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Profile",
   website: "Website",
-  customers: "Customers",
-  ads: "Ads",
+  customers: "Guest Catalog",
+  ads: "Omnichannel Ads",
   visits: "Visits",
   rewards: "Rewards",
-  orders: "Orders",
+  orders: "Online Orders",
   reservations: "Reservations",
-  // "Payments", AND THE CARD SAYS MESITA PAYMENTS (MESITA-1900). MESITA-1884
+  // "Online Payments", AND THE CARD SAYS THE SAME (MESITA-1955). MESITA-1884
   // was titled "Pay becomes Payments" and shipped "Pay", because the card said
   // Mesita Pay and one product wearing two nouns in one console is worse than
-  // either noun — *"rename both together or neither."* Pato has now written
-  // Payments twice, so it is both together: this label and `SPECS` in
-  // lib/products.ts changed in one commit.
+  // either noun — *"rename both together or neither."* That rule is why this
+  // label and `SPECS` in lib/products.ts have never moved apart, and why the
+  // breadcrumb, the two loading labels, the switch's aria-label and the
+  // ladder's fix label moved in this commit too. ONLINE is the word that does
+  // the work now: it is the half a guest pays from their phone, which is what
+  // makes Physical Terminal a different product rather than the same one with
+  // hardware.
   //
   // THE KEY STAYS `pay`, deliberately. `/places/<id>/pay`, `PLACE_TABS.pay`
   // and `place_profiles.mesita_pay_enabled` are PERSISTED spellings — an
@@ -137,14 +151,14 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   //                     ticket, because that is the checkout METHOD a guest
   //                     picked, not the product a venue buys.
   //
-  // Everything an operator reads as THE PRODUCT says Payments: this label, the
-  // rail row, the catalogue card, the view heading, the breadcrumb, the ladder
-  // rung and the setup page.
-  pay: "Payments",
-  terminal: "Terminal",
-  pos: "POS",
-  credits: "Credits",
+  // Everything an operator reads as THE PRODUCT says Online Payments: this
+  // label, the rail row, the catalogue card, the view heading, the breadcrumb,
+  // the ladder rung and the setup page.
+  pay: "Online Payments",
+  terminal: "Physical Terminal",
+  pos: "Point of Sale",
+  credits: "Prepaid Credits",
   capital: "Capital",
-  line: "AI Line",
-  intelligence: "Intelligence",
+  line: "Host",
+  intelligence: "Market Intelligence",
 };

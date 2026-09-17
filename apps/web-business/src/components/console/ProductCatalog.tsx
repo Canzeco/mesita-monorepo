@@ -339,7 +339,7 @@ function ProductTile({ product }: { product: ProductCard }) {
 
       {/* THE CHIP FOLLOWS THE BLURB; ONLY THE VERB IS PINNED.
           Bottom-aligning the whole block was the obvious move and it is the
-          wrong one: Mesita Terminal has no verb, so its block is a row
+          wrong one: Physical Terminal has no verb, so its block is a row
           shorter, and its Soon chip floated ~20px BELOW every other card's
           chip in the same grid row. One tile out of line reads as a bug, not
           as a difference. `mt-auto` on the action alone puts every button on

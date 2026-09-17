@@ -7,7 +7,7 @@ import type { PlaceRole } from "@/lib/place-tabs";
 
 export type { PlaceRole };
 
-/** Mesita Payments is a Stripe Connect account, and its ladder is the only
+/** Online Payments is a Stripe Connect account, and its ladder is the only
  *  place in this console where "off" and "never started" are different facts.
  *
  *  Stripe sets `disabled_reason` on day zero, so a FRESH account and a
@@ -86,7 +86,7 @@ export type MockPlace = {
    *  operator switch has no subscription to date. Derived from the fixed
    *  `MOCK_NOW`, never the wall clock. */
   renewsAt: string | null;
-  /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Mesita Customers is customer
+  /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Guest Catalog is customer
    *  INTELLIGENCE and it is RENTED, not bought: while it runs, the place reads
    *  who its guests are and what they did this month; when it stops, the
    *  catalog closes and the place keeps nothing. It is its own subscription,
@@ -131,7 +131,7 @@ export type MockPlace = {
  *  (MESITA-1910). Three, not four: Credits is a bill REDUCTION and never a
  *  tender, and `at_place` is not one either — it existed only because a scalar
  *  column could not tell cash from card. `mesita_pay` keeps the persisted
- *  spelling; the noun an operator reads is "Mesita Payments". */
+ *  spelling; the noun an operator reads is "Online Payments". */
 export type MockTender = {
   method: "cash" | "card" | "mesita_pay";
   amountCents: number;

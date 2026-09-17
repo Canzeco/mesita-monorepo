@@ -164,7 +164,7 @@ const INTENTS: Intent[] = [
     match: /\b(pay|payment|payments|charge|card|cobrar)\b/,
     answer: {
       reply:
-        "Mesita Payments is the switch that lets a guest close their bill in the app. Whether it is on here is the first line on its own screen.",
+        "Online Payments is the switch that lets a guest close their bill in the app. Whether it is on here is the first line on its own screen.",
       door: { label: "Open Payments", href: (id: string) => placeTabHref(id, "pay") },
     },
   },

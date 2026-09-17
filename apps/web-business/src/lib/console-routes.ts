@@ -149,7 +149,14 @@ export type PlacePage = (typeof PLACE_PAGES)[number];
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   settings: "Settings",
   products: "Products",
-  customers: "Customers",
+  // ONE PRODUCT, ONE NOUN (MESITA-1955). Customers is BOTH a page and a
+  // product, so its name lives in two tables — this one feeds the breadcrumb,
+  // `PRODUCT_LABEL` feeds the rail row and the card. They said "Customers"
+  // together and could drift apart in silence, which is how a console starts
+  // calling one thing two names; `crumbs.test.ts` now pins them equal. The
+  // string is repeated rather than imported because this file's imports are
+  // type-only on purpose — see the header.
+  customers: "Guest Catalog",
   activity: "Activity",
 };
 

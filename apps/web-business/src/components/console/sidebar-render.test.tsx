@@ -132,7 +132,7 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     [SHELL_ROUTES.account, "Account"],
     [page("settings"), "Settings"],
     [page("products"), "Products"],
-    [page("customers"), "Customers"],
+    [page("customers"), "Guest Catalog"],
     // Mesita Pay's setup reads as its PAGE, so the Products row stays lit
     // while an operator stands in it (MESITA-1872).
     [placePayHref("p-1"), "Products"],
@@ -143,23 +143,23 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
     // not have appeared here — and `/rewards` was a REDIRECT source until
     // MESITA-1900, so it could not have appeared here either.
     [view("visits"), "Visits"],
-    [view("orders"), "Orders"],
+    [view("orders"), "Online Orders"],
     [view("reservations"), "Reservations"],
     [view("rewards"), "Rewards"],
-    [view("pay"), "Payments"],
-    [view("credits"), "Credits"],
+    [view("pay"), "Online Payments"],
+    [view("credits"), "Prepaid Credits"],
     // The flat names an operator can still type light the same row while the
     // forward is in flight.
     [FLAT_ROUTES.settings, "Settings"],
-    [FLAT_ROUTES.customers, "Customers"],
+    [FLAT_ROUTES.customers, "Guest Catalog"],
     [FLAT_ROUTES.products, "Products"],
     [FLAT_ROUTES.profile, "Profile"],
     [FLAT_ROUTES.visits, "Visits"],
-    [FLAT_ROUTES.orders, "Orders"],
+    [FLAT_ROUTES.orders, "Online Orders"],
     [FLAT_ROUTES.reservations, "Reservations"],
     [FLAT_ROUTES.rewards, "Rewards"],
-    [FLAT_ROUTES.pay, "Payments"],
-    [FLAT_ROUTES.credits, "Credits"],
+    [FLAT_ROUTES.pay, "Online Payments"],
+    [FLAT_ROUTES.credits, "Prepaid Credits"],
   ];
   for (const [pathname, label] of ROUTES) {
     it(`${pathname} lights ${label} and nothing else`, () => {
@@ -263,8 +263,8 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // stand in for the address. It never should have: the invariant was
     // always that no row points at `/payments`, and a label assertion was a
     // proxy that Pato's rename has just falsified. The href is the assertion.
-    expect(labels(html)).toContain("Credits");
-    expect(labels(html)).toContain("Payments");
+    expect(labels(html)).toContain("Prepaid Credits");
+    expect(labels(html)).toContain("Online Payments");
     expect(hrefs(html).some((h) => h.includes("/payments"))).toBe(false);
     // …and the row called Payments is the PRODUCT's view, whose segment is
     // still `pay`. The label moved; the persisted spelling did not.
@@ -415,7 +415,7 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
 
     // The SEVEN that write are gone — Capital joined them in MESITA-1929, as
     // an offer a place accepts rather than a reading it takes…
-    for (const gone of ["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits", "Capital"]) {
+    for (const gone of ["Visits", "Online Orders", "Reservations", "Rewards", "Online Payments", "Prepaid Credits", "Capital"]) {
       expect(seen, gone).not.toContain(gone);
     }
     // …and EVERYTHING ELSE stayed. The bijection, because "a viewer sees
@@ -423,14 +423,14 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     expect(seen).toEqual(
       ALL_LABELS.filter(
         (l) =>
-          !["Visits", "Orders", "Reservations", "Rewards", "Payments", "Credits", "Capital"].includes(l),
+          !["Visits", "Online Orders", "Reservations", "Rewards", "Online Payments", "Prepaid Credits", "Capital"].includes(l),
       ),
     );
     // A viewer still reaches every READ surface, including the one product
     // that is not a place view at all. Activity is NOT in this list any more
     // (MESITA-1924): it lost its row for everyone, viewer and owner alike, so
     // its absence here says nothing about permissions.
-    for (const kept of ["Settings", "Products", "Profile", "Customers"]) {
+    for (const kept of ["Settings", "Products", "Profile", "Guest Catalog"]) {
       expect(seen, kept).toContain(kept);
     }
   });
@@ -469,16 +469,16 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
       "Settings",
       "Activity",
       "Products",
-      "Customers",
+      "Guest Catalog",
       "Profile",
       "Menus",
       "Reviews",
       "Visits",
-      "Orders",
+      "Online Orders",
       "Reservations",
       "Rewards",
-      "Payments",
-      "Credits",
+      "Online Payments",
+      "Prepaid Credits",
     ]) {
       expect(labels(html), gone).not.toContain(gone);
     }
