@@ -44,7 +44,7 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   // ONE PRODUCT, ONE NOUN (MESITA-1955). Customers is BOTH a page and a
   // product, so its name sits in two tables: this one feeds the rail row and
   // the title, `PRODUCT_LABEL` feeds the card. They must say the same thing.
-  customers: "Guest Catalog",
+  customers: "Customer Catalog",
   activity: "Activity",
 };
 
