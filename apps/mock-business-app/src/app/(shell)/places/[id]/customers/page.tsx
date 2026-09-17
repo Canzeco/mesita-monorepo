@@ -274,7 +274,7 @@ export default function PlaceCustomersPage() {
 
   return (
     <>
-      <SoonStrip title="Guest Catalog is not live yet">
+      <SoonStrip title="Customer Catalog is not live yet">
         A subscription when it ships, not a purchase. Nothing below has been
         read from anywhere — it is the shape of the page, put on screen early
         so the columns can be argued about while changing them is still cheap.

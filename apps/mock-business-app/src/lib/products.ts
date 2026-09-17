@@ -132,7 +132,13 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "customers",
-    name: "Guest Catalog",
+    // CUSTOMER, NOT GUEST (MESITA-1960). Pato: *"costumer is clearer to
+    // understand for business"*. The reader of this card is the VENUE, not the
+    // diner, and a business owner thinks in customers. "Guest" stays the word
+    // for the PERSON everywhere else — every blurb below says guests, the
+    // table on the page still heads its column Guest, and the consumer app
+    // calls them guests. Only the product's NAME moves.
+    name: "Customer Catalog",
     blurb:
       "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
     tab: null,
@@ -284,27 +290,26 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "line",
-    // PHONE AGENT (MESITA-1959), the fifth name this card has worn in a day:
-    // WhatsApp Bot + Phone Bot → AI Line → Mesita Host → Call Center → here.
+    // ANSWERING AGENT (MESITA-1960) — the sixth name in two days: WhatsApp Bot
+    // + Phone Bot → AI Line → Mesita Host → Call Center → Phone Agent → here.
+    // It is the first that is none of the three bad shapes.
     //
-    // WHY IT BEATS CALL CENTER: "Center" implied a ROOM FULL OF PEOPLE, so the
-    // card read as headcount and cost. Every other card in this grid names a
-    // thing the place GETS; that one named a department. An "agent" is one
-    // thing acting on your behalf, which is exactly what this is.
+    // THE SHAPE PROBLEM, written down so this stops recurring: this card names
+    // a REPLACEMENT FOR A PERSON, and English offers three shapes for that —
+    // the CHANNEL (Call Center, AI Line, Phone Agent), the ROLE (Host,
+    // Reception) or the CATEGORY (Answering Service). Every one of them costs
+    // something: a channel is wrong the day a second one arrives, a role reads
+    // like hiring, and the category reads like 1985.
     //
-    // THE CHANNEL OBJECTION IS REAL BUT WEAKER HERE. MESITA-1951 merged the
-    // two bots because naming them for their CHANNELS made one product look
-    // like two, and "Phone" is a channel. But nobody says *contestar el
-    // teléfono* and means voice only — the phone is the NUMBER people reach
-    // you on, WhatsApp included. The blurb carries both channels out loud.
+    // THIS NAME TAKES THE VERB INSTEAD. `Agent` is kept, because it is what
+    // beat Call Center — one thing acting on your behalf, where "Center"
+    // implied a room full of people and made the card read as headcount.
+    // `Answering` replaces the wire with the JOB, which is what MESITA-1951
+    // was reaching for when it merged the two bots: a call and a WhatsApp are
+    // both answering, so a third channel costs this name nothing.
     //
-    // THE SHAPE PROBLEM, so this stops recurring: this card names a
-    // REPLACEMENT FOR A PERSON, and English offers three shapes for that — the
-    // channel (Call Center, AI Line, Phone Agent), the role (Host, Reception)
-    // or the category (Answering Service). There is no fourth, and each costs
-    // something. This one pays in channel-specificity and buys instant
-    // clarity. Do not re-open it without a stated defect.
-    name: "Phone Agent",
+    // Do not re-open it without a stated defect.
+    name: "Answering Agent",
     // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
     // card reads as a WhatsApp widget. The two things it replaced were named
     // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is

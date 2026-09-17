@@ -86,7 +86,7 @@ export type MockPlace = {
    *  operator switch has no subscription to date. Derived from the fixed
    *  `MOCK_NOW`, never the wall clock. */
   renewsAt: string | null;
-  /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Guest Catalog is customer
+  /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Customer Catalog is customer
    *  INTELLIGENCE and it is RENTED, not bought: while it runs, the place reads
    *  who its guests are and what they did this month; when it stops, the
    *  catalog closes and the place keeps nothing. It is its own subscription,

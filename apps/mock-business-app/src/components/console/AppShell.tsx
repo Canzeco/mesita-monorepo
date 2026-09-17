@@ -165,7 +165,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setDrawer(false)}
               className="absolute inset-0 bg-black/50"
             />
-            <div className="relative z-10 w-64">{rail}</div>
+            {/* ONE STEP WIDER (MESITA-1960). Pato: *"a bit more horizontally
+                larger, just a bit"* — w-64 → w-72, 256px → 288px, one step on
+                the scale rather than a redesign. The rows went to `text-sm` in
+                MESITA-1958 and the longest label is now "Customer Catalog",
+                which fit 256px with nothing to spare. */}
+            <div className="relative z-10 w-72">{rail}</div>
           </div>
         )}
 

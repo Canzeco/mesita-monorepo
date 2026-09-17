@@ -81,7 +81,7 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Profile",
   website: "Website",
-  customers: "Guest Catalog",
+  customers: "Customer Catalog",
   ads: "Omnichannel Ads",
   visits: "Visit Rewards",
   orders: "Online Orders",
