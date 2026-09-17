@@ -1,4 +1,4 @@
-// THE LEDGER BOOK — eight logs, PROJECTED from the records, never authored.
+// THE LEDGER BOOK — nine logs, PROJECTED from the records, never authored.
 //
 // Pato, 2026-09-16: *"activity is like the centralized passive feed of
 // everything — you configure in products and then in activity you observe the
@@ -16,7 +16,7 @@
 // caught lying.
 //
 // So the records are the source and the logs are a READ of them. The union
-// feed and the eight tables are the same rows at two resolutions, and the one
+// feed and the nine tables are the same rows at two resolutions, and the one
 // thing that made the old screen wrong — a second place to write down what
 // happened — no longer exists.
 //
@@ -35,10 +35,25 @@
 //   a reservation    → 1 Reservations row, and nothing else
 //   a review         → 1 Reviews row, and nothing else
 //   a change         → 1 Settings row, and nothing else
+//   a subscription   → 1 Subscriptions row, and nothing else
 //
-// Four of the eight fan out and four do not, which is the honest shape and the
+// Four of the nine fan out and five do not, which is the honest shape and the
 // reason Views and Reservations earn their place beside the money: a book where
 // every entry fed another would teach that the fan-out is the rule.
+//
+// ── THE ONE MONEY LOG THAT WRITES NOWHERE (MESITA-1944) ────────────────────
+//
+// Subscriptions is what MESITA bills this PLACE — the Customers catalog
+// monthly, the Membership yearly — and it is the only log here whose money
+// runs in that direction. It writes no Payments row ON PURPOSE: Payments is
+// this place's own Stripe Connect account, guests paying in and the bank
+// taking out, and a subscription charge never touches it. A row there saying
+// the venue's Stripe moved money Mesita took on a card would be the console
+// lying about whose account it is.
+//
+// AND IT CARRIES NO PRICES. Neither product has one yet — the Customers page
+// says so in as many words — and a mock that invented a number would be the
+// only place in the company where that price existed.
 //
 // BECAUSE THE PAYMENT ROWS ARE THE TENDERS, the arithmetic the fixture already
 // asserts holds on screen for free: a visit's payment rows plus its credit row
@@ -65,6 +80,7 @@ import {
 import { listFor, type Scenario } from "@/mock/scenario";
 import type {
   MockOrder,
+  MockPlace,
   MockPlaceView,
   MockReservation,
   MockReview,
@@ -74,6 +90,13 @@ import type {
 } from "@/mock/types";
 import { TENDER_LABEL } from "@/lib/tender";
 import { money } from "@/lib/format";
+// ONE RENEWAL DATE FORMAT IN THIS CONSOLE. It lives beside the strip that
+// invented it (`membershipDate`, a FIXED en-GB spelling rather than the
+// viewer's locale, so a screenshot is byte-identical an hour later). A second
+// Intl config here would be two screens printing one day two ways — and the
+// day is a YEAR out, which is exactly the case where dropping the year makes
+// "Sep 16" read as this week.
+import { membershipDate } from "@/components/console/PartnerCard";
 
 /** THE EIGHT, IN PATO'S ORDER, which is the funnel: attention first, then the
  *  four things a guest DOES, then the two money logs those write into, then
@@ -86,6 +109,10 @@ export const LOG_KEYS = [
   "reviews",
   "payments",
   "credits",
+  // What the HOUSE owes and what the house changed, in that order, after
+  // everything a guest did. Subscriptions is money and sits beside the money;
+  // Settings stays last because it is the only log with no money in it at all.
+  "subscriptions",
   "settings",
 ] as const;
 export type LogKey = (typeof LOG_KEYS)[number];
@@ -98,6 +125,7 @@ export const LOG_LABEL: Record<LogKey, string> = {
   reviews: "Reviews",
   payments: "Payments",
   credits: "Credits",
+  subscriptions: "Subscriptions",
   settings: "Settings",
 };
 
@@ -152,6 +180,24 @@ export type SettingLogRow = LogBase & {
   change: MockSettingChange;
 };
 
+/** WHAT MESITA BILLS THIS PLACE. Two products, one lifecycle each.
+ *
+ *  `product` and not a free string, because the two are billed on different
+ *  clocks — the catalog monthly, the Membership yearly — and a log that could
+ *  not tell them apart could not say which one the next charge is for. */
+export type SubscriptionLogRow = LogBase & {
+  log: "subscriptions";
+  product: "customers" | "membership";
+  /** `ending` is CANCELLED BUT STILL RUNNING, which is not `ended`: one is a
+   *  place that still has the product and will lose it, the other has lost it.
+   *  Collapsing them is how a console tells a paying venue it has been cut
+   *  off. */
+  event: "started" | "renewed" | "payment_failed" | "ending" | "ended";
+  /** "Monthly" or "Yearly". The clock, printed, because a renewal with no
+   *  cadence beside it cannot be checked against the next date. */
+  cadence: string;
+};
+
 export type LogRow =
   | ViewLogRow
   | VisitLogRow
@@ -160,6 +206,7 @@ export type LogRow =
   | ReviewLogRow
   | PaymentLogRow
   | CreditLogRow
+  | SubscriptionLogRow
   | SettingLogRow;
 
 export type LedgerBook = {
@@ -170,6 +217,7 @@ export type LedgerBook = {
   reviews: ReviewLogRow[];
   payments: PaymentLogRow[];
   credits: CreditLogRow[];
+  subscriptions: SubscriptionLogRow[];
   settings: SettingLogRow[];
   /** Every row above that HAS ALREADY HAPPENED, in one stream, newest first.
    *
@@ -237,6 +285,128 @@ export const SETTING_AREA_LABEL: Record<MockSettingChange["area"], string> = {
   credits: "Credits",
 };
 
+/** THE SUBSCRIPTION HISTORY, PROJECTED FROM THE PLACE'S OWN STATE.
+ *
+ *  Every other log here reads records; this one reads the switches, because
+ *  there are no subscription records to read — the console knows `partnered`,
+ *  `membership`, `renewsAt`, `customerIntel` and `customerIntelSince`, and a
+ *  fixture array beside them could disagree with all five. Projecting from the
+ *  state instead means the log cannot contradict the Membership strip, the
+ *  Customers page or the States card, whatever the panel is set to.
+ *
+ *  THE CATALOG CARRIES THE HISTORY: one `started` and a `renewed` per month
+ *  since. The Membership carries ONE ROW, the one its current state implies —
+ *  `renewsAt` is the only date the fixture holds for it, so any history older
+ *  than that would be invented, and an invented year of renewals is the kind
+ *  of number somebody eventually adds up. */
+function subscriptionRows(place: MockPlace, now: Date): SubscriptionLogRow[] {
+  const rows: SubscriptionLogRow[] = [];
+  const iso = (d: Date) => d.toISOString();
+  const shift = (from: Date, days: number, hours = 0) =>
+    new Date(from.getTime() - days * 86_400_000 - hours * 3_600_000);
+
+  // ── THE CATALOG, MONTHLY ────────────────────────────────────────────────
+  //
+  // Three states, not two. Running and CLOSED are both a history; never opened
+  // is an empty log, and the difference is `customerIntelSince`. A place the
+  // panel just switched on has no date behind it and started today, which is
+  // the truth about what the panel did.
+  const since = place.customerIntelSince ?? (place.customerIntel ? iso(shift(now, 0, 3)) : null);
+  if (since) {
+    const start = new Date(since);
+    rows.push({
+      id: `sub_cus_start`,
+      log: "subscriptions",
+      at: since,
+      title: "Customers subscription started",
+      detail: "The catalog opened — every guest of this place, named.",
+      amountCents: null,
+      origin: null,
+      wroteTo: [],
+      product: "customers",
+      event: "started",
+      cadence: "Monthly",
+    });
+
+    // A renewal per 30 days elapsed. Counted from the start rather than
+    // written down, so the log stays right if the start date moves.
+    const months = Math.floor((now.getTime() - start.getTime()) / (30 * 86_400_000));
+    for (let m = 1; m <= months; m++) {
+      rows.push({
+        id: `sub_cus_renew_${m}`,
+        log: "subscriptions",
+        at: iso(new Date(start.getTime() + m * 30 * 86_400_000)),
+        title: "Customers subscription renewed",
+        detail: `Month ${m + 1} · the catalog stayed open`,
+        amountCents: null,
+        origin: null,
+        wroteTo: [],
+        product: "customers",
+        event: "renewed",
+        cadence: "Monthly",
+      });
+    }
+
+    if (!place.customerIntel) {
+      rows.push({
+        id: `sub_cus_end`,
+        log: "subscriptions",
+        at: iso(shift(now, 0, 2)),
+        title: "Customers catalog closed",
+        detail: "The rows went back behind the glass. Nothing of them was kept.",
+        amountCents: null,
+        origin: null,
+        wroteTo: [],
+        product: "customers",
+        event: "ended",
+        cadence: "Monthly",
+      });
+    }
+  }
+
+  // ── THE MEMBERSHIP, YEARLY ──────────────────────────────────────────────
+  //
+  // `none` writes NOTHING, and that is the operator-switch partner: a place
+  // somebody turned on by hand has never been charged, so a billing log with a
+  // row in it would be the one screen claiming it was.
+  if (place.partnered && place.membership !== "none" && place.renewsAt) {
+    const date = membershipDate(place.renewsAt);
+    const said =
+      place.membership === "past_due"
+        ? {
+            title: "Membership charge failed",
+            detail: "Stripe is retrying. Still a partner — nothing has been taken away.",
+            event: "payment_failed" as const,
+          }
+        : place.membership === "cancelling"
+          ? {
+              title: "Membership ending",
+              detail: `Cancelled. Paid through ${date}, and it will not renew.`,
+              event: "ending" as const,
+            }
+          : {
+              title: "Membership renewed",
+              detail: `Another year · next on ${date}`,
+              event: "renewed" as const,
+            };
+    rows.push({
+      id: "sub_mem",
+      log: "subscriptions",
+      at: iso(shift(now, 0, 4)),
+      title: said.title,
+      detail: said.detail,
+      amountCents: null,
+      origin: null,
+      wroteTo: [],
+      product: "membership",
+      event: said.event,
+      cadence: "Yearly",
+    });
+  }
+
+  return rows;
+}
+
 /** Read the whole book for one place.
  *
  *  `scenario` goes through `listFor` ONCE PER SOURCE and never over the derived
@@ -246,7 +416,12 @@ export const SETTING_AREA_LABEL: Record<MockSettingChange["area"], string> = {
  *
  *  `now` is the FIXED instant, never the wall clock — `MOCK_NOW`, through
  *  `useMock`. It decides one thing: where the union feed stops. */
-export function buildLedgers(placeId: string, scenario: Scenario, now: Date): LedgerBook {
+export function buildLedgers(place: MockPlace, scenario: Scenario, now: Date): LedgerBook {
+  // THE PLACE, NOT ITS ID (MESITA-1944). Eight logs read records and needed
+  // only the id to filter them; Subscriptions reads the place's own switches,
+  // and they arrive already overridden by the scenario — reading round
+  // `resolveWorld` for them would render a subscription the panel cannot move.
+  const placeId = place.id;
   const mine = <T extends { placeId: string }>(rows: T[]) =>
     listFor(rows.filter((r) => r.placeId === placeId), scenario);
 
@@ -450,6 +625,12 @@ export function buildLedgers(placeId: string, scenario: Scenario, now: Date): Le
     review,
   }));
 
+  // EMPTIED WITH EVERY OTHER LOG. `listFor` strips records; this log has none
+  // to strip, so the empty scenario is applied here by hand — a console that
+  // says every list is empty and then shows six subscription rows is a console
+  // with an exception nobody asked for.
+  const subscriptions = scenario.empty ? [] : subscriptionRows(place, now);
+
   const settingRows: SettingLogRow[] = changes.map((change) => ({
     id: change.id,
     log: "settings",
@@ -470,6 +651,7 @@ export function buildLedgers(placeId: string, scenario: Scenario, now: Date): Le
     reviews: reviewRows.sort(newestFirst),
     payments: payments.sort(newestFirst),
     credits: credits.sort(newestFirst),
+    subscriptions: subscriptions.sort(newestFirst),
     settings: settingRows.sort(newestFirst),
   };
 
