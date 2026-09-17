@@ -1,4 +1,4 @@
-// THE PRODUCT VOCABULARY — the sixteen keys, and nothing else.
+// THE PRODUCT VOCABULARY — the fifteen keys, and nothing else.
 //
 // Snapshot of `apps/web-business/src/lib/product-keys.ts`. Kept free of
 // imports for the same reason the original is: `PLACE_TAB_LABEL` names
@@ -11,7 +11,7 @@
 //   Profile · Website · Customers · Ads               what the world sees
 //   Visits · Rewards · Orders · Reservations          the guest, being served
 //   Payments · Terminal · POS · Credits · Capital     the money
-//   WhatsApp Bot · Phone Bot · Intelligence          the work nobody is doing
+//   AI Line · Intelligence                            the work nobody is doing
 //
 // THOSE FOUR BANDS ARE A READING, NOT A RENDER. His earlier list came with
 // explicit separators (*"Profile · Costumers // Visits · Orders ·
@@ -31,8 +31,20 @@ export const PRODUCT_KEYS = [
   "website",
   "customers",
   "ads",
+  // ONE PRODUCT, NOT TWO (MESITA-1953). Pato: *"FOR THE MOMENT I WILL MERGE
+  // VISIT & REWARDS"*. This is the third time the answer has moved —
+  // MESITA-1884 folded Rewards in on *"should i separate visits and rewards
+  // into two?? i don't think so"*, MESITA-1928 split it back out — and 1928's
+  // argument was about WHERE Rewards sits, not that it owed a second card: a
+  // reward is earned by closing a bill AT A TABLE and by nothing else, which
+  // is an argument for putting it beside Visits, and one step further is
+  // putting it INSIDE.
+  //
+  // THE KEY STAYS `visits`, on the `pay` precedent above: it is the tab, the
+  // address and the fixture spelling. `rewards` leaves the CATALOGUE, keeps
+  // its VIEW — the strategy dial must stay settable in exactly one place, or
+  // two screens disagree about which dial is live (see `VisitsView`).
   "visits",
-  "rewards",
   "orders",
   "reservations",
   // "Payments" is the label; `pay` stays the KEY, because the address, the tab
@@ -44,12 +56,16 @@ export const PRODUCT_KEYS = [
   "pos",
   "credits",
   "capital",
-  // KEY AND LABEL PART WAYS AGAIN, on the `pay` precedent: the key is the
-  // channel (`whatsapp`, `phone`) and the name is the thing you buy, which is
-  // a BOT on that channel. A key called `whatsappBot` would be the product's
-  // current shape frozen into an address.
-  "whatsapp",
-  "phone",
+  // ONE PRODUCT, NOT TWO (MESITA-1951). Pato: *"Mesita AI Line instead"*,
+  // arriving over `whatsapp` and `phone` at once. A venue has ONE number and
+  // in Mexico that number is its WhatsApp, so two cards priced the same thing
+  // twice and left an operator asking which one they were buying. A LINE is
+  // the subject both channels share.
+  //
+  // The KEY is `line` and the name is what you buy, on `pay`'s precedent: the
+  // channel does not belong in the key, because the channel is the part that
+  // will grow.
+  "line",
   "intelligence",
 ] as const;
 export type ProductKey = (typeof PRODUCT_KEYS)[number];
@@ -62,8 +78,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   website: "Website",
   customers: "Customers",
   ads: "Ads",
-  visits: "Visits",
-  rewards: "Rewards",
+  visits: "Visit Rewards",
   orders: "Orders",
   reservations: "Reservations",
   pay: "Payments",
@@ -71,7 +86,6 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   pos: "POS",
   credits: "Credits",
   capital: "Capital",
-  whatsapp: "WhatsApp Bot",
-  phone: "Phone Bot",
+  line: "AI Line",
   intelligence: "Intelligence",
 };

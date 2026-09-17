@@ -130,22 +130,23 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "visits",
-    name: "Mesita Visits",
+    name: "Mesita Visit Rewards",
+    // ONE SENTENCE FOR BOTH HALVES (MESITA-1953), in the order they happen:
+    // the bill closes, then a slice goes back. The old pair said them
+    // separately and the second one ("you set the rungs, you set the price")
+    // was the dial's own sentence — it belongs on the dial, which is where
+    // Rewards' view still is.
     blurb:
-      "Close the bill at the table, and keep every visit on the record — cash or card, it settles the same way.",
+      "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you set what comes back.",
     tab: "visits",
     needsPartner: true,
+    // PARTNER-GATED, NOT `visitRewards`. Visits is included with the
+    // Membership and has no per-place switch; only the rewards half has one.
+    // Reading the merged card off that toggle would print "Off" for a place
+    // whose visits work fine — a card stating a fact that is not true, which
+    // is the one thing this grid may not do. The card says the product is
+    // available; the dial says how much comes back.
     atPlace: null,
-    soon: null,
-  },
-  {
-    key: "rewards",
-    name: "Mesita Rewards",
-    blurb:
-      "Give a slice of the bill back to the guests who keep showing up — you set the rungs, and you set the price.",
-    tab: "rewards",
-    needsPartner: true,
-    atPlace: (p) => p.visitRewards,
     soon: null,
   },
   {
@@ -245,24 +246,18 @@ const SPECS: readonly ProductSpec[] = [
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
   {
-    key: "whatsapp",
-    name: "Mesita WhatsApp Bot",
+    key: "line",
+    name: "Mesita AI Line",
+    // IT ANSWERS A NUMBER, NOT AN APP, and the blurb has to say that or the
+    // card reads as a WhatsApp widget. The two things it replaced were named
+    // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
+    // what made them look like two products; one line, two ways in.
     blurb:
-      "Answers the hours, the menu and the booking on WhatsApp, so nobody on the floor has to stop and type.",
+      "Answers your number — a call or a WhatsApp — with the hours, the menu and the booking, so the floor never stops to pick up.",
     tab: null,
     needsPartner: false,
     atPlace: null,
     soon: "Nothing is answering yet.",
-  },
-  {
-    key: "phone",
-    name: "Mesita Phone Bot",
-    blurb:
-      "Picks up when the floor is full and takes the booking, instead of letting the line ring out.",
-    tab: null,
-    needsPartner: false,
-    atPlace: null,
-    soon: "Nothing is picking up yet.",
   },
   {
     key: "intelligence",

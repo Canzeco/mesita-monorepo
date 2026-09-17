@@ -14,7 +14,7 @@
 // destination is written down per product in `lib/products.ts` instead of cast
 // out of the key. Customers is a page, Payments is the sub-step `products/pay`,
 // and every Soon product but Capital has nothing at all to open.
-// THE ONLY LUCIDE LEFT ON THIS PAGE. The sixteen product marks are emoji
+// THE ONLY LUCIDE LEFT ON THIS PAGE. Every product mark is an emoji
 // (MESITA-1952); the arrow and the lock are structure, not identity.
 import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
@@ -36,11 +36,11 @@ import { cn } from "@/lib/utils";
 // had gone grey: *"add fuckjing emojis or something"*.
 //
 // The lucide glyphs came across from `web-business` and the TINTS did not,
-// because this app has no hues to draw them in (MESITA-1934) — which left
-// sixteen grey squares holding sixteen grey marks, the tint table with its
-// only job removed. An emoji carries its own colour and costs the palette
-// nothing: no hue to allocate, nothing for a seventeenth product to run out
-// of, and the square stays one muted wash on every card.
+// because this app has no hues to draw them in (MESITA-1934) — which left a
+// grid of grey squares holding grey marks, the tint table with its only job
+// removed. An emoji carries its own colour and costs the palette nothing: no
+// hue to allocate, nothing for the next product to run out of, and the square
+// stays one muted wash on every card.
 //
 // THE CHIP STILL DOES NOT BRIGHTEN WHEN A PRODUCT IS ON. State is the badge's
 // fact, and Badges.tsx's first line is that there is never a second badge for
@@ -52,12 +52,11 @@ const PRODUCT_MARK: Record<ProductKey, string> = {
   customers: "\u{1F465}",
   ads: "\u{1F4E3}",
   visits: "\u{1F39F}\u{FE0F}",
-  rewards: "\u{1F381}",
   orders: "\u{1F6CD}\u{FE0F}",
   reservations: "\u{1F4C5}",
   pay: "\u{1F4B3}",
-  // THE READER, NOT A SECOND CARD: 📲 is the tap, which is the part of
-  // Terminal that is not Payments — never a second 💳 in the same grid.
+  // THE READER, NOT A SECOND CARD: 📲 is the tap, the part of Terminal that is
+  // not Payments — never a second 💳 in the same grid.
   terminal: "\u{1F4F2}",
   // THE ITEMS, the half of the counter Terminal is not: 🧾 is what was rung up
   // before anybody tapped anything.
@@ -67,8 +66,10 @@ const PRODUCT_MARK: Record<ProductKey, string> = {
   credits: "\u{1FA99}",
   // The BANK'S FRONT, the same mark the landing page gives Capital.
   capital: "\u{1F3E6}",
-  whatsapp: "\u{1F4AC}",
-  phone: "\u{1F4DE}",
+  // NOT A HANDSET AND NOT A CHAT BUBBLE (MESITA-1951): either one would make
+  // the card look like one channel's product again, which is the whole thing
+  // the merge undid. 🤖 is what the name now says out loud.
+  line: "\u{1F916}",
   intelligence: "\u{2728}",
 };
 export default function ProductsPage() {

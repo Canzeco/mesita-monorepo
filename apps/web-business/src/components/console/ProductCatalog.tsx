@@ -36,9 +36,7 @@
 //
 // A React component is not serializable across the server/client boundary, so
 // the page hands over plain data keyed by `ProductKey` and this file owns the
-// mark and the tint. (The marks are emoji now — strings, which WOULD cross
-// that boundary — and they stay here anyway: the look is one table or it is
-// sixteen.) That also keeps every product's look in ONE table: eight
+// mark and the tint. That also keeps every product's look in ONE table: eight
 // cards drifting into eight palettes is what a catalogue does if you let each
 // one carry its own colours.
 //
@@ -48,9 +46,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-// THE ONLY LUCIDE LEFT IS THE STATE CHIP'S (MESITA-1952). The sixteen product
-// marks are emoji in `LOOK` below; check / dash / lock stay drawn glyphs,
-// because state is a shape and shapes are what a chip can carry at 12px.
+// THE ONLY LUCIDE LEFT IS THE STATE CHIP'S (MESITA-1952). Every product mark
+// is an emoji in `LOOK` below; check / dash / lock stay drawn glyphs, because
+// state is a shape and a shape is what a chip can carry at 12px.
 import { Check, Lock, Minus, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -100,22 +98,21 @@ export type ProductCard = {
 /** THE MARK IS AN EMOJI NOW (MESITA-1952). Pato, at the catalogue: *"add
  *  fuckjing emojis or something"*.
  *
- *  MESITA-1936 took the sixteen tints away and made the GLYPH the whole of a
- *  product's identity — and then drew every glyph in the same ink as the
- *  sentence beneath it. Sixteen grey squares in a grid is a spreadsheet, and
- *  this is the screen where an operator picks what to buy.
+ *  MESITA-1934 took the tints away and made the GLYPH the whole of a product's
+ *  identity; MESITA-1936 brought that here. What it left is a grid of grey
+ *  squares holding grey marks — the tint table with its only job removed, on
+ *  the screen where an operator spends money.
  *
- *  An emoji brings its own colour WITHOUT bringing back a tint table: nobody
- *  has to allocate a hue, a seventeenth product cannot arrive to find the
- *  palette spent, and the wash stays the same muted square on every card. The
- *  device is already this app's — `lib/business/strategies.ts` names the three
- *  reward strategies ⭕ 🌿 ⚡, and `PlaceTagsPicker` draws every facet with one.
+ *  An emoji carries its own colour and costs the palette NOTHING: there is no
+ *  hue to allocate, a sixteenth product cannot arrive to find the palette
+ *  spent, and the wash stays the same muted square on every card — which is
+ *  the property the tint table was kept for. The device is already this app's:
+ *  `lib/business/strategies.ts` names the three reward strategies ⭕ 🌿 ⚡ and
+ *  `PlaceTagsPicker` draws every facet with one.
  *
  *  THE STATE CHIP KEEPS ITS LUCIDE GLYPHS. State is a shape, not a hue
  *  (MESITA-1936) — check, dash, lock — and an emoji beside an emoji is two
- *  marks competing to be the card's identity. `tint` keeps its name and its
- *  shape: it is still one wash for every product, which is the property that
- *  matters. */
+ *  marks competing to be the card's identity. */
 const LOOK: Record<ProductKey, { mark: string; tint: string }> = {
   profile: { mark: "\u{1F3EA}", tint: "bg-muted" },
   website: { mark: "\u{1F310}", tint: "bg-muted" },
@@ -128,18 +125,20 @@ const LOOK: Record<ProductKey, { mark: string; tint: string }> = {
   pay: { mark: "\u{1F4B3}", tint: "bg-muted" },
   // ONE MARK PER CARD, THE RULE THE GLYPH TABLE ALREADY LIVED BY. Terminal is
   // the TAP and POS is what was rung up before anybody tapped — 📲 and 🧾,
-  // never a second 💳, because the same mark on two cards in one grid is how
+  // never a second 💳, because one mark on two cards in the same grid is how
   // an operator learns to distrust both drawings.
   terminal: { mark: "\u{1F4F2}", tint: "bg-muted" },
   pos: { mark: "\u{1F9FE}", tint: "bg-muted" },
-  // A COIN, NOT A WALLET: Pay › Wallet is the guest's, and credits are a
-  // balance the place sold.
+  // A COIN, NOT A WALLET: Pay › Wallet is the guest's; credits are a balance
+  // the place sold.
   credits: { mark: "\u{1FA99}", tint: "bg-muted" },
   // The BANK'S FRONT, the same mark the landing page gives Capital
   // (MESITA-1929).
   capital: { mark: "\u{1F3E6}", tint: "bg-muted" },
-  whatsapp: { mark: "\u{1F4AC}", tint: "bg-muted" },
-  phone: { mark: "\u{1F4DE}", tint: "bg-muted" },
+  // NOT A HANDSET AND NOT A CHAT BUBBLE (MESITA-1951): either one would make
+  // the card look like one channel's product again, which is the whole thing
+  // the merge undid. 🤖 is what the name now says out loud.
+  line: { mark: "\u{1F916}", tint: "bg-muted" },
   intelligence: { mark: "\u{2728}", tint: "bg-muted" },
 };
 /** The state, as the operator reads it. One word where one will do — the
