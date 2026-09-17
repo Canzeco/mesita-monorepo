@@ -196,10 +196,30 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
  *  subject and `productRowHref` is the one function that knows which address
  *  each one actually has. Keying them by `PlaceRailView` would have forced the
  *  exceptions into a shape that does not fit them. */
+/** The products the rail may carry a row for: the ones that ARE place views,
+ *  plus Customers, which is a page.
+ *
+ *  IT IS NOT `ProductKey` ANY MORE (MESITA-1949). The catalogue names sixteen
+ *  products and nine of them have no address at all — Website, Ads, Terminal,
+ *  POS, the two bots, Intelligence, and Capital and Customers for their own
+ *  reasons. A rail row must land somewhere real (MESITA-1833), and MESITA-1900
+ *  deleted Terminal for being "the one row whose address was a SoonStrip", so
+ *  the rail carries a strict subset now and this type is the subset.
+ *
+ *  `Extract` KEEPS IT DERIVED AND KEEPS IT TYPE-ONLY. A hand-written union
+ *  would be a third list to drift, and importing `PLACE_TABS` as a VALUE here
+ *  would close a cycle — `place-tabs.ts` imports `PLACE_PAGES` from this file,
+ *  and a cycle in routing evaluates to `undefined`, which in a permission
+ *  matrix reads as "allowed". A type import is erased, so there is no edge.
+ *
+ *  What it buys: `{ kind: "product", product: "whatsapp" }` fails to compile
+ *  rather than resolving to `/places/<id>/undefined` with every check green. */
+export type RailProduct = Extract<ProductKey, PlaceTab> | "customers";
+
 export type RailRow =
   | { kind: "page"; target: PlacePage }
   | { kind: "place"; view: PlaceRailView }
-  | { kind: "product"; product: ProductKey };
+  | { kind: "product"; product: RailProduct };
 
 /** The place views that keep a rail row OF THEIR OWN. NOT `PLACE_TABS` —
  *  that is the full matrix of what a place HAS; this is what the column LISTS
@@ -373,15 +393,19 @@ export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
 // selected — and what to do when none is (the flat twin, which renders the
 // next step rather than forwarding nowhere).
 export function productRowHref(
-  product: ProductKey,
+  product: RailProduct,
   placeId: string,
   placeHref: (tab: PlaceTab) => string,
 ): string {
   if (product === "customers") return placePageHref(placeId, "customers");
-  // Every other product IS a place tab, and shares its spelling with one —
-  // `PLACE_TABS` and `PRODUCT_KEYS` agree on all seven by construction, which
-  // `console-routes.test.ts` asserts in both directions rather than trusting.
-  return placeHref(product as PlaceTab);
+  // AND THE CAST IS GONE (MESITA-1949). It read `product as PlaceTab` and was
+  // true by construction while `PLACE_TABS` ⊇ `PRODUCT_KEYS`; nine of the
+  // sixteen products have no view now, so construction stopped holding. The
+  // narrowing above leaves `RailProduct` minus "customers", which IS a
+  // `PlaceTab` by the `Extract` that defines it — so the compiler checks what
+  // `console-routes.test.ts` used to assert, and a product with no view can
+  // never reach this line.
+  return placeHref(product);
 }
 
 /** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
