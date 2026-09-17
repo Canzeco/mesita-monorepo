@@ -150,11 +150,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {/* Desktop rail. ONE WIDTH (MESITA-1905): the chips-only `w-16` went
-            with the Collapse control that was its only door, and with it the
-            width transition — a rail that can only be `w-60` has nothing to
-            animate between. */}
-        <div className="hidden w-60 shrink-0 lg:block">{rail}</div>
+        {/* DESKTOP RAIL — `lg:block`, the one Pato is looking at. ONE WIDTH
+            (MESITA-1905): the chips-only `w-16` went with the Collapse control
+            that was its only door, and with it the width transition — a rail
+            that can only be one width has nothing to animate between.
+            
+            `w-60` → `w-68`, 240px → 272px (MESITA-1961). Pato: *"a bit more
+            horizontally larger, just a bit"*. MESITA-1960 put that +32px on
+            the MOBILE DRAWER below by mistake — the two containers render the
+            same `rail` and nothing but a comment told them apart, so the
+            change shipped green and moved nothing an operator could see.
+            A width edit in this file MUST name its breakpoint and be measured
+            at that breakpoint. */}
+        <div className="hidden w-68 shrink-0 lg:block">{rail}</div>
 
         {/* Mobile drawer. */}
         {drawer && (
@@ -165,12 +173,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setDrawer(false)}
               className="absolute inset-0 bg-black/50"
             />
-            {/* ONE STEP WIDER (MESITA-1960). Pato: *"a bit more horizontally
-                larger, just a bit"* — w-64 → w-72, 256px → 288px, one step on
-                the scale rather than a redesign. The rows went to `text-sm` in
-                MESITA-1958 and the longest label is now "Customer Catalog",
-                which fit 256px with nothing to spare. */}
-            <div className="relative z-10 w-72">{rail}</div>
+            {/* BACK TO `w-64` (MESITA-1961). MESITA-1960's +32px landed here
+                by mistake and 288px is the wrong answer on a phone: on a 375px
+                screen that is 77% of the viewport, for a sheet whose whole job
+                is to leave the page visible behind it. This element was never
+                the one under discussion. */}
+            <div className="relative z-10 w-64">{rail}</div>
           </div>
         )}
 
