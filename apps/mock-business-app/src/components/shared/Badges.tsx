@@ -37,7 +37,7 @@ const BASE =
 // the product names out loud, and the one thing that says "this destroys
 // something".
 const TONES: Record<string, string> = {
-  on: "bg-foreground text-background",
+  on: "bg-foreground text-paper",
   off: "border-border text-muted-foreground border",
   soon: "border-border text-muted-foreground border border-dashed",
   neutral: "bg-muted text-muted-foreground",

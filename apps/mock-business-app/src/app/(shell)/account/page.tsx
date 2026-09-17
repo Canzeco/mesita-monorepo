@@ -57,7 +57,7 @@ export default function AccountPage() {
             aria-hidden
             className={cn(
               SCOPE_CHIP_CLASS,
-              "bg-foreground text-background flex items-center justify-center",
+              "bg-foreground text-paper flex items-center justify-center",
             )}
           >
             <UserRound className="h-5 w-5" />

@@ -24,7 +24,10 @@ export function PlaceHeading({
           // eslint-disable-next-line @next/next/no-img-element -- a data URI
           <img src={place.photoUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="bg-muted block h-full w-full" />
+          // A place with no photo: the fill is the page's own grey, so on the
+          // heading — which sits on the page, not in a card — it needs the
+          // hairline to read as an empty slot rather than as nothing at all.
+          <span className="bg-muted border-border block h-full w-full border" />
         )}
       </span>
       <div className="min-w-0 flex-1">
