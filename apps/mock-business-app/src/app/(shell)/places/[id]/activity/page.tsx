@@ -1,6 +1,6 @@
 "use client";
 
-// Activity — THE LEDGER BOOK. Eight logs, and a feed over the top of them.
+// Activity — THE LEDGER BOOK. Eight logs, one table, and a rail of types.
 //
 // Pato, 2026-09-16: *"activity is like the centralized passive feed of
 // everything — you configure in products and then in activity you observe the
@@ -8,35 +8,43 @@
 // actual ticket of each: views, visits, orders, reservations, payments,
 // credits, settings. Certain events might produce events in multiple logs."*
 //
-// WHAT THIS PAGE WAS: one flat list of one-liners, read out of a hand-authored
-// `ACTIVITY` fixture that had never heard of a single visit, order or payout in
-// this console. It could tell you a payout happened. It could not show you the
-// payout.
+// `mock/logs.ts` projects every record at this place into eight logs, and this
+// page renders them as TABLES — the ticket, with its own columns — plus the
+// union of exactly those rows under "Everything". The union is derived from
+// the logs, so this screen has no way to contradict itself.
 //
-// WHAT IT IS: `mock/logs.ts` projects every record at this place into eight
-// logs, and this page renders all eight as TABLES — the ticket, with its own
-// columns — under a feed that is the union of exactly those rows. The feed and
-// the tables are the same data at two resolutions, so this screen has no way to
-// contradict itself.
+// ONE TABLE AT A TIME (MESITA-1942). Pato, with the old page on screen:
+// *"remove the stupid header here, just the direct list with an horizontal
+// catalog of types of events to select and see the table, no more. clean
+// tables."* What went:
 //
-// THE FAN-OUT IS DRAWN, not described. A settled visit writes a Payments row
-// per tender and a Credits row for what came off the bill, so the visit carries
-// a "Wrote to" column and every derived row carries "From". Follow a $1,799.97
-// visit down the page and you find its card tender in Payments and its credits
-// in Credits, adding to that same total. Four of the eight logs fan out and
-// four do not — Views, Reservations, Reviews and Settings are self-contained,
-// which is what stops the fan-out reading as a rule.
+//   · FOUR TILES — Events shown, Money in, Money out, Newest. Three of them
+//     summed a log the page then showed six rows of, so the number and the
+//     list under it were never the same thing. Money in and Money out are
+//     Payments' own subject and Payments is one chip away with every row in it.
+//   · EIGHT STACKED CARDS, each with a title, a sentence of description and a
+//     "Latest 6 of 41" footnote. Eight capped tables is ninety rows of scroll
+//     and nothing readable; the cap existed only because they were all on
+//     screen at once. One selected log is uncapped — a log you asked for shows
+//     what it holds.
+//   · THE FEED as a list of one-liners over the top of the tables. It is the
+//     "Everything" chip now, drawn as a table like everything else, because a
+//     feed and a table of the same rows is the same screen twice.
 //
-// THE PRODUCT PAGES KEEP THEIR ACTIVITY HALF and are the full archive; each log
-// here is capped and names the screen that holds the rest. Two placements, one
-// source — the duplication this page used to have was two SOURCES, which is the
-// only kind that can drift.
+// THE PLACE HEADING STAYS. It is the page's `h1` and every view in the console
+// wears it; deleting it here alone would make Activity the one screen that
+// does not say which place you are looking at.
+//
+// THE PRODUCT PAGES KEEP THEIR ACTIVITY HALF and are the full archive; the
+// rail's right side links the selected log's home. Two placements, one source
+// — the duplication this page used to have was two SOURCES, which is the only
+// kind that can drift.
+import { useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Download } from "lucide-react";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
-import { Section } from "@/components/shared/Section";
-import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
 import { Table, type Column } from "@/components/shared/Table";
@@ -60,19 +68,24 @@ import {
 import { useMock } from "@/mock/MockStore";
 import { placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
-import { dayTime, money, since, stars } from "@/lib/format";
+import { csvDay, csvFilename, csvMoney, csvWhen, downloadCsv, toCsv } from "@/lib/csv";
+import { dayTime, money, stars } from "@/lib/format";
 import { TENDER_LABEL } from "@/lib/tender";
-import { QUIET_LINK_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS, QUIET_LINK_BUTTON_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
-/** HOW MANY ROWS A LOG SHOWS HERE. Eight uncapped tables is ninety rows of
- *  scroll and nothing readable; this page is where you SEE that a log has
- *  something in it, and the product page is where you read all of it. */
-const LOG_ROWS = 6;
+/** A COLUMN THAT CAN BE EXPORTED. `text` is required here and optional in the
+ *  shared `Column`, so the export cannot silently ship a blank column on this
+ *  page and no other table in the console has to grow one to compile. */
+type LogColumn<T> = Column<T> & { text: (row: T) => string };
 
-/** The feed is longer than a log, because interleaving is its whole job: a
- *  dozen rows is where a booking, a visit and the payout it produced start
- *  landing in the same window. */
-const FEED_ROWS = 14;
+/** The rail: the union first, then the eight in `LOG_KEYS`' order, so a ninth
+ *  log cannot join the book and be left off this page by forgetting — the same
+ *  law `RAIL_ROWS` holds for the rail. */
+const TABS = ["everything", ...LOG_KEYS] as const;
+type Tab = (typeof TABS)[number];
+
+const TAB_LABEL: Record<Tab, string> = { everything: "Everything", ...LOG_LABEL };
 
 /** WHO OWNS THE FULL LOG. Null where nothing does — there is no product called
  *  Views, and a link to a screen that does not exist is worse than no link. */
@@ -98,11 +111,11 @@ const LOG_HOME_LABEL: Record<LogKey, string> = {
   settings: "this place's Settings",
 };
 
-/** WHAT WOULD PUT A ROW HERE. A log's description says what the log IS, and an
- *  empty card that repeats it back says the same sentence twice and answers
- *  the one question the reader actually has — "so what fills this?" — with
- *  nothing. */
-const LOG_EMPTY_HINT: Record<LogKey, string> = {
+/** WHAT WOULD PUT A ROW HERE. The chip already says which log you are looking
+ *  at, so the empty state's job is the one question left — "so what fills
+ *  this?" */
+const TAB_EMPTY_HINT: Record<Tab, string> = {
+  everything: "Activity starts the first time somebody looks at this place.",
   views: "The first row lands the moment somebody opens this place in the app. There is nothing to switch on.",
   visits: "The first row lands when a guest closes a bill here with Mesita.",
   orders: "The first row lands the moment a guest pays for a pickup or delivery order.",
@@ -113,23 +126,11 @@ const LOG_EMPTY_HINT: Record<LogKey, string> = {
   settings: "The first row lands the next time somebody on the team changes something about this place.",
 };
 
-const LOG_DESCRIPTION: Record<LogKey, string> = {
-  views:
-    "Somebody looked at this place. The only log nothing has to be switched on to collect — and the only one that never writes anywhere else.",
-  visits: "A bill closed at the table. Settling one writes into Payments and Credits.",
-  orders: "Pickup and delivery. Prepaid, so placing one writes into Payments.",
-  reservations:
-    "Tables your provider is holding — soonest first, then the ones that have passed. The only log here that is not newest-first, because a bookings list leads with the next table to seat.",
-  reviews: "Written on Mesita or on Google. A Google review cannot be answered from inside Mesita.",
-  payments: "Every movement of money, in or out. Almost every row here was caused by something above.",
-  credits: "Credit minted when a guest buys it, and spent when it comes off a bill.",
-  settings: "What the house changed. The one log a guest never writes.",
-};
-
 export default function PlaceActivityPage() {
   const place = useHeldPlaceOrNull();
   const { pages } = usePlaceScope();
   const { scenario, now } = useMock();
+  const [tab, setTab] = useState<Tab>("everything");
   // THE GATE THESE PAGES WERE MISSING. They are static segments beside
   // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
   // or the scenario flipped to a failed read while one of them was open, used
@@ -137,187 +138,95 @@ export default function PlaceActivityPage() {
   // the first `place.` — a guard below a dereference is not a guard.
   if (!place) return <NotHeld />;
   // AND HELD AS WHAT (MESITA-1933). `NotHeld` above answers "is this place
-  // held"; it has never answered the role, and until now nothing did for this
-  // page — the rail's product rows were running `tabsForAccess` and that was
-  // the whole console's role check. The rows are gone, so the gate is here.
-  // `notFound`, like `PlaceTabGate`: a page reachable by typing its address is
-  // a page, whatever the rail chose to draw.
+  // held"; it has never answered the role. `notFound`, like `PlaceTabGate`: a
+  // page reachable by typing its address is a page, whatever the rail drew.
   if (!pages.includes("activity")) notFound();
 
   const book = buildLedgers(place.id, scenario, now);
-  const feed = book.everything;
+  // ONE CAST, and the mapped type on `TAB_SPECS` is what pays for it: each
+  // entry's columns were proved against that tab's own row type when the
+  // record was written, and TypeScript cannot carry that proof through a `tab`
+  // that is still the union.
+  const spec = TAB_SPECS[tab] as { columns: LogColumn<LogRow>[]; minWidth: number };
+  const rows = book[tab] as LogRow[];
+  const home = tab === "everything" ? null : LOG_HOME[tab]?.(place.id) ?? null;
 
-  const moneyIn = book.payments.filter((p) => p.direction === "in");
-  const moneyOut = book.payments.filter((p) => p.direction === "out");
-  const sum = (rows: { amountCents: number }[]) =>
-    rows.reduce((n, r) => n + r.amountCents, 0);
+  const exportCsv = () =>
+    downloadCsv(
+      csvFilename([place.name, TAB_LABEL[tab], csvDay(now)]),
+      toCsv(spec.columns, rows),
+    );
 
   return (
     <>
       <PlaceHeading place={place} view="Activity" />
 
-      <Tiles
-        tiles={[
-          { label: "Events shown", value: feed.length || null },
-          {
-            label: "Money in",
-            value: moneyIn.length ? money(sum(moneyIn)) : null,
-            // IT SAYS WHAT IT COUNTED, not where the rows are. These sum the
-            // WHOLE Payments log, and the table below shows six of it — so
-            // "of the payments below" would have named a much smaller list
-            // than the number it sits under. Naming the count is the same rule
-            // every total in this console follows, applied to a log that is
-            // complete for the place but capped on the page.
-            // NO HINT UNDER A DASH. "Across 0 payments" beneath a value that
-            // is not a number reads as a measurement of nothing.
-            hint: moneyIn.length ? `Across ${moneyIn.length} payments` : undefined,
-          },
-          {
-            label: "Money out",
-            value: moneyOut.length ? money(sum(moneyOut)) : null,
-            hint: moneyOut.length ? `Across ${moneyOut.length} payouts` : undefined,
-          },
-          { label: "Newest", value: feed[0] ? since(feed[0].at, now) : null },
-        ]}
-      />
-
-      <Section
-        title="Everything that happened here"
-        description="Newest first, across all eight logs, up to right now. One thing a guest does can land in three of them — follow a row down to the logs and you find the pieces it wrote."
-      >
-        {feed.length === 0 ? (
-          <EmptyState
-            title="Nothing yet"
-            hint="Activity starts the first time somebody looks at this place."
-          />
-        ) : (
-          <>
-            <ol className="flex flex-col">
-              {feed.slice(0, FEED_ROWS).map((row) => (
-                <FeedRow key={row.id} row={row} now={now} />
-              ))}
-            </ol>
-            <Capped shown={Math.min(FEED_ROWS, feed.length)} total={feed.length} tail="Every one of them is in a log below. Bookings still ahead of now are not here — they are in Reservations." />
-          </>
-        )}
-      </Section>
-
-      {/* THE EIGHT COME OFF ONE ARRAY, in `LOG_KEYS`' order, so a ninth log
-          cannot be added to the book and left off this page by forgetting —
-          the same law `RAIL_ROWS` holds for the rail. */}
-      {LOG_KEYS.map((key) => {
-        // ONE CAST, and the mapped type on `LOG_SPECS` is what pays for it:
-        // each entry's columns were proved against that key's own row type
-        // when the record was written, and TypeScript simply cannot carry that
-        // proof through a `key` that is still the union.
-        const spec = LOG_SPECS[key] as { columns: Column<LogRow>[]; minWidth: number };
-        return <Log key={key} log={key} book={book} placeId={place.id} {...spec} />;
-      })}
-    </>
-  );
-}
-
-/** One log's card. Generic over the row type, so every table below declares
- *  columns against its OWN record and none of them degrade to title/detail —
- *  which is the difference between a ticket and a notification. */
-function Log<K extends LogKey>({
-  log,
-  book,
-  placeId,
-  columns,
-  minWidth,
-}: {
-  log: K;
-  book: LedgerBook;
-  placeId: string;
-  columns: Column<LedgerBook[K][number]>[];
-  minWidth: number;
-}) {
-  const rows = book[log] as LedgerBook[K][number][];
-  const href = LOG_HOME[log]?.(placeId) ?? null;
-  return (
-    <Section
-      title={LOG_LABEL[log]}
-      description={LOG_DESCRIPTION[log]}
-      right={
-        href && rows.length > 0 ? (
-          <Link href={href} className={QUIET_LINK_BUTTON_CLASS}>
-            Open {LOG_HOME_LABEL[log]}
-          </Link>
-        ) : undefined
-      }
-    >
-      <Table
-        columns={columns}
-        rows={rows.slice(0, LOG_ROWS)}
-        minWidth={minWidth}
-        empty={<EmptyState title={`No ${LOG_LABEL[log].toLowerCase()} yet`} hint={LOG_EMPTY_HINT[log]} />}
-      />
-      {rows.length > LOG_ROWS && (
-        <Capped
-          shown={LOG_ROWS}
-          total={rows.length}
-          tail={href ? `The rest are in ${LOG_HOME_LABEL[log]}.` : "This log has no page of its own yet."}
-        />
-      )}
-    </Section>
-  );
-}
-
-/** WHAT THIS CARD IS NOT SHOWING YOU. A truncated list that does not say it is
- *  truncated is the same failure as a total that does not say its scope. */
-function Capped({ shown, total, tail }: { shown: number; total: number; tail: string }) {
-  return (
-    <p className="text-muted-foreground text-[11px] leading-snug">
-      Latest {shown} of {total}. {tail}
-    </p>
-  );
-}
-
-function FeedRow({ row, now }: { row: LogRow; now: Date }) {
-  return (
-    <li className="border-border flex items-center gap-3 border-b py-2.5 last:border-0">
-      {/* FIXED WIDTH ONLY WHERE THERE IS WIDTH TO FIX. A 96px lane makes the
-          log names line up into a readable column on a wide card; on a 375px
-          phone it is a quarter of the row spent on a word that is already
-          short, and it truncates the titles beside it to six characters. */}
-      <Badge className="shrink-0 sm:w-24 sm:justify-center">{LOG_LABEL[row.log]}</Badge>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium">{row.title}</p>
-        <p className="text-muted-foreground truncate text-[11px]">
-          {row.detail}
-          {/* THE JOIN, SAID IN THE FEED. Without it a card tender and the visit
-              that produced it are two unrelated lines a minute apart. */}
-          {row.origin && <span> · from {row.origin.label}</span>}
-        </p>
-      </div>
-      {row.wroteTo.length > 0 && (
-        <div className="hidden shrink-0 gap-1 sm:flex">
-          {row.wroteTo.map((key) => (
-            <Badge key={key} tone="off">
-              {LOG_LABEL[key]}
-            </Badge>
-          ))}
+      {/* THE CATALOGUE OF TYPES. One row, horizontal, scrolling on its own
+          axis below lg — nine chips do not wrap into three ragged lines, and a
+          rail that wraps stops reading as one control. The count rides IN the
+          chip: picking a log you can already see is empty is a click you
+          should not have to spend. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="scrollbar-none -mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 py-1">
+          {TABS.map((key) => {
+            const on = key === tab;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                aria-pressed={on}
+                className={cn(on ? PILL_BUTTON_CLASS : GHOST_PILL_BUTTON_CLASS, "shrink-0")}
+              >
+                {TAB_LABEL[key]}
+                <span className="tabular-nums opacity-60">{(book[key] as LogRow[]).length}</span>
+              </button>
+            );
+          })}
         </div>
-      )}
-      {row.amountCents !== null && (
-        <p className="text-[13px] font-semibold tabular-nums">{money(row.amountCents)}</p>
-      )}
-      <p className={`${TINY_LABEL_CLASS} w-16 shrink-0 text-right`}>{since(row.at, now)}</p>
-    </li>
+
+        <div className="flex shrink-0 items-center gap-4">
+          {home && rows.length > 0 && (
+            <Link href={home} className={QUIET_LINK_BUTTON_CLASS}>
+              Open {LOG_HOME_LABEL[tab as LogKey]}
+            </Link>
+          )}
+          {/* EXPORTS WHAT IS ON SCREEN — this log, every row of it, the columns
+              you are looking at. An export button that quietly hands over a
+              different shape than the table above it is worse than none. */}
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={rows.length === 0}
+            className={GHOST_PILL_BUTTON_CLASS}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      <Table
+        columns={spec.columns}
+        rows={rows}
+        minWidth={spec.minWidth}
+        empty={<EmptyState title="Nothing here yet" hint={TAB_EMPTY_HINT[tab]} />}
+      />
+    </>
   );
 }
 
 // ── THE COLUMNS ─────────────────────────────────────────────────────────────
 //
 // `When` leads every one of them, because these are logs: the row's identity is
-// the moment it happened, and eight tables that each start somewhere else make
-// the page eight unrelated screens.
+// the moment it happened, and nine tables that each start somewhere else make
+// the page nine unrelated screens.
 
-const when = <T extends { at: string }>(): Column<T> => ({
+const when = <T extends { at: string }>(): LogColumn<T> => ({
   key: "at",
   head: "When",
   cell: (r) => <span className="text-muted-foreground whitespace-nowrap">{dayTime(r.at)}</span>,
+  text: (r) => csvWhen(r.at),
 });
 
 /** The consequences, as chips. Empty means this row caused nothing — printed
@@ -335,6 +244,8 @@ function WroteTo({ keys }: { keys: LogKey[] }) {
   );
 }
 
+const wroteToText = (keys: LogKey[]) => keys.map((k) => LOG_LABEL[k]).join(" + ");
+
 /** Where a derived row came from. A source row is its own origin, which the
  *  dash says. */
 function From({ row }: { row: LogRow }) {
@@ -342,9 +253,59 @@ function From({ row }: { row: LogRow }) {
   return <span className="text-muted-foreground">{row.origin.label}</span>;
 }
 
-const VIEW_COLUMNS: Column<ViewLogRow>[] = [
+/** THE UNION'S OWN COLUMNS. It cannot borrow a log's — it holds all eight row
+ *  types at once — so it prints the two lines every `LogBase` owes plus the
+ *  log it came from, and leaves the ticket to the chip that shows it. */
+const EVERY_COLUMNS: LogColumn<LogRow>[] = [
   when(),
-  { key: "surface", head: "Surface", cell: (r) => <Badge>{r.view.surface}</Badge> },
+  {
+    key: "log",
+    head: "Log",
+    cell: (r) => <Badge>{LOG_LABEL[r.log]}</Badge>,
+    text: (r) => LOG_LABEL[r.log],
+  },
+  {
+    key: "what",
+    head: "What",
+    cell: (r) => <span className="font-medium whitespace-nowrap">{r.title}</span>,
+    text: (r) => r.title,
+  },
+  {
+    key: "detail",
+    head: "Detail",
+    className: "w-full",
+    // THE JOIN, SAID IN THE UNION. Without it a card tender and the visit that
+    // produced it are two unrelated rows a minute apart.
+    cell: (r) => (
+      <span className="text-muted-foreground">
+        {r.detail}
+        {r.origin && <span> · from {r.origin.label}</span>}
+      </span>
+    ),
+    text: (r) => (r.origin ? `${r.detail} · from ${r.origin.label}` : r.detail),
+  },
+  {
+    key: "amount",
+    head: "Amount",
+    align: "right",
+    cell: (r) =>
+      r.amountCents === null ? (
+        <span className="text-muted-foreground">—</span>
+      ) : (
+        <span className="font-semibold">{money(r.amountCents)}</span>
+      ),
+    text: (r) => csvMoney(r.amountCents),
+  },
+];
+
+const VIEW_COLUMNS: LogColumn<ViewLogRow>[] = [
+  when(),
+  {
+    key: "surface",
+    head: "Surface",
+    cell: (r) => <Badge>{r.view.surface}</Badge>,
+    text: (r) => r.view.surface,
+  },
   {
     key: "who",
     head: "Who",
@@ -354,17 +315,40 @@ const VIEW_COLUMNS: Column<ViewLogRow>[] = [
       ) : (
         <span className="text-muted-foreground">Signed out</span>
       ),
+    text: (r) => r.view.guest ?? "Signed out",
   },
-  { key: "outcome", head: "What they did", cell: (r) => r.detail.split(" · ")[1] },
+  {
+    key: "outcome",
+    head: "What they did",
+    cell: (r) => r.detail.split(" · ")[1],
+    text: (r) => r.detail.split(" · ")[1] ?? "",
+  },
 ];
 
 const VISIT_STATE_TONE = { settled: "on", open: "soon", voided: "bad" } as const;
 
-const VISIT_COLUMNS: Column<VisitLogRow>[] = [
+const VISIT_COLUMNS: LogColumn<VisitLogRow>[] = [
   when(),
-  { key: "guest", head: "Guest", cell: (r) => <span className="font-medium">{r.visit.guest}</span> },
-  { key: "reward", head: "Reward", align: "right", cell: (r) => (r.visit.rewardCents ? money(r.visit.rewardCents) : "—") },
-  { key: "credits", head: "Credits", align: "right", cell: (r) => (r.visit.creditsCents ? money(r.visit.creditsCents) : "—") },
+  {
+    key: "guest",
+    head: "Guest",
+    cell: (r) => <span className="font-medium">{r.visit.guest}</span>,
+    text: (r) => r.visit.guest,
+  },
+  {
+    key: "reward",
+    head: "Reward",
+    align: "right",
+    cell: (r) => (r.visit.rewardCents ? money(r.visit.rewardCents) : "—"),
+    text: (r) => csvMoney(r.visit.rewardCents || null),
+  },
+  {
+    key: "credits",
+    head: "Credits",
+    align: "right",
+    cell: (r) => (r.visit.creditsCents ? money(r.visit.creditsCents) : "—"),
+    text: (r) => csvMoney(r.visit.creditsCents || null),
+  },
   {
     key: "tenders",
     head: "Paid with",
@@ -376,10 +360,27 @@ const VISIT_COLUMNS: Column<VisitLogRow>[] = [
           {r.visit.tenders.map((t) => TENDER_LABEL[t.method]).join(" + ")}
         </span>
       ),
+    text: (r) => r.visit.tenders.map((t) => TENDER_LABEL[t.method]).join(" + "),
   },
-  { key: "total", head: "Total", align: "right", cell: (r) => <span className="font-semibold">{money(r.visit.totalCents)}</span> },
-  { key: "state", head: "State", cell: (r) => <Badge tone={VISIT_STATE_TONE[r.visit.state]}>{r.visit.state}</Badge> },
-  { key: "wrote", head: "Wrote to", cell: (r) => <WroteTo keys={r.wroteTo} /> },
+  {
+    key: "total",
+    head: "Total",
+    align: "right",
+    cell: (r) => <span className="font-semibold">{money(r.visit.totalCents)}</span>,
+    text: (r) => csvMoney(r.visit.totalCents),
+  },
+  {
+    key: "state",
+    head: "State",
+    cell: (r) => <Badge tone={VISIT_STATE_TONE[r.visit.state]}>{r.visit.state}</Badge>,
+    text: (r) => r.visit.state,
+  },
+  {
+    key: "wrote",
+    head: "Wrote to",
+    cell: (r) => <WroteTo keys={r.wroteTo} />,
+    text: (r) => wroteToText(r.wroteTo),
+  },
 ];
 
 const ORDER_STATE_TONE = {
@@ -390,14 +391,46 @@ const ORDER_STATE_TONE = {
   canceled: "bad",
 } as const;
 
-const ORDER_COLUMNS: Column<OrderLogRow>[] = [
+const ORDER_COLUMNS: LogColumn<OrderLogRow>[] = [
   when(),
-  { key: "guest", head: "Guest", cell: (r) => <span className="font-medium">{r.order.guest}</span> },
-  { key: "channel", head: "Channel", cell: (r) => <Badge>{r.order.channel}</Badge> },
-  { key: "items", head: "Items", align: "right", cell: (r) => r.order.items },
-  { key: "total", head: "Paid", align: "right", cell: (r) => <span className="font-semibold">{money(r.order.totalCents)}</span> },
-  { key: "state", head: "State", cell: (r) => <Badge tone={ORDER_STATE_TONE[r.order.state]}>{r.order.state}</Badge> },
-  { key: "wrote", head: "Wrote to", cell: (r) => <WroteTo keys={r.wroteTo} /> },
+  {
+    key: "guest",
+    head: "Guest",
+    cell: (r) => <span className="font-medium">{r.order.guest}</span>,
+    text: (r) => r.order.guest,
+  },
+  {
+    key: "channel",
+    head: "Channel",
+    cell: (r) => <Badge>{r.order.channel}</Badge>,
+    text: (r) => r.order.channel,
+  },
+  {
+    key: "items",
+    head: "Items",
+    align: "right",
+    cell: (r) => r.order.items,
+    text: (r) => String(r.order.items),
+  },
+  {
+    key: "total",
+    head: "Paid",
+    align: "right",
+    cell: (r) => <span className="font-semibold">{money(r.order.totalCents)}</span>,
+    text: (r) => csvMoney(r.order.totalCents),
+  },
+  {
+    key: "state",
+    head: "State",
+    cell: (r) => <Badge tone={ORDER_STATE_TONE[r.order.state]}>{r.order.state}</Badge>,
+    text: (r) => r.order.state,
+  },
+  {
+    key: "wrote",
+    head: "Wrote to",
+    cell: (r) => <WroteTo keys={r.wroteTo} />,
+    text: (r) => wroteToText(r.wroteTo),
+  },
 ];
 
 const RESERVATION_STATE_TONE = {
@@ -408,10 +441,21 @@ const RESERVATION_STATE_TONE = {
   canceled: "bad",
 } as const;
 
-const RESERVATION_COLUMNS: Column<ReservationLogRow>[] = [
+const RESERVATION_COLUMNS: LogColumn<ReservationLogRow>[] = [
   when(),
-  { key: "guest", head: "Guest", cell: (r) => <span className="font-medium">{r.reservation.guest}</span> },
-  { key: "party", head: "Party", align: "right", cell: (r) => r.reservation.party },
+  {
+    key: "guest",
+    head: "Guest",
+    cell: (r) => <span className="font-medium">{r.reservation.guest}</span>,
+    text: (r) => r.reservation.guest,
+  },
+  {
+    key: "party",
+    head: "Party",
+    align: "right",
+    cell: (r) => r.reservation.party,
+    text: (r) => String(r.reservation.party),
+  },
   {
     key: "state",
     head: "State",
@@ -420,6 +464,7 @@ const RESERVATION_COLUMNS: Column<ReservationLogRow>[] = [
         {r.reservation.state.replace("_", " ")}
       </Badge>
     ),
+    text: (r) => r.reservation.state.replace("_", " "),
   },
   {
     key: "note",
@@ -430,14 +475,32 @@ const RESERVATION_COLUMNS: Column<ReservationLogRow>[] = [
       ) : (
         <span className="text-muted-foreground">—</span>
       ),
+    text: (r) => r.reservation.note ?? "",
   },
 ];
 
-const REVIEW_COLUMNS: Column<ReviewLogRow>[] = [
+const REVIEW_COLUMNS: LogColumn<ReviewLogRow>[] = [
   when(),
-  { key: "guest", head: "Guest", cell: (r) => <span className="font-medium">{r.review.guest}</span> },
-  { key: "where", head: "Where", cell: (r) => <Badge>{r.review.source}</Badge> },
-  { key: "stars", head: "Stars", cell: (r) => <span className="tracking-tight">{stars(r.review.stars)}</span> },
+  {
+    key: "guest",
+    head: "Guest",
+    cell: (r) => <span className="font-medium">{r.review.guest}</span>,
+    text: (r) => r.review.guest,
+  },
+  {
+    key: "where",
+    head: "Where",
+    cell: (r) => <Badge>{r.review.source}</Badge>,
+    text: (r) => r.review.source,
+  },
+  {
+    key: "stars",
+    head: "Stars",
+    cell: (r) => <span className="tracking-tight">{stars(r.review.stars)}</span>,
+    // FIVE GLYPHS ON SCREEN, ONE NUMBER IN THE FILE: "★★★★☆" cannot be
+    // averaged, and averaging is what a reviews export is opened for.
+    text: (r) => String(r.review.stars),
+  },
   {
     key: "answered",
     head: "Answered",
@@ -452,40 +515,107 @@ const REVIEW_COLUMNS: Column<ReviewLogRow>[] = [
       ) : (
         <Badge tone="soon">Waiting</Badge>
       ),
+    text: (r) =>
+      r.review.source === "google" ? "Not from here" : r.review.reply ? "Answered" : "Waiting",
   },
 ];
 
-const PAYMENT_COLUMNS: Column<PaymentLogRow>[] = [
+const PAYMENT_COLUMNS: LogColumn<PaymentLogRow>[] = [
   when(),
   {
     key: "direction",
     head: "Direction",
-    cell: (r) => <Badge tone={r.direction === "out" ? "off" : "on"}>{r.direction === "out" ? "Out" : "In"}</Badge>,
+    cell: (r) => (
+      <Badge tone={r.direction === "out" ? "off" : "on"}>{r.direction === "out" ? "Out" : "In"}</Badge>
+    ),
+    text: (r) => (r.direction === "out" ? "Out" : "In"),
   },
-  { key: "method", head: "Method", cell: (r) => <Badge>{r.method === "payout" ? "Bank" : TENDER_LABEL[r.method]}</Badge> },
-  { key: "party", head: "Party", cell: (r) => <span className="font-medium">{r.party}</span> },
-  { key: "from", head: "From", cell: (r) => <From row={r} /> },
-  { key: "amount", head: "Amount", align: "right", cell: (r) => <span className="font-semibold">{money(r.amountCents)}</span> },
+  {
+    key: "method",
+    head: "Method",
+    cell: (r) => <Badge>{r.method === "payout" ? "Bank" : TENDER_LABEL[r.method]}</Badge>,
+    text: (r) => (r.method === "payout" ? "Bank" : TENDER_LABEL[r.method]),
+  },
+  {
+    key: "party",
+    head: "Party",
+    cell: (r) => <span className="font-medium">{r.party}</span>,
+    text: (r) => r.party,
+  },
+  {
+    key: "from",
+    head: "From",
+    cell: (r) => <From row={r} />,
+    text: (r) => r.origin?.label ?? "",
+  },
+  {
+    key: "amount",
+    head: "Amount",
+    align: "right",
+    cell: (r) => <span className="font-semibold">{money(r.amountCents)}</span>,
+    text: (r) => csvMoney(r.amountCents),
+  },
 ];
 
 // CREDITS IS THE ONE LOG THAT RUNS BOTH WAYS, so it carries both join columns.
 // A `spent` row is a consequence — it came FROM a visit. An `issued` row is a
 // cause — the guest paid for it, so it WROTE a payment. One column could only
 // ever show half of that, and the half it showed would depend on the row.
-const CREDIT_COLUMNS: Column<CreditLogRow>[] = [
+const CREDIT_COLUMNS: LogColumn<CreditLogRow>[] = [
   when(),
-  { key: "guest", head: "Guest", cell: (r) => <span className="font-medium">{r.guest}</span> },
-  { key: "move", head: "Move", cell: (r) => <Badge tone={r.move === "issued" ? "on" : "off"}>{r.move}</Badge> },
-  { key: "from", head: "From", cell: (r) => <From row={r} /> },
-  { key: "wrote", head: "Wrote to", cell: (r) => <WroteTo keys={r.wroteTo} /> },
-  { key: "amount", head: "Amount", align: "right", cell: (r) => <span className="font-semibold">{money(r.amountCents)}</span> },
+  {
+    key: "guest",
+    head: "Guest",
+    cell: (r) => <span className="font-medium">{r.guest}</span>,
+    text: (r) => r.guest,
+  },
+  {
+    key: "move",
+    head: "Move",
+    cell: (r) => <Badge tone={r.move === "issued" ? "on" : "off"}>{r.move}</Badge>,
+    text: (r) => r.move,
+  },
+  {
+    key: "from",
+    head: "From",
+    cell: (r) => <From row={r} />,
+    text: (r) => r.origin?.label ?? "",
+  },
+  {
+    key: "wrote",
+    head: "Wrote to",
+    cell: (r) => <WroteTo keys={r.wroteTo} />,
+    text: (r) => wroteToText(r.wroteTo),
+  },
+  {
+    key: "amount",
+    head: "Amount",
+    align: "right",
+    cell: (r) => <span className="font-semibold">{money(r.amountCents)}</span>,
+    text: (r) => csvMoney(r.amountCents),
+  },
 ];
 
-const SETTING_COLUMNS: Column<SettingLogRow>[] = [
+const SETTING_COLUMNS: LogColumn<SettingLogRow>[] = [
   when(),
-  { key: "who", head: "Who", cell: (r) => <span className="font-medium">{r.change.who}</span> },
-  { key: "area", head: "Where", cell: (r) => <Badge>{SETTING_AREA_LABEL[r.change.area]}</Badge> },
-  { key: "what", head: "What", cell: (r) => r.change.what },
+  {
+    key: "who",
+    head: "Who",
+    cell: (r) => <span className="font-medium">{r.change.who}</span>,
+    text: (r) => r.change.who,
+  },
+  {
+    key: "area",
+    head: "Where",
+    cell: (r) => <Badge>{SETTING_AREA_LABEL[r.change.area]}</Badge>,
+    text: (r) => SETTING_AREA_LABEL[r.change.area],
+  },
+  {
+    key: "what",
+    head: "What",
+    cell: (r) => r.change.what,
+    text: (r) => r.change.what,
+  },
   {
     key: "change",
     head: "Change",
@@ -496,20 +626,25 @@ const SETTING_COLUMNS: Column<SettingLogRow>[] = [
         {r.change.from ? `${r.change.from} → ${r.change.to}` : `→ ${r.change.to}`}
       </span>
     ),
+    text: (r) => (r.change.from ? `${r.change.from} → ${r.change.to}` : `→ ${r.change.to}`),
   },
 ];
 
-/** EVERY LOG'S TABLE, keyed by the log. It is a `Record` and not eight calls
- *  in the body on purpose: a mapped type over `LogKey` refuses to compile the
- *  day a ninth log joins `LOG_KEYS` without columns, which is exactly the
- *  failure "we added a log and Activity never showed it" looks like.
+/** EVERY TAB'S TABLE, keyed by the tab. It is a `Record` and not nine branches
+ *  in the body on purpose: a mapped type over `Tab` refuses to compile the day
+ *  a ninth log joins `LOG_KEYS` without columns, which is exactly what "we
+ *  added a log and Activity never showed it" looks like.
  *
  *  `minWidth` is per COLUMN SET, never global — the eight-column Visits table
  *  needs 900px before it wraps a tender list into four lines, and the
  *  four-column Views table at 900 is a third empty. */
-const LOG_SPECS: {
-  [K in LogKey]: { columns: Column<LedgerBook[K][number]>[]; minWidth: number };
+const TAB_SPECS: {
+  [K in Tab]: {
+    columns: LogColumn<K extends "everything" ? LogRow : LedgerBook[Extract<K, LogKey>][number]>[];
+    minWidth: number;
+  };
 } = {
+  everything: { columns: EVERY_COLUMNS, minWidth: 820 },
   views: { columns: VIEW_COLUMNS, minWidth: 560 },
   visits: { columns: VISIT_COLUMNS, minWidth: 900 },
   orders: { columns: ORDER_COLUMNS, minWidth: 780 },
