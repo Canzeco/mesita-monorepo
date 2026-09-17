@@ -56,43 +56,73 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // with no card — and the second renders `undefined` straight into a
     // className. The bijection is the assertion, in both directions.
     expect([...PRODUCT_ORDER].sort()).toEqual([...PRODUCT_KEYS].sort());
-    expect(PRODUCT_ORDER).toHaveLength(9);
+    expect(PRODUCT_ORDER).toHaveLength(16);
   });
 
-  it("is Pato's list, and the RAIL prints the same order (MESITA-1929)", () => {
-    // Pato, 2026-09-16: "Profile / Costumers // Visits / Orders /
-    // Reservations // Rewards / Payments / Credits", written as three groups
-    // with a blank line between them.
+  it("is Pato's list, and the RAIL is a SUBSEQUENCE of it (MESITA-1949)", () => {
+    // Pato, 2026-09-16: the whole suite, as flat lines — "Profile / Website
+    // (Soon) / Customers (Soon) / Ads / Visits / Rewards / Orders /
+    // Reservations / Payments / Terminal / Credits / Capital / Whats Bot /
+    // Phone Bot / Intelligence (Soon)" — then "maybe include POS, but for the
+    // future", which is why POS sits beside Terminal rather than last.
     //
-    // WHERE REWARDS SITS IS THE ARGUMENT, and it reversed (MESITA-1928).
+    // WHERE REWARDS SITS IS THE ARGUMENT, and it reversed once (MESITA-1928).
     // MESITA-1900 filed it with money — "beside Payments and Credits, not at
     // the table beside Visits" — and Pato moved it back to the table: a reward
     // is earned by closing a bill AT A TABLE and by nothing else, since an
-    // order is prepaid and has none.
-    //
-    // CAPITAL IS NINTH (MESITA-1929): "where is Capital, include Capital
-    // there". It is money and it is not built, so it is last and it is Soon.
+    // order is prepaid and has none. This list keeps it there.
     expect(PRODUCT_ORDER).toEqual([
       "profile",
+      "website",
       "customers",
+      "ads",
       "visits",
       "rewards",
       "orders",
       "reservations",
       "pay",
+      "terminal",
+      "pos",
       "credits",
       "capital",
+      "whatsapp",
+      "phone",
+      "intelligence",
     ]);
-    // AND THE RAIL PRINTS THAT SAME ORDER. Two arrays, one story: `SPECS`
-    // carries card copy and `RAIL_ROWS` carries rows, and MESITA-1928 moved
-    // one without the other — for a commit the console answered "where does
-    // Rewards belong" two different ways. This is the assertion that would
-    // have caught it.
-    expect(
-      RAIL_ROWS.filter((r) => r.kind === "product").map((r) => r.product),
-    ).toEqual(PRODUCT_ORDER);
-    expect(PRODUCT_ORDER).not.toContain("terminal");
-    expect(PRODUCT_KEYS).not.toContain("terminal");
+
+    // AND THE RAIL IS A SUBSEQUENCE OF IT, WHERE IT USED TO BE EQUAL.
+    //
+    // Equality was the assertion MESITA-1928 earned: it moved Rewards under
+    // Visits in the rail and left the catalogue printing it beside Payments,
+    // so for one commit the console answered "where does Rewards belong" two
+    // different ways. That drift is what this still catches.
+    //
+    // What it stops catching is a product the rail has no row for, and that is
+    // deliberate (MESITA-1949): nine of the sixteen are catalogue-only. A rail
+    // row must land somewhere real (MESITA-1833) and MESITA-1900 deleted
+    // Terminal for being "the one row whose address was a SoonStrip", so a
+    // Soon product gets a card and no row. `RailProduct` makes that a compile
+    // error rather than a convention.
+    const railProducts = RAIL_ROWS.filter((r) => r.kind === "product").map(
+      (r) => r.product,
+    );
+    // Every rail product is a real product...
+    for (const p of railProducts) expect(PRODUCT_ORDER).toContain(p);
+    // ...and the rail's relative order is the catalogue's. A subsequence check
+    // walks both lists once: if the rail ever reorders two products the
+    // catalogue did not, the walk runs off the end.
+    const positions = railProducts.map((p) => PRODUCT_ORDER.indexOf(p));
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    // The rail is a STRICT subset — if that ever stops being true, the
+    // subsequence check above is weaker than the equality it replaced and
+    // should go back to being one.
+    expect(railProducts.length).toBeLessThan(PRODUCT_ORDER.length);
+
+    // TERMINAL IS A CARD AGAIN AND STILL NOT A ROW (MESITA-1949). MESITA-1900
+    // removed the product because the row's only address was a SoonStrip; the
+    // card carries no address at all, which is the shape that objection wanted.
+    expect(PRODUCT_ORDER).toContain("terminal");
+    expect(railProducts).not.toContain("terminal");
   });
 
   it("there is ONE vocabulary, and the grid re-exports it (MESITA-1900)", () => {
@@ -104,7 +134,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     expect(PRODUCT_KEYS).toBe(VOCABULARY_KEYS);
   });
 
-  it("renders all eight in EVERY state, so no read can hide a product", () => {
+  it("renders all sixteen in EVERY state, so no read can hide a product", () => {
     // A catalogue is also a price list: a product this place has not bought is
     // exactly the one it most needs to see. A filter hides it; a failed read
     // must not.
@@ -114,7 +144,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       { place: null },
       { partnered: true, mesitaPayEnabled: true },
     ]) {
-      expect(Object.keys(build(input))).toHaveLength(9);
+      expect(Object.keys(build(input))).toHaveLength(16);
     }
   });
 
@@ -212,19 +242,23 @@ describe("Mesita Profile is free, and is the only card that says so", () => {
     }
   });
 
-  it("is the only card wearing the FREE state — Customers says free and is Soon", () => {
-    // Pato listed both as free ("Profile (Free) / Costumers (Free)"), and
-    // only one of them is built. Free is a PRICE; the chip reports whether
-    // the engine exists. Customers says the price in its note and wears Soon,
-    // because a green chip on an empty page is the lie SoonStrip's law names.
+  it("is the only card that wears FREE, and now the only one that says it", () => {
+    // Pato listed Profile and Customers as free ("Profile (Free) / Costumers
+    // (Free)"), and only Profile still is. He replaced Customers' model on
+    // 2026-09-16 — *"you don't buy the data forever, you subscribe to a
+    // catalog"* — so its note names a SUBSCRIPTION, and the word free is gone
+    // from every card but this one.
+    //
+    // THE RULE UNDERNEATH DID NOT MOVE: free is a PRICE and the chip reports
+    // whether the engine exists. Customers still wears Soon for the same
+    // reason it always did.
     const cards = Object.values(build({ partnered: true }));
     expect(cards.filter((c) => c.state === "free").map((c) => c.key)).toEqual([
       "profile",
     ]);
     expect(build({ partnered: true }).customers.state).toBe("soon");
-    expect(build({ partnered: true }).customers.note).toContain("Always free");
     for (const c of cards) {
-      if (c.key === "profile" || c.key === "customers") continue;
+      if (c.key === "profile") continue;
       expect(c.note ?? "", c.key).not.toMatch(/\bfree\b/i);
     }
   });
@@ -346,31 +380,79 @@ describe("Mesita Pay's verb is the one that stays on this page", () => {
   });
 });
 
-describe("Soon is Customers ALONE (MESITA-1900)", () => {
-  it("shares Soon with NOTHING that has a column", () => {
-    // The set is closed on purpose. Every other card reads a column or a
-    // subscription, and a card with a real fact behind it that paints Soon is
-    // a product quietly withdrawn from sale by a typo.
+describe("Soon is nine of the sixteen, and every one of them is unbuilt", () => {
+  it("is exactly the products with no engine, in catalogue order", () => {
+    // The set is closed on purpose. A card with a real fact behind it that
+    // paints Soon is a product quietly withdrawn from sale by a typo.
     //
-    // Terminal was the other member and left with the product. `spec.soon`
-    // stays a FIELD rather than collapsing back to `key === "customers"`: it
-    // was that hardcode once, and MESITA-1884 had to undo it the moment a
-    // second product was unbuilt.
-    // CAPITAL JOINED IT (MESITA-1929), which is exactly what the paragraph
-    // above predicted would happen: `spec.soon` stayed a field so a second
-    // unbuilt product would cost one line here instead of a rewrite.
+    // IT WAS "CUSTOMERS ALONE" ONCE. Terminal was the other member and left
+    // with its product in MESITA-1900; Capital joined in MESITA-1929; Terminal
+    // came back and brought six more in MESITA-1949. `spec.soon` staying a
+    // FIELD rather than collapsing to `key === "customers"` is why each of
+    // those cost one line instead of a rewrite — it was that hardcode once,
+    // and MESITA-1884 had to undo it the moment a second product was unbuilt.
     const cards = Object.values(build({ partnered: true }));
     expect(cards.filter((c) => c.state === "soon").map((c) => c.key)).toEqual([
+      "website",
       "customers",
+      "ads",
+      "terminal",
+      "pos",
       "capital",
+      "whatsapp",
+      "phone",
+      "intelligence",
     ]);
+  });
+
+  it("carries NO verb, no column and no gate — soon outranks every branch", () => {
+    // This is the invariant the list above is only a spelling of, and the one
+    // that actually protects an operator: a product that does not exist cannot
+    // be locked (no subscription delivers it), cannot be off (there is no
+    // switch), and must never hand out a button. MESITA-1949 added seven Soon
+    // products at once, which is exactly when a branch order gets this wrong.
+    for (const partnered of [true, false]) {
+      for (const p of [place(), null]) {
+        const cards = build({ partnered, place: p, mesitaPayEnabled: true });
+        for (const c of Object.values(cards)) {
+          if (c.state !== "soon") continue;
+          expect(c.action, c.key).toBeNull();
+          expect(c.note, c.key).toBeTruthy();
+          expect(c.note ?? "", c.key).not.toContain("Needs Mesita Partner");
+          expect(c.note ?? "", c.key).not.toMatch(/^(On here|Not on here)/);
+        }
+      }
+    }
+  });
+
+  it("NO card ever renders a verb pointing at nothing (MESITA-1949)", () => {
+    // THE FAILURE THE `key as PlaceTab` CAST WOULD HAVE SHIPPED. Nine products
+    // have no place view; the cast told the compiler not to look, so each of
+    // them would have rendered a button at `/places/<id>/undefined` — a real
+    // href, a real click, a 404, and every check green. `spec.tab` is nullable
+    // now and a card with no tab simply has no verb.
+    for (const partnered of [true, false]) {
+      const cards = build({ partnered, mesitaPayEnabled: true });
+      for (const c of Object.values(cards)) {
+        if (!c.action) continue;
+        expect(c.action.href, c.key).toBeTruthy();
+        expect(c.action.href, c.key).not.toContain("undefined");
+      }
+    }
   });
 });
 
-describe("Mesita Customers is free, unbuilt, and says both (MESITA-1884)", () => {
-  // Pato wrote it "Costumers (Free)". The engine is not built —
-  // `/places/<id>/customers` is a SoonStrip page — so the two facts split: the
-  // chip carries the harder one, the note carries the price.
+describe("Mesita Customers is a SUBSCRIPTION, unbuilt, and says both", () => {
+  // Pato wrote it "Costumers (Free)" and then replaced the model on
+  // 2026-09-16: *"you don't buy the data forever, you subscribe to a catalog
+  // of customers and you can track their activity, visits per month, spent per
+  // month"*. Free was the price of a product that no longer works that way.
+  //
+  // THIS CARD WAS THE ONLY PLACE IN THE CONSOLE THAT PRICED IT.
+  // `/places/<id>/customers` is a bare SoonStrip and claims nothing, so a
+  // catalogue card saying "Always free" was the whole of what a venue would
+  // have known — and finding out otherwise at the till is the failure
+  // MESITA-1941 named when it changed the model.
   it("is Soon in every state, with no verb and no count", () => {
     for (const input of [{}, { partnered: true }, { place: null }]) {
       const c = build(input).customers;
@@ -378,11 +460,11 @@ describe("Mesita Customers is free, unbuilt, and says both (MESITA-1884)", () =>
       // No verb: Customers already has its own rail row, so the door exists
       // and a second one on an empty page is a click that teaches nothing.
       expect(c.action).toBeNull();
-      expect(c.note).toBe("Always free. Nothing is live yet.");
+      expect(c.note).toBe("A subscription, not a purchase. Nothing is live yet.");
     }
   });
 
-  it("is NOT partner-gated — a free product may never read Locked", () => {
+  it("is NOT partner-gated — an unbuilt product may never read Locked", () => {
     // The bijection against the gated three: no subscription can deliver a
     // product that does not exist, so `soon` has to outrank the partner gate.
     expect(build({ partnered: false }).customers.state).toBe("soon");
