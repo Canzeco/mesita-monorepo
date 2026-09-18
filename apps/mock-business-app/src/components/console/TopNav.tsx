@@ -271,7 +271,7 @@ export function TopNav({
               href={placePageHref(placeId ?? "", row.target)}
               label={PLACE_PAGE_LABEL[row.target]}
               active={
-                currentPage === row.target || (onView && row.target === "setup")
+                currentPage === row.target || (onView && row.target === "products")
               }
             />
           );

@@ -224,8 +224,8 @@ const INTENTS: Intent[] = [
       reply:
         "Customers is who came, how often, and the one fact you buy one guest at a time — their phone number.",
       door: {
-        label: "Open Setup",
-        href: (id: string) => placePageHref(id, "setup"),
+        label: "Open Products",
+        href: (id: string) => placePageHref(id, "products"),
       },
     },
   },
@@ -250,7 +250,7 @@ const INTENTS: Intent[] = [
 const FALLBACK: Answer = {
   reply:
     "I don't know that one yet. Everything this place can switch on is in the catalogue — each card says whether it is on here and what turns it on.",
-  door: { label: "Open Setup", href: (id: string) => placePageHref(id, "setup") },
+  door: { label: "Open Products", href: (id: string) => placePageHref(id, "products") },
 };
 
 /** The one place a question becomes an answer. Exported so a future agent can

@@ -1,30 +1,58 @@
-// A PRODUCT PAGE READS IN TWO HALVES (MESITA-1924): what you SET, then what
-// HAPPENED. Pato: *"all products pages must be divided into two — Manage and
-// Activity"*.
+"use client";
+
+// THE TWO HALVES OF A PRODUCT — and the thing that decides which one you get
+// (MESITA-1986).
 //
-// THREE OF THE EIGHT ALREADY DID THIS and nobody had named it — Orders was
-// `Channels` over `Recent orders`, Visits `Visit checkout` over `Recent
-// visits`, Reservations `Your provider` over `Bookings`. The pattern was in
-// the pages before the words were, which is why this component is a LABEL and
-// not a layout: the cards do not move, they are grouped and named.
+// Pato: *"remember, for all the pages, this is just the fucking setup, not
+// notifications activity, that goes in activity."*
 //
-// NOT TABS. There is no segmented control anywhere in this console, and one
-// would cost a shared component, a URL param so a half is linkable, and a
-// default-half decision for every product. Stacked halves reuse the eyebrow
-// this console already prints in six places (`TINY_LABEL_CLASS`), keep both
-// halves visible to a single scan, and put Activity one scroll away instead of
-// one click.
+// Every product view was already written in two labelled halves: `Manage` is
+// how the product is configured, `Activity` is what it recorded. Both rendered
+// on one screen, which is why Setup → Online Reservations showed a Bookings
+// table and Setup → Visit Rewards showed a visit log.
 //
-// "ACTIVITY" MEANS THE SAME THING AT TWO SCALES. It is also a rail row, which
-// opens the whole PLACE's activity; a half here is one product's. Decided
-// deliberately (MESITA-1924) rather than renamed: one word the console teaches
-// once, read at whatever scope you are standing in.
+// ── ONE COMPONENT, TWO READINGS ────────────────────────────────────────────
 //
-// A HALF WITH NOTHING IN IT DOES NOT RENDER. Profile has no activity — a
-// description is not an event — and a heading over an empty box is worse than
-// no heading. A product earns its second half when it has something to put in
-// it.
+// `HalfScope` says which half the surface wants and `Half` renders or returns
+// null. THE VIEWS ARE UNTOUCHED: a product's setup and its log stay one
+// component, so a number shown on both sides cannot disagree with itself —
+// which is exactly what two hand-split components would eventually do.
+//
+// WHAT SITS OUTSIDE A `Half` RENDERS ON BOTH, and that is the rule to write
+// down rather than discover: a view's heading and its state tiles are the
+// product's own context, and context belongs on whichever screen you are
+// standing on. If something should appear on ONE side only, it goes inside the
+// matching `Half`. There is no third option and no per-view exception.
+//
+// NO SCOPE, BOTH HALVES. The standalone `/places/<id>/<view>` addresses render
+// a whole view with no provider above them, and they keep working exactly as
+// they did — a pasted link and Home's blocker rows both land there.
+import { createContext, useContext } from "react";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import type { PlaceHalf } from "@/lib/product-routes";
+
+const HalfCtx = createContext<PlaceHalf | null>(null);
+
+export function HalfScope({
+  half,
+  children,
+}: {
+  half: PlaceHalf;
+  children: React.ReactNode;
+}) {
+  return <HalfCtx.Provider value={half}>{children}</HalfCtx.Provider>;
+}
+
+/** Which half is being drawn, or null when nothing has said — the standalone
+ *  view addresses, where both halves belong. */
+export function useHalf(): PlaceHalf | null {
+  return useContext(HalfCtx);
+}
+
+const WANTS: Record<PlaceHalf, "Manage" | "Activity"> = {
+  products: "Manage",
+  activity: "Activity",
+};
 
 export function Half({
   label,
@@ -33,11 +61,16 @@ export function Half({
   label: "Manage" | "Activity";
   children: React.ReactNode;
 }) {
+  const half = useHalf();
+  if (half !== null && WANTS[half] !== label) return null;
+
+  // THE LABEL GOES WHEN THE SURFACE IS THE LABEL. On `/setup/<product>` every
+  // remaining block is Manage, so a caption reading "MANAGE" is the tab's own
+  // name repeated inside the pane. It stays on the standalone addresses, where
+  // both halves are on screen and the reader needs telling which is which.
   return (
-    // A real landmark, not a styled div: two halves on one page are two
-    // regions, and a screen reader should be able to jump between them.
     <section aria-label={label} className="flex flex-col gap-4">
-      <p className={TINY_LABEL_CLASS}>{label}</p>
+      {half === null && <p className={TINY_LABEL_CLASS}>{label}</p>}
       {children}
     </section>
   );

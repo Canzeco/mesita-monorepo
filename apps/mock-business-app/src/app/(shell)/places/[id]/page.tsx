@@ -92,7 +92,7 @@ function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
       label: "Not a partner",
       line: "Visits, Rewards, Payments and Credits are locked here, and none of them carry a verb until Mesita Partner is on.",
       door: "See what it unlocks",
-      href: placePageHref(place.id, "setup"),
+      href: placePageHref(place.id, "products"),
     });
   } else if (place.pay !== "enabled") {
     out.push({

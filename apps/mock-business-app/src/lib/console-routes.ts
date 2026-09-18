@@ -41,7 +41,7 @@ export const SHELL_ROUTES = {
  *  TWO, SINCE MESITA-1973. `products` became `setup`, `customers` went back to
  *  being a future product with a row in Setup and no page of its own, and
  *  `settings` left the place entirely for `/settings`. */
-export const PLACE_PAGES = ["setup", "activity"] as const;
+export const PLACE_PAGES = ["products", "activity"] as const;
 export type PlacePage = (typeof PLACE_PAGES)[number];
 
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
@@ -50,7 +50,13 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   // own view — so a product existed twice and the two could disagree, which is
   // the bug MESITA-1953 had to work around on the Visits card. Setup is the
   // one list: Off says what a product does, On says how it is set.
-  setup: "Setup",
+  // PRODUCTS AGAIN (MESITA-1986). Pato: *"rename setup to products"*, which
+  // reverses MESITA-1973's `products` → `setup`. That rename was made on the
+  // argument that Setup is the ONE list where Off says what a product does and
+  // On says how it is set; the list did not change, but what you open from it
+  // did — every row now leads to that product's own screen, and a screen per
+  // product is a catalogue of products rather than a page of settings.
+  products: "Products",
   activity: "Activity",
 };
 
@@ -97,7 +103,7 @@ export type NavRow =
  *  guarantee. */
 export const NAV_ROWS: readonly NavRow[] = [
   { kind: "home" },
-  { kind: "page", target: "setup" },
+  { kind: "page", target: "products" },
   { kind: "page", target: "activity" },
   { kind: "settings" },
 ];
@@ -176,7 +182,7 @@ export const FLAT_ROUTES = {
   // The ninth product owes a flat twin like every other view (MESITA-1929).
   capital: "/capital",
   admin: "/admin",
-  setup: "/setup",
+  products: "/products",
   activity: "/activity",
 } as const;
 export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];

@@ -99,7 +99,7 @@ const LOG_HOME: Record<LogKey, ((placeId: string) => string) | null> = {
   credits: (id) => placeTabHref(id, "credits"),
   // Both products this log bills for live on Setup: the Customers row is
   // there with the rest of the suite, and the Membership strip sits above it.
-  subscriptions: (id) => placePageHref(id, "setup"),
+  subscriptions: (id) => placePageHref(id, "products"),
   // SETTINGS IS NOT PLACE-SCOPED (MESITA-1973), so this door ignores the id it
   // is handed rather than building an address that no longer exists.
   settings: () => SHELL_ROUTES.settings,
