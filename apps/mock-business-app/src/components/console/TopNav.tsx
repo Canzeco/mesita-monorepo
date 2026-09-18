@@ -102,8 +102,12 @@ import { cn } from "@/lib/utils";
 // `min-h-11` holds the 44px touch target. The tab is the whole height of the
 // bar so the underline sits on the bar's own hairline rather than floating
 // above it.
+// BIGGER (MESITA-1982). Pato: *"make the top menu bigg btw"*. `text-base` at
+// 16px, in a 64px bar — the rail spent five issues landing on 14px in a 272px
+// column, and none of that reasoning survives the move: a LINE has room a
+// column does not, and four words across 1440px at 14px read as a footer.
 const TAB_BASE =
-  "relative flex min-h-11 items-center px-3 text-sm font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset sm:px-3.5";
+  "relative flex min-h-11 items-center px-4 text-base font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset sm:px-5";
 const TAB_REST = "text-dock-muted hover:text-dock-foreground";
 const TAB_ACTIVE = "text-dock-foreground font-semibold";
 // The rule is drawn on the tab, 2px of `--ink`, flush with the bar's hairline.
@@ -203,7 +207,13 @@ export function TopNav({
     currentPage === null;
 
   return (
-    <div className="bg-dock flex h-14 shrink-0 items-center gap-1 px-3 sm:gap-2 sm:px-4">
+    // CENTRED (MESITA-1982). Pato: *"top menu options must be centralized"*.
+    // The lockup is taken OUT of the flow — `absolute` on the left — so the
+    // four tabs centre on the WINDOW rather than on the space the wordmark
+    // leaves behind. Centring them inside a flex row beside the logo would put
+    // them off-centre by exactly half the lockup's width, which is the kind of
+    // wrong nobody can name and everybody feels.
+    <div className="bg-dock relative flex h-16 shrink-0 items-center justify-center px-3 sm:px-4">
       {/* THE LOCKUP IS A LABEL, NOT A LINK. Every address this bar reaches is
           on the same line as it, so a logo that navigated would be a fifth
           destination in different clothes — and the rail made the same call
@@ -220,12 +230,15 @@ export function TopNav({
           ink rather than as a sticker on it — the same call the rail made. */}
       <MesitaLogo
         variant="horizontal"
-        className="text-dock-foreground h-3.5 w-auto shrink-0 pr-1 sm:h-4 sm:pr-2"
+        className="text-dock-foreground absolute left-3 h-4 w-auto shrink-0 sm:left-4 sm:h-[18px]"
       />
 
+      {/* THE TABS OWN THE MIDDLE. `min-w-0` stays: below `sm` the lockup still
+          occupies its absolute strip, and four centred labels have to be able
+          to shrink rather than run under it. */}
       <nav
         aria-label="Console"
-        className="flex min-w-0 flex-1 items-stretch gap-0.5 sm:gap-1"
+        className="flex min-w-0 items-stretch gap-0.5 sm:gap-1"
       >
         {NAV_ROWS.map((row) => {
           if (row.kind === "home") {

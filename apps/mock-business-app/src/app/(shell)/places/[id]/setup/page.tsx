@@ -87,11 +87,20 @@ const GROUPS: readonly {
   },
 ];
 
-/** The Membership row's id in `?p=`. A STRING BESIDE `ProductKey`, never inside
+/** Mesita Partnership's id in `?p=` (MESITA-1982). Pato: *"ITS NOT FUCKING
+ *  MEMBERSHIP, ITS PARTNERSHIP. ADD IT AS AN EXTRA PRODUCT SOLUTION"*.
+ *
+ *  MEMBERSHIP was the word for the SKU and Partner for the status; what the
+ *  console sells a place is the partnership, so that is what the row is called
+ *  and what its pane is headed. A STRING BESIDE `ProductKey`, never inside
  *  it: `PRODUCT_KEYS` is what the catalogue, the bands and `buildProductCards`
  *  all iterate, and a membership in that array would be a product carrying a
  *  state, a price and a Soon note it can never have. */
-const MEMBERSHIP = "membership";
+const MEMBERSHIP = "partnership";
+
+/** The band the Partnership row joins. Read from `GROUPS` rather than typed
+ *  twice: a renamed band would otherwise drop the row silently. */
+const RUNNING_TITLE = "Running";
 
 export default function SetupPage() {
   // EVERY HOOK BEFORE THE FIRST `notFound()`. This page has three early exits
@@ -151,57 +160,6 @@ export default function SetupPage() {
 
   const list = (
     <>
-      {/* THE FIRST BAND, AND IT IS NOT A PRODUCT. It reads like one on purpose
-          — same row shape, same mark column, same badge — because that is what
-          makes it findable in a list of eighteen. What it is NOT is a product:
-          no Soon note, no dial, and the only thing on this screen that five
-          other rows are behind. */}
-      <section className="flex flex-col gap-2">
-        <div className="flex items-baseline gap-2">
-          <h2 className="font-display text-sm font-semibold tracking-tight">
-            Your plan
-          </h2>
-          <p className="text-muted-foreground text-[13px]">
-            What this place is paying for.
-          </p>
-        </div>
-        <div className="border-border divide-border divide-y border-y">
-          <Link
-            href={`?p=${MEMBERSHIP}`}
-            scroll={false}
-            aria-current={selected === MEMBERSHIP ? "true" : undefined}
-            className={cn(
-              "flex min-h-14 w-full items-center gap-3 px-4 py-3.5 text-left transition",
-              selected === MEMBERSHIP ? "bg-card" : "hover:bg-card/60",
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                SCOPE_CHIP_CLASS,
-                "bg-muted text-foreground flex shrink-0 items-center justify-center",
-              )}
-            >
-              <span className="text-[22px] leading-none">{"\u{1F91D}"}</span>
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="font-display text-[15px] font-semibold tracking-tight">
-                Mesita Partner
-              </span>
-              <span className="text-muted-foreground text-[13px] leading-snug">
-                {line.lead} {line.rest}
-              </span>
-            </span>
-            <span className="flex shrink-0 items-center gap-3">
-              <Badge tone={place.partnered ? "gold" : "off"}>
-                {place.partnered ? "Partner" : "Not a partner"}
-              </Badge>
-              <ArrowRight className="text-muted-foreground h-4 w-4" aria-hidden />
-            </span>
-          </Link>
-        </div>
-      </section>
-
       {GROUPS.map((group) => {
         const inGroup = cards.filter((c) => group.holds(c.state));
         // A group with nothing in it draws nothing. A heading over an empty
@@ -224,6 +182,54 @@ export default function SetupPage() {
                 would be a third surface saying a thing the divide already
                 says. Hairlines between rows, nothing around them. */}
             <div className="border-border divide-border divide-y border-y">
+                {/* MESITA PARTNERSHIP, AS A PRODUCT SOLUTION (MESITA-1982).
+                    Pato put it in the list *"almost as a product solution"*
+                    and then went further: it IS one. So it takes the first
+                    slot of Running with the same row shape, the same mark
+                    column and the same badge, rather than a band of its own
+                    that said it was a different kind of thing.
+                    
+                    IT IS STILL NOT A `ProductKey`. `PRODUCT_KEYS` is what the
+                    catalogue, the bands and `buildProductCards` iterate, and a
+                    partnership in that array is a product with a Soon note and
+                    a per-place dial it can never have. The sentinel keeps the
+                    row in the list and out of the contract. */}
+                {group.title === RUNNING_TITLE && (
+                  <Link
+                    href={`?p=${MEMBERSHIP}`}
+                    scroll={false}
+                    aria-current={selected === MEMBERSHIP ? "true" : undefined}
+                    className={cn(
+                      "flex min-h-14 w-full items-center gap-3 px-4 py-3.5 text-left transition",
+                      selected === MEMBERSHIP ? "bg-card" : "hover:bg-card/60",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        SCOPE_CHIP_CLASS,
+                        "bg-muted text-foreground flex shrink-0 items-center justify-center",
+                      )}
+                    >
+                      <span className="text-[22px] leading-none">{"\u{1F91D}"}</span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="font-display text-[15px] font-semibold tracking-tight">
+                        Mesita Partnership
+                      </span>
+                      <span className="text-muted-foreground text-[13px] leading-snug">
+                        What this place pays for, and what five of the products
+                        below are behind.
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-3">
+                      <Badge tone={place.partnered ? "gold" : "off"}>
+                        {place.partnered ? "Partner" : "Off"}
+                      </Badge>
+                      <ArrowRight className="text-muted-foreground h-4 w-4" aria-hidden />
+                    </span>
+                  </Link>
+                )}
               {inGroup.map((card) => {
                 // NO CAST. Most product keys are not `PlaceTab`s, so
                 // `key as PlaceTab` would be a lie the compiler accepts, and
@@ -398,7 +404,7 @@ export default function SetupPage() {
   );
 }
 
-/** THE MEMBERSHIP, OPENED (MESITA-1982). What the full-width card above the
+/** THE PARTNERSHIP, OPENED (MESITA-1982). What the full-width card above the
  *  list used to assert, plus the gate it never carried: `PartnerBanner` is the
  *  purchase decision, and it belongs on the screen the row opens rather than
  *  over a list it is only sometimes about. */
@@ -433,7 +439,7 @@ function MembershipPane({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-lg font-semibold tracking-tight">
-              Mesita Partner
+              Mesita Partnership
             </h2>
             <Badge tone={place.partnered ? "gold" : "off"}>
               {place.partnered ? "Partner" : "Not a partner"}
