@@ -176,6 +176,15 @@ export function ProductPane({ card }: { card: ProductCard }) {
           <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
             {card.blurb}
           </p>
+          {/* THE NOTE LIVES HERE NOW (MESITA-1982). The list row dropped it —
+              its badge already says the state — so this is the one place the
+              state gets a sentence: what it means for this place, not just
+              which word applies. */}
+          {card.note && (
+            <p className="text-foreground mt-1 text-[13px] leading-snug font-medium">
+              {card.note}
+            </p>
+          )}
         </div>
       </div>
 
