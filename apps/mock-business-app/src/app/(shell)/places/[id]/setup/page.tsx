@@ -45,7 +45,6 @@ import {
   usePlaceScope,
 } from "@/components/console/PlaceScope";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { membershipLine } from "@/components/console/PartnerCard";
 import { Badge } from "@/components/shared/Badges";
 import type { MockPlace } from "@/mock/types";
@@ -56,7 +55,7 @@ import {
   type ProductCard,
   type ProductState,
 } from "@/lib/products";
-import { PLACE_PAGE_LABEL, placePayHref } from "@/lib/console-routes";
+import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
@@ -297,11 +296,6 @@ export default function SetupPage() {
 
   return (
     <>
-      <PlaceHeading
-        name={place.name}
-        photoUrl={place.photoUrl}
-        page={PLACE_PAGE_LABEL.setup}
-      />
 
       <MembershipReturnNotice />
 

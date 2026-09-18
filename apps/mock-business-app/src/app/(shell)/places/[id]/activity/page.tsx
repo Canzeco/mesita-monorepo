@@ -44,8 +44,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
-import { PlaceHeading } from "@/components/console/PlaceHeading";
-import { PLACE_PAGE_LABEL } from "@/lib/console-routes";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
 import { Table, type Column } from "@/components/shared/Table";
@@ -175,12 +173,6 @@ export default function PlaceActivityPage() {
 
   return (
     <>
-      {/* THE SUBJECT (MESITA-1975) — see `PlaceHeading`. */}
-      <PlaceHeading
-        name={place.name}
-        photoUrl={place.photoUrl}
-        page={PLACE_PAGE_LABEL.activity}
-      />
 
       {/* THE CATALOGUE OF TYPES. One row, horizontal, scrolling on its own
           axis below lg — nine chips do not wrap into three ragged lines, and a
