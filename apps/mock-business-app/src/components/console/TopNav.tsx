@@ -207,13 +207,14 @@ export function TopNav({
     currentPage === null;
 
   return (
-    // CENTRED (MESITA-1982). Pato: *"top menu options must be centralized"*.
-    // The lockup is taken OUT of the flow — `absolute` on the left — so the
-    // four tabs centre on the WINDOW rather than on the space the wordmark
-    // leaves behind. Centring them inside a flex row beside the logo would put
-    // them off-centre by exactly half the lockup's width, which is the kind of
-    // wrong nobody can name and everybody feels.
-    <div className="bg-dock relative flex h-16 shrink-0 items-center justify-center px-3 sm:px-4">
+    // THE WHOLE GROUP IS CENTRED, LOCKUP INCLUDED (MESITA-1983). Pato:
+    // *"top menu options must be centralized"*, then *"logo must also be
+    // centered"*. MESITA-1982 read the first one as "centre the tabs" and
+    // pinned the lockup left with `absolute`, which centred the tabs on the
+    // window and left the mark alone at the edge — two alignments on one line.
+    // The lockup is back in the flow and the row centres as ONE object: mark,
+    // then four labels, as a single centred lockup-and-menu.
+    <div className="bg-dock flex h-16 shrink-0 items-center justify-center gap-3 px-3 sm:gap-5 sm:px-4">
       {/* THE LOCKUP IS A LABEL, NOT A LINK. Every address this bar reaches is
           on the same line as it, so a logo that navigated would be a fifth
           destination in different clothes — and the rail made the same call
@@ -230,7 +231,7 @@ export function TopNav({
           ink rather than as a sticker on it — the same call the rail made. */}
       <MesitaLogo
         variant="horizontal"
-        className="text-dock-foreground absolute left-3 h-4 w-auto shrink-0 sm:left-4 sm:h-[18px]"
+        className="text-dock-foreground h-4 w-auto shrink-0 sm:h-[18px]"
       />
 
       {/* THE TABS OWN THE MIDDLE. `min-w-0` stays: below `sm` the lockup still

@@ -39,7 +39,7 @@ export function ProfileView() {
           right={<button type="button" className={PILL_BUTTON_CLASS}>Claim</button>}
           lane
         >
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <dl className="@container grid grid-cols-1 gap-3 @lg:grid-cols-2">
             <div>
               <dt className={TINY_LABEL_CLASS}>Category</dt>
               <dd className="text-sm">{pool.category}</dd>

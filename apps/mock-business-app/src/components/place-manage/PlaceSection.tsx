@@ -434,7 +434,17 @@ export function PlaceSection({
     // `sm:`/`md:` fire on the window while the column is now ~700px, so a card
     // that splits itself in two splits at a width nobody measured. Size a card's
     // insides with rows or an unconditional grid, never with a screen query.
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+    // A CONTAINER QUERY, NOT A VIEWPORT ONE (MESITA-1983). Pato, with Profile
+    // open inside Setup's right half: *"don't use two subcolumns at the right,
+    // just one"*.
+    //
+    // `lg:columns-2` asked the WINDOW how wide it was and got 1440, while this
+    // masonry was living in a 700px pane — the same class of bug the note above
+    // names. `@container` on the wrapper plus `@4xl:` here asks the COLUMN
+    // instead: one column inside the pane, two at the standalone address where
+    // the screen really is that wide.
+    <div className="@container">
+      <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid @4xl:columns-2 @4xl:gap-5 @4xl:pb-10 @4xl:[&>section]:mb-5 @4xl:[&>details]:mb-5">
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         rank="lead"
@@ -754,6 +764,7 @@ export function PlaceSection({
           onClose={() => setMetaFor(null)}
         />
       )}
+    </div>
     </div>
   );
 }

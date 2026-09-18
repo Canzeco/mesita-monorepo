@@ -272,26 +272,36 @@ export default function SetupPage() {
                           sentences to find out what is on. The note is still
                           the pane's job, where there is room to say what the
                           state MEANS. */}
-                      <span className="text-muted-foreground text-[13px] leading-snug">
+                      {/* ONE LINE, CLAMPED (MESITA-1983). The blurbs are
+                          sentences — they were written to introduce a product,
+                          not to label a row — so at 470px they wrapped to two
+                          and three lines and every row became a different
+                          height. A list you scan has one rhythm; a list of
+                          eighteen paragraphs is prose with icons. The full
+                          sentence is on the pane, where it has room. */}
+                      <span className="text-muted-foreground line-clamp-1 text-[13px] leading-snug">
                         {card.blurb}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-3">
                       <ProductStateBadge state={card.state} />
+                      {/* EVERY ROW OPENS, SO EVERY ROW GETS THE CHEVRON
+                          (MESITA-1983). It used to draw only where `open` was
+                          set — a product with a SCREEN — which stopped being
+                          the question the moment every row got a pane. Half
+                          the rows carrying an arrow and half carrying a
+                          same-sized blank reads as a list where some entries
+                          are broken. */}
                       {card.state === "locked" ? (
                         <Lock
                           className="text-muted-foreground h-4 w-4"
-                          aria-label="Needs the Membership"
+                          aria-label="Needs the partnership"
                         />
-                      ) : open ? (
+                      ) : (
                         <ArrowRight
                           className="text-muted-foreground h-4 w-4"
                           aria-hidden
                         />
-                      ) : (
-                        // The column stays the same width whether or not the
-                        // row opens, so the badges line up down the list.
-                        <span className="h-4 w-4" aria-hidden />
                       )}
                     </span>
                   </>
