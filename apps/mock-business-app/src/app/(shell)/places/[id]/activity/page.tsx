@@ -49,7 +49,6 @@ import { Badge } from "@/components/shared/Badges";
 import { Table, type Column } from "@/components/shared/Table";
 import {
   buildLedgers,
-  LOG_KEYS,
   LOG_LABEL,
   SETTING_AREA_LABEL,
   type CreditLogRow,
@@ -79,11 +78,26 @@ import { cn } from "@/lib/utils";
  *  page and no other table in the console has to grow one to compile. */
 type LogColumn<T> = Column<T> & { text: (row: T) => string };
 
-/** The rail: the union first, then the eight in `LOG_KEYS`' order, so a ninth
- *  log cannot join the book and be left off this page by forgetting — the same
- *  law `RAIL_ROWS` holds for the rail. */
-const TABS = ["everything", ...LOG_KEYS] as const;
-type Tab = (typeof TABS)[number];
+/** THE CHIPS THAT SURVIVED THE PRODUCT ADDRESSES (MESITA-1987).
+ *
+ *  This was the union plus all nine logs. Seven of those nine now have a
+ *  product address of their own — `/activity/visit-rewards` is the visit log,
+ *  `/activity/online-orders` is the queue — so a chip for each was a second
+ *  way to filter the same rows, one click apart from the row that owns them.
+ *  Two filters over one list is how a list stops being trusted: the reader has
+ *  to work out whether the two agree.
+ *
+ *  WHAT IS LEFT IS WHAT NO PRODUCT OWNS. `views` is the top of the funnel and
+ *  has no product behind it; `settings` is what the house changed and belongs
+ *  to no product either. They keep their chips because there is nowhere else
+ *  to reach them — that is the test, not "is it a log". */
+type Tab = "everything" | LogKey;
+
+/** THE CHIPS ACTUALLY OFFERED. `Tab` stays the full union so every log keeps
+ *  its columns, its CSV and its label — the data did not move, only the doors
+ *  did. A reader arriving at `/activity/visit-rewards` gets the same rows this
+ *  page would have filtered. */
+const CHIPS: readonly Tab[] = ["everything", "views", "settings"];
 
 const TAB_LABEL: Record<Tab, string> = { everything: "Everything", ...LOG_LABEL };
 
@@ -181,7 +195,7 @@ export default function PlaceActivityPage() {
           should not have to spend. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="scrollbar-none -mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 py-1">
-          {TABS.map((key) => {
+          {CHIPS.map((key) => {
             const on = key === tab;
             return (
               <button
