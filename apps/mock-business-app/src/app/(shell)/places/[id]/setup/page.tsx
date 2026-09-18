@@ -36,7 +36,7 @@
 //
 // A LOCKED ROW CARRIES NO VERB, unchanged: a button on a product the caller
 // cannot have is an invitation to a 403.
-import { ArrowLeft, ArrowRight, Lock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, useSearchParams } from "next/navigation";
 import {
@@ -51,13 +51,21 @@ import { Badge } from "@/components/shared/Badges";
 import type { MockPlace } from "@/mock/types";
 import { ProductPane } from "@/components/console/ProductPane";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
-import { ProductStateBadge } from "@/components/shared/Badges";
-import { buildProductCards, type ProductCard } from "@/lib/products";
+import {
+  buildProductCards,
+  type ProductCard,
+  type ProductState,
+} from "@/lib/products";
 import { PLACE_PAGE_LABEL, placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
-import { SCOPE_CHIP_CLASS, SHELL_BLEED, SHELL_GUTTER } from "@/lib/ui-classes";
+import {
+  SCOPE_CHIP_CLASS,
+  SHELL_BLEED,
+  SHELL_GUTTER,
+  TINY_LABEL_CLASS,
+} from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 
@@ -98,6 +106,35 @@ const GROUPS: readonly {
  *  state, a price and a Soon note it can never have. */
 const MEMBERSHIP = "partnership";
 
+// THE ROW, macOS-SHAPED (MESITA-1985). Pato: *"remove fucking lots of
+// descriptions there, just make it clearer… more to look like apple
+// configuration for familiarity"*.
+//
+// System Settings' sidebar is a mark, a name, and a selection. This list
+// carried a mark, a name, a SENTENCE, a filled pill and a chevron — five
+// things where one name would do, which is why eighteen products read as
+// eighteen paragraphs rather than as a list.
+//
+// 34px tall, not 56: a settings index is scanned, and the blurb was the only
+// thing that needed the height. The selection is an ink pill with white text,
+// the same move Apple makes with its accent — the brightest object in the
+// column, so "you are here" survives a glance down eighteen rows.
+const ROW =
+  "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition";
+const ROW_ON = "bg-foreground text-background";
+const ROW_OFF = "hover:bg-foreground/[0.06]";
+
+/** The state as a WORD, not a filled badge. It is the one fact a settings list
+ *  genuinely owes you — is this on — and a pill for it shouts over the name it
+ *  sits beside. `soon` says Soon; everything live says what it is. */
+const STATE_WORD: Record<ProductState, string> = {
+  free: "Free",
+  enabled: "On",
+  off: "Off",
+  locked: "Locked",
+  soon: "Soon",
+};
+
 /** The band the Partnership row joins. Read from `GROUPS` rather than typed
  *  twice: a renamed band would otherwise drop the row silently. */
 const RUNNING_TITLE = "Running";
@@ -109,7 +146,7 @@ export default function SetupPage() {
   // is the one React rule eslint refuses to let ship.
   const chosenKey = useSearchParams().get("p");
   const place = useHeldPlaceOrNull();
-  const { tabs, pages } = usePlaceScope();
+  const { pages } = usePlaceScope();
   // THE GATE. Static segments beside `[view]` get no tab gate, so a pool id
   // typed into the bar used to reach the body with no place at all. It sits
   // after the hooks and before the first `place.` — a guard below a
@@ -166,22 +203,18 @@ export default function SetupPage() {
         // list is a promise the page cannot keep.
         if (inGroup.length === 0) return null;
         return (
-          <section key={group.title} className="flex flex-col gap-2">
-            <div className="flex items-baseline gap-2">
-              {/* `PlaceHeading`'s `h1`, then these, then the product names,
-                  which are `<p>` on purpose — a row's name is a label, and an
-                  outline made of fifteen headings is not an outline. */}
-              <h2 className="font-display text-sm font-semibold tracking-tight">
-                {group.title}
-              </h2>
-              <p className="text-muted-foreground text-[13px]">{group.hint}</p>
-            </div>
-            {/* NO CARD AROUND THE ROWS (MESITA-1982). The two halves are told
-                apart by their GROUND now — the index is the grey, the work
-                surface is the white — so a white card floating on the grey
-                would be a third surface saying a thing the divide already
-                says. Hairlines between rows, nothing around them. */}
-            <div className="border-border divide-border divide-y border-y">
+          <section key={group.title} className="flex flex-col gap-1">
+            {/* THE HEAD IS A LABEL, NOT A HEADLINE (MESITA-1985). macOS System
+                Settings groups its sidebar with a quiet caption and a hairline,
+                never with a title competing with the rows under it. The hint
+                went with the noise: "On this place now" was a sentence
+                explaining a word that already says it. */}
+            <h2 className={cn(TINY_LABEL_CLASS, "px-2 pt-2")}>{group.title}</h2>
+            {/* NO CARD, AND NO HAIRLINES EITHER (MESITA-1985). Rules between
+                34px rows are a rule every 34px: at eighteen products that is
+                eighteen lines competing with eighteen names. macOS separates
+                sidebar rows with SPACE and the selection pill, nothing else. */}
+            <div className="flex flex-col gap-px">
                 {/* MESITA PARTNERSHIP, AS A PRODUCT SOLUTION (MESITA-1982).
                     Pato put it in the list *"almost as a product solution"*
                     and then went further: it IS one. So it takes the first
@@ -200,122 +233,32 @@ export default function SetupPage() {
                     scroll={false}
                     aria-current={selected === MEMBERSHIP ? "true" : undefined}
                     className={cn(
-                      "flex min-h-14 w-full items-center gap-3 px-4 py-3.5 text-left transition",
-                      selected === MEMBERSHIP ? "bg-card" : "hover:bg-card/60",
+                      ROW,
+                      selected === MEMBERSHIP ? ROW_ON : ROW_OFF,
                     )}
                   >
                     <span
                       aria-hidden
+                      className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
+                    >
+                      {"\u{1F91D}"}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+                      Mesita Partnership
+                    </span>
+                    <span
                       className={cn(
-                        SCOPE_CHIP_CLASS,
-                        "bg-muted text-foreground flex shrink-0 items-center justify-center",
+                        "shrink-0 text-[12px]",
+                        selected === MEMBERSHIP
+                          ? "text-background/70"
+                          : "text-muted-foreground",
                       )}
                     >
-                      <span className="text-[22px] leading-none">{"\u{1F91D}"}</span>
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="font-display text-[15px] font-semibold tracking-tight">
-                        Mesita Partnership
-                      </span>
-                      <span className="text-muted-foreground text-[13px] leading-snug">
-                        What this place pays for, and what five of the products
-                        below are behind.
-                      </span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-3">
-                      <Badge tone={place.partnered ? "gold" : "off"}>
-                        {place.partnered ? "Partner" : "Off"}
-                      </Badge>
-                      <ArrowRight className="text-muted-foreground h-4 w-4" aria-hidden />
+                      {place.partnered ? "Partner" : "Off"}
                     </span>
                   </Link>
                 )}
               {inGroup.map((card) => {
-                // NO CAST. Most product keys are not `PlaceTab`s, so
-                // `key as PlaceTab` would be a lie the compiler accepts, and
-                // one that reads false for Payments — whose destination is a
-                // view but whose action is built from `payHref`.
-                const allowed = (tabs as readonly string[]).includes(card.key);
-                const open = card.action && allowed ? card.action : null;
-                // THE WHOLE ROW IS THE TARGET when there is one. A row whose
-                // only hit area is a four-word link at the right edge is a
-                // 44px-tall thing you have to aim at.
-                const body = (
-                  <>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        SCOPE_CHIP_CLASS,
-                        "bg-muted text-foreground flex shrink-0 items-center justify-center",
-                      )}
-                    >
-                      {/* `leading-none`: an emoji's line box is taller than
-                          the glyph, so without it the mark sits low. */}
-                      <span className="text-[22px] leading-none">
-                        {PRODUCT_MARK[card.key]}
-                      </span>
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="font-display text-[15px] font-semibold tracking-tight">
-                        {card.name}
-                      </span>
-                      {/* THE BLURB, NEVER THE NOTE (MESITA-1982). Pato: *"at
-                          the left in the subtitle don't mention the state, just
-                          a description of what the product does"*.
-                          
-                          The note is the product's STATE in a sentence — "On
-                          here", "Included with Mesita Partner", "Nothing is
-                          built yet" — and the badge at the right end of this
-                          same row already carries that fact. Two signals for
-                          one fact is how a list ends up read as neither: the
-                          eye stops trusting the badge and starts reading nine
-                          sentences to find out what is on. The note is still
-                          the pane's job, where there is room to say what the
-                          state MEANS. */}
-                      {/* ONE LINE, CLAMPED (MESITA-1983). The blurbs are
-                          sentences — they were written to introduce a product,
-                          not to label a row — so at 470px they wrapped to two
-                          and three lines and every row became a different
-                          height. A list you scan has one rhythm; a list of
-                          eighteen paragraphs is prose with icons. The full
-                          sentence is on the pane, where it has room. */}
-                      <span className="text-muted-foreground line-clamp-1 text-[13px] leading-snug">
-                        {card.blurb}
-                      </span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-3">
-                      <ProductStateBadge state={card.state} />
-                      {/* EVERY ROW OPENS, SO EVERY ROW GETS THE CHEVRON
-                          (MESITA-1983). It used to draw only where `open` was
-                          set — a product with a SCREEN — which stopped being
-                          the question the moment every row got a pane. Half
-                          the rows carrying an arrow and half carrying a
-                          same-sized blank reads as a list where some entries
-                          are broken. */}
-                      {card.state === "locked" ? (
-                        <Lock
-                          className="text-muted-foreground h-4 w-4"
-                          aria-label="Needs the partnership"
-                        />
-                      ) : (
-                        <ArrowRight
-                          className="text-muted-foreground h-4 w-4"
-                          aria-hidden
-                        />
-                      )}
-                    </span>
-                  </>
-                );
-                const ROW =
-                  "flex items-center gap-3 px-4 py-3.5 min-h-14 text-left w-full";
-                // EVERY ROW IS A SELECTION NOW (MESITA-1981), including the
-                // nine Coming ones. The pane on the right always has something
-                // true to say about a product — its dial, or that there is
-                // nothing to set yet — so a row that did nothing when clicked
-                // would be the only dead thing on a screen built for picking.
-                // `open` survives as the ARIA label's verb and as the arrow's
-                // condition: it is still what says whether this product has a
-                // screen behind it.
                 const chosen = card.key === selected;
                 return (
                   <Link
@@ -323,14 +266,25 @@ export default function SetupPage() {
                     href={`?p=${card.key}`}
                     scroll={false}
                     aria-current={chosen ? "true" : undefined}
-                    aria-label={`${open ? open.label : "Open"} · ${card.name}`}
-                    className={cn(
-                      ROW,
-                      "transition",
-                      chosen ? "bg-card" : "hover:bg-card/60",
-                    )}
+                    className={cn(ROW, chosen ? ROW_ON : ROW_OFF)}
                   >
-                    {body}
+                    <span
+                      aria-hidden
+                      className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
+                    >
+                      {PRODUCT_MARK[card.key]}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+                      {card.name}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 text-[12px]",
+                        chosen ? "text-background/70" : "text-muted-foreground",
+                      )}
+                    >
+                      {STATE_WORD[card.state]}
+                    </span>
                   </Link>
                 );
               })}
@@ -396,16 +350,11 @@ export default function SetupPage() {
             sits beside rather than as a panel laid on it. */}
         <div
           className={cn(
-            "border-border lg:border-r",
+            "border-border lg:min-h-0 lg:overflow-y-auto lg:border-r",
             open ? "hidden lg:block" : "block",
           )}
         >
-          <div
-            className={cn(
-              SHELL_GUTTER,
-              "flex flex-col gap-4 py-4 lg:sticky lg:top-0 lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto",
-            )}
-          >
+          <div className={cn(SHELL_GUTTER, "flex flex-col gap-3 py-3")}>
             {list}
           </div>
         </div>
