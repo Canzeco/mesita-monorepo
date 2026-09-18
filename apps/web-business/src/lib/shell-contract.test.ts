@@ -21,8 +21,8 @@ describe("middleware contract", () => {
     expect(shouldGate(SHELL_ROUTES.placesNew)).toBe(true);
     expect(shouldGate("/places/abc")).toBe(true);
     expect(shouldGate("/places/abc/activity")).toBe(true);
-    expect(shouldGate(placePageHref("abc", "settings"))).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.settings)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.settings)).toBe(true);
   });
   it("leaves the root ungated — it renders nothing to protect", () => {
     // `/` resolves to a place and reads no data of its own that a visitor

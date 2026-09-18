@@ -241,8 +241,8 @@ export async function startMembershipAction(
   try {
     ({ checkoutUrl, alreadyMember } = await apiStartMembership(supabase, {
       placeId,
-      successUrl: `${origin}${placePageHref(placeId, "products")}?membership=return`,
-      cancelUrl: `${origin}${placePageHref(placeId, "products")}?membership=cancelled`,
+      successUrl: `${origin}${placePageHref(placeId, "setup")}?membership=return`,
+      cancelUrl: `${origin}${placePageHref(placeId, "setup")}?membership=cancelled`,
     }));
   } catch (e) {
     const code = (e as { code?: string | null })?.code ?? null;
@@ -309,7 +309,7 @@ export async function manageMembershipAction(
     ({ url } = await apiManageMembership(supabase, {
       placeId,
       returnUrl:
-        `${origin}${placePageHref(placeId, "products")}?membership=managed`,
+        `${origin}${placePageHref(placeId, "setup")}?membership=managed`,
     }));
   } catch (e) {
     return {

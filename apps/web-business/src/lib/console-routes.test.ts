@@ -179,7 +179,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     for (const tab of PLACE_TABS) {
       expect(flatViewFromPathname(FLAT_ROUTES[tab])).toBe(tab);
     }
-    expect(flatViewFromPathname(FLAT_ROUTES.products)).toBeNull();
+    expect(flatViewFromPathname(FLAT_ROUTES.setup)).toBeNull();
     expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
     expect(flatViewFromPathname("/profiles")).toBeNull();
   });
@@ -194,7 +194,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     expect(flatPlacePageFromPathname(FLAT_ROUTES.profile)).toBeNull();
     // A canonical address is never a flat one, and a name that merely STARTS
     // with a live one is not either.
-    expect(flatPlacePageFromPathname(placePageHref("p-x", "products"))).toBeNull();
+    expect(flatPlacePageFromPathname(placePageHref("p-x", "setup"))).toBeNull();
     expect(flatPlacePageFromPathname("/productsx")).toBeNull();
     // Neither `/payments` (MESITA-1869) nor `/places` is a flat address: the
     // redirect table owns the first, the catalogue owns the second.
@@ -316,11 +316,11 @@ describe("the place's pages (MESITA-1892)", () => {
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(placePageHref("a/b", "settings")).toBe("/places/a%2Fb/settings");
+    expect(SHELL_ROUTES.settings).toBe("/places/a%2Fb/settings");
     expect(placeRootHref("a/b")).toBe("/places/a%2Fb");
     expect(placePayHref("a/b")).toBe("/places/a%2Fb/products/pay");
     expect(placeHref("a/b")).toBe("/places/a%2Fb/profile");
-    expect(placeIdFromPathname(placePageHref("a/b", "settings"))).toBe("a/b");
+    expect(placeIdFromPathname(SHELL_ROUTES.settings)).toBe("a/b");
     expect(placeIdFromPathname(placeRootHref("a/b"))).toBe("a/b");
   });
 
@@ -328,8 +328,8 @@ describe("the place's pages (MESITA-1892)", () => {
     for (const p of PLACE_PAGES) {
       expect(placePageFromPathname(placePageHref("p-x", p))).toBe(p);
     }
-    expect(placePageFromPathname(placePayHref("p-x"))).toBe("products");
-    expect(placePageFromPathname("/places/p-x/products/")).toBe("products");
+    expect(placePageFromPathname(placePayHref("p-x"))).toBe("setup");
+    expect(placePageFromPathname("/places/p-x/products/")).toBe("setup");
   });
 
   it("is null for a view and for the bare address", () => {
@@ -343,7 +343,7 @@ describe("the place's pages (MESITA-1892)", () => {
     expect(placePageFromPathname("/places/p-x/settings/x")).toBeNull();
     expect(placePageFromPathname(SHELL_ROUTES.places)).toBeNull();
     expect(placePageFromPathname(SHELL_ROUTES.placesNew)).toBeNull();
-    expect(placePageFromPathname(SHELL_ROUTES.account)).toBeNull();
+    expect(placePageFromPathname(SHELL_ROUTES.settings)).toBeNull();
   });
 });
 
@@ -449,7 +449,7 @@ describe("placeIdFromPathname — the rail's scope", () => {
     expect(placeIdFromPathname(placePayHref("p-x"))).toBe("p-x");
   });
   it("is null on every address that names no place", () => {
-    expect(placeIdFromPathname(SHELL_ROUTES.account)).toBeNull();
+    expect(placeIdFromPathname(SHELL_ROUTES.settings)).toBeNull();
     expect(placeIdFromPathname("/")).toBeNull();
     expect(placeIdFromPathname("/profile")).toBeNull();
   });

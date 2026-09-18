@@ -66,7 +66,7 @@ describe("an address that names a place", () => {
     // are the place's now, and `products/pay` is three segments deep — which
     // is the one screen Stripe returns to. A reader that stopped at two would
     // drop the rail's scope exactly there.
-    expect(scope(placePageHref("p-2", "settings")).place?.id).toBe("p-2");
+    expect(scope(SHELL_ROUTES.settings).place?.id).toBe("p-2");
     expect(scope("/places/p-2/products/pay").place?.id).toBe("p-2");
     expect(scope("/places/p-2").place?.id).toBe("p-2");
   });
@@ -74,7 +74,7 @@ describe("an address that names a place", () => {
 
 describe("every other route", () => {
   it("Account and the catalogue fall back to what the operator was last in", () => {
-    expect(scope(SHELL_ROUTES.account, { rememberedPlaceId: "p-3" }).place?.id).toBe(
+    expect(scope(SHELL_ROUTES.settings, { rememberedPlaceId: "p-3" }).place?.id).toBe(
       "p-3",
     );
     expect(scope(SHELL_ROUTES.places, { lastPlaceId: "p-2" }).place?.id).toBe("p-2");
@@ -85,7 +85,7 @@ describe("every other route", () => {
   });
 
   it("with no places there is no scope at all", () => {
-    const s = resolveRailScope({ places: [], pathname: SHELL_ROUTES.account });
+    const s = resolveRailScope({ places: [], pathname: SHELL_ROUTES.settings });
     expect(s.place).toBeNull();
     expect(s.foreignPlaceId).toBeNull();
     expect(s.mode).toBe("zero");
@@ -94,7 +94,7 @@ describe("every other route", () => {
   it("a remembered place I no longer hold resolves like nothing was named", () => {
     // Released, or removed from the team. The rail falls back rather than
     // naming a place the caller cannot open.
-    expect(solo(SHELL_ROUTES.account, { rememberedPlaceId: "gone" }).place?.id).toBe(
+    expect(solo(SHELL_ROUTES.settings, { rememberedPlaceId: "gone" }).place?.id).toBe(
       "p-3",
     );
   });
@@ -109,11 +109,11 @@ describe("every other route", () => {
 // screen that must not print a count at all.
 describe("the console's shape", () => {
   it("is solo at exactly one place, and not at zero or two", () => {
-    expect(solo(placePageHref("p-3", "settings")).mode).toBe("solo");
+    expect(solo(SHELL_ROUTES.settings).mode).toBe("solo");
     expect(
-      resolveRailScope({ places: [], pathname: SHELL_ROUTES.account }).mode,
+      resolveRailScope({ places: [], pathname: SHELL_ROUTES.settings }).mode,
     ).toBe("zero");
-    expect(scope(placePageHref("p-1", "settings")).mode).toBe("multi");
+    expect(scope(SHELL_ROUTES.settings).mode).toBe("multi");
   });
 
   it("is unknown when the READ failed, whatever the array says", () => {
@@ -121,7 +121,7 @@ describe("the console's shape", () => {
     // read of nothing and stays "zero"; the failure outranks the count, and
     // must never be reported as "multi" — the state that tells an operator
     // they hold places they may not hold.
-    expect(scope(SHELL_ROUTES.account, { viewerError: true }).mode).toBe("unknown");
+    expect(scope(SHELL_ROUTES.settings, { viewerError: true }).mode).toBe("unknown");
     expect(
       resolveRailScope({
         places: [],
@@ -132,7 +132,7 @@ describe("the console's shape", () => {
     expect(
       resolveRailScope({
         places: [],
-        pathname: SHELL_ROUTES.account,
+        pathname: SHELL_ROUTES.settings,
         viewerError: false,
       }).mode,
     ).toBe("zero");

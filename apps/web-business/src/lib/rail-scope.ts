@@ -23,7 +23,12 @@
 // Keep this file free of server imports: the rail is a client component.
 import type { ConsolePlace } from "@/lib/api/console";
 import { findPlace } from "@/lib/active-place";
-import { flatViewFromPathname, placeIdFromPathname } from "@/lib/console-routes";
+import {
+  SHELL_ROUTES,
+  flatPlacePageFromPathname,
+  flatViewFromPathname,
+  placeIdFromPathname,
+} from "@/lib/console-routes";
 
 /** What the rail needs of a place — plus the two tier flags (MESITA-1867,
  *  place-scoped since MESITA-1892). They are not the rail's to paint; they
@@ -118,7 +123,16 @@ export function resolveRailScope(input: {
   // so the place is the one the (place) layout published this session, else
   // the remembered one. A published place the caller holds no membership on is
   // a pool place, selected as foreign.
-  if (flatViewFromPathname(pathname)) {
+  // THE PAGE TWINS AND `/settings` ANSWER HERE TOO (MESITA-1974). `/setup` and
+  // `/activity` name no place either, and `/settings` names none by design —
+  // it is the person's address as much as the place's. Without them all three
+  // fell through to the catch-all below, which PICKS a place rather than
+  // remembering one, and picking is the thing this branch exists to prevent.
+  if (
+    flatViewFromPathname(pathname) ||
+    flatPlacePageFromPathname(pathname) ||
+    pathname === SHELL_ROUTES.settings
+  ) {
     const candidate = input.lastPlaceId ?? input.rememberedPlaceId ?? null;
     const held = findPlace(places, candidate);
     if (held) {

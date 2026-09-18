@@ -115,7 +115,17 @@ import type { PlaceTab } from "@/lib/place-tabs";
 
 export const SHELL_ROUTES = {
   root: "/",
-  account: "/account",
+  // THE FOURTH TAB, AND IT IS NOT PLACE-SCOPED (MESITA-1974). `/settings` is
+  // the person, what they owe Mesita, and the open place's own config on one
+  // screen; `/account` is gone into it. It must resolve with NO place, because
+  // Sign out lives here and `Sidebar` draws `RAIL_ROWS` only in the `solo` and
+  // `multi` shapes — a `/places/<id>/settings` address puts the console's only
+  // exit behind a successful places read.
+  //
+  // IT IS A REAL PAGE, NOT A FLAT TWIN, so it is gone from `FLAT_ROUTES`: a
+  // static segment shadows `[flat]`, and a contract name a real route shadows
+  // is the MESITA-1839 trap from the other side.
+  settings: "/settings",
   places: "/places",
   placesNew: "/places/new",
 } as const;
@@ -138,25 +148,20 @@ export const SHELL_ROUTES = {
 // the pages that are not views.
 
 /** The segments BENEATH `/places/<id>` that are PAGES rather than views. */
-export const PLACE_PAGES = [
-  "settings",
-  "products",
-  "customers",
-  "activity",
-] as const;
+/** The segments BENEATH `/places/<id>` that are PAGES rather than views.
+ *
+ *  TWO, SINCE MESITA-1974. `products` became `setup`, `customers` went back to
+ *  being a product with a row in Setup and no page of its own, and `settings`
+ *  left the place entirely for `/settings`. */
+export const PLACE_PAGES = ["setup", "activity"] as const;
 export type PlacePage = (typeof PLACE_PAGES)[number];
 
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
-  settings: "Settings",
-  products: "Products",
-  // ONE PRODUCT, ONE NOUN (MESITA-1955). Customers is BOTH a page and a
-  // product, so its name lives in two tables — this one feeds the breadcrumb,
-  // `PRODUCT_LABEL` feeds the rail row and the card. They said "Customers"
-  // together and could drift apart in silence, which is how a console starts
-  // calling one thing two names; `crumbs.test.ts` now pins them equal. The
-  // string is repeated rather than imported because this file's imports are
-  // type-only on purpose — see the header.
-  customers: "Guest Catalog",
+  // THE SHOP AND THE CONFIG ARE ONE LIST (MESITA-1974). `products` named a
+  // catalogue that only stated facts while every switch lived on a product's
+  // own view, so a product existed twice and the two could disagree. Setup is
+  // the one list: Off says what a product does, On says how it is set.
+  setup: "Setup",
   activity: "Activity",
 };
 
@@ -223,23 +228,16 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
  *  rather than resolving to `/places/<id>/undefined` with every check green. */
 export type RailProduct = Extract<ProductKey, PlaceTab> | "customers";
 
-export type RailRow =
-  | { kind: "page"; target: PlacePage }
-  | { kind: "place"; view: PlaceRailView }
-  | { kind: "product"; product: RailProduct };
-
-/** The place views that keep a rail row OF THEIR OWN. NOT `PLACE_TABS` —
- *  that is the full matrix of what a place HAS; this is what the column LISTS
- *  as a place view rather than as a product.
+/** A rail row names a place PAGE, and that is the only kind left.
  *
- *  MENUS AND REVIEWS LEFT IT (MESITA-1885). They are Profile — the place's
- *  own description, split into three addresses in MESITA-1848 and given rows
- *  at the MESITA-1879 review gate — and Pato's product rail has room for the
- *  place ONCE. They keep their addresses and their access; only the row goes,
- *  and hidden is never protected: `tabsForAccess` is still the one matrix and
- *  `PlaceTabGate` still 404s a withheld tab. */
-export const PLACE_RAIL_VIEWS = ["profile"] as const;
-export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
+ *  `kind: "place"` AND `kind: "product"` WENT WITH THE ROWS (MESITA-1974).
+ *  Four tabs means four destinations — the venue, Setup, Activity, Settings —
+ *  and a product is reached by drilling in from Setup, never by a row.
+ *
+ *  The discriminant survives a one-member union on purpose: adding a second
+ *  kind later is then an edit to this type and a branch in the rail, not a
+ *  refactor of every row literal. */
+export type RailRow = { kind: "page"; target: PlacePage };
 
 // ── THE RAIL IS THE PRODUCT LIST NOW (MESITA-1885) ────────────────────────
 //
@@ -267,153 +265,39 @@ export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
 /** THE RAIL, in Pato's order and his groups. Account is not here: it is the
  *  person, it sits below the last seam, and it is the one row every state
  *  renders — including the failed read. */
+/** THE RAIL — TWO ROWS, because the console has FOUR DESTINATIONS and the
+ *  other two are bands (MESITA-1974, porting MESITA-1973 from the mock).
+ *
+ *  Pato, 2026-09-18: *"Place, Setup, Activity, Settings"* — *"FOUR SCREENS
+ *  EASY."*
+ *
+ *      Place      the VENUE BAND, at the place's bare address
+ *      Setup      -+ this array
+ *      Activity   -+
+ *      Settings   the pinned FOOT
+ *
+ *  WHY ELEVEN ROWS WENT. They were Pato's own product rail (MESITA-1885) and
+ *  they were right for a console read at a desk. They do not port to a phone,
+ *  and mobile-business has to be this same console — the rule consumer web and
+ *  mobile already live by. Four destinations are a tab bar under a finger and
+ *  this column under a cursor, unchanged.
+ *
+ *  THE TWO THAT ARE NOT HERE ARE NOT MISSING. Place is the venue band, which
+ *  already names the subject and links its bare address; a row saying "Place"
+ *  under a band saying which place is the same door drawn twice. Settings is
+ *  the foot because `showRows` draws this array only in the `solo` and `multi`
+ *  shapes, and Sign out lives on Settings now — a row here would strand the
+ *  console's only exit in `unknown` and `zero`.
+ *
+ *  THE SECTIONS AND THE SEAM WENT WITH THE ROWS. `RAIL_SECTIONS`,
+ *  `railSectionOf` and `RAIL_GROUP_STARTS` existed to head and divide eleven
+ *  rows in two groups (MESITA-1915). Two rows are not two groups, and a
+ *  hairline between Setup and Activity would be a rule separating nothing. */
 export const RAIL_ROWS: readonly RailRow[] = [
-  // The business itself. Products stays a row of its own: the catalogue is
-  // where an operator COMPARES the eight and buys one, which is a different
-  // job from configuring the one they already have.
-  { kind: "page", target: "settings" },
-  // ACTIVITY LEFT THE RAIL (MESITA-1924). Pato: "remove the activity from
-  // sidebar menu" — said once every product page grew its own Activity half,
-  // which is what made a place-level Activity row redundant as a DESTINATION.
-  // The page keeps its address and its doors (Home, the ask bar): its feed is
-  // the whole place's, every kind of event, which no single product's half
-  // covers. A row is not the same thing as a page.
-  { kind: "page", target: "products" },
-  // Free, and always on. Profile is the venue; Customers is its guests.
-  { kind: "product", product: "profile" },
-  { kind: "product", product: "customers" },
-  // At the table — and REWARDS IS ONE OF THEM AGAIN (MESITA-1928). Pato: "move
-  // rewards below visits". MESITA-1900 filed it with the money group on the
-  // reasoning that Rewards is what a place PAYS rather than the container
-  // guests arrive through; the container argument wins, because a reward is
-  // earned by closing a bill at a table and by nothing else. An order is
-  // prepaid and has no table, so it can never earn one.
-  { kind: "product", product: "visits" },
-  { kind: "product", product: "rewards" },
-  { kind: "product", product: "orders" },
-  { kind: "product", product: "reservations" },
-  // Money. Terminal is gone (MESITA-1900): it was the one row whose address
-  // was a Soon strip.
-  { kind: "product", product: "pay" },
-  { kind: "product", product: "credits" },
-  // CAPITAL IS LAST, and it is money (MESITA-1929): cash now against meals the
-  // place will serve later. A Soon product still gets a LIVE row — the rail
-  // never dims, and the PAGE is where a product says it is not here yet.
-  { kind: "product", product: "capital" },
+  { kind: "page", target: "setup" },
+  { kind: "page", target: "activity" },
 ];
 
-/** Where the seam falls, as the INDEX of each row that opens a group. Derived
- *  from the array above rather than written twice — a hand-kept list of
- *  indices is a list that survives exactly one row move. */
-// ── THE TWO SECTIONS (MESITA-1915) ─────────────────────────────────────────
-//
-// A rule in this column separates SECTIONS, and there are two of them: what
-// you MANAGE about the venue, and the PRODUCTS you run on it. They are not a
-// third list bolted beside `RAIL_ROWS` — a row's `kind` already says which
-// side of the line it falls on, so the sections are that fact NAMED, and
-// `RAIL_GROUP_STARTS` below derives the line from the same fact.
-//
-// THEY ARE HEADED AGAIN, which reverses MESITA-1844. Pato headed the rail's
-// groups in MESITA-1842 and deleted the headers two issues later, because a
-// column of eight rows under THREE titles is three lists. It is two titles
-// over two sections now — and the eight products sit whole under one of them,
-// which is the thing that was actually wrong.
-//
-// A HEAD IS NOT A ROW. It is an eyebrow: no address, no pill, no hover, no
-// glyph column. The one row shape is untouched.
-// THE SECOND ONE IS NOT CALLED "PRODUCTS", and the reason is one line above
-// it in the column: `Products` is already a ROW — the catalogue, where an
-// operator compares the eight and buys one — and it is the LAST row of the
-// first section. A head reading "Products", wearing the catalogue's own mark,
-// directly under a row reading "Products" wearing the same mark is two
-// different things spelled and drawn identically, one line apart. "Your
-// products" is the eight this place actually runs; the catalogue is where you
-// get them.
-export const RAIL_SECTIONS = [
-  { key: "manage", label: "Manage" },
-  { key: "products", label: "Your products" },
-] as const;
-export type RailSectionKey = (typeof RAIL_SECTIONS)[number]["key"];
-
-/** Which section a row falls in.
- *
- *  ONE KIND IS NAMED AND THE REST FALL THROUGH, deliberately. Written the
- *  other way round — `kind === "page"` is Manage, everything else is products
- *  — a row kind added later lands silently in the PRODUCTS section, under a
- *  title that does not describe it, and draws a line where nobody asked for
- *  one. That is not hypothetical: `kind: "home"` arrived in the mock one issue
- *  after this rule was written. Products are the closed set; the rest is what
- *  you manage, whatever it is called next. */
-export function railSectionOf(row: RailRow): (typeof RAIL_SECTIONS)[number] {
-  return row.kind === "product" ? RAIL_SECTIONS[1] : RAIL_SECTIONS[0];
-}
-
-export const RAIL_GROUP_STARTS: readonly number[] = RAIL_ROWS.reduce<number[]>(
-  (acc, row, i) => {
-    const prev = RAIL_ROWS[i - 1];
-    if (!prev) return acc;
-    // ONE RULE (MESITA-1915): a group opens where the SECTION changes, and
-    // nowhere else. It had a second — Pato's two blank lines inside the
-    // products, at `visits` and at `rewards` — and he cut them on sight: *"the
-    // lines only for to separate section stuff, (products whole products is
-    // ONE sections)"*. A rule that sometimes means "new section" and sometimes
-    // means "same section, new mood" teaches an operator to read neither, and
-    // at eight rows the three sub-groups were three lists.
-    //
-    // IT ASKS THE SECTION, NOT THE `kind`. Comparing kinds directly drew a
-    // line between two rows of the SAME section the moment a third kind
-    // existed — `kind: "home"` landed in the mock while this was in review,
-    // and would have opened a group above Settings that names nothing.
-    if (railSectionOf(prev).key !== railSectionOf(row).key) acc.push(i);
-    return acc;
-  },
-  [],
-);
-
-// ── WHERE A PRODUCT ROW LANDS (MESITA-1885, re-cut MESITA-1900) ───────────
-//
-// Eight products, TWO kinds of address, and this is the only place that knows
-// which is which:
-//
-//   the place's own view   visits · orders · reservations · rewards · pay ·
-//                          credits, and profile. Six of them are `ZONE_ROWS`
-//                          zones — the ladder re-cut by product — and Profile
-//                          is the place description it always was.
-//   a place PAGE           customers. It is about the guests, which is a
-//                          reading of the venue rather than a switch on it,
-//                          so it has a page and not a view.
-//
-// THE THIRD KIND DIED WITH TERMINAL (MESITA-1900). `a product sub-page` was a
-// shape one row wore: Terminal had no engine, no column and no switch, so its
-// address was a SoonStrip under `products/` and two helpers existed to build
-// and recognise it. Pato's list drops the product, so the shape goes with it.
-//
-// PAY IS STILL SPLIT ACROSS TWO SCREENS AND THE ROW TAKES THE VIEW. The Stripe
-// account and the Mesita Pay switch are at `/places/<id>/products/pay` — the
-// SETUP, reached from the product card; the rung an operator flips day to day
-// is the `pay` view. Both are the place's now (MESITA-1892), so the split is
-// no longer org-versus-place: it is buying a product versus running it, which
-// is the same split every other card makes. The row points where the work is,
-// and the view links up to the setup.
-//
-// `placeHref` is the caller's, because only the rail knows which place is
-// selected — and what to do when none is (the flat twin, which renders the
-// next step rather than forwarding nowhere).
-export function productRowHref(
-  product: RailProduct,
-  placeId: string,
-  placeHref: (tab: PlaceTab) => string,
-): string {
-  if (product === "customers") return placePageHref(placeId, "customers");
-  // AND THE CAST IS GONE (MESITA-1949). It read `product as PlaceTab` and was
-  // true by construction while `PLACE_TABS` ⊇ `PRODUCT_KEYS`; most products
-  // have no view now, so construction stopped holding. The
-  // narrowing above leaves `RailProduct` minus "customers", which IS a
-  // `PlaceTab` by the `Extract` that defines it — so the compiler checks what
-  // `console-routes.test.ts` used to assert, and a product with no view can
-  // never reach this line.
-  return placeHref(product);
-}
 
 /** The zero-place console: the rail is a FILTER over `RAIL_ROWS`, never a
  *  second array — and with the organization gone it keeps nothing.
@@ -481,7 +365,7 @@ export function placesNewHref(): string {
  *  link that navigates cannot fail that way, and it is shareable, which the
  *  anchor never was. It is also where Stripe's stored `?connect=` lands. */
 export function placePayHref(placeId: string): string {
-  return `${placePageHref(placeId, "products")}/pay`;
+  return `/places/${encodeURIComponent(placeId)}/pay/setup`;
 }
 
 /** Which PAGE of a place a pathname is, or null when it is not one.
@@ -503,7 +387,9 @@ export function placePageFromPathname(pathname: string): PlacePage | null {
   if (!match || match[1] === "new") return null;
   const [, , second, third] = match;
   if (!second) return null;
-  if (second === "products") return third === undefined || third === "pay" ? "products" : null;
+  // NO SUB-STEP TO ABSORB ANY MORE (MESITA-1974). `products/pay` was the one
+  // two-segment page address, and Payments is configured on its own view now,
+  // so a third segment under a place page is not a page at all.
   if (third !== undefined) return null;
   return (PLACE_PAGES as readonly string[]).includes(second)
     ? (second as PlacePage)
@@ -547,9 +433,13 @@ export const FLAT_ROUTES = {
   // `/settings` for `/capabilities` is deleted, so the name resolves instead
   // of being shadowed. That rule is why MESITA-1852 had to call the page
   // `configuration` in the first place.
-  settings: "/settings",
-  products: "/products",
-  customers: "/customers",
+  // The place's two PAGES. `/settings` is NOT here (MESITA-1974): it is a real
+  // page on its own static segment, and a static segment shadows `[flat]`, so
+  // a name in both lists is a resolver that can never run. `/products` and
+  // `/customers` went with the pages they resolved onto, and both owe a
+  // permanent rule in `next.config.ts` — a contract name a config rule shadows
+  // is the MESITA-1839 trap, and a retired name with no rule is a 404.
+  setup: "/setup",
   activity: "/activity",
 } as const;
 

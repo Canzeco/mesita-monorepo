@@ -46,14 +46,14 @@ import type { PaymentAccountState } from "@/lib/model/types";
 const CARD_SRC = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
 const PARTNER_SRC = readFileSync(path.join(__dirname, "./PartnerCard.tsx"), "utf8");
 const PAGE_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/products/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/setup/page.tsx"),
   "utf8",
 );
 // Mesita Pay's controls got their own address (MESITA-1872): Pato took the
 // Section off the catalogue — *"just leave the 8 boxes and the 1 partnership
 // box shit"* — so the composition this file asserts lives one path deeper.
 const PAY_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/products/pay/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/pay/setup/page.tsx"),
   "utf8",
 );
 const LOADING_SRC = readFileSync(

@@ -276,7 +276,7 @@ describe("the rail is six nouns and one indent", () => {
     expect(existsSync(path.join(SRC, "components/console/OrgSwitcher.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC, "components/console/ScopeSwitchers.tsx"))).toBe(false);
     expect(existsSync(path.join(SRC, "components/console/CreateOrganizationForm.tsx"))).toBe(false);
-    expect(readCode("app/(shell)/places/[id]/settings/page.tsx")).not.toContain("Switcher");
+    expect(readCode("app/(shell)/settings/page.tsx")).not.toContain("Switcher");
     expect(readCode("components/console/AppShell.tsx")).toContain("<RailScopeProvider value={{ scope, places, isSuperAdmin }}>");
   });
 
@@ -401,7 +401,7 @@ describe("the rail is six nouns and one indent", () => {
   // came back from the permanent redirect that forced `configuration` in the
   // first place.
   it("Settings is two boxes: the team, then Developers", () => {
-    const page = readCode("app/(shell)/places/[id]/settings/page.tsx");
+    const page = readCode("app/(shell)/settings/page.tsx");
     expect(page).not.toContain("DoorRow");
     // ONE MEMBERS SURFACE (MESITA-1892). `MembersCard` was the organization's
     // own, over four `business-web-*-org-member` endpoints that were twins of
@@ -409,7 +409,7 @@ describe("the rail is six nouns and one indent", () => {
     // deleted rather than repointed, and the section moved here from the
     // internal box on Visits.
     expect(page).toContain("<SettingsBody");
-    expect(readCode("app/(shell)/places/[id]/settings/SettingsBody.tsx")).toContain(
+    expect(readCode("app/(shell)/settings/SettingsBody.tsx")).toContain(
       "<TeamSection place={place} />",
     );
     expect(existsSync(path.join(SRC, "components/console/MembersCard.tsx"))).toBe(false);
@@ -456,7 +456,7 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1872. Pato: "remove thus shit. just leave the 8 boxes and the 1
   // partnership box shit. payments log go into activity."
   it("Products is the partnership and the grid; Pay has its own address", () => {
-    const page = readCode("app/(shell)/places/[id]/products/page.tsx");
+    const page = readCode("app/(shell)/places/[id]/setup/page.tsx");
     expect(page).toContain("<PartnerBanner");
     expect(page).toContain("<ProductCatalog");
     expect(page).toContain("buildProductCards");
@@ -480,7 +480,7 @@ describe("the rail is six nouns and one indent", () => {
     ]) {
       expect(page, gone).not.toContain(gone);
     }
-    const pay = readCode("app/(shell)/places/[id]/products/pay/page.tsx");
+    const pay = readCode("app/(shell)/places/[id]/pay/setup/page.tsx");
     for (const kept of [
       "<PaymentsCard",
       "<MesitaPayCard",
@@ -1108,7 +1108,7 @@ describe("the container stays uncapped", () => {
   // column, wtf is that." Account is a fragment in the layout's own column,
   // like every other page, and the constant is gone for good.
   it("Account caps nothing: one column, full width", () => {
-    expect(read("app/(shell)/account/page.tsx")).not.toMatch(/max-w-/);
+    expect(read("app/(shell)/settings/page.tsx")).not.toMatch(/max-w-/);
     expect(read("app/(shell)/account/loading.tsx")).not.toMatch(/max-w-\dxl/);
     expect(read("lib/ui-classes.ts")).not.toContain("export const ACCOUNT_COLUMN_CLASS");
     // The one column IS the ask (MESITA-1834) and stays: no grid, any width.
@@ -1121,7 +1121,7 @@ describe("the container stays uncapped", () => {
   // count with the layer, so what is left is one row: who you are, and the
   // way out.
   it("Account is ONE card of ONE row, and the row is the person", () => {
-    const page = read("app/(shell)/account/page.tsx");
+    const page = read("app/(shell)/settings/page.tsx");
     const ui = read("lib/ui-classes.ts");
     // The shape is still a shared constant, shared now with the Organization
     // page's selector — so the two cannot drift into two ranks.

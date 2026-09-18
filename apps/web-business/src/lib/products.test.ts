@@ -107,26 +107,12 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // Terminal for being "the one row whose address was a SoonStrip", so a
     // Soon product gets a card and no row. `RailProduct` makes that a compile
     // error rather than a convention.
-    const railProducts = RAIL_ROWS.filter((r) => r.kind === "product").map(
-      (r) => r.product,
-    );
-    // Every rail product is a real product...
-    for (const p of railProducts) expect(PRODUCT_ORDER).toContain(p);
-    // ...and the rail's relative order is the catalogue's. A subsequence check
-    // walks both lists once: if the rail ever reorders two products the
-    // catalogue did not, the walk runs off the end.
-    const positions = railProducts.map((p) => PRODUCT_ORDER.indexOf(p));
-    expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    // The rail is a STRICT subset — if that ever stops being true, the
-    // subsequence check above is weaker than the equality it replaced and
-    // should go back to being one.
-    expect(railProducts.length).toBeLessThan(PRODUCT_ORDER.length);
-
-    // TERMINAL IS A CARD AGAIN AND STILL NOT A ROW (MESITA-1949). MESITA-1900
-    // removed the product because the row's only address was a SoonStrip; the
-    // card carries no address at all, which is the shape that objection wanted.
-    expect(PRODUCT_ORDER).toContain("terminal");
-    expect(railProducts).not.toContain("terminal");
+    // THE RAIL HAS NO PRODUCT ROWS TO CHECK (MESITA-1974). It is two page
+    // rows now — Setup and Activity — so there is no rail order that could
+    // disagree with the catalogue's, and this assertion has nothing left to
+    // walk. What replaced it is stronger: `RailRow` is page-only, so a product
+    // row is a compile error rather than a test failure.
+    expect(RAIL_ROWS.every((r) => r.kind === "page")).toBe(true);
   });
 
   it("there is ONE vocabulary, and the grid re-exports it (MESITA-1900)", () => {

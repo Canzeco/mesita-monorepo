@@ -14,13 +14,10 @@ import {
   FLAT_ROUTES,
   FLAT_ROUTE_LIST,
   PLACE_PAGES,
-  RAIL_GROUP_STARTS,
   RAIL_ROWS,
-  RAIL_SECTIONS,
   SHELL_ROUTES,
   placePageHref,
   placePayHref,
-  productRowHref,
 } from "@/lib/console-routes";
 import { PLACE_TABS, placeTabHref } from "@/lib/place-tabs";
 import { PRODUCT_LABEL } from "@/lib/product-keys";
@@ -111,55 +108,26 @@ const labels = (html: string) =>
 // second hand-typed list is how the rail came to mean three different things
 // in one document (MESITA-1879).
 const ROW_LABEL: Record<string, string> = {
-  settings: "Settings",
-  products: "Products",
+  setup: "Setup",
   activity: "Activity",
 };
-/** The eleven, in `RAIL_ROWS` order, then Account at the foot. A product row
- *  takes the PRODUCT vocabulary's label, not a copy of it here — the rail, the
- *  card and the page heading are one noun (MESITA-1885). */
-const RAIL_LABELS = RAIL_ROWS.map((r) =>
-  r.kind === "page"
-    ? ROW_LABEL[r.target]
-    : r.kind === "product"
-      ? PRODUCT_LABEL[r.product]
-      : ROW_LABEL[r.view],
-);
-const ALL_LABELS = [...RAIL_LABELS, "Account"];
+/** The two, in `RAIL_ROWS` order, then Settings at the foot. Every row is a
+ *  page row now (MESITA-1974), so there is no second vocabulary to read. */
+const RAIL_LABELS = RAIL_ROWS.map((r) => ROW_LABEL[r.target]);
+const ALL_LABELS = [...RAIL_LABELS, "Settings"];
 
 describe("exactly one pill, on every route (MESITA-1879)", () => {
   const ROUTES: [string, string][] = [
-    [SHELL_ROUTES.account, "Account"],
-    [page("settings"), "Settings"],
-    [page("products"), "Products"],
-    [page("customers"), "Guest Catalog"],
-    // Mesita Pay's setup reads as its PAGE, so the Products row stays lit
-    // while an operator stands in it (MESITA-1872).
-    [placePayHref("p-1"), "Products"],
-    [view("profile"), "Profile"],
-    // THE SIX PRODUCT VIEWS (MESITA-1885, Rewards added MESITA-1900), each
-    // lighting its OWN row. Three of them used to be rows on `capabilities`,
-    // so before the split these three addresses were one address and could
-    // not have appeared here — and `/rewards` was a REDIRECT source until
-    // MESITA-1900, so it could not have appeared here either.
-    [view("visits"), "Visits"],
-    [view("orders"), "Online Orders"],
-    [view("reservations"), "Reservations"],
-    [view("rewards"), "Rewards"],
-    [view("pay"), "Online Payments"],
-    [view("credits"), "Prepaid Credits"],
+    // FOUR DESTINATIONS, AND ONLY TWO OF THEM ARE ROWS (MESITA-1974). Place is
+    // the venue band and Settings is the pinned foot, so the pill lands on a
+    // band for two of the four — which is still exactly one pill.
+    [SHELL_ROUTES.settings, "Settings"],
+    [page("setup"), "Setup"],
+    [page("activity"), "Activity"],
     // The flat names an operator can still type light the same row while the
     // forward is in flight.
-    [FLAT_ROUTES.settings, "Settings"],
-    [FLAT_ROUTES.customers, "Guest Catalog"],
-    [FLAT_ROUTES.products, "Products"],
-    [FLAT_ROUTES.profile, "Profile"],
-    [FLAT_ROUTES.visits, "Visits"],
-    [FLAT_ROUTES.orders, "Online Orders"],
-    [FLAT_ROUTES.reservations, "Reservations"],
-    [FLAT_ROUTES.rewards, "Rewards"],
-    [FLAT_ROUTES.pay, "Online Payments"],
-    [FLAT_ROUTES.credits, "Prepaid Credits"],
+    [FLAT_ROUTES.setup, "Setup"],
+    [FLAT_ROUTES.activity, "Activity"],
   ];
   for (const [pathname, label] of ROUTES) {
     it(`${pathname} lights ${label} and nothing else`, () => {
@@ -181,15 +149,24 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
   // no address to be rowless at — `/places/<id>/menus` 404s like any other
   // name `PlaceTabGate` does not recognise.
   const ROWLESS = [
-    view("admin"),
+    // EVERY PRODUCT VIEW JOINED THIS LIST (MESITA-1974). The rail had eleven
+    // rows and eight of them were products; a product is reached by drilling
+    // in from Setup now, so its address is live and lights nothing. That is a
+    // real answer, not an oversight — and it is the same answer Activity got
+    // in MESITA-1924 and Admin has always had.
+    ...PLACE_TABS.map(view),
+    FLAT_ROUTES.profile,
+    FLAT_ROUTES.visits,
+    FLAT_ROUTES.orders,
+    FLAT_ROUTES.reservations,
+    FLAT_ROUTES.rewards,
+    FLAT_ROUTES.pay,
+    FLAT_ROUTES.credits,
+    FLAT_ROUTES.capital,
     FLAT_ROUTES.admin,
-    // ACTIVITY JOINED THIS LIST (MESITA-1924). Pato: "remove the activity from
-    // sidebar menu", once every product page grew its own Activity half. The
-    // PAGE is untouched and still reached from Home and the ask bar — it is
-    // the whole place's feed, every kind of event, which no one product's half
-    // covers. Only the ROW is gone.
-    page("activity"),
-    FLAT_ROUTES.activity,
+    // Payments' Stripe setup is a sub-step of the Payments VIEW now, not of
+    // the catalogue, so it lights nothing for the same reason the view does.
+    placePayHref("p-1"),
     // The catalogue and its ceremony are above every place (MESITA-1892), and
     // neither is a row in the solo shape — the empty state is where Add place
     // earns one.
@@ -211,7 +188,7 @@ describe("exactly one pill, on every route (MESITA-1879)", () => {
       ...PLACE_TABS.map(view),
       ...PLACE_PAGES.map(page),
       placePayHref("p-1"),
-      SHELL_ROUTES.account,
+      SHELL_ROUTES.settings,
       SHELL_ROUTES.places,
       SHELL_ROUTES.placesNew,
     ];
@@ -286,16 +263,12 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     expect(n).not.toContain("pl-10");
     expect(n).not.toContain("border-l");
     expect(n).not.toContain("list-disc");
-    // PATO'S BLANK LINES, as seams (MESITA-1885): one over each group the
-    // rail opens, and NO LONGER one over Account — that seam went to the
-    // footer with the row (MESITA-1909), and is counted there below. Derived
-    // from `RAIL_GROUP_STARTS` so a group added to the contract without a
-    // hairline fails here.
-    //
-    // THEY CARRY NO NAMES. MESITA-1842 headed the rail's groups and
-    // MESITA-1844 deleted the headers two issues later; a blank line is not a
-    // heading, so a seam is a rule and nothing else.
-    expect((n.match(/border-t/g) ?? []).length).toBe(RAIL_GROUP_STARTS.length);
+    // NO SEAM INSIDE THE COLUMN (MESITA-1974). The rail had one, over the
+    // group where the pages ended and the products began; two rows have no
+    // group to open, and a rule between Setup and Activity would separate
+    // nothing. The ONE hairline left is the footer's, counted on the next
+    // line, and it marks where the place stops and you start.
+    expect((n.match(/border-t/g) ?? []).length).toBe(0);
     expect((footerOf(render(view("profile"), { rememberedPlaceId: "p-1" })).match(/border-t/g) ?? []).length).toBe(1);
     // The seam is a wrapper's border, never a row's: a row that grew a rule
     // would be a second row shape.
@@ -303,57 +276,18 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
   });
 
   it("each row wears the mark of its subject", () => {
-    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
+    const html = render(page("setup"), { rememberedPlaceId: "p-1" });
+    // TWO ROWS, TWO MARKS, AND THE FOOT'S GEAR (MESITA-1974). The eight
+    // product marks went with the product rows; Setup keeps the catalogue's
+    // grid because a shop is what it still is underneath, and Settings keeps
+    // the gear it has worn since MESITA-1871.
     for (const mark of [
-      "lucide-settings", // Settings — the gear (MESITA-1871)
-      "lucide-layout-grid", // Products — the catalogue IS a grid of tiles
-      // The eight products, wearing the CATALOGUE's marks (MESITA-1885): the
-      // same glyph each card carries, because a row and a card naming one
-      // product with two pictures teaches an operator to distrust both.
-      "lucide-store", // Profile — the place's public page
-      "lucide-users", // Customers — people, plural, against Account's one
-      "lucide-ticket", // Visits — the guest's check at the bill
-      "lucide-shopping-bag", // Orders — pickup and delivery
-      "lucide-calendar-check", // Reservations — a table, booked
-      "lucide-gift", // Rewards — what a guest earns, given back
-      "lucide-credit-card", // Payments — the card
-      "lucide-wallet", // Credits — money held before it is spent
-      "lucide-user-round", // Account — the person, one of them
-      // THE TWO SECTION HEADS (MESITA-1915). Not rows, and their marks say so.
-      // Manage wears a BRIEFCASE — the business itself. Every nearer mark is
-      // banned below as a second gear or a second venue, which is the whole
-      // reason this one is a briefcase and not a tool. Products' head wears
-      // the catalogue's own `layout-grid`, the SAME mark as its row: the row
-      // is the door to the eight and the section IS the eight, and one idea
-      // drawn two ways is what this table exists to prevent.
-      "lucide-briefcase",
+      "lucide-layout-grid", // Setup — a grid of what this place can run
+      "lucide-chart-no-axes-column", // Activity — counts over time
+      "lucide-settings", // Settings — the gear, on the foot
     ]) {
       expect(html, mark).toContain(mark);
     }
-    // The marks that left WITH their rows. Each still exists in the app on
-    // the page it belongs to; none belongs in this column any more.
-    for (const gone of [
-      // Activity's mark left with its ROW (MESITA-1924). `chart-no-axes-column`
-      // is still the right glyph for the page and still on it; it just has
-      // nothing to draw in this column any more.
-      "lucide-chart-no-axes-column",
-      "lucide-layers", // Places — the catalogue, reached from the empty state
-      "lucide-sliders-horizontal", // Capabilities, retired as a view
-      "lucide-nfc", // Terminal, retired as a product (MESITA-1900)
-      "lucide-shield", // Admin
-      "lucide-utensils-crossed", // Menus, folded under Profile
-      "lucide-star", // Reviews, folded under Profile
-    ]) {
-      expect(html, gone).not.toContain(gone);
-    }
-    // And the marks that never belonged.
-    expect(html).not.toContain("lucide-coins");
-    expect(html).not.toContain("lucide-building2");
-    expect(html).not.toContain("lucide-cog");
-    expect(html).not.toContain("lucide-settings-2");
-    // The gear is on ONE row: a second would be two screens claiming to be
-    // where you configure things.
-    expect(html.match(/lucide-settings\b/g) ?? []).toHaveLength(1);
   });
 
   it("the rows are the CANONICAL addresses — one hop, and shareable", () => {
@@ -368,14 +302,8 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // MESITA-1900) — derived here too, so the rail and the contract cannot
     // disagree about where Customers lives.
     expect(hrefs(html)).toEqual([
-      ...RAIL_ROWS.map((r) =>
-        r.kind === "page"
-          ? placePageHref("p-1", r.target)
-          : r.kind === "product"
-            ? productRowHref(r.product, "p-1", view)
-            : view(r.view),
-      ),
-      SHELL_ROUTES.account,
+      ...RAIL_ROWS.map((r) => placePageHref("p-1", r.target)),
+      SHELL_ROUTES.settings,
     ]);
   });
 
@@ -441,12 +369,12 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // MESITA-1793's law. And it must not read as the ZERO state either: an
     // empty array is a successful read of nothing, which gets a different
     // screen entirely.
-    const html = render(SHELL_ROUTES.account, { places: [], viewerError: true });
+    const html = render(SHELL_ROUTES.settings, { places: [], viewerError: true });
     expect(html).toContain("Couldn&#x27;t load your places");
     expect(html).not.toContain("Add your place");
     // One link in the landmark: Account. The muted line is a div, not a row.
     expect(rows(html)).toHaveLength(1);
-    expect(pillText(html)).toBe("Account");
+    expect(pillText(html)).toBe("Settings");
   });
 
   it("zero PLACES: the ceremony and Account, and no row about a place", () => {
@@ -461,9 +389,9 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // rail with no door to the one thing a new operator came to do is a worse
     // empty state than a muted row ever was — and production holds zero
     // places, so this is every fresh environment.
-    const html = render(SHELL_ROUTES.account, { places: [] });
+    const html = render(SHELL_ROUTES.settings, { places: [] });
     expect(labels(html)).toEqual(["Add your place", "Account"]);
-    expect(hrefs(html)).toEqual([SHELL_ROUTES.placesNew, SHELL_ROUTES.account]);
+    expect(hrefs(html)).toEqual([SHELL_ROUTES.placesNew, SHELL_ROUTES.settings]);
     // No row about a place, by name: the failure mode is one creeping back.
     for (const gone of [
       "Settings",
@@ -525,7 +453,7 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // to `/places`, and Account names the person and nothing else by its own
     // law, so deleting the selector without this row would strand a two-place
     // operator on whichever venue the address happened to name.
-    const html = render(SHELL_ROUTES.account, { places: MANY });
+    const html = render(SHELL_ROUTES.settings, { places: MANY });
     expect(html).not.toContain('aria-label="Switch place"');
     expect(html).not.toContain(">Pick a place<");
     expect(labels(html)).toContain("All places");
@@ -537,8 +465,7 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // With no place named, every row falls back to its FLAT twin, which
     // resolves at request time rather than pointing at a place the rail
     // refused to pick.
-    expect(hrefs(html)).toContain(FLAT_ROUTES.settings);
-    expect(hrefs(html)).toContain(FLAT_ROUTES.profile);
+    expect(hrefs(html)).toContain(FLAT_ROUTES.setup);
   });
 
   it("multi — but the ADDRESS names one: that place's rows light normally", () => {
@@ -566,36 +493,16 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
   // THREE BANDS (MESITA-1909): head, scroller, foot. Each answers a different
   // question, so this pins that none of them leaks into another — the lockup
   // is not a row of `nav`, and Account is not its last row.
-  // THE EIGHT PRODUCTS ARE ONE SECTION (MESITA-1915), and this is the
-  // assertion that says so. The seam COUNT elsewhere in this file derives from
-  // `RAIL_GROUP_STARTS`, so it would follow the contract wherever it went and
-  // catch nothing; the number itself is what Pato asked for — *"products whole
-  // products is ONE sections"* — so the number is pinned here.
-  it("one line inside the column, and the eight products sit whole under it", () => {
-    expect(RAIL_GROUP_STARTS).toHaveLength(1);
-    // And it falls exactly where the pages end and the products begin.
-    expect(RAIL_ROWS[RAIL_GROUP_STARTS[0] - 1].kind).toBe("page");
-    expect(RAIL_ROWS[RAIL_GROUP_STARTS[0]].kind).toBe("product");
-    // No product row opens a group of its own any more: the three sub-groups
-    // Pato cut (free / at-the-table / money) were three lists in one section.
-    expect(RAIL_ROWS.filter((r) => r.kind === "product")).toHaveLength(9);
-  });
-
-  it("two section heads, in column order, and neither is a row", () => {
-    const n = navOf(render(view("profile"), { rememberedPlaceId: "p-1" }));
-    const heads = (n.match(/<p class="[^"]*uppercase[^"]*">.*?<\/p>/g) ?? []).map((h) =>
-      h.replace(/<[^>]+>/g, "").trim(),
-    );
-    expect(heads).toEqual(RAIL_SECTIONS.map((x) => x.label));
-    // A HEAD IS NOT A ROW: it is a <p>, never an <a>, so it carries no address
-    // and cannot take the pill. `labels` reads the ROW span, so no head's text
-    // may appear there — and neither head's text is a row label, which is also
-    // why the second section is "Your products" and not "Products": that word
-    // is taken, by the catalogue row one line above the head.
-    for (const { label } of RAIL_SECTIONS) {
-      expect(labels(n), label).not.toContain(label);
-    }
-    expect(n).not.toMatch(/<a [^>]*>\s*<svg[^>]*lucide-briefcase/);
+  // THE SECTIONS AND THE SEAM ARE GONE (MESITA-1974). `RAIL_SECTIONS`,
+  // `railSectionOf` and `RAIL_GROUP_STARTS` existed to head and divide eleven
+  // rows in two groups (MESITA-1915); two rows are not two groups, and a
+  // hairline between Setup and Activity would be a rule separating nothing.
+  // What is pinned instead is their ABSENCE, because a head returning quietly
+  // is how this column went from one list to three the first time.
+  it("no heads and no rule inside the column", () => {
+    const n = navOf(render(page("setup"), { rememberedPlaceId: "p-1" }));
+    expect(n.match(/<p class="[^"]*uppercase[^"]*">/g) ?? []).toHaveLength(0);
+    expect(n.match(/border-t/g) ?? []).toHaveLength(0);
   });
 
   it("the head is the lockup, outside the nav, and links nowhere", () => {
@@ -610,20 +517,13 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     );
   });
 
-  it("the foot is Account alone, pinned, under the column's last seam", () => {
+  it("the foot is Settings alone, pinned, under the column's one seam", () => {
     const html = render(FLAT_ROUTES.visits, { places: SOLO });
     const foot = footerOf(html);
-    expect(foot).toContain(SHELL_ROUTES.account);
-    expect(foot).toContain('title="Account · pato@canzeco.com"');
+    expect(foot).toContain(SHELL_ROUTES.settings);
+    expect(foot).toContain('title="Settings · pato@canzeco.com"');
     expect((foot.match(/<a /g) ?? []).length).toBe(1);
     expect((foot.match(/border-t/g) ?? []).length).toBe(1);
-    // ACCOUNT LEFT THE SCROLLER, so the nav keeps only Pato's group seams —
-    // one fewer than when Account trailed the rows inside it.
-    expect((navOf(html).match(/border-t/g) ?? []).length).toBe(RAIL_GROUP_STARTS.length);
-    // Still every row, still one pill: moving the row changed where it sits,
-    // not what the column reaches.
-    expect(rows(html)).toHaveLength(RAIL_ROWS.length + 1);
-    expect(pills(html)).toHaveLength(1);
   });
 
   // NOTHING IS A TOOLTIP OF ITSELF (MESITA-1909). Every label is on screen at

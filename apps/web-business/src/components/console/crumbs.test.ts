@@ -23,7 +23,7 @@ const unnamed = { placeName: null };
 describe("crumbsFor", () => {
   it("Account, the catalogue and its ceremony stand alone", () => {
     // None of the three is about ONE place, so none of them borrows its name.
-    expect(crumbsFor(SHELL_ROUTES.account, names)).toEqual(["Account"]);
+    expect(crumbsFor(SHELL_ROUTES.settings, names)).toEqual(["Account"]);
     expect(crumbsFor(SHELL_ROUTES.places, names)).toEqual(["Places"]);
     expect(crumbsFor(SHELL_ROUTES.placesNew, names)).toEqual(["Places", "Add"]);
   });
@@ -57,11 +57,11 @@ describe("crumbsFor", () => {
   it("each place page is the place, then the page", () => {
     // Members has no crumb because it has no address (MESITA-1847): the
     // people are content ON Settings, not a page under it.
-    expect(crumbsFor(placePageHref("p", "products"), names)).toEqual([
+    expect(crumbsFor(placePageHref("p", "setup"), names)).toEqual([
       "Strana Del Valle",
       "Products",
     ]);
-    expect(crumbsFor(placePageHref("p", "settings"), names)).toEqual([
+    expect(crumbsFor(SHELL_ROUTES.settings, names)).toEqual([
       "Strana Del Valle",
       "Settings",
     ]);
@@ -70,19 +70,17 @@ describe("crumbsFor", () => {
       "Activity",
     ]);
     // …and with no name resolved yet, the noun rather than an empty trail.
-    expect(crumbsFor(placePageHref("p", "customers"), unnamed)).toEqual([
+    expect(crumbsFor(placePageHref("p", "setup"), unnamed)).toEqual([
       "Place",
-      "Guest Catalog",
+      "Setup",
     ]);
   });
 
-  // THE SAME PRODUCT, IN TWO TABLES (MESITA-1955). Customers is a page AND a
-  // product: the crumb reads `PLACE_PAGE_LABEL`, the rail row and the card
-  // read `PRODUCT_LABEL`, and nothing but this line stops one of them being
-  // renamed alone.
-  it("the crumb and the rail call Customers the same thing", () => {
-    expect(PLACE_PAGE_LABEL.customers).toBe(PRODUCT_LABEL.customers);
-  });
+  // CUSTOMERS IS ONE THING AGAIN (MESITA-1974), so the two-table check it
+  // needed is gone with its page. It was a page AND a product, the crumb read
+  // `PLACE_PAGE_LABEL` and the card read `PRODUCT_LABEL`, and this line was
+  // all that stopped one of them being renamed alone. It is a product with a
+  // row in Setup and no address, so only `PRODUCT_LABEL` names it now.
 
   it("a place view is the place, then the view", () => {
     expect(crumbsFor(placeTabHref("p", "credits"), names)).toEqual([

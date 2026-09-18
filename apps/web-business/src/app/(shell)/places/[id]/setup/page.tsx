@@ -61,7 +61,7 @@ import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductsPage(props: {
+export default async function SetupPage(props: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ membership?: string }>;
 }) {
@@ -69,7 +69,7 @@ export default async function ProductsPage(props: {
   const { membership: membershipParam } = await props.searchParams;
   const user = await getServerUser();
   if (!user) {
-    redirect(`/signin?next=${encodeURIComponent(placePageHref(id, "products"))}`);
+    redirect(`/signin?next=${encodeURIComponent(placePageHref(id, "setup"))}`);
   }
   const supabase = await createServerSupabase();
 
@@ -85,15 +85,15 @@ export default async function ProductsPage(props: {
     membershipPrice = viewer.membershipPrice;
   } catch (e) {
     readFailed = true;
-    console.error("[products] business-web-list-places:", e);
+    console.error("[setup] business-web-list-places:", e);
   }
 
   if (readFailed) {
     return (
       <PageErrorState
-        heading="Couldn't load this place's products"
+        heading="Couldn't load this place's setup"
         message="The catalogue reads what is already on. Reload to try again."
-        retryHref={placePageHref(id, "products")}
+        retryHref={placePageHref(id, "setup")}
       />
     );
   }
