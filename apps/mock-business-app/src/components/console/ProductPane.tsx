@@ -45,7 +45,6 @@ import { PayView } from "@/components/views/PayView";
 import { CreditsView } from "@/components/views/CreditsView";
 import { CapitalView } from "@/components/views/CapitalView";
 import { ProductStateBadge } from "@/components/shared/Badges";
-import { SoonStrip } from "@/components/shared/SoonStrip";
 import { useMock } from "@/mock/MockStore";
 import type { ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
@@ -115,6 +114,8 @@ function Dial({
 export function ProductPane({ card }: { card: ProductCard }) {
   const { scenario, setScenario } = useMock();
   const View = PRODUCT_VIEW[card.key] ?? null;
+  /** Is the body something other than a restatement of the note? */
+  const hasBody = View !== null || card.key === "customers";
 
   const body = useMemo(() => {
     if (View) return <View />;
@@ -128,13 +129,27 @@ export function ProductPane({ card }: { card: ProductCard }) {
         />
       );
     }
-    // A STATED ABSENCE, NOT AN EMPTY PANEL. The note is the product's own
-    // sentence about where it actually stands — `card.note` is what it is doing
-    // HERE, and for a Soon product that is the honest "nothing yet".
+    // A STATED ABSENCE, COMPOSED (MESITA-1983). This was a dashed strip pinned
+    // to the top of the pane, under a heading that had just said the same
+    // sentence — a scrap at the top of half a white screen, which is what made
+    // eleven of eighteen products look unfinished rather than unbuilt.
+    //
+    // It is centred in the pane's own height now and it says ONE thing. The
+    // mark is the product's, at the size the pane can afford: the thing the
+    // operator clicked is the thing that greets them, which is the difference
+    // between a blank panel and a page about a product that is not here yet.
     return (
-      <SoonStrip title="Nothing to set here yet">
-        {card.note ?? card.blurb}
-      </SoonStrip>
+      <div className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-center">
+        <span aria-hidden className="text-4xl leading-none opacity-60">
+          {PRODUCT_MARK[card.key]}
+        </span>
+        <p className="font-display text-sm font-semibold tracking-tight">
+          Not here yet
+        </p>
+        <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
+          {card.note ?? card.blurb}
+        </p>
+      </div>
     );
   }, [View, card.key, card.note, card.blurb, scenario.customerIntel, setScenario]);
 
@@ -176,11 +191,12 @@ export function ProductPane({ card }: { card: ProductCard }) {
           <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
             {card.blurb}
           </p>
-          {/* THE NOTE LIVES HERE NOW (MESITA-1982). The list row dropped it —
-              its badge already says the state — so this is the one place the
-              state gets a sentence: what it means for this place, not just
-              which word applies. */}
-          {card.note && (
+          {/* THE NOTE, ONCE (MESITA-1983). A Soon product's note IS the
+              SoonStrip's body below, so printing it here too put the same
+              sentence on the screen twice, eleven words apart — which is how
+              a pane with one fact in it manages to look padded. It renders
+              here only when something else is carrying the body. */}
+          {card.note && hasBody && (
             <p className="text-foreground mt-1 text-[13px] leading-snug font-medium">
               {card.note}
             </p>
