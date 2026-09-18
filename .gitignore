@@ -5,8 +5,9 @@
 node_modules/
 .pnpm-store/
 
-# local-only agent config
+# local-only agent config (and the copy Redeye takes before it arms)
 .claude/settings.local.json
+.claude/.redeye-backup.json
 
 # agent worktrees parked inside the repo
 .worktrees/

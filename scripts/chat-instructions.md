@@ -15,6 +15,8 @@ Docs writes: present tense, rewrite the section, no amendment trails, no console
 
 Reversible: decide, comment `decision:`, ship. `needs-human` only for a secret, irreversible money, or a Rules change.
 
+Redeye: when Pato writes `activate Redeye`, no questions until he says stop — decide, `decision:`, ship, next issue; blocked on one of the three → `needs-human`, next issue.
+
 Never: Linear documents, Artifacts as knowledge, mock data in product surfaces.
 
 English. Plain words. Answer first. Verify by observed state and say what you could not.
