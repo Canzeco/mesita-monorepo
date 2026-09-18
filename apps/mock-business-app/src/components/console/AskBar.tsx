@@ -58,7 +58,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUp, Sparkles, X } from "lucide-react";
-import { placePageHref, placePayHref } from "@/lib/console-routes";
+import { SHELL_ROUTES, placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
 
@@ -224,8 +224,8 @@ const INTENTS: Intent[] = [
       reply:
         "Customers is who came, how often, and the one fact you buy one guest at a time — their phone number.",
       door: {
-        label: "Open Customers",
-        href: (id: string) => placePageHref(id, "customers"),
+        label: "Open Setup",
+        href: (id: string) => placePageHref(id, "setup"),
       },
     },
   },
@@ -234,7 +234,7 @@ const INTENTS: Intent[] = [
     answer: {
       reply:
         "Teammates are on Settings, each with one role. A viewer reads three screens; an editor gets the other six.",
-      door: { label: "Open Settings", href: (id: string) => placePageHref(id, "settings") },
+      door: { label: "Open Settings", href: () => SHELL_ROUTES.settings },
     },
   },
   {
@@ -250,7 +250,7 @@ const INTENTS: Intent[] = [
 const FALLBACK: Answer = {
   reply:
     "I don't know that one yet. Everything this place can switch on is in the catalogue — each card says whether it is on here and what turns it on.",
-  door: { label: "Open Products", href: (id: string) => placePageHref(id, "products") },
+  door: { label: "Open Setup", href: (id: string) => placePageHref(id, "setup") },
 };
 
 /** The one place a question becomes an answer. Exported so a future agent can

@@ -1,6 +1,27 @@
 "use client";
 
-// Settings — Team, Developers, and the states this place holds.
+// SETTINGS — the fourth tab: you, what you owe, and this place (MESITA-1973).
+//
+// IT IS NOT PLACE-SCOPED ANY MORE, and that is load-bearing rather than tidy.
+// Sign out lives here now that Account is gone, and `Sidebar.tsx` draws
+// `RAIL_ROWS` only in the `solo` and `multi` shapes — so an address of the form
+// `/places/<id>/settings` would put the console's only exit behind a successful
+// places read. `/settings` resolves with no place at all. MESITA-1935 tried
+// this merge and missed exactly that; MESITA-1937 undid it for exactly that.
+//
+// IT READS THE PLACE THE WAY THE RAIL DOES, through `resolveRailScope`, not
+// through `usePlaceScope` — that context is published by `places/[id]/layout`
+// and this page sits outside it. The pathname names no place here, so the scope
+// falls back to the last place opened, which is the venue the rail is showing.
+//
+// THREE SCOPES, TOP TO BOTTOM: the PERSON, the MONEY, then the PLACE. The split
+// MESITA-1937 made into two destinations survives as two sections of one page,
+// which is what Pato asked for: *"Settings, Account also here"*.
+//
+// BILLING IS WHAT YOU PAY MESITA, and payouts are deliberately not here. Money
+// a guest pays lands in the place's own Stripe account and is read on Online
+// Payments; putting the Membership and the payouts on one screen is how
+// "Mesita never holds your money" stops being legible.
 //
 // MEMBERS IS CONTENT, NOT A PAGE. The people used to hang off a layer above the
 // place and had an address of their own; nesting them was the complaint that
@@ -28,9 +49,9 @@
 // row's values is the live one. Every row prints all of its values, including
 // the ones this place is not in, because the states nobody can reach are the
 // reason this app exists.
-import { X } from "lucide-react";
-import { notFound } from "next/navigation";
-import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
+import { Building2, LogOut, UserRound, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Section } from "@/components/shared/Section";
 import { Badge } from "@/components/shared/Badges";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -58,8 +79,15 @@ import {
   ICON_BUTTON_CLASS,
   INFO_BOX_CLASS,
   PILL_BUTTON_CLASS,
+  SCOPE_CARD_CLASS,
+  SCOPE_CHIP_CLASS,
+  SCOPE_ROW_CLASS,
   TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
+import { SHELL_ROUTES } from "@/lib/console-routes";
+import { resolveRailScope } from "@/lib/rail-scope";
+import { day } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 type StateRow = {
   label: string;
@@ -233,30 +261,199 @@ function stateGroups(
   ].filter((g) => g.rows.length > 0);
 }
 
-export default function PlaceSettingsPage() {
-  const place = useHeldPlaceOrNull();
-  const { pages } = usePlaceScope();
-  const { scenario, world } = useMock();
-  // THE GATE THESE PAGES WERE MISSING. They are static segments beside
-  // `[view]`, so no tab gate ever runs for them: a pool id typed into the bar,
-  // or the scenario flipped to a failed read while one of them was open, used
-  // to reach the body with no place at all. It sits after the hooks and before
-  // the first `place.` — a guard below a dereference is not a guard.
-  if (!place) return <NotHeld />;
-  // AND HELD AS WHAT (MESITA-1933). `NotHeld` above answers "is this place
-  // held"; it has never answered the role, and until now nothing did for this
-  // page — the rail's product rows were running `tabsForAccess` and that was
-  // the whole console's role check. The rows are gone, so the gate is here.
-  // `notFound`, like `PlaceTabGate`: a page reachable by typing its address is
-  // a page, whatever the rail chose to draw.
-  if (!pages.includes("settings")) notFound();
+export default function SettingsPage() {
+  const pathname = usePathname();
+  const { scenario, world, viewer, lastPlaceId } = useMock();
 
-  const members = listFor(MEMBERS.filter((m) => m.placeId === place.id), scenario);
-  const canManage = place.myRole === "owner";
-  const groups = stateGroups(place, world.profiles[place.id]);
+  // NO `NotHeld` AND NO `notFound`. This page is the person's, so it renders
+  // whatever the places did — including the failed read, where it is the only
+  // screen in the console that still has something true to say. The PLACE
+  // sections below are what depends on holding one, and they simply do not
+  // draw when there is none.
+  const scope = resolveRailScope({
+    places: world.places,
+    pathname,
+    lastPlaceId,
+    viewerError: world.viewerError,
+  });
+  // The rail's `RailPlace` is a Pick; the state groups want the whole record.
+  const place =
+    scope.place && scope.placeIsCurrent
+      ? (world.places.find((p) => p.id === scope.place?.id) ?? null)
+      : null;
+  // A VIEWER SEES THE PERSON AND THE MONEY, NOT THE PLACE. `pagesForAccess` is
+  // all-or-nothing and this page is no longer one of its pages, so the role
+  // check is written out here rather than ridden off a page list.
+  const canSeePlace = place !== null && place.myRole !== "viewer";
+
+  const members = place
+    ? listFor(MEMBERS.filter((m) => m.placeId === place.id), scenario)
+    : [];
+  const canManage = place?.myRole === "owner";
+  const groups = place ? stateGroups(place, world.profiles[place.id]) : [];
 
   return (
     <>
+      {/* ── YOU ──────────────────────────────────────────────────────────
+          ONE CARD, rows divided by hairlines — not three cards with gaps.
+          Three bordered boxes say the rows are unrelated; they are one scope,
+          read top to bottom. `divide-y` needs the rows to be DIRECT children
+          of the card, which is why nothing here wraps them.
+
+          FULL WIDTH. The console is fluid and this caps nothing: "one column"
+          means one FULL WIDTH column, and adding a max-width back has been the
+          same mistake twice. */}
+      <div className={SCOPE_CARD_CLASS}>
+        <div className={SCOPE_ROW_CLASS}>
+          <span
+            aria-hidden
+            className={cn(
+              SCOPE_CHIP_CLASS,
+              "bg-foreground text-paper flex items-center justify-center",
+            )}
+          >
+            <UserRound className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={TINY_LABEL_CLASS}>You</p>
+            <p className="font-display truncate text-lg font-semibold tracking-tight">
+              {viewer.name}
+            </p>
+            <p className="text-muted-foreground truncate text-[12px]">
+              {viewer.email}
+            </p>
+          </div>
+          <button type="button" className={GHOST_PILL_BUTTON_CLASS}>
+            Edit
+          </button>
+        </div>
+
+        {/* THE PORTFOLIO AS A COUNT, NOT A LIST OF DOORS. The catalogue is the
+            surface that has done the switching since MESITA-1918. */}
+        <div className={SCOPE_ROW_CLASS}>
+          <span
+            aria-hidden
+            className={cn(
+              SCOPE_CHIP_CLASS,
+              "bg-muted text-muted-foreground flex items-center justify-center",
+            )}
+          >
+            <Building2 className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={TINY_LABEL_CLASS}>Places you hold</p>
+            <p className="font-display truncate text-lg font-semibold tracking-tight">
+              {world.viewerError ? "—" : world.places.length}
+            </p>
+            <p className="text-muted-foreground truncate text-[12px]">
+              {world.viewerError
+                ? "Could not be read. Nothing has been established about what you hold."
+                : world.places.length === 0
+                  ? "None yet."
+                  : world.places.map((p) => p.name).join(" · ")}
+            </p>
+          </div>
+          <Link href={SHELL_ROUTES.places} className={GHOST_PILL_BUTTON_CLASS}>
+            All places
+          </Link>
+        </div>
+
+        {/* THE EXIT, AND THE REASON THIS PAGE IS THE RAIL'S PINNED FOOT. It
+            renders in all four rail shapes because nothing above it needed a
+            place to resolve. */}
+        <div className={SCOPE_ROW_CLASS}>
+          <span
+            aria-hidden
+            className={cn(
+              SCOPE_CHIP_CLASS,
+              "bg-muted text-muted-foreground flex items-center justify-center",
+            )}
+          >
+            <LogOut className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={TINY_LABEL_CLASS}>Session</p>
+            <p className="font-display truncate text-lg font-semibold tracking-tight">
+              Since {day(viewer.joinedAt)}
+            </p>
+            <p className="text-muted-foreground truncate text-[12px]">
+              There is no session here to end.
+            </p>
+          </div>
+          {/* `SignOutButton`'s real twin is a full-width pill by DEFAULT; in a
+              compact slot it has to be told otherwise or it silently becomes a
+              56px bar across the row. A ghost pill here, because three rows at
+              one rank must not carry three shapes. */}
+          <button type="button" disabled className={GHOST_PILL_BUTTON_CLASS}>
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      {/* ── BILLING ──────────────────────────────────────────────────────
+          WHAT YOU PAY MESITA, and nothing else. The Membership is a fact about
+          this place, so it needs one — but it is money going OUT, which is why
+          it sits with the person rather than in the place's states below.
+
+          PAYOUTS ARE NOT HERE ON PURPOSE. A guest's card money lands in the
+          place's own Stripe account and is read on Online Payments. One screen
+          holding both is how "Mesita never holds your money" stops being
+          legible to the person paying for it. */}
+      {place && (
+        <Section
+          title="Billing"
+          description="What you pay Mesita. Your payouts are on Online Payments, in your own Stripe account."
+          lane
+        >
+          <ul className="flex flex-col">
+            <li className="border-border/60 flex min-w-0 items-center gap-3 border-b py-3">
+              <div className="min-w-0 flex-1">
+                <p className={TINY_LABEL_CLASS}>Mesita Membership</p>
+                <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+                  A yearly fee per place. It is what makes this place a Mesita
+                  Partner and unlocks Visit Rewards, Online Payments and Prepaid
+                  Credits.
+                </p>
+              </div>
+              <Badge tone={place.partnered ? "on" : "off"}>
+                {MEMBERSHIP_STATE_LABEL[place.membership]}
+              </Badge>
+            </li>
+            <li className="flex min-w-0 items-center gap-3 py-3">
+              <div className="min-w-0 flex-1">
+                <p className={TINY_LABEL_CLASS}>Platform fee</p>
+                <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+                  Charged on card payments taken through Online Payments, on top
+                  of Stripe&apos;s own. A place that only wants demand never pays
+                  it.
+                </p>
+              </div>
+              <Badge tone={place.pay === "enabled" ? "on" : "off"}>
+                {place.pay === "enabled" ? "In force" : "Not charged"}
+              </Badge>
+            </li>
+          </ul>
+        </Section>
+      )}
+
+      {/* ── THIS PLACE ───────────────────────────────────────────────────
+          Everything below needs a place AND a role above viewer. With neither,
+          the page is the two sections above and stops — which is the honest
+          shape for somebody who holds nothing. */}
+      {!canSeePlace && (
+        <p className={INFO_BOX_CLASS}>
+          {world.viewerError
+            ? "Your places could not be read, so there is nothing here to configure."
+            : world.places.length === 0
+              ? "Claim a place and its team, its developers and its states appear here."
+              : place === null
+                ? "Open a place and its settings appear here."
+                : "Your role on this place is viewer, which cannot see its settings."}
+        </p>
+      )}
+
+      {canSeePlace && place && (
+        <>
       <Section
         title="Team"
         description="Who can see and change this place. An owner can do everything, an editor everything but the team, a viewer nothing but look."
@@ -313,16 +510,18 @@ export default function PlaceSettingsPage() {
         </p>
       </Section>
 
-      {groups.map((group) => (
-        <Section
-          key={group.title}
-          title={group.title}
-          description={group.description}
-          lane
-        >
-          <StateList rows={group.rows} />
-        </Section>
-      ))}
+          {groups.map((group) => (
+            <Section
+              key={group.title}
+              title={group.title}
+              description={group.description}
+              lane
+            >
+              <StateList rows={group.rows} />
+            </Section>
+          ))}
+        </>
+      )}
     </>
   );
 }

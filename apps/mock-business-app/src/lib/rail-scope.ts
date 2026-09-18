@@ -10,7 +10,12 @@
 // rendered as "you hold several places" tells an operator something about their
 // business that is not true.
 import type { MockPlace } from "@/mock/types";
-import { flatViewFromPathname, placeIdFromPathname } from "@/lib/console-routes";
+import {
+  SHELL_ROUTES,
+  flatPlacePageFromPathname,
+  flatViewFromPathname,
+  placeIdFromPathname,
+} from "@/lib/console-routes";
 
 export type RailPlace = Pick<
   MockPlace,
@@ -78,11 +83,22 @@ export function resolveRailScope(input: {
   const failed = input.viewerError === true;
   const mode = railMode(places, failed);
 
-  // A FLAT address (/profile, /settings, …): it names no place, so the place is
-  // the one opened this session. NEVER `pickPlace` here — a flat name is the
-  // one address that names no place at all, so this is exactly where a caller
-  // holding several would get one chosen for them, and `/profile` is a form.
-  if (flatViewFromPathname(pathname) || pathname === "/settings" || pathname === "/products" || pathname === "/customers" || pathname === "/activity") {
+  // AN ADDRESS THAT NAMES NO PLACE: a flat twin (`/profile`, `/setup`) or
+  // `/settings`, which is not place-scoped at all since MESITA-1973. The place
+  // is the one opened this session. NEVER `pickPlace` here — these are exactly
+  // the addresses where a caller holding several would get one chosen for them,
+  // and `/profile` is a form.
+  //
+  // THE PAGE NAMES ARE DERIVED, not typed out. This was a hardcoded `||` chain
+  // naming `/settings`, `/products`, `/customers` and `/activity`, which went
+  // stale the moment two of those four routes were renamed — and it fails
+  // silently, by falling through to the catch-all below and picking a place
+  // rather than remembering one.
+  if (
+    flatViewFromPathname(pathname) ||
+    flatPlacePageFromPathname(pathname) ||
+    pathname === SHELL_ROUTES.settings
+  ) {
     const held = findPlace(places, input.lastPlaceId);
     if (held) {
       return { place: held, placeIsCurrent: true, foreignPlaceId: null, mode };
