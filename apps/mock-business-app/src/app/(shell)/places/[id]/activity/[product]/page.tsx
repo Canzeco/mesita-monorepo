@@ -14,6 +14,8 @@
 // A SLUG THAT IS NOT A PRODUCT 404s. `productFromSlug` returns null and
 // `notFound()` refuses the address, so a typo never renders a generic pane.
 import { use } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { HalfScope } from "@/components/shared/Half";
 import { ProductPane } from "@/components/console/ProductPane";
@@ -49,9 +51,22 @@ export default function ActivityProductPage({
   }).find((c) => c.key === key);
   if (!card) notFound();
 
+  // FULL WIDTH, WITH A WAY BACK (MESITA-1988). Activity has no index — it is
+  // one screen — so this address is a deep link into one product's log rather
+  // than a pane beside a column, and the only chrome it owes the reader is the
+  // door back to the whole log.
   return (
-    <HalfScope half="activity">
-      <ProductPane card={card} />
-    </HalfScope>
+    <div className="flex flex-col gap-4">
+      <Link
+        href={`/places/${encodeURIComponent(place.id)}/activity`}
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[13px] font-medium"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        All activity
+      </Link>
+      <HalfScope half="activity">
+        <ProductPane card={card} />
+      </HalfScope>
+    </div>
   );
 }

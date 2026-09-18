@@ -44,11 +44,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
 import { NotHeld, useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
+import { NeedsYou } from "@/components/console/NeedsYou";
+import { ORDERS, RESERVATIONS, REVIEWS, VISITS } from "@/mock/fixtures";
+import { listFor } from "@/mock/scenario";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
 import { Table, type Column } from "@/components/shared/Table";
 import {
   buildLedgers,
+  LOG_KEYS,
   LOG_LABEL,
   SETTING_AREA_LABEL,
   type CreditLogRow,
@@ -91,13 +95,21 @@ type LogColumn<T> = Column<T> & { text: (row: T) => string };
  *  has no product behind it; `settings` is what the house changed and belongs
  *  to no product either. They keep their chips because there is nowhere else
  *  to reach them — that is the test, not "is it a log". */
-type Tab = "everything" | LogKey;
+const TABS = ["everything", ...LOG_KEYS] as const;
+type Tab = (typeof TABS)[number];
 
-/** THE CHIPS ACTUALLY OFFERED. `Tab` stays the full union so every log keeps
- *  its columns, its CSV and its label — the data did not move, only the doors
- *  did. A reader arriving at `/activity/visit-rewards` gets the same rows this
- *  page would have filtered. */
-const CHIPS: readonly Tab[] = ["everything", "views", "settings"];
+/** EVERY LOG IS A CHIP AGAIN (MESITA-1988). Pato: *"activity has no that
+ *  shitty left section"*.
+ *
+ *  MESITA-1987 cut seven chips because each log had a product row one click
+ *  away in Activity's index. Activity has no index now — it is one full-width
+ *  screen — so those seven had nothing left to be redundant with, and cutting
+ *  them would have left the log with no way to filter itself at all.
+ *
+ *  The per-product addresses survive and are still real: `/activity/<slug>` is
+ *  reached from that product's own page rather than from a column repeated on
+ *  two surfaces. */
+const CHIPS: readonly Tab[] = TABS;
 
 const TAB_LABEL: Record<Tab, string> = { everything: "Everything", ...LOG_LABEL };
 
@@ -185,8 +197,28 @@ export default function PlaceActivityPage() {
       toCsv(spec.csv ?? spec.columns, rows),
     );
 
+  const visits = listFor(VISITS.filter((v) => v.placeId === place.id), scenario);
+  const orders = listFor(ORDERS.filter((o) => o.placeId === place.id), scenario);
+  const reservations = listFor(
+    RESERVATIONS.filter((r) => r.placeId === place.id),
+    scenario,
+  );
+  const reviews = listFor(REVIEWS.filter((r) => r.placeId === place.id), scenario);
+
   return (
     <>
+      {/* WHAT NEEDS YOU, ABOVE THE LOG (MESITA-1988). It was the top of the
+          place's Home screen and Home is gone — Place went back to being a
+          switcher. This is the screen those blockers and counts were always
+          about: what needs you, and what happened. */}
+      <NeedsYou
+        place={place}
+        visits={visits}
+        orders={orders}
+        reservations={reservations}
+        reviews={reviews}
+        now={now}
+      />
 
       {/* THE CATALOGUE OF TYPES. One row, horizontal, scrolling on its own
           axis below lg — nine chips do not wrap into three ragged lines, and a

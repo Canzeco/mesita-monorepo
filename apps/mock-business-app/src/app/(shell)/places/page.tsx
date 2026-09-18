@@ -12,6 +12,7 @@
 // The header pins to ITS OWN scrollport with no `top-[…]` offset, because
 // `position: sticky` resolves `top` against the nearest scrolling ancestor and
 // this header's is the card, not the page.
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Minus, RotateCw } from "lucide-react";
@@ -96,6 +97,19 @@ export default function PlacesPage() {
   const search = useSearchParams();
   const owned = ownedFromParam(search.get("owned")) ?? "mine";
   const { world, hydrated, setScenario } = useMock();
+  // SEARCH, BECAUSE THIS TAB'S JOB SAYS SO (MESITA-1988). Pato: *"place is just
+  // to search places and to select them and claim it"*. It filters what is on
+  // screen rather than asking anything — the catalogue this mock holds is small
+  // enough that a round trip would be a spinner pretending to be work.
+  const [q, setQ] = useState("");
+
+  const needle = q.trim().toLowerCase();
+  const hit = (name: string, city: string) =>
+    needle === "" ||
+    name.toLowerCase().includes(needle) ||
+    city.toLowerCase().includes(needle);
+  const shown = world.places.filter((p) => hit(p.name, p.city));
+  const shownPool = world.poolPlaces.filter((p) => hit(p.name, p.city));
 
   if (!hydrated) {
     return <p className="text-muted-foreground text-sm" role="status">Reading…</p>;
@@ -140,7 +154,19 @@ export default function PlacesPage() {
             Yours, and the ones nobody holds yet.
           </p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* SEARCH, BECAUSE THE TAB'S JOB SAYS SO (MESITA-1988). Pato: *"place
+              is just to search places and to select them and claim it"*. It
+              filters what is on screen: this catalogue is small enough that a
+              round trip would be a spinner pretending to be work. */}
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search places"
+            aria-label="Search places"
+            className="border-border bg-card focus-visible:ring-ring h-9 w-56 rounded-full border px-4 text-[13px] outline-hidden focus-visible:ring-2"
+          />
           <Link
             href={placesHref("mine")}
             aria-current={owned === "mine" ? "page" : undefined}
@@ -178,7 +204,10 @@ export default function PlacesPage() {
             action={null}
           />
         ) : (
-          <Section title="Your places" description="One row each, and every state this console can switch.">
+          <Section
+            title="Your places"
+            description="Pick one to switch the console to it."
+          >
             {/* The card keeps its padding; the TABLE scrolls inside it. The
                 gutter/bleed pair is for a child that must reach the window's
                 edge, and cancelling the card's own inset for a table that
@@ -211,7 +240,7 @@ export default function PlacesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {world.places.map((p) => (
+                  {shown.map((p) => (
                     <tr key={p.id} className="border-border hover:bg-muted/40 border-b last:border-0">
                       <td className={cn(STATES_COL_CELL, "px-3 py-2.5")}>
                         {/* THE NAME IS THE SWITCH (MESITA-1976). This is the
@@ -256,7 +285,7 @@ export default function PlacesPage() {
           description="Created and not Owned — that is what public means here. Claiming one mints your owner row; there is no membership to hold first."
         >
           <ul className="flex flex-col gap-2">
-            {world.poolPlaces.map((p) => (
+            {shownPool.map((p) => (
               <li key={p.id} className="border-border flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{p.name}</p>
