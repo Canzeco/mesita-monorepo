@@ -38,7 +38,7 @@
 // cannot have is an invitation to a 403.
 import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 import {
   NotHeld,
   useHeldPlaceOrNull,
@@ -46,68 +46,18 @@ import {
 } from "@/components/console/PlaceScope";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
+import { ProductPane } from "@/components/console/ProductPane";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards, type ProductCard } from "@/lib/products";
 import { PLACE_PAGE_LABEL, placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
+import { PRODUCT_MARK } from "@/lib/product-marks";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-// THE MARK, AND ONLY THE MARK (MESITA-1946) — AN EMOJI SINCE MESITA-1952.
-//
-// Pato: *"maybe some icon to each product"*, then, at the same grid once it
-// had gone grey: *"add fuckjing emojis or something"*.
-//
-// The lucide glyphs came across from `web-business` and the TINTS did not,
-// because this app has no hues to draw them in (MESITA-1934) — which left a
-// grid of grey squares holding grey marks. An emoji carries its own colour and
-// costs the palette nothing.
-//
-// THE CHIP STILL DOES NOT BRIGHTEN WHEN A PRODUCT IS ON. State is the badge's
-// fact, and there is never a second badge for one fact — on a screen whose
-// whole job is saying which products are on, a quieter second state signal is
-// the one that gets misread.
-const PRODUCT_MARK: Record<ProductKey, string> = {
-  profile: "\u{1F3EA}",
-  // THE DISHES, not a document: 🍽️ over 📄 or 📋, because the thing this
-  // product turns into data is the food, and a page mark would read as the
-  // PDF on Profile that this card exists to stop being the answer.
-  menu: "\u{1F37D}\u{FE0F}",
-  website: "\u{1F310}",
-  customers: "\u{1F465}",
-  ads: "\u{1F4E3}",
-  visits: "\u{1F39F}\u{FE0F}",
-  orders: "\u{1F6CD}\u{FE0F}",
-  // THE TABLE, because the table is the only thing separating this from
-  // Online Orders: the same order, placed where the guest is already sitting.
-  tableorders: "\u{1F374}",
-  reservations: "\u{1F4C5}",
-  pay: "\u{1F4B3}",
-  // THE READER, NOT A SECOND CARD: 📲 is the tap, the part of Terminal that is
-  // not Payments — never a second 💳 in the same list.
-  terminal: "\u{1F4F2}",
-  // THE ITEMS, the half of the counter Terminal is not: 🧾 is what was rung up
-  // before anybody tapped anything.
-  pos: "\u{1F9FE}",
-  // A COIN, NOT A WALLET — Pay › Wallet is the guest's; credits are a balance
-  // the place sold.
-  // A PAD IN A HAND, not a till: `pos` is the station you walk to and this is
-  // the thing the floor carries to the table.
-  orderpad: "\u{1F4DD}",
-  credits: "\u{1FA99}",
-  // The BANK'S FRONT, the same mark the landing page gives Capital.
-  capital: "\u{1F3E6}",
-  // NOT A HANDSET AND NOT A CHAT BUBBLE (MESITA-1951): either one would make
-  // the row look like one channel's product again, which is the whole thing
-  // the merge undid. 🤖 is what the name now says out loud.
-  line: "\u{1F916}",
-  // THE DOORS IN, plural — every channel a guest can arrive through, which is
-  // the product. A single door mark would read as one channel.
-  access: "\u{1F6AA}",
-  intelligence: "\u{2728}",
-};
+
 
 /** The three groups, in the order an operator needs them: what is running,
  *  what could be, what is not built. Each is a predicate over the state the
@@ -135,6 +85,11 @@ const GROUPS: readonly {
 ];
 
 export default function SetupPage() {
+  // EVERY HOOK BEFORE THE FIRST `notFound()`. This page has three early exits
+  // — no place, no `setup` in `pagesForAccess`, and `notFound` itself — and a
+  // hook read after any of them changes the hook ORDER between renders, which
+  // is the one React rule eslint refuses to let ship.
+  const chosenKey = useSearchParams().get("p");
   const place = useHeldPlaceOrNull();
   const { tabs, pages } = usePlaceScope();
   // THE GATE. Static segments beside `[view]` get no tab gate, so a pool id
@@ -155,25 +110,23 @@ export default function SetupPage() {
     payHref: placePayHref(place.id),
   });
 
-  return (
+  // WHICH PRODUCT IS OPEN. The selection lives in the ADDRESS, not in state:
+  // a pane is then linkable, Back walks the products you looked at, and a
+  // reload lands where you were. `?p=` rather than a path segment because the
+  // page is one screen with a selection, not two screens.
+  //
+  // THE DESKTOP DEFAULT IS THE FIRST PRODUCT, never nothing. Half a screen
+  // holding an empty state on arrival is half a screen teaching you that it is
+  // usually empty. `open` — whether the ADDRESS names one — is what the phone
+  // reads, so below `lg` you still get the list first.
+  const selected = cards.some((c) => c.key === chosenKey)
+    ? (chosenKey as ProductKey)
+    : cards[0]?.key;
+  const card = cards.find((c) => c.key === selected) ?? null;
+  const open = chosenKey !== null;
+
+  const list = (
     <>
-      {/* THE SUBJECT (MESITA-1975). The menu above says "Setup"; nothing in it
-          says WHICH venue, so this page names its own. It is also the page's
-          `h1` — `AppShell` stops emitting an sr-only one here. */}
-      <PlaceHeading
-        name={place.name}
-        photoUrl={place.photoUrl}
-        page={PLACE_PAGE_LABEL.setup}
-      />
-
-      <MembershipReturnNotice />
-
-      {/* THE GATE, ABOVE THE LIST, sized by the decision in it — a box when
-          there is a purchase to make, one line when there is not. It is the
-          one thing here that is not a product row, because Partner is not a
-          product: it is what five of them are behind. */}
-      <PartnerBanner place={place} />
-
       {GROUPS.map((group) => {
         const inGroup = cards.filter((c) => group.holds(c.state));
         // A group with nothing in it draws nothing. A heading over an empty
@@ -249,26 +202,93 @@ export default function SetupPage() {
                   </>
                 );
                 const ROW =
-                  "flex items-center gap-3 px-4 py-3.5 min-h-14 text-left";
-                return open ? (
+                  "flex items-center gap-3 px-4 py-3.5 min-h-14 text-left w-full";
+                // EVERY ROW IS A SELECTION NOW (MESITA-1981), including the
+                // nine Coming ones. The pane on the right always has something
+                // true to say about a product — its dial, or that there is
+                // nothing to set yet — so a row that did nothing when clicked
+                // would be the only dead thing on a screen built for picking.
+                // `open` survives as the ARIA label's verb and as the arrow's
+                // condition: it is still what says whether this product has a
+                // screen behind it.
+                const chosen = card.key === selected;
+                return (
                   <Link
                     key={card.key}
-                    href={open.href}
-                    aria-label={`${open.label} · ${card.name}`}
-                    className={cn(ROW, "hover:bg-muted/60 transition")}
+                    href={`?p=${card.key}`}
+                    scroll={false}
+                    aria-current={chosen ? "true" : undefined}
+                    aria-label={`${open ? open.label : "Open"} · ${card.name}`}
+                    className={cn(
+                      ROW,
+                      "transition",
+                      chosen ? "bg-muted" : "hover:bg-muted/60",
+                    )}
                   >
                     {body}
                   </Link>
-                ) : (
-                  <div key={card.key} className={ROW}>
-                    {body}
-                  </div>
                 );
               })}
             </div>
           </section>
         );
       })}
+    </>
+  );
+
+  return (
+    <>
+      <PlaceHeading
+        name={place.name}
+        photoUrl={place.photoUrl}
+        page={PLACE_PAGE_LABEL.setup}
+      />
+
+      <MembershipReturnNotice />
+
+      {/* ABOVE BOTH HALVES, FULL WIDTH. The Membership is about the PLACE, not
+          about whichever product is open on the right, and a gate that moved
+          into one column would read as that column's condition. */}
+      <PartnerBanner place={place} />
+
+      {/* 50/50 (MESITA-1981). Pato: *"two screns, 50% and 50%"*.
+          
+          THE PAGE STAYS THE ONLY SCROLLER, and that is deliberate. Two
+          independently scrolling halves would put a second scroll container
+          inside `main`, and this app has already shipped the bug where a
+          height chain loses its definite parent and a full-height card renders
+          as an empty box with every check green. The LIST is `sticky` with a
+          max-height measured in `vh` — a definite height that comes from the
+          viewport rather than from a parent chain — so the left column holds
+          while the right one scrolls the page.
+          
+          `lg:items-start` is load-bearing for that sticky: a stretched grid
+          item is as tall as its row, and a sticky element as tall as its own
+          container never sticks to anything. */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
+        {/* ONE AT A TIME BELOW `lg`. 50/50 does not exist on a 375px phone, so
+            the two halves become master-detail: the list, then the pane, with
+            the pane carrying the way back. */}
+        <div
+          className={cn(
+            "flex-col gap-4 lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1",
+            open ? "hidden" : "flex",
+          )}
+        >
+          {list}
+        </div>
+
+        <div className={cn(open ? "block" : "hidden", "lg:block")}>
+          {card ? (
+            <ProductPane card={card} />
+          ) : (
+            // NEVER ON DESKTOP: `selected` falls back to the first card, so
+            // this is only reachable if `SPECS` is empty, which the type system
+            // does not forbid and the app does not survive anyway.
+            <p className="text-muted-foreground text-sm">No products here.</p>
+          )}
+        </div>
+      </div>
     </>
   );
 }
