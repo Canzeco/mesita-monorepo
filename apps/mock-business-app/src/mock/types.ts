@@ -77,6 +77,16 @@ export type MockPlace = {
   verified: boolean;
   partnered: boolean;
   promoting: boolean;
+  /** GOOGLE IS ANSWERING FOR IT (MESITA-1977). The second rung of the general
+   *  ladder: the place is alive out there — hours, reviews and a listing that
+   *  responds — whether or not Mesita has checked it or anybody holds it. It
+   *  is the one rung Mesita does not control, which is why it is a fact on the
+   *  place rather than a switch on a product. */
+  pulsing: boolean;
+  /** TURNED OFF. Not a rung: a place can be disabled at any height on the
+   *  ladder, so it is read apart from it — a disabled Partner is a different
+   *  problem from a disabled row nobody ever claimed. */
+  disabled: boolean;
   /** The subscription behind `partnered` — see `MembershipState`. Held
    *  alongside the gate rather than folded into it because the products read
    *  the gate and only the Membership strip reads this. */
@@ -412,6 +422,11 @@ export type MockPoolPlace = {
   city: string;
   verified: boolean;
   claimable: boolean;
+  /** The pool carries the same two general states as a held place
+   *  (MESITA-1977). A pool row is Created and may be Pulsing; what it is NOT
+   *  is Owned, and that is the whole difference between these two tables. */
+  pulsing: boolean;
+  disabled: boolean;
 };
 
 // ── THE PROFILE RECORD ──────────────────────────────────────────────────────

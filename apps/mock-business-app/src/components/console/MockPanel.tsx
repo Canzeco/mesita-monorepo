@@ -241,6 +241,22 @@ export function MockPanel() {
           </Group>
 
           <Group label="Switches on this place">
+            {/* THE TWO GENERAL STATES THAT MOVE (MESITA-1977). They sit above
+                the product switches because they are facts about the PLACE,
+                not settings inside a product — and because Disabled is the one
+                switch here that changes what every other row means. */}
+            <Toggle
+              label="Pulsing (Google Active)"
+              hint="Google answers for this place — the second rung of the general ladder, and the one rung Mesita does not control."
+              on={scenario.pulsing}
+              onChange={(pulsing) => set({ pulsing })}
+            />
+            <Toggle
+              label="Disabled"
+              hint="Turned off. Not a rung: it can land at any height, so the portfolio reads it apart from the ladder."
+              on={scenario.disabled}
+              onChange={(disabled) => set({ disabled })}
+            />
             <Toggle
               label="Mesita Partner"
               hint="The gate Visits, Rewards, Payments and Credits read. Off, they are Locked and carry no verb."
