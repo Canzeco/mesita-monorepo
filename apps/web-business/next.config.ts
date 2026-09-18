@@ -157,8 +157,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       { source: "/account", destination: "/settings", permanent: true },
-      { source: "/products", destination: "/setup", permanent: true },
-      { source: "/customers", destination: "/setup", permanent: true },
+      // THESE TWO ARE TEMPORARY, and the other five are not. `/setup` is a
+      // FLAT resolver — where it lands depends on which place you opened last
+      // — and a cached 308 onto one would pin a browser to whatever place it
+      // resolved to the first time. That is the bug MESITA-1832's cookie
+      // addressing had.
+      { source: "/products", destination: "/setup", permanent: false },
+      { source: "/customers", destination: "/setup", permanent: false },
       { source: "/orgs/new", destination: "/", permanent: false },
       {
         source: "/orgs/:orgId/settings",

@@ -161,7 +161,10 @@ describe("the legacy console's URLs all still resolve", () => {
     // has a Settings PAGE — the members and keys that used to hang off the
     // organization — so the rule had to go in the same commit or the page
     // would have shipped unreachable with every check green.
-    expect(resolve("/places/abc/settings", all)).toBeNull();
+    // AND IT IS A RULE AGAIN (MESITA-1974), pointing the other way: Settings
+    // left the place for `/settings`, so the old address forwards rather than
+    // 404ing an operator with it bookmarked.
+    expect(resolve("/places/abc/settings", all)).toBe("/settings");
     // NOTHING CHAINS: every destination is a route, not another source.
     expect(resolve("/places/abc/visits", all)).toBeNull();
     expect(resolve("/visits", all)).toBeNull();
@@ -210,13 +213,15 @@ describe("every organization address forwards", () => {
     expect(resolve("/orgs/o1/configuration", all)).toBe("/settings");
     expect(resolve("/orgs/o1/members", all)).toBe("/settings");
     expect(resolve("/members", all)).toBe("/settings");
-    expect(resolve("/orgs/o1/products", all)).toBe("/products");
-    expect(resolve("/orgs/o1/products/pay", all)).toBe("/products");
-    expect(resolve("/orgs/o1/products/terminal", all)).toBe("/products");
-    expect(resolve("/orgs/o1/credits", all)).toBe("/products");
-    expect(resolve("/orgs/o1/payments", all)).toBe("/products");
-    expect(resolve("/payments", all)).toBe("/products");
-    expect(resolve("/orgs/o1/customers", all)).toBe("/customers");
+    expect(resolve("/orgs/o1/products", all)).toBe("/setup");
+    expect(resolve("/orgs/o1/products/pay", all)).toBe("/setup");
+    expect(resolve("/orgs/o1/products/terminal", all)).toBe("/setup");
+    expect(resolve("/orgs/o1/credits", all)).toBe("/setup");
+    expect(resolve("/orgs/o1/payments", all)).toBe("/setup");
+    expect(resolve("/payments", all)).toBe("/setup");
+    // Customers is a product with a row in Setup and no page of its own
+    // (MESITA-1974), so its org-era address follows the rest there.
+    expect(resolve("/orgs/o1/customers", all)).toBe("/setup");
     expect(resolve("/orgs/o1/activity", all)).toBe("/activity");
   });
 
@@ -285,6 +290,16 @@ describe("every redirect forwards somewhere this repo serves", () => {
     "/place/:id",
     "/place/:id/:rest*",
     "/pool",
+    // THE FOUR-TAB MOVE (MESITA-1974). Each lands on a FIXED address — a
+    // place-scoped one that carries its own `:id`, or `/settings`, which is a
+    // real page and no longer a flat name — so a cached 308 can never pin a
+    // browser to the wrong place. The flat `/products` and `/customers` are
+    // deliberately NOT here for exactly that reason.
+    "/places/:id/products/pay",
+    "/places/:id/products",
+    "/places/:id/customers",
+    "/places/:id/settings",
+    "/account",
   ]);
 
   it("permanent only where the destination is a fixed address", async () => {

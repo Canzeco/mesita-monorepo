@@ -57,7 +57,7 @@ const PAY_SRC = readFileSync(
   "utf8",
 );
 const LOADING_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/products/loading.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/setup/loading.tsx"),
   "utf8",
 );
 const LADDER_SRC = readFileSync(

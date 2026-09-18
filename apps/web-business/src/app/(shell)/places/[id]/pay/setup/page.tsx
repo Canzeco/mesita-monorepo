@@ -62,7 +62,7 @@ import {
   type PaymentAccount,
 } from "@/lib/api/console";
 import { findPlace } from "@/lib/active-place";
-import { placePageHref, placePayHref } from "@/lib/console-routes";
+import { placePayHref } from "@/lib/console-routes";
 import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 

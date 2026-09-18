@@ -153,7 +153,10 @@ export const SHELL_ROUTES = {
  *  TWO, SINCE MESITA-1974. `products` became `setup`, `customers` went back to
  *  being a product with a row in Setup and no page of its own, and `settings`
  *  left the place entirely for `/settings`. */
-export const PLACE_PAGES = ["setup", "activity"] as const;
+export const PLACE_PAGES = [
+  "setup",
+  "activity",
+] as const;
 export type PlacePage = (typeof PLACE_PAGES)[number];
 
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {

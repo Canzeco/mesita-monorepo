@@ -20,7 +20,6 @@ import {
   placePayHref,
 } from "@/lib/console-routes";
 import { PLACE_TABS, placeTabHref } from "@/lib/place-tabs";
-import { PRODUCT_LABEL } from "@/lib/product-keys";
 
 /** The canonical address of a view on the fixture place the rail resolves. */
 const view = (tab: (typeof PLACE_TABS)[number]) => placeTabHref("p-1", tab);
@@ -77,7 +76,6 @@ function render(pathname: string, over: Over = {}): string {
   return renderToStaticMarkup(
     <Sidebar
       scope={scope}
-      isSuperAdmin={over.isSuperAdmin ?? false}
       viewerError={over.viewerError ?? false}
       accountLabel="pato@canzeco.com"
     />,
@@ -240,12 +238,10 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     // stand in for the address. It never should have: the invariant was
     // always that no row points at `/payments`, and a label assertion was a
     // proxy that Pato's rename has just falsified. The href is the assertion.
-    expect(labels(html)).toContain("Prepaid Credits");
-    expect(labels(html)).toContain("Online Payments");
+    // THE PRODUCT ROWS ARE GONE (MESITA-1974), so the label half of this has
+    // nothing to read. The invariant it guarded survives and is the half that
+    // always mattered: NO row points at `/payments`, whatever a row is called.
     expect(hrefs(html).some((h) => h.includes("/payments"))).toBe(false);
-    // …and the row called Payments is the PRODUCT's view, whose segment is
-    // still `pay`. The label moved; the persisted spelling did not.
-    expect(hrefs(html)).toContain(view("pay"));
     // NO ROW SAYS "SOON": Customers renders at full strength and its page
     // carries the badge (MESITA-1833).
     expect(html).not.toContain("Soon");
@@ -317,64 +313,27 @@ describe("one flat column, and Account at the foot (MESITA-1879)", () => {
     expect(addresses).toHaveLength(new Set(addresses).size);
   });
 
-  it("the Account row says the page; the email is its tooltip", () => {
-    const html = render(view("profile"), { rememberedPlaceId: "p-1" });
-    expect(html).toContain(">Account<");
-    expect(html).toContain('title="Account · pato@canzeco.com"');
+  it("the Settings row says the page; the email is its tooltip", () => {
+    const html = render(page("setup"), { rememberedPlaceId: "p-1" });
+    expect(html).toContain(">Settings<");
+    expect(html).toContain('title="Settings · pato@canzeco.com"');
     expect(html).not.toContain(">pato@canzeco.com<");
   });
 
-  it("a VIEWER loses the seven rows they could never open, and no others", () => {
-    // THE ROWS FOLLOW THE MATRIX, and MESITA-1885 is when that started to
-    // show. Capabilities and Rewards always withheld themselves from a
-    // viewer, and neither was a row — so a viewer's column used to be
-    // identical to an owner's. The five product views inherited that gate
-    // exactly and ARE rows, so now the column shrinks with it.
+  it("a VIEWER sees the same two rows, because both are pages", () => {
+    // THE ROLE GATE LEFT THIS COLUMN WITH THE PRODUCT ROWS (MESITA-1974).
+    // `tabsForAccess` filtered them and there are none; the PAGE rows were
+    // never role-filtered here — they were filtered by `!foreign` alone — so a
+    // viewer's column has always matched an owner's and still does.
     //
-    // That is the honest answer, not a regression: a row a viewer cannot open
-    // would 404 them through `PlaceTabGate`, and a rail row landing on a 404
-    // is MESITA-1833's law failing. The gate did not move — `tabsForAccess`
-    // is still the one matrix, still enforced server-side on a typed URL —
-    // and the ROLE it reads is the caller's own `place_members` row now
-    // (MESITA-1892), not a rank in the organization above the place.
+    // That is not a hole. Hidden is not protected and never was: the page
+    // itself refuses the address, `PlaceTabGate` 404s every view, and a rail
+    // row landing on a refusal is what MESITA-1833 bans. What changed is that
+    // the rail is no longer the thing running the check, which is the exact
+    // failure MESITA-1933 named in the mock.
     const viewer: RailPlace[] = [{ ...SOLO[0], myRole: "viewer" }];
     const html = render(FLAT_ROUTES.profile, { places: viewer, rememberedPlaceId: "p-1" });
-    const seen = labels(html);
-
-    // The SEVEN that write are gone — Capital joined them in MESITA-1929, as
-    // an offer a place accepts rather than a reading it takes…
-    for (const gone of ["Visits", "Online Orders", "Reservations", "Rewards", "Online Payments", "Prepaid Credits", "Capital"]) {
-      expect(seen, gone).not.toContain(gone);
-    }
-    // …and EVERYTHING ELSE stayed. The bijection, because "a viewer sees
-    // fewer rows" passes for a rail that lost all of them.
-    expect(seen).toEqual(
-      ALL_LABELS.filter(
-        (l) =>
-          !["Visits", "Online Orders", "Reservations", "Rewards", "Online Payments", "Prepaid Credits", "Capital"].includes(l),
-      ),
-    );
-    // A viewer still reaches every READ surface, including the one product
-    // that is not a place view at all. Activity is NOT in this list any more
-    // (MESITA-1924): it lost its row for everyone, viewer and owner alike, so
-    // its absence here says nothing about permissions.
-    for (const kept of ["Settings", "Products", "Profile", "Guest Catalog"]) {
-      expect(seen, kept).toContain(kept);
-    }
-  });
-});
-
-describe("the four shapes the console can be in (MESITA-1879)", () => {
-  it("unknown — the read FAILED: a muted line, never the add row", () => {
-    // MESITA-1793's law. And it must not read as the ZERO state either: an
-    // empty array is a successful read of nothing, which gets a different
-    // screen entirely.
-    const html = render(SHELL_ROUTES.settings, { places: [], viewerError: true });
-    expect(html).toContain("Couldn&#x27;t load your places");
-    expect(html).not.toContain("Add your place");
-    // One link in the landmark: Account. The muted line is a div, not a row.
-    expect(rows(html)).toHaveLength(1);
-    expect(pillText(html)).toBe("Settings");
+    expect(labels(html)).toEqual(ALL_LABELS);
   });
 
   it("zero PLACES: the ceremony and Account, and no row about a place", () => {
@@ -390,11 +349,14 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // empty state than a muted row ever was — and production holds zero
     // places, so this is every fresh environment.
     const html = render(SHELL_ROUTES.settings, { places: [] });
-    expect(labels(html)).toEqual(["Add your place", "Account"]);
+    expect(labels(html)).toEqual(["Add your place", "Settings"]);
     expect(hrefs(html)).toEqual([SHELL_ROUTES.placesNew, SHELL_ROUTES.settings]);
     // No row about a place, by name: the failure mode is one creeping back.
+    // SETTINGS IS NOT IN THIS LIST (MESITA-1974) and must not be: it is the
+    // pinned foot, it names no place, and it is where Sign out lives — a rail
+    // that loses it at zero places is a console you cannot leave.
     for (const gone of [
-      "Settings",
+      "Setup",
       "Activity",
       "Products",
       "Guest Catalog",
@@ -407,6 +369,9 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
       "Rewards",
       "Online Payments",
       "Prepaid Credits",
+      // Every one of these is a product, and a product has not been a row
+      // since MESITA-1974 — so this list is the whole old rail now, minus the
+      // two pages that survived it.
     ]) {
       expect(labels(html), gone).not.toContain(gone);
     }
@@ -420,7 +385,7 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // mints the claimer's own owner row, so there is no rank to hold first
     // and the one door a new operator has is always there.
     const html = render(SHELL_ROUTES.placesNew, { places: [] });
-    expect(labels(html)).toEqual(["Add your place", "Account"]);
+    expect(labels(html)).toEqual(["Add your place", "Settings"]);
     expect(pills(html)).toHaveLength(1);
     expect(pillText(html)).toBe("Add your place");
   });
@@ -428,10 +393,10 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
   it("solo — the customer this console is for: every row, nothing muted", () => {
     // `visits`, not `reviews`: Reviews folded under Profile (MESITA-1885) and
     // lights no row, and this test's subject is the row that DOES light.
-    const html = render(FLAT_ROUTES.visits, { places: SOLO });
+    const html = render(page("setup"), { places: SOLO, rememberedPlaceId: "p-1" });
     expect(labels(html)).toEqual(ALL_LABELS);
     expect(html).not.toContain("opacity-60");
-    expect(pillText(html)).toBe("Visits");
+    expect(pillText(html)).toBe("Setup");
     // NO SELECTOR, AND NO VENUE NAMED AT ALL (MESITA-1918). Pato: *"now
     // remove the place selector from the top"*. MESITA-1899 had put it here on
     // the reasoning that the rail "opened cold on Settings, naming nothing it
@@ -461,7 +426,7 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // The rows still render; none of them lights, because no address names a
     // place and the rail refuses to choose one.
     expect(labels(html)).toEqual(["All places", ...ALL_LABELS]);
-    expect(pillText(html)).toBe("Account");
+    expect(pillText(html)).toBe("Settings");
     // With no place named, every row falls back to its FLAT twin, which
     // resolves at request time rather than pointing at a place the rail
     // refused to pick.
@@ -472,22 +437,22 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     // `visits`, not `menus`: Menus folded under Profile in MESITA-1885 and
     // has no row to light. A product view is the right subject here anyway —
     // it is what most of this rail now is.
-    const html = render(view("visits"), { places: MANY });
+    const html = render(page("activity"), { places: MANY, rememberedPlaceId: "p-1" });
     expect(html).not.toContain('aria-label="Switch place"');
     // The rail names no venue in any shape now; the page's h1 does.
     expect(html).not.toContain(">Strana Del Valle<");
     expect(pills(html)).toHaveLength(1);
-    expect(pillText(html)).toBe("Visits");
+    expect(pillText(html)).toBe("Activity");
   });
 
   it("a pool place published by the layout: Profile alone among the place rows", () => {
-    // A place the caller holds no membership on offers Profile and nothing
-    // else (`tabsForAccess`), and its PAGES go with the rest: Settings,
-    // Products, Customers and Activity are about a venue that is not theirs.
+    // A place the caller holds no membership on shows NEITHER row: Setup and
+    // Activity are both about a venue that is not theirs, and the product
+    // views they used to reach are no longer rows at all (MESITA-1974). What
+    // is left is the venue band, its Home screen, and the way out.
     const html = render(FLAT_ROUTES.profile, { lastPlaceId: "p-x" });
-    expect(labels(html)).toEqual(["Profile", "Account"]);
-    expect(pills(html)).toHaveLength(1);
-    expect(pillText(html)).toBe("Profile");
+    expect(labels(html)).toEqual(["Settings"]);
+    expect(pills(html)).toHaveLength(0);
   });
 
   // THREE BANDS (MESITA-1909): head, scroller, foot. Each answers a different
@@ -533,7 +498,7 @@ describe("the four shapes the console can be in (MESITA-1879)", () => {
     const html = render(FLAT_ROUTES.visits, { places: SOLO });
     expect(html).not.toContain('title="Visits"');
     expect(html).not.toContain('title="Settings"');
-    expect(html).toContain('title="Account · pato@canzeco.com"');
+    expect(html).toContain('title="Settings · pato@canzeco.com"');
     expect(html).not.toContain("sr-only");
   });
 });

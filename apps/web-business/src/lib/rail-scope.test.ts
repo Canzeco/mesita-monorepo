@@ -66,8 +66,11 @@ describe("an address that names a place", () => {
     // are the place's now, and `products/pay` is three segments deep — which
     // is the one screen Stripe returns to. A reader that stopped at two would
     // drop the rail's scope exactly there.
-    expect(scope(SHELL_ROUTES.settings).place?.id).toBe("p-2");
-    expect(scope("/places/p-2/products/pay").place?.id).toBe("p-2");
+    expect(scope(placePageHref("p-2", "setup")).place?.id).toBe("p-2");
+    // Three segments deep — the one screen Stripe returns to (MESITA-1974
+    // moved it under the Payments VIEW). A reader that stopped at two would
+    // drop the rail's scope exactly there.
+    expect(scope("/places/p-2/pay/setup").place?.id).toBe("p-2");
     expect(scope("/places/p-2").place?.id).toBe("p-2");
   });
 });

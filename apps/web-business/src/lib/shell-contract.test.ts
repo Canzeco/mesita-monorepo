@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SHELL_ROUTES, placePageHref } from "./console-routes";
+import { SHELL_ROUTES } from "./console-routes";
 import { SIGNED_IN_BOUNCE, shouldGate } from "./supabase/middleware";
 import { canRelease, canVerify, findPlace, pickPlace } from "./active-place";
 
@@ -21,7 +21,9 @@ describe("middleware contract", () => {
     expect(shouldGate(SHELL_ROUTES.placesNew)).toBe(true);
     expect(shouldGate("/places/abc")).toBe(true);
     expect(shouldGate("/places/abc/activity")).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.settings)).toBe(true);
+    // SETTINGS IS GATED NOW (MESITA-1974). It was `/account` and ungated by
+    // this list; it holds the place's team and keys as well as the person, so
+    // it reads real data and must not render to a visitor.
     expect(shouldGate(SHELL_ROUTES.settings)).toBe(true);
   });
   it("leaves the root ungated — it renders nothing to protect", () => {
@@ -38,7 +40,9 @@ describe("middleware contract", () => {
     // MESITA-1564 deleted the legacy console. next.config.ts redirects these
     // before the proxy sees them, so gating them would guard a dead path.
     expect(shouldGate("/place/abc")).toBe(false);
-    expect(shouldGate("/settings")).toBe(false);
+    // `/settings` LEFT THIS LIST (MESITA-1974). It was a dead redirect source
+    // when this line was written; it is the console's fourth tab now, and the
+    // gated-routes test above is where it belongs.
     expect(shouldGate("/pool")).toBe(false);
     // MESITA-1807 moved the organization into the path and MESITA-1892
     // deleted it; every one of these is a redirect now, resolved before the

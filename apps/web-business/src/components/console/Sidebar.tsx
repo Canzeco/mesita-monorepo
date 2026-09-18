@@ -105,26 +105,15 @@ import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 import {
   AlertCircle,
-  Briefcase,
-  CalendarCheck,
   ChartNoAxesColumn,
-  CreditCard,
-  Gift,
-  Landmark,
   Layers,
   LayoutGrid,
   Plus,
   Settings,
-  ShoppingBag,
-  Store,
-  Ticket,
-  UserRound,
-  Users,
-  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
+import { useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
   RAIL_ROWS,
@@ -143,7 +132,12 @@ type SidebarProps = {
   // the selector's menu; with the selector gone the column needs the SCOPE and
   // nothing else — which venue is open, and what this viewer may see of it.
   // The list still reaches the shell, which resolves the scope from it.
-  isSuperAdmin: boolean;
+  /** RESERVED, AND UNREAD SINCE MESITA-1974. The rail filtered product rows
+   *  through `tabsForAccess` and Admin through this; there are no product rows
+   *  and no Admin row, so nothing in the column asks. It stays on the props so
+   *  the shell keeps passing what it already resolves — `PlaceTabGate` is what
+   *  actually refuses `/places/<id>/admin`, and always was. */
+  _isSuperAdmin?: boolean;
   /** The places could not be read. NOT the zero state: a fetch failure must
    *  never read "add one" (MESITA-1793's law). */
   viewerError: boolean;
@@ -270,14 +264,12 @@ function MutedRow({
 
 export function Sidebar({
   scope,
-  isSuperAdmin,
   viewerError,
   accountLabel,
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
   const guardNav = useOpenPlaceGuard();
-  const openPlace = useOpenPlace();
   // NO STATE OF ITS OWN ANY MORE (MESITA-1918). The rail held four pieces —
   // the pending switch (MESITA-1818's clock), the picker's query, its input
   // ref and a transition — and every one of them existed for the selector.
