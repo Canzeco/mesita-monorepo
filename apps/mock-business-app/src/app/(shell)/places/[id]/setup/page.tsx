@@ -80,6 +80,9 @@ const PRODUCT_MARK: Record<ProductKey, string> = {
   ads: "\u{1F4E3}",
   visits: "\u{1F39F}\u{FE0F}",
   orders: "\u{1F6CD}\u{FE0F}",
+  // THE TABLE, because the table is the only thing separating this from
+  // Online Orders: the same order, placed where the guest is already sitting.
+  tableorders: "\u{1F374}",
   reservations: "\u{1F4C5}",
   pay: "\u{1F4B3}",
   // THE READER, NOT A SECOND CARD: 📲 is the tap, the part of Terminal that is
@@ -90,6 +93,9 @@ const PRODUCT_MARK: Record<ProductKey, string> = {
   pos: "\u{1F9FE}",
   // A COIN, NOT A WALLET — Pay › Wallet is the guest's; credits are a balance
   // the place sold.
+  // A PAD IN A HAND, not a till: `pos` is the station you walk to and this is
+  // the thing the floor carries to the table.
+  orderpad: "\u{1F4DD}",
   credits: "\u{1FA99}",
   // The BANK'S FRONT, the same mark the landing page gives Capital.
   capital: "\u{1F3E6}",
@@ -97,6 +103,9 @@ const PRODUCT_MARK: Record<ProductKey, string> = {
   // the row look like one channel's product again, which is the whole thing
   // the merge undid. 🤖 is what the name now says out loud.
   line: "\u{1F916}",
+  // THE DOORS IN, plural — every channel a guest can arrive through, which is
+  // the product. A single door mark would read as one channel.
+  access: "\u{1F6AA}",
   intelligence: "\u{2728}",
 };
 

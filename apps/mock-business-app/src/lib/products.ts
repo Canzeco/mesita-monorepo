@@ -81,6 +81,16 @@ type ProductSpec = {
   needsPartner: boolean;
   atPlace: PlacePredicate | null;
   soon: string | null;
+  /** What a LIVE product with no `atPlace` switch says about itself.
+   *
+   *  THE FALLTHROUGH USED TO ASSERT ONE THING FOR ALL OF THEM — *"Included
+   *  with Mesita Partner."* — which was true while every product reaching it
+   *  was partner-gated. MESITA-1978 crossed Digital Menu and Answering Agent
+   *  to live with `needsPartner: false`, and Omnichannel Access arrived the
+   *  same way, so that sentence would have told an operator they are paying
+   *  for three things they are not. A product that cannot be switched still
+   *  owes the card a true sentence about why. */
+  liveNote?: string;
 };
 
 const SPECS: readonly ProductSpec[] = [
@@ -115,13 +125,21 @@ const SPECS: readonly ProductSpec[] = [
     // what Profile already does.
     blurb:
       "Your dishes and prices as something Mesita can read — one menu the guest browses, Orders sells from and the phone quotes.",
-    tab: null,
+    // THE DOOR IS PROFILE (MESITA-1978), because that is where `MenusSection`
+    // actually lives. A live product whose card carries no verb is a product
+    // an operator cannot act on, and the honest fix is the real address rather
+    // than a new screen invented to hold a button.
+    tab: "profile",
     needsPartner: false,
     atPlace: null,
     // WHAT EXISTS INSTEAD, named. An operator who uploaded a PDF last week
     // would otherwise read this card as Mesita losing their menu; the file is
     // still on Profile, it is just not this.
-    soon: "A PDF on your Profile is all there is today.",
+    // LIVE ON PATO'S NEWEST LIST (MESITA-1978). The note it dropped said "A
+    // PDF on your Profile is all there is today", which is the thing the
+    // product replaces rather than a description of it.
+    soon: null,
+    liveNote: "On here. The dishes live on your Profile.",
   },
   {
     key: "website",
@@ -221,6 +239,19 @@ const SPECS: readonly ProductSpec[] = [
     soon: null,
   },
   {
+    key: "tableorders",
+    // THE ORDER PLACED AT THE TABLE (MESITA-1978), which is not Online Orders
+    // with a different address: pickup and delivery leave, this one stays and
+    // joins an open visit, so the bill is the thing it edits.
+    name: "Table Orders",
+    blurb:
+      "The guest orders from the table and it joins their open bill — no pickup, no delivery, no second screen for the floor.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "Nothing is built yet.",
+  },
+  {
     key: "reservations",
     // *"and reservations call it online reservations"* (Pato, 2026-09-16).
     // MESITA-1955 left this one bare while its two neighbours took the
@@ -287,6 +318,18 @@ const SPECS: readonly ProductSpec[] = [
     soon: "The furthest out of everything here. Nothing is live yet.",
   },
   {
+    key: "orderpad",
+    // HARDWARE, LIKE TERMINAL AND POS (MESITA-1978), and it says which one it
+    // is: a pad the floor carries, not a station they walk back to.
+    name: "Physical Orderpad",
+    blurb:
+      "A pad the floor carries: take the order at the table and it reaches the kitchen without a walk back to a station.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: "Mesita hardware is not available yet.",
+  },
+  {
     key: "credits",
     name: "Prepaid Credits",
     blurb:
@@ -348,7 +391,23 @@ const SPECS: readonly ProductSpec[] = [
     tab: null,
     needsPartner: false,
     atPlace: null,
-    soon: "Nothing is answering yet.",
+    soon: null,
+    liveNote: "Answering your number. Nothing to set here yet.",
+  },
+  {
+    key: "access",
+    // OMNICHANNEL ACCESS, AND IT IS LIVE (MESITA-1978). It is the one product
+    // on the list that names a WAY IN rather than a thing to run: the place is
+    // reachable wherever a guest already is, and every channel lands on the
+    // same Mesita surfaces rather than on a second inbox to staff.
+    name: "Omnichannel Access",
+    blurb:
+      "Your place, reachable from wherever the guest already is — Google, Instagram, WhatsApp, a QR on the table — all landing on the same Mesita.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    soon: null,
+    liveNote: "On for every place. Every channel lands on the same Mesita.",
   },
   {
     key: "intelligence",
@@ -431,7 +490,7 @@ export function buildProductCards(input: {
     return {
       ...base(spec),
       state: "enabled",
-      note: "Included with Mesita Partner.",
+      note: spec.liveNote ?? "Included with Mesita Partner.",
       action: viewAction(spec, "Manage"),
     };
   });
