@@ -59,6 +59,7 @@ export const PRODUCT_KEYS = [
   // two screens disagree about which dial is live (see `VisitsView`).
   "visits",
   "orders",
+  "tableorders",
   "reservations",
   // "Payments" is the label; `pay` stays the KEY, because the address, the tab
   // and the column are persisted spellings.
@@ -67,6 +68,7 @@ export const PRODUCT_KEYS = [
   // THE READER AND THE TILL ARE A PAIR, so `pos` sits next to `terminal`
   // rather than at the end of the list Pato dictated it after.
   "pos",
+  "orderpad",
   "credits",
   "capital",
   // ONE PRODUCT, NOT TWO (MESITA-1951). Pato: *"Mesita AI Line instead"*,
@@ -79,6 +81,7 @@ export const PRODUCT_KEYS = [
   // channel does not belong in the key, because the channel is the part that
   // will grow.
   "line",
+  "access",
   "intelligence",
 ] as const;
 export type ProductKey = (typeof PRODUCT_KEYS)[number];
@@ -113,13 +116,16 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   ads: "Omnichannel Ads",
   visits: "Visit Rewards",
   orders: "Online Orders",
+  tableorders: "Table Orders",
   reservations: "Online Reservations",
   pay: "Online Payments",
   terminal: "Physical Terminal",
   pos: "Physical POS",
+  orderpad: "Physical Orderpad",
   credits: "Prepaid Credits",
   capital: "Mesita Capital",
   line: "Answering Agent",
+  access: "Omnichannel Access",
   intelligence: "Marketing Intelligence",
 };
 
@@ -146,15 +152,21 @@ export const PRODUCT_BANDS: readonly {
   },
   {
     title: "Serving the guest",
-    keys: ["visits", "orders", "reservations"],
+    keys: ["visits", "orders", "tableorders", "reservations"],
   },
   {
     title: "The money",
-    keys: ["pay", "terminal", "pos", "credits", "capital"],
+    keys: ["pay", "terminal", "pos", "orderpad", "credits", "capital"],
   },
   {
-    title: "The work nobody is doing",
-    keys: ["line", "intelligence"],
+    // RENAMED WITH ITS CONTENTS (MESITA-1978). It was "The work nobody is
+    // doing", which was true of both rows when both were Soon. Answering Agent
+    // is live on Pato's newest list and Omnichannel Access arrives live beside
+    // it, so the title described one row of three. A band titled for a STATE
+    // goes stale every time a product ships; this one is titled for what the
+    // products DO, which is the only thing about them that does not move.
+    title: "Answering for you",
+    keys: ["line", "access", "intelligence"],
   },
 ];
 
@@ -169,13 +181,16 @@ const BANDED_KEYS: { [K in ProductKey]: true } = {
   ads: true,
   visits: true,
   orders: true,
+  tableorders: true,
   reservations: true,
   pay: true,
   terminal: true,
   pos: true,
+  orderpad: true,
   credits: true,
   capital: true,
   line: true,
+  access: true,
   intelligence: true,
 };
 void BANDED_KEYS;
