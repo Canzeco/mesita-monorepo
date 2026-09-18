@@ -45,10 +45,11 @@ import {
   usePlaceScope,
 } from "@/components/console/PlaceScope";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
+import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards, type ProductCard } from "@/lib/products";
-import { placePayHref } from "@/lib/console-routes";
+import { PLACE_PAGE_LABEL, placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
@@ -147,6 +148,15 @@ export default function SetupPage() {
 
   return (
     <>
+      {/* THE SUBJECT (MESITA-1975). The menu above says "Setup"; nothing in it
+          says WHICH venue, so this page names its own. It is also the page's
+          `h1` — `AppShell` stops emitting an sr-only one here. */}
+      <PlaceHeading
+        name={place.name}
+        photoUrl={place.photoUrl}
+        page={PLACE_PAGE_LABEL.setup}
+      />
+
       <MembershipReturnNotice />
 
       {/* THE GATE, ABOVE THE LIST, sized by the decision in it — a box when
@@ -163,7 +173,7 @@ export default function SetupPage() {
         return (
           <section key={group.title} className="flex flex-col gap-2">
             <div className="flex items-baseline gap-2">
-              {/* AppShell's sr-only `h1`, then these, then the product names,
+              {/* `PlaceHeading`'s `h1`, then these, then the product names,
                   which are `<p>` on purpose — a row's name is a label, and an
                   outline made of fifteen headings is not an outline. */}
               <h2 className="font-display text-sm font-semibold tracking-tight">

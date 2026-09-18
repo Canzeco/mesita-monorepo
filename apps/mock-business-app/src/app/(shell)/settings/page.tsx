@@ -3,13 +3,14 @@
 // SETTINGS — the fourth tab: you, what you owe, and this place (MESITA-1973).
 //
 // IT IS NOT PLACE-SCOPED ANY MORE, and that is load-bearing rather than tidy.
-// Sign out lives here now that Account is gone, and `Sidebar.tsx` draws
-// `RAIL_ROWS` only in the `solo` and `multi` shapes — so an address of the form
-// `/places/<id>/settings` would put the console's only exit behind a successful
-// places read. `/settings` resolves with no place at all. MESITA-1935 tried
-// this merge and missed exactly that; MESITA-1937 undid it for exactly that.
+// Sign out lives here now that Account is gone, and `TopNav.tsx` renders the
+// place-scoped tabs only in the `solo` and `multi` shapes — so an address of
+// the form `/places/<id>/settings` would put the console's only exit behind a
+// successful places read. `/settings` resolves with no place at all, which is
+// why its tab is the one that draws at all four modes. MESITA-1935 tried this
+// merge and missed exactly that; MESITA-1937 undid it for exactly that.
 //
-// IT READS THE PLACE THE WAY THE RAIL DOES, through `resolveRailScope`, not
+// IT READS THE PLACE THE WAY THE MENU DOES, through `resolveRailScope`, not
 // through `usePlaceScope` — that context is published by `places/[id]/layout`
 // and this page sits outside it. The pathname names no place here, so the scope
 // falls back to the last place opened, which is the venue the rail is showing.

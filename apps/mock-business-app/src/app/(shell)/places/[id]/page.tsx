@@ -9,8 +9,9 @@
 //
 // ── WHAT HOME IS FOR ───────────────────────────────────────────────────────
 //
-// Three bands, in the order an operator needs them:
+// Four bands, in the order an operator needs them:
 //
+//   THE VENUE    WHICH place this is, and the door to the others (MESITA-1975)
 //   THE BAR      say what you want changed; it opens the screen that holds it
 //   NEEDS YOU    the things that are stopping money, each with its door
 //   TODAY        what is open right now, and the last few things that happened
@@ -30,7 +31,8 @@
 //
 // Three ranks now, loud to quiet:
 //
-//   THE BAND   the dock ink, the only dark object on a pink page
+//   THE VENUE  a name and a photo, on the page rather than in the chrome
+//   THE BAND   the dock ink, the only dark object on the page
 //   THE STATE  ONE hairline card — blockers as rows, the counts as a strip
 //   THE LOG    last, and the quietest
 //
@@ -52,11 +54,12 @@ import { use, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AskBar } from "@/components/console/AskBar";
+import { PlaceChip } from "@/components/console/PlaceChip";
 import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { Badge } from "@/components/shared/Badges";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Section } from "@/components/shared/Section";
-import { placePageHref, placePayHref } from "@/lib/console-routes";
+import { SHELL_ROUTES, placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { money, since } from "@/lib/format";
 import {
@@ -214,6 +217,41 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
 
   return (
     <>
+      {/* THE VENUE — THIS IS WHERE THE SELECTOR WENT (MESITA-1975).
+          Pato: *"put the place in its own page, not a fucking weird selector
+          toggle."* The rail's first item was a photo, a name and a caret; the
+          caret opened the catalogue. Both halves are here now, as a heading and
+          a link, on the screen the Place tab opens.
+
+          IT IS THE `h1`. With the rail gone the menu says "Place", not which
+          one, so this is the only thing on the console that names the venue at
+          a glance — and `Section` renders `h3`, so without it the page opened
+          on an h3 with h1 and h2 skipped.
+
+          ALL PLACES RENDERS AT EVERY MODE, including `solo`: at one place the
+          catalogue is still the pool and the Add door. It is a plain link, not
+          a menu — a list of venues you pick from lands you at the top of the
+          one you picked, which is what a list has always done, and it is why
+          MESITA-1918 could delete `pickPlace` outright. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <PlaceChip photoUrl={place.photoUrl} size="page" />
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display truncate text-2xl font-semibold tracking-tight">
+            {place.name}
+          </h1>
+          <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+            <span className="truncate">
+              {place.category} · {place.city}
+            </span>
+            {place.verified && <Badge>Verified</Badge>}
+            {place.partnered && <Badge tone="gold">Partner</Badge>}
+          </p>
+        </div>
+        <Link href={SHELL_ROUTES.places} className={GHOST_PILL_BUTTON_CLASS}>
+          All places
+        </Link>
+      </div>
+
       <AskBar placeId={place.id} />
 
       {/* THE STATE OF THE PLACE, in one card. Every direct child of

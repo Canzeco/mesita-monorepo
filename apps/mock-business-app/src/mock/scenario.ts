@@ -115,7 +115,7 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   {
     id: "multi",
     label: "Four places",
-    hint: "The selector heads the rail and the console picks none of them.",
+    hint: "The console picks none of them: Place opens the catalogue.",
     patch: { mode: "multi" },
   },
   {
@@ -127,7 +127,7 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   {
     id: "failed",
     label: "Read failed",
-    hint: "The rail says so and offers a retry. It never says 'add one'.",
+    hint: "The catalogue says so and offers a retry. It never says 'add one'.",
     patch: { mode: "unknown", empty: true },
   },
   {
@@ -159,7 +159,7 @@ export type World = {
   viewerError: boolean;
   poolPlaces: typeof POOL_PLACES;
   /** The profile record per place id — the fixture, or what Profile's save bar
-   *  last wrote over it. Keyed rather than nested on `MockPlace` so the rail
+   *  last wrote over it. Keyed rather than nested on `MockPlace` so the menu
    *  and the eight product views never carry thirty columns they do not read
    *  (mock/types.ts). */
   profiles: Record<string, MockPlaceProfile>;
@@ -215,7 +215,7 @@ export function resolveWorld(
   }
   const chosen = s.mode === "solo" ? PLACES.slice(0, 1) : PLACES;
   return {
-    // A SAVED PROFILE MOVES THE PLACE, not just the form: the name the rail
+    // A SAVED PROFILE MOVES THE PLACE, not just the form: the name the menu
     // and the heading print is `mesita_name` falling back to `google_name`
     // (the real column is GENERATED as exactly that coalesce), and the photo
     // count Admin prints is the gallery's length. Re-deriving them here is
