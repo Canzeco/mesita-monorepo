@@ -124,12 +124,13 @@ const SPECS: readonly ProductSpec[] = [
     // Written from the FILE it replaces — "upload your menu" would describe
     // what Profile already does.
     blurb:
-      "Your dishes and prices as something Mesita can read — one menu the guest browses, Orders sells from and the phone quotes.",
-    // THE DOOR IS PROFILE (MESITA-1978), because that is where `MenusSection`
-    // actually lives. A live product whose card carries no verb is a product
-    // an operator cannot act on, and the honest fix is the real address rather
-    // than a new screen invented to hold a button.
-    tab: "profile",
+      "Your dishes and prices as something Mesita can read — one menu the guest scans, Orders sells from and the Agent quotes.",
+    // ITS OWN SCREEN (MESITA-1984). MESITA-1978 pointed this at Profile
+    // because that is where `MenusSection` lived; the menus left Profile with
+    // this issue, so the borrowed door would now open the one page that no
+    // longer holds a menu. `MenuView` is the destination and `ProductPane`
+    // mounts it — no `PlaceTab`, because the menu is not a tab.
+    tab: null,
     needsPartner: false,
     atPlace: null,
     // WHAT EXISTS INSTEAD, named. An operator who uploaded a PDF last week
@@ -139,7 +140,7 @@ const SPECS: readonly ProductSpec[] = [
     // PDF on your Profile is all there is today", which is the thing the
     // product replaces rather than a description of it.
     soon: null,
-    liveNote: "On here. The dishes live on your Profile.",
+    liveNote: "On here. Eight dishes, three prices each.",
   },
   {
     key: "website",

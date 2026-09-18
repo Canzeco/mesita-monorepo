@@ -37,6 +37,7 @@ import { useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ProfileView } from "@/components/views/ProfileView";
+import { MenuView } from "@/components/views/MenuView";
 import { VisitsView } from "@/components/views/VisitsView";
 import { OrdersView } from "@/components/views/OrdersView";
 import { ReservationsView } from "@/components/views/ReservationsView";
@@ -59,6 +60,11 @@ import { cn } from "@/lib/utils";
  *  cast that happens to work. */
 const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>> = {
   profile: ProfileView,
+  // DIGITAL MENU HAS ITS OWN SCREEN NOW (MESITA-1984), so it stops borrowing
+  // Profile's. Its `tab` goes back to null with it: the pane is the door, and
+  // pointing the card at `/profile` would send an operator to the page the
+  // menus just left.
+  menu: MenuView,
   visits: VisitsView,
   orders: OrdersView,
   reservations: ReservationsView,

@@ -20,7 +20,6 @@ import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
 import { PlaceFormProvider } from "@/components/place-manage/PlaceContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
-import { MenusSection } from "@/components/place-manage/MenusSection";
 import { PlaceSection } from "@/components/place-manage/PlaceSection";
 import { ProfileCompleteness } from "@/components/place-manage/ProfileCompleteness";
 import { useMock } from "@/mock/MockStore";
@@ -80,7 +79,6 @@ export function ProfileView() {
       <div key={place.id} className="flex flex-col">
         <ProfileCompleteness place={profile} />
         <PlaceSection place={profile}>
-          <MenusSection place={profile} />
         </PlaceSection>
         <PlaceSaveBar />
       </div>

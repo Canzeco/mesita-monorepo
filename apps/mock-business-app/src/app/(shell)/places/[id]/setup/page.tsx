@@ -369,10 +369,27 @@ export default function SetupPage() {
           which is the only scroller, so a percentage height here has no
           definite parent to resolve against — the exact chain that has
           rendered an empty box before. */}
+      {/* ONE THIRD, TWO THIRDS, AND TWO SCROLLERS (MESITA-1984). Pato:
+          *"better make the left part 1/3 and the other 2/3, lets optimize the
+          space a bit"* and *"two different scrollable boxes the left and the
+          right"*.
+          
+          THE HALVES WERE NEVER EQUAL WORK. The left is eighteen rows of a name
+          and one clamped line; the right holds Profile's whole form, a menu of
+          eight dishes at three prices, a visits table. Splitting a 1440px
+          window down the middle gave the index 230px it could not use and the
+          work surface 230px it needed.
+          
+          AND EACH HALF SCROLLS ITSELF, which reverses MESITA-1982's "the page
+          is the only scroller". The grid takes a DEFINITE height in `vh` —
+          from the viewport, never a percentage of a parent — so each column can
+          own an `overflow-y-auto` without the height chain this app has
+          already broken once. Scrolling a long product page no longer carries
+          the list off the top of the screen. */}
       <div
         className={cn(
           SHELL_BLEED,
-          "border-border grid min-h-[calc(100vh-13rem)] border-t lg:grid-cols-2",
+          "border-border grid border-t lg:h-[calc(100vh-11.5rem)] lg:grid-cols-3",
         )}
       >
         {/* THE INDEX — the page's own grey, so it reads as the ground the work
@@ -399,7 +416,7 @@ export default function SetupPage() {
           className={cn(
             "bg-card",
             SHELL_GUTTER,
-            "py-4",
+            "py-4 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto",
             open ? "block" : "hidden lg:block",
           )}
         >

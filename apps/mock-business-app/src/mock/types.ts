@@ -528,6 +528,37 @@ export type MockProfileMenu = {
   source: "upload" | "drive";
 };
 
+/** A DISH, AND THREE PRICES (MESITA-1984).
+ *
+ *  Main §4: *"Every dish carries a price per channel: one at the table, another
+ *  for pickup, another for delivery."* Three columns rather than one price and
+ *  two modifiers, because a place sets them independently — delivery carries a
+ *  courier the table does not, and pickup is often the cheapest thing on the
+ *  menu on purpose.
+ *
+ *  A null price means THIS DISH IS NOT SOLD ON THAT CHANNEL, which is a real
+ *  answer and not a zero: a dish the kitchen will not send out arrives as a
+ *  dash, never as free. */
+export type MockDish = {
+  id: string;
+  name: string;
+  /** What is in it, in the place's own words. The menu answers a guest from
+   *  this and never from invention (Main §4). */
+  blurb: string;
+  /** Generated dish photography — the shot the place never took. A data URI
+   *  like every other image in this app. */
+  photoUrl: string | null;
+  table: number | null;
+  pickup: number | null;
+  delivery: number | null;
+};
+
+export type MockMenuSection = {
+  id: string;
+  name: string;
+  dishes: MockDish[];
+};
+
 /** The real editor's cap, and the reason the Menus card can refuse an add. */
 export const MENU_MAX_COUNT = 20;
 
