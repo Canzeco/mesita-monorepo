@@ -179,15 +179,28 @@ export default function PlacesPage() {
                   {world.places.map((p) => (
                     <tr key={p.id} className="border-border hover:bg-muted/40 border-b last:border-0">
                       <td className={cn(STATES_COL_CELL, "px-3 py-2.5")}>
-                        <span className="flex min-w-0 items-center gap-2">
+                        {/* THE NAME IS THE SWITCH (MESITA-1976). This is the
+                            portfolio now — the Place tab points here and its
+                            whole job is picking one — and the door was a pill
+                            in the LAST column, past six state columns that
+                            scroll horizontally below `xl`. A switcher whose
+                            switch is off-screen is a list. The Open pill stays
+                            for the row's right edge; this is the same address
+                            on the first thing you read. */}
+                        <Link
+                          href={placeRootHref(p.id)}
+                          className="focus-visible:ring-ring flex min-w-0 items-center gap-2 rounded-lg outline-hidden focus-visible:ring-2"
+                        >
                           <PlaceChip photoUrl={p.photoUrl} />
                           <span className="min-w-0">
-                            <span className="block truncate font-medium">{p.name}</span>
+                            <span className="block truncate font-medium underline-offset-2 hover:underline">
+                              {p.name}
+                            </span>
                             <span className="text-muted-foreground block truncate text-[11px]">
                               {p.category} · {p.city} · {p.myRole}
                             </span>
                           </span>
-                        </span>
+                        </Link>
                       </td>
                       {STATE_COLUMNS.map(([label, read]) => (
                         <td key={label} className="px-3 py-2.5 text-center">

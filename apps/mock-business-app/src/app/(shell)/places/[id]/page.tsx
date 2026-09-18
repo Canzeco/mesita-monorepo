@@ -59,7 +59,7 @@ import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { Badge } from "@/components/shared/Badges";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Section } from "@/components/shared/Section";
-import { SHELL_ROUTES, placePageHref, placePayHref } from "@/lib/console-routes";
+import { placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { money, since } from "@/lib/format";
 import {
@@ -228,11 +228,12 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
           a glance — and `Section` renders `h3`, so without it the page opened
           on an h3 with h1 and h2 skipped.
 
-          ALL PLACES RENDERS AT EVERY MODE, including `solo`: at one place the
-          catalogue is still the pool and the Add door. It is a plain link, not
-          a menu — a list of venues you pick from lands you at the top of the
-          one you picked, which is what a list has always done, and it is why
-          MESITA-1918 could delete `pickPlace` outright. */}
+          THE *All places* LINK IS GONE (MESITA-1976). The Place TAB is that
+          door now — it points at `/places` at every mode — and the same door
+          drawn twice beside the thing it leads away from is exactly what the
+          rail's venue band was doing before MESITA-1975 deleted it. This
+          screen keeps its address and loses only its door: it is where picking
+          a place from the portfolio lands you. */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <PlaceChip photoUrl={place.photoUrl} size="page" />
         <div className="min-w-0 flex-1">
@@ -247,9 +248,6 @@ export default function PlaceHome({ params }: { params: Promise<{ id: string }> 
             {place.partnered && <Badge tone="gold">Partner</Badge>}
           </p>
         </div>
-        <Link href={SHELL_ROUTES.places} className={GHOST_PILL_BUTTON_CLASS}>
-          All places
-        </Link>
       </div>
 
       <AskBar placeId={place.id} />

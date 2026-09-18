@@ -3,7 +3,7 @@
 // THE MENU. One line across the top, a lockup and FOUR TABS — and four is the
 // number that matters.
 //
-// ── THE SHAPE (MESITA-1975) ────────────────────────────────────────────────
+// ── THE SHAPE (MESITA-1975 · 1976) ─────────────────────────────────────────
 //
 //   ┌──────────────────────────────────────────────────────────────────┐
 //   │  mesita.   Place   Setup   Activity   Settings                   │
@@ -18,13 +18,17 @@
 // THE VENUE BAND. The rail's first item wore the place's photo and name
 // because a 272px column had room for them. A line does not: "Lumbre y Sal"
 // plus three labels is 355px of a 375px phone, and a 24-character venue name
-// breaks the row outright. The name moved to the screen the Place tab opens,
-// which is also the answer to the selector — see `places/[id]/page.tsx`.
+// breaks the row outright. The name lives on the place's own screen now, and
+// on Setup and Activity through `PlaceHeading`.
 //
-// THE CARET, and with it the last dropdown in the app. Switching places is a
-// list you visit (`/places`), reached from the Place page. MESITA-1918 deleted
-// the selector MENU because it carried the open address across a switch; this
-// gives the half that survived an address of its own.
+// THE CARET, and with it the last dropdown in the app. PLACE IS THE SWITCHER
+// ITSELF (MESITA-1976): the tab points at `/places`, the portfolio — your
+// places, the pool, the Add door — and picking one lands you on it. Pato:
+// *"place is not a home. place is just to select the place… you have like a
+// portfolio of places and you can switch across them."* MESITA-1918 deleted
+// the selector MENU because it carried the open address across a switch; a
+// list you pick from lands you at the top of the one you picked, which is what
+// a list has always done.
 //
 // THE DRAWER AND THE HAMBURGER (see `AppShell.tsx`). Four destinations are the
 // same IA under a finger and under a cursor, which is the entire reason there
@@ -69,7 +73,6 @@ import {
   placeIdFromPathname,
   placePageFromPathname,
   placePageHref,
-  placeRootHref,
 } from "@/lib/console-routes";
 import { pagesForAccess } from "@/lib/place-tabs";
 import type { RailScope } from "@/lib/rail-scope";
@@ -113,26 +116,21 @@ function Tab({
   );
 }
 
-/** Where the Place tab points, and what it is called, at each of the four
- *  shapes.
+/** Where the Place tab points, and what it is called.
  *
- *  IT IS ALWAYS RENDERED, because it is the console's subject and because a
- *  menu that changes length between reads is a menu you have to re-scan. What
- *  changes is the promise it makes:
+ *  `/places`, AT EVERY MODE — IT IS THE SWITCHER (MESITA-1976). Pato: *"place
+ *  is not a home. place is just to select the place… you have like a portfolio
+ *  of places and you can switch across them."* MESITA-1975 pointed it at
+ *  `/places/<id>` on the argument that the venue is the console's subject;
+ *  the subject is not the tab. The portfolio is.
  *
- *    solo / multi  the place's own screen
- *    zero          the one door there is, and it says so
- *    unknown       the catalogue, which is the screen that tells a failed read
- *                  apart from an empty one. NEVER "Add" — a read that failed
- *                  has established nothing about what this caller holds. */
-function placeTab(scope: RailScope): { href: string; label: string } {
-  if (scope.mode === "zero") {
-    return { href: SHELL_ROUTES.placesNew, label: "Add place" };
-  }
-  if (scope.mode === "unknown" || !scope.place) {
-    return { href: SHELL_ROUTES.places, label: "Places" };
-  }
-  return { href: placeRootHref(scope.place.id), label: NAV_HOME_LABEL };
+ *  ONE ADDRESS AT ALL FOUR SHAPES, which is the other thing this buys. The
+ *  catalogue already tells a failed read apart from an empty one and already
+ *  carries the Add door, so `unknown` and `zero` stop needing a tab that
+ *  changes its own name — and a menu whose labels move between reads is a menu
+ *  you have to re-scan. */
+function placeTab(): { href: string; label: string } {
+  return { href: SHELL_ROUTES.places, label: NAV_HOME_LABEL };
 }
 
 export function TopNav({
@@ -168,13 +166,16 @@ export function TopNav({
   const showPages =
     (scope.mode === "solo" || scope.mode === "multi") && placeId !== null;
 
-  const home = placeTab(scope);
-  // THE CATALOGUE LIVES UNDER PLACE. `/places` and `/places/new` are how you
-  // switch and how you add, and both are reached from the Place page, so the
-  // tab stays lit while you are on them. Without this the menu goes blank on
-  // the two screens the Place tab itself links to.
+  const home = placeTab();
+  // THE TAB IS LIT ON THE SWITCH AND ON WHAT THE SWITCH LANDS YOU ON.
+  // `/places` is the tab itself and `/places/new` is its Add door; `/places/<id>`
+  // is where picking a place from the portfolio drops you, and the tab you
+  // just came from must not go dark underneath you (MESITA-1976). That screen
+  // keeps its address and loses only its door.
   const onPlaces =
-    pathname === SHELL_ROUTES.places || pathname === SHELL_ROUTES.placesNew;
+    pathname === SHELL_ROUTES.places ||
+    pathname === SHELL_ROUTES.placesNew ||
+    isPlaceHomePathname(pathname);
   // A PRODUCT VIEW IS A DRILL-DOWN OF SETUP. `/places/<id>/visits` has no tab
   // of its own — it is reached from a Setup card — so Setup stays lit
   // underneath it. The alternative is a menu with nothing lit on nine of the
@@ -215,7 +216,7 @@ export function TopNav({
                 key="home"
                 href={home.href}
                 label={home.label}
-                active={isPlaceHomePathname(pathname) || onPlaces}
+                active={onPlaces}
               />
             );
           }
