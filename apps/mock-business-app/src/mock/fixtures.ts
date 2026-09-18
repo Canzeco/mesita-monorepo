@@ -92,6 +92,8 @@ export const PLACES: MockPlace[] = [
     verified: true,
     partnered: true,
     promoting: true,
+    pulsing: true,
+    disabled: false,
     membership: "active",
     renewsAt: MEMBERSHIP_RENEWS_AT,
     customerIntel: true,
@@ -120,6 +122,8 @@ export const PLACES: MockPlace[] = [
     verified: true,
     partnered: false,
     promoting: false,
+    pulsing: true,
+    disabled: false,
     membership: "none",
     renewsAt: null,
     customerIntel: false,
@@ -148,6 +152,8 @@ export const PLACES: MockPlace[] = [
     verified: true,
     partnered: true,
     promoting: false,
+    pulsing: true,
+    disabled: false,
     membership: "none",
     renewsAt: null,
     customerIntel: true,
@@ -176,6 +182,8 @@ export const PLACES: MockPlace[] = [
     verified: false,
     partnered: false,
     promoting: false,
+    pulsing: true,
+    disabled: false,
     membership: "none",
     renewsAt: null,
     customerIntel: false,
@@ -197,10 +205,10 @@ export const PLACES: MockPlace[] = [
  *  `?owned=public`, and Claim is the verb — there is no membership to hold
  *  first, because claiming is what mints the owner row. */
 export const POOL_PLACES: MockPoolPlace[] = [
-  { id: "plc_pool_a", name: "Tostador Regio", category: "Café", city: "Monterrey", verified: true, claimable: true },
-  { id: "plc_pool_b", name: "La Cuchara Azul", category: "Restaurant", city: "Guadalupe", verified: true, claimable: true },
-  { id: "plc_pool_c", name: "Bar Once", category: "Bar", city: "Monterrey", verified: false, claimable: false },
-  { id: "plc_pool_d", name: "Mercadito Sur", category: "Market", city: "Santa Catarina", verified: true, claimable: true },
+  { id: "plc_pool_a", name: "Tostador Regio", category: "Café", city: "Monterrey", verified: true, claimable: true, pulsing: true, disabled: false },
+  { id: "plc_pool_b", name: "La Cuchara Azul", category: "Restaurant", city: "Guadalupe", verified: true, claimable: true, pulsing: true, disabled: false },
+  { id: "plc_pool_c", name: "Bar Once", category: "Bar", city: "Monterrey", verified: false, claimable: false, pulsing: false, disabled: false },
+  { id: "plc_pool_d", name: "Mercadito Sur", category: "Market", city: "Santa Catarina", verified: true, claimable: true, pulsing: true, disabled: false },
 ];
 
 /** The invented guests, and each one's sex ALONGSIDE the name rather than

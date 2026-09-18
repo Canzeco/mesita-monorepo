@@ -37,15 +37,45 @@ import {
 import { placeTabHref } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
 
+// THE GENERAL STATES — WHAT THE PORTFOLIO IS ACTUALLY FOR (MESITA-1977).
+//
+// Pato: *"focus more on the general states"* — Created · Pulsing (Google
+// Active) · Verified · Owned · Partnered · Disabled.
+//
+// This matrix used to carry EIGHT PRODUCT SWITCHES (Pickup, Delivery,
+// Reservations, Rewards, Credits alongside the three place facts). Five of
+// those are settings that live inside the product that owns them, on Setup;
+// reading them here made the switcher a second place to learn a product's
+// configuration, and a second place to get it wrong. What a switcher needs is
+// the state of the PLACE.
+//
+// THE FIRST FIVE ARE A LADDER, and that is why a matrix reads here at all:
+//
+//   Created    the row exists in the catalog
+//   Pulsing    Google answers for it — it is alive out there
+//   Verified   Mesita checked it is real
+//   Owned      somebody claimed it and holds it
+//   Partnered  it pays
+//
+// Each rung implies the ones above it, so a row's checks run left to right and
+// stop, and where they stop IS the place's stage. Six unrelated flags would
+// have no such reading.
+//
+// DISABLED IS NOT A RUNG. It can land at any height — a disabled Partner and a
+// disabled row nobody ever claimed are different problems — so it sits last,
+// after the ladder, and it is the one column where a check is BAD news.
 const STATE_COLUMNS = [
+  ["Created", () => true],
+  ["Pulsing", (p: { pulsing: boolean }) => p.pulsing],
   ["Verified", (p: { verified: boolean }) => p.verified],
+  // ALWAYS TRUE IN THIS TABLE, ON PURPOSE. `Your places` is the held set, so
+  // the column is constant here and constant the other way in the pool below
+  // — which is exactly the fact it is naming. It is the difference between
+  // the two surfaces written down instead of implied by which one you are
+  // looking at.
+  ["Owned", () => true],
   ["Partner", (p: { partnered: boolean }) => p.partnered],
-  ["Promoting", (p: { promoting: boolean }) => p.promoting],
-  ["Pickup", (p: { pickupOrders: boolean }) => p.pickupOrders],
-  ["Delivery", (p: { deliveryOrders: boolean }) => p.deliveryOrders],
-  ["Reservations", (p: { reservations: boolean }) => p.reservations],
-  ["Rewards", (p: { visitRewards: boolean }) => p.visitRewards],
-  ["Credits", (p: { credits: boolean }) => p.credits],
+  ["Disabled", (p: { disabled: boolean }) => p.disabled],
 ] as const;
 
 function Cell({ on }: { on: boolean }) {
@@ -227,7 +257,7 @@ export default function PlacesPage() {
       ) : (
         <Section
           title="Public places"
-          description="Mesita knows these are real and nobody holds them. Claiming one mints your owner row — there is no membership to hold first."
+          description="Created and not Owned — that is what public means here. Claiming one mints your owner row; there is no membership to hold first."
         >
           <ul className="flex flex-col gap-2">
             {world.poolPlaces.map((p) => (
@@ -238,7 +268,13 @@ export default function PlacesPage() {
                     {p.category} · {p.city}
                   </p>
                 </div>
+                {/* THE SAME GENERAL STATES AS THE TABLE ABOVE (MESITA-1977),
+                    in the shape this surface has. A pool row is Created and
+                    NOT Owned by construction — that is what "public" means
+                    here — so the two worth drawing are the ones that vary. */}
+                {p.pulsing && <Badge tone="on">Pulsing</Badge>}
                 {p.verified ? <Badge tone="on">Verified</Badge> : <Badge tone="off">Unverified</Badge>}
+                {p.disabled && <Badge tone="bad">Disabled</Badge>}
                 <Link href={placeTabHref(p.id, "profile")} className={GHOST_PILL_BUTTON_CLASS}>
                   Open
                 </Link>

@@ -29,6 +29,13 @@ export type Scenario = {
   /** Mesita Partner on the SELECTED place. The gate Visits, Rewards, Payments
    *  and Credits read; off, they are Locked and carry no verb. */
   partnered: boolean;
+  /** THE TWO GENERAL STATES THE PANEL CAN MOVE (MESITA-1977). `verified` is
+   *  not one of them: it is a fixture fact per place, and a switch for it here
+   *  would let a caller build a Partner that Mesita never verified — a rung
+   *  below one it already has. `pulsing` and `disabled` are both reachable at
+   *  any height, which is why they are dials and the ladder is not. */
+  pulsing: boolean;
+  disabled: boolean;
   /** What the SUBSCRIPTION behind the gate is doing. Its own axis, because
    *  `partnered` and the membership come apart in both directions — a
    *  `past_due` place is still a partner, and a partner switched on by an
@@ -57,6 +64,8 @@ export const DEFAULT_SCENARIO: Scenario = {
   role: "owner",
   isSuperAdmin: false,
   partnered: true,
+  pulsing: true,
+  disabled: false,
   membership: "active",
   pay: "enabled",
   customerIntel: true,
@@ -174,6 +183,8 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
     ...place,
     myRole: s.role,
     partnered: s.partnered,
+    pulsing: s.pulsing,
+    disabled: s.disabled,
     // THE ONE PAIR THAT CANNOT EXIST. A place that is not a partner has no
     // subscription to be `past_due` or `cancelling` about, so the panel's two
     // dials cannot be crossed into a state the real console never produces.
