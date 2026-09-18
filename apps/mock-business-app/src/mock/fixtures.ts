@@ -33,6 +33,7 @@ import type {
   MockSettingChange,
   MockSex,
   MockVisit,
+  MockMenuSection,
 } from "@/mock/types";
 
 /** A place's photo, as a data URI.
@@ -893,3 +894,102 @@ export const GOOGLE_REVIEWS: MockReview[] = build(GOOGLE_SCRAPED, 8, (placeId, i
     reply: null,
   };
 });
+
+// ── THE DIGITAL MENU ────────────────────────────────────────────────────────
+//
+// Dishes and prices as something Mesita can READ (Main §4), which is the whole
+// difference between this product and the PDF it replaces. Every dish carries
+// three prices because a place sets them independently: the table pays for the
+// room, pickup is often the cheapest thing on the menu on purpose, and delivery
+// carries a courier.
+//
+// A NULL PRICE IS A REAL ANSWER. The tuétano does not survive a courier and the
+// place does not send it, so delivery is null rather than a number nobody
+// should be able to charge. A dash says "not on that channel"; a zero would say
+// "free".
+//
+// Invented like everything else here, and deliberately a steakhouse's menu so
+// the prices read as this place's rather than as lorem.
+export const MENU_SECTIONS: readonly MockMenuSection[] = [
+  {
+    id: "sec_brasa",
+    name: "De la brasa",
+    dishes: [
+      {
+        id: "dish_tomahawk",
+        name: "Tomahawk 1.2kg",
+        blurb: "Dry-aged 40 days, over live coals, carved at the table for two.",
+        photoUrl: gradient("#3f3f3f", "#141414", "T"),
+        table: 189000,
+        pickup: 179000,
+        delivery: null,
+      },
+      {
+        id: "dish_arrachera",
+        name: "Arrachera al carbón",
+        blurb: "Marinated overnight, served with grilled spring onion and salsa martajada.",
+        photoUrl: gradient("#4a3a2a", "#1b1410", "A"),
+        table: 42000,
+        pickup: 39000,
+        delivery: 44000,
+      },
+      {
+        id: "dish_tuetano",
+        name: "Tuétano a la leña",
+        blurb: "Roasted marrow, lime, flour tortillas. Eaten hot or not at all.",
+        photoUrl: gradient("#6b5433", "#241a0e", "T"),
+        table: 28000,
+        pickup: null,
+        delivery: null,
+      },
+    ],
+  },
+  {
+    id: "sec_entradas",
+    name: "Para empezar",
+    dishes: [
+      {
+        id: "dish_aguachile",
+        name: "Aguachile de la casa",
+        blurb: "Shrimp, serrano, cucumber and a chile oil the kitchen makes weekly.",
+        photoUrl: gradient("#2f6b5a", "#0f231d", "A"),
+        table: 31000,
+        pickup: 29000,
+        delivery: 33000,
+      },
+      {
+        id: "dish_queso",
+        name: "Queso fundido con chistorra",
+        blurb: "Skillet cheese, chistorra, warm tortillas. The lightest thing here is not this.",
+        photoUrl: gradient("#8a6a2f", "#2b1f0d", "Q"),
+        table: 24000,
+        pickup: 22000,
+        delivery: 26000,
+      },
+    ],
+  },
+  {
+    id: "sec_barra",
+    name: "De la barra",
+    dishes: [
+      {
+        id: "dish_mezcal",
+        name: "Mezcal flight",
+        blurb: "Three pours from Oaxaca and Durango, poured side by side with sal de gusano.",
+        photoUrl: gradient("#5c5a3a", "#1d1c11", "M"),
+        table: 35000,
+        pickup: null,
+        delivery: null,
+      },
+      {
+        id: "dish_paloma",
+        name: "Paloma de la casa",
+        blurb: "Grapefruit pressed in house, mezcal instead of tequila, salt on half the rim.",
+        photoUrl: gradient("#8a4a55", "#2b141a", "P"),
+        table: 18000,
+        pickup: null,
+        delivery: null,
+      },
+    ],
+  },
+];
