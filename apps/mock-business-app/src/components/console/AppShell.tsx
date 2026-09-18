@@ -60,11 +60,12 @@ import { cn } from "@/lib/utils";
  *  307 onto the canonical address. */
 function placeScreenTitle(pathname: string, name: string): string | null {
   if (!placeIdFromPathname(pathname)) return null;
-  // SETUP AND ACTIVITY DRAW A REAL ONE (MESITA-1975). `PlaceHeading` is back on
-  // exactly those two, so an sr-only title here would be a SECOND `h1` on the
-  // same document saying the same words — which is worse for a rotor than the
-  // missing root this function exists to supply.
-  if (placePageFromPathname(pathname)) return null;
+  // AND IT COVERS SETUP AND ACTIVITY AGAIN (MESITA-1985). MESITA-1975 skipped
+  // them because `PlaceHeading` drew a visible `h1` there; Pato deleted that
+  // heading — *"remove the stupid double header"* — and moved the venue into
+  // the black bar, which is a LABEL and not a heading. Without this line those
+  // two pages open on an `h3` with h1 and h2 skipped, which is the exact
+  // outline defect PlaceHeading was reintroduced to fix.
   // Pay first: it lives UNDER `products`, so the page reader below would
   // answer "Products" for it and lose the sub-step the back link names.
   if (pathname === SHELL_ROUTES.settings) return "Settings";

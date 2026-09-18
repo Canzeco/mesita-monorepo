@@ -78,6 +78,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { PlaceChip } from "@/components/console/PlaceChip";
 import {
   NAV_HOME_LABEL,
   NAV_ROWS,
@@ -207,14 +208,15 @@ export function TopNav({
     currentPage === null;
 
   return (
-    // THE WHOLE GROUP IS CENTRED, LOCKUP INCLUDED (MESITA-1983). Pato:
-    // *"top menu options must be centralized"*, then *"logo must also be
-    // centered"*. MESITA-1982 read the first one as "centre the tabs" and
-    // pinned the lockup left with `absolute`, which centred the tabs on the
-    // window and left the mark alone at the edge — two alignments on one line.
-    // The lockup is back in the flow and the row centres as ONE object: mark,
-    // then four labels, as a single centred lockup-and-menu.
-    <div className="bg-dock flex h-16 shrink-0 items-center justify-center gap-3 px-3 sm:gap-5 sm:px-4">
+    // LEFT AND RIGHT, NOT CENTRED (MESITA-1985). Pato: *"TOP MENU HEADER —
+    // LEFT (Logo, Place, Setup, Activity, Settings) Right (Name of the place
+    // and maybe image too)"*, which overrules MESITA-1983's centred group.
+    //
+    // THE REASON IS THE VENUE, and it is a better bar for it. A centred menu
+    // has no right end to hang anything on; pushing the lockup and the tabs
+    // left gives the place a home that is not a heading, which is what lets
+    // the page below drop its own.
+    <div className="bg-dock flex h-16 shrink-0 items-center gap-3 px-3 sm:gap-5 sm:px-4">
       {/* THE LOCKUP IS A LABEL, NOT A LINK. Every address this bar reaches is
           on the same line as it, so a logo that navigated would be a fifth
           destination in different clothes — and the rail made the same call
@@ -239,7 +241,7 @@ export function TopNav({
           to shrink rather than run under it. */}
       <nav
         aria-label="Console"
-        className="flex min-w-0 items-stretch gap-0.5 sm:gap-1"
+        className="flex min-w-0 flex-1 items-stretch gap-0.5 sm:gap-1"
       >
         {NAV_ROWS.map((row) => {
           if (row.kind === "home") {
@@ -275,6 +277,28 @@ export function TopNav({
           );
         })}
       </nav>
+
+      {/* THE PLACE, AT THE RIGHT END (MESITA-1985). Pato: *"remove the stupid
+          double header… better put what place is being configured at the top,
+          in the black menu."*
+          
+          IT IS A LABEL, NOT A LINK. The Place tab four labels to the left
+          already opens the portfolio, and a venue that navigated would be the
+          same door drawn twice on one line — the exact thing the rail's caret
+          was doing before MESITA-1975 deleted it. This says WHICH place the
+          console is pointed at, and nothing else.
+          
+          THE NAME HIDES BELOW `sm`, THE PHOTO DOES NOT. A 375px line holds
+          four tabs and a 24px chip; it does not hold a venue name as well, and
+          the chip is the half that still answers "which place" at a glance. */}
+      {place && (
+        <div className="flex min-w-0 shrink items-center gap-2">
+          <PlaceChip photoUrl={place.photoUrl} size="menu" />
+          <span className="text-dock-foreground hidden truncate text-sm font-medium sm:block">
+            {place.name}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
