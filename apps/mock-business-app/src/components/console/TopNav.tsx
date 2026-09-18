@@ -48,17 +48,33 @@
 // where some entries are real and some are decoration is a menu you stop
 // reading, and `pagesForAccess` is the only thing that decides.
 //
-// THE LIGHT GROUND IS THE PAGE'S OWN VOCABULARY, and this is the part to not
-// get wrong. NOTHING HERE MAY READ A `--sidebar-*` OR `--dock-*` TOKEN. Those
-// paint the rail and the AskBar band: `--sidebar-muted` is white at 64% and
-// `--sidebar-ring` is pure white, so a ported row renders invisible text with
-// an invisible focus ring, on a public URL, with every check green. The bar is
-// `--paper` over `--page` with one `--hairline`, and its ring is `--ring`.
+// THE BAR IS INK (MESITA-1981). Pato: *"top menu must be different color.
+// black. then bottom must be white or whatever."* MESITA-1975 shipped it light
+// on the argument that `--dock` also paints the AskBar band and Home may hold
+// only one dark object. That argument is overruled and the cost is real and
+// visible: on Home there are now two ink surfaces, the menu at the top and the
+// band below it. The band keeps its radius and its inset, so what separates
+// them is shape rather than value.
 //
-// THE ACTIVE TAB IS A RULE, NOT A PILL. The rail's solid off-white pill was a
-// DARK-GROUND device — the brightest object in an ink column. The same fill on
-// a white bar is a grey blob, so "you are here" is carried by weight and a 2px
-// ink underline instead.
+// IT PAINTS WITH `--dock-*`, WHICH IS THE VOCABULARY THAT EXISTS FOR THIS.
+// `--dock` is `--ink`, not pure black: `--dock-surface` is white at 10%, which
+// composites to #1a1a1a over #000 (a 1.20:1 step nobody sees) and to #2e2e2e
+// over the ink (1.73:1, which you do). Pure black is reserved — `--mock-strip`
+// is the one thing in the app that may take it, because the strip sits
+// directly above this bar and two identical black slabs read as chrome rather
+// than as a warning.
+//
+// NOTHING HERE MAY READ A PAGE TOKEN. `text-muted-foreground` is #5d5d5d and
+// `bg-foreground` is the ink itself: on this ground the first is unreadable and
+// the second is invisible. Rest is `--dock-muted` (white at 64%, 7.84:1 on the
+// ink), hover is full white, and the ring is `--sidebar-ring`, which is pure
+// white and exists for exactly this reason — the page's `--ring` is ink, and an
+// ink ring on an ink bar is no ring at all.
+//
+// THE ACTIVE TAB IS STILL A RULE, NOT A PILL. The rail's solid off-white pill
+// was the brightest object in a 272px column and it worked there; across a
+// 1400px line the same fill is a slab with a word in it. Weight plus a 2px
+// white underline says "you are here" without painting a block.
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
@@ -87,14 +103,14 @@ import { cn } from "@/lib/utils";
 // bar so the underline sits on the bar's own hairline rather than floating
 // above it.
 const TAB_BASE =
-  "relative flex min-h-11 items-center px-3 text-sm font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-3.5";
-const TAB_REST = "text-muted-foreground hover:text-foreground";
-const TAB_ACTIVE = "text-foreground font-semibold";
+  "relative flex min-h-11 items-center px-3 text-sm font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset sm:px-3.5";
+const TAB_REST = "text-dock-muted hover:text-dock-foreground";
+const TAB_ACTIVE = "text-dock-foreground font-semibold";
 // The rule is drawn on the tab, 2px of `--ink`, flush with the bar's hairline.
 // `-bottom-px` puts it OVER that hairline rather than above it — a 1px gap
 // between the two reads as a misalignment nobody can name.
 const TAB_RULE =
-  "after:bg-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:content-['']";
+  "after:bg-dock-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-['']";
 
 function Tab({
   href,
@@ -187,7 +203,7 @@ export function TopNav({
     currentPage === null;
 
   return (
-    <div className="border-border bg-card flex h-14 shrink-0 items-center gap-1 border-b px-3 sm:gap-2 sm:px-4">
+    <div className="bg-dock flex h-14 shrink-0 items-center gap-1 px-3 sm:gap-2 sm:px-4">
       {/* THE LOCKUP IS A LABEL, NOT A LINK. Every address this bar reaches is
           on the same line as it, so a logo that navigated would be a fifth
           destination in different clothes — and the rail made the same call
@@ -200,9 +216,11 @@ export function TopNav({
           (`MesitaLogo` draws horizontal or stacked), and dropping it outright
           below `sm` would leave a phone with no lockup at all, which is one of
           the five things Pato named. */}
+      {/* THE LOCKUP TAKES THE BAR'S OWN FOREGROUND so it reads as part of the
+          ink rather than as a sticker on it — the same call the rail made. */}
       <MesitaLogo
         variant="horizontal"
-        className="h-3.5 w-auto shrink-0 pr-1 sm:h-4 sm:pr-2"
+        className="text-dock-foreground h-3.5 w-auto shrink-0 pr-1 sm:h-4 sm:pr-2"
       />
 
       <nav
