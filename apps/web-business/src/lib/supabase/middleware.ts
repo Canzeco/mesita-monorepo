@@ -41,7 +41,10 @@ export const PROTECTED_PREFIXES = [
   // reads nothing and renders nothing, and its destination is walled. Same
   // reasoning as `/add`.
   "/places",
-  "/account",
+  // SETTINGS IS THE PERSON AND THE PLACE (MESITA-1974), so it replaces
+  // `/account` here and gates for a stronger reason than that one did: it
+  // holds the place's team and its API keys, not just an email.
+  "/settings",
 ];
 
 // Routes where a signed-in visitor should be bounced through

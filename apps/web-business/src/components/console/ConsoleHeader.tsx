@@ -50,7 +50,10 @@ export function crumbsFor(
   pathname: string,
   names: { placeName: string | null },
 ): string[] {
-  if (pathname === SHELL_ROUTES.account) return ["Account"];
+  // SETTINGS IS THE PERSON AND THE PLACE ON ONE SCREEN (MESITA-1974), and it
+  // names no place in its address, so the crumb is the word and nothing above
+  // it — exactly what `/account` used to be.
+  if (pathname === SHELL_ROUTES.settings) return ["Settings"];
   // The catalogue is about no ONE place, which is why it sits above them all.
   if (pathname === SHELL_ROUTES.places) return ["Places"];
   if (pathname === SHELL_ROUTES.placesNew) return ["Places", "Add"];

@@ -105,49 +105,25 @@ import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 import {
   AlertCircle,
-  Briefcase,
-  CalendarCheck,
   ChartNoAxesColumn,
-  CreditCard,
-  Gift,
-  Landmark,
   Layers,
   LayoutGrid,
   Plus,
   Settings,
-  ShoppingBag,
-  Store,
-  Ticket,
-  UserRound,
-  Users,
-  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { useOpenPlace, useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
+import { useOpenPlaceGuard, type GuardNav } from "@/components/console/OpenPlace";
 import {
   FLAT_ROUTES,
-  RAIL_GROUP_STARTS,
-  RAIL_SECTIONS,
   RAIL_ROWS,
   SHELL_ROUTES,
   ZERO_PLACE_ROWS,
-  railSectionOf,
   flatPlacePageFromPathname,
-  flatViewFromPathname,
   placePageFromPathname,
   placePageHref,
-  productRowHref,
   type PlacePage,
 } from "@/lib/console-routes";
-import { PRODUCT_LABEL, type ProductKey } from "@/lib/product-keys";
-import {
-  PLACE_TAB_LABEL,
-  placeTabFromPathname,
-  placeTabHref,
-  tabsForAccess,
-  type PlaceTab,
-} from "@/lib/place-tabs";
 import type { RailScope } from "@/lib/rail-scope";
 
 type SidebarProps = {
@@ -156,7 +132,12 @@ type SidebarProps = {
   // the selector's menu; with the selector gone the column needs the SCOPE and
   // nothing else — which venue is open, and what this viewer may see of it.
   // The list still reaches the shell, which resolves the scope from it.
-  isSuperAdmin: boolean;
+  /** RESERVED, AND UNREAD SINCE MESITA-1974. The rail filtered product rows
+   *  through `tabsForAccess` and Admin through this; there are no product rows
+   *  and no Admin row, so nothing in the column asks. It stays on the props so
+   *  the shell keeps passing what it already resolves — `PlaceTabGate` is what
+   *  actually refuses `/places/<id>/admin`, and always was. */
+  _isSuperAdmin?: boolean;
   /** The places could not be read. NOT the zero state: a fetch failure must
    *  never read "add one" (MESITA-1793's law). */
   viewerError: boolean;
@@ -205,43 +186,6 @@ const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
 // so a seam over row one would separate the column from the window's edge.
 const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
 // AN EYEBROW, NOT A ROW (MESITA-1915). Smaller, uppercase, tracked, muted, and
-// with no hover, no pill, no address — so the one row shape stays the one row
-// shape and a head can never be mistaken for somewhere to go. Its glyph sits
-// in a narrower box than a row's, which is what keeps the labels beneath it
-// reading as a list under a title rather than as siblings of it.
-const HEAD_BASE =
-  "flex items-center gap-2 px-2.5 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted/80";
-const HEAD_ICON = "h-3 w-3 shrink-0";
-
-const SECTION_ICON: Record<
-  (typeof RAIL_SECTIONS)[number]["key"],
-  React.ComponentType<{ className?: string }>
-> = {
-  // THE BUSINESS ITSELF — what you configure, read and shop for. Picking this
-  // mark is mostly a list of what it may NOT be, and the column's icon table
-  // already wrote that list: not `sliders-horizontal` (retired Capabilities
-  // wore it, and a dead row's glyph returning as a title is exactly the drift
-  // the table exists to stop), not `building2` or `cog` or `settings-2` (named
-  // there as marks that never belonged — each one a second gear or a second
-  // venue), and not Profile's own `store`, which is this place's PUBLIC page.
-  // A briefcase is the business rather than a tool for it, which is why it
-  // collides with none of them.
-  manage: Briefcase,
-  // THE SAME MARK THE CATALOGUE ROW WEARS, deliberately: the row is the door
-  // to the eight and the section is the eight, and one idea drawn two ways is
-  // how an operator learns to distrust both drawings.
-  products: LayoutGrid,
-};
-
-function SectionHead({ section }: { section: (typeof RAIL_SECTIONS)[number] }) {
-  const Icon = SECTION_ICON[section.key];
-  return (
-    <p className={HEAD_BASE}>
-      <Icon className={HEAD_ICON} aria-hidden />
-      {section.label}
-    </p>
-  );
-}
 // The full route is prefetched on hover (MESITA-1779): the click then paints
 // the body at once instead of the skeleton. The prop works at runtime in
 // app/ and is missing from Link's public type, so it is spread in.
@@ -249,82 +193,14 @@ const HOVER_PREFETCH = { unstable_dynamicOnHover: true } as object;
 
 const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
 
-// THE MARKS NAME THE SUBJECT, NOT THE LABEL (MESITA-1838, MESITA-1841, and
-// MESITA-1844 for the row that arrived):
-//
-//   Account       UserRound           the PERSON, one of them
-//   Place         its own photo       the selector wears the venue's picture:
-//                                     a PHOTO is what distinguishes one place
-//                                     from another, and an icon would be
-//                                     identical on all of them
-//   Settings      Settings            THE GEAR (MESITA-1871). Pato: *"use to
-//                                     normal settings icon."* The page holds
-//                                     two boxes (Members, Developers), and the
-//                                     conventional mark is the honest one —
-//                                     Reviews and Admin are the precedent:
-//                                     take the convention when it is right
-//   Menus         UtensilsCrossed     what the place serves
-//   Customers     Users               PEOPLE, plural, against Account's one —
-//                                     the pairing IS the meaning: you, and
-//                                     everyone who comes to you
-//   Products      LayoutGrid          the CATALOGUE — a grid of tiles, which
-//                                     is literally what the page is
-//   Activity      ChartNoAxesColumn   counts over time; a heart-rate squiggle
-//                                     reads medical
-//   Places        Layers              a stack of them — the catalogue's own
-//                                     mark, on the menu door that opens it
-//   Profile       Store               the PLACE's public page, not a document
-//
-// Reviews (Star) and Admin (Shield) are each already the conventional mark for
-// their subject; swapping a correct icon to look busy is churn.
-
-/** The rail's word for a view — the bare word, as in the drawing.
- *  `PLACE_TAB_LABEL` is the same word; this exists so the tests and the rail
- *  share one reader. */
-export function placeRowLabel(tab: PlaceTab): string {
-  return PLACE_TAB_LABEL[tab];
-}
-
 const PAGE_ROW: Record<
   PlacePage,
   { label: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  settings: { label: "Settings", Icon: Settings },
-  products: { label: "Products", Icon: LayoutGrid },
-  customers: { label: "Customers", Icon: Users },
+  setup: { label: "Setup", Icon: LayoutGrid },
   activity: { label: "Activity", Icon: ChartNoAxesColumn },
 };
 
-/** The rail's mark for a row, by subject. `RAIL_ROWS` decides WHICH rows and
- *  in what order (lib/console-routes); this decides what each one wears.
- *
- *  THE PRODUCT ROWS WEAR THE CATALOGUE'S MARKS (MESITA-1885) — the same glyph
- *  the card carries in `ProductCatalog.tsx`, because a row and a card naming
- *  one product with two different pictures is how an operator learns to
- *  distrust both. The TINT does not come along: a rail row is one glyph on the
- *  sidebar's own dark surface, and eight colours in a column is the "lots of
- *  fucking different styles in the same menu" Pato ruled out in MESITA-1845. */
-const RAIL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  settings: Settings,
-  products: LayoutGrid,
-  activity: ChartNoAxesColumn,
-  // The eight, in PRODUCT_KEYS order.
-  profile: Store,
-  customers: Users,
-  visits: Ticket,
-  orders: ShoppingBag,
-  reservations: CalendarCheck,
-  rewards: Gift,
-  pay: CreditCard,
-  credits: Wallet,
-  // THE BANK'S FRONT (MESITA-1929), not a coin or a stack of notes: Capital
-  // is a facility a place is OFFERED, not money on a table. Same mark the
-  // landing page already uses for it — one idea drawn two ways is how an
-  // operator learns to distrust both drawings.
-  capital: Landmark,
-  // Kept for the two views that lost their rows and not their addresses: the
-  // place heading and the flat resolvers still read this table.
-};
 
 function NavRow({
   href,
@@ -388,14 +264,12 @@ function MutedRow({
 
 export function Sidebar({
   scope,
-  isSuperAdmin,
   viewerError,
   accountLabel,
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
   const guardNav = useOpenPlaceGuard();
-  const openPlace = useOpenPlace();
   // NO STATE OF ITS OWN ANY MORE (MESITA-1918). The rail held four pieces —
   // the pending switch (MESITA-1818's clock), the picker's query, its input
   // ref and a transition — and every one of them existed for the selector.
@@ -412,87 +286,35 @@ export function Sidebar({
   // ACCOUNT LIGHTS FOR ACCOUNT, AND NOTHING ELSE. A second pill is the failure
   // mode every rail test in this repo counts, and it arrives exactly this way:
   // one row keeping a clause after another row took the subject.
-  const onAccount = pathname === SHELL_ROUTES.account;
+  const onSettings = pathname === SHELL_ROUTES.settings;
   const onAddPlace = pathname === SHELL_ROUTES.placesNew;
-  // The view you are on, whichever address you came by: the canonical
-  // `/places/<id>/<view>` or the flat resolver still in flight (MESITA-1839).
-  const currentView = placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
-
-  // Which views the selected place offers this viewer: the ONE matrix
-  // (lib/place-tabs), from the published set when the place is on screen,
-  // else from the viewer's role on it. A pool place: Profile alone. No place:
-  // the held set — the pages answer with Add place.
+  // A PLACE THE CALLER DOES NOT HOLD shows neither row: Setup and Activity
+  // are about a venue that is not theirs.
   const foreign = scope.foreignPlaceId !== null;
-  const placeTabs: PlaceTab[] = foreign
-    ? (openPlace?.id === scope.foreignPlaceId ? openPlace.tabs : (["profile"] as PlaceTab[]))
-    : openPlace && scope.placeIsCurrent && openPlace.id === scope.place?.id
-      ? openPlace.tabs
-      : tabsForAccess({
-          held: true,
-          role: scope.place?.myRole ?? null,
-          isSuperAdmin,
-        });
-  const noPlace = scope.place === null && !foreign;
 
-  // WHERE A ROW POINTS (MESITA-1839). The canonical address names its
-  // subject, and the shell has already resolved which subject that is — so the
-  // rail links straight there and a click costs ONE hop. The flat address is
-  // the fallback for the state where there is nothing to name yet: with no
-  // place selected, `/profile` renders the next step (Add place) instead of
-  // forwarding nowhere. Either way the row is a live link, never disabled
-  // (MESITA-1833).
+  // WHERE A ROW POINTS (MESITA-1839). The canonical address names its subject
+  // and the shell has already resolved which subject that is, so the rail links
+  // straight there and a click costs ONE hop. The flat address is the fallback
+  // for the state where there is nothing to name yet: with no place selected,
+  // `/setup` renders the next step (Add place) instead of forwarding nowhere.
   const placeId = scope.place?.id ?? scope.foreignPlaceId ?? null;
-  const viewRow = (tab: PlaceTab) =>
-    placeId ? placeTabHref(placeId, tab) : FLAT_ROUTES[tab];
   const pageRow = (page: PlacePage) =>
     placeId ? placePageHref(placeId, page) : FLAT_ROUTES[page];
 
-  // WHICH ROWS. `RAIL_ROWS` is the whole vocabulary; three filters narrow it
-  // and none invents a row:
+  // WHICH ROWS. `RAIL_ROWS` is the whole vocabulary and two filters narrow it;
+  // neither invents a row.
   //
-  //   zero        the FILTER `ZERO_PLACE_ROWS`, which is empty — every row
-  //               names a place and there is not one yet. Not a second array.
-  //   foreign     a place the caller does not hold shows Profile and nothing
-  //               else: its pages are about a venue that is not theirs.
-  //   role/matrix a place view the viewer may not open is not listed. Same
-  //               `tabsForAccess` the place layout gates on, so the rail and
-  //               the gate cannot disagree.
+  //   zero      `ZERO_PLACE_ROWS`, which is empty — both rows name a place and
+  //             there is not one yet. Not a second array.
+  //   foreign   a place the caller does not hold shows neither: Setup and
+  //             Activity are about a venue that is not theirs.
   //
-  // A PRODUCT ROW IS FILTERED BY THE TAB IT OPENS (MESITA-1885), not by being
-  // a product: seven of the eight are place views, so an editor-only switch
-  // must not be listed for a viewer. Customers is a place PAGE, so it answers
-  // from the page filter instead of a matrix it is not in — it is the only one
-  // left since Terminal's sub-page went with Terminal (MESITA-1900).
-  const productListed = (product: ProductKey) =>
-    product === "customers"
-      ? !foreign
-      : noPlace || placeTabs.includes(product as PlaceTab);
-  const rows = (scope.mode === "zero" ? ZERO_PLACE_ROWS : RAIL_ROWS).filter((r) =>
-    r.kind === "page"
-      ? !foreign
-      : r.kind === "product"
-        ? productListed(r.product)
-        : noPlace || placeTabs.includes(r.view),
+  // THE ROLE MATRIX LEFT THIS FILE WITH THE PRODUCT ROWS (MESITA-1974).
+  // `tabsForAccess` filtered them and there are none; `pagesForAccess` is what
+  // each page gates on, and `PlaceTabGate` still 404s every view address.
+  const rows = (scope.mode === "zero" ? ZERO_PLACE_ROWS : RAIL_ROWS).filter(
+    () => !foreign,
   );
-  /** The seam falls above a row that OPENS a group, and only while the row
-   *  before it survived the filter — a hairline under nothing is a rule that
-   *  outlived its rows. Recomputed against the filtered list for that reason,
-   *  never read off `RAIL_GROUP_STARTS` directly. */
-  const opensGroup = (i: number): boolean => {
-    if (i === 0) return false;
-    const full = RAIL_ROWS.indexOf(rows[i]);
-    return RAIL_GROUP_STARTS.includes(full);
-  };
-
-  // WHICH PRODUCT ROW LIGHTS (MESITA-1885). One of the eight does not open a
-  // place view, so it answers from the space its address is actually in — and
-  // `products` itself must NOT light for it, or the catalogue row and a
-  // product row would be on together.
-  const productRowActive = (product: ProductKey) => {
-    if (product === "customers") return placePage === "customers";
-    return currentView === (product as PlaceTab);
-  };
-
   return (
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
       {/* THE HEAD (MESITA-1909). The lockup is a LABEL, not a link: every
@@ -580,64 +402,21 @@ export function Sidebar({
                 onGuardedNavigate={guardNav ?? undefined}
               />
             )}
-            {rows.map((row, i) => {
-              // A SECTION OPENS WITH A RULE AND A TITLE (MESITA-1915). The
-              // rule is the same hairline Account wears; the title is an
-              // eyebrow, not a row. The FIRST section takes the title without
-              // the rule — the head band above it already drew one, and two
-              // hairlines with a lockup between them is a boxed logo.
-              const seam = opensGroup(i) ? SECTION_SEAM : undefined;
-              const head = i === 0 || opensGroup(i) ? railSectionOf(row) : null;
-              const common = {
-                onNavigate,
-                onGuardedNavigate: guardNav ?? undefined,
-              };
-              const node =
-                row.kind === "page" ? (
-                  <NavRow
-                    href={pageRow(row.target)}
-                    label={PAGE_ROW[row.target].label}
-                    Icon={PAGE_ROW[row.target].Icon}
-                    active={placePage === row.target}
-                    {...common}
-                  />
-                ) : row.kind === "product" ? (
-                  <NavRow
-                    href={productRowHref(row.product, placeId ?? "", viewRow)}
-                    label={PRODUCT_LABEL[row.product]}
-                    Icon={RAIL_ICON[row.product]}
-                    active={productRowActive(row.product)}
-                    {...common}
-                  />
-                ) : (
-                  <NavRow
-                    href={viewRow(row.view)}
-                    label={placeRowLabel(row.view)}
-                    Icon={RAIL_ICON[row.view]}
-                    active={currentView === row.view}
-                    {...common}
-                  />
-                );
-              const key =
-                row.kind === "page"
-                  ? `page:${row.target}`
-                  : row.kind === "product"
-                    ? `product:${row.product}`
-                    : `place:${row.view}`;
-              // THE SEAM IS A WRAPPER'S BORDER, NEVER A ROW'S — a row that
-              // grew a rule would be a second row shape. A row with no seam
-              // gets NO wrapper either: an empty div per row is depth the
-              // column does not need, and this file's own depth test counts
-              // it.
-              return seam || head ? (
-                <div key={key} className={seam}>
-                  {head && <SectionHead section={head} />}
-                  {node}
-                </div>
-              ) : (
-                <Fragment key={key}>{node}</Fragment>
-              );
-            })}
+            {/* ONE KIND OF ROW (MESITA-1974). The column had three —
+                page, place view, product — a seam between two sections and a
+                title over each. Four destinations need none of it: two rows,
+                one shape, no rule, no head. */}
+            {rows.map((row) => (
+              <NavRow
+                key={`page:${row.target}`}
+                href={pageRow(row.target)}
+                label={PAGE_ROW[row.target].label}
+                Icon={PAGE_ROW[row.target].Icon}
+                active={placePage === row.target}
+                onNavigate={onNavigate}
+                onGuardedNavigate={guardNav ?? undefined}
+              />
+            ))}
           </>
         )}
         {/* THE PERSON, LAST (MESITA-1879). Above the rail's own control and
@@ -659,11 +438,11 @@ export function Sidebar({
           other. */}
       <div className={cn(SECTION_SEAM, "shrink-0")}>
         <NavRow
-          href={SHELL_ROUTES.account}
-          label="Account"
-          title={accountLabel === "Account" ? "Account" : `Account · ${accountLabel}`}
-          Icon={UserRound}
-          active={onAccount}
+          href={SHELL_ROUTES.settings}
+          label="Settings"
+          title={accountLabel === "Account" ? "Settings" : `Settings · ${accountLabel}`}
+          Icon={Settings}
+          active={onSettings}
           onNavigate={onNavigate}
           onGuardedNavigate={guardNav ?? undefined}
         />

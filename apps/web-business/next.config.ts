@@ -116,6 +116,54 @@ const nextConfig: NextConfig = {
       // selected place's Pay page. Any other destination would strand an owner
       // who just spent eight minutes uploading documents on a screen that does
       // not know they came back.
+      // ── THE FOUR-TAB MOVE (MESITA-1974) ──────────────────────────────
+      //
+      // Four addresses retired when the console went to Place · Setup ·
+      // Activity · Settings, and every one of them is in a bookmark, in the
+      // rail's own history, or — for `products/pay` — stored on Stripe's side
+      // as the return_url of an Account Link minted before the move. A
+      // permanent rule is the only thing standing between those and a 404.
+      //
+      // DEEPEST FIRST: first match wins, so `products/pay` must be listed
+      // above `products` or the shallower rule eats it and an owner coming
+      // back from Stripe lands on the catalogue instead of their account.
+      //
+      // THEY ARE PERMANENT because the old names are never coming back, and
+      // none of them shadows a live address — `/setup`, `/activity` and
+      // `/settings` are all real routes now, and a rule over a live address is
+      // the MESITA-1839 trap.
+      {
+        source: "/places/:id/products/pay",
+        destination: "/places/:id/pay/setup",
+        permanent: true,
+      },
+      {
+        source: "/places/:id/products",
+        destination: "/places/:id/setup",
+        permanent: true,
+      },
+      // Customers was a page and is a product again: it has a row in Setup and
+      // no address of its own.
+      {
+        source: "/places/:id/customers",
+        destination: "/places/:id/setup",
+        permanent: true,
+      },
+      // Settings left the place for good: it is the person AND the place now,
+      // and it needs to resolve when there is no place at all.
+      {
+        source: "/places/:id/settings",
+        destination: "/settings",
+        permanent: true,
+      },
+      { source: "/account", destination: "/settings", permanent: true },
+      // THESE TWO ARE TEMPORARY, and the other five are not. `/setup` is a
+      // FLAT resolver — where it lands depends on which place you opened last
+      // — and a cached 308 onto one would pin a browser to whatever place it
+      // resolved to the first time. That is the bug MESITA-1832's cookie
+      // addressing had.
+      { source: "/products", destination: "/setup", permanent: false },
+      { source: "/customers", destination: "/setup", permanent: false },
       { source: "/orgs/new", destination: "/", permanent: false },
       {
         source: "/orgs/:orgId/settings",
@@ -142,17 +190,17 @@ const nextConfig: NextConfig = {
       // shares a prefix with.
       {
         source: "/orgs/:orgId/products/pay",
-        destination: "/products",
+        destination: "/setup",
         permanent: false,
       },
       {
         source: "/orgs/:orgId/products/terminal",
-        destination: "/products",
+        destination: "/setup",
         permanent: false,
       },
       {
         source: "/orgs/:orgId/products",
-        destination: "/products",
+        destination: "/setup",
         permanent: false,
       },
       // CREDITS MERGED BACK INTO PAYMENTS (MESITA-1845), PAYMENTS BECAME A
@@ -161,18 +209,18 @@ const nextConfig: NextConfig = {
       // else.
       {
         source: "/orgs/:orgId/credits",
-        destination: "/products",
+        destination: "/setup",
         permanent: false,
       },
       {
         source: "/orgs/:orgId/payments",
-        destination: "/products",
+        destination: "/setup",
         permanent: false,
       },
-      { source: "/payments", destination: "/products", permanent: false },
+      { source: "/payments", destination: "/setup", permanent: false },
       {
         source: "/orgs/:orgId/customers",
-        destination: "/customers",
+        destination: "/setup",
         permanent: false,
       },
       {

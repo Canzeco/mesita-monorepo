@@ -62,7 +62,7 @@ import {
   type PaymentAccount,
 } from "@/lib/api/console";
 import { findPlace } from "@/lib/active-place";
-import { placePageHref, placePayHref } from "@/lib/console-routes";
+import { placePayHref } from "@/lib/console-routes";
 import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 
@@ -99,7 +99,7 @@ export default async function MesitaPayPage({
         title="Needs Mesita Partner"
         description="Online Payments is an add-on on top of this place's yearly partnership."
       >
-        <Link className={CTA_BUTTON_CLASS} href={placePageHref(id, "products")}>
+        <Link className={CTA_BUTTON_CLASS} href={placePayHref(id)}>
           Back to Products
         </Link>
       </Section>
