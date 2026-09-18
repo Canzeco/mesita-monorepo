@@ -185,7 +185,15 @@ const SPECS: readonly ProductSpec[] = [
     // for the PERSON everywhere else — every blurb below says guests, the
     // table on the page still heads its column Guest, and the consumer app
     // calls them guests. Only the product's NAME moves.
-    name: "Customer Catalog",
+    // THIRD NAME, AND THE KEY DID NOT MOVE (MESITA-1980). Guest Catalog →
+    // Customer Catalog (MESITA-1960, "costumer is clearer to understand for
+    // business") → Customer Intelligence. A CATALOG is a list you read; what
+    // this product sells is the READING — who came back, who stopped, who is
+    // worth a message — and the list was never the thing being rented.
+    //
+    // `customers` stays the KEY on `pay`'s precedent: the key is a persisted
+    // spelling and the name is what you buy.
+    name: "Customer Intelligence",
     blurb:
       "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
     tab: null,

@@ -112,7 +112,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
   menu: "Digital Menu",
   website: "Express Website",
-  customers: "Customer Catalog",
+  customers: "Customer Intelligence",
   ads: "Omnichannel Ads",
   visits: "Visit Rewards",
   orders: "Online Orders",
