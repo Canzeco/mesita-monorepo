@@ -36,7 +36,7 @@
 //
 // A LOCKED ROW CARRIES NO VERB, unchanged: a button on a product the caller
 // cannot have is an invitation to a 403.
-import { ArrowRight, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { notFound, useSearchParams } from "next/navigation";
 import {
@@ -46,6 +46,9 @@ import {
 } from "@/components/console/PlaceScope";
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
+import { membershipLine } from "@/components/console/PartnerCard";
+import { Badge } from "@/components/shared/Badges";
+import type { MockPlace } from "@/mock/types";
 import { ProductPane } from "@/components/console/ProductPane";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { ProductStateBadge } from "@/components/shared/Badges";
@@ -54,7 +57,7 @@ import { PLACE_PAGE_LABEL, placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
-import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
+import { SCOPE_CHIP_CLASS, SHELL_BLEED, SHELL_GUTTER } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 
@@ -83,6 +86,21 @@ const GROUPS: readonly {
     holds: (s) => s === "soon",
   },
 ];
+
+/** Mesita Partnership's id in `?p=` (MESITA-1982). Pato: *"ITS NOT FUCKING
+ *  MEMBERSHIP, ITS PARTNERSHIP. ADD IT AS AN EXTRA PRODUCT SOLUTION"*.
+ *
+ *  MEMBERSHIP was the word for the SKU and Partner for the status; what the
+ *  console sells a place is the partnership, so that is what the row is called
+ *  and what its pane is headed. A STRING BESIDE `ProductKey`, never inside
+ *  it: `PRODUCT_KEYS` is what the catalogue, the bands and `buildProductCards`
+ *  all iterate, and a membership in that array would be a product carrying a
+ *  state, a price and a Soon note it can never have. */
+const MEMBERSHIP = "partnership";
+
+/** The band the Partnership row joins. Read from `GROUPS` rather than typed
+ *  twice: a renamed band would otherwise drop the row silently. */
+const RUNNING_TITLE = "Running";
 
 export default function SetupPage() {
   // EVERY HOOK BEFORE THE FIRST `notFound()`. This page has three early exits
@@ -119,11 +137,26 @@ export default function SetupPage() {
   // holding an empty state on arrival is half a screen teaching you that it is
   // usually empty. `open` — whether the ADDRESS names one — is what the phone
   // reads, so below `lg` you still get the list first.
-  const selected = cards.some((c) => c.key === chosenKey)
-    ? (chosenKey as ProductKey)
-    : cards[0]?.key;
+  // MEMBERSHIP IS A ROW IN THE LIST NOW (MESITA-1982). Pato: *"membership goes
+  // in other part, maybe as extra category. In the list, almost as a product
+  // solution."* It was a full-width card above both halves, which made the one
+  // thing that GATES five products the only thing you could not open.
+  //
+  // It is not a `ProductKey` and it must not become one: `PRODUCT_KEYS` is what
+  // the catalogue, the bands and `buildProductCards` iterate, and a membership
+  // in that array would be a product with a price, a state and a Soon note it
+  // can never have. A sentinel beside the union says the same thing without
+  // lying to any of those readers.
+  const selected: ProductKey | typeof MEMBERSHIP =
+    chosenKey === MEMBERSHIP
+      ? MEMBERSHIP
+      : cards.some((c) => c.key === chosenKey)
+        ? (chosenKey as ProductKey)
+        : MEMBERSHIP;
   const card = cards.find((c) => c.key === selected) ?? null;
   const open = chosenKey !== null;
+
+  const line = membershipLine(place);
 
   const list = (
     <>
@@ -143,7 +176,60 @@ export default function SetupPage() {
               </h2>
               <p className="text-muted-foreground text-[13px]">{group.hint}</p>
             </div>
-            <div className="border-border bg-card divide-border divide-y rounded-2xl border">
+            {/* NO CARD AROUND THE ROWS (MESITA-1982). The two halves are told
+                apart by their GROUND now — the index is the grey, the work
+                surface is the white — so a white card floating on the grey
+                would be a third surface saying a thing the divide already
+                says. Hairlines between rows, nothing around them. */}
+            <div className="border-border divide-border divide-y border-y">
+                {/* MESITA PARTNERSHIP, AS A PRODUCT SOLUTION (MESITA-1982).
+                    Pato put it in the list *"almost as a product solution"*
+                    and then went further: it IS one. So it takes the first
+                    slot of Running with the same row shape, the same mark
+                    column and the same badge, rather than a band of its own
+                    that said it was a different kind of thing.
+                    
+                    IT IS STILL NOT A `ProductKey`. `PRODUCT_KEYS` is what the
+                    catalogue, the bands and `buildProductCards` iterate, and a
+                    partnership in that array is a product with a Soon note and
+                    a per-place dial it can never have. The sentinel keeps the
+                    row in the list and out of the contract. */}
+                {group.title === RUNNING_TITLE && (
+                  <Link
+                    href={`?p=${MEMBERSHIP}`}
+                    scroll={false}
+                    aria-current={selected === MEMBERSHIP ? "true" : undefined}
+                    className={cn(
+                      "flex min-h-14 w-full items-center gap-3 px-4 py-3.5 text-left transition",
+                      selected === MEMBERSHIP ? "bg-card" : "hover:bg-card/60",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        SCOPE_CHIP_CLASS,
+                        "bg-muted text-foreground flex shrink-0 items-center justify-center",
+                      )}
+                    >
+                      <span className="text-[22px] leading-none">{"\u{1F91D}"}</span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="font-display text-[15px] font-semibold tracking-tight">
+                        Mesita Partnership
+                      </span>
+                      <span className="text-muted-foreground text-[13px] leading-snug">
+                        What this place pays for, and what five of the products
+                        below are behind.
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-3">
+                      <Badge tone={place.partnered ? "gold" : "off"}>
+                        {place.partnered ? "Partner" : "Off"}
+                      </Badge>
+                      <ArrowRight className="text-muted-foreground h-4 w-4" aria-hidden />
+                    </span>
+                  </Link>
+                )}
               {inGroup.map((card) => {
                 // NO CAST. Most product keys are not `PlaceTab`s, so
                 // `key as PlaceTab` would be a lie the compiler accepts, and
@@ -173,12 +259,21 @@ export default function SetupPage() {
                       <span className="font-display text-[15px] font-semibold tracking-tight">
                         {card.name}
                       </span>
-                      {/* THE NOTE WINS WHERE THERE IS ONE. A note is what this
-                          product is doing HERE ("64 dishes", "Nothing is live
-                          yet"); the blurb is what the product is, which the
-                          operator already knows once it is running. */}
+                      {/* THE BLURB, NEVER THE NOTE (MESITA-1982). Pato: *"at
+                          the left in the subtitle don't mention the state, just
+                          a description of what the product does"*.
+                          
+                          The note is the product's STATE in a sentence — "On
+                          here", "Included with Mesita Partner", "Nothing is
+                          built yet" — and the badge at the right end of this
+                          same row already carries that fact. Two signals for
+                          one fact is how a list ends up read as neither: the
+                          eye stops trusting the badge and starts reading nine
+                          sentences to find out what is on. The note is still
+                          the pane's job, where there is room to say what the
+                          state MEANS. */}
                       <span className="text-muted-foreground text-[13px] leading-snug">
-                        {card.note ?? card.blurb}
+                        {card.blurb}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-3">
@@ -222,7 +317,7 @@ export default function SetupPage() {
                     className={cn(
                       ROW,
                       "transition",
-                      chosen ? "bg-muted" : "hover:bg-muted/60",
+                      chosen ? "bg-card" : "hover:bg-card/60",
                     )}
                   >
                     {body}
@@ -246,49 +341,118 @@ export default function SetupPage() {
 
       <MembershipReturnNotice />
 
-      {/* ABOVE BOTH HALVES, FULL WIDTH. The Membership is about the PLACE, not
-          about whichever product is open on the right, and a gate that moved
-          into one column would read as that column's condition. */}
-      <PartnerBanner place={place} />
-
-      {/* 50/50 (MESITA-1981). Pato: *"two screns, 50% and 50%"*.
+      {/* TWO GROUNDS, ONE DIVIDE (MESITA-1982). Pato: *"left and right divide,
+          different backgrounds"*.
           
-          THE PAGE STAYS THE ONLY SCROLLER, and that is deliberate. Two
-          independently scrolling halves would put a second scroll container
-          inside `main`, and this app has already shipped the bug where a
-          height chain loses its definite parent and a full-height card renders
-          as an empty box with every check green. The LIST is `sticky` with a
-          max-height measured in `vh` — a definite height that comes from the
-          viewport rather than from a parent chain — so the left column holds
-          while the right one scrolls the page.
+          The halves used to be two columns on one page, told apart only by a
+          gap — which is the weakest separator there is, and at 1440px it read
+          as a list that happened to have something beside it. They are
+          SURFACES now: the index is the page's own grey and the work surface
+          is white, with a hairline between them.
           
-          `lg:items-start` is load-bearing for that sticky: a stretched grid
-          item is as tall as its row, and a sticky element as tall as its own
-          container never sticks to anything. */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
-        {/* ONE AT A TIME BELOW `lg`. 50/50 does not exist on a 375px phone, so
-            the two halves become master-detail: the list, then the pane, with
-            the pane carrying the way back. */}
+          IT BLEEDS. `SHELL_BLEED` cancels the shell's gutter so the divide
+          runs edge to edge and each half re-applies `SHELL_GUTTER` inside
+          itself. A split that stops 32px short of the window is a card with a
+          line down it.
+          
+          `min-h` IN `vh` rather than `h-full`: this page is inside `main`,
+          which is the only scroller, so a percentage height here has no
+          definite parent to resolve against — the exact chain that has
+          rendered an empty box before. */}
+      <div
+        className={cn(
+          SHELL_BLEED,
+          "border-border grid min-h-[calc(100vh-13rem)] border-t lg:grid-cols-2",
+        )}
+      >
+        {/* THE INDEX — the page's own grey, so it reads as the ground the work
+            sits beside rather than as a panel laid on it. */}
         <div
           className={cn(
-            "flex-col gap-4 lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-1",
-            open ? "hidden" : "flex",
+            "border-border lg:border-r",
+            open ? "hidden lg:block" : "block",
           )}
         >
-          {list}
+          <div
+            className={cn(
+              SHELL_GUTTER,
+              "flex flex-col gap-4 py-4 lg:sticky lg:top-0 lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto",
+            )}
+          >
+            {list}
+          </div>
         </div>
 
-        <div className={cn(open ? "block" : "hidden", "lg:block")}>
-          {card ? (
-            <ProductPane card={card} />
-          ) : (
-            // NEVER ON DESKTOP: `selected` falls back to the first card, so
-            // this is only reachable if `SPECS` is empty, which the type system
-            // does not forbid and the app does not survive anyway.
-            <p className="text-muted-foreground text-sm">No products here.</p>
+        {/* THE WORK SURFACE — white, and the only thing on this screen that
+            scrolls with the page. */}
+        <div
+          className={cn(
+            "bg-card",
+            SHELL_GUTTER,
+            "py-4",
+            open ? "block" : "hidden lg:block",
           )}
+        >
+          {selected === MEMBERSHIP ? (
+            <MembershipPane place={place} line={line} />
+          ) : card ? (
+            <ProductPane card={card} />
+          ) : null}
         </div>
       </div>
     </>
+  );
+}
+
+/** THE PARTNERSHIP, OPENED (MESITA-1982). What the full-width card above the
+ *  list used to assert, plus the gate it never carried: `PartnerBanner` is the
+ *  purchase decision, and it belongs on the screen the row opens rather than
+ *  over a list it is only sometimes about. */
+function MembershipPane({
+  place,
+  line,
+}: {
+  place: MockPlace;
+  line: { lead: string; rest: string };
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <Link
+        href="?"
+        scroll={false}
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[13px] font-medium lg:hidden"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+        All products
+      </Link>
+
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className={cn(
+            SCOPE_CHIP_CLASS,
+            "bg-muted text-foreground flex shrink-0 items-center justify-center",
+          )}
+        >
+          <span className="text-[22px] leading-none">{"\u{1F91D}"}</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-display text-lg font-semibold tracking-tight">
+              Mesita Partnership
+            </h2>
+            <Badge tone={place.partnered ? "gold" : "off"}>
+              {place.partnered ? "Partner" : "Not a partner"}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
+            <span className="text-foreground font-medium">{line.lead}</span>{" "}
+            {line.rest}
+          </p>
+        </div>
+      </div>
+
+      <PartnerBanner place={place} />
+    </div>
   );
 }

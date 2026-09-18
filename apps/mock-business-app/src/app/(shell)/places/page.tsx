@@ -200,9 +200,14 @@ export default function PlacesPage() {
                         {label}
                       </th>
                     ))}
-                    <th scope="col" className="border-border border-b px-3 py-2 text-right text-[11px] font-semibold tracking-wide uppercase">
-                      Open
-                    </th>
+                    {/* NO `OPEN` COLUMN (MESITA-1982). Pato: *"fuck the open
+                        button, its confusing, it seems like an state"* — and
+                        he is right about WHY: it sat at the end of a row of
+                        six state columns, in the same uppercase header voice,
+                        so the eye read it as a seventh fact about the place
+                        rather than as the only control in the row. The place's
+                        NAME is the switch, which is the door a list has always
+                        had. */}
                   </tr>
                 </thead>
                 <tbody>
@@ -237,16 +242,7 @@ export default function PlacesPage() {
                           <Cell on={read(p)} />
                         </td>
                       ))}
-                      <td className="px-3 py-2.5 text-right">
-                        {/* A place you HOLD opens on its Home. The pool row
-                            below keeps Profile, and the difference is the
-                            point: nothing has been claimed there, so there is
-                            no Home to open — `tabsForAccess({held:false})` is
-                            Profile alone, and Home would 404. */}
-                        <Link href={placeRootHref(p.id)} className={GHOST_PILL_BUTTON_CLASS}>
-                          Open
-                        </Link>
-                      </td>
+
                     </tr>
                   ))}
                 </tbody>
