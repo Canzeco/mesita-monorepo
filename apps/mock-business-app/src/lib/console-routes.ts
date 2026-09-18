@@ -18,144 +18,93 @@ import type { PlaceTab } from "@/lib/place-tabs";
 
 export const SHELL_ROUTES = {
   root: "/",
-  // TWO DESTINATIONS AGAIN, AND THEY ARE SCOPED DIFFERENTLY (MESITA-1937).
-  // `account` is the PERSON — You, your places, Sign out — and it is what the
-  // rail's foot links. `settings` is the flat twin of a PLACE's settings, which
-  // resolves onto `/places/<id>/settings` through `(shell)/[flat]`; the rail
-  // links that canonical address, never this one.
-  account: "/account",
+  // ONE DESTINATION NOW, AND IT IS NOT PLACE-SCOPED (MESITA-1973). `/settings`
+  // is the fourth tab: the person, what they owe, and the open place's own
+  // config, on one screen. MESITA-1937 split this into `/account` (the person)
+  // and `/places/<id>/settings` (the place) on the argument that scoping them
+  // apart is what makes each legible. Four tabs overrule it — Pato put
+  // *"Settings, Account also here"* in the same breath — and the split's real
+  // job survives the merge: this address needs NO place, so the exit still
+  // renders in the `unknown` and `zero` shapes, which is the one constraint
+  // MESITA-1935 actually broke when it tried this before.
+  //
+  // IT IS A REAL PAGE, NOT A FLAT TWIN, so it is gone from `FLAT_ROUTES`: a
+  // static segment shadows `[flat]` in Next's router, and a name in both lists
+  // is a resolver that never runs.
   settings: "/settings",
   places: "/places",
   placesNew: "/places/new",
 } as const;
 
-/** The segments BENEATH `/places/<id>` that are PAGES rather than views. */
-export const PLACE_PAGES = [
-  "settings",
-  "products",
-  "customers",
-  "activity",
-] as const;
+/** The segments BENEATH `/places/<id>` that are PAGES rather than views.
+ *
+ *  TWO, SINCE MESITA-1973. `products` became `setup`, `customers` went back to
+ *  being a future product with a row in Setup and no page of its own, and
+ *  `settings` left the place entirely for `/settings`. */
+export const PLACE_PAGES = ["setup", "activity"] as const;
 export type PlacePage = (typeof PLACE_PAGES)[number];
 
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
-  settings: "Settings",
-  products: "Products",
-  // ONE PRODUCT, ONE NOUN (MESITA-1955). Customers is BOTH a page and a
-  // product, so its name sits in two tables: this one feeds the rail row and
-  // the title, `PRODUCT_LABEL` feeds the card. They must say the same thing.
-  customers: "Customer Catalog",
+  // THE SHOP AND THE CONFIG ARE ONE LIST (MESITA-1973). `products` named a
+  // catalogue that only stated facts, while every switch lived on a product's
+  // own view — so a product existed twice and the two could disagree, which is
+  // the bug MESITA-1953 had to work around on the Visits card. Setup is the
+  // one list: Off says what a product does, On says how it is set.
+  setup: "Setup",
   activity: "Activity",
 };
 
-/** A rail row names a place PAGE or a place VIEW.
+/** A rail row names a place PAGE, and that is the only kind left.
  *
- *  TWO KINDS FOR FIVE ROWS, not one. A page and a view are different ADDRESS
- *  SHAPES — `/places/<id>/products` is a static segment, `/places/<id>/profile`
- *  goes through the `[view]` gate — and they light from different readers. A
- *  single string kind would make the rail GUESS which, and guessing wrong is a
- *  404 three files from its cause.
+ *  `kind: "place"` IS GONE WITH THE PRODUCT ROWS (MESITA-1973). Four tabs means
+ *  four destinations — the venue, Setup, Activity, Settings — and a product is
+ *  reached by drilling in from Setup, never by a row. `kind: "home"` never came
+ *  back either: the VENUE BAND is Home's door, which is the one thing in the
+ *  column that unambiguously says which place these rows are about.
  *
- *  `kind: "home"` and `kind: "product"` are gone (MESITA-1933). See below. */
-export type RailRow = (
-  { kind: "page"; target: PlacePage } | { kind: "place"; view: PlaceRailView }
-) & {
-  /** Draw a hairline ABOVE this row. It marks where the column stops being
-   *  the place's PRODUCTS and starts being the console's own surfaces — two
-   *  different kinds of destination, which is the only thing a seam may ever
-   *  mean here. One array still, one row per entry; the seam is a property of
-   *  a row, not a second list. */
+ *  The discriminant survives a one-member union on purpose. Adding a second
+ *  kind later is then an edit to this type and a branch in the rail, not a
+ *  refactor of every row literal. */
+export type RailRow = { kind: "page"; target: PlacePage } & {
+  /** Draw a hairline ABOVE this row. Unused at four rows and kept for the same
+   *  reason as the discriminant: the seam is a property of a row, never a
+   *  second list. */
   seam?: true;
 };
 
-/** The place views that keep a rail row OF THEIR OWN — NOT `PLACE_TABS`.
+/** THE RAIL — TWO ROWS, because the console has FOUR DESTINATIONS and the
+ *  other two are bands (MESITA-1973).
  *
- *  FIVE NOW, REVERSING MESITA-1933 (MESITA-1963). That issue took every
- *  product off the rail on the argument that *"a product is reached from the
- *  catalogue now, never from a row"*, and it was right while the catalogue was
- *  the only way to see which of SIXTEEN products a place had. It stopped being
- *  right when Pato named a six-product MVP: a rail of the products this place
- *  actually has is the shortest path to the work, and the catalogue goes back
- *  to being the shop rather than the switchboard.
+ *  Pato, 2026-09-18, after three days of rearranging this column: *"Place,
+ *  Setup, Activity, Settings"* — *"FOUR SCREENS EASY."*
  *
- *  `reservations` IS NOT HERE, and that is Pato's list, not an oversight — it
- *  is live, it keeps its card and its view, and it is reached from the
- *  catalogue. `rewards` is not here either: it is the dial INSIDE Visit
- *  Rewards, never a destination of its own.
+ *      Place      the VENUE BAND, which has been Home's door since MESITA-1933
+ *      Setup      ─┐ this array
+ *      Activity   ─┘
+ *      Settings   the pinned FOOT
  *
- *  THESE FIVE RE-ARM A DORMANT GATE. `tabsForAccess` filters `kind: "place"`
- *  rows and has had only `profile` to filter since MESITA-1933; a viewer now
- *  loses four rows again rather than none. The three static pages below the
- *  seam keep going through `pagesForAccess`. Hidden is still not protected —
- *  `PlaceTabGate` 404s the addresses either way. */
-export const PLACE_RAIL_VIEWS = [
-  "profile",
-  "visits",
-  "orders",
-  "pay",
-  "credits",
-] as const;
-export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
-
-/** THE RAIL — FIVE ROWS, in Pato's order (MESITA-1937).
+ *  THE TWO THAT ARE NOT HERE ARE NOT MISSING. Place is the venue band because
+ *  the band already names the subject and links its bare address; a row saying
+ *  "Place" under a band saying which place would be the same door drawn twice.
+ *  Settings is the foot because `showRows` draws this array only in the `solo`
+ *  and `multi` shapes, and Sign out lives on Settings now — a row here would
+ *  strand the console's only exit in `unknown` and `zero`, which is exactly the
+ *  defect MESITA-1937 called out when it moved the exit to Account.
  *
- *  Pato, 2026-09-16, with the shipped rail on screen: *"Noooo — make it like
- *  this: Logo / Place Explorer-Selector / Products / Profile / Customers /
- *  Activity / Settings / (gap) / Account. keep congruent simple design."*
+ *  WHY THE PRODUCT ROWS WENT. Nine rows do not port to a phone, and
+ *  mobile-business was never going to inherit them. Four tabs are the same IA
+ *  at both widths, which is the rule consumer web and mobile already live by.
+ *  A product is reached by drilling in from Setup; its view, its address and
+ *  its key are all unchanged.
  *
- *  EVERY ROW HERE IS PLACE-SCOPED, and that is what makes the list one list.
- *  Products, Profile, Customers, Activity and Settings are all things you do TO
- *  the venue named in the band above them. The PERSON is not in this array —
- *  Account is a pinned band in `Sidebar.tsx` — and neither is the venue itself.
- *
- *  CUSTOMERS IS BACK, reversing its removal in MESITA-1933. It left with the
- *  eight products because it read as a ninth; it is not one. A product is
- *  something a place turns on, and the people who walk in are not. It keeps its
- *  Soon card in the catalogue, because the catalogue names every product this
- *  place could have and says which ones this caller may open — a card that
- *  states a fact and a row that is a door are not the same drawing twice.
- *
- *  SETTINGS IS BACK IN THE SCROLLER, reversing MESITA-1935. That issue folded
- *  Account into Settings on the grounds that two rows both meaning
- *  configuration is a thing a reader has to disambiguate. The answer here is
- *  that they do not both mean configuration: one configures the PLACE (Team,
- *  Developers) and one is the PERSON. Scoping them apart is what makes them
- *  legible, not merging them.
- *
- *  AND THE EXIT SURVIVES ANYWAY. MESITA-1935's real objection was that
- *  `showRows` draws this array only in the `solo` and `multi` shapes, so a
- *  Settings row holding Sign out would strand the console's only exit in
- *  `unknown` and `zero`. It does not apply: Sign out is on ACCOUNT, and Account
- *  is the pinned foot, which renders in all four. The band that must never
- *  disappear is still a band.
- *
- *  HOME KEEPS THE SCREEN AND LOSES THE ROW (MESITA-1933, unchanged). The VENUE
- *  row above this list is its door — the one thing in the column that is
- *  unambiguously THIS PLACE, at the place's own bare address.
- *
- *  THE ORDER IS PRODUCTS FIRST, and that is the argument: the catalogue is
- *  where an operator turns the place on. Settings is last of the five because
- *  it is the only one you visit to change how the console behaves rather than
- *  to read what the place did. */
+ *  THE ORDER IS READ BEFORE BUY. Activity is opened daily and Setup monthly,
+ *  so Setup sitting first would put the shop above the work. It is first here
+ *  anyway for one reason: a place that has just been claimed has nothing in
+ *  Activity and everything to do in Setup, and the console's first week is the
+ *  only week this order is load-bearing. Revisit once an operator has used it. */
 export const RAIL_ROWS: readonly RailRow[] = [
-  // THE PRODUCTS THIS PLACE HAS, in Pato's order (MESITA-1963): *"Place
-  // Selector / Mesita Profile / Customer Catalog / Visit Rewards / Online
-  // Orders / Online Payments / Prepaid Credits"*.
-  { kind: "place", view: "profile" },
-  { kind: "page", target: "customers" },
-  { kind: "place", view: "visits" },
-  { kind: "place", view: "orders" },
-  { kind: "place", view: "pay" },
-  { kind: "place", view: "credits" },
-  // THE CONSOLE'S OWN SURFACES, below the seam. Pato's list named only the six
-  // above; these three stay because dropping them leaves the CATALOGUE — the
-  // only door to the eight Soon products he intends to sell next — and the
-  // place's Team and Developers config reachable only by typing an address.
-  // Products loses its first position and keeps its row: it is the shop now,
-  // not the switchboard.
-  { kind: "page", target: "products", seam: true },
+  { kind: "page", target: "setup" },
   { kind: "page", target: "activity" },
-  { kind: "page", target: "settings" },
 ];
 
 export function placePageHref(placeId: string, page: PlacePage): string {
@@ -182,10 +131,16 @@ export function placesNewHref(): string {
   return SHELL_ROUTES.placesNew;
 }
 
-/** Online Payments' Stripe account is a SUB-STEP of the catalogue, not a
- *  ninth card: `products/pay`. */
+/** Online Payments' Stripe account, ON THE PAYMENTS VIEW (MESITA-1973).
+ *
+ *  It was `products/pay` — config living inside the shop, which is the same
+ *  duplication Setup exists to end, and the one product whose switch was not
+ *  where the product was. The literal is written out rather than read through
+ *  `placeTabHref`: `place-tabs.ts` imports a VALUE from this file, so a value
+ *  import back would close a cycle in a permission matrix, and a cycle there
+ *  evaluates to undefined, which reads as "allowed". */
 export function placePayHref(placeId: string): string {
-  return `${placePageHref(placeId, "products")}/pay`;
+  return `/places/${encodeURIComponent(placeId)}/pay`;
 }
 
 export function placePageFromPathname(pathname: string): PlacePage | null {
@@ -197,14 +152,14 @@ export function placePageFromPathname(pathname: string): PlacePage | null {
     : null;
 }
 
-export function isPlacePayPathname(pathname: string): boolean {
-  const parts = pathname.split("/");
-  return parts[1] === "places" && parts[3] === "products" && parts[4] === "pay";
-}
-
 /** THE FLAT NAMES. One file — `(shell)/[flat]` — resolves all of them onto the
  *  canonical address. A name NOT in this list 404s on purpose, so that a typo
- *  never renders a generic page. */
+ *  never renders a generic page.
+ *
+ *  `/settings` IS NOT HERE ANY MORE (MESITA-1973): it is a real page on its own
+ *  static segment, and a static segment shadows `[flat]`, so a name in both
+ *  lists is a resolver that can never run. `/products` and `/customers` went
+ *  with the pages they resolved onto. */
 export const FLAT_ROUTES = {
   home: "/home",
   profile: "/profile",
@@ -217,16 +172,7 @@ export const FLAT_ROUTES = {
   // The ninth product owes a flat twin like every other view (MESITA-1929).
   capital: "/capital",
   admin: "/admin",
-  // `/settings` IS A FLAT NAME AGAIN (MESITA-1937), and it means the PLACE's:
-  // it resolves onto `/places/<id>/settings` like every other page twin.
-  // MESITA-1935 briefly gave this address to the person and stood a real
-  // `(shell)/settings/page.tsx` on it — a static segment shadows `[flat]` in
-  // Next's router, so that file WON the address whatever this list said. The
-  // file is gone with it, and the person is back at `/account`, which is the
-  // one the rail's foot links.
-  settings: "/settings",
-  products: "/products",
-  customers: "/customers",
+  setup: "/setup",
   activity: "/activity",
 } as const;
 export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];
@@ -237,7 +183,7 @@ export function isFlatRoute(pathname: string): boolean {
 }
 
 /** The place VIEW a flat name resolves to, or null when the flat name is a
- *  PAGE (`/settings`, `/products`, `/customers`, `/activity`) or not flat. */
+ *  PAGE (`/setup`, `/activity`) or not flat. */
 export function flatViewFromPathname(pathname: string): PlaceTab | null {
   const name = pathname.startsWith("/") ? pathname.slice(1) : pathname;
   if (!isFlatRoute(`/${name}`) || isFlatHome(pathname)) return null;

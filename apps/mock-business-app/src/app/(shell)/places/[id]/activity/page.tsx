@@ -66,7 +66,7 @@ import {
   type VisitLogRow,
 } from "@/mock/logs";
 import { useMock } from "@/mock/MockStore";
-import { placePageHref, placePayHref } from "@/lib/console-routes";
+import { SHELL_ROUTES, placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
 import { csvDay, csvFilename, csvMoney, csvWhen, downloadCsv, toCsv } from "@/lib/csv";
 import { dayTime, money, stars } from "@/lib/format";
@@ -97,10 +97,12 @@ const LOG_HOME: Record<LogKey, ((placeId: string) => string) | null> = {
   reviews: (id) => placeTabHref(id, "profile"),
   payments: (id) => placePayHref(id),
   credits: (id) => placeTabHref(id, "credits"),
-  // Both products this log bills for live on the catalogue: the Customers card
-  // opens the catalog, and the Membership strip sits above the grid.
-  subscriptions: (id) => placePageHref(id, "products"),
-  settings: (id) => placePageHref(id, "settings"),
+  // Both products this log bills for live on Setup: the Customers row is
+  // there with the rest of the suite, and the Membership strip sits above it.
+  subscriptions: (id) => placePageHref(id, "setup"),
+  // SETTINGS IS NOT PLACE-SCOPED (MESITA-1973), so this door ignores the id it
+  // is handed rather than building an address that no longer exists.
+  settings: () => SHELL_ROUTES.settings,
 };
 
 const LOG_HOME_LABEL: Record<LogKey, string> = {

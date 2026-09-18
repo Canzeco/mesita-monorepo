@@ -1,47 +1,47 @@
 "use client";
 
-// THE RAIL. One dark column, a head, a venue, FIVE rows, a foot.
+// THE RAIL. One dark column, a head, a venue, TWO rows, a foot — and FOUR
+// destinations, which is the number that matters.
 //
-// ── THE SHAPE (MESITA-1937) ───────────────────────────────────────────────
+// ── THE SHAPE (MESITA-1973) ───────────────────────────────────────────────
 //
 //   ┌──────────────────┐
 //   │  mesita.         │  the HEAD: the lockup, pinned, scrolls with nothing
 //   ├──────────────────┤
-//   │  ▣ Lumbre y Sal ⌄│  the VENUE: the subject. Name → Home, caret → places
-//   │  ▦ Products      │  ┐
-//   │  ▤ Profile       │  │
-//   │  ▧ Customers     │  │ THE FIVE. The only thing that scrolls, and every
-//   │  ▥ Activity      │  │ row of it is about the venue named above.
-//   │  ⚙ Settings      │  ┘
-//   │                  │  the slack falls HERE, between the place and you
+//   │  ▣ Lumbre y Sal ⌄│  PLACE: the subject, and Home's door
+//   │  ▦ Setup         │  ┐ THE TWO. Everything the place RUNS, and
+//   │  ▥ Activity      │  ┘ everything that HAPPENED.
+//   │                  │  the slack falls HERE
 //   ├──────────────────┤
-//   │  ⬤ Account       │  the FOOT: the PERSON, pinned
+//   │  ⚙ Settings      │  the FOOT: you, what you owe, this place's config
 //   └──────────────────┘
 //
-// Pato, 2026-09-16, with the shipped rail on screen: *"Noooo — make it like
-// this: Logo / Place Explorer-Selector / Products / Profile / Customers /
-// Activity / Settings / (gap) / Account. keep congruent simple design."*
+// Pato, 2026-09-18: *"Place, Setup, Activity, Settings"* — *"FOUR SCREENS
+// EASY."*
 //
-// ── THE THREE BANDS ────────────────────────────────────────────────────────
+// ── WHY FOUR, AND WHY TWO OF THEM ARE BANDS ────────────────────────────────
 //
-// THE HEAD SAYS THE PRODUCT, THE SCROLLER SAYS THE PLACE, THE FOOT SAYS THE
-// PERSON. Each band answers a different question, so none can be mistaken for a
-// row of another's list — which is why the logo is not the first entry in
-// `RAIL_ROWS` and Account is not the last one.
+// A RAIL DOES NOT PORT TO A PHONE. Nine rows were never going to become
+// mobile-business's IA, and consumer web and mobile already live by the rule
+// that the two never diverge. Four destinations are a tab bar under a finger
+// and this column under a cursor, unchanged.
 //
-// THE SCOPE IS THE DIVIDER, NOT THE SUBJECT MATTER (MESITA-1937). MESITA-1935
-// read Settings and Account as two rows that both meant configuration and
-// merged them; they are not. Settings configures the PLACE — Team and
-// Developers at `/places/<id>/settings` — and Account is YOU, across every
-// place you hold. Scoping them apart is what makes each one legible; the seam
-// above the foot is where the scope changes, and it is the only seam left.
+// PLACE IS THE VENUE BAND because the band already names the subject and links
+// its bare address (MESITA-1933). A row reading "Place" beneath a band reading
+// which place is the same door drawn twice.
 //
-// THE EXIT IS ON THE FOOT, WHICH IS WHY THE FOOT IS ACCOUNT. `showRows` draws
-// `RAIL_ROWS` only in the `solo` and `multi` shapes; `unknown` and `zero` get
-// one button and no rows. This band renders in all four, and Sign out lives on
-// its page and nowhere else — so whatever the scroller is doing, and whatever
-// went wrong with the places, the person can still leave. A Settings row in the
-// scroller is fine precisely because Settings is not where Sign out is.
+// SETTINGS IS THE FOOT because `showRows` draws `RAIL_ROWS` only in the `solo`
+// and `multi` shapes. Sign out lives on Settings now, so a Settings ROW would
+// strand the console's only exit behind a failed places read — the exact
+// defect MESITA-1937 named when it put the exit on Account. The band renders
+// in all four shapes and its address needs no place, which is the other half
+// of the same guarantee and the half MESITA-1935 missed.
+//
+// THE MERGE ITSELF REVERSES MESITA-1937. That issue kept the person and the
+// place apart on the argument that scope is the divider. Pato asked for
+// *"Settings, Account also here"*: one screen holding you, Billing and this
+// place's config is four destinations instead of five, and the scope split
+// survives INSIDE the page as its three sections.
 //
 // THE VENUE IS NOT A ROW EITHER, and it is not the selector returning
 // (MESITA-1918 deleted a MENU). It is the SUBJECT of the column: the one thing
@@ -97,15 +97,9 @@ import {
   ChevronDown,
   LayoutGrid,
   Plus,
-  Coins,
-  CreditCard,
   RotateCw,
   Settings,
-  ShoppingBag,
   Store,
-  Ticket,
-  UserRound,
-  Users,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { PlaceChip } from "@/components/console/PlaceChip";
@@ -119,17 +113,8 @@ import {
   placePageHref,
   placeRootHref,
   type PlacePage,
-  type PlaceRailView,
 } from "@/lib/console-routes";
-import {
-  PLACE_TAB_LABEL,
-  pagesForAccess,
-  placeTabFromPathname,
-  placeTabHref,
-  tabsForAccess,
-  type PlaceTab,
-} from "@/lib/place-tabs";
-import { flatViewFromPathname } from "@/lib/console-routes";
+import { pagesForAccess } from "@/lib/place-tabs";
 import type { RailScope } from "@/lib/rail-scope";
 import { cn } from "@/lib/utils";
 
@@ -213,31 +198,8 @@ const PAGE_ICON: Record<
   PlacePage,
   React.ComponentType<{ className?: string }>
 > = {
-  settings: Settings,
-  products: LayoutGrid,
-  customers: Users,
+  setup: LayoutGrid,
   activity: ChartNoAxesColumn,
-};
-
-/** The one view that kept a row. It wears the mark its own catalogue CARD
- *  wears — one product drawn two ways is how an operator learns to distrust
- *  both drawings — and the card's tint does not come along: the only colour in
- *  this column is the pill. */
-// FIVE PRODUCTS, FIVE MARKS (MESITA-1963). Each one is the lucide glyph its
-// own catalogue card already carries in `PRODUCT_MARK`'s neighbourhood — one
-// product drawn two ways is how an operator learns to distrust the column.
-// The rail stays lucide and the card stays emoji (MESITA-1952): a mark on a
-// dark 272px column has to survive at 20px in one colour, which an emoji does
-// not.
-const VIEW_ICON: Record<
-  PlaceRailView,
-  React.ComponentType<{ className?: string }>
-> = {
-  profile: Store,
-  visits: Ticket,
-  orders: ShoppingBag,
-  pay: CreditCard,
-  credits: Coins,
 };
 
 function NavRow({
@@ -357,34 +319,28 @@ export function Sidebar({
   const place = scope.place;
   const placeId = place?.id ?? null;
 
-  const currentView: PlaceTab | null =
-    placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
   const currentPage: PlacePage | null =
     placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
 
-  const onAccount = pathname === SHELL_ROUTES.account;
+  const onSettings = pathname === SHELL_ROUTES.settings;
   const onAddPlace = pathname === SHELL_ROUTES.placesNew;
 
-  // WHICH ROWS THIS CALLER MAY SEE, from ONE access object and TWO matrices.
-  // The matrices are applied to the SELECTED place's own role, so switching
-  // from a place you own to one you only view drops FOUR of the five rows and
-  // leaves Profile — which is the honest picture, not a bug.
+  // WHICH ROWS THIS CALLER MAY SEE. ONE matrix now, because every row is a
+  // page: `tabsForAccess` filtered the product rows and there are none
+  // (MESITA-1973). It has not stopped mattering — SETUP applies it per product
+  // row, and `PlaceTabGate` still 404s every view address — but the rail is no
+  // longer the thing riding it, which is the failure MESITA-1933 named.
   //
-  // TWO, because a page is not a view. `tabsForAccess` was the only role check
-  // the rail ran, and it only ever saw the product rows; with those gone it
-  // would have had nothing left to filter while every page row stayed open to
-  // a viewer, with every check green (MESITA-1933). Four of the five rows are
-  // pages now, so `pagesForAccess` is carrying almost all of this.
+  // A VIEWER GETS NO ROWS AT ALL, and that is the honest picture: Setup and
+  // Activity are both all-or-nothing in `pagesForAccess`, so a viewer sees the
+  // venue band, the venue's Home screen, and Settings.
   const allowed = useMemo(() => {
     const access = {
       held: place !== null,
       role: place?.myRole ?? null,
       isSuperAdmin,
     };
-    return {
-      views: new Set<PlaceTab>(tabsForAccess(access)),
-      pages: new Set<PlacePage>(pagesForAccess(access)),
-    };
+    return { pages: new Set<PlacePage>(pagesForAccess(access)) };
   }, [place, isSuperAdmin]);
 
   // THE FOUR SHAPES. `unknown` is NOT `zero` with a sad face: it offers a
@@ -453,40 +409,21 @@ export function Sidebar({
             // between the nav's flex column and its rows, and every `gap-0.5`
             // between them with it. The fragment costs nothing and the rows
             // stay rows.
-            //
-            // A row that is filtered out below takes its seam with it, which
-            // is correct — a viewer who cannot see Products must not be shown
-            // the line that introduces it.
             const seam = row.seam ? (
               <div
                 aria-hidden
                 className="border-sidebar-border/50 mx-3 my-2 border-t"
               />
             ) : null;
-            if (row.kind === "page") {
-              if (!allowed.pages.has(row.target)) return null;
-              return (
-                <Fragment key={`page:${row.target}`}>
-                  {seam}
-                  <NavRow
-                    href={placePageHref(placeId ?? "", row.target)}
-                    label={PLACE_PAGE_LABEL[row.target]}
-                    Icon={PAGE_ICON[row.target]}
-                    active={currentPage === row.target}
-                    onNavigate={onNavigate}
-                  />
-                </Fragment>
-              );
-            }
-            if (!allowed.views.has(row.view)) return null;
+            if (!allowed.pages.has(row.target)) return null;
             return (
-              <Fragment key={`place:${row.view}`}>
+              <Fragment key={`page:${row.target}`}>
                 {seam}
                 <NavRow
-                  href={placeTabHref(placeId ?? "", row.view)}
-                  label={PLACE_TAB_LABEL[row.view]}
-                  Icon={VIEW_ICON[row.view]}
-                  active={currentView === row.view}
+                  href={placePageHref(placeId ?? "", row.target)}
+                  label={PLACE_PAGE_LABEL[row.target]}
+                  Icon={PAGE_ICON[row.target]}
+                  active={currentPage === row.target}
                   onNavigate={onNavigate}
                 />
               </Fragment>
@@ -494,28 +431,29 @@ export function Sidebar({
           })}
       </nav>
 
-      {/* THE FOOT: THE PERSON, pinned, alone (MESITA-1905, MESITA-1937).
+      {/* THE FOOT: THE FOURTH TAB, pinned (MESITA-1905, MESITA-1973).
 
-          IT IS ACCOUNT AND NOT SETTINGS, and the difference is scope, not
-          subject. Settings is a row in the scroller because it configures the
-          PLACE the whole scroller is about; this band is YOU, across every
-          place you hold, which is why it sits below the seam where the scope
-          changes.
+          IT IS SETTINGS AND IT IS ALSO THE PERSON. MESITA-1937 split these on
+          the argument that scope is the divider — Settings configures the
+          place, Account is you — and four tabs overrule it: Pato asked for
+          *"Settings, Account also here"* in one breath, and one screen holding
+          you, what you owe and this place's config is four destinations
+          instead of five.
 
-          IT RENDERS IN EVERY STATE, including the failed read: whatever went
-          wrong with the places, the person is still signed in — and Sign out
-          lives on that page and nowhere else, so a rail without this band is a
-          console with no exit. That is the one constraint the shape of this
-          rail is not allowed to lose, and it is why the exit sits on ACCOUNT
-          rather than on Settings, which draws nothing at all in two of the four
-          shapes. */}
+          IT STAYS A BAND RATHER THAN A ROW, and that is the part of
+          MESITA-1937 that survives intact. `showRows` draws `RAIL_ROWS` only
+          in the `solo` and `multi` shapes, so a Settings ROW would take the
+          console's only exit down with a failed places read. The address is
+          not place-scoped for the same reason: `/settings` resolves with no
+          place at all, which is what MESITA-1935 got wrong when it last tried
+          this merge. */}
       <div className={cn(SECTION_SEAM, "shrink-0")}>
         <NavRow
-          href={SHELL_ROUTES.account}
-          label="Account"
-          title={`Account · ${viewerLabel}`}
-          Icon={UserRound}
-          active={onAccount}
+          href={SHELL_ROUTES.settings}
+          label="Settings"
+          title={`Settings · ${viewerLabel}`}
+          Icon={Settings}
+          active={onSettings}
           onNavigate={onNavigate}
         />
       </div>
