@@ -12,3 +12,11 @@ url = "https://mcp.notion.com/mcp"
 # reads platform=codex (MESITA-1785).
 [shell_environment_policy]
 set = { MESITA_PLATFORM = "codex" }
+
+# Redeye (Rules §0): `codex --profile redeye` is mode 5 — no approvals, no sandbox. The other
+# half, never ask and never stop, is scripts/redeye.md, which AGENTS.md tells the agent to obey
+# when Pato writes `activate Redeye`. A profile alone would be prompts off and an agent still
+# stopping to ask which name to use.
+[profiles.redeye]
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
