@@ -701,7 +701,7 @@ const SETTING_COLUMNS: LogColumn<SettingLogRow>[] = [
 ];
 
 const SUBSCRIPTION_PRODUCT_LABEL: Record<SubscriptionLogRow["product"], string> = {
-  customers: "Customer Catalog",
+  customers: "Customer Intelligence",
   membership: "Membership",
 };
 
