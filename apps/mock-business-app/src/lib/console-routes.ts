@@ -54,58 +54,62 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   activity: "Activity",
 };
 
-/** A rail row names a place PAGE, and that is the only kind left.
+/** A NAV ROW NAMES ONE OF THE FOUR DESTINATIONS (MESITA-1975).
  *
- *  `kind: "place"` IS GONE WITH THE PRODUCT ROWS (MESITA-1973). Four tabs means
- *  four destinations — the venue, Setup, Activity, Settings — and a product is
- *  reached by drilling in from Setup, never by a row. `kind: "home"` never came
- *  back either: the VENUE BAND is Home's door, which is the one thing in the
- *  column that unambiguously says which place these rows are about.
+ *  The discriminant is three members again, and this time every member draws a
+ *  TAB. The rail expressed four destinations as two rows between two bands —
+ *  a venue band on top, a pinned Settings foot underneath — because a column
+ *  has a top and a bottom to hang them on. A line has neither, so the two
+ *  bands become what they always were: destinations.
  *
- *  The discriminant survives a one-member union on purpose. Adding a second
- *  kind later is then an edit to this type and a branch in the rail, not a
- *  refactor of every row literal. */
-export type RailRow = { kind: "page"; target: PlacePage } & {
-  /** Draw a hairline ABOVE this row. Unused at four rows and kept for the same
-   *  reason as the discriminant: the seam is a property of a row, never a
-   *  second list. */
-  seam?: true;
-};
-
-/** THE RAIL — TWO ROWS, because the console has FOUR DESTINATIONS and the
- *  other two are bands (MESITA-1973).
- *
- *  Pato, 2026-09-18, after three days of rearranging this column: *"Place,
- *  Setup, Activity, Settings"* — *"FOUR SCREENS EASY."*
- *
- *      Place      the VENUE BAND, which has been Home's door since MESITA-1933
- *      Setup      ─┐ this array
+ *      Place      `/places/<id>`, the place's own screen
+ *      Setup      ─┐ the two PlacePages
  *      Activity   ─┘
- *      Settings   the pinned FOOT
+ *      Settings   `/settings`, which needs no place at all
  *
- *  THE TWO THAT ARE NOT HERE ARE NOT MISSING. Place is the venue band because
- *  the band already names the subject and links its bare address; a row saying
- *  "Place" under a band saying which place would be the same door drawn twice.
- *  Settings is the foot because `showRows` draws this array only in the `solo`
- *  and `multi` shapes, and Sign out lives on Settings now — a row here would
- *  strand the console's only exit in `unknown` and `zero`, which is exactly the
- *  defect MESITA-1937 called out when it moved the exit to Account.
+ *  `kind: "home"` and `kind: "settings"` carry no target: their addresses are
+ *  `placeRootHref` and `SHELL_ROUTES.settings`, and neither is a `PlacePage`.
+ *  Only `page` has one, which is what keeps `PLACE_PAGES` the single source of
+ *  the two that are. */
+export type NavRow =
+  { kind: "home" } | { kind: "page"; target: PlacePage } | { kind: "settings" };
+
+/** THE MENU — FOUR ROWS, IN PATO'S ORDER (MESITA-1975).
  *
- *  WHY THE PRODUCT ROWS WENT. Nine rows do not port to a phone, and
- *  mobile-business was never going to inherit them. Four tabs are the same IA
- *  at both widths, which is the rule consumer web and mobile already live by.
- *  A product is reached by drilling in from Setup; its view, its address and
- *  its key are all unchanged.
+ *  Pato, 2026-09-18: *"Logo, place, setup, activity, settings"*.
  *
- *  THE ORDER IS READ BEFORE BUY. Activity is opened daily and Setup monthly,
- *  so Setup sitting first would put the shop above the work. It is first here
- *  anyway for one reason: a place that has just been claimed has nothing in
- *  Activity and everything to do in Setup, and the console's first week is the
- *  only week this order is load-bearing. Revisit once an operator has used it. */
-export const RAIL_ROWS: readonly RailRow[] = [
+ *  IT IS STILL ONE ARRAY, and that is the law this file exists to hold. What
+ *  changed is that the array is now the WHOLE menu rather than the part of it
+ *  that happened to be rows: `RAIL_ROWS` held two of four destinations, and
+ *  the other two were written into the rail's own markup as bands. Reordering
+ *  the console meant editing a literal AND moving JSX. It is one line here now.
+ *
+ *  THE ORDER IS READ BEFORE BUY, with Place first because it is the subject.
+ *  Activity is opened daily and Setup monthly, so Setup above Activity puts the
+ *  shop above the work; it stays there for the one week that matters, the week
+ *  a place is claimed and Activity is empty. Revisit once an operator has used
+ *  it.
+ *
+ *  SETTINGS IS LAST AND IT IS ALSO THE PERSON. It renders at every `RailMode`,
+ *  including `unknown` and `zero`, because Sign out lives on it and a console
+ *  whose only exit disappears behind a failed read is the defect MESITA-1937
+ *  named. Its address needs no place, which is the other half of that
+ *  guarantee. */
+export const NAV_ROWS: readonly NavRow[] = [
+  { kind: "home" },
   { kind: "page", target: "setup" },
   { kind: "page", target: "activity" },
+  { kind: "settings" },
 ];
+
+/** The two labels that are not a `PlacePage`.
+ *
+ *  "Place" is a WORD now, not the venue's name. The rail's first item wore the
+ *  photo and the name because a column had room for them; a line does not, and
+ *  Pato asked for the place to be *"its own page, not a fucking weird selector
+ *  toggle"*. The name moved onto the page the tab opens. */
+export const NAV_HOME_LABEL = "Place";
+export const NAV_SETTINGS_LABEL = "Settings";
 
 export function placePageHref(placeId: string, page: PlacePage): string {
   return `/places/${encodeURIComponent(placeId)}/${page}`;

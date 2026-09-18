@@ -14,7 +14,7 @@
 // this header's is the card, not the page.
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Check, Minus } from "lucide-react";
+import { Check, Minus, RotateCw } from "lucide-react";
 import { useMock } from "@/mock/MockStore";
 import { Section } from "@/components/shared/Section";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -65,7 +65,7 @@ function Cell({ on }: { on: boolean }) {
 export default function PlacesPage() {
   const search = useSearchParams();
   const owned = ownedFromParam(search.get("owned")) ?? "mine";
-  const { world, hydrated } = useMock();
+  const { world, hydrated, setScenario } = useMock();
 
   if (!hydrated) {
     return <p className="text-muted-foreground text-sm" role="status">Reading…</p>;
@@ -82,6 +82,21 @@ export default function PlacesPage() {
           title="Could not read your places"
           hint="Nothing has been established about what you hold — only that we could not ask. Nothing has been created or removed."
         />
+        {/* THE RETRY, WHICH USED TO LIVE IN THE RAIL (MESITA-1975). The failed
+            read is stated here, so the door out of it belongs here too — the
+            menu is four tabs and a fifth control on it at one of four modes is
+            a menu that changes shape under you. In the real console this
+            re-runs the Edge Function; here it puts the scenario back on a
+            shape that has places, which is the same promise kept the only way
+            this app can. */}
+        <button
+          type="button"
+          onClick={() => setScenario({ mode: "solo" })}
+          className={cn(GHOST_PILL_BUTTON_CLASS, "self-start")}
+        >
+          <RotateCw className="h-3.5 w-3.5" aria-hidden />
+          Try again
+        </button>
       </Section>
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-// THE FRAME. `fixed inset-0`, rail beside main, and `main` IS THE ONLY
+// THE FRAME. `fixed inset-0`, the menu above main, and `main` IS THE ONLY
 // SCROLLER.
 //
 // That last clause is the one to keep. A full-height card inside main is
@@ -9,9 +9,11 @@
 // empty box — with every check still green, because nothing threw. So the
 // heights here are explicit at every level rather than inherited by luck.
 //
-// There is no sticky place bar and no top nav above main. The rail carries the
-// place's name AND its views, so a row restating both would be chrome saying
-// what the column beside it already says.
+// THERE IS A TOP NAV NOW, AND THERE IS NO RAIL (MESITA-1975). Four
+// destinations on one line, from `NAV_ROWS`; see `TopNav.tsx` for why the
+// venue band, the caret, the drawer and the hamburger all went with it. The
+// old note here said there was no top nav *because* the rail carried the
+// place's name beside its views — that premise is what this issue removed.
 //
 // AND SINCE MESITA-1943, NOTHING INSIDE MAIN RESTATES THEM EITHER. `PlaceHeading`
 // was that row with the sticky taken off — photo, name and view label, on the
@@ -23,10 +25,9 @@
 // only dark object there. The one screen that could not lose its label for free
 // is `products/pay` — no rail row points at it — and it kept a back door instead
 // of a heading.
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import { Sidebar } from "@/components/console/Sidebar";
+import { TopNav } from "@/components/console/TopNav";
 import { MockPanel } from "@/components/console/MockPanel";
 import { useMock } from "@/mock/MockStore";
 import { resolveRailScope } from "@/lib/rail-scope";
@@ -59,6 +60,11 @@ import { cn } from "@/lib/utils";
  *  307 onto the canonical address. */
 function placeScreenTitle(pathname: string, name: string): string | null {
   if (!placeIdFromPathname(pathname)) return null;
+  // SETUP AND ACTIVITY DRAW A REAL ONE (MESITA-1975). `PlaceHeading` is back on
+  // exactly those two, so an sr-only title here would be a SECOND `h1` on the
+  // same document saying the same words — which is worse for a rotor than the
+  // missing root this function exists to supply.
+  if (placePageFromPathname(pathname)) return null;
   // Pay first: it lives UNDER `products`, so the page reader below would
   // answer "Products" for it and lose the sub-step the back link names.
   if (pathname === SHELL_ROUTES.settings) return "Settings";
@@ -74,15 +80,7 @@ function placeScreenTitle(pathname: string, name: string): string | null {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { world, scenario, setScenario, lastPlaceId, rememberPlace, viewer } = useMock();
-
-  // THE DRAWER CLOSES BY DERIVING, NOT BY AN EFFECT. It holds the pathname it
-  // was opened on, so any navigation closes it for free — no effect, no
-  // cascading render, and no reliance on a row's own click handler firing,
-  // which a keyboard-followed link does not guarantee.
-  const [drawerAt, setDrawerAt] = useState<string | null>(null);
-  const drawer = drawerAt === pathname;
-  const setDrawer = (open: boolean) => setDrawerAt(open ? pathname : null);
+  const { world, scenario, lastPlaceId, rememberPlace } = useMock();
 
   const scope = resolveRailScope({
     places: world.places,
@@ -102,34 +100,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       : null);
   const title = subject ? placeScreenTitle(pathname, subject.name) : null;
 
-  // The rail learns the open place from the ADDRESS, and remembers it for the
+  // The menu learns the open place from the ADDRESS, and remembers it for the
   // flat names that carry none.
   useEffect(() => {
     if (scope.place && scope.placeIsCurrent) rememberPlace(scope.place.id);
   }, [scope.place, scope.placeIsCurrent, rememberPlace]);
 
-  // `pickPlace` WENT WITH THE SELECTOR (MESITA-1918). It carried the open
-  // ADDRESS across a switch — the other venue's Orders rather than its Profile
-  // — and the only caller was the rail's menu. The catalogue switches with a
-  // plain link to the place's root, so the carry-across is gone with the
-  // control that needed it: a list of venues you pick from lands you at the
-  // top of the one you picked, which is what a list has always done.
-  const rail = (
-    <Sidebar
-      scope={scope}
-      isSuperAdmin={scenario.isSuperAdmin}
-      viewerLabel={viewer.email}
-      onNavigate={() => setDrawer(false)}
-      // The retry a failed read offers. In the real console it re-runs the
-      // Edge Function; here it puts the scenario back on a shape that has
-      // places, which is the same promise kept the only way this app can.
-      onRetry={() => setScenario({ mode: "solo" })}
-    />
-  );
-
   return (
     <div className="bg-background fixed inset-0 flex flex-col">
-      {/* THE STRIP. Above the rail, not inside main: it must be unmissable and
+      {/* THE STRIP. Above the menu, not inside main: it must be unmissable and
           it must not change main's own layout, because the whole point of this
           app is that what you see below is what the console looks like.
 
@@ -144,91 +123,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex h-7 shrink-0 items-center justify-center gap-2 bg-[color:var(--mock-strip)] px-3 text-[11px] font-semibold tracking-wide text-white">
         <span className="rounded-sm bg-white/25 px-1.5">MOCK</span>
         <span className="truncate">
-          Nothing here is real. No backend, no account, no place — every name and
-          number on this screen is invented.
+          Nothing here is real. No backend, no account, no place — every name
+          and number on this screen is invented.
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        {/* DESKTOP RAIL — `lg:block`, the one Pato is looking at. ONE WIDTH
-            (MESITA-1905): the chips-only `w-16` went with the Collapse control
-            that was its only door, and with it the width transition — a rail
-            that can only be one width has nothing to animate between.
-            
-            `w-60` → `w-68`, 240px → 272px (MESITA-1961). Pato: *"a bit more
-            horizontally larger, just a bit"*. MESITA-1960 put that +32px on
-            the MOBILE DRAWER below by mistake — the two containers render the
-            same `rail` and nothing but a comment told them apart, so the
-            change shipped green and moved nothing an operator could see.
-            A width edit in this file MUST name its breakpoint and be measured
-            at that breakpoint. */}
-        <div className="hidden w-68 shrink-0 lg:block">{rail}</div>
+      {/* THE MENU, between the strip and main. It is OUTSIDE the scroller for
+          the same reason the strip is: main scrolling under a fixed line is
+          what makes the line read as chrome rather than as content that
+          happened to be first. */}
+      <TopNav scope={scope} isSuperAdmin={scenario.isSuperAdmin} />
 
-        {/* Mobile drawer. */}
-        {drawer && (
-          <div className="fixed inset-0 z-50 flex lg:hidden">
-            <button
-              type="button"
-              aria-label="Close menu"
-              onClick={() => setDrawer(false)}
-              className="absolute inset-0 bg-black/50"
-            />
-            {/* BACK TO `w-64` (MESITA-1961). MESITA-1960's +32px landed here
-                by mistake and 288px is the wrong answer on a phone: on a 375px
-                screen that is 77% of the viewport, for a sheet whose whole job
-                is to leave the page visible behind it. This element was never
-                the one under discussion. */}
-            <div className="relative z-10 w-64">{rail}</div>
-          </div>
-        )}
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* The mobile topbar exists only to open the drawer. */}
-          <div className="border-border bg-card flex h-12 shrink-0 items-center gap-2 border-b px-3 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setDrawer(true)}
-              aria-label="Open menu"
-              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-9 w-9 items-center justify-center rounded-lg outline-hidden focus-visible:ring-2"
-            >
-              {drawer ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-            <span className="font-display truncate text-sm font-semibold tracking-tight">
-              {scope.place?.name ?? "Console"}
-            </span>
-          </div>
-
-          {/* THE ONLY SCROLLER. */}
-          <main className="min-h-0 flex-1 overflow-y-auto">
-            {title && <h1 className="sr-only">{title}</h1>}
-            {/* FLUID: no max-width. A full-bleed child cancels SHELL_GUTTER
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* THE ONLY SCROLLER. */}
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          {title && <h1 className="sr-only">{title}</h1>}
+          {/* FLUID: no max-width. A full-bleed child cancels SHELL_GUTTER
                 with SHELL_BLEED and only reaches the column edge if nothing
                 caps it. Readability is protected per-element
                 (FORM_COLUMN_CLASS), not by squeezing the console. */}
-            <div className={cn("flex w-full flex-col gap-4 py-4 sm:py-8", SHELL_GUTTER)}>
-              {/* SUSPENSE, because pages below read `searchParams` — the
+          <div
+            className={cn(
+              "flex w-full flex-col gap-4 py-4 sm:py-8",
+              SHELL_GUTTER,
+            )}
+          >
+            {/* SUSPENSE, because pages below read `searchParams` — the
                   catalogue's `?owned=` and Stripe's stored `?connect=`. Reading
                   them opts a page out of prerendering, and without a boundary
                   the whole route is refused at build time.
 
-                  The boundary is HERE rather than around the shell: the rail
+                  The boundary is HERE rather than around the shell: the menu
                   reads no query and has no reason to wait, and a frame that
                   blanks the navigation while a table loads is the flicker this
                   console spent an issue removing. The fallback is a quiet line,
                   not a skeleton — a shape that guesses wrong is worse than a
                   word that does not. */}
-              <Suspense
-                fallback={
-                  <p className="text-muted-foreground text-sm" role="status">
-                    Loading…
-                  </p>
-                }
-              >
-                {children}
-              </Suspense>
-            </div>
-          </main>
-        </div>
+            <Suspense
+              fallback={
+                <p className="text-muted-foreground text-sm" role="status">
+                  Loading…
+                </p>
+              }
+            >
+              {children}
+            </Suspense>
+          </div>
+        </main>
       </div>
 
       <MockPanel />
