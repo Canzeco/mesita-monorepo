@@ -34,6 +34,7 @@
 // panel is not, and a fake form for a product that does not exist is worse than
 // either.
 import { useMemo } from "react";
+import { useHalf } from "@/components/shared/Half";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ProfileView } from "@/components/views/ProfileView";
@@ -123,8 +124,32 @@ export function ProductPane({ card }: { card: ProductCard }) {
   /** Is the body something other than a restatement of the note? */
   const hasBody = View !== null || card.key === "customers";
 
+  const half = useHalf();
+
   const body = useMemo(() => {
     if (View) return <View />;
+
+    // A LIVE PRODUCT WITH NO LOG OF ITS OWN (MESITA-1987). On the activity
+    // surface, "Not here yet" would be a lie about Omnichannel Access and the
+    // Answering Agent: they ARE here, they simply record nothing separately.
+    // Saying where their events land is the honest version, and it is what
+    // stops an operator hunting for a screen that was never going to exist.
+    if (half === "activity" && card.state !== "soon") {
+      return (
+        <div className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-center">
+          <span aria-hidden className="text-4xl leading-none opacity-60">
+            {PRODUCT_MARK[card.key]}
+          </span>
+          <p className="font-display text-sm font-semibold tracking-tight">
+            No log of its own
+          </p>
+          <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
+            {card.name} is on here and records nothing separately. What it
+            touches shows up in this place&apos;s whole log, one screen back.
+          </p>
+        </div>
+      );
+    }
     if (card.key === "customers") {
       return (
         <Dial
@@ -150,14 +175,24 @@ export function ProductPane({ card }: { card: ProductCard }) {
           {PRODUCT_MARK[card.key]}
         </span>
         <p className="font-display text-sm font-semibold tracking-tight">
-          Not here yet
+          {half === "activity" ? "Nothing to record yet" : "Not here yet"}
         </p>
         <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
           {card.note ?? card.blurb}
         </p>
       </div>
     );
-  }, [View, card.key, card.note, card.blurb, scenario.customerIntel, setScenario]);
+  }, [
+    View,
+    half,
+    card.key,
+    card.name,
+    card.state,
+    card.note,
+    card.blurb,
+    scenario.customerIntel,
+    setScenario,
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
