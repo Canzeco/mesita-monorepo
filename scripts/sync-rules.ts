@@ -65,6 +65,18 @@ export const DEFAULT_PACKAGE_WORD_BUDGET = 450;
 // both. It carries pointers, the claim line and the door — never knowledge.
 export const CHAT_INSTRUCTIONS_WORD_BUDGET = 250;
 
+// ── Redeye protocol budget (MESITA-1989) ───────────────────────────────────
+// scripts/redeye.md is mode 6: the half of Redeye no file can enforce. An
+// agent is handed it by `deno task redeye`, or by the SessionStart hook in a
+// cloud clone, and obeys it. It is the autonomy law — asking is prohibited, the queue is the unit
+// of work, the claim survives the bypass — and nothing else. It runs longer
+// It runs longer than the chat card (250) because it carries two things that
+// card does not: a loop, and a platform axis — local or cloud, four agents. It
+// stays shorter than the quickstart because it states no product fact: every
+// line an agent could instead read in Rules, Docs or a CLAUDE.md belongs there,
+// and a line that drifts from them is worse than a line that is missing.
+export const REDEYE_WORD_BUDGET = 500;
+
 // ── GitHub cards (Markdowns › GitHub cards, MESITA-1775) ───────────────────
 // `.github/` is allowlisted wholesale (MD_ALLOW_DIRS), so these files were
 // allowed and therefore never measured — the same hole skills used to be.
@@ -162,8 +174,9 @@ export function missingStampMessage(): string {
 // The repo holds NO knowledge markdown: knowledge lives in Notion (the Docs
 // tree), task/commit context lives in Linear, code explanation lives in code
 // comments. The ONLY tracked files allowed are the instruction pairs, this
-// script's quickstart source, the chat boot card (scripts/chat-instructions.md,
-// MESITA-1762), and agent tooling config. Anything else fails CI.
+// script's quickstart source, the two boot cards (scripts/chat-instructions.md,
+// MESITA-1762; scripts/redeye.md, MESITA-1989), and agent tooling
+// config. Anything else fails CI.
 //
 // `.mdc` is scanned because Cursor reads `.cursor/rules/*.mdc` as rules (SADLC
 // adapters, the Cursor rows) — an unscanned dialect is a rule channel outside the allowlist, which is
@@ -288,6 +301,7 @@ export function buildAllowedFiles(targets: Target[], root: string): Set<string> 
   return new Set<string>([
     "scripts/rules-quickstart.md",
     "scripts/chat-instructions.md",
+    "scripts/redeye.md",
     ...targets.flatMap(({ dir }) => {
       const rel = dir === root ? "" : dir.slice(root.length + 1) + "/";
       return [`${rel}CLAUDE.md`, `${rel}AGENTS.md`];
@@ -497,6 +511,21 @@ async function main(): Promise<void> {
         label: "scripts/chat-instructions.md",
         words: chatWords,
         budget: CHAT_INSTRUCTIONS_WORD_BUDGET,
+        over: true,
+      }),
+    );
+    failed++;
+  }
+
+  const redeyeWords = countWords(
+    await Deno.readTextFile(join(repoRoot, "scripts", "redeye.md")),
+  );
+  if (redeyeWords > REDEYE_WORD_BUDGET) {
+    console.error(
+      overBudgetMessage({
+        label: "scripts/redeye.md",
+        words: redeyeWords,
+        budget: REDEYE_WORD_BUDGET,
         over: true,
       }),
     );

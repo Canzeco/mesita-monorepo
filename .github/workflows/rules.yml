@@ -133,6 +133,14 @@ jobs:
         if: needs.changes.outputs.changed == 'true'
         run: deno task test:worktree
 
+      # Redeye arms by editing .claude/settings.local.json — the file holding the
+      # permission allow list. An arm that drops that list leaves an agent MORE
+      # prompted than before, and nothing reports it: the file is gitignored, so
+      # the only symptom is a session that quietly starts asking again.
+      - name: Test the Redeye protocol's arming
+        if: needs.changes.outputs.changed == 'true'
+        run: deno task test:redeye
+
       # One checkout covers the whole monorepo — the old per-repo --only
       # self-scoping (and its "cross-repo enforcement stays manual" caveat)
       # is gone since MESITA-456.
