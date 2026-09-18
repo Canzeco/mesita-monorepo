@@ -8,7 +8,7 @@
 // THE ORDER IS PATO'S (2026-09-16), and it is the whole list he dictated, in
 // his sequence:
 //
-//   Profile · Website · Customers · Ads               what the world sees
+//   Profile · Menu · Website · Customers · Ads        what the world sees
 //   Visits · Rewards · Orders · Reservations          the guest, being served
 //   Payments · Terminal · POS · Credits · Capital     the money
 //   AI Line · Intelligence                            the work nobody is doing
@@ -21,6 +21,20 @@
 // instead of load-bearing and invisible. See `PRODUCT_BANDS` below.
 export const PRODUCT_KEYS = [
   "profile",
+  // THE FIFTEENTH, AND IT WAS ALREADY HALF HERE (MESITA-1966). Pato: *"Add
+  // digital menu as one item"*.
+  //
+  // A PLACE HAS MENUS TODAY AND THEY ARE FILES. `MenusSection` on Profile
+  // takes a name plus one source — an upload or a Drive link, up to twenty —
+  // and that is a thing a guest DOWNLOADS. Nothing in it prices a dish,
+  // nothing hands Online Orders its items, and Answering Agent's own blurb
+  // already promises it answers a call with "the menu" it has no way to read.
+  // So the menu stops being a card inside another product and becomes one.
+  //
+  // IT SITS DIRECTLY AFTER `profile`, above `website`, because the three are
+  // the same subject at three depths: who you are, what you serve, and the
+  // site that renders both.
+  "menu",
   // THE SEVEN NEW ONES (MESITA-1946) are `website`, `ads`, `terminal`, `pos`,
   // `whatsapp`, `phone` and `intelligence`. NOT ONE OF THEM IS BUILT — no
   // table, no migration, no Edge Function — so every one ships Soon, the same
@@ -93,6 +107,7 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
  *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
+  menu: "Digital Menu",
   website: "Express Website",
   customers: "Customer Catalog",
   ads: "Omnichannel Ads",
@@ -111,7 +126,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
 /** THE FOUR BANDS, AS DATA. What the catalogue heads each group with, in
  *  `PRODUCT_KEYS` order — the members of each band are CONTIGUOUS there, which
  *  is why drawing them moves no card and why each list below is a slice rather
- *  than a re-sort. 4 + 3 + 5 + 2 = 14.
+ *  than a re-sort. 5 + 3 + 5 + 2 = 15.
  *
  *  THE NAMES ARE PATO'S OWN, from the list he dictated: they say what a band is
  *  FOR rather than what its members share technically, which is the only way a
@@ -120,14 +135,14 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
  *
  *  A KEY IN NO BAND IS A COMPILE ERROR, not a card that quietly falls off the
  *  page: `BANDED_KEYS` is typed as the full `ProductKey` union, so adding a
- *  fifteenth product without placing it fails `tsc`. */
+ *  sixteenth product without placing it fails `tsc`. */
 export const PRODUCT_BANDS: readonly {
   title: string;
   keys: readonly ProductKey[];
 }[] = [
   {
     title: "What the world sees",
-    keys: ["profile", "website", "customers", "ads"],
+    keys: ["profile", "menu", "website", "customers", "ads"],
   },
   {
     title: "Serving the guest",
@@ -148,6 +163,7 @@ export const PRODUCT_BANDS: readonly {
  *  refuses the file. It is not a runtime list anybody reads. */
 const BANDED_KEYS: { [K in ProductKey]: true } = {
   profile: true,
+  menu: true,
   website: true,
   customers: true,
   ads: true,

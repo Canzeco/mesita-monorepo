@@ -95,6 +95,35 @@ const SPECS: readonly ProductSpec[] = [
     soon: null,
   },
   {
+    key: "menu",
+    // DIGITAL MENU (MESITA-1966). Pato: *"Add digital menu as one item"*.
+    //
+    // ONE ITEM, AND IT IS NOT THE MENUS CARD PROMOTED. What Profile carries
+    // today is a NAME plus a file — an upload or a Drive link — which a guest
+    // downloads and nothing else in the console can read. This product is the
+    // menu as DATA: dishes, prices, what is out of stock tonight.
+    //
+    // "Digital" IS DOING WORK, which is why the qualifier stays. Every place
+    // already has a menu, and half of them already have a PDF of it here; the
+    // word that separates this product from both is the one that says the
+    // machine can read it.
+    name: "Digital Menu",
+    // THE BLURB NAMES THE THREE READERS, because that is the whole argument
+    // for a fifteenth card: the same dishes are what a guest browses, what
+    // Online Orders sells and what the Answering Agent quotes on the phone.
+    // Written from the FILE it replaces — "upload your menu" would describe
+    // what Profile already does.
+    blurb:
+      "Your dishes and prices as something Mesita can read — one menu the guest browses, Orders sells from and the phone quotes.",
+    tab: null,
+    needsPartner: false,
+    atPlace: null,
+    // WHAT EXISTS INSTEAD, named. An operator who uploaded a PDF last week
+    // would otherwise read this card as Mesita losing their menu; the file is
+    // still on Profile, it is just not this.
+    soon: "A PDF on your Profile is all there is today.",
+  },
+  {
     key: "website",
     // EXPRESS (MESITA-1956). Pato, after Storefront, Super and Smart were each
     // tried and put down: *"Express Website"*. It names how the site ARRIVES,

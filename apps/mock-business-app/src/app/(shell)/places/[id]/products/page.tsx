@@ -53,6 +53,10 @@ import { cn } from "@/lib/utils";
 // quieter second state signal is the one that gets misread.
 const PRODUCT_MARK: Record<ProductKey, string> = {
   profile: "\u{1F3EA}",
+  // THE DISHES, not a document: 🍽️ over 📄 or 📋, because the thing this
+  // product turns into data is the food, and a page mark would read as the
+  // PDF on Profile that this card exists to stop being the answer.
+  menu: "\u{1F37D}\u{FE0F}",
   website: "\u{1F310}",
   customers: "\u{1F465}",
   ads: "\u{1F4E3}",
@@ -126,7 +130,7 @@ export default function ProductsPage() {
           `<p>` on purpose.
 
           EACH BAND IS ITS OWN GRID, so `auto-rows-fr` equalises within a band
-          rather than across all fourteen. That is the one thing this costs
+          rather than across all fifteen. That is the one thing this costs
           against MESITA-1956's "same standard size", and it is the right
           trade: you compare cards to their row-mates, and a row never crosses
           a header now.
@@ -135,25 +139,25 @@ export default function ProductsPage() {
           columns"*, reversing MESITA-1941's "two across at most".
 
           THAT ARGUMENT WAS COUNTED ON EIGHT CARDS — "eight 400px boxes
-          carrying two sentences each". The suite is FOURTEEN now, and two
-          columns make it seven rows: a price list you have to scroll twice to
+          carrying two sentences each". The suite is FIFTEEN now, and two
+          columns make it eight rows: a price list you have to scroll twice to
           finish, which is the one thing the catalogue may not be. An operator
           has to be able to read the whole suite before they can want any of
-          it, and four columns put all fourteen within one screen.
+          it, and four columns put all fifteen within one screen.
 
           `auto-rows-fr` IS WHAT MAKES EVERY CARD THE SAME BOX (Pato: *"all
           boxes must have same standard size"*). A grid row sizes to its own
           tallest item by default, so each card matched its ROW-MATES and
           nothing else: Profile's three-line blurb set row one tall and
           Physical Terminal's two-line blurb left row three short, which reads
-          as fourteen boxes of assorted sizes rather than one catalogue. `1fr`
+          as fifteen boxes of assorted sizes rather than one catalogue. `1fr`
           on every implicit row makes them all equal to the tallest row.
 
           IT ONLY WORKS BECAUSE THE CARD FILLS ITS CELL. The card is a grid
           ITEM, so it stretches to the row by default, and `flex-1` on the
           blurb spends the new slack ABOVE the note and the verb — so the
-          facts and the verbs line up across all fourteen cards instead of
-          floating at fourteen different heights.
+          facts and the verbs line up across all fifteen cards instead of
+          floating at fifteen different heights.
 
           WEB-BUSINESS IS NOT ALIGNED TO THIS and that is a known gap, not an
           oversight: `ProductCatalog.tsx` is `sm:2 xl:3 2xl:4`, so between
