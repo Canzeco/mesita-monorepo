@@ -65,7 +65,6 @@ import {
   ALLOWED_IMAGE_ACCEPT,
   validateUploadFile,
 } from "@/lib/place-upload-utils";
-import { ReviewBoxes } from "./ReviewBoxes";
 import { FIELD_LIMITS } from "@/mock/atlas";
 import type { MockDay, MockPlaceProfile } from "@/mock/types";
 
@@ -749,12 +748,13 @@ export function PlaceSection({
           always documented, filled again since MESITA-1917. */}
       {children}
 
-      {/* Reputation closes the masonry (Pato live 2026-09-01): every card
+      {/* REPUTATION USED TO CLOSE THE MASONRY, and it closes a screen of its
+          own now (MESITA-1993). The argument that put it here — "every card
           above is something an operator sets, these are the only things the
-          world says back. Read-only, so they sit after the editable set.
-          THREE boxes since MESITA-1930, and one wrapper rather than three
-          siblings so the masonry cannot deal them into three columns. */}
-      <ReviewBoxes place={place} />
+          world says back" — is the argument that eventually took it out: a
+          read-only trio at the bottom of a twelve-card form, inside a save bar
+          it could never dirty, was a different product wearing this one's
+          address. It is `ReviewsView` now, row three of Running. */}
 
       {metaFor !== null && (
         <MediaMetaDialog

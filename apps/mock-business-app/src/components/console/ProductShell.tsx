@@ -4,8 +4,8 @@
 //
 // Pato: *"I MEAN, A SYMMETRY MUST EXIST."*
 //
-// One component draws both surfaces. The index is the same eighteen products
-// in the same order with the same rows; only the addresses it links and the
+// One component draws both surfaces. The index is the same products, in the
+// same order with the same rows; only the addresses it links and the
 // pane beside it change. Two hand-written indexes would be the same list
 // maintained twice, and the second one would be a product behind within a week.
 //

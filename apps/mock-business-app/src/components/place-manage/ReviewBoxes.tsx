@@ -22,7 +22,6 @@
 
 import { DigitalPresence } from "./DigitalPresence";
 import { ReviewsList } from "./ReviewsList";
-import { usePlaceContext } from "./PlaceContext";
 import { GOOGLE_REVIEWS, REVIEWS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
@@ -44,8 +43,19 @@ function SubScore({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-export function ReviewBoxes({ place }: { place: MockPlaceProfile }) {
-  const { placeId } = usePlaceContext();
+// THE ID IS A PROP NOW (MESITA-1993). It used to come from
+// `usePlaceContext()`, which meant this trio could only render inside
+// `PlaceFormProvider` — fine while it lived at the bottom of Profile's form,
+// and the one thing standing between it and its own screen. Nothing else here
+// touched that context: these cards register no dirty section and the save bar
+// never learns they exist.
+export function ReviewBoxes({
+  place,
+  placeId,
+}: {
+  place: MockPlaceProfile;
+  placeId: string;
+}) {
   const { scenario } = useMock();
 
   const google = listFor(
