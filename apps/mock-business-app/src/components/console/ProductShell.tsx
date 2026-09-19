@@ -24,10 +24,12 @@ import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/shared/Badges";
 import { useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { buildProductCards, type ProductState } from "@/lib/products";
+import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import {
   PARTNERSHIP_SLUG,
   PRODUCT_SLUG,
+  productFromSlug,
   productHref,
   type PlaceHalf,
 } from "@/lib/product-routes";
@@ -60,6 +62,29 @@ const GROUPS: { title: string; holds: (s: ProductState) => boolean }[] = [
   { title: "Coming", holds: (s) => s === "soon" },
 ];
 
+// THE GROUND UNDER THE PANE (MESITA-1996). Pato: *"make all the subpages white
+// but mesita profile and online reviews."*
+//
+// Every pane is white — the work surface MESITA-1982 gave it — except the two
+// that are CARD GRIDS. Profile is a masonry of editable cards under a
+// completeness bar; Online Reviews is the three-box trio. A white card on a
+// white pane is a hairline outline, and a dozen outlines read as a form ruled
+// onto paper rather than as cards on a ground, so those two take the page's
+// grey — the ground every card in this app already sits on (MESITA-1938). One
+// column of tiles, one form, one dial or one stated absence, which is every
+// other pane, is right on white.
+//
+// THE GROUND FOLLOWS THE PRODUCT, NOT THE SURFACE. Activity has been one
+// screen on the page since MESITA-1988, so on that side these two already sit
+// on the grey; this set is what makes the Products pane agree with it. Nothing
+// else may read it — the shell is the one thing that paints the surface, and a
+// view painting its own ground would be a grey box inset in the shell's
+// padding.
+const PANE_ON_PAGE: ReadonlySet<ProductKey> = new Set<ProductKey>([
+  "profile",
+  "reviews",
+]);
+
 export function ProductShell({
   half,
   children,
@@ -76,6 +101,10 @@ export function ProductShell({
   const last = pathname.split("/").filter(Boolean).at(-1) ?? "";
   const openSlug = last === half ? null : last;
   const open = openSlug !== null;
+  // The Partnership slug is not a product, so it resolves to null and stays
+  // white with the rest.
+  const openKey = openSlug === null ? null : productFromSlug(openSlug);
+  const paneOnPage = openKey !== null && PANE_ON_PAGE.has(openKey);
 
   if (!place || !pages.includes(half)) return null;
 
@@ -186,10 +215,11 @@ export function ProductShell({
         </div>
       </div>
 
-      {/* THE WORK SURFACE — white, two thirds, its own scroller. */}
+      {/* THE WORK SURFACE — white, two thirds, its own scroller; the page's
+          grey under the two card grids (`PANE_ON_PAGE`). */}
       <div
         className={cn(
-          "bg-card",
+          paneOnPage ? "bg-background" : "bg-card",
           SHELL_GUTTER,
           "py-4 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto",
           open ? "block" : "hidden lg:block",
