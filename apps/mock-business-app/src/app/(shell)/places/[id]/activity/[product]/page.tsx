@@ -14,8 +14,6 @@
 // A SLUG THAT IS NOT A PRODUCT 404s. `productFromSlug` returns null and
 // `notFound()` refuses the address, so a typo never renders a generic pane.
 import { use } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { HalfScope } from "@/components/shared/Half";
 import { ProductPane } from "@/components/console/ProductPane";
@@ -30,6 +28,7 @@ import {
 } from "@/lib/product-routes";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import { hasHalf } from "@/lib/product-halves";
 
 export default function ActivityProductPage({
   params,
@@ -64,6 +63,22 @@ export default function ActivityProductPage({
   const key = productFromSlug(product);
   if (!key) notFound();
 
+  // THE MAP IS THE ROUTER (MESITA-2004). A product that has no Activity half
+  // has no Activity ADDRESS — `/activity/mesita-profile` 404s like any other
+  // name off the contract, exactly as `PlaceTabGate` refuses a segment outside
+  // `PLACE_TABS`.
+  //
+  // THIS IS WHAT KEEPS `PRODUCT_HALVES` HONEST. There is no test runner in this
+  // package, so nothing can assert the map against the views; wiring it to the
+  // router instead means a wrong entry is a 404 you meet on the first click
+  // rather than a blank pane somebody finds in a month.
+  //
+  // IT ALSO CLOSES A LIVE BUG. Before this line, four products with a view and
+  // no `Half` markers — Profile, Online Reviews, Digital Menu, Online Payments
+  // — rendered their whole Setup screen at this address, because `ProductPane`
+  // returned the view without reading `useHalf()`. Same screen, two addresses.
+  if (!hasHalf(key, "activity")) notFound();
+
   const card = buildProductCards({
     plan: place.plan,
     mesitaPayEnabled: place.pay === "enabled",
@@ -77,15 +92,15 @@ export default function ActivityProductPage({
   // one screen — so this address is a deep link into one product's log rather
   // than a pane beside a column, and the only chrome it owes the reader is the
   // door back to the whole log.
+  // NO "ALL ACTIVITY" LINK ANY MORE (MESITA-2004). It pointed at the place's
+  // whole log, one level up, and it existed because the old two-column shell
+  // put a 316px index beside the pane that below `lg` was a screen you had to
+  // go back to. The menu is a column at every width now and Activity is a row
+  // near the top of it, so this was the second door onto an address already on
+  // screen — and the `Setup | Activity` pair in the pane header sits exactly
+  // where it used to, which made the two read as one control.
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href={`/places/${encodeURIComponent(place.id)}/activity`}
-        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[13px] font-medium"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-        All activity
-      </Link>
       <HalfScope half="activity">
         <ProductPane card={card} />
       </HalfScope>

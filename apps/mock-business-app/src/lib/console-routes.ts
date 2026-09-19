@@ -73,60 +73,22 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   activity: "Activity",
 };
 
-/** A NAV ROW NAMES ONE OF THE FOUR DESTINATIONS (MESITA-1975).
+/** THE MENU'S ROWS LEFT THIS FILE (MESITA-2004). `NavRow` and `NAV_ROWS` held
+ *  the four destinations MESITA-1975 drew across one ink line; the menu is a
+ *  COLUMN again and it holds fifteen, so its list lives in `lib/sidebar-rows.ts`
+ *  beside `PRODUCT_ORDER`, which is where ten of those fifteen come from.
  *
- *  The discriminant is three members again, and this time every member draws a
- *  TAB. The rail expressed four destinations as two rows between two bands —
- *  a venue band on top, a pinned Settings foot underneath — because a column
- *  has a top and a bottom to hang them on. A line has neither, so the two
- *  bands become what they always were: destinations.
- *
- *      Place      `/places/<id>`, the place's own screen
- *      Setup      ─┐ the two PlacePages
- *      Activity   ─┘
- *      Settings   `/settings`, which needs no place at all
- *
- *  `kind: "home"` and `kind: "settings"` carry no target: their addresses are
- *  `placeRootHref` and `SHELL_ROUTES.settings`, and neither is a `PlacePage`.
- *  Only `page` has one, which is what keeps `PLACE_PAGES` the single source of
- *  the two that are. */
-export type NavRow =
-  { kind: "home" } | { kind: "page"; target: PlacePage } | { kind: "settings" };
-
-/** THE MENU — FOUR ROWS, IN PATO'S ORDER (MESITA-1975).
- *
- *  Pato, 2026-09-18: *"Logo, place, setup, activity, settings"*.
- *
- *  IT IS STILL ONE ARRAY, and that is the law this file exists to hold. What
- *  changed is that the array is now the WHOLE menu rather than the part of it
- *  that happened to be rows: `RAIL_ROWS` held two of four destinations, and
- *  the other two were written into the rail's own markup as bands. Reordering
- *  the console meant editing a literal AND moving JSX. It is one line here now.
- *
- *  THE ORDER IS READ BEFORE BUY, with Place first because it is the subject.
- *  Activity is opened daily and Setup monthly, so Setup above Activity puts the
- *  shop above the work; it stays there for the one week that matters, the week
- *  a place is claimed and Activity is empty. Revisit once an operator has used
- *  it.
- *
- *  SETTINGS IS LAST AND IT IS ALSO THE PERSON. It renders at every `RailMode`,
- *  including `unknown` and `zero`, because Sign out lives on it and a console
- *  whose only exit disappears behind a failed read is the defect MESITA-1937
- *  named. Its address needs no place, which is the other half of that
- *  guarantee. */
-export const NAV_ROWS: readonly NavRow[] = [
-  { kind: "home" },
-  { kind: "page", target: "products" },
-  { kind: "page", target: "activity" },
-  { kind: "settings" },
-];
+ *  THIS FILE IS THE ROUTE VOCABULARY AGAIN, and only that. The reason it is
+ *  worth keeping the two apart is written a few lines up: `place-tabs.ts`
+ *  imports a VALUE from here and this file imports only a TYPE back, because a
+ *  value import in the other direction closes a cycle in a permission matrix
+ *  and a cycle there evaluates to `undefined`, which reads as "allowed". A menu
+ *  that needs `PRODUCT_ORDER` would have dragged that risk into this file. */
 
 /** The two labels that are not a `PlacePage`.
  *
- *  "Place" is a WORD now, not the venue's name. The rail's first item wore the
- *  photo and the name because a column had room for them; a line does not, and
- *  Pato asked for the place to be *"its own page, not a fucking weird selector
- *  toggle"*. The name moved onto the page the tab opens. */
+ *  Kept because `[flat]` and the screen-title reader still name them. The menu
+ *  reads `SIDEBAR_*_LABEL` in `sidebar-rows.ts`. */
 export const NAV_HOME_LABEL = "Place";
 export const NAV_SETTINGS_LABEL = "Settings";
 

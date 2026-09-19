@@ -34,9 +34,9 @@
 // panel is not, and a fake form for a product that does not exist is worse than
 // either.
 import { useMemo } from "react";
-import { useHalf } from "@/components/shared/Half";
-import { ArrowLeft } from "lucide-react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useHalf } from "@/components/shared/Half";
 import { ProfileView } from "@/components/views/ProfileView";
 import { MenuView } from "@/components/views/MenuView";
 import { ReviewsView } from "@/components/views/ReviewsView";
@@ -52,6 +52,9 @@ import { ProductStateBadge } from "@/components/shared/Badges";
 import type { ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
+import { hasHalf, isSplit } from "@/lib/product-halves";
+import { PRODUCT_SLUG, productHref, type PlaceHalf } from "@/lib/product-routes";
+import { placeIdFromPathname } from "@/lib/console-routes";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +99,23 @@ export function ProductPane({ card }: { card: ProductCard }) {
   const half = useHalf();
 
   const body = useMemo(() => {
-    if (View) return <View />;
+    // THE VIEW ONLY RENDERS ON A HALF THE PRODUCT ACTUALLY HAS (MESITA-2004).
+    //
+    // This line used to read `if (View) return <View />` with no mention of
+    // `half`, and that was a live bug: four products — Profile, Online Reviews,
+    // Digital Menu, Online Payments — have a view and NO `Half` markers inside
+    // it, so `/activity/mesita-profile` rendered the entire Profile editor.
+    // The same screen, at two addresses, with the Activity tab lit.
+    //
+    // It was invisible while the halves were two top-level tabs twelve rows
+    // apart. A tab pair on the product itself puts them one click apart, which
+    // is why this had to be fixed before the pair could ship.
+    //
+    // `activity/[product]/page.tsx` refuses the address outright, so in the
+    // console this branch is unreachable. It stays because `ProductPane` also
+    // mounts under the standalone `/places/<id>/<view>` addresses, where
+    // nothing has gated the half.
+    if (View && (half === null || hasHalf(card.key, half))) return <View />;
 
     // A LIVE PRODUCT WITH NO LOG OF ITS OWN (MESITA-1987). On the activity
     // surface, "Not here yet" would be a lie about the Answering Agent: it IS
@@ -171,19 +190,6 @@ export function ProductPane({ card }: { card: ProductCard }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* THE BACK DOOR IS MOBILE-ONLY. Below `lg` the two halves are one screen
-          at a time — 50/50 does not exist on a 375px phone — so the pane needs
-          a way back to the list. Above `lg` the list is on screen beside it and
-          a back link would point at something already visible. */}
-      <Link
-        href="?"
-        scroll={false}
-        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[13px] font-medium lg:hidden"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-        All products
-      </Link>
-
       <div className="flex items-start gap-3">
         <span
           aria-hidden
@@ -220,7 +226,78 @@ export function ProductPane({ card }: { card: ProductCard }) {
         </div>
       </div>
 
+      {/* THE HALVES, ON THE PRODUCT (MESITA-2004). Pato: *"AND EACH PRODUCT IS
+          DIVIDED INTO SETUP AND ACTIVITY."*
+
+          IT DRAWS ONLY WHERE THERE ARE TWO. `isSplit` is four of the ten, and
+          on the other six there is no pair at all — not one tab, not two with
+          one dead. `TopNav` wrote the law this keeps after `TopNav` itself was
+          deleted: *a destination a caller cannot reach is NOT RENDERED*. A pair
+          that did nothing on six screens out of ten is a control an operator
+          learns to stop pressing, and then does not press on the four where it
+          works.
+
+          IT IS A RULE, NOT A FILL. Opposite of the call `Sidebar` makes one
+          column to the left, and for the reason MESITA-1975 gave: across a line
+          a solid pill is a slab with a word in it. Two tabs ARE a line. The
+          menu is a stack, which is why it gets the fill and this does not — the
+          two idioms mark different axes and reading them the same way is what
+          makes a console look like two consoles. */}
+      {half !== null && isSplit(card.key) && (
+        <HalfTabs productKey={card.key} current={half} />
+      )}
+
       {body}
+    </div>
+  );
+}
+
+const HALF_LABEL: Record<PlaceHalf, string> = {
+  // "Setup", not "Manage". `Half`'s own vocabulary still says `Manage` because
+  // that is the string every view's JSX is written against and renaming it is a
+  // sweep through eleven files; what the OPERATOR reads is this, and it is the
+  // word MESITA-2001 settled on for the pair — Setup / Activity is how it is
+  // configured beside what it did. Manage / Activity is a verb beside a noun.
+  products: "Setup",
+  activity: "Activity",
+};
+
+const HALVES: readonly PlaceHalf[] = ["products", "activity"];
+
+const TAB =
+  "relative flex min-h-9 items-center px-3 text-[13px] transition outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
+const TAB_REST = "text-muted-foreground hover:text-foreground font-medium";
+// The rule is 2px of ink, inset to the LABEL rather than to the tab's box —
+// `inset-x-0` overshoots the word at both ends and reads as a text-decoration
+// somebody left on. MESITA-2001 fixed exactly this on the top menu; the inset
+// tracks `TAB`'s `px-3` and has to move with it.
+const TAB_ACTIVE =
+  "text-foreground font-semibold after:bg-foreground after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:content-['']";
+
+function HalfTabs({
+  productKey,
+  current,
+}: {
+  productKey: ProductKey;
+  current: PlaceHalf;
+}) {
+  const pathname = usePathname();
+  const placeId = placeIdFromPathname(pathname);
+  if (!placeId) return null;
+  const slug = PRODUCT_SLUG[productKey];
+
+  return (
+    <div className="border-border -mt-1 flex gap-1 border-b">
+      {HALVES.map((h) => (
+        <Link
+          key={h}
+          href={productHref(placeId, h, slug)}
+          aria-current={h === current ? "page" : undefined}
+          className={cn(TAB, h === current ? TAB_ACTIVE : TAB_REST)}
+        >
+          {HALF_LABEL[h]}
+        </Link>
+      ))}
     </div>
   );
 }
