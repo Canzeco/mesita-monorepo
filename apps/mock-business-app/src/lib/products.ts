@@ -405,18 +405,29 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "access",
-    // OMNICHANNEL ACCESS, AND IT IS LIVE (MESITA-1978). It is the one product
-    // on the list that names a WAY IN rather than a thing to run: the place is
-    // reachable wherever a guest already is, and every channel lands on the
-    // same Mesita surfaces rather than on a second inbox to staff.
-    name: "Omnichannel Access",
+    // DEVELOPERS PLATFORM (MESITA-1991). Pato: *"i want to move the
+    // omnichannel access as a product for Developers Platform… like its now a
+    // product kinda"*.
+    //
+    // OMNICHANNEL ACCESS WAS TWO THINGS WEARING ONE NAME. 🦚 Main §4 defines
+    // it as "the console on the web, the business app on your phone, and an
+    // API into the systems you already run". The first two are surfaces this
+    // console already IS — a product card for "you are looking at it" sells
+    // nothing and configures nothing — and the third is a real product a place
+    // switches on, hands to whoever builds for them, and can have running or
+    // not. That third thing is what keeps the row.
+    //
+    // THE KEY STAYS `access`, on `pay`'s and `visits`' precedent: a key is a
+    // persisted spelling and the name is what you buy. The SLUG moves with the
+    // name, because a slug is what a person types.
+    name: "Developers Platform",
     blurb:
-      "Your place, reachable from wherever the guest already is — Google, Instagram, WhatsApp, a QR on the table — all landing on the same Mesita.",
+      "An API and keys into the systems you already run, so orders and bookings land in your POS instead of a screen somebody has to watch.",
     tab: null,
     needsPartner: false,
     atPlace: null,
     soon: null,
-    liveNote: "On for every place. Every channel lands on the same Mesita.",
+    liveNote: "On for every place. Keys are issued per place, never per person.",
   },
   {
     key: "intelligence",

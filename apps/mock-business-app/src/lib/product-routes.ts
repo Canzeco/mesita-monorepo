@@ -46,7 +46,7 @@ export const PRODUCT_SLUG: Record<ProductKey, string> = {
   credits: "prepaid-credits",
   capital: "mesita-capital",
   line: "answering-agent",
-  access: "omnichannel-access",
+  access: "developers-platform",
   intelligence: "marketing-intelligence",
 };
 

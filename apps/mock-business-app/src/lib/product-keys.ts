@@ -125,7 +125,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   credits: "Prepaid Credits",
   capital: "Mesita Capital",
   line: "Answering Agent",
-  access: "Omnichannel Access",
+  access: "Developers Platform",
   intelligence: "Marketing Intelligence",
 };
 

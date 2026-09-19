@@ -52,8 +52,9 @@ export const PRODUCT_MARK: Record<ProductKey, string> = {
   // the row look like one channel's product again, which is the whole thing
   // the merge undid. 🤖 is what the name now says out loud.
   line: "\u{1F916}",
-  // THE DOORS IN, plural — every channel a guest can arrive through, which is
-  // the product. A single door mark would read as one channel.
-  access: "\u{1F6AA}",
+  // A PLUG (MESITA-1991). The door was Omnichannel Access's mark, for a
+  // product about ways in; this one is about something you connect a system TO,
+  // and a door on a developer platform reads as a login screen.
+  access: "\u{1F50C}",
   intelligence: "\u{2728}",
 };
