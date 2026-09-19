@@ -21,7 +21,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Badge } from "@/components/shared/Badges";
+import { Badge, ProductStateBadge } from "@/components/shared/Badges";
 import { useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
 import { buildProductCards, type ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
@@ -43,20 +43,61 @@ import {
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-// THE ROW, macOS-SHAPED (MESITA-1985) — a mark, a name, a state, a selection,
-// and nothing else. 34px tall because a settings index is scanned.
-const ROW =
-  "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition";
-const ROW_ON = "bg-foreground text-background";
-const ROW_OFF = "hover:bg-foreground/[0.06]";
+// THE INDEX IS ONE CARD OF ROWS (MESITA-2001), which is the shape this app
+// already uses wherever a list of unlike things has to read as one scope —
+// Account and Digital Presence both. Pato: *"the idea of a list is great, but
+// the style of the list and the menu and the spacing and all the UI style is
+// shit."*
+//
+// WHAT THE CARD FIXES THAT A BARE STACK DID NOT. The index was the only list
+// in the console sitting directly on the page with no surface under it, while
+// every other collection is white-on-grey (MESITA-1938). Twelve rows floating
+// on the ground read as unfinished rather than as minimal. `divide-y` needs
+// the rows to be DIRECT children, which is why nothing between the card and a
+// row wraps them.
+const CARD =
+  "border-border bg-card divide-border w-full divide-y overflow-hidden rounded-2xl border";
+const ROW = "flex w-full items-center gap-3 px-3 py-2.5 text-left transition";
 
-const STATE_WORD: Record<ProductCard["state"], string> = {
-  free: "Free",
-  enabled: "On",
-  off: "Off",
-  locked: "Locked",
-  soon: "Soon",
-};
+// THE CHOSEN ROW IS THE PAGE SHOWING THROUGH THE CARD, NOT AN INK SLAB.
+// `bg-foreground text-background` across a 660px column was the heaviest
+// object on the screen — heavier than the ink menu above it — and hover
+// painted a SECOND slab, so on any screen where the pointer was resting two
+// rows read as picked at once. Both states are now steps of the same recessed
+// grey, which is the vocabulary `--fill` already carries, and they can never
+// be mistaken for each other because the chosen one also gains weight.
+const ROW_ON = "bg-page";
+const ROW_OFF = "hover:bg-page/55";
+
+// THE MARK'S BOX, which is the whole reason the emoji work here. Pato asked
+// for emoji twice and they are right — they cost the palette nothing and give
+// a grey list its only life. What was wrong was that each one brought its own
+// optical size: ⭐ filled its line box, 📅 rendered numerals nobody could read
+// at 17px, 🌑 read as a rendering fault. A fixed 28px tile with the glyph
+// centred in it makes every mark occupy the same square, so the column has one
+// left edge instead of twelve.
+//
+// IT INVERTS ON THE CHOSEN ROW. The tile is the page grey inside a white card;
+// on the chosen row the row IS that grey, so the tile takes the card's white
+// instead. Same one step of contrast, pointing the other way.
+const TILE =
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[15px] leading-none";
+
+// A BAND LABEL NAMES A GROUP, IT DOES NOT SORT ONE. MESITA-1997 deleted
+// RUNNING / COMING because splitting on `state` let the roadmap decide the
+// order and the length of the console's own product list. These three do
+// neither: `PRODUCT_ORDER` is still the order, the ten are still the ten, and
+// the labels only say which of the three things you are looking at — what you
+// pay with, what you run, and what is not here yet.
+const GROUP_LABEL =
+  "text-muted-foreground px-1 pb-2 text-[10px] font-semibold tracking-[0.14em] uppercase";
+
+// THE TWO MARKS THAT ARE NOT IN `PRODUCT_MARK`, because neither row is a
+// product: the Plan is what the products are bought with, and Future products
+// is a door onto a list. Named here rather than inlined so the two callers of
+// each — the row and nothing else, today — cannot drift into two glyphs.
+const PLAN_MARK = "\u{1F91D}";
+const FUTURE_MARK = "\u{1F52E}";
 
 // NO GROUPS (MESITA-1997). The index used to split RUNNING / COMING on each
 // card's `state`, which let the roadmap decide the order and the length of
@@ -137,12 +178,16 @@ export function ProductShell({
    *  thing and the screen is showing another. */
   const coming = cards.filter((c) => c.state === "soon");
 
+  /** ONE ROW. `state` is a NODE rather than a word because the three groups
+   *  state three different kinds of fact — a rung, a product's state, a count
+   *  — and a single string would have forced the two that are not a
+   *  `ProductState` through a fake one. */
   const row = (args: {
     href: string;
     chosen: boolean;
     mark: string;
     name: string;
-    state: string;
+    state: React.ReactNode;
     key?: string;
   }) => (
     <Link
@@ -153,86 +198,133 @@ export function ProductShell({
     >
       <span
         aria-hidden
-        className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
+        className={cn(TILE, args.chosen ? "bg-card" : "bg-page")}
       >
         {args.mark}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
-        {args.name}
-      </span>
       <span
         className={cn(
-          "shrink-0 text-[12px]",
-          args.chosen ? "text-background/70" : "text-muted-foreground",
+          "min-w-0 flex-1 truncate text-[13px]",
+          args.chosen ? "font-semibold" : "font-medium",
         )}
       >
-        {args.state}
+        {args.name}
       </span>
+      <span className="shrink-0">{args.state}</span>
     </Link>
   );
 
   const index = (
-    <div className="flex flex-col gap-px">
-      {/* THE PLAN IS THE FIRST ROW and is not one of the ten — it is what the
-          ten are bought with. Not a `ProductKey`, and it must not become one. */}
-      {row({
-        href: productHref(place.id, half, PARTNERSHIP_SLUG),
-        chosen: openSlug === PARTNERSHIP_SLUG,
-        mark: "\u{1F91D}",
-        name: "Plan",
-        state: place.partnered ? "Partner" : "Free",
-      })}
-      {ten.map((card) =>
-        row({
-          key: card.key,
-          href: productHref(place.id, half, PRODUCT_SLUG[card.key]),
-          chosen: PRODUCT_SLUG[card.key] === openSlug,
-          mark: PRODUCT_MARK[card.key],
-          name: card.name,
-          state: STATE_WORD[card.state],
-        }),
+    <>
+      {/* THE PLAN IS ITS OWN CARD, not the first row of the products. It is
+          not one of the ten and it must not become one — it is what the ten
+          are bought with, and a band label is the cheapest way to say that
+          without a sentence. */}
+      <div>
+        <p className={GROUP_LABEL}>Your plan</p>
+        <div className={CARD}>
+          {row({
+            href: productHref(place.id, half, PARTNERSHIP_SLUG),
+            chosen: openSlug === PARTNERSHIP_SLUG,
+            mark: PLAN_MARK,
+            name: "Plan",
+            state: <PartnershipBadge partnered={place.partnered} />,
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className={GROUP_LABEL}>Products</p>
+        <div className={CARD}>
+          {ten.map((card) =>
+            row({
+              key: card.key,
+              href: productHref(place.id, half, PRODUCT_SLUG[card.key]),
+              chosen: PRODUCT_SLUG[card.key] === openSlug,
+              mark: PRODUCT_MARK[card.key],
+              name: card.name,
+              state: <ProductStateBadge state={card.state} />,
+            }),
+          )}
+        </div>
+      </div>
+
+      {/* ONE ROW FOR THE WHOLE ROADMAP. Its state is a COUNT, not "Soon": the
+          row is not a product with a state, it is a door onto a list, and a
+          number is the one thing worth reading before opening it. That is
+          also why it does not share the products card — a badge column with
+          one bare number in it reads as a badge that failed to render. */}
+      {coming.length > 0 && (
+        <div>
+          <p className={GROUP_LABEL}>Roadmap</p>
+          <div className={CARD}>
+            {row({
+              href: productHref(place.id, half, FUTURE_SLUG),
+              chosen: openSlug === FUTURE_SLUG,
+              mark: FUTURE_MARK,
+              name: "Future products",
+              state: (
+                <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                  {coming.length}
+                </span>
+              ),
+            })}
+          </div>
+        </div>
       )}
-      {/* ONE ROW FOR THE WHOLE ROADMAP. Its state word is a COUNT, not
-          "Soon": the row is not a product with a state, it is a door onto a
-          list, and a number is the one thing worth reading before opening
-          it. */}
-      {coming.length > 0 &&
-        row({
-          href: productHref(place.id, half, FUTURE_SLUG),
-          chosen: openSlug === FUTURE_SLUG,
-          mark: "\u{1F52E}",
-          name: "Future products",
-          state: String(coming.length),
-        })}
-    </div>
+    </>
   );
 
   return (
     <div
       className={cn(
         SHELL_BLEED,
-        "border-border grid border-t lg:h-[calc(100vh-9rem)] lg:grid-cols-3",
+        // AND THE VERTICAL BLEED TOO (MESITA-2001). `SHELL_BLEED` only ever
+        // cancelled the gutter, so main's own `py-4 sm:py-8` left a band of
+        // bare page between the menu and this shell's top hairline — forty
+        // empty pixels where MESITA-1985's heading used to be. The pair is
+        // horizontal and vertical now, and the height below counts the same
+        // rows: 28px strip + 52px menu + the 32px that is still under it.
+        "-mt-4 sm:-mt-8",
+        "border-border grid border-t lg:h-[calc(100vh-7rem)] lg:grid-cols-[316px_1fr]",
       )}
     >
-      {/* THE INDEX — the page's own grey, one third, its own scroller. */}
+      {/* THE INDEX — the page's own grey, A COLUMN, its own scroller.
+
+          316px, NOT A THIRD OF THE WINDOW (MESITA-2001). `grid-cols-3` made
+          the index as wide as the monitor was: on a 1980px window it drew a
+          660px column holding a 34px row whose name was flush left and whose
+          state was flush right, ~450px apart, twelve times. A navigator is
+          not content — it does not get wider because there is room, it gets
+          as wide as its longest name ("Online Reservations") plus its badge.
+          The PANE keeps the rest, and the page itself stays fluid: this caps
+          a column, not the console. */}
       <div
         className={cn(
-          "border-border lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:border-r",
+          "border-border lg:min-h-0 lg:overflow-y-auto lg:border-r",
           open ? "hidden lg:block" : "block",
         )}
       >
-        <div className={cn(SHELL_GUTTER, "flex flex-col gap-3 py-3")}>
+        <div className={cn(SHELL_GUTTER, "flex flex-col gap-5 py-4")}>
           {index}
         </div>
       </div>
 
-      {/* THE WORK SURFACE — white, two thirds, its own scroller; the page's
-          grey under the two card grids (`PANE_ON_PAGE`). */}
+      {/* THE WORK SURFACE — white, EVERYTHING THE COLUMN IS NOT, its own
+          scroller; the page's grey under the two card grids
+          (`PANE_ON_PAGE`).
+
+          NO `col-span` ON EITHER HALF (MESITA-2001). The grid was three equal
+          columns with 1 + 2 spans across them; it is `[316px_1fr]` now, and a
+          `col-span-2` left on the pane made it claim both tracks, which
+          pushed it onto a second grid ROW under the index and gave it the
+          full width of the window. Two tracks, two children, no spans — the
+          spans were the three-column layout's and had to go with it. */}
       <div
         className={cn(
           paneOnPage ? "bg-background" : "bg-card",
           SHELL_GUTTER,
-          "py-4 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto",
+          "py-4 lg:min-h-0 lg:overflow-y-auto",
           open ? "block" : "hidden lg:block",
         )}
       >

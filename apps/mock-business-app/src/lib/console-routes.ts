@@ -56,7 +56,20 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
   // On says how it is set; the list did not change, but what you open from it
   // did — every row now leads to that product's own screen, and a screen per
   // product is a catalogue of products rather than a page of settings.
-  products: "Products",
+  //
+  // SETUP, A THIRD TIME (MESITA-2001). Pato: *"rename products to setup"*.
+  // What settles it is what MESITA-1986 leaned on and what has happened
+  // since: a screen per product was going to make this a catalogue, and the
+  // panes did not become catalogue pages. Every one of them is a form, a
+  // dial, or a stated absence — the Bookings table left for Activity in
+  // MESITA-1986 itself. The sibling tab is Activity, and Setup / Activity is
+  // the pair an operator can hold: how it is configured, and what it did.
+  // Products / Activity is a noun beside a verb.
+  //
+  // THE LABEL ONLY. The route segment stays `/products`: renaming it touches
+  // `product-routes.ts`, every `productHref` caller and the Activity twin,
+  // and a pasted link is written down in blocker rows.
+  products: "Setup",
   activity: "Activity",
 };
 

@@ -104,18 +104,38 @@ import { cn } from "@/lib/utils";
 // bar so the underline sits on the bar's own hairline rather than floating
 // above it.
 // BIGGER (MESITA-1982). Pato: *"make the top menu bigg btw"*. `text-base` at
-// 16px, in a 64px bar — the rail spent five issues landing on 14px in a 272px
-// column, and none of that reasoning survives the move: a LINE has room a
-// column does not, and four words across 1440px at 14px read as a footer.
+// 16px, in a 64px bar.
+//
+// AND BACK DOWN AGAIN (MESITA-2001). Pato: *"the menu and the spacing and all
+// the UI style is shit."* MESITA-1982 was solving the right problem — 14px
+// across 1440px read as a footer — and overshot it. 16px semibold in a 64px
+// bar does not read as navigation, it reads as a page HEADING, and it was the
+// largest type in a console whose content runs at 13px. The bar is louder
+// than what it frames.
+//
+// 13.5px IN A 52px BAR is the pair that fixes it, and the pair matters: the
+// size alone would have left four small words floating in a tall black slab.
+// It is still above the 13px the rows below use, so the menu is still the
+// biggest thing on its own line and still the smallest claim on the screen.
+//
+// `min-h-11` STILL HOLDS THE 44px TARGET inside the shorter bar — the tab is
+// 44px of the 52px, which is why the bar could not go below it.
 const TAB_BASE =
-  "relative flex min-h-11 items-center px-4 text-base font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset sm:px-5";
+  "relative flex min-h-11 items-center px-3 text-[13.5px] font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset sm:px-3.5";
 const TAB_REST = "text-dock-muted hover:text-dock-foreground";
 const TAB_ACTIVE = "text-dock-foreground font-semibold";
 // The rule is drawn on the tab, 2px of `--ink`, flush with the bar's hairline.
 // `-bottom-px` puts it OVER that hairline rather than above it — a 1px gap
 // between the two reads as a misalignment nobody can name.
+//
+// IT INSETS TO THE LABEL (MESITA-2001). `inset-x-0` ran the rule across the
+// tab's whole box, padding included, so it overshot the word at both ends and
+// read as a text-decoration somebody had left on rather than as a marker
+// under the tab. Matching the horizontal padding makes it a rule the length
+// of the thing it marks. The inset tracks `TAB_BASE`'s `px-3 sm:px-3.5` and
+// has to move with it.
 const TAB_RULE =
-  "after:bg-dock-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-['']";
+  "after:bg-dock-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:content-[''] sm:after:inset-x-3.5";
 
 function Tab({
   href,
@@ -216,7 +236,7 @@ export function TopNav({
     // has no right end to hang anything on; pushing the lockup and the tabs
     // left gives the place a home that is not a heading, which is what lets
     // the page below drop its own.
-    <div className="bg-dock flex h-16 shrink-0 items-center gap-3 px-3 sm:gap-5 sm:px-4">
+    <div className="bg-dock flex h-13 shrink-0 items-center gap-3 px-3 sm:gap-4 sm:px-4">
       {/* THE LOCKUP IS A LABEL, NOT A LINK. Every address this bar reaches is
           on the same line as it, so a logo that navigated would be a fifth
           destination in different clothes — and the rail made the same call
@@ -294,7 +314,7 @@ export function TopNav({
       {place && (
         <div className="flex min-w-0 shrink items-center gap-2">
           <PlaceChip photoUrl={place.photoUrl} size="menu" />
-          <span className="text-dock-foreground hidden truncate text-sm font-medium sm:block">
+          <span className="text-dock-foreground hidden truncate text-[13px] font-medium sm:block">
             {place.name}
           </span>
         </div>
