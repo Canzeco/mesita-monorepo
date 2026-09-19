@@ -26,7 +26,6 @@ import { buildProductCards } from "@/lib/products";
 import {
   FUTURE_SLUG,
   PARTNERSHIP_SLUG,
-  PRODUCT_ORDER,
   productFromSlug,
 } from "@/lib/product-routes";
 import { placePayHref } from "@/lib/console-routes";
@@ -48,7 +47,7 @@ export default function ActivityProductPage({
   // FUTURE PRODUCTS — a sentinel like the Plan row, resolved before
   // `productFromSlug` because it is deliberately not a `ProductKey`.
   if (product === FUTURE_SLUG) {
-    const inTen = new Set<string>(PRODUCT_ORDER);
+    // THE WHOLE SUITE — see the twin in the products half (MESITA-1999).
     return (
       <FuturePane
         cards={buildProductCards({
@@ -57,7 +56,7 @@ export default function ActivityProductPage({
           place,
           placeHref: (view: PlaceTab) => placeTabHref(place.id, view),
           payHref: placePayHref(place.id),
-        }).filter((c) => !inTen.has(c.key))}
+        })}
       />
     );
   }

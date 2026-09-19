@@ -128,12 +128,14 @@ export function ProductShell({
   const ten = PRODUCT_ORDER.map((k) => byKey.get(k)).filter(
     (c): c is ProductCard => c !== undefined,
   );
-  /** Everything the ten leaves out, in `SPECS` order. Derived by SUBTRACTION,
-   *  never by `state === "soon"`: the Developers Platform is live and still
-   *  belongs here, and a second rule would eventually disagree with the
-   *  first about which list a product is on. */
-  const inTen = new Set<ProductKey>(PRODUCT_ORDER);
-  const future = cards.filter((c) => !inTen.has(c.key));
+  /** THE COUNT ON THE FUTURE PRODUCTS ROW — how many are not built, which is
+   *  what the row's NAME promises (MESITA-1999). It was "everything the ten
+   *  leaves out", also nine, but nine of a different set: that one counted
+   *  the live Developers Platform and skipped the unbuilt Express Website.
+   *  The pane behind this row leads with `Coming next`, so the number beside
+   *  the name has to be the size of that section or the row is counting one
+   *  thing and the screen is showing another. */
+  const coming = cards.filter((c) => c.state === "soon");
 
   const row = (args: {
     href: string;
@@ -194,13 +196,13 @@ export function ProductShell({
           "Soon": the row is not a product with a state, it is a door onto a
           list, and a number is the one thing worth reading before opening
           it. */}
-      {future.length > 0 &&
+      {coming.length > 0 &&
         row({
           href: productHref(place.id, half, FUTURE_SLUG),
           chosen: openSlug === FUTURE_SLUG,
           mark: "\u{1F52E}",
           name: "Future products",
-          state: String(future.length),
+          state: String(coming.length),
         })}
     </div>
   );

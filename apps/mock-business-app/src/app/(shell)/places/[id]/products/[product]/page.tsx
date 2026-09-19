@@ -23,7 +23,6 @@ import { buildProductCards } from "@/lib/products";
 import {
   FUTURE_SLUG,
   PARTNERSHIP_SLUG,
-  PRODUCT_ORDER,
   productFromSlug,
 } from "@/lib/product-routes";
 import { placePayHref } from "@/lib/console-routes";
@@ -43,7 +42,10 @@ export default function ProductsProductPage({
   // FUTURE PRODUCTS — a sentinel like the Plan row, resolved before
   // `productFromSlug` because it is deliberately not a `ProductKey`.
   if (product === FUTURE_SLUG) {
-    const inTen = new Set<string>(PRODUCT_ORDER);
+    // THE WHOLE SUITE, not the nine outside the ten (MESITA-1999). The pane
+    // is a catalogue now and splits itself on BUILT; filtering here would
+    // hand it a list already cut on the rail's axis and silently drop the ten
+    // from a screen whose heading promises everything.
     return (
       <FuturePane
         cards={buildProductCards({
@@ -52,7 +54,7 @@ export default function ProductsProductPage({
           place,
           placeHref: (view: PlaceTab) => placeTabHref(place.id, view),
           payHref: placePayHref(place.id),
-        }).filter((c) => !inTen.has(c.key))}
+        })}
       />
     );
   }
