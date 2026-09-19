@@ -35,6 +35,7 @@
 // A FREE product prints no rung line. "Needs Free" is not a sentence, and a
 // row of them under four boxes would read as a price on something that has
 // none.
+import { PageHeader } from "@/components/console/PageHeader";
 import { PLAN_LABEL } from "@/mock/types";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import { PRODUCT_CATALOG_COPY } from "@/lib/product-catalog";
@@ -122,17 +123,15 @@ export function FuturePane({ cards }: { cards: ProductCard[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          The Mesita suite
-        </h2>
-        <p className="text-muted-foreground mt-1 max-w-[62ch] text-[13px] leading-snug">
-          Everything Mesita runs for a place, and everything it is building
-          next. Nothing here is switched on by reading it — each product is
-          turned on from its own screen, and the plan it needs is printed under
-          it.
-        </p>
-      </div>
+      {/* THE SHARED HEADER (MESITA-2008). It drew a bare heading — no mark,
+          no badge — while every product pane one click away drew all three.
+          It has a mark now for the same reason they do: the thing you clicked
+          is the thing that greets you. */}
+      <PageHeader
+        mark={"\u{1F52E}"}
+        title="The Mesita suite"
+        blurb="Everything Mesita runs for a place, and everything it is building next. Nothing here is switched on by reading it — each product is turned on from its own screen, and the plan it needs is printed under it."
+      />
       <Section
         title="Coming next"
         lede="Not built yet. No knobs and no numbers until there is an engine behind them."

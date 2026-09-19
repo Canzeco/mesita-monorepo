@@ -23,24 +23,18 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MockPanel } from "@/components/console/MockPanel";
 import { useMock } from "@/mock/MockStore";
 import { resolveRailScope } from "@/lib/rail-scope";
-import { SHELL_ROUTES, placeIdFromPathname } from "@/lib/console-routes";
-import { PLACE_TABS, PLACE_TAB_LABEL, type PlaceTab } from "@/lib/place-tabs";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-function placeScreenTitle(pathname: string, name: string): string | null {
-  if (!placeIdFromPathname(pathname)) return null;
-  if (pathname === SHELL_ROUTES.settings) return "Settings";
-  const seg = pathname.split("/")[3];
-  // `/activity` AND `/activity/<slug>` both land here. The whole-place log
-  // lost its menu row in MESITA-2005 but kept its address, and a screen with
-  // no row still owes a title to a screen reader.
-  if (seg === "activity") return `${name} · Activity`;
-  if (seg && (PLACE_TABS as readonly string[]).includes(seg)) {
-    return `${name} · ${PLACE_TAB_LABEL[seg as PlaceTab]}`;
-  }
-  return name;
-}
+// `placeScreenTitle` AND THE `sr-only` h1 ARE GONE (MESITA-2008). The shell
+// used to synthesise an invisible h1 for every screen, because most screens had
+// no visible title of their own — Settings, the place's own screen and every
+// `/places/<id>/<view>` address rendered straight into content.
+//
+// Every subpage carries a real `PageHeader` now, and its title IS the page's
+// h1. A page holding both would be an outline that says the reader moved a
+// level when they did not, and the invisible one would be the copy nobody
+// maintains.
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -61,13 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const fullPlace = scope.place
     ? (world.places.find((p) => p.id === scope.place?.id) ?? null)
     : null;
-
-  const subject =
-    scope.place ??
-    (scope.foreignPlaceId
-      ? (world.poolPlaces.find((p) => p.id === scope.foreignPlaceId) ?? null)
-      : null);
-  const title = subject ? placeScreenTitle(pathname, subject.name) : null;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
@@ -186,7 +173,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* THE ONLY PAGE SCROLLER. */}
           <main className="min-h-0 flex-1 overflow-y-auto">
-            {title && <h1 className="sr-only">{title}</h1>}
             {/* FLUID: no max-width. A full-bleed child cancels SHELL_GUTTER
                 with SHELL_BLEED and only reaches the column edge if nothing
                 caps it. Readability is protected per-element

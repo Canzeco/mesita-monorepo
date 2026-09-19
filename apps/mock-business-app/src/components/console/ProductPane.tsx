@@ -49,13 +49,19 @@ import { CreditsView } from "@/components/views/CreditsView";
 import { CapitalView } from "@/components/views/CapitalView";
 import { DevelopersView } from "@/components/views/DevelopersView";
 import { ProductStateBadge } from "@/components/shared/Badges";
+import {
+  HEADER_TAB,
+  HEADER_TAB_ACTIVE,
+  HEADER_TAB_REST,
+  HeaderTabs,
+  PageHeader,
+} from "@/components/console/PageHeader";
 import type { ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import { hasHalf, isSplit } from "@/lib/product-halves";
 import { PRODUCT_SLUG, productHref, type PlaceHalf } from "@/lib/product-routes";
 import { placeIdFromPathname } from "@/lib/console-routes";
-import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 /** MESITA PROFILE, BOTH HALVES (MESITA-2007).
@@ -224,62 +230,33 @@ export function ProductPane({ card }: { card: ProductCard }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className={cn(
-            SCOPE_CHIP_CLASS,
-            "bg-muted text-foreground flex shrink-0 items-center justify-center",
-          )}
-        >
-          <span className="text-[22px] leading-none">{PRODUCT_MARK[card.key]}</span>
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* `h2`, under Setup's own `h1`. The pane is a section of this
-                page, not a page of its own, and an outline that restarts at
-                h1 inside a column tells a rotor it moved when it did not. */}
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              {card.name}
-            </h2>
-            <ProductStateBadge state={card.state} />
-          </div>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
-            {card.blurb}
-          </p>
-          {/* THE NOTE, ONCE (MESITA-1983). A Soon product's note IS the
-              SoonStrip's body below, so printing it here too put the same
-              sentence on the screen twice, eleven words apart — which is how
-              a pane with one fact in it manages to look padded. It renders
-              here only when something else is carrying the body. */}
-          {card.note && hasBody && (
-            <p className="text-foreground mt-1 text-[13px] leading-snug font-medium">
-              {card.note}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* THE HALVES, ON THE PRODUCT (MESITA-2004). Pato: *"AND EACH PRODUCT IS
-          DIVIDED INTO SETUP AND ACTIVITY."*
-
-          IT DRAWS ONLY WHERE THERE ARE TWO. `isSplit` is four of the ten, and
-          on the other six there is no pair at all — not one tab, not two with
-          one dead. `TopNav` wrote the law this keeps after `TopNav` itself was
-          deleted: *a destination a caller cannot reach is NOT RENDERED*. A pair
-          that did nothing on six screens out of ten is a control an operator
-          learns to stop pressing, and then does not press on the four where it
-          works.
-
-          IT IS A RULE, NOT A FILL. Opposite of the call `Sidebar` makes one
-          column to the left, and for the reason MESITA-1975 gave: across a line
-          a solid pill is a slab with a word in it. Two tabs ARE a line. The
-          menu is a stack, which is why it gets the fill and this does not — the
-          two idioms mark different axes and reading them the same way is what
-          makes a console look like two consoles. */}
-      {half !== null && isSplit(card.key) && (
-        <HalfTabs productKey={card.key} current={half} />
-      )}
+      <PageHeader
+        mark={PRODUCT_MARK[card.key]}
+        title={card.name}
+        badges={<ProductStateBadge state={card.state} />}
+        blurb={card.blurb}
+        // THE NOTE, ONCE (MESITA-1983). A Soon product's note IS the
+        // SoonStrip's body below, so printing it here too put the same
+        // sentence on the screen twice, eleven words apart — which is how a
+        // pane with one fact in it manages to look padded. It renders only
+        // when something else is carrying the body.
+        note={card.note && hasBody ? card.note : undefined}
+        // THE HALVES, ON THE PRODUCT (MESITA-2004). Pato: *"AND EACH PRODUCT
+        // IS DIVIDED INTO SETUP AND ACTIVITY."*
+        //
+        // IT DRAWS ONLY WHERE THERE ARE TWO. `isSplit` is four of the nine,
+        // and on the other five there is no pair at all — not one tab, not two
+        // with one dead. `TopNav` wrote the law this keeps after `TopNav`
+        // itself was deleted: a destination a caller cannot reach is NOT
+        // RENDERED. A pair that did nothing on five screens out of nine is a
+        // control an operator learns to stop pressing, and then does not press
+        // on the four where it works.
+        tabs={
+          half !== null && isSplit(card.key) ? (
+            <HalfTabs productKey={card.key} current={half} />
+          ) : undefined
+        }
+      />
 
       {body}
     </div>
@@ -298,16 +275,6 @@ const HALF_LABEL: Record<PlaceHalf, string> = {
 
 const HALVES: readonly PlaceHalf[] = ["products", "activity"];
 
-const TAB =
-  "relative flex min-h-9 items-center px-3 text-[13px] transition outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
-const TAB_REST = "text-muted-foreground hover:text-foreground font-medium";
-// The rule is 2px of ink, inset to the LABEL rather than to the tab's box —
-// `inset-x-0` overshoots the word at both ends and reads as a text-decoration
-// somebody left on. MESITA-2001 fixed exactly this on the top menu; the inset
-// tracks `TAB`'s `px-3` and has to move with it.
-const TAB_ACTIVE =
-  "text-foreground font-semibold after:bg-foreground after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:content-['']";
-
 function HalfTabs({
   productKey,
   current,
@@ -321,17 +288,20 @@ function HalfTabs({
   const slug = PRODUCT_SLUG[productKey];
 
   return (
-    <div className="border-border -mt-1 flex gap-1 border-b">
+    <HeaderTabs>
       {HALVES.map((h) => (
         <Link
           key={h}
           href={productHref(placeId, h, slug)}
           aria-current={h === current ? "page" : undefined}
-          className={cn(TAB, h === current ? TAB_ACTIVE : TAB_REST)}
+          className={cn(
+            HEADER_TAB,
+            h === current ? HEADER_TAB_ACTIVE : HEADER_TAB_REST,
+          )}
         >
           {HALF_LABEL[h]}
         </Link>
       ))}
-    </div>
+    </HeaderTabs>
   );
 }
