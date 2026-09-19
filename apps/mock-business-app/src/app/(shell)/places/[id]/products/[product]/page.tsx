@@ -27,6 +27,7 @@ import {
 } from "@/lib/product-routes";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import { hasHalf } from "@/lib/product-halves";
 
 export default function ProductsProductPage({
   params,
@@ -61,6 +62,15 @@ export default function ProductsProductPage({
 
   const key = productFromSlug(product);
   if (!key) notFound();
+
+  // THE MAP IS THE ROUTER, ON THIS SIDE TOO (MESITA-2004). A product with no
+  // Setup half has no Setup ADDRESS. Today that is Prepaid Credits alone —
+  // MESITA-2003 moved every block on its view inside the Activity half, so
+  // `/products/prepaid-credits` would render a heading over nothing.
+  //
+  // The symmetry with the Activity twin is the point: one map, two routes, and
+  // neither can serve a half the product does not have.
+  if (!hasHalf(key, "products")) notFound();
 
   const card = buildProductCards({
     plan: place.plan,

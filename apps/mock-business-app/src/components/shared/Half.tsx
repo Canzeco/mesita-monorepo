@@ -18,11 +18,29 @@
 // component, so a number shown on both sides cannot disagree with itself —
 // which is exactly what two hand-split components would eventually do.
 //
-// WHAT SITS OUTSIDE A `Half` RENDERS ON BOTH, and that is the rule to write
-// down rather than discover: a view's heading and its state tiles are the
-// product's own context, and context belongs on whichever screen you are
-// standing on. If something should appear on ONE side only, it goes inside the
-// matching `Half`. There is no third option and no per-view exception.
+// WHAT SITS OUTSIDE A `Half` RENDERS ON BOTH — so almost nothing may sit
+// outside one. Only the product's heading does.
+//
+// STATE TILES ARE ACTIVITY. They used to be exempt, on the theory that a
+// count is "the product's own context" and context belongs on whichever
+// screen you are standing on. That was wrong, and Pato caught it on five
+// screens at once (MESITA-2003): *"setup is for fucking setup, not analytics
+// nor shit."* Setup → Online Reservations led with Upcoming 4 and No-shows 1;
+// Setup → Visit Rewards opened on Settled total $7,306. Those are yesterday's
+// numbers on the screen you came to change a setting, and a number is not
+// context just because it is small and sits in a box.
+//
+// The on/off tile went with them and is no loss: a product's state is already
+// in the badge beside its name at the top of the pane, so the tile was the
+// same fact twice, eleven words apart.
+//
+// THE RULE, with no exception and no third option: if it reports what
+// happened, it goes inside `Half label="Activity"`. If it changes what will
+// happen, it goes inside `Half label="Manage"`. Nothing else goes outside.
+//
+// `CapitalView` keeps its tiles outside, and is the one case that fits the
+// rule rather than breaking it: What you get / What the guest gets / What it
+// is not state the DEAL on offer. That is the product's terms, not its log.
 //
 // NO SCOPE, BOTH HALVES. The standalone `/places/<id>/<view>` addresses render
 // a whole view with no provider above them, and they keep working exactly as

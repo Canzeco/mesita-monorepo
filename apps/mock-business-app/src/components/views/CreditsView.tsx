@@ -55,34 +55,10 @@ export function CreditsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* THE SWITCH BAND — Credits' Manage half, which it did not have
-          (MESITA-2004). This view was one UNWRAPPED `Tiles` row plus a
-          `Half label="Activity"`, and `Half` ONLY HIDES WHAT IS WRAPPED: the
-          tiles rendered on both halves, so the Activity screen was the Setup
-          screen with a table under it. That is not a split, it is one page
-          with an extra section at one of its two addresses.
-
-          It is the Switch band of the four-band spine MESITA-2002 set on Online
-          Orders — is it on here, and how much is riding on it — and nothing
-          else. Credits has no rules to set in this app yet, and a fake form for
-          configuration that does not exist is worse than a band that says what
-          there is. */}
-      <Half label="Manage">
+      <Half label="Activity">
         <Tiles
           tiles={[
             { label: "Credits", value: place.credits ? "On" : "Off" },
-            { label: "Guests holding credit", value: all.length || null },
-          ]}
-        />
-      </Half>
-
-      <Half label="Activity">
-        {/* THE COUNTS ARE ACTIVITY and they belong on this side of the split —
-            the call MESITA-1986 made moving the Bookings table off Online
-            Orders' Setup half, and MESITA-2002 repeated with that product's
-            tiles. Every one of these is a fact about the list below them. */}
-        <Tiles
-          tiles={[
             { label: "Balances on this page", value: rows.length || null },
             {
               label: "Largest on this page",
@@ -92,7 +68,6 @@ export function CreditsView() {
             { label: "Outstanding total", value: null, hint: "Not available — see below" },
           ]}
         />
-
         <Section
           title="What guests are holding"
           description="One page at a time. Credits bought here can only be spent here."

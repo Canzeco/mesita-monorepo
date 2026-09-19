@@ -67,6 +67,7 @@ import { Badge, ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards, type ProductCard } from "@/lib/products";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import type { ProductKey } from "@/lib/product-keys";
+import { primaryHalf } from "@/lib/product-halves";
 import {
   FUTURE_SLUG,
   PARTNERSHIP_SLUG,
@@ -245,7 +246,11 @@ export function Sidebar({
         return (
           <Row
             key={row.key}
-            href={productHref(place.id, "products", slug)}
+            // THE HALF THE PRODUCT HAS, not always Setup. Nine of the ten open
+            // on their configuration; Prepaid Credits has no Setup half since
+            // MESITA-2003 emptied it, so its row opens the log rather than a
+            // 404.
+            href={productHref(place.id, primaryHalf(row.key), slug)}
             mark={PRODUCT_MARK[row.key as ProductKey]}
             name={card.name}
             // THE ROW STAYS LIT ON BOTH HALVES. `/activity/<slug>` is the same

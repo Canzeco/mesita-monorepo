@@ -2,10 +2,10 @@
 //
 // Pato, 2026-09-19: *"AND EACH PRODUCT IS DIVIDED INTO SETUP AND ACTIVITY.
 // EASY."* It is not easy, because it is not true: of the ten products in
-// `PRODUCT_ORDER`, FOUR divide. The other six are one screen each, and a
-// `Setup | Activity` pair drawn on top of them would be a control that does
-// nothing on six screens out of ten — which is the decoration `TopNav` wrote
-// its own law against:
+// `PRODUCT_ORDER`, THREE divide. The other seven are ONE screen each — six of
+// them a config, one of them a log — and a `Setup | Activity` pair drawn on top
+// of them would be a control that does nothing on seven screens out of ten,
+// which is the decoration `TopNav` wrote its own law against:
 //
 //   *"A destination a caller cannot reach is NOT RENDERED. A menu where some
 //    entries are real and some are decoration is a menu you stop reading."*
@@ -44,6 +44,7 @@ import type { PlaceHalf } from "@/lib/product-routes";
 
 const BOTH: readonly PlaceHalf[] = ["products", "activity"];
 const SETUP_ONLY: readonly PlaceHalf[] = ["products"];
+const ACTIVITY_ONLY: readonly PlaceHalf[] = ["activity"];
 
 /** THE PARTITION, one entry per product, audited 2026-09-19 against the
  *  `Half` markers in `src/components/views/`.
@@ -57,23 +58,37 @@ const SETUP_ONLY: readonly PlaceHalf[] = ["products"];
  *  `"activity"` is granted only where the view really carries a
  *  `Half label="Activity"` block. */
 export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
-  // ── THE FOUR THAT DIVIDE ─────────────────────────────────────────────────
+  // ── THE THREE THAT DIVIDE ────────────────────────────────────────────────
   // Config above, log below, and both are worth a screen.
   visits: BOTH,
   orders: BOTH,
   reservations: BOTH,
-  // CREDITS EARNED ITS MANAGE HALF IN THIS ISSUE. It had a `Half label=
-  // "Activity"` and nothing wrapping the rest, and `Half` only hides what is
-  // WRAPPED — so its config rendered on the Activity half too and the log
-  // screen was the setup screen plus a table. The switch band is wrapped now.
-  credits: BOTH,
   // The Developers Platform got its Manage half in MESITA-1992 (the key and
   // the connector) and keeps the Activity half that says where its events
   // land. It is not in `PRODUCT_ORDER`, so no sidebar row opens it today.
   access: BOTH,
 
-  // ── ONE SCREEN EACH ──────────────────────────────────────────────────────
-  // These four are live products whose whole surface is configuration. They
+  // ── ONE SCREEN, AND IT IS THE LOG ────────────────────────────────────────
+  //
+  // CREDITS HAS NOTHING TO CONFIGURE, and that is a ruling rather than an
+  // oversight. MESITA-2003 moved every `Tiles` block on this view inside the
+  // Activity half and took the on/off tile with it: *"the on/off tile goes
+  // with them and is no loss — a product's state is already the badge beside
+  // its name at the top of the pane, so the tile was the same fact twice."*
+  // What is left outside a half is the heading, which `ProductPane` draws.
+  //
+  // So its Setup ADDRESS 404s, its sidebar row opens the log, and it draws no
+  // tab pair — one screen, named once. An earlier pass of this issue gave it a
+  // Manage half holding two tiles; that was written before MESITA-2003 landed
+  // and it would have re-introduced the exact numbers that issue removed.
+  //
+  // It gets a Manage half the day Credits gets a real dial — pack sizes, an
+  // expiry, a sale switch. Then this entry becomes `BOTH` and the pair appears
+  // on its own.
+  credits: ACTIVITY_ONLY,
+
+  // ── ONE SCREEN EACH, AND IT IS THE CONFIG ────────────────────────────────
+  // Four live products whose whole surface is configuration. They
   // used to render that configuration at BOTH addresses, because `ProductPane`
   // returned the view without ever reading `useHalf()`.
   profile: SETUP_ONLY,
@@ -106,8 +121,20 @@ export function hasHalf(key: ProductKey, half: PlaceHalf): boolean {
 
 /** Does this product draw a `Setup | Activity` pair?
  *
- *  Only when it HAS both. Six of the ten answer `false`, and on those the pane
- *  header draws no tabs at all rather than one tab, or two where one is dead. */
+ *  Only when it HAS both. Seven of the ten answer `false`, and on those the
+ *  pane header draws no tabs at all rather than one tab, or two where one is
+ *  dead. */
 export function isSplit(key: ProductKey): boolean {
   return hasHalf(key, "products") && hasHalf(key, "activity");
+}
+
+/** THE HALF A SIDEBAR ROW OPENS — the first one the product has.
+ *
+ *  Setup for nine of the ten, because a product you can configure opens on its
+ *  configuration. Prepaid Credits has no Setup half at all, so its row opens
+ *  the log; a row pointing at `/products/prepaid-credits` would be a menu
+ *  entry onto a 404, which is the failure `PRODUCT_HALVES` exists to make
+ *  impossible rather than to cause. */
+export function primaryHalf(key: ProductKey): PlaceHalf {
+  return PRODUCT_HALVES[key][0];
 }
