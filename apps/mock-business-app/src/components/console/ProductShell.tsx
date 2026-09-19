@@ -109,7 +109,7 @@ export function ProductShell({
   if (!place || !pages.includes(half)) return null;
 
   const cards = buildProductCards({
-    partnered: place.partnered,
+    plan: place.plan,
     mesitaPayEnabled: place.pay === "enabled",
     place,
     placeHref: (view: PlaceTab) => placeTabHref(place.id, view),
@@ -144,7 +144,7 @@ export function ProductShell({
                     {"\u{1F91D}"}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
-                    Mesita Partnership
+                    Plan
                   </span>
                   <span
                     className={cn(
@@ -154,7 +154,7 @@ export function ProductShell({
                         : "text-muted-foreground",
                     )}
                   >
-                    {place.partnered ? "Partner" : "Off"}
+                    {place.partnered ? "Partner" : "Free"}
                   </span>
                 </Link>
               )}
@@ -244,10 +244,13 @@ export function ProductShell({
 
 /** The partnership pane's badge, exported so the default Setup page and this
  *  index cannot disagree about the word. */
+/** THE ROW'S STATE WORD. `Off` was right while the row was a partnership you
+ *  either had or did not; a rung is never "off" — Free is a rung, with four
+ *  products on it, and `free` is already in the grid's own vocabulary. */
 export function PartnershipBadge({ partnered }: { partnered: boolean }) {
   return (
     <Badge tone={partnered ? "gold" : "off"}>
-      {partnered ? "Partner" : "Off"}
+      {partnered ? "Partner" : "Free"}
     </Badge>
   );
 }

@@ -62,6 +62,7 @@ import { useMock } from "@/mock/MockStore";
 import {
   MEMBERSHIP_STATE_LABEL,
   PAY_LADDER_LABEL,
+  PLAN_LABEL,
   type MockPlace,
   type MockPlaceProfile,
 } from "@/mock/types";
@@ -140,10 +141,16 @@ function stateGroups(
       note: "Mesita checked the place is real.",
     },
     {
+      label: "Plan",
+      options: Object.values(PLAN_LABEL),
+      current: PLAN_LABEL[place.plan],
+      note: "What the place bought. Every product names the lowest rung that carries it.",
+    },
+    {
       label: "Partner",
       options: YES_NO,
       current: yesNo(place.partnered),
-      note: "The place pays. This is the gate Visits, Rewards, Payments and Credits read.",
+      note: "Derived from the plan \u2014 both paid rungs grant it. Never set on its own.",
     },
     {
       label: "Promoting",
@@ -155,7 +162,7 @@ function stateGroups(
       label: "Membership",
       options: Object.values(MEMBERSHIP_STATE_LABEL),
       current: MEMBERSHIP_STATE_LABEL[place.membership],
-      note: "What the subscription is doing, which is not whether the place is a partner. Payment due still entitles.",
+      note: "What the billing is doing, which is not which rung the place is on. Payment due still entitles.",
     },
     {
       label: "Payments",
@@ -170,7 +177,7 @@ function stateGroups(
       label: "Customer intelligence",
       options: ["Subscribed", "Not subscribed"],
       current: place.customerIntel ? "Subscribed" : "Not subscribed",
-      note: "The Customers catalog is rented, not bought. Off, the list is counted and nobody in it is named.",
+      note: "Rented with Mesita Ultra, not bought on its own. Below it the list is counted and nobody in it is named.",
     },
     {
       label: "Pickup orders",

@@ -29,12 +29,57 @@ export const PAY_LADDER_LABEL: Record<PayLadder, string> = {
   restricted: "Restricted",
 };
 
-/** What the Membership subscription is DOING, which is not the same question
- *  as whether the place is a partner.
+/** THE LADDER — what this place BOUGHT (MESITA-1997).
  *
- *  `partnered` is the GATE — what `lib/products.ts` reads to decide whether a
- *  card is Locked. This is the SUBSCRIPTION behind it, and the two come apart
- *  in both directions:
+ *  Pato, 2026-09-19: *"Is not partner / Is pro and ultra / and both include
+ *  partnership badge."* So there is no separate thing called a Membership to
+ *  buy: you buy a PLAN, and both paid rungs carry the Partner badge.
+ *
+ *  NOT `MockPlan`, WHICH IS TAKEN. That is the GUEST's Free/Premium on
+ *  `MockCustomer`, a different axis on a different subject — and the exact
+ *  collision that makes "plan" a word this codebase has to qualify every time.
+ *
+ *  The keys are the ones the real schema has carried since before any of this:
+ *  `places.plan` is a Postgres enum of `free | pro | ultra`, and
+ *  `deriveListingType` already grants the badge on `plan !== 'free'`. The
+ *  ladder is not new here; the second SKU stacked on top of it was. */
+export type PlanTier = "free" | "pro" | "ultra";
+
+export const PLAN_LABEL: Record<PlanTier, string> = {
+  free: "Free",
+  pro: "Mesita Pro",
+  ultra: "Mesita Ultra",
+};
+
+/** Rung order. `>=` on these numbers is the whole entitlement check — a
+ *  product names the lowest rung that carries it and every rung above
+ *  inherits it, so Ultra never has to re-list what Pro already bought. */
+export const PLAN_RANK: Record<PlanTier, number> = {
+  free: 0,
+  pro: 1,
+  ultra: 2,
+};
+
+/** MX$ a month, + IVA, as integers of pesos — the mock prints money and never
+ *  charges it, so there is no reason to carry centavos here. Free is 0 and
+ *  still has a row: a rung with no price line is a rung an operator cannot
+ *  compare against the two beside it. */
+export const PLAN_PRICE_MXN: Record<PlanTier, number> = {
+  free: 0,
+  pro: 1000,
+  ultra: 3000,
+};
+
+export function planAtLeast(plan: PlanTier, min: PlanTier): boolean {
+  return PLAN_RANK[plan] >= PLAN_RANK[min];
+}
+
+/** What the subscription is DOING, which is not the same question as which
+ *  rung the place is on.
+ *
+ *  `plan` is what was BOUGHT and `partnered` is the gate derived from it
+ *  (`plan !== "free"`). This is the BILLING state underneath, and it comes
+ *  apart from both:
  *
  *  LAPSE IS NOT DROP. `past_due` still entitles — Stripe is retrying the card
  *  and the partnership is intact — so a place can be `partnered` with a
@@ -75,7 +120,14 @@ export type MockPlace = {
    *  of the same kind. It is still a fact, and still a column in the `/places`
    *  states matrix and a row in AdminView. */
   verified: boolean;
+  /** DERIVED FROM `plan`, never set beside it (MESITA-1997): `plan !== "free"`.
+   *  It stays a field because a dozen readers want the fact and not the
+   *  arithmetic — `scenario.ts` is the one place that computes it, exactly as
+   *  `deriveListingType` is the one place the real lane computes its own. */
   partnered: boolean;
+  /** WHICH RUNG. Free is a real rung, not the absence of one: it carries
+   *  Profile, Online Reviews, Digital Menu and the Developers Platform. */
+  plan: PlanTier;
   promoting: boolean;
   /** GOOGLE IS ANSWERING FOR IT (MESITA-1977). The second rung of the general
    *  ladder: the place is alive out there — hours, reviews and a listing that
@@ -87,9 +139,9 @@ export type MockPlace = {
    *  ladder, so it is read apart from it — a disabled Partner is a different
    *  problem from a disabled row nobody ever claimed. */
   disabled: boolean;
-  /** The subscription behind `partnered` — see `MembershipState`. Held
-   *  alongside the gate rather than folded into it because the products read
-   *  the gate and only the Membership strip reads this. */
+  /** The billing state under the rung — see `MembershipState`. Held apart
+   *  from `plan` because the products read the rung and only the plan strip
+   *  reads this: a `past_due` Pro place is still Pro. */
   membership: MembershipState;
   /** When it renews, ends, or is paid through, depending on `membership`.
    *  NULL at `none`, and that null is load-bearing: a place partnered by the
@@ -99,9 +151,15 @@ export type MockPlace = {
   /** THE CUSTOMERS SUBSCRIPTION (MESITA-1941). Customer Intelligence is customer
    *  INTELLIGENCE and it is RENTED, not bought: while it runs, the place reads
    *  who its guests are and what they did this month; when it stops, the
-   *  catalog closes and the place keeps nothing. It is its own subscription,
-   *  not part of the Membership — a place can be a partner and not subscribe,
-   *  and the reverse.
+   *  catalog closes and the place keeps nothing.
+   *
+   *  IT IS NO LONGER ITS OWN SUBSCRIPTION (MESITA-1997). It was — a place
+   *  could be a partner and not rent it, and the reverse — and the ladder
+   *  puts it inside **Mesita Ultra**, so this is now DERIVED: `plan ===
+   *  "ultra"`. The renting is still real and the closed form of the table is
+   *  still reachable; what changed is that the rung buys it rather than a
+   *  second invoice. If it should go back to being sold on its own, this line
+   *  is the one that reverses.
    *
    *  It replaced a PER-GUEST purchase (`MockCustomer.contactUnlocked`), which
    *  sold a contact forever. Pato, 2026-09-16: *"you don't buy the data

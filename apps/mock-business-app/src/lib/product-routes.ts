@@ -24,10 +24,16 @@
 // surfaces without repeating itself, and it is not what somebody types.
 import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 
-/** Mesita Partnership's slug. It is not a `ProductKey` — see the sentinel in
- *  the Setup page — but it IS a row in the list and needs an address like every
- *  other row. */
-export const PARTNERSHIP_SLUG = "mesita-partnership";
+/** The PLAN row's slug. It is not a `ProductKey` — see the sentinel in the
+ *  Setup page — but it IS a row in the list and needs an address like every
+ *  other row.
+ *
+ *  It was `mesita-partnership` (MESITA-1997). The row stopped being a
+ *  partnership you buy and became the rung you are on, and an address that
+ *  still said the old noun is exactly the drift a slug is supposed to prevent
+ *  — the only job it has is that somebody reading the URL bar knows where
+ *  they are. Nothing outside this app links to it. */
+export const PARTNERSHIP_SLUG = "plan";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",

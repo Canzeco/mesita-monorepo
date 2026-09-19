@@ -38,7 +38,7 @@ export default function ProductsProductPage({
   if (!key) notFound();
 
   const card = buildProductCards({
-    partnered: place.partnered,
+    plan: place.plan,
     mesitaPayEnabled: place.pay === "enabled",
     place,
     placeHref: (view: PlaceTab) => placeTabHref(place.id, view),
