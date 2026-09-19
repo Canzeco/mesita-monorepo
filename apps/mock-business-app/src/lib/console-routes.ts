@@ -158,7 +158,12 @@ export const FLAT_ROUTES = {
   capital: "/capital",
   admin: "/admin",
   products: "/products",
-  activity: "/activity",
+  // `/activity` IS GONE (MESITA-2006). It resolved onto the whole-place log,
+  // and that screen was deleted — a flat name whose canonical address 404s is
+  // a resolver that can only ever produce a 404 two files from its cause.
+  // `PLACE_PAGES` KEEPS `"activity"`: it is still the route half that
+  // `/places/<id>/activity/<slug>` is served from, and still what
+  // `pagesForAccess` gates. What died is the INDEX, not the half.
 } as const;
 export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];
 export const FLAT_ROUTE_LIST: readonly string[] = Object.values(FLAT_ROUTES);

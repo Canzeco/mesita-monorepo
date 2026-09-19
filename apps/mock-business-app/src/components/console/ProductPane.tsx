@@ -137,8 +137,9 @@ export function ProductPane({ card }: { card: ProductCard }) {
             No log of its own
           </p>
           <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
-            {card.name} is on here and records nothing separately. What it
-            touches lands in this place&apos;s whole log, with everything else.
+            {card.name} is on here and keeps no log of its own. What it
+            touches is recorded by the product that owns it — an order, a
+            visit, a booking — and shows up on that product&apos;s Activity.
           </p>
         </div>
       );

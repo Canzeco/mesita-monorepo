@@ -73,8 +73,8 @@ export function PartnershipPane({
       ) : (
         <p className="text-muted-foreground text-[13px] leading-snug">
           The partnership keeps no log of its own. Renewals, a card that failed
-          and a cancellation are Subscriptions rows in this place&apos;s whole
-          log, with everything else.
+          and a cancellation are on the invoices Stripe sends, and on the card
+          above when they change what you are on.
         </p>
       )}
     </div>
