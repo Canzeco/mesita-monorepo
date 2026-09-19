@@ -60,6 +60,7 @@ import Link from "next/link";
 import { ArrowUp, Sparkles, X } from "lucide-react";
 import { SHELL_ROUTES, placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref } from "@/lib/place-tabs";
+import { PRODUCT_SLUG, productHref } from "@/lib/product-routes";
 import { cn } from "@/lib/utils";
 
 // THE BAND'S OWN FOCUS RING. `FOCUS_RING_CLASS` offsets against
@@ -240,9 +241,24 @@ const INTENTS: Intent[] = [
   {
     match: /\b(today|yesterday|week|sales|revenue|happened|how.*doing|report)\b/,
     answer: {
+      // THE ONE LIST IS GONE (MESITA-2006). This promised *"everything that
+      // happened here is one list, newest first"* and doored onto the
+      // whole-place log, which was the LAST way into that screen once
+      // MESITA-2005 took its menu row. Pato deleted the screen, so the promise
+      // had to go with it rather than be repointed at something smaller
+      // wearing the same sentence.
+      //
+      // The honest answer is where the logs live now: on the products. Three
+      // of the ten have one, and Online Orders is the one a question about
+      // TODAY almost always means — a bill settled or a table held is a slower
+      // clock than an order placed.
       reply:
-        "Everything that happened here is one list, newest first — visits, orders, payouts and profile edits in the order they landed.",
-      door: { label: "Open Activity", href: (id: string) => placePageHref(id, "activity") },
+        "Each product keeps its own log now, on its Activity tab. Orders is the fastest read for today; visits and bookings each have their own.",
+      door: {
+        label: "Open Online Orders › Activity",
+        href: (id: string) =>
+          productHref(id, "activity", PRODUCT_SLUG.orders),
+      },
     },
   },
 ];
