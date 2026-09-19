@@ -99,6 +99,31 @@ export const MEMBERSHIP_STATE_LABEL: Record<MembershipState, string> = {
   none: "No subscription",
 };
 
+/** What an operator sets on Online Orders, and nothing they merely observe.
+ *
+ *  `paused` IS THE ODD ONE OUT ON PURPOSE. Everything else here is a setting
+ *  somebody changes once a season; pause is pressed at 8pm on a Friday when
+ *  the kitchen is under, and undone at 11. It lives with the settings because
+ *  it is a STATE of the product rather than an event in its log — but it is
+ *  rendered in the Switch band at the top of the pane, not among the numbers,
+ *  because the two are reached for at completely different moments. */
+export type MockOrdersConfig = {
+  paused: boolean;
+  /** Quoted to the guest when they place an order. */
+  prepMinutes: number;
+  /** NULL means the product follows the place's opening hours, which is the
+   *  right default and the one an operator should almost never override — a
+   *  second set of hours is a second thing to forget on a holiday. A string
+   *  here is that override, stated in the operator's own words. */
+  windowNote: string | null;
+  /** Delivery only, so NULL whenever the place does not deliver. A radius on
+   *  a pickup-only place is a number that governs nothing, and a console that
+   *  shows one is inviting somebody to tune it. */
+  radiusKm: number | null;
+  deliveryFeeCents: number | null;
+  minimumCents: number;
+};
+
 export type MockPlace = {
   id: string;
   name: string;
@@ -181,6 +206,21 @@ export type MockPlace = {
    *  whether a card says "On here" or "Not on here yet". */
   pickupOrders: boolean;
   deliveryOrders: boolean;
+  /** ONLINE ORDERS' OWN SETTINGS (MESITA-2002), and the shape every product's
+   *  settings take from here on: ONE nested object per product, never a
+   *  handful of flat fields beside the capability switch. Seven flat keys for
+   *  Orders would be sixty across the ten, on a type a person still has to
+   *  read.
+   *
+   *  NULL IS A REAL STATE — orders have never been configured here — and it
+   *  is not the same as `pickupOrders && deliveryOrders` both false. One says
+   *  nobody has set this up; the other says it is set up and switched off.
+   *
+   *  THE CHANNELS ARE NOT IN HERE. `pickupOrders` and `deliveryOrders` stay
+   *  above: `lib/products.ts` reads them for the card's state and the
+   *  `/places` matrix prints them. Copying them in would make two readers of
+   *  one fact, which is the bug MESITA-2000 deleted from Settings. */
+  orders: MockOrdersConfig | null;
   reservations: boolean;
   visitRewards: boolean;
   credits: boolean;
