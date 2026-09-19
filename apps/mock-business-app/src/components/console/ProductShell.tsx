@@ -301,7 +301,7 @@ export function ProductShell({
           a column, not the console. */}
       <div
         className={cn(
-          "border-border lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:border-r",
+          "border-border lg:min-h-0 lg:overflow-y-auto lg:border-r",
           open ? "hidden lg:block" : "block",
         )}
       >
@@ -310,13 +310,21 @@ export function ProductShell({
         </div>
       </div>
 
-      {/* THE WORK SURFACE — white, two thirds, its own scroller; the page's
-          grey under the two card grids (`PANE_ON_PAGE`). */}
+      {/* THE WORK SURFACE — white, EVERYTHING THE COLUMN IS NOT, its own
+          scroller; the page's grey under the two card grids
+          (`PANE_ON_PAGE`).
+
+          NO `col-span` ON EITHER HALF (MESITA-2001). The grid was three equal
+          columns with 1 + 2 spans across them; it is `[316px_1fr]` now, and a
+          `col-span-2` left on the pane made it claim both tracks, which
+          pushed it onto a second grid ROW under the index and gave it the
+          full width of the window. Two tracks, two children, no spans — the
+          spans were the three-column layout's and had to go with it. */}
       <div
         className={cn(
           paneOnPage ? "bg-background" : "bg-card",
           SHELL_GUTTER,
-          "py-4 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto",
+          "py-4 lg:min-h-0 lg:overflow-y-auto",
           open ? "block" : "hidden lg:block",
         )}
       >
