@@ -427,7 +427,15 @@ const SPECS: readonly ProductSpec[] = [
     needsPartner: false,
     atPlace: null,
     soon: null,
-    liveNote: "On for every place. Keys are issued per place, never per person.",
+    // THE NOTE NAMES WHAT YOU GET, NOT WHAT THE PANE ALREADY SAYS
+    // (MESITA-1992). It used to read "Keys are issued per place, never per
+    // person" — which is now a bolded sentence inside the pane's own API key
+    // card, eleven words below it. Two placements of one sentence is what made
+    // other cards look padded, so the note carries the pair instead: an API
+    // key AND an MCP connector, which is the thing an operator did not know
+    // was in here.
+    liveNote:
+      "On for every place: one API key, and an MCP connector your AI assistant can use.",
   },
   {
     key: "intelligence",
