@@ -2,9 +2,9 @@
 //
 // Pato, 2026-09-19: *"AND EACH PRODUCT IS DIVIDED INTO SETUP AND ACTIVITY.
 // EASY."* It is not easy, because it is not true: of the ten products in
-// `PRODUCT_ORDER`, THREE divide. The other seven are ONE screen each — six of
+// `PRODUCT_ORDER`, FOUR divide. The other five are ONE screen each — four of
 // them a config, one of them a log — and a `Setup | Activity` pair drawn on top
-// of them would be a control that does nothing on seven screens out of ten,
+// of them would be a control that does nothing on five screens out of nine,
 // which is the decoration `TopNav` wrote its own law against:
 //
 //   *"A destination a caller cannot reach is NOT RENDERED. A menu where some
@@ -58,11 +58,25 @@ const ACTIVITY_ONLY: readonly PlaceHalf[] = ["activity"];
  *  `"activity"` is granted only where the view really carries a
  *  `Half label="Activity"` block. */
 export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
-  // ── THE THREE THAT DIVIDE ────────────────────────────────────────────────
+  // ── THE FOUR THAT DIVIDE ─────────────────────────────────────────────────
   // Config above, log below, and both are worth a screen.
   visits: BOTH,
   orders: BOTH,
   reservations: BOTH,
+  // MESITA PROFILE EARNED ITS ACTIVITY HALF (MESITA-2007). Pato: *"maybe
+  // remove online reviews, or put them in mesita profile in activity or
+  // something like that."*
+  //
+  // Online Reviews was a ROW: Digital Presence, Google Reviews and Mesita
+  // Reviews, three read-only cards a plan cannot buy and a switch cannot turn
+  // off. MESITA-1993 pulled them out of Profile's masonry because a form's
+  // save bar could never dirty them — right diagnosis, and the only container
+  // available at the time was a new product.
+  //
+  // Setup / Activity is the container it actually wanted. Profile is what an
+  // operator SETS; the reviews are what the world said back about it. Same
+  // subject, two halves, one row.
+  profile: BOTH,
   // The Developers Platform got its Manage half in MESITA-1992 (the key and
   // the connector) and keeps the Activity half that says where its events
   // land. It is not in `PRODUCT_ORDER`, so no sidebar row opens it today.
@@ -88,11 +102,9 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   credits: ACTIVITY_ONLY,
 
   // ── ONE SCREEN EACH, AND IT IS THE CONFIG ────────────────────────────────
-  // Four live products whose whole surface is configuration. They
+  // Three live products whose whole surface is configuration. They
   // used to render that configuration at BOTH addresses, because `ProductPane`
   // returned the view without ever reading `useHalf()`.
-  profile: SETUP_ONLY,
-  reviews: SETUP_ONLY,
   menu: SETUP_ONLY,
   pay: SETUP_ONLY,
 
@@ -121,7 +133,7 @@ export function hasHalf(key: ProductKey, half: PlaceHalf): boolean {
 
 /** Does this product draw a `Setup | Activity` pair?
  *
- *  Only when it HAS both. Seven of the ten answer `false`, and on those the
+ *  Only when it HAS both. Five of the nine answer `false`, and on those the
  *  pane header draws no tabs at all rather than one tab, or two where one is
  *  dead. */
 export function isSplit(key: ProductKey): boolean {
@@ -130,7 +142,7 @@ export function isSplit(key: ProductKey): boolean {
 
 /** THE HALF A SIDEBAR ROW OPENS — the first one the product has.
  *
- *  Setup for nine of the ten, because a product you can configure opens on its
+ *  Setup for eight of the nine, because a product you can configure opens on its
  *  configuration. Prepaid Credits has no Setup half at all, so its row opens
  *  the log; a row pointing at `/products/prepaid-credits` would be a menu
  *  entry onto a 404, which is the failure `PRODUCT_HALVES` exists to make

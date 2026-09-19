@@ -129,40 +129,6 @@ const SPECS: readonly ProductSpec[] = [
     soon: null,
   },
   {
-    key: "reviews",
-    // MESITA REVIEWS (MESITA-1993). Pato: *"Mesita Partner / Mesita Profile /
-    // Mesita Reviews (separate reviews shit)"*.
-    //
-    // IT WAS THE TAIL OF PROFILE'S MASONRY — Digital Presence, Google Reviews,
-    // Mesita Reviews — three read-only cards under twelve editable ones, in a
-    // form with a save bar none of them could ever dirty. PROFILE IS WHAT AN
-    // OPERATOR SETS. This is the one thing on that screen the world says back,
-    // which is a different product and reads like one the moment it has its
-    // own row.
-    //
-    // "ONLINE REVIEWS" (MESITA-1995). It shipped as "Mesita Reviews" one
-    // issue earlier and that was wrong twice: the third card inside this
-    // product is ALSO called Mesita Reviews — beside Google Reviews — so the
-    // row was named after one of its own sections; and `Mesita ` means Mesita
-    // is the counterparty, which it is not for a Google review the Intaker
-    // scraped, or for an Instagram follower count.
-    //
-    // "Online" is this suite's own qualifier — Orders, Reservations, Payments
-    // — and it means the thing arrives over the internet rather than at the
-    // counter. That is the whole difference between these reviews and the ones
-    // a guest says to your face on the way out.
-    name: "Online Reviews",
-    blurb:
-      "What the world says back — what Maps carries about you, what guests scored after a visit here, and how many people are looking on each channel.",
-    // NO TAB. The pane is the door: there is no `/places/<id>/reviews`
-    // address, and pointing this at `/profile` would send an operator to the
-    // screen the reviews just left. Same shape `menu` took (MESITA-1984).
-    tab: null,
-    minPlan: "free",
-    atPlace: null,
-    soon: null,
-  },
-  {
     key: "menu",
     // DIGITAL MENU (MESITA-1966). Pato: *"Add digital menu as one item"*.
     //
@@ -546,20 +512,19 @@ export function buildProductCards(input: {
     if (spec.soon) {
       return { ...base(spec), state: "soon", note: spec.soon, action: null };
     }
-    // FREE, AND THERE ARE TWO OF THEM NOW (MESITA-1993). Neither is bought,
-    // neither can be switched off, and both exist on a place that has never
-    // heard of Mesita — the profile because the Intaker built it, the reviews
-    // because Google already carried them. A `needsPartner: false` product
-    // with no `atPlace` would otherwise fall through to "enabled", which reads
-    // as something somebody turned ON.
-    if (spec.key === "profile" || spec.key === "reviews") {
+    // It is not bought, cannot be switched off, and exists on a place that has
+    // never heard of Mesita, because the Intaker built it. A
+    // `needsPartner: false` product with no `atPlace` would otherwise fall
+    // through to "enabled", which reads as something somebody turned ON.
+    // FREE, AND THERE IS ONE OF THEM AGAIN (MESITA-2007). This branch was
+    // written for a pair — Profile and Online Reviews — and Reviews went back
+    // inside Profile as its Activity half, so the ternary that told them apart
+    // went with it.
+    if (spec.key === "profile") {
       return {
         ...base(spec),
         state: "free",
-        note:
-          spec.key === "profile"
-            ? "Always free. Every place has one."
-            : "Always free. Collected whether or not you claim the place.",
+        note: "Always free. Every place has one.",
         action: viewAction(spec, "Manage"),
       };
     }

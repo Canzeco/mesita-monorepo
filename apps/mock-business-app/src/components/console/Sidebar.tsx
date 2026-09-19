@@ -1,6 +1,6 @@
 "use client";
 
-// THE MENU. A column again — lockup, venue, fourteen rows (MESITA-2004, 2005).
+// THE MENU. A column again — lockup, venue, thirteen rows (MESITA-2004…2007).
 //
 // ── THE SHAPE ──────────────────────────────────────────────────────────────
 //
@@ -16,7 +16,7 @@
 //   │                        │
 //   │   PRODUCTS             │
 //   │   🏪 Mesita Profile    │
-//   │   …ten of them…        │
+//   │   …nine of them…       │
 //   │   🔮 Future products  9│   the eleventh row, a door
 //   └────────────────────────┘
 //
@@ -48,7 +48,7 @@
 // MESITA-1975 argued a solid pill was a slab across a 1400px line and replaced
 // it with a 2px underline. That argument was about a LINE. In a 252px column a
 // fill is the rail's original idiom and it is the right one: an underline under
-// one row in a stack of fourteen reads as a separator between two of them.
+// one row in a stack of thirteen reads as a separator between two of them.
 //
 // ── ROWS ARE ABSENT, NEVER DIMMED ──────────────────────────────────────────
 //
@@ -108,7 +108,7 @@ const ROW_REST = "text-dock-muted hover:bg-dock-surface/70 hover:text-dock-foreg
 const ROW_ON = "bg-dock-surface text-dock-foreground font-semibold";
 
 /** The mark's box. Fixed width so every name starts on the same x — a ragged
- *  left edge across fourteen rows is the thing that makes a list look generated. */
+ *  left edge across thirteen rows is the thing that makes a list look generated. */
 const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
 
 const GROUP_LABEL =
