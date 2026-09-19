@@ -14,7 +14,7 @@
 // Above `lg` the column is always there. Below it, the column is a DRAWER and
 // the page gets a bar with a hamburger — see below for why that reverses a law
 // MESITA-1975 wrote, and why the law was right for four rows and wrong for
-// fifteen.
+// fourteen.
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -32,6 +32,9 @@ function placeScreenTitle(pathname: string, name: string): string | null {
   if (!placeIdFromPathname(pathname)) return null;
   if (pathname === SHELL_ROUTES.settings) return "Settings";
   const seg = pathname.split("/")[3];
+  // `/activity` AND `/activity/<slug>` both land here. The whole-place log
+  // lost its menu row in MESITA-2005 but kept its address, and a screen with
+  // no row still owes a title to a screen reader.
   if (seg === "activity") return `${name} · Activity`;
   if (seg && (PLACE_TABS as readonly string[]).includes(seg)) {
     return `${name} · ${PLACE_TAB_LABEL[seg as PlaceTab]}`;
@@ -158,7 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               drawer and the hamburger and wrote down why: *"Four destinations
               are the same IA under a finger and under a cursor, which is the
               entire reason there are four."* That was true of four. It is not
-              true of fifteen: fifteen rows is 540px of column before the
+              true of fourteen: fourteen rows is 504px of column before the
               lockup and the venue band, on a screen that is 812px tall with
               ~90px already spent on chrome. The alternative — the menu as a
               SCREEN you go back to — makes the phone and the desktop two

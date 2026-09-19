@@ -188,7 +188,8 @@ export function DevelopersView() {
           </p>
           <p className="text-muted-foreground max-w-[44ch] text-[13px] leading-snug">
             What the key and the connector do arrives as orders and bookings,
-            and those are rows in this place&apos;s whole log, one screen back.
+            and those are rows in this place&apos;s whole log, with everything
+            else.
           </p>
         </div>
       </Half>

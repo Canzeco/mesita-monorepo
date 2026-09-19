@@ -29,24 +29,38 @@
 // and Soon is a product that does not exist at all, and only the second one
 // has nothing whatever to look at.
 //
-// ── THE ROW PATO DID NOT ASK FOR, AND WHY IT IS HERE ───────────────────────
+// ── THE ACTIVITY ROW IS GONE, AND SO IS THE ROADMAP BAND (MESITA-2005) ─────
 //
-// `kind: "log"` — the place's WHOLE activity, `/places/<id>/activity`. It
-// shipped the day before this issue (MESITA-1988, *"Activity is one screen"*)
-// and Pato's three-row first group has no door onto it.
+// Pato, 2026-09-19, looking at the console MESITA-2004 shipped: *"REMOVE
+// ACTIVITY. EACH PRODUCT HAS OWN. FUTURE PRODUCTS AS A FINAL ITEM IN PRODUCTS,
+// NOT AS AN EXTRA SECTION."*
 //
-// decision: it gets a row, between Place and Settings. Two things make the cost
-// of dropping it concrete rather than theoretical. It is the only screen that
-// answers "what happened here" across products — the per-product Activity
-// halves are four of ten. And `ProductPane` SAYS SO IN COPY: a live product
-// with no log of its own tells the operator its events *"show up in this
-// place's whole log, one screen back"*. Delete the row and that sentence points
-// at nothing, on six screens.
+// THE WHOLE-PLACE LOG LOSES ITS ROW. MESITA-2004 gave it one against Pato's own
+// three-row list, on the argument that it is the only screen answering "what
+// happened here" across products and that three panes point at it in copy. He
+// has now seen that console and overruled it: activity is a thing a PRODUCT
+// has, and a row for the union of them is a second way to read what the
+// products already say.
 //
-// It sits in the first group because it is a fact about the PLACE, not about a
-// product — the same reason Place and Settings are there. Reverse this the
-// first time the per-product halves cover enough of the suite that the whole-
-// place log stops being the only answer.
+// THE SCREEN STAYS AT ITS ADDRESS. `AskBar`'s *"How did today go?"* — one of
+// the four openers on Home — still doors onto it, so this deletes a menu row
+// rather than a destination. What did change is the three sentences that told
+// an operator their events were *"one screen back"*: with no row, that is a
+// direction rather than a fact, so they now state the fact alone.
+//
+// decision: the screen survives the row. Delete it outright the day the AskBar
+// opener stops pointing at it, and not before — a 400-row cross-product feed
+// with a CSV export is not something to drop as a side effect of a menu edit.
+//
+// ── THE ROADMAP IS A ROW, NOT A BAND ───────────────────────────────────────
+//
+// `Future products` was its own group under its own label, on the argument that
+// a door onto a list is not a product with a state and a bare count in a badge
+// column reads as a badge that failed to render. Pato's answer is that a band
+// of one is more furniture than that badge ever was: two labels and a card
+// boundary to introduce a single row. It is the last row of Products now, where
+// its count sits in the same column as the states and reads as one more thing
+// you can open.
 import { PRODUCT_ORDER } from "@/lib/product-routes";
 import type { ProductKey } from "@/lib/product-keys";
 
@@ -55,7 +69,6 @@ import type { ProductKey } from "@/lib/product-keys";
  *  that are products — this file does not re-spell them. */
 export type SidebarRow =
   | { kind: "place" }
-  | { kind: "log" }
   | { kind: "settings" }
   | { kind: "plan" }
   | { kind: "product"; key: ProductKey }
@@ -75,7 +88,6 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     label: null,
     rows: [
       { kind: "place" },
-      { kind: "log" },
       { kind: "settings" },
       // THE PLAN IS NOT ONE OF THE TEN and must not become one — it is what
       // the ten are bought with. `ProductShell` kept it in its own card under
@@ -86,20 +98,23 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
   },
   {
     label: "Products",
-    rows: PRODUCT_ORDER.map((key) => ({ kind: "product", key }) as const),
-  },
-  {
-    label: "Roadmap",
-    // ONE ROW FOR THE WHOLE ROADMAP, and its badge is a COUNT rather than a
-    // state: the row is not a product, it is a door onto a list, and a number
-    // is the one thing worth reading before opening it. The row hides itself
-    // when the count is zero — see `Sidebar.tsx`.
-    rows: [{ kind: "roadmap" }],
+    rows: [
+      ...PRODUCT_ORDER.map((key) => ({ kind: "product", key }) as const),
+      // THE ELEVENTH ROW IS A DOOR, NOT A PRODUCT (MESITA-2005), and it is
+      // last because it is the only row here you cannot switch on. Its badge is
+      // a COUNT where the ten above carry a state, which is the one thing that
+      // still separates it now that the band is gone — and a number is also the
+      // one thing worth reading before opening a list.
+      //
+      // It hides itself when the count is zero, and the group's label does NOT
+      // go with it: nine other rows still need it. That is a difference from
+      // the band it replaces, where the label had nothing left to introduce.
+      { kind: "roadmap" },
+    ],
   },
 ];
 
 export const SIDEBAR_PLACE_LABEL = "Place";
-export const SIDEBAR_LOG_LABEL = "Activity";
 export const SIDEBAR_SETTINGS_LABEL = "Settings";
 export const SIDEBAR_PLAN_LABEL = "Plan";
 export const SIDEBAR_ROADMAP_LABEL = "Future products";
@@ -107,7 +122,6 @@ export const SIDEBAR_ROADMAP_LABEL = "Future products";
 /** The marks for the rows that are not products. Products read
  *  `PRODUCT_MARK`, which is already the one list of those. */
 export const SIDEBAR_PLACE_MARK = "\u{1F4CD}";
-export const SIDEBAR_LOG_MARK = "\u{1F4C8}";
 export const SIDEBAR_SETTINGS_MARK = "\u{2699}\u{FE0F}";
 export const SIDEBAR_PLAN_MARK = "\u{1F91D}";
 export const SIDEBAR_ROADMAP_MARK = "\u{1F52E}";

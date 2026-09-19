@@ -138,7 +138,7 @@ export function ProductPane({ card }: { card: ProductCard }) {
           </p>
           <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
             {card.name} is on here and records nothing separately. What it
-            touches shows up in this place&apos;s whole log, one screen back.
+            touches lands in this place&apos;s whole log, with everything else.
           </p>
         </div>
       );
