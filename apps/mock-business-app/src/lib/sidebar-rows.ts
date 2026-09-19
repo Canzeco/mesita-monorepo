@@ -14,12 +14,11 @@
 //
 // ── THE ORDER ──────────────────────────────────────────────────────────────
 //
-// Pato's nine products, with two entries he did not name:
-//
-// ONLINE REVIEWS, restored to its `PRODUCT_ORDER` position. It left Profile and
-// became its own product three commits before this issue (MESITA-1993), so a
-// nine-row list is a ten-row suite with the newest member missing. It sits 2nd,
-// where `PRODUCT_ORDER` already puts it.
+// PATO'S NINE, AND IT IS EXACTLY HIS NINE AGAIN (MESITA-2007). MESITA-2004
+// added a tenth — Online Reviews, which had left Profile to become its own
+// product days earlier (MESITA-1993) — on the argument that a nine-row list
+// was a ten-row suite with its newest member missing. Reviews has gone back
+// inside Profile as its Activity half, so the list is the one Pato wrote.
 //
 // EXPRESS WEBSITE stays LAST, which is where Pato put it and is a move away
 // from `PRODUCT_ORDER`'s 3rd. The rule it implies is worth writing down because
@@ -77,7 +76,7 @@ export type SidebarRow =
 /** A group is a label and its rows. The label is `null` for the first group:
  *  it sits directly under the venue band, and a heading there would be a word
  *  explaining three rows that need no explanation. The other two earn theirs —
- *  ten products and a door onto nine more are worth separating. */
+ *  nine products and a door onto the rest are worth separating. */
 export type SidebarGroup = {
   label: string | null;
   rows: readonly SidebarRow[];

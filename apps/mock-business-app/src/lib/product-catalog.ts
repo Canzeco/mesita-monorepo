@@ -33,9 +33,6 @@ export const PRODUCT_CATALOG_COPY: Record<ProductKey, string> = {
   profile:
     "Your page on Mesita — the photos, the hours, the address and what you are known for. It exists whether or not you claim the place, because Mesita builds one from what is already public; claiming it is how you decide what it says. This is what a guest reads in the seconds before they pick somewhere to eat.",
 
-  reviews:
-    "Everything the world says back about you, gathered in one place: what Google Maps carries, what guests scored after a visit booked through Mesita, and how many people are watching on each channel. It is read-only on purpose — you cannot edit a review here, and neither can we.",
-
   menu:
     "Your menu as data rather than a PDF: dishes, prices, and what has run out tonight. Upload the file you already have and Mesita turns it into the list. It is the one thing three other products read — guests browse it, Online Orders sells from it, and the Answering Agent quotes it on the phone — so it is worth getting right once.",
 

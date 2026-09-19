@@ -21,35 +21,16 @@
 // instead of load-bearing and invisible. See `PRODUCT_BANDS` below.
 export const PRODUCT_KEYS = [
   "profile",
-  // REPUTATION IS ITS OWN PRODUCT NOW (MESITA-1993). Pato, reading the index:
-  // *"Mesita Partner / Mesita Profile / Mesita Reviews (separate reviews
-  // shit)"*.
+  // REPUTATION WENT BACK INSIDE PROFILE (MESITA-2007). Pato: *"maybe remove
+  // online reviews, or put them in mesita profile in activity or something
+  // like that."*
   //
-  // `ReviewBoxes` was the tail of Profile's masonry: three read-only cards
-  // under twelve editable ones, sitting inside a save bar they could never
-  // dirty. PROFILE IS WHAT AN OPERATOR SETS; reputation is the one thing on
-  // that screen the world says back. The split is the same move `menu` made
-  // one line below — a card inside another product becoming one.
-  //
-  // IT SITS DIRECTLY AFTER `profile` because it is the same subject at the
-  // next depth: who you are, then what the world said about it.
-  //
-  // THE NAME IS "ONLINE REVIEWS", NOT "MESITA REVIEWS" (MESITA-1995). Pato:
-  // *"not mesita reviews, must maybe profile reviews — or internet reviews or
-  // something like that."* It shipped colliding with its own child: the third
-  // card INSIDE this product is also called Mesita Reviews, beside Google
-  // Reviews, so the row was named after one of its sections. And the brand
-  // prefix means MESITA IS THE COUNTERPARTY, which is false here — the
-  // Intaker scraped the Google reviews off Maps, and two of Digital Presence's
-  // four rows are Instagram and Facebook.
-  //
-  // "Online" is the qualifier this suite already owns: Online Orders, Online
-  // Reservations, Online Payments. It means "arrives over the internet rather
-  // than at the counter", which is exactly what separates these reviews from
-  // the ones a guest says to your face. Not "Profile Reviews" — naming it
-  // after the screen it just left would make a row that exists BECAUSE it is
-  // not part of Profile read as a sub-page of Profile.
-  "reviews",
+  // MESITA-1993 split it out of Profile's masonry on the argument that Profile
+  // is what an operator SETS and reputation is what the world says back. That
+  // argument was right and it named the wrong container: the split it wanted
+  // is Setup / Activity, which did not exist yet. It does now, so what the
+  // world says back is Profile's ACTIVITY half rather than a tenth row you
+  // cannot switch on, cannot configure, and cannot be without.
   // THE FIFTEENTH, AND IT WAS ALREADY HALF HERE (MESITA-1966). Pato: *"Add
   // digital menu as one item"*.
   //
@@ -139,7 +120,6 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
  *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
-  reviews: "Online Reviews",
   menu: "Digital Menu",
   website: "Express Website",
   customers: "Customer Intelligence",
@@ -178,7 +158,7 @@ export const PRODUCT_BANDS: readonly {
 }[] = [
   {
     title: "What the world sees",
-    keys: ["profile", "reviews", "menu", "website", "customers", "ads"],
+    keys: ["profile", "menu", "website", "customers", "ads"],
   },
   {
     title: "Serving the guest",
@@ -205,7 +185,6 @@ export const PRODUCT_BANDS: readonly {
  *  refuses the file. It is not a runtime list anybody reads. */
 const BANDED_KEYS: { [K in ProductKey]: true } = {
   profile: true,
-  reviews: true,
   menu: true,
   website: true,
   customers: true,

@@ -59,7 +59,6 @@ export const PARTNERSHIP_SLUG = "plan";
 // one goes to the bottom.
 export const PRODUCT_ORDER = [
   "profile",
-  "reviews",
   "menu",
   "visits",
   "orders",
@@ -76,7 +75,6 @@ export const FUTURE_SLUG = "future-products";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",
-  reviews: "online-reviews",
   menu: "digital-menu",
   website: "express-website",
   customers: "customer-intelligence",

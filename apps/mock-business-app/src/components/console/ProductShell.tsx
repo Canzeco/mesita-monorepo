@@ -39,12 +39,14 @@ import { productFromSlug, type PlaceHalf } from "@/lib/product-routes";
 import { SHELL_BLEED, SHELL_GUTTER } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-/** The two whose pane is a GRID OF CARDS rather than a form. They keep the
- *  page's grey so the cards have something to lift off (MESITA-1996). */
-const PANE_ON_PAGE: ReadonlySet<ProductKey> = new Set<ProductKey>([
-  "profile",
-  "reviews",
-]);
+/** The one whose pane is a GRID OF CARDS rather than a form. It keeps the
+ *  page's grey so the cards have something to lift off (MESITA-1996).
+ *
+ *  `reviews` LEFT THE SET WITH THE PRODUCT (MESITA-2007) and needed no
+ *  replacement: the review boxes are Profile's Activity half now, and Profile
+ *  was already here. Both of its halves are grids of white cards, so one entry
+ *  covers the pair. */
+const PANE_ON_PAGE: ReadonlySet<ProductKey> = new Set<ProductKey>(["profile"]);
 
 export function ProductShell({
   half,

@@ -24,7 +24,6 @@ export const PRODUCT_MARK: Record<ProductKey, string> = {
   // would say the subject is the WRITING rather than the score, and not a
   // second 🏪, which would say Reviews is a view of Profile. It is the only
   // star in the list, so the row is findable by its mark alone.
-  reviews: "\u{2B50}",
   // THE DISHES, not a document: 🍽️ over 📄 or 📋, because the thing this
   // product turns into data is the food, and a page mark would read as the
   // PDF on Profile that this card exists to stop being the answer.
