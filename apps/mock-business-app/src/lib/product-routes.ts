@@ -35,6 +35,34 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
  *  they are. Nothing outside this app links to it. */
 export const PARTNERSHIP_SLUG = "plan";
 
+/** THE TEN, in Pato's order (MESITA-1997, 2026-09-19) — *"i only want 10
+ *  things for the moment"*.
+ *
+ *  The index is this list and nothing else. It replaces a RUNNING/COMING
+ *  split that sorted by `state`, which meant the order of the console's own
+ *  product list was decided by whether each one happened to be built yet —
+ *  Pato: *"i don't want a coming then shit."*
+ *
+ *  EXPRESS WEBSITE IS IN IT AND IS NOT BUILT, and that is the point: a
+ *  product earns its row by mattering, and its row still says Soon. The two
+ *  facts are independent now, which they were not while the groups existed. */
+export const PRODUCT_ORDER = [
+  "profile",
+  "reviews",
+  "website",
+  "menu",
+  "visits",
+  "orders",
+  "reservations",
+  "pay",
+  "credits",
+  "line",
+] as const satisfies readonly ProductKey[];
+
+/** Everything the ten leaves out, behind ONE row. Not a product and not a
+ *  `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` is. */
+export const FUTURE_SLUG = "future-products";
+
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",
   reviews: "online-reviews",

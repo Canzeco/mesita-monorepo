@@ -23,11 +23,13 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/shared/Badges";
 import { useHeldPlaceOrNull, usePlaceScope } from "@/components/console/PlaceScope";
-import { buildProductCards, type ProductState } from "@/lib/products";
+import { buildProductCards, type ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import {
+  FUTURE_SLUG,
   PARTNERSHIP_SLUG,
+  PRODUCT_ORDER,
   PRODUCT_SLUG,
   productFromSlug,
   productHref,
@@ -38,7 +40,6 @@ import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import {
   SHELL_BLEED,
   SHELL_GUTTER,
-  TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ const ROW =
 const ROW_ON = "bg-foreground text-background";
 const ROW_OFF = "hover:bg-foreground/[0.06]";
 
-const STATE_WORD: Record<ProductState, string> = {
+const STATE_WORD: Record<ProductCard["state"], string> = {
   free: "Free",
   enabled: "On",
   off: "Off",
@@ -57,10 +58,14 @@ const STATE_WORD: Record<ProductState, string> = {
   soon: "Soon",
 };
 
-const GROUPS: { title: string; holds: (s: ProductState) => boolean }[] = [
-  { title: "Running", holds: (s) => s !== "soon" },
-  { title: "Coming", holds: (s) => s === "soon" },
-];
+// NO GROUPS (MESITA-1997). The index used to split RUNNING / COMING on each
+// card's `state`, which let the roadmap decide the order and the length of
+// the console's own product list — nine unbuilt rows between an operator and
+// the seven that work. Pato: *"i don't want a coming then shit."*
+//
+// It is `PRODUCT_ORDER` now — ten rows he chose, in the order he chose — and
+// everything else is one FUTURE PRODUCTS row at the end. A product's state
+// word still says Soon where it is Soon; what it no longer does is sort.
 
 // THE GROUND UNDER THE PANE (MESITA-1996). Pato: *"make all the subpages white
 // but mesita profile and online reviews."*
@@ -116,84 +121,88 @@ export function ProductShell({
     payHref: placePayHref(place.id),
   });
 
-  const index = (
-    <>
-      {GROUPS.map((group) => {
-        const inGroup = cards.filter((c) => group.holds(c.state));
-        if (inGroup.length === 0) return null;
-        return (
-          <section key={group.title} className="flex flex-col gap-1">
-            <h2 className={cn(TINY_LABEL_CLASS, "px-2 pt-2")}>{group.title}</h2>
-            <div className="flex flex-col gap-px">
-              {/* MESITA PARTNERSHIP, THE FIRST ROW OF RUNNING (MESITA-1982).
-                  It is not a `ProductKey` and must not become one; it is a row
-                  with an address like every other row. */}
-              {group.title === "Running" && (
-                <Link
-                  href={productHref(place.id, half, PARTNERSHIP_SLUG)}
-                  aria-current={openSlug === PARTNERSHIP_SLUG ? "true" : undefined}
-                  className={cn(
-                    ROW,
-                    openSlug === PARTNERSHIP_SLUG ? ROW_ON : ROW_OFF,
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
-                  >
-                    {"\u{1F91D}"}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
-                    Plan
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 text-[12px]",
-                      openSlug === PARTNERSHIP_SLUG
-                        ? "text-background/70"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {place.partnered ? "Partner" : "Free"}
-                  </span>
-                </Link>
-              )}
+  const byKey = new Map(cards.map((c) => [c.key, c]));
+  /** The ten, in Pato's order. A key `buildProductCards` did not answer is
+   *  skipped rather than rendered empty — the order is a list of names, and a
+   *  name that no longer has a spec is a rename somebody has not finished. */
+  const ten = PRODUCT_ORDER.map((k) => byKey.get(k)).filter(
+    (c): c is ProductCard => c !== undefined,
+  );
+  /** Everything the ten leaves out, in `SPECS` order. Derived by SUBTRACTION,
+   *  never by `state === "soon"`: the Developers Platform is live and still
+   *  belongs here, and a second rule would eventually disagree with the
+   *  first about which list a product is on. */
+  const inTen = new Set<ProductKey>(PRODUCT_ORDER);
+  const future = cards.filter((c) => !inTen.has(c.key));
 
-              {inGroup.map((card) => {
-                const slug = PRODUCT_SLUG[card.key];
-                const chosen = slug === openSlug;
-                return (
-                  <Link
-                    key={card.key}
-                    href={productHref(place.id, half, slug)}
-                    aria-current={chosen ? "true" : undefined}
-                    className={cn(ROW, chosen ? ROW_ON : ROW_OFF)}
-                  >
-                    <span
-                      aria-hidden
-                      className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
-                    >
-                      {PRODUCT_MARK[card.key]}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
-                      {card.name}
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 text-[12px]",
-                        chosen ? "text-background/70" : "text-muted-foreground",
-                      )}
-                    >
-                      {STATE_WORD[card.state]}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        );
+  const row = (args: {
+    href: string;
+    chosen: boolean;
+    mark: string;
+    name: string;
+    state: string;
+    key?: string;
+  }) => (
+    <Link
+      key={args.key ?? args.href}
+      href={args.href}
+      aria-current={args.chosen ? "true" : undefined}
+      className={cn(ROW, args.chosen ? ROW_ON : ROW_OFF)}
+    >
+      <span
+        aria-hidden
+        className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
+      >
+        {args.mark}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+        {args.name}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 text-[12px]",
+          args.chosen ? "text-background/70" : "text-muted-foreground",
+        )}
+      >
+        {args.state}
+      </span>
+    </Link>
+  );
+
+  const index = (
+    <div className="flex flex-col gap-px">
+      {/* THE PLAN IS THE FIRST ROW and is not one of the ten — it is what the
+          ten are bought with. Not a `ProductKey`, and it must not become one. */}
+      {row({
+        href: productHref(place.id, half, PARTNERSHIP_SLUG),
+        chosen: openSlug === PARTNERSHIP_SLUG,
+        mark: "\u{1F91D}",
+        name: "Plan",
+        state: place.partnered ? "Partner" : "Free",
       })}
-    </>
+      {ten.map((card) =>
+        row({
+          key: card.key,
+          href: productHref(place.id, half, PRODUCT_SLUG[card.key]),
+          chosen: PRODUCT_SLUG[card.key] === openSlug,
+          mark: PRODUCT_MARK[card.key],
+          name: card.name,
+          state: STATE_WORD[card.state],
+        }),
+      )}
+      {/* ONE ROW FOR THE WHOLE ROADMAP. Its state word is a COUNT, not
+          "Soon": the row is not a product with a state, it is a door onto a
+          list, and a number is the one thing worth reading before opening
+          it. */}
+      {future.length > 0 &&
+        row({
+          href: productHref(place.id, half, FUTURE_SLUG),
+          chosen: openSlug === FUTURE_SLUG,
+          mark: "\u{1F52E}",
+          name: "Future products",
+          state: String(future.length),
+        })}
+    </div>
   );
 
   return (
