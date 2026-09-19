@@ -34,19 +34,26 @@
 //
 // ── THE STATES CARD IS THIS APP'S OWN (MESITA-1941) ────────────────────────
 //
-// `web-business` has no such card and this is not a snapshot of one. It does
-// for ONE place what `/places` does across places — list every state this
-// console can switch — because nothing on an operator's own screens ever says
-// what their place IS. AdminView says some of it and is super-admin-only; the
-// place heading wears two badges out of twelve facts.
+// `web-business` has no such card and this is not a snapshot of one. It says
+// what a place IS — its standing and its intake — because nothing else on an
+// operator's own screens does. AdminView says some of it and is
+// super-admin-only; the place heading wears two badges.
+//
+// TWO GROUPS, NOT THREE (MESITA-2000). Pato: *"remove the stupid product
+// states from settings"*. A third group listed six of the twelve products and
+// whether each was on, which was the SETUP INDEX rebuilt here and rebuilt
+// short — and rebuilt off the raw `MockPlace` booleans rather than off
+// `buildProductCards`, so the two could disagree about one product and both
+// look right. The index is the one reader of a product's state. What is left
+// is the two facts no other screen carries.
 //
 // READ-ONLY, and that is the whole design. Every value here is set by Stripe,
 // by an operator, or by the scenario panel, and none of them is set from
 // Settings. Rows that looked like switches would be a second surface granting
 // what one surface already grants — the mistake the Team box above names.
 //
-// FILL MEANS IN FORCE, NOT "ON". A place with no pickup orders shows a FILLED
-// "Off": the word in the pill is the fact, and the fill only says which of the
+// FILL MEANS IN FORCE, NOT "ON". A place that is not promoting shows a FILLED
+// "No": the word in the pill is the fact, and the fill only says which of the
 // row's values is the live one. Every row prints all of its values, including
 // the ones this place is not in, because the states nobody can reach are the
 // reason this app exists.
@@ -123,9 +130,7 @@ function stateGroups(
   profile: MockPlaceProfile | undefined,
 ): StateGroup[] {
   const yesNo = (on: boolean) => (on ? "Yes" : "No");
-  const onOff = (on: boolean) => (on ? "On" : "Off");
   const YES_NO = ["Yes", "No"];
-  const ON_OFF = ["On", "Off"];
 
   const general: StateRow[] = [
     {
@@ -172,45 +177,6 @@ function stateGroups(
     },
   ];
 
-  const products: StateRow[] = [
-    {
-      label: "Customer intelligence",
-      options: ["Subscribed", "Not subscribed"],
-      current: place.customerIntel ? "Subscribed" : "Not subscribed",
-      note: "Rented with Mesita Ultra, not bought on its own. Below it the list is counted and nobody in it is named.",
-    },
-    {
-      label: "Pickup orders",
-      options: ON_OFF,
-      current: onOff(place.pickupOrders),
-      note: "Guests order ahead and collect.",
-    },
-    {
-      label: "Delivery orders",
-      options: ON_OFF,
-      current: onOff(place.deliveryOrders),
-      note: "Guests order ahead and it is taken to them.",
-    },
-    {
-      label: "Reservations",
-      options: ON_OFF,
-      current: onOff(place.reservations),
-      note: "Table bookings, through this place\u2019s own provider.",
-    },
-    {
-      label: "Visit rewards",
-      options: ON_OFF,
-      current: onOff(place.visitRewards),
-      note: "A guest earns back on what a visit cost them.",
-    },
-    {
-      label: "Credits",
-      options: ON_OFF,
-      current: onOff(place.credits),
-      note: "The place sells credit that guests spend here later.",
-    },
-  ];
-
   // THE INTAKER'S OWN STATE, named for the first time. `content_state` is a
   // real `public.content_state` enum with four values, and this console has
   // only ever read two of them — `ProfileCompleteness` checks `generating` and
@@ -253,12 +219,6 @@ function stateGroups(
       description:
         "What this place is, and what it is paying. Read-only: these are set by Stripe, by an operator, or by the scenario panel — never from this page.",
       rows: general,
-    },
-    {
-      title: "Product states",
-      description:
-        "Which of the products this place has switched on. The same six facts the catalogue states on its cards, in one list.",
-      rows: products,
     },
     {
       title: "Intake states",
