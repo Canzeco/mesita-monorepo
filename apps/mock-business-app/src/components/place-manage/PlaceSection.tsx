@@ -537,10 +537,49 @@ export function PlaceSection({
             {place.timezone?.trim() ? place.timezone : "—"}
           </ReadField>
         </div>
-        {/* NO MAP IFRAME. The real card embeds maps.google.com here; this app
-            makes no request to anything, and a mock that quietly called Google
-            would be the one thing its banner promises it is not. The
-            coordinates above are the fact the band was drawing. */}
+        {/* THE MAP, LAST (MESITA-1994). Pato: *"location, include the map
+            preview at the bottom."*
+
+            THIS OVERTURNS THE COMMENT THAT STOOD HERE, and the comment was
+            half wrong. It said the app "makes no request to anything, and a
+            mock that quietly called Google would be the one thing its banner
+            promises it is not". The banner promises the DATA is invented — "no
+            backend, no account, no place — every name and number on this
+            screen is invented" — not that the page is offline, and the fixture
+            photos have been arriving from images.unsplash.com through
+            `next.config.ts` since the day it was written. A keyless embed
+            draws the coordinates two rows above it. It reads an invented
+            number; it does not fetch a real place's record.
+
+            `output=embed` NEEDS NO API KEY, which is the only reason this is
+            possible in an app with no env and no backend.
+
+            AND IT IS LAST BECAUSE IT IS NOT A SIXTH FACT. It is the picture of
+            the five above it, so it closes the card rather than joining the
+            column of boxed fields. */}
+        {place.lat == null || place.lng == null ? (
+          // NO COORDINATES, NO FRAME. The obvious template string centres the
+          // world map on 0,0 — open water off West Africa — which reads as a
+          // broken embed rather than as a missing value. A stated absence is
+          // the same answer `ReadField` gives one row up.
+          <p className="border-border/60 text-muted-foreground mt-4 rounded-xl border border-dashed px-3.5 py-6 text-center text-xs">
+            No coordinates yet, so there is nothing to draw. They arrive with
+            the Google seed.
+          </p>
+        ) : (
+          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
+            <iframe
+              // The place's OWN name where there is one, and Google's where there
+              // is not — the same precedence the Basics card shows. It is the
+              // only label a screen reader gets for a frame it cannot read.
+              title={`Map of ${place.mesita_name?.trim() || place.google_name?.trim() || "this place"}`}
+              src={`https://www.google.com/maps?q=${place.lat},${place.lng}&z=16&output=embed`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block aspect-video w-full border-0"
+            />
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard
