@@ -16,7 +16,7 @@
 import { membershipLine } from "@/components/console/PartnerCard";
 import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { Badge } from "@/components/shared/Badges";
-import type { MockPlace } from "@/mock/types";
+import { type MockPlace, PLAN_LABEL } from "@/mock/types";
 import type { PlaceHalf } from "@/lib/product-routes";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -45,11 +45,14 @@ export function PartnershipPane({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-lg font-semibold tracking-tight">
-              Mesita Partnership
+              Plan
             </h2>
+            {/* BOTH FACTS, because they are two (MESITA-1997): the rung is
+                what they bought, the badge is what it granted. */}
             <Badge tone={place.partnered ? "gold" : "off"}>
-              {place.partnered ? "Partner" : "Off"}
+              {PLAN_LABEL[place.plan]}
             </Badge>
+            {place.partnered && <Badge tone="gold">Partner</Badge>}
           </div>
           <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
             <span className="text-foreground font-medium">{line.lead}</span>{" "}
@@ -59,6 +62,13 @@ export function PartnershipPane({
       </div>
 
       {half === "products" ? (
+        /* The heading above already states the rung, the badge and what the
+           billing is doing, so a partnered place gets the DOOR and nothing
+           else; a Free place gets the ladder, which the heading cannot be.
+           Before MESITA-1997 the two disagreed enough to both be worth
+           printing — "Mesita Partnership / Partner" over "Membership /
+           Renews …" — and once both named the rung they were one fact twice,
+           which `shared/Badges.tsx` opens by forbidding. */
         <PartnerBanner place={place} />
       ) : (
         <p className="text-muted-foreground text-[13px] leading-snug">

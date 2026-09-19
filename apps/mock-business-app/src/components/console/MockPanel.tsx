@@ -23,6 +23,8 @@ import {
   PAY_LADDER_LABEL,
   type MembershipState,
   type PayLadder,
+  PLAN_LABEL,
+  type PlanTier,
   type PlaceRole,
 } from "@/mock/types";
 import type { RailMode } from "@/lib/rail-scope";
@@ -221,7 +223,25 @@ export function MockPanel() {
             </p>
           </Group>
 
-          <Group label="Mesita Membership">
+          <Group label="Plan">
+            <Choice<PlanTier>
+              value={scenario.plan}
+              onPick={(plan) => set({ plan })}
+              options={(Object.keys(PLAN_LABEL) as PlanTier[]).map((k) => ({
+                id: k,
+                label: PLAN_LABEL[k],
+              }))}
+            />
+            <p className="text-muted-foreground text-[11px] leading-snug">
+              What this place BOUGHT. Both paid rungs carry the Partner badge,
+              so the gate every product reads is derived from this — there is
+              no second switch that could disagree with it. Ultra is the only
+              rung that unlocks the Answering Agent and opens the customer
+              catalog.
+            </p>
+          </Group>
+
+          <Group label="Billing">
             <Choice<MembershipState>
               value={scenario.membership}
               onPick={(membership) => set({ membership })}
@@ -256,18 +276,6 @@ export function MockPanel() {
               hint="Turned off. Not a rung: it can land at any height, so the portfolio reads it apart from the ladder."
               on={scenario.disabled}
               onChange={(disabled) => set({ disabled })}
-            />
-            <Toggle
-              label="Mesita Partner"
-              hint="The gate Visits, Rewards, Payments and Credits read. Off, they are Locked and carry no verb."
-              on={scenario.partnered}
-              onChange={(partnered) => set({ partnered })}
-            />
-            <Toggle
-              label="Customer intelligence"
-              hint="The Customers catalog is a subscription. Off, the list is counted and nobody in it is named."
-              on={scenario.customerIntel}
-              onChange={(customerIntel) => set({ customerIntel })}
             />
             <Toggle label="Pickup orders" on={scenario.pickupOrders} onChange={(v) => set({ pickupOrders: v })} />
             <Toggle label="Delivery orders" on={scenario.deliveryOrders} onChange={(v) => set({ deliveryOrders: v })} />

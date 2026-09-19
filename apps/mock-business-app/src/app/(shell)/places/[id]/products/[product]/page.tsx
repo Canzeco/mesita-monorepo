@@ -17,9 +17,15 @@ import { notFound } from "next/navigation";
 import { HalfScope } from "@/components/shared/Half";
 import { ProductPane } from "@/components/console/ProductPane";
 import { PartnershipPane } from "@/components/console/PartnershipPane";
+import { FuturePane } from "@/components/console/FuturePane";
 import { useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { buildProductCards } from "@/lib/products";
-import { PARTNERSHIP_SLUG, productFromSlug } from "@/lib/product-routes";
+import {
+  FUTURE_SLUG,
+  PARTNERSHIP_SLUG,
+  PRODUCT_ORDER,
+  productFromSlug,
+} from "@/lib/product-routes";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 
@@ -34,11 +40,28 @@ export default function ProductsProductPage({
 
   if (product === PARTNERSHIP_SLUG) return <PartnershipPane place={place} />;
 
+  // FUTURE PRODUCTS — a sentinel like the Plan row, resolved before
+  // `productFromSlug` because it is deliberately not a `ProductKey`.
+  if (product === FUTURE_SLUG) {
+    const inTen = new Set<string>(PRODUCT_ORDER);
+    return (
+      <FuturePane
+        cards={buildProductCards({
+          plan: place.plan,
+          mesitaPayEnabled: place.pay === "enabled",
+          place,
+          placeHref: (view: PlaceTab) => placeTabHref(place.id, view),
+          payHref: placePayHref(place.id),
+        }).filter((c) => !inTen.has(c.key))}
+      />
+    );
+  }
+
   const key = productFromSlug(product);
   if (!key) notFound();
 
   const card = buildProductCards({
-    partnered: place.partnered,
+    plan: place.plan,
     mesitaPayEnabled: place.pay === "enabled",
     place,
     placeHref: (view: PlaceTab) => placeTabHref(place.id, view),

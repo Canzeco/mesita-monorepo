@@ -77,7 +77,10 @@ function daysAhead(days: number): string {
  *  panel both reach for it, so a place the panel puts back on `active` renews
  *  on the same day it renewed before — two sources would let the strip print a
  *  date the fixture never held. A year out, because the Membership is yearly. */
-export const MEMBERSHIP_RENEWS_AT = daysAhead(365);
+// MONTHLY NOW (MESITA-1997). It was `daysAhead(365)` while the Membership was
+// a yearly purchase; a plan billed every month that renews in a year is the
+// kind of number a reader checks against the price and does not believe.
+export const MEMBERSHIP_RENEWS_AT = daysAhead(30);
 
 export const PLACES: MockPlace[] = [
   {
@@ -92,6 +95,7 @@ export const PLACES: MockPlace[] = [
     myRole: "owner",
     verified: true,
     partnered: true,
+    plan: "ultra",
     promoting: true,
     pulsing: true,
     disabled: false,
@@ -122,6 +126,7 @@ export const PLACES: MockPlace[] = [
     myRole: "owner",
     verified: true,
     partnered: false,
+    plan: "free",
     promoting: false,
     pulsing: true,
     disabled: false,
@@ -152,12 +157,16 @@ export const PLACES: MockPlace[] = [
     myRole: "editor",
     verified: true,
     partnered: true,
+    plan: "pro",
     promoting: false,
     pulsing: true,
     disabled: false,
     membership: "none",
     renewsAt: null,
-    customerIntel: true,
+    // PRO, SO THE CATALOG IS CLOSED (MESITA-1997). Customer Intelligence sits
+    // in Ultra now; the `Since` date survives the lapse on purpose, exactly
+    // as `renewsAt` does, so a place that goes back up does not read as new.
+    customerIntel: false,
     customerIntelSince: daysAgo(96),
     pickupOrders: false,
     deliveryOrders: false,
@@ -182,6 +191,7 @@ export const PLACES: MockPlace[] = [
     myRole: "viewer",
     verified: false,
     partnered: false,
+    plan: "free",
     promoting: false,
     pulsing: true,
     disabled: false,

@@ -49,7 +49,6 @@ import { CreditsView } from "@/components/views/CreditsView";
 import { CapitalView } from "@/components/views/CapitalView";
 import { DevelopersView } from "@/components/views/DevelopersView";
 import { ProductStateBadge } from "@/components/shared/Badges";
-import { useMock } from "@/mock/MockStore";
 import type { ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
@@ -88,48 +87,8 @@ const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>>
  *  the import is not dead weight the day a rewards row wants its own pane. */
 void RewardsView;
 
-function Dial({
-  label,
-  hint,
-  on,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  on: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <div className="border-border bg-card flex items-start gap-3 rounded-2xl border p-4">
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-sm font-semibold tracking-tight">{label}</p>
-        <p className="text-muted-foreground mt-1 text-[12px] leading-snug">{hint}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={label}
-        onClick={() => onChange(!on)}
-        className={cn(
-          "focus-visible:ring-ring relative h-6 w-11 shrink-0 rounded-full transition outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2",
-          on ? "bg-foreground" : "bg-muted border-border border",
-        )}
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "bg-card absolute top-1 h-4 w-4 rounded-full transition",
-            on ? "left-6" : "left-1",
-          )}
-        />
-      </button>
-    </div>
-  );
-}
-
 export function ProductPane({ card }: { card: ProductCard }) {
-  const { scenario, setScenario } = useMock();
+
   const View = PRODUCT_VIEW[card.key] ?? null;
   /** Is the body something other than a restatement of the note? */
   const hasBody = View !== null || card.key === "customers";
@@ -166,13 +125,16 @@ export function ProductPane({ card }: { card: ProductCard }) {
       );
     }
     if (card.key === "customers") {
+      // NO DIAL HERE ANY MORE (MESITA-1997). Customer Intelligence moved
+      // inside Mesita Ultra, so the thing that opens this catalog is the
+      // RUNG — and a switch on the product that silently moved the plan
+      // would be a second writer for a fact the ladder already owns.
       return (
-        <Dial
-          label="Customer Intelligence"
-          hint="While it runs, this place reads who its guests are and what they did this month. When it stops, the reading stops and the place keeps nothing."
-          on={scenario.customerIntel}
-          onChange={(customerIntel) => setScenario({ customerIntel })}
-        />
+        <p className="text-muted-foreground max-w-[54ch] text-[13px] leading-snug">
+          The catalog opens with Mesita Ultra. Below it the list is counted and
+          nobody in it is named — this place reads how many guests it has, not
+          who they are.
+        </p>
       );
     }
     // A STATED ABSENCE, COMPOSED (MESITA-1983). This was a dashed strip pinned
@@ -205,8 +167,6 @@ export function ProductPane({ card }: { card: ProductCard }) {
     card.state,
     card.note,
     card.blurb,
-    scenario.customerIntel,
-    setScenario,
   ]);
 
   return (
