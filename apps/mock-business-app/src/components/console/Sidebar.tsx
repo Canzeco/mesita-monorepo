@@ -1,6 +1,6 @@
 "use client";
 
-// THE MENU. A column again — lockup, venue, fifteen rows (MESITA-2004).
+// THE MENU. A column again — lockup, venue, fourteen rows (MESITA-2004, 2005).
 //
 // ── THE SHAPE ──────────────────────────────────────────────────────────────
 //
@@ -11,16 +11,13 @@
 //   │  │    Mesita Pro    │  │
 //   │  └──────────────────┘  │
 //   │   📍 Place             │
-//   │   📈 Activity          │   the place's WHOLE log
 //   │   ⚙️ Settings          │
 //   │   🤝 Plan     [Partner]│
 //   │                        │
 //   │   PRODUCTS             │
 //   │   🏪 Mesita Profile    │
 //   │   …ten of them…        │
-//   │                        │
-//   │   ROADMAP              │
-//   │   🔮 Future products  9│
+//   │   🔮 Future products  9│   the eleventh row, a door
 //   └────────────────────────┘
 //
 // ── WHY IT IS INK ──────────────────────────────────────────────────────────
@@ -51,7 +48,7 @@
 // MESITA-1975 argued a solid pill was a slab across a 1400px line and replaced
 // it with a 2px underline. That argument was about a LINE. In a 252px column a
 // fill is the rail's original idiom and it is the right one: an underline under
-// one row in a stack of fifteen reads as a separator between two of them.
+// one row in a stack of fourteen reads as a separator between two of them.
 //
 // ── ROWS ARE ABSENT, NEVER DIMMED ──────────────────────────────────────────
 //
@@ -76,8 +73,6 @@ import {
 } from "@/lib/product-routes";
 import {
   SIDEBAR_GROUPS,
-  SIDEBAR_LOG_LABEL,
-  SIDEBAR_LOG_MARK,
   SIDEBAR_PLACE_LABEL,
   SIDEBAR_PLACE_MARK,
   SIDEBAR_PLAN_LABEL,
@@ -91,7 +86,6 @@ import {
 import {
   SHELL_ROUTES,
   isPlaceHomePathname,
-  placePageHref,
   placePayHref,
 } from "@/lib/console-routes";
 import { pagesForAccess, placeTabHref } from "@/lib/place-tabs";
@@ -114,7 +108,7 @@ const ROW_REST = "text-dock-muted hover:bg-dock-surface/70 hover:text-dock-foreg
 const ROW_ON = "bg-dock-surface text-dock-foreground font-semibold";
 
 /** The mark's box. Fixed width so every name starts on the same x — a ragged
- *  left edge across fifteen rows is the thing that makes a list look generated. */
+ *  left edge across fourteen rows is the thing that makes a list look generated. */
 const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
 
 const GROUP_LABEL =
@@ -192,18 +186,6 @@ export function Sidebar({
               pathname === SHELL_ROUTES.placesNew ||
               isPlaceHomePathname(pathname)
             }
-            onNavigate={onNavigate}
-          />
-        );
-      case "log":
-        if (!held || !place) return null;
-        return (
-          <Row
-            key="log"
-            href={placePageHref(place.id, "activity")}
-            mark={SIDEBAR_LOG_MARK}
-            name={SIDEBAR_LOG_LABEL}
-            on={last === "activity"}
             onNavigate={onNavigate}
           />
         );
