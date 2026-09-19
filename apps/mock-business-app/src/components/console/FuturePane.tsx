@@ -1,28 +1,44 @@
 "use client";
 
-// FUTURE PRODUCTS — the eleventh row, holding everything the ten leaves out
-// (MESITA-1997).
+// THE SUITE, AS A CATALOGUE (MESITA-1999).
 //
-// Pato, 2026-09-19: *"i don't want a coming then shit. I just want a list of
-// products and then just building some shit called future products and then
-// at the right you put everything."*
+// Pato: *"DON'T SHOW THIS IN LIST FORMAT BUT IN CATALOG FORMAT, BOXES, MAYBE
+// 3 COLUMNS. SHOW CURRENT AND FUTURE PRODUCTS, WITH GREAT EXPLAINATIONS"*.
 //
-// WHAT WAS WRONG WITH THE GROUPS. The index sorted itself into RUNNING and
-// COMING by each card's `state`, so nine unbuilt products took nine rows and
-// pushed the built ones up into a list whose length was set by the roadmap.
-// An operator scanning for Online Payments scrolled past a POS that does not
-// exist. The roadmap is worth one row, not nine.
+// It was nine rows of name-and-clause behind the Future products door
+// (MESITA-1997). A row is the right shape for a thing you are scanning past;
+// this pane is the opposite surface — it is read once, slowly, by somebody
+// deciding whether they want any of this. So it is boxes, and it holds the
+// WHOLE suite rather than only the part that is unbuilt.
 //
-// IT IS NOT A PRODUCT. No `ProductKey`, no slug in `PRODUCT_SLUG`, no card —
-// the same sentinel shape the Plan row is, for the same reason: giving it a
-// key would put it in every loop that iterates the suite.
+// ── TWO AXES, AND THIS PANE IS NOT THE RAIL'S ─────────────────────────────
 //
-// EVERY ROW HERE READS "Soon" EXCEPT ONE. The Developers Platform is live and
-// still landed outside the ten, so this pane must not tell an operator it is
-// unbuilt — every row prints its own state word, and the heading says
-// "outside the ten" rather than "being built".
+// The rail splits on `PRODUCT_ORDER`: ten rows Pato chose, everything else
+// behind one door. This pane splits on BUILT: Coming next, then Running
+// today. They disagree, on purpose and in exactly one place — Express
+// Website is in the ten AND is not built, so it is a rail row and a Coming
+// box at the same time. Both statements are true, so the pane names its own
+// axis in the sentence under the heading rather than leaving a reader to
+// assume it inherited the rail's.
+//
+// COMING LEADS, because that is what the row said it was for. Running today
+// follows, as the answer to the question the first section provokes — "so
+// what do I have already?".
+//
+// ── WHAT A BOX SAYS ───────────────────────────────────────────────────────
+//
+// The mark, the name, the state word, the rung it needs, and the paragraph.
+// The RUNG is the reason a box is worth more than a row here: an operator
+// reading about the Answering Agent needs to know it is Ultra's in the same
+// glance, or the copy sells them something the plan strip then refuses.
+//
+// A FREE product prints no rung line. "Needs Free" is not a sentence, and a
+// row of them under four boxes would read as a price on something that has
+// none.
+import { PLAN_LABEL } from "@/mock/types";
 import { PRODUCT_MARK } from "@/lib/product-marks";
-import type { ProductCard } from "@/lib/products";
+import { PRODUCT_CATALOG_COPY } from "@/lib/product-catalog";
+import { MIN_PLAN, type ProductCard } from "@/lib/products";
 
 const STATE_WORD: Record<ProductCard["state"], string> = {
   free: "Free",
@@ -32,52 +48,101 @@ const STATE_WORD: Record<ProductCard["state"], string> = {
   soon: "Soon",
 };
 
-export function FuturePane({ cards }: { cards: ProductCard[] }) {
+/** The grid. THREE at `lg` — Pato's "maybe 3 columns" — and this pane is two
+ *  thirds of the shell, so three here is three across roughly 900px, which is
+ *  a ~280px box: wide enough for three lines of the paragraph and no wider
+ *  than a column anybody reads comfortably. Two at `sm`, one on a phone. */
+const GRID = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
+
+function Box({ card }: { card: ProductCard }) {
+  const min = MIN_PLAN[card.key];
   return (
-    <div className="flex flex-col gap-4">
+    <div className="border-border/60 bg-card flex flex-col gap-2 rounded-xl border p-3.5">
+      <div className="flex items-start gap-2.5">
+        <span
+          aria-hidden
+          className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
+        >
+          {PRODUCT_MARK[card.key]}
+        </span>
+        <p className="min-w-0 flex-1 text-[13.5px] leading-snug font-semibold">
+          {card.name}
+        </p>
+        <span className="text-muted-foreground shrink-0 text-[11px]">
+          {STATE_WORD[card.state]}
+        </span>
+      </div>
+      <p className="text-muted-foreground text-[12.5px] leading-relaxed">
+        {PRODUCT_CATALOG_COPY[card.key]}
+      </p>
+      {min !== "free" && (
+        <p className="text-muted-foreground/80 mt-auto pt-1 text-[11px]">
+          {PLAN_LABEL[min]}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  lede,
+  cards,
+}: {
+  title: string;
+  lede: string;
+  cards: ProductCard[];
+}) {
+  if (cards.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-3">
       <div>
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          Future products
-        </h2>
-        {/* IT CANNOT SAY "what Mesita is building next" (MESITA-1997). The
-            Developers Platform is LIVE and still landed outside the ten, so a
-            heading that called everything below unbuilt would be false on its
-            own list — and false in the expensive direction, telling an
-            operator a product they already have is not here. The list is
-            defined by SUBTRACTION, so the sentence says subtraction, and each
-            row carries its own real state. */}
-        <p className="text-muted-foreground mt-1 max-w-[56ch] text-[13px] leading-snug">
-          Everything outside the ten. Most of it is not built yet — each row
-          says which, and nothing below shows a knob or a number it has not
-          measured.
+        <h3 className="font-display text-sm font-semibold tracking-tight">
+          {title}
+        </h3>
+        <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-snug">
+          {lede}
         </p>
       </div>
-      <ul className="flex flex-col gap-px">
+      <div className={GRID}>
         {cards.map((card) => (
-          <li
-            key={card.key}
-            className="flex items-start gap-2.5 rounded-lg px-2 py-2"
-          >
-            <span
-              aria-hidden
-              className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
-            >
-              {PRODUCT_MARK[card.key]}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-medium">{card.name}</p>
-              <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-snug">
-                {card.note ?? card.blurb}
-              </p>
-            </div>
-            {/* The row's own state, so the one live product here is not read
-                as unbuilt just because of the company it keeps. */}
-            <span className="text-muted-foreground shrink-0 text-[12px]">
-              {STATE_WORD[card.state]}
-            </span>
-          </li>
+          <Box key={card.key} card={card} />
         ))}
-      </ul>
+      </div>
+    </section>
+  );
+}
+
+export function FuturePane({ cards }: { cards: ProductCard[] }) {
+  // BUILT is the split, and `state === "soon"` is the only honest test for
+  // it: a card is Soon when its spec says there is no engine behind it, which
+  // is a different question from whether it is one of the ten.
+  const coming = cards.filter((c) => c.state === "soon");
+  const running = cards.filter((c) => c.state !== "soon");
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h2 className="font-display text-lg font-semibold tracking-tight">
+          The Mesita suite
+        </h2>
+        <p className="text-muted-foreground mt-1 max-w-[62ch] text-[13px] leading-snug">
+          Everything Mesita runs for a place, and everything it is building
+          next. Nothing here is switched on by reading it — each product is
+          turned on from its own screen, and the plan it needs is printed under
+          it.
+        </p>
+      </div>
+      <Section
+        title="Coming next"
+        lede="Not built yet. No knobs and no numbers until there is an engine behind them."
+        cards={coming}
+      />
+      <Section
+        title="Running today"
+        lede="Live on Mesita. Whether it is on at THIS place is what the list on the left says."
+        cards={running}
+      />
     </div>
   );
 }

@@ -517,6 +517,13 @@ const SPECS: readonly ProductSpec[] = [
 
 export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 
+/** Each product's rung, keyed for readers that hold a `ProductKey` and not a
+ *  spec — the catalogue prints it under every box (MESITA-1999). Derived from
+ *  SPECS so it cannot drift from the gate `buildProductCards` applies. */
+export const MIN_PLAN = Object.fromEntries(
+  SPECS.map((spec) => [spec.key, spec.minPlan]),
+) as Record<ProductKey, PlanTier>;
+
 export function buildProductCards(input: {
   /** THE RUNG, not a boolean (MESITA-1997). `partnered` is derivable from it
    *  and no longer passed: a caller holding both could hand in a pair that
