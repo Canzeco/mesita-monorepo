@@ -45,6 +45,8 @@
 import { use, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NeedsYou } from "@/components/console/NeedsYou";
+import { PageHeader } from "@/components/console/PageHeader";
+import { PlaceChip } from "@/components/console/PlaceChip";
 import { NotHeld, useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { ORDERS, RESERVATIONS, REVIEWS, VISITS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
@@ -95,13 +97,25 @@ export default function PlaceRoot({
   const reviews = listFor(REVIEWS.filter((r) => r.placeId === place.id), scenario);
 
   return (
-    <NeedsYou
-      place={place}
-      visits={visits}
-      orders={orders}
-      reservations={reservations}
-      reviews={reviews}
-      now={now}
-    />
+    <>
+      {/* THE PLACE'S OWN SCREEN HAD NO HEADER (MESITA-2008). It opened on the
+          Ask bar, so the venue's name appeared only in the menu's band. The
+          mark here is the place's PHOTOGRAPH rather than a glyph — the one
+          screen whose subject has a real picture — which is why `PageHeader`
+          takes a node and not just a string. */}
+      <PageHeader
+        mark={<PlaceChip photoUrl={place.photoUrl} size="page" />}
+        title={place.name}
+        blurb="What needs you here, and the bar that does it for you."
+      />
+      <NeedsYou
+        place={place}
+        visits={visits}
+        orders={orders}
+        reservations={reservations}
+        reviews={reviews}
+        now={now}
+      />
+    </>
   );
 }

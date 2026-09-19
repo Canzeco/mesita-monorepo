@@ -58,6 +58,7 @@
 // the ones this place is not in, because the states nobody can reach are the
 // reason this app exists.
 import { Building2, LogOut, UserRound, X } from "lucide-react";
+import { PageHeader } from "@/components/console/PageHeader";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Section } from "@/components/shared/Section";
@@ -262,6 +263,20 @@ export default function SettingsPage() {
 
   return (
     <>
+      {/* SETTINGS HAD NO HEADER AT ALL (MESITA-2008). It opened straight into
+          the first card, so the only thing on screen saying where you were was
+          the lit row in the menu. It has a title now like every other subpage.
+
+          NO BADGE, AND THAT IS THE COLLAPSING SLOT DOING ITS JOB: there is no
+          state to state here. The header is the same SHAPE as a product's
+          because the shape is "whatever of these exists", not a grid with a
+          hole where the badge would go. */}
+      <PageHeader
+        mark={"\u{2699}\u{FE0F}"}
+        title="Settings"
+        blurb="You, what you owe, and how this place is run."
+      />
+
       {/* ── YOU ──────────────────────────────────────────────────────────
           ONE CARD, rows divided by hairlines — not three cards with gaps.
           Three bordered boxes say the rows are unrelated; they are one scope,

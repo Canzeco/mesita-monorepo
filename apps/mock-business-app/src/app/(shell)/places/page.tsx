@@ -13,6 +13,7 @@
 // `position: sticky` resolves `top` against the nearest scrolling ancestor and
 // this header's is the card, not the page.
 import { useState } from "react";
+import { PageHeader } from "@/components/console/PageHeader";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Minus, RotateCw } from "lucide-react";
@@ -147,14 +148,18 @@ export default function PlacesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Places</h1>
-          <p className="text-muted-foreground text-[12px]">
-            Yours, and the ones nobody holds yet.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* THE SHARED HEADER (MESITA-2008). It drew `text-2xl` while every pane
+          one click away drew `text-lg`, so the title changed size depending on
+          which door you came through. One size now, and it is `text-xl`.
+
+          NO MARK. This screen is about no single thing — it is the list of
+          them — and the alternative was inventing a glyph to fill a slot,
+          which is what the collapsing-slot rule exists to avoid. */}
+      <PageHeader
+        title="Places"
+        blurb="Yours, and the ones nobody holds yet."
+        right={
+          <div className="flex flex-wrap items-center gap-1.5">
           {/* SEARCH, BECAUSE THE TAB'S JOB SAYS SO (MESITA-1988). Pato: *"place
               is just to search places and to select them and claim it"*. It
               filters what is on screen: this catalogue is small enough that a
@@ -190,8 +195,9 @@ export default function PlacesPage() {
           <Link href={SHELL_ROUTES.placesNew} className={CTA_BUTTON_CLASS}>
             Add your place
           </Link>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       {owned === "mine" ? (
         world.places.length === 0 ? (

@@ -12,9 +12,11 @@
 // static folders beside this dynamic one, and a static segment wins — so they
 // never reach here.
 import { use } from "react";
+import { PageHeader } from "@/components/console/PageHeader";
+import { PRODUCT_MARK } from "@/lib/product-marks";
 import { notFound } from "next/navigation";
 import { usePlaceScope } from "@/components/console/PlaceScope";
-import { PLACE_TABS, type PlaceTab } from "@/lib/place-tabs";
+import { PLACE_TABS, PLACE_TAB_LABEL, type PlaceTab } from "@/lib/place-tabs";
 import { ProfileView } from "@/components/views/ProfileView";
 import { VisitsView } from "@/components/views/VisitsView";
 import { OrdersView } from "@/components/views/OrdersView";
@@ -24,6 +26,20 @@ import { PayView } from "@/components/views/PayView";
 import { CreditsView } from "@/components/views/CreditsView";
 import { CapitalView } from "@/components/views/CapitalView";
 import { AdminView } from "@/components/views/AdminView";
+
+/** The mark each standalone view wears, where its subject has one. `rewards`
+ *  is Visit Rewards' strategy screen and `admin` is the super-admin's, and
+ *  neither is a product in `PRODUCT_MARK` — they get none rather than a
+ *  borrowed one. */
+const TAB_MARK: Partial<Record<PlaceTab, string>> = {
+  profile: PRODUCT_MARK.profile,
+  visits: PRODUCT_MARK.visits,
+  orders: PRODUCT_MARK.orders,
+  reservations: PRODUCT_MARK.reservations,
+  pay: PRODUCT_MARK.pay,
+  credits: PRODUCT_MARK.credits,
+  capital: PRODUCT_MARK.capital,
+};
 
 const VIEWS: Record<PlaceTab, () => React.ReactElement | null> = {
   profile: ProfileView,
@@ -50,6 +66,20 @@ export default function PlaceViewPage({ params }: { params: Promise<{ view: stri
   // rail says, 240px left, at the same moment. It also had to invent a subject
   // for a POOL place, and what it invented was `verified: true` on a place
   // nobody had checked.
+  // THESE ADDRESSES HAD NO HEADER AT ALL (MESITA-2008). `/places/<id>/visits`
+  // and its eight siblings are the canonical, pasteable addresses — the ones
+  // written down in blocker rows — and they rendered a bare view, so a link
+  // somebody opened cold landed on a screen with no title on it.
+  //
+  // THE MARK IS THE PRODUCT'S WHERE THERE IS ONE. A `PlaceTab` is not a
+  // `ProductKey` — `rewards` and `admin` are views without a product, and
+  // `profile` is a product whose view this is — so the lookup is by tab and
+  // misses are simply markless rather than forced.
   const View = VIEWS[tab];
-  return <View />;
+  return (
+    <>
+      <PageHeader mark={TAB_MARK[tab]} title={PLACE_TAB_LABEL[tab]} />
+      <View />
+    </>
+  );
 }

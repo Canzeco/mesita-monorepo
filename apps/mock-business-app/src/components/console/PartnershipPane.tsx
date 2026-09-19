@@ -18,8 +18,7 @@ import { PartnerBanner } from "@/components/console/PartnerBanner";
 import { Badge } from "@/components/shared/Badges";
 import { type MockPlace, PLAN_LABEL } from "@/mock/types";
 import type { PlaceHalf } from "@/lib/product-routes";
-import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/console/PageHeader";
 
 export function PartnershipPane({
   place,
@@ -32,34 +31,30 @@ export function PartnershipPane({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className={cn(
-            SCOPE_CHIP_CLASS,
-            "bg-muted text-foreground flex shrink-0 items-center justify-center",
-          )}
-        >
-          <span className="text-[22px] leading-none">{"\u{1F91D}"}</span>
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-lg font-semibold tracking-tight">
-              Plan
-            </h2>
+      {/* THE SHARED HEADER (MESITA-2008). This pane used to hand-copy
+          `ProductPane`'s markup into its own file, and had already drifted:
+          two badges where the product panes draw one. Both read `PageHeader`
+          now, and the two badges are a `badges` slot rather than a fork. */}
+      <PageHeader
+        mark={"\u{1F91D}"}
+        title="Plan"
+        badges={
+          <>
             {/* BOTH FACTS, because they are two (MESITA-1997): the rung is
                 what they bought, the badge is what it granted. */}
             <Badge tone={place.partnered ? "gold" : "off"}>
               {PLAN_LABEL[place.plan]}
             </Badge>
             {place.partnered && <Badge tone="gold">Partner</Badge>}
-          </div>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
+          </>
+        }
+        blurb={
+          <>
             <span className="text-foreground font-medium">{line.lead}</span>{" "}
             {line.rest}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {half === "products" ? (
         /* The heading above already states the rung, the badge and what the
