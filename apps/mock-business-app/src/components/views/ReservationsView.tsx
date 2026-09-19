@@ -45,14 +45,16 @@ export function ReservationsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tiles
-        tiles={[
-          { label: "Reservations", value: place.reservations ? "On" : "Off" },
-          { label: "Upcoming", value: upcoming.length || null },
-          { label: "Awaiting you", value: rows.filter((r) => r.state === "requested").length || null },
-          { label: "No-shows", value: rows.filter((r) => r.state === "no_show").length || null, hint: "In the list below" },
-        ]}
-      />
+      <Half label="Activity">
+        <Tiles
+          tiles={[
+            { label: "Reservations", value: place.reservations ? "On" : "Off" },
+            { label: "Upcoming", value: upcoming.length || null },
+            { label: "Awaiting you", value: rows.filter((r) => r.state === "requested").length || null },
+            { label: "No-shows", value: rows.filter((r) => r.state === "no_show").length || null, hint: "In the list below" },
+          ]}
+        />
+      </Half>
       <Half label="Manage">
         <Section
           title="Your provider"

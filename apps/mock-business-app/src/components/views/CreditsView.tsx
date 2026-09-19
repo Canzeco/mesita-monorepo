@@ -55,20 +55,19 @@ export function CreditsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tiles
-        tiles={[
-          { label: "Credits", value: place.credits ? "On" : "Off" },
-          { label: "Balances on this page", value: rows.length || null },
-          {
-            label: "Largest on this page",
-            value: rows.length ? money(Math.max(...rows.map((b) => b.balanceCents))) : null,
-          },
-          // NOT a total. See the file header.
-          { label: "Outstanding total", value: null, hint: "Not available — see below" },
-        ]}
-      />
-
       <Half label="Activity">
+        <Tiles
+          tiles={[
+            { label: "Credits", value: place.credits ? "On" : "Off" },
+            { label: "Balances on this page", value: rows.length || null },
+            {
+              label: "Largest on this page",
+              value: rows.length ? money(Math.max(...rows.map((b) => b.balanceCents))) : null,
+            },
+            // NOT a total. See the file header.
+            { label: "Outstanding total", value: null, hint: "Not available — see below" },
+          ]}
+        />
         <Section
           title="What guests are holding"
           description="One page at a time. Credits bought here can only be spent here."
