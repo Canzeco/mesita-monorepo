@@ -46,10 +46,20 @@ export const PARTNERSHIP_SLUG = "plan";
  *  EXPRESS WEBSITE IS IN IT AND IS NOT BUILT, and that is the point: a
  *  product earns its row by mattering, and its row still says Soon. The two
  *  facts are independent now, which they were not while the groups existed. */
+// EXPRESS WEBSITE GOES LAST (MESITA-2004). Pato's own list, 2026-09-19, ends
+// *"8. Answering Agent 9. Express Website"* — a move from 3rd, and the rule it
+// implies is worth writing down because the next row move will need it:
+//
+//   EVERYTHING YOU CAN USE, THEN EVERYTHING YOU CANNOT.
+//
+// It is NOT a state sort. `line` is Locked and sits above `website`, which is
+// Soon, because Locked is a product that EXISTS behind a rung — you can read
+// what it does and go buy it — and Soon is a product that does not exist at
+// all. Only the second one has nothing whatever to look at, so only the second
+// one goes to the bottom.
 export const PRODUCT_ORDER = [
   "profile",
   "reviews",
-  "website",
   "menu",
   "visits",
   "orders",
@@ -57,6 +67,7 @@ export const PRODUCT_ORDER = [
   "pay",
   "credits",
   "line",
+  "website",
 ] as const satisfies readonly ProductKey[];
 
 /** Everything the ten leaves out, behind ONE row. Not a product and not a
