@@ -77,21 +77,23 @@ export function VisitsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tiles
-        tiles={[
-          { label: "Visits shown", value: rows.length || null },
-          { label: "Settled", value: settled.length || null },
-          {
-            label: "Settled total",
-            // A sum OF THE ROWS ON SCREEN, labelled as such. The moment a
-            // total's scope is not written on it, somebody reads it as the
-            // place's revenue.
-            value: settled.length ? money(settled.reduce((n, v) => n + v.totalCents, 0)) : null,
-            hint: "Of the visits below",
-          },
-          { label: "Open now", value: rows.filter((v) => v.state === "open").length || null },
-        ]}
-      />
+      <Half label="Activity">
+        <Tiles
+          tiles={[
+            { label: "Visits shown", value: rows.length || null },
+            { label: "Settled", value: settled.length || null },
+            {
+              label: "Settled total",
+              // A sum OF THE ROWS ON SCREEN, labelled as such. The moment a
+              // total's scope is not written on it, somebody reads it as the
+              // place's revenue.
+              value: settled.length ? money(settled.reduce((n, v) => n + v.totalCents, 0)) : null,
+              hint: "Of the visits below",
+            },
+            { label: "Open now", value: rows.filter((v) => v.state === "open").length || null },
+          ]}
+        />
+      </Half>
       <Half label="Manage">
         <Section
           title="Visit checkout"
@@ -100,12 +102,11 @@ export function VisitsView() {
           lane
         >
           <p className="text-muted-foreground text-[13px] leading-relaxed">
-            Every visit below arrived through the guest&rsquo;s own app. There is no
+            Every visit arrives through the guest&rsquo;s own app. There is no
             terminal to install and nothing for staff to press: the reward is
             applied before the total is shown, which is the only moment a guest
-            will believe it. A bill can be settled by more than one tender, so
-            <strong> Paid with</strong> lists each one — and those, plus Credits,
-            add up to the total.
+            will believe it. A bill can be settled by more than one tender, and
+            those, plus Credits, add up to the total.
           </p>
         </Section>
 
