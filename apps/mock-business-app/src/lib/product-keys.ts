@@ -33,6 +33,22 @@ export const PRODUCT_KEYS = [
   //
   // IT SITS DIRECTLY AFTER `profile` because it is the same subject at the
   // next depth: who you are, then what the world said about it.
+  //
+  // THE NAME IS "ONLINE REVIEWS", NOT "MESITA REVIEWS" (MESITA-1995). Pato:
+  // *"not mesita reviews, must maybe profile reviews — or internet reviews or
+  // something like that."* It shipped colliding with its own child: the third
+  // card INSIDE this product is also called Mesita Reviews, beside Google
+  // Reviews, so the row was named after one of its sections. And the brand
+  // prefix means MESITA IS THE COUNTERPARTY, which is false here — the
+  // Intaker scraped the Google reviews off Maps, and two of Digital Presence's
+  // four rows are Instagram and Facebook.
+  //
+  // "Online" is the qualifier this suite already owns: Online Orders, Online
+  // Reservations, Online Payments. It means "arrives over the internet rather
+  // than at the counter", which is exactly what separates these reviews from
+  // the ones a guest says to your face. Not "Profile Reviews" — naming it
+  // after the screen it just left would make a row that exists BECAUSE it is
+  // not part of Profile read as a sub-page of Profile.
   "reviews",
   // THE FIFTEENTH, AND IT WAS ALREADY HALF HERE (MESITA-1966). Pato: *"Add
   // digital menu as one item"*.
@@ -123,7 +139,7 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
  *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
-  reviews: "Mesita Reviews",
+  reviews: "Online Reviews",
   menu: "Digital Menu",
   website: "Express Website",
   customers: "Customer Intelligence",

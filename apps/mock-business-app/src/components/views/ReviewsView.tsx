@@ -1,6 +1,13 @@
 "use client";
 
-// MESITA REVIEWS — reputation, off Profile and on its own (MESITA-1993).
+// ONLINE REVIEWS — reputation, off Profile and on its own (MESITA-1993).
+//
+// THE PRODUCT IS "ONLINE REVIEWS"; THE CARD INSIDE IT IS "MESITA REVIEWS"
+// (MESITA-1995), and the two names being different is the point. This screen
+// holds what the whole internet says — Maps, Mesita, Instagram, Facebook — and
+// naming the row after one of its own sections said the section was the whole
+// thing. The inner card keeps its name, where Mesita really is the
+// counterparty and it sits beside Google's.
 //
 // Pato, reading the Products index: *"move — Mesita Partner / Mesita Profile /
 // Mesita Reviews (separate reviews shit)."*

@@ -116,12 +116,20 @@ const SPECS: readonly ProductSpec[] = [
     // which is a different product and reads like one the moment it has its
     // own row.
     //
-    // THE BRAND PREFIX EARNS ITS PLACE for the same reason `Mesita Profile`'s
-    // does: these are reviews held on Mesita, beside the Google ones the
-    // Intaker scraped, and a row reading just "Reviews" would claim both.
-    name: "Mesita Reviews",
+    // "ONLINE REVIEWS" (MESITA-1995). It shipped as "Mesita Reviews" one
+    // issue earlier and that was wrong twice: the third card inside this
+    // product is ALSO called Mesita Reviews — beside Google Reviews — so the
+    // row was named after one of its own sections; and `Mesita ` means Mesita
+    // is the counterparty, which it is not for a Google review the Intaker
+    // scraped, or for an Instagram follower count.
+    //
+    // "Online" is this suite's own qualifier — Orders, Reservations, Payments
+    // — and it means the thing arrives over the internet rather than at the
+    // counter. That is the whole difference between these reviews and the ones
+    // a guest says to your face on the way out.
+    name: "Online Reviews",
     blurb:
-      "What the world says back — the four channel counts, what guests scored after a visit here, and what Maps carries about you.",
+      "What the world says back — what Maps carries about you, what guests scored after a visit here, and how many people are looking on each channel.",
     // NO TAB. The pane is the door: there is no `/places/<id>/reviews`
     // address, and pointing this at `/profile` would send an operator to the
     // screen the reviews just left. Same shape `menu` took (MESITA-1984).

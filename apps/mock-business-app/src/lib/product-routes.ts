@@ -31,7 +31,7 @@ export const PARTNERSHIP_SLUG = "mesita-partnership";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",
-  reviews: "mesita-reviews",
+  reviews: "online-reviews",
   menu: "digital-menu",
   website: "express-website",
   customers: "customer-intelligence",
