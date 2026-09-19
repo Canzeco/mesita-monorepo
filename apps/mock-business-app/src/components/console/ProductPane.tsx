@@ -130,7 +130,7 @@ export function ProductPane({ card }: { card: ProductCard }) {
     if (View) return <View />;
 
     // A LIVE PRODUCT WITH NO LOG OF ITS OWN (MESITA-1987). On the activity
-    // surface, "Not here yet" would be a lie about Omnichannel Access and the
+    // surface, "Not here yet" would be a lie about the Developers Platform and the
     // Answering Agent: they ARE here, they simply record nothing separately.
     // Saying where their events land is the honest version, and it is what
     // stops an operator hunting for a screen that was never going to exist.
