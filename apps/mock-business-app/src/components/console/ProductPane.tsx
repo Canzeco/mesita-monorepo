@@ -46,6 +46,7 @@ import { RewardsView } from "@/components/views/RewardsView";
 import { PayView } from "@/components/views/PayView";
 import { CreditsView } from "@/components/views/CreditsView";
 import { CapitalView } from "@/components/views/CapitalView";
+import { DevelopersView } from "@/components/views/DevelopersView";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import { useMock } from "@/mock/MockStore";
 import type { ProductCard } from "@/lib/products";
@@ -54,7 +55,7 @@ import { PRODUCT_MARK } from "@/lib/product-marks";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-/** THE SEVEN THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
+/** THE NINE THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
  *  `pay`'s screen is `PayView` but its address is a sub-step rather than a tab,
  *  and `menu`'s door is Profile, which is somebody else's screen. A record over
  *  the product key says both of those out loud instead of hiding them behind a
@@ -72,6 +73,10 @@ const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>>
   pay: PayView,
   credits: CreditsView,
   capital: CapitalView,
+  // DEVELOPERS PLATFORM HAS ONE NOW (MESITA-1992). Pato: *"mention API key and
+  // MCP here."* It was the one LIVE product sitting on the unbuilt-product
+  // empty state, which said "Not here yet" about a row whose own badge read On.
+  access: DevelopersView,
 };
 
 /** Visit Rewards' own strategy screen, reached from `VisitsView`. Held here so
@@ -130,10 +135,15 @@ export function ProductPane({ card }: { card: ProductCard }) {
     if (View) return <View />;
 
     // A LIVE PRODUCT WITH NO LOG OF ITS OWN (MESITA-1987). On the activity
-    // surface, "Not here yet" would be a lie about the Developers Platform and the
-    // Answering Agent: they ARE here, they simply record nothing separately.
-    // Saying where their events land is the honest version, and it is what
-    // stops an operator hunting for a screen that was never going to exist.
+    // surface, "Not here yet" would be a lie about the Answering Agent: it IS
+    // here, it simply records nothing separately. Saying where its events land
+    // is the honest version, and it is what stops an operator hunting for a
+    // screen that was never going to exist.
+    //
+    // The Developers Platform used to land here too and now says the same thing
+    // inside its OWN view's Activity half, because it has a Manage half worth
+    // drawing (MESITA-1992). The sentence is deliberately the same shape: the
+    // reason is the same reason.
     if (half === "activity" && card.state !== "soon") {
       return (
         <div className="flex min-h-[45vh] flex-col items-center justify-center gap-3 text-center">
