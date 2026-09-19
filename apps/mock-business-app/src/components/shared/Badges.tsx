@@ -48,8 +48,23 @@ const BASE =
 // `gold` and `bad` are the two RESERVED signals and keep their chroma: a tier
 // the product names out loud, and the one thing that says "this destroys
 // something".
+//
+// `live` IS THE THIRD, AND IT SITS ON TOP OF THE SHAPE AXIS (MESITA-2001).
+// Pato, on the Setup index: *"add maybe a color to the list to indicate if
+// Inactive or Active or whatever"*. It is a FILLED chip like `on` was, tinted
+// green instead of ink — so the axis above is untouched: filled still means
+// in force, outline still means off, dashed still means not here yet, and the
+// hue is a second channel carrying the same fact rather than a replacement
+// for the first. Strip the colour and this file still works, which is the
+// test the original note set and the reason the change is cheap.
+//
+// IT IS A NEW TONE RATHER THAN A REPAINT OF `on`. `on` is the generic yes —
+// AdminView, OrdersView, Settings and the catalogue all reach for it for facts
+// that are not a product's state. Tinting it green would have turned every
+// "yes" in the app into a running product.
 const TONES: Record<string, string> = {
   on: "bg-foreground text-paper",
+  live: "bg-[color:var(--state-live)]/18 text-[color:var(--state-live-ink)]",
   off: "border-border text-muted-foreground border",
   soon: "border-border text-muted-foreground border border-dashed",
   neutral: "bg-muted text-muted-foreground",
@@ -62,16 +77,20 @@ export function Badge({
   children,
   className,
 }: {
-  tone?: "neutral" | "on" | "off" | "soon" | "gold" | "bad";
+  tone?: "neutral" | "on" | "live" | "off" | "soon" | "gold" | "bad";
   children: React.ReactNode;
   className?: string;
 }) {
   return <span className={cn(BASE, TONES[tone], className)}>{children}</span>;
 }
 
-const PRODUCT_TONE: Record<ProductState, "on" | "off" | "soon" | "gold"> = {
-  free: "on",
-  enabled: "on",
+// FREE AND ENABLED ARE ONE FACT — the product is RUNNING — and they take the
+// live tint together. Free is not a lesser On: it is a product this place has,
+// working, on the rung it came with. The WORD still tells them apart, which is
+// the whole reason the hue is allowed to collapse them.
+const PRODUCT_TONE: Record<ProductState, "live" | "off" | "soon" | "gold"> = {
+  free: "live",
+  enabled: "live",
   off: "off",
   locked: "gold",
   soon: "soon",

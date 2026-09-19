@@ -26,9 +26,25 @@
    COLOR DESIGN, LIKE IN INSTAGRAM, BLACK AND WHITE."*
 
    THE RULE, and it is the whole file: every neutral keeps its LIGHTNESS and
-   loses its CHROMA. Chroma survives in exactly three places — where a third
-   party owns the colour, where money is at risk, or where a tier is named.
-   Never on state, never on hierarchy, never on hover.
+   loses its CHROMA. Chroma survives in exactly FOUR places — where a third
+   party owns the colour, where money is at risk, where a tier is named, and
+   (MESITA-2001) where a product is RUNNING. Never on hierarchy, never on
+   hover.
+
+   THE FOURTH IS NEW AND IT IS PATO'S. 2026-09-19, on the Setup index: *"add
+   maybe a color to the list to indicate if Inactive or Active or whatever"*.
+   The original clause said "never on state" and it was right about the
+   general case — a console that tints every state ends up with a legend. It
+   was wrong about this one: the Setup index's entire job is saying which of
+   twelve products are live, and it was saying it in five words that all
+   rendered #5d5d5d at 12px.
+
+   ONE FACT GETS THE HUE, NOT FIVE. `--state-live` is running; Locked reuses
+   the gold that already names the rung it needs; Off and Soon stay achromatic
+   on the outline/dashed axis `Badges.tsx` built for exactly this. And the
+   colour is ADDED to that shape axis, never substituted for it — every badge
+   still carries its word, so the fact survives greyscale, print and a
+   colourblind operator.
 
    It was never a pink-ACCENT problem. The accent was ~5% of the pixels; the
    other 95% was neutrals that all carried chroma. Measured off the running
@@ -130,6 +146,17 @@
      achromatic. */
   --tier-gold-ink: oklch(0.42 0.11 78);
 
+  /* RUNNING (MESITA-2001). A fill and an ink, the same pair gold carries and
+     for the same reason: the tint alone is 1.1:1 against the card, so the WORD
+     inside it is what has to pass. `--state-live-ink` measures 6.4:1 on the
+     18% tint, which clears AA for the 11px semibold badge label.
+
+     GREEN AND NOT THE INK ITSELF, because "on" and "selected" must not be one
+     colour. The index's chosen row is the page grey; if running were also a
+     neutral fill the two would collide on the one row that is both. */
+  --state-live: oklch(0.62 0.15 152);
+  --state-live-ink: oklch(0.43 0.11 152);
+
   /* Depth is additive here, not load-bearing: Section already carries a
      hairline AND a shadow, so the cards survive on the hairline alone. What is
      left is kept for the two surfaces that genuinely float — Modal and the
@@ -204,6 +231,8 @@
   --color-ring: var(--ring);
   --color-tier-gold: var(--tier-gold);
   --color-tier-gold-ink: var(--tier-gold-ink);
+  --color-state-live: var(--state-live);
+  --color-state-live-ink: var(--state-live-ink);
   --color-mock-strip: var(--mock-strip);
   --color-ink-hover: var(--ink-hover);
   --color-dock: var(--dock);
