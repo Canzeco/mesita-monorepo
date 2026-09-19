@@ -21,6 +21,19 @@
 // instead of load-bearing and invisible. See `PRODUCT_BANDS` below.
 export const PRODUCT_KEYS = [
   "profile",
+  // REPUTATION IS ITS OWN PRODUCT NOW (MESITA-1993). Pato, reading the index:
+  // *"Mesita Partner / Mesita Profile / Mesita Reviews (separate reviews
+  // shit)"*.
+  //
+  // `ReviewBoxes` was the tail of Profile's masonry: three read-only cards
+  // under twelve editable ones, sitting inside a save bar they could never
+  // dirty. PROFILE IS WHAT AN OPERATOR SETS; reputation is the one thing on
+  // that screen the world says back. The split is the same move `menu` made
+  // one line below — a card inside another product becoming one.
+  //
+  // IT SITS DIRECTLY AFTER `profile` because it is the same subject at the
+  // next depth: who you are, then what the world said about it.
+  "reviews",
   // THE FIFTEENTH, AND IT WAS ALREADY HALF HERE (MESITA-1966). Pato: *"Add
   // digital menu as one item"*.
   //
@@ -110,6 +123,7 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
  *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
+  reviews: "Mesita Reviews",
   menu: "Digital Menu",
   website: "Express Website",
   customers: "Customer Intelligence",
@@ -148,7 +162,7 @@ export const PRODUCT_BANDS: readonly {
 }[] = [
   {
     title: "What the world sees",
-    keys: ["profile", "menu", "website", "customers", "ads"],
+    keys: ["profile", "reviews", "menu", "website", "customers", "ads"],
   },
   {
     title: "Serving the guest",
@@ -175,6 +189,7 @@ export const PRODUCT_BANDS: readonly {
  *  refuses the file. It is not a runtime list anybody reads. */
 const BANDED_KEYS: { [K in ProductKey]: true } = {
   profile: true,
+  reviews: true,
   menu: true,
   website: true,
   customers: true,

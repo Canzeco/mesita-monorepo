@@ -98,8 +98,34 @@ const SPECS: readonly ProductSpec[] = [
     key: "profile",
     name: "Mesita Profile",
     blurb:
-      "Your public page on Mesita — the photos, the menu, the hours and the reviews a guest reads before they pick you.",
+      "Your public page on Mesita — the photos, the menu and the hours a guest reads before they pick you.",
     tab: "profile",
+    needsPartner: false,
+    atPlace: null,
+    soon: null,
+  },
+  {
+    key: "reviews",
+    // MESITA REVIEWS (MESITA-1993). Pato: *"Mesita Partner / Mesita Profile /
+    // Mesita Reviews (separate reviews shit)"*.
+    //
+    // IT WAS THE TAIL OF PROFILE'S MASONRY — Digital Presence, Google Reviews,
+    // Mesita Reviews — three read-only cards under twelve editable ones, in a
+    // form with a save bar none of them could ever dirty. PROFILE IS WHAT AN
+    // OPERATOR SETS. This is the one thing on that screen the world says back,
+    // which is a different product and reads like one the moment it has its
+    // own row.
+    //
+    // THE BRAND PREFIX EARNS ITS PLACE for the same reason `Mesita Profile`'s
+    // does: these are reviews held on Mesita, beside the Google ones the
+    // Intaker scraped, and a row reading just "Reviews" would claim both.
+    name: "Mesita Reviews",
+    blurb:
+      "What the world says back — the four channel counts, what guests scored after a visit here, and what Maps carries about you.",
+    // NO TAB. The pane is the door: there is no `/places/<id>/reviews`
+    // address, and pointing this at `/profile` would send an operator to the
+    // screen the reviews just left. Same shape `menu` took (MESITA-1984).
+    tab: null,
     needsPartner: false,
     atPlace: null,
     soon: null,
@@ -478,11 +504,20 @@ export function buildProductCards(input: {
     if (spec.soon) {
       return { ...base(spec), state: "soon", note: spec.soon, action: null };
     }
-    if (spec.key === "profile") {
+    // FREE, AND THERE ARE TWO OF THEM NOW (MESITA-1993). Neither is bought,
+    // neither can be switched off, and both exist on a place that has never
+    // heard of Mesita — the profile because the Intaker built it, the reviews
+    // because Google already carried them. A `needsPartner: false` product
+    // with no `atPlace` would otherwise fall through to "enabled", which reads
+    // as something somebody turned ON.
+    if (spec.key === "profile" || spec.key === "reviews") {
       return {
         ...base(spec),
         state: "free",
-        note: "Always free. Every place has one.",
+        note:
+          spec.key === "profile"
+            ? "Always free. Every place has one."
+            : "Always free. Collected whether or not you claim the place.",
         action: viewAction(spec, "Manage"),
       };
     }

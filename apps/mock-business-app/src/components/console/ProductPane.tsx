@@ -20,10 +20,10 @@
 // pasted link opens, and deleting them to force everything through `?p=` would
 // break every door already written down in a blocker row.
 //
-// ── AND THE ELEVEN WITHOUT ONE ─────────────────────────────────────────────
+// ── AND THE ONES WITHOUT ─────────────────────────────────────────────────
 //
 // Pato picked the complete answer: every product gets a pane, Coming included.
-// A list where eleven of eighteen rows do nothing when clicked teaches you that
+// A list where most rows do nothing when clicked teaches you that
 // clicking mostly fails, which is the one thing a two-pane layout promises it
 // will not do.
 //
@@ -39,6 +39,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ProfileView } from "@/components/views/ProfileView";
 import { MenuView } from "@/components/views/MenuView";
+import { ReviewsView } from "@/components/views/ReviewsView";
 import { VisitsView } from "@/components/views/VisitsView";
 import { OrdersView } from "@/components/views/OrdersView";
 import { ReservationsView } from "@/components/views/ReservationsView";
@@ -55,7 +56,7 @@ import { PRODUCT_MARK } from "@/lib/product-marks";
 import { SCOPE_CHIP_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-/** THE NINE THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
+/** THE TEN THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
  *  `pay`'s screen is `PayView` but its address is a sub-step rather than a tab,
  *  and `menu`'s door is Profile, which is somebody else's screen. A record over
  *  the product key says both of those out loud instead of hiding them behind a
@@ -67,6 +68,10 @@ const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>>
   // pointing the card at `/profile` would send an operator to the page the
   // menus just left.
   menu: MenuView,
+  // MESITA REVIEWS (MESITA-1993) — Profile's read-only tail, on its own row.
+  // It is the one view here that renders the SAME screen on both surfaces, on
+  // purpose: see the note at the top of `ReviewsView`.
+  reviews: ReviewsView,
   visits: VisitsView,
   orders: OrdersView,
   reservations: ReservationsView,
@@ -173,7 +178,7 @@ export function ProductPane({ card }: { card: ProductCard }) {
     // A STATED ABSENCE, COMPOSED (MESITA-1983). This was a dashed strip pinned
     // to the top of the pane, under a heading that had just said the same
     // sentence — a scrap at the top of half a white screen, which is what made
-    // eleven of eighteen products look unfinished rather than unbuilt.
+    // the products without a screen look unfinished rather than unbuilt.
     //
     // It is centred in the pane's own height now and it says ONE thing. The
     // mark is the product's, at the size the pane can afford: the thing the
