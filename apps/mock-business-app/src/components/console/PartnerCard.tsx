@@ -31,10 +31,14 @@
 // changed is that no screen sells it any more, because nothing is called
 // that on the price list.
 //
-// THE CODE ALREADY AGREED. `deriveListingType` grants the badge on
-// `plan !== 'free'`, so two paid rungs both making a place a Partner was
-// never a change — it was what the oldest path in the product already did,
-// under a second SKU that had been stacked on top of it.
+// ── AND PAYING IS NOT BEING A PARTNER (2026-09-20) ────────────────────────
+//
+// Pato: *"mesita partner until 1000, not 250"*. With the badge at Mesita Pro,
+// Mesita Start is a rung that bills every month and wears none, so this file
+// asks TWO different questions where it used to ask one. `PartnerBanner`
+// branches on the BILL (`plan !== "free"`) — a Start place needs the Manage
+// plan door, not a buy button for a subscription it has. The badge itself
+// reads `isPartner`.
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMock } from "@/mock/MockStore";

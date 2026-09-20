@@ -69,7 +69,14 @@
 // somebody re-snapshots it by hand.
 import type { PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
-import { type MockPlace, PLAN_LABEL, type PlanTier, planAtLeast } from "@/mock/types";
+import {
+  isPartner,
+  type MockPlace,
+  PARTNER_MIN_PLAN,
+  PLAN_LABEL,
+  type PlanTier,
+  planAtLeast,
+} from "@/mock/types";
 
 export type ProductState = "free" | "enabled" | "off" | "locked" | "soon";
 
@@ -138,12 +145,18 @@ export const SPECS: readonly ProductSpec[] = [
     // quiero meter como un producto… que sea casi un producto"*, second on his
     // list of ten.
     //
-    // `minPlan: "start"` IS THE WHOLE GATE, and it is not a price on this
-    // card: `partnered` is `plan !== "free"` and has been since before any of
-    // this, so the lowest rung that grants the badge is Start. Saying it here
-    // means `PlanComparison` lists Mesita Partner under Start — which is
-    // exactly what the $200 buys that Free does not have — instead of the
-    // ladder and the badge being two stories about one purchase.
+    // `minPlan` IS THE WHOLE GATE, and it is not a price on this card: it is
+    // the lowest rung that grants the badge, which `PARTNER_MIN_PLAN` holds
+    // for every other reader too. Saying it here means `PlanComparison` lists
+    // Mesita Partner under that rung — what the money buys that the rung below
+    // does not have — instead of the ladder and the badge being two stories
+    // about one purchase.
+    //
+    // IT IS PRO, NOT START (2026-09-20). Pato: *"mesita partner until 1000,
+    // not 250"*. The badge was the first thing $250 bought and it is now the
+    // headline of $1,000 — which also gives Start something to be: the rung
+    // that gets you paid, without the thing that says Mesita stands behind
+    // you.
     name: "Mesita Partner",
     // WHAT THE BADGE IS FOR, not what it costs. Every other line an operator
     // reads about partnership is about money; this one is the only place that
@@ -151,7 +164,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "The badge on your page, and the rung that grants it — a guest reading the map sees that Mesita stands behind you.",
     tab: null,
-    minPlan: "start",
+    minPlan: PARTNER_MIN_PLAN,
     atPlace: null,
     soon: null,
   },
@@ -585,14 +598,18 @@ export function buildProductCards(input: {
     // `plan`, NOT `place.partnered`. The two agree — `scenario.ts` derives one
     // from the other — and a card that read the derived field would be the
     // second reader of a fact this function already holds.
+    //
+    // THE OFF SENTENCE NAMES THE RUNG FROM THE CONSTANT (2026-09-20), because
+    // the rung moved once and the sentence that named it by hand would have
+    // been the line still selling the badge at $250.
     if (spec.key === "partner") {
-      const partnered = plan !== "free";
+      const partnered = isPartner(plan);
       return {
         ...base(spec),
         state: partnered ? "enabled" : "off",
         note: partnered
           ? `On here. ${PLAN_LABEL[plan]} carries the badge.`
-          : `Not a partner yet. Any rung from ${PLAN_LABEL.start} up grants it.`,
+          : `Not a partner yet. Any rung from ${PLAN_LABEL[PARTNER_MIN_PLAN]} up grants it.`,
         action: null,
       };
     }
