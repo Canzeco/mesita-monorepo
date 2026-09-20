@@ -52,6 +52,7 @@ import {
   planPrice,
 } from "@/components/console/PlanComparison";
 import { PRODUCT_LABEL } from "@/lib/product-keys";
+import { placePlanHref } from "@/lib/console-routes";
 import {
   CTA_BUTTON_CLASS,
   PILL_BUTTON_CLASS,
@@ -377,7 +378,11 @@ function PlanModal({
     if (pending) return; // a second click is a second checkout session
     setPending(true);
     setScenario({ plan: tier, membership: "active" });
-    router.replace(`/places/${encodeURIComponent(place.id)}/products?membership=return`);
+    // BACK TO PLAN, WHICH IS WHERE THEY LEFT FROM (MESITA-2012). It was the
+    // Setup index while the ladder lived there; a checkout that returned to a
+    // screen with no prices on it would strand the notice away from the thing
+    // it is about.
+    router.replace(`${placePlanHref(place.id)}?membership=return`);
     onClose();
   };
 
