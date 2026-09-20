@@ -83,6 +83,40 @@ function isGoogleMapsUrl(url: string): boolean {
   return false;
 }
 
+// Hosts that are not a place's own website and that `matchChannel` does NOT
+// already claim: search engines, encyclopaedias, link-in-bio pages, and the
+// delivery aggregators Mesita has no column for. Anything matchChannel DOES
+// claim is excluded by derivation inside pickWebsite, never by being re-typed
+// here — the hand-typed list used to be the only guard and it had drifted: it
+// named opentable.com but not ubereats.com, so an Uber Eats store page
+// resolved as a place's official website and landed in `website_url` beside
+// the SAME store's `uber_eats_url` (MESITA-2030, observed in production).
+//
+// Matched on the BRAND LABEL anywhere in the host — the same shape
+// isRetiredSocialHost uses — so country TLDs and locale subdomains both land.
+// A plain suffix list does not: the first cut of this fix listed `rappi.com`
+// and sailed straight past `rappi.com.mx`, which is the host Mexico actually
+// serves. Aggregators matchChannel already owns (ubereats, didi) are repeated
+// here deliberately: their country TLDs are exactly where that table's exact
+// `.com` rules run out.
+const NOT_A_WEBSITE_BRANDS =
+  /(^|\.)(rappi|doordash|grubhub|postmates|seamless|ubereats|didifood|google|bing|duckduckgo|wikipedia|foursquare|linkedin|youtube|linktr|beacons|menudo)\./;
+
+// Exact hosts whose label is too generic to brand-match (`bio.` would swallow
+// any `bio.<place>.com`) or that have no country variant to chase.
+const NOT_A_WEBSITE_HOSTS = ["goo.gl", "youtu.be", "bio.link"];
+
+/** True when this host can never be a place's own site. Both website doors
+ * ask it: classifyLinks (the create path, which bags a place's links) and
+ * pickWebsite (the Links step, which picks one out of search results). They
+ * used to guard differently — classifyLinks derived from matchChannel while
+ * pickWebsite kept a hand-typed copy — which is how the copy drifted. */
+function isNotAWebsiteHost(host: string): boolean {
+  const h = host.replace(/^www\./, "").toLowerCase();
+  if (NOT_A_WEBSITE_BRANDS.test(h)) return true;
+  return NOT_A_WEBSITE_HOSTS.some((b) => h === b || h.endsWith(`.${b}`));
+}
+
 // Trim tracking junk + trailing slashes so two near-identical links from the
 // same host collapse to one before we pick the shortest.
 export function canonicaliseUrl(raw: string): string | null {
@@ -123,7 +157,7 @@ export function classifyLinks(input: (string | null | undefined)[]): Channels {
       (buckets[channel] ??= []).push(url);
     } else if (isGoogleMapsUrl(url)) {
       (buckets.google_maps_url ??= []).push(url);
-    } else if (!isRetiredSocialHost(host)) {
+    } else if (!isRetiredSocialHost(host) && !isNotAWebsiteHost(host)) {
       websiteCandidates.push(url);
     }
   }
@@ -207,19 +241,17 @@ export function pickFacebook(urls: string[]): string | null {
 // First search result that's a plausible official website: an http(s) URL
 // whose host isn't a social network, directory, or aggregator.
 export function pickWebsite(urls: string[]): string | null {
-  const blocked = [
-    "instagram.com", "facebook.com", "fb.com", "tiktok.com", "twitter.com",
-    "x.com", "youtube.com", "youtu.be", "google.com", "goo.gl",
-    "maps.app.goo.gl", "tripadvisor.com", "tripadvisor.com.mx", "yelp.com",
-    "foursquare.com", "opentable.com", "opentable.com.mx", "wikipedia.org",
-    "linktr.ee", "linkedin.com", "threads.net", "wa.me", "menudo.app",
-  ];
   for (const u of urls) {
     const valid = validHost(u, null);
     if (!valid) continue;
     const h = domainOf(valid);
     if (!h) continue;
-    if (blocked.some((b) => h === b || h.endsWith(`.${b}`))) continue;
+    // A host that IS another channel cannot also be the official website.
+    // Derived from matchChannel so a channel added there is blocked here the
+    // same day, instead of waiting for someone to remember this list.
+    if (matchChannel(h)) continue;
+    if (isRetiredSocialHost(h)) continue;
+    if (isNotAWebsiteHost(h)) continue;
     return valid;
   }
   return null;
