@@ -242,7 +242,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               makes a screen where nothing says MOCK, on the one surface where
               somebody unfamiliar is most likely to be poking around. 28px is
               the strip's height and this tracks it. */}
-          <div className={cn("shrink-0", SIDEBAR_WIDTH)}>
+          {/* `max-w-[80vw]` ONLY ON THIS COPY. The drawer wears the same
+              `SIDEBAR_WIDTH` as the fixed column so the two menus are one menu,
+              but the column has a viewport to spare and the drawer does not: at
+              320px on a 375px phone the scrim left to tap the menu shut is a
+              55px strip, and the scrim is the only way out of it — closing is
+              otherwise a second tap on the button behind the panel. The cap
+              gives the narrowest phone ~75px of scrim and does nothing at all
+              anywhere wider, where 80vw already exceeds the width. */}
+          <div className={cn("shrink-0 max-w-[80vw]", SIDEBAR_WIDTH)}>
             <Sidebar
               scope={scope}
               place={fullPlace}
