@@ -75,8 +75,10 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
 
 /** THE MENU'S ROWS LEFT THIS FILE (MESITA-2004). `NavRow` and `NAV_ROWS` held
  *  the four destinations MESITA-1975 drew across one ink line; the menu is a
- *  COLUMN again and it holds fifteen, so its list lives in `lib/sidebar-rows.ts`
- *  beside `PRODUCT_ORDER`, which is where ten of those fifteen come from.
+ *  COLUMN again and it holds every destination there is, so its list lives in
+ *  `lib/sidebar-rows.ts` beside `PRODUCT_ORDER`, which is where all but three
+ *  of its rows come from. The count is deliberately not written here: it has
+ *  moved four times since MESITA-2004 and this file never needed to know it.
  *
  *  THIS FILE IS THE ROUTE VOCABULARY AGAIN, and only that. The reason it is
  *  worth keeping the two apart is written a few lines up: `place-tabs.ts`

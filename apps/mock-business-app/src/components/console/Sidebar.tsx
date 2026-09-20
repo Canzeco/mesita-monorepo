@@ -237,7 +237,10 @@ export function Sidebar({
             // menu that went dark when you pressed that pair would be teaching
             // the operator that they had left the product.
             on={last === slug}
-            badge={<ProductStateBadge state={card.state} />}
+            // `onDock` because this menu is ink. Only `soon` moves — it is
+            // the one tone with no fill of its own, so it is the one that
+            // would otherwise print a white-card grey onto near-black.
+            badge={<ProductStateBadge state={card.state} onDock />}
             onNavigate={onNavigate}
           />
         );

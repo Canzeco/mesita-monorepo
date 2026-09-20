@@ -15,15 +15,16 @@
 //
 // ── THE ORDER ──────────────────────────────────────────────────────────────
 //
-// PATO'S TEN, AND IT IS HIS "ACTUALES" LIST EXACTLY (MESITA-2011). Mesita
-// Partner is 2nd and Online Reviews 3rd; Express Website leaves, because he
-// put it in Futuros. The order lives in `PRODUCT_ORDER` and this file does not
-// re-spell it — a row move is one line over there.
+// PATO'S OWN LIST. MESITA-2011 made it his "Actuales" exactly — Mesita Partner
+// 2nd, Online Reviews 3rd, Express Website gone — and MESITA-2013 put Express
+// Website back at the bottom: *"add express website product here into sidebar
+// menu"*. The order lives in `PRODUCT_ORDER` and this file does not re-spell
+// it — a row move is one line over there.
 //
-// NOTHING IN THE LIST IS SOON ANY MORE, which retires the rule the old ninth
-// row wrote: everything-you-can-use-then-everything-you-cannot, invented so
-// `website` could sit last without the list becoming a state sort. It comes
-// back the day an unbuilt product earns a row again.
+// THE LAST ROW IS SOON AGAIN, which brings back the rule it wrote the first
+// time: everything-you-can-use-then-everything-you-cannot. It is not a state
+// sort — Locked sits above Soon because Locked is a product you can read about
+// and go buy, and Soon is one that does not exist at all.
 //
 // ── THE ACTIVITY ROW IS GONE, AND SO IS THE ROADMAP BAND (MESITA-2005) ─────
 //
@@ -61,7 +62,7 @@ import { PRODUCT_ORDER } from "@/lib/product-routes";
 import type { ProductKey } from "@/lib/product-keys";
 
 /** A row names one destination. `product` is the only kind that carries a
- *  payload, which is what keeps `PRODUCT_ORDER` the single source of the ten
+ *  payload, which is what keeps `PRODUCT_ORDER` the single source of the rows
  *  that are products — this file does not re-spell them. */
 export type SidebarRow =
   | { kind: "place" }
@@ -72,7 +73,7 @@ export type SidebarRow =
 /** A group is a label and its rows. The label is `null` for the first group:
  *  it sits directly under the venue band, and a heading there would be a word
  *  explaining two rows that need no explanation. The other earns its own —
- *  ten products and a door onto the rest are worth separating. */
+ *  the products and a door onto the rest are worth separating. */
 export type SidebarGroup = {
   label: string | null;
   rows: readonly SidebarRow[];
@@ -96,14 +97,14 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     label: "Products",
     rows: [
       ...PRODUCT_ORDER.map((key) => ({ kind: "product", key }) as const),
-      // THE ELEVENTH ROW IS A DOOR, NOT A PRODUCT (MESITA-2005), and it is
-      // last because it is the only row here you cannot switch on. Its badge is
-      // a COUNT where the ten above carry a state, which is the one thing that
-      // still separates it now that the band is gone — and a number is also the
-      // one thing worth reading before opening a list.
+      // THE LAST ROW IS A DOOR, NOT A PRODUCT (MESITA-2005), and it is last
+      // because it is the only row here you cannot switch on. Its badge is a
+      // COUNT where the products above carry a state, which is the one thing
+      // that still separates it now that the band is gone — and a number is
+      // also the one thing worth reading before opening a list.
       //
       // It hides itself when the count is zero, and the group's label does NOT
-      // go with it: ten other rows still need it. That is a difference from
+      // go with it: the product rows still need it. That is a difference from
       // the band it replaces, where the label had nothing left to introduce.
       { kind: "roadmap" },
     ],
