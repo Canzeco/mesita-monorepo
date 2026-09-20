@@ -1,6 +1,7 @@
 import { BadgeCheck, ChevronRight, CircleHelp, Clock, Tags } from 'lucide-react-native';
 import { Linking, Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { FACET_TINT } from '../place-detail-links';
 import { Box } from './shared';
@@ -45,7 +46,10 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
 }
 
 const PILL_TONES = {
-  sky: { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd', dot: '#0ea5e9' },
+  // MESITA-2031: the partner row was `sky` — the last of the four colours
+  // this one fact wore. Tinted from `--partner` (#d41f37); `text` is
+  // pink-800-dark enough to clear AA on its own wash.
+  partner: { bg: '#fef2f3', text: '#9f1626', border: '#f8ccd1', dot: COLORS.partner },
   amber: { bg: '#fffbeb', text: '#b45309', border: '#fde68a', dot: '#f59e0b' },
   slate: { bg: '#f8fafc', text: '#334155', border: '#e2e8f0', dot: '#94a3b8' },
 } as const;
@@ -78,12 +82,12 @@ export function VerificationBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Verification"
       icon={isPartner ? BadgeCheck : CircleHelp}
-      iconColor={isPartner ? '#0ea5e9' : '#f59e0b'}
+      iconColor={isPartner ? COLORS.partner : '#f59e0b'}
     >
       <View className="flex-row flex-wrap gap-2">
         <MetaPill
           label={isPartner ? 'Mesita Partner' : 'Web listing'}
-          tone={isPartner ? 'sky' : 'amber'}
+          tone={isPartner ? 'partner' : 'amber'}
         />
       </View>
       <Text className="text-xs leading-relaxed text-muted-foreground">

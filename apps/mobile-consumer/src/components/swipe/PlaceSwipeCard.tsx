@@ -13,6 +13,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
+import { PartnerMark } from '@/components/brand/PartnerMark';
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import { resolveZoneLabel } from '@/lib/adapters/place-to-detail';
 import type { Place } from '@/lib/api/places';
@@ -90,16 +91,12 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           >
             {place.name}
           </Text>
-          {/* decision: MESITA-933 — blue ✓ disc only when Mesita partner.
-              Unverified: no disc; "Not Verified" tag in the chip row. */}
-          {isVerified ? (
-            <View
-              className="size-[18px] items-center justify-center rounded-full bg-[#0EA5E9]"
-              accessibilityLabel="Mesita Partner"
-            >
-              <Text className="text-[10px] font-bold text-white">✓</Text>
-            </View>
-          ) : null}
+          {/* decision: MESITA-933 — a mark only when Mesita partner. Not a
+              partner: no mark; the chip row carries the words.
+              decision: Pato (MESITA-2031) — it is the verified rosette in
+              partner red now, the same file web's swipe card reads. It was a
+              sky disc with a ✓ TEXT GLYPH. */}
+          {isVerified ? <PartnerMark size={18} /> : null}
         </View>
 
         <View className="flex-row flex-wrap items-center gap-1.5">

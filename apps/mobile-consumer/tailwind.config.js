@@ -40,6 +40,9 @@ module.exports = {
         muted: { DEFAULT: '#faeff0', foreground: '#775254' },
         accent: { DEFAULT: '#ff6eb4', foreground: '#260409' },
         destructive: { DEFAULT: '#e6000c', foreground: '#fffafb' },
+        // The Mesita Partner badge (MESITA-2031) — web `--partner`. A second
+        // red on purpose: `destructive` is reserved for destruction.
+        partner: { DEFAULT: '#d41f37', foreground: '#ffffff' },
         border: '#ebd9db',
         input: '#f5e7e9',
         ring: '#fb2b7b',
