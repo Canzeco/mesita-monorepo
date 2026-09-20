@@ -752,7 +752,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   };
 
-  // Create only — the ugly profile is live immediately. Intaker waits
+  // Create only — the ugly profile is live immediately. Enricher waits
   // for votes on the Enrich tab. Open that profile the moment it exists.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {

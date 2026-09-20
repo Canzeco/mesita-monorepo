@@ -8,7 +8,7 @@
 //   · category defined → the category's FULL membership (1–2 families),
 //     re-derived LIVE from the current form value (unsaved edits update it);
 //   · category `undefined`/unknown → the stored family_keys (the families the
-//     Intaker inferred), suffixed "(inferred)";
+//     Enricher inferred), suffixed "(inferred)";
 //   · nothing known → ❓ Undefined.
 //
 // The real file's em-dash branch — what it shows while the catalog request is
@@ -25,7 +25,7 @@ export function PlaceFamilyField({
 }: {
   /** Current form value of the Category select (may be unsaved). */
   category: string;
-  /** Stored family_keys — the Intaker's inferred families. */
+  /** Stored family_keys — the Enricher's inferred families. */
   familyKeys: string[] | null;
 }) {
   const display = useMemo(() => {

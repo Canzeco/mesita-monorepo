@@ -25,16 +25,19 @@ import {
   SectionCard,
   TextAreaField,
 } from "@/components/admin-ui/config";
-import { chipsFor, flowTagFor } from "./intake-functions";
+import { chipsFor, flowTagFor } from "./crenup-steps";
 import {
   computeCreateCost,
   computeEnrichTickCost,
 } from "./cost-model";
 import { ImageFunnel } from "./ImageFunnel";
 import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
+
+/** The Crenup box on Manage Places — where Create actually runs. */
+const CRENUP_BOX_HREF = "/manage-multiple#crenup";
 import {
   updateAtlasConfig,
-  type IntakePrompt,
+  type CrenupPrompt,
 } from "./actions";
 import {
   Fields,
@@ -47,28 +50,28 @@ import {
   Tag,
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
-import { clampFunnel, intakeSaveBlocked, type IntakeSettings } from "./intake-guards";
+import { clampFunnel, crenupSaveBlocked, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
 import {
   VerificationConfigClient,
 } from "../verification-config/VerificationConfigClient";
 import type { VerificationConfig } from "../verification-config/actions";
 
-export type { IntakeSettings };
+export type { CrenupSettings };
 
-// THE INTAKE PAGE. Models (read-only) · Create · Enrich · Functions · Verification.
-// Discovery-shaped. One Intake Save for atlas_*; Verification keeps its own
+// THE CRENUP PAGE. Models (read-only) · Create · Enrich · Functions · Verification.
+// Discovery-shaped. One Crenup Save for atlas_*; Verification keeps its own
 // per-switch save. Search eligibility lives on Discovery › Map — not here.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
-const QUALITY_LABEL: Record<IntakeSettings["synthesisQuality"], string> = {
+const QUALITY_LABEL: Record<CrenupSettings["synthesisQuality"], string> = {
   economy: "economy",
   standard: "standard",
   high: "high",
 };
 
-export function IntakeClient({
+export function CrenupClient({
   initialSettings,
   settingsUpdatedAt,
   settingsLoadError,
@@ -77,7 +80,7 @@ export function IntakeClient({
   verificationUpdatedAt,
   verificationLoadError,
 }: {
-  initialSettings: IntakeSettings;
+  initialSettings: CrenupSettings;
   settingsUpdatedAt: string | null;
   settingsLoadError: string | null;
   /**
@@ -85,7 +88,7 @@ export function IntakeClient({
    * when the GET failed — a prompt disclosure that invents its own text would
    * be worse than an absent one.
    */
-  prompts: IntakePrompt[];
+  prompts: CrenupPrompt[];
   verificationConfig: VerificationConfig;
   verificationUpdatedAt: string | null;
   verificationLoadError: string | null;
@@ -104,9 +107,9 @@ export function IntakeClient({
     [settings, savedSettings],
   );
 
-  const blocked = intakeSaveBlocked(settingsLoadError);
+  const blocked = crenupSaveBlocked(settingsLoadError);
 
-  const patch = (next: Partial<IntakeSettings>) => {
+  const patch = (next: Partial<CrenupSettings>) => {
     setSettings((s) => clampFunnel({ ...s, ...next }));
     setOk(false);
   };
@@ -202,7 +205,7 @@ export function IntakeClient({
               </p>
               {settingsStamp && (
                 <p className="text-muted-foreground mt-2 text-xs">
-                  Intaker settings last changed {formatShortDate(settingsStamp)}
+                  Enricher settings last changed {formatShortDate(settingsStamp)}
                 </p>
               )}
             </div>
@@ -267,9 +270,19 @@ export function IntakeClient({
                 />
               </Fields>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                Create mints the ugly profile without queuing Intaker. Auto-enrich
-                after this many Enrich-tab votes. Admin Enrich and Create + Enrich
-                skip the wait.
+                Create mints the ugly profile without queuing the Enricher.
+                Auto-enrich after this many Enrich-tab votes. Admin Enrich skips
+                the wait.
+              </p>
+              {/* This page CONFIGURES Create; it does not run it. The door is
+                  Manage Places, same idiom as the Models section's jump. */}
+              <p className="text-muted-foreground mt-3 text-sm">
+                <Link
+                  href={CRENUP_BOX_HREF}
+                  className="text-foreground font-semibold underline underline-offset-2"
+                >
+                  Create a place ›
+                </Link>
               </p>
             </div>
           </SectionCard>
@@ -574,7 +587,7 @@ export function IntakeClient({
           measured against the window, so it ran under the desktop rail and
           sat on the phone's home indicator. Sticky still overlays the bottom
           of the column, so the modules keep `pb-24` or Vote threshold (and
-          Functions) sit under Save Intake. The row stacks under `sm`: label
+          Functions) sit under Save Crenup. The row stacks under `sm`: label
           over buttons rather than three items fighting for 343px. */}
       <div className="border-border bg-card/90 pb-safe sticky bottom-0 z-20 -mx-4 border-t backdrop-blur sm:-mx-6 sm:pb-0 lg:-mx-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
@@ -623,7 +636,7 @@ export function IntakeClient({
                   Saving…
                 </>
               ) : (
-                "Save Intake"
+                "Save Crenup"
               )}
             </button>
           </div>
@@ -650,7 +663,7 @@ function PromptDisclosure({
   prompt,
   preset,
 }: {
-  prompt: IntakePrompt | undefined;
+  prompt: CrenupPrompt | undefined;
   preset?: string;
 }) {
   if (!prompt) return null;

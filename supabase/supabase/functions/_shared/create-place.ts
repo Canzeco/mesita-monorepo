@@ -15,7 +15,7 @@
 //                   Tags, Presentation, Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   SKIPPED when the create queues a full Enrich — the
-//                   Intaker's function 9 redoes it properly minutes later.
+//                   Enricher's function 9 redoes it properly minutes later.
 //   5 embedding   → embed-only: Name vector + Summary vector of what the
 //                   door wrote, awaited in this same function. Also skipped
 //                   when Enrich is queued (function 10 will close it).
@@ -26,8 +26,8 @@
 // state accumulates across create and every later run under one rule.
 //
 // queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
-// profile and do NOT seed Intaker. Enriched is `place_profiles.enriched_at`, not
-// content_state. Guests vote on the Enrich tab; the Intake threshold
+// profile and do NOT seed Enricher. Enriched is `place_profiles.enriched_at`, not
+// content_state. Guests vote on the Enrich tab; the Crenup threshold
 // seeds the queue. Business create still queues. Admin Enrich /
 // Create+Enrich is a second call.
 //
@@ -92,7 +92,7 @@ export async function createMinimalPlace(opts: {
   googlePlaceId: string;
   // Caller-specific copy for the 409 (e.g. the business app adds claim advice).
   dedupeError?: string;
-  // true (default): seed Intaker from the on_create row. false: mint the
+  // true (default): seed Enricher from the on_create row. false: mint the
   // ugly profile and stop — votes (or admin Enrich) start the queue.
   queueEnrich?: boolean;
 }): Promise<CreatePlaceOutcome> {
@@ -132,7 +132,7 @@ export async function createMinimalPlace(opts: {
 
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
   // identity spine directly (no EF hop); category stays 'undefined' and
-  // family_keys ['undefined'] until the Intaker pipeline's contents stage infers
+  // family_keys ['undefined'] until the Enricher pipeline's contents stage infers
   // Family + Category. No
   // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
@@ -191,7 +191,7 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // category 'undefined' until the Intaker resolves it; the category-label
+  // category 'undefined' until the Enricher resolves it; the category-label
   // trigger fills category_label from the 'undefined' catalog row.
   const place: Record<string, unknown> = {
     ...basicsRes.basics,
@@ -211,7 +211,7 @@ export async function createMinimalPlace(opts: {
   // ── 2) Persist the minimal rows (in-process). queueEnrich lands
   // content_state='generating' until contents flips it to ready. A cheap
   // mint lands 'ready' with enriched_at null — the ugly profile is
-  // viewable; Enriched stays no until Intaker finishes. ──
+  // viewable; Enriched stays no until Enricher finishes. ──
   const saveRes = await savePlaceData(
     admin,
     place,

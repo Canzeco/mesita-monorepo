@@ -287,7 +287,7 @@ export function TextArea({
 // ── Read-only display primitives (shared by Place + Settings cards) ──────
 
 // Labelled read-only value used inside editable cards (Price, Category). The
-// `auto` pill signals the value is Intaker-owned and not hand-edited.
+// `auto` pill signals the value is Enricher-owned and not hand-edited.
 export function ReadField({
   label,
   auto,

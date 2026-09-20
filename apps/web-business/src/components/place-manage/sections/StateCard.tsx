@@ -8,22 +8,22 @@
 //                         Created · Active · Listed · Requested · Verified
 //   Partnership States  what does it offer commercially?
 //                         Partnered · Visit Rewards · Mesita Pay · Mesita Credits
-//   Intake States       how far has the pipeline gotten? Enriched ·
+//   Crenup States       how far has the pipeline gotten? Enriched ·
 //                         Enriching + the eleven functions — all of it in
-//                         IntakeStateCard, which OWNS the enrichment read.
+//                         CrenupStateCard, which OWNS the enrichment read.
 //
-// This file renders the first two; `StateRow` is exported so the Intake box
+// This file renders the first two; `StateRow` is exported so the Crenup box
 // prints its two summary facts in the same shape.
 //
-// The state is Created; Seed is Intake function 0. Wire key `seeded` /
+// The state is Created; Seed is Crenup function 0. Wire key `seeded` /
 // `isPlaceSeeded` stays.
 //
 //   Created    google_place_id present (identity spine)
-//   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
+//   Active     Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
 //   Listed     places.state ∈ (active, lead)
 //   Requested  guest request count, 0…n — not a Yes/No
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
-//   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
+//   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
 //   Verified   approved place_verifications
 //   Partnered  plan ≠ free
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
@@ -80,7 +80,7 @@ import {
 } from "@/lib/state-vocabulary";
 
 // States box (Pato, 2026-08-25 · acceptance bits 2026-08-29): nine bools +
-// Requested 0…n + Promoted 0|1|2. Intake is the next box — not chips under
+// Requested 0…n + Promoted 0|1|2. Crenup is the next box — not chips under
 // Enriched, and not a Create 1–5 / Enrich 1–10 split. Chips never repeat the
 // row name.
 //
@@ -96,7 +96,7 @@ import {
 //              overview `listed` flag that can go stale after that write.
 //   Requested  guest request count (0…n). Independent of Listed / Enriched.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
-//   Enriching  the Intaker pipeline is mid-flight. Live-run, not last-completed.
+//   Enriching  the Enricher pipeline is mid-flight. Live-run, not last-completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partnered  the place pays Mesita. A deal: stable, internal. Wire key `partner`.
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the

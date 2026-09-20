@@ -10,7 +10,7 @@ import {
 } from "./actions";
 import {
   GENERAL_STATE_FACTS,
-  INTAKE_FUNCTIONS,
+  CRENUP_STEPS,
   OPERATOR_PROMOTING_LABEL,
   operatorPromotingLevel,
   STATE_FACT_FALSE_TONE,
@@ -68,9 +68,9 @@ function factOn(
 // high-water comparison for a payload that predates the field. Seed is never
 // in that map (it is not a stamped Enrich function — the row existing IS the
 // seed), so it always reads off `seeded` directly.
-export function intakeCalled(
+export function crenupCalled(
   hit: PlaceHit,
-  fn: (typeof INTAKE_FUNCTIONS)[number],
+  fn: (typeof CRENUP_STEPS)[number],
 ): boolean {
   if (fn.key === "seed") return hit.seeded;
   if (hit.enrich_functions) {
@@ -130,7 +130,7 @@ export function MesitaSearchTab({
 
   // The whole catalog, no paste required — and the shortcut: every Google
   // Place ID it finds lands in the shared box, so the catalog moves on to a
-  // lookup, or to Mesita Intake, without anyone pasting 250 lines. The box
+  // lookup, or to Crenup, without anyone pasting 250 lines. The box
   // caps where parseGooglePlaceIds caps, and a place with no
   // google_place_id has no token to give — the summary says both out loud.
   async function runAllPlaces() {
@@ -330,9 +330,9 @@ export function MesitaSearchTab({
                 const hit = row.hit;
                 if (!hit || hit.enrich_pulse_labels.length === 0) return null;
                 return (
-                  <li key={`${row.key}-intake`} className="px-4 py-3">
+                  <li key={`${row.key}-Crenup`} className="px-4 py-3">
                     <p className="text-muted-foreground type-label mb-2">
-                      Intake · {hit.google_name || hit.name}
+                      Crenup · {hit.google_name || hit.name}
                     </p>
                     {hit.enrich_pulse_blocked ? (
                       <p className="text-muted-foreground type-label mb-2">
@@ -347,8 +347,8 @@ export function MesitaSearchTab({
                       </p>
                     ) : null}
                     <div className="flex flex-wrap gap-1.5">
-                      {INTAKE_FUNCTIONS.map((fn) => {
-                        const called = intakeCalled(hit, fn);
+                      {CRENUP_STEPS.map((fn) => {
+                        const called = crenupCalled(hit, fn);
                         return (
                           <span
                             key={fn.key}

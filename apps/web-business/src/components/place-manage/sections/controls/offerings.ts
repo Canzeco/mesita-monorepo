@@ -195,7 +195,7 @@ export type LadderInput = {
     credits: boolean;
     pickup: boolean;
     delivery: boolean;
-    /** Observed by the Intaker, not declared by the operator, and null when
+    /** Observed by the Enricher, not declared by the operator, and null when
      *  the payload did not carry it. `false` here would be a claim nobody
      *  checked — see the reservations row. */
     reservations: boolean | null;
@@ -430,7 +430,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       // NO SWITCH HERE, but the operator does own the fact (MESITA-1737).
       // The control is the ReservationsCard's ChannelPicker further down this
       // page — pick a channel and `reservations_enabled` follows it, pick
-      // "Not" and it goes false. The Intaker's `reservationsLikely` is only a
+      // "Not" and it goes false. The Enricher's `reservationsLikely` is only a
       // SEED now, and only survives while no channel has been picked; a
       // trigger on `place_profiles` states the fact once so a contents re-run
       // can no longer overwrite an answer. A switch here would still return

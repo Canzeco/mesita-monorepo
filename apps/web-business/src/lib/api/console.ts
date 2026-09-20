@@ -97,7 +97,7 @@ export type ConsolePlace = {
    *  pool) and when the lookup FAILED — either way we did not read it, and a
    *  false here would state something we never learned. */
   verified?: boolean;
-  /** The per-function map (MESITA-1687, reversing MESITA-1637's "the intake
+  /** The per-function map (MESITA-1687, reversing MESITA-1637's "the Crenup
    *  states are internal"). Pato, 2026-09-08: ship it to every business
    *  browser again — the console's own collapse toggle, default hidden, is
    *  what keeps it out of sight, not a server-side withhold. `enriching` and
@@ -219,7 +219,7 @@ export const apiMyPlaces = cache(async function apiMyPlaces(
  *  `all` is what the catalogue uses (MESITA-1614): the places you hold PLUS
  *  the claimable ones, so Owned can vary down the column. It and `mine` are
  *  the only scopes that ship every fact for every row — the pool scope
- *  withholds Partner, Verified, the intake map and everything under HELD ONLY
+ *  withholds Partner, Verified, the Crenup map and everything under HELD ONLY
  *  above, because any Mesita account can reach it. */
 export async function apiListConsolePlaces(
   client: SupabaseClient,

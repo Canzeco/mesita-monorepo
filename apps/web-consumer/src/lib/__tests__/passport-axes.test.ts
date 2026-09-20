@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 // very decision says NO PLAN CELL — so the naive guard fails on the sentence
 // it exists to protect, and the cheapest way to green it would be deleting
 // that sentence. The precedent is business-web-list-places/payload.test.ts,
-// where `!SRC.includes("functions:")` sailed straight past `intakeFunctions:`.
+// where `!SRC.includes("functions:")` sailed straight past `crenupSteps:`.
 // Every assertion below reads a PARSED list — import specifiers, destructured
 // bindings, JSX attributes, field labels — so a rename cannot slip through and
 // prose about the decision cannot trip it.

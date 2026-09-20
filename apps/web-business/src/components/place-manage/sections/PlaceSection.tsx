@@ -143,7 +143,7 @@ function PriceDisplay({
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
-// Address is deliberately absent: it is native (Google/Intaker-sourced) and
+// Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // business-web-update-place rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
@@ -213,7 +213,7 @@ function boxToPatch(
       mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
-      // decision: Pato (MESITA-469) — admin may set category (Intaker + Admin + Business).
+      // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
       category: nz(f.category) || "undefined",
     };
   }
@@ -306,7 +306,7 @@ export function PlaceSection({
   // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
   // rewrites columns nobody touched — which matters for Basics in particular,
   // where re-sending an untouched `description` would count as an operator
-  // overwrite of Intaker output.
+  // overwrite of Enricher output.
   useSectionSaver(
     "place",
     placeDirty,
@@ -421,7 +421,7 @@ export function PlaceSection({
   const removePhoto = (idx: number) =>
     setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-photo Intaker analysis lives on the Admin tab. The ⓘ dialog on
+  // Per-photo Enricher analysis lives on the Admin tab. The ⓘ dialog on
   // Profile only has gallery order — vision text and SERP are operator
   // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
@@ -526,7 +526,7 @@ export function PlaceSection({
         {errors.basics ? <ErrorNote message={errors.basics} /> : null}
       </SectionCard>
 
-      {/* Location is native — Google Places seed + Intaker synthesis.
+      {/* Location is native — Google Places seed + Enricher synthesis.
           The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
@@ -1021,7 +1021,7 @@ function sourceMetaRows(
   return rows;
 }
 
-// Gallery order for the tile you are curating. Intaker analysis text
+// Gallery order for the tile you are curating. Enricher analysis text
 // lives on the Admin tab — a restaurant reading vision copy as if it
 // were theirs is the bug MESITA-1740 named.
 function MediaMetaDialog({
@@ -1118,7 +1118,7 @@ function MediaMetaDialog({
           {!meta ? (
             <p className="text-muted-foreground text-sm italic">
               No information for this image yet — it hasn’t been analyzed by the
-              Intaker.
+              Enricher.
             </p>
           ) : (
             <>

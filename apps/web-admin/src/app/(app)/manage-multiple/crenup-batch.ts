@@ -1,4 +1,6 @@
-// Places Intake — one box: Create, Delete, List, Unlist, Enrich.
+// CRENUP = CReate + ENrich + UPdate — one box, five buttons under three
+// verbs. Update is the group name for the three writes to a place that
+// already exists (List, Unlist, Delete); it is never a button (MESITA-2026).
 //
 // Create is NOT scheduled. Fire every Google Place ID in one batch — Google
 // accepts that fan-out. Enrich IS scheduled: admin-web-enrich-place only
@@ -11,4 +13,4 @@
 // verifies and owns a place from the business console, then onboards Stripe
 // to activate Partnership from there too.
 
-export type IntakeAction = "create" | "delete" | "list" | "unlist" | "enrich";
+export type CrenupAction = "create" | "delete" | "list" | "unlist" | "enrich";

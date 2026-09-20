@@ -14,7 +14,7 @@ import {
 
 /** No create door here (MESITA-1632, decision: Pato) — a business account
  *  cannot mint a place. New places only come from admin's Manage Multiple
- *  Intake (admin-web-create-place) or a guest voting it in. This card is
+ *  Crenup (admin-web-create-place) or a guest voting it in. This card is
  *  informational only: it tells the operator their place isn't in the
  *  catalog yet and stops there. */
 export function NotInMesitaCard({ prediction }: { prediction: PlacePrediction }) {

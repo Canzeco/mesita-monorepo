@@ -3,7 +3,7 @@
 // FOUR ANSWERS, NOT TWO. `yes` · `no` · `?` · a count. The `?` is the one that
 // matters and the one a two-state cell cannot say:
 //
-//   • the pool withholds Partner, Verified and the intake map on purpose —
+//   • the pool withholds Partner, Verified and the Crenup map on purpose —
 //     any Mesita account can read that scope,
 //   • merging to main auto-deploys the Edge Function AND triggers the Vercel
 //     build in parallel, so for about a minute this component runs against a

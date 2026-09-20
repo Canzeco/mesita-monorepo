@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
-  attachIntakeHighWater,
+  attachCrenupHighWater,
   BOUGHT_LANE_COLUMNS,
   DISCOVERY_EXTRA_COLUMNS,
   EARNED_LANE_COLUMNS,
@@ -168,12 +168,12 @@ Deno.test("junk numbers degrade to null rather than poisoning a score", () => {
   assertEquals(p.user_ratings_total, null);
 });
 
-// ── Intake high-water fold (MESITA-1598) ────────────────────────────────────
+// ── Crenup high-water fold (MESITA-1598) ────────────────────────────────────
 
-Deno.test("toLineupPlace reads intake_high_water like any other column; absent is null, not 0", () => {
-  assertEquals(toLineupPlace(ROW).intakeHighWater, null);
-  assertEquals(toLineupPlace({ ...ROW, intake_high_water: 7 }).intakeHighWater, 7);
-  assertEquals(toLineupPlace({ ...ROW, intake_high_water: "nope" }).intakeHighWater, null);
+Deno.test("toLineupPlace reads crenup_high_water like any other column; absent is null, not 0", () => {
+  assertEquals(toLineupPlace(ROW).crenupHighWater, null);
+  assertEquals(toLineupPlace({ ...ROW, crenup_high_water: 7 }).crenupHighWater, 7);
+  assertEquals(toLineupPlace({ ...ROW, crenup_high_water: "nope" }).crenupHighWater, null);
 });
 
 function fakePlacesAdmin(
@@ -187,28 +187,28 @@ function fakePlacesAdmin(
   return { from: () => chain } as unknown as SupabaseClient;
 }
 
-Deno.test("attachIntakeHighWater: merges the pulse per row, absent id reads a real 0", async () => {
+Deno.test("attachCrenupHighWater: merges the pulse per row, absent id reads a real 0", async () => {
   const admin = fakePlacesAdmin([
     { id: "p1", enrichment: { highWater: 6 } },
     // "p2" is absent from the result — confirmed not found, not un-fetched.
   ]);
-  const out = await attachIntakeHighWater(admin, [{ id: "p1" }, { id: "p2" }]);
-  assertEquals(out[0].intake_high_water, 6);
-  assertEquals(out[1].intake_high_water, 0);
+  const out = await attachCrenupHighWater(admin, [{ id: "p1" }, { id: "p2" }]);
+  assertEquals(out[0].crenup_high_water, 6);
+  assertEquals(out[1].crenup_high_water, 0);
 });
 
-Deno.test("attachIntakeHighWater: a query error leaves rows UNTOUCHED, never a confirmed 0", async () => {
+Deno.test("attachCrenupHighWater: a query error leaves rows UNTOUCHED, never a confirmed 0", async () => {
   const admin = fakePlacesAdmin([], { message: "boom" });
   const rows = [{ id: "p1" }, { id: "p2" }];
-  const out = await attachIntakeHighWater(admin, rows);
-  // Same objects back, no `intake_high_water` key added. No signal reads the
+  const out = await attachCrenupHighWater(admin, rows);
+  // Same objects back, no `crenup_high_water` key added. No signal reads the
   // field today (MESITA-1858 collapsed the gradient into `enriched`); the
   // absence-vs-zero distinction is preserved for the deferred re-wire.
   assertEquals(out, rows);
-  assert(!("intake_high_water" in out[0]));
+  assert(!("crenup_high_water" in out[0]));
 });
 
-Deno.test("attachIntakeHighWater: an empty pool or an id-less row set is a no-op, not a query", async () => {
+Deno.test("attachCrenupHighWater: an empty pool or an id-less row set is a no-op, not a query", async () => {
   let queried = false;
   const admin = {
     from() {
@@ -216,8 +216,8 @@ Deno.test("attachIntakeHighWater: an empty pool or an id-less row set is a no-op
       throw new Error("should not query for nothing to look up");
     },
   } as unknown as SupabaseClient;
-  assertEquals(await attachIntakeHighWater(admin, []), []);
+  assertEquals(await attachCrenupHighWater(admin, []), []);
   const noIds = [{ name: "no id field" }];
-  assertEquals(await attachIntakeHighWater(admin, noIds), noIds);
+  assertEquals(await attachCrenupHighWater(admin, noIds), noIds);
   assertEquals(queried, false);
 });

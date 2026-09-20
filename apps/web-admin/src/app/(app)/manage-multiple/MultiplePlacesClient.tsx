@@ -1,14 +1,14 @@
 "use client";
 
 // Manage Places — three boxes. Create, Enrich, Update, and
-// Create + Enrich live in one Mesita Intake box. Sticky rail so none
-// scroll away. Spend estimates live on Intake Config.
+// Create + Enrich live in one Crenup box. Sticky rail so none
+// scroll away. Spend estimates live on Crenup Config.
 
 import { useEffect, useState } from "react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { MesitaSearchTab } from "./MesitaSearchTab";
-import { IntakeTab } from "./IntakeTab";
+import { CrenupTab } from "./CrenupTab";
 import { LEGACY_HASHES, PIPELINE_STEPS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
@@ -98,9 +98,9 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Create · Enrich · Update · Create + Enrich. Same IDs."
+        blurb="CReate · ENrich · UPdate. Create mints it, Enrich fills it, and List, Unlist and Delete update it. Same IDs."
       >
-        <IntakeTab text={sharedIds} onTextChange={setSharedIds} />
+        <CrenupTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>
     </div>
   );

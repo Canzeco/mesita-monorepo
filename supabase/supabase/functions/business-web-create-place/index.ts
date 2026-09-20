@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-create-place
 //
 // ORPHANED as of MESITA-1632 (decision: Pato) — a business account must not
-// mint a place; new places come from admin's Manage Multiple Intake
+// mint a place; new places come from admin's Manage Multiple Crenup
 // (admin-web-create-place) or a guest vote. web-business's /add used to call
 // this via apiEnrichCreatePlace; that call is gone, and nothing else in the
 // repo invokes this function. Left deployed rather than deleted blind —
@@ -9,7 +9,7 @@
 //
 // The signed-in business passes a Google Places `googlePlaceId`. ASYNC create —
 // a MINIMAL 'generating' place is returned immediately and deep enrichment runs
-// in the Intaker pipeline (supabase-cron-enrich-place-*):
+// in the Enricher pipeline (supabase-cron-enrich-place-*):
 //   1. authenticate the business + upsert its managers row (ownership scaffolding),
 //   2. createMinimalPlace (_shared/create-place.ts): dedupe → Google spine →
 //      save 'generating' row → seed place_research.

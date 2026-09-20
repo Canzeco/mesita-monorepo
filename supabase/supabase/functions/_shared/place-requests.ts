@@ -1,8 +1,8 @@
-// Votes — consumer demand for Intaker on an already-created ugly profile.
+// Votes — consumer demand for Enricher on an already-created ugly profile.
 //
 // Create mints a viewable profile (content_state ready, enriched_at null).
 // Enriched is `places.enriched_at`. Guests vote on the Enrich tab. When
-// request_count reaches Intake atlasRequestThreshold, seed Intaker.
+// request_count reaches Crenup atlasRequestThreshold, seed Enricher.
 // Admin Enrich / Create+Enrich never calls this door — that is the bypass.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -35,7 +35,7 @@ export type PlaceRequestState = {
 };
 
 /**
- * Enriched is enriched_at (Intaker finished). Create-without-enrich is
+ * Enriched is enriched_at (Enricher finished). Create-without-enrich is
  * ready + no stamp — still listed/requested. When enrichedAt is omitted,
  * ready still means enriched (legacy callers / tests).
  */
@@ -201,7 +201,7 @@ export async function applyPlaceRequest(
     const googlePlaceId = String(
       (place as { google_place_id?: unknown }).google_place_id ?? "",
     ).trim();
-    // The vote already counted. A missing spine cannot seed Intake; Admin
+    // The vote already counted. A missing spine cannot seed Crenup; Admin
     // adds the id later. Do not fail the request after incrementing.
     if (googlePlaceId) {
       const seed = await seedPlaceResearch(

@@ -1,6 +1,6 @@
-// Every prompt the Intaker sends, as the admin console reads them.
+// Every prompt the Enricher sends, as the admin console reads them.
 //
-// WHY THIS FILE EXISTS. The Intake pipeline spends real money per run and its
+// WHY THIS FILE EXISTS. The Crenup pipeline spends real money per run and its
 // instructions lived only in Deno source, so an operator could see the KNOBS
 // (candidate counts, models, presets) but never what the models were actually
 // TOLD. This module is the reader: it imports the same constants and the same
@@ -34,11 +34,11 @@ import {
 } from "./infer-families.ts";
 
 /** One prompt-bearing step, as the console renders it. */
-export type IntakePrompt = {
+export type CrenupPrompt = {
   /** Stable id for the console's anchor + test pinning. */
   key: string;
   /**
-   * Which Intake function this prompt belongs to — a pointer into Docs › Intake
+   * Which Crenup function this prompt belongs to — a pointer into Docs › Crenup
    * §A's numbering, never a numbering of its own. `null` for a step that runs
    * inside another function rather than owning a row.
    */
@@ -72,7 +72,7 @@ const PLACE = {
   category: "{category}",
 };
 
-function scoutPrompt(): IntakePrompt {
+function scoutPrompt(): CrenupPrompt {
   return {
     key: "scout",
     fn: "3 · Serp",
@@ -93,7 +93,7 @@ function scoutPrompt(): IntakePrompt {
   };
 }
 
-function resolverPrompt(): IntakePrompt {
+function resolverPrompt(): CrenupPrompt {
   // Two candidates per field so the pool block renders as a list, and every
   // sibling/website/serp branch is populated.
   const candidates = Object.fromEntries(
@@ -126,7 +126,7 @@ function resolverPrompt(): IntakePrompt {
   };
 }
 
-function presentationPrompt(): IntakePrompt {
+function presentationPrompt(): CrenupPrompt {
   return {
     key: "presentation",
     fn: "9 · Description",
@@ -155,7 +155,7 @@ function presentationPrompt(): IntakePrompt {
   };
 }
 
-function categoryPrompt(): IntakePrompt {
+function categoryPrompt(): CrenupPrompt {
   return {
     key: "category",
     fn: null,
@@ -176,7 +176,7 @@ function categoryPrompt(): IntakePrompt {
   };
 }
 
-function familyPrompt(): IntakePrompt {
+function familyPrompt(): CrenupPrompt {
   return {
     key: "family",
     fn: null,
@@ -197,7 +197,7 @@ function familyPrompt(): IntakePrompt {
 }
 
 /**
- * Every Intake prompt, in pipeline order. Called per request — the builders are
+ * Every Crenup prompt, in pipeline order. Called per request — the builders are
  * pure and cheap, and calling them fresh is what guarantees the payload tracks
  * the source rather than a snapshot taken at deploy time.
  *
@@ -205,7 +205,7 @@ function familyPrompt(): IntakePrompt {
  * and the console already renders them as EDITABLE fields — listing them again
  * read-only would state two different truths about the same prompt.
  */
-export function intakePromptsMeta(): IntakePrompt[] {
+export function crenupPromptsMeta(): CrenupPrompt[] {
   return [
     scoutPrompt(),
     resolverPrompt(),

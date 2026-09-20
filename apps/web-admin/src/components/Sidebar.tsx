@@ -14,7 +14,7 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
-import { INTAKE_PARENT } from "@/app/(app)/enricher-config/nav";
+import { CRENUP_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
@@ -74,7 +74,7 @@ const MANAGE_NAV: NavItem[] = [
 // Configurations — ordered as the product flows, not alphabetically or by age.
 // Two lifecycles end to end, a place's then a guest's:
 //   platform  which model each subsystem thinks with (Models)
-//   supply    a place's life on Intake: the Intaker that fills its profile,
+//   supply    a place's life on Crenup: the Enricher that fills its profile,
 //             plus who may prove they own a place (Verification)
 //   demand    a guest's night: how they find a place (Discovery) → how they
 //             book it (Reservations) → the journey once they sit down (Visits,
@@ -112,9 +112,9 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   // Ojo's policy lives on Visits; /ojo-config redirects there. Visits Rewards
   // is the same: /rewards-config redirects to Visits.
   MODELS_PARENT,
-  // Intake — Intaker modules plus Verification. /verification-config and
+  // Crenup — Enricher modules plus Verification. /verification-config and
   // /sourcing-config redirect here.
-  INTAKE_PARENT,
+  CRENUP_PARENT,
   FILTERS_PARENT,
   VISITS_PARENT,
   ORDERS_PARENT,

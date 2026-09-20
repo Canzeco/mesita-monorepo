@@ -31,7 +31,7 @@ export const FILTERS_PARENT = {
 export const DISCOVERY_MATRIX_HREF = "/filters-config/matrix" as const;
 export const DISCOVERY_MODES_HREF = "/filters-config/modes" as const;
 const DISCOVERY_SOURCES_HREF = "/filters-config/sources" as const;
-// Deep link from Intake and Manage Multiple. The Map box stays on Modes, so
+// Deep link from Crenup and Manage Multiple. The Map box stays on Modes, so
 // this anchor does NOT move with the split (pipeline.test.ts asserts it).
 export const DISCOVERY_MAP_HREF = "/filters-config/modes#s-map" as const;
 

@@ -10,7 +10,7 @@ import {
   setPlaceListed,
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
-import type { IntakeAction } from "./intake-batch";
+import type { CrenupAction } from "./crenup-batch";
 import { IdListField } from "./IdListField";
 import { StateIcon, type BatchRowState } from "./StateIcon";
 
@@ -33,7 +33,7 @@ async function resolveMesitaId(googleId: string): Promise<
   return { ok: true, placeId: hit.id, name: hit.google_name || hit.name };
 }
 
-export function IntakeTab({
+export function CrenupTab({
   text,
   onTextChange,
 }: {
@@ -42,8 +42,8 @@ export function IntakeTab({
 }) {
   const placeIds = useMemo(() => parseGooglePlaceIds(text), [text]);
   const [results, setResults] = useState<Record<string, Row>>({});
-  const [running, setRunning] = useState<IntakeAction | null>(null);
-  const [lastRun, setLastRun] = useState<IntakeAction | null>(null);
+  const [running, setRunning] = useState<CrenupAction | null>(null);
+  const [lastRun, setLastRun] = useState<CrenupAction | null>(null);
   const busy = running !== null;
 
   const done = placeIds.filter((id) => {
@@ -59,7 +59,7 @@ export function IntakeTab({
   }).length;
   const failed = placeIds.filter((id) => results[id]?.state === "error").length;
 
-  async function run(action: IntakeAction) {
+  async function run(action: CrenupAction) {
     if (busy || placeIds.length === 0) return;
     // Delete writes places.state = 'archived' — reversible only by a direct
     // DB edit, never by any button here. One confirm for the whole batch,
@@ -102,7 +102,7 @@ export function IntakeTab({
   return (
     <div className="space-y-6">
       <IdListField
-        id="intake-place-ids"
+        id="crenup-place-ids"
         label="Google Place IDs"
         text={text}
         onTextChange={onTextChange}
@@ -112,8 +112,9 @@ export function IntakeTab({
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Create runs every ID at once. Enrich is queued. List and Unlist toggle
-          guest visibility. Delete archives — no Undo here.
+          CReate mints the place and runs every ID at once. ENrich fills it and
+          is queued. The last three are UPdate — List and Unlist toggle guest
+          visibility, Delete archives, no Undo here.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
@@ -124,11 +125,11 @@ export function IntakeTab({
             onClick={() => void run("create")}
           />
           <ActionButton
-            label="Delete"
-            variant="destructive"
-            busy={running === "delete"}
+            label="Enrich"
+            variant="secondary"
+            busy={running === "enrich"}
             disabled={busy || placeIds.length === 0}
-            onClick={() => void run("delete")}
+            onClick={() => void run("enrich")}
           />
           <ActionButton
             label="List"
@@ -145,11 +146,11 @@ export function IntakeTab({
             onClick={() => void run("unlist")}
           />
           <ActionButton
-            label="Enrich"
-            variant="secondary"
-            busy={running === "enrich"}
+            label="Delete"
+            variant="destructive"
+            busy={running === "delete"}
             disabled={busy || placeIds.length === 0}
-            onClick={() => void run("enrich")}
+            onClick={() => void run("delete")}
           />
           {done > 0 ? (
             <span className="text-muted-foreground text-xs">{summary}</span>
@@ -250,7 +251,7 @@ function ActionButton({
 
 async function runRow(
   googleId: string,
-  action: IntakeAction,
+  action: CrenupAction,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
   setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
@@ -298,7 +299,7 @@ async function enrichOne(googleId: string): Promise<Row> {
   return {
     state: "enriching",
     name: found.name,
-    detail: "Re-enrich from zero — Intaker 1–10 queued",
+    detail: "Re-enrich from zero — Enricher 1–10 queued",
   };
 }
 
@@ -322,7 +323,7 @@ async function deleteOne(googleId: string): Promise<Row> {
   return { state: "ok", name: found.name, detail: "Archived" };
 }
 
-async function runOne(googleId: string, action: IntakeAction): Promise<Row> {
+async function runOne(googleId: string, action: CrenupAction): Promise<Row> {
   if (action === "enrich") return enrichOne(googleId);
   if (action === "list") return listOne(googleId, true);
   if (action === "unlist") return listOne(googleId, false);

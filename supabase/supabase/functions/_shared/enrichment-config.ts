@@ -1,10 +1,10 @@
-// Intake (enricher) knobs: app_config.enrichment_config (MESITA-1248).
+// Crenup (enricher) knobs: app_config.enrichment_config (MESITA-1248).
 //
 // Folds the 20 leftover atlas_* scalar columns into one jsonb, matching the
 // whole-blob-per-domain pattern (verification_config, discovery_config, …).
 // Wire camelCase is unchanged — admin-web-get-config and the `enricher`
 // section of admin-web-update-config still speak atlasGatherGoogleImages etc.
-// enrichment_triggers stays its own jsonb; the Intake page already saves that
+// enrichment_triggers stays its own jsonb; the Crenup page already saves that
 // whole grid.
 //
 // Ranges re-encode the CHECKs that used to sit on the scalar columns. The

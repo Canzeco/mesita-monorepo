@@ -1,9 +1,9 @@
 // _shared/config-section-enricher.ts — the `enricher` section's write.
 //
 // Was admin-web-update-enricher-config (MESITA-1724 collapse). Partial-update
-// of the Intaker research knobs on app_config.enrichment_config (MESITA-1248
+// of the Enricher research knobs on app_config.enrichment_config (MESITA-1248
 // fold of the leftover atlas_* scalars), written from the admin console's
-// Intake → Configuration page. Each field is optional; only the keys present in
+// Crenup → Configuration page. Each field is optional; only the keys present in
 // the body are merged, so the UI can save one control at a time — which is why
 // this section owns its write instead of riding the generic whole-blob path.
 // The knobs arrive FLAT on the body, not under `config`.
@@ -23,7 +23,7 @@
 // section whose write touches two.
 //
 // There is deliberately no `enricher` READ override: admin-web-get-config's
-// no-section payload is what the Intake page loads, and it returns
+// no-section payload is what the Crenup page loads, and it returns
 // enrichment_config, enrichment_triggers and their meta together.
 import { jsonError, jsonOk } from "./http.ts";
 import { readAppConfig, writeAppConfig } from "./write-config.ts";

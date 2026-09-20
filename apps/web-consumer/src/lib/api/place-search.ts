@@ -53,8 +53,8 @@ type CreatedProject = {
  * Create a Google-only search result on Mesita immediately.
  *
  * Calls consumer-web-create-place, which runs Create only (dedupe → Google
- * spine → ready row, enriched_at null). Intaker is not queued. The place
- * modal opens on the Enrich vote tab until the Intake threshold is hit.
+ * spine → ready row, enriched_at null). Enricher is not queued. The place
+ * modal opens on the Enrich vote tab until the Crenup threshold is hit.
  */
 export async function apiCreateProject(
   client: SupabaseClient,

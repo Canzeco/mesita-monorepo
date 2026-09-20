@@ -1,25 +1,25 @@
-import { getIntakerModelSettings, getModelsConfig } from "./actions";
+import { getEnricherModelSettings, getModelsConfig } from "./actions";
 import { ModelsConfigClient } from "./ModelsConfigClient";
 import {
-  DEFAULT_INTAKER_MODEL_SETTINGS,
+  DEFAULT_ENRICHER_MODEL_SETTINGS,
   DEFAULT_MODELS_CONFIG,
 } from "./types";
 
 export const dynamic = "force-dynamic";
 
 export default async function ModelsConfigPage() {
-  const [models, intaker] = await Promise.all([
+  const [models, enricher] = await Promise.all([
     getModelsConfig(),
-    getIntakerModelSettings(),
+    getEnricherModelSettings(),
   ]);
   return (
     <ModelsConfigClient
       initialConfig={models.ok ? models.data : DEFAULT_MODELS_CONFIG}
-      initialIntaker={
-        intaker.ok ? intaker.data : DEFAULT_INTAKER_MODEL_SETTINGS
+      initialEnricher={
+        enricher.ok ? enricher.data : DEFAULT_ENRICHER_MODEL_SETTINGS
       }
       loadError={models.ok ? null : models.error}
-      intakerLoadError={intaker.ok ? null : intaker.error}
+      enricherLoadError={enricher.ok ? null : enricher.error}
     />
   );
 }

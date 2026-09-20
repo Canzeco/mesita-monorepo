@@ -137,7 +137,7 @@ Deno.test("a cafe never jumps a partner after Lineup", () => {
 });
 
 Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is weighted", () => {
-  // REPLACES "intake_high_water (MESITA-1601) reorders when Level is
+  // REPLACES "crenup_high_water (MESITA-1601) reorders when Level is
   // weighted". The gradient collapsed to a binary at MESITA-1858, so the
   // high-water numbers no longer move anything — but the DIRECTION they
   // encoded still has to reach the ranker, and that is what this pins. The
@@ -264,7 +264,7 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   // calls `reorderListedLanes` must also call the high-water side-read. No
   // signal reads it today — the gradient collapsed into the `enriched`
   // binary — and it stays wired so restoring the gradient is a re-wire.
-  assertEquals(googleBranch.includes("attachIntakeHighWater"), true);
+  assertEquals(googleBranch.includes("attachCrenupHighWater"), true);
   // Behavioural, not source-text: the old assertion pinned the literal
   // `searchPower >= 2` and was satisfiable by whatever the file happened to
   // say, so forgetting to update a second copy of that literal stayed green.

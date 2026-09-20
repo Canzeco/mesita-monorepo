@@ -7,7 +7,7 @@ import {
   stateBoolChip,
 } from "@/lib/state-vocabulary";
 
-/** True while the Intaker pipeline is mid-flight.
+/** True while the Enricher pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
  *  research OR analysis OR contents. Never clear after research alone. */
 export function isEnriching(state: PlaceEnrichmentState | null): boolean {
@@ -50,7 +50,7 @@ export function generalHeaderFacts(input: {
   seeded?: boolean;
   listed?: boolean;
   business_state?: string | null;
-  /** Live Intaker run. Independent of Enriched (last-completed). */
+  /** Live Enricher run. Independent of Enriched (last-completed). */
   enriching?: boolean;
   requestCount?: number;
   enrich_pulse?: number;

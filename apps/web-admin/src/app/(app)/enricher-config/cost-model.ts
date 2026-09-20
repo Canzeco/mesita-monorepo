@@ -1,5 +1,5 @@
 import type { SynthesisQuality } from "./actions";
-import type { IntakeSettings } from "./intake-guards";
+import type { CrenupSettings } from "./crenup-guards";
 
 // Cost estimate — the pure model behind the calculator + the inline cost card.
 //
@@ -155,7 +155,7 @@ export type CostEstimate = {
 // IG-post volumes, Links drives how many channels are searched, and Analysis
 // drives the vision calls (which zero out only when both analyze counts are 0).
 //
-// LABELS CARRY THE FUNCTION NUMBER (Docs › Intake §A), not a stage
+// LABELS CARRY THE FUNCTION NUMBER (Docs › Crenup §A), not a stage
 // S-number. They held S1–S9 — the retired three-stage numbering — which put a
 // second ladder on the very page that states the queue is 0–10, and disagreed
 // with it: "S3 · link discovery" sat beside a Links box labelled 4. Several
@@ -379,9 +379,9 @@ const ZERO_LINKS: LinkCounts = {
   ubereats: 0,
 };
 
-/** Live Intake knobs → the cost model. Vision off zeroes analyze counts. */
+/** Live Crenup knobs → the cost model. Vision off zeroes analyze counts. */
 function costParamsFromSettings(
-  s: IntakeSettings,
+  s: CrenupSettings,
   places: number,
 ): CostParams {
   const vision = s.imageVisionEnabled;
@@ -413,7 +413,7 @@ function costParamsFromSettings(
  * the create queues a full Enrich (business creates) — this card estimates
  * the door-running case (admin/consumer creates).
  */
-export function computeCreateCost(s: IntakeSettings): CostEstimate {
+export function computeCreateCost(s: CrenupSettings): CostEstimate {
   return computeEnrichmentCost({
     ...costParamsFromSettings(s, 1),
     gCollect: 1,
@@ -429,7 +429,7 @@ export function computeCreateCost(s: IntakeSettings): CostEstimate {
 }
 
 /** One Enrich of one place: live knobs. Queue cadence (5/tick) is not this card. */
-export function computeEnrichTickCost(s: IntakeSettings): CostEstimate {
+export function computeEnrichTickCost(s: CrenupSettings): CostEstimate {
   return computeEnrichmentCost(costParamsFromSettings(s, 1));
 }
 

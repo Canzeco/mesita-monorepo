@@ -16,7 +16,7 @@ import { TONES, type Tone } from "./notification-config";
 //
 // The key is the stable thing. Renumbering the ladder has never moved a key,
 // which is exactly why the high-water reader matches on one — see
-// Docs › Intake §A. This mirrors §A2's stage table; if a function moves
+// Docs › Crenup §A. This mirrors §A2's stage table; if a function moves
 // between Edge Functions, it moves here too.
 //
 // Colors follow the catalog: Research≈Link=emerald, Analysis=sky,
@@ -60,7 +60,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 // it. THREE families live here, and the third is the one a hand-written list
 // forgets:
 //
-//   1. the TEN enrich functions 1–10 (Docs › Intake §A) —
+//   1. the TEN enrich functions 1–10 (Docs › Crenup §A) —
 //      pulse/details/description/embedding rows can ALSO come from the CREATE
 //      function or an on-update re-embed. Function 10 was renamed `semantic` →
 //      `embedding` (§8.4): the events table is append-only history, so BOTH

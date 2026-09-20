@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
         // Read because the CONSUMER app already books off this column
         // (`isReserveActionEnabled`). The console used to hard-code the row
         // off, so it claimed a place takes no bookings while guests were
-        // making them (MESITA-1735). Written today only by the Intaker.
+        // making them (MESITA-1735). Written today only by the Enricher.
         reservations_enabled?: unknown;
       }
       | null;

@@ -4,17 +4,17 @@ import {
   ENGINELESS_STATE_FACT_KEYS,
   UNSTAMPED_STATE_FACT_KEYS,
   GENERAL_STATE_FACTS,
-  INTAKE_FUNCTIONS,
-  intakeFunctionLabel,
+  CRENUP_STEPS,
+  crenupStepLabel,
   type StampedStateFactKey,
-  type IntakeFunctionKey,
+  type CrenupStepKey,
 } from "@/lib/state-vocabulary";
 import type { NotificationItem, NotificationType } from "./actions";
 import { TYPE_ORDER } from "./notification-config";
 
 // View-model for Global Monitor. The EF already filters by category/types;
 // this file is the operator-facing fold: domain labels, which types to
-// fetch, pin reports, collapse consecutive Intaker steps.
+// fetch, pin reports, collapse consecutive Enricher steps.
 
 export const STEP_TYPE = "atlas.enrichment_step" satisfies NotificationType;
 export const REPORT_TYPE = "rewards.ticket_reported" satisfies NotificationType;
@@ -28,7 +28,7 @@ export type DomainKey =
 
 export const DOMAINS: ReadonlyArray<{ key: DomainKey; label: string }> = [
   { key: "all", label: "All" },
-  { key: "atlas", label: "Intake" },
+  { key: "atlas", label: "Crenup" },
   { key: "consumer", label: "Guests" },
   { key: "rewards", label: "Rewards" },
   { key: "reservations", label: "Reservations" },
@@ -134,7 +134,7 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 //                 Mesita Pay / Mesita Credits are acceptance intent bits — no
 //                 event stamper writes them yet, so their filter segments and
 //                 meta chips stay filtered out (the engine PRs lift that).
-//   INTAKE (11)   0. Seed … 10. Embedding — each a bool, called or not
+//   CRENUP (11)   0. Seed … 10. Embedding — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
 export const LISTED_STATES: readonly string[] = ["active", "lead"];
@@ -150,13 +150,13 @@ export const STATE_FACTS: readonly { key: StateFactKey; label: string }[] =
   GENERAL_STATE_FACTS.filter(
     (f) => !(UNSTAMPED_STATE_FACT_KEYS as readonly string[]).includes(f.key),
   ) as readonly { key: StateFactKey; label: string }[];
-export { INTAKE_FUNCTIONS };
-export type { IntakeFunctionKey };
+export { CRENUP_STEPS };
+export type { CrenupStepKey };
 
-export type IntakeFilter =
+export type CrenupFilter =
   | "all"
   | StateFactKey
-  | `fn:${IntakeFunctionKey}`;
+  | `fn:${CrenupStepKey}`;
 
 export type PlaceStateFacts = {
   seeded: boolean;
@@ -228,7 +228,7 @@ function fnOn(facts: PlaceStateFacts, key: string): boolean {
   return facts.functions[key] === true;
 }
 
-export type IntakeFactChip = {
+export type CrenupFactChip = {
   key: StateFactKey;
   label: string;
   on: boolean;
@@ -237,7 +237,7 @@ export type IntakeFactChip = {
 /** The engine-backed facts for expand chips. The two acceptance bits are
  *  filtered out until an event stamper writes them (their chips would be
  *  permanently muted noise); the gateway / Credits PRs lift this. */
-export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
+export function crenupFactChips(item: NotificationItem): CrenupFactChip[] {
   const facts = readStateFacts(item.meta);
   if (!facts) return [];
   return STATE_FACTS.filter(
@@ -250,10 +250,10 @@ export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
 }
 
 /**
- * Compact Intake verb: every TRUE general fact, State-box order.
+ * Compact Crenup verb: every TRUE general fact, State-box order.
  * Enriched is a bool — incomplete places just omit it.
  */
-export function intakeStateLine(item: NotificationItem): string | null {
+export function crenupStateLine(item: NotificationItem): string | null {
   const facts = readStateFacts(item.meta);
   if (facts) {
     const parts: string[] = [];
@@ -283,9 +283,9 @@ export function intakeStateLine(item: NotificationItem): string | null {
   return null;
 }
 
-export function itemMatchesIntakeFilter(
+export function itemMatchesCrenupFilter(
   item: NotificationItem,
-  filter: IntakeFilter,
+  filter: CrenupFilter,
 ): boolean {
   if (filter === "all") return true;
   const facts = readStateFacts(item.meta);
@@ -312,39 +312,39 @@ export function stateFactCounts(
   return counts;
 }
 
-export function intakeFunctionCounts(
+export function crenupStepCounts(
   items: NotificationItem[],
-): Record<IntakeFunctionKey, number> {
+): Record<CrenupStepKey, number> {
   const counts = Object.fromEntries(
-    INTAKE_FUNCTIONS.map((f) => [f.key, 0]),
-  ) as Record<IntakeFunctionKey, number>;
+    CRENUP_STEPS.map((f) => [f.key, 0]),
+  ) as Record<CrenupStepKey, number>;
   for (const item of items) {
     const facts = readStateFacts(item.meta);
     if (!facts) continue;
-    for (const def of INTAKE_FUNCTIONS) {
+    for (const def of CRENUP_STEPS) {
       if (fnOn(facts, def.key)) counts[def.key] += 1;
     }
   }
   return counts;
 }
 
-export type IntakeFnChip = {
-  key: IntakeFunctionKey;
+export type CrenupStepChip = {
+  key: CrenupStepKey;
   label: string;
   on: boolean;
 };
 
-export function intakeFunctionChips(item: NotificationItem): IntakeFnChip[] {
+export function crenupStepChips(item: NotificationItem): CrenupStepChip[] {
   const facts = readStateFacts(item.meta);
   if (!facts) return [];
-  return INTAKE_FUNCTIONS.map((def) => ({
+  return CRENUP_STEPS.map((def) => ({
     key: def.key,
-    label: intakeFunctionLabel(def.n, def.label),
+    label: crenupStepLabel(def.n, def.label),
     on: fnOn(facts, def.key),
   }));
 }
 
-/** Category is a taxonomy, not a state — keep it off Intake compact lines. */
+/** Category is a taxonomy, not a state — keep it off Crenup compact lines. */
 export function showCategoryOnCompact(item: NotificationItem): boolean {
   return !item.type.startsWith("atlas.");
 }

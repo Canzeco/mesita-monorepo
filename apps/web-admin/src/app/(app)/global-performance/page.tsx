@@ -7,7 +7,7 @@ import { TYPES_WITHOUT_STEPS } from "./notification-feed";
 export const dynamic = "force-dynamic";
 
 // Global Monitor — operator activity feed. Domain tabs hit the EF `category`
-// param; Intaker steps stay out of the first paint so they don't eat the
+// param; Enricher steps stay out of the first paint so they don't eat the
 // 150-item window (toggle them back on from the filter bar).
 
 export default async function GlobalPerformancePage() {

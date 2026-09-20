@@ -24,12 +24,12 @@
 // which is what discovery-blend.ts's header always said money must do.
 //
 // THE ENRICHMENT GRADIENT SURVIVES THE SPLIT. MESITA-1858 first wrote
-// `enriched` as a pure binary and deferred the `intake_high_water` gradient
+// `enriched` as a pure binary and deferred the `crenup_high_water` gradient
 // (MESITA-1598) to a later issue. Review caught that the binary reads the
 // SAME predicate the ranked lanes admit on, so it is a constant 1 wherever it
 // is scored — a dead axis and a live regression against the old ladder. The
-// gradient is therefore kept, off `intakeHighWater` and
-// `attachIntakeHighWater` at their three call sites. Details at `enriched`.
+// gradient is therefore kept, off `crenupHighWater` and
+// `attachCrenupHighWater` at their three call sites. Details at `enriched`.
 //
 // The keys are `enriched` and `partnered`, never bare `level`, `partner` or
 // `partnership`. `places.price_level` is Google's field and
@@ -158,14 +158,14 @@ export type SignalPlace = {
    */
   promoting?: boolean;
   /**
-   * How far the Intake queue got, 0..PULSE_TOTAL (`pulseOf`,
+   * How far the Crenup queue got, 0..PULSE_TOTAL (`pulseOf`,
    * pulse-pieces.ts). `enriched` reads this; nothing else may. It is the
    * gradient MESITA-1598 added and MESITA-1858 restored — the binary alone is
    * a constant on every lane that admits only enriched rows (see `enriched`).
-   * A surface has to opt in by running `attachIntakeHighWater`; absent, the
+   * A surface has to opt in by running `attachCrenupHighWater`; absent, the
    * signal falls back to the binary.
    */
-  intakeHighWater?: number | null;
+  crenupHighWater?: number | null;
 };
 
 /** What the CALLER wants. Every field is optional; an absent one abstains. */
@@ -427,7 +427,7 @@ export function name(
  * Intent vs the place's SUMMARY embedding (`places.embedding`) — never the
  * Presentation. Docs › Discovery §C: About is the narrative a guest reads,
  * Summary is the machine blurb; we embed the second one, and the enrichment
- * queue's semantic `summary` function is what writes it. That Intake stamp
+ * queue's semantic `summary` function is what writes it. That Crenup stamp
  * is a different word from this signal.
  *
  * No query vector → NEUTRAL (the caller asked nothing).
@@ -476,7 +476,7 @@ export function summary(
  *
  * A constant signal cannot reorder a deck, and the Discovery console would be
  * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
- * the retired `mesita_level` folded `intake_high_water` (0..PULSE_TOTAL), a
+ * the retired `mesita_level` folded `crenup_high_water` (0..PULSE_TOTAL), a
  * fact that is NOT the admission predicate, so it did discriminate among
  * admitted rows — two ready partner rows at one point on the Map, high-water
  * 10 and 2, ranked 3.1x apart and would now tie, handing the order to
@@ -484,8 +484,8 @@ export function summary(
  *
  * So the gradient is restored here, verbatim: `ENRICHED_OFF + (1 -
  * ENRICHED_OFF) * hw / PULSE_TOTAL`, which is MESITA-1598's own
- * `0.15 + 0.85 * hw/10`. MESITA-1858 kept `intakeHighWater` and
- * `attachIntakeHighWater` wired for exactly this, and the issue's note that
+ * `0.15 + 0.85 * hw/10`. MESITA-1858 kept `crenupHighWater` and
+ * `attachCrenupHighWater` wired for exactly this, and the issue's note that
  * the collapse was deliberate was written believing the binary would still
  * separate enriched from unenriched places in a deck — which it cannot,
  * because an unenriched place never enters one. Pato reverses this in one
@@ -495,7 +495,7 @@ export function summary(
  * says. That is the googleOnly exclusion the projection makes by name; a
  * synthesized row must not be able to climb on a number fetched by id.
  *
- * ABSENT READS OFF, NOT UNKNOWN. The opposite of `intakeHighWater`'s old
+ * ABSENT READS OFF, NOT UNKNOWN. The opposite of `crenupHighWater`'s old
  * rule, and deliberately: high-water is a side-read a surface has to opt
  * into, while `enriched` is set by the projection every ranking engine runs
  * through. An absent value means the row genuinely said nothing, and the
@@ -517,7 +517,7 @@ export function enriched(
   _params?: SignalParamBag,
 ): number {
   if (place.enriched === false) return clamp01(ENRICHED_OFF);
-  const highWater = place.intakeHighWater;
+  const highWater = place.crenupHighWater;
   if (typeof highWater === "number" && Number.isFinite(highWater)) {
     return clamp01(
       ENRICHED_OFF + (1 - ENRICHED_OFF) * clamp01(highWater / PULSE_TOTAL),

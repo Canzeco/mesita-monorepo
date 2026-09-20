@@ -657,7 +657,7 @@ export function buildProductCards(input: {
       return { ...base(spec), state: "soon", note: spec.soon, action: null };
     }
     // It is not bought, cannot be switched off, and exists on a place that has
-    // never heard of Mesita, because the Intaker built it. A
+    // never heard of Mesita, because the Enricher built it. A
     // `needsPartner: false` product with no `atPlace` would otherwise fall
     // through to "enabled", which reads as something somebody turned ON.
     // FREE, AND IT IS A PAIR AGAIN (MESITA-2011). The ternary comes back with

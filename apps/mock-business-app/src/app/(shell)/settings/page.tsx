@@ -35,7 +35,7 @@
 // ── THE STATES CARD IS THIS APP'S OWN (MESITA-1941) ────────────────────────
 //
 // `web-business` has no such card and this is not a snapshot of one. It says
-// what a place IS — its standing and its intake — because nothing else on an
+// what a place IS — its standing and its Crenup — because nothing else on an
 // operator's own screens does. AdminView says some of it and is
 // super-admin-only; the place heading wears two badges.
 //
@@ -110,12 +110,12 @@ type StateRow = {
 };
 
 /** THREE BOXES, NOT TWELVE ROWS (MESITA-1945). Pato, on the one card that was
- *  here: *"different states boxes — General States, Intake States"*.
+ *  here: *"different states boxes — General States, Crenup States"*.
  *
  *  Twelve rows under one heading is a reference table you scan, not a list you
  *  read, and the twelve were never one kind of thing. What the place IS and
  *  what it is PAYING belong together; the six product switches are the same six
- *  facts the catalogue's cards state and grouping them says so; and the Intaker
+ *  facts the catalogue's cards state and grouping them says so; and the Enricher
  *  has a state of its own that no screen in this console has ever named.
  *
  *  Pato named two groups. The third is the product switches, which fall out of
@@ -178,7 +178,7 @@ function stateGroups(
     },
   ];
 
-  // THE INTAKER'S OWN STATE, named for the first time. `content_state` is a
+  // THE ENRICHER'S OWN STATE, named for the first time. `content_state` is a
   // real `public.content_state` enum with four values, and this console has
   // only ever read two of them — `ProfileCompleteness` checks `generating` and
   // `queued` to explain why its meter lags, then says nothing about which.
@@ -186,13 +186,13 @@ function stateGroups(
   // SCHEMA-BACKED ONLY. Every row below reads a field that exists; none of them
   // is a state invented to fill the box. `failed` in particular is the value an
   // operator most needs named and the one no screen could reach.
-  const intake: StateRow[] = profile
+  const Crenup: StateRow[] = profile
     ? [
         {
           label: "Content",
           options: ["Queued", "Generating", "Ready", "Failed"],
           current: CONTENT_STATE_LABEL[profile.content_state ?? ""] ?? "Queued",
-          note: "Where the Intaker is with this place. Ready is the only one that means the profile below is finished.",
+          note: "Where the Enricher is with this place. Ready is the only one that means the profile below is finished.",
         },
         {
           label: "Name",
@@ -222,10 +222,10 @@ function stateGroups(
       rows: general,
     },
     {
-      title: "Intake states",
+      title: "Crenup states",
       description:
-        "Where the Intaker got to, and what it owns. Nothing here is set by hand — the pipeline writes all of it.",
-      rows: intake,
+        "Where the Enricher got to, and what it owns. Nothing here is set by hand — the pipeline writes all of it.",
+      rows: Crenup,
     },
   ].filter((g) => g.rows.length > 0);
 }

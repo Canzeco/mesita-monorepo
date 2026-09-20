@@ -7,8 +7,8 @@ import {
   MAX_GOOGLE_COLLECT,
   MAX_INSTAGRAM_COLLECT,
   MAX_SAVE_IMAGES,
-  type IntakeSettings,
-} from "./intake-guards";
+  type CrenupSettings,
+} from "./crenup-guards";
 
 /**
  * Images knobs as two source funnels, not a 7-card grid.
@@ -21,9 +21,9 @@ export function ImageFunnel({
   pending,
   onPatch,
 }: {
-  settings: IntakeSettings;
+  settings: CrenupSettings;
   pending: boolean;
-  onPatch: (next: Partial<IntakeSettings>) => void;
+  onPatch: (next: Partial<CrenupSettings>) => void;
 }) {
   const visionOff = !settings.imageVisionEnabled;
   return (

@@ -66,7 +66,7 @@ export default async function PlacesCatalogPage({
   try {
     // scope "all" — held by me, or held by nobody. It is also the only scope
     // besides "mine" that ships every fact for every row: the pool scope
-    // withholds Partner, Verified and the intake map because any Mesita
+    // withholds Partner, Verified and the Crenup map because any Mesita
     // account can reach it.
     //
     // No search: this screen loads every place the caller can see and hands
@@ -185,7 +185,7 @@ export default async function PlacesCatalogPage({
       ) : (
         <PlaceStatesTable
           places={visible}
-          // PlaceStatesTable is a Client Component (the intake toggle needs
+          // PlaceStatesTable is a Client Component (the Crenup toggle needs
           // state), so the action cell has to arrive pre-rendered — a
           // function cannot cross the server/client boundary, but this
           // already-built JSX can. Rendered here, once per place, exactly as

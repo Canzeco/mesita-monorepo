@@ -12,7 +12,7 @@
 //   verified   an approved place_verifications row
 //   partner    plan ≠ free (operator label Partnered)
 //   promoting  live discount (isPlacePromoting)
-//   functions  completed Intake Create/Enrich subfunctions (pulse, details, …)
+//   functions  completed Crenup steps, Create's and Enrich's (pulse, details, …)
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";

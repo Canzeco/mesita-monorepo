@@ -276,12 +276,12 @@ Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits",
   // thin profile and a finished one, both admitted.
   const w: SignalWeights = { ...WEIGHTS_OFF, enriched: 1 };
   const thin = blend(
-    { ...project(row("thin", 4.5)), enriched: true, intakeHighWater: 2 },
+    { ...project(row("thin", 4.5)), enriched: true, crenupHighWater: 2 },
     {},
     w,
   );
   const full = blend(
-    { ...project(row("full", 4.5)), enriched: true, intakeHighWater: 10 },
+    { ...project(row("full", 4.5)), enriched: true, crenupHighWater: 10 },
     {},
     w,
   );
@@ -290,7 +290,7 @@ Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits",
   assertAlmostEquals(thin.parts.enriched, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.2, 1e-12);
   // The floor still holds at the bottom of the gradient: demote, never delete.
   const created = blend(
-    { ...project(row("created", 4.5)), enriched: true, intakeHighWater: 0 },
+    { ...project(row("created", 4.5)), enriched: true, crenupHighWater: 0 },
     {},
     w,
   );

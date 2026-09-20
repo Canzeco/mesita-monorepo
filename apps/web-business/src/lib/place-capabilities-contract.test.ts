@@ -87,7 +87,7 @@ describe("T2 — bijection: a switch exists exactly where a column does", () => 
   it("reservations has a column but is NOT writable from here", () => {
     // The asymmetry that caused the bug: the column exists and the consumer
     // app reads it, but RAIL_COLUMNS has no key for it and the only writer is
-    // the Intaker. Observed, therefore no switch.
+    // the Enricher. Observed, therefore no switch.
     expect(capabilityColumn("reservations")).toBe("reservations_enabled");
     expect(RAIL_COLUMNS_TWIN).not.toContain("reservations_enabled");
     const row = PLACE_CAPABILITIES.find((c) => c.key === "reservations");

@@ -12,12 +12,12 @@ import { isEnriching } from "../place-header-state";
 import { stateBoolChip } from "@/lib/state-vocabulary";
 import { StateRow } from "./StateCard";
 import {
-  intakeFunctionRows,
+  crenupStepRows,
   type EnrichFunctionState,
 } from "./state-enrichment";
 
 /**
- * Intake States — the whole pipeline picture in one box (Pato, 2026-08-30):
+ * Crenup States — the whole pipeline picture in one box (Pato, 2026-08-30):
  * the two SUMMARY facts (Enriching, Enriched) over the eleven functions,
  * 0. Seed … 10. Embedding, each a bool (called / not). Create 1–5 /
  * Enrich 1–10 stay Config sequences, not a third ladder.
@@ -26,13 +26,13 @@ import {
  * two rows that need it, so the Admin tab still issues exactly one
  * getPlaceEnrichment call.
  */
-export function IntakeStateCard({ place }: { place: AdminPlace }) {
+export function CrenupStateCard({ place }: { place: AdminPlace }) {
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const enrichFunctions = (place.enrich_functions ?? null) as
     | Record<string, EnrichFunctionState>
     | null;
-  const rows = intakeFunctionRows(enrichFunctions, seeded);
+  const rows = crenupStepRows(enrichFunctions, seeded);
 
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(
     null,
@@ -77,20 +77,20 @@ export function IntakeStateCard({ place }: { place: AdminPlace }) {
     enriched === "unknown"
       ? "Couldn't read the pipeline events."
       : enriched
-        ? "The Intake queue finished." +
+        ? "The Crenup queue finished." +
           (place.enriched_at
             ? ` Last run ${String(place.enriched_at).slice(0, 10)}.`
             : "")
-        : "The Intake queue has not finished.";
+        : "The Crenup queue has not finished.";
   const enrichingDetail = enriching
-    ? "The Intaker pipeline is mid-flight — research, analysis, or contents is running."
-    : "No Intaker run is in flight.";
+    ? "The Enricher pipeline is mid-flight — research, analysis, or contents is running."
+    : "No Enricher run is in flight.";
 
   return (
     <SectionCard
       icon={<Sprout className="h-4 w-4" />}
       tint="violet"
-      title="Intake States"
+      title="Crenup States"
     >
       <div className="mt-5 flex flex-col">
         <StateRow
