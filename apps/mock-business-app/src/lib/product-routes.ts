@@ -57,31 +57,30 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 // what it does and go buy it — and Soon is a product that does not exist at
 // all. Only the second one has nothing whatever to look at, so only the second
 // one goes to the bottom.
-// IT WENT TO TEN, AND IT IS ELEVEN AGAIN (MESITA-2013). MESITA-2011 made this
-// Pato's "Actuales" list exactly — Partner 2nd, Online Reviews 3rd, and
-// EXPRESS WEBSITE GONE, because he had put it in Futuros in the same breath.
-// On 2026-09-20, looking at the sidebar that produced: *"add express website
-// product here into sidebar menu"*. So the row comes back, and with it the
-// rule two paragraphs up, which MESITA-2011 had retired for want of anything
-// Soon to apply it to:
+// AND NOW IT IS ELEVEN (MESITA-2017). MESITA-2011 made it Pato's ten
+// Actuales and wrote down that his second list — the one with Express Website
+// at 9th and no Digital Menu — "reads as the old sidebar recited". On
+// 2026-09-20 he answered the question directly, at the /autoplan gate: Digital
+// Menu stays at 4th (three products read the published menu) AND Express
+// Website comes back off the Futuros door, tenth, ahead of the Agent. So this
+// is neither of the two lists he dictated; it is the one he approved with the
+// contradiction pointed out to him.
 //
-//   EVERYTHING YOU CAN USE, THEN EVERYTHING YOU CANNOT.
+// EXPRESS WEBSITE IS IN IT AND IS NOT BUILT, again, which revives the rule
+// MESITA-2004 wrote and MESITA-2011 retired: a product earns its row by
+// mattering, and `products.ts` decides separately whether its card says Soon.
+// It does not say Soon any more — but only because the mock now carries the
+// picker → preview → published states as fixtures (`websiteState`), which is
+// the exact condition `products.ts`'s header sets for a live chip.
 //
-// `website` is last, under `line`, on exactly the reading written above — the
-// Answering Agent is Locked, which is a product you can read about and go buy;
-// Express Website is Soon, which is a product that does not exist at all. It
-// is also where Pato's own numbering put the pair the last time he ordered
-// them: *"8. Answering Agent 9. Express Website"*.
+// A LITERAL, PINNED BY TEST. `product-order.test.ts` asserts this array equals
+// the dictated eleven, element for element. `satisfies` already refuses a key
+// outside `PRODUCT_KEYS`; the test is what refuses a row MOVE nobody decided.
 //
-// THIS SETTLES THE SECOND LIST MESITA-2011 SET ASIDE. That one pulled Express
-// Website back to 9th against his own Futuros placement, and the decision then
-// was that the Actuales/Futuros pair wins and a row move is one line here if
-// he meant the other. He meant the other. This is that line.
-//
-// FUTUROS AND THE CATALOGUE STILL DISAGREE, ON PURPOSE. A row here is about
-// whether a product MATTERS; `state` is about whether it is BUILT. Express
-// Website is a menu row and a Coming box at the same time, and `FuturePane`
-// already names its own axis rather than inheriting this one.
+// MESITA-2013 HAD ALREADY PUT IT BACK, LAST, on the everything-you-can-use
+// rule (Locked above Soon). Pato's dictation at the gate puts it TENTH, ahead
+// of the Agent, and the rule no longer bites: the Website is not Soon any
+// more, so there is nothing to sort to the bottom.
 export const PRODUCT_ORDER = [
   "profile",
   "partner",
@@ -92,12 +91,12 @@ export const PRODUCT_ORDER = [
   "reservations",
   "pay",
   "credits",
-  "line",
   "website",
+  "line",
 ] as const satisfies readonly ProductKey[];
 
-/** Everything the list above leaves out, behind ONE row. Not a product and
- *  not a `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` is. */
+/** Everything the eleven leaves out, behind ONE row. Not a product and not a
+ *  `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` was. */
 export const FUTURE_SLUG = "future-products";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {

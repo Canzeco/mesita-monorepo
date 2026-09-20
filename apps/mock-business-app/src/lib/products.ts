@@ -1,6 +1,7 @@
 // What a product's STATE is — pure, and the catalogue's only source of truth.
 //
-// Snapshot of `apps/web-business/src/lib/products.ts`. A card states a fact the
+// Leads `apps/web-business/src/lib/products.ts` (see the last paragraph of
+// this header). A card states a fact the
 // console READ: a product above this place's rung reads Locked and carries NO
 // verb, a per-place product prints whether it is on HERE, and an unbuilt one
 // is Soon.
@@ -9,20 +10,35 @@
 //
 // Pato, 2026-09-19: *"Is not partner / Is pro and ultra / and both include
 // partnership badge."* So there is no Membership to have or not have; there
-// are three rungs — Free, Mesita Pro, Mesita Ultra — and a product names the
-// LOWEST one that carries it. `planAtLeast` is the whole check.
+// are FOUR rungs since MESITA-2009 — Free, Mesita Start, Mesita Pro, Mesita
+// Ultra — and a product names the LOWEST one that carries it. `planAtLeast`
+// is the whole check. Pato confirmed the four, by their code names, at the
+// MESITA-2017 gate on 2026-09-20; the session's working names (Partner,
+// Commerce, Autopilot) are not labels and never reach a screen.
 //
 // `needsPartner: boolean` could not express this: two states cannot gate
 // three rungs, and the Answering Agent is the proof — it was ungated, it is
 // Ultra's, and there was no way to say so.
 //
-// THE THREE GROUPS, and the rule that puts a new product in one of them:
-// Free is what costs Mesita nothing per place and makes the map worth
-// opening (Profile, Online Reviews, Digital Menu, the Developers Platform).
-// Pro is every rail a guest's money moves through. Ultra is anything that
-// costs us PER USE — model minutes, compute. Anything with real cost of goods
-// (hardware, Capital, the media spend behind Ads) is not a rung at all: it
-// prices itself, and only its `minPlan: "pro"` floor lives here.
+// THE FOUR RUNGS AS A TABLE (MESITA-2017), so `minPlan` is a lookup and not a
+// judgment made once per product:
+//
+//   free   Profile, Online Reviews, Digital Menu, Developers Platform
+//          — costs Mesita nothing per place and makes the map worth opening
+//   start  Visit Rewards, Online Payments
+//          — "get paid, and bring them back"
+//   pro    Mesita Partner, Online Orders, Online Reservations, Express
+//          Website, Table Orders — every rail a guest's money moves through,
+//          the site they move it on, and the badge (MESITA-2014 moved its
+//          floor from Start to Pro; the Partner checklist's fifth row reads
+//          `PARTNER_MIN_PLAN`, never a typed rung)
+//   ultra  Prepaid Credits, Answering Agent, Customer Intelligence
+//          — anything that costs us PER USE (model minutes, compute), and the
+//          one product that creates a debt to a guest
+//
+// Anything with real cost of goods (hardware, Capital, the media spend behind
+// Ads) is not a rung at all: it prices itself, and only its `minPlan: "pro"`
+// floor lives here.
 //
 // ── WHAT A BLURB OWES (MESITA-1946) ────────────────────────────────────────
 //
@@ -57,16 +73,22 @@
 // expensive lie this screen could tell — an owner reads it as "already
 // handled" and stops picking up the phone.
 //
-// SO TEN OF THE TWENTY ARE LIVE (MESITA-2011): Profile, Partner, Reviews,
-// Menu, Visits, Orders, Reservations, Payments, Credits and the Answering
-// Agent — which is exactly Pato's Actuales list, and the other ten are exactly
-// his Futuros. That ratio is the point of the screen, not a defect in it — the
-// catalogue is a price list before it is a control panel, and an operator has
-// to be able to read the whole suite before they can want any of it.
+// SO ELEVEN OF THE TWENTY ARE LIVE (MESITA-2017): Profile, Partner, Reviews,
+// Menu, Visits, Orders, Reservations, Payments, Credits, Express Website and
+// the Answering Agent — the ten of MESITA-2011 plus the Website, which Pato
+// put back at the /autoplan gate. The Website is live on this screen because
+// the mock now carries its picker → preview → published states as fixtures
+// (`websiteState`), which is exactly the condition the paragraph above sets:
+// no knobs on an unbuilt engine, and a state you can click through is not a
+// knob. The other nine are exactly his Futuros. That ratio is the point of
+// the screen, not a defect in it — the catalogue is a price list before it is
+// a control panel.
 //
-// THIS IS THE DRIFT THE PACKAGE ALLOWS, and it runs in the mock's direction:
-// `web-business` still has its nine products and the old clauses until
-// somebody re-snapshots it by hand.
+// THIS APP LEADS `apps/web-business`, IT IS NOT A SNAPSHOT OF IT ANY MORE.
+// The real console gates on a boolean, has fifteen keys and no `PlanTier`;
+// porting this file there is a gate-model change with a migration behind it
+// (`places.plan` has no `start`), and it is tracked as MESITA-2017's follow-up
+// issue rather than re-snapshotted by hand.
 import type { PlaceTab } from "@/lib/place-tabs";
 import type { ProductKey } from "@/lib/product-keys";
 import {
@@ -252,9 +274,11 @@ export const SPECS: readonly ProductSpec[] = [
     tab: null,
     minPlan: "pro",
     atPlace: null,
-    // NOT "Built from your Mesita profile" any more: that note described the
-    // alias too, and a Soon note may only state what has not happened yet.
-    soon: "Nothing is built yet.",
+    // LIVE ON THE VOICE SESSION'S LIST (MESITA-2017). The picker, the
+    // preview and the published site are fixtures now (`websiteState`), which
+    // is what this file's header demands before a chip may read On.
+    soon: null,
+    liveNote: "Pick a template and Mesita drafts the site from your listing.",
   },
   {
     key: "customers",
@@ -302,8 +326,10 @@ export const SPECS: readonly ProductSpec[] = [
     // separately and the second one ("you set the rungs, you set the price")
     // was the dial's own sentence — it belongs on the dial, which is where
     // Rewards' view still is.
+    // NO TIERS IN THE SENTENCE (MESITA-2017): the rates are Mesita's, and what
+    // a place decides is which actions earn and how much a visit may cost.
     blurb:
-      "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you set what comes back.",
+      "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you switch on what earns it.",
     tab: "visits",
     minPlan: "start",
     // PARTNER-GATED, NOT `visitRewards`. Visits is included with the
@@ -318,8 +344,11 @@ export const SPECS: readonly ProductSpec[] = [
   {
     key: "orders",
     name: "Online Orders",
+    // PICKUP FIRST (MESITA-2017). Pato: *"sólo permitir pickup al principio
+    // estaría muy bien"*. Six channels feed one queue; delivery is the section
+    // on the page that says Soon, so the card may not promise it.
     blurb:
-      "Pickup and delivery, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
+      "Pickup from six channels, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
     tab: "orders",
     minPlan: "pro",
     atPlace: (p) => p.pickupOrders || p.deliveryOrders,
@@ -419,8 +448,11 @@ export const SPECS: readonly ProductSpec[] = [
   {
     key: "credits",
     name: "Prepaid Credits",
+    // CAMPAIGNS, AND SISTER BRANCHES (MESITA-2017). It used to say the balance
+    // "can only be spent here"; the session made acceptance a one-way choice
+    // a sister branch makes, with the issuer keeping the cash and the debt.
     blurb:
-      "Branded money a guest buys once and can only spend here — paid up front, redeemed against a visit or an order.",
+      "Cash now for meals later — you open a campaign, guests buy a balance at a bonus, and a sister branch can choose to honour it.",
     tab: "credits",
     minPlan: "pro",
     atPlace: (p) => p.credits,
@@ -473,8 +505,11 @@ export const SPECS: readonly ProductSpec[] = [
     // card reads as a WhatsApp widget. The two things it replaced were named
     // for their channels ("Mesita WhatsApp Bot", "Mesita Phone Bot"), which is
     // what made them look like two products; one line, two ways in.
+    // BOOKINGS AND PICKUP ORDERS, AND A WAY OUT (MESITA-2017). The session's
+    // three requirements for v1: reservations, pickup orders paid by Stripe
+    // link before the kitchen starts, and escalation to a person.
     blurb:
-      "Answers your number — a call or a WhatsApp — with the hours, the menu and the booking, so the floor never stops to pick up.",
+      "Answers your number — a call or a WhatsApp — takes the booking and the pickup order, and hands a person anything it cannot.",
     tab: null,
     minPlan: "ultra",
     atPlace: null,

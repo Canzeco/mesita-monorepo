@@ -6,44 +6,34 @@
 // (MESITA-1995), and the two names being different is the point. This screen
 // holds what the whole internet says — Maps, Mesita, Instagram, Facebook — and
 // naming the row after one of its own sections said the section was the whole
-// thing. The inner card keeps its name, where Mesita really is the
-// counterparty and it sits beside Google's.
+// thing.
 //
-// Pato, reading the Products index: *"move — Mesita Partner / Mesita Profile /
-// Mesita Reviews (separate reviews shit)."*
+// ── IT HAS TWO HALVES NOW (MESITA-2017) ────────────────────────────────────
 //
-// ── WHY IT LEFT ────────────────────────────────────────────────────────────
+// Until this issue nothing here sat inside a `Half`, on the argument that a
+// review is a record, not a setting. The voice session put ONE thing an
+// operator does above the records: connect the sources. Google, Instagram and
+// Facebook each need a connection that can lapse, and "reconnect" is a verb
+// with a place to live. So the sources are the Manage half, the trio is the
+// Activity half, and `PRODUCT_HALVES` says BOTH.
 //
-// `ReviewBoxes` was the tail of Profile's masonry: three read-only cards under
-// twelve editable ones, inside a form with a floating save bar that none of
-// them could ever dirty. PROFILE IS WHAT AN OPERATOR SETS — the name, the
-// hours, the photos, the channels. This is the one thing on that screen the
-// world says back, and a read-only trio at the bottom of a twelve-card form is
-// where a subject goes to not be found.
-//
-// ── THE TRIO STAYS A TRIO ──────────────────────────────────────────────────
-//
-// The aggregate and the two lists it aggregates stay on ONE screen, which is
-// the whole reason `ReviewBoxes` is a wrapper rather than three siblings
-// (MESITA-1930): the masonry used to deal them into three columns and strand a
-// number above evidence that was not its own.
-//
-// ── AND IT RENDERS ON BOTH SURFACES, DELIBERATELY ──────────────────────────
-//
-// Nothing here sits inside a `Half`, which `Half` documents as meaning "both",
-// and it is the right answer for this product rather than a shortcut around
-// the seam. A REVIEW IS A RECORD, NOT A SETTING: there is nothing to
-// configure, so a Manage half would be empty, and putting the four counts on
-// Products and the two lists on Activity would put a number on one screen and
-// its evidence on another — the exact split MESITA-1930 wrapped these three to
-// prevent.
+// THE TRIO STAYS A TRIO. The aggregate and the two lists it aggregates stay
+// on one screen, which is the whole reason `ReviewBoxes` is a wrapper rather
+// than three siblings (MESITA-1930).
 import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
 import { ReviewBoxes } from "@/components/place-manage/ReviewBoxes";
+import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
+import { Badge } from "@/components/shared/Badges";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
 import { useMock } from "@/mock/MockStore";
+import { REVIEW_SOURCES, REVIEW_SOURCE_LABEL } from "@/mock/types";
+import { since } from "@/lib/format";
+import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 export function ReviewsView() {
   const { place } = usePlaceScope();
-  const { world } = useMock();
+  const { world, now } = useMock();
 
   if (!place) return <NotHeld />;
   const profile = world.profiles[place.id];
@@ -53,13 +43,49 @@ export function ReviewsView() {
   // becomes one.
   if (!profile) return <NotHeld />;
 
-  // NO `PlaceFormProvider`. These three cards register no dirty section and
-  // save nothing, so wrapping them in a form context to satisfy one `placeId`
-  // read would be a save bar this screen has no use for — which is why
-  // `ReviewBoxes` takes the id as a prop now.
   return (
-    <div key={place.id} className="flex flex-col">
-      <ReviewBoxes place={profile} placeId={place.id} />
+    <div key={place.id} className="flex flex-col gap-4">
+      <Half label="Manage">
+        <Section
+          title="Sources"
+          description="Where the stars come from. Mesita's own never disconnects; the other three are accounts you connect once and reconnect when they lapse."
+        >
+          <div className={RULES_CARD}>
+            {REVIEW_SOURCES.map((s) => {
+              const src = place.reviewSources[s];
+              return (
+                <Rule
+                  key={s}
+                  label={REVIEW_SOURCE_LABEL[s]}
+                  note={
+                    src.connected
+                      ? `Synced ${src.lastSyncedAt ? since(src.lastSyncedAt, now) : "just now"}.`
+                      : s === "mesita"
+                        ? "Always on."
+                        : "Not connected. Nothing from here is counted below."
+                  }
+                  value={
+                    <>
+                      <Badge tone={src.connected ? "live" : "off"}>{src.connected ? "Connected" : "Off"}</Badge>
+                      {s !== "mesita" && (
+                        <button type="button" className={GHOST_PILL_BUTTON_CLASS}>
+                          {src.connected ? "Reconnect" : "Connect"}
+                        </button>
+                      )}
+                    </>
+                  }
+                />
+              );
+            })}
+          </div>
+        </Section>
+      </Half>
+      <Half label="Activity">
+        {/* NO `PlaceFormProvider`. These three cards register no dirty section
+            and save nothing, which is why `ReviewBoxes` takes the id as a
+            prop. */}
+        <ReviewBoxes place={profile} placeId={place.id} />
+      </Half>
     </div>
   );
 }

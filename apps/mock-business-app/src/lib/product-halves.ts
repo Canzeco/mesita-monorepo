@@ -27,10 +27,10 @@
 //
 // ── THE OBLIGATION THIS FILE CARRIES ───────────────────────────────────────
 //
-// A hand-typed map rots, and THIS PACKAGE HAS NO TEST RUNNER — `package.json`
-// has `lint` and `typecheck` and nothing else, so there is no file that can
-// assert the map and the views agree. What holds them together instead is the
-// ROUTE: `activity/[product]/page.tsx` calls `notFound()` for any product this
+// A hand-typed map rots. THIS PACKAGE HAS A TEST RUNNER SINCE MESITA-2017
+// (`pnpm test`, vitest, run by the mock's own workflow), and
+// `product-halves.test.ts` pins which products are BOTH. What holds the map to
+// the views at runtime is still the ROUTE: `activity/[product]/page.tsx` calls `notFound()` for any product this
 // map does not give an `"activity"` to. The map is not documentation about the
 // router, it IS the router — so a wrong entry is a 404 you meet immediately,
 // not a blank pane you find in a month.
@@ -44,7 +44,9 @@ import type { PlaceHalf } from "@/lib/product-routes";
 
 const BOTH: readonly PlaceHalf[] = ["products", "activity"];
 const SETUP_ONLY: readonly PlaceHalf[] = ["products"];
-const ACTIVITY_ONLY: readonly PlaceHalf[] = ["activity"];
+/** No product is Activity-only any more (MESITA-2017 gave Credits and Reviews
+ *  a Setup half). The shape stays named so the next one has a word for it. */
+const _ACTIVITY_ONLY: readonly PlaceHalf[] = ["activity"];
 
 /** THE PARTITION, one entry per product, audited 2026-09-19 against the
  *  `Half` markers in `src/components/views/`.
@@ -77,30 +79,21 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   // its name at the top of the pane, so the tile was the same fact twice."*
   // What is left outside a half is the heading, which `ProductPane` draws.
   //
-  // So its Setup ADDRESS 404s, its sidebar row opens the log, and it draws no
-  // tab pair — one screen, named once. An earlier pass of this issue gave it a
-  // Manage half holding two tiles; that was written before MESITA-2003 landed
-  // and it would have re-introduced the exact numbers that issue removed.
-  //
-  // It gets a Manage half the day Credits gets a real dial — pack sizes, an
-  // expiry, a sale switch. Then this entry becomes `BOTH` and the pair appears
-  // on its own.
-  credits: ACTIVITY_ONLY,
+  // CREDITS GOT ITS DIAL (MESITA-2017). The line above this used to read
+  // ACTIVITY_ONLY on the argument that nothing here could be set; the voice
+  // session gave it campaigns — pay $800 get $1,000, a sale window, a cap, a
+  // per-guest limit — and a list of which sister branches' credits this one
+  // accepts. That is a Setup half by the file's own test: it changes what
+  // will happen. The exposure stays on Activity, still with no grand total.
+  credits: BOTH,
 
-  // ONLINE REVIEWS, ON CREDITS' PRECEDENT (MESITA-2011). Nothing here can be
-  // configured — four sources, all of them writing from outside — so a Setup
-  // half would be a stated absence forever, which is the exact argument
-  // MESITA-2007 used to fold this product into Profile in the first place.
-  //
-  // IT IS THE REASON THE FOLD WAS WRONG, TOO. A product with one half is a
-  // shape this file already has; it does not have to borrow somebody else's
-  // row to get it.
-  //
-  // `ReviewsView` renders on both surfaces (its own header says so, and
-  // nothing in it sits inside a `Half`), so it is THIS LINE that keeps
-  // `/products/online-reviews` from serving the same screen the Activity
-  // address does. The router reads the map; the map is the only gate.
-  reviews: ACTIVITY_ONLY,
+  // ONLINE REVIEWS HAS A SOURCES BLOCK NOW (MESITA-2017). It was ACTIVITY_ONLY
+  // on the argument that four sources all write from outside; the session
+  // put ONE thing an operator does above them — connect or reconnect Google,
+  // Instagram and Facebook — and a connection is a setting. `ReviewsView`
+  // wraps the trio in an Activity `Half` and the sources in a Manage one, so
+  // the two addresses serve different screens for the first time.
+  reviews: BOTH,
 
   // ── ONE SCREEN EACH, AND IT IS THE CONFIG ────────────────────────────────
   // Four live products whose whole surface is configuration — Profile joined
@@ -108,7 +101,10 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   // addresses, because `ProductPane` returned the view without ever reading
   // `useHalf()`.
   menu: SETUP_ONLY,
-  pay: SETUP_ONLY,
+  // ONLINE PAYMENTS GOT AN EVENT CONSOLE (MESITA-2017): payouts, and what
+  // Mesita's fee took per charge. Stripe Express keeps the sensitive screens;
+  // the log of what it did is ours to show.
+  pay: BOTH,
   // MESITA PROFILE IS BACK TO ONE SCREEN (MESITA-2011). Its Activity half was
   // Online Reviews, mounted here by MESITA-2007; Reviews has its own row
   // again, so what is left is what Profile always was — the thing an operator
@@ -121,10 +117,13 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   // screen, so the address goes rather than the sentence staying.
   partner: SETUP_ONLY,
 
-  // A stated absence is still a Setup screen, and both of these have a sidebar
-  // row that opens it. `line` is Locked and `website` is Soon; `ProductPane`
-  // draws the pane that says so.
-  line: SETUP_ONLY,
+  // THE AGENT HAS A SCREEN (MESITA-2017): the line's state, what it may
+  // take, the outward label, and Publish-your-number on Setup; escalations
+  // and the facts it learned on Activity.
+  line: BOTH,
+  // EXPRESS WEBSITE HAS A SCREEN (MESITA-2017): the template picker and the
+  // picked → preview → published states, as fixtures. Setup only — the site's
+  // own numbers are a follow-up, and a half with nothing in it is a 404 here.
   website: SETUP_ONLY,
 
   // ── THE ROADMAP ──────────────────────────────────────────────────────────

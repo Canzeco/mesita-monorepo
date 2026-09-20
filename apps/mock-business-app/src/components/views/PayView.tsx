@@ -40,9 +40,17 @@ import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, RotateCw } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
+import { Half } from "@/components/shared/Half";
+import { Table, type Column } from "@/components/shared/Table";
+import { Tiles } from "@/components/shared/Tiles";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { FactRow, type Fact } from "@/components/shared/FactRow";
+import { PAYOUTS, VISITS } from "@/mock/fixtures";
+import { listFor } from "@/mock/scenario";
+import { useMock } from "@/mock/MockStore";
+import { dayTime, money } from "@/lib/format";
 import { Badge } from "@/components/shared/Badges";
-import { PAY_LADDER_LABEL, type PayLadder } from "@/mock/types";
+import { PAY_LADDER_LABEL, type MockPayout, type MockVisit, type PayLadder } from "@/mock/types";
 import {
   CTA_BUTTON_CLASS,
   ERROR_BOX_CLASS,
@@ -175,8 +183,38 @@ function referenceRungs(current: PayLadder): PayState[] {
   );
 }
 
+/** MESITA'S FEE, BY WHAT WAS PAID FOR (MESITA-2017). Not a setting: Pato,
+ *  2026-09-20 — *"cobra según el tipo de orden, si es visita cobro menos, si
+ *  es online order cobro una tarifa del 10%"*. Mesita charges ONLY when it
+ *  processes the digital payment; cash costs the place nothing and a
+ *  marketplace order pays the marketplace, not Mesita. Basis points. */
+export const FEE_BPS = { visit: 300, order: 1000 } as const;
+
 export function PayView() {
   const place = useHeldPlace();
+  const { scenario } = useMock();
+  // A CHARGE is a visit a guest paid through Mesita. Cash and card at the
+  // till are not charges: nothing was processed, so nothing was charged.
+  const charges = listFor(
+    VISITS.filter((v) => v.placeId === place.id && v.tenders.some((t) => t.method === "mesita_pay")),
+    scenario,
+  );
+  const payouts = listFor(PAYOUTS.filter((p) => p.placeId === place.id), scenario);
+  const feeOf = (v: MockVisit) =>
+    Math.round((v.tenders.find((t) => t.method === "mesita_pay")?.amountCents ?? 0) * FEE_BPS.visit / 10_000);
+  const chargeColumns: Column<MockVisit>[] = [
+    { key: "guest", head: "Guest", cell: (v) => <span className="font-medium">{v.guest}</span> },
+    { key: "at", head: "When", cell: (v) => <span className="text-muted-foreground">{dayTime(v.at)}</span> },
+    { key: "charged", head: "Charged", align: "right", cell: (v) => <span className="tabular-nums">{money(v.tenders.find((t) => t.method === "mesita_pay")?.amountCents ?? 0)}</span> },
+    { key: "fee", head: "Mesita's fee", align: "right", cell: (v) => <span className="text-muted-foreground tabular-nums">{money(feeOf(v))}</span> },
+    { key: "net", head: "To you", align: "right", cell: (v) => <span className="font-semibold tabular-nums">{money((v.tenders.find((t) => t.method === "mesita_pay")?.amountCents ?? 0) - feeOf(v))}</span> },
+  ];
+  const payoutColumns: Column<MockPayout>[] = [
+    { key: "at", head: "When", cell: (p) => <span className="text-muted-foreground">{dayTime(p.at)}</span> },
+    { key: "to", head: "To", cell: (p) => <span className="tabular-nums">···{p.last4}</span> },
+    { key: "amount", head: "Amount", align: "right", cell: (p) => <span className="font-semibold tabular-nums">{money(p.amountCents)}</span> },
+    { key: "state", head: "State", cell: (p) => <Badge tone={p.state === "paid" ? "live" : "soon"}>{p.state === "paid" ? "Paid" : "In transit"}</Badge> },
+  ];
   const search = useSearchParams();
   const returned = search.get("connect");
   const state = STATES.find((s) => s.id === place.pay)!;
@@ -206,6 +244,7 @@ export function PayView() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Half label="Manage">
       {/* STRIPE'S STORED RETURN. The link's `return_url` was written when the
           link was minted, so an owner can arrive here from a page they opened
           weeks ago. Saying nothing would leave them wondering whether the eight
@@ -349,6 +388,32 @@ export function PayView() {
           </ol>
         </details>
       </Section>
+      </Half>
+
+      {/* THE EVENT CONSOLE (MESITA-2017). Express keeps identity, the bank
+          account and disputes; what Mesita may show is what it processed and
+          what it kept. THE FEE IS PRINTED PER CHARGE, not hidden in a net —
+          Pato's rule is that a place pays only when Mesita processes the
+          payment, and a fee you cannot see is a fee you argue about. */}
+      <Half label="Activity">
+        <Tiles
+          tiles={[
+            { label: "Charges", value: charges.length || null, hint: "Paid through Mesita, listed below" },
+            { label: "Mesita's fee", value: charges.length ? money(charges.reduce((n, v) => n + feeOf(v), 0)) : null, hint: `${FEE_BPS.visit / 100}% of a visit, ${FEE_BPS.order / 100}% of an order` },
+            { label: "Payouts", value: payouts.length || null, hint: "On Stripe's schedule" },
+          ]}
+        />
+        <Section title="Charges" description="Every payment Mesita processed for this place, newest first. Cash and card at the till are not here: nothing was charged for them.">
+          <Table
+            columns={chargeColumns}
+            rows={charges}
+            empty={<EmptyState title="No charges yet" hint={state.id === "enabled" ? "A charge appears the moment a guest pays through Mesita." : "Payments are not on, so nothing can be charged."} />}
+          />
+        </Section>
+        <Section title="Payouts" description="What Stripe sent to your account. Disputes and refunds are on Stripe's dashboard first.">
+          <Table columns={payoutColumns} rows={payouts} empty={<EmptyState title="No payouts yet" hint="Stripe pays out on its own schedule once there is something to pay." />} />
+        </Section>
+      </Half>
     </div>
   );
 }

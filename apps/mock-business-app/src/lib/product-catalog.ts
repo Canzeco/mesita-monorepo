@@ -46,10 +46,10 @@ export const PRODUCT_CATALOG_COPY: Record<ProductKey, string> = {
     "A real website for the place, built from the profile and the menu you have already filled in here. Your own address, nothing to maintain, and it updates itself when the menu does. For the venues whose website today is a link in an Instagram bio.",
 
   visits:
-    "A discount at the bill for guests who came through Mesita. You choose how hard to push — conservative or aggressive — and the till honours exactly what you set. The money only leaves on a visit you might not otherwise have had, which is the whole trade.",
+    "A discount at the bill, or cashback for the next visit, for guests who came through Mesita. The rates are Mesita's; you switch on what earns them — a first visit, an Instagram story, a Mesita review — and set the most a visit may cost. The money only leaves on a visit you might not otherwise have had, which is the whole trade.",
 
   orders:
-    "Pickup and delivery, ordered and paid for before the guest arrives. Prepaid is the difference that matters: a no-show costs you nothing, and the ticket reaches the kitchen with the money already collected.",
+    "Pickup, ordered and paid for before the guest arrives, from six channels into one queue: the Mesita app, your website, WhatsApp, Uber Eats, Rappi and DiDi. Prepaid is the difference that matters — a no-show costs you nothing, and the ticket reaches the kitchen with the money already collected. Delivery is coming: your own couriers by WhatsApp, or Uber Direct.",
 
   tableorders:
     "The guest at table six scans the QR and orders from their own phone. The same prepaid rail as Online Orders, without the walk to the counter and without holding up a waiter to read a menu out loud.",
@@ -68,12 +68,13 @@ export const PRODUCT_CATALOG_COPY: Record<ProductKey, string> = {
     "A handheld for the floor. The waiter takes the order at the table and it reaches the kitchen on the way back, instead of on a pad that gets typed in later.",
 
   credits:
-    "Guests buy a balance at your place up front and spend it across later visits. You hold the cash now; they get a bonus for committing to you. A balance is yours alone — it cannot be spent at any other place on Mesita.",
+    "Cash now for meals later. You open a campaign — pay $800, get $1,000, until a date, up to a cap — and guests buy a balance they spend across later visits. The branch that sold it keeps the cash and owes the meals, forever; a sister branch in your organisation can choose to honour those credits too, and settle with you.",
 
   capital:
     "Cash up front against food you will serve later. It is an advance sale, never a loan: you settle it in meals rather than in interest, and nothing is secured against the business.",
 
-  line: "It picks up when nobody can. It knows your hours, your menu and your tables, so it answers what a caller actually asks, takes a booking, and passes on anything it could not handle. Every call is transcribed, so you can read the ones that mattered.",
+  line:
+    "It answers your number — a call or a WhatsApp — for anyone, whether or not they have Mesita. It takes the booking, takes the pickup order and sends the Stripe link before the kitchen starts, answers the hours and the menu, and hands a person anything it cannot. What it learned from that person, it remembers for the next call.",
 
   customers:
     "Who your guests actually are — how often each one comes back, what they spend, and which ones have stopped. It is rented rather than bought per name, because a contact you paid for once quietly stops being true.",

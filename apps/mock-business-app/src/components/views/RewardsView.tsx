@@ -1,34 +1,34 @@
 "use client";
 
-// Rewards — what a place GIVES BACK, priced by the place.
+// Rewards — what a place GIVES BACK, and the six things it decides about that.
 //
 // IT IS A MONEY PRODUCT, and that is why it sits beside Payments and Credits
 // rather than beside Visits. Visits is the container guests arrive through;
-// Rewards is the dial. The two were folded into one screen once and the dial
-// ended up living in the container's settings, where nobody could find it.
+// Rewards is the dial.
 //
 // REWARDS ARE VISIT-ONLY. A reward is earned by showing up and closing a bill,
 // never by placing an order — an order is prepaid and has no table to reward.
 //
-// ── TWO TABLES, AND WHY IT CANNOT BE ONE ───────────────────────────────────
+// ── SIX ROWS, NOT NINE RUNGS (MESITA-2017) ─────────────────────────────────
 //
-// Rewards add. The page therefore owes two facts, and they want different
-// columns:
+// This page used to be two tables: a ladder priced by strategy column, and
+// the stack those columns added up to. Pato killed the columns on 2026-09-20
+// — a restaurant should not have to think about "aggressive" — so the rates
+// are Mesita's now (`lib/rewards.ts`) and the operator decides six things,
+// each one a row in one card:
 //
-//   the LADDER — what every rung pays          → columns are STRATEGIES
-//   the STACK  — what those rungs add up to    → columns are STEPS
+//   program on · discount or cashback · cap · welcome · story · Mesita review
 //
-// One table carries one set of columns, so a single table drops either the
-// strategy comparison or the climb. Hence two cards, ladder first: you read the
-// price list, then you read the bill (MESITA-1923; the operator's twin of the
-// ladder is web-admin `rewards-config/TiersClient.tsx`).
+// THE STACK STAYS, shorter. An owner who sets a program without ever seeing
+// the ceiling is an owner who meets it on a ticket, and the peso under it is
+// what keeps the ceiling from being a night: "up to $X per visit, all bonuses
+// combined" is the one sentence this screen owes.
 //
-// THE STACK IS THE POINT. Nine rungs with no running total is the screen that
-// gets this decision made wrong: an owner who sets a program without ever
-// seeing 90% is an owner who meets it on a ticket. And a ceiling shown without
-// its CAP misleads in the other direction, so the cap is a control here, not a
-// footnote — at MX$500 that 90% guest costs MX$450, whatever they ordered.
+// CASHBACK NEEDS PREPAID CREDITS, which is Ultra's. The row never hides: it
+// stays visible, disabled, with the reason and the door, because a hidden
+// option teaches an operator the product does not exist.
 import { useState } from "react";
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
@@ -37,43 +37,36 @@ import { Table, type Column } from "@/components/shared/Table";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Tiles } from "@/components/shared/Tiles";
 import { SoonStrip } from "@/components/shared/SoonStrip";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
+import { Switch } from "@/components/shared/Switch";
+import { Badge } from "@/components/shared/Badges";
 import { VISITS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import { dayTime, money } from "@/lib/format";
-import type { MockVisit } from "@/mock/types";
+import { PLAN_LABEL, planAtLeast, type MockVisit } from "@/mock/types";
+import { productKeyHref } from "@/lib/product-routes";
 import {
+  ACTION_HINT,
+  ACTION_KEYS,
+  ACTION_LABEL,
   CAPS_MXN,
-  CLASS_KEYS,
-  CLASS_LABEL,
-  DEFAULT_CAP,
-  LADDER,
-  RUNGS,
-  RUNG_LABEL,
-  STEPS,
+  MODE_LABEL,
   capCostCents,
+  ceiling,
   stack,
   type CapMxn,
-  type Rung,
+  type RewardsMode,
+  type RewardsProgram,
 } from "@/lib/rewards";
 import {
   CTA_BUTTON_CLASS,
-  FOCUS_RING_CLASS,
   GHOST_PILL_BUTTON_CLASS,
   INFO_BOX_CLASS,
-  STATES_COL_CELL,
-  STATES_COL_HEAD,
   TINY_LABEL_CLASS,
-  TOUCH_TARGET_CLASS,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-/** The scrollport both tables ride. The padding sits on the SCROLLER, not the
- *  table, so the swipe reaches the edge of the glass on a phone and the first
- *  label is not flush against it. Mirrors the admin's own solution. */
-const SCROLLPORT = "-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0";
-const HEAD_CELL =
-  "text-muted-foreground border-border border-b px-3 py-2 text-[10px] font-semibold tracking-[0.14em] uppercase";
 /** Whole pesos with a thousands separator. `moneyShort` renders MX$1,000 as
  *  "$1.0k", which is the wrong shape for a cap an owner is choosing between,
  *  and `money` adds two decimals no rate ever needs. */
@@ -87,56 +80,58 @@ export function RewardsView() {
   const place = useHeldPlace();
   const { scenario } = useMock();
 
-  // SAVED is what this place is running; the other two are the draft. The
-  // seed is compared during render rather than synced in an effect — setState
-  // in useEffect is a lint error on Next 16, and an effect would also paint one
+  // SAVED is what this place is running; the rest is the draft. The seed is
+  // compared during render rather than synced in an effect — setState in
+  // useEffect is a lint error on Next 16, and an effect would also paint one
   // frame of the previous place's program.
-  const seed = `${place.id}:${place.visitRewards}`;
+  const fromPlace: RewardsProgram = { on: place.visitRewards, ...place.rewards };
+  const seed = `${place.id}:${JSON.stringify(fromPlace)}`;
   const [seeded, setSeeded] = useState(seed);
-  const initial: Rung = place.visitRewards ? "aggressive" : "off";
-  const [saved, setSaved] = useState<{ rung: Rung; cap: CapMxn }>({
-    rung: initial,
-    cap: DEFAULT_CAP,
-  });
-  const [rung, setRung] = useState<Rung>(initial);
-  const [cap, setCap] = useState<CapMxn>(DEFAULT_CAP);
+  const [saved, setSaved] = useState<RewardsProgram>(fromPlace);
+  const [draft, setDraft] = useState<RewardsProgram>(fromPlace);
   const [justSaved, setJustSaved] = useState(false);
   if (seeded !== seed) {
     setSeeded(seed);
-    setSaved({ rung: initial, cap: DEFAULT_CAP });
-    setRung(initial);
-    setCap(DEFAULT_CAP);
+    setSaved(fromPlace);
+    setDraft(fromPlace);
     setJustSaved(false);
   }
 
-  const dirty = rung !== saved.rung || cap !== saved.cap;
-  const off = rung === "off";
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const off = !draft.on;
+  const set = (patch: Partial<RewardsProgram>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const visits = listFor(
-    VISITS.filter((v) => v.placeId === place.id),
-    scenario,
-  );
-  const given = visits.reduce((n, v) => n + v.rewardCents, 0);
+  // CASHBACK IS GATED TWICE: by the Credits switch on this place, and by the
+  // rung Credits lives on. Either one missing disables the row with its
+  // reason; the door goes to whichever is the nearer fix.
+  const creditsRung = planAtLeast(place.plan, "ultra");
+  const cashbackOk = creditsRung && place.credits;
+  const cashbackWhy = !creditsRung
+    ? `Needs Prepaid Credits (${PLAN_LABEL.ultra})`
+    : "Needs Prepaid Credits on";
+  const creditsHref = productKeyHref(place.id, "products", "credits");
+
+  const noActions = draft.on && !draft.welcome && !draft.story && !draft.mesita;
+  const steps = stack(draft);
+  const top = ceiling(draft);
+
+  const visits = listFor(VISITS.filter((v) => v.placeId === place.id), scenario);
   const earned = visits.filter((v) => v.rewardCents > 0);
-  const rewarded = earned.length;
+  const given = earned.reduce((n, v) => n + v.rewardCents, 0);
   // THE ACTIVITY HALF'S TABLE, and deliberately not the Visits one. Visits
-  // answers "what happened at the table" and carries tenders, credits and a
-  // total; this answers "what did the ladder above actually pay out", so it
-  // shows only the visits that earned something and only the column that says
-  // how much. A second copy of the Visits table here would be two screens
-  // claiming the same subject.
-  //
-  // It is the third table on this page and the only one about the PAST: the
-  // ladder prices the rungs, the stack adds them up, and this is what they
-  // came to. Those two are Manage; this one is Activity (MESITA-1924).
+  // answers "what happened at the table"; this answers "what did the program
+  // pay out", so it shows only the visits that earned something, how much,
+  // and AS WHAT — a discount left the bill, cashback became a balance.
+  const kind = saved.mode;
   const earnedColumns: Column<MockVisit>[] = [
     { key: "guest", head: "Guest", cell: (v) => <span className="font-medium">{v.guest}</span> },
     { key: "at", head: "When", cell: (v) => <span className="text-muted-foreground">{dayTime(v.at)}</span> },
+    { key: "kind", head: "As", cell: () => <Badge>{kind}</Badge> },
     { key: "reward", head: "Given back", align: "right", cell: (v) => <span className="font-semibold tabular-nums">{money(v.rewardCents)}</span> },
   ];
 
   function save() {
-    setSaved({ rung, cap });
+    setSaved(draft);
     setJustSaved(true);
     // Plain timeout in the handler, never an effect. React drops a setState on
     // an unmounted component, so this needs no teardown.
@@ -145,254 +140,170 @@ export function RewardsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* TWO tiles, not four. The ceiling used to sit here and it is the last
-          cell of the stack table now: a tile that repeats a number six inches
-          below it is the noise that stops people reading either. */}
-      <Tiles
-        tiles={[
-          {
-            label: "Strategy",
-            value: RUNG_LABEL[saved.rung],
-            hint: dirty ? "Unsaved change below" : undefined,
-          },
-          {
-            label: "Given back",
-            value: visits.length ? money(given) : null,
-            hint: `Across ${rewarded} rewarded visit${rewarded === 1 ? "" : "s"}, listed below`,
-          },
-        ]}
-      />
-
       <Half label="Manage">
         <Section
-          title="What this place pays, rung by rung"
-          description="Nine rewards, three groups. Pick a column and every rung follows it — the rates are Mesita's, and a place chooses which column it runs."
+          title="The program"
+          description="Six things this place decides. The rates are Mesita's; your cap is the ceiling."
         >
-          <div className={SCROLLPORT}>
-            <table className="w-full min-w-[540px] border-collapse">
-              <caption className="sr-only">
-                What each reward pays, at each strategy. Base is a rate; every
-                other row adds to it.
-              </caption>
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
-                  >
-                    Reward
-                  </th>
-                  {RUNGS.map((r) => (
-                    <th key={r} scope="col" className={cn(HEAD_CELL, "text-right")}>
-                      {/* The HEADER is the picker. A place runs one column, so
-                          choosing the column IS choosing the program. */}
+          {/* CASHBACK PAUSED IS A STATE, NOT AN ERROR. Credits went off while
+              cashback was the mode: what guests hold stays redeemable, and
+              new visits fall back to a discount until Credits is back. */}
+          {place.cashbackPaused && (
+            <p className={INFO_BOX_CLASS} role="status">
+              Cashback is paused: Prepaid Credits is off here, so new visits
+              get a discount instead. Balances guests already hold are still
+              theirs to spend.{" "}
+              <Link href={creditsHref} className="underline underline-offset-4">
+                Open Prepaid Credits
+              </Link>
+            </p>
+          )}
+          <div className={RULES_CARD}>
+            <Rule
+              label="Visit Rewards"
+              note={off ? "Off. Guests still find, review and book this place; they just pay the whole bill." : "On. The next bill closed here runs what is below."}
+              value={
+                <Switch on={draft.on} onChange={(on) => set({ on })} label="Visit Rewards" />
+              }
+            />
+            <Rule
+              label="Comes back as"
+              note={cashbackOk ? "A discount leaves this bill; cashback becomes a balance for the next one." : cashbackWhy}
+              disabled={off}
+              value={
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(["discount", "cashback"] as RewardsMode[]).map((m) => {
+                    const blocked = m === "cashback" && !cashbackOk;
+                    return (
                       <button
+                        key={m}
                         type="button"
-                        aria-pressed={rung === r}
-                        onClick={() => setRung(r)}
+                        aria-pressed={draft.mode === m}
+                        disabled={off || blocked}
+                        onClick={() => set({ mode: m })}
                         className={cn(
-                          "rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase transition",
-                          FOCUS_RING_CLASS,
-                          TOUCH_TARGET_CLASS,
-                          rung === r
-                            ? "border-foreground text-foreground"
-                            : "border-transparent hover:border-foreground/30",
+                          GHOST_PILL_BUTTON_CLASS,
+                          draft.mode === m &&
+                            "border-foreground hover:border-foreground text-foreground",
                         )}
                       >
-                        {RUNG_LABEL[r]}
-                        {rung === r && (
-                          <Check className="ml-1 inline h-3 w-3" aria-hidden />
-                        )}
+                        {MODE_LABEL[m]}
+                        {draft.mode === m && <Check className="h-3 w-3 shrink-0" aria-hidden />}
                       </button>
-                    </th>
+                    );
+                  })}
+                  {!cashbackOk && (
+                    <Link href={creditsHref} className="text-muted-foreground text-[12px] underline underline-offset-4">
+                      Prepaid Credits
+                    </Link>
+                  )}
+                </div>
+              }
+            />
+            <Rule
+              label="Cap per visit"
+              note={`Up to ${pesos(draft.cap)} per visit, all bonuses combined. Every rate applies to the first ${pesos(draft.cap)} of the bill.`}
+              disabled={off}
+              value={
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {CAPS_MXN.map((c: CapMxn) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-pressed={draft.cap === c}
+                      disabled={off}
+                      onClick={() => set({ cap: c })}
+                      className={cn(
+                        GHOST_PILL_BUTTON_CLASS,
+                        draft.cap === c &&
+                          "border-foreground hover:border-foreground text-foreground",
+                      )}
+                    >
+                      {pesos(c)}
+                      {draft.cap === c && <Check className="h-3 w-3 shrink-0" aria-hidden />}
+                    </button>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {LADDER.map((row) =>
-                  "band" in row ? (
-                    <tr key={row.band}>
-                      <td colSpan={1 + RUNGS.length} className="px-3 pt-4 pb-1">
-                        {/* The LABEL is sticky, not the cell. A colSpan cell is
-                            as wide as the table, so pinning it pins nothing;
-                            swipe right and the band headings slid away, leaving
-                            three unexplained blank rows behind the rates. */}
-                        <span
-                          className={cn(
-                            TINY_LABEL_CLASS,
-                            "bg-card sticky left-0 inline-block",
-                          )}
-                        >
-                          {row.band}
-                        </span>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={row.key} className="border-border border-t">
-                      <th
-                        scope="row"
-                        className={cn(
-                          STATES_COL_CELL,
-                          "px-3 py-2.5 text-left font-medium",
-                        )}
-                      >
-                        <span className="text-sm">{row.name}</span>
-                        <span className="text-muted-foreground block text-[11.5px] leading-snug font-normal">
-                          {row.hint}
-                        </span>
-                      </th>
-                      {RUNGS.map((r) => {
-                        const on = r === rung;
-                        // Off is a column, not a mode: its cells are the same em
-                        // dash Bronze already wears, so the table never dims and
-                        // the page never grows a second layout.
-                        const dash = r === "off" || row.pinned === true;
-                        return (
-                          <td
-                            key={r}
-                            className={cn(
-                              "px-3 py-2.5 text-right",
-                              NUM,
-                              on && "bg-foreground/[0.03]",
-                              dash && "text-muted-foreground font-normal",
-                            )}
-                          >
-                            {r === "off" || row.pinned
-                              ? "—"
-                              : `${row.signed ? "+" : ""}${row.rate(r)}%`}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
+                </div>
+              }
+            />
+            {ACTION_KEYS.map((key) => (
+              <Rule
+                key={key}
+                label={ACTION_LABEL[key]}
+                note={ACTION_HINT[key]}
+                disabled={off}
+                value={
+                  <Switch
+                    on={draft[key]}
+                    disabled={off}
+                    onChange={(v) => set({ [key]: v })}
+                    label={ACTION_LABEL[key]}
+                  />
+                }
+              />
+            ))}
           </div>
+          {noActions && (
+            <p className={cn(TINY_LABEL_CLASS, "px-1")}>No bonuses active — every visit pays the base and nothing more</p>
+          )}
         </Section>
 
         <Section
           title="What that stacks to"
-          description="Left to right is the addition: each column adds one more reward to the one before it. The peso under every total is the most it can cost, at this cap."
+          description="Left to right is the addition: each step adds one more bonus to the one before it. The peso under every total is the most it can cost, at this cap."
         >
           {off ? (
-            /* The empty state is a feature. Nine dashes and a grid of 0% is not
-               one — it says the page is broken rather than that the place has
-               chosen something. */
+            /* The empty state is a feature. A row of 0% says the page is
+               broken rather than that the place has chosen something. */
             <p className={INFO_BOX_CLASS}>
-              Nothing is given back here. Guests still find this place, review it
-              and book a table; they just pay the whole bill. Pick a column above
-              to start.
+              Nothing is given back here. Turn Visit Rewards on above to see
+              what a visit would earn.
             </p>
           ) : (
-            <div className={SCROLLPORT}>
-              <table className="w-full min-w-[620px] border-collapse">
-                <caption className="sr-only">
-                  What a guest of each class pays, as they earn each reward. Every
-                  figure is a running total.
-                </caption>
-                <thead>
-                  <tr>
-                    <th
-                      scope="col"
-                      className={cn(HEAD_CELL, STATES_COL_HEAD, "text-left")}
-                    >
-                      Class
-                    </th>
-                    {STEPS.map((s) => (
-                      <th
-                        key={s.key}
-                        scope="col"
-                        className={cn(HEAD_CELL, "text-right")}
-                      >
-                        {s.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {CLASS_KEYS.map((c) => {
-                    const row = stack(rung, c);
-                    return (
-                      <tr key={c} className="border-border border-t">
-                        <th
-                          scope="row"
-                          className={cn(
-                            STATES_COL_CELL,
-                            "px-3 py-2.5 text-left text-sm font-medium",
-                          )}
-                        >
-                          {CLASS_LABEL[c]}
-                        </th>
-                        {row.map((total, i) => {
-                          const peak =
-                            c === "diamond" && i === row.length - 1;
-                          return (
-                            <td
-                              key={STEPS[i].key}
-                              className="px-3 py-2.5 text-right"
-                            >
-                              <span
-                                className={cn(NUM, peak && "text-foreground")}
-                              >
-                                {total}%
-                              </span>
-                              <span className="text-muted-foreground block text-[11px] font-semibold tabular-nums">
-                                {pesos(capCostCents(total, cap) / 100)}
-                              </span>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* THE CAP IS A CONTROL, not a footnote. It is the only parameter
-              that bounds the ceiling above, and a place that cannot move it reads
-              90% as a catastrophe and turns the whole product off. It is also the
-              only control here that means nothing while the program is Off: a cap
-              bounds a discount, and there is no discount to bound. */}
-          {!off && (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={TINY_LABEL_CLASS}>Cap</span>
-                {CAPS_MXN.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-pressed={cap === c}
-                    onClick={() => setCap(c)}
-                    className={cn(
-                      GHOST_PILL_BUTTON_CLASS,
-                      cap === c &&
-                        "border-foreground hover:border-foreground text-foreground",
-                    )}
+              <ol className="flex flex-wrap gap-2">
+                {steps.map((s) => (
+                  <li
+                    key={s.key}
+                    className="border-border flex min-w-[7.5rem] flex-1 flex-col rounded-xl border px-3 py-2.5"
                   >
-                    {pesos(c)}
-                    {cap === c && (
-                      <Check className="h-3 w-3 shrink-0" aria-hidden />
-                    )}
-                  </button>
+                    <span className={TINY_LABEL_CLASS}>{s.label}</span>
+                    <span className={cn(NUM, "mt-1")}>{s.total}%</span>
+                    <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
+                      {pesos(capCostCents(s.total, draft.cap) / 100)}
+                    </span>
+                  </li>
                 ))}
-              </div>
-            <p className={INFO_BOX_CLASS}>
-              A percentage is not a peso. Every rate above applies to the first{" "}
-              {pesos(cap)} of the bill, so a guest who earns every rung costs you{" "}
-              {pesos(capCostCents(stack(rung, "diamond")[4], cap) / 100)}, whatever
-              they ordered. That is what keeps a ceiling from being a night.
-            </p>
+              </ol>
+              <p className={INFO_BOX_CLASS}>
+                A percentage is not a peso. Every rate above applies to the first{" "}
+                {pesos(draft.cap)} of the bill, so a guest who earns everything you
+                have on costs you {pesos(capCostCents(top, draft.cap) / 100)},
+                whatever they ordered. Mesita sets the bonuses; your cap is the
+                ceiling.
+              </p>
             </>
           )}
         </Section>
       </Half>
 
       <Half label="Activity">
+        <Tiles
+          tiles={[
+            {
+              label: "Given back",
+              value: earned.length ? money(given) : null,
+              hint: `Across ${earned.length} rewarded visit${earned.length === 1 ? "" : "s"}, listed below`,
+            },
+            {
+              label: "As",
+              value: earned.length ? MODE_LABEL[saved.mode] : null,
+              hint: saved.mode === "cashback" ? "Banked as Prepaid Credits" : "Taken off the bill",
+            },
+          ]}
+        />
         <Section
-          title="What the ladder paid out"
+          title="What the program paid out"
           description="Every visit that earned something, newest first. The bill each guest actually paid is on Visits."
         >
           <Table
@@ -402,9 +313,9 @@ export function RewardsView() {
               <EmptyState
                 title="Nothing given back yet"
                 hint={
-                  saved.rung === "off"
-                    ? "The program is off, so no visit can earn anything."
-                    : "A visit appears here the first time the tables above pay out."
+                  saved.on
+                    ? "A visit appears here the first time the program pays out."
+                    : "The program is off, so no visit can earn anything."
                 }
               />
             }
@@ -419,11 +330,7 @@ export function RewardsView() {
         <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">
-              {rung !== saved.rung &&
-                `${RUNG_LABEL[rung]}, from ${RUNG_LABEL[saved.rung]}`}
-              {rung !== saved.rung && cap !== saved.cap && " · "}
-              {cap !== saved.cap &&
-                `Cap ${pesos(cap)}, from ${pesos(saved.cap)}`}
+              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Visit Rewards off"}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
               Applies to the next bill closed here. Nothing retroactive, ever.
@@ -432,10 +339,7 @@ export function RewardsView() {
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setRung(saved.rung);
-                setCap(saved.cap);
-              }}
+              onClick={() => setDraft(saved)}
               className={GHOST_PILL_BUTTON_CLASS}
             >
               Cancel
@@ -449,8 +353,8 @@ export function RewardsView() {
       {!dirty && justSaved && (
         <p className="text-muted-foreground flex items-center gap-2 px-1 text-[12px]">
           <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Saved. The next bill closed here runs {RUNG_LABEL[saved.rung]},
-          capped at the first {pesos(saved.cap)}.
+          Saved. The next bill closed here runs {saved.on ? MODE_LABEL[saved.mode].toLowerCase() : "nothing"}
+          {saved.on ? `, capped at the first ${pesos(saved.cap)}.` : "."}
         </p>
       )}
 

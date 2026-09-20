@@ -50,6 +50,8 @@ import { PayView } from "@/components/views/PayView";
 import { CreditsView } from "@/components/views/CreditsView";
 import { CapitalView } from "@/components/views/CapitalView";
 import { DevelopersView } from "@/components/views/DevelopersView";
+import { LineView } from "@/components/views/LineView";
+import { WebsiteView } from "@/components/views/WebsiteView";
 import { ProductStateBadge } from "@/components/shared/Badges";
 import {
   HEADER_TAB,
@@ -112,9 +114,13 @@ const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>>
   // MCP here."* It was the one LIVE product sitting on the unbuilt-product
   // empty state, which said "Not here yet" about a row whose own badge read On.
   access: DevelopersView,
+  // THE VOICE SESSION'S TWO (MESITA-2017): the Agent's line and what it may
+  // take; the Website's template and its three states.
+  line: LineView,
+  website: WebsiteView,
 };
 
-/** Visit Rewards' own strategy screen, reached from `VisitsView`. Held here so
+/** Visit Rewards' own program screen, reached from `VisitsView`. Held here so
  *  the import is not dead weight the day a rewards row wants its own pane. */
 void RewardsView;
 

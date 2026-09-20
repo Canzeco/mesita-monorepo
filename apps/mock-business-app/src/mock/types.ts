@@ -198,6 +198,101 @@ export type MockOrdersConfig = {
   minimumCents: number;
 };
 
+// ── THE STATES THE VOICE SESSION NAMED (MESITA-2017) ───────────────────────
+//
+// Every one of these is a FIXTURE of a state the console must be able to
+// show, not a model of the product. The real product will store most of them
+// on the tables they belong to; here they hang off the place because the
+// screen that draws them reads the place.
+
+/** Where an order can come from. Marketplaces collect their own money; the
+ *  three direct channels pay Mesita through Stripe. */
+export type OrderChannel = "ubereats" | "rappi" | "didi" | "app" | "web" | "whatsapp";
+export const ORDER_CHANNELS: readonly OrderChannel[] = [
+  "app",
+  "web",
+  "whatsapp",
+  "ubereats",
+  "rappi",
+  "didi",
+];
+export const ORDER_CHANNEL_LABEL: Record<OrderChannel, string> = {
+  app: "Mesita app",
+  web: "Your website",
+  whatsapp: "WhatsApp",
+  ubereats: "Uber Eats",
+  rappi: "Rappi",
+  didi: "DiDi Food",
+};
+/** `catalog_conflict` is reachable only once Mesita-owned menu sync exists;
+ *  v1 connections are platform-owned, so no fixture holds it yet. */
+export type OrderChannelState =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "token_expired"
+  | "catalog_conflict";
+
+export type ReviewSource = "google" | "mesita" | "instagram" | "facebook";
+export const REVIEW_SOURCES: readonly ReviewSource[] = ["google", "mesita", "instagram", "facebook"];
+export const REVIEW_SOURCE_LABEL: Record<ReviewSource, string> = {
+  google: "Google",
+  mesita: "Mesita",
+  instagram: "Instagram",
+  facebook: "Facebook",
+};
+export type ReviewSourceState = { connected: boolean; lastSyncedAt: string | null };
+
+/** One Twilio line per place, provisioned on activation. Voice comes up
+ *  first; WhatsApp after the number is registered. */
+export type LineState = "off" | "activating" | "voice" | "full";
+
+export type WebsiteState = "none" | "picked" | "preview" | "published";
+export type WebsiteTemplate = "elegant" | "casual" | "night" | "cafe";
+export const WEBSITE_TEMPLATES: readonly WebsiteTemplate[] = ["elegant", "casual", "night", "cafe"];
+export const WEBSITE_TEMPLATE_LABEL: Record<WebsiteTemplate, string> = {
+  elegant: "Elegant",
+  casual: "Casual",
+  night: "Night",
+  cafe: "Café",
+};
+
+export type CampaignState =
+  | "draft"
+  | "scheduled"
+  | "selling"
+  | "sold_out"
+  | "closed"
+  | "redeeming"
+  | "expired";
+export type MockCreditCampaign = {
+  id: string;
+  placeId: string;
+  name: string;
+  /** "Pay $800" */
+  payCents: number;
+  /** "get $1,000" */
+  getCents: number;
+  /** The most cash this campaign may raise. */
+  capCents: number;
+  soldCents: number;
+  perGuestCents: number;
+  startsAt: string;
+  endsAt: string;
+  redeemUntil: string;
+  state: CampaignState;
+};
+
+/** The six things a place sets on Visit Rewards, minus `on` — that is
+ *  `visitRewards`, which every other screen already reads. */
+export type MockRewardsSetup = {
+  mode: "discount" | "cashback";
+  cap: 200 | 500 | 1000;
+  welcome: boolean;
+  story: boolean;
+  mesita: boolean;
+};
+
 export type MockPlace = {
   id: string;
   name: string;
@@ -312,6 +407,38 @@ export type MockPlace = {
    *  telling two stories about one gallery. */
   photoCount: number;
   menuCount: number;
+  // ── MESITA-2017 ─────────────────────────────────────────────────────────
+  /** Null until the operator pressed Publish on Digital Menu. Orders, the
+   *  Agent and the Website all door to Menu while this is null. */
+  menuPublishedAt: string | null;
+  /** The operator asked Mesita to verify the place; `verified` is Mesita's
+   *  answer. Request-only on this side: nobody here can set `verified`. */
+  verificationRequested: boolean;
+  /** Rows 2–4 of the Partner checklist have all been green at some point, so
+   *  a failing row reads "at risk" instead of "not yet". */
+  partnerHeld: boolean;
+  /** When the badge was last removed (plan lapse or Verified revoked). */
+  partnerLapsedAt: string | null;
+  /** Where new orders and bookings are announced. One per place, editable
+   *  inside whichever of Orders or Reservations is on. */
+  notificationsNumber: string | null;
+  rewards: MockRewardsSetup;
+  /** Cashback was on and Credits went off or below the rung: what guests
+   *  hold stays redeemable, new visits fall back to discount. */
+  cashbackPaused: boolean;
+  orderChannels: Record<OrderChannel, OrderChannelState>;
+  reviewSources: Record<ReviewSource, ReviewSourceState>;
+  lineState: LineState;
+  /** Answers the agent escalated that are waiting for a human to confirm. */
+  lineFactsPending: number;
+  /** What the outside world calls the line. Editable; never "Mesita". */
+  lineLabel: string;
+  websiteState: WebsiteState;
+  websiteTemplate: WebsiteTemplate | null;
+  /** Null means the included `<slug>.mesita.co`. */
+  websiteDomain: string | null;
+  /** Sister places whose credits this one honours. Same organisation only. */
+  acceptedIssuers: string[];
 };
 
 /** What actually TOOK money, mirroring `visit_ticket_payments.method`

@@ -45,7 +45,15 @@
 // `PartnerBanner`'s, because it is doing the same job — a sentence and the
 // door it points at.
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { placePlanHref } from "@/lib/console-routes";
+import { Section } from "@/components/shared/Section";
+import { Badge } from "@/components/shared/Badges";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
+import { ErrorNote } from "@/components/ErrorNote";
+import { useMock } from "@/mock/MockStore";
+import { partnerChecks, partnerStatus } from "@/lib/partner";
+import { day } from "@/lib/format";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import {
   isPartner,
@@ -71,7 +79,62 @@ function grantingRungs(): string {
 }
 
 export function PartnerPane({ place }: { place: MockPlace }) {
+  const { world } = useMock();
+  const profile = world.profiles[place.id];
+  const status = partnerStatus(place, profile);
+  const checks = partnerChecks(place, profile);
+
   return (
+    <div className="flex flex-col gap-4">
+      {/* THE CHECKLIST, AND THE METER OVER IT (MESITA-2017). Pato, 2026-09-20:
+          Partner is "casi un producto" — a card in Setup with a list that ends
+          in a badge. Five rows, "N of 5", so on a fresh place the second row
+          of the menu reads as a goal rather than as a broken product. The
+          rung stays the fifth row and stays bought on Plan; nothing here
+          switches anything, which is the strip below's whole sentence. */}
+      {place.partnerLapsedAt && !status.badge && (
+        <ErrorNote
+          className="mt-0"
+          message={`Badge removed ${day(place.partnerLapsedAt)}.`}
+          cause="The plan dropped below the rung that carries it. Verified stays; the badge comes back the day every row is green again."
+          action={{ label: "Open Plan", href: placePlanHref(place.id) }}
+        />
+      )}
+      <Section
+        title={
+          <span className="flex items-center gap-2">
+            {status.badge ? "Partner" : "Becoming a Partner"}
+            <Badge tone={status.badge ? "gold" : "off"}>{status.done} of {checks.length}</Badge>
+            {status.atRisk && <Badge tone="bad">At risk</Badge>}
+          </span>
+        }
+        description={
+          status.badge
+            ? status.atRisk
+              ? "You hold the badge. A row below has gone red; the badge stays until the plan drops, but a guest who comes for what that row promised will not find it."
+              : "Every row is green. A guest reading the map sees that Mesita stands behind this place."
+            : "Complete the five and the badge appears on your page and on the map. Each row says where to do it."
+        }
+      >
+        <div className={RULES_CARD}>
+          {checks.map((c) => (
+            <Rule
+              key={c.key}
+              label={c.label}
+              note={c.done ? undefined : c.fix}
+              value={
+                c.done ? (
+                  <Badge tone="on">
+                    <Check className="h-3 w-3" aria-hidden /> Done
+                  </Badge>
+                ) : (
+                  <Badge tone={status.badge ? "bad" : "off"}>{status.badge ? "At risk" : "Not yet"}</Badge>
+                )
+              }
+            />
+          ))}
+        </div>
+      </Section>
     <div className="border-border bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-4 py-3">
       <p className="text-muted-foreground min-w-0 grow basis-72 text-[13px] leading-snug">
         {/* THE SET, NOT THIS PLACE'S RUNG. The note above names the one it is
@@ -96,6 +159,7 @@ export function PartnerPane({ place }: { place: MockPlace }) {
       <Link href={placePlanHref(place.id)} className={GHOST_PILL_BUTTON_CLASS}>
         Plan
       </Link>
+    </div>
     </div>
   );
 }
