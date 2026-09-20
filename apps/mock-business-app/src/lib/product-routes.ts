@@ -34,8 +34,9 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
  *  is the NAME, which is the rule this file already runs on, and Pato's list
  *  calls the row Mesita Partner. Nothing outside this app links to either. */
 
-/** THE TEN, in Pato's order (MESITA-1997, 2026-09-19) — *"i only want 10
- *  things for the moment"*.
+/** THE MENU'S PRODUCTS, in Pato's order (MESITA-1997, 2026-09-19) — *"i only
+ *  want 10 things for the moment"*, and eleven since MESITA-2013 put Express
+ *  Website back.
  *
  *  The index is this list and nothing else. It replaces a RUNNING/COMING
  *  split that sorted by `state`, which meant the order of the console's own
@@ -56,20 +57,31 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 // what it does and go buy it — and Soon is a product that does not exist at
 // all. Only the second one has nothing whatever to look at, so only the second
 // one goes to the bottom.
-// AND NOW IT IS TEN, WHICH IS PATO'S "ACTUALES" EXACTLY (MESITA-2011).
-// Partner is 2nd and Online Reviews 3rd, both on his own numbering, and
-// EXPRESS WEBSITE LEAVES: he put it in Futuros, and the ten left over once it
-// goes are the ten he listed there. That also retires the rule the line above
-// wrote — everything-you-can-use-then-everything-you-cannot — because nothing
-// in this list is Soon any more. It comes back the day a Soon product earns a
-// row again.
+// IT WENT TO TEN, AND IT IS ELEVEN AGAIN (MESITA-2013). MESITA-2011 made this
+// Pato's "Actuales" list exactly — Partner 2nd, Online Reviews 3rd, and
+// EXPRESS WEBSITE GONE, because he had put it in Futuros in the same breath.
+// On 2026-09-20, looking at the sidebar that produced: *"add express website
+// product here into sidebar menu"*. So the row comes back, and with it the
+// rule two paragraphs up, which MESITA-2011 had retired for want of anything
+// Soon to apply it to:
 //
-// HE DICTATED A SECOND LIST OF TEN a few minutes later, and this is not it:
-// that one had lost Digital Menu (MESITA-1966 added it deliberately and
-// nothing has retired it) and pulled Express Website back to 9th, against his
-// own Futuros placement in the same breath. It reads as this list recited from
-// the old sidebar. decision: the Actuales/Futuros pair wins; a row move is one
-// line here if he meant the other.
+//   EVERYTHING YOU CAN USE, THEN EVERYTHING YOU CANNOT.
+//
+// `website` is last, under `line`, on exactly the reading written above — the
+// Answering Agent is Locked, which is a product you can read about and go buy;
+// Express Website is Soon, which is a product that does not exist at all. It
+// is also where Pato's own numbering put the pair the last time he ordered
+// them: *"8. Answering Agent 9. Express Website"*.
+//
+// THIS SETTLES THE SECOND LIST MESITA-2011 SET ASIDE. That one pulled Express
+// Website back to 9th against his own Futuros placement, and the decision then
+// was that the Actuales/Futuros pair wins and a row move is one line here if
+// he meant the other. He meant the other. This is that line.
+//
+// FUTUROS AND THE CATALOGUE STILL DISAGREE, ON PURPOSE. A row here is about
+// whether a product MATTERS; `state` is about whether it is BUILT. Express
+// Website is a menu row and a Coming box at the same time, and `FuturePane`
+// already names its own axis rather than inheriting this one.
 export const PRODUCT_ORDER = [
   "profile",
   "partner",
@@ -81,10 +93,11 @@ export const PRODUCT_ORDER = [
   "pay",
   "credits",
   "line",
+  "website",
 ] as const satisfies readonly ProductKey[];
 
-/** Everything the ten leaves out, behind ONE row. Not a product and not a
- *  `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` is. */
+/** Everything the list above leaves out, behind ONE row. Not a product and
+ *  not a `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` is. */
 export const FUTURE_SLUG = "future-products";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {

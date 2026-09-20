@@ -17,8 +17,9 @@
 //
 // TWENTY SINCE MESITA-2011 — Pato's own two lists of ten, Actuales and
 // Futuros. The split between them is not here: it is `PRODUCT_ORDER` in
-// `product-routes.ts`, which names the ten with a menu row, and everything
-// left over is what the Future products door opens.
+// `product-routes.ts`, which names the ones with a menu row, and everything
+// left over is what the Future products door opens. The two lists are not the
+// split any more either: MESITA-2013 moved Express Website back across it.
 //
 // THE BANDS ARE A RENDER NOW (MESITA-1962). Pato: *"divide in sections"*.
 // They were a comment for two days, while this file said the order is
