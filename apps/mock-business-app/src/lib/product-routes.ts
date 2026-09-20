@@ -104,7 +104,7 @@ export const FUTURE_SLUG = "future-products";
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",
   partner: "partner-badge",
-  reviews: "online-reviews",
+  reviews: "online-reputation",
   menu: "digital-menu",
   website: "express-website",
   customers: "customer-intelligence",

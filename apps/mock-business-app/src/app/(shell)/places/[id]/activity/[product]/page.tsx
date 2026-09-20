@@ -67,7 +67,7 @@ export default function ActivityProductPage({
   // rather than a blank pane somebody finds in a month.
   //
   // IT ALSO CLOSES A LIVE BUG. Before this line, four products with a view and
-  // no `Half` markers — Profile, Online Reviews, Digital Menu, Online Payments
+  // no `Half` markers — Profile, Online Reputation, Digital Menu, Online Payments
   // — rendered their whole Setup screen at this address, because `ProductPane`
   // returned the view without reading `useHalf()`. Same screen, two addresses.
   if (!hasHalf(key, "activity")) notFound();

@@ -147,7 +147,7 @@ export function membershipLine(
   // the screen.
   if (place.plan === "free") {
     // THE COUNT IS DERIVED (MESITA-2009). It read "Four products, at no
-    // cost." as a literal, and it was already wrong: Online Reviews folded
+    // cost." as a literal, and it was already wrong: Online Reputation folded
     // into Mesita Profile's Activity half in MESITA-2007, so Free carries
     // three. A hand-typed count beside a list the reader can see is the one
     // number they WILL check.

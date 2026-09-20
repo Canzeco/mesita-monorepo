@@ -251,7 +251,7 @@ export function Sidebar({
             key={row.key}
             // THE HALF THE PRODUCT HAS, not always Setup. Eight of the ten
             // open on their configuration; Prepaid Credits has no Setup half
-            // since MESITA-2003 emptied it and Online Reviews has none at all
+            // since MESITA-2003 emptied it and Online Reputation has none at all
             // (MESITA-2011), so those two rows open the log rather than a 404.
             href={productHref(place.id, primaryHalf(row.key), slug)}
             mark={PRODUCT_MARK[row.key as ProductKey]}
