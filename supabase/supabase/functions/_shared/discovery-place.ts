@@ -23,7 +23,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { SignalPlace } from "./discovery-signals.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import { pulseOf } from "./pulse-pieces.ts";
+import { crenupOf } from "./crenup-ladder.ts";
 
 /**
  * The columns a ranking engine must SELECT beyond PLACE_PUBLIC_COLUMNS.
@@ -175,7 +175,7 @@ export async function attachCrenupHighWater<
   }
   const byId = new Map<string, number>();
   for (const row of (data ?? []) as { id: string; enrichment: unknown }[]) {
-    byId.set(row.id, pulseOf(row.enrichment));
+    byId.set(row.id, crenupOf(row.enrichment));
   }
   // A row the query returned nothing for (a place-id-shaped id that isn't
   // actually in `places`, or an org-pool oddity) gets a real 0 — it IS

@@ -14,16 +14,16 @@
 
 import type { ChannelKey, Channels } from "./channels.ts";
 import {
-  PULSE_EXTRA_ALIASES,
-  PULSE_EXTRAS,
-  PULSE_PIECES,
-  PULSE_TOTAL,
-  pulseBlockedAt,
-  pulseHighWater,
-  type PulseBlock,
-  type PulseEvent,
-  type PulseStep,
-} from "./pulse-pieces.ts";
+  CRENUP_EXTRA_ALIASES,
+  CRENUP_EXTRAS,
+  CRENUP_LADDER,
+  CRENUP_TOTAL,
+  crenupBlockedAt,
+  crenupHighWater,
+  type CrenupBlock,
+  type CrenupEvent,
+  type CrenupStep,
+} from "./crenup-ladder.ts";
 import { enumOf, nullable, num, object, refine, str, type Schema } from "./doc-schema.ts";
 
 // ── Money ────────────────────────────────────────────────────────────────
@@ -116,26 +116,26 @@ export type ChannelSet = Channels;
 // ── FunctionState ────────────────────────────────────────────────────────
 //
 // "{state, at, detail} x 10 enrichment functions" — the 10 is not a round
-// number, it is PULSE_PIECES.length (Pulse through Embedding), the exact
-// closed set pulse-pieces.ts already defines and pulse-report.ts already
-// writes through StampablePulseStep. FunctionState formalizes the PER-STEP
+// number, it is CRENUP_LADDER.length (Pulse through Embedding), the exact
+// closed set crenup-ladder.ts already defines and crenup-report.ts already
+// writes through StampableCrenupStep. FunctionState formalizes the PER-STEP
 // record that MESITA-1249 (materializing the enrichment state map onto the
 // place) will need to store; today that state lives only in the append-only
-// event log pulse-pieces.ts folds over. Defining the type here does not
+// event log crenup-ladder.ts folds over. Defining the type here does not
 // materialize anything — it gives 1249 a name to build against instead of
 // inventing its own shape.
 // KNOWN GAP (MESITA-1247 survey, deliberately left for MESITA-1249, which
 // owns materializing this map): the DB event log's `started` and `skipped`
 // statuses (place_enrichment_events.state CHECK) have no home in this
-// three-value enum, and the write-side PieceOutcome (pulse-report.ts) is
+// three-value enum, and the write-side StepOutcome (crenup-report.ts) is
 // narrower still (`completed | failed`, no `pending`). Whether `skipped`
 // projects as `completed` (skipped but fine), needs a fourth state, or
 // something else, is 1249's call — don't let it get decided by accident
 // when this map's first real writer lands. `detail` being nullable here
-// while PieceOutcome.detail is not is correct as designed, not a bug: this
+// while StepOutcome.detail is not is correct as designed, not a bug: this
 // type has to represent `pending` (never run, no detail to report), a state
-// PieceOutcome structurally cannot hold since a piece that hasn't run never
-// gets a PieceOutcome written at all.
+// StepOutcome structurally cannot hold since a piece that hasn't run never
+// gets a StepOutcome written at all.
 export type FunctionState = {
   state: "pending" | "completed" | "failed";
   /** ISO timestamp of the latest event for this step, or null if never run. */
@@ -143,8 +143,8 @@ export type FunctionState = {
   detail: string | null;
 };
 
-/** The closed key set FunctionState is indexed by — every PULSE step, no other. */
-export type FunctionStateMap = Partial<Record<PulseStep, FunctionState>>;
+/** The closed key set FunctionState is indexed by — every CRENUP step, no other. */
+export type FunctionStateMap = Partial<Record<CrenupStep, FunctionState>>;
 
 export function isFunctionState(v: unknown): v is FunctionState {
   if (typeof v !== "object" || v === null) return false;
@@ -158,13 +158,13 @@ export function isFunctionState(v: unknown): v is FunctionState {
 
 /**
  * The closed set of keys FunctionState may be indexed by, re-derived from
- * pulse-pieces.ts rather than hand-typed — the same derivation discipline
- * PULSE_PIECE_META already enforces (MESITA-1222: an index written down
+ * crenup-ladder.ts rather than hand-typed — the same derivation discipline
+ * CRENUP_STEP_META already enforces (MESITA-1222: an index written down
  * beside its source drifts; one derived from it cannot).
  */
-export const FUNCTION_STATE_KEYS: readonly PulseStep[] = [
-  ...PULSE_PIECES,
-  ...PULSE_EXTRAS,
+export const FUNCTION_STATE_KEYS: readonly CrenupStep[] = [
+  ...CRENUP_LADDER,
+  ...CRENUP_EXTRAS,
 ];
 
 export const FunctionStateSchema: Schema<FunctionState> = object({
@@ -186,7 +186,7 @@ export const FunctionStateSchema: Schema<FunctionState> = object({
  */
 const FUNCTION_STATE_PARSE_KEYS: readonly string[] = [
   ...FUNCTION_STATE_KEYS,
-  ...PULSE_EXTRA_ALIASES,
+  ...CRENUP_EXTRA_ALIASES,
 ];
 
 function laterAt(a: string | null, b: string | null): string | null {
@@ -221,7 +221,7 @@ function foldSemanticPair(
  * Pre-MESITA-1542 maps spell the per-function field `status`. The identifier
  * rename did not rewrite stored `place_profiles.enrichment` JSONB, so the fold
  * absorbs the old spelling on read — the same read-side absorption
- * PULSE_RENAMES gives a renamed KEY. The next successful write
+ * CRENUP_RENAMES gives a renamed KEY. The next successful write
  * re-materializes the map in the new spelling.
  */
 function foldLegacyStateSpelling(raw: unknown): unknown {
@@ -248,7 +248,7 @@ export function foldFunctionStateMap(
   const embedding = norm.embedding ?? norm.semantic ??
     foldSemanticPair(norm.name, norm.summary);
   const out: FunctionStateMap = {};
-  for (const key of PULSE_PIECES) {
+  for (const key of CRENUP_LADDER) {
     const rec = norm[key];
     if (rec) out[key] = rec;
   }
@@ -294,9 +294,9 @@ export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
   },
 };
 
-const PulseBlockSchema: Schema<PulseBlock> = object({
-  key: enumOf(PULSE_PIECES),
-  index: refine(num(), (v) => Number.isInteger(v) && v >= 1 && v <= PULSE_TOTAL ? null : `index must be an integer between 1 and ${PULSE_TOTAL}`),
+const PulseBlockSchema: Schema<CrenupBlock> = object({
+  key: enumOf(CRENUP_LADDER),
+  index: refine(num(), (v) => Number.isInteger(v) && v >= 1 && v <= CRENUP_TOTAL ? null : `index must be an integer between 1 and ${CRENUP_TOTAL}`),
   state: enumOf(["failed", "missing"] as const),
 });
 
@@ -305,9 +305,9 @@ const PulseBlockSchema: Schema<PulseBlock> = object({
 // `place_profiles.enrichment`: the ONE-READ replacement for "RPC + fold over
 // place_enrichment_events on every request" (admin-web-search-place_profiles,
 // business-web-get-overview). `functions`/`highWater`/`blockedAt` are the
-// exact three values `pulseHighWater`/`pulseBlockedAt` already compute from
+// exact three values `crenupHighWater`/`crenupBlockedAt` already compute from
 // the event log — this materializes their OUTPUT, kept current by
-// pulse-report.ts's `reportPulsePieces` merging into it on every write,
+// crenup-report.ts's `reportCrenupSteps` merging into it on every write,
 // instead of re-deriving it from scratch on every read.
 //
 // DELIBERATELY NOT in this shape: `everyDays`/`mode`/`nextAt`/`lastRunAt`
@@ -324,50 +324,50 @@ const PulseBlockSchema: Schema<PulseBlock> = object({
 export type EnrichmentMap = {
   functions: FunctionStateMap;
   highWater: number;
-  blockedAt: PulseBlock | null;
+  blockedAt: CrenupBlock | null;
 };
 
 export const EnrichmentMapSchema: Schema<EnrichmentMap> = object({
   functions: FunctionStateMapSchema,
-  highWater: refine(num(), (v) => Number.isInteger(v) && v >= 0 && v <= PULSE_TOTAL ? null : `highWater must be an integer between 0 and ${PULSE_TOTAL}`),
+  highWater: refine(num(), (v) => Number.isInteger(v) && v >= 0 && v <= CRENUP_TOTAL ? null : `highWater must be an integer between 0 and ${CRENUP_TOTAL}`),
   blockedAt: nullable(PulseBlockSchema),
 });
 
 /**
- * `pulseHighWater`/`pulseBlockedAt` (pulse-pieces.ts) walk a raw
- * `PulseEvent[]` fetched fresh from `place_enrichment_events`. These two
+ * `crenupHighWater`/`crenupBlockedAt` (crenup-ladder.ts) walk a raw
+ * `CrenupEvent[]` fetched fresh from `place_enrichment_events`. These two
  * walk the SAME logic over an already-materialized `FunctionStateMap`
  * instead, by converting the map back into the event shape those two
  * functions (and their 28 pinned tests) already handle — not a second walk
  * implementation to keep in sync by hand.
  */
-function functionStateMapToEvents(map: FunctionStateMap): PulseEvent[] {
-  return PULSE_PIECES.flatMap((piece) => {
+function functionStateMapToEvents(map: FunctionStateMap): CrenupEvent[] {
+  return CRENUP_LADDER.flatMap((piece) => {
     const rec = map[piece];
     if (!rec) return [];
     return [{ step_name: piece, state: rec.state, created_at: rec.at ?? "" }];
   });
 }
 
-export function pulseHighWaterFromMap(map: FunctionStateMap): number {
-  return pulseHighWater(functionStateMapToEvents(map));
+export function crenupHighWaterFromMap(map: FunctionStateMap): number {
+  return crenupHighWater(functionStateMapToEvents(map));
 }
 
-export function pulseBlockedAtFromMap(map: FunctionStateMap): PulseBlock | null {
-  return pulseBlockedAt(functionStateMapToEvents(map));
+export function crenupBlockedAtFromMap(map: FunctionStateMap): CrenupBlock | null {
+  return crenupBlockedAt(functionStateMapToEvents(map));
 }
 
 /**
  * Raw `place_enrichment_events.state` -> `FunctionState.state`. Only
  * needed for translating HISTORICAL event rows (the migration backfill) —
- * the live write path (pulse-report.ts) only ever produces `PieceOutcome`,
+ * the live write path (crenup-report.ts) only ever produces `StepOutcome`,
  * whose state is already `"completed" | "failed"`, a strict subset of
  * `FunctionState.state`, so it never needs this mapping.
  *
  * `completed` stays itself. `started` (in-flight, no outcome yet) becomes
  * `pending`. Everything else — `failed`, the `skipped` a legacy row might
  * carry, or an unrecognized value — becomes `failed`. This is not a new
- * rule: it is `pulseBlockedAt`'s own documented one ("anything not
+ * rule: it is `crenupBlockedAt`'s own documented one ("anything not
  * completed and not absent is the function having run and not delivered"),
  * applied here rather than invented — the decision this map's header
  * flagged as 1249's to make is "reuse the ladder's existing skipped-is-a-

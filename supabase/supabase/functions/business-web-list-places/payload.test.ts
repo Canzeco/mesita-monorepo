@@ -128,9 +128,11 @@ Deno.test("the METER goes too — it was feeding a discarded value", () => {
   // generalHeaderFacts, which computes Enriched from it, and then overrode
   // that with the EF's own isPlaceEnriched answer so the list agrees with the
   // Place screen it links to. Enriching never read the meter at all.
-  assert(!CODE.includes("crenupPulse"), "the high-water must not ship");
-  assert(!CODE.includes("crenupTotal"), "nor its denominator");
-  assert(!CODE.includes("pulseOf("), "and the reader has no caller here");
+  // Named under the CURRENT identifiers (MESITA-2028 took `pulse` off the
+  // meter). A guard on a retired name passes for the wrong reason.
+  assert(!CODE.includes("enrichCrenup"), "the high-water must not ship");
+  assert(!CODE.includes("CRENUP_TOTAL"), "nor its denominator");
+  assert(!CODE.includes("crenupOf("), "and the reader has no caller here");
 });
 
 Deno.test("Enriching and Enriched survive, off the ROW", () => {

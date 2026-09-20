@@ -21,7 +21,7 @@
 //   confirmed every literal value it writes was already covered by the
 //   closed sets below). All 28 of 28 routed.
 //
-// THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; consumer-doc.ts
+// THE TWO-BELT PATTERN (StampableCrenupStep, crenup-report.ts; consumer-doc.ts
 // is the first aggregate to apply it — same shape here):
 //   Belt 1 — TypeScript. ReservationWriteArgs.patch IS ReservationPatch (a
 //     closed key set), not Record<string, unknown> — a misspelled or retired
@@ -290,7 +290,7 @@ export const RESERVATION_PATCH_KEYS = [
 ] as const satisfies readonly (keyof Omit<ReservationDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction — same discipline
-// consumer-doc.ts borrows from FUNCTION_STATE_KEYS/PULSE_PIECE_META
+// consumer-doc.ts borrows from FUNCTION_STATE_KEYS/CRENUP_STEP_META
 // (MESITA-1222): a field added to ReservationDoc and forgotten here fails
 // the build instead of silently becoming unwritable.
 type _MissingFromPatchKeys = Exclude<

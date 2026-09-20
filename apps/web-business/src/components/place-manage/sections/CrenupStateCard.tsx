@@ -64,9 +64,9 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
 
   // Enriched is complete-or-not, from the same high-water the catalog uses.
   // A missing number is unknown, not a no.
-  const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;
-  const pulseTotal = typeof place.enrich_pulse_total === "number"
-    ? place.enrich_pulse_total
+  const pulse = typeof place.enrich_crenup === "number" ? place.enrich_crenup : null;
+  const pulseTotal = typeof place.enrich_crenup_total === "number"
+    ? place.enrich_crenup_total
     : null;
   const enriched: boolean | "unknown" =
     pulse === null || pulseTotal === null || pulseTotal === 0

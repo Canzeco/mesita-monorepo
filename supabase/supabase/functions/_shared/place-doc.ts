@@ -19,7 +19,7 @@
 //     site writes through changes here — only that every patch now passes
 //     through one validator before Postgres sees it.
 //
-// THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; see
+// THE TWO-BELT PATTERN (StampableCrenupStep, crenup-report.ts; see
 // consumer-doc.ts for the fuller writeup):
 //   Belt 1 — TypeScript. PlaceWriteArgs.patch is typed PlaceProfilePatch /
 //     PlacePatch / ProfilePatch (closed key sets), not
@@ -306,7 +306,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
 >)[];
 
 // Compile-time exhaustiveness the other direction — same discipline
-// CONSUMER_PATCH_KEYS uses (borrowed from PULSE_PIECE_META, MESITA-1222): a
+// CONSUMER_PATCH_KEYS uses (borrowed from CRENUP_STEP_META, MESITA-1222): a
 // field added to PlaceProfileRow and forgotten here fails the build, not a review.
 type _MissingFromPlaceProfilePatchKeys = Exclude<
   keyof Omit<PlaceProfileRow, "id" | "created_at" | "updated_at" | "name">,

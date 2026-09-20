@@ -32,7 +32,7 @@ import {
 } from "../_shared/place-promoting.ts";
 import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
 import { promotionScore } from "../_shared/promotion-score.ts";
-import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
+import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import {
   operatorFunctionStates,
   type EnrichmentMap,
@@ -224,8 +224,8 @@ Deno.serve(async (req) => {
 
   // ── Two id-scoped reads for the flags that are NOT on profiles. ──
   //
-  // ENRICHED is the PULSE high-water, 0-10, folded from place_enrichment_events
-  // by pulseHighWater. There used to be a SECOND enriched number here — a 0-3
+  // ENRICHED is the CRENUP high-water, 0-8, folded from place_enrichment_events
+  // by crenupHighWater. There used to be a SECOND enriched number here — a 0-3
   // stage level off place_research — and the two disagreed on every row: the
   // chip read one, the detail prose read the other (MESITA-1218). One fact,
   // one table, one number. The place_research read went with it: computing
@@ -237,8 +237,8 @@ Deno.serve(async (req) => {
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
 
   const verified = new Set<string>();
-  // MESITA-1249: enrichment is READ, not folded — pulseHighWater/
-  // pulseBlockedAt already ran once, at write time, in pulse-report.ts.
+  // MESITA-1249: enrichment is READ, not folded — crenupHighWater/
+  // crenupBlockedAt already ran once, at write time, in crenup-report.ts.
   // `places`, not `profiles`: this jsonb blob is deliberately NOT in the
   // profiles view's column list (same reasoning as details/google_reviews/
   // popular_times staying out of PLACE_CARD_COLUMNS, MESITA-1283) — adding
@@ -335,26 +335,26 @@ Deno.serve(async (req) => {
         requestCount: v.request_count,
         contentState: contentState,
       }),
-      // PULSE: how far the TEN-function ENRICH queue got, 0-10
+      // CRENUP: how far the EIGHT-step ENRICH queue got, 0-8
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.
       // 0 is the CREATED floor; create stamps pulse+details, so a healthy
       // fresh place reads 2.
-      enrich_pulse: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
-      enrich_pulse_total: PULSE_TOTAL,
+      enrich_crenup: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
+      enrich_crenup_total: CRENUP_TOTAL,
       // The function NAMES ride with the number so the client renders what the
       // server counted. Indexed BY FUNCTION NUMBER — labels[0] is the
       // CREATED floor label — so a
       // client reads labels[level] with no off-by-one. web-admin used to keep its own positional copy of this
       // list with no shared import and no test, so a reorder would have put the
       // wrong name beside every row (MESITA-1222).
-      enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
+      enrich_crenup_labels: CRENUP_LABELS_IN_ORDER,
       // WHY it stopped, not just where. The number alone is ambiguous, and
       // MESITA-1243 made that bite at 0: function 1 now fails a place Google
       // reports permanently closed, so 0 means both "seeded, nothing tried"
       // and "we asked, and the listing is dead". Shipped from the same events
       // the high-water walks, so the two cannot disagree.
-      enrich_pulse_blocked: (enrichment.get(id) ?? EMPTY_ENRICHMENT).blockedAt,
+      enrich_crenup_blocked: (enrichment.get(id) ?? EMPTY_ENRICHMENT).blockedAt,
       // The per-function map (MESITA-1611) — same fold web-business's
       // Places list and business-web-get-overview already ship as
       // enrich_functions. The high-water above stops counting at the first

@@ -117,10 +117,13 @@ describe("vocabulary contract", () => {
     expect(TABLE_CODE).toContain("showCrenup");
   });
 
-  it("reads the eleven functions through the shared fold, not a second mapper", () => {
+  it("reads the nine steps through the shared fold, not a second mapper", () => {
     expect(TABLE_CODE).toContain("crenupStepRows");
-    expect(TABLE_CODE).not.toContain("enrich_pulse");
-    expect(TABLE_CODE).not.toContain("crenupPulse");
+    // The meter's wire keys, under their CURRENT names (MESITA-2028 renamed
+    // them off `pulse`). Guarding a name nothing uses any more is a test that
+    // can only pass — the point is that the high-water does not leak here.
+    expect(TABLE_CODE).not.toContain("enrich_crenup");
+    expect(TABLE_CODE).not.toContain("enrichCrenup");
   });
 
   // The two general columns Crenup used to sit beside. Removing the block is

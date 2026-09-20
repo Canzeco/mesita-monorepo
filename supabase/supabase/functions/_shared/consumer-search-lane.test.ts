@@ -24,7 +24,7 @@ import {
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
 import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
-import { PULSE_TOTAL } from "./pulse-pieces.ts";
+import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">): LaneItem {
   return {
@@ -405,7 +405,7 @@ Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool A
   // ties across the whole lane. Same name-embedding and same plan (so Name and
   // Partnered tie too) — only high-water differs, which is the only part of
   // Enriched that can still reorder an admitted pool.
-  const hi = withHighWater(listed("hi", "Hi", QUERY, "pro", "ready"), PULSE_TOTAL);
+  const hi = withHighWater(listed("hi", "Hi", QUERY, "pro", "ready"), CRENUP_TOTAL);
   const lo = withHighWater(listed("lo", "Lo", QUERY, "pro", "ready"), 2);
   // A row that never got admitted anywhere still floors below both.
   const un = listed("un", "Un", QUERY, "pro", "queued");

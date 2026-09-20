@@ -39,12 +39,12 @@ import { instagramHandleFromUrl } from "../_shared/apify.ts";
 import { resolveChannels } from "../_shared/enrich-channel-discovery.ts";
 import { fbSlugCandidate } from "../_shared/channels.ts";
 import {
-  pieceDone,
-  pieceFailed,
-  reportPulsePieces,
-  type PieceOutcome,
-} from "../_shared/pulse-report.ts";
-import type { PulsePiece } from "../_shared/pulse-pieces.ts";
+  stepDone,
+  stepFailed,
+  reportCrenupSteps,
+  type StepOutcome,
+} from "../_shared/crenup-report.ts";
+import type { CrenupStep } from "../_shared/crenup-ladder.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   chargeGoogleSpine,
@@ -109,7 +109,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
   const basics = basicsRes.basics;
 
-  // ━━━ FUNCTION 1 — PULSE. Is this place still ACTIVE? ━━━
+  // ━━━ STEP 1 — DETAILS, and its LIVENESS subprocess. Is this place
+  // still ACTIVE? ━━━
   //
   // One question, one answer. It runs HERE, immediately after the spine and
   // before the cost ledger, because a gate that reports at the end of the stage
@@ -133,7 +134,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   //   OPERATIONAL         — alive.
   //   CLOSED_TEMPORARILY  — alive. A refurb or a seasonal close is still a real
   //                         business with a real profile worth building.
-  //   null                — ABSENCE IS A RESULT (pulse-report.ts rule 4).
+  //   null                — ABSENCE IS A RESULT (crenup-report.ts rule 4).
   //                         Google being silent is Google's answer, not our
   //                         failure to ask. Failing here would pin every place
   //                         Google is quiet about at 0 forever — which is
@@ -176,8 +177,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // fail — the listing is dead, or Google's spine came back unusable — so the
     // message must say which. The spine failure returns far above with its own
     // wording; this is the dead-listing one.
-    await reportPulsePieces(admin, projectId, {
-      details: pieceFailed("Google reports this place as permanently closed.", {
+    await reportCrenupSteps(admin, projectId, {
+      details: stepFailed("Google reports this place as permanently closed.", {
         businessStatus,
       }),
     });
@@ -511,10 +512,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
       facebook: fbOk,
     });
 
-  // ── PULSE functions (MESITA-1243) ──────────────────────────────────────
+  // ── CRENUP steps (MESITA-1243) ──────────────────────────────────────
   // Research owns 1 pulse · 2 details · 3 serp · 4 links · 5 social · 8
   // reviews. Each is reported from an OBSERVED effect, never from "we reached
-  // this line" — see pulse-pieces.ts.
+  // this line" — see crenup-ladder.ts.
   //
   // A piece this run did not BUY writes nothing at all, so an earlier run's
   // result stands. That is what lets a cheap refresh coexist with a linear
@@ -540,7 +541,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // NOTE: there is no `seed` stamp — seed is not an enrich function at all;
   // it is FUNCTION 0, and the row existing IS the seed. 0 on the meter means
   // seeded and no function above it completed.
-  const pieces: Partial<Record<PulsePiece, PieceOutcome>> = {
+  const pieces: Partial<Record<CrenupStep, StepOutcome>> = {
     // DETAILS (1) — the Google spine, THE HOURS, and the LIVENESS GATE, all
     // off one `fetchGoogleBasics` call.
     //
@@ -562,17 +563,17 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // hours and liveness are one function's two answers, and only the second
     // can fail the run.
     //
-    // ABSENCE IS A RESULT (pulse-report.ts rule 4): the Place Details call
+    // ABSENCE IS A RESULT (crenup-report.ts rule 4): the Place Details call
     // already SUCCEEDED — a failed one returns at the spine gate far above — so
     // Google answering "no phone, no address, no price, no hours" is a fact
-    // about the listing, not an infrastructure failure. `pieceFailed` here
+    // about the listing, not an infrastructure failure. `stepFailed` here
     // could only ever mean "Google was silent", which is not a thing it can be
     // at this point.
     //
     // The `google_name` refresh behind the GENERATED `places.name` also lands
     // on this function's call. It has no rung of its own — it is one field on
     // the same fetch. What carries the name is Embedding (8).
-    details: pieceDone(
+    details: stepDone(
       [
         spineFacts.length
           ? `Google spine resolved — ${spineFacts.join(", ")}`
@@ -593,12 +594,12 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // answer, so the piece passes on an ok diag whether or not text came back.
     // A missing key or a thrown call is the only failure.
     pieces.serp = diagOk(sources.serp)
-      ? pieceDone(
+      ? stepDone(
         serpSummary
           ? `SERP Summary written — ${serpSummary.trim().split(/\s+/).length} word(s).`
           : "The Scout ran; the web had nothing to add.",
       )
-      : pieceFailed(
+      : stepFailed(
         PERPLEXITY_KEY ? "The SERP gather failed." : "No Perplexity key configured.",
       );
   }
@@ -606,8 +607,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   if (wants(buys, "links")) {
     pieces.links = anyChannelResolved || !needsDiscovery
       // Nothing to discover is a RESULT: every channel was already known.
-      ? pieceDone(`${resolvedCount} link/contact field(s) known.`)
-      : pieceFailed("No channel could be resolved.");
+      ? stepDone(`${resolvedCount} link/contact field(s) known.`)
+      : stepFailed("No channel could be resolved.");
   }
 
   if (runSocial) {
@@ -617,21 +618,21 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // handle and could not be scraped fails.
     const hadSomethingToTry = !!igHandle || !!fbHandleCandidate || !!resolvedFacebook;
     pieces.social = (igR?.verifiedInstagramUrl || fbOk)
-      ? pieceDone(`Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`)
+      ? stepDone(`Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`)
       : hadSomethingToTry
-      ? pieceFailed("A social handle was known but could not be gathered.")
-      : pieceDone("No social presence to gather.");
+      ? stepFailed("A social handle was known but could not be gathered.")
+      : stepDone("No social presence to gather.");
   }
 
   if (wants(buys, "reviews")) {
     pieces.reviews = diagOk(sources.apify_google_reviews)
-      ? pieceDone(`${reviews.length} Google review(s).`)
-      : pieceFailed(
+      ? stepDone(`${reviews.length} Google review(s).`)
+      : stepFailed(
         gmapsInvoked ? "The Apify gather failed." : "No Apify key or Google place id.",
       );
   }
 
-  await reportPulsePieces(admin, projectId, pieces);
+  await reportCrenupSteps(admin, projectId, pieces);
 
   // ━━━ hand off to the analysis stage ━━━
   const gathered: GatheredPayload = {

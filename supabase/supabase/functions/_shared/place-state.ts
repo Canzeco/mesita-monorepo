@@ -1,13 +1,14 @@
 // State — the facts that say where a place stands (MESITA-1171 · MESITA-1186 · MESITA-1323).
-// Renamed from `pulse` 2026-08-22: PULSE now names the enrichment pipeline.
+// Renamed from `pulse` 2026-08-22. Since MESITA-2028 the ladder is CRENUP
+// and `pulse` names only the liveness subprocess inside step 1.
 //
 //   seeded      a google_place_id exists — the identity spine every enrichment
 //               run starts from. Without it nothing can be gathered.
 //   listed      a guest can reach the place at all. projects.state is what the
 //               consumer RLS policy gates on.
-//   enriched    HOW FAR the PULSE queue got — a 0-10 high-water off
+//   enriched    HOW FAR the CRENUP queue got — a 0-8 high-water off
 //               place_enrichment_events, never a boolean. It does NOT live
-//               here: `pulseHighWater` in pulse-pieces.ts owns it, beside the
+//               here: `crenupHighWater` in crenup-ladder.ts owns it, beside the
 //               ladder it counts. This file kept a rival 0-3 stage level until
 //               MESITA-1218; two numbers for one fact disagreed on every row.
 //   verified    an approved project_verifications row (ownership proof).

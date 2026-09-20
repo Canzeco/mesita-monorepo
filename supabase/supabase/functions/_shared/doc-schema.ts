@@ -107,7 +107,7 @@ type InferShape<S extends Shape> = { [K in keyof S]: Infer<S[K]> };
 /**
  * The closed-key-set enforcer. A key on `raw` that isn't in `shape` is a
  * REJECT, not a silent drop — this is belt 2 of the two-belt pattern
- * (StampablePulseStep is belt 1's model): belt 1 is that `Infer<typeof
+ * (StampableCrenupStep is belt 1's model): belt 1 is that `Infer<typeof
  * thisSchema>` is the only type a caller can construct a matching object
  * literal against, so a misspelled key fails to compile wherever the
  * inferred type is used as the EF's own working type; belt 2 is this

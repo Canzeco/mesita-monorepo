@@ -22,7 +22,7 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import { toSignalPlace } from "./discovery-place.ts";
-import { PULSE_TOTAL } from "./pulse-pieces.ts";
+import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 const place = (over: Partial<SignalPlace> = {}): SignalPlace => ({
   lat: 19.4326,
@@ -367,7 +367,7 @@ Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   // The high-water gradient is what discriminates among ADMITTED rows, which
   // is the only population this signal is asked about.
   const thin = enriched(place({ enriched: true, crenupHighWater: 2 }));
-  const full = enriched(place({ enriched: true, crenupHighWater: PULSE_TOTAL }));
+  const full = enriched(place({ enriched: true, crenupHighWater: CRENUP_TOTAL }));
   assert(full > thin, `a full profile must outrank a thin one: ${full} vs ${thin}`);
   assertAlmostEquals(full, 1, 1e-12);
   assertAlmostEquals(thin, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.25, 1e-12);
@@ -376,7 +376,7 @@ Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   assertAlmostEquals(enriched(place({ enriched: true, crenupHighWater: 0 })), ENRICHED_OFF, 1e-12);
   // And the gradient is monotone across the whole queue, not just at the ends.
   let prev = -1;
-  for (let hw = 0; hw <= PULSE_TOTAL; hw++) {
+  for (let hw = 0; hw <= CRENUP_TOTAL; hw++) {
     const s = enriched(place({ enriched: true, crenupHighWater: hw }));
     assert(s > prev, `high-water ${hw} must score above ${hw - 1}`);
     prev = s;
@@ -392,7 +392,7 @@ Deno.test("without the high-water side-read Enriched falls back to the binary", 
   // high-water number: the googleOnly exclusion the projection makes by name
   // must not be climbable by a side-read.
   assertEquals(
-    enriched(place({ enriched: false, crenupHighWater: PULSE_TOTAL })),
+    enriched(place({ enriched: false, crenupHighWater: CRENUP_TOTAL })),
     ENRICHED_OFF,
   );
 });
@@ -496,7 +496,7 @@ Deno.test("MESITA-1598's own scenario survives the split: an enriched free place
   // the partner has not started it. The ORDER the decision named is exactly
   // preserved, which is what makes this a refactor and not a re-tune.
   const enrichedFree = partnered(place({ plan: "free" })) *
-    enriched(place({ enriched: true, crenupHighWater: PULSE_TOTAL }));
+    enriched(place({ enriched: true, crenupHighWater: CRENUP_TOTAL }));
   const thinPartner = partnered(place({ plan: "pro" })) *
     enriched(place({ enriched: true, crenupHighWater: 0 }));
   assert(

@@ -22,7 +22,7 @@
 //   Active     Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
 //   Listed     places.state ∈ (active, lead)
 //   Requested  guest request count, 0…n — not a Yes/No
-//   Enriched   PULSE complete — a yes, not a 0–10 high-water.
+//   Enriched   CRENUP complete — a yes, not a 0–8 high-water.
 //   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
 //   Verified   approved place_verifications
 //   Partnered  plan ≠ free
@@ -40,7 +40,7 @@
 // vanish a live place with no human in the loop (the Ojo posture).
 //
 // NAMING (Pato, 2026-08-22 · renamed 2026-09-05, MESITA-1541). This box is
-// State, and PULSE names something else entirely: the enrichment machinery.
+// State, and CRENUP names something else entirely: the enrichment machinery.
 // One word, one meaning.
 //
 // It used to be Status, which collided with the old `projects.status`
@@ -95,7 +95,7 @@ import {
 //              stops resolving it. Read it from `state`, never from a merged
 //              overview `listed` flag that can go stale after that write.
 //   Requested  guest request count (0…n). Independent of Listed / Enriched.
-//   Enriched   the PULSE queue finished. A yes, not a high-water.
+//   Enriched   the CRENUP queue finished. A yes, not a high-water.
 //   Enriching  the Enricher pipeline is mid-flight. Live-run, not last-completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partnered  the place pays Mesita. A deal: stable, internal. Wire key `partner`.
@@ -105,7 +105,7 @@ import {
 //
 // Created, Listed and Enriched arrive computed on the super-admin overview
 // payload (business-web-get-overview → _shared/place-state.ts and
-// _shared/pulse-pieces.ts), the same helpers the Single Place table uses, so
+// _shared/crenup-ladder.ts), the same helpers the Single Place table uses, so
 // the box and the table can never disagree. That guarantee was only half true
 // until MESITA-1218: the chip read the 0-10 high-water while this box's prose
 // read a rival 0-3 stage level, and on every row they disagreed. Partner and

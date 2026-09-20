@@ -1,4 +1,4 @@
-// PULSE — the enrichment machinery, as TWO FLOWS over ONE LADDER
+// CRENUP — the enrichment ladder, as TWO FLOWS over ONE SEQUENCE
 // (Main §8.4 v4, MESITA-2027). One sequence, not two:
 //
 //   0 seed → 1 details → 2 serp → 3 links → 4 social
@@ -18,7 +18,7 @@
 // day a seed event failed to write. `S0` is legal under the step CHECK
 // (`^S([0-9]{1,2}|X)$`) and always was — see the widening migration.
 //
-// PULSE IS NOT A FUNCTION ANYMORE (MESITA-2027). Liveness is a SUBPROCESS OF
+// PULSE IS NOT A STEP (MESITA-2027). Liveness is a SUBPROCESS OF
 // DETAILS, not a rung. Functions 1 and 2 never bought separate data — they
 // shared one `fetchGoogleBasics` call — so the old split bought a rung and no
 // information. Details now reads `businessStatus` off its own fetch, writes
@@ -96,7 +96,7 @@
 // reach 8. The function ran, resolved "there is nothing here", and is
 // `completed`.
 
-export const PULSE_PIECES = [
+export const CRENUP_LADDER = [
   "details",
   "serp",
   "links",
@@ -111,10 +111,10 @@ export const PULSE_PIECES = [
  * Retired extra keys. Empty: Embedding is function 8, not an unnumbered
  * extra. Kept as an array so FUNCTION_STATE_KEYS can still spread it.
  */
-export const PULSE_EXTRAS = [] as const;
+export const CRENUP_EXTRAS = [] as const;
 
 /** Pre-merge event / map keys. Folded into `embedding` on read (display). */
-export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
+export const CRENUP_EXTRA_ALIASES = ["summary", "name"] as const;
 
 /**
  * RETIRED function keys: rungs that existed on a previous ladder and are not
@@ -130,11 +130,11 @@ export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
  *            a completion that never meant anything.
  *
  * Listed rather than merely absent so the next reader knows these keys are
- * live in the event log and ignored ON PURPOSE. `latestByPiece` drops any key
- * PULSE_PIECES does not contain, so this array is documentation the compiler
+ * live in the event log and ignored ON PURPOSE. `latestByStep` drops any key
+ * CRENUP_LADDER does not contain, so this array is documentation the compiler
  * cannot contradict — keep it honest by hand.
  */
-export const PULSE_RETIRED = ["pulse", "menu", "semantics", "seed"] as const;
+export const CRENUP_RETIRED = ["pulse", "menu", "semantics", "seed"] as const;
 
 /**
  * RENAMED function keys: the same function under its old name. Unlike the
@@ -145,24 +145,22 @@ export const PULSE_RETIRED = ["pulse", "menu", "semantics", "seed"] as const;
  * subprocess key — a coincidence of subject, not a shared enum; neither
  * list may import the other.
  */
-export const PULSE_RENAMES: Readonly<Record<string, PulsePiece>> = {
+export const CRENUP_RENAMES: Readonly<Record<string, CrenupStep>> = {
   semantic: "embedding",
 };
 
-export type PulsePiece = (typeof PULSE_PIECES)[number];
-export type PulseExtra = (typeof PULSE_EXTRAS)[number];
-/** Anything a stage may stamp: a queue function. */
-export type PulseStep = PulsePiece | PulseExtra;
+export type CrenupStep = (typeof CRENUP_LADDER)[number];
+export type CrenupExtra = (typeof CRENUP_EXTRAS)[number];
 
 /**
  * What level 0 is CALLED on the meter: Seed. It is function 0 of the ladder
  * and the only one never stamped — the row existing IS the seed, so 0 is the
  * persistence floor rather than a pre-ladder limbo.
  */
-export const PULSE_FLOOR_LABEL = "Seed";
+export const CRENUP_FLOOR_LABEL = "Seed";
 
 /** The operator-facing name of each function. Names only — see below for why. */
-const PULSE_LABELS: Record<PulsePiece, string> = {
+const CRENUP_LABELS: Record<CrenupStep, string> = {
   details: "Details",
   serp: "Serp",
   links: "Links",
@@ -177,7 +175,7 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
  * THE INDEX IS DERIVED, never written down (MESITA-1222).
  *
  * It used to be nine hand-typed literals sitting beside the array that already
- * defines the order, with nothing tying the two together. `pulseHighWater`
+ * defines the order, with nothing tying the two together. `crenupHighWater`
  * iterates the ARRAY and returns the META index, so a reorder that updated only
  * one of them would yield a high-water that skips or repeats a number — and the
  * S-number written to `place_enrichment_events` would drift from the function's
@@ -187,12 +185,12 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
  * The index is `i + 1`: the ladder counts 1-8 and 0 is SEED, the floor,
  * which is never stamped and so is not a member of the array.
  */
-export const PULSE_PIECE_META: Record<
-  PulsePiece,
+export const CRENUP_STEP_META: Record<
+  CrenupStep,
   { index: number; label: string }
 > = Object.fromEntries(
-  PULSE_PIECES.map((key, i) => [key, { index: i + 1, label: PULSE_LABELS[key] }]),
-) as Record<PulsePiece, { index: number; label: string }>;
+  CRENUP_LADDER.map((key, i) => [key, { index: i + 1, label: CRENUP_LABELS[key] }]),
+) as Record<CrenupStep, { index: number; label: string }>;
 
 /**
  * The labels in queue order — what a client renders beside the number.
@@ -206,40 +204,40 @@ export const PULSE_PIECE_META: Record<
  * stamped) and `labels[8]` is Embedding, so a reader renders
  * `labels[level]` with no off-by-one.
  */
-export const PULSE_LABELS_IN_ORDER: readonly string[] = [
-  PULSE_FLOOR_LABEL,
-  ...PULSE_PIECES.map((k) => PULSE_PIECE_META[k].label),
+export const CRENUP_LABELS_IN_ORDER: readonly string[] = [
+  CRENUP_FLOOR_LABEL,
+  ...CRENUP_LADDER.map((k) => CRENUP_STEP_META[k].label),
 ];
 
 /**
  * The complete-profile number, so nothing hardcodes 8. Eight stamped
  * functions, so it IS the array length; Seed (0) sits below the array.
  */
-export const PULSE_TOTAL = PULSE_PIECES.length;
+export const CRENUP_TOTAL = CRENUP_LADDER.length;
 
 /** One event row, narrowed to what the high-water needs. */
-export type PulseEvent = {
+export type CrenupEvent = {
   step_name?: string | null;
   state?: string | null;
   created_at?: string | null;
 };
 
 const INDEX = new Map<string, number>(
-  PULSE_PIECES.map((k) => [k, PULSE_PIECE_META[k].index]),
+  CRENUP_LADDER.map((k) => [k, CRENUP_STEP_META[k].index]),
 );
 
 /** Latest event per known function key — the log is append-only. */
-function latestByPiece(
-  events: readonly PulseEvent[],
+function latestByStep(
+  events: readonly CrenupEvent[],
 ): Map<string, { state: string; at: string }> {
   const latest = new Map<string, { state: string; at: string }>();
   for (const e of events) {
     const raw = (e.step_name ?? "").trim();
     // Renamed keys COUNT (the function is the same; only the name moved):
     // a stored `semantic` event is function 8 under its old name.
-    const key = PULSE_RENAMES[raw] ?? raw;
+    const key = CRENUP_RENAMES[raw] ?? raw;
     // Unknown keys are ignored on purpose: legacy stage beacons (`gather`,
-    // `publish`), retired rungs (PULSE_RETIRED — `pulse`, `menu`,
+    // `publish`), retired rungs (CRENUP_RETIRED — `pulse`, `menu`,
     // `semantics`, `seed`), and pre-merge `name`/`summary` extras (those fold
     // into `embedding` on the State map, not this walk — an old `name` rung
     // must not count as function 8).
@@ -272,16 +270,16 @@ function latestByPiece(
  * A re-enrich that fixes function 4 raises the number; one that breaks it
  * lowers it.
  */
-export function pulseHighWater(events: readonly PulseEvent[]): number {
-  const latest = latestByPiece(events);
+export function crenupHighWater(events: readonly CrenupEvent[]): number {
+  const latest = latestByStep(events);
 
   let high = 0;
-  for (const piece of PULSE_PIECES) {
+  for (const piece of CRENUP_LADDER) {
     const rec = latest.get(piece);
     // Only `completed` advances the queue. A missing function is one that has
     // never run — not a pass.
     if (!rec || rec.state !== "completed") break;
-    high = PULSE_PIECE_META[piece].index;
+    high = CRENUP_STEP_META[piece].index;
   }
   return high;
 }
@@ -305,22 +303,22 @@ export function pulseHighWater(events: readonly PulseEvent[]): number {
  * Derived from the same events the high-water walks, so the two can never
  * disagree — do not let a caller compute this from the number alone.
  */
-export type PulseBlock = {
-  key: PulsePiece;
+export type CrenupBlock = {
+  key: CrenupStep;
   index: number;
   state: "failed" | "missing";
 };
 
-export function pulseBlockedAt(
-  events: readonly PulseEvent[],
-): PulseBlock | null {
-  const latest = latestByPiece(events);
-  for (const piece of PULSE_PIECES) {
+export function crenupBlockedAt(
+  events: readonly CrenupEvent[],
+): CrenupBlock | null {
+  const latest = latestByStep(events);
+  for (const piece of CRENUP_LADDER) {
     const rec = latest.get(piece);
     if (rec?.state === "completed") continue;
     return {
       key: piece,
-      index: PULSE_PIECE_META[piece].index,
+      index: CRENUP_STEP_META[piece].index,
       // Anything that is not `completed` and not absent — `failed`, or the
       // `skipped` a legacy row might carry — is the function having run and
       // not delivered. Only a total absence of events is "not yet".
@@ -336,11 +334,11 @@ export function pulseBlockedAt(
  * "which ones landed", not "how far did the queue get". Being created is not
  * in the list: a place this is called about exists by definition.
  */
-export function completedPulsePieces(
-  events: readonly PulseEvent[],
-): PulsePiece[] {
-  const latest = latestByPiece(events);
-  return PULSE_PIECES.filter((p) => latest.get(p)?.state === "completed");
+export function completedCrenupSteps(
+  events: readonly CrenupEvent[],
+): CrenupStep[] {
+  const latest = latestByStep(events);
+  return CRENUP_LADDER.filter((p) => latest.get(p)?.state === "completed");
 }
 
 /**
@@ -352,10 +350,10 @@ export function completedPulsePieces(
  * differently. Anything malformed reads 0 — the Seed floor — rather than
  * throwing.
  */
-export function pulseOf(enrichment: unknown): number {
+export function crenupOf(enrichment: unknown): number {
   if (!enrichment || typeof enrichment !== "object") return 0;
   const raw = (enrichment as { highWater?: unknown }).highWater;
   const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.min(Math.trunc(n), PULSE_TOTAL);
+  return Math.min(Math.trunc(n), CRENUP_TOTAL);
 }

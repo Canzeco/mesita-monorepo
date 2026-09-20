@@ -217,7 +217,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/discovery-place.ts",
   "_shared/mesita-name-door.ts",
   "_shared/mesita-pay-readiness.ts",
-  "_shared/pulse-report.ts",
+  "_shared/crenup-report.ts",
   "admin-web-enrich-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
   "admin-web-get-place-payment-account/index.ts",

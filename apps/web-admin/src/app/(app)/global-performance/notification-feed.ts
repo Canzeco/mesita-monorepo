@@ -165,8 +165,8 @@ export type PlaceStateFacts = {
   requested: boolean;
   enriching: boolean;
   enriched: boolean;
-  enrichPulse: number;
-  enrichPulseTotal: number;
+  enrichCrenup: number;
+  enrichCrenupTotal: number;
   verified: boolean;
   partner: boolean;
   promoting: boolean;
@@ -200,8 +200,8 @@ function readStateFacts(
     requested: bool(f.requested),
     enriching: bool(f.enriching),
     enriched: bool(f.enriched),
-    enrichPulse: num(f.enrichPulse),
-    enrichPulseTotal: num(f.enrichPulseTotal) || 10,
+    enrichCrenup: num(f.enrichCrenup),
+    enrichCrenupTotal: num(f.enrichCrenupTotal) || 10,
     verified: bool(f.verified),
     partner: bool(f.partner),
     promoting: bool(f.promoting),

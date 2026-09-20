@@ -23,12 +23,12 @@ type Result<T> =
 // ── Place search ─────────────────────────────────────────────────────────
 
 /**
- * Why the enrichment queue stopped, straight off `pulseBlockedAt` in
- * `_shared/pulse-pieces.ts`. `failed` = the function ran and could not do its
+ * Why the enrichment queue stopped, straight off `crenupBlockedAt` in
+ * `_shared/crenup-ladder.ts`. `failed` = the function ran and could not do its
  * job; `missing` = it has no event yet. The EF ships it beside the number,
  * because the number alone cannot tell those two apart at 0.
  */
-export type PulseBlock = {
+export type CrenupBlock = {
   key: string;
   index: number;
   state: "failed" | "missing";
@@ -88,16 +88,16 @@ export type PlaceHit = {
   business_state: string | null;
   /** When Operating was last observed. Without it a stale claim reads current. */
   business_state_at: string | null;
-  /** PULSE: how far the ten-piece queue got, 0-10. 0 means it never started
+  /** CRENUP: how far the eight-step queue got, 0-8. 0 means it never started
    *  — or the place predates piece reporting and has no events. */
-  enrich_pulse: number;
+  enrich_crenup: number;
   /** The ladder's length, so nothing hardcodes 9. */
-  enrich_pulse_total: number;
+  enrich_crenup_total: number;
   /** The rung names in queue order, from the server. Never hand-copy this
    *  list — a reorder would put the wrong name beside every row. */
-  enrich_pulse_labels: string[];
+  enrich_crenup_labels: string[];
   /** Why the queue stopped where it did — null once it has finished. */
-  enrich_pulse_blocked: PulseBlock | null;
+  enrich_crenup_blocked: CrenupBlock | null;
   /** The per-function map (MESITA-1611), keyed by Crenup function. Absent
    *  means the payload predates the field — the high-water above is still
    *  the fallback, and it alone cannot show a function that completed AFTER
@@ -170,17 +170,17 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
       typeof raw.business_state === "string" ? raw.business_state : null,
     business_state_at:
       typeof raw.business_state_at === "string" ? raw.business_state_at : null,
-    enrich_pulse: raw.enrich_pulse ?? 0,
+    enrich_crenup: raw.enrich_crenup ?? 0,
     // No `?? 9` here any more: the total and the labels come from the same
     // server list, so a client fallback could only ever disagree with it. The
     // label fallback subtracts one — the labels are indexed by function number
     // with the Created floor label at 0, so eleven of them describe a 0-10 scale.
-    enrich_pulse_total: raw.enrich_pulse_total ??
-      (raw.enrich_pulse_labels ? raw.enrich_pulse_labels.length - 1 : 0),
-    enrich_pulse_labels: raw.enrich_pulse_labels ?? [],
+    enrich_crenup_total: raw.enrich_crenup_total ??
+      (raw.enrich_crenup_labels ? raw.enrich_crenup_labels.length - 1 : 0),
+    enrich_crenup_labels: raw.enrich_crenup_labels ?? [],
     // No invented fallback: absent means the payload predates the field, and
     // defaulting to "missing" would claim a fact we did not read.
-    enrich_pulse_blocked: raw.enrich_pulse_blocked ?? null,
+    enrich_crenup_blocked: raw.enrich_crenup_blocked ?? null,
     // Same posture: absent stays absent so the strip knows to fall back to
     // the high-water, rather than a fabricated empty map reading as "nothing
     // has run yet".
