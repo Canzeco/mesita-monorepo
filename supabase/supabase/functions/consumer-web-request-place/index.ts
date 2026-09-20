@@ -2,7 +2,7 @@
 //
 // Signed-in consumer requests a usable Mesita profile for a Listed place
 // that is not yet Enriched. One request per consumer per place. When the
-// count reaches Intake atlasRequestThreshold, seed the existing Intaker
+// count reaches Crenup atlasRequestThreshold, seed the existing Enricher
 // pipeline. Admin create/enrich never goes through this door.
 //
 // Local:  supabase functions serve consumer-web-request-place

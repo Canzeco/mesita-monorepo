@@ -65,7 +65,7 @@ export function AskAiTab({ places }: { places: Place[] }) {
     [places, router],
   );
 
-  // Create only — the ugly profile is live immediately. Intaker waits
+  // Create only — the ugly profile is live immediately. Enricher waits
   // for votes on the Enrich tab.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {

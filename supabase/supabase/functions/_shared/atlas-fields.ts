@@ -1,4 +1,4 @@
-// The Intaker vocabulary a console needs to render a place editor:
+// The Enricher vocabulary a console needs to render a place editor:
 // place families, place categories, tag catalog, facets, field limits.
 //
 // Two doors, one body (MESITA-1740): `admin-web-get-atlas-fields` is

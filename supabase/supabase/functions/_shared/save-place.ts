@@ -120,7 +120,7 @@ export async function savePlaceData(
   // them; the category-label trigger fills category_label from category. ──
   // Names: `name` is GENERATED (coalesce(mesita_name, google_name)) — never
   // insert it. Create seeds BOTH: google_name is the cached Google observation
-  // (Intaker refresh target) and mesita_name is the guest-facing Mesita label
+  // (Enricher refresh target) and mesita_name is the guest-facing Mesita label
   // (operator-editable; profile chrome never reads google_name directly).
   const {
     id: _dropId,

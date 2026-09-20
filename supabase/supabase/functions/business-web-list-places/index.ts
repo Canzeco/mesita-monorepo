@@ -23,7 +23,7 @@
 // It is also the scope that can afford to tell the truth. `getAuthedUser`
 // accepts ANY bearer token and the backend is a singleton, so scope=public is
 // reachable by every consumer account and withholds Partner / Verified / the
-// intake map for that reason.
+// Crenup map for that reason.
 //
 // WHAT PROVES A BUSINESS CALLER NOW. The org check used to do it: you named an
 // organization and we proved you were in it. With no organization to name, the

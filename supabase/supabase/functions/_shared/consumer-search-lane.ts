@@ -72,7 +72,7 @@ import {
   type SignalWeights,
 } from "./discovery-blend.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
-import { attachIntakeHighWater, toLineupPlace } from "./discovery-place.ts";
+import { attachCrenupHighWater, toLineupPlace } from "./discovery-place.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
@@ -870,12 +870,12 @@ async function fetchEmbedPool(
     console.error("[consumer-search-lane] embed pool:", error.message);
     return [];
   }
-  // The `enriched` gradient needs `intake_high_water` on the row, and
+  // The `enriched` gradient needs `crenup_high_water` on the row, and
   // `profiles` doesn't carry it. One batched side-read merges it in here, the
   // single choke point both `runDeepSearch` and `runMesitaNameSearch` rank
   // through — and this pool is already `.eq("content_state", "ready")`, so
   // without it the signal is a constant across every row in it.
-  return await attachIntakeHighWater(
+  return await attachCrenupHighWater(
     admin,
     (data ?? []) as unknown as Record<string, unknown>[],
   ) as unknown as ListedRow[];

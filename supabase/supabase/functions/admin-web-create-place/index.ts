@@ -2,7 +2,7 @@
 //
 // The admin-app equivalent of business-web-create-place: an admin operator
 // passes a Google Places `placeId` and gets back the ugly profile (Create
-// 1–4, content_state ready, enriched_at null). Intaker is NOT queued —
+// 1–4, content_state ready, enriched_at null). Enricher is NOT queued —
 // Enrich / Create+Enrich is a second call; guests vote on the Enrich tab.
 // Core: createMinimalPlace (_shared/create-place.ts) with queueEnrich:false.
 //

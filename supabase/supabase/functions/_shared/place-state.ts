@@ -56,12 +56,12 @@ export function isPlaceListed(state: unknown): boolean {
 }
 
 /**
- * Requested is guest demand for Intaker — never a projects.state
+ * Requested is guest demand for Enricher — never a projects.state
  * label. pending_review / pending_verification stay on the enum and stay
  * unlisted; they are not this fact.
  *
  * Derived: request_count > 0 and not Enriched. Enriched is
- * `places.enriched_at` (Intaker finished). Create-without-enrich stamps
+ * `places.enriched_at` (Enricher finished). Create-without-enrich stamps
  * content_state ready with enriched_at null — those rows can still be
  * requested. When enrichedAt is omitted, ready still wins (legacy callers).
  */
@@ -78,12 +78,12 @@ export function isPlaceRequested(input: {
   return Number.isFinite(count) && count > 0;
 }
 
-/** Intaker finished — contents stamped places.enriched_at. */
+/** Enricher finished — contents stamped places.enriched_at. */
 export function isPlaceEnriched(enrichedAt: unknown): boolean {
   return typeof enrichedAt === "string" && enrichedAt.trim() !== "";
 }
 
-/** Intaker pipeline mid-flight. content_state generating/queued covers the
+/** Enricher pipeline mid-flight. content_state generating/queued covers the
  *  whole run after MESITA-453 (re-enrich flips the column; never clear after
  *  research alone). Stage research|analysis|contents is the other half, read
  *  by admin-web-get-place-enrichment — notifications only have this column. */

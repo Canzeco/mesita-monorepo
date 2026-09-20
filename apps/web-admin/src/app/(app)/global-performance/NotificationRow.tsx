@@ -9,7 +9,7 @@ import {
   REPORT_TYPE,
   STEP_TYPE,
   groupHasFailure,
-  intakeFactChips,
+  crenupFactChips,
   reportReasonLabel,
   showCategoryOnCompact,
 } from "./notification-feed";
@@ -47,7 +47,7 @@ export function NotificationStepGroup({
     <ExpandableRow
       item={lead}
       now={now}
-      verb={`Intaker · ${items.length} steps`}
+      verb={`Enricher · ${items.length} steps`}
       failed={failed}
       group={items}
     />
@@ -201,7 +201,7 @@ function ExpandedBody({ item }: { item: NotificationItem }) {
 }
 
 function CompactStateChips({ item }: { item: NotificationItem }) {
-  const general = intakeFactChips(item);
+  const general = crenupFactChips(item);
   if (general.length === 0) return null;
   return (
     <span className="mt-1.5 flex flex-wrap gap-1">
@@ -224,7 +224,7 @@ function ActorLine({ item }: { item: NotificationItem }) {
   // No owner on create is the catalog default (Created / Listed), not a
   // missing "claim". Unclaimed is listing_type — it is not a state fact.
   if (!item.actor) return null;
-  if (item.actor === "Intaker") return null;
+  if (item.actor === "Enricher") return null;
 
   const prefix =
     item.type === "atlas.place_created"

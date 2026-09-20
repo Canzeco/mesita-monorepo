@@ -17,7 +17,7 @@ const COLUMNS: readonly string[] = [
   // Postgres rejects any write. Every audience reads this one.
   "name",
   // Cached Google Places displayName. NOT an identity spine (google_place_id
-  // is) — it changes whenever the Google listing does. Intaker-only write.
+  // is) — it changes whenever the Google listing does. Enricher-only write.
   // Guest profile chrome reads mesita_name, not this column.
   "google_name",
   // Mesita display label. Seeded at create from the first Google label;
@@ -124,10 +124,10 @@ const COLUMNS: readonly string[] = [
   // (research → analysis → contents); only contents lands 'ready'.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
   "content_state",
-  // Consumer Requests count. Progress toward Intake atlasRequestThreshold.
+  // Consumer Requests count. Progress toward Crenup atlasRequestThreshold.
   // Requested is derived (count > 0 and content_state <> ready).
   "request_count",
-  // Description/Actions (Intaker function 9) — guest Order / Reserve CTAs.
+  // Description/Actions (Enricher function 9) — guest Order / Reserve CTAs.
   "orders_enabled",
   "reservations_enabled",
   // The EFFECTIVE Mesita Pay capability — the place's bit AND its org's,

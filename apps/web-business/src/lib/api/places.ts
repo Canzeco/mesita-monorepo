@@ -46,7 +46,7 @@ type Place = {
   name: string;
   category: string | null;
   category_label: string | null;
-  /** Families: Intaker-inferred (stored); membership derives live. */
+  /** Families: Enricher-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
   vibe: string | null;
   price_level: number | null;

@@ -1,4 +1,4 @@
-// The eleven Intake subfunctions, and which of the two flows uses each.
+// The eleven Crenup subfunctions, and which of the two flows uses each.
 //
 // TWO SEQUENCES — not one global enum. Main §8.4:
 //   CREATE (ONE FUNCTION, awaits five): 1 Seed → 2 Pulse → 3 Details
@@ -14,9 +14,9 @@
 // each flow's order so a shared `chip` string cannot invent a third ladder.
 // Engine high-water stays Enrich 1–10 (Created floor 0 is persistence).
 
-export type IntakeFlow = "create" | "enrich";
+export type CrenupFlow = "create" | "enrich";
 
-export type IntakeChip = {
+export type CrenupChip = {
   href: string;
   number: number;
   name: string;
@@ -24,15 +24,15 @@ export type IntakeChip = {
   label: string;
 };
 
-export type IntakeSubfunction = {
+export type CrenupStepSpec = {
   id: string;
   key: string;
   /** Unnumbered 8.4 name. chipsFor prefixes 1…n per flow. */
   name: string;
-  flows: readonly IntakeFlow[];
+  flows: readonly CrenupFlow[];
 };
 
-export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
+export const CRENUP_STEP_SPECS: readonly CrenupStepSpec[] = [
   { id: "f-seed", key: "seed", name: "Seed", flows: ["create"] },
   { id: "f-pulse", key: "pulse", name: "Pulse", flows: ["create", "enrich"] },
   { id: "f-details", key: "details", name: "Details", flows: ["create", "enrich"] },
@@ -64,13 +64,13 @@ const CREATE_ORDER = [
   "embedding",
 ] as const;
 
-function rowByKey(key: string): IntakeSubfunction {
-  const row = INTAKE_SUBFUNCTIONS.find((s) => s.key === key);
-  if (!row) throw new Error(`unknown Intake subfunction: ${key}`);
+function rowByKey(key: string): CrenupStepSpec {
+  const row = CRENUP_STEP_SPECS.find((s) => s.key === key);
+  if (!row) throw new Error(`unknown Crenup subfunction: ${key}`);
   return row;
 }
 
-function numberChips(keys: readonly string[]): IntakeChip[] {
+function numberChips(keys: readonly string[]): CrenupChip[] {
   return keys.map((key, i) => {
     const s = rowByKey(key);
     const number = i + 1;
@@ -83,14 +83,14 @@ function numberChips(keys: readonly string[]): IntakeChip[] {
   });
 }
 
-export function chipsFor(flow: IntakeFlow): IntakeChip[] {
+export function chipsFor(flow: CrenupFlow): CrenupChip[] {
   if (flow === "create") return numberChips(CREATE_ORDER);
   return numberChips(
-    INTAKE_SUBFUNCTIONS.filter((s) => s.flows.includes("enrich")).map((s) => s.key),
+    CRENUP_STEP_SPECS.filter((s) => s.flows.includes("enrich")).map((s) => s.key),
   );
 }
 
-export function flowTag(flows: readonly IntakeFlow[]): string {
+export function flowTag(flows: readonly CrenupFlow[]): string {
   if (flows.length === 2) return "Create + Enrich";
   if (flows[0] === "create") return "Create";
   return "Enrich";

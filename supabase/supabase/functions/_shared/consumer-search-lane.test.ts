@@ -362,9 +362,9 @@ function listed(
   };
 }
 
-/** The `attachIntakeHighWater` merge, in fixture form. */
+/** The `attachCrenupHighWater` merge, in fixture form. */
 const withHighWater = (row: ListedRow, highWater: number): ListedRow =>
-  ({ ...row, intake_high_water: highWater }) as ListedRow;
+  ({ ...row, crenup_high_water: highWater }) as ListedRow;
 
 const QUERY = [1, 0];
 const BEST = listed("best", "Best", [1, 0]);
@@ -398,7 +398,7 @@ Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
 });
 
 Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool ADMITS", () => {
-  // Carries "intake_high_water (MESITA-1601) reorders when Level is weighted"
+  // Carries "crenup_high_water (MESITA-1601) reorders when Level is weighted"
   // across the MESITA-1858 split, and comes back to high-water for the reason
   // that split's review found: this pool is already `.eq("content_state",
   // "ready")`, so every row Deep ranks satisfies the enrichment BOOLEAN and it

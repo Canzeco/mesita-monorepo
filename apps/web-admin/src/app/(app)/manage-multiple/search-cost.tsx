@@ -1,7 +1,7 @@
 "use client";
 
 // Google Places Text Search call count for the bulk-search UI. Spend math
-// does not live here — Create and Enrich estimates are on Intake.
+// does not live here — Create and Enrich estimates are on Crenup.
 
 const PAGE_SIZE = 20;
 

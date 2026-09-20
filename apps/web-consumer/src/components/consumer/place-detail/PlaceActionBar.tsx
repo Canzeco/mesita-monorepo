@@ -151,7 +151,7 @@ export function PlaceActionBar({
             Visit
           </button>
 
-          {/* ORDER — unlocked when Intaker stamped a menu/catalog (Actions).
+          {/* ORDER — unlocked when Enricher stamped a menu/catalog (Actions).
               Mesita table ordering is still staged; the slot stays visible. */}
           <button
             type="button"

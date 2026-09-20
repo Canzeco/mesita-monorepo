@@ -6,19 +6,19 @@ import type { NotificationsPayload, NotificationType } from "./actions";
 import { TYPE_CONFIG, TYPE_ORDER, TONES } from "./notification-config";
 import {
   DOMAINS,
-  INTAKE_FUNCTIONS,
+  CRENUP_STEPS,
   STATE_FACTS,
   STEP_TYPE,
   typesInDomain,
   type DomainKey,
-  type IntakeFilter,
-  type IntakeFunctionKey,
+  type CrenupFilter,
+  type CrenupStepKey,
   type StateFactKey,
 } from "./notification-feed";
 import { ENGINELESS_STATE_FACT_KEYS } from "@/lib/state-vocabulary";
 
 export type TypeFilter = "all" | NotificationType;
-export type StateFilter = IntakeFilter;
+export type StateFilter = CrenupFilter;
 
 const STATE_DOT: Record<StateFactKey, string> = {
   seeded: TONES.indigo.dot,
@@ -64,7 +64,7 @@ export function NotificationFilters({
   total: number;
   counts: NotificationsPayload["counts"];
   stateCounts: Record<StateFactKey, number>;
-  functionCounts: Record<IntakeFunctionKey, number>;
+  functionCounts: Record<CrenupStepKey, number>;
   placeQuery: string;
   updatedLabel: string;
   pending: boolean;
@@ -81,7 +81,7 @@ export function NotificationFilters({
     (t) => includeSteps || t !== STEP_TYPE,
   );
   const showStepsToggle = showDomains && (domain === "all" || domain === "atlas");
-  const intake = domain === "atlas";
+  const Crenup = domain === "atlas";
 
   return (
     <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-y backdrop-blur-md">
@@ -124,17 +124,17 @@ export function NotificationFilters({
         <div className="flex min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <FilterSegment
             active={
-              intake ? stateFilter === "all" : typeFilter === "all"
+              Crenup ? stateFilter === "all" : typeFilter === "all"
             }
             label="All"
             count={total}
             onClick={() =>
-              intake
+              Crenup
                 ? onStateFilterChange("all")
                 : onTypeFilterChange("all")
             }
           />
-          {intake
+          {Crenup
             ? STATE_FACTS.filter(
                 // No event stamper writes the acceptance bits yet, so their
                 // segments would count 0 forever and read as a broken feed.
@@ -176,7 +176,7 @@ export function NotificationFilters({
                   : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")
               }
             >
-              Intaker steps
+              Enricher steps
             </button>
           )}
           {onPlaceQueryChange && (
@@ -207,9 +207,9 @@ export function NotificationFilters({
         </div>
       </div>
 
-      {intake && (
+      {Crenup && (
         <ChipRow>
-          {INTAKE_FUNCTIONS.map((fact) => (
+          {CRENUP_STEPS.map((fact) => (
             <FilterSegment
               key={fact.key}
               active={stateFilter === `fn:${fact.key}`}
@@ -225,7 +225,7 @@ export function NotificationFilters({
 }
 
 function ChipRow({ children }: { children: ReactNode }) {
-  // Eleven Intaker functions. Same story as the segment row above: they only
+  // Eleven Enricher functions. Same story as the segment row above: they only
   // divide the width evenly once there is width to divide.
   return (
     <div className="border-border flex w-full overflow-x-auto scrollbar-none border-t">

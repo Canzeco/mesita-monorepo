@@ -139,7 +139,7 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
   const complete = missing.length === 0;
-  // Pipeline state lives in place chrome (MESITA-896). When Intaker is mid-
+  // Pipeline state lives in place chrome (MESITA-896). When Enricher is mid-
   // flight, a quiet footnote here explains why completeness chips may lag.
   const enriching =
     place.content_state === "generating" || place.content_state === "queued";
@@ -227,7 +227,7 @@ export function ProfileCompleteness({ place }: { place: MockPlaceProfile }) {
           )}
           {enriching ? (
             <p className="text-muted-foreground type-label">
-              Intaker is still filling this profile — gaps may close on their own.
+              Enricher is still filling this profile — gaps may close on their own.
             </p>
           ) : null}
         </div>

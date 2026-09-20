@@ -301,7 +301,7 @@ export function completedPulsePieces(
  * The high-water mark straight off a `places.enrichment` jsonb value — the
  * materialized column (MESITA-1249), not a fold over the event log. THE
  * shared reader: business-web-list-places and admin-web-search-places (and,
- * for ranking, discovery-place.ts's Intake-high-water fold, MESITA-1598)
+ * for ranking, discovery-place.ts's Crenup-high-water fold, MESITA-1598)
  * all read the same column and must never each parse it slightly
  * differently. Anything malformed reads 0 — the CREATED floor — rather than
  * throwing.

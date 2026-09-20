@@ -25,8 +25,8 @@ import {
   type DomainKey,
   feedEntryKey,
   groupConsecutiveSteps,
-  intakeFunctionCounts,
-  itemMatchesIntakeFilter,
+  crenupStepCounts,
+  itemMatchesCrenupFilter,
   pinReports,
   stateFactCounts,
   typesForFetch,
@@ -126,7 +126,7 @@ export function GlobalPerformanceClient({
     return data.notifications.filter(
       (n) =>
         (typeFilter === "all" || n.type === typeFilter) &&
-        (stateFilter === "all" || itemMatchesIntakeFilter(n, stateFilter)) &&
+        (stateFilter === "all" || itemMatchesCrenupFilter(n, stateFilter)) &&
         (q === "" || (n.place?.name ?? "").toLowerCase().includes(q)),
     );
   }, [data.notifications, placeQuery, typeFilter, stateFilter]);
@@ -136,7 +136,7 @@ export function GlobalPerformanceClient({
     [data.notifications],
   );
   const functionCounts = useMemo(
-    () => intakeFunctionCounts(data.notifications),
+    () => crenupStepCounts(data.notifications),
     [data.notifications],
   );
 

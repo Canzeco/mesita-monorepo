@@ -5,7 +5,7 @@ import {
   computeEnrichTickCost,
   computeEnrichmentCost,
 } from "./cost-model";
-import type { IntakeSettings } from "./intake-guards";
+import type { CrenupSettings } from "./crenup-guards";
 
 const base = {
   quality: "economy" as const,
@@ -77,7 +77,7 @@ describe("computeEnrichmentCost", () => {
   });
 });
 
-const settings: IntakeSettings = {
+const settings: CrenupSettings = {
   gatherGoogleImages: 10,
   gatherInstagramDepth: 30,
   gatherReviews: 100,

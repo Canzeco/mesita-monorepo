@@ -56,7 +56,7 @@ Deno.test("Verified is the approved-proof flag, never an owner row", () => {
   assertEquals(placeStateFacts({ ...BASE, verified: true }).verified, true);
 });
 
-Deno.test("functions map only completed Intake keys", () => {
+Deno.test("functions map only completed Crenup keys", () => {
   const facts = placeStateFacts({
     ...BASE,
     functions: {

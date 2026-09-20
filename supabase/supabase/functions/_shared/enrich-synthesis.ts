@@ -149,7 +149,7 @@ export async function synthesizeProfile(input: {
   }
 }
 
-// Exported so admin Intake can RENDER it (intake-prompts.ts → the console). The
+// Exported so admin Crenup can RENDER it (crenup-prompts.ts → the console). The
 // console shows this exact constant, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const PRESENTATION_INSTRUCTIONS =
@@ -165,7 +165,7 @@ export const PRESENTATION_INSTRUCTIONS =
   "(\\n\\n); never one continuous block. Never invent ratings, reviewer " +
   "quotes, prices, or a chef's name.";
 
-// The per-place message. Pure and exported so intake-prompts.ts can render the
+// The per-place message. Pure and exported so crenup-prompts.ts can render the
 // REAL template with sentinel values — the console never re-types this prose.
 export function buildPresentationInput(place: {
   name: string;

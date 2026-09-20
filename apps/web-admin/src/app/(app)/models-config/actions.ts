@@ -9,7 +9,7 @@
 // on the public.app_config
 // singleton. Live binding (MESITA-941): readers bind supabase / enricher.model /
 // lineup / memo.* via _shared/models-config.ts; enricher.perplexity in the blob
-// is still staged (Intaker uses atlas_perplexity_preset). Intaker text/image
+// is still staged (Enricher uses atlas_perplexity_preset). Enricher text/image
 // quality + search preset are atlas_* columns saved via the enricher section
 // from this page (MESITA-1811). No client ever touches the DB.
 //
@@ -24,8 +24,8 @@ import {
 } from "../enricher-config/actions";
 import {
   coerceModelsConfig,
-  DEFAULT_INTAKER_MODEL_SETTINGS,
-  type IntakerModelSettings,
+  DEFAULT_ENRICHER_MODEL_SETTINGS,
+  type EnricherModelSettings,
   type ModelsConfig,
 } from "./types";
 
@@ -64,15 +64,15 @@ type AtlasModelFields = {
   atlasPerplexityPreset: PerplexityPreset;
 };
 
-type GetIntakerModelSettingsResult =
-  | { ok: true; data: IntakerModelSettings }
+type GetEnricherModelSettingsResult =
+  | { ok: true; data: EnricherModelSettings }
   | { ok: false; error: string };
 
-/** Intaker quality tiers + search preset — atlas_* on enrichment_config. */
-export async function getIntakerModelSettings(): Promise<GetIntakerModelSettingsResult> {
+/** Enricher quality tiers + search preset — atlas_* on enrichment_config. */
+export async function getEnricherModelSettings(): Promise<GetEnricherModelSettingsResult> {
   const r = await efInvoke<AtlasModelFields>("admin-web-get-config", {});
   if (!r.ok) return { ok: false, error: r.error };
-  const d = DEFAULT_INTAKER_MODEL_SETTINGS;
+  const d = DEFAULT_ENRICHER_MODEL_SETTINGS;
   return {
     ok: true,
     data: {
@@ -83,13 +83,13 @@ export async function getIntakerModelSettings(): Promise<GetIntakerModelSettings
   };
 }
 
-type UpdateIntakerModelSettingsResult =
-  | { ok: true; data: IntakerModelSettings }
+type UpdateEnricherModelSettingsResult =
+  | { ok: true; data: EnricherModelSettings }
   | { ok: false; error: string };
 
-export async function updateIntakerModelSettings(
-  settings: IntakerModelSettings,
-): Promise<UpdateIntakerModelSettingsResult> {
+export async function updateEnricherModelSettings(
+  settings: EnricherModelSettings,
+): Promise<UpdateEnricherModelSettingsResult> {
   const r = await updateAtlasConfig({
     synthesisQuality: settings.synthesisQuality,
     visionQuality: settings.visionQuality,

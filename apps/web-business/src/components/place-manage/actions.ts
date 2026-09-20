@@ -55,7 +55,7 @@ export type PlaceHit = {
   google_name: string | null;
   category: string | null;
   category_label: string | null;
-  /** Families: Intaker-inferred (stored); membership derives live. */
+  /** Families: Enricher-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
   state: string | null;
   address: string | null;
@@ -83,7 +83,7 @@ export type PlaceHit = {
   requested: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count: number;
-  /** Intaker pipeline mid-flight (content_state generating/queued). */
+  /** Enricher pipeline mid-flight (content_state generating/queued). */
   enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
@@ -273,12 +273,12 @@ export type AdminPlace = {
   mesita_name?: string | null;
   /**
    * Cached Google Places displayName. Not an identity spine (google_place_id
-   * is) — it changes whenever the Google listing does. Intaker-only write.
+   * is) — it changes whenever the Google listing does. Enricher-only write.
    */
   google_name?: string | null;
   category: string | null;
   category_label: string | null;
-  /** Families: Intaker-inferred (stored); membership derives live. */
+  /** Families: Enricher-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
   state: string | null;
   currency: string | null;
@@ -347,7 +347,7 @@ export type AdminPlace = {
   facebook_followers: number | null;
   created_at: string | null;
   updated_at: string | null;
-  // Stamped by the Intaker's final write — lets the Meta box attribute
+  // Stamped by the Enricher's final write — lets the Meta box attribute
   // updated_at to the AI (≈ same instant) vs a human edit (later).
   enriched_at: string | null;
   // On-Update embeddings (MESITA-720) — human blurb + vector; super-admin
@@ -389,7 +389,7 @@ export type AdminPlace = {
     at: string | null;
     detail: string | null;
   }> | null;
-  /** Intaker lifecycle on the place row. Overview already carries this. */
+  /** Enricher lifecycle on the place row. Overview already carries this. */
   content_state?: string | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
@@ -1037,7 +1037,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
   };
 }
 
-// ── Per-place Intaker inspector (admin-only) ────────────────────────────
+// ── Per-place Enricher inspector (admin-only) ────────────────────────────
 // Internal enricher output for the Place editor: per-photo metadata for the
 // ⓘ inspector (keyed by public_url, matches AdminPlace.photos[]) + the place's
 // enrichment state. Super-admin gated EF.
@@ -1119,14 +1119,14 @@ export async function setPlaceEnrichmentSchedule(
   return { ok: true, data: r.data.schedule };
 }
 
-// Which slice of the Intaker pipeline a manual re-enrich re-runs:
+// Which slice of the Enricher pipeline a manual re-enrich re-runs:
 //   full     → research + analysis + contents (fresh gather; refreshes phone)
 //   analysis → analysis + contents, reusing stored gathered (no re-gather)
 //   contents → contents only, reusing stored gathered + analysis (cheapest)
 // The lighter modes need a prior full run; the EF rejects (422) otherwise.
 export type ReenrichMode = "full" | "analysis" | "contents";
 
-// Manually re-run the Intaker pipeline for one place. Re-seeds place_research
+// Manually re-run the Enricher pipeline for one place. Re-seeds place_research
 // to the stage implied by `mode`; the cron poller takes it from there. Runs
 // ASYNC — poll getPlaceEnrichment to watch progress.
 export async function enrichPlace(

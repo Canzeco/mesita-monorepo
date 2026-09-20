@@ -16,7 +16,7 @@ const SERP_SCHEMA = {
 // consumed twice downstream: it anchors the Resolver's link selection and seeds the
 // final Presentation synthesis. So it must be identity-rich (what/where/why-notable) yet
 // strictly non-authoritative — no facts a later step will persist as truth.
-// Exported so admin Intake can RENDER it (intake-prompts.ts → the console). The
+// Exported so admin Crenup can RENDER it (crenup-prompts.ts → the console). The
 // console shows this exact constant, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const SCOUT_INSTRUCTIONS =
@@ -29,7 +29,7 @@ export const SCOUT_INSTRUCTIONS =
   "web; invent nothing. If you cannot find a place matching the given name and " +
   "location, prefer a null summary over guessing. Output ONLY JSON matching the schema.";
 
-// The per-place message. Pure and exported so intake-prompts.ts can render the
+// The per-place message. Pure and exported so crenup-prompts.ts can render the
 // REAL template with sentinel values — the console never re-types this prose.
 export function buildScoutInput(place: {
   name: string;

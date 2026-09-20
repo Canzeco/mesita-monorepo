@@ -141,7 +141,7 @@ jobs:
             exit 1
           fi
 
-      # MESITA-1362: Intake Sourcing get/update EFs are gone. A leftover
+      # MESITA-1362: Crenup Sourcing get/update EFs are gone. A leftover
       # folder or config.toml block would re-deploy the unread matrix.
       - name: No leftover sourcing-config functions
         working-directory: supabase/supabase

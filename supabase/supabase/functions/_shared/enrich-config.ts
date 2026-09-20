@@ -1,4 +1,4 @@
-// Intaker pipeline: run-time config + shared types.
+// Enricher pipeline: run-time config + shared types.
 //
 // Every knob lives in app_config.enrichment_config (MESITA-1248 fold of the
 // leftover atlas_* scalars) and is read at run time — the DB is the single
@@ -107,7 +107,7 @@ export type EnrichConfig = {
   // GATHER caps — how many to PULL per source before anything else.
   gatherGoogleImages: number;
   // Instagram: DEPTH = newest posts pulled. POSTS (likes-keep) follows vision Y
-  // from Intake (≤ depth). Google photos already come best-first — no likes step.
+  // from Crenup (≤ depth). Google photos already come best-first — no likes step.
   gatherInstagramDepth: number;
   gatherInstagramPosts: number;
   // How many Google reviews the Apify Maps scrape pulls (0–googleReviews.max),
@@ -138,7 +138,7 @@ export type EnrichConfig = {
   perRunCostCapUsd: number;
 };
 
-// Read the Intake admin knobs from app_config.enrichment_config (row id=1).
+// Read the Crenup admin knobs from app_config.enrichment_config (row id=1).
 // The select is a single string LITERAL on purpose: supabase-js infers the
 // row type only from a literal argument — anything that widens to `string`
 // falls back to GenericStringError.

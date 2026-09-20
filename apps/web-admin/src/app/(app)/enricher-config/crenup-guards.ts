@@ -6,7 +6,7 @@ export const MAX_GOOGLE_COLLECT = 10;
 export const MAX_INSTAGRAM_COLLECT = 30;
 export const MAX_SAVE_IMAGES = 10; // DB CHECK app_config_atlas_save_total_images_range
 
-export type IntakeSettings = {
+export type CrenupSettings = {
   gatherGoogleImages: number;
   gatherInstagramDepth: number;
   gatherReviews: number;
@@ -32,13 +32,13 @@ const clampN = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(v)));
 
 /** A failed GET disables Save — defaults must not overwrite live. */
-export function intakeSaveBlocked(
+export function crenupSaveBlocked(
   settingsLoadError: string | null,
 ): string | null {
   return settingsLoadError;
 }
 
-export function clampFunnel(s: IntakeSettings): IntakeSettings {
+export function clampFunnel(s: CrenupSettings): CrenupSettings {
   const gatherGoogleImages = clampN(s.gatherGoogleImages, 1, MAX_GOOGLE_COLLECT);
   const gatherInstagramDepth = clampN(
     s.gatherInstagramDepth,

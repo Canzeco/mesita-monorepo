@@ -366,25 +366,25 @@ Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   //
   // The high-water gradient is what discriminates among ADMITTED rows, which
   // is the only population this signal is asked about.
-  const thin = enriched(place({ enriched: true, intakeHighWater: 2 }));
-  const full = enriched(place({ enriched: true, intakeHighWater: PULSE_TOTAL }));
+  const thin = enriched(place({ enriched: true, crenupHighWater: 2 }));
+  const full = enriched(place({ enriched: true, crenupHighWater: PULSE_TOTAL }));
   assert(full > thin, `a full profile must outrank a thin one: ${full} vs ${thin}`);
   assertAlmostEquals(full, 1, 1e-12);
   assertAlmostEquals(thin, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.2, 1e-12);
   // Floor at the bottom of the gradient too — never 0, which would delete the
   // place from a multiplicative blend.
-  assertAlmostEquals(enriched(place({ enriched: true, intakeHighWater: 0 })), ENRICHED_OFF, 1e-12);
+  assertAlmostEquals(enriched(place({ enriched: true, crenupHighWater: 0 })), ENRICHED_OFF, 1e-12);
   // And the gradient is monotone across the whole queue, not just at the ends.
   let prev = -1;
   for (let hw = 0; hw <= PULSE_TOTAL; hw++) {
-    const s = enriched(place({ enriched: true, intakeHighWater: hw }));
+    const s = enriched(place({ enriched: true, crenupHighWater: hw }));
     assert(s > prev, `high-water ${hw} must score above ${hw - 1}`);
     prev = s;
   }
 });
 
 Deno.test("without the high-water side-read Enriched falls back to the binary", () => {
-  // A surface that never ran `attachIntakeHighWater` carries no high-water
+  // A surface that never ran `attachCrenupHighWater` carries no high-water
   // number, and the binary is the honest answer there — not an abstention.
   assertEquals(enriched(place({ enriched: true })), 1);
   assertEquals(enriched(place({ enriched: false })), ENRICHED_OFF);
@@ -392,13 +392,13 @@ Deno.test("without the high-water side-read Enriched falls back to the binary", 
   // high-water number: the googleOnly exclusion the projection makes by name
   // must not be climbable by a side-read.
   assertEquals(
-    enriched(place({ enriched: false, intakeHighWater: PULSE_TOTAL })),
+    enriched(place({ enriched: false, crenupHighWater: PULSE_TOTAL })),
     ENRICHED_OFF,
   );
 });
 
 Deno.test("an absent enrichment fact reads OFF, and is always a finite number", () => {
-  // The opposite of the retired intakeHighWater rule, deliberately: high-water
+  // The opposite of the retired crenupHighWater rule, deliberately: high-water
   // was an opt-in side-read, while `enriched` is set by the projection every
   // ranking engine runs through. Absent means the row said nothing, and "no
   // evidence Mesita touched this" is honestly the floor, not full credit.
@@ -491,14 +491,14 @@ Deno.test("the four (partner x enriched) products, written by hand", () => {
 });
 
 Deno.test("MESITA-1598's own scenario survives the split: an enriched free place outranks an unenriched partner", () => {
-  // The Intake high-water test of the same name, carried across the split
+  // The Crenup high-water test of the same name, carried across the split
   // with the gradient intact: the free place has finished the whole queue,
   // the partner has not started it. The ORDER the decision named is exactly
   // preserved, which is what makes this a refactor and not a re-tune.
   const enrichedFree = partnered(place({ plan: "free" })) *
-    enriched(place({ enriched: true, intakeHighWater: PULSE_TOTAL }));
+    enriched(place({ enriched: true, crenupHighWater: PULSE_TOTAL }));
   const thinPartner = partnered(place({ plan: "pro" })) *
-    enriched(place({ enriched: true, intakeHighWater: 0 }));
+    enriched(place({ enriched: true, crenupHighWater: 0 }));
   assert(
     enrichedFree > thinPartner,
     `expected enriched free (${enrichedFree}) > unenriched partner (${thinPartner})`,

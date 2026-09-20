@@ -183,6 +183,6 @@ Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () 
   assertEquals(ugly.request_lifecycle, "requested");
 });
 
-Deno.test("default threshold is the Intake example (5)", () => {
+Deno.test("default threshold is the Crenup example (5)", () => {
   assertEquals(DEFAULT_REQUEST_THRESHOLD, 5);
 });

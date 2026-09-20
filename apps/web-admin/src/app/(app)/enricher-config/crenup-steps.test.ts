@@ -6,12 +6,12 @@ import {
   chipsFor,
   flowTag,
   flowTagFor,
-  INTAKE_SUBFUNCTIONS,
-} from "./intake-functions";
+  CRENUP_STEP_SPECS,
+} from "./crenup-steps";
 
-describe("intake subfunctions", () => {
+describe("Crenup subfunctions", () => {
   it("is eleven, Seed through Embedding", () => {
-    expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
+    expect(CRENUP_STEP_SPECS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
       "details",
@@ -64,10 +64,10 @@ describe("intake subfunctions", () => {
     expect(flowTag(["create"])).toBe("Create");
     expect(flowTag(["enrich"])).toBe("Enrich");
     expect(flowTag(["create", "enrich"])).toBe("Create + Enrich");
-    expect(INTAKE_SUBFUNCTIONS.find((s) => s.key === "seed")?.flows).toEqual([
+    expect(CRENUP_STEP_SPECS.find((s) => s.key === "seed")?.flows).toEqual([
       "create",
     ]);
-    expect(INTAKE_SUBFUNCTIONS.find((s) => s.key === "serp")?.flows).toEqual([
+    expect(CRENUP_STEP_SPECS.find((s) => s.key === "serp")?.flows).toEqual([
       "enrich",
     ]);
     expect(flowTagFor("seed")).toBe("Create");
@@ -80,7 +80,7 @@ describe("intake subfunctions", () => {
 
 describe("Create and Enrich boxes pin live estimates", () => {
   it("renders a FlowEstimate on both instances", () => {
-    const src = readFileSync(join(__dirname, "IntakeClient.tsx"), "utf8");
+    const src = readFileSync(join(__dirname, "CrenupClient.tsx"), "utf8");
     expect(src.match(/FlowEstimate/g)?.length).toBeGreaterThanOrEqual(2);
     expect(src).toContain("computeCreateCost");
     expect(src).toContain("computeEnrichTickCost");
@@ -94,7 +94,7 @@ describe("Create and Enrich boxes pin live estimates", () => {
   });
 
   it("does not restack Create and Enrich as family boxes on Functions", () => {
-    const src = readFileSync(join(__dirname, "IntakeClient.tsx"), "utf8");
+    const src = readFileSync(join(__dirname, "CrenupClient.tsx"), "utf8");
     expect(src).not.toContain("FunctionFamily");
     expect(src).not.toContain("12 modules");
     expect(src).not.toContain("Create explained");
@@ -110,7 +110,7 @@ describe("Create and Enrich boxes pin live estimates", () => {
 
 describe("Name and Summary share Embedding", () => {
   it("is one chip, never two Name/Summary pills", () => {
-    const names = INTAKE_SUBFUNCTIONS.map((s) => s.name);
+    const names = CRENUP_STEP_SPECS.map((s) => s.name);
     expect(names).toContain("Embedding");
     expect(names).not.toContain("Semantic");
     expect(names).not.toContain("Name");

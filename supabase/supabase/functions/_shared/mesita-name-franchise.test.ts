@@ -1,6 +1,6 @@
 // Source guard: the FRANCHISE RULE stays in BOTH Mesita Name prompts.
 //
-// The Description function owns the Mesita Name (Intake §A, function 4 on
+// The Description function owns the Mesita Name (Crenup §A, function 4 on
 // CREATE and function 9 on ENRICH), and it is inferred by a prompt — there is
 // no deterministic code path a type error could protect. Two separate prompts
 // write the same field:

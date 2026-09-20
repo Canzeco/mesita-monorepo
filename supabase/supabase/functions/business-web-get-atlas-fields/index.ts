@@ -1,6 +1,6 @@
 // Supabase Edge Function — business-web-get-atlas-fields
 //
-// The operator's door onto the Intaker vocabulary the Profile editor needs:
+// The operator's door onto the Enricher vocabulary the Profile editor needs:
 // Families, place categories, the tag catalog and facets, and the
 // enforced field limits. Twin of `admin-web-get-atlas-fields`; both are a
 // guard plus `_shared/atlas-fields.ts` (MESITA-1740).

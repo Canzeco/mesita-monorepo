@@ -1035,7 +1035,7 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     mesita_name: null,
     google_name: "Panadería Norte",
     // The undefined category — a real row, and the one that makes the Family
-    // field fall back to the Intaker's inferred keys with "(inferred)".
+    // field fall back to the Enricher's inferred keys with "(inferred)".
     category: "undefined",
     category_label: "Bakery",
     family_keys: ["cafes_bakeries"],

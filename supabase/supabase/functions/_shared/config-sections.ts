@@ -3,7 +3,7 @@
 // Ten jsonb columns on the public.app_config singleton, one per admin console
 // page, reached through exactly two edge functions (MESITA-1724):
 //
-//   POST admin-web-get-config     { }                  -> the Intake payload
+//   POST admin-web-get-config     { }                  -> the Crenup payload
 //                                 { section: "<key>" } -> that section
 //   POST admin-web-update-config  { section: "<key>", … }
 //

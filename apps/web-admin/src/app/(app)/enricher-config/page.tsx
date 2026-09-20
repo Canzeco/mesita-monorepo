@@ -1,19 +1,19 @@
 import { getAtlasSettings } from "./actions";
-import { IntakeClient } from "./IntakeClient";
-import { type IntakeSettings } from "./intake-guards";
+import { CrenupClient } from "./CrenupClient";
+import { type CrenupSettings } from "./crenup-guards";
 import {
   getVerificationConfig,
   type VerificationConfig,
 } from "../verification-config/actions";
 
-// INTAKE — how a place becomes a profile. Models · Create · Enrich ·
+// CRENUP — how a place becomes a profile. Models · Create · Enrich ·
 // Functions · Verification. Search eligibility is Discovery › Map, not this page.
 //
 // One GET, seeded server-side. A failed load blocks Save so client
 // defaults cannot overwrite the live singleton (MESITA-737).
 export const dynamic = "force-dynamic";
 
-const SETTINGS_FALLBACK: IntakeSettings = {
+const SETTINGS_FALLBACK: CrenupSettings = {
   gatherGoogleImages: 10,
   gatherInstagramDepth: 30,
   gatherReviews: 100,
@@ -41,14 +41,14 @@ const VERIFICATION_FALLBACK: VerificationConfig = {
   autoVerifyAiEmail: true,
 };
 
-export default async function IntakePage() {
+export default async function CrenupPage() {
   const [settings, verification] = await Promise.all([
     getAtlasSettings(),
     getVerificationConfig(),
   ]);
 
   return (
-    <IntakeClient
+    <CrenupClient
       initialSettings={
         settings.ok
           ? {
@@ -78,9 +78,9 @@ export default async function IntakePage() {
       }
       settingsUpdatedAt={settings.ok ? settings.data.updatedAt : null}
       settingsLoadError={settings.ok ? null : settings.error}
-      // Read-only, straight from `_shared/intake-prompts.ts`. No fallback: a
+      // Read-only, straight from `_shared/crenup-prompts.ts`. No fallback: a
       // prompt the console invented would be worse than one it cannot show.
-      prompts={settings.ok ? (settings.data.intakePromptsMeta ?? []) : []}
+      prompts={settings.ok ? (settings.data.crenupPromptsMeta ?? []) : []}
       verificationConfig={
         verification.ok ? verification.config : VERIFICATION_FALLBACK
       }

@@ -13,7 +13,7 @@ import { ReadField } from "@/components/admin-ui/manage";
 //   · category defined → the category's FULL membership (1–2 families),
 //     re-derived LIVE from the current form value (unsaved edits update it);
 //   · category `undefined`/unknown → the stored family_keys (the families the
-//     Intaker inferred), suffixed "(inferred)";
+//     Enricher inferred), suffixed "(inferred)";
 //   · nothing known → ❓ Undefined.
 // While the catalog loads (or on catalog error) the field shows an em-dash —
 // same posture as an absent Google price. Never raw slugs, never a lie.
@@ -24,7 +24,7 @@ export function PlaceFamilyField({
 }: {
   /** Current form value of the Category select (may be unsaved). */
   category: string;
-  /** Stored place_profiles.family_keys — the Intaker's inferred families. */
+  /** Stored place_profiles.family_keys — the Enricher's inferred families. */
   familyKeys: string[] | null;
 }) {
   const [catalog, setCatalog] = useState<{

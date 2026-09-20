@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const strip = readFileSync(join(__dirname, "SectionStrip.tsx"), "utf8");
-const client = readFileSync(join(__dirname, "IntakeClient.tsx"), "utf8");
+const client = readFileSync(join(__dirname, "CrenupClient.tsx"), "utf8");
 
-describe("Intake section strip is wayfinding, not tabs", () => {
+describe("Crenup section strip is wayfinding, not tabs", () => {
   it("starts hidden and actually disappears while Models is on screen", () => {
     expect(strip).toContain("useState(false)");
     expect(strip).toContain("opacity-0");
@@ -34,15 +34,15 @@ describe("Intake section strip is wayfinding, not tabs", () => {
   });
 });
 
-describe("Intake save bar leaves module space", () => {
-  it("keeps pb-24 so Vote threshold can scroll clear of Save Intake", () => {
+describe("Crenup save bar leaves module space", () => {
+  it("keeps pb-24 so Vote threshold can scroll clear of Save Crenup", () => {
     expect(client).toContain("pb-24");
     expect(client).not.toContain("gap-4 pb-4");
   });
 });
 
-describe("Intake Models section is read-only reference", () => {
-  it("links to Models and does not save model tiers from Intake", () => {
+describe("Crenup Models section is read-only reference", () => {
+  it("links to Models and does not save model tiers from Crenup", () => {
     expect(client).toContain("Configure on Models ›");
     expect(client).toContain('href={MODELS_PARENT.href}');
     expect(client).toContain("Read-only reference — configure on Models.");

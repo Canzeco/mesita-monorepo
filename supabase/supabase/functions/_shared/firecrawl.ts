@@ -1,5 +1,5 @@
 // Shared Firecrawl helpers. Both the place create path
-// (`_shared/create-place.ts` / business-web create flows) and the Intaker
+// (`_shared/create-place.ts` / business-web create flows) and the Enricher
 // pipeline hit the same two Firecrawl endpoints with the same auth + timeout
 // boilerplate; this is the one place that knows how to call them. All calls
 // are best-effort — a missing key, a slow page, or a non-2xx response returns

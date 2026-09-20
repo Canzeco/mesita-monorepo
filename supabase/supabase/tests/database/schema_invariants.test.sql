@@ -647,7 +647,7 @@ select is(
 
 select has_column(
   'public', 'app_config', 'enrichment_config',
-  'app_config.enrichment_config holds the Intake knobs'
+  'app_config.enrichment_config holds the Crenup knobs'
 );
 
 select has_column(

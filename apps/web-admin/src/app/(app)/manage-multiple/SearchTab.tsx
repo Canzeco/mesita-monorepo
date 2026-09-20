@@ -254,7 +254,7 @@ export function SearchTab({
             >
               <ListPlus className="h-4 w-4" />
               Send {allPlaceIds.length}{" "}
-              {allPlaceIds.length === 1 ? "ID" : "IDs"} to Mesita Search / Intake
+              {allPlaceIds.length === 1 ? "ID" : "IDs"} to Mesita Search / Crenup
             </button>
           )}
 

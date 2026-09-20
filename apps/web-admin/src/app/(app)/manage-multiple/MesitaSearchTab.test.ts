@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { intakeCalled } from "./MesitaSearchTab";
+import { crenupCalled } from "./MesitaSearchTab";
 import type { PlaceHit } from "./actions";
-import { INTAKE_FUNCTIONS } from "@/lib/state-vocabulary";
+import { CRENUP_STEPS } from "@/lib/state-vocabulary";
 
 // A gap fixture (MESITA-1611): links (4) failed, social (5) and menu (7)
 // later completed. The high-water stops counting at the first gap by
@@ -57,42 +57,42 @@ const GAP_FIXTURE: PlaceHit = {
 };
 
 function functionByKey(key: string) {
-  const fn = INTAKE_FUNCTIONS.find((f) => f.key === key);
-  if (!fn) throw new Error(`no INTAKE_FUNCTIONS entry for ${key}`);
+  const fn = CRENUP_STEPS.find((f) => f.key === key);
+  if (!fn) throw new Error(`no CRENUP_STEPS entry for ${key}`);
   return fn;
 }
 
-describe("intakeCalled — the honest per-function map (MESITA-1611)", () => {
+describe("crenupCalled — the honest per-function map (MESITA-1611)", () => {
   it("shows Social and Menu as called even though the high-water stalled at 3", () => {
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("social"))).toBe(true);
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("menu"))).toBe(true);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("social"))).toBe(true);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("menu"))).toBe(true);
   });
 
   it("still shows the failed function as called (it ran; it just failed)", () => {
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("links"))).toBe(true);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("links"))).toBe(true);
   });
 
   it("shows a function absent from the map, or explicitly pending, as not called", () => {
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("images"))).toBe(false);
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("reviews"))).toBe(false);
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("embedding"))).toBe(false);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("images"))).toBe(false);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("reviews"))).toBe(false);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("embedding"))).toBe(false);
   });
 
   it("reads Seed off `seeded`, never off the map or the high-water", () => {
-    expect(intakeCalled(GAP_FIXTURE, functionByKey("seed"))).toBe(true);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("seed"))).toBe(true);
     expect(
-      intakeCalled({ ...GAP_FIXTURE, seeded: false }, functionByKey("seed")),
+      crenupCalled({ ...GAP_FIXTURE, seeded: false }, functionByKey("seed")),
     ).toBe(false);
   });
 
   it("falls back to the high-water comparison when the payload predates the map", () => {
     const legacy: PlaceHit = { ...GAP_FIXTURE, enrich_functions: null };
     // High-water is 3: pulse/details/serp called, links and everything after not.
-    expect(intakeCalled(legacy, functionByKey("serp"))).toBe(true);
-    expect(intakeCalled(legacy, functionByKey("links"))).toBe(false);
+    expect(crenupCalled(legacy, functionByKey("serp"))).toBe(true);
+    expect(crenupCalled(legacy, functionByKey("links"))).toBe(false);
     // The old bug this ticket exists to fix: with no map, a completed-after-
     // a-gap function reads as never-called.
-    expect(intakeCalled(legacy, functionByKey("social"))).toBe(false);
-    expect(intakeCalled(legacy, functionByKey("menu"))).toBe(false);
+    expect(crenupCalled(legacy, functionByKey("social"))).toBe(false);
+    expect(crenupCalled(legacy, functionByKey("menu"))).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Intake — one flat page, five modules, same kit as Discovery (no page
+// Crenup — one flat page, five modules, same kit as Discovery (no page
 // blurb). /sourcing-config redirects to Discovery; /verification-config
 // redirects here. A label never repeats its heading.
 export default function EnricherConfigLayout({
@@ -9,7 +9,7 @@ export default function EnricherConfigLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ConfigPageLayout eyebrow="Operations · Intake" title="Intake">
+    <ConfigPageLayout eyebrow="Operations · Crenup" title="Crenup">
       {children}
     </ConfigPageLayout>
   );

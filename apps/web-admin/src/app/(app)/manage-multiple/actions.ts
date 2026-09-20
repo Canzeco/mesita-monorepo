@@ -34,7 +34,7 @@ export type PulseBlock = {
   state: "failed" | "missing";
 };
 
-/** One Intake function's state, as the EF's shared fold ships it (mirrors
+/** One Crenup function's state, as the EF's shared fold ships it (mirrors
  *  web-business's EnrichFunctionState — no shared import between the two
  *  independent install roots). */
 export type EnrichFunctionState = {
@@ -52,7 +52,7 @@ export type PlaceHit = {
   google_name: string | null;
   category: string | null;
   category_label: string | null;
-  /** Families: Intaker-inferred (stored); membership derives live. */
+  /** Families: Enricher-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
   state: string | null;
   address: string | null;
@@ -80,7 +80,7 @@ export type PlaceHit = {
   requested: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count: number;
-  /** Intaker pipeline mid-flight (content_state generating/queued). */
+  /** Enricher pipeline mid-flight (content_state generating/queued). */
   enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
@@ -98,7 +98,7 @@ export type PlaceHit = {
   enrich_pulse_labels: string[];
   /** Why the queue stopped where it did — null once it has finished. */
   enrich_pulse_blocked: PulseBlock | null;
-  /** The per-function map (MESITA-1611), keyed by Intake function. Absent
+  /** The per-function map (MESITA-1611), keyed by Crenup function. Absent
    *  means the payload predates the field — the high-water above is still
    *  the fallback, and it alone cannot show a function that completed AFTER
    *  an earlier one failed, which is exactly the gap this map closes. */
@@ -278,7 +278,7 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
   return { ok: true, data: true };
 }
 
-// ── Intake ───────────────────────────────────────────────────────────────
+// ── Crenup ───────────────────────────────────────────────────────────────
 
 // Re-enrichment depth:
 //   full     → research + analysis + contents (fresh gather; refreshes phone)
@@ -287,7 +287,7 @@ export async function deletePlace(placeId: string): Promise<Result<true>> {
 // The lighter modes need a prior full run; the EF rejects (422) otherwise.
 export type ReenrichMode = "full" | "analysis" | "contents";
 
-// Manually re-run the Intaker pipeline for one place. Re-seeds place_research
+// Manually re-run the Enricher pipeline for one place. Re-seeds place_research
 // to the stage implied by `mode`; the cron poller takes it from there. Runs
 // ASYNC — the batch row reports the trigger, not the finish.
 export async function enrichPlace(

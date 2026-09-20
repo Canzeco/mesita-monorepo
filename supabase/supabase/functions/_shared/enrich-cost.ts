@@ -1,4 +1,4 @@
-// Intaker per-run spend ledger. Records estimated USD as each paid step
+// Enricher per-run spend ledger. Records estimated USD as each paid step
 // completes so a run can persist gathered.cost. It does NOT abort a run.
 // A dollar cap was MESITA-624; Pato retired it — collect / analyze knobs and
 // the five-places-per-tick cron are the spend bounds.

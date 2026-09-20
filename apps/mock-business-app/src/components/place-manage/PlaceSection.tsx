@@ -20,10 +20,10 @@
 //   3. The save builds the next PROFILE rather than a column patch. The real
 //      `boxToPatch` exists so an untouched box never re-sends its columns —
 //      re-sending `description` would count as an operator overwrite of
-//      Intaker output — and there is no such hazard over a fixture. The
+//      Enricher output — and there is no such hazard over a fixture. The
 //      per-box dirty flags stay: they are what the save bar names.
 //   4. The photo dialog is the "not analyzed" branch only. Profile passes
-//      `meta={null}` in the real file too (per-photo Intaker analysis lives on
+//      `meta={null}` in the real file too (per-photo Enricher analysis lives on
 //      the Admin tab — a restaurant reading vision copy as if it were theirs is
 //      the bug MESITA-1740 named), so everything under the other branch is
 //      already unreachable there.
@@ -168,7 +168,7 @@ function PriceDisplay({
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
-// Address is deliberately absent: it is native (Google/Intaker-sourced) and
+// Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // business-web-update-place rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
@@ -229,7 +229,7 @@ function formToProfile(f: Form): Partial<MockPlaceProfile> {
     mesita_name: mesitaName.length > 0 ? mesitaName : null,
     description: nz(f.description.slice(0, FIELD_LIMITS.descriptionMax)),
     tags: f.tags.slice(0, FIELD_LIMITS.tagsPerPlaceMax),
-    // decision: Pato (MESITA-469) — admin may set category (Intaker + Admin + Business).
+    // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
     category: nz(f.category) || "undefined",
     hours: Object.keys(hours).length > 0 ? hours : null,
     phone: nz(f.phone),
@@ -405,7 +405,7 @@ export function PlaceSection({
   const removePhoto = (idx: number) =>
     setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-photo Intaker analysis lives on the Admin tab. The ⓘ dialog on
+  // Per-photo Enricher analysis lives on the Admin tab. The ⓘ dialog on
   // Profile only has gallery order — vision text and SERP are operator
   // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
@@ -507,7 +507,7 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
-      {/* Location is native — Google Places seed + Intaker synthesis.
+      {/* Location is native — Google Places seed + Enricher synthesis.
           The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
@@ -960,7 +960,7 @@ function PhotosEditor({
 
 // Gallery order for the tile you are curating, and nothing else. The real
 // dialog has a second half for an analyzed image — source chip, caption,
-// likes, per-source metadata rows, the Intaker's vision text — which Profile
+// likes, per-source metadata rows, the Enricher's vision text — which Profile
 // never reaches, because it passes `meta={null}` on purpose (MESITA-1740).
 function MediaMetaDialog({
   url,
@@ -1031,7 +1031,7 @@ function MediaMetaDialog({
 
           <p className="text-muted-foreground text-sm italic">
             No information for this image yet — it hasn&rsquo;t been analyzed by
-            the Intaker.
+            the Enricher.
           </p>
         </div>
       </div>

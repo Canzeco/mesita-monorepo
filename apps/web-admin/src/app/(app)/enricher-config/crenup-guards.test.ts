@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   clampFunnel,
-  intakeSaveBlocked,
-  type IntakeSettings,
-} from "./intake-guards";
+  crenupSaveBlocked,
+  type CrenupSettings,
+} from "./crenup-guards";
 
-const seed: IntakeSettings = {
+const seed: CrenupSettings = {
   gatherGoogleImages: 10,
   gatherInstagramDepth: 30,
   gatherReviews: 100,
@@ -28,13 +28,13 @@ const seed: IntakeSettings = {
   requestThreshold: 5,
 };
 
-describe("intakeSaveBlocked", () => {
+describe("crenupSaveBlocked", () => {
   it("lets Save through when the GET succeeded", () => {
-    expect(intakeSaveBlocked(null)).toBeNull();
+    expect(crenupSaveBlocked(null)).toBeNull();
   });
 
-  it("blocks Save when the Intaker GET fails — client defaults must not POST", () => {
-    expect(intakeSaveBlocked("timeout")).toBe("timeout");
+  it("blocks Save when the Enricher GET fails — client defaults must not POST", () => {
+    expect(crenupSaveBlocked("timeout")).toBe("timeout");
   });
 });
 

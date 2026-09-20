@@ -70,7 +70,7 @@ function normalisePlaceTags(value: unknown): string[] | null {
     clean.push(norm);
     if (clean.length >= MAX_TAGS) break;
   }
-  // Strip mutually exclusive catalog pairs (same rules as Intaker).
+  // Strip mutually exclusive catalog pairs (same rules as Enricher).
   return sanitizePlaceTags(clean).slice(0, MAX_TAGS);
 }
 
@@ -95,7 +95,7 @@ type UpdateBody = {
   // can't grant itself Partner (plan=pro; ultra legacy) with a plain profile
   // update. The per-place checkout that used to own this is retired
   // (MESITA-1889).
-  // NOTE: `address` is native (Google/Intaker-sourced) and deliberately NOT
+  // NOTE: `address` is native (Google/Enricher-sourced) and deliberately NOT
   // editable here — kept in the type only so stale clients get the reject.
   address?: string | null;
   closes_at?: string | null;
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         ok: false,
         code: "google_name_via_enrich",
         error:
-          "google_name is the cached Google Places label, refreshed by the Intaker. Change it on the Google Business Profile, then re-enrich. To label the place inside Mesita, set mesita_name.",
+          "google_name is the cached Google Places label, refreshed by the Enricher. Change it on the Google Business Profile, then re-enrich. To label the place inside Mesita, set mesita_name.",
       },
       400,
     );
@@ -280,14 +280,14 @@ Deno.serve(async (req) => {
   }
   if ("address" in body) {
     // Address is native — seeded from Google Places and refined by the
-    // Intaker, which writes public.place_profiles directly. Reject so stale clients
+    // Enricher, which writes public.place_profiles directly. Reject so stale clients
     // learn the contract — same posture as `price_level` and `plan`.
     return json(
       {
         ok: false,
         code: "address_via_enrich",
         error:
-          "address is set from Google Places / the Intaker and cannot be updated manually.",
+          "address is set from Google Places / the Enricher and cannot be updated manually.",
       },
       400,
     );

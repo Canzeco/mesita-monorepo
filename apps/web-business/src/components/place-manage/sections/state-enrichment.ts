@@ -1,7 +1,7 @@
 import {
-  INTAKE_FUNCTIONS,
-  intakeFunctionLabel,
-  type IntakeFunctionKey,
+  CRENUP_STEPS,
+  crenupStepLabel,
+  type CrenupStepKey,
 } from "@/lib/state-vocabulary";
 
 export type EnrichFunctionState = {
@@ -10,8 +10,8 @@ export type EnrichFunctionState = {
   detail: string | null;
 };
 
-export type IntakeFunctionRow = {
-  key: IntakeFunctionKey;
+export type CrenupStepRow = {
+  key: CrenupStepKey;
   n: number;
   label: string;
   /** Called or not — `"unknown"` when we have no map to read at all. */
@@ -40,8 +40,8 @@ function functionState(
 }
 
 /**
- * The eleven Intake functions the Intake box mentions — 0. Seed … 10. Embedding
- * — each called or not. Same keys as Intake, never a second ladder.
+ * The eleven Crenup functions the Crenup box mentions — 0. Seed … 10. Embedding
+ * — each called or not. Same keys as Crenup, never a second ladder.
  *
  * THREE ANSWERS, NOT TWO (MESITA-1608). A missing map and a map that says a
  * function has not run are different facts, and the console list renders them
@@ -51,17 +51,17 @@ function functionState(
  * something we never read. `seeded` carries its own unknown for the same
  * reason — Seed is derived from google_place_id, not from a pipeline stamp.
  */
-export function intakeFunctionRows(
+export function crenupStepRows(
   functions: Record<string, EnrichFunctionState> | null | undefined,
   seeded: boolean | "unknown",
-): IntakeFunctionRow[] {
+): CrenupStepRow[] {
   const noMap = functions == null;
-  return INTAKE_FUNCTIONS.map((def) => {
+  return CRENUP_STEPS.map((def) => {
     if (def.key === "seed") {
       return {
         key: def.key,
         n: def.n,
-        label: intakeFunctionLabel(def.n, def.label),
+        label: crenupStepLabel(def.n, def.label),
         on: seeded === "unknown" ? ("unknown" as const) : seeded === true,
         failed: false,
       };
@@ -70,7 +70,7 @@ export function intakeFunctionRows(
     return {
       key: def.key,
       n: def.n,
-      label: intakeFunctionLabel(def.n, def.label),
+      label: crenupStepLabel(def.n, def.label),
       on: noMap ? ("unknown" as const) : called(state),
       failed: state === "failed",
     };

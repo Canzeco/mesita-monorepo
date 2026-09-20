@@ -90,7 +90,7 @@ export type RunTrigger = TriggerKey | "manual";
 export type CostTier = "free" | "low" | "high";
 
 /**
- * ONE LADDER, ONE PLACE (Docs › Intake §A, §D).
+ * ONE LADDER, ONE PLACE (Docs › Crenup §A, §D).
  *
  * `functions` names which of the NINE enrich functions a purchase unit buys —
  * it is a

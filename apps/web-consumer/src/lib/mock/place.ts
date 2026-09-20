@@ -60,16 +60,16 @@ export type PlaceDetail = {
   updated_label: string;
   /** Alias of updated_label — kept for lean Place / overview callers. */
   last_updated_label: string;
-  // True while the Intaker is still building this place's profile across the
+  // True while the Enricher is still building this place's profile across the
   // FULL pipeline (research → analysis → contents). Driven by
   // places.content_state ∈ {queued, generating} — stays generating until
   // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
   /** Viewable profile (content_state ready). Ugly Create profiles are ready. */
   is_profile_ready: boolean;
-  /** Intaker finished (`places.enriched_at`). False → Enrich vote tab. */
+  /** Enricher finished (`places.enriched_at`). False → Enrich vote tab. */
   is_enriched: boolean;
-  /** Consumer vote count. Progress toward the Intake threshold. */
+  /** Consumer vote count. Progress toward the Crenup threshold. */
   request_count: number;
   request_threshold: number;
   /** This consumer already voted on this place. */

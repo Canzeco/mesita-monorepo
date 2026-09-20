@@ -72,7 +72,7 @@ export function SectionStrip() {
       >
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 overflow-x-auto scrollbar-none px-4 py-2 sm:px-6">
         <span className="text-muted-foreground type-meta mr-1.5 font-bold tracking-wider whitespace-nowrap uppercase">
-          Intake
+          Crenup
         </span>
         {LINKS.map((l) => (
           <a

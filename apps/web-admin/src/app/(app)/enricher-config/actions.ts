@@ -6,7 +6,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 export type SynthesisQuality = "economy" | "standard" | "high";
 
-// Perplexity Agent preset — the "search model" for the Intaker's function 3
+// Perplexity Agent preset — the "search model" for the Enricher's function 3
 // (the Scout, the SERP Summary) + function 4 (the Resolver, channel link discovery,
 // which grounds on function 3's text). Mirrors the Perplexity Agent API
 // preset names (docs.perplexity.ai/docs/agent-api/presets).
@@ -41,7 +41,7 @@ export type EnrichmentTriggersMeta = {
     label: string;
     /**
      * Which of the TEN enrich functions this purchase unit buys — a pointer into
-     * Docs › Intake §A's numbering, never a numbering of its own. It held
+     * Docs › Crenup §A's numbering, never a numbering of its own. It held
      * stage S-numbers until MESITA-1243, which read as a rival ladder.
      */
     functions: string;
@@ -51,18 +51,18 @@ export type EnrichmentTriggersMeta = {
   locks: Record<string, Record<string, { value: boolean; reason: string }>>;
 };
 
-// ─── Intake prompts (read-only) ────────────────────────────────────────────
+// ─── Crenup prompts (read-only) ────────────────────────────────────────────
 // Same contract as the trigger matrix above: the prompt TEXT is CODE-DEFINED in
-// supabase `_shared/intake-prompts.ts`, which imports the very constants the
-// pipeline sends, and arrives as `intakePromptsMeta`. The console keeps no copy
+// supabase `_shared/crenup-prompts.ts`, which imports the very constants the
+// pipeline sends, and arrives as `crenupPromptsMeta`. The console keeps no copy
 // — a second copy drifts the first time someone edits the real prompt.
 //
 // Read-only on purpose: these are not `app_config` knobs. Editing one live
 // needs validation, versioning and an empty-prompt guard.
 
-export type IntakePrompt = {
+export type CrenupPrompt = {
   key: string;
-  /** Which Intake function owns this prompt; null when it runs inside another. */
+  /** Which Crenup function owns this prompt; null when it runs inside another. */
   fn: string | null;
   /** "Scout" | "Resolver" — null when the step has no named agent. */
   agent: string | null;
@@ -116,7 +116,7 @@ type SettingsResponse = {
   atlasRequestThreshold: number;
   enrichmentTriggers: EnrichmentTriggersConfig;
   enrichmentTriggersMeta: EnrichmentTriggersMeta;
-  intakePromptsMeta: IntakePrompt[];
+  crenupPromptsMeta: CrenupPrompt[];
   updatedAt: string | null;
 };
 
@@ -130,7 +130,7 @@ export async function getAtlasSettings(): Promise<GetSettingsResult> {
   return { ok: true, data: r.data };
 }
 
-// ─── Intaker pipeline config ──────────────────────────────────────────────
+// ─── Enricher pipeline config ──────────────────────────────────────────────
 
 type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;

@@ -762,11 +762,11 @@ export type MockDay =
 export type MockPlaceProfile = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
   mesita_name: string | null;
-  /** Cached Google Places displayName. Intaker-only write, so: read-only. */
+  /** Cached Google Places displayName. Enricher-only write, so: read-only. */
   google_name: string | null;
   category: string | null;
   category_label: string | null;
-  /** Families the Intaker INFERRED. Membership derives live from `category`. */
+  /** Families the Enricher INFERRED. Membership derives live from `category`. */
   family_keys: string[] | null;
   /** Canonical Presentation — English. The column is `description`; the FIELD
    *  is Presentation (Pato, 2026-08-23). */
@@ -776,7 +776,7 @@ export type MockPlaceProfile = {
   tags: string[];
   photos: string[];
   hours: Partial<Record<MockDay, { open: string; close: string }[]>> | null;
-  /** Native — Google Places seed + Intaker synthesis. The update EF rejects
+  /** Native — Google Places seed + Enricher synthesis. The update EF rejects
    *  manual address writes, which is why Location renders read-only. */
   address: string | null;
   zone: string | null;
@@ -793,7 +793,7 @@ export type MockPlaceProfile = {
   google_maps_url: string | null;
   uber_eats_url: string | null;
   opentable_url: string | null;
-  /** Intaker pipeline state. `generating`/`queued` puts the quiet footnote
+  /** Enricher pipeline state. `generating`/`queued` puts the quiet footnote
    *  under the completeness meter. */
   content_state: string | null;
   /** What `isServingChannel` reads for the Reservations completeness check. */
