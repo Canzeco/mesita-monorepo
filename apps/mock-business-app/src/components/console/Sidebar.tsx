@@ -46,7 +46,7 @@
 // ── THE ACTIVE ROW IS A FILL, NOT A RULE ───────────────────────────────────
 //
 // MESITA-1975 argued a solid pill was a slab across a 1400px line and replaced
-// it with a 2px underline. That argument was about a LINE. In a 252px column a
+// it with a 2px underline. That argument was about a LINE. In a 272px column a
 // fill is the rail's original idiom and it is the right one: an underline under
 // one row in a stack of thirteen reads as a separator between two of them.
 //
@@ -110,6 +110,23 @@ const ROW_ON = "bg-dock-surface text-dock-foreground font-semibold";
 /** The mark's box. Fixed width so every name starts on the same x — a ragged
  *  left edge across thirteen rows is the thing that makes a list look generated. */
 const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
+
+/** THE COLUMN'S WIDTH, IN ONE PLACE (MESITA-2010). Pato: *"make the menu just
+ *  a bit wider."*
+ *
+ *  272px, up from the 252 MESITA-2004 shipped. The rule that issue wrote is
+ *  unchanged and is why this is not larger: a navigator is not content, so it
+ *  is as wide as its longest name plus its badge and no wider. 252 was a tight
+ *  reading of it — "Online Reservations" and its `On` badge had about 6px
+ *  between them, so the name and the state read as one run of text. 272 is the
+ *  width the rail used before MESITA-1975 deleted it and buys ~20px of gap,
+ *  which is enough for the badge column to read as a column.
+ *
+ *  IT LIVES HERE BECAUSE `AppShell` RENDERS THE MENU TWICE — the fixed column
+ *  above `lg` and the drawer panel below it. Two literals is the drift trap
+ *  that file's own comment warns about: an edit lands on one copy and every
+ *  gate stays green. */
+export const SIDEBAR_WIDTH = "w-[272px]";
 
 const GROUP_LABEL =
   "px-2.5 pb-1.5 text-[9.5px] font-semibold tracking-[0.14em] text-white/45 uppercase";
