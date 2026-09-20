@@ -34,7 +34,7 @@ export const PRODUCT_CATALOG_COPY: Record<ProductKey, string> = {
     "Your page on Mesita — the photos, the hours, the address and what you are known for. It exists whether or not you claim the place, because Mesita builds one from what is already public; claiming it is how you decide what it says. This is what a guest reads in the seconds before they pick somewhere to eat.",
 
   partner:
-    "The badge beside your name on the map, and the rung that grants it. Mesita Partner is not something you buy on its own — any paid plan carries it — and what it buys is trust: a guest scrolling a list of places sees which of them Mesita stands behind. Verified says the place is real. Partner says it is here on purpose.",
+    "The badge beside your name on the map, and the rung that grants it. It is not something you buy on its own — Mesita Ultra carries it — and what it buys is trust: a guest scrolling a list of places sees which of them Mesita stands behind. Verified says the place is real. Partner says it is here on purpose.",
 
   reviews:
     "Everything the world says back about you, counted in one place: your Google stars and how many, what Mesita's own guests scored you on food, service, ambience and value, and what is being said on Instagram and Facebook. Nothing here is yours to write, which is exactly why it is worth a screen of its own — it is the only page in this console you cannot edit your way out of.",

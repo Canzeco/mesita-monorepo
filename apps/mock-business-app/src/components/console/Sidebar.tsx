@@ -16,7 +16,7 @@
 //   │                        │
 //   │   PRODUCTS             │
 //   │   🏪 Mesita Profile    │
-//   │   🤝 Mesita Partner [On]│  the badge, not the purchase
+//   │   🤝 Partner Badge   [On]│  the badge, not the purchase
 //   │   …eight of them…      │
 //   │   🔮 Future products 10│   the eleventh row, a door
 //   └────────────────────────┘

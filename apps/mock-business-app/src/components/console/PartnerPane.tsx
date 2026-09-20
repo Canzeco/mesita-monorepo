@@ -139,9 +139,17 @@ export function PartnerPane({ place }: { place: MockPlace }) {
       <p className="text-muted-foreground min-w-0 grow basis-72 text-[13px] leading-snug">
         {/* THE SET, NOT THIS PLACE'S RUNG. The note above names the one it is
             on; what an operator is actually asking here is which of the four
-            would keep the badge, and on Free, which would earn it. */}
+            would keep the badge, and on Free, which would earn it.
+            THE VERB COUNTS THE SET (MESITA-2021). It read "<rungs> each carry
+            the badge" while the granting set was two rungs wide; MESITA-2019
+            left one rung in it and the sentence on the screen became "Mesita
+            Ultra each carry the badge." `GRANTING` is already derived, so the
+            verb is derived from its length rather than typed for whichever
+            size the set happens to be this month. */}
         <span className="text-foreground font-medium">
-          {grantingRungs()} each carry the badge.
+          {GRANTING.length === 1
+            ? `${grantingRungs()} carries the badge.`
+            : `${grantingRungs()} each carry the badge.`}
         </span>{" "}
         {/* AND THE RUNG THIS PLACE IS ACTUALLY ON (MESITA-2014). The "off"
             sentence used to name Free, because Free was the only rung

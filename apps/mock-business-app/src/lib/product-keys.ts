@@ -49,6 +49,19 @@ export const PRODUCT_KEYS = [
   // peer of it. Pato: *"this goes into plan, not mesita partner, different
   // things."* `PartnerPane` is the badge; `/places/<id>/plan` is the
   // purchase; the Plan row is back beside Place and Settings.
+  //
+  // SO THE NAME SAYS BADGE (MESITA-2021). Pato, dictating the three rungs:
+  // *"Partner Badge"*. It was `Mesita Partner`, which is the SKU's spelling —
+  // the thing an operator buys, renews and cancels — and reading it at the
+  // head of a product card is what invited the ladder in here twice. The
+  // `Mesita ` prefix means Mesita is the counterparty to a purchase, and this
+  // row is not a purchase at all: it is granted by the rung and switched by
+  // nobody. `Partner Badge` cannot be mistaken for the bill.
+  //
+  // THE BADGE ITSELF IS STILL `Partner` — one word on a place's page, beside
+  // Verified, where "Badge" would be the noun describing the noun. And the
+  // STATUS in prose is still partnership: a place is a partner, and what this
+  // row states is the badge that says so.
   "partner",
   // REPUTATION IS ITS OWN ROW AGAIN (MESITA-2011), which reverses MESITA-2007,
   // which reversed MESITA-1993. Third position on Pato's own list.
@@ -153,7 +166,7 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
  *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
-  partner: "Mesita Partner",
+  partner: "Partner Badge",
   reviews: "Online Reviews",
   menu: "Digital Menu",
   website: "Express Website",

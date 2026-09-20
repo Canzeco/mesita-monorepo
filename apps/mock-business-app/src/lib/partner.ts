@@ -1,6 +1,6 @@
 // THE PARTNER BADGE, DERIVED ONCE (MESITA-2017).
 //
-// Pato, 2026-09-20: Mesita Partner is a product with a CHECKLIST, and the
+// Pato, 2026-09-20: the Partner Badge is a product with a CHECKLIST, and the
 // badge is what completing it grants. Five rows, in the order a new place
 // meets them:
 //

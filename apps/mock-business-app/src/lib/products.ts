@@ -25,10 +25,16 @@
 //   pro    Digital Menu, Express Website, Online Reservations, Online
 //          Orders, Online Payments — the selling surface: what a guest
 //          reads, where they read it, and the rail that charges them.
-//   ultra  Mesita Partner, Visit Rewards, Prepaid Credits, Answering Agent,
+//   ultra  Partner Badge, Visit Rewards, Prepaid Credits, Answering Agent,
 //          Developers Platform, Table Orders, Customer Intelligence,
 //          Marketing Intelligence — what brings a guest BACK, plus anything
 //          that costs us per use (model minutes, compute, API bandwidth).
+//
+// PATO DICTATED THAT TABLE BACK TO US (MESITA-2021, 2026-09-20) — the three
+// rungs with the twelve live products under them, in this order. It matched
+// what was already here, which is the first time this file has been READ back
+// rather than edited. `product-rungs.test.ts` now pins the lists, so the next
+// `minPlan` that moves has to move his list with it.
 //
 // ORDERS CANNOT SIT BELOW PAYMENTS, and that is the one relation in this
 // table that is not a preference. Pato, 2026-09-20: *"online orders cannot
@@ -179,7 +185,7 @@ export const SPECS: readonly ProductSpec[] = [
     // `minPlan` IS THE WHOLE GATE, and it is not a price on this card: it is
     // the lowest rung that grants the badge, which `PARTNER_MIN_PLAN` holds
     // for every other reader too. Saying it here means `PlanComparison` lists
-    // Mesita Partner under that rung — what the money buys that the rung below
+    // the badge under that rung — what the money buys that the rung below
     // does not have — instead of the ladder and the badge being two stories
     // about one purchase.
     //
@@ -188,7 +194,12 @@ export const SPECS: readonly ProductSpec[] = [
     // headline of $1,000 — which also gives Start something to be: the rung
     // that gets you paid, without the thing that says Mesita stands behind
     // you.
-    name: "Mesita Partner",
+    //
+    // AND THE NAME IS THE BADGE (MESITA-2021) — Pato's own word for it when
+    // he dictated Ultra's list. The reasoning is in `product-keys.ts` above
+    // this key; the two strings must stay identical, which is what that file's
+    // header is for.
+    name: "Partner Badge",
     // WHAT THE BADGE IS FOR, not what it costs. Every other line an operator
     // reads about partnership is about money; this one is the only place that
     // says what the guest gets out of it, which is the reason to want it.
