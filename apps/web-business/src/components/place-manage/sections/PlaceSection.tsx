@@ -535,8 +535,19 @@ export function PlaceSection({
         subtitle="Where it sits."
       >
         {/* One boxed field per row — same filled-input language as every
-            other card. Lat/Lng share one box (a coordinate pair is one
-            fact); everything else stacks. */}
+            other card.
+
+            THREE ROWS, NOT FIVE (MESITA-2012). Pato: *"hide stuff such as
+            latitude and so on. it looks too unprofessional. is okey if we
+            have that. but hide it."* `Lat / Lng` and `Timezone` were the
+            seed talking to itself — a coordinate pair and an IANA
+            identifier, both in a read-only `auto` box a restaurant owner
+            can neither read nor act on.
+
+            HIDDEN, NOT DELETED. `place.lat`, `place.lng` and
+            `place.timezone` still arrive on the record and are still
+            typed; the map below is drawn from the first two. What went is
+            the notation, not the fact. */}
         <div className="mt-5 grid gap-4">
           <ReadField label="Address" auto boxed>
             {place.address?.trim() ? place.address : "—"}
@@ -546,16 +557,6 @@ export function PlaceSection({
           </ReadField>
           <ReadField label="City" auto boxed>
             {place.city ?? "—"}
-          </ReadField>
-          <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono type-body tabular-nums">
-              {place.lat == null || place.lng == null
-                ? "—"
-                : `${place.lat}, ${place.lng}`}
-            </span>
-          </ReadField>
-          <ReadField label="Timezone" auto boxed>
-            {place.timezone?.trim() ? place.timezone : "—"}
           </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (

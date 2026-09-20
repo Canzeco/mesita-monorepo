@@ -65,6 +65,7 @@ import type { ProductKey } from "@/lib/product-keys";
  *  that are products — this file does not re-spell them. */
 export type SidebarRow =
   | { kind: "place" }
+  | { kind: "plan" }
   | { kind: "settings" }
   | { kind: "product"; key: ProductKey }
   | { kind: "roadmap" };
@@ -83,13 +84,27 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     label: null,
     rows: [
       { kind: "place" },
+      // THE PLAN ROW IS BACK (MESITA-2012), and MESITA-2011's note is left
+      // below it because the reversal is the interesting part.
+      //
+      // Pato, seeing the ladder on the Mesita Partner product: *"this goes
+      // into plan, not mesita partner, different things."* Partner stays a
+      // product — it is a fact a guest reads, like the other nine — and what
+      // comes back out of it is the PURCHASE. A rung has a price, a renewal
+      // date and a card; a badge has none of those and cannot be switched at
+      // all. One screen was answering both.
+      //
+      // BETWEEN PLACE AND SETTINGS: the place, what it pays, how it is run.
+      // It is the middle of the three because Settings is the last-resort row
+      // and must stay the foot of this group.
+      { kind: "plan" },
       { kind: "settings" },
-      // THE PLAN ROW IS GONE (MESITA-2011). It sat here because it was what
-      // the products are bought with rather than one of them — and Pato has
-      // made it one of them: *"casi que partner lo quiero meter como un
-      // producto"*, second on his list. It is `{ kind: "product", key:
-      // "partner" }` now, drawn by the map below like every other row, and
-      // this group is back to the two destinations that are not products.
+      // MESITA-2011's note, kept: *"casi que partner lo quiero meter como un
+      // producto"* put Mesita Partner second in the Products group, and that
+      // still holds — `{ kind: "product", key: "partner" }`, drawn by the map
+      // below like every other row. What that issue ALSO did was treat the
+      // product row as a replacement for this one, which is the half
+      // MESITA-2012 undoes.
     ],
   },
   {
@@ -111,12 +126,16 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
 ];
 
 export const SIDEBAR_PLACE_LABEL = "Place";
+export const SIDEBAR_PLAN_LABEL = "Plan";
 export const SIDEBAR_SETTINGS_LABEL = "Settings";
 export const SIDEBAR_ROADMAP_LABEL = "Future products";
 
 /** The marks for the rows that are not products. Products read
  *  `PRODUCT_MARK`, which is already the one list of those. */
 export const SIDEBAR_PLACE_MARK = "\u{1F4CD}";
+// A CARD, NOT THE HANDSHAKE. The handshake is `PRODUCT_MARK.partner` and stays
+// there: two rows wearing one mark would say the two are the same screen,
+// which is the confusion MESITA-2012 exists to end.
+export const SIDEBAR_PLAN_MARK = "\u{1F4B3}";
 export const SIDEBAR_SETTINGS_MARK = "\u{2699}\u{FE0F}";
-// The handshake went WITH the Plan row — it is `PRODUCT_MARK.partner` now.
 export const SIDEBAR_ROADMAP_MARK = "\u{1F52E}";

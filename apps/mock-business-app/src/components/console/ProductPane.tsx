@@ -38,7 +38,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useHalf } from "@/components/shared/Half";
 import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
-import { PartnershipPane } from "@/components/console/PartnershipPane";
+import { PartnerPane } from "@/components/console/PartnerPane";
 import { ProfileView } from "@/components/views/ProfileView";
 import { MenuView } from "@/components/views/MenuView";
 import { ReviewsView } from "@/components/views/ReviewsView";
@@ -66,22 +66,21 @@ import { PRODUCT_SLUG, productHref, type PlaceHalf } from "@/lib/product-routes"
 import { placeIdFromPathname } from "@/lib/console-routes";
 import { cn } from "@/lib/utils";
 
-/** MESITA PARTNER'S SCREEN IS THE ONE THE PLAN ROW OPENED (MESITA-2011).
+/** MESITA PARTNER'S SCREEN IS ITS OWN NOW (MESITA-2012).
  *
- *  `PartnershipPane` takes a place and `PRODUCT_VIEW` hands its components
- *  nothing, so this reads the scope the same way every other view does. It is
- *  the only wrapper left in this file: the pane was already written, and
- *  rebuilding it under a product key would be the second source this file's
- *  own header forbids.
+ *  MESITA-2011 pointed this key at the Plan row's whole pane — renewal line,
+ *  Manage strip, four-rung ladder — because Partner had just become a product
+ *  and the pane was already written. Pato: *"this goes into plan, not mesita
+ *  partner, different things."* The purchase went back to `/plan` and
+ *  `PartnerPane` is what a product screen for a derived badge looks like.
  *
- *  NO HEADER OF ITS OWN. `ProductPane` draws one for every product below, and
- *  the pane used to draw its own because it was not a product — so it takes
- *  `header={false}` here and the two badges it carried become the state badge
- *  every other card gets. The rung is not lost: it is the card's note. */
+ *  IT TAKES A PLACE AND `PRODUCT_VIEW` HANDS ITS COMPONENTS NOTHING, so this
+ *  wrapper reads the scope the way every other view does — the one wrapper
+ *  left in this file, and now the only reason it exists. */
 function PartnerProduct() {
   const { place } = usePlaceScope();
   if (!place) return <NotHeld />;
-  return <PartnershipPane place={place} header={false} />;
+  return <PartnerPane place={place} />;
 }
 
 /** THE ELEVEN THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
@@ -91,7 +90,7 @@ function PartnerProduct() {
  *  cast that happens to work. */
 const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>> = {
   profile: ProfileView,
-  // THE PLAN ROW, AS A PRODUCT (MESITA-2011).
+  // THE BADGE, NOT THE PURCHASE (MESITA-2011, split in 2012).
   partner: PartnerProduct,
   // ONLINE REVIEWS IS A ROW AGAIN (MESITA-2011), so `ReviewsView` is mounted
   // by its own key rather than as Profile's Activity half. It is
