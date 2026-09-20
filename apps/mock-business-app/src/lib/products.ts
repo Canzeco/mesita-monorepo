@@ -117,7 +117,10 @@ type ProductSpec = {
   liveNote?: string;
 };
 
-const SPECS: readonly ProductSpec[] = [
+/** Exported since MESITA-2009: `PlanComparison` builds every rung's perk
+ *  list out of this array, so a column cannot disagree with what a product's
+ *  own card says about its floor. */
+export const SPECS: readonly ProductSpec[] = [
   {
     key: "profile",
     name: "Mesita Profile",
@@ -251,7 +254,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you set what comes back.",
     tab: "visits",
-    minPlan: "pro",
+    minPlan: "start",
     // PARTNER-GATED, NOT `visitRewards`. Visits is included with the
     // Membership and has no per-place switch; only the rewards half has one.
     // Reading the merged card off that toggle would print "Off" for a place
@@ -306,7 +309,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "This place’s own Stripe account, so a guest can pay by card at the table and the money lands with you.",
     tab: null,
-    minPlan: "pro",
+    minPlan: "start",
     atPlace: null,
     soon: null,
   },

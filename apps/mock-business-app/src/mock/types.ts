@@ -43,12 +43,40 @@ export const PAY_LADDER_LABEL: Record<PayLadder, string> = {
  *  `places.plan` is a Postgres enum of `free | pro | ultra`, and
  *  `deriveListingType` already grants the badge on `plan !== 'free'`. The
  *  ladder is not new here; the second SKU stacked on top of it was. */
-export type PlanTier = "free" | "pro" | "ultra";
+// FOUR RUNGS (MESITA-2009). Pato: *"$0MX. $200MX. $1000MX. $5000MX. FOUR
+// PLANS."* `start` is new between Free and Pro; Ultra moves 3,000 → 5,000.
+//
+// THE NAME IS "MESITA START". `Mesita ` is the suite's prefix for "Mesita is
+// the counterparty", which it is for a subscription. Not *Lite*, which reads
+// as crippled; not *Basic*, which reads as the same thing politely; not
+// *Plus*, which everywhere else in software means a rung ABOVE the base and
+// this one is below Pro.
+//
+// `places.plan` IS A POSTGRES ENUM OF `free | pro | ultra` IN THE REAL SCHEMA.
+// This app leads and the IA lands here first; the enum migration, the Stripe
+// prices and the entitlement backfill are a backend issue and are not this
+// one. Nothing here reaches a database.
+export type PlanTier = "free" | "start" | "pro" | "ultra";
 
 export const PLAN_LABEL: Record<PlanTier, string> = {
   free: "Free",
+  start: "Mesita Start",
   pro: "Mesita Pro",
   ultra: "Mesita Ultra",
+};
+
+/** One line on what each rung is FOR. The comparison leads with these, because
+ *  a column headed by a price and then a list of nine product names is four
+ *  inventories side by side — and an operator picking a rung is picking a way
+ *  to run the place, not counting features.
+ *
+ *  Each step buys a different KIND of thing rather than more of the last one,
+ *  which is the whole argument for four rungs at roughly 5× a step. */
+export const PLAN_PITCH: Record<PlanTier, string> = {
+  free: "Be found. Your page, your menu and what the world says back.",
+  start: "Get paid, and bring them back.",
+  pro: "Run the operation — orders, tables, credit and the money behind them.",
+  ultra: "Mesita answers for you.",
 };
 
 /** Rung order. `>=` on these numbers is the whole entitlement check — a
@@ -56,9 +84,17 @@ export const PLAN_LABEL: Record<PlanTier, string> = {
  *  inherits it, so Ultra never has to re-list what Pro already bought. */
 export const PLAN_RANK: Record<PlanTier, number> = {
   free: 0,
-  pro: 1,
-  ultra: 2,
+  start: 1,
+  pro: 2,
+  ultra: 3,
 };
+
+/** The ladder in order, lowest first. Derived from `PLAN_RANK` so a rung
+ *  cannot be in one list and not the other — the comparison renders this, and
+ *  adding a fifth rung is one entry in `PLAN_RANK` and nothing else. */
+export const PLAN_LADDER: readonly PlanTier[] = (
+  Object.keys(PLAN_RANK) as PlanTier[]
+).sort((a, b) => PLAN_RANK[a] - PLAN_RANK[b]);
 
 /** MX$ a month, + IVA, as integers of pesos — the mock prints money and never
  *  charges it, so there is no reason to carry centavos here. Free is 0 and
@@ -66,8 +102,9 @@ export const PLAN_RANK: Record<PlanTier, number> = {
  *  compare against the two beside it. */
 export const PLAN_PRICE_MXN: Record<PlanTier, number> = {
   free: 0,
+  start: 200,
   pro: 1000,
-  ultra: 3000,
+  ultra: 5000,
 };
 
 export function planAtLeast(plan: PlanTier, min: PlanTier): boolean {
