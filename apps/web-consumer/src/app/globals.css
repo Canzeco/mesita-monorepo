@@ -92,7 +92,9 @@
      only one survives: 18 `text-background` uses in this app mean "the white
      on an ink fill". Repointing `--background` alone would have turned every
      one of those labels grey-on-black, in an app with no visual QA path. */
-  --paper: oklch(1 0 0); /* #ffffff · cards, sheets, popovers, ink-fill labels */
+  --paper: oklch(
+    1 0 0
+  ); /* #ffffff · cards, sheets, popovers, ink-fill labels */
   --page: oklch(0.952 0 0); /* #efefef · the ground every card sits on */
   /* Wells, inputs and hovers are THE PAGE SHOWING THROUGH A CARD, not a fourth
      light — so a focused input going to `--paper` is the same move as a card
@@ -124,6 +126,17 @@
   /* RESERVED: the one thing that says "this destroys something". */
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: var(--paper);
+  /* THE SECOND RED, AND WHY THERE ARE TWO (MESITA-2031). Partner keeps its
+     chroma under the THIRD clause of the rule at the top of this block — it is
+     a tier the product names out loud, the same clause the Class metals ride.
+     It cannot borrow `--destructive`, which is reserved one line up for "this
+     destroys something": a badge meaning "this place is one of ours" must not
+     be the colour of a delete button by accident, however close the two
+     measure. Hue 22 and not the brand's hue 5 because at hue 5 a verified
+     rosette comes back PINK and reads as the logo, not as a badge — Pato asked
+     for the Twitter mark "BUT RED". White check on this fill is 5.1:1. */
+  --partner: oklch(0.56 0.21 22); /* #d41f37 */
+  --partner-foreground: var(--paper);
   --border: oklch(0.891 0 0);
   --input: var(--fill);
   --ring: oklch(0.205 0 0);
@@ -205,10 +218,26 @@
      surface: a soft gradient behind the header/card, using the same light
      stop each --gradient-* already uses, at low alpha, fading to transparent.
      One wash per metal so it stays parametric — never hardcode bronze. */
-  --wash-bronze: linear-gradient(180deg, oklch(0.574 0.1 55 / 0.14), transparent 85%);
-  --wash-silver: linear-gradient(180deg, oklch(0.89 0.004 15 / 0.14), transparent 85%);
-  --wash-gold: linear-gradient(180deg, oklch(0.87 0.13 97 / 0.14), transparent 85%);
-  --wash-diamond: linear-gradient(180deg, oklch(0.88 0.07 205 / 0.14), transparent 85%);
+  --wash-bronze: linear-gradient(
+    180deg,
+    oklch(0.574 0.1 55 / 0.14),
+    transparent 85%
+  );
+  --wash-silver: linear-gradient(
+    180deg,
+    oklch(0.89 0.004 15 / 0.14),
+    transparent 85%
+  );
+  --wash-gold: linear-gradient(
+    180deg,
+    oklch(0.87 0.13 97 / 0.14),
+    transparent 85%
+  );
+  --wash-diamond: linear-gradient(
+    180deg,
+    oklch(0.88 0.07 205 / 0.14),
+    transparent 85%
+  );
 
   /* THE GUILLOCHE — the engraved rosette lattice a security document prints
      behind its field grid (MESITA-1820). The ONE genuinely new material the
@@ -267,11 +296,7 @@
     oklch(0.88 0.07 205),
     oklch(0.72 0.12 232)
   );
-  --gradient-premium: linear-gradient(
-    135deg,
-    oklch(0.35 0 0),
-    oklch(0.18 0 0)
-  );
+  --gradient-premium: linear-gradient(135deg, oklch(0.35 0 0), oklch(0.18 0 0));
   --gradient-card: linear-gradient(
     180deg,
     oklch(1 0 0 / 0.95),
@@ -286,8 +311,7 @@
      alpha reads heavier and colder than warm ink, so the two glows come down
      with it — they were a pink halo, and a halo is atmosphere, not lift. */
   --shadow-rest:
-    0 1px 2px oklch(0 0 0 / 0.05),
-    0 6px 16px -10px oklch(0 0 0 / 0.2);
+    0 1px 2px oklch(0 0 0 / 0.05), 0 6px 16px -10px oklch(0 0 0 / 0.2);
   --shadow-elev: 0 25px 60px -15px oklch(0 0 0 / 0.14);
   --shadow-glow-sm: 0 14px 32px -16px oklch(0 0 0 / 0.22);
   --shadow-glow: 0 30px 80px -20px oklch(0 0 0 / 0.14);
@@ -399,6 +423,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-partner: var(--partner);
+  --color-partner-foreground: var(--partner-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

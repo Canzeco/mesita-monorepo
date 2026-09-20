@@ -39,6 +39,11 @@ export const COLORS = {
   mutedForeground: '#775254',
   accent: '#ff6eb4',
   destructive: '#e6000c',
+  /** The Mesita Partner badge (MESITA-2031). Web `--partner`
+   *  oklch(0.56 0.21 22). A SECOND red on purpose: `destructive` means
+   *  "this destroys something" and the badge must not borrow it. */
+  partner: '#d41f37',
+  partnerForeground: '#ffffff',
   border: '#ebd9db',
   input: '#f5e7e9',
   ring: '#fb2b7b',

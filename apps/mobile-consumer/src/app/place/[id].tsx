@@ -4,6 +4,7 @@ import { ArrowLeft, Store } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PartnerMark } from '@/components/brand/PartnerMark';
 import { PlaceDetailBody } from '@/components/place/PlaceDetailBody';
 import { apiFetchPlaceDetail } from '@/lib/api/places';
 import {
@@ -43,13 +44,12 @@ export default function PlaceDetailScreen() {
           >
             {place?.name ?? 'Place'}
           </Text>
+          {/* decision: Pato (MESITA-2031) — the verified rosette in partner
+              red, from one file shared with the swipe deck and web. It was a
+              sky disc with a ✓ TEXT GLYPH, so the check's weight and baseline
+              came from the system font. */}
           {place?.listing_type === 'partner' ? (
-            <View
-              className="size-4 items-center justify-center rounded-full bg-[#0EA5E9]"
-              accessibilityLabel="Mesita Partner"
-            >
-              <Text className="text-[9px] font-bold text-white">✓</Text>
-            </View>
+            <PartnerMark size={16} />
           ) : null}
         </View>
       </View>
