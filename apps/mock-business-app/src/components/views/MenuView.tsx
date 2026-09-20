@@ -40,7 +40,10 @@
 // A zero would say the dish is free.
 import { QrCode, Sparkles, Wand2 } from "lucide-react";
 import { Section } from "@/components/shared/Section";
+import { Badge } from "@/components/shared/Badges";
 import { usePlaceScope } from "@/components/console/PlaceScope";
+import { day } from "@/lib/format";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { MENU_SECTIONS } from "@/mock/fixtures";
 import { money } from "@/lib/format";
 import { GHOST_PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
@@ -80,6 +83,32 @@ export function MenuView() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* PUBLISHED OR NOT (MESITA-2017). Three products read the published
+          menu and the agent never reads a draft, so the one fact this screen
+          owes before the list is whether Publish has been pressed. */}
+      {place && (
+        <Section
+          title={
+            <span className="flex items-center gap-2">
+              {place.menuPublishedAt ? "Published" : "Draft"}
+              <Badge tone={place.menuPublishedAt ? "live" : "off"}>
+                {place.menuPublishedAt ? "On" : "Not yet"}
+              </Badge>
+            </span>
+          }
+          description={
+            place.menuPublishedAt
+              ? `Published ${day(place.menuPublishedAt)}. The QR, your page, Online Orders and the Answering Agent all read this version; edits below stay a draft until you publish again.`
+              : "Nothing is public yet. Online Orders, the Answering Agent and the Express Website wait on this button."
+          }
+          lane
+          right={<button type="button" className={`${CTA_BUTTON_CLASS} self-start`}>{place.menuPublishedAt ? "Publish changes" : "Publish"}</button>}
+        >
+          <p className="text-muted-foreground text-[12px] leading-snug">
+            One dish, three prices — table, pickup, delivery — and every language you publish. Ask for a change in the bar below; nothing goes out until you say so.
+          </p>
+        </Section>
+      )}
       {/* THE DRAFT, FIRST, because the spec's whole promise is that you do not
           type eighty dishes. A dashed band rather than a card: an operator who
           already has a menu should meet this before they meet the list they

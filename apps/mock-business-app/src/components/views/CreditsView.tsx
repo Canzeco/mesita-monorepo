@@ -1,108 +1,212 @@
 "use client";
 
-// Credits — branded money a guest buys once and spends here.
+// Credits — cash now for meals later, and who else honours it.
 //
-// ── THERE IS NO GRAND TOTAL ON THIS PAGE, AND THERE MUST NOT BE ────────────
+// ── IT HAS A SETUP HALF NOW (MESITA-2017) ──────────────────────────────────
+//
+// Pato, 2026-09-20: credits are sold by CAMPAIGN — "paga $800 y recibe
+// $1,000", from a date to a date, up to a cap on the cash raised, with a
+// per-guest limit — because the point is financing: a place that needs cash
+// sells meals forward. And a sister branch may ACCEPT this place's credits:
+// one-way, chosen by the acceptor, with the issuer keeping the cash and the
+// debt forever. "Al aceptar créditos de esta sucursal, asumes las redenciones
+// hasta liquidar con el emisor."
+//
+// ── THERE IS STILL NO GRAND TOTAL, AND THERE MUST NOT BE ───────────────────
 //
 // The balances list is PAGINATED and the endpoint returns no aggregate. A
-// `reduce()` over the page on screen would print a number that looks like
-// "money our guests are holding" and is actually "money the first twenty-five
-// guests are holding" — confidently wrong, in the one place on this console
-// where being wrong about a number is a liability.
+// `reduce()` over the page on screen would print "money our guests are
+// holding" and mean "money the first twenty-five guests are holding" —
+// confidently wrong, on the one screen where being wrong about a number is a
+// liability. The exposure tiles count what this page can DEFEND.
 //
-// So the tiles below count what this page can DEFEND: how many balances it
-// read, and how big the largest one on this page is. The outstanding total is
-// deliberately absent, and the note says why rather than leaving a hole
-// somebody helpfully fills in later.
-//
-// Credits are ORG-scoped in the real product, not universal, because Stripe has
-// no account merge: money taken under one place's Stripe account cannot be
-// spent against another's.
+// Credits are ORG-scoped in the real product, because Stripe has no account
+// merge; the accepted-issuers list may only ever name a sister in the same
+// organisation, and the fixtures never name anything else.
 import { useState } from "react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
+import { useMock } from "@/mock/MockStore";
 import { Section } from "@/components/shared/Section";
 import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { CREDIT_BALANCES } from "@/mock/fixtures";
+import { Badge } from "@/components/shared/Badges";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
+import { Switch } from "@/components/shared/Switch";
+import { CREDIT_BALANCES, CREDIT_CAMPAIGNS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
-import { useMock } from "@/mock/MockStore";
-import type { MockCreditBalance } from "@/mock/types";
+import { PLAN_LABEL, planAtLeast, type CampaignState, type MockCreditBalance, type MockCreditCampaign } from "@/mock/types";
 import { day, money } from "@/lib/format";
-import { GHOST_PILL_BUTTON_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
+import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
 
 const PAGE = 8;
 
+/** Every state a campaign can be in, with the ONE thing to do about it.
+ *  `null` verbs are states that only time moves. */
+export const CAMPAIGN_STATES: Record<
+  CampaignState,
+  { label: string; tone: "off" | "soon" | "live" | "neutral"; verb: string | null }
+> = {
+  draft: { label: "Draft", tone: "off", verb: "Open" },
+  scheduled: { label: "Scheduled", tone: "soon", verb: "Change dates" },
+  selling: { label: "Selling", tone: "live", verb: "Close early" },
+  sold_out: { label: "Sold out", tone: "live", verb: "Raise the cap" },
+  closed: { label: "Closed", tone: "neutral", verb: null },
+  redeeming: { label: "Redeeming", tone: "neutral", verb: null },
+  expired: { label: "Expired", tone: "neutral", verb: "Extend" },
+};
+
 export function CreditsView() {
   const place = useHeldPlace();
-  const { scenario } = useMock();
+  const { scenario, world } = useMock();
+  const locked = !planAtLeast(place.plan, "ultra");
   const all = listFor(CREDIT_BALANCES.filter((b) => b.placeId === place.id), scenario);
+  const campaigns = listFor(CREDIT_CAMPAIGNS.filter((c) => c.placeId === place.id), scenario);
   const [page, setPage] = useState(0);
   const rows = all.slice(page * PAGE, page * PAGE + PAGE);
   const lastPage = Math.max(0, Math.ceil(all.length / PAGE) - 1);
+  // SISTERS ONLY. The candidates are the other places this operator holds —
+  // the mock's stand-in for "same organisation" — never the pool.
+  const sisters = world.places.filter((p) => p.id !== place.id);
+  const [accepting, setAccepting] = useState<Set<string>>(new Set(place.acceptedIssuers));
+  const raised = campaigns.reduce((n, c) => n + c.soldCents, 0);
 
-  const columns: Column<MockCreditBalance>[] = [
+  const balanceColumns: Column<MockCreditBalance>[] = [
     { key: "guest", head: "Guest", cell: (b) => <span className="font-medium">{b.guest}</span> },
     { key: "last", head: "Last move", cell: (b) => <span className="text-muted-foreground">{day(b.lastMoveAt)}</span> },
-    {
-      key: "balance",
-      head: "Balance",
-      align: "right",
-      cell: (b) => <span className="font-semibold">{money(b.balanceCents)}</span>,
-    },
+    { key: "balance", head: "Balance", align: "right", cell: (b) => <span className="font-semibold">{money(b.balanceCents)}</span> },
+  ];
+  const campaignColumns: Column<MockCreditCampaign>[] = [
+    { key: "name", head: "Campaign", cell: (c) => <span className="font-medium">{c.name}</span> },
+    { key: "offer", head: "Offer", cell: (c) => <span className="tabular-nums">pay {money(c.payCents)}, get {money(c.getCents)}</span> },
+    { key: "sold", head: "Raised", align: "right", cell: (c) => <span className="tabular-nums">{money(c.soldCents)} <span className="text-muted-foreground">of {money(c.capCents)}</span></span> },
+    { key: "window", head: "On sale", cell: (c) => <span className="text-muted-foreground">{day(c.startsAt)} – {day(c.endsAt)}</span> },
+    { key: "state", head: "State", cell: (c) => <Badge tone={CAMPAIGN_STATES[c.state].tone}>{CAMPAIGN_STATES[c.state].label}</Badge> },
+    { key: "verb", head: "", cell: (c) => CAMPAIGN_STATES[c.state].verb ? <button type="button" className={GHOST_PILL_BUTTON_CLASS}>{CAMPAIGN_STATES[c.state].verb}</button> : null },
   ];
 
   return (
     <div className="flex flex-col gap-4">
+      <Half label="Manage">
+        {locked ? (
+          <p className={INFO_BOX_CLASS}>
+            Needs {PLAN_LABEL.ultra}. Selling meals forward creates a debt to a
+            guest, and that is the top rung&apos;s to carry.
+          </p>
+        ) : (
+          <>
+            <Section
+              title="Campaigns"
+              description="A campaign sells a balance at a bonus, for a while, up to a cap. You receive the cash now and owe the meals until they are eaten."
+              right={<button type="button" className={CTA_BUTTON_CLASS}>New campaign</button>}
+            >
+              <Table
+                columns={campaignColumns}
+                rows={campaigns}
+                empty={
+                  <EmptyState
+                    title="No campaign yet"
+                    hint="Nothing is on sale until you open one. Guests cannot buy a balance here in the meantime."
+                    action={{ label: "New campaign", onClick: () => {} }}
+                  />
+                }
+              />
+              <p className={INFO_BOX_CLASS}>
+                Every campaign says the same thing plainly before it opens: you
+                receive X pesos today; in return you owe Y pesos of meals. That is
+                a financing decision, and the screen treats it as one.
+              </p>
+            </Section>
+
+            <Section
+              title="Credits from other branches"
+              description="One direction, your choice. Their guests can spend here; they sold the credits, they keep the cash, and they settle with you."
+            >
+              {sisters.length === 0 ? (
+                <EmptyState
+                  title="No other branch"
+                  hint="This is the only place you hold. A second branch in the same organisation appears here the day it exists."
+                />
+              ) : (
+                <div className={RULES_CARD}>
+                  {sisters.map((s) => (
+                    <Rule
+                      key={s.id}
+                      label={s.name}
+                      note={
+                        accepting.has(s.id)
+                          ? "Accepting. Their guests' credits are honoured here until you switch this off; what they already spent is settled with them."
+                          : "Not accepting. Their guests pay the whole bill here."
+                      }
+                      value={
+                        <Switch
+                          on={accepting.has(s.id)}
+                          label={`Accept credits from ${s.name}`}
+                          onChange={(on) =>
+                            setAccepting((prev) => {
+                              const next = new Set(prev);
+                              if (on) next.add(s.id);
+                              else next.delete(s.id);
+                              return next;
+                            })
+                          }
+                        />
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+              <p className={INFO_BOX_CLASS}>
+                By accepting a branch&apos;s credits you carry its guests&apos; redemptions
+                until it settles with you. The debt to the guest never moves: it
+                stays with the branch that sold the credits.
+              </p>
+            </Section>
+          </>
+        )}
+      </Half>
+
       <Half label="Activity">
         <Tiles
           tiles={[
             { label: "Credits", value: place.credits ? "On" : "Off" },
-            { label: "Balances on this page", value: rows.length || null },
+            { label: "Cash raised", value: campaigns.length ? money(raised) : null, hint: "Across every campaign listed on Setup" },
             {
-              label: "Largest on this page",
+              label: "Largest balance on this page",
               value: rows.length ? money(Math.max(...rows.map((b) => b.balanceCents))) : null,
             },
             // NOT a total. See the file header.
             { label: "Outstanding total", value: null, hint: "Not available — see below" },
           ]}
         />
+        {place.cashbackPaused && (
+          <p className={INFO_BOX_CLASS} role="status">
+            Cashback from Visit Rewards is paused while Credits is off. Balances
+            already banked stay redeemable; no new ones are issued.
+          </p>
+        )}
         <Section
           title="What guests are holding"
-          description="One page at a time. Credits bought here can only be spent here."
+          description={`One page at a time.${accepting.size ? ` Some of it was sold by a branch you accept credits from.` : ""}`}
           right={
             <div className="flex gap-1.5">
-              <button
-                type="button"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                className={GHOST_PILL_BUTTON_CLASS}
-              >
+              <button type="button" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} className={GHOST_PILL_BUTTON_CLASS}>
                 Previous
               </button>
-              <button
-                type="button"
-                disabled={page >= lastPage}
-                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-                className={GHOST_PILL_BUTTON_CLASS}
-              >
+              <button type="button" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))} className={GHOST_PILL_BUTTON_CLASS}>
                 Next
               </button>
             </div>
           }
         >
           <Table
-            columns={columns}
+            columns={balanceColumns}
             rows={rows}
             empty={
               <EmptyState
                 title="No balances"
-                hint={
-                  place.credits
-                    ? "Nobody is holding credits for this place yet."
-                    : "Credits are off for this place, so none can be sold."
-                }
+                hint={place.credits ? "Nobody is holding credits for this place yet." : "Credits are off for this place, so none can be sold."}
               />
             }
           />
@@ -111,7 +215,8 @@ export function CreditsView() {
             paginated and the balance endpoint returns no aggregate, so any total
             computed here would be the total of the page you happen to be on —
             which reads as the total of the place. When the number matters, it has
-            to come from a source that can count all of them.
+            to come from a source that can count all of them. The same goes for
+            what other branches owe you: it is a settlement, not a page.
           </p>
         </Section>
       </Half>

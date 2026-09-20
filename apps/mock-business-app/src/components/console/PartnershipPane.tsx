@@ -33,6 +33,13 @@ import { type MockPlace, PLAN_LABEL } from "@/mock/types";
 import { PRODUCT_LABEL } from "@/lib/product-keys";
 import { PageHeader } from "@/components/console/PageHeader";
 import { PlanComparison } from "@/components/console/PlanComparison";
+import { Section } from "@/components/shared/Section";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
+import { ErrorNote } from "@/components/ErrorNote";
+import { useMock } from "@/mock/MockStore";
+import { partnerStatus } from "@/lib/partner";
+import { day } from "@/lib/format";
+import { Check } from "lucide-react";
 
 export function PartnershipPane({
   place,
@@ -45,6 +52,9 @@ export function PartnershipPane({
   header?: boolean;
 }) {
   const line = membershipLine(place);
+  const { world } = useMock();
+  const status = partnerStatus(place, world.profiles[place.id]);
+  const checks = status.failing.length === 0 ? [] : status.failing;
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,6 +104,58 @@ export function PartnershipPane({
           worth printing — "Mesita Partnership / Partner" over "Membership /
           Renews …" — and once both named the rung they were one fact twice,
           which `shared/Badges.tsx` opens by forbidding. */}
+      {/* THE CHECKLIST, AND THE METER OVER IT (MESITA-2017). Pato: Partner is
+          "casi un producto" — a card in Setup with a list that ends in a
+          badge. Five rows, "N of 5", so the card reads as a goal on a fresh
+          place rather than as a broken product two clicks from the top. */}
+      {place.partnerLapsedAt && !status.badge && (
+        <ErrorNote
+          className="mt-0"
+          message={`Badge removed ${day(place.partnerLapsedAt)}.`}
+          cause="The plan lapsed. Verified stays; the badge comes back the day the checklist is green again."
+          action={{ label: "Choose a plan", href: "#plans" }}
+        />
+      )}
+      <Section
+        title={
+          <span className="flex items-center gap-2">
+            {status.badge ? "Partner" : "Becoming a Partner"}
+            <Badge tone={status.badge ? "gold" : "off"}>{status.done} of 5</Badge>
+            {status.atRisk && <Badge tone="bad">At risk</Badge>}
+          </span>
+        }
+        description={
+          status.badge
+            ? status.atRisk
+              ? "You hold the badge. A row below has gone red; the badge stays until the plan lapses, but a guest who comes for what that row promised will not find it."
+              : "Every row is green. A guest reading the map sees that Mesita stands behind this place."
+            : "Complete the five and the badge appears on your page and on the map. Each row says where to do it."
+        }
+      >
+        <div className={RULES_CARD}>
+          {["verified", "profile", "rewards", "payments", "plan"].map((key) => {
+            const failing = checks.find((c) => c.key === key);
+            const label = { verified: "Verified", profile: "Profile complete", rewards: "Visit Rewards on", payments: "Online Payments on", plan: "A paid plan" }[key as "verified"];
+            return (
+              <Rule
+                key={key}
+                label={label}
+                note={failing ? failing.fix : undefined}
+                value={
+                  failing ? (
+                    <Badge tone={status.badge ? "bad" : "off"}>{status.badge ? "At risk" : "Not yet"}</Badge>
+                  ) : (
+                    <Badge tone="on">
+                      <Check className="h-3 w-3" aria-hidden /> Done
+                    </Badge>
+                  )
+                }
+              />
+            );
+          })}
+        </div>
+      </Section>
+      <div id="plans" />
       <PartnerBanner place={place} />
       {/* THE LADDER, FOR A PARTNERED PLACE TOO (MESITA-2009). It used to
           be unpartnered-only, on the argument that a place that has bought

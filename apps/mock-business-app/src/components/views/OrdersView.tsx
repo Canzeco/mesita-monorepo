@@ -37,12 +37,22 @@ import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
+import { SoonStrip } from "@/components/shared/SoonStrip";
+import { MenuDoor } from "@/components/shared/MenuDoor";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
+import { ErrorNote } from "@/components/ErrorNote";
 import { ORDERS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
-import type { MockOrder } from "@/mock/types";
+import {
+  ORDER_CHANNELS,
+  ORDER_CHANNEL_LABEL,
+  type MockOrder,
+  type OrderChannelState,
+} from "@/mock/types";
+import { productKeyHref } from "@/lib/product-routes";
 import { dayTime, money } from "@/lib/format";
-import { GHOST_PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, INPUT_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 const STATE_TONE: Record<MockOrder["state"], "live" | "soon" | "bad" | "neutral"> = {
   placed: "soon",
@@ -52,46 +62,38 @@ const STATE_TONE: Record<MockOrder["state"], "live" | "soon" | "bad" | "neutral"
   canceled: "bad",
 };
 
-/** A SETTING AND ITS VALUE, one per line, hairline-divided inside one card —
- *  the shape Account and the Setup index both use. Not `FactRow`: that lays
- *  facts out in a wrapping row, which is right for four read-only numbers on
- *  a wide card and wrong for a list somebody scans down looking for the one
- *  they came to change. */
-function Rule({
-  label,
-  value,
-  note,
-}: {
-  label: string;
-  value: React.ReactNode;
-  note?: string;
-}) {
-  return (
-    <div className="flex min-h-12 items-center gap-4 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium">{label}</p>
-        {note && (
-          <p className="text-muted-foreground mt-0.5 text-[11.5px] leading-snug">
-            {note}
-          </p>
-        )}
-      </div>
-      <div className="shrink-0 text-[13px] font-semibold tabular-nums">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-const RULES_CARD =
-  "border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border";
+/** EVERY CHANNEL STATE, and the ONE thing to do about it (MESITA-2017).
+ *  Exhaustive by type. `connecting` and `connected` have no door because
+ *  there is nothing to press; the two failures do, and the second cannot
+ *  happen in v1 — connections are platform-owned until Mesita-owned menu sync
+ *  exists — so its copy is written for the day it can. */
+export const CHANNEL_STATES: Record<
+  OrderChannelState,
+  { label: string; tone: "off" | "soon" | "live" | "bad"; verb: string | null; why: string | null }
+> = {
+  disconnected: { label: "Off", tone: "off", verb: "Connect", why: null },
+  connecting: { label: "Connecting", tone: "soon", verb: null, why: null },
+  connected: { label: "Connected", tone: "live", verb: null, why: null },
+  token_expired: {
+    label: "Reconnect",
+    tone: "bad",
+    verb: "Reconnect",
+    why: "The platform dropped the connection — usually a password change on their side. Orders from it stopped arriving here.",
+  },
+  catalog_conflict: {
+    label: "Pick an owner",
+    tone: "bad",
+    verb: "Pick an owner",
+    why: "Both sides claim the menu. Choose whether the platform or Mesita owns it; the other stops publishing.",
+  },
+};
 
 export function OrdersView() {
   const place = useHeldPlace();
   const { scenario } = useMock();
   const rows = listFor(ORDERS.filter((o) => o.placeId === place.id), scenario);
 
-  const channelsOff = !place.pickupOrders && !place.deliveryOrders;
+  const channelsOff = ORDER_CHANNELS.every((ch) => place.orderChannels[ch] !== "connected");
   const cfg = place.orders;
 
   const columns: Column<MockOrder>[] = [
@@ -106,6 +108,15 @@ export function OrdersView() {
   return (
     <div className="flex flex-col gap-4">
       <Half label="Manage">
+        <MenuDoor place={place} reads="Online Orders" />
+        {place.orderChannels.rappi === "token_expired" && (
+          <ErrorNote
+            className="mt-0"
+            message="Rappi stopped sending orders."
+            cause={CHANNEL_STATES.token_expired.why ?? undefined}
+            action={{ label: "Reconnect Rappi", href: productKeyHref(place.id, "products", "orders") }}
+          />
+        )}
         {/* ── SWITCH ──────────────────────────────────────────────────── */}
         <Section
           title={
@@ -124,7 +135,7 @@ export function OrdersView() {
             cfg?.paused
               ? "Nothing new can arrive until you start again. Orders already placed still have to be finished."
               : channelsOff
-                ? "Neither pickup nor delivery is on, so there is nothing for a guest to place. That is a setting, not a pause — turn a channel on below."
+                ? "No channel is connected, so there is nothing for a guest to place. That is a setting, not a pause — connect a channel below."
                 : "Guests can place an order right now. Pause stops that within seconds and changes nothing you have set."
           }
           lane
@@ -158,28 +169,39 @@ export function OrdersView() {
           {cfg === null ? (
             <EmptyState
               title="Orders have never been set up here"
-              hint="Pick a channel and a prep time and this place can take its first order. Nothing below exists until you do."
+              hint="Connect a channel and set a prep time and this place can take its first order. Nothing below exists until you do."
             />
           ) : (
             <div className={RULES_CARD}>
-              <Rule
-                label="Pickup"
-                note="Guests order ahead and collect."
-                value={
-                  <Badge tone={place.pickupOrders ? "live" : "off"}>
-                    {place.pickupOrders ? "On" : "Off"}
-                  </Badge>
-                }
-              />
-              <Rule
-                label="Delivery"
-                note="Guests order ahead and it is taken to them."
-                value={
-                  <Badge tone={place.deliveryOrders ? "live" : "off"}>
-                    {place.deliveryOrders ? "On" : "Off"}
-                  </Badge>
-                }
-              />
+              {/* SIX CHANNELS, ONE QUEUE (MESITA-2017). The three direct ones
+                  pay Mesita through Stripe; the marketplaces collect their
+                  own money and send the ticket. Each row is a connection
+                  with a state, and the two failure states carry a door. */}
+              {ORDER_CHANNELS.map((ch) => {
+                const st = CHANNEL_STATES[place.orderChannels[ch]];
+                return (
+                  <Rule
+                    key={ch}
+                    label={ORDER_CHANNEL_LABEL[ch]}
+                    note={
+                      st.why ??
+                      (ch === "app" || ch === "web" || ch === "whatsapp"
+                        ? "Direct. Paid to you through Stripe before the kitchen starts."
+                        : "Marketplace. They collect; the ticket lands here and you accept, quote a time and mark it ready.")
+                    }
+                    value={
+                      <>
+                        <Badge tone={st.tone}>{st.label}</Badge>
+                        {st.verb && (
+                          <button type="button" className={GHOST_PILL_BUTTON_CLASS}>
+                            {st.verb}
+                          </button>
+                        )}
+                      </>
+                    }
+                  />
+                );
+              })}
               <Rule
                 label="Prep time"
                 note="Quoted to the guest when they order."
@@ -190,25 +212,6 @@ export function OrdersView() {
                 note="A second set of hours is a second thing to forget on a holiday."
                 value={cfg.windowNote ?? "Your opening hours"}
               />
-              {/* THE DELIVERY NUMBERS ONLY EXIST WHEN DELIVERY DOES. A radius
-                  on a pickup-only place governs nothing, and a console that
-                  shows one is inviting somebody to tune it. */}
-              {place.deliveryOrders && (
-                <>
-                  <Rule
-                    label="Delivery radius"
-                    value={cfg.radiusKm === null ? "—" : `${cfg.radiusKm} km`}
-                  />
-                  <Rule
-                    label="Delivery fee"
-                    value={
-                      cfg.deliveryFeeCents === null
-                        ? "—"
-                        : money(cfg.deliveryFeeCents)
-                    }
-                  />
-                </>
-              )}
               <Rule
                 label="Minimum order"
                 note="Below this the guest cannot check out."
@@ -217,6 +220,36 @@ export function OrdersView() {
             </div>
           )}
         </Section>
+
+        {/* ── WHERE IT LANDS ──────────────────────────────────────────── */}
+        <Section
+          title="Where new orders are announced"
+          description="Always here. And on one WhatsApp number per place, the same one Online Reservations uses — set it on either screen."
+          lane
+        >
+          <div className={RULES_CARD}>
+            <Rule
+              label="Notifications number"
+              note={place.notificationsNumber ? "New, changed and cancelled orders arrive here as structured messages." : "None yet. Until there is one, orders are only on this screen."}
+              value={
+                <input
+                  aria-label="Notifications number"
+                  defaultValue={place.notificationsNumber ?? ""}
+                  placeholder="+52 81 …"
+                  className={`${INPUT_CLASS} h-9 w-44`}
+                />
+              }
+            />
+          </div>
+        </Section>
+
+        {/* ── DELIVERY, NOT YET ───────────────────────────────────────── */}
+        <SoonStrip title="Delivery is coming: your own couriers by WhatsApp, or Uber Direct">
+          Pickup only for now — Pato, 2026-09-20: *“sólo permitir pickup al
+          principio”*. When it lands, a courier never installs anything: the
+          order arrives on their WhatsApp with the address, and they tap
+          Picked up and Delivered from the message.
+        </SoonStrip>
 
         {/* ── SURFACE ─────────────────────────────────────────────────── */}
         <Section
@@ -287,7 +320,7 @@ export function OrdersView() {
                 title="No orders yet"
                 hint={
                   channelsOff
-                    ? "Neither pickup nor delivery is on, so there is nothing for a guest to place."
+                    ? "No channel is connected, so there is nothing for a guest to place."
                     : cfg?.paused
                       ? "Orders are paused, so nothing new can arrive."
                       : "An order appears the moment a guest pays for one."

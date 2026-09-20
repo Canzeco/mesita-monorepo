@@ -56,20 +56,25 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 // what it does and go buy it — and Soon is a product that does not exist at
 // all. Only the second one has nothing whatever to look at, so only the second
 // one goes to the bottom.
-// AND NOW IT IS TEN, WHICH IS PATO'S "ACTUALES" EXACTLY (MESITA-2011).
-// Partner is 2nd and Online Reviews 3rd, both on his own numbering, and
-// EXPRESS WEBSITE LEAVES: he put it in Futuros, and the ten left over once it
-// goes are the ten he listed there. That also retires the rule the line above
-// wrote — everything-you-can-use-then-everything-you-cannot — because nothing
-// in this list is Soon any more. It comes back the day a Soon product earns a
-// row again.
+// AND NOW IT IS ELEVEN (MESITA-2017). MESITA-2011 made it Pato's ten
+// Actuales and wrote down that his second list — the one with Express Website
+// at 9th and no Digital Menu — "reads as the old sidebar recited". On
+// 2026-09-20 he answered the question directly, at the /autoplan gate: Digital
+// Menu stays at 4th (three products read the published menu) AND Express
+// Website comes back off the Futuros door, tenth, ahead of the Agent. So this
+// is neither of the two lists he dictated; it is the one he approved with the
+// contradiction pointed out to him.
 //
-// HE DICTATED A SECOND LIST OF TEN a few minutes later, and this is not it:
-// that one had lost Digital Menu (MESITA-1966 added it deliberately and
-// nothing has retired it) and pulled Express Website back to 9th, against his
-// own Futuros placement in the same breath. It reads as this list recited from
-// the old sidebar. decision: the Actuales/Futuros pair wins; a row move is one
-// line here if he meant the other.
+// EXPRESS WEBSITE IS IN IT AND IS NOT BUILT, again, which revives the rule
+// MESITA-2004 wrote and MESITA-2011 retired: a product earns its row by
+// mattering, and `products.ts` decides separately whether its card says Soon.
+// It does not say Soon any more — but only because the mock now carries the
+// picker → preview → published states as fixtures (`websiteState`), which is
+// the exact condition `products.ts`'s header sets for a live chip.
+//
+// A LITERAL, PINNED BY TEST. `product-order.test.ts` asserts this array equals
+// the dictated eleven, element for element. `satisfies` already refuses a key
+// outside `PRODUCT_KEYS`; the test is what refuses a row MOVE nobody decided.
 export const PRODUCT_ORDER = [
   "profile",
   "partner",
@@ -80,11 +85,12 @@ export const PRODUCT_ORDER = [
   "reservations",
   "pay",
   "credits",
+  "website",
   "line",
 ] as const satisfies readonly ProductKey[];
 
-/** Everything the ten leaves out, behind ONE row. Not a product and not a
- *  `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` is. */
+/** Everything the eleven leaves out, behind ONE row. Not a product and not a
+ *  `ProductKey` — the same sentinel shape `PARTNERSHIP_SLUG` was. */
 export const FUTURE_SLUG = "future-products";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {

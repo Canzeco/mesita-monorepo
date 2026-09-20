@@ -13,12 +13,13 @@ import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/shared/Badges";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
 import { RESERVATIONS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import type { MockReservation } from "@/mock/types";
 import { dayTime } from "@/lib/format";
-import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
 
 const STATE_TONE: Record<MockReservation["state"], "on" | "soon" | "bad" | "neutral"> = {
   confirmed: "on",
@@ -56,6 +57,42 @@ export function ReservationsView() {
         />
       </Half>
       <Half label="Manage">
+        {/* THE RULES (MESITA-2017). Pato: inputs (the app, your site), rules,
+            outputs. The provider holds the tables; these are the rules Mesita
+            asks a guest against before it sends them there. */}
+        <Section
+          title="Rules"
+          description="What a guest may book. Everything else — which table, who is seated — stays with your provider."
+          lane
+          right={<button type="button" className={`${GHOST_PILL_BUTTON_CLASS} self-start`}>Change rules</button>}
+        >
+          <div className={RULES_CARD}>
+            <Rule label="Hours" note="When a booking may start." value="Your opening hours" />
+            <Rule label="Party size" note="Bigger groups go to a person." value="1 – 8" />
+            <Rule label="Lead time" note="How far ahead a guest may book." value="1 h – 30 days" />
+            <Rule label="Confirmation" note="Confirm each one by hand, or let the provider hold it at once." value={<Badge tone="on">Automatic</Badge>} />
+          </div>
+        </Section>
+        <Section
+          title="Where new bookings are announced"
+          description="Always here. And on one WhatsApp number per place, the same one Online Orders uses — set it on either screen."
+          lane
+        >
+          <div className={RULES_CARD}>
+            <Rule
+              label="Notifications number"
+              note={place.notificationsNumber ? "New, changed and cancelled bookings, and reminders, arrive here." : "None yet. Until there is one, bookings are only on this screen."}
+              value={
+                <input
+                  aria-label="Notifications number"
+                  defaultValue={place.notificationsNumber ?? ""}
+                  placeholder="+52 81 …"
+                  className={`${INPUT_CLASS} h-9 w-44`}
+                />
+              }
+            />
+          </div>
+        </Section>
         <Section
           title="Your provider"
           description="Mesita shows the bookings and sends the guest. Your provider holds the tables."
