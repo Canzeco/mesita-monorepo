@@ -71,7 +71,7 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
-import { PULSE_TOTAL } from "./pulse-pieces.ts";
+import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 /**
  * The nine earned signals, in Notion Docs > Discovery section 8.3 order:
@@ -158,8 +158,8 @@ export type SignalPlace = {
    */
   promoting?: boolean;
   /**
-   * How far the Crenup queue got, 0..PULSE_TOTAL (`pulseOf`,
-   * pulse-pieces.ts). `enriched` reads this; nothing else may. It is the
+   * How far the Crenup queue got, 0..CRENUP_TOTAL (`crenupOf`,
+   * crenup-ladder.ts). `enriched` reads this; nothing else may. It is the
    * gradient MESITA-1598 added and MESITA-1858 restored — the binary alone is
    * a constant on every lane that admits only enriched rows (see `enriched`).
    * A surface has to opt in by running `attachCrenupHighWater`; absent, the
@@ -476,14 +476,14 @@ export function summary(
  *
  * A constant signal cannot reorder a deck, and the Discovery console would be
  * rendering an operator a dial that does nothing. Worse, it is a REGRESSION:
- * the retired `mesita_level` folded `crenup_high_water` (0..PULSE_TOTAL), a
+ * the retired `mesita_level` folded `crenup_high_water` (0..CRENUP_TOTAL), a
  * fact that is NOT the admission predicate, so it did discriminate among
  * admitted rows — two ready partner rows at one point on the Map, high-water
  * 10 and 2, ranked 3.1x apart and would now tie, handing the order to
  * whatever Postgres returned.
  *
  * So the gradient is restored here, verbatim: `ENRICHED_OFF + (1 -
- * ENRICHED_OFF) * hw / PULSE_TOTAL`, which is MESITA-1598's own
+ * ENRICHED_OFF) * hw / CRENUP_TOTAL`, which is MESITA-1598's own
  * `0.15 + 0.85 * hw/10`. MESITA-1858 kept `crenupHighWater` and
  * `attachCrenupHighWater` wired for exactly this, and the issue's note that
  * the collapse was deliberate was written believing the binary would still
@@ -520,7 +520,7 @@ export function enriched(
   const highWater = place.crenupHighWater;
   if (typeof highWater === "number" && Number.isFinite(highWater)) {
     return clamp01(
-      ENRICHED_OFF + (1 - ENRICHED_OFF) * clamp01(highWater / PULSE_TOTAL),
+      ENRICHED_OFF + (1 - ENRICHED_OFF) * clamp01(highWater / CRENUP_TOTAL),
     );
   }
   return clamp01(place.enriched === true ? 1 : ENRICHED_OFF);

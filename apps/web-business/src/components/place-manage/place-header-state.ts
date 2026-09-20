@@ -53,8 +53,8 @@ export function generalHeaderFacts(input: {
   /** Live Enricher run. Independent of Enriched (last-completed). */
   enriching?: boolean;
   requestCount?: number;
-  enrich_pulse?: number;
-  enrich_pulse_total?: number;
+  enrich_crenup?: number;
+  enrich_crenup_total?: number;
   partner: boolean;
   promoting?: boolean;
   promotingLevel?: number;
@@ -72,8 +72,8 @@ export function generalHeaderFacts(input: {
     input.business_state == null || input.business_state === ""
       ? "unknown"
       : input.business_state === "OPERATIONAL";
-  const pulse = typeof input.enrich_pulse === "number" ? input.enrich_pulse : null;
-  const total = typeof input.enrich_pulse_total === "number" ? input.enrich_pulse_total : null;
+  const pulse = typeof input.enrich_crenup === "number" ? input.enrich_crenup : null;
+  const total = typeof input.enrich_crenup_total === "number" ? input.enrich_crenup_total : null;
   const enriched: boolean | "unknown" =
     pulse === null || total === null || total === 0 ? "unknown" : pulse >= total;
   const level = operatorPromotingLevel(

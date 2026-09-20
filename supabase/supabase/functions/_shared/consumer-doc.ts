@@ -7,7 +7,7 @@
 // per aggregate. place/projects/profiles is bigger still (16 files, 29 write
 // sites); config and vocab are explicitly out of scope for this issue.
 //
-// THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts):
+// THE TWO-BELT PATTERN (StampableCrenupStep, crenup-report.ts):
 //   Belt 1 — TypeScript. ConsumerWriteArgs.patch IS ConsumerPatch (a closed
 //     key set), not Record<string, unknown> — a misspelled or retired field
 //     name fails to compile at every call site that builds the patch as a
@@ -17,7 +17,7 @@
 //   Belt 2 — runtime. validateConsumerPatch re-checks the same closed key
 //     set (HTTP JSON has no compiler) plus the shape and cross-field
 //     invariants below. A malformed patch never reaches Postgres — it just
-//     doesn't write, the same rule pulse-report.ts enforces for a piece a
+//     doesn't write, the same rule crenup-report.ts enforces for a piece a
 //     run didn't buy.
 //
 // THE INVARIANTS, and why each is real (not invented):
@@ -119,7 +119,7 @@ export const CONSUMER_PATCH_KEYS = [
 // Compile-time exhaustiveness check the other direction: if a field is ever
 // added to ConsumerDoc and this array is forgotten, `_exhaustive` fails to
 // type as `true` and the file stops compiling — the same discipline
-// FUNCTION_STATE_KEYS borrows from PULSE_PIECE_META (MESITA-1222).
+// FUNCTION_STATE_KEYS borrows from CRENUP_STEP_META (MESITA-1222).
 type _MissingFromPatchKeys = Exclude<
   keyof Omit<ConsumerDoc, "id" | "created_at">,
   typeof CONSUMER_PATCH_KEYS[number]

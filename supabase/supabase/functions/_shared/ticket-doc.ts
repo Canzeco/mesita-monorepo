@@ -3,7 +3,7 @@
 // widest write-call-site fan-out of the six, 17 files / 18 call sites, each
 // one call site — against visit_tickets).
 //
-// THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; copied from
+// THE TWO-BELT PATTERN (StampableCrenupStep, crenup-report.ts; copied from
 // consumer-doc.ts, aggregate 1's reference implementation — same shape, not
 // the same fields):
 //   Belt 1 — TypeScript. TicketWriteArgs.patch IS TicketPatch (a closed key
@@ -244,7 +244,7 @@ export const TICKET_PATCH_KEYS = [
 // Compile-time exhaustiveness check the other direction: if a field is ever
 // added to TicketDoc and this array is forgotten, `_exhaustive` fails to
 // type as `true` and the file stops compiling — same discipline
-// FUNCTION_STATE_KEYS borrows from PULSE_PIECE_META (MESITA-1222),
+// FUNCTION_STATE_KEYS borrows from CRENUP_STEP_META (MESITA-1222),
 // consumer-doc.ts borrows in turn.
 type _MissingFromTicketPatchKeys = Exclude<
   keyof Omit<TicketDoc, "id" | "created_at" | "updated_at">,

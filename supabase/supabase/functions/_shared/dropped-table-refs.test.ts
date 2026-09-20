@@ -3,7 +3,7 @@
 // `public.places` was renamed to `place_profiles` by MESITA-1593. The sweep in
 // #1557 caught 29 call sites and missed one, because that one did not exist
 // when the branch was cut: it arrived on main separately with MESITA-1598's
-// `pulseOf` reader while the sweep was in flight. Nothing re-checked the sweep
+// `crenupOf` reader while the sweep was in flight. Nothing re-checked the sweep
 // at merge time, so `discovery-place.ts` shipped a `.from("places")` against a
 // dropped table and every discovery ranking read threw 42P01.
 //

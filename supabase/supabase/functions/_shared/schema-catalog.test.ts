@@ -2,7 +2,7 @@
 //
 // Two of the seven guard tests the issue names are testable today, against
 // what already exists, without waiting for the six aggregate validators:
-// closed-key-sets, and the derived-index discipline pulse-pieces.ts already
+// closed-key-sets, and the derived-index discipline crenup-ladder.ts already
 // enforces for its own array. The other five — validator accept/reject,
 // deletion-law visibility, create-quota concurrency, review->rollup math,
 // place-card size budget — need the aggregate validators or a materialized
@@ -20,7 +20,7 @@
 // this file used to flag as an open gap.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { PULSE_EXTRAS, PULSE_PIECES, type PulseStep } from "./pulse-pieces.ts";
+import { CRENUP_EXTRAS, CRENUP_LADDER, type CrenupStep } from "./crenup-ladder.ts";
 import {
   EnrichmentMapSchema,
   FUNCTION_STATE_KEYS,
@@ -30,8 +30,8 @@ import {
   isFunctionState,
   isMoney,
   operatorFunctionStates,
-  pulseBlockedAtFromMap,
-  pulseHighWaterFromMap,
+  crenupBlockedAtFromMap,
+  crenupHighWaterFromMap,
   toFunctionState,
   type BillingState,
   type ChannelSet,
@@ -42,16 +42,16 @@ import {
 } from "./schema-catalog.ts";
 import type { ChannelKey, Channels } from "./channels.ts";
 
-// ── Closed-key-sets: FunctionState is indexed by PulseStep, and nothing else ──
+// ── Closed-key-sets: FunctionState is indexed by CrenupStep, and nothing else ──
 
-Deno.test("FUNCTION_STATE_KEYS is exactly PULSE_PIECES + PULSE_EXTRAS, in that order", () => {
-  const expected: readonly PulseStep[] = [...PULSE_PIECES, ...PULSE_EXTRAS];
+Deno.test("FUNCTION_STATE_KEYS is exactly CRENUP_LADDER + CRENUP_EXTRAS, in that order", () => {
+  const expected: readonly CrenupStep[] = [...CRENUP_LADDER, ...CRENUP_EXTRAS];
   assertEquals(FUNCTION_STATE_KEYS, expected);
 });
 
 Deno.test("FUNCTION_STATE_KEYS has 8 members — Details through Embedding", () => {
-  assertEquals(PULSE_PIECES.length, 8);
-  assertEquals(PULSE_EXTRAS.length, 0);
+  assertEquals(CRENUP_LADDER.length, 8);
+  assertEquals(CRENUP_EXTRAS.length, 0);
   assertEquals(FUNCTION_STATE_KEYS.length, 8);
 });
 
@@ -61,13 +61,13 @@ Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never ove
 });
 
 // The runtime tests above only prove the key LIST is right; this proves the
-// compile-time belt — TypeScript rejects a key outside PulseStep — actually
+// compile-time belt — TypeScript rejects a key outside CrenupStep — actually
 // holds (MESITA-1247 guard test 2, function leg, compile-time half).
-Deno.test("FunctionStateMap rejects a key outside PulseStep at compile time", () => {
+Deno.test("FunctionStateMap rejects a key outside CrenupStep at compile time", () => {
   const map: FunctionStateMap = { details: { state: "pending", at: null, detail: null } };
-  // @ts-expect-error — "bogus" is not a PulseStep; FunctionStateMap must reject it
+  // @ts-expect-error — "bogus" is not a CrenupStep; FunctionStateMap must reject it
   map.bogus = { state: "pending", at: null, detail: null };
-  // @ts-expect-error — `pulse` is a RETIRED rung (MESITA-2027), not a PulseStep
+  // @ts-expect-error — `pulse` is a RETIRED rung (MESITA-2027), not a CrenupStep
   map.pulse = { state: "pending", at: null, detail: null };
   assertEquals(map.details?.state, "pending");
 });
@@ -198,7 +198,7 @@ Deno.test("EnrichmentMapSchema: accepts a fully-enriched map with blockedAt null
   assert(r.ok);
 });
 
-Deno.test("EnrichmentMapSchema: accepts a blocked map with a real PulseBlock", () => {
+Deno.test("EnrichmentMapSchema: accepts a blocked map with a real CrenupBlock", () => {
   const r = EnrichmentMapSchema.parse({
     functions: { details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
@@ -208,7 +208,7 @@ Deno.test("EnrichmentMapSchema: accepts a blocked map with a real PulseBlock", (
 });
 
 Deno.test("EnrichmentMapSchema: rejects highWater out of 0-8 range, a non-integer, and a bad blockedAt.state", () => {
-  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 9, blockedAt: null }).ok, "9 is over PULSE_TOTAL");
+  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 9, blockedAt: null }).ok, "9 is over CRENUP_TOTAL");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: -1, blockedAt: null }).ok, "negative");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 3.5, blockedAt: null }).ok, "non-integer");
   assert(
@@ -231,7 +231,7 @@ Deno.test("EnrichmentMapSchema: rejects an unknown top-level key", () => {
   assert(!r.ok);
 });
 
-// pulseHighWaterFromMap/pulseBlockedAtFromMap mirror pulse-pieces.ts's own
+// crenupHighWaterFromMap/crenupBlockedAtFromMap mirror crenup-ladder.ts's own
 // event-based walk (converting the map back to its event shape, not a
 // second implementation) — a few of that file's own pinned invariants,
 // re-run over the map path so the two can never silently diverge.
@@ -242,41 +242,41 @@ function stamped(...pieces: string[]): FunctionStateMap {
   return map as FunctionStateMap;
 }
 
-Deno.test("pulseHighWaterFromMap: empty map -> 0, full map -> 8", () => {
-  assertEquals(pulseHighWaterFromMap({}), 0);
-  assertEquals(pulseHighWaterFromMap(stamped(...PULSE_PIECES)), 8);
+Deno.test("crenupHighWaterFromMap: empty map -> 0, full map -> 8", () => {
+  assertEquals(crenupHighWaterFromMap({}), 0);
+  assertEquals(crenupHighWaterFromMap(stamped(...CRENUP_LADDER)), 8);
 });
 
-Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece completed", () => {
+Deno.test("crenupHighWaterFromMap: a gap stops the count even if a later piece completed", () => {
   // links (3) missing, social (4) completed anyway.
   const map = stamped("details", "serp", "social");
-  assertEquals(pulseHighWaterFromMap(map), 2);
+  assertEquals(crenupHighWaterFromMap(map), 2);
 });
 
-Deno.test("pulseHighWaterFromMap: Embedding at 8 cannot skip a gap", () => {
+Deno.test("crenupHighWaterFromMap: Embedding at 8 cannot skip a gap", () => {
   const map: FunctionStateMap = {
     ...stamped("details", "serp"),
     embedding: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
-  assertEquals(pulseHighWaterFromMap(map), 2, "function 8 cannot skip 3–7");
+  assertEquals(crenupHighWaterFromMap(map), 2, "function 8 cannot skip 3–7");
 });
 
-Deno.test("pulseBlockedAtFromMap: missing vs failed, and null when the queue finished", () => {
-  assertEquals(pulseBlockedAtFromMap({}), { key: "details", index: 1, state: "missing" });
+Deno.test("crenupBlockedAtFromMap: missing vs failed, and null when the queue finished", () => {
+  assertEquals(crenupBlockedAtFromMap({}), { key: "details", index: 1, state: "missing" });
   const failedAtLinks: FunctionStateMap = {
     ...stamped("details", "serp"),
     links: { state: "failed", at: "2026-08-23T00:00:00Z", detail: "timeout" },
   };
-  assertEquals(pulseBlockedAtFromMap(failedAtLinks), { key: "links", index: 3, state: "failed" });
-  assertEquals(pulseBlockedAtFromMap(stamped(...PULSE_PIECES)), null);
+  assertEquals(crenupBlockedAtFromMap(failedAtLinks), { key: "links", index: 3, state: "failed" });
+  assertEquals(crenupBlockedAtFromMap(stamped(...CRENUP_LADDER)), null);
 });
 
-Deno.test("pulseBlockedAtFromMap: a pending (in-flight) piece reads as failed, same as pulse-pieces.ts's own skipped rule", () => {
+Deno.test("crenupBlockedAtFromMap: a pending (in-flight) piece reads as failed, same as crenup-ladder.ts's own skipped rule", () => {
   const map: FunctionStateMap = {
     ...stamped("details"),
     serp: { state: "pending", at: "2026-08-23T00:00:00Z", detail: null },
   };
-  assertEquals(pulseBlockedAtFromMap(map), { key: "serp", index: 2, state: "failed" });
+  assertEquals(crenupBlockedAtFromMap(map), { key: "serp", index: 2, state: "failed" });
 });
 
 Deno.test("toFunctionState: completed stays completed, started becomes pending, everything else becomes failed", () => {

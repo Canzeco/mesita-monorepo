@@ -4,7 +4,7 @@
 // ONE LADDER, AND CREATE RUNS A SUBSET OF IT: 0, 1, 7, 8. Create used to
 // number itself 1–5 while Enrich numbered itself 1–10, so `details` was step 3
 // here and step 2 there — two answers to "which step is this". The numbers
-// belong to the ladder now (pulse-pieces.ts); a caller simply runs fewer.
+// belong to the ladder now (crenup-ladder.ts); a caller simply runs fewer.
 //
 //   0 seed        → dedupe on google_place_id, mint the paired rows
 //                   (generating when queueing Enrich, ready when not).
@@ -55,7 +55,7 @@ import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { synthesizeDoorProfile } from "./create-door-profile.ts";
 import { applyInferredMesitaName } from "./mesita-name-door.ts";
 import { writePlace } from "./place-doc.ts";
-import { pieceDone, pieceFailed, reportPulsePieces } from "./pulse-report.ts";
+import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 
@@ -160,7 +160,7 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // ── CREATE step 2 — PULSE. Is this place still active? ──────────────────
+  // ── CREATE step 1 — DETAILS' LIVENESS subprocess. Still active? ────────
   // The same gate ENRICH runs at function 1, at the only moment it is cheaper
   // still: before a single row is minted. CLOSED_PERMANENTLY refuses the
   // create outright — a dead listing must not enter the catalog at all.
@@ -256,8 +256,8 @@ export async function createMinimalPlace(opts: {
   // observed effect. Best-effort (a stamp failure never fails a create).
   // Result: a fresh, healthy place reads enriched 1/8 the moment it exists;
   // an un-queued create climbs on to 7–8 via the door below.
-  await reportPulsePieces(admin, saved.place_id, {
-    details: pieceDone(
+  await reportCrenupSteps(admin, saved.place_id, {
+    details: stepDone(
       basicsRes.businessStatus
         ? `Google spine persisted at create; listing ${basicsRes.businessStatus}.`
         : "Google spine persisted at create; no business status stated.",
@@ -312,14 +312,14 @@ export async function createMinimalPlace(opts: {
               door.mesitaNameCandidate,
             );
           }
-          await reportPulsePieces(admin, saved.place_id, {
+          await reportCrenupSteps(admin, saved.place_id, {
             description: doorWrite.ok
-              ? pieceDone(
+              ? stepDone(
                 `Door Description — category “${door.category ?? "n/a"}”, ` +
                   `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
                 { via: "create" },
               )
-              : pieceFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
+              : stepFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
           });
         }
       }

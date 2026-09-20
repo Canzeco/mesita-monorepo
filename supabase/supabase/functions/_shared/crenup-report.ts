@@ -1,6 +1,6 @@
-// Writing PULSE piece outcomes (MESITA-1172).
+// Writing CRENUP step outcomes (MESITA-1172).
 //
-// The read side is pulse-pieces.ts; this is how a stage stamps one. It replaces
+// The read side is crenup-ladder.ts; this is how a stage stamps one. It replaces
 // enrich-subprocess-report.ts, which recorded the SUBPROCESS vocabulary — that
 // is what a run may buy, not what an operator is told. Pieces are the operator's
 // ladder, and the meter reads how far it got.
@@ -34,7 +34,7 @@
 //
 //   5. SEED IS NEVER STAMPED — it is not an enrich function at all
 //      (seed is FUNCTION 0 and the row existing IS the seed). It is not in
-//      PULSE_PIECES, so a `seed:` key fails to compile and an unknown-string
+//      CRENUP_LADDER, so a `seed:` key fails to compile and an unknown-string
 //      cast falls through the META/label check below and writes nothing.
 //
 //   6. CREATE IS A CALLER OF THIS REPORTER TOO. Since MESITA-2027 there is
@@ -47,46 +47,45 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportEnrichmentStep } from "./enrich-pipeline.ts";
 import {
-  PULSE_PIECE_META,
-  type PulsePiece,
-  type PulseStep,
-} from "./pulse-pieces.ts";
+  CRENUP_STEP_META,
+  type CrenupStep,
+} from "./crenup-ladder.ts";
 import {
   foldFunctionStateMap,
-  pulseBlockedAtFromMap,
-  pulseHighWaterFromMap,
+  crenupBlockedAtFromMap,
+  crenupHighWaterFromMap,
   type EnrichmentMap,
   type FunctionStateMap,
 } from "./schema-catalog.ts";
 import { writePlace } from "./place-doc.ts";
 
 /**
- * What a caller may stamp: any enrich function. `seed`
- * is not among them by construction — it left PULSE_PIECES in MESITA-1253 —
- * so the old floor-exclusion type collapsed into the union itself. The alias
- * survives because call sites read better naming what they hold.
+ * What a caller may stamp: any ladder step. `seed` is not among them by
+ * construction — it is step 0 and the row existing IS the seed, so it is not
+ * in CRENUP_LADDER at all. The alias survives because call sites read better
+ * naming what they hold.
  */
-export type StampablePulseStep = PulseStep;
+export type StampableCrenupStep = CrenupStep;
 
-export type PieceOutcome = {
+export type StepOutcome = {
   state: "completed" | "failed";
   detail: string;
   meta?: Record<string, unknown>;
 };
 
 /** The effect landed. */
-export function pieceDone(
+export function stepDone(
   detail: string,
   meta?: Record<string, unknown>,
-): PieceOutcome {
+): StepOutcome {
   return { state: "completed", detail, meta };
 }
 
 /** It had something to do and could not do it. NOT for absence — see rule 4. */
-export function pieceFailed(
+export function stepFailed(
   detail: string,
   meta?: Record<string, unknown>,
-): PieceOutcome {
+): StepOutcome {
   return { state: "failed", detail, meta };
 }
 
@@ -97,12 +96,12 @@ export function pieceFailed(
  *
  * `step_name` is the FUNCTION key and `step` its S-number. The reader matches
  * on the KEY and treats the number as decorative, which is what makes a
- * renumbering survivable — see pulse-pieces.ts.
+ * renumbering survivable — see crenup-ladder.ts.
  */
-export async function reportPulsePieces(
+export async function reportCrenupSteps(
   admin: SupabaseClient,
   projectId: string,
-  //   7. THE KEY IS `StampablePulseStep`, NOT `string`. A misspelled key used to
+  //   7. THE KEY IS `StampableCrenupStep`, NOT `string`. A misspelled key used to
   //      compile, write nothing, and cap the ladder at the rung before it — with
   //      the run reporting success. `socail` for `social` pinned every place at
   //      3 and nothing in the type system, the tests or CI said a word
@@ -110,16 +109,16 @@ export async function reportPulsePieces(
   //   8. EMBEDDING IS FUNCTION 8. It stamps `S8` like every other function.
   //      Create also stamps it; the high-water stays at 1 until 2–7 land,
   //      because 8 cannot skip a gap.
-  //   9. PULSE AND MENU ARE NOT STAMPABLE ANY MORE (MESITA-2027). Liveness is
+  //   9. PULSE AND MENU ARE NOT STAMPABLE (MESITA-2027). Liveness is
   //      a subprocess of `details` and reports through ITS outcome; the menu
   //      is operator input the Intaker does not derive. Both keys fail to
   //      compile here and fall out of the walk on read.
-  pieces: Partial<Record<StampablePulseStep, PieceOutcome>>,
+  pieces: Partial<Record<StampableCrenupStep, StepOutcome>>,
 ): Promise<void> {
-  const stamped: Partial<Record<StampablePulseStep, PieceOutcome>> = {};
+  const stamped: Partial<Record<StampableCrenupStep, StepOutcome>> = {};
   for (const [key, outcome] of Object.entries(pieces)) {
     if (!outcome) continue;
-    const meta = PULSE_PIECE_META[key as PulsePiece];
+    const meta = CRENUP_STEP_META[key as CrenupStep];
     if (!meta) continue;
     await reportEnrichmentStep(
       admin,
@@ -130,7 +129,7 @@ export async function reportPulsePieces(
       outcome.detail,
       { piece: key, index: meta.index, ...(outcome.meta ?? {}) },
     );
-    stamped[key as StampablePulseStep] = outcome;
+    stamped[key as StampableCrenupStep] = outcome;
   }
   if (Object.keys(stamped).length > 0) {
     await mergeEnrichmentMap(admin, projectId, stamped);
@@ -153,7 +152,7 @@ export async function reportPulsePieces(
 async function mergeEnrichmentMap(
   admin: SupabaseClient,
   projectId: string,
-  stamped: Partial<Record<StampablePulseStep, PieceOutcome>>,
+  stamped: Partial<Record<StampableCrenupStep, StepOutcome>>,
 ): Promise<void> {
   const { data, error: readError } = await admin
     .from("place_profiles")
@@ -176,7 +175,7 @@ async function mergeEnrichmentMap(
     // outcome.state is "completed" | "failed" — already a valid
     // FunctionState.state, no translation needed (that mapping only
     // applies to raw historical event rows — see toFunctionState).
-    functions[key as PulseStep] = {
+    functions[key as CrenupStep] = {
       state: outcome.state,
       at: now,
       detail: outcome.detail,
@@ -184,8 +183,8 @@ async function mergeEnrichmentMap(
   }
   const next: EnrichmentMap = {
     functions,
-    highWater: pulseHighWaterFromMap(functions),
-    blockedAt: pulseBlockedAtFromMap(functions),
+    highWater: crenupHighWaterFromMap(functions),
+    blockedAt: crenupBlockedAtFromMap(functions),
   };
   const res = await writePlace(admin, {
     table: "place_profiles",

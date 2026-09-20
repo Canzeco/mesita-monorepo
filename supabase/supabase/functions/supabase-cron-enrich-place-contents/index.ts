@@ -18,7 +18,7 @@
 // PERSIST AND STORE ARE NOT STEPS (MESITA-2027). They used to be S8 and S9 —
 // stages that bought no function and reported on writes two stages from where
 // the work happened. Each function owns its own write now, which is what makes
-// pulse-report rule 2 (`completed` means THE EFFECT LANDED) honest rather than
+// crenup-report rule 2 (`completed` means THE EFFECT LANDED) honest rather than
 // aspirational. `content_state` still flips exactly ONCE, after 8, so a place
 // never goes public wearing this run's images over last run's description.
 //
@@ -34,12 +34,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
-  pieceDone,
-  pieceFailed,
-  reportPulsePieces,
-  type PieceOutcome,
-  type StampablePulseStep,
-} from "../_shared/pulse-report.ts";
+  stepDone,
+  stepFailed,
+  reportCrenupSteps,
+  type StepOutcome,
+  type StampableCrenupStep,
+} from "../_shared/crenup-report.ts";
 import {
   applyProfileToUpdate,
   synthesisModelFor,
@@ -589,7 +589,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     imagesMeta.images = "skipped";
   }
 
-  // ── PULSE functions (MESITA-1243) ──────────────────────────────────────
+  // ── CRENUP steps (MESITA-1243) ──────────────────────────────────────
   // Contents owns 7 (description) and 8 (embedding).
   //
   // MENU USED TO HOLD SLOT 7 HERE as a stub that always passed — the website
@@ -597,7 +597,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // reported nothing. MESITA-2027 removed it: the menu is OPERATOR INPUT
   // (`menu_pdf_url`, `menus`, the console's MenusSection), not something the
   // Intaker derives. The menu data is untouched; only the claim went away.
-  const contentPieces: Partial<Record<StampablePulseStep, PieceOutcome>> = {};
+  const contentPieces: Partial<Record<StampableCrenupStep, StepOutcome>> = {};
   if (wants(buys, "synthesis")) {
     // DESCRIPTION (7) — the PRESENTATION, then category, then tags. NOT the
     // Semantic Summary: that is Embedding below, and the two are different
@@ -606,24 +606,24 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // model having replied — which is exactly rule 2, and exactly why this
     // function owning its own write costs nothing to state.
     contentPieces.description = aboutWritten
-      ? pieceDone(
+      ? stepDone(
         `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s); ` +
           `order ${place.orders_enabled ? "on" : "off"}, reserve ${
             place.reservations_enabled ? "on" : "off"
           }; Mesita Name + Semantic Summary inferred.`,
       )
-      : pieceFailed("Synthesis ran but no Presentation was persisted.");
+      : stepFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (wants(buys, "embedding")) {
     // EMBEDDING — function 8. Embed-only: vectors of the words function 7
     // wrote. It CLOSES the queue.
     contentPieces.embedding = embeddingWrote
-      ? pieceDone("Embedding — Mesita Name and Semantic Summary vectors written.")
-      : pieceFailed(
+      ? stepDone("Embedding — Mesita Name and Semantic Summary vectors written.")
+      : stepFailed(
         "Embedding did not write (no summary text, or the embed failed). Re-enrich to retry.",
       );
   }
-  await reportPulsePieces(admin, placeId, contentPieces);
+  await reportCrenupSteps(admin, placeId, contentPieces);
 
   // One beacon for the whole contents stage — one notification per Edge
   // Function. Its own `step` is decorative and does not track the ladder: the

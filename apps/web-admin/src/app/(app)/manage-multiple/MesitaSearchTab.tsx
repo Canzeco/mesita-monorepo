@@ -49,7 +49,7 @@ function factOn(
   if (key === "listed") return hit.listed;
   if (key === "requested") return hit.request_count > 0;
   if (key === "enriched") {
-    return hit.enrich_pulse_total > 0 && hit.enrich_pulse === hit.enrich_pulse_total;
+    return hit.enrich_crenup_total > 0 && hit.enrich_crenup === hit.enrich_crenup_total;
   }
   if (key === "enriching") return hit.enriching;
   if (key === "verified") return hit.verified;
@@ -60,8 +60,8 @@ function factOn(
   return "unknown";
 }
 
-// PULSE is a high-water: it stops counting at the first gap by design (its
-// own comment in _shared/pulse-pieces.ts says so), so a place where `links`
+// CRENUP is a high-water: it stops counting at the first gap by design (its
+// own comment in _shared/crenup-ladder.ts says so), so a place where `links`
 // failed but `social`/`menu` later completed reads high-water 3 even though
 // 5 and 7 landed. `enrich_functions` (MESITA-1611) is the honest per-function
 // map — read it when the payload carries it, and only fall back to the
@@ -77,7 +77,7 @@ export function crenupCalled(
     const state = hit.enrich_functions[fn.key]?.state;
     return state === "completed" || state === "failed";
   }
-  return hit.enrich_pulse >= fn.n;
+  return hit.enrich_crenup >= fn.n;
 }
 
 export function MesitaSearchTab({
@@ -324,23 +324,23 @@ export function MesitaSearchTab({
               </tbody>
             </table>
           </div>
-          {rows.some((r) => r.hit && r.hit.enrich_pulse_labels.length > 0) ? (
+          {rows.some((r) => r.hit && r.hit.enrich_crenup_labels.length > 0) ? (
             <ul className="border-border divide-border divide-y border-t">
               {rows.map((row) => {
                 const hit = row.hit;
-                if (!hit || hit.enrich_pulse_labels.length === 0) return null;
+                if (!hit || hit.enrich_crenup_labels.length === 0) return null;
                 return (
                   <li key={`${row.key}-Crenup`} className="px-4 py-3">
                     <p className="text-muted-foreground type-label mb-2">
                       Crenup · {hit.google_name || hit.name}
                     </p>
-                    {hit.enrich_pulse_blocked ? (
+                    {hit.enrich_crenup_blocked ? (
                       <p className="text-muted-foreground type-label mb-2">
                         Stopped at{" "}
-                        {hit.enrich_pulse_labels[hit.enrich_pulse_blocked.index] ??
-                          hit.enrich_pulse_blocked.key}{" "}
+                        {hit.enrich_crenup_labels[hit.enrich_crenup_blocked.index] ??
+                          hit.enrich_crenup_blocked.key}{" "}
                         —{" "}
-                        {hit.enrich_pulse_blocked.state === "failed"
+                        {hit.enrich_crenup_blocked.state === "failed"
                           ? "the function ran and failed"
                           : "no event yet"}
                         .

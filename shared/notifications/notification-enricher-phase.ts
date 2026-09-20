@@ -106,7 +106,7 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   // derived, so neither is a function any more — but every place enriched
   // before the change has rows under these keys, and a feed that cannot phase
   // them renders them unplaced. The ladder walk ignores them
-  // (pulse-pieces.ts PULSE_RETIRED); this map does not, on purpose.
+  // (crenup-ladder.ts CRENUP_RETIRED); this map does not, on purpose.
   pulse: "research",
   menu: "contents",
 

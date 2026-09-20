@@ -192,7 +192,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // human-readable profile copy a GUEST reads (`places.description`); the
 // Semantic Summary is a separate, super-concise text purpose-built for
 // semantic search, and the only one the INDEX reads. Two of the three
-// enrichment texts named in `_shared/pulse-pieces.ts`, never collapsed.
+// enrichment texts named in `_shared/crenup-ladder.ts`, never collapsed.
 // Written on create + on profile update. Open by default; collapsible like
 // Metadata.
 // Hard ceiling for the Semantic Summary — must stay in lockstep with

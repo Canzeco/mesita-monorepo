@@ -26,7 +26,7 @@ export const ENRICH_FIELD_LIMITS = {
   },
   // The Semantic Summary that OpenAI embeds (places.embedding_source_text) —
   // NOT the Presentation. One of the three enrichment texts, and the only one
-  // the INDEX reads (`_shared/pulse-pieces.ts`). Enforced at word boundaries in
+  // the INDEX reads (`_shared/crenup-ladder.ts`). Enforced at word boundaries in
   // place-embeddings.ts (never a mid-word char slice).
   embeddingSourceText: {
     max: 60,
