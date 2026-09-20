@@ -19,6 +19,7 @@ import { Badge } from "@/components/shared/Badges";
 import { type MockPlace, PLAN_LABEL } from "@/mock/types";
 import type { PlaceHalf } from "@/lib/product-routes";
 import { PageHeader } from "@/components/console/PageHeader";
+import { PlanComparison } from "@/components/console/PlanComparison";
 
 export function PartnershipPane({
   place,
@@ -64,7 +65,23 @@ export function PartnershipPane({
            printing — "Mesita Partnership / Partner" over "Membership /
            Renews …" — and once both named the rung they were one fact twice,
            which `shared/Badges.tsx` opens by forbidding. */
-        <PartnerBanner place={place} />
+        <>
+          <PartnerBanner place={place} />
+          {/* THE LADDER, FOR A PARTNERED PLACE TOO (MESITA-2009). It used to
+              be unpartnered-only, on the argument that a place that has bought
+              needs the door and not the pitch. That was true when the ladder
+              was two rungs and you were on one of them; with four it is the
+              only place an operator can read what the rung ABOVE them carries,
+              and the rung above is the one they might buy.
+
+              ONLY WHEN PARTNERED. `PartnerBanner` hands an unpartnered place
+              to `PartnerCard`, which draws the same grid WITH its buy doors —
+              rendering this one too put the ladder on the screen twice.
+
+              It carries no verb here: the Manage strip above it is the way
+              out, and a second door would be the same exit twice. */}
+          {place.partnered && <PlanComparison current={place.plan} />}
+        </>
       ) : (
         <p className="text-muted-foreground text-[13px] leading-snug">
           The partnership keeps no log of its own. Renewals, a card that failed
