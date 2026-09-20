@@ -1,7 +1,7 @@
 "use client";
 
-// PLAN — what this place pays Mesita, and the four rungs it could pay instead
-// (MESITA-2012).
+// PLAN — what this place pays Mesita, and the three rungs it could pay
+// instead (MESITA-2012).
 //
 // Pato, looking at Mesita Partner with the ladder on it: *"this goes into
 // plan, not mesita partner, different things."*
@@ -57,10 +57,10 @@ export function PlanPane({ place }: { place: MockPlace }) {
           rendering this one too put the ladder on the screen twice.
 
           THE TEST IS THE RUNG AND NOT THE BADGE (MESITA-2014). They were
-          the same boolean until the badge moved to Mesita Pro; reading
-          `partnered` here would now give a place on Mesita Start both
-          grids, and this is the billing screen — the question it asks is
-          whether this place PAYS.
+          the same boolean until the badge moved up to Mesita Ultra; reading
+          `partnered` here would now give a place on Mesita Pro both grids,
+          and this is the billing screen — the question it asks is whether
+          this place PAYS.
 
           It carries no verb here: the Manage strip above it is the way
           out, and a second door would be the same exit twice. */}

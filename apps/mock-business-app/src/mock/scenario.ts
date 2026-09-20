@@ -207,7 +207,8 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
     // THE ONE PAIR THAT CANNOT EXIST. A place on Free has no subscription to
     // be `past_due` or `cancelling` about, so the panel's two dials cannot be
     // crossed into a state the real console never produces. THE TEST IS THE
-    // RUNG, NOT THE BADGE: Start pays, and a paying place has billing states.
+    // RUNG, NOT THE BADGE: Mesita Pro pays, and a paying place has billing
+    // states.
     // Held here rather than in the panel because the panel is not the only
     // writer — a stored scenario from an older build arrives through
     // `getScenario`'s spread with whatever it was saved with.

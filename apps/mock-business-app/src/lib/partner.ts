@@ -8,8 +8,8 @@
 //   2. Profile complete      name, address, hours, at least one photo
 //   3. Visit Rewards on      the guest can earn something here
 //   4. Online Payments on    the guest can pay here (Stripe enabled)
-//   5. The rung              `PARTNER_MIN_PLAN` or above (Mesita Pro since
-//                            MESITA-2014) — the plan that carries the badge
+//   5. The rung              `PARTNER_MIN_PLAN` or above (Mesita Ultra since
+//                            MESITA-2019) — the plan that carries the badge
 //
 // ONE READER. `MockPlace.partnered` is the LADDER's fact (`isPartner(plan)`,
 // derived in `scenario.ts`) and half the app reads it; this function is the

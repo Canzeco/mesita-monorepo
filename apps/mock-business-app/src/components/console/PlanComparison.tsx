@@ -1,9 +1,11 @@
 "use client";
 
-// THE FOUR RUNGS, SIDE BY SIDE (MESITA-2009).
+// THE RUNGS, SIDE BY SIDE (MESITA-2009).
 //
-// Pato, 2026-09-19: *"MAKE PLAN COMPARISSION. $0MX. $200MX. $1000MX. $5000MX.
-// FOUR PLANS."* and *"List the perks of what you can activate and shit."*
+// Pato, 2026-09-19: *"MAKE PLAN COMPARISSION."* and *"List the perks of what
+// you can activate and shit."* It was four columns then; MESITA-2019 repacked
+// the suite into three and this file did not change, because it renders
+// `PLAN_LADDER` and counts nothing.
 //
 // ── WHAT THE PLAN SCREEN DID BEFORE ────────────────────────────────────────
 //
@@ -17,7 +19,7 @@
 // Every column is built from `SPECS` in `lib/products.ts` — the same array
 // that decides what a product's own card says about its floor. A hand-typed
 // list here would be a second writer for that fact, and the two would disagree
-// the first time a `minPlan` moved. Moving Visit Rewards down to Start in this
+// the first time a `minPlan` moved. Moving Visit Rewards up to Ultra in this
 // issue was one character in that array and this screen followed it.
 //
 // ── CUMULATIVE, AND IT SAYS SO ─────────────────────────────────────────────
@@ -81,13 +83,13 @@ export function PlanComparison({
 }) {
   return (
     <section aria-label="Plans">
-      {/* FOUR COLUMNS ABOVE `lg`, TWO AT `sm`, ONE ON A PHONE. Four 13px
-          columns inside a console that already spends 252px on its menu is
-          ~240px each at 1280px, which is where a product name like "Online
-          Reservations" stops fitting on one line. Below that they stack, in
-          ladder order, so the page reads as a ladder on a phone rather than as
-          a grid that lost its shape. */}
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ONE COLUMN PER RUNG ABOVE `sm`, STACKED ON A PHONE. Three 13px
+          columns inside a console that already spends 252px on its menu leave
+          ~320px each at 1280px, which is room a four-column grid did not have
+          — "Online Reservations" used to wrap. Below `sm` they stack in ladder
+          order, so the page reads as a ladder on a phone rather than as a grid
+          that lost its shape. */}
+      <ul className="grid gap-3 sm:grid-cols-3">
         {PLAN_LADDER.map((tier) => {
           const mine = tier === current;
           const below = PLAN_LADDER[PLAN_RANK[tier] - 1];
