@@ -234,7 +234,7 @@ function foldLegacyStateSpelling(raw: unknown): unknown {
 
 /**
  * Fold legacy keys into `embedding`: the rename (`semantic`, the same
- * function 10 under its pre-§8.4-v3 name) and the pre-merge `name`/`summary`
+ * function 8 under its pre-§8.4-v3 name) and the pre-merge `name`/`summary`
  * extras. Precedence: a real `embedding` stamp wins, then `semantic`, then
  * the folded extras pair. Legacy `status`-spelled records fold first.
  */

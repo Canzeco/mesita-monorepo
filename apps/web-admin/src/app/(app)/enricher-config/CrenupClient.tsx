@@ -252,7 +252,7 @@ export function CrenupClient({
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details + Embedding. One place."
+                  caption="Details + Description + Embedding. One place."
                   estimate={createCost}
                 />
               }
@@ -328,7 +328,7 @@ export function CrenupClient({
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
-                index="·"
+                index="0"
                 name="Seed"
                 flows={flowTagFor("seed")}
                 blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
@@ -340,21 +340,8 @@ export function CrenupClient({
               </FunctionModule>
 
               <FunctionModule
-                id="f-pulse"
-                index="1 · $"
-                flows={flowTagFor("pulse")}
-                name="Pulse"
-                blurb="Is this place still alive."
-                knobs="no knobs"
-              >
-                <NoKnobs>
-                  No knobs. Google&apos;s <b>businessStatus</b> is the answer.
-                </NoKnobs>
-              </FunctionModule>
-
-              <FunctionModule
                 id="f-details"
-                index="2 · $"
+                index="1 · $"
                 flows={flowTagFor("details")}
                 name="Details"
                 blurb="Hours, address, geo, timezone, price, phone, and the name."
@@ -367,7 +354,7 @@ export function CrenupClient({
               </FunctionModule>
               <FunctionModule
                 id="f-serp"
-                index="3 · $"
+                index="2 · $"
                 flows={flowTagFor("serp")}
                 name="Serp"
                 blurb="Editorial read Links spends to recognise the place. Never a fact source."
@@ -385,7 +372,7 @@ export function CrenupClient({
 
               <FunctionModule
                 id="f-links"
-                index="4 · $$"
+                index="3 · $$"
                 flows={flowTagFor("links")}
                 name="Links"
                 blurb="Firecrawl candidates, the Resolver picks one or none. Seed first, discover second."
@@ -456,7 +443,7 @@ export function CrenupClient({
 
               <FunctionModule
                 id="f-social"
-                index="5 · $$"
+                index="4 · $$"
                 flows={flowTagFor("social")}
                 name="Social"
                 blurb="Instagram and Facebook profiles. Does not collect posts."
@@ -465,6 +452,32 @@ export function CrenupClient({
                 <NoKnobs>
                   No knobs. Posts are an Images job.
                 </NoKnobs>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-reviews"
+                index="5 · $$"
+                flows={flowTagFor("reviews")}
+                name="Reviews"
+                blurb="Newest Google reviews. Description grounds the Presentation on these."
+                knobs="1 knob"
+              >
+                <Fields>
+                  <NumberField
+                    icon={
+                      <MessageSquareQuote className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Google reviews to pull"
+                    value={settings.gatherReviews}
+                    min={0}
+                    max={100}
+                    onChange={(v) => patch({ gatherReviews: v })}
+                    disabled={pending}
+                  />
+                </Fields>
+                <p className="text-muted-foreground mt-3 text-xs">
+                  0–100. Places API itself returns 5.
+                </p>
               </FunctionModule>
 
               <FunctionModule
@@ -504,45 +517,8 @@ export function CrenupClient({
               </FunctionModule>
 
               <FunctionModule
-                id="f-menu"
-                index="7"
-                flows={flowTagFor("menu")}
-                name="Menu"
-                blurb="Holds the slot until a real menu source lands."
-                knobs="no knobs"
-              >
-                <NoKnobs>No knobs. Always passes. Never blocks the queue.</NoKnobs>
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-reviews"
-                index="8 · $$"
-                flows={flowTagFor("reviews")}
-                name="Reviews"
-                blurb="Newest Google reviews. Description grounds the Presentation on these."
-                knobs="1 knob"
-              >
-                <Fields>
-                  <NumberField
-                    icon={
-                      <MessageSquareQuote className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Google reviews to pull"
-                    value={settings.gatherReviews}
-                    min={0}
-                    max={100}
-                    onChange={(v) => patch({ gatherReviews: v })}
-                    disabled={pending}
-                  />
-                </Fields>
-                <p className="text-muted-foreground mt-3 text-xs">
-                  0–100. Places API itself returns 5.
-                </p>
-              </FunctionModule>
-
-              <FunctionModule
                 id="f-description"
-                index="9 · $"
+                index="7 · $"
                 flows={flowTagFor("description")}
                 name="Description"
                 blurb="Family · Category · Tags · Presentation · Orders Enabled · Reservations Enabled · Mesita Name · Semantic Summary."
@@ -557,7 +533,7 @@ export function CrenupClient({
               </FunctionModule>
               <FunctionModule
                 id="f-embedding"
-                index="10 · $"
+                index="8 · $"
                 flows={flowTagFor("embedding")}
                 name="Embedding"
                 blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 10."

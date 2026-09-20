@@ -21,14 +21,28 @@
 //                 column set and the fact goes live the day an unfiltered list
 //                 exists. It is not Verified: holding an address and having
 //                 PROVED you hold it are different claims.
-//   CRENUP (11)   own box: 0. Seed … 10. Embedding, each a bool: called or not
+//   CRENUP (9)    own box: 0. Seed … 8. Embedding, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
 // Enriched is last-completed — they are independent. Crenup just names the
-// eleven functions. Create 1–5 / Enrich 1–10 stay Config sequences; they are
-// not a third State ladder. Wire key `seeded` stays; the label is Created.
-// Function 10 was renamed `semantic` → `embedding` (§8.4); stored blobs and
-// event payloads may still say `semantic` — readers fold, never rewrite.
+// nine steps. Since MESITA-2027 there is ONE ladder: Create runs 0, 1, 7, 8
+// and Enrich runs 1–8, so a shared step no longer carries two numbers
+// depending on who called it. It is still not a third State ladder. Wire key
+// `seeded` stays; the label is Seed — step 0, never stamped, because the row
+// existing IS the seed.
+//
+// A NOTE ON THE WORD `STEP`. These are the LADDER's steps — what an operator
+// is told ran. The pipeline's own stages (S1…S8 inside the three Enricher
+// EFs) are a different sequence and deliberately do not line up: Reviews is
+// step 5 but its Apify scrape FIRES at S2 and is collected after S4, because
+// it depends only on the place id and overlaps the rest. Stages are a
+// schedule; steps are a report. Nothing matches on the S-number.
+//
+// Step 8 was renamed `semantic` → `embedding` (§8.4); stored blobs and event
+// payloads may still say `semantic` — readers fold, never rewrite. `pulse`
+// (a subprocess of Details since MESITA-2027) and `menu` (operator input the
+// Enricher never derived) were steps until then and are ignored on read,
+// never folded.
 
 export type StateBoolChip = "true" | "false" | "?" | "…";
 
@@ -159,16 +173,14 @@ export type StampedStateFactKey = Exclude<
 
 export const CRENUP_STEPS = [
   { key: "seed", label: "Seed", n: 0 },
-  { key: "pulse", label: "Pulse", n: 1 },
-  { key: "details", label: "Details", n: 2 },
-  { key: "serp", label: "Serp", n: 3 },
-  { key: "links", label: "Links", n: 4 },
-  { key: "social", label: "Social", n: 5 },
+  { key: "details", label: "Details", n: 1 },
+  { key: "serp", label: "Serp", n: 2 },
+  { key: "links", label: "Links", n: 3 },
+  { key: "social", label: "Social", n: 4 },
+  { key: "reviews", label: "Reviews", n: 5 },
   { key: "images", label: "Images", n: 6 },
-  { key: "menu", label: "Menu", n: 7 },
-  { key: "reviews", label: "Reviews", n: 8 },
-  { key: "description", label: "Description", n: 9 },
-  { key: "embedding", label: "Embedding", n: 10 },
+  { key: "description", label: "Description", n: 7 },
+  { key: "embedding", label: "Embedding", n: 8 },
 ] as const;
 
 export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
@@ -176,7 +188,7 @@ export type CrenupStepKey = (typeof CRENUP_STEPS)[number]["key"];
 export const GENERAL_STATE_COUNT = GENERAL_STATE_FACTS.length;
 export const CRENUP_STEP_COUNT = CRENUP_STEPS.length;
 
-/** Operator label: `0. Seed` … `10. Embedding`. */
+/** Operator label: `0. Seed` … `8. Embedding`. */
 export function crenupStepLabel(n: number, label: string): string {
   return `${n}. ${label}`;
 }

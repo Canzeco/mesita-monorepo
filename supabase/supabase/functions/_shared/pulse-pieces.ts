@@ -1,90 +1,114 @@
-// PULSE — the enrichment machinery, as TWO FLOWS over SHARED FUNCTIONS
-// (Main §8.4). Two sequences — not one global enum:
+// PULSE — the enrichment machinery, as TWO FLOWS over ONE LADDER
+// (Main §8.4 v4, MESITA-2027). One sequence, not two:
 //
-//   CREATE (ONE FUNCTION, awaits four subfunctions):
-//     1 seed → 2 pulse → 3 details → 4 semantic
-//   ENRICH (TEN FUNCTIONS, sequential ticks, none await a nested run):
-//     1 pulse → 2 details → 3 serp → 4 links → 5 social
-//     → 6 images → 7 menu → 8 reviews → 9 description → 10 semantic
+//   0 seed → 1 details → 2 serp → 3 links → 4 social
+//     → 5 reviews → 6 images → 7 description → 8 embedding
 //
-// Pulse, Details and Semantic appear in BOTH flows because they are SHARED
-// FUNCTIONS with two callers: CREATE awaits them inline (a place is born with
-// its liveness checked, its Google spine persisted, and both vectors written),
-// ENRICH runs them as ticks (a place is refreshed). Seed is NOT an enrich
-// function at all — it is step 1 of CREATE, and the row existing IS the seed.
-// That is why this array starts at pulse and why `enriched = 0` means CREATED:
-// the place exists and no enrich function has completed. The 0 is the
-// persistence floor, not Create's number for Seed.
+//   CREATE runs 0, 1, 7, 8 — awaited inline, the front door.
+//   ENRICH runs 1–8 — sequential ticks, none awaits a nested run.
 //
-// CREATE IS A RUN LIKE ANY OTHER. It stamps the functions it actually ran
-// (pulse, details — and semantic when the vector write lands), so a healthy
-// fresh place reads 2/10 the moment it exists, and state accumulates across
-// create and every later run under one rule. Semantic is 10, so a create
-// stamp does not jump the high-water past 2: 3–9 are still a gap. A function
-// a run did not buy writes NOTHING (MESITA-1172 blocker 2) — that rule is
-// what lets two callers share one ladder.
+// ONE LADDER IS THE POINT. Create used to number itself 1–5 while Enrich
+// numbered itself 1–10, so `details` was function 3 to one caller and function
+// 2 to the other — two answers to "which function is this". The numbers are
+// the ladder's now, not the caller's, and a caller simply runs a subset.
 //
-// SEMANTICS IS FUNCTION 10. One function writes the Mesita Name vector AND
-// the Semantic Summary vector together. It CLOSES the enrich queue. The
-// On-Update path fires the same machinery when an operator edits the profile:
-// a successful re-embed keeps 10; a failed one drops to 9. Both vectors are
-// BUILT (MESITA-1238): `places.name_embedding` and `places.embedding`.
+// SEED IS 0 AND IS NEVER STAMPED. The row existing IS the seed, so 0 is the
+// persistence floor: a place reads 0 because it was seeded, not because it is
+// in some pre-ladder state. Stamping it would pin the whole catalog at 0 the
+// day a seed event failed to write. `S0` is legal under the step CHECK
+// (`^S([0-9]{1,2}|X)$`) and always was — see the widening migration.
+//
+// PULSE IS NOT A FUNCTION ANYMORE (MESITA-2027). Liveness is a SUBPROCESS OF
+// DETAILS, not a rung. Functions 1 and 2 never bought separate data — they
+// shared one `fetchGoogleBasics` call — so the old split bought a rung and no
+// information. Details now reads `businessStatus` off its own fetch, writes
+// `business_state`, and aborts before the cost ledger when the listing is
+// dead. Nothing is lost: the fact stays queryable as a COLUMN (which the
+// high-water never was), and Details' failure REASON distinguishes
+// "permanently closed" from "spine incomplete". Note the meter is still
+// called Pulse in this file's names; that is the collision MESITA-2027's
+// follow-up resolves by renaming the machinery to Intake.
+//
+// MENU IS GONE (MESITA-2027). It had been a stub since the website content
+// crawl was retired — it always passed with "no menu source yet", which is a
+// rung reporting nothing. The menu is OPERATOR INPUT (`menu_pdf_url`,
+// `menus`, the console's MenusSection), so the Intaker no longer claims to
+// derive it. The menu DATA is untouched; only the claim went away.
+//
+// REVIEWS SITS BESIDE SOCIAL (4, 5). Both are Apify gathers of third-party
+// content and they already run concurrently — the GMaps scrape depends only
+// on the place id, so it is fired early and collected late. Grouping them in
+// the ladder costs no wall clock and makes 1–6 read as one phase: the
+// sources, in the order they can be asked.
+//
+// THE ORDER IS LOAD-BEARING, and four of the links are real data flows:
+//   2 → 3  serp feeds the Resolver. It cannot pick between five Instagram
+//          candidates on a name and a city; the editorial read is what says
+//          which one is really this place.
+//   3 → 4  you cannot scrape the Instagram until you know which Instagram.
+//   4 → 6  the IG/FB gathers ARE the pools the vision funnel ranks.
+//   7 → 8  embedding vectorises the text description just wrote.
+// Reordering those does not cost latency, it costs CORRECTNESS: the Resolver
+// picks the wrong account and every function after it enriches a different
+// business. 5 is the only rung with slack, and it is spent.
+//
+// EACH FUNCTION PERSISTS ITS OWN OUTPUT (MESITA-2027). There is no `publish`
+// stage and no `store` stage — those were steps that bought no function and
+// reported on writes that happened two stages away. Rule 2 of pulse-report
+// says `completed` means THE EFFECT LANDED, and that is far easier to honour
+// now that the function which WRITES is the function which REPORTS.
+// `content_state` still flips exactly ONCE, after 8, so a place never goes
+// public wearing this run's images over last run's description.
+//
+// THE THREE TEXTS, each with exactly one reader, never collapsed:
+//   SERP Summary        function 2 — soft context the PIPELINE reads
+//   Presentation        function 7 — places.description, what a GUEST reads
+//   Semantic Summary    function 8 — embedding_source_text, what the INDEX reads
 //
 // RENUMBERING IS SURVIVABLE BECAUSE NOTHING MATCHES ON THE NUMBER. The reader
 // keys on `step_name` (the function KEY); the `S<n>` written beside it is
-// decorative. Dropping `seed` from this array moved NO number: pulse was
-// already 1 and description already 9. Rows from every previous ladder still
-// count correctly; retired keys (`name` as a rung, `semantics`, `seed` if any
-// ever existed) fall out of the walk. Legacy `name`/`summary` extras fold
-// into `semantic` on read.
-//
-// THE ORDER IS LOAD-BEARING. `serp` runs BEFORE `links` because that is what
-// serp is FOR: the Resolver cannot pick between five Instagram candidates on a name
-// and a city, and the editorial read is what tells it which one is really this
-// place. Function 9 grounding on the same text is a SECOND USE of something
-// bought for the first — do not reorder the queue to serve it. `social` runs
-// BEFORE `images` because the Instagram/Facebook gathers fill the pools the
-// vision funnel ranks. `menu` sits after `links` (its source) and before
-// `description` (which would read it). `description` is 9; Semantics CLOSES
-// the queue at 10, vectorising the name and the text function 9 just wrote.
-//
-// THE THREE TEXTS, each with exactly one reader, never collapsed:
-//   SERP Summary        function 3 — soft context the PIPELINE reads
-//   Presentation        function 9 — places.description, what a GUEST reads
-//   Semantic Summary    function 10 — embedding_source_text, what the INDEX reads
+// decorative. Rows from every previous ladder still count correctly, and
+// retired keys fall out of the walk: `pulse` and `menu` join `semantics`,
+// `name` and `seed` as keys that were rungs once and are ignored now. No
+// migration — shrinking the ladder cannot narrow a CHECK that already
+// accepted S0–S99.
 //
 // `enriched` is NOT a count of functions that worked. It is HOW FAR THE QUEUE
-// GOT: the index of the last good function, 0-10, where 0 is the CREATED floor
-// and 10 is a complete profile including both vectors. The queue is strictly
+// GOT: the index of the last good function, 0-8, where 0 is the SEEDED floor
+// and 8 is a complete profile including both vectors. The queue is strictly
 // linear, so ">= N" is a MEANINGFUL question to ask of it. It is not, today, a
 // question anything can ask in SQL: this value is a read-time fold over the
 // run-event log, not a column, so it cannot appear in a WHERE clause. Consumer
 // visibility therefore gates on `content_state = 'ready'` instead
 // (MESITA-1228) — a real predicate, applied before the pool cap.
 //
+// A CREATE THAT SKIPS ENRICH JUMPS TO 8 WITH 2–6 A GAP. That is the same
+// accumulate-don't-reset rule as always, merely more visible now one ladder
+// serves both flows: 8 means "the highest function that ran", not "fully
+// enriched". A function a run did not buy writes NOTHING (MESITA-1172
+// blocker 2) — that rule is what lets two callers share one ladder.
+//
 // THIS IS NOT THE TRIGGER MATRIX'S VOCABULARY. `enrich-triggers.ts` keys what a
 // run may BUY (purchase units); these are what an operator is told. Different
 // questions; the name overlap is a coincidence of subject.
 //
 // AND ABSENCE IS A RESULT, NOT A FAILURE. A place with no Instagram must still
-// reach 10. The function ran, resolved "there is nothing here", and is
+// reach 8. The function ran, resolved "there is nothing here", and is
 // `completed`.
 
 export const PULSE_PIECES = [
-  "pulse",
   "details",
   "serp",
   "links",
   "social",
-  "images",
-  "menu",
   "reviews",
+  "images",
   "description",
   "embedding",
 ] as const;
 
 /**
- * Retired extra keys. Empty: Embedding is function 10, not an unnumbered
+ * Retired extra keys. Empty: Embedding is function 8, not an unnumbered
  * extra. Kept as an array so FUNCTION_STATE_KEYS can still spread it.
  */
 export const PULSE_EXTRAS = [] as const;
@@ -93,10 +117,30 @@ export const PULSE_EXTRAS = [] as const;
 export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
 
 /**
+ * RETIRED function keys: rungs that existed on a previous ladder and are not
+ * functions any more. They are NOT renames — nothing inherits their meaning —
+ * so they must fall out of the walk rather than fold into a survivor.
+ *
+ *   pulse    the liveness gate, a rung until MESITA-2027. It is a subprocess
+ *            of `details` now. Folding it into `details` would be WRONG: an
+ *            old `pulse` completed proves the listing was alive, not that the
+ *            Google spine persisted, and counting it would advance the queue
+ *            past a function that never ran.
+ *   menu     a stub rung that always passed. Folding it anywhere would import
+ *            a completion that never meant anything.
+ *
+ * Listed rather than merely absent so the next reader knows these keys are
+ * live in the event log and ignored ON PURPOSE. `latestByPiece` drops any key
+ * PULSE_PIECES does not contain, so this array is documentation the compiler
+ * cannot contradict — keep it honest by hand.
+ */
+export const PULSE_RETIRED = ["pulse", "menu", "semantics", "seed"] as const;
+
+/**
  * RENAMED function keys: the same function under its old name. Unlike the
  * display-only extras above, a rename COUNTS everywhere — the ladder walk,
- * the stored map merge, the State fold — because function 10 did not
- * change, only its name did (§8.4 v3: Semantic → Embedding, 2026-08-29).
+ * the stored map merge, the State fold — because the function did not change,
+ * only its name did (§8.4 v3: Semantic → Embedding, 2026-08-29).
  * NOTE the vocabulary firewall: `embedding` is also a trigger-matrix
  * subprocess key — a coincidence of subject, not a shared enum; neither
  * list may import the other.
@@ -111,22 +155,20 @@ export type PulseExtra = (typeof PULSE_EXTRAS)[number];
 export type PulseStep = PulsePiece | PulseExtra;
 
 /**
- * What level 0 is CALLED on the meter: Created. Seed is Create step 1, never
- * stamped, never an enrich rung. The row existing IS the seed, so there is
- * no enrich rung below pulse. 0 on the meter is the persistence floor.
+ * What level 0 is CALLED on the meter: Seed. It is function 0 of the ladder
+ * and the only one never stamped — the row existing IS the seed, so 0 is the
+ * persistence floor rather than a pre-ladder limbo.
  */
-export const PULSE_FLOOR_LABEL = "Created";
+export const PULSE_FLOOR_LABEL = "Seed";
 
 /** The operator-facing name of each function. Names only — see below for why. */
 const PULSE_LABELS: Record<PulsePiece, string> = {
-  pulse: "Pulse",
   details: "Details",
   serp: "Serp",
   links: "Links",
   social: "Social",
-  images: "Images",
-  menu: "Menu",
   reviews: "Reviews",
+  images: "Images",
   description: "Description",
   embedding: "Embedding",
 };
@@ -142,8 +184,8 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
  * real position. PR #1072 reordered the array and renumbered by hand and got it
  * right; nothing would have caught it if it hadn't.
  *
- * The index is `i + 1`: the ENRICH queue counts 1-10 and 0 is the CREATED
- * floor, which is not a member (MESITA-1253).
+ * The index is `i + 1`: the ladder counts 1-8 and 0 is SEED, the floor,
+ * which is never stamped and so is not a member of the array.
  */
 export const PULSE_PIECE_META: Record<
   PulsePiece,
@@ -160,8 +202,8 @@ export const PULSE_PIECE_META: Record<
  * no CI gate; the catalog would simply have shown the wrong function name
  * beside every number if a reorder had missed it.
  *
- * INDEXED BY FUNCTION NUMBER: `labels[0]` is the CREATED floor (not a
- * function) and `labels[10]` is Semantics, so a reader renders
+ * INDEXED BY FUNCTION NUMBER: `labels[0]` is Seed (the floor, never
+ * stamped) and `labels[8]` is Embedding, so a reader renders
  * `labels[level]` with no off-by-one.
  */
 export const PULSE_LABELS_IN_ORDER: readonly string[] = [
@@ -170,8 +212,8 @@ export const PULSE_LABELS_IN_ORDER: readonly string[] = [
 ];
 
 /**
- * The complete-profile number, so nothing hardcodes 10. Ten enrich functions,
- * so it IS the array length; the CREATED floor (0) sits below the array.
+ * The complete-profile number, so nothing hardcodes 8. Eight stamped
+ * functions, so it IS the array length; Seed (0) sits below the array.
  */
 export const PULSE_TOTAL = PULSE_PIECES.length;
 
@@ -194,12 +236,13 @@ function latestByPiece(
   for (const e of events) {
     const raw = (e.step_name ?? "").trim();
     // Renamed keys COUNT (the function is the same; only the name moved):
-    // a stored `semantic` event is function 10 under its old name.
+    // a stored `semantic` event is function 8 under its old name.
     const key = PULSE_RENAMES[raw] ?? raw;
     // Unknown keys are ignored on purpose: legacy stage beacons (`gather`,
-    // `publish`), retired rungs (`semantics`), and pre-merge `name`/`summary`
-    // extras (those fold into `embedding` on the State map, not this walk —
-    // an old `name` rung must not count as function 10).
+    // `publish`), retired rungs (PULSE_RETIRED — `pulse`, `menu`,
+    // `semantics`, `seed`), and pre-merge `name`/`summary` extras (those fold
+    // into `embedding` on the State map, not this walk — an old `name` rung
+    // must not count as function 8).
     if (!INDEX.has(key)) continue;
     const at = e.created_at ?? "";
     const prev = latest.get(key);
@@ -211,7 +254,7 @@ function latestByPiece(
 }
 
 /**
- * How far the queue got, 0-10.
+ * How far the queue got, 0-8.
  *
  * The index of the last function such that IT AND EVERY FUNCTION BEFORE IT
  * completed. A gap stops the count: if `links` (4) failed but `social` (5)
@@ -220,10 +263,10 @@ function latestByPiece(
  * linear.
  *
  * 0 is the base case, and it is the FLOOR rather than a failure: the place is
- * seeded and nothing after it has landed. `seed` is never stamped, so the walk
- * starts at function 1 — see THE FLOOR in the header for why stamping it would
- * pin the whole catalog at 0. Embedding is 10: a place that finished
- * description without vectors reads 9.
+ * seeded and nothing after it has landed. `seed` is function 0 and is never
+ * stamped, so the walk starts at function 1 — see the header for why stamping
+ * it would pin the whole catalog at 0. Embedding is 8: a place that finished
+ * description without vectors reads 7.
  *
  * Events are an APPEND-ONLY log, so only the LATEST event per function counts.
  * A re-enrich that fixes function 4 raises the number; one that breaks it
@@ -246,11 +289,14 @@ export function pulseHighWater(events: readonly PulseEvent[]): number {
 /**
  * WHY the queue stopped where it did, or null when it finished.
  *
- * The high-water alone is ambiguous at every level, and MESITA-1243 made that
- * ambiguity load-bearing at 0: function 1 now FAILS a place Google reports
- * permanently closed, so 0 stopped meaning only "seeded, nothing tried" and
- * started also meaning "we asked, and the listing is dead". Two facts, one
- * number — the exact thing this ladder exists to prevent.
+ * The high-water alone is ambiguous at every level, and the liveness gate
+ * makes that ambiguity load-bearing at 0: function 1 (Details) FAILS a place
+ * Google reports permanently closed, so 0 means both "seeded, nothing tried"
+ * and "we asked, and the listing is dead". Two facts, one number — the exact
+ * thing this ladder exists to prevent. Since MESITA-2027 that gate is a
+ * SUBPROCESS of Details rather than its own rung, which is why the reason
+ * below matters more, not less: the block reads `details` either way, and
+ * only its message says which of the two happened.
  *
  * So the number ships with its reason. `failed` = the function ran and could
  * not do its job. `missing` = it has no event at all, which for a fresh place
@@ -303,7 +349,7 @@ export function completedPulsePieces(
  * shared reader: business-web-list-places and admin-web-search-places (and,
  * for ranking, discovery-place.ts's Crenup-high-water fold, MESITA-1598)
  * all read the same column and must never each parse it slightly
- * differently. Anything malformed reads 0 — the CREATED floor — rather than
+ * differently. Anything malformed reads 0 — the Seed floor — rather than
  * throwing.
  */
 export function pulseOf(enrichment: unknown): number {

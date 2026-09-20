@@ -87,7 +87,6 @@ const STAGE_KEYS = ["research", "analysis", "contents"] as const;
 const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   // ── 1. the functions ──
   // Research
-  pulse: "research",
   details: "research",
   serp: "research",
   links: "research",
@@ -96,13 +95,20 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   // Analysis
   images: "analysis",
   // Contents
-  menu: "contents",
   description: "contents",
   summary: "contents",
   name: "contents",
   embedding: "contents",
-  // Legacy key for function 10 (renamed `embedding`, §8.4) — history keeps it.
+  // Legacy key for function 8 (renamed `embedding`, §8.4) — history keeps it.
   semantic: "contents",
+  // RETIRED RUNGS, kept because the LOG keeps them (MESITA-2027). `pulse` is a
+  // subprocess of Details now and `menu` is operator input the Intaker never
+  // derived, so neither is a function any more — but every place enriched
+  // before the change has rows under these keys, and a feed that cannot phase
+  // them renders them unplaced. The ladder walk ignores them
+  // (pulse-pieces.ts PULSE_RETIRED); this map does not, on purpose.
+  pulse: "research",
+  menu: "contents",
 
   // ── 2. the legacy stage beacons ──
   gather: "research",

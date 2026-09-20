@@ -182,13 +182,12 @@ describe("itemMatchesCrenupFilter", () => {
     partner: false,
     promoting: false,
     functions: {
-      pulse: true,
       details: true,
       name: true,
     },
   };
 
-  it("matches general Created and Crenup Pulse, not Serp", () => {
+  it("matches general Created and Crenup Details, not Serp", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -196,7 +195,9 @@ describe("itemMatchesCrenupFilter", () => {
     });
     expect(itemMatchesCrenupFilter(created, "seeded")).toBe(true);
     expect(itemMatchesCrenupFilter(created, "fn:seed")).toBe(true);
-    expect(itemMatchesCrenupFilter(created, "fn:pulse")).toBe(true);
+    // @ts-expect-error — `pulse` is a retired rung, never a CrenupFilter
+    itemMatchesCrenupFilter(created, "fn:pulse");
+    expect(itemMatchesCrenupFilter(created, "fn:details")).toBe(true);
     expect(itemMatchesCrenupFilter(created, "fn:serp")).toBe(false);
     expect(itemMatchesCrenupFilter(created, "fn:embedding")).toBe(false);
   });
@@ -225,24 +226,30 @@ describe("crenupStepChips", () => {
       }),
     );
 
-  it("lists eleven functions 0–10 and turns Embedding on from its stamp", () => {
+  it("lists nine steps 0–8 and turns Embedding on from its stamp", () => {
     const chips = chipsWith({ embedding: true });
-    expect(chips).toHaveLength(11);
+    expect(chips).toHaveLength(9);
     expect(chips[0]).toMatchObject({ key: "seed", label: "0. Seed", on: true });
     expect(chips.find((c) => c.key === "embedding")).toMatchObject({
-      label: "10. Embedding",
+      label: "8. Embedding",
       on: true,
     });
     expect(chips.find((c) => c.key === "serp")).toMatchObject({
-      label: "3. Serp",
+      label: "2. Serp",
       on: false,
     });
+    // Pulse and Menu were steps until MESITA-2027 — liveness is a subprocess
+    // of Details, the menu is operator input. Neither gets a chip, and the
+    // chip key type no longer admits them (hence the cast: that IS the guard).
+    const keys = chips.map((c) => c.key as string);
+    expect(keys).not.toContain("pulse");
+    expect(keys).not.toContain("menu");
   });
 
   it("folds legacy `semantic` and `name`+`summary` stamps into Embedding", () => {
     const legacy = chipsWith({ semantic: true });
     expect(legacy.find((c) => c.key === "embedding")).toMatchObject({
-      label: "10. Embedding",
+      label: "8. Embedding",
       on: true,
     });
     const preMerge = chipsWith({ name: true, summary: true });

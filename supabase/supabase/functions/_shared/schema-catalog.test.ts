@@ -49,10 +49,10 @@ Deno.test("FUNCTION_STATE_KEYS is exactly PULSE_PIECES + PULSE_EXTRAS, in that o
   assertEquals(FUNCTION_STATE_KEYS, expected);
 });
 
-Deno.test("FUNCTION_STATE_KEYS has 10 members — Pulse through Semantics", () => {
-  assertEquals(PULSE_PIECES.length, 10);
+Deno.test("FUNCTION_STATE_KEYS has 8 members — Details through Embedding", () => {
+  assertEquals(PULSE_PIECES.length, 8);
   assertEquals(PULSE_EXTRAS.length, 0);
-  assertEquals(FUNCTION_STATE_KEYS.length, 10);
+  assertEquals(FUNCTION_STATE_KEYS.length, 8);
 });
 
 Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never overlap", () => {
@@ -64,10 +64,12 @@ Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never ove
 // compile-time belt — TypeScript rejects a key outside PulseStep — actually
 // holds (MESITA-1247 guard test 2, function leg, compile-time half).
 Deno.test("FunctionStateMap rejects a key outside PulseStep at compile time", () => {
-  const map: FunctionStateMap = { pulse: { state: "pending", at: null, detail: null } };
+  const map: FunctionStateMap = { details: { state: "pending", at: null, detail: null } };
   // @ts-expect-error — "bogus" is not a PulseStep; FunctionStateMap must reject it
   map.bogus = { state: "pending", at: null, detail: null };
-  assertEquals(map.pulse?.state, "pending");
+  // @ts-expect-error — `pulse` is a RETIRED rung (MESITA-2027), not a PulseStep
+  map.pulse = { state: "pending", at: null, detail: null };
+  assertEquals(map.details?.state, "pending");
 });
 
 // ChannelSet is a straight alias, not a copy — assert the two types accept
@@ -158,12 +160,12 @@ Deno.test("isFunctionState: accepts all three states, rejects a fourth", () => {
 
 Deno.test("FunctionStateMapSchema: accepts a genuinely partial map — absent keys stay absent", () => {
   const r = FunctionStateMapSchema.parse({
-    pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
   assert(r.ok);
   if (!r.ok) return;
-  assertEquals(Object.keys(r.value), ["pulse"]);
-  assert(!("details" in r.value), "an unset piece must not round-trip as a fabricated pending entry");
+  assertEquals(Object.keys(r.value), ["details"]);
+  assert(!("serp" in r.value), "an unset piece must not round-trip as a fabricated pending entry");
 });
 
 Deno.test("FunctionStateMapSchema: accepts an empty map (a brand-new place)", () => {
@@ -182,7 +184,7 @@ Deno.test("FunctionStateMapSchema: rejects a malformed FunctionState value", () 
   assert(!r.ok);
 });
 
-Deno.test("EnrichmentMapSchema: accepts the CREATED-floor default", () => {
+Deno.test("EnrichmentMapSchema: accepts the SEED-floor default", () => {
   const r = EnrichmentMapSchema.parse({ functions: {}, highWater: 0, blockedAt: null });
   assert(r.ok);
 });
@@ -192,28 +194,28 @@ Deno.test("EnrichmentMapSchema: accepts a fully-enriched map with blockedAt null
   for (const key of FUNCTION_STATE_KEYS) {
     full[key] = { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
   }
-  const r = EnrichmentMapSchema.parse({ functions: full, highWater: 10, blockedAt: null });
+  const r = EnrichmentMapSchema.parse({ functions: full, highWater: 8, blockedAt: null });
   assert(r.ok);
 });
 
 Deno.test("EnrichmentMapSchema: accepts a blocked map with a real PulseBlock", () => {
   const r = EnrichmentMapSchema.parse({
-    functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+    functions: { details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
-    blockedAt: { key: "details", index: 2, state: "missing" },
+    blockedAt: { key: "serp", index: 2, state: "missing" },
   });
   assert(r.ok);
 });
 
-Deno.test("EnrichmentMapSchema: rejects highWater out of 0-10 range, a non-integer, and a bad blockedAt.state", () => {
-  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 11, blockedAt: null }).ok, "11 is over PULSE_TOTAL");
+Deno.test("EnrichmentMapSchema: rejects highWater out of 0-8 range, a non-integer, and a bad blockedAt.state", () => {
+  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 9, blockedAt: null }).ok, "9 is over PULSE_TOTAL");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: -1, blockedAt: null }).ok, "negative");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 3.5, blockedAt: null }).ok, "non-integer");
   assert(
     !EnrichmentMapSchema.parse({
       functions: {},
       highWater: 0,
-      blockedAt: { key: "pulse", index: 1, state: "completed" },
+      blockedAt: { key: "details", index: 1, state: "completed" },
     }).ok,
     "blockedAt.state must be failed|missing, never completed",
   );
@@ -240,41 +242,41 @@ function stamped(...pieces: string[]): FunctionStateMap {
   return map as FunctionStateMap;
 }
 
-Deno.test("pulseHighWaterFromMap: empty map -> 0, full map -> 10", () => {
+Deno.test("pulseHighWaterFromMap: empty map -> 0, full map -> 8", () => {
   assertEquals(pulseHighWaterFromMap({}), 0);
-  assertEquals(pulseHighWaterFromMap(stamped(...PULSE_PIECES)), 10);
+  assertEquals(pulseHighWaterFromMap(stamped(...PULSE_PIECES)), 8);
 });
 
 Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece completed", () => {
-  // links (4) missing, social (5) completed anyway.
-  const map = stamped("pulse", "details", "serp", "social");
-  assertEquals(pulseHighWaterFromMap(map), 3);
+  // links (3) missing, social (4) completed anyway.
+  const map = stamped("details", "serp", "social");
+  assertEquals(pulseHighWaterFromMap(map), 2);
 });
 
-Deno.test("pulseHighWaterFromMap: Embedding at 10 cannot skip a gap", () => {
+Deno.test("pulseHighWaterFromMap: Embedding at 8 cannot skip a gap", () => {
   const map: FunctionStateMap = {
-    ...stamped("pulse", "details"),
+    ...stamped("details", "serp"),
     embedding: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
-  assertEquals(pulseHighWaterFromMap(map), 2, "function 10 cannot skip 3–9");
+  assertEquals(pulseHighWaterFromMap(map), 2, "function 8 cannot skip 3–7");
 });
 
 Deno.test("pulseBlockedAtFromMap: missing vs failed, and null when the queue finished", () => {
-  assertEquals(pulseBlockedAtFromMap({}), { key: "pulse", index: 1, state: "missing" });
+  assertEquals(pulseBlockedAtFromMap({}), { key: "details", index: 1, state: "missing" });
   const failedAtLinks: FunctionStateMap = {
-    ...stamped("pulse", "details", "serp"),
+    ...stamped("details", "serp"),
     links: { state: "failed", at: "2026-08-23T00:00:00Z", detail: "timeout" },
   };
-  assertEquals(pulseBlockedAtFromMap(failedAtLinks), { key: "links", index: 4, state: "failed" });
+  assertEquals(pulseBlockedAtFromMap(failedAtLinks), { key: "links", index: 3, state: "failed" });
   assertEquals(pulseBlockedAtFromMap(stamped(...PULSE_PIECES)), null);
 });
 
 Deno.test("pulseBlockedAtFromMap: a pending (in-flight) piece reads as failed, same as pulse-pieces.ts's own skipped rule", () => {
   const map: FunctionStateMap = {
-    ...stamped("pulse"),
-    details: { state: "pending", at: "2026-08-23T00:00:00Z", detail: null },
+    ...stamped("details"),
+    serp: { state: "pending", at: "2026-08-23T00:00:00Z", detail: null },
   };
-  assertEquals(pulseBlockedAtFromMap(map), { key: "details", index: 2, state: "failed" });
+  assertEquals(pulseBlockedAtFromMap(map), { key: "serp", index: 2, state: "failed" });
 });
 
 Deno.test("toFunctionState: completed stays completed, started becomes pending, everything else becomes failed", () => {
@@ -287,7 +289,7 @@ Deno.test("toFunctionState: completed stays completed, started becomes pending, 
 
 Deno.test("FunctionStateMapSchema: folds legacy name+summary into embedding", () => {
   const r = FunctionStateMapSchema.parse({
-    pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
     name: { state: "completed", at: "2026-08-23T00:01:00Z", detail: "name ok" },
     summary: { state: "completed", at: "2026-08-23T00:02:00Z", detail: "summary ok" },
   });
@@ -299,9 +301,9 @@ Deno.test("FunctionStateMapSchema: folds legacy name+summary into embedding", ()
 });
 
 Deno.test("foldFunctionStateMap: the RENAMED semantic folds into embedding", () => {
-  // §8.4 v3: function 10 renamed Semantic → Embedding. A stored map stamped
-  // under the old key keeps reading as function 10 — including the merge
-  // path (mergeEnrichmentMap folds before recomputing the high-water).
+  // §8.4 v3: the last function renamed Semantic → Embedding. A stored map
+  // stamped under the old key keeps reading as that function — including the
+  // merge path (mergeEnrichmentMap folds before recomputing the high-water).
   const folded = foldFunctionStateMap({
     semantic: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
@@ -320,21 +322,21 @@ Deno.test("foldFunctionStateMap: legacy `status`-spelled records fold to `state`
   // not rewritten, so a pre-rename map still spells the per-function field
   // `status`. The fold absorbs it on read — the next write re-materializes.
   const legacy = {
-    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    details: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   } as unknown as Parameters<typeof foldFunctionStateMap>[0];
   const folded = foldFunctionStateMap(legacy);
-  assertEquals(folded.pulse?.state, "completed");
+  assertEquals(folded.details?.state, "completed");
   const parsed = FunctionStateMapSchema.parse(legacy);
   assert(parsed.ok);
-  if (parsed.ok) assertEquals(parsed.value.pulse?.state, "completed");
+  if (parsed.ok) assertEquals(parsed.value.details?.state, "completed");
 });
 
-Deno.test("operatorFunctionStates: ten keys, Embedding pending when never run", () => {
+Deno.test("operatorFunctionStates: eight keys, Embedding pending when never run", () => {
   const out = operatorFunctionStates({
-    pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
-  assertEquals(Object.keys(out).length, 10);
-  assertEquals(out.pulse.state, "completed");
+  assertEquals(Object.keys(out).length, 8);
+  assertEquals(out.details.state, "completed");
   assertEquals(out.embedding.state, "pending");
   assertEquals(out.description.state, "pending");
 });

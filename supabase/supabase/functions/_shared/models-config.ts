@@ -17,7 +17,7 @@
 // quality knob (COST.visionPerImageStandard in enrich-config.ts).
 //
 // THE KEY IS `embeddings`, AND `lineup` IS STILL READ (MESITA-1216). It selects
-// the PLACE-EMBEDDING model — enrich function 9 — and never had anything to do
+// the PLACE-EMBEDDING model — enrich function 8 — and never had anything to do
 // with candidate ordering; the name outlived the engine MESITA-1048 deleted.
 //
 // The legacy read is NOT decoration. This is a JSONB blob, so a stored row

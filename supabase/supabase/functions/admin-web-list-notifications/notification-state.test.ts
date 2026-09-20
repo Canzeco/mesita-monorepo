@@ -60,14 +60,14 @@ Deno.test("functions map only completed Crenup keys", () => {
   const facts = placeStateFacts({
     ...BASE,
     functions: {
-      pulse: { state: "completed", at: "2026-08-25T00:00:00.000Z", detail: null },
-      details: { state: "failed", at: "2026-08-25T00:00:00.000Z", detail: "x" },
-      serp: { state: "pending", at: null, detail: null },
+      details: { state: "completed", at: "2026-08-25T00:00:00.000Z", detail: null },
+      serp: { state: "failed", at: "2026-08-25T00:00:00.000Z", detail: "x" },
+      links: { state: "pending", at: null, detail: null },
     },
   });
-  assertEquals(facts.functions.pulse, true);
-  assertEquals(facts.functions.details, undefined);
+  assertEquals(facts.functions.details, true);
   assertEquals(facts.functions.serp, undefined);
+  assertEquals(facts.functions.links, undefined);
   assertEquals(completedFunctions(undefined), {});
 });
 
