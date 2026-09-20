@@ -211,10 +211,14 @@ export function ProductShell({
     <div
       className={cn(
         SHELL_BLEED,
-        "border-border grid border-t lg:h-[calc(100vh-9rem)] lg:grid-cols-3",
+        "border-border grid border-t lg:h-[calc(100vh-9rem)] lg:grid-cols-4",
       )}
     >
-      {/* THE INDEX — the page's own grey, one third, its own scroller. */}
+      {/* THE INDEX — the page's own grey, one QUARTER, its own scroller.
+          It was a third until the rows lost their scope model and their
+          descriptions (MESITA-1985 → 1997): twelve short names do not need
+          a third of a desktop, and the pane beside them is where the work
+          happens. */}
       <div
         className={cn(
           "border-border lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:border-r",
@@ -226,13 +230,13 @@ export function ProductShell({
         </div>
       </div>
 
-      {/* THE WORK SURFACE — white, two thirds, its own scroller; the page's
+      {/* THE WORK SURFACE — white, three quarters, its own scroller; the page's
           grey under the two card grids (`PANE_ON_PAGE`). */}
       <div
         className={cn(
           paneOnPage ? "bg-background" : "bg-card",
           SHELL_GUTTER,
-          "py-4 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto",
+          "py-4 lg:col-span-3 lg:min-h-0 lg:overflow-y-auto",
           open ? "block" : "hidden lg:block",
         )}
       >
