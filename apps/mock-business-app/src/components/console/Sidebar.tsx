@@ -47,7 +47,7 @@
 // ── THE ACTIVE ROW IS A FILL, NOT A RULE ───────────────────────────────────
 //
 // MESITA-1975 argued a solid pill was a slab across a 1400px line and replaced
-// it with a 2px underline. That argument was about a LINE. In a 272px column a
+// it with a 2px underline. That argument was about a LINE. In a 320px column a
 // fill is the rail's original idiom and it is the right one: an underline under
 // one row in a stack of thirteen reads as a separator between two of them.
 //
@@ -108,22 +108,23 @@ const ROW_ON = "bg-dock-surface text-dock-foreground font-semibold";
  *  left edge across thirteen rows is the thing that makes a list look generated. */
 const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
 
-/** THE COLUMN'S WIDTH, IN ONE PLACE (MESITA-2010). Pato: *"make the menu just
- *  a bit wider."*
+/** THE COLUMN'S WIDTH, IN ONE PLACE. Pato, twice: *"make the menu wider."*
  *
- *  272px, up from the 252 MESITA-2004 shipped. The rule that issue wrote is
- *  unchanged and is why this is not larger: a navigator is not content, so it
- *  is as wide as its longest name plus its badge and no wider. 252 was a tight
- *  reading of it — "Online Reservations" and its `On` badge had about 6px
- *  between them, so the name and the state read as one run of text. 272 is the
- *  width the rail used before MESITA-1975 deleted it and buys ~20px of gap,
- *  which is enough for the badge column to read as a column.
+ *  320px, up from the 272 MESITA-2010 shipped (itself up from 252). The rule
+ *  MESITA-2004 wrote — a navigator is not content, so it is as wide as its
+ *  longest name plus its badge and no wider — was read twice as the tightest
+ *  width that merely FITS, and twice that produced a column Pato asked to
+ *  widen. Fitting is the floor, not the target: at 272 "Online Reservations"
+ *  and its `On` badge cleared each other by ~20px, which is a gap but not a
+ *  margin. 320 leaves the longest row about a third of the column in air, so
+ *  the names read as a list and the badges as a column beside it, and it is
+ *  still narrower than any content pane it sits next to.
  *
  *  IT LIVES HERE BECAUSE `AppShell` RENDERS THE MENU TWICE — the fixed column
  *  above `lg` and the drawer panel below it. Two literals is the drift trap
  *  that file's own comment warns about: an edit lands on one copy and every
  *  gate stays green. */
-export const SIDEBAR_WIDTH = "w-[272px]";
+export const SIDEBAR_WIDTH = "w-[320px]";
 
 const GROUP_LABEL =
   "px-2.5 pb-1.5 text-[9.5px] font-semibold tracking-[0.14em] text-white/45 uppercase";
