@@ -40,7 +40,7 @@ export default function PlanPage() {
           to be drawn by `PartnershipPane` itself, which is why that component
           had a `header` prop at all — it was a page pretending to be a pane.
           The Partner badge does NOT repeat here: it is the state badge on the
-          Mesita Partner product, one row up the menu, and two badges for one
+          Partner Badge product, one row up the menu, and two badges for one
           derived fact is what `shared/Badges.tsx` opens by forbidding. */}
       <PageHeader
         mark={"\u{1F4B3}"}

@@ -21,6 +21,7 @@
 // has nothing to do with this.
 import { describe, expect, it } from "vitest";
 import { SPECS } from "./products";
+import { PRODUCT_LABEL } from "./product-keys";
 import { PLAN_LADDER, PLAN_RANK, type PlanTier } from "@/mock/types";
 
 const rung = (key: string): PlanTier => SPECS.find((s) => s.key === key)!.minPlan;
@@ -41,5 +42,71 @@ describe("the ladder", () => {
 
   it("puts every product on a rung the ladder has", () => {
     for (const spec of SPECS) expect(PLAN_LADDER).toContain(spec.minPlan);
+  });
+});
+
+// ── PATO'S OWN LIST, VERBATIM (MESITA-2021) ────────────────────────────────
+//
+// 2026-09-20, dictating the whole ladder rather than moving one product:
+//
+//   FREE   Mesita Profile · Online Reviews
+//   PRO    Digital Menu · Express Website · Online Orders ·
+//          Online Reservations · Online Payments
+//   ULTRA  Partner Badge · Visit Rewards · Prepaid Credits ·
+//          Answering Agent · Developers Platform
+//
+// IT MATCHED WHAT WAS ALREADY HERE, which is exactly why it is worth pinning:
+// the packing is right today by nothing stronger than the last person having
+// typed it correctly, and `PlanComparison` derives its three columns from
+// `SPECS` — so a `minPlan` edited for a reason that has nothing to do with
+// this list silently re-prices the ladder Pato read back to us, with every
+// gate green and the screen still rendering.
+//
+// IT IS PINNED BY NAME, not by key, and by the whole set rather than
+// product-by-product. By NAME because the name is what he dictated and what
+// the column prints — the `partner` key spelled "Mesita Partner" would pass a
+// key-keyed test while the screen says something he did not ask for. By SET
+// because the failure this catches is a product LEAVING a rung as much as one
+// arriving: an `it.each` over twelve products cannot see a thirteenth.
+//
+// SOON PRODUCTS ARE NOT IN IT, on `addedBy`'s rule: an unbuilt product has no
+// engine to switch on, so it is not a perk of any rung and it is not on his
+// list. The eight of them keep a `minPlan` for the day they ship, and the
+// ladder test above is what holds it to a rung that exists.
+describe("the rungs Pato dictated", () => {
+  const live = (tier: PlanTier) =>
+    SPECS.filter((s) => !s.soon && s.minPlan === tier).map((s) => s.name);
+
+  it("puts the listing on Free", () => {
+    expect(live("free")).toEqual(["Mesita Profile", "Online Reviews"]);
+  });
+
+  it("puts the selling surface on Mesita Pro", () => {
+    expect(live("pro")).toEqual([
+      "Digital Menu",
+      "Express Website",
+      "Online Orders",
+      "Online Reservations",
+      "Online Payments",
+    ]);
+  });
+
+  it("puts what brings a guest back on Mesita Ultra", () => {
+    expect(live("ultra")).toEqual([
+      "Partner Badge",
+      "Visit Rewards",
+      "Prepaid Credits",
+      "Answering Agent",
+      "Developers Platform",
+    ]);
+  });
+
+  // THE CATALOGUE AND THE RAIL MUST SAY THE SAME WORD. `PlanComparison`
+  // prints `PRODUCT_LABEL[key]` while every assertion above reads `spec.name`,
+  // so the two maps disagreeing would let this file pass on a screen that
+  // reads differently — which is the exact failure `product-keys.ts` records
+  // as having happened three times unnoticed.
+  it("calls each product one thing", () => {
+    for (const spec of SPECS) expect(PRODUCT_LABEL[spec.key]).toBe(spec.name);
   });
 });

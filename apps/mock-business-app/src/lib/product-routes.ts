@@ -30,9 +30,11 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
  *  sidebar had to draw it as its own kind.
  *
  *  Partner is a product now, so the address is `PRODUCT_SLUG.partner` and the
- *  two sentinel branches are deleted. `mesita-partner` over `plan`: the slug
- *  is the NAME, which is the rule this file already runs on, and Pato's list
- *  calls the row Mesita Partner. Nothing outside this app links to either. */
+ *  two sentinel branches are deleted. The slug is the NAME, which is the rule
+ *  this file runs on — so it moved with the name to `partner-badge` when Pato
+ *  renamed the row (MESITA-2021), on the `access` precedent: the KEY is a
+ *  persisted spelling, the slug is what a person types. Nothing outside this
+ *  app links to `mesita-partner` or to the `plan` sentinel it replaced. */
 
 /** THE MENU'S PRODUCTS, in Pato's order (MESITA-1997, 2026-09-19) — *"i only
  *  want 10 things for the moment"*, and eleven since MESITA-2013 put Express
@@ -101,7 +103,7 @@ export const FUTURE_SLUG = "future-products";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",
-  partner: "mesita-partner",
+  partner: "partner-badge",
   reviews: "online-reviews",
   menu: "digital-menu",
   website: "express-website",
