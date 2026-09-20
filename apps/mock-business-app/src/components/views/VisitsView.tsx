@@ -12,6 +12,36 @@
 // took the rewards box out of here. The door exists because the card was the
 // only way in — this rail carries no product rows — so without it the dial's
 // address is reachable by typing and by nothing else.
+//
+// ── THE MANAGE HALF SAYS HOW IT IS SET, NOT WHAT IT DOES (MESITA-2016) ─────
+//
+// Pato, on the open pane: *"what to mention or wtf"*, then *"merge"*. Setup →
+// Visit Rewards was 400 words and no setting. The product was explained FIVE
+// times before the operator reached anything they could change: the blurb, the
+// note, the "Visit checkout" description, its paragraph, and "What comes back"
+// twice over — the last three being one sentence at three font sizes. A sixth
+// copy lives in `product-catalog.ts` and a seventh in the grid row.
+//
+// Docs › Apps already carried the law this violates: when Products became
+// Setup, *"Off says what a product does, On says how it is set"*. Visit
+// Rewards is On here and the pane read like a brochure.
+//
+// SO THE FOUR SURFACES STOP OVERLAPPING. The grid row's `blurb` is one
+// sentence to tell this product from its neighbour; `PRODUCT_CATALOG_COPY` is
+// the paragraph that sells it, read once while deciding; the Manage half is
+// what you can CHANGE — a control, or one honest door to it; the Activity half
+// is what the product did, and what its own columns mean.
+//
+// Inside a Manage `Section` that splits in two: the `description` says what you
+// can do, the body says the CURRENT STATE. Neither re-explains the product.
+//
+// "Visit checkout" is gone because it failed that test completely — no state,
+// no setting, and an inert *How it works* button for its only affordance. It
+// was catalogue copy that took up residence on an operating screen, where the
+// owner who has run this for six months reads the tutorial every time. Its one
+// load-bearing fact — multi-tender settlement, and what `Paid with` means —
+// MOVED rather than died: it is the Activity half's table description now,
+// beside the column it is about.
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
@@ -95,21 +125,6 @@ export function VisitsView() {
         />
       </Half>
       <Half label="Manage">
-        <Section
-          title="Visit checkout"
-          description="How a bill is closed at the table. The guest scans, the reward applies, and the visit settles."
-          right={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>How it works</button>}
-          lane
-        >
-          <p className="text-muted-foreground text-[13px] leading-relaxed">
-            Every visit arrives through the guest&rsquo;s own app. There is no
-            terminal to install and nothing for staff to press: the reward is
-            applied before the total is shown, which is the only moment a guest
-            will believe it. A bill can be settled by more than one tender, and
-            those, plus Credits, add up to the total.
-          </p>
-        </Section>
-
         {/* THE DOOR TO THE DIAL (MESITA-1953). Rewards merged into this product
             in the catalogue, and the card was the only way in — the rail here
             carries no product rows at all, so without this link
@@ -124,7 +139,7 @@ export function VisitsView() {
             merged is the CARD; the setting did not move. */}
         <Section
           title="What comes back"
-          description="The slice of each settled bill that goes back to the guest. One dial, on its own screen — this is the door to it."
+          description="How much of each settled bill goes back to the guest."
           right={
             <Link
               href={placeTabHref(place.id, "rewards")}
@@ -145,7 +160,15 @@ export function VisitsView() {
         </Section>
       </Half>
       <Half label="Activity">
-        <Section title="Recent visits" description="Newest first.">
+        {/* THE COLUMN IS EXPLAINED WHERE IT IS RENDERED (MESITA-2016). This
+            sentence spent its life on the Manage half, inside a "Visit
+            checkout" box that had no control in it — so Setup explained a
+            table that is not on Setup, and the operator reading `Paid with`
+            was one screen away from the only text that says what it means. */}
+        <Section
+          title="Recent visits"
+          description="Newest first. A bill can be settled by more than one tender, so Paid with lists each one — those, plus Credits, add up to the total."
+        >
           <Table
             columns={columns}
             rows={rows}
