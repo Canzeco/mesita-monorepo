@@ -66,6 +66,10 @@ export const PRODUCT_KEYS = [
   // REPUTATION IS ITS OWN ROW AGAIN (MESITA-2011), which reverses MESITA-2007,
   // which reversed MESITA-1993. Third position on Pato's own list.
   //
+  // AND IT IS CALLED REPUTATION NOW (MESITA-2025) — see `lib/products.ts` for
+  // why. The KEY does not move: `reviews` is the fixture spelling, the half and
+  // the tab, on the `pay` precedent three entries down.
+  //
   // WHAT 2007 GOT RIGHT AND WHY IT STILL LOSES: Profile is what an operator
   // SETS and reputation is what the world says back, so Setup / Activity looks
   // like the container the split always wanted. It is the right shape for one
@@ -167,7 +171,7 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
   partner: "Partner Badge",
-  reviews: "Online Reviews",
+  reviews: "Online Reputation",
   menu: "Digital Menu",
   website: "Express Website",
   customers: "Customer Intelligence",

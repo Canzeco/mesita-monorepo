@@ -87,7 +87,7 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   // will happen. The exposure stays on Activity, still with no grand total.
   credits: BOTH,
 
-  // ONLINE REVIEWS HAS A SOURCES BLOCK NOW (MESITA-2017). It was ACTIVITY_ONLY
+  // ONLINE REPUTATION HAS A SOURCES BLOCK NOW (MESITA-2017). It was ACTIVITY_ONLY
   // on the argument that four sources all write from outside; the session
   // put ONE thing an operator does above them — connect or reconnect Google,
   // Instagram and Facebook — and a connection is a setting. `ReviewsView`
@@ -106,7 +106,7 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   // the log of what it did is ours to show.
   pay: BOTH,
   // MESITA PROFILE IS BACK TO ONE SCREEN (MESITA-2011). Its Activity half was
-  // Online Reviews, mounted here by MESITA-2007; Reviews has its own row
+  // Online Reputation, mounted here by MESITA-2007; it has its own row
   // again, so what is left is what Profile always was — the thing an operator
   // sets.
   profile: SETUP_ONLY,

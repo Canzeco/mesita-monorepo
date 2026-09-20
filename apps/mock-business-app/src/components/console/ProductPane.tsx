@@ -136,7 +136,7 @@ export function ProductPane({ card }: { card: ProductCard }) {
     // THE VIEW ONLY RENDERS ON A HALF THE PRODUCT ACTUALLY HAS (MESITA-2004).
     //
     // This line used to read `if (View) return <View />` with no mention of
-    // `half`, and that was a live bug: four products — Profile, Online Reviews,
+    // `half`, and that was a live bug: four products — Profile, Online Reputation,
     // Digital Menu, Online Payments — have a view and NO `Half` markers inside
     // it, so `/activity/mesita-profile` rendered the entire Profile editor.
     // The same screen, at two addresses, with the Activity tab lit.

@@ -76,14 +76,20 @@ export const PLAN_LABEL: Record<PlanTier, string> = {
  *  inventories side by side — and an operator picking a rung is picking a way
  *  to run the place, not counting features.
  *
- *  EACH STEP BUYS A DIFFERENT KIND OF THING. Free is a listing: your page and
- *  what the world says back. Pro is the selling surface — a menu, a site,
- *  bookings, and orders that actually charge. Ultra is what brings a guest
- *  back a second time, which is the only one of the three that needs Mesita to
- *  keep working after the sale. */
+ *  EACH STEP BUYS A DIFFERENT KIND OF THING. Free is the listing: your page,
+ *  what the world says back, and the menu. Pro is where that listing starts
+ *  SELLING — a site of your own, bookings, and orders that actually charge.
+ *  Ultra is what brings a guest back a second time, which is the only one of
+ *  the three that needs Mesita to keep working after the sale.
+ *
+ *  THE MENU MOVED DOWN A RUNG (MESITA-2025) AND BOTH PITCHES HAD TO MOVE WITH
+ *  IT. Pro's line opened with "A menu" while the menu had become Free's — the
+ *  kind of sentence that keeps rendering, keeps reading well, and sells the
+ *  wrong rung. Pro's list is derived from `SPECS`; its PITCH is not, so nothing
+ *  would have caught it. */
 export const PLAN_PITCH: Record<PlanTier, string> = {
-  free: "Be found. Your page and what the world says back.",
-  pro: "Sell online. A menu, a site, bookings and orders that charge.",
+  free: "Be found. Your page, your menu, and what the world says back.",
+  pro: "Sell online. A site of your own, bookings and orders that charge.",
   ultra: "Bring them back. The badge, the rewards and the machine that answers.",
 };
 
@@ -321,9 +327,9 @@ export type MockPlace = {
    *  pay Mesita" wants `plan !== "free"` and not this field. */
   partnered: boolean;
   /** WHICH RUNG. Free is a real rung, not the absence of one: it carries
-   *  Mesita Profile and Online Reviews — the listing every place gets for
-   *  showing up. Digital Menu and the Developers Platform left it in
-   *  MESITA-2019. */
+   *  Mesita Profile, Online Reputation and Digital Menu — the whole listing
+   *  every place gets for showing up. The menu came BACK to it in MESITA-2025,
+   *  having left with the Developers Platform in MESITA-2019. */
   plan: PlanTier;
   promoting: boolean;
   /** GOOGLE IS ANSWERING FOR IT (MESITA-1977). The second rung of the general

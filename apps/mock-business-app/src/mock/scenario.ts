@@ -99,7 +99,7 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   {
     id: "unpartnered",
     label: "Free",
-    hint: "The bottom rung. Profile, Reviews, Menu and the Developers Platform; everything else Locked and carrying no verb.",
+    hint: "The bottom rung. Mesita Profile, Online Reputation and Digital Menu \u2014 the whole listing; everything else Locked and carrying no verb.",
     patch: { mode: "solo", plan: "free", membership: "none", pay: "never", visitRewards: false, credits: false },
   },
   {

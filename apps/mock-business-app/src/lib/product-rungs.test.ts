@@ -45,22 +45,32 @@ describe("the ladder", () => {
   });
 });
 
-// ── PATO'S OWN LIST, VERBATIM (MESITA-2021) ────────────────────────────────
+// ── PATO'S OWN LIST (MESITA-2025, superseding MESITA-2021) ─────────────────
 //
-// 2026-09-20, dictating the whole ladder rather than moving one product:
+// 2026-09-20, dictating the twelve perks as one numbered run — the second time
+// in a day, and this time two things moved:
 //
-//   FREE   Mesita Profile · Online Reviews
-//   PRO    Digital Menu · Express Website · Online Orders ·
-//          Online Reservations · Online Payments
-//   ULTRA  Partner Badge · Visit Rewards · Prepaid Credits ·
-//          Answering Agent · Developers Platform
+//   FREE   1 Mesita Profile · 2 Online Reputation · 3 Digital Menu
+//   PRO    4 Express Website · 5 Online Payments · 6 Online Orders ·
+//          7 Online Reservations
+//   ULTRA  8 Partner Badge · 9 Visit Rewards · 10 Prepaid Credits ·
+//          11 Answering Agent · 12 Developers Platform
 //
-// IT MATCHED WHAT WAS ALREADY HERE, which is exactly why it is worth pinning:
-// the packing is right today by nothing stronger than the last person having
-// typed it correctly, and `PlanComparison` derives its three columns from
-// `SPECS` — so a `minPlan` edited for a reason that has nothing to do with
-// this list silently re-prices the ladder Pato read back to us, with every
-// gate green and the screen still rendering.
+// THAT IS WHY IT IS PINNED. MESITA-2021's version matched the file exactly and
+// held for four hours: the packing is right on any given day by nothing
+// stronger than the last person having typed it correctly, and `PlanComparison`
+// derives its three columns from `SPECS` — so a `minPlan` edited for a reason
+// that has nothing to do with this list silently re-prices the ladder Pato read
+// out, with every gate green and the screen still rendering.
+//
+// THE ASSERTIONS BELOW ARE NOT HIS NUMBERING, and the one difference is Online
+// Payments. He calls it 5th, above Orders and Reservations; the columns render
+// in `PRODUCT_KEYS` order, which is his own 2026-09-16 dictation drawn as four
+// contiguous bands, and Payments heads "The money" there. Honouring both orders
+// means a second hand-typed sequence beside the one MESITA-1883 killed, so what
+// is pinned is the MEMBERSHIP of each rung — his, to the letter — in the order
+// the screen actually prints. A product arriving on or leaving a rung fails
+// here either way, which is the failure this file exists for.
 //
 // IT IS PINNED BY NAME, not by key, and by the whole set rather than
 // product-by-product. By NAME because the name is what he dictated and what
@@ -77,13 +87,16 @@ describe("the rungs Pato dictated", () => {
   const live = (tier: PlanTier) =>
     SPECS.filter((s) => !s.soon && s.minPlan === tier).map((s) => s.name);
 
-  it("puts the listing on Free", () => {
-    expect(live("free")).toEqual(["Mesita Profile", "Online Reviews"]);
+  it("puts the whole listing on Free", () => {
+    expect(live("free")).toEqual([
+      "Mesita Profile",
+      "Online Reputation",
+      "Digital Menu",
+    ]);
   });
 
   it("puts the selling surface on Mesita Pro", () => {
     expect(live("pro")).toEqual([
-      "Digital Menu",
       "Express Website",
       "Online Orders",
       "Online Reservations",

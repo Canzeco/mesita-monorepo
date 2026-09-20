@@ -16,7 +16,7 @@
 // ── THE ORDER ──────────────────────────────────────────────────────────────
 //
 // PATO'S OWN LIST. MESITA-2011 made it his "Actuales" exactly — Mesita Partner
-// 2nd, Online Reviews 3rd, Express Website gone — and MESITA-2013 put Express
+// 2nd, Online Reputation 3rd, Express Website gone — and MESITA-2013 put Express
 // Website back at the bottom: *"add express website product here into sidebar
 // menu"*. The order lives in `PRODUCT_ORDER` and this file does not re-spell
 // it — a row move is one line over there.

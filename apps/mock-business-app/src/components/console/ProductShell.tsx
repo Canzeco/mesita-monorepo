@@ -28,7 +28,7 @@
 // check, and it has to sit above every route under `products/` and `activity/`.
 //
 // THE GROUND. Most panes are a FORM and want white under them; Profile and
-// Online Reviews are card grids and want the page's own grey, because a grid of
+// Online Reputation are card grids and want the page's own grey, because a grid of
 // white cards on white is a grid of hairlines (MESITA-1996). One bit, two
 // values, and it has to be decided from the open slug — which is why this is a
 // component and not a class name on a layout.

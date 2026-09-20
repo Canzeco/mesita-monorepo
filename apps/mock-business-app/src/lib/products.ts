@@ -19,22 +19,31 @@
 // THE THREE RUNGS AS A TABLE, so `minPlan` is a lookup and not a judgment
 // made once per product:
 //
-//   free   Mesita Profile, Online Reviews
-//          — the listing. Nothing here costs Mesita a peso per place, and
-//          nothing here asks the operator to do anything.
-//   pro    Digital Menu, Express Website, Online Reservations, Online
-//          Orders, Online Payments — the selling surface: what a guest
-//          reads, where they read it, and the rail that charges them.
+//   free   Mesita Profile, Online Reputation, Digital Menu
+//          — the LISTING, and it is now the whole listing: who you are, what
+//          the world says back, and what you serve. Nothing here costs Mesita
+//          a peso per place.
+//   pro    Express Website, Online Orders, Online Reservations, Online
+//          Payments — the selling surface: where a guest reads the menu that
+//          Free already gave them, and the rail that charges them.
 //   ultra  Partner Badge, Visit Rewards, Prepaid Credits, Answering Agent,
 //          Developers Platform, Table Orders, Customer Intelligence,
 //          Marketing Intelligence — what brings a guest BACK, plus anything
 //          that costs us per use (model minutes, compute, API bandwidth).
 //
-// PATO DICTATED THAT TABLE BACK TO US (MESITA-2021, 2026-09-20) — the three
-// rungs with the twelve live products under them, in this order. It matched
-// what was already here, which is the first time this file has been READ back
-// rather than edited. `product-rungs.test.ts` now pins the lists, so the next
-// `minPlan` that moves has to move his list with it.
+// PATO DICTATES THIS TABLE, and he has dictated it twice in one day.
+// MESITA-2021 (2026-09-20) read it back unchanged; MESITA-2025, four hours
+// later, moved DIGITAL MENU down to Free and renamed Online Reviews.
+//
+// WHY THE MENU IS FREE. It was the cheapest thing on the selling surface, and
+// it is the one product three others READ — guests browse it, Online Orders
+// sells from it, the Answering Agent quotes it. A rung that withholds the menu
+// withholds the INPUT to everything above it, so a place that never uploaded
+// one arrived at Mesita Pro with nothing to sell. Free asks for the menu while
+// it costs nothing; Pro sells it.
+//
+// `product-rungs.test.ts` pins the lists, so the next `minPlan` that moves has
+// to move his list with it.
 //
 // ORDERS CANNOT SIT BELOW PAYMENTS, and that is the one relation in this
 // table that is not a preference. Pato, 2026-09-20: *"online orders cannot
@@ -212,7 +221,21 @@ export const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "reviews",
-    name: "Online Reviews",
+    // REPUTATION, NOT REVIEWS (MESITA-2025). Pato, 2026-09-20, dictating the
+    // twelve perks: *"Online Reputation"*. Third name for this row — Mesita
+    // Reviews (MESITA-1995) → Online Reviews → this.
+    //
+    // A REVIEW IS THE INPUT; THE PRODUCT IS THE AGGREGATE. What this screen
+    // shows is Google's stars and how many, Mesita's four scores, and what
+    // Instagram and Facebook are saying — one number per source, not a list of
+    // reviews. The blurb has said exactly that since MESITA-2011 ("everything
+    // the world says back") while the NAME promised a feed, which is the kind
+    // of gap an operator only finds by opening the screen.
+    //
+    // THE KEY STAYS `reviews`, on the `pay` and `visits` precedent: it is the
+    // fixture spelling, the half and the tab. The SLUG does NOT — `PRODUCT_SLUG`
+    // is the kebab of the NAME for all twenty, so it is `online-reputation`.
+    name: "Online Reputation",
     // FOUR SOURCES, WHICH IS THE ARGUMENT FOR THE ROW (MESITA-2011). While
     // this was Profile's Activity half the blurb was Profile's; on its own it
     // has to say why it is not Profile, and the answer is that nothing here is
@@ -251,7 +274,19 @@ export const SPECS: readonly ProductSpec[] = [
     // longer holds a menu. `MenuView` is the destination and `ProductPane`
     // mounts it — no `PlaceTab`, because the menu is not a tab.
     tab: null,
-    minPlan: "pro",
+    // FREE SINCE MESITA-2025, and it is the only `minPlan` that moved. Pato put
+    // it third on the Free rung, under Profile and Online Reputation.
+    //
+    // THE MENU IS AN INPUT, NOT A SALE. Three products above this one READ it —
+    // Express Website renders it, Online Orders sells from it, the Answering
+    // Agent quotes it on the phone — so pricing the menu priced the thing they
+    // all need before they can do anything. A place that never uploaded one
+    // reached Mesita Pro with nothing to sell, which made the rung above look
+    // empty for a reason that belonged to the rung below.
+    //
+    // FREE IS THE WHOLE LISTING NOW: who you are, what the world says back, and
+    // what you serve.
+    minPlan: "free",
     atPlace: null,
     // WHAT EXISTS INSTEAD, named. An operator who uploaded a PDF last week
     // would otherwise read this card as Mesita losing their menu; the file is
@@ -626,10 +661,16 @@ export function buildProductCards(input: {
     // `needsPartner: false` product with no `atPlace` would otherwise fall
     // through to "enabled", which reads as something somebody turned ON.
     // FREE, AND IT IS A PAIR AGAIN (MESITA-2011). The ternary comes back with
-    // Online Reviews: both are on for every place and neither can be switched,
-    // but only one of them is something the operator WROTE. The distinction is
-    // the whole reason Reviews is its own row again, so the note has to carry
-    // it rather than printing Profile's sentence twice.
+    // Online Reputation: both are on for every place and neither can be
+    // switched, but only one of them is something the operator WROTE. The
+    // distinction is the whole reason reputation is its own row again, so the
+    // note has to carry it rather than printing Profile's sentence twice.
+    //
+    // STILL A PAIR AFTER MESITA-2025, and that is the point of this branch
+    // rather than a `minPlan === "free"` check. Digital Menu joined them on the
+    // Free rung and does NOT belong here: a menu is uploaded, it can be empty,
+    // and it reads On HERE. `free` is a claim about what cannot be switched,
+    // not about what costs nothing.
     if (spec.key === "profile" || spec.key === "reviews") {
       return {
         ...base(spec),
