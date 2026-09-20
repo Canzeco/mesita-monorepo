@@ -17,15 +17,10 @@ import { use } from "react";
 import { notFound } from "next/navigation";
 import { HalfScope } from "@/components/shared/Half";
 import { ProductPane } from "@/components/console/ProductPane";
-import { PartnershipPane } from "@/components/console/PartnershipPane";
 import { FuturePane } from "@/components/console/FuturePane";
 import { useHeldPlaceOrNull } from "@/components/console/PlaceScope";
 import { buildProductCards } from "@/lib/products";
-import {
-  FUTURE_SLUG,
-  PARTNERSHIP_SLUG,
-  productFromSlug,
-} from "@/lib/product-routes";
+import { FUTURE_SLUG, productFromSlug } from "@/lib/product-routes";
 import { placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import { hasHalf } from "@/lib/product-halves";
@@ -39,12 +34,10 @@ export default function ActivityProductPage({
   const place = useHeldPlaceOrNull();
   if (!place) return null;
 
-  if (product === PARTNERSHIP_SLUG) {
-    return <PartnershipPane place={place} half="activity" />;
-  }
-
-  // FUTURE PRODUCTS — a sentinel like the Plan row, resolved before
-  // `productFromSlug` because it is deliberately not a `ProductKey`.
+  // FUTURE PRODUCTS — THE LAST SENTINEL (MESITA-2011). The Plan row was the
+  // other one and is a product now, so this is the only slug left that
+  // resolves before `productFromSlug` because it is deliberately not a
+  // `ProductKey`.
   if (product === FUTURE_SLUG) {
     // THE WHOLE SUITE — see the twin in the products half (MESITA-1999).
     return (

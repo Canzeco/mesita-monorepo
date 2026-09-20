@@ -1,4 +1,4 @@
-// THE PRODUCT VOCABULARY — the fifteen keys, and nothing else.
+// THE PRODUCT VOCABULARY — the twenty keys, and nothing else.
 //
 // Snapshot of `apps/web-business/src/lib/product-keys.ts`. Kept free of
 // imports for the same reason the original is: `PLACE_TAB_LABEL` names
@@ -8,10 +8,17 @@
 // THE ORDER IS PATO'S (2026-09-16), and it is the whole list he dictated, in
 // his sequence:
 //
-//   Profile · Menu · Website · Customers · Ads        what the world sees
-//   Visits · Rewards · Orders · Reservations          the guest, being served
-//   Payments · Terminal · POS · Credits · Capital     the money
-//   AI Line · Intelligence                            the work nobody is doing
+//   Profile · Partner · Reviews · Menu · Website ·   what the world sees
+//     Customers · Ads
+//   Visits · Orders · Table Orders · Reservations     the guest, being served
+//   Payments · Terminal · POS · Orderpad ·            the money
+//     Credits · Capital
+//   Answering Agent · Developers · Intelligence       the work nobody is doing
+//
+// TWENTY SINCE MESITA-2011 — Pato's own two lists of ten, Actuales and
+// Futuros. The split between them is not here: it is `PRODUCT_ORDER` in
+// `product-routes.ts`, which names the ten with a menu row, and everything
+// left over is what the Future products door opens.
 //
 // THE BANDS ARE A RENDER NOW (MESITA-1962). Pato: *"divide in sections"*.
 // They were a comment for two days, while this file said the order is
@@ -21,16 +28,36 @@
 // instead of load-bearing and invisible. See `PRODUCT_BANDS` below.
 export const PRODUCT_KEYS = [
   "profile",
-  // REPUTATION WENT BACK INSIDE PROFILE (MESITA-2007). Pato: *"maybe remove
-  // online reviews, or put them in mesita profile in activity or something
-  // like that."*
+  // PARTNER IS A PRODUCT NOW (MESITA-2011). Pato, 2026-09-19: *"casi que
+  // partner lo quiero meter como un producto… que sea casi un producto"*, and
+  // then, dictating the catalogue: *"1. Mesita Profile 2. Mesita Partner"*.
   //
-  // MESITA-1993 split it out of Profile's masonry on the argument that Profile
-  // is what an operator SETS and reputation is what the world says back. That
-  // argument was right and it named the wrong container: the split it wanted
-  // is Setup / Activity, which did not exist yet. It does now, so what the
-  // world says back is Profile's ACTIVITY half rather than a tenth row you
-  // cannot switch on, cannot configure, and cannot be without.
+  // IT REVERSES `PartnerCard`'s OWN RULING, which is written out at the top of
+  // that file: a subscription cannot answer the grid's question, because "On
+  // because you bought it" and "On because somebody flipped a switch" are
+  // different facts with one word between them.
+  //
+  // WHAT MAKES IT SURVIVE NOW is that this card is not the subscription. It is
+  // the BADGE — a fact about the place that the world can see, exactly like
+  // Verified — and the badge answers the grid's question honestly: it is on or
+  // it is not. The rung that granted it is the note. Nothing here sells
+  // anything: `PartnershipPane` behind it is the same screen the Plan row
+  // opened, and that row is gone because this replaced it.
+  "partner",
+  // REPUTATION IS ITS OWN ROW AGAIN (MESITA-2011), which reverses MESITA-2007,
+  // which reversed MESITA-1993. Third position on Pato's own list.
+  //
+  // WHAT 2007 GOT RIGHT AND WHY IT STILL LOSES: Profile is what an operator
+  // SETS and reputation is what the world says back, so Setup / Activity looks
+  // like the container the split always wanted. It is the right shape for one
+  // SUBJECT with two faces — and Pato is telling us these are two subjects.
+  // Your page is one product; what Google, Instagram and Mesita say about you
+  // is another, and only the second one has four sources to name.
+  //
+  // THE COST OF THE FLIP IS ONE LINE EACH in `PRODUCT_HALVES` and
+  // `PRODUCT_VIEW`: `ReviewsView` never left the tree, because 2007 mounted it
+  // as Profile's Activity half rather than deleting it.
+  "reviews",
   // THE FIFTEENTH, AND IT WAS ALREADY HALF HERE (MESITA-1966). Pato: *"Add
   // digital menu as one item"*.
   //
@@ -120,6 +147,8 @@ export type ProductKey = (typeof PRODUCT_KEYS)[number];
  *  because neither is a product in the catalogue. */
 export const PRODUCT_LABEL: Record<ProductKey, string> = {
   profile: "Mesita Profile",
+  partner: "Mesita Partner",
+  reviews: "Online Reviews",
   menu: "Digital Menu",
   website: "Express Website",
   customers: "Customer Intelligence",
@@ -142,7 +171,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
 /** THE FOUR BANDS, AS DATA. What the catalogue heads each group with, in
  *  `PRODUCT_KEYS` order — the members of each band are CONTIGUOUS there, which
  *  is why drawing them moves no card and why each list below is a slice rather
- *  than a re-sort. 5 + 3 + 5 + 2 = 15.
+ *  than a re-sort. 7 + 4 + 6 + 3 = 20.
  *
  *  THE NAMES ARE PATO'S OWN, from the list he dictated: they say what a band is
  *  FOR rather than what its members share technically, which is the only way a
@@ -151,14 +180,20 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
  *
  *  A KEY IN NO BAND IS A COMPILE ERROR, not a card that quietly falls off the
  *  page: `BANDED_KEYS` is typed as the full `ProductKey` union, so adding a
- *  sixteenth product without placing it fails `tsc`. */
+ *  twenty-first product without placing it fails `tsc`. */
 export const PRODUCT_BANDS: readonly {
   title: string;
   keys: readonly ProductKey[];
 }[] = [
   {
+    // MESITA PARTNER AND ONLINE REVIEWS JOIN THIS BAND (MESITA-2011), and the
+    // heading is why they belong together: the badge and the stars are both
+    // things a GUEST reads about this place before they walk in. Partner could
+    // as easily have gone under "The money" — it is granted by a rung and
+    // nothing else — but what the card states is the badge, not the invoice,
+    // and the invoice has no band here at all.
     title: "What the world sees",
-    keys: ["profile", "menu", "website", "customers", "ads"],
+    keys: ["profile", "partner", "reviews", "menu", "website", "customers", "ads"],
   },
   {
     title: "Serving the guest",
@@ -185,6 +220,8 @@ export const PRODUCT_BANDS: readonly {
  *  refuses the file. It is not a runtime list anybody reads. */
 const BANDED_KEYS: { [K in ProductKey]: true } = {
   profile: true,
+  partner: true,
+  reviews: true,
   menu: true,
   website: true,
   customers: true,

@@ -9,24 +9,21 @@
 //
 // `NAV_ROWS` in `console-routes.ts`, which held FOUR destinations across one
 // ink line (MESITA-1975). Before that, `RAIL_ROWS`, which held two rows between
-// two hard-coded bands. This holds all fifteen, and the law each of them wrote
-// survives: THERE IS NO SECOND LIST. Moving a row is an edit to one line here.
+// two hard-coded bands. This holds every destination there is, and the law
+// each of them wrote survives: THERE IS NO SECOND LIST. Moving a row is an
+// edit to one line here — or, for a product, in `PRODUCT_ORDER`.
 //
 // ── THE ORDER ──────────────────────────────────────────────────────────────
 //
-// PATO'S NINE, AND IT IS EXACTLY HIS NINE AGAIN (MESITA-2007). MESITA-2004
-// added a tenth — Online Reviews, which had left Profile to become its own
-// product days earlier (MESITA-1993) — on the argument that a nine-row list
-// was a ten-row suite with its newest member missing. Reviews has gone back
-// inside Profile as its Activity half, so the list is the one Pato wrote.
+// PATO'S TEN, AND IT IS HIS "ACTUALES" LIST EXACTLY (MESITA-2011). Mesita
+// Partner is 2nd and Online Reviews 3rd; Express Website leaves, because he
+// put it in Futuros. The order lives in `PRODUCT_ORDER` and this file does not
+// re-spell it — a row move is one line over there.
 //
-// EXPRESS WEBSITE stays LAST, which is where Pato put it and is a move away
-// from `PRODUCT_ORDER`'s 3rd. The rule it implies is worth writing down because
-// the next row move will need it: EVERYTHING YOU CAN USE, THEN EVERYTHING YOU
-// CANNOT. `website` is Soon. It is not a strict state sort — `line` is Locked
-// and sits above it — because Locked is a product that EXISTS behind a rung
-// and Soon is a product that does not exist at all, and only the second one
-// has nothing whatever to look at.
+// NOTHING IN THE LIST IS SOON ANY MORE, which retires the rule the old ninth
+// row wrote: everything-you-can-use-then-everything-you-cannot, invented so
+// `website` could sit last without the list becoming a state sort. It comes
+// back the day an unbuilt product earns a row again.
 //
 // ── THE ACTIVITY ROW IS GONE, AND SO IS THE ROADMAP BAND (MESITA-2005) ─────
 //
@@ -69,14 +66,13 @@ import type { ProductKey } from "@/lib/product-keys";
 export type SidebarRow =
   | { kind: "place" }
   | { kind: "settings" }
-  | { kind: "plan" }
   | { kind: "product"; key: ProductKey }
   | { kind: "roadmap" };
 
 /** A group is a label and its rows. The label is `null` for the first group:
  *  it sits directly under the venue band, and a heading there would be a word
- *  explaining three rows that need no explanation. The other two earn theirs —
- *  nine products and a door onto the rest are worth separating. */
+ *  explaining two rows that need no explanation. The other earns its own —
+ *  ten products and a door onto the rest are worth separating. */
 export type SidebarGroup = {
   label: string | null;
   rows: readonly SidebarRow[];
@@ -88,11 +84,12 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     rows: [
       { kind: "place" },
       { kind: "settings" },
-      // THE PLAN IS NOT ONE OF THE TEN and must not become one — it is what
-      // the ten are bought with. `ProductShell` kept it in its own card under
-      // its own "Your plan" band for that reason; here the group boundary does
-      // the same work with one fewer object.
-      { kind: "plan" },
+      // THE PLAN ROW IS GONE (MESITA-2011). It sat here because it was what
+      // the products are bought with rather than one of them — and Pato has
+      // made it one of them: *"casi que partner lo quiero meter como un
+      // producto"*, second on his list. It is `{ kind: "product", key:
+      // "partner" }` now, drawn by the map below like every other row, and
+      // this group is back to the two destinations that are not products.
     ],
   },
   {
@@ -106,7 +103,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
       // one thing worth reading before opening a list.
       //
       // It hides itself when the count is zero, and the group's label does NOT
-      // go with it: nine other rows still need it. That is a difference from
+      // go with it: ten other rows still need it. That is a difference from
       // the band it replaces, where the label had nothing left to introduce.
       { kind: "roadmap" },
     ],
@@ -115,12 +112,11 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
 
 export const SIDEBAR_PLACE_LABEL = "Place";
 export const SIDEBAR_SETTINGS_LABEL = "Settings";
-export const SIDEBAR_PLAN_LABEL = "Plan";
 export const SIDEBAR_ROADMAP_LABEL = "Future products";
 
 /** The marks for the rows that are not products. Products read
  *  `PRODUCT_MARK`, which is already the one list of those. */
 export const SIDEBAR_PLACE_MARK = "\u{1F4CD}";
 export const SIDEBAR_SETTINGS_MARK = "\u{2699}\u{FE0F}";
-export const SIDEBAR_PLAN_MARK = "\u{1F91D}";
+// The handshake went WITH the Plan row — it is `PRODUCT_MARK.partner` now.
 export const SIDEBAR_ROADMAP_MARK = "\u{1F52E}";

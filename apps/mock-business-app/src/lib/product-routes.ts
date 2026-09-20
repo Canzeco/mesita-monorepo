@@ -24,16 +24,15 @@
 // surfaces without repeating itself, and it is not what somebody types.
 import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 
-/** The PLAN row's slug. It is not a `ProductKey` — see the sentinel in the
- *  Setup page — but it IS a row in the list and needs an address like every
- *  other row.
+/** THE PLAN SENTINEL IS GONE (MESITA-2011). It was `PARTNERSHIP_SLUG =
+ *  "plan"` — a row in the list that was deliberately not a `ProductKey`, so
+ *  both `[product]` pages had to answer it before `productFromSlug` and the
+ *  sidebar had to draw it as its own kind.
  *
- *  It was `mesita-partnership` (MESITA-1997). The row stopped being a
- *  partnership you buy and became the rung you are on, and an address that
- *  still said the old noun is exactly the drift a slug is supposed to prevent
- *  — the only job it has is that somebody reading the URL bar knows where
- *  they are. Nothing outside this app links to it. */
-export const PARTNERSHIP_SLUG = "plan";
+ *  Partner is a product now, so the address is `PRODUCT_SLUG.partner` and the
+ *  two sentinel branches are deleted. `mesita-partner` over `plan`: the slug
+ *  is the NAME, which is the rule this file already runs on, and Pato's list
+ *  calls the row Mesita Partner. Nothing outside this app links to either. */
 
 /** THE TEN, in Pato's order (MESITA-1997, 2026-09-19) — *"i only want 10
  *  things for the moment"*.
@@ -57,8 +56,24 @@ export const PARTNERSHIP_SLUG = "plan";
 // what it does and go buy it — and Soon is a product that does not exist at
 // all. Only the second one has nothing whatever to look at, so only the second
 // one goes to the bottom.
+// AND NOW IT IS TEN, WHICH IS PATO'S "ACTUALES" EXACTLY (MESITA-2011).
+// Partner is 2nd and Online Reviews 3rd, both on his own numbering, and
+// EXPRESS WEBSITE LEAVES: he put it in Futuros, and the ten left over once it
+// goes are the ten he listed there. That also retires the rule the line above
+// wrote — everything-you-can-use-then-everything-you-cannot — because nothing
+// in this list is Soon any more. It comes back the day a Soon product earns a
+// row again.
+//
+// HE DICTATED A SECOND LIST OF TEN a few minutes later, and this is not it:
+// that one had lost Digital Menu (MESITA-1966 added it deliberately and
+// nothing has retired it) and pulled Express Website back to 9th, against his
+// own Futuros placement in the same breath. It reads as this list recited from
+// the old sidebar. decision: the Actuales/Futuros pair wins; a row move is one
+// line here if he meant the other.
 export const PRODUCT_ORDER = [
   "profile",
+  "partner",
+  "reviews",
   "menu",
   "visits",
   "orders",
@@ -66,7 +81,6 @@ export const PRODUCT_ORDER = [
   "pay",
   "credits",
   "line",
-  "website",
 ] as const satisfies readonly ProductKey[];
 
 /** Everything the ten leaves out, behind ONE row. Not a product and not a
@@ -75,6 +89,8 @@ export const FUTURE_SLUG = "future-products";
 
 export const PRODUCT_SLUG: Record<ProductKey, string> = {
   profile: "mesita-profile",
+  partner: "mesita-partner",
+  reviews: "online-reviews",
   menu: "digital-menu",
   website: "express-website",
   customers: "customer-intelligence",
