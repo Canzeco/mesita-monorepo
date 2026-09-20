@@ -2,9 +2,9 @@
 //
 // Pato, 2026-09-19: *"AND EACH PRODUCT IS DIVIDED INTO SETUP AND ACTIVITY.
 // EASY."* It is not easy, because it is not true: of the ten products in
-// `PRODUCT_ORDER`, FOUR divide. The other five are ONE screen each — four of
-// them a config, one of them a log — and a `Setup | Activity` pair drawn on top
-// of them would be a control that does nothing on five screens out of nine,
+// `PRODUCT_ORDER`, THREE divide. The other seven are ONE screen each — five of
+// them a config, two of them a log — and a `Setup | Activity` pair drawn on top
+// of them would be a control that does nothing on seven screens out of ten,
 // which is the decoration `TopNav` wrote its own law against:
 //
 //   *"A destination a caller cannot reach is NOT RENDERED. A menu where some
@@ -63,20 +63,6 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   visits: BOTH,
   orders: BOTH,
   reservations: BOTH,
-  // MESITA PROFILE EARNED ITS ACTIVITY HALF (MESITA-2007). Pato: *"maybe
-  // remove online reviews, or put them in mesita profile in activity or
-  // something like that."*
-  //
-  // Online Reviews was a ROW: Digital Presence, Google Reviews and Mesita
-  // Reviews, three read-only cards a plan cannot buy and a switch cannot turn
-  // off. MESITA-1993 pulled them out of Profile's masonry because a form's
-  // save bar could never dirty them — right diagnosis, and the only container
-  // available at the time was a new product.
-  //
-  // Setup / Activity is the container it actually wanted. Profile is what an
-  // operator SETS; the reviews are what the world said back about it. Same
-  // subject, two halves, one row.
-  profile: BOTH,
   // The Developers Platform got its Manage half in MESITA-1992 (the key and
   // the connector) and keeps the Activity half that says where its events
   // land. It is not in `PRODUCT_ORDER`, so no sidebar row opens it today.
@@ -101,12 +87,39 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   // on its own.
   credits: ACTIVITY_ONLY,
 
+  // ONLINE REVIEWS, ON CREDITS' PRECEDENT (MESITA-2011). Nothing here can be
+  // configured — four sources, all of them writing from outside — so a Setup
+  // half would be a stated absence forever, which is the exact argument
+  // MESITA-2007 used to fold this product into Profile in the first place.
+  //
+  // IT IS THE REASON THE FOLD WAS WRONG, TOO. A product with one half is a
+  // shape this file already has; it does not have to borrow somebody else's
+  // row to get it.
+  //
+  // `ReviewsView` renders on both surfaces (its own header says so, and
+  // nothing in it sits inside a `Half`), so it is THIS LINE that keeps
+  // `/products/online-reviews` from serving the same screen the Activity
+  // address does. The router reads the map; the map is the only gate.
+  reviews: ACTIVITY_ONLY,
+
   // ── ONE SCREEN EACH, AND IT IS THE CONFIG ────────────────────────────────
-  // Three live products whose whole surface is configuration. They
-  // used to render that configuration at BOTH addresses, because `ProductPane`
-  // returned the view without ever reading `useHalf()`.
+  // Four live products whose whole surface is configuration — Profile joined
+  // them in MESITA-2011. They used to render that configuration at BOTH
+  // addresses, because `ProductPane` returned the view without ever reading
+  // `useHalf()`.
   menu: SETUP_ONLY,
   pay: SETUP_ONLY,
+  // MESITA PROFILE IS BACK TO ONE SCREEN (MESITA-2011). Its Activity half was
+  // Online Reviews, mounted here by MESITA-2007; Reviews has its own row
+  // again, so what is left is what Profile always was — the thing an operator
+  // sets.
+  profile: SETUP_ONLY,
+  // MESITA PARTNER HAS NO LOG (MESITA-2011), and the pane it replaced already
+  // said so in prose at its Activity address: renewals, a failed card and a
+  // cancellation are `SUBSCRIPTION` rows and Stripe's invoices, never a second
+  // timeline here. A sentence explaining an empty screen is still an empty
+  // screen, so the address goes rather than the sentence staying.
+  partner: SETUP_ONLY,
 
   // A stated absence is still a Setup screen. `line` is Locked and `website`
   // is Soon; `ProductPane` draws the pane that says so.
@@ -114,8 +127,10 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   website: SETUP_ONLY,
 
   // ── THE ROADMAP ──────────────────────────────────────────────────────────
-  // Nine products with nothing to open. They are reached from the Future
-  // products door, never from a sidebar row, and none of them has a log.
+  // Nine products with nothing to open — eight here plus `website`, which
+  // dropped off `PRODUCT_ORDER` in MESITA-2011 and is declared with the other
+  // stated absences above. They are reached from the Future products door,
+  // never from a sidebar row, and none of them has a log.
   customers: SETUP_ONLY,
   ads: SETUP_ONLY,
   tableorders: SETUP_ONLY,
@@ -133,7 +148,7 @@ export function hasHalf(key: ProductKey, half: PlaceHalf): boolean {
 
 /** Does this product draw a `Setup | Activity` pair?
  *
- *  Only when it HAS both. Five of the nine answer `false`, and on those the
+ *  Only when it HAS both. Seven of the ten answer `false`, and on those the
  *  pane header draws no tabs at all rather than one tab, or two where one is
  *  dead. */
 export function isSplit(key: ProductKey): boolean {

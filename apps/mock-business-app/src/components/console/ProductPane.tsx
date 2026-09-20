@@ -36,7 +36,9 @@
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Half, useHalf } from "@/components/shared/Half";
+import { useHalf } from "@/components/shared/Half";
+import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
+import { PartnershipPane } from "@/components/console/PartnershipPane";
 import { ProfileView } from "@/components/views/ProfileView";
 import { MenuView } from "@/components/views/MenuView";
 import { ReviewsView } from "@/components/views/ReviewsView";
@@ -64,50 +66,38 @@ import { PRODUCT_SLUG, productHref, type PlaceHalf } from "@/lib/product-routes"
 import { placeIdFromPathname } from "@/lib/console-routes";
 import { cn } from "@/lib/utils";
 
-/** MESITA PROFILE, BOTH HALVES (MESITA-2007).
+/** MESITA PARTNER'S SCREEN IS THE ONE THE PLAN ROW OPENED (MESITA-2011).
  *
- *  Pato: *"maybe remove online reviews, or put them in mesita profile in
- *  activity or something like that."*
+ *  `PartnershipPane` takes a place and `PRODUCT_VIEW` hands its components
+ *  nothing, so this reads the scope the same way every other view does. It is
+ *  the only wrapper left in this file: the pane was already written, and
+ *  rebuilding it under a product key would be the second source this file's
+ *  own header forbids.
  *
- *  SETUP IS WHAT AN OPERATOR SETS — the photos, the hours, the address, the
- *  menus. ACTIVITY IS WHAT THE WORLD SAID BACK — Digital Presence, Google
- *  Reviews, Mesita Reviews, all read-only and none of them reachable by a save
- *  bar. MESITA-1993 had that diagnosis exactly right and reached for the only
- *  container that existed then: a tenth product row. A row was the wrong shape
- *  for it — nothing there can be bought, switched off, or configured, so its
- *  Setup half would have been a stated absence forever.
- *
- *  THIS IS THE `Half` IDIOM, NOT A NEW MECHANISM. Two wrapped blocks in one
- *  component, `HalfScope` picks; the same thing `VisitsView`, `OrdersView` and
- *  `ReservationsView` have always done. What is new is only that a product's
- *  two halves are two SEPARATE components here — Profile's masonry and the
- *  review boxes never shared state and there is no reason to merge their
- *  source to merge their screen.
- *
- *  BOTH HALVES WANT THE PAGE'S GREY. `ProductShell`'s `PANE_ON_PAGE` keeps
- *  `profile` for that reason and no longer needs `reviews`: a grid of white
- *  cards on white is a grid of hairlines (MESITA-1996), and both halves are
- *  grids of white cards. */
-function ProfileProduct() {
-  return (
-    <>
-      <Half label="Manage">
-        <ProfileView />
-      </Half>
-      <Half label="Activity">
-        <ReviewsView />
-      </Half>
-    </>
-  );
+ *  NO HEADER OF ITS OWN. `ProductPane` draws one for every product below, and
+ *  the pane used to draw its own because it was not a product — so it takes
+ *  `header={false}` here and the two badges it carried become the state badge
+ *  every other card gets. The rung is not lost: it is the card's note. */
+function PartnerProduct() {
+  const { place } = usePlaceScope();
+  if (!place) return <NotHeld />;
+  return <PartnershipPane place={place} header={false} />;
 }
 
-/** THE NINE THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
+/** THE ELEVEN THAT HAVE A SCREEN. Keyed by PRODUCT key, not by `PlaceTab`:
  *  `pay`'s screen is `PayView` but its address is a sub-step rather than a tab,
  *  and `menu`'s door is Profile, which is somebody else's screen. A record over
  *  the product key says both of those out loud instead of hiding them behind a
  *  cast that happens to work. */
 const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>> = {
-  profile: ProfileProduct,
+  profile: ProfileView,
+  // THE PLAN ROW, AS A PRODUCT (MESITA-2011).
+  partner: PartnerProduct,
+  // ONLINE REVIEWS IS A ROW AGAIN (MESITA-2011), so `ReviewsView` is mounted
+  // by its own key rather than as Profile's Activity half. It is
+  // Activity-only, which `PRODUCT_HALVES` states and the router enforces —
+  // this record says WHICH component, never on which surface.
+  reviews: ReviewsView,
   // DIGITAL MENU HAS ITS OWN SCREEN NOW (MESITA-1984), so it stops borrowing
   // Profile's. Its `tab` goes back to null with it: the pane is the door, and
   // pointing the card at `/profile` would send an operator to the page the

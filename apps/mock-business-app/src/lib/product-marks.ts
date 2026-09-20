@@ -20,10 +20,20 @@ import type { ProductKey } from "@/lib/product-keys";
 // the one that gets misread.
 export const PRODUCT_MARK: Record<ProductKey, string> = {
   profile: "\u{1F3EA}",
+  // THE HANDSHAKE THE PLAN ROW WORE (MESITA-2011). Partner is a product now
+  // and this is the same mark the row it replaced drew, so an operator who
+  // knew where the plan lived finds it in the list by its mark.
+  partner: "\u{1F91D}",
   // A STAR, because that is the unit this product deals in — not 💬, which
   // would say the subject is the WRITING rather than the score, and not a
   // second 🏪, which would say Reviews is a view of Profile. It is the only
   // star in the list, so the row is findable by its mark alone.
+  //
+  // IT OUTLIVED ITS OWN KEY. MESITA-2007 deleted `reviews` and left this
+  // comment sitting above `menu`, describing a mark no record had — which is
+  // what a hand-kept map does when a product leaves. The key is back and the
+  // comment is its again.
+  reviews: "\u{2B50}",
   // THE DISHES, not a document: 🍽️ over 📄 or 📋, because the thing this
   // product turns into data is the food, and a page mark would read as the
   // PDF on Profile that this card exists to stop being the answer.

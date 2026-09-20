@@ -1,6 +1,6 @@
 "use client";
 
-// THE MENU. A column again — lockup, venue, thirteen rows (MESITA-2004…2007).
+// THE MENU. A column again — lockup, venue, thirteen rows (MESITA-2004…2011).
 //
 // ── THE SHAPE ──────────────────────────────────────────────────────────────
 //
@@ -12,12 +12,12 @@
 //   │  └──────────────────┘  │
 //   │   📍 Place             │
 //   │   ⚙️ Settings          │
-//   │   🤝 Plan     [Partner]│
 //   │                        │
 //   │   PRODUCTS             │
 //   │   🏪 Mesita Profile    │
-//   │   …nine of them…       │
-//   │   🔮 Future products  9│   the eleventh row, a door
+//   │   🤝 Mesita Partner [On]│  the Plan row, as a product
+//   │   …eight of them…      │
+//   │   🔮 Future products 10│   the eleventh row, a door
 //   └────────────────────────┘
 //
 // ── WHY IT IS INK ──────────────────────────────────────────────────────────
@@ -60,23 +60,16 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { PlaceChip } from "@/components/console/PlaceChip";
-import { Badge, ProductStateBadge } from "@/components/shared/Badges";
+import { ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards, type ProductCard } from "@/lib/products";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import type { ProductKey } from "@/lib/product-keys";
 import { primaryHalf } from "@/lib/product-halves";
-import {
-  FUTURE_SLUG,
-  PARTNERSHIP_SLUG,
-  PRODUCT_SLUG,
-  productHref,
-} from "@/lib/product-routes";
+import { FUTURE_SLUG, PRODUCT_SLUG, productHref } from "@/lib/product-routes";
 import {
   SIDEBAR_GROUPS,
   SIDEBAR_PLACE_LABEL,
   SIDEBAR_PLACE_MARK,
-  SIDEBAR_PLAN_LABEL,
-  SIDEBAR_PLAN_MARK,
   SIDEBAR_ROADMAP_LABEL,
   SIDEBAR_ROADMAP_MARK,
   SIDEBAR_SETTINGS_LABEL,
@@ -220,23 +213,9 @@ export function Sidebar({
             onNavigate={onNavigate}
           />
         );
-      case "plan":
-        if (!held || !place) return null;
-        return (
-          <Row
-            key="plan"
-            href={productHref(place.id, "products", PARTNERSHIP_SLUG)}
-            mark={SIDEBAR_PLAN_MARK}
-            name={SIDEBAR_PLAN_LABEL}
-            on={last === PARTNERSHIP_SLUG}
-            badge={
-              <Badge tone={place.partnered ? "gold" : "off"}>
-                {place.partnered ? "Partner" : "Free"}
-              </Badge>
-            }
-            onNavigate={onNavigate}
-          />
-        );
+      // THE PLAN CASE IS GONE (MESITA-2011) — Mesita Partner is the second
+      // `product` row now, so it is drawn by the case below with the state
+      // badge every other product wears instead of its own gold/off pair.
       case "product": {
         if (!held || !place) return null;
         const card = byKey.get(row.key);
@@ -245,10 +224,10 @@ export function Sidebar({
         return (
           <Row
             key={row.key}
-            // THE HALF THE PRODUCT HAS, not always Setup. Nine of the ten open
-            // on their configuration; Prepaid Credits has no Setup half since
-            // MESITA-2003 emptied it, so its row opens the log rather than a
-            // 404.
+            // THE HALF THE PRODUCT HAS, not always Setup. Eight of the ten
+            // open on their configuration; Prepaid Credits has no Setup half
+            // since MESITA-2003 emptied it and Online Reviews has none at all
+            // (MESITA-2011), so those two rows open the log rather than a 404.
             href={productHref(place.id, primaryHalf(row.key), slug)}
             mark={PRODUCT_MARK[row.key as ProductKey]}
             name={card.name}

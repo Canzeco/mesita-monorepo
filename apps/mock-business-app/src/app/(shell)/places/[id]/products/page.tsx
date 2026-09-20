@@ -6,10 +6,11 @@
 // the whole screen, and the index is what you see instead — `ProductShell`
 // hides one of the two below `lg`.
 //
-// THE DEFAULT PANE IS THE PARTNERSHIP, because it is the first row and because
-// it is the one thing five other products sit behind. Half a screen holding an
-// empty state on arrival is half a screen teaching you that it is usually
-// empty.
+// THE DEFAULT PANE IS MESITA PARTNER, because it is the one thing five other
+// products sit behind. Half a screen holding an empty state on arrival is half
+// a screen teaching you that it is usually empty. It is a product now
+// (MESITA-2011) and the second row rather than the first, which changes what
+// the pane is CALLED and not why it is the one that opens.
 import { MembershipReturnNotice } from "@/components/console/MembershipReturnNotice";
 import { PartnershipPane } from "@/components/console/PartnershipPane";
 import { useHeldPlaceOrNull } from "@/components/console/PlaceScope";

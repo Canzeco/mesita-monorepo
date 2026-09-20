@@ -57,11 +57,12 @@
 // expensive lie this screen could tell — an owner reads it as "already
 // handled" and stops picking up the phone.
 //
-// SO ONLY SEVEN CARDS ARE LIVE: Profile, Visits, Rewards, Orders,
-// Reservations, Payments and Credits. That ratio is the point of the screen,
-// not a defect in it — the catalogue is a price list before it is a control
-// panel, and an operator has to be able to read the whole suite before they
-// can want any of it.
+// SO TEN OF THE TWENTY ARE LIVE (MESITA-2011): Profile, Partner, Reviews,
+// Menu, Visits, Orders, Reservations, Payments, Credits and the Answering
+// Agent — which is exactly Pato's Actuales list, and the other ten are exactly
+// his Futuros. That ratio is the point of the screen, not a defect in it — the
+// catalogue is a price list before it is a control panel, and an operator has
+// to be able to read the whole suite before they can want any of it.
 //
 // THIS IS THE DRIFT THE PACKAGE ALLOWS, and it runs in the mock's direction:
 // `web-business` still has its nine products and the old clauses until
@@ -127,6 +128,43 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "Your public page on Mesita — the photos, the menu and the hours a guest reads before they pick you.",
     tab: "profile",
+    minPlan: "free",
+    atPlace: null,
+    soon: null,
+  },
+  {
+    key: "partner",
+    // THE BADGE, SOLD AS NOTHING (MESITA-2011). Pato: *"casi que partner lo
+    // quiero meter como un producto… que sea casi un producto"*, second on his
+    // list of ten.
+    //
+    // `minPlan: "start"` IS THE WHOLE GATE, and it is not a price on this
+    // card: `partnered` is `plan !== "free"` and has been since before any of
+    // this, so the lowest rung that grants the badge is Start. Saying it here
+    // means `PlanComparison` lists Mesita Partner under Start — which is
+    // exactly what the $200 buys that Free does not have — instead of the
+    // ladder and the badge being two stories about one purchase.
+    name: "Mesita Partner",
+    // WHAT THE BADGE IS FOR, not what it costs. Every other line an operator
+    // reads about partnership is about money; this one is the only place that
+    // says what the guest gets out of it, which is the reason to want it.
+    blurb:
+      "The badge on your page, and the rung that grants it — a guest reading the map sees that Mesita stands behind you.",
+    tab: null,
+    minPlan: "start",
+    atPlace: null,
+    soon: null,
+  },
+  {
+    key: "reviews",
+    name: "Online Reviews",
+    // FOUR SOURCES, WHICH IS THE ARGUMENT FOR THE ROW (MESITA-2011). While
+    // this was Profile's Activity half the blurb was Profile's; on its own it
+    // has to say why it is not Profile, and the answer is that nothing here is
+    // yours to write.
+    blurb:
+      "Everything the world says back — Google, Instagram, Facebook and Mesita's own stars, counted in one place.",
+    tab: null,
     minPlan: "free",
     atPlace: null,
     soon: null,
@@ -519,16 +557,43 @@ export function buildProductCards(input: {
     // never heard of Mesita, because the Intaker built it. A
     // `needsPartner: false` product with no `atPlace` would otherwise fall
     // through to "enabled", which reads as something somebody turned ON.
-    // FREE, AND THERE IS ONE OF THEM AGAIN (MESITA-2007). This branch was
-    // written for a pair — Profile and Online Reviews — and Reviews went back
-    // inside Profile as its Activity half, so the ternary that told them apart
-    // went with it.
-    if (spec.key === "profile") {
+    // FREE, AND IT IS A PAIR AGAIN (MESITA-2011). The ternary comes back with
+    // Online Reviews: both are on for every place and neither can be switched,
+    // but only one of them is something the operator WROTE. The distinction is
+    // the whole reason Reviews is its own row again, so the note has to carry
+    // it rather than printing Profile's sentence twice.
+    if (spec.key === "profile" || spec.key === "reviews") {
       return {
         ...base(spec),
         state: "free",
-        note: "Always free. Every place has one.",
+        note:
+          spec.key === "profile"
+            ? "Always free. Every place has one."
+            : "Always free. Nobody here can turn off what the world says.",
         action: viewAction(spec, "Manage"),
+      };
+    }
+    // THE BADGE, WHICH IS NOT A PURCHASE AND NOT A SWITCH (MESITA-2011).
+    //
+    // IT IS ANSWERED ABOVE THE LOCKED BRANCH ON PURPOSE. A Free place would
+    // otherwise read "Needs Mesita Start." with no verb, which is the right
+    // sentence for a product behind a rung and the wrong one for this: the
+    // badge is the one row where the rung IS the subject, so a place that has
+    // not bought one needs the door to the ladder, not a closed sign. Off with
+    // a way in, never Locked.
+    //
+    // `plan`, NOT `place.partnered`. The two agree — `scenario.ts` derives one
+    // from the other — and a card that read the derived field would be the
+    // second reader of a fact this function already holds.
+    if (spec.key === "partner") {
+      const partnered = plan !== "free";
+      return {
+        ...base(spec),
+        state: partnered ? "enabled" : "off",
+        note: partnered
+          ? `On here. ${PLAN_LABEL[plan]} carries the badge.`
+          : `Not a partner yet. Any rung from ${PLAN_LABEL.start} up grants it.`,
+        action: null,
       };
     }
     // LOCKED CARRIES NO VERB. A button on a product the caller cannot have is
