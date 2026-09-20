@@ -8,36 +8,45 @@
 //
 // ── THE GATE IS A RUNG, NOT A BOOLEAN (MESITA-1997) ────────────────────────
 //
-// Pato, 2026-09-19: *"Is not partner / Is pro and ultra / and both include
-// partnership badge."* So there is no Membership to have or not have; there
-// are FOUR rungs since MESITA-2009 — Free, Mesita Start, Mesita Pro, Mesita
-// Ultra — and a product names the LOWEST one that carries it. `planAtLeast`
-// is the whole check. Pato confirmed the four, by their code names, at the
-// MESITA-2017 gate on 2026-09-20; the session's working names (Partner,
-// Commerce, Autopilot) are not labels and never reach a screen.
+// There is no Membership to have or not have; there are THREE rungs since
+// MESITA-2019 — Free, Mesita Pro, Mesita Ultra — and a product names the
+// LOWEST one that carries it. `planAtLeast` is the whole check.
 //
 // `needsPartner: boolean` could not express this: two states cannot gate
 // three rungs, and the Answering Agent is the proof — it was ungated, it is
 // Ultra's, and there was no way to say so.
 //
-// THE FOUR RUNGS AS A TABLE (MESITA-2017), so `minPlan` is a lookup and not a
-// judgment made once per product:
+// THE THREE RUNGS AS A TABLE, so `minPlan` is a lookup and not a judgment
+// made once per product:
 //
-//   free   Profile, Online Reviews, Digital Menu, Developers Platform
-//          — costs Mesita nothing per place and makes the map worth opening
-//   start  Visit Rewards, Online Payments
-//          — "get paid, and bring them back"
-//   pro    Mesita Partner, Online Orders, Online Reservations, Express
-//          Website, Table Orders — every rail a guest's money moves through,
-//          the site they move it on, and the badge (MESITA-2014 moved its
-//          floor from Start to Pro; the Partner checklist's fifth row reads
-//          `PARTNER_MIN_PLAN`, never a typed rung)
-//   ultra  Prepaid Credits, Answering Agent, Customer Intelligence
-//          — anything that costs us PER USE (model minutes, compute), and the
-//          one product that creates a debt to a guest
+//   free   Mesita Profile, Online Reviews
+//          — the listing. Nothing here costs Mesita a peso per place, and
+//          nothing here asks the operator to do anything.
+//   pro    Digital Menu, Express Website, Online Reservations, Online
+//          Orders, Online Payments — the selling surface: what a guest
+//          reads, where they read it, and the rail that charges them.
+//   ultra  Mesita Partner, Visit Rewards, Prepaid Credits, Answering Agent,
+//          Developers Platform, Table Orders, Customer Intelligence,
+//          Marketing Intelligence — what brings a guest BACK, plus anything
+//          that costs us per use (model minutes, compute, API bandwidth).
+//
+// ORDERS CANNOT SIT BELOW PAYMENTS, and that is the one relation in this
+// table that is not a preference. Pato, 2026-09-20: *"online orders cannot
+// work without online payments"* — Online Orders is prepaid by definition
+// ("paid the moment the order is placed"), so a rung carrying Orders without
+// Payments is an order button that cannot charge anybody. Prepaid Credits and
+// Visit Rewards have the same dependency. `products.test.ts` pins it, because
+// the next person to move a `minPlan` will not read this paragraph.
+//
+// WHY REWARDS IS UP AT ULTRA and not beside the rails it resembles. Pato:
+// *"rewards must be in ultra, because then they will not comply"* — a place
+// promises a discount, a guest walks in on the strength of it, and the staff
+// shrug. That failure lands on Mesita, not on the venue. The price is the
+// seriousness filter in front of the strike ladder the schema already carries
+// (`strike_count`, `plan_forfeited_at`, `promo_paused_until`).
 //
 // Anything with real cost of goods (hardware, Capital, the media spend behind
-// Ads) is not a rung at all: it prices itself, and only its `minPlan: "pro"`
+// Ads) is not a rung at all: it prices itself, and only its `minPlan: "ultra"`
 // floor lives here.
 //
 // ── WHAT A BLURB OWES (MESITA-1946) ────────────────────────────────────────
@@ -231,7 +240,7 @@ export const SPECS: readonly ProductSpec[] = [
     // longer holds a menu. `MenuView` is the destination and `ProductPane`
     // mounts it — no `PlaceTab`, because the menu is not a tab.
     tab: null,
-    minPlan: "free",
+    minPlan: "pro",
     atPlace: null,
     // WHAT EXISTS INSTEAD, named. An operator who uploaded a PDF last week
     // would otherwise read this card as Mesita losing their menu; the file is
@@ -314,7 +323,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "Reach the people who have not found you yet — Facebook, Instagram and Google, run from here instead of three dashboards.",
     tab: null,
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: null,
     soon: "Facebook, Instagram and Google. Nothing is connected yet.",
   },
@@ -331,7 +340,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you switch on what earns it.",
     tab: "visits",
-    minPlan: "start",
+    minPlan: "ultra",
     // PARTNER-GATED, NOT `visitRewards`. Visits is included with the
     // Membership and has no per-place switch; only the rewards half has one.
     // Reading the merged card off that toggle would print "Off" for a place
@@ -363,7 +372,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "The guest orders from the table and it joins their open bill — no pickup, no delivery, no second screen for the floor.",
     tab: null,
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: null,
     soon: "Nothing is built yet.",
   },
@@ -389,7 +398,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "This place’s own Stripe account, so a guest can pay by card at the table and the money lands with you.",
     tab: null,
-    minPlan: "start",
+    minPlan: "pro",
     atPlace: null,
     soon: null,
   },
@@ -403,7 +412,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "A card reader on your counter for the guests who will never open their phone, on the same bill as everyone else.",
     tab: null,
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: null,
     soon: "Mesita hardware is not available yet.",
   },
@@ -429,7 +438,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "The till itself — items rung up, the ticket to the kitchen, and the bill Visits closes, on one system.",
     tab: null,
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: null,
     soon: "The furthest out of everything here. Nothing is live yet.",
   },
@@ -441,7 +450,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "A pad the floor carries: take the order at the table and it reaches the kitchen without a walk back to a station.",
     tab: null,
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: null,
     soon: "Mesita hardware is not available yet.",
   },
@@ -454,7 +463,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "Cash now for meals later — you open a campaign, guests buy a balance at a bonus, and a sister branch can choose to honour it.",
     tab: "credits",
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: (p) => p.credits,
     soon: null,
   },
@@ -475,7 +484,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "Mesita pre-buys your future meals at a discount and resells them to guests — you take the cash now.",
     tab: "capital",
-    minPlan: "pro",
+    minPlan: "ultra",
     atPlace: null,
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
@@ -537,7 +546,7 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "An API and keys into the systems you already run, so orders and bookings land in your POS instead of a screen somebody has to watch.",
     tab: null,
-    minPlan: "free",
+    minPlan: "ultra",
     atPlace: null,
     soon: null,
     // THE NOTE NAMES WHAT YOU GET, NOT WHAT THE PANE ALREADY SAYS
@@ -624,7 +633,7 @@ export function buildProductCards(input: {
     // THE BADGE, WHICH IS NOT A PURCHASE AND NOT A SWITCH (MESITA-2011).
     //
     // IT IS ANSWERED ABOVE THE LOCKED BRANCH ON PURPOSE. A Free place would
-    // otherwise read "Needs Mesita Start." with no verb, which is the right
+    // otherwise read "Needs Mesita Ultra." with no verb, which is the right
     // sentence for a product behind a rung and the wrong one for this: the
     // badge is the one row where the rung IS the subject, so a place that has
     // not bought one needs the door to the ladder, not a closed sign. Off with

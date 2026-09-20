@@ -42,10 +42,10 @@ import { cn } from "@/lib/utils";
 
 export function PartnerBanner({ place }: { place: MockPlace }) {
   // THE BRANCH IS THE BILL, NOT THE BADGE (2026-09-20). It read `partnered`,
-  // which meant the same thing right up until the badge moved to Mesita Pro.
-  // A place on Mesita Start pays every month, and this line deciding on the
-  // badge would take its Manage plan door away and hand it a buy button for
-  // something it already subscribes to.
+  // which meant the same thing right up until the badge moved off the cheapest
+  // paid rung. A place on Mesita Pro pays every month, and this line deciding
+  // on the badge would take its Manage plan door away and hand it a buy button
+  // for something it already subscribes to.
   if (place.plan === "free") {
     return (
       <div className="border-border bg-card rounded-2xl border p-4">

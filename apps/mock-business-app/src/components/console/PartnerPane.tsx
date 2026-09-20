@@ -19,9 +19,9 @@
 // The badge is a fact about this place that a GUEST reads, which is exactly
 // what the other nine rows are. What it does not have is a switch:
 //
-//   `partnered = isPartner(plan)` — Mesita Pro and up since MESITA-2014,
+//   `partnered = isPartner(plan)` — Mesita Ultra alone since MESITA-2019,
 //   which is why the sentence below derives the granting set instead of
-//   saying "every paid rung": Mesita Start pays and wears none.
+//   saying "every paid rung": Mesita Pro pays and wears none.
 //
 // It is DERIVED. No operator, no admin and no support agent can grant it
 // without moving the rung, which is why Settings' own states table prints
@@ -145,9 +145,9 @@ export function PartnerPane({ place }: { place: MockPlace }) {
         </span>{" "}
         {/* AND THE RUNG THIS PLACE IS ACTUALLY ON (MESITA-2014). The "off"
             sentence used to name Free, because Free was the only rung
-            without the badge. Mesita Start is another one, and telling a
-            place that pays $250 a month that it is on Free is the plainest
-            lie this strip could tell. */}
+            without the badge. Mesita Pro is another one, and telling a place
+            that pays every month that it is on Free is the plainest lie this
+            strip could tell. */}
         {place.partnered
           ? `Nothing on this screen switches it — it follows the rung, and it goes with the subscription if this place drops below ${PLAN_LABEL[PARTNER_MIN_PLAN]}.`
           : `Nothing on this screen switches it on — it arrives with the rung, the moment the rung changes. This place is on ${PLAN_LABEL[place.plan]}, so there is no badge.`}{" "}

@@ -31,69 +31,60 @@ export const PAY_LADDER_LABEL: Record<PayLadder, string> = {
 
 /** THE LADDER — what this place BOUGHT (MESITA-1997).
  *
- *  Pato, 2026-09-19: *"Is not partner / Is pro and ultra / and both include
- *  partnership badge."* So there is no separate thing called a Membership to
- *  buy: you buy a PLAN, and the badge is one of the things a rung grants.
+ *  Pato, 2026-09-19: *"Is not partner / Is pro and ultra"* — there is no
+ *  separate thing called a Membership to buy: you buy a PLAN, and what a rung
+ *  carries is everything this file and `lib/products.ts` say it does.
  *
- *  WHICH RUNG GRANTS IT MOVED UP (2026-09-20). Pato: *"mesita partner until
- *  1000, not 250"* — the badge starts at Mesita Pro, not at the rung below
- *  it. So PAYING AND BEING A PARTNER COME APART: a place on Mesita Start has
- *  a subscription, an invoice and a renewal date, and no badge. Every screen
- *  that used `partnered` to mean "this place pays Mesita" had to stop, or a
- *  paying place loses its billing door the day it is on Start.
+ *  THREE RUNGS, NOT FOUR (MESITA-2019). Pato, 2026-09-20: *"How can i pack
+ *  these products in 3 subscriptions, first one is free"*, then *"i want one
+ *  for $200MX per month. super cheap."* `start` is gone — MESITA-2009 added
+ *  it and MESITA-2014 repriced it, and a day later the ladder it belonged to
+ *  stopped existing. What is left is the shape `places.plan` has carried in
+ *  the real schema all along: `free | pro | ultra`.
+ *
+ *  THE BADGE IS THE TOP RUNG'S ALONE. Pato: *"Partner is just for the ultra"*
+ *  and, on why no rung may be NAMED Partner, *"you can pay that subscription
+ *  but not being a partner still."* So paying and being a partner come apart
+ *  at both ends: a place on Mesita Pro has a subscription, an invoice and a
+ *  renewal date and no badge, and a place on Ultra that sets its reward rate
+ *  to nothing does not wear one either — `deriveListingType` has always
+ *  required a non-zero rate on top of the rung, and that half is untouched.
+ *  Every screen that used `partnered` to mean "this place pays Mesita" had to
+ *  stop, or a paying place loses its billing door the day it is on Pro.
  *
  *  NOT `MockPlan`, WHICH IS TAKEN. That is the GUEST's Free/Premium on
  *  `MockCustomer`, a different axis on a different subject — and the exact
  *  collision that makes "plan" a word this codebase has to qualify every time.
  *
- *  The keys are the ones the real schema has carried since before any of this:
- *  `places.plan` is a Postgres enum of `free | pro | ultra`, and
- *  `deriveListingType` grants the badge on `plan !== 'free'`. The ladder is
- *  not new here; the second SKU stacked on top of it was.
- *
- *  THAT LINE IS NOW THE ONE THING THE BACKEND OWES THIS SCREEN. With the
- *  badge at Pro, `plan !== 'free'` grants it one rung too low. Nothing here
- *  reaches a database and this app leads the IA; moving the real gate is a
- *  backend issue and is not this one. */
-// FOUR RUNGS (MESITA-2009). Pato: *"$0MX. $200MX. $1000MX. $5000MX. FOUR
-// PLANS."* `start` is new between Free and Pro; Ultra moves 3,000 → 5,000.
-//
-// THE TWO OUTER PAID PRICES MOVED THE NEXT DAY (2026-09-20): *"250 to 1000 to
-// 4000 instead"*. Start up 50, Ultra down 1,000 — the ladder is 250 → 1000 →
-// 4000, which is 4× a step rather than 5× then 5×, and the top rung stops
-// being five times the one an operator can actually picture buying.
-//
-// THE NAME IS "MESITA START". `Mesita ` is the suite's prefix for "Mesita is
-// the counterparty", which it is for a subscription. Not *Lite*, which reads
-// as crippled; not *Basic*, which reads as the same thing politely; not
-// *Plus*, which everywhere else in software means a rung ABOVE the base and
-// this one is below Pro.
-//
-// `places.plan` IS A POSTGRES ENUM OF `free | pro | ultra` IN THE REAL SCHEMA.
-// This app leads and the IA lands here first; the enum migration, the Stripe
-// prices and the entitlement backfill are a backend issue and are not this
-// one. Nothing here reaches a database.
-export type PlanTier = "free" | "start" | "pro" | "ultra";
+ *  THE BACKEND STILL OWES THIS SCREEN TWO THINGS, and they are one issue, not
+ *  this one: `deriveListingType` grants the badge on `plan !== 'free'`, which
+ *  is two rungs too low now; and `places.partnered` is the ENTITLEMENT its own
+ *  migration comment says it is, gating `business-web-set-partnership` with a
+ *  409. Moving both to Ultra as one flag would 409 a Mesita Pro place on its
+ *  first reward rate. The badge follows the rung; the entitlement follows each
+ *  product's own `minPlan`. Nothing here reaches a database. */
+export type PlanTier = "free" | "pro" | "ultra";
 
 export const PLAN_LABEL: Record<PlanTier, string> = {
   free: "Free",
-  start: "Mesita Start",
   pro: "Mesita Pro",
   ultra: "Mesita Ultra",
 };
 
 /** One line on what each rung is FOR. The comparison leads with these, because
- *  a column headed by a price and then a list of nine product names is four
+ *  a column headed by a price and then a list of product names is three
  *  inventories side by side — and an operator picking a rung is picking a way
  *  to run the place, not counting features.
  *
- *  Each step buys a different KIND of thing rather than more of the last one,
- *  which is the whole argument for four rungs at roughly 5× a step. */
+ *  EACH STEP BUYS A DIFFERENT KIND OF THING. Free is a listing: your page and
+ *  what the world says back. Pro is the selling surface — a menu, a site,
+ *  bookings, and orders that actually charge. Ultra is what brings a guest
+ *  back a second time, which is the only one of the three that needs Mesita to
+ *  keep working after the sale. */
 export const PLAN_PITCH: Record<PlanTier, string> = {
-  free: "Be found. Your page, your menu and what the world says back.",
-  start: "Get paid, and bring them back.",
-  pro: "Run the operation — orders, tables, credit and the money behind them.",
-  ultra: "Mesita answers for you.",
+  free: "Be found. Your page and what the world says back.",
+  pro: "Sell online. A menu, a site, bookings and orders that charge.",
+  ultra: "Bring them back. The badge, the rewards and the machine that answers.",
 };
 
 /** Rung order. `>=` on these numbers is the whole entitlement check — a
@@ -101,14 +92,13 @@ export const PLAN_PITCH: Record<PlanTier, string> = {
  *  inherits it, so Ultra never has to re-list what Pro already bought. */
 export const PLAN_RANK: Record<PlanTier, number> = {
   free: 0,
-  start: 1,
-  pro: 2,
-  ultra: 3,
+  pro: 1,
+  ultra: 2,
 };
 
 /** The ladder in order, lowest first. Derived from `PLAN_RANK` so a rung
  *  cannot be in one list and not the other — the comparison renders this, and
- *  adding a fifth rung is one entry in `PLAN_RANK` and nothing else. */
+ *  adding a fourth rung is one entry in `PLAN_RANK` and nothing else. */
 export const PLAN_LADDER: readonly PlanTier[] = (
   Object.keys(PLAN_RANK) as PlanTier[]
 ).sort((a, b) => PLAN_RANK[a] - PLAN_RANK[b]);
@@ -116,15 +106,20 @@ export const PLAN_LADDER: readonly PlanTier[] = (
 /** MX$ a month, + IVA, as integers of pesos — the mock prints money and never
  *  charges it, so there is no reason to carry centavos here. Free is 0 and
  *  still has a row: a rung with no price line is a rung an operator cannot
- *  compare against the two beside it. */
+ *  compare against the two beside it.
+ *
+ *  MX$200 IS DELIBERATELY UNDER WHAT THE RUNG IS WORTH (MESITA-2019). Pato:
+ *  *"super cheap."* The subscription is not where Mesita earns on a Pro place
+ *  — the volume moving through Online Payments is — so the rung is priced to
+ *  be said yes to on a phone call, and the 10× step to Ultra is carried by the
+ *  badge and the rewards rather than by a longer list. */
 export const PLAN_PRICE_MXN: Record<PlanTier, number> = {
   free: 0,
-  start: 250,
-  pro: 1000,
-  ultra: 4000,
+  pro: 200,
+  ultra: 2000,
 };
 
-/** THE LOWEST RUNG THAT CARRIES THE PARTNER BADGE (2026-09-20).
+/** THE LOWEST RUNG THAT CARRIES THE PARTNER BADGE (MESITA-2019: Ultra).
  *
  *  It is a constant and not a literal because three different kinds of reader
  *  want it — the product's own `minPlan`, the card's note, and every screen
@@ -132,10 +127,11 @@ export const PLAN_PRICE_MXN: Record<PlanTier, number> = {
  *  was spelled out in more than one place the copy and the gate disagreed.
  *
  *  IT IS NOT "PAYS". `plan !== "free"` is the question a billing door asks;
- *  this is the question a badge asks, and since Start they are different
- *  questions. Reading the wrong one either hands a paying place a buy button
- *  it does not need or prints a badge it did not buy. */
-export const PARTNER_MIN_PLAN: PlanTier = "pro";
+ *  this is the question a badge asks, and they have been different questions
+ *  since the badge stopped sitting on the cheapest paid rung. Reading the
+ *  wrong one either hands a paying place a buy button it does not need or
+ *  prints a badge it did not buy. */
+export const PARTNER_MIN_PLAN: PlanTier = "ultra";
 
 /** Does this rung wear the Partner badge? The one arithmetic, so no screen
  *  re-derives it and none of them can drift apart. */
@@ -151,9 +147,9 @@ export function planAtLeast(plan: PlanTier, min: PlanTier): boolean {
  *  rung the place is on.
  *
  *  `plan` is what was BOUGHT and `partnered` is the badge derived from it
- *  (`isPartner`, which is Pro and up). This is the BILLING state underneath,
+ *  (`isPartner`, which is Ultra alone). This is the BILLING state underneath,
  *  and it comes apart from both — including from a place that pays and is not
- *  a partner, which is every place on Mesita Start:
+ *  a partner, which is every place on Mesita Pro:
  *
  *  LAPSE IS NOT DROP. `past_due` still entitles — Stripe is retrying the card
  *  and the partnership is intact — so a place can be `partnered` with a
@@ -315,17 +311,19 @@ export type MockPlace = {
    *  states matrix and a row in AdminView. */
   verified: boolean;
   /** DERIVED FROM `plan`, never set beside it (MESITA-1997): `isPartner`,
-   *  which is Mesita Pro and up since 2026-09-20. It stays a field because a
+   *  which is Mesita Ultra alone since MESITA-2019. It stays a field because a
    *  dozen readers want the fact and not the arithmetic — `scenario.ts` is the
    *  one place that computes it, exactly as `deriveListingType` is the one
    *  place the real lane computes its own.
    *
-   *  IT IS THE BADGE, NOT THE BILL. A place on Mesita Start is `false` here
-   *  and still has a subscription to manage, so a screen asking "does this
-   *  place pay Mesita" wants `plan !== "free"` and not this field. */
+   *  IT IS THE BADGE, NOT THE BILL. A place on Mesita Pro is `false` here and
+   *  still has a subscription to manage, so a screen asking "does this place
+   *  pay Mesita" wants `plan !== "free"` and not this field. */
   partnered: boolean;
   /** WHICH RUNG. Free is a real rung, not the absence of one: it carries
-   *  Profile, Online Reviews, Digital Menu and the Developers Platform. */
+   *  Mesita Profile and Online Reviews — the listing every place gets for
+   *  showing up. Digital Menu and the Developers Platform left it in
+   *  MESITA-2019. */
   plan: PlanTier;
   promoting: boolean;
   /** GOOGLE IS ANSWERING FOR IT (MESITA-1977). The second rung of the general

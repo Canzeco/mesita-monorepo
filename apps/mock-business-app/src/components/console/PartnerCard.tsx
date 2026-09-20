@@ -31,12 +31,12 @@
 // changed is that no screen sells it any more, because nothing is called
 // that on the price list.
 //
-// ── AND PAYING IS NOT BEING A PARTNER (2026-09-20) ────────────────────────
+// ── AND PAYING IS NOT BEING A PARTNER (MESITA-2019) ───────────────────────
 //
-// Pato: *"mesita partner until 1000, not 250"*. With the badge at Mesita Pro,
-// Mesita Start is a rung that bills every month and wears none, so this file
+// Pato: *"Partner is just for the ultra."* With the badge at Mesita Ultra,
+// Mesita Pro is a rung that bills every month and wears none, so this file
 // asks TWO different questions where it used to ask one. `PartnerBanner`
-// branches on the BILL (`plan !== "free"`) — a Start place needs the Manage
+// branches on the BILL (`plan !== "free"`) — a Pro place needs the Manage
 // plan door, not a buy button for a subscription it has. The badge itself
 // reads `isPartner`.
 import { useCallback, useState } from "react";
@@ -304,7 +304,7 @@ export function PartnerCard({ place }: { place: MockPlace }) {
         Whichever you buy, this place then turns these on from its own product
         views.
       </p>
-      {/* THE LADDER IS `PlanComparison` NOW (MESITA-2009) — four rungs,
+      {/* THE LADDER IS `PlanComparison` NOW (MESITA-2009) — three rungs,
           derived from `SPECS`, instead of the two this file used to spell out
           by hand. Free is IN the grid rather than filtered out: an operator on
           Free comparing three paid rungs needs to see what they already have,
