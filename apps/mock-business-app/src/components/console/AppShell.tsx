@@ -18,7 +18,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { Sidebar } from "@/components/console/Sidebar";
+import { Sidebar, SIDEBAR_WIDTH } from "@/components/console/Sidebar";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MockPanel } from "@/components/console/MockPanel";
 import { useMock } from "@/mock/MockStore";
@@ -119,9 +119,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1">
-        {/* THE COLUMN, ABOVE `lg` ONLY — 252px, fixed, its own scroller.
+        {/* THE COLUMN, ABOVE `lg` ONLY — fixed, its own scroller. The width
+            is `SIDEBAR_WIDTH`, defined once in `Sidebar.tsx` because this file
+            renders the menu TWICE and two literals is a drift waiting to
+            happen (MESITA-2010).
 
-            252px IS THE LONGEST NAME PLUS ITS BADGE, not a fraction of the
+            IT IS THE LONGEST NAME PLUS ITS BADGE, not a fraction of the
             window. MESITA-2001 learned this the expensive way: `grid-cols-3`
             drew a 660px index on a 1980px monitor, holding 34px rows whose name
             was flush left and whose state was flush right, ~450px apart, twelve
@@ -132,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             `shrink-0` MATTERS. Without it the column gives up width to a wide
             table before the table ever scrolls, and the menu narrows as a
             consequence of something happening on the other side of the screen. */}
-        <div className="hidden w-[252px] shrink-0 lg:block">
+        <div className={cn("hidden shrink-0 lg:block", SIDEBAR_WIDTH)}>
           <Sidebar
             scope={scope}
             place={fullPlace}
@@ -239,7 +242,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               makes a screen where nothing says MOCK, on the one surface where
               somebody unfamiliar is most likely to be poking around. 28px is
               the strip's height and this tracks it. */}
-          <div className="w-[252px] shrink-0">
+          <div className={cn("shrink-0", SIDEBAR_WIDTH)}>
             <Sidebar
               scope={scope}
               place={fullPlace}
