@@ -101,6 +101,20 @@ export function chargeGoogleSpine(
   if (photos > 0) ledger.charge("google_photos", COST.googlePhoto * photos);
 }
 
+/**
+ * Apify compass/crawler-google-places for ONE place, pay-per-event.
+ *
+ * A function, not a constant, for the same reason instagramRunCost is one: the
+ * spend moves with the knob. `atlasGatherReviews` is the dominant term — at the
+ * live setting of 100 reviews + 10 images this is ~$0.061, and the flat $0.30
+ * it replaces was both five times too high and frozen (MESITA-2032).
+ */
+export function googleMapsRunCost(reviewCount: number, imageCount: number): number {
+  return COST.gmapsStart + COST.gmapsPlace + COST.gmapsDetails +
+    COST.gmapsReview * Math.max(0, reviewCount) +
+    COST.gmapsImage * Math.max(0, imageCount);
+}
+
 export function instagramRunCost(depth: number): number {
   return COST.instagramProfile + COST.instagramPost * Math.max(0, depth) + COST.instagramVerify;
 }
@@ -121,6 +135,28 @@ export function synthesisRunCost(quality: string): number {
 export function discoverySearchCost(cfg: Pick<EnrichConfig, "discoverCandidates">): number {
   const n = Object.values(cfg.discoverCandidates).filter((c) => c > 0).length;
   return COST.firecrawlSearch * n;
+}
+
+/**
+ * Does a run that ENTERED at `entryStage` own the gather spend on its ledger?
+ *
+ * Only a run that walked from `research` paid for the gather it is carrying;
+ * one that entered at analysis or contents reused a stored `gathered` it never
+ * bought, and billing it would double-count that spend against the place.
+ *
+ * Pure, and takes the ENTRY stage rather than a row, because the row is what
+ * got this wrong: the check used to read `row.stage === "contents"` inside the
+ * contents EF, where `loadClaimedRow` has already asserted the row IS at that
+ * stage. Always true, so every successful run wrote `cost_usd = null` — the
+ * ledger's only remaining job, silently skipped (MESITA-2032). The entry stage
+ * is a different fact from the current stage and lives on the run row.
+ *
+ * Unknown (a run row older than `entry_stage`, or a read that failed) counts
+ * as owning it: recording a cost that might belong to an earlier gather beats
+ * recording nothing, which is the failure this fixes.
+ */
+export function runOwnsGatherSpend(entryStage: string | null | undefined): boolean {
+  return entryStage !== "analysis" && entryStage !== "contents";
 }
 
 export function isEnrichCostCapError(err: unknown): err is EnrichCostCapError {

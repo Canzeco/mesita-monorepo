@@ -164,6 +164,31 @@ export async function openEnrichmentRun(
 }
 
 /**
+ * The stage a run STARTED at, from the run row. Not the same fact as
+ * `place_research.stage`, which is wherever the pipeline is right now — and
+ * confusing the two is what silenced the cost ledger (MESITA-2032).
+ *
+ * null when there is no run row to ask (pre-runs-table rows) or the read
+ * failed; callers treat unknown as "walked from research".
+ */
+export async function loadRunEntryStage(
+  admin: SupabaseClient,
+  runId: string | null | undefined,
+): Promise<string | null> {
+  if (!runId) return null;
+  const { data, error } = await admin
+    .from("place_enrichment_runs")
+    .select("entry_stage")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error) {
+    console.error("[enrich-pipeline] entry_stage:", error.message);
+    return null;
+  }
+  return (data as { entry_stage?: string | null } | null)?.entry_stage ?? null;
+}
+
+/**
  * Close a run. Idempotent by construction — first writer wins in SQL — so every
  * layered closer can fire without coordinating with the others.
  */

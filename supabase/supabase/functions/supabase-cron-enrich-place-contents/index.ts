@@ -49,6 +49,7 @@ import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   costFromGathered,
   createEnrichCostLedger,
+  runOwnsGatherSpend,
   synthesisRunCost,
 } from "../_shared/enrich-cost.ts";
 import {
@@ -82,6 +83,7 @@ import { persistGoogleReviews } from "../_shared/enrich-google-review-snippets.t
 import { type PlaceProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import {
   advanceResearchStage,
+  loadRunEntryStage,
   buildMediaAssets,
   releaseResearchRow,
   reportEnrichmentStep,
@@ -658,12 +660,15 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // that exists — it rides on gathered.cost, which the NEXT run overwrites, so
   // the run row is where it survives.
   const finalCost = ledger.snapshot();
+  // A run that entered at analysis or contents REUSED a stored gather it did
+  // not pay for, so it must not be billed for it. Only a run that walked from
+  // research owns this number — and that is a fact about the RUN, read from
+  // `place_enrichment_runs.entry_stage`, not about `row.stage`, which is
+  // always "contents" here because loadClaimedRow says so (MESITA-2032).
+  const ownsSpend = runOwnsGatherSpend(await loadRunEntryStage(admin, row.run_id));
   await advanceResearchStage(admin, placeId, "done", {}, {
     runId: row.run_id,
-    // A run that entered at analysis or contents REUSED a stored gather it did
-    // not pay for, so it must not be billed for it. Only a run that walked from
-    // research owns this number.
-    costUsd: row.stage === "contents" && row.gathered ? null : finalCost.spentUsd,
-    charges: row.stage === "contents" && row.gathered ? null : finalCost.charges,
+    costUsd: ownsSpend ? finalCost.spentUsd : null,
+    charges: ownsSpend ? finalCost.charges : null,
   });
 });
