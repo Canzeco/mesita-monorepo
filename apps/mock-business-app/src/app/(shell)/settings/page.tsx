@@ -156,7 +156,7 @@ function stateGroups(
       label: "Partner",
       options: YES_NO,
       current: yesNo(place.partnered),
-      note: "Derived from the plan \u2014 both paid rungs grant it. Never set on its own.",
+      note: "Derived from the plan \u2014 Mesita Pro and up grant it. Never set on its own.",
     },
     {
       label: "Promoting",
@@ -391,11 +391,18 @@ export default function SettingsPage() {
           <ul className="flex flex-col">
             <li className="border-border/60 flex min-w-0 items-center gap-3 border-b py-3">
               <div className="min-w-0 flex-1">
-                <p className={TINY_LABEL_CLASS}>Mesita Membership</p>
+                <p className={TINY_LABEL_CLASS}>Plan</p>
+                {/* THE ROW STOPPED NAMING WHAT IT BUYS (2026-09-20). It said
+                    "a yearly fee" that unlocks three named products and makes
+                    the place a Partner — three facts that were each true of a
+                    two-rung ladder and none of which survived four rungs, a
+                    monthly price and the badge moving to Mesita Pro. A row in
+                    a reference table may not be the fourth writer of a fact
+                    the ladder already renders; it points at it instead. */}
                 <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
-                  A yearly fee per place. It is what makes this place a Mesita
-                  Partner and unlocks Visit Rewards, Online Payments and Prepaid
-                  Credits.
+                  A monthly fee per place. Which products it opens is on the
+                  plan itself &mdash; and Mesita Pro and up carry the Partner
+                  badge.
                 </p>
               </div>
               <Badge tone={place.partnered ? "on" : "off"}>

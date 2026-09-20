@@ -26,27 +26,49 @@ import {
   TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
 import type { MockOrder, MockPlace, MockReservation, MockReview, MockVisit } from "@/mock/types";
-import { PAY_LADDER_LABEL } from "@/mock/types";
+import { PAY_LADDER_LABEL, PLAN_LABEL, type PlanTier, planAtLeast } from "@/mock/types";
+import { PRODUCT_LABEL } from "@/lib/product-keys";
+import { SPECS } from "@/lib/products";
+
+/** What this rung cannot reach, as a sentence — the names in ladder order,
+ *  Oxford comma and all, off the same array a product's own card reads for its
+ *  floor. A SOON product is not locked: there is nothing behind it to open. */
+function lockedProducts(plan: PlanTier): string {
+  const names = SPECS.filter(
+    (spec) => !spec.soon && !planAtLeast(plan, spec.minPlan),
+  ).map((spec) => PRODUCT_LABEL[spec.key]);
+  return LIST_FORMAT.format(names);
+}
+
+/** `en` and not the viewer's locale, for the same reason the dates in this app
+ *  are fixed: a screenshot has to be the same string every time. */
+const LIST_FORMAT = new Intl.ListFormat("en", {
+  style: "long",
+  type: "conjunction",
+});
 
 /** Something stopping this place, and the one screen that unblocks it. */
 type Blocker = { label: string; line: string; door: string; href: string };
 
 /** WHAT IS ACTUALLY IN THE WAY, in the order it costs money.
  *
- *  Partner first: it gates Visits, Rewards, Payments and Credits, so a place
- *  without it has four other things wrong that are all the same thing. THE
- *  FOUR ARE NAMED, NEVER COUNTED — "five of the eight" stood here through two
- *  products arriving and one leaving, and no gate compares a sentence to
- *  `SPECS` (MESITA-1946). Payments second — it is the one that stops a guest
- *  paying. Then the two that only cost reach. */
+ *  The rung first: it gates whole products, so a place below the one it needs
+ *  has several other things wrong that are all the same thing. THE PRODUCTS
+ *  ARE NAMED, NEVER COUNTED — "five of the eight" stood here through two
+ *  products arriving and one leaving (MESITA-1946) — AND THE NAMES COME OFF
+ *  `SPECS` (2026-09-20), because the hand-typed four went stale the moment the
+ *  badge moved to Mesita Pro and half the list moved with it. Payments second
+ *  — it is the one that stops a guest paying. Then the two that only cost
+ *  reach. */
 function blockersFor(place: MockPlace, unanswered: number): Blocker[] {
   const out: Blocker[] = [];
 
-  if (!place.partnered) {
+  const locked = lockedProducts(place.plan);
+  if (locked.length > 0) {
     out.push({
-      label: "Not a partner",
-      line: "Visits, Rewards, Payments and Credits are locked here, and none of them carry a verb until Mesita Partner is on.",
-      door: "See what it unlocks",
+      label: `On ${PLAN_LABEL[place.plan]}`,
+      line: `${locked} ${locked.includes(" and ") ? "are" : "is"} locked here, and nothing locked carries a verb until this place is on the rung that opens it.`,
+      door: "See what the rungs open",
       href: placePageHref(place.id, "products"),
     });
   } else if (place.pay !== "enabled") {

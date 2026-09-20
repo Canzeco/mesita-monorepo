@@ -33,7 +33,14 @@ export const PAY_LADDER_LABEL: Record<PayLadder, string> = {
  *
  *  Pato, 2026-09-19: *"Is not partner / Is pro and ultra / and both include
  *  partnership badge."* So there is no separate thing called a Membership to
- *  buy: you buy a PLAN, and both paid rungs carry the Partner badge.
+ *  buy: you buy a PLAN, and the badge is one of the things a rung grants.
+ *
+ *  WHICH RUNG GRANTS IT MOVED UP (2026-09-20). Pato: *"mesita partner until
+ *  1000, not 250"* — the badge starts at Mesita Pro, not at the rung below
+ *  it. So PAYING AND BEING A PARTNER COME APART: a place on Mesita Start has
+ *  a subscription, an invoice and a renewal date, and no badge. Every screen
+ *  that used `partnered` to mean "this place pays Mesita" had to stop, or a
+ *  paying place loses its billing door the day it is on Start.
  *
  *  NOT `MockPlan`, WHICH IS TAKEN. That is the GUEST's Free/Premium on
  *  `MockCustomer`, a different axis on a different subject — and the exact
@@ -41,10 +48,20 @@ export const PAY_LADDER_LABEL: Record<PayLadder, string> = {
  *
  *  The keys are the ones the real schema has carried since before any of this:
  *  `places.plan` is a Postgres enum of `free | pro | ultra`, and
- *  `deriveListingType` already grants the badge on `plan !== 'free'`. The
- *  ladder is not new here; the second SKU stacked on top of it was. */
+ *  `deriveListingType` grants the badge on `plan !== 'free'`. The ladder is
+ *  not new here; the second SKU stacked on top of it was.
+ *
+ *  THAT LINE IS NOW THE ONE THING THE BACKEND OWES THIS SCREEN. With the
+ *  badge at Pro, `plan !== 'free'` grants it one rung too low. Nothing here
+ *  reaches a database and this app leads the IA; moving the real gate is a
+ *  backend issue and is not this one. */
 // FOUR RUNGS (MESITA-2009). Pato: *"$0MX. $200MX. $1000MX. $5000MX. FOUR
 // PLANS."* `start` is new between Free and Pro; Ultra moves 3,000 → 5,000.
+//
+// THE TWO OUTER PAID PRICES MOVED THE NEXT DAY (2026-09-20): *"250 to 1000 to
+// 4000 instead"*. Start up 50, Ultra down 1,000 — the ladder is 250 → 1000 →
+// 4000, which is 4× a step rather than 5× then 5×, and the top rung stops
+// being five times the one an operator can actually picture buying.
 //
 // THE NAME IS "MESITA START". `Mesita ` is the suite's prefix for "Mesita is
 // the counterparty", which it is for a subscription. Not *Lite*, which reads
@@ -102,10 +119,29 @@ export const PLAN_LADDER: readonly PlanTier[] = (
  *  compare against the two beside it. */
 export const PLAN_PRICE_MXN: Record<PlanTier, number> = {
   free: 0,
-  start: 200,
+  start: 250,
   pro: 1000,
-  ultra: 5000,
+  ultra: 4000,
 };
+
+/** THE LOWEST RUNG THAT CARRIES THE PARTNER BADGE (2026-09-20).
+ *
+ *  It is a constant and not a literal because three different kinds of reader
+ *  want it — the product's own `minPlan`, the card's note, and every screen
+ *  that asks whether this place wears the badge — and the last time this fact
+ *  was spelled out in more than one place the copy and the gate disagreed.
+ *
+ *  IT IS NOT "PAYS". `plan !== "free"` is the question a billing door asks;
+ *  this is the question a badge asks, and since Start they are different
+ *  questions. Reading the wrong one either hands a paying place a buy button
+ *  it does not need or prints a badge it did not buy. */
+export const PARTNER_MIN_PLAN: PlanTier = "pro";
+
+/** Does this rung wear the Partner badge? The one arithmetic, so no screen
+ *  re-derives it and none of them can drift apart. */
+export function isPartner(plan: PlanTier): boolean {
+  return planAtLeast(plan, PARTNER_MIN_PLAN);
+}
 
 export function planAtLeast(plan: PlanTier, min: PlanTier): boolean {
   return PLAN_RANK[plan] >= PLAN_RANK[min];
@@ -114,9 +150,10 @@ export function planAtLeast(plan: PlanTier, min: PlanTier): boolean {
 /** What the subscription is DOING, which is not the same question as which
  *  rung the place is on.
  *
- *  `plan` is what was BOUGHT and `partnered` is the gate derived from it
- *  (`plan !== "free"`). This is the BILLING state underneath, and it comes
- *  apart from both:
+ *  `plan` is what was BOUGHT and `partnered` is the badge derived from it
+ *  (`isPartner`, which is Pro and up). This is the BILLING state underneath,
+ *  and it comes apart from both — including from a place that pays and is not
+ *  a partner, which is every place on Mesita Start:
  *
  *  LAPSE IS NOT DROP. `past_due` still entitles — Stripe is retrying the card
  *  and the partnership is intact — so a place can be `partnered` with a
@@ -182,10 +219,15 @@ export type MockPlace = {
    *  of the same kind. It is still a fact, and still a column in the `/places`
    *  states matrix and a row in AdminView. */
   verified: boolean;
-  /** DERIVED FROM `plan`, never set beside it (MESITA-1997): `plan !== "free"`.
-   *  It stays a field because a dozen readers want the fact and not the
-   *  arithmetic — `scenario.ts` is the one place that computes it, exactly as
-   *  `deriveListingType` is the one place the real lane computes its own. */
+  /** DERIVED FROM `plan`, never set beside it (MESITA-1997): `isPartner`,
+   *  which is Mesita Pro and up since 2026-09-20. It stays a field because a
+   *  dozen readers want the fact and not the arithmetic — `scenario.ts` is the
+   *  one place that computes it, exactly as `deriveListingType` is the one
+   *  place the real lane computes its own.
+   *
+   *  IT IS THE BADGE, NOT THE BILL. A place on Mesita Start is `false` here
+   *  and still has a subscription to manage, so a screen asking "does this
+   *  place pay Mesita" wants `plan !== "free"` and not this field. */
   partnered: boolean;
   /** WHICH RUNG. Free is a real rung, not the absence of one: it carries
    *  Profile, Online Reviews, Digital Menu and the Developers Platform. */

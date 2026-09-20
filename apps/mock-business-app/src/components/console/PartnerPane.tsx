@@ -19,7 +19,9 @@
 // The badge is a fact about this place that a GUEST reads, which is exactly
 // what the other nine rows are. What it does not have is a switch:
 //
-//   `partnered = plan !== "free"`
+//   `partnered = isPartner(plan)` — Mesita Pro and up since MESITA-2014,
+//   which is why the sentence below derives the granting set instead of
+//   saying "every paid rung": Mesita Start pays and wears none.
 //
 // It is DERIVED. No operator, no admin and no support agent can grant it
 // without moving the rung, which is why Settings' own states table prints
@@ -46,16 +48,19 @@ import Link from "next/link";
 import { placePlanHref } from "@/lib/console-routes";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import {
+  isPartner,
+  PARTNER_MIN_PLAN,
   PLAN_LABEL,
   PLAN_LADDER,
   type MockPlace,
   type PlanTier,
 } from "@/mock/types";
 
-/** The rungs that carry the badge, derived rather than typed. `partnered` is
- *  `plan !== "free"` and this is that predicate read forwards, so a fifth rung
- *  in `PLAN_RANK` appears in the sentence below with nothing else edited. */
-const GRANTING: readonly PlanTier[] = PLAN_LADDER.filter((t) => t !== "free");
+/** The rungs that carry the badge, derived rather than typed: `isPartner`
+ *  read forwards, so a fifth rung in `PLAN_RANK` appears in the sentence below
+ *  with nothing else edited — and so does the floor moving again, which it did
+ *  the day after this file was written (MESITA-2014). */
+const GRANTING: readonly PlanTier[] = PLAN_LADDER.filter(isPartner);
 
 function grantingRungs(): string {
   const names = GRANTING.map((t) => PLAN_LABEL[t]);
@@ -75,12 +80,15 @@ export function PartnerPane({ place }: { place: MockPlace }) {
         <span className="text-foreground font-medium">
           {grantingRungs()} each carry the badge.
         </span>{" "}
+        {/* AND THE RUNG THIS PLACE IS ACTUALLY ON (MESITA-2014). The "off"
+            sentence used to name Free, because Free was the only rung
+            without the badge. Mesita Start is another one, and telling a
+            place that pays $250 a month that it is on Free is the plainest
+            lie this strip could tell. */}
         {place.partnered
-          ? "Nothing on this screen switches it — it follows the rung, and it goes with the subscription if this place drops to "
-          : "Nothing on this screen switches it on — it arrives with the rung, the moment the rung changes. This place is on "}
-        {PLAN_LABEL.free}
-        {place.partnered ? "." : ", so there is no badge."} The rung is on
-        Plan.
+          ? `Nothing on this screen switches it — it follows the rung, and it goes with the subscription if this place drops below ${PLAN_LABEL[PARTNER_MIN_PLAN]}.`
+          : `Nothing on this screen switches it on — it arrives with the rung, the moment the rung changes. This place is on ${PLAN_LABEL[place.plan]}, so there is no badge.`}{" "}
+        The rung is on Plan.
       </p>
       {/* THE DOOR, AND THE ONLY ONE. There is no verb on this screen because
           there is no verb on this product: the badge is bought as a rung or

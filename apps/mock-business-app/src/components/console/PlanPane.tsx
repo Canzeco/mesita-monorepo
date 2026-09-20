@@ -42,7 +42,7 @@ import type { MockPlace } from "@/mock/types";
 export function PlanPane({ place }: { place: MockPlace }) {
   return (
     <div className="flex flex-col gap-4">
-      {/* A partnered place gets the DOOR and the ladder below it; a Free place
+      {/* A PAYING place gets the DOOR and the ladder below it; a Free place
           gets `PartnerCard`'s ladder, which carries the buy doors. */}
       <PartnerBanner place={place} />
       {/* THE LADDER, FOR A PARTNERED PLACE TOO (MESITA-2009). It used to
@@ -52,13 +52,19 @@ export function PlanPane({ place }: { place: MockPlace }) {
           only place an operator can read what the rung ABOVE them carries,
           and the rung above is the one they might buy.
 
-          ONLY WHEN PARTNERED. `PartnerBanner` hands an unpartnered place
-          to `PartnerCard`, which draws the same grid WITH its buy doors —
+          ONLY WHEN THEY PAY. `PartnerBanner` hands a FREE place to
+          `PartnerCard`, which draws the same grid WITH its buy doors —
           rendering this one too put the ladder on the screen twice.
+
+          THE TEST IS THE RUNG AND NOT THE BADGE (MESITA-2014). They were
+          the same boolean until the badge moved to Mesita Pro; reading
+          `partnered` here would now give a place on Mesita Start both
+          grids, and this is the billing screen — the question it asks is
+          whether this place PAYS.
 
           It carries no verb here: the Manage strip above it is the way
           out, and a second door would be the same exit twice. */}
-      {place.partnered && <PlanComparison current={place.plan} />}
+      {place.plan !== "free" && <PlanComparison current={place.plan} />}
     </div>
   );
 }
