@@ -17,7 +17,9 @@
 // `tone="on"` is `bg-foreground`, so a fact badge rendered on an ink surface
 // was 1.00:1 against its own ground and `gold` fell from 7.8:1 to 1.4:1. Every
 // tone below assumes a WHITE card. Painting one on `--dock` needs a variant
-// here first, not a wrapper around the caller.
+// here first, not a wrapper around the caller — `soonDock` is the first one
+// that was actually needed (MESITA-2013), and the note beside `TONES` says
+// why it is the only tone so far that could not survive the rail as it was.
 //
 // PROMOTING LEFT FIRST (MESITA-1925). Pato: *"remove the promothing shit"*. It
 // is a per-request computation (strategy ≠ zero AND an open promo lane) that
@@ -62,11 +64,31 @@ const BASE =
 // AdminView, OrdersView, Settings and the catalogue all reach for it for facts
 // that are not a product's state. Tinting it green would have turned every
 // "yes" in the app into a running product.
+// `soonDock` IS THE VARIANT THE NOTE AT THE TOP OF THIS FILE ASKED FOR
+// (MESITA-2013). It said every tone here assumes a white card and that painting
+// one on `--dock` needs a variant, not a wrapper around the caller. This is it.
+//
+// WHY ONLY THIS ONE, so far: `live` and `gold` are TINTED FILLS. The fill lifts
+// its own ground, so the ink reads against the tint rather than against
+// whatever is behind it, and both survive the ink rail unchanged. `soon` is the
+// single tone with NO fill — `border-border` and `text-muted-foreground` land
+// directly on the surface — so it is the only one that ever needed this.
+//
+// IT WAS UNREACHABLE UNTIL NOW. A Soon badge reaches the rail only from a
+// sidebar row, and no row has been Soon since MESITA-2011 took Express Website
+// off `PRODUCT_ORDER`. MESITA-2013 put that row back and the tone came with it,
+// at roughly #5e5e5e on near-black.
+//
+// THE SHAPE AXIS IS UNTOUCHED: still a dashed outline, still no fill. Only the
+// two colours change, to the `--dock-*` pair globals.css already keeps for
+// exactly this surface — 64% white text (7.84:1 on the ink, and the same value
+// every row name in the menu rests at) inside a 16% white dash.
 const TONES: Record<string, string> = {
   on: "bg-foreground text-paper",
   live: "bg-[color:var(--state-live)]/18 text-[color:var(--state-live-ink)]",
   off: "border-border text-muted-foreground border",
   soon: "border-border text-muted-foreground border border-dashed",
+  soonDock: "border-dock-border text-dock-muted border border-dashed",
   neutral: "bg-muted text-muted-foreground",
   gold: "bg-[color:var(--tier-gold)]/18 text-[color:var(--tier-gold-ink)]",
   bad: "bg-destructive/10 text-destructive",
@@ -77,7 +99,15 @@ export function Badge({
   children,
   className,
 }: {
-  tone?: "neutral" | "on" | "live" | "off" | "soon" | "gold" | "bad";
+  tone?:
+    | "neutral"
+    | "on"
+    | "live"
+    | "off"
+    | "soon"
+    | "soonDock"
+    | "gold"
+    | "bad";
   children: React.ReactNode;
   className?: string;
 }) {
@@ -104,6 +134,22 @@ const PRODUCT_WORD: Record<ProductState, string> = {
   soon: "Soon",
 };
 
-export function ProductStateBadge({ state }: { state: ProductState }) {
-  return <Badge tone={PRODUCT_TONE[state]}>{PRODUCT_WORD[state]}</Badge>;
+/** `onDock` says the badge is being drawn on the ink menu rather than a white
+ *  card. It is the CALLER's fact — only the caller knows its own ground — and
+ *  it selects a tone rather than restyling one, which is the line the note
+ *  above `TONES` draws. Today it moves exactly one state; a second tone that
+ *  needs the rail is a second entry there, not a second prop here. */
+export function ProductStateBadge({
+  state,
+  onDock = false,
+}: {
+  state: ProductState;
+  onDock?: boolean;
+}) {
+  const tone = PRODUCT_TONE[state];
+  return (
+    <Badge tone={onDock && tone === "soon" ? "soonDock" : tone}>
+      {PRODUCT_WORD[state]}
+    </Badge>
+  );
 }

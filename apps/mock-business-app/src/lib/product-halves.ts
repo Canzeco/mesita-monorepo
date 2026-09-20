@@ -1,10 +1,10 @@
 // WHICH PRODUCTS ACTUALLY HAVE TWO HALVES (MESITA-2004).
 //
 // Pato, 2026-09-19: *"AND EACH PRODUCT IS DIVIDED INTO SETUP AND ACTIVITY.
-// EASY."* It is not easy, because it is not true: of the ten products in
-// `PRODUCT_ORDER`, THREE divide. The other seven are ONE screen each — five of
+// EASY."* It is not easy, because it is not true: of the eleven products in
+// `PRODUCT_ORDER`, THREE divide. The other eight are ONE screen each — six of
 // them a config, two of them a log — and a `Setup | Activity` pair drawn on top
-// of them would be a control that does nothing on seven screens out of ten,
+// of them would be a control that does nothing on eight screens out of eleven,
 // which is the decoration `TopNav` wrote its own law against:
 //
 //   *"A destination a caller cannot reach is NOT RENDERED. A menu where some
@@ -127,10 +127,10 @@ export const PRODUCT_HALVES: Record<ProductKey, readonly PlaceHalf[]> = {
   website: SETUP_ONLY,
 
   // ── THE ROADMAP ──────────────────────────────────────────────────────────
-  // Nine products with nothing to open — eight here plus `website`, which
-  // dropped off `PRODUCT_ORDER` in MESITA-2011 and is declared with the other
-  // stated absences above. They are reached from the Future products door,
-  // never from a sidebar row, and none of them has a log.
+  // Eight products with nothing to open. `website` is NOT among them any more
+  // — MESITA-2013 gave it a sidebar row back, and it is declared with the
+  // other stated absences above. These eight are reached from the Future
+  // products door, never from a sidebar row, and none of them has a log.
   customers: SETUP_ONLY,
   ads: SETUP_ONLY,
   tableorders: SETUP_ONLY,

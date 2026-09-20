@@ -8,6 +8,7 @@
 //
 // Here the scenario IS the answer. Pick a mode and the console is in it.
 import { MEMBERSHIP_RENEWS_AT, PLACES, POOL_PLACES, PROFILES } from "@/mock/fixtures";
+import { isPartner } from "@/mock/types";
 import type {
   MembershipState,
   MockPlace,
@@ -27,11 +28,12 @@ export type Scenario = {
   role: PlaceRole;
   /** Super-admin adds the Admin view, and nothing else. */
   isSuperAdmin: boolean;
-  /** THE RUNG on the SELECTED place (MESITA-1997) — `free | pro | ultra`,
-   *  replacing the `partnered` boolean this dial used to be. Both paid rungs
-   *  carry the Partner badge, so the gate the products read is derived from
-   *  this and never set beside it. A boolean could not reach Ultra, which is
-   *  the whole reason the dial changed shape. */
+  /** THE RUNG on the SELECTED place (MESITA-1997) — four values now,
+   *  replacing the `partnered` boolean this dial used to be. Everything a
+   *  product gates on is derived from this and never set beside it. A boolean
+   *  could not reach Ultra, which is the whole reason the dial changed shape —
+   *  and since 2026-09-20 it could not reach Start either, which is a rung
+   *  that PAYS and is not a Partner. */
   plan: PlanTier;
   /** THE TWO GENERAL STATES THE PANEL CAN MOVE (MESITA-1977). `verified` is
    *  not one of them: it is a fixture fact per place, and a switch for it here
@@ -192,15 +194,20 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
     ...place,
     myRole: s.role,
     plan: s.plan,
-    // DERIVED, NEVER DIALLED — the real lane's `deriveListingType` grants the
-    // badge on `plan !== 'free'` and this is that line. Two writers for one
-    // fact is how a console ends up showing a Partner badge on a Free place.
-    partnered: s.plan !== "free",
+    // DERIVED, NEVER DIALLED — this is the one line that computes the badge,
+    // the way the real lane's `deriveListingType` is the one line over there.
+    // Two writers for one fact is how a console ends up showing a Partner
+    // badge on a place that did not buy one.
+    //
+    // `isPartner`, NOT `plan !== "free"` (2026-09-20). The badge starts at
+    // Mesita Pro; the rung below it pays and wears none.
+    partnered: isPartner(s.plan),
     pulsing: s.pulsing,
     disabled: s.disabled,
-    // THE ONE PAIR THAT CANNOT EXIST. A place that is not a partner has no
-    // subscription to be `past_due` or `cancelling` about, so the panel's two
-    // dials cannot be crossed into a state the real console never produces.
+    // THE ONE PAIR THAT CANNOT EXIST. A place on Free has no subscription to
+    // be `past_due` or `cancelling` about, so the panel's two dials cannot be
+    // crossed into a state the real console never produces. THE TEST IS THE
+    // RUNG, NOT THE BADGE: Start pays, and a paying place has billing states.
     // Held here rather than in the panel because the panel is not the only
     // writer — a stored scenario from an older build arrives through
     // `getScenario`'s spread with whatever it was saved with.

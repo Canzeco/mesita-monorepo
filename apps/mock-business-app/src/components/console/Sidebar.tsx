@@ -1,6 +1,6 @@
 "use client";
 
-// THE MENU. A column again — lockup, venue, thirteen rows (MESITA-2004…2011).
+// THE MENU. A column again — lockup, venue, fourteen rows (MESITA-2004…2012).
 //
 // ── THE SHAPE ──────────────────────────────────────────────────────────────
 //
@@ -11,11 +11,12 @@
 //   │  │    Mesita Pro    │  │
 //   │  └──────────────────┘  │
 //   │   📍 Place             │
+//   │   💳 Plan              │
 //   │   ⚙️ Settings          │
 //   │                        │
 //   │   PRODUCTS             │
 //   │   🏪 Mesita Profile    │
-//   │   🤝 Mesita Partner [On]│  the Plan row, as a product
+//   │   🤝 Mesita Partner [On]│  the badge, not the purchase
 //   │   …eight of them…      │
 //   │   🔮 Future products 10│   the eleventh row, a door
 //   └────────────────────────┘
@@ -70,6 +71,8 @@ import {
   SIDEBAR_GROUPS,
   SIDEBAR_PLACE_LABEL,
   SIDEBAR_PLACE_MARK,
+  SIDEBAR_PLAN_LABEL,
+  SIDEBAR_PLAN_MARK,
   SIDEBAR_ROADMAP_LABEL,
   SIDEBAR_ROADMAP_MARK,
   SIDEBAR_SETTINGS_LABEL,
@@ -80,6 +83,7 @@ import {
   SHELL_ROUTES,
   isPlaceHomePathname,
   placePayHref,
+  placePlanHref,
 } from "@/lib/console-routes";
 import { pagesForAccess, placeTabHref } from "@/lib/place-tabs";
 import { PLAN_LABEL, type MockPlace } from "@/mock/types";
@@ -199,6 +203,25 @@ export function Sidebar({
             onNavigate={onNavigate}
           />
         );
+      case "plan":
+        // THE PURCHASE, ON ITS OWN ROW AGAIN (MESITA-2012). It needs a place
+        // to point at, so it is absent at `unknown` and `zero` — the same
+        // call every place-scoped row makes. Unlike a product row it does NOT
+        // read `allowed`: a viewer may see what the place pays, which is the
+        // rule Settings' own Billing section already runs on, and the one
+        // control that spends anything is owner-only inside the screen.
+        if (!placeId || (scope.mode !== "solo" && scope.mode !== "multi"))
+          return null;
+        return (
+          <Row
+            key="plan"
+            href={placePlanHref(placeId)}
+            mark={SIDEBAR_PLAN_MARK}
+            name={SIDEBAR_PLAN_LABEL}
+            on={last === "plan"}
+            onNavigate={onNavigate}
+          />
+        );
       case "settings":
         // LAST-RESORT ROW. It renders at EVERY mode, including `unknown` and
         // `zero`, because Sign out lives on it and a console whose only exit
@@ -213,9 +236,10 @@ export function Sidebar({
             onNavigate={onNavigate}
           />
         );
-      // THE PLAN CASE IS GONE (MESITA-2011) — Mesita Partner is the second
-      // `product` row now, so it is drawn by the case below with the state
-      // badge every other product wears instead of its own gold/off pair.
+      // MESITA PARTNER IS STILL A PRODUCT ROW (MESITA-2011), drawn below with
+      // the state badge every other product wears rather than its own
+      // gold/off pair. The Plan row above it is a different destination, not
+      // the one that issue folded in here — see MESITA-2012.
       case "product": {
         if (!held || !place) return null;
         const card = byKey.get(row.key);
@@ -237,7 +261,10 @@ export function Sidebar({
             // menu that went dark when you pressed that pair would be teaching
             // the operator that they had left the product.
             on={last === slug}
-            badge={<ProductStateBadge state={card.state} />}
+            // `onDock` because this menu is ink. Only `soon` moves — it is
+            // the one tone with no fill of its own, so it is the one that
+            // would otherwise print a white-card grey onto near-black.
+            badge={<ProductStateBadge state={card.state} onDock />}
             onNavigate={onNavigate}
           />
         );

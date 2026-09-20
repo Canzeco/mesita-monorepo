@@ -34,8 +34,9 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
  *  is the NAME, which is the rule this file already runs on, and Pato's list
  *  calls the row Mesita Partner. Nothing outside this app links to either. */
 
-/** THE TEN, in Pato's order (MESITA-1997, 2026-09-19) — *"i only want 10
- *  things for the moment"*.
+/** THE MENU'S PRODUCTS, in Pato's order (MESITA-1997, 2026-09-19) — *"i only
+ *  want 10 things for the moment"*, and eleven since MESITA-2013 put Express
+ *  Website back.
  *
  *  The index is this list and nothing else. It replaces a RUNNING/COMING
  *  split that sorted by `state`, which meant the order of the console's own
@@ -75,6 +76,11 @@ import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 // A LITERAL, PINNED BY TEST. `product-order.test.ts` asserts this array equals
 // the dictated eleven, element for element. `satisfies` already refuses a key
 // outside `PRODUCT_KEYS`; the test is what refuses a row MOVE nobody decided.
+//
+// MESITA-2013 HAD ALREADY PUT IT BACK, LAST, on the everything-you-can-use
+// rule (Locked above Soon). Pato's dictation at the gate puts it TENTH, ahead
+// of the Agent, and the rule no longer bites: the Website is not Soon any
+// more, so there is nothing to sort to the bottom.
 export const PRODUCT_ORDER = [
   "profile",
   "partner",

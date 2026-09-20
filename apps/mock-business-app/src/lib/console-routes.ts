@@ -75,8 +75,10 @@ export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
 
 /** THE MENU'S ROWS LEFT THIS FILE (MESITA-2004). `NavRow` and `NAV_ROWS` held
  *  the four destinations MESITA-1975 drew across one ink line; the menu is a
- *  COLUMN again and it holds fifteen, so its list lives in `lib/sidebar-rows.ts`
- *  beside `PRODUCT_ORDER`, which is where ten of those fifteen come from.
+ *  COLUMN again and it holds every destination there is, so its list lives in
+ *  `lib/sidebar-rows.ts` beside `PRODUCT_ORDER`, which is where all but three
+ *  of its rows come from. The count is deliberately not written here: it has
+ *  moved four times since MESITA-2004 and this file never needed to know it.
  *
  *  THIS FILE IS THE ROUTE VOCABULARY AGAIN, and only that. The reason it is
  *  worth keeping the two apart is written a few lines up: `place-tabs.ts`
@@ -114,6 +116,20 @@ export function placesHref(owned?: PlacesOwned | null): string {
 
 export function placesNewHref(): string {
   return SHELL_ROUTES.placesNew;
+}
+
+/** PLAN, THE PLACE'S PURCHASE (MESITA-2012). One screen under the place, and
+ *  deliberately NOT a `PlacePage`: that list is the Setup/Activity pair, and
+ *  Plan is neither half of anything. It is served by a static `plan` folder
+ *  beside `[view]`, which shadows the dynamic segment, so `PlaceTabGate` never
+ *  has to admit a name that is not a `PlaceTab`.
+ *
+ *  THE ROW THAT OPENS IT came back in the same issue. MESITA-2011 deleted it
+ *  on the argument that Partner is a product and the Plan row was it; Pato:
+ *  *"this goes into plan, not mesita partner, different things."* A rung is a
+ *  purchase and a badge is a status, and only one of them has a price. */
+export function placePlanHref(placeId: string): string {
+  return `/places/${encodeURIComponent(placeId)}/plan`;
 }
 
 /** Online Payments' Stripe account, ON THE PAYMENTS VIEW (MESITA-1973).

@@ -1,7 +1,12 @@
 "use client";
 
-// THE CATALOGUE'S HEADLINE: what this place's membership buys, said once,
-// above the eight cards it gates (MESITA-1927).
+// PLAN'S HEADLINE: what this place's rung buys, said once (MESITA-1927).
+//
+// IT IS THE PLAN SCREEN'S NOW, NOT THE CATALOGUE'S (MESITA-2012). It headed
+// the product grid, then Mesita Partner's product pane; both were the wrong
+// room for a Manage-plan door, which is why `PlanPane` is the only caller
+// left. The ranking argument below is unchanged and is why this file did not
+// collapse into that one.
 //
 // RANK BY DEPTH. The state with a decision in it gets the box; the state
 // without gets the line. Not a partner is a real decision — a price and a
@@ -36,7 +41,12 @@ import type { MockPlace } from "@/mock/types";
 import { cn } from "@/lib/utils";
 
 export function PartnerBanner({ place }: { place: MockPlace }) {
-  if (!place.partnered) {
+  // THE BRANCH IS THE BILL, NOT THE BADGE (2026-09-20). It read `partnered`,
+  // which meant the same thing right up until the badge moved to Mesita Pro.
+  // A place on Mesita Start pays every month, and this line deciding on the
+  // badge would take its Manage plan door away and hand it a buy button for
+  // something it already subscribes to.
+  if (place.plan === "free") {
     return (
       <div className="border-border bg-card rounded-2xl border p-4">
         <PartnerCard place={place} />
@@ -48,12 +58,12 @@ export function PartnerBanner({ place }: { place: MockPlace }) {
 
   return (
     <div className="border-border bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-4 py-3">
-      {/* WHAT THE HEADING ABOVE CANNOT SAY (MESITA-1997). `PartnershipPane`
-          states the rung, the Partner badge and the renewal line; this strip
-          used to state all three again, one gap below, which was the same
-          fact twice in two type sizes — the thing `shared/Badges.tsx` opens
-          by forbidding. It kept the two pieces the heading has no room for:
-          that Stripe is retrying or this is ending, and the way out. */}
+      {/* WHAT THE HEADING ABOVE CANNOT SAY (MESITA-1997). The Plan page's
+          header states the rung and the renewal line; this strip used to
+          state both again, one gap below, which was the same fact twice in
+          two type sizes — the thing `shared/Badges.tsx` opens by forbidding.
+          It kept the two pieces the heading has no room for: that Stripe is
+          retrying or this is ending, and the way out. */}
       {chip ? (
         <span
           className={cn(

@@ -233,11 +233,12 @@ export function MockPanel() {
               }))}
             />
             <p className="text-muted-foreground text-[11px] leading-snug">
-              What this place BOUGHT. Every paid rung carries the Partner badge,
-              so the gate every product reads is derived from this — there is
-              no second switch that could disagree with it. Ultra is the only
-              rung that unlocks the Answering Agent and opens the customer
-              catalog.
+              What this place BOUGHT. Every gate on the screen is derived from
+              this — there is no second switch that could disagree with it.
+              Start is the rung that PAYS AND IS NOT A PARTNER: the badge
+              starts at Pro, which is the one state worth moving this dial to
+              see. Ultra is the only rung that unlocks the Answering Agent and
+              opens the customer catalog.
             </p>
           </Group>
 

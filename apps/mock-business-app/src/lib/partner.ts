@@ -8,20 +8,21 @@
 //   2. Profile complete      name, address, hours, at least one photo
 //   3. Visit Rewards on      the guest can earn something here
 //   4. Online Payments on    the guest can pay here (Stripe enabled)
-//   5. A paid plan           Start or above — the rung that carries the badge
+//   5. The rung              `PARTNER_MIN_PLAN` or above (Mesita Pro since
+//                            MESITA-2014) — the plan that carries the badge
 //
-// ONE READER. `MockPlace.partnered` is the LADDER's fact (`plan !== "free"`,
+// ONE READER. `MockPlace.partnered` is the LADDER's fact (`isPartner(plan)`,
 // derived in `scenario.ts`) and half the app reads it; this function is the
 // CHECKLIST's fact. They are not the same fact and the test that pins them
-// says which way the implication runs: a badge is never held without a paid
-// rung, while a paid rung alone does not hold the badge.
+// says which way the implication runs: a badge is never held without the
+// rung, while the rung alone does not hold the badge.
 //
 // WHAT REMOVES IT. Only the plan lapsing or Verified being revoked — rows 5
 // and 1. Rows 2–4 BLOCK EARNING the badge and, on a place that already holds
 // it, read "at risk": an operator who pauses Rewards for a holiday must not
 // watch their badge vanish from a guest's map that evening. `partnerLapsedAt`
 // is the fixture's memory of the last removal, so the card can say when.
-import { type MockPlace, type MockPlaceProfile, planAtLeast } from "@/mock/types";
+import { PARTNER_MIN_PLAN, PLAN_LABEL, isPartner, type MockPlace, type MockPlaceProfile } from "@/mock/types";
 
 export type PartnerCheckKey = "verified" | "profile" | "rewards" | "payments" | "plan";
 
@@ -81,9 +82,9 @@ export function partnerChecks(
     },
     {
       key: "plan",
-      label: "A paid plan",
-      fix: "Any rung from Mesita Start up",
-      done: planAtLeast(place.plan, "start"),
+      label: `${PLAN_LABEL[PARTNER_MIN_PLAN]} or above`,
+      fix: "Change the rung on Plan",
+      done: isPartner(place.plan),
       removes: true,
     },
   ];

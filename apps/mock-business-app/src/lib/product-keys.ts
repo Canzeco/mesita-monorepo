@@ -17,8 +17,9 @@
 //
 // TWENTY SINCE MESITA-2011 — Pato's own two lists of ten, Actuales and
 // Futuros. The split between them is not here: it is `PRODUCT_ORDER` in
-// `product-routes.ts`, which names the ten with a menu row, and everything
-// left over is what the Future products door opens.
+// `product-routes.ts`, which names the ones with a menu row, and everything
+// left over is what the Future products door opens. The two lists are not the
+// split any more either: MESITA-2013 moved Express Website back across it.
 //
 // THE BANDS ARE A RENDER NOW (MESITA-1962). Pato: *"divide in sections"*.
 // They were a comment for two days, while this file said the order is
@@ -40,9 +41,14 @@ export const PRODUCT_KEYS = [
   // WHAT MAKES IT SURVIVE NOW is that this card is not the subscription. It is
   // the BADGE — a fact about the place that the world can see, exactly like
   // Verified — and the badge answers the grid's question honestly: it is on or
-  // it is not. The rung that granted it is the note. Nothing here sells
-  // anything: `PartnershipPane` behind it is the same screen the Plan row
-  // opened, and that row is gone because this replaced it.
+  // it is not. The rung that granted it is the note.
+  //
+  // AND IT IS ONLY THAT (MESITA-2012). MESITA-2011 pointed this key at the
+  // pane the Plan row used to open, which put a price grid behind a card
+  // badged `On` and quietly made the row a replacement for Plan rather than a
+  // peer of it. Pato: *"this goes into plan, not mesita partner, different
+  // things."* `PartnerPane` is the badge; `/places/<id>/plan` is the
+  // purchase; the Plan row is back beside Place and Settings.
   "partner",
   // REPUTATION IS ITS OWN ROW AGAIN (MESITA-2011), which reverses MESITA-2007,
   // which reversed MESITA-1993. Third position on Pato's own list.

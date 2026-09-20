@@ -15,15 +15,16 @@
 //
 // ── THE ORDER ──────────────────────────────────────────────────────────────
 //
-// PATO'S TEN, AND IT IS HIS "ACTUALES" LIST EXACTLY (MESITA-2011). Mesita
-// Partner is 2nd and Online Reviews 3rd; Express Website leaves, because he
-// put it in Futuros. The order lives in `PRODUCT_ORDER` and this file does not
-// re-spell it — a row move is one line over there.
+// PATO'S OWN LIST. MESITA-2011 made it his "Actuales" exactly — Mesita Partner
+// 2nd, Online Reviews 3rd, Express Website gone — and MESITA-2013 put Express
+// Website back at the bottom: *"add express website product here into sidebar
+// menu"*. The order lives in `PRODUCT_ORDER` and this file does not re-spell
+// it — a row move is one line over there.
 //
-// NOTHING IN THE LIST IS SOON ANY MORE, which retires the rule the old ninth
-// row wrote: everything-you-can-use-then-everything-you-cannot, invented so
-// `website` could sit last without the list becoming a state sort. It comes
-// back the day an unbuilt product earns a row again.
+// THE LAST ROW IS SOON AGAIN, which brings back the rule it wrote the first
+// time: everything-you-can-use-then-everything-you-cannot. It is not a state
+// sort — Locked sits above Soon because Locked is a product you can read about
+// and go buy, and Soon is one that does not exist at all.
 //
 // ── THE ACTIVITY ROW IS GONE, AND SO IS THE ROADMAP BAND (MESITA-2005) ─────
 //
@@ -61,10 +62,11 @@ import { PRODUCT_ORDER } from "@/lib/product-routes";
 import type { ProductKey } from "@/lib/product-keys";
 
 /** A row names one destination. `product` is the only kind that carries a
- *  payload, which is what keeps `PRODUCT_ORDER` the single source of the ten
+ *  payload, which is what keeps `PRODUCT_ORDER` the single source of the rows
  *  that are products — this file does not re-spell them. */
 export type SidebarRow =
   | { kind: "place" }
+  | { kind: "plan" }
   | { kind: "settings" }
   | { kind: "product"; key: ProductKey }
   | { kind: "roadmap" };
@@ -72,7 +74,7 @@ export type SidebarRow =
 /** A group is a label and its rows. The label is `null` for the first group:
  *  it sits directly under the venue band, and a heading there would be a word
  *  explaining two rows that need no explanation. The other earns its own —
- *  ten products and a door onto the rest are worth separating. */
+ *  the products and a door onto the rest are worth separating. */
 export type SidebarGroup = {
   label: string | null;
   rows: readonly SidebarRow[];
@@ -83,27 +85,41 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     label: null,
     rows: [
       { kind: "place" },
+      // THE PLAN ROW IS BACK (MESITA-2012), and MESITA-2011's note is left
+      // below it because the reversal is the interesting part.
+      //
+      // Pato, seeing the ladder on the Mesita Partner product: *"this goes
+      // into plan, not mesita partner, different things."* Partner stays a
+      // product — it is a fact a guest reads, like the other nine — and what
+      // comes back out of it is the PURCHASE. A rung has a price, a renewal
+      // date and a card; a badge has none of those and cannot be switched at
+      // all. One screen was answering both.
+      //
+      // BETWEEN PLACE AND SETTINGS: the place, what it pays, how it is run.
+      // It is the middle of the three because Settings is the last-resort row
+      // and must stay the foot of this group.
+      { kind: "plan" },
       { kind: "settings" },
-      // THE PLAN ROW IS GONE (MESITA-2011). It sat here because it was what
-      // the products are bought with rather than one of them — and Pato has
-      // made it one of them: *"casi que partner lo quiero meter como un
-      // producto"*, second on his list. It is `{ kind: "product", key:
-      // "partner" }` now, drawn by the map below like every other row, and
-      // this group is back to the two destinations that are not products.
+      // MESITA-2011's note, kept: *"casi que partner lo quiero meter como un
+      // producto"* put Mesita Partner second in the Products group, and that
+      // still holds — `{ kind: "product", key: "partner" }`, drawn by the map
+      // below like every other row. What that issue ALSO did was treat the
+      // product row as a replacement for this one, which is the half
+      // MESITA-2012 undoes.
     ],
   },
   {
     label: "Products",
     rows: [
       ...PRODUCT_ORDER.map((key) => ({ kind: "product", key }) as const),
-      // THE ELEVENTH ROW IS A DOOR, NOT A PRODUCT (MESITA-2005), and it is
-      // last because it is the only row here you cannot switch on. Its badge is
-      // a COUNT where the ten above carry a state, which is the one thing that
-      // still separates it now that the band is gone — and a number is also the
-      // one thing worth reading before opening a list.
+      // THE LAST ROW IS A DOOR, NOT A PRODUCT (MESITA-2005), and it is last
+      // because it is the only row here you cannot switch on. Its badge is a
+      // COUNT where the products above carry a state, which is the one thing
+      // that still separates it now that the band is gone — and a number is
+      // also the one thing worth reading before opening a list.
       //
       // It hides itself when the count is zero, and the group's label does NOT
-      // go with it: ten other rows still need it. That is a difference from
+      // go with it: the product rows still need it. That is a difference from
       // the band it replaces, where the label had nothing left to introduce.
       { kind: "roadmap" },
     ],
@@ -111,12 +127,16 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
 ];
 
 export const SIDEBAR_PLACE_LABEL = "Place";
+export const SIDEBAR_PLAN_LABEL = "Plan";
 export const SIDEBAR_SETTINGS_LABEL = "Settings";
 export const SIDEBAR_ROADMAP_LABEL = "Future products";
 
 /** The marks for the rows that are not products. Products read
  *  `PRODUCT_MARK`, which is already the one list of those. */
 export const SIDEBAR_PLACE_MARK = "\u{1F4CD}";
+// A CARD, NOT THE HANDSHAKE. The handshake is `PRODUCT_MARK.partner` and stays
+// there: two rows wearing one mark would say the two are the same screen,
+// which is the confusion MESITA-2012 exists to end.
+export const SIDEBAR_PLAN_MARK = "\u{1F4B3}";
 export const SIDEBAR_SETTINGS_MARK = "\u{2699}\u{FE0F}";
-// The handshake went WITH the Plan row — it is `PRODUCT_MARK.partner` now.
 export const SIDEBAR_ROADMAP_MARK = "\u{1F52E}";

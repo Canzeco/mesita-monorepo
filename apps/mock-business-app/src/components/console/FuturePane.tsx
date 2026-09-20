@@ -13,13 +13,14 @@
 //
 // ── TWO AXES, AND THIS PANE IS NOT THE RAIL'S ─────────────────────────────
 //
-// The rail splits on `PRODUCT_ORDER`: ten rows Pato chose, everything else
+// The rail splits on `PRODUCT_ORDER`: the rows Pato chose, everything else
 // behind one door. This pane splits on BUILT: Coming next, then Running
 // today. They disagree, on purpose and in exactly one place — Express
-// Website is in the ten AND is not built, so it is a rail row and a Coming
-// box at the same time. Both statements are true, so the pane names its own
-// axis in the sentence under the heading rather than leaving a reader to
-// assume it inherited the rail's.
+// Website has a row AND is not built, so it is a rail row and a Coming box at
+// the same time. (MESITA-2011 briefly removed that row and with it the
+// disagreement; MESITA-2013 put both back.) Both statements are true, so the
+// pane names its own axis in the sentence under the heading rather than
+// leaving a reader to assume it inherited the rail's.
 //
 // COMING LEADS, because that is what the row said it was for. Running today
 // follows, as the answer to the question the first section provokes — "so

@@ -515,7 +515,19 @@ export function PlaceSection({
         subtitle="Where it sits."
       >
         {/* One boxed field per row — same filled-input language as every
-            other card. */}
+            other card.
+
+            THREE ROWS, NOT FIVE (MESITA-2012). Pato: *"hide stuff such as
+            latitude and so on. it looks too unprofessional. is okey if we
+            have that. but hide it."* `Lat / Lng` and `Timezone` were the
+            seed talking to itself — a coordinate pair and an IANA
+            identifier, both in a read-only `auto` box a restaurant owner
+            can neither read nor act on.
+
+            HIDDEN, NOT DELETED. `place.lat`, `place.lng` and
+            `place.timezone` are still on the record and still typed; the
+            map below is drawn from the first two. What went is the
+            notation, not the fact. */}
         <div className="mt-5 grid gap-4">
           <ReadField label="Address" auto boxed>
             {place.address?.trim() ? place.address : "—"}
@@ -525,16 +537,6 @@ export function PlaceSection({
           </ReadField>
           <ReadField label="City" auto boxed>
             {place.city ?? "—"}
-          </ReadField>
-          <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono type-body tabular-nums">
-              {place.lat == null || place.lng == null
-                ? "—"
-                : `${place.lat}, ${place.lng}`}
-            </span>
-          </ReadField>
-          <ReadField label="Timezone" auto boxed>
-            {place.timezone?.trim() ? place.timezone : "—"}
           </ReadField>
         </div>
         {/* THE MAP, LAST (MESITA-1994). Pato: *"location, include the map
@@ -548,20 +550,20 @@ export function PlaceSection({
             screen is invented" — not that the page is offline, and the fixture
             photos have been arriving from images.unsplash.com through
             `next.config.ts` since the day it was written. A keyless embed
-            draws the coordinates two rows above it. It reads an invented
+            draws coordinates the card no longer prints (MESITA-2012). It reads an invented
             number; it does not fetch a real place's record.
 
             `output=embed` NEEDS NO API KEY, which is the only reason this is
             possible in an app with no env and no backend.
 
-            AND IT IS LAST BECAUSE IT IS NOT A SIXTH FACT. It is the picture of
-            the five above it, so it closes the card rather than joining the
+            AND IT IS LAST BECAUSE IT IS NOT A FOURTH FACT. It is the picture of
+            the three above it, so it closes the card rather than joining the
             column of boxed fields. */}
         {place.lat == null || place.lng == null ? (
           // NO COORDINATES, NO FRAME. The obvious template string centres the
           // world map on 0,0 — open water off West Africa — which reads as a
           // broken embed rather than as a missing value. A stated absence is
-          // the same answer `ReadField` gives one row up.
+          // the same answer `ReadField` gives for any missing row.
           <p className="border-border/60 text-muted-foreground mt-4 rounded-xl border border-dashed px-3.5 py-6 text-center text-xs">
             No coordinates yet, so there is nothing to draw. They arrive with
             the Google seed.
