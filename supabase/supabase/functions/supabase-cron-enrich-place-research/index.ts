@@ -50,6 +50,7 @@ import {
   chargeGoogleSpine,
   createEnrichCostLedger,
   discoverySearchCost,
+  googleMapsRunCost,
   instagramRunCost,
 } from "../_shared/enrich-cost.ts";
 import { fetchGoogleBasics } from "../_shared/enrich-google-basics.ts";
@@ -431,8 +432,12 @@ serveEnrichStage("research", async (admin, _env, row) => {
   const igCost = runInstagram ? instagramRunCost(cfg.gatherInstagramDepth) : 0;
   const fbCost = runFacebook ? COST.facebook : 0;
   // Reserve the in-flight GMaps spend so IG/FB don't start when the remaining
-  // budget can't cover them + the compass charge still pending.
-  const pendingGmaps = gmapsInvoked ? COST.compass : 0;
+  // budget can't cover them + the GMaps charge still pending. The scrape is
+  // still running, so this is the CONFIGURED size; the charge below bills what
+  // actually came back.
+  const pendingGmaps = gmapsInvoked
+    ? googleMapsRunCost(cfg.gatherReviews, cfg.gatherGoogleImages)
+    : 0;
   ledger.assertCanAfford(igCost + fbCost + pendingGmaps, "gather_sources");
 
   let ig: InstagramResult | null = null;
@@ -469,7 +474,12 @@ serveEnrichStage("research", async (admin, _env, row) => {
 
   // Collect the background Google Maps scrape — it overlapped S3 + S4.
   await gmapsGather;
-  if (gmapsInvoked) ledger.charge("compass", COST.compass);
+  // Billed on what the run RETURNED, not on what it asked for: Apify charges
+  // per review and per image scraped, and a place with 12 reviews does not owe
+  // for the 100 the knob requested (MESITA-2032).
+  if (gmapsInvoked) {
+    ledger.charge("gmaps", googleMapsRunCost(reviews.length, googleImages.length));
+  }
 
   // Numeric source facts + verified IG.
   if (reviews.length > 0) {
