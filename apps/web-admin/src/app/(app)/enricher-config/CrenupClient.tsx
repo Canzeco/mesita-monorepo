@@ -216,7 +216,7 @@ export function CrenupClient({
           <SectionCard
             icon={<Sparkles className="text-secondary h-4 w-4" />}
             title="Create"
-            subtitle="One function. It awaits five subfunctions."
+            subtitle="One function. It awaits steps 0, 1, 7 and 8."
             state={<Tag>$ · one Google call</Tag>}
           >
             <FlowPanel
@@ -292,7 +292,7 @@ export function CrenupClient({
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
-            subtitle="Ten functions. One tick each — none await a nested run."
+            subtitle="Eight steps. One tick each — none await a nested run."
             state={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
@@ -305,7 +305,7 @@ export function CrenupClient({
                 {
                   term: "Stops",
                   detail:
-                    "Infrastructure failure or permanently closed. Absence still reaches 10.",
+                    "Infrastructure failure or permanently closed. Absence still reaches 8.",
                 },
               ]}
               steps={chipsFor("enrich")}
@@ -323,7 +323,7 @@ export function CrenupClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="Seed, then Enrich 1–10."
+            subtitle="One ladder: Seed at 0, then 1–8."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
