@@ -2,8 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Lock } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { CLASSES, CLASS_ICONS } from '@/lib/consumer-classes';
+import { COLORS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { CLASSES, CLASS_ICONS, CLASS_METAL_INK_GRADIENT } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import { useAuth } from '@/providers/auth';
 
@@ -25,16 +25,16 @@ const DOOR_HOW: Record<string, string> = {
 // THE CLASS LADDER KEEPS ITS HUE (MESITA-1954): a tier the product names out
 // loud to the guest is one of the three things chroma survives for, and this
 // rail is the one place all four sit side by side — grey them and the strip
-// says nothing. The metals converged on web's in the token layer, so the
-// hues these tokens now carry are gold / diamond blue / ink / grey, not the
-// old gold / red / blue / blue-grey.
-// (MESITA-929 identity set, same source as CurrentClassCard.)
-const CHIP_GRADIENTS = {
-  standard: GRADIENTS.free,
-  influencer: GRADIENTS.influencer,
-  premium: GRADIENTS.premium,
-  aura: GRADIENTS.gold,
-} as const;
+// says nothing.
+//
+// THIS USED TO BE ITS OWN LOCAL MAP, keyed the same wrong way three other
+// files independently got wrong: `influencer: GRADIENTS.influencer` reads as
+// correct because the names match, but GRADIENTS.influencer is Diamond's ink
+// band, not Influencer/Silver's — see CLASS_METAL_INK_GRADIENT's own comment
+// for the full rotation this caused. One canonical map now, in
+// consumer-classes.ts, so a rail cannot disagree with the rest of the app
+// about which metal a guest is looking at.
+const CHIP_GRADIENTS = CLASS_METAL_INK_GRADIENT;
 
 export function ClassRail() {
   const { consumerClass, profile } = useAuth();

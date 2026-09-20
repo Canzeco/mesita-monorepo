@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
 import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { CLASS_METAL_INK_GRADIENT } from '@/lib/consumer-classes';
 import type { SocialPerson } from '@/lib/social-feed-data';
 
 // Profile dialog for the Social feed — port of web SocialProfileModal.
@@ -90,14 +91,16 @@ export function SocialProfileSheet({
                   />
                   {/* RESERVED: two NAMED tiers, and both badges land in the
                       SAME absolute slot, so the fill is the only thing telling
-                      them apart before the glyph is read. Values come from the
-                      class ladder (deep stop) rather than a literal, pinned to
-                      social-activity-row.tsx: Diamond-band teal at L*~45 against
-                      premium ink at L*~14. */}
+                      them apart before the glyph is read. Values come from
+                      CLASS_METAL_INK_GRADIENT (deep stop), pinned to
+                      social-activity-row.tsx — NOT GRADIENTS.influencer /
+                      .premium directly, which are Diamond's ink and the
+                      Plan's ink respectively and showed the wrong metal for
+                      both badges until this pointed at the canonical map. */}
                   {shown.plan === 'influencer' ? (
                     <View
                       className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
-                      style={{ backgroundColor: GRADIENTS.influencer[1] }}
+                      style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.influencer[1] }}
                     >
                       <Megaphone color="#fff" size={14} />
                     </View>
@@ -105,7 +108,7 @@ export function SocialProfileSheet({
                   {shown.plan === 'premium' ? (
                     <View
                       className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
-                      style={{ backgroundColor: GRADIENTS.premium[1] }}
+                      style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.premium[1] }}
                     >
                       <CreditCard color="#fff" size={14} />
                     </View>
@@ -149,7 +152,7 @@ export function SocialProfileSheet({
                           height: 28,
                           paddingHorizontal: 10,
                           gap: 4,
-                          backgroundColor: GRADIENTS.influencer[1],
+                          backgroundColor: CLASS_METAL_INK_GRADIENT.influencer[1],
                         }}
                       >
                         <Megaphone color="#fff" size={12} />
@@ -159,7 +162,7 @@ export function SocialProfileSheet({
                       </View>
                     ) : (
                       <LinearGradient
-                        colors={[...GRADIENTS.premium]}
+                        colors={[...CLASS_METAL_INK_GRADIENT.premium]}
                         start={GRADIENT_DIAGONAL.start}
                         end={GRADIENT_DIAGONAL.end}
                         style={{

@@ -6,6 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import { CLASS_METAL_INK_GRADIENT } from '@/lib/consumer-classes';
 import { placePath } from '@/lib/consumer-route-contract';
 import {
   SOCIAL_ACTION_META,
@@ -41,16 +42,19 @@ export function SocialActivityRow({
             style={{ width: 44, height: 44, borderRadius: 22 }}
             contentFit="cover"
           />
-          {/* RESERVED: two NAMED tiers. They keep their hue, and they take it
-              from the class ladder itself (deep stop) instead of a literal, so
-              this disc cannot drift from ClassRail / IdentityHero again. The
-              pair also has to survive as a pair: Diamond-band teal at L~45
-              against premium ink at L~14, so the 10px glyph is never the only
-              thing telling Influencer from Premium. */}
+          {/* RESERVED: two NAMED tiers. They keep their hue, from
+              CLASS_METAL_INK_GRADIENT (deep stop), so this disc cannot drift
+              from ClassRail / IdentityHero again. This used to read
+              GRADIENTS.influencer / GRADIENTS.premium directly — the same
+              key-name-not-meaning mistake as everywhere else: GRADIENTS.
+              influencer is Diamond's ink and GRADIENTS.premium is the Plan's,
+              so Influencer showed Diamond-blue and Premium showed black. Now
+              Silver's grey and Gold's ink, so the 10px glyph is never the
+              only thing telling Influencer from Premium apart. */}
           {person.plan === 'influencer' ? (
             <View
               className="absolute -bottom-0.5 -left-0.5 size-4 items-center justify-center rounded-full"
-              style={{ backgroundColor: GRADIENTS.influencer[1] }}
+              style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.influencer[1] }}
             >
               <Megaphone color="#fff" size={10} />
             </View>
@@ -58,7 +62,7 @@ export function SocialActivityRow({
           {person.plan === 'premium' ? (
             <View
               className="absolute -bottom-0.5 -left-0.5 size-4 items-center justify-center rounded-full"
-              style={{ backgroundColor: GRADIENTS.premium[1] }}
+              style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.premium[1] }}
             >
               <CreditCard color="#fff" size={10} />
             </View>

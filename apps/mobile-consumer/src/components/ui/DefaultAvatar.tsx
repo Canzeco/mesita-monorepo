@@ -10,14 +10,22 @@ import Svg, { ClipPath, Circle, Defs, Ellipse, G } from 'react-native-svg';
 // Deliberately drawn in code rather than shipped as a bundled PNG or a row in
 // storage: it's the no-photo state, so it must render before any network call
 // and can never 404. The greys are literal on purpose — this stands in for a
-// photograph, so it sits outside the theme tokens the way a photo would.
+// photograph, so it sits outside the theme tokens the way a photo would; they
+// are NOT COLORS.muted / COLORS.mutedForeground, and should stay that way.
+//
+// They ARE achromatic, though (MESITA-1954): #f4f6f7 and #848894 carried a
+// faint cool/blue cast — R,G,B not equal — inside a palette whose whole rule
+// is chroma zero. Neutralised to R=G=B at each value's own average luma
+// (246 -> #f6f6f6, 139 -> #8b8b8b) rather than snapped to a token, since the
+// point of this file is to sit outside the token system, not join it under a
+// different name.
 //
 // Drawn on a 100x100 viewBox: a light field, a head, and shoulders wide enough
 // to run past the field's edge, clipped back to the circle so they meet it
 // flush instead of floating inside it.
 
-const FIELD = '#f4f6f7';
-const FIGURE = '#848894';
+const FIELD = '#f6f6f6';
+const FIGURE = '#8b8b8b';
 
 export function DefaultAvatar({ size }: { size: number }) {
   // react-native-svg resolves clip paths by id across the whole tree, so the

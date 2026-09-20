@@ -13,7 +13,11 @@ import {
   SHADOW_ELEV,
 } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
-import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
+import {
+  CLASS_ICONS,
+  CLASS_METAL_INK_GRADIENT,
+  isElevatedClass,
+} from '@/lib/consumer-classes';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
@@ -27,25 +31,34 @@ const ROW_HEIGHT = 44;
 
 // THE CLASS LADDER keeps its hue (MESITA-1954): a tier the product names out
 // loud to the guest is one of the three things chroma survives for. What it
-// stops doing is naming its own metal — the four pairs are now the same
-// GRADIENTS tokens the ring and the wash below take (the legacy-key map
-// ClassRail.tsx already uses), so badge, ring and wash cannot name different
-// metals for one class.
+// stops doing is naming its own metal — CLASS_METAL_INK_GRADIENT is the one
+// map the ring and the wash below also take, so badge, ring and wash cannot
+// name different metals for one class.
+//
+// THIS FILE USED TO HAND-ROLL THE BRIDGE ITSELF, matching on key NAME rather
+// than on meaning (`aura: GRADIENTS.gold` reads as a deliberate choice but is
+// really "aura and gold are both four letters starting with a vowel or not" —
+// GRADIENTS.gold is Gold's own ink, and aura is Diamond). Every class on this
+// screen rendered the wrong metal until this pointed at the canonical map.
 function classBadgeColors(classKey: string): readonly [string, string] {
-  if (classKey === 'aura') return GRADIENTS.gold;
-  if (classKey === 'influencer') return GRADIENTS.influencer;
-  if (classKey === 'premium') return GRADIENTS.premium;
-  return GRADIENTS.free;
+  return (
+    CLASS_METAL_INK_GRADIENT[classKey as keyof typeof CLASS_METAL_INK_GRADIENT]
+    ?? CLASS_METAL_INK_GRADIENT.standard
+  );
 }
 
-// The ink ON the metal. Web's pairing rule (MESITA-1142): a light or mid metal
-// carries foreground ink, only a dark one carries white — and `premium` is the
-// rung whose token went to an ink ramp, so it is the one that inverts.
+// The ink ON the metal, at the ink-anchor scale (measured, not eyeballed —
+// contrast() run against both stops of each metal's ring gradient, worst case
+// kept). Bronze and Diamond are dark enough here to carry white (3.94:1,
+// 3.60:1); Silver and Gold are not (2.98:1, 3.20:1) and take foreground ink
+// instead (3.68:1, 3.66:1). This is the ink-anchor scale, one step darker
+// than the badge FILL scale passport.tsx uses — the two pairings differ on
+// purpose; don't copy one onto the other.
 function classBadgeIconColor(classKey: string): string {
-  if (classKey === 'aura') return COLORS.foreground;
-  if (classKey === 'influencer') return COLORS.foreground;
-  if (classKey === 'premium') return COLORS.primaryForeground;
-  return COLORS.foreground;
+  if (classKey === 'aura') return COLORS.primaryForeground; // Diamond
+  if (classKey === 'influencer') return COLORS.foreground; // Silver
+  if (classKey === 'premium') return COLORS.foreground; // Gold
+  return COLORS.primaryForeground; // Bronze
 }
 
 export function IdentityHeroSkeleton() {
@@ -102,20 +115,24 @@ export function IdentityHero({
 }) {
   const router = useRouter();
   const isElevated = isElevatedClass(classKey);
+  // ONE MAP (MESITA-1954): this used to match on key NAME the same wrong way
+  // classBadgeColors above did — aura->gold, influencer->influencer,
+  // else->premium — which named the wrong metal for all three elevated
+  // classes. `standard` is unreachable here (isElevated excludes it) but the
+  // map covers it too, so there is nothing left to get wrong by omission.
   const elevatedRing =
-    classKey === 'aura'
-      ? GRADIENTS.gold
-      : classKey === 'influencer'
-        ? GRADIENTS.influencer
-        : GRADIENTS.premium;
-  // The tier wash = the same metal as the ring above, at the alpha it had:
-  // GRADIENTS.gold · GRADIENTS.influencer · GRADIENTS.premium, as rgba.
+    CLASS_METAL_INK_GRADIENT[classKey as keyof typeof CLASS_METAL_INK_GRADIENT]
+    ?? CLASS_METAL_INK_GRADIENT.standard;
+  // The tier wash = the same metal as the ring above, at the alpha it had.
+  // Keyed correctly now: aura->Diamond's rgb(0,144,201), influencer->Silver's
+  // rgb(154,148,148), premium->Gold's rgb(184,136,10) — the ring's own three
+  // ink-anchor stops, decimal, not re-derived.
   const elevatedWash =
     classKey === 'aura'
-      ? (['rgba(184,136,10,0.18)', 'rgba(144,107,0,0.10)'] as const)
+      ? (['rgba(0,144,201,0.16)', 'rgba(0,114,160,0.10)'] as const)
       : classKey === 'influencer'
-        ? (['rgba(0,144,201,0.16)', 'rgba(0,114,160,0.10)'] as const)
-        : (['rgba(64,64,64,0.16)', 'rgba(23,23,23,0.12)'] as const);
+        ? (['rgba(154,148,148,0.16)', 'rgba(117,112,112,0.10)'] as const)
+        : (['rgba(184,136,10,0.18)', 'rgba(144,107,0,0.10)'] as const);
 
   const identityLine = [name, sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
@@ -245,10 +262,12 @@ export function IdentityHero({
         colors={
           isElevated
             ? elevatedWash
-            // Standard/Bronze wears its OWN metal, not ink: the ink ramp is
-            // what `premium` took, and an ink wash here made Gold and Bronze
-            // the same card. GRADIENTS.free, at the alphas the old wash had.
-            : ['rgba(154,148,148,0.12)', 'rgba(117,112,112,0.08)']
+            // Standard/Bronze wears its OWN metal. This was silver's rgb
+            // (154,148,148) — the same "matched the wrong metal by habit"
+            // slip as the ring below, just carried one level further, since
+            // CLASS_METAL_INK_GRADIENT.standard didn't exist yet when this
+            // was authored. Bronze's own ink-anchor light stop, rgb(180,112,63).
+            : ['rgba(180,112,63,0.12)', 'rgba(149,76,40,0.08)']
         }
         start={GRADIENT_DIAGONAL.start}
         end={GRADIENT_DIAGONAL.end}
@@ -274,11 +293,11 @@ export function IdentityHero({
           style={{ width: 72, height: 72, overflow: 'visible' }}
         >
           <LinearGradient
-            // Non-elevated = Standard's metal (GRADIENTS.free), the same
-            // token its badge below takes and the same call CurrentClassCard
-            // makes. GRADIENTS.pink is now the ink ramp, which is premium's
-            // ring reversed — the two rungs would have worn one ring.
-            colors={isElevated ? elevatedRing : [...GRADIENTS.free]}
+            // Non-elevated = Standard/Bronze's own metal, from the same
+            // canonical map its badge below and CurrentClassCard both read —
+            // CLASS_METAL_INK_GRADIENT.standard, not silver's or the Plan's
+            // ink ramp.
+            colors={isElevated ? elevatedRing : [...CLASS_METAL_INK_GRADIENT.standard]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{ borderRadius: 999, padding: 2 }}

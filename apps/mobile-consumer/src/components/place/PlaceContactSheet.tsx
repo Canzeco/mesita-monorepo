@@ -1,5 +1,4 @@
 import {
-  Camera,
   Globe,
   MessageCircle,
   Phone,
@@ -7,12 +6,20 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
+import { ChannelMark } from '@/components/brand/channel-marks';
 import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
 type ContactRow = {
   key: string;
-  Icon: LucideIcon;
+  // Every row but one takes a plain lucide glyph. Instagram is RESERVED — a
+  // third party owns that colour — so it renders <ChannelMark> instead, which
+  // carries its own brand fill; Icon is absent on that row on purpose rather
+  // than pointing at a generic Camera decorating a colour Instagram never
+  // published. Matches web-consumer's PlaceContactSheet, which keeps this one
+  // row branded while whatsapp/phone/website go achromatic.
+  Icon?: LucideIcon;
+  isInstagram?: boolean;
   tint: string;
   iconColor: string;
   label: string;
@@ -57,9 +64,9 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
   if (instagram_url) {
     rows.push({
       key: 'instagram',
-      Icon: Camera,
+      isInstagram: true,
       tint: COLORS.muted,
-      iconColor: COLORS.mutedForeground,
+      iconColor: COLORS.mutedForeground, // unused on this row; kept for the type
       label: 'Instagram',
       sub: 'Send a direct message',
       href: instagram_url,
@@ -156,7 +163,11 @@ export function PlaceContactSheet({
                   className="size-10 items-center justify-center rounded-full"
                   style={{ backgroundColor: row.tint }}
                 >
-                  <row.Icon color={row.iconColor} size={18} />
+                  {row.isInstagram ? (
+                    <ChannelMark channel="instagram" size={18} />
+                  ) : row.Icon ? (
+                    <row.Icon color={row.iconColor} size={18} />
+                  ) : null}
                 </View>
                 <View className="min-w-0 flex-1">
                   <Text

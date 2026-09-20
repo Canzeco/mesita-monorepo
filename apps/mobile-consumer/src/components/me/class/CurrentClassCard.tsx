@@ -1,8 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
-import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { CLASSES, CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
+import { COLORS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import {
+  CLASSES,
+  CLASS_ICONS,
+  CLASS_METAL_INK_GRADIENT,
+  isElevatedClass,
+} from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import { useAuth } from '@/providers/auth';
 
@@ -14,16 +19,13 @@ export function CurrentClassCard() {
   );
   const meta = CLASSES.find((c) => c.id === key)!;
   const isElevated = isElevatedClass(key);
-  // Aura = gold, Influencer = diamond blue, Premium = the ink ramp: the
-  // MESITA-929 mapping, whose hues moved to web's metals in MESITA-1954.
-  // Keep the readonly tuple shape (see IdentityHero) — spreading into a
-  // variable widens it past LinearGradient's `colors` tuple type.
-  const elevatedColors =
-    key === 'aura'
-      ? GRADIENTS.gold
-      : key === 'influencer'
-        ? GRADIENTS.influencer
-        : GRADIENTS.premium;
+  // ONE MAP, in consumer-classes.ts (MESITA-1954). This used to be a local
+  // key===  ternary — aura->gold, influencer->influencer, premium->premium —
+  // which reads as a legacyKey->GRADIENTS bridge but is not one: it matches
+  // NAMES, and GRADIENTS' legacy names don't line up with the metals they
+  // hold (GRADIENTS.influencer is Diamond's band, not Influencer/Silver's).
+  // Every guest class rendered the wrong metal until this was one lookup.
+  const metalColors = CLASS_METAL_INK_GRADIENT[key];
   // The class wears its canonical icon (smile / megaphone / card / crown);
   // the origin only sets the "via" line.
   const Icon = CLASS_ICONS[key];
@@ -40,7 +42,7 @@ export function CurrentClassCard() {
 
   return (
     <LinearGradient
-      colors={isElevated ? elevatedColors : [...GRADIENTS.free]}
+      colors={metalColors}
       start={GRADIENT_DIAGONAL.start}
       end={GRADIENT_DIAGONAL.end}
       style={{

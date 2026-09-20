@@ -1,10 +1,10 @@
 import { Fragment } from 'react';
 import { Linking, View } from 'react-native';
 
-import { GRADIENTS } from '@/constants/brand';
 import {
   CLASSES,
   CLASS_ICONS,
+  CLASS_METAL_INK_GRADIENT,
   PREMIUM_SUBSCRIBE_URL,
 } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
@@ -41,7 +41,7 @@ export function WaysToClimb({
     {
       key: 'standard',
       icon: CLASS_ICONS.standard,
-      iconColors: GRADIENTS.free,
+      iconColors: CLASS_METAL_INK_GRADIENT.standard,
       title: 'Bronze',
       via: 'Default',
       discountLevel: 'LOW',
@@ -53,7 +53,7 @@ export function WaysToClimb({
     {
       key: 'influencer',
       icon: CLASS_ICONS.influencer,
-      iconColors: GRADIENTS.influencer,
+      iconColors: CLASS_METAL_INK_GRADIENT.influencer,
       title: 'Silver',
       via: 'Instagram',
       accent: true,
@@ -67,7 +67,7 @@ export function WaysToClimb({
     {
       key: 'premium',
       icon: CLASS_ICONS.premium,
-      iconColors: GRADIENTS.premium,
+      iconColors: CLASS_METAL_INK_GRADIENT.premium,
       title: 'Gold',
       via: 'Subscription',
       accent: true,
@@ -85,7 +85,7 @@ export function WaysToClimb({
     {
       key: 'aura',
       icon: CLASS_ICONS.aura,
-      iconColors: GRADIENTS.gold,
+      iconColors: CLASS_METAL_INK_GRADIENT.aura,
       title: 'Diamond',
       via: 'Invite',
       accent: true,
