@@ -68,47 +68,46 @@ function fakeAdmin(initialEnrichment: EnrichmentMap | null): {
 Deno.test("reportPulsePieces: a brand-new place's first stamp merges into an empty map", async () => {
   const { admin, placeUpdates } = fakeAdmin(null);
   await reportPulsePieces(admin, "place-1", {
-    pulse: pieceDone("Google reports this listing OPERATIONAL."),
+    details: pieceDone("Google spine persisted; listing OPERATIONAL."),
   });
   assertEquals(placeUpdates.length, 1);
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
   assertEquals(enrichment.highWater, 1);
-  assertEquals(enrichment.blockedAt, { key: "details", index: 2, state: "missing" });
-  assertEquals(enrichment.functions.pulse?.state, "completed");
+  assertEquals(enrichment.blockedAt, { key: "serp", index: 2, state: "missing" });
+  assertEquals(enrichment.functions.details?.state, "completed");
 });
 
 Deno.test("reportPulsePieces: a later stage's stamp PRESERVES an earlier stage's pieces (rule 3 — a piece a run didn't buy writes nothing)", async () => {
   const seeded: EnrichmentMap = {
-    functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+    functions: { details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
-    blockedAt: { key: "details", index: 2, state: "missing" },
+    blockedAt: { key: "serp", index: 2, state: "missing" },
   };
   const { admin, placeUpdates } = fakeAdmin(seeded);
-  // A later stage stamps `details` only — `pulse` is not in this call's
+  // A later stage stamps `serp` only — `details` is not in this call's
   // pieces at all, mirroring a real second-stage call.
   await reportPulsePieces(admin, "place-1", {
-    details: pieceDone("Google spine resolved."),
+    serp: pieceDone("SERP Summary written."),
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
-  assert(enrichment.functions.pulse, "pulse must still be there — this call never touched it");
-  assertEquals(enrichment.functions.pulse?.state, "completed");
+  assert(enrichment.functions.details, "details must still be there — this call never touched it");
   assertEquals(enrichment.functions.details?.state, "completed");
+  assertEquals(enrichment.functions.serp?.state, "completed");
   assertEquals(enrichment.highWater, 2);
-  assertEquals(enrichment.blockedAt, { key: "serp", index: 3, state: "missing" });
+  assertEquals(enrichment.blockedAt, { key: "links", index: 3, state: "missing" });
 });
 
 Deno.test("reportPulsePieces: a failed piece lowers highWater and sets blockedAt, without touching later pieces already in the map", async () => {
   // A re-enrich that regresses: links previously completed, now fails.
-  // serp must be seeded too — links (index 4) can only be reached past a
-  // completed serp (index 3); a real run is strictly sequential.
+  // serp must be seeded too — links (index 3) can only be reached past a
+  // completed serp (index 2); a real run is strictly sequential.
   const seeded: EnrichmentMap = {
     functions: {
-      pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
       details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
       serp: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
       links: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
     },
-    highWater: 4, // stale relative to the seeded functions above — the merge recomputes it, not trusts it
+    highWater: 3, // stale relative to the seeded functions above — the merge recomputes it, not trusts it
     blockedAt: null,
   };
   const { admin, placeUpdates } = fakeAdmin(seeded);
@@ -117,15 +116,15 @@ Deno.test("reportPulsePieces: a failed piece lowers highWater and sets blockedAt
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
   assertEquals(enrichment.functions.links?.state, "failed");
-  assertEquals(enrichment.highWater, 3, "the walk must stop at links (now failed) regardless of the stale seeded value");
-  assertEquals(enrichment.blockedAt, { key: "links", index: 4, state: "failed" });
+  assertEquals(enrichment.highWater, 2, "the walk must stop at links (now failed) regardless of the stale seeded value");
+  assertEquals(enrichment.blockedAt, { key: "links", index: 3, state: "failed" });
 });
 
-Deno.test("reportPulsePieces: Embedding at 10 cannot skip a gap", async () => {
+Deno.test("reportPulsePieces: Embedding at 8 cannot skip a gap", async () => {
   const seeded: EnrichmentMap = {
-    functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+    functions: { details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
-    blockedAt: { key: "details", index: 2, state: "missing" },
+    blockedAt: { key: "serp", index: 2, state: "missing" },
   };
   const { admin, placeUpdates } = fakeAdmin(seeded);
   await reportPulsePieces(admin, "place-1", {
@@ -133,16 +132,22 @@ Deno.test("reportPulsePieces: Embedding at 10 cannot skip a gap", async () => {
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
   assertEquals(enrichment.functions.embedding?.state, "completed");
-  assertEquals(enrichment.highWater, 1, "function 10 cannot skip 3–9");
+  assertEquals(enrichment.highWater, 1, "function 8 cannot skip 2–7");
 });
 
-Deno.test("mergeEnrichmentMap folds a legacy `semantic` 10 — no degrade on the next stamp", async () => {
-  // §8.4 v3 regression guard: all pre-rename place_profiles hold functions.semantic
-  // with highWater 10. Any later stamp (here: a pulse refresh) must keep
-  // them at 10 under the new `embedding` key, never rewrite blocked-at-10.
-  const nine = ["pulse","details","serp","links","social","images","menu","reviews","description"] as const;
+Deno.test("mergeEnrichmentMap folds a legacy `semantic` — no degrade on the next stamp", async () => {
+  // §8.4 v3 regression guard, now also a MESITA-2027 one: a pre-rename map
+  // holds functions.semantic AND the two retired rungs (`pulse`, `menu`) at a
+  // highWater of 10 under the old ten-rung ladder. Any later stamp (here: a
+  // details refresh) must fold `semantic` into `embedding`, IGNORE the retired
+  // keys, and recompute the number on today's eight — never trust the stored
+  // 10 and never rewrite blocked-at.
+  const legacy = [
+    "pulse", "details", "serp", "links", "social",
+    "images", "menu", "reviews", "description",
+  ] as const;
   const functions: Record<string, { state: "completed"; at: string; detail: null }> = {};
-  for (const k of nine) functions[k] = { state: "completed", at: "2026-08-23T00:00:00Z", detail: null };
+  for (const k of legacy) functions[k] = { state: "completed", at: "2026-08-23T00:00:00Z", detail: null };
   functions.semantic = { state: "completed", at: "2026-08-23T00:00:00Z", detail: null };
   const seeded = {
     functions,
@@ -151,10 +156,12 @@ Deno.test("mergeEnrichmentMap folds a legacy `semantic` 10 — no degrade on the
   } as unknown as EnrichmentMap;
   const { admin, placeUpdates } = fakeAdmin(seeded);
   await reportPulsePieces(admin, "place-1", {
-    pulse: pieceDone("refreshed"),
+    details: pieceDone("refreshed"),
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
-  assertEquals(enrichment.highWater, 10);
+  // Every SURVIVING function completed, so the walk reaches the new top — 8,
+  // not the stored 10. The retired keys neither advance it nor block it.
+  assertEquals(enrichment.highWater, 8);
   assertEquals(enrichment.blockedAt, null);
   assertEquals(enrichment.functions.embedding?.state, "completed");
   assertEquals("semantic" in enrichment.functions, false);

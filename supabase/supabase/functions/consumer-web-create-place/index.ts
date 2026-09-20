@@ -6,7 +6,7 @@
 //   1. authenticate the consumer,
 //   2. createMinimalPlace (_shared/create-place.ts): dedupe → Google spine →
 //      save ready + enriched_at null. Does NOT seed Enricher. Guests vote
-//      on the Enrich tab; the Crenup threshold queues Enricher 1–10.
+//      on the Enrich tab; the Crenup threshold queues Enricher 1–8.
 //
 // Local:  supabase functions serve consumer-web-create-place
 // Deploy: supabase functions deploy consumer-web-create-place

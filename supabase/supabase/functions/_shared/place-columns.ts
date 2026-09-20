@@ -127,7 +127,7 @@ const COLUMNS: readonly string[] = [
   // Consumer Requests count. Progress toward Crenup atlasRequestThreshold.
   // Requested is derived (count > 0 and content_state <> ready).
   "request_count",
-  // Description/Actions (Enricher function 9) — guest Order / Reserve CTAs.
+  // Description/Actions (Enricher step 7) — guest Order / Reserve CTAs.
   "orders_enabled",
   "reservations_enabled",
   // The EFFECTIVE Mesita Pay capability — the place's bit AND its org's,

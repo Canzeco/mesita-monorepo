@@ -171,8 +171,13 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
 
   if (businessStatus === "CLOSED_PERMANENTLY") {
+    // Function 1 fails, and the REASON is what carries the distinction. With
+    // liveness folded into Details (MESITA-2027) this function has two ways to
+    // fail — the listing is dead, or Google's spine came back unusable — so the
+    // message must say which. The spine failure returns far above with its own
+    // wording; this is the dead-listing one.
     await reportPulsePieces(admin, projectId, {
-      pulse: pieceFailed("Google reports this place as permanently closed.", {
+      details: pieceFailed("Google reports this place as permanently closed.", {
         businessStatus,
       }),
     });
@@ -533,26 +538,29 @@ serveEnrichStage("research", async (admin, _env, row) => {
   ].filter(Boolean) as string[];
 
   // NOTE: there is no `seed` stamp — seed is not an enrich function at all;
-  // it is step 1 of CREATE (MESITA-1253), and the row existing IS the seed.
-  // 0 on the meter means CREATED and no enrich function completed.
+  // it is FUNCTION 0, and the row existing IS the seed. 0 on the meter means
+  // seeded and no function above it completed.
   const pieces: Partial<Record<PulsePiece, PieceOutcome>> = {
-    // PULSE (1) — is this place still ACTIVE, and NOTHING else. The only
-    // failing value returns far above, before a cent is spent, so reaching
-    // here means the answer was yes. Recorded so the ladder has the rung.
+    // DETAILS (1) — the Google spine, THE HOURS, and the LIVENESS GATE, all
+    // off one `fetchGoogleBasics` call.
     //
-    // The hours used to live on this rung, and because it is rung 1 that
-    // pinned every hours-less place — bars, pop-ups, street food, new listings
-    // — at 0 forever, no matter what the rungs above achieved (MESITA-1219).
-    // The fix then was to stop failing; the fix now is that hours are not this
-    // function's question at all. They belong to 2, below.
-    pulse: pieceDone(
-      businessStatus
-        ? `Google reports this listing ${businessStatus}.`
-        : "Google states no business status; the listing resolves.",
-      { businessStatus },
-    ),
-    // DETAILS (2) — the Google spine, and THE HOURS LIVE HERE. A place that
-    // publishes none is missing data, not closed for business.
+    // PULSE USED TO BE ITS OWN RUNG (MESITA-2027 folded it in). It never
+    // bought data: functions 1 and 2 already shared this single call, so the
+    // split bought a rung and no information. Liveness is a SUBPROCESS here —
+    // asked before the cost ledger so a dead listing costs nothing, persisted
+    // to `business_state` so the fact stays queryable, and reported through
+    // THIS outcome's reason rather than a number of its own.
+    //
+    // The only failing status returns far above, before a cent is spent, so
+    // reaching here means the listing is alive. `businessStatus` rides in the
+    // meta so an operator can still read what Google said.
+    //
+    // The hours used to live on the liveness rung, and because that was rung 1
+    // it pinned every hours-less place — bars, pop-ups, street food, new
+    // listings — at 0 forever, no matter what the rungs above achieved
+    // (MESITA-1219). The fix then was to stop failing; the fix now is that
+    // hours and liveness are one function's two answers, and only the second
+    // can fail the run.
     //
     // ABSENCE IS A RESULT (pulse-report.ts rule 4): the Place Details call
     // already SUCCEEDED — a failed one returns at the spine gate far above — so
@@ -563,17 +571,22 @@ serveEnrichStage("research", async (admin, _env, row) => {
     //
     // The `google_name` refresh behind the GENERATED `places.name` also lands
     // on this function's call. It has no rung of its own — it is one field on
-    // the same fetch. What carries the name is the SEMANTIC Name function,
-    // outside the queue (pulse-pieces.ts).
+    // the same fetch. What carries the name is Embedding (8).
     details: pieceDone(
-      spineFacts.length
-        ? `Google spine resolved — ${spineFacts.join(", ")}.`
-        : "Google returned no hours, contact or address detail.",
+      [
+        spineFacts.length
+          ? `Google spine resolved — ${spineFacts.join(", ")}`
+          : "Google returned no hours, contact or address detail",
+        businessStatus
+          ? `listing ${businessStatus}`
+          : "no business status stated; the listing resolves",
+      ].join("; ") + ".",
+      { businessStatus },
     ),
   };
 
   if (wants(buys, "serp")) {
-    // SERP (3) — the SERP Summary, the Scout's soft editorial read. It is bought
+    // SERP (2) — the SERP Summary, the Scout's soft editorial read. It is bought
     // FOR links: the Resolver cannot pick between five Instagram candidates on a
     // name and a city, and this is what it recognises the place by.
     // ABSENCE IS A RESULT: the web having nothing to say about a place is an
@@ -600,7 +613,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   if (runSocial) {
     // ABSENCE IS A RESULT. A place with no Instagram and no Facebook handle
     // has nothing to gather, so the piece ran, found nothing, and PASSES — a
-    // place must be able to reach 9 without socials. Only a place that HAD a
+    // place must be able to reach 8 without socials. Only a place that HAD a
     // handle and could not be scraped fails.
     const hadSomethingToTry = !!igHandle || !!fbHandleCandidate || !!resolvedFacebook;
     pieces.social = (igR?.verifiedInstagramUrl || fbOk)

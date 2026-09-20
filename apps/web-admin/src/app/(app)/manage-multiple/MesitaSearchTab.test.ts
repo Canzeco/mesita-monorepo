@@ -3,9 +3,9 @@ import { crenupCalled } from "./MesitaSearchTab";
 import type { PlaceHit } from "./actions";
 import { CRENUP_STEPS } from "@/lib/state-vocabulary";
 
-// A gap fixture (MESITA-1611): links (4) failed, social (5) and menu (7)
+// A gap fixture (MESITA-1611): links (3) failed, social (4) and images (6)
 // later completed. The high-water stops counting at the first gap by
-// design and reads 3 — the whole reason the honest per-function map exists.
+// design and reads 2 — the whole reason the honest per-step map exists.
 const GAP_FIXTURE: PlaceHit = {
   id: "p1",
   slug: "p1",
@@ -29,19 +29,17 @@ const GAP_FIXTURE: PlaceHit = {
   enriching: false,
   business_state: "OPERATIONAL",
   business_state_at: null,
-  enrich_pulse: 3,
-  enrich_pulse_total: 10,
+  enrich_pulse: 2,
+  enrich_pulse_total: 8,
   enrich_pulse_labels: [],
-  enrich_pulse_blocked: { key: "links", index: 4, state: "failed" },
+  enrich_pulse_blocked: { key: "links", index: 3, state: "failed" },
   enrich_functions: {
-    pulse: { state: "completed", at: null, detail: null },
     details: { state: "completed", at: null, detail: null },
     serp: { state: "completed", at: null, detail: null },
     links: { state: "failed", at: null, detail: null },
     social: { state: "completed", at: null, detail: null },
-    // images (6) never ran — absent from the map entirely.
-    menu: { state: "completed", at: null, detail: null },
-    reviews: { state: "pending", at: null, detail: null },
+    // reviews (5) never ran — absent from the map entirely.
+    images: { state: "completed", at: null, detail: null },
     description: { state: "pending", at: null, detail: null },
     embedding: { state: "pending", at: null, detail: null },
   },
@@ -62,19 +60,19 @@ function functionByKey(key: string) {
   return fn;
 }
 
-describe("crenupCalled — the honest per-function map (MESITA-1611)", () => {
-  it("shows Social and Menu as called even though the high-water stalled at 3", () => {
+describe("crenupCalled — the honest per-step map (MESITA-1611)", () => {
+  it("shows Social and Images as called even though the high-water stalled at 2", () => {
     expect(crenupCalled(GAP_FIXTURE, functionByKey("social"))).toBe(true);
-    expect(crenupCalled(GAP_FIXTURE, functionByKey("menu"))).toBe(true);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("images"))).toBe(true);
   });
 
-  it("still shows the failed function as called (it ran; it just failed)", () => {
+  it("still shows the failed step as called (it ran; it just failed)", () => {
     expect(crenupCalled(GAP_FIXTURE, functionByKey("links"))).toBe(true);
   });
 
-  it("shows a function absent from the map, or explicitly pending, as not called", () => {
-    expect(crenupCalled(GAP_FIXTURE, functionByKey("images"))).toBe(false);
+  it("shows a step absent from the map, or explicitly pending, as not called", () => {
     expect(crenupCalled(GAP_FIXTURE, functionByKey("reviews"))).toBe(false);
+    expect(crenupCalled(GAP_FIXTURE, functionByKey("description"))).toBe(false);
     expect(crenupCalled(GAP_FIXTURE, functionByKey("embedding"))).toBe(false);
   });
 
@@ -87,12 +85,12 @@ describe("crenupCalled — the honest per-function map (MESITA-1611)", () => {
 
   it("falls back to the high-water comparison when the payload predates the map", () => {
     const legacy: PlaceHit = { ...GAP_FIXTURE, enrich_functions: null };
-    // High-water is 3: pulse/details/serp called, links and everything after not.
+    // High-water is 2: details/serp called, links and everything after not.
     expect(crenupCalled(legacy, functionByKey("serp"))).toBe(true);
     expect(crenupCalled(legacy, functionByKey("links"))).toBe(false);
     // The old bug this ticket exists to fix: with no map, a completed-after-
-    // a-gap function reads as never-called.
+    // a-gap step reads as never-called.
     expect(crenupCalled(legacy, functionByKey("social"))).toBe(false);
-    expect(crenupCalled(legacy, functionByKey("menu"))).toBe(false);
+    expect(crenupCalled(legacy, functionByKey("images"))).toBe(false);
   });
 });

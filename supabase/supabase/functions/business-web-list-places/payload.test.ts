@@ -103,7 +103,7 @@ Deno.test("the enrichment column is selected — it feeds enrichFunctions", () =
 // point.
 //
 // It began as `assert(!SRC.includes("functions:"))` — right while the console
-// row read `Crenup 3/10`. MESITA-1608 flipped it to REQUIRE the map, because
+// row read `Crenup 3/8`. MESITA-1608 flipped it to REQUIRE the map, because
 // a states matrix with one column per Crenup function cannot be fed by a
 // high-water that stops at the first gap. MESITA-1637 flipped it back:
 // Pato, 2026-09-07, "the Crenup states are internal."

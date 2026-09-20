@@ -281,13 +281,13 @@ Deno.test("the Enriched weight reorders two rows a ranked lane ACTUALLY admits",
     w,
   );
   const full = blend(
-    { ...project(row("full", 4.5)), enriched: true, crenupHighWater: 10 },
+    { ...project(row("full", 4.5)), enriched: true, crenupHighWater: 8 },
     {},
     w,
   );
   assert(full.score > thin.score, `full ${full.score} must beat thin ${thin.score}`);
   assertEquals(full.parts.enriched, 1);
-  assertAlmostEquals(thin.parts.enriched, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.2, 1e-12);
+  assertAlmostEquals(thin.parts.enriched, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.25, 1e-12);
   // The floor still holds at the bottom of the gradient: demote, never delete.
   const created = blend(
     { ...project(row("created", 4.5)), enriched: true, crenupHighWater: 0 },

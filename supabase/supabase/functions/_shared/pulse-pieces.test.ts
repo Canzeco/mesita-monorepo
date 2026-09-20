@@ -5,6 +5,8 @@ import {
   PULSE_LABELS_IN_ORDER,
   PULSE_PIECES,
   PULSE_PIECE_META,
+  PULSE_RENAMES,
+  PULSE_RETIRED,
   PULSE_TOTAL,
   completedPulsePieces,
   pulseBlockedAt,
@@ -43,58 +45,101 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
       `step S${PULSE_PIECE_META[piece].index} (${piece}) violates the DB CHECK`,
     );
   }
-  // Embedding is function 10, so reportPulsePieces stamps it S10.
+  // Embedding is function 8, so reportPulsePieces stamps it S8. S10 stays
+  // legal because the LOG still holds rows the ten-rung ladder wrote.
+  assertEquals(DB_CHECK.test("S8"), true);
   assertEquals(DB_CHECK.test("S10"), true);
   assertEquals(DB_CHECK.test("SX"), true);
 });
 
-Deno.test("pulse: the TEN enrich queue functions, in the decided order", () => {
-  // The law: ENRICH is ten functions, 1–10. Seed is NOT among them — it is
-  // step 1 of CREATE. Embedding CLOSES the queue at 10.
+Deno.test("pulse: the EIGHT stamped functions, in the decided order", () => {
+  // The law (MESITA-2027): ONE ladder, 0–8. Seed is function 0 and is never
+  // stamped, so the array starts at Details. Embedding CLOSES the queue at 8.
   assertEquals([...PULSE_PIECES], [
-    "pulse",
     "details",
     "serp",
     "links",
     "social",
-    "images",
-    "menu",
     "reviews",
+    "images",
     "description",
     "embedding",
   ]);
-  assertEquals(PULSE_TOTAL, 10);
+  assertEquals(PULSE_TOTAL, 8);
 });
 
-Deno.test("pulse: `seed` is NOT an enrich function — it is step 1 of CREATE", () => {
-  // MESITA-1253. The row existing IS the seed, so there is no rung below
-  // pulse and nothing to stamp. THE regression this ladder can die of is
-  // unchanged in substance: if a `seed` membership ever returned, every place
-  // in the catalog (none of which has a seed event) would read 0 forever —
+Deno.test("pulse: `seed` is function 0 and is NEVER stamped", () => {
+  // The row existing IS the seed, so there is no rung below details and
+  // nothing to stamp. THE regression this ladder can die of is unchanged in
+  // substance: if a `seed` membership ever returned, every place in the
+  // catalog (none of which has a seed event) would read 0 forever —
   // silently, because beacons swallow their own errors.
   assertEquals((PULSE_PIECES as readonly string[]).includes("seed"), false);
-  assertEquals(PULSE_PIECES[0], "pulse");
-  assertEquals(PULSE_PIECE_META.pulse.index, 1);
+  assertEquals(PULSE_PIECES[0], "details");
+  assertEquals(PULSE_PIECE_META.details.index, 1);
+  assertEquals(PULSE_FLOOR_LABEL, "Seed");
 
-  // No seed event anywhere, and the queue still reaches 10.
+  // No seed event anywhere, and the queue still reaches 8.
   const events = fullQueue();
   assertEquals(events.some((e) => e.step_name === "seed"), false);
-  assertEquals(pulseHighWater(events), 10);
+  assertEquals(pulseHighWater(events), 8);
 
   // And a stray seed beacon cannot inflate a place that has done nothing.
   assertEquals(pulseHighWater([done("seed", 1)]), 0);
 });
 
-Deno.test("pulse: CREATE's stamps read as 2/10 — one ladder, two callers", () => {
-  // The create function runs pulse + details inline and stamps them
-  // (create-place.ts), so a fresh healthy place is 2/10 the moment it exists.
-  // State then accumulates: the first full enrich run continues from there.
-  const created = [done("pulse", 1), done("details", 2)];
-  assertEquals(pulseHighWater(created), 2);
+Deno.test("pulse: PULSE and MENU are not functions — they are retired keys", () => {
+  // MESITA-2027. Liveness is a SUBPROCESS of Details (one `fetchGoogleBasics`
+  // call always served both, so the split bought a rung and no information),
+  // and the menu is OPERATOR INPUT the Intaker never derived.
+  //
+  // They must FALL OUT of the walk, not fold into a survivor. Folding `pulse`
+  // into `details` would be the dangerous kind of wrong: an old `pulse`
+  // completed proves the listing was alive, NOT that the Google spine
+  // persisted, so counting it would advance the queue past a function that
+  // never ran.
+  assertEquals((PULSE_PIECES as readonly string[]).includes("pulse"), false);
+  assertEquals((PULSE_PIECES as readonly string[]).includes("menu"), false);
+  assertEquals(PULSE_RENAMES.pulse, undefined);
+  assertEquals(PULSE_RENAMES.menu, undefined);
+  for (const key of ["pulse", "menu"]) {
+    assertEquals((PULSE_RETIRED as readonly string[]).includes(key), true);
+  }
+
+  // A legacy place whose ONLY stamp is `pulse` reads 0, not 1.
+  assertEquals(pulseHighWater([done("pulse", 1)]), 0);
+  // And a `menu` row sitting where slot 7 used to be neither advances the
+  // queue nor blocks it.
+  assertEquals(
+    pulseHighWater([done("details", 1), done("menu", 2)]),
+    1,
+  );
+});
+
+Deno.test("pulse: CREATE's stamp reads 1/8 — one ladder, two callers", () => {
+  // Create runs 0, 1, 7, 8 and stamps Details inline (create-place.ts), so a
+  // fresh healthy place that QUEUES enrich is 1/8 the moment it exists. It
+  // used to stamp pulse + details and read 2/10; one function does both jobs
+  // now. State then accumulates: the first full enrich run continues here.
+  const created = [done("details", 1)];
+  assertEquals(pulseHighWater(created), 1);
   const b = pulseBlockedAt(created);
   assertEquals(b?.key, "serp");
-  assertEquals(b?.index, 3);
+  assertEquals(b?.index, 2);
   assertEquals(b?.state, "missing");
+});
+
+Deno.test("pulse: an UN-QUEUED create jumps to 8 with 2–6 still a gap", () => {
+  // The door writes Description and Embedding itself when no Enrich is
+  // queued, so create stamps 1, 7 and 8. The high-water is how far the queue
+  // GOT, not how many functions ran — a gap stops the count at 1.
+  const doorCreate = [done("details", 1), done("description", 2), done("embedding", 3)];
+  assertEquals(pulseHighWater(doorCreate), 1);
+  assertEquals(completedPulsePieces(doorCreate), [
+    "details",
+    "description",
+    "embedding",
+  ]);
 });
 
 Deno.test("pulse: `embedding` is ONE function now, not two extras", () => {
@@ -102,32 +147,32 @@ Deno.test("pulse: `embedding` is ONE function now, not two extras", () => {
   assertEquals((PULSE_PIECES as readonly string[]).includes("summary"), false);
   assertEquals((PULSE_PIECES as readonly string[]).includes("semantic"), false);
   assertEquals((PULSE_PIECES as readonly string[]).includes("embedding"), true);
-  assertEquals(PULSE_PIECE_META.embedding.index, 10);
+  assertEquals(PULSE_PIECE_META.embedding.index, 8);
   assertEquals(PULSE_PIECE_META.embedding.label, "Embedding");
   assertEquals([...PULSE_EXTRAS], []);
 });
 
-Deno.test("pulse: the RENAMED `semantic` still counts as function 10", () => {
-  // §8.4 v3 renamed function 10 (Semantic → Embedding). Stored events keep
-  // the old key forever (append-only log); the walk folds the rename so a
-  // legacy full queue still reads 10, not blocked-at-Embedding.
-  const nine = PULSE_PIECES
+Deno.test("pulse: the RENAMED `semantic` still counts as function 8", () => {
+  // §8.4 v3 renamed the last function (Semantic → Embedding). Stored events
+  // keep the old key forever (append-only log); the walk folds the rename so
+  // a legacy full queue still reads 8, not blocked-at-Embedding.
+  const seven = PULSE_PIECES
     .filter((p) => p !== "embedding")
     .map((p, i) => done(p, i));
   assertEquals(
     pulseHighWater([
-      ...nine,
+      ...seven,
       { step_name: "semantic", state: "completed", created_at: at(30) },
     ]),
-    10,
+    8,
   );
   // Pre-merge extras still do NOT count on the walk.
   assertEquals(
     pulseHighWater([
-      ...nine,
+      ...seven,
       { step_name: "name", state: "completed", created_at: at(30) },
     ]),
-    9,
+    7,
   );
 });
 
@@ -136,69 +181,82 @@ Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
   // the S-number as decorative. No backfill ran, so the DB still holds rows
   // this pipeline wrote under MESITA-1230's ladder. Two things must be true:
   //
-  //   1. the nine keys that survived still count, at their NEW positions;
-  //   2. the two that stopped being rungs — `name` (was S3) and `semantics` —
-  //      fall out of the walk entirely rather than corrupting it.
+  //   1. the keys that survived still count, at their NEW positions;
+  //   2. the ones that stopped being rungs — `pulse`, `menu`, `name`,
+  //      `semantics` — fall out of the walk entirely rather than corrupting it.
   const legacy = [
-    done("pulse", 1),
+    done("pulse", 1), // was rung 1; a subprocess of details now
     done("details", 2),
-    done("name", 3), // was rung 3; now a semantic function
+    done("name", 3), // was rung 3; folded into embedding for display only
     done("serp", 4),
     done("links", 5),
     done("semantics", 6), // was the lone extra; the key is gone
   ];
-  // pulse · details · serp · links all landed, so the queue got to 4 — the old
-  // `name` row neither advances it nor blocks it.
-  assertEquals(pulseHighWater(legacy), 4);
+  // details · serp · links all landed, so the queue got to 3 — the old
+  // `pulse` and `name` rows neither advance it nor block it.
+  assertEquals(pulseHighWater(legacy), 3);
 
-  // A FAILED legacy `name` row must not hold the queue back either.
+  // A FAILED legacy row on a retired key must not hold the queue back either.
   assertEquals(
     pulseHighWater([
       ...legacy,
       { step_name: "name", state: "failed", created_at: at(7) },
+      { step_name: "menu", state: "failed", created_at: at(8) },
     ]),
-    4,
+    3,
   );
 });
 
-Deno.test("pulse: social runs BEFORE images, menu after both", () => {
+Deno.test("pulse: social runs BEFORE images — the gathers fill the pools", () => {
   // Load-bearing order. The IG/FB gathers fill the pools the vision funnel
   // ranks, so images any earlier would rank Google photos and nothing else.
+  // Reviews sits between them (MESITA-2027) and is free to: nothing downstream
+  // of it depends on it except synthesis.
   const i = (k: string) => (PULSE_PIECES as readonly string[]).indexOf(k);
   assertEquals(i("social") < i("images"), true);
-  assertEquals(i("images") < i("menu"), true);
-  assertEquals(i("links") < i("menu"), true);
+  assertEquals(i("links") < i("social"), true);
+  assertEquals(i("images") < i("description"), true);
+});
+
+Deno.test("pulse: the two Apify gathers sit together at 4 and 5", () => {
+  // Social and Reviews are both Apify scrapes of third-party content and
+  // already run concurrently — the GMaps scrape depends only on the place id,
+  // so it is fired early and collected late. Grouping them costs no wall
+  // clock and makes 1–6 read as one phase: the sources, in the order they can
+  // be asked.
+  assertEquals(PULSE_PIECE_META.social.index, 4);
+  assertEquals(PULSE_PIECE_META.reviews.index, 5);
 });
 
 Deno.test("pulse: serp runs BEFORE links — that is what serp is FOR", () => {
   // The Resolver cannot pick between five Instagram candidates on a name and a
-  // city; the editorial read is what it recognises the place by. Function 9
+  // city; the editorial read is what it recognises the place by. Description
   // reusing the same text is a second use, not the reason it exists.
   const i = (k: string) => (PULSE_PIECES as readonly string[]).indexOf(k);
   assertEquals(i("serp") < i("links"), true);
   assertEquals(i("details") < i("serp"), true);
 });
 
-Deno.test("pulse: Embedding CLOSES the queue at 10", () => {
+Deno.test("pulse: Embedding CLOSES the queue at 8", () => {
   assertEquals(PULSE_PIECES[PULSE_PIECES.length - 1], "embedding");
   assertEquals(PULSE_PIECE_META.embedding.index, PULSE_TOTAL);
-  assertEquals(PULSE_PIECE_META.description.index, 9);
+  assertEquals(PULSE_PIECE_META.description.index, 7);
 });
 
-Deno.test("high water: Embedding is 10 — a gap before it still reads 9", () => {
+Deno.test("high water: Embedding is 8 — a gap before it still reads 7", () => {
   const throughDescription = PULSE_PIECES
     .filter((p) => p !== "embedding")
     .map((p, i) => done(p, i));
-  assertEquals(pulseHighWater(throughDescription), 9);
+  assertEquals(pulseHighWater(throughDescription), 7);
   assertEquals(pulseHighWater(fullQueue()), PULSE_TOTAL);
   assertEquals(
     pulseHighWater([
       ...throughDescription,
       { step_name: "embedding", state: "failed", created_at: at(30) },
     ]),
-    9,
+    7,
   );
-  // And Embedding on its own is not progress — 3–9 are still a gap.
+  // And Embedding on its own is not progress — 2–7 are still a gap.
   assertEquals(pulseHighWater([done("embedding", 1)]), 0);
 });
 
@@ -210,15 +268,15 @@ Deno.test("pulse: the index is the position, and the labels ride in order", () =
   // `S${index}` into the DB, so a drift corrupts both the meter and the beacon.
   assertEquals(
     PULSE_PIECES.map((p) => PULSE_PIECE_META[p].index),
-    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    [1, 2, 3, 4, 5, 6, 7, 8],
   );
   // The labels are indexed BY FUNCTION NUMBER, so the array is one longer than
-  // the piece list — labels[0] is the CREATED floor (not a function),
-  // labels[10] is Embedding. A client renders labels[level] with no
+  // the piece list — labels[0] is Seed (function 0, never stamped),
+  // labels[8] is Embedding. A client renders labels[level] with no
   // off-by-one.
   assertEquals(PULSE_LABELS_IN_ORDER.length, PULSE_TOTAL + 1);
   assertEquals(PULSE_LABELS_IN_ORDER[0], PULSE_FLOOR_LABEL);
-  assertEquals(PULSE_FLOOR_LABEL, "Created");
+  assertEquals(PULSE_FLOOR_LABEL, "Seed");
   assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Embedding");
   assertEquals(
     [...PULSE_LABELS_IN_ORDER],
@@ -227,38 +285,37 @@ Deno.test("pulse: the index is the position, and the labels ride in order", () =
   assertEquals(PULSE_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });
 
-Deno.test("high water: nothing recorded is 0 — CREATED, not a failure", () => {
+Deno.test("high water: nothing recorded is 0 — SEEDED, not a failure", () => {
   assertEquals(pulseHighWater([]), 0);
 });
 
-Deno.test("high water: a full queue is 10", () => {
-  assertEquals(pulseHighWater(fullQueue()), 10);
+Deno.test("high water: a full queue is 8", () => {
+  assertEquals(pulseHighWater(fullQueue()), 8);
 });
 
 Deno.test("high water: it is HOW FAR, not how many", () => {
-  // The distinction the whole model rests on. Nine functions completed, but
-  // `links` (4) never did, so the queue got to 3 — not 9. A profile built past
+  // The distinction the whole model rests on. Seven functions completed, but
+  // `links` (3) never did, so the queue got to 2 — not 7. A profile built past
   // a hole is built on incomplete data, which is why the queue is linear.
   const events = PULSE_PIECES
     .filter((p) => p !== "links")
     .map((p, i) => done(p, i));
-  assertEquals(pulseHighWater(events), 3);
+  assertEquals(pulseHighWater(events), 2);
   // completedPulsePieces answers the OTHER question — which ones landed.
   const landed = completedPulsePieces(events);
-  assertEquals(landed.length, 9); // the nine that ran; created is implicit
+  assertEquals(landed.length, 7); // the seven that ran; seed is implicit
   assertEquals(landed.includes("links"), false);
 });
 
 Deno.test("high water: a failed function stops the count at the one before it", () => {
   assertEquals(
     pulseHighWater([
-      done("pulse", 1),
-      done("details", 2),
-      done("serp", 3),
-      { step_name: "links", state: "failed", created_at: at(4) },
-      done("social", 5),
+      done("details", 1),
+      done("serp", 2),
+      { step_name: "links", state: "failed", created_at: at(3) },
+      done("social", 4),
     ]),
-    3,
+    2,
   );
 });
 
@@ -266,47 +323,44 @@ Deno.test("high water: a function a run did not buy simply has no event", () => 
   // MESITA-1172 blocker 2. The matrix lets a cheap refresh buy a subset, so a
   // function it did not run writes NOTHING and keeps whatever an earlier run
   // recorded. State accumulates across runs rather than being reset by the
-  // cheapest one — here an earlier full run got to 5, and a refresh that only
-  // re-ran `pulse` does not knock it back down.
+  // cheapest one — here an earlier full run got to 4, and a refresh that only
+  // re-ran `details` does not knock it back down.
   const earlier = [
-    done("pulse", 1),
-    done("details", 2),
-    done("serp", 3),
-    done("links", 4),
-    done("social", 5),
+    done("details", 1),
+    done("serp", 2),
+    done("links", 3),
+    done("social", 4),
   ];
-  const refresh = [done("pulse", 9)];
-  assertEquals(pulseHighWater([...earlier, ...refresh]), 5);
+  const refresh = [done("details", 9)];
+  assertEquals(pulseHighWater([...earlier, ...refresh]), 4);
 });
 
-Deno.test("high water: absence is a RESULT — no Instagram still reaches 10", () => {
+Deno.test("high water: absence is a RESULT — no Instagram still reaches 8", () => {
   // The function ran, resolved "there is nothing here", and is completed.
   // Marking it failed would punish a place for a fact about the world.
-  assertEquals(pulseHighWater(fullQueue()), 10);
+  assertEquals(pulseHighWater(fullQueue()), 8);
 });
 
 Deno.test("high water: a re-enrich that fixes a function RAISES the number", () => {
   assertEquals(
     pulseHighWater([
-      done("pulse", 1),
       { step_name: "details", state: "failed", created_at: at(2) },
       done("serp", 3),
       done("links", 4),
       done("details", 8), // the later, successful attempt wins
     ]),
-    4,
+    3,
   );
 });
 
 Deno.test("high water: a re-enrich that breaks a function LOWERS it", () => {
   assertEquals(
     pulseHighWater([
-      done("pulse", 1),
       done("details", 2),
       done("serp", 3),
       { step_name: "details", state: "failed", created_at: at(9) },
     ]),
-    1,
+    0,
   );
 });
 
@@ -329,18 +383,17 @@ Deno.test("high water: `skipped` does not advance the queue", () => {
   // it must not count as progress.
   assertEquals(
     pulseHighWater([
-      done("pulse", 1),
       { step_name: "details", state: "skipped", created_at: at(2) },
       done("serp", 3),
     ]),
-    1,
+    0,
   );
 });
 
 Deno.test("high water: never exceeds the total, and never goes negative", () => {
   const n = pulseHighWater([...fullQueue(), ...fullQueue()]);
   assertEquals(n >= 0 && n <= PULSE_TOTAL, true);
-  assertEquals(n, 10);
+  assertEquals(n, 8);
 });
 
 // ── the guard MESITA-1209 needed ──────────────────────────────────────────
@@ -394,23 +447,36 @@ Deno.test("no raw beacon may use a PULSE function key as its step_name", async (
 // caught both admin surfaces asserting the first for either case. The reason
 // is what makes them distinguishable, and it must be derived from the SAME
 // events the walk reads or the two can disagree.
+//
+// MESITA-2027 made this matter MORE, not less. Liveness is a subprocess of
+// Details now, so function 1 has TWO ways to fail — the listing is dead, or
+// the Google spine came back unusable — and the block reads `details` for
+// both. Only the event's MESSAGE separates them, which is why the research EF
+// writes a different one per cause.
 
 Deno.test("blocked: a fresh place is blocked at function 1, MISSING not failed", () => {
   const b = pulseBlockedAt([]);
-  assertEquals(b?.key, "pulse");
+  assertEquals(b?.key, "details");
   assertEquals(b?.index, 1);
   assertEquals(b?.state, "missing");
 });
 
 Deno.test("blocked: a permanently-closed place is FAILED at 1, not merely absent", () => {
   // The exact shape supabase-cron-enrich-place-research writes on
-  // CLOSED_PERMANENTLY. High-water and reason must agree: 0, because pulse
+  // CLOSED_PERMANENTLY. High-water and reason must agree: 0, because details
   // failed — NOT 0 because nothing ran.
-  const events = [{ step_name: "pulse", state: "failed", created_at: at(1) }];
+  const events = [{ step_name: "details", state: "failed", created_at: at(1) }];
   assertEquals(pulseHighWater(events), 0);
   const b = pulseBlockedAt(events);
-  assertEquals(b?.key, "pulse");
+  assertEquals(b?.key, "details");
   assertEquals(b?.state, "failed");
+
+  // A LEGACY `pulse` failure reads as nothing at all, which is correct: the
+  // key is retired, so it neither blocks nor advances. The place is blocked
+  // at details for being MISSING, not failed.
+  const legacy = [{ step_name: "pulse", state: "failed", created_at: at(1) }];
+  assertEquals(pulseHighWater(legacy), 0);
+  assertEquals(pulseBlockedAt(legacy)?.state, "missing");
 });
 
 Deno.test("blocked: it never disagrees with the high-water", () => {
@@ -418,13 +484,12 @@ Deno.test("blocked: it never disagrees with the high-water", () => {
   // blocking function is always the one immediately after the high-water.
   const cases: PulseEvent[][] = [
     [],
-    [done("pulse", 1)],
-    [done("pulse", 1), done("details", 2), done("serp", 3)],
+    [done("details", 1)],
+    [done("details", 1), done("serp", 2), done("links", 3)],
     [
-      done("pulse", 1),
-      done("details", 2),
-      { step_name: "serp", state: "failed", created_at: at(3) },
-      done("links", 4),
+      done("details", 1),
+      { step_name: "serp", state: "failed", created_at: at(2) },
+      done("links", 3),
     ],
     fullQueue(),
   ];

@@ -4,14 +4,23 @@
 // place_research rows at stage='contents' and fires this EF with { place_id }.
 // It acks 202 immediately and runs the WRITE half in a background task:
 //
-//   S7  synthesis (About/details, grounded ONLY in gathered material — Google
-//       spine + reviews + SERP blurb + IG bio; no website/menu) + category
-//       inference + tag inference (closed vocabularies) + Selected Reservation
-//       Endpoint (phone → places.reservation_channel/_target; voice-only, MESITA-842)
-//   S8  persist the enriched profile onto the places row (direct UPDATE — this
-//       EF is already the DB layer; no HTTP hop) + content_state='ready'
-//   S9  store images via supabase-edgefunc-store-place-images (kept as an EF call
-//       on purpose: the storage mirroring runs in that worker's own wall clock)
+//   S7  DESCRIPTION (function 7) — synthesis (About/details, grounded ONLY in
+//       gathered material — Google spine + reviews + SERP blurb + IG bio; no
+//       website/menu) + category inference + tag inference (closed
+//       vocabularies) + Selected Reservation Endpoint (phone →
+//       places.reservation_channel/_target; voice-only, MESITA-842), then the
+//       enriched profile persisted onto the places row (direct UPDATE — this
+//       EF is already the DB layer; no HTTP hop) and the images stored via
+//       supabase-edgefunc-store-place-images
+//   S8  EMBEDDING (function 8) — both vectors, persisted. Closes the queue,
+//       and only then does content_state flip to 'ready'.
+//
+// PERSIST AND STORE ARE NOT STEPS (MESITA-2027). They used to be S8 and S9 —
+// stages that bought no function and reported on writes two stages from where
+// the work happened. Each function owns its own write now, which is what makes
+// pulse-report rule 2 (`completed` means THE EFFECT LANDED) honest rather than
+// aspirational. `content_state` still flips exactly ONCE, after 8, so a place
+// never goes public wearing this run's images over last run's description.
 //
 // Ends the pipeline: place_research.stage='done'. The gathered/analysis jsonb
 // stay on the row, so re-synthesis without re-scraping = reset stage to
@@ -260,7 +269,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       vocabulary: tagVocabulary.length,
     };
 
-    // ACTIONS (Description function 9) — Reserve: LLM inference on place type.
+    // ACTIONS (Description, function 7) — Reserve: LLM inference on place type.
     const reservationsLikely = await inferPlaceReservationsLikely(
       OPENAI_KEY,
       {
@@ -286,7 +295,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       reservations_enabled: reservationsLikely,
     };
 
-    // §8.4 v3 — Description owns the WORDS (function 9). Mesita Name goes
+    // §8.4 — Description owns the WORDS (function 7). Mesita Name goes
     // through the one door (gate D2: NULL / google-copy / the door's own last
     // value; an operator's name is never overwritten)…
     if (parsed?.mesita_name) {
@@ -518,7 +527,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     return;
   }
 
-  // EMBEDDING (function 10, §8.4 v3) — embed-only: vectors of the STORED
+  // EMBEDDING (function 8, §8.4) — embed-only: vectors of the STORED
   // Mesita Name and Semantic Summary that Description just persisted. It
   // never synthesizes; a missing summary text stamps an honest failure.
   // Best-effort: the profile is already ready, so a failed embed leaves the
@@ -581,21 +590,21 @@ serveEnrichStage("contents", async (admin, env, row) => {
   }
 
   // ── PULSE functions (MESITA-1243) ──────────────────────────────────────
-  // Contents owns 7 (menu), 9 (description) and the SEMANTIC Summary function.
-  const contentPieces: Partial<Record<StampablePulseStep, PieceOutcome>> = {
-    // MENU IS A STUB. The website is no longer scraped, so there is no menu
-    // source and the function can never block the queue. It passes, and it
-    // holds slot 7 until someone builds it, so the numbers do not all shift by
-    // one on the day they do. Worth knowing when reading a 9.
-    menu: pieceDone("No menu source yet — the function is a stub."),
-  };
+  // Contents owns 7 (description) and 8 (embedding).
+  //
+  // MENU USED TO HOLD SLOT 7 HERE as a stub that always passed — the website
+  // content crawl was retired, so there was no menu source and the rung
+  // reported nothing. MESITA-2027 removed it: the menu is OPERATOR INPUT
+  // (`menu_pdf_url`, `menus`, the console's MenusSection), not something the
+  // Intaker derives. The menu data is untouched; only the claim went away.
+  const contentPieces: Partial<Record<StampablePulseStep, PieceOutcome>> = {};
   if (wants(buys, "synthesis")) {
-    // DESCRIPTION (9) — the PRESENTATION, then category, then tags, and
-    // the function that CLOSES the queue. NOT the Semantic Summary: that is the
-    // semantic function below, and the two are different artifacts (prose a
-    // GUEST reads vs the 60-word blurb the INDEX reads). `aboutWritten` is
-    // computed from the PERSISTED description, not from the model having
-    // replied.
+    // DESCRIPTION (7) — the PRESENTATION, then category, then tags. NOT the
+    // Semantic Summary: that is Embedding below, and the two are different
+    // artifacts (prose a GUEST reads vs the 60-word blurb the INDEX reads).
+    // `aboutWritten` is computed from the PERSISTED description, not from the
+    // model having replied — which is exactly rule 2, and exactly why this
+    // function owning its own write costs nothing to state.
     contentPieces.description = aboutWritten
       ? pieceDone(
         `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s); ` +
@@ -606,7 +615,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       : pieceFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (wants(buys, "embedding")) {
-    // EMBEDDING — function 10. Embed-only: vectors of the words function 9
+    // EMBEDDING — function 8. Embed-only: vectors of the words function 7
     // wrote. It CLOSES the queue.
     contentPieces.embedding = embeddingWrote
       ? pieceDone("Embedding — Mesita Name and Semantic Summary vectors written.")
@@ -618,8 +627,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // One beacon for the whole contents stage — one notification per Edge
   // Function. Its own `step` is decorative and does not track the ladder: the
-  // stage runs 7 menu, 9 description and 10 Embedding, all stamped
-  // above. Reports synthesis + persist + image outcome in a single line.
+  // stage runs 7 Description and 8 Embedding, both stamped above. Reports
+  // synthesis + persist + image outcome in a single line.
   await reportEnrichmentStep(
     admin,
     placeId,

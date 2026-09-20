@@ -370,7 +370,7 @@ Deno.test("Enriched reorders two rows a ranked lane ACTUALLY admits", () => {
   const full = enriched(place({ enriched: true, crenupHighWater: PULSE_TOTAL }));
   assert(full > thin, `a full profile must outrank a thin one: ${full} vs ${thin}`);
   assertAlmostEquals(full, 1, 1e-12);
-  assertAlmostEquals(thin, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.2, 1e-12);
+  assertAlmostEquals(thin, ENRICHED_OFF + (1 - ENRICHED_OFF) * 0.25, 1e-12);
   // Floor at the bottom of the gradient too — never 0, which would delete the
   // place from a multiplicative blend.
   assertAlmostEquals(enriched(place({ enriched: true, crenupHighWater: 0 })), ENRICHED_OFF, 1e-12);

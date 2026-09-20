@@ -33,15 +33,16 @@
 //      the world.
 //
 //   5. SEED IS NEVER STAMPED — it is not an enrich function at all
-//      (MESITA-1253: seed is step 1 of CREATE, and the row existing IS the
-//      seed). It is not in PULSE_PIECES, so a `seed:` key fails to compile
-//      and an unknown-string cast falls through the META/label check below
-//      and writes nothing.
+//      (seed is FUNCTION 0 and the row existing IS the seed). It is not in
+//      PULSE_PIECES, so a `seed:` key fails to compile and an unknown-string
+//      cast falls through the META/label check below and writes nothing.
 //
-//   6. CREATE IS A CALLER OF THIS REPORTER TOO. The create function stamps
-//      the enrich functions it ran inline (pulse, details), so a fresh place
-//      reads 2/10 immediately and state accumulates across create and every
-//      later run under one rule.
+//   6. CREATE IS A CALLER OF THIS REPORTER TOO. Since MESITA-2027 there is
+//      ONE ladder, so create stamps the same numbers enrich does — it simply
+//      runs a subset (0, 1, 7, 8). A fresh place that queues Enrich reads 1/8
+//      immediately; one that does not reads 8 with 2–6 still a gap, because
+//      the high-water is how far the queue GOT, not how many functions ran.
+//      State accumulates across create and every later run under one rule.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportEnrichmentStep } from "./enrich-pipeline.ts";
@@ -106,9 +107,13 @@ export async function reportPulsePieces(
   //      the run reporting success. `socail` for `social` pinned every place at
   //      3 and nothing in the type system, the tests or CI said a word
   //      (MESITA-1219). The unknown-key check below stays as the belt.
-  //   8. SEMANTICS IS FUNCTION 10. It stamps `S10` like every other
-  //      enrich function. Create also stamps it; the high-water stays at 2
-  //      until 3–9 land, because 10 cannot skip a gap.
+  //   8. EMBEDDING IS FUNCTION 8. It stamps `S8` like every other function.
+  //      Create also stamps it; the high-water stays at 1 until 2–7 land,
+  //      because 8 cannot skip a gap.
+  //   9. PULSE AND MENU ARE NOT STAMPABLE ANY MORE (MESITA-2027). Liveness is
+  //      a subprocess of `details` and reports through ITS outcome; the menu
+  //      is operator input the Intaker does not derive. Both keys fail to
+  //      compile here and fall out of the walk on read.
   pieces: Partial<Record<StampablePulseStep, PieceOutcome>>,
 ): Promise<void> {
   const stamped: Partial<Record<StampablePulseStep, PieceOutcome>> = {};

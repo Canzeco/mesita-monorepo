@@ -12,7 +12,7 @@
 //
 // WHAT THIS IS NOT. A trigger re-derives facts from external sources. It cannot
 // carry a fact the sources do not have: when the Reservationist learns on a call
-// that the hours are wrong, re-running function 2 refetches the SAME wrong hours from
+// that the hours are wrong, re-running function 1 refetches the SAME wrong hours from
 // Google. That is a CORRECTION — a proposed field write with provenance and a
 // pin so the next scheduled run cannot clobber it — and it is deliberately not
 // modelled here. Conflating the two is how a corrected place silently reverts.
@@ -80,7 +80,7 @@ export const TRIGGER_KEYS: TriggerKey[] = [
  * So the two vocabularies are siblings, not one list: TRIGGER_KEYS is what the
  * matrix PRICES, RUN_TRIGGERS is what the history RECORDS. This list is pinned
  * against the DB CHECK by a test, the same way pulse-pieces.test.ts pins the
- * `step ~ '^S[0-9]$'` constraint from TypeScript.
+ * `step ~ '^S([0-9]{1,2}|X)$'` constraint from TypeScript.
  */
 export const RUN_TRIGGERS = [...TRIGGER_KEYS, "manual"] as const;
 
@@ -92,14 +92,18 @@ export type CostTier = "free" | "low" | "high";
 /**
  * ONE LADDER, ONE PLACE (Docs › Crenup §A, §D).
  *
- * `functions` names which of the NINE enrich functions a purchase unit buys —
+ * `functions` names which of the EIGHT ladder functions a purchase unit buys —
  * it is a
  * pointer INTO §A's numbering, never a numbering of its own. This field used to
  * hold stage S-numbers (S1, S2, S5–S6…), which made a second ladder: an
- * operator reading "SERP · S2" beside a doc that calls SERP function 3 has two
+ * operator reading "Serp · S2" beside a doc that calls Serp function 2 has two
  * answers to one question. The mapping is deliberately one-way and not
- * one-to-one — `google` buys two functions, `photos` buys none (it is the
- * storage mirror), `embedding` buys Semantics (function 10).
+ * one-to-one — `photos` buys no function (it is the storage mirror, performed
+ * INSIDE function 6 since MESITA-2027) and `synthesis` buys Description (7).
+ *
+ * `google` bought "1–2" until MESITA-2027, when Pulse stopped being a rung:
+ * liveness was never a separate purchase — both functions came off one
+ * `fetchGoogleBasics` call — so the unit buys exactly function 1 now.
  */
 export const SUBPROCESS_META: Record<
   SubprocessKey,
@@ -107,33 +111,33 @@ export const SUBPROCESS_META: Record<
 > = {
   google: {
     label: "Google",
-    functions: "1–2",
+    functions: "1",
     cost: "low",
     blurb:
       "Place Details by ID — hours, rating, review count, phone, geo, price.",
   },
   reviews: {
     label: "Reviews",
-    functions: "8",
+    functions: "5",
     cost: "high",
     blurb: "Apify Google Maps scrape — the newest reviews that ground the Presentation.",
   },
   serp: {
-    label: "SERP",
-    functions: "3",
+    label: "Serp",
+    functions: "2",
     cost: "low",
     blurb: "The Scout's editorial read of the open web. Soft context, never facts.",
   },
   links: {
     label: "Links",
-    functions: "4",
+    functions: "3",
     cost: "high",
     blurb:
       "Firecrawl Search per source, then the Resolver picks the winning channel.",
   },
   social: {
     label: "Social",
-    functions: "5",
+    functions: "4",
     cost: "high",
     blurb:
       "Apify Instagram + Facebook — followers, bio, posts, identity judge.",
@@ -147,11 +151,14 @@ export const SUBPROCESS_META: Record<
   },
   synthesis: {
     label: "Synthesis",
-    functions: "9",
+    functions: "7",
     cost: "low",
     blurb:
       "The Presentation, then category and tags grounded on it. Rewrites the profile.",
   },
+  // Still its own purchase unit even though the mirroring runs INSIDE
+  // function 6 since MESITA-2027: the grid is persisted config an operator
+  // edits, so dropping a column would silently rewrite every stored row.
   photos: {
     label: "Photos",
     functions: "—",
@@ -160,7 +167,7 @@ export const SUBPROCESS_META: Record<
   },
   embedding: {
     label: "Embedding",
-    functions: "10",
+    functions: "8",
     cost: "free",
     blurb: "Re-vectorize the place so search and recall see the new text.",
   },

@@ -1,18 +1,25 @@
-// The eleven Crenup subfunctions, and which of the two flows uses each.
+// The nine Crenup steps, and which of the two flows runs each.
 //
-// TWO SEQUENCES — not one global enum. Main §8.4:
-//   CREATE (ONE FUNCTION, awaits five): 1 Seed → 2 Pulse → 3 Details
-//     → 4 Description → 5 Embedding
-//   ENRICH (TEN FUNCTIONS): 1 Pulse → 2 Details → 3 Serp → 4 Links
-//     → 5 Social → 6 Images → 7 Menu → 8 Reviews
-//     → 9 Description
-//     → 10 Embedding
+// ONE LADDER, TWO FLOWS (Main §8.4 v4, MESITA-2027):
+//   0 Seed → 1 Details → 2 Serp → 3 Links → 4 Social
+//     → 5 Reviews → 6 Images → 7 Description → 8 Embedding
+//   CREATE runs 0, 1, 7, 8.   ENRICH runs 1–8.
+//
+// THE NUMBER IS THE LADDER'S, NOT THE FLOW'S. This file used to number each
+// flow from 1 by position, so `details` was chip 3 on Create and chip 2 on
+// Enrich — two answers to "which step is this", and a third ladder beside the
+// two in §8.4. Numbers now come from `CRENUP_STEPS`, the shared vocabulary,
+// so a reorder there moves these chips and cannot desync.
+//
 // Chips are short jump labels. Category/Tags/Presentation and Mesita
 // Name/Summary/Embeddings live on the Functions accordion blurbs.
-// Pulse is 2 on Create and 1 on Enrich. Embedding is 5 on Create and 10
-// on Enrich. Seed is Create 1 — never a 0. Chip numbers are derived from
-// each flow's order so a shared `chip` string cannot invent a third ladder.
-// Engine high-water stays Enrich 1–10 (Created floor 0 is persistence).
+//
+// Pulse and Menu were steps until MESITA-2027 and are gone: liveness is a
+// subprocess of Details (both always came off one Google Place Details call,
+// so the split bought a rung and no information), and the menu is operator
+// input the Enricher never derived.
+
+import { CRENUP_STEPS } from "@/lib/state-vocabulary";
 
 export type CrenupFlow = "create" | "enrich";
 
@@ -27,67 +34,56 @@ export type CrenupChip = {
 export type CrenupStepSpec = {
   id: string;
   key: string;
-  /** Unnumbered 8.4 name. chipsFor prefixes 1…n per flow. */
+  /** Unnumbered 8.4 name, straight from the shared vocabulary. */
   name: string;
+  number: number;
   flows: readonly CrenupFlow[];
 };
 
-export const CRENUP_STEP_SPECS: readonly CrenupStepSpec[] = [
-  { id: "f-seed", key: "seed", name: "Seed", flows: ["create"] },
-  { id: "f-pulse", key: "pulse", name: "Pulse", flows: ["create", "enrich"] },
-  { id: "f-details", key: "details", name: "Details", flows: ["create", "enrich"] },
-  { id: "f-serp", key: "serp", name: "Serp", flows: ["enrich"] },
-  { id: "f-links", key: "links", name: "Links", flows: ["enrich"] },
-  { id: "f-social", key: "social", name: "Social", flows: ["enrich"] },
-  { id: "f-images", key: "images", name: "Images", flows: ["enrich"] },
-  { id: "f-menu", key: "menu", name: "Menu", flows: ["enrich"] },
-  { id: "f-reviews", key: "reviews", name: "Reviews", flows: ["enrich"] },
-  {
-    id: "f-description",
-    key: "description",
-    name: "Description",
-    flows: ["create", "enrich"],
-  },
-  {
-    id: "f-embedding",
-    key: "embedding",
-    name: "Embedding",
-    flows: ["create", "enrich"],
-  },
-];
+/** Which flows run a given step. The ladder itself lives in shared/. */
+const FLOWS_BY_KEY: Readonly<Record<string, readonly CrenupFlow[]>> = {
+  seed: ["create"],
+  details: ["create", "enrich"],
+  serp: ["enrich"],
+  links: ["enrich"],
+  social: ["enrich"],
+  reviews: ["enrich"],
+  images: ["enrich"],
+  description: ["create", "enrich"],
+  embedding: ["create", "enrich"],
+};
 
-const CREATE_ORDER = [
-  "seed",
-  "pulse",
-  "details",
-  "description",
-  "embedding",
-] as const;
+export const CRENUP_STEP_SPECS: readonly CrenupStepSpec[] = CRENUP_STEPS.map(
+  (step) => {
+    const flows = FLOWS_BY_KEY[step.key];
+    if (!flows) throw new Error(`Crenup step with no flows: ${step.key}`);
+    return {
+      id: `f-${step.key}`,
+      key: step.key,
+      name: step.label,
+      number: step.n,
+      flows,
+    };
+  },
+);
 
 function rowByKey(key: string): CrenupStepSpec {
   const row = CRENUP_STEP_SPECS.find((s) => s.key === key);
-  if (!row) throw new Error(`unknown Crenup subfunction: ${key}`);
+  if (!row) throw new Error(`unknown Crenup step: ${key}`);
   return row;
 }
 
-function numberChips(keys: readonly string[]): CrenupChip[] {
-  return keys.map((key, i) => {
-    const s = rowByKey(key);
-    const number = i + 1;
-    return {
-      href: `#${s.id}`,
-      number,
-      name: s.name,
-      label: `${number} ${s.name}`,
-    };
-  });
+function chip(s: CrenupStepSpec): CrenupChip {
+  return {
+    href: `#${s.id}`,
+    number: s.number,
+    name: s.name,
+    label: `${s.number} ${s.name}`,
+  };
 }
 
 export function chipsFor(flow: CrenupFlow): CrenupChip[] {
-  if (flow === "create") return numberChips(CREATE_ORDER);
-  return numberChips(
-    CRENUP_STEP_SPECS.filter((s) => s.flows.includes("enrich")).map((s) => s.key),
-  );
+  return CRENUP_STEP_SPECS.filter((s) => s.flows.includes(flow)).map(chip);
 }
 
 export function flowTag(flows: readonly CrenupFlow[]): string {
