@@ -8,7 +8,7 @@
 // object literal in the function's return statement, so TypeScript already
 // guarantees completeness; test behavior instead.
 import { assertEquals } from "jsr:@std/assert@1";
-import { classifyLinks } from "./channels.ts";
+import { classifyLinks, pickWebsite } from "./channels.ts";
 import type { ChannelKey } from "./channels.ts";
 
 Deno.test("classifyLinks: retired hosts (tiktok/tripadvisor/yelp) never leak into website_url", () => {
@@ -68,4 +68,81 @@ Deno.test("classifyLinks: each known host maps to its declared channel", () => {
   for (const [url, expectKey] of fixtures) {
     assertEquals(classifyLinks([url])[expectKey], url, `${url} -> ${expectKey}`);
   }
+});
+
+Deno.test("pickWebsite: a delivery aggregator is never the official website", () => {
+  // MESITA-2030, from production: the Resolver handed back an Uber Eats store
+  // page for `website_url` and the old hand-typed blocklist — which named
+  // opentable.com but not ubereats.com — let it through. The place ended up
+  // with the SAME store under `website_url` and `uber_eats_url`.
+  //
+  // Asserted ALONE, not mixed with a real site: pickWebsite returns the first
+  // ACCEPTED candidate, so a real site later in the array would mask a
+  // regression here exactly the way it masked one in the retired-host test
+  // above.
+  assertEquals(
+    pickWebsite(["https://www.ubereats.com/mx-en/store/dos-amores-brunch/EXgN"]),
+    null,
+  );
+  assertEquals(pickWebsite(["https://www.rappi.com.mx/restaurantes/12345"]), null);
+  assertEquals(pickWebsite(["https://www.doordash.com/store/foo-123"]), null);
+  assertEquals(pickWebsite(["https://resy.com/cities/mty/some-place"]), null);
+  assertEquals(pickWebsite(["https://www.opentable.com.mx/r/some-place"]), null);
+
+  // And the aggregator still loses to a real site that comes after it.
+  assertEquals(
+    pickWebsite([
+      "https://www.ubereats.com/mx-en/store/dos-amores-brunch/EXgN",
+      "https://dosamores.mx",
+    ]),
+    "https://dosamores.mx/",
+  );
+});
+
+Deno.test("pickWebsite: every matchChannel host is refused, by derivation", () => {
+  // The guard that stops this from drifting again. pickWebsite no longer keeps
+  // its own copy of the channel hosts — it asks matchChannel — so a channel
+  // added there is blocked here without anyone editing this file. One case per
+  // channel proves the derivation is wired, not that the host table is right
+  // (that is the "each known host maps to its declared channel" test above).
+  for (
+    const url of [
+      "https://www.instagram.com/someplace",
+      "https://www.facebook.com/someplace",
+      "https://x.com/someplace",
+      "https://www.threads.net/@someplace",
+      "https://www.reddit.com/r/someplace",
+      "https://wa.me/5214441653308",
+      "https://www.opentable.com/r/someplace",
+      "https://resy.com/cities/mty/someplace",
+      "https://www.ubereats.com/mx/store/someplace/abc",
+      "https://didifood.com.mx/store/someplace",
+      "https://maps.google.com/?cid=123",
+    ]
+  ) {
+    assertEquals(pickWebsite([url]), null, `should be refused as a website: ${url}`);
+  }
+
+  // A host nothing claims is still a website — the point of the function.
+  assertEquals(pickWebsite(["https://dosamores.mx/menu"]), "https://dosamores.mx/menu");
+});
+
+Deno.test("classifyLinks: an aggregator with no Mesita column is not a website either", () => {
+  // The OTHER website door. classifyLinks is the create path — it bags a
+  // place's links into columns — and it guarded website_url only against
+  // matchChannel hosts and retired socials. Rappi is neither, so it was
+  // landing in website_url the same way Uber Eats was landing there via
+  // pickWebsite. Both doors now ask one predicate (MESITA-2030).
+  assertEquals(classifyLinks(["https://www.rappi.com.mx/restaurantes/12345"]).website_url, null);
+  assertEquals(classifyLinks(["https://www.doordash.com/store/foo-123"]).website_url, null);
+  assertEquals(classifyLinks(["https://es.wikipedia.org/wiki/Some_Place"]).website_url, null);
+
+  // Uber Eats keeps its own column rather than being dropped — it IS a
+  // channel, just not the website.
+  const ue = classifyLinks(["https://www.ubereats.com/mx/store/some-place/abc"]);
+  assertEquals(ue.website_url, null);
+  assertEquals(ue.uber_eats_url, "https://www.ubereats.com/mx/store/some-place/abc");
+
+  // A real site still classifies as one.
+  assertEquals(classifyLinks(["https://dosamores.mx"]).website_url, "https://dosamores.mx/");
 });
