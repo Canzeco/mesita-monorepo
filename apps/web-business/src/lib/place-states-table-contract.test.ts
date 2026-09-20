@@ -103,7 +103,7 @@ describe("vocabulary contract", () => {
     expect(TABLE_CODE).not.toContain("factOn");
   });
 
-  // MESITA-1687, reversing MESITA-1637's "the intake states are internal."
+  // MESITA-1687, reversing MESITA-1637's "the Crenup states are internal."
   // The map is back on the wire and back on this table, behind ONE toggle —
   // so the guard is now that the toggle exists, defaults closed, and the
   // eleven functions read through the same shared fold the Place screen
@@ -112,18 +112,21 @@ describe("vocabulary contract", () => {
     expect(TABLE.startsWith('"use client"')).toBe(true);
   });
 
-  it("gates intake behind one toggle, collapsed by default", () => {
+  it("gates Crenup behind one toggle, collapsed by default", () => {
     expect(TABLE_CODE).toContain("useState(false)");
-    expect(TABLE_CODE).toContain("showIntake");
+    expect(TABLE_CODE).toContain("showCrenup");
   });
 
-  it("reads the eleven functions through the shared fold, not a second mapper", () => {
-    expect(TABLE_CODE).toContain("intakeFunctionRows");
-    expect(TABLE_CODE).not.toContain("enrich_pulse");
-    expect(TABLE_CODE).not.toContain("intakePulse");
+  it("reads the nine steps through the shared fold, not a second mapper", () => {
+    expect(TABLE_CODE).toContain("crenupStepRows");
+    // The meter's wire keys, under their CURRENT names (MESITA-2028 renamed
+    // them off `pulse`). Guarding a name nothing uses any more is a test that
+    // can only pass — the point is that the high-water does not leak here.
+    expect(TABLE_CODE).not.toContain("enrich_crenup");
+    expect(TABLE_CODE).not.toContain("enrichCrenup");
   });
 
-  // The two general columns intake used to sit beside. Removing the block is
+  // The two general columns Crenup used to sit beside. Removing the block is
   // right; taking these with it would be the overshoot.
   it("keeps Enriching and Enriched as general columns", () => {
     expect(TABLE_CODE).toContain('"enriching"');

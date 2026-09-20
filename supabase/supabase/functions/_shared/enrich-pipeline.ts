@@ -1,6 +1,6 @@
-// Intaker v2 pipeline plumbing — the place_research stage machine.
+// Enricher v2 pipeline plumbing — the place_research stage machine.
 //
-// The Intaker is a PROCESS (not an agent): a cron-driven pipeline of three
+// The Enricher is a PROCESS (not an agent): a cron-driven pipeline of three
 // Edge Functions over public.place_research:
 //
 //   stage 'research'  → supabase-cron-enrich-place-research   (S1–S4 gather)
@@ -40,6 +40,7 @@ import {
   failResearchRow,
   isEnrichingStage,
   loadClaimedRow,
+  loadRunEntryStage,
   markPlaceGenerating,
   openEnrichmentRun,
   releaseResearchRow,
@@ -64,6 +65,7 @@ export {
   failResearchRow,
   isEnrichingStage,
   loadClaimedRow,
+  loadRunEntryStage,
   markPlaceGenerating,
   openEnrichmentRun,
   releaseResearchRow,

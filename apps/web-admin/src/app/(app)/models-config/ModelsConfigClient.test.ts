@@ -8,22 +8,22 @@ const client = readFileSync(
 );
 const actions = readFileSync(join(__dirname, "actions.ts"), "utf8");
 
-describe("Models page owns Intaker model knobs", () => {
-  it("renders editable Intaker tiers and saves atlas_* via enricher EF", () => {
-    expect(client).toContain("title=\"Intaker\"");
+describe("Models page owns Enricher model knobs", () => {
+  it("renders editable Enricher tiers and saves atlas_* via enricher EF", () => {
+    expect(client).toContain("title=\"Enricher\"");
     expect(client).toContain("QualityPicker");
-    expect(client).toContain("INTAKER_PERPLEXITY_PRESETS");
+    expect(client).toContain("ENRICHER_PERPLEXITY_PRESETS");
     expect(client).toContain("text-embedding-3-small");
-    expect(client).toContain("updateIntakerModelSettings");
+    expect(client).toContain("updateEnricherModelSettings");
     expect(client).toContain("updateModelsConfig");
     expect(client).not.toContain(
-      "Intaker quality tiers and the embedding model live on Intake",
+      "Enricher quality tiers and the embedding model live on Crenup",
     );
   });
 
-  it("loads and writes Intaker settings through dedicated actions", () => {
-    expect(actions).toContain("getIntakerModelSettings");
-    expect(actions).toContain("updateIntakerModelSettings");
+  it("loads and writes Enricher settings through dedicated actions", () => {
+    expect(actions).toContain("getEnricherModelSettings");
+    expect(actions).toContain("updateEnricherModelSettings");
     expect(actions).toContain("updateAtlasConfig");
   });
 });

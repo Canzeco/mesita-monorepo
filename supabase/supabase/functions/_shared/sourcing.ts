@@ -1,4 +1,4 @@
-// Google type → Super Category. Search and Add eligibility is Discovery ›
+// Google type → Family. Search and Add eligibility is Discovery ›
 // Map (`evaluatePlaceForMap`). The exclusive 478-type Google map lives in
 // google-type-super.ts — this file re-exports FamilyKey and maps a type
 // onto zero or one guest Super (`other` → ineligible). The CATEGORY side

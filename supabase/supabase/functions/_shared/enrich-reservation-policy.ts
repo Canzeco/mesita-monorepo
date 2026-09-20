@@ -45,7 +45,7 @@ function isReservationChannel(v: unknown): v is ReservationChannel {
 /**
  * Coerce the app_config.reservations_config jsonb into a usable policy.
  * Anything malformed falls back to the default rather than throwing — a bad row
- * must never stop the Intaker from seeding an endpoint. Legacy whatsapp /
+ * must never stop the Enricher from seeding an endpoint. Legacy whatsapp /
  * instagram entries are dropped (not serving paths since MESITA-839/842).
  */
 export function coerceReservationsPolicy(raw: unknown): ReservationsPolicy {
@@ -123,7 +123,7 @@ export function buildReservationTarget(
 }
 
 /**
- * True when an operator already picked a reservation door. The Intaker must
+ * True when an operator already picked a reservation door. The Enricher must
  * not overwrite any of the five stored keys (phone · whatsapp · instagram ·
  * web · none). Auto-seed remains phone-only.
  */

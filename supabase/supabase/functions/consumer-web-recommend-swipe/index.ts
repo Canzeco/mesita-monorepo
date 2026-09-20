@@ -38,7 +38,7 @@ import {
   loadDiscoveryConfig,
 } from "../_shared/discovery-config.ts";
 import {
-  attachIntakeHighWater,
+  attachCrenupHighWater,
   DISCOVERY_EXTRA_COLUMNS,
 } from "../_shared/discovery-place.ts";
 import { applyDiscoveryFilters, trimToRadius } from "../_shared/discovery-filters.ts";
@@ -143,10 +143,10 @@ Deno.serve(async (req) => {
 
   const ordered = cfg.engines.swipe.ranked
     ? rankSwipeDeck(
-      // The `enriched` gradient (MESITA-1598) needs `intake_high_water`
+      // The `enriched` gradient (MESITA-1598) needs `crenup_high_water`
       // on the row — `profiles` doesn't carry it, so one batched side-read
       // merges it in before ranking. Skipped entirely when ranking is off.
-      await attachIntakeHighWater(
+      await attachCrenupHighWater(
         admin,
         rows as unknown as Record<string, unknown>[],
       ),

@@ -1,11 +1,11 @@
 // Source guard: the FRANCHISE RULE stays in BOTH Mesita Name prompts.
 //
-// The Description function owns the Mesita Name (Intake §A, function 4 on
-// CREATE and function 9 on ENRICH), and it is inferred by a prompt — there is
+// The Description function owns the Mesita Name (Crenup §A, function 4 on
+// CREATE and step 7 on ENRICH), and it is inferred by a prompt — there is
 // no deterministic code path a type error could protect. Two separate prompts
 // write the same field:
 //   * _shared/create-door-profile.ts  — the CREATE door, gate D1
-//   * _shared/enrich-synthesis.ts     — ENRICH function 9
+//   * _shared/enrich-synthesis.ts     — ENRICH step 7
 // A rule that lives only in prose is one careless prompt rewrite from being
 // gone, and the loss is silent: the pipeline keeps running and every chain
 // branch in the city quietly collapses back onto one name.

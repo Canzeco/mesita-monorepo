@@ -1,4 +1,4 @@
-// Map filters — Search only. Super Category + Places scope + Popularity
+// Map filters — Search only. Family + Places scope + Popularity
 // (Google review-count floor). How many is operator `map.pinCount`.
 //
 // THREE NESTED SETS (Pato, 2026-09-05):
@@ -90,7 +90,7 @@ const MAP_MIN_REVIEWS_DEFAULT: MapMinReviews = 0;
 export type MapFilters = {
   /** Which of the three nested sets. Default is the middle ring. */
   placesScope: MapPlacesScope;
-  /** Super Category: the seven real place families; empty = no constraint. */
+  /** Family: the seven real place families; empty = no constraint. */
   familyKeys: FamilyKey[];
   /** Minimum Google reviews. 0 = any. */
   minReviews: MapMinReviews;
@@ -178,7 +178,7 @@ export function mapFiltersAreActive(f: MapFilters): boolean {
   return mapFilterCount(f) > 0;
 }
 
-/** Leaving the default ring, each Super Category, or a Popularity stop, counts as one. */
+/** Leaving the default ring, each Family, or a Popularity stop, counts as one. */
 export function mapFilterCount(f: MapFilters): number {
   const scope = f.placesScope === MAP_PLACES_SCOPE_DEFAULT ? 0 : 1;
   const popularity = f.minReviews === MAP_MIN_REVIEWS_DEFAULT ? 0 : 1;
@@ -200,7 +200,7 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
   return true;
 }
 
-/** Nested-set + Super Category law. Popularity is the EF's, not this cut. */
+/** Nested-set + Family law. Popularity is the EF's, not this cut. */
 export function applyMapFilters(places: Place[], f: MapFilters): Place[] {
   const next = places.filter((place) => matchesMapFilters(place, f));
   return next.length === places.length ? places : next;

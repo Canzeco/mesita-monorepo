@@ -1,6 +1,6 @@
 // Memo — the consumer AI concierge (consumer-web-ask-memo).
 //
-// Memo is Mesita's third agent (with the Intaker and the Reservationist).
+// Memo is Mesita's third agent (with the Enricher and the Reservationist).
 // One call sends the Discovery system prompt plus the full thread to OpenAI
 // (no Places / Perplexity / catalog tools this pass). See
 // supabase/functions/consumer-web-ask-memo.

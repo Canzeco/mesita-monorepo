@@ -4,6 +4,7 @@ import { ArrowLeft, Store } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PartnerMark } from '@/components/brand/PartnerMark';
 import { PlaceDetailBody } from '@/components/place/PlaceDetailBody';
 import { COLORS } from '@/constants/brand';
 import { apiFetchPlaceDetail } from '@/lib/api/places';
@@ -44,19 +45,14 @@ export default function PlaceDetailScreen() {
           >
             {place?.name ?? 'Place'}
           </Text>
-          {/* MESITA-1954: the disc was a sky blue nobody names (bg-[#0EA5E9]) —
-              partner is a status, not a tier, so it takes the ink token, the
-              same call web's PartnerMark and PlaceSwipeCard:97 made. Nothing
-              collapses: a non-partner header renders NO disc, so presence is
-              the separator, and a filled ink disc carrying a white ✓ is the
-              highest-contrast mark in a bg-card header, not a grey bullet. */}
+          {/* decision: Pato (MESITA-2031, merged after MESITA-1954's own ink-
+              disc fix here) — the verified rosette in partner red, from one
+              file shared with the swipe deck and web. It was a sky disc with
+              a ✓ TEXT GLYPH, so the check's weight and baseline came from the
+              system font; MESITA-1954 had already moved it to an ink disc,
+              which this supersedes with the real shared mark. */}
           {place?.listing_type === 'partner' ? (
-            <View
-              className="size-4 items-center justify-center rounded-full bg-primary"
-              accessibilityLabel="Mesita Partner"
-            >
-              <Text className="text-[9px] font-bold text-white">✓</Text>
-            </View>
+            <PartnerMark size={16} />
           ) : null}
         </View>
       </View>

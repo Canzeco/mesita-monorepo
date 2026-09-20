@@ -8,9 +8,9 @@ import {
   money,
   type CostEstimate,
 } from "./cost-model";
-import type { IntakePrompt } from "./actions";
+import type { CrenupPrompt } from "./actions";
 
-// Intake's page-local layout kit. Structural only — controls come from
+// Crenup's page-local layout kit. Structural only — controls come from
 // `@/components/admin-ui/config`. Five SectionCards own the page; these
 // primitives live *inside* a card. A function is a disclosure row, never a
 // card of its own.
@@ -226,7 +226,7 @@ export function KnobElsewhere({ children }: { children: React.ReactNode }) {
 /**
  * What one model is actually TOLD, rendered read-only.
  *
- * The text arrives on `intakePromptsMeta` from supabase `_shared/intake-prompts.ts`,
+ * The text arrives on `crenupPromptsMeta` from supabase `_shared/crenup-prompts.ts`,
  * which imports the same constants and builders the pipeline calls — so what an
  * operator reads here is what the vendor receives, and there is no copy to drift.
  *
@@ -240,7 +240,7 @@ export function PromptView({
   prompt,
   preset,
 }: {
-  prompt: IntakePrompt;
+  prompt: CrenupPrompt;
   /** The live Perplexity preset, shown only for the steps that spend it. */
   preset?: string;
 }) {

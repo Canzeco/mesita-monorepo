@@ -5,7 +5,7 @@
 export default function PayLoading() {
   return (
     <>
-      <span className="sr-only">Loading Mesita Payments…</span>
+      <span className="sr-only">Loading Online Payments…</span>
       <div aria-hidden="true" className="flex flex-col gap-3">
         <div className="bg-muted h-5 w-4/5 max-w-xl animate-pulse rounded-md motion-reduce:animate-none" />
         <div className="border-border overflow-hidden rounded-2xl border px-4 py-3">

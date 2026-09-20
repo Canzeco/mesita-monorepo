@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BadgeCheck,
   Clock,
   Facebook,
   Globe,
@@ -11,6 +10,7 @@ import {
   Star,
 } from "lucide-react";
 
+import { PartnerMark } from "@/components/consumer/PartnerMark";
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { Spinner } from "@/components/shared";
 import type { PlaceDetail } from "@/lib/mock/place";
@@ -71,7 +71,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             label={`${googleCount} Google`}
             icon={
               <Star
-                className="h-3 w-3 fill-foreground text-muted-foreground"
+                className="fill-foreground text-muted-foreground h-3 w-3"
                 strokeWidth={0}
               />
             }
@@ -79,17 +79,17 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
           <ProfileStat
             value={igFollowers}
             label="Instagram"
-            icon={<Instagram className="h-3 w-3 text-muted-foreground" />}
+            icon={<Instagram className="text-muted-foreground h-3 w-3" />}
           />
           <ProfileStat
             value={fbFollowers}
             label="Facebook"
-            icon={<Facebook className="h-3 w-3 text-muted-foreground" />}
+            icon={<Facebook className="text-muted-foreground h-3 w-3" />}
           />
         </div>
       </div>
 
-      {/* decision: Pato — when the Intaker is still building the profile an
+      {/* decision: Pato — when the Enricher is still building the profile an
           "Enriching" chip leads the row; then verification · category ·
           price · zone · distance · hours · reward (swipe-style tags on
           light surface). MESITA-451: moved here off the header title.
@@ -97,13 +97,13 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
       <div className="flex flex-wrap items-center gap-1.5">
         {place.is_enriching && (
           <span
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-foreground"
+            className="border-border bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
             aria-live="polite"
           >
             <Spinner
               size="sm"
               label="Enriching"
-              className="h-3 w-3 border-border border-t-emerald-600"
+              className="border-border h-3 w-3 border-t-emerald-600"
             />
             Enriching
           </span>
@@ -117,10 +117,11 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
         <ProfileMetaChip>
           {partner ? (
             <>
-              <BadgeCheck
-                className="text-primary h-3.5 w-3.5 shrink-0 fill-current"
-                strokeWidth={2}
-              />
+              {/* Same mark as the swipe chip and the title, from one file. It
+                  was lucide `BadgeCheck` with `fill-current text-primary`:
+                  fill and stroke the same colour, so the check vanished into
+                  the blob (MESITA-2031). */}
+              <PartnerMark className="text-partner h-3.5 w-3.5 shrink-0" />
               <span className="font-semibold">Partner</span>
             </>
           ) : (

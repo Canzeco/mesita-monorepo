@@ -34,9 +34,9 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "firecrawl",
     label: "Firecrawl",
-    impact: "Intaker link discovery (S4 gather) — fails SOFT, returns no links",
+    impact: "Enricher link discovery (S4 gather) — fails SOFT, returns no links",
   },
-  { id: "apify", label: "Apify", impact: "Intaker Instagram/actor scraping" },
+  { id: "apify", label: "Apify", impact: "Enricher Instagram/actor scraping" },
   {
     id: "twilio",
     label: "Twilio",
@@ -51,7 +51,7 @@ export const KNOWN_PROBES: ReadonlyArray<{
     id: "openai",
     label: "OpenAI",
     impact:
-      "Intaker text/vision + Memo + Ojo proof verification (MESITA-1034, off by default)",
+      "Enricher text/vision + Memo + Ojo proof verification (MESITA-1034, off by default)",
   },
   {
     id: "stripe",
@@ -61,12 +61,12 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "perplexity",
     label: "Perplexity",
-    impact: "Memo answers + Intaker S5 (Resolver link select)",
+    impact: "Memo answers + Enricher S5 (Resolver link select)",
   },
   {
     id: "google-places",
     label: "Google Places",
-    impact: "Identity spine for Atlas and the Intaker",
+    impact: "Identity spine for Atlas and the Enricher",
   },
 ];
 

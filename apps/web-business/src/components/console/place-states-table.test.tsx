@@ -51,7 +51,7 @@ describe("rows and columns", () => {
     expect((html.match(/<tr/g) ?? []).length).toBe(3); // 1 header row + 2 places
   });
 
-  it("has ONE header row when the intake toggle is closed", () => {
+  it("has ONE header row when the Crenup toggle is closed", () => {
     // MESITA-1651: the group row existed because the vocabulary was TWO
     // boxes; a heading spanning every column of a group of one named nothing
     // the column heads did not already say. MESITA-1687 brings the second
@@ -59,7 +59,7 @@ describe("rows and columns", () => {
     // there is still exactly one group, so the group row must stay gone.
     const html = render();
     expect(html).not.toContain("General States");
-    expect(html).not.toContain("Intake States");
+    expect(html).not.toContain("Crenup States");
     expect(html).not.toContain('scope="colgroup"');
     // Two <tr> in the whole table: one header row, one place.
     expect((html.match(/<tr/g) ?? []).length).toBe(2);
@@ -220,22 +220,22 @@ describe("actions", () => {
   });
 });
 
-// MESITA-1687, reversing MESITA-1637's "the intake states are internal."
+// MESITA-1687, reversing MESITA-1637's "the Crenup states are internal."
 // The map is back on the wire and back on this table, behind ONE toggle —
 // collapsed by default, so a plain render (no click, no client hydration —
 // renderToStaticMarkup runs neither) proves the closed state.
-describe("intake toggle, collapsed by default", () => {
+describe("Crenup toggle, collapsed by default", () => {
   it("shows the toggle and hides the eleven functions until it is opened", () => {
     const html = render();
-    expect(html).toContain("Show Intake states");
-    expect(html).not.toContain("Intake States");
+    expect(html).toContain("Show Crenup states");
+    expect(html).not.toContain("Crenup States");
     for (const label of ["Seed", "Serp", "Embedding", "Description", "Reviews"]) {
       expect(html).not.toContain(label);
     }
     expect(html).toContain('aria-expanded="false"');
   });
 
-  // Enriching/Enriched are general columns, not intake — they must render
+  // Enriching/Enriched are general columns, not Crenup — they must render
   // with the toggle closed, same as before this reversal.
   it("still renders Enriching and Enriched with the toggle closed", () => {
     const html = render({ places: [place({ enriching: true, enriched: false })] });

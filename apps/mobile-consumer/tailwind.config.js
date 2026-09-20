@@ -65,6 +65,11 @@ module.exports = {
         // ── RESERVED SIGNALS: the only chroma left ─────────────────────────
         // Red is the one thing that says "this destroys something".
         destructive: { DEFAULT: '#e6000f', foreground: '#ffffff' },
+        // RESERVED (MESITA-2031, merged after this file went achromatic): the
+        // Mesita Partner badge / verified rosette. A SECOND red on purpose —
+        // `destructive` is reserved for destruction, and a badge meaning
+        // "this place is one of ours" must not borrow it by accident.
+        partner: { DEFAULT: '#d41f37', foreground: '#ffffff' },
         border: '#dbdbdb',
         input: '#efefef',
         ring: '#171717',

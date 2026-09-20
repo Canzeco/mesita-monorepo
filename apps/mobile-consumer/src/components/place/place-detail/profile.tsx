@@ -1,5 +1,4 @@
 import {
-  BadgeCheck,
   Clock,
   Globe,
   MapPin,
@@ -7,6 +6,7 @@ import {
 } from 'lucide-react-native';
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import { PartnerMark } from '@/components/brand/PartnerMark';
 import { COLORS } from '@/constants/brand';
 import { formatPlacePriceChip } from '@/lib/place-price';
 import type { PlaceDetail } from '@/lib/types/place-detail';
@@ -82,17 +82,10 @@ export function ProfileSummary({
         <ProfileMetaChip>
           {isPartner ? (
             <>
-              {/* FILLED ink badge vs the OUTLINE globe below. Sky-vs-mauve was
-                  hue alone, and #775254 was already the greyscale target, so the
-                  Partner mark was the only one that moved — the two could land
-                  on one value. Keeping `fill` leaves a solid silhouette against
-                  a hollow one, and matches the ink/muted pairing meta.tsx gives
-                  the same fact in VerificationBox. */}
-              <BadgeCheck
-                color={COLORS.foreground}
-                size={14}
-                fill={COLORS.foreground}
-              />
+              {/* Was lucide BadgeCheck with fill and stroke both #0ea5e9 —
+                  the check vanished into the blob (MESITA-2031). The chip
+                  already says "Mesita Partner", so the mark is decorative. */}
+              <PartnerMark size={14} label={null} />
               <Text className="text-[11.5px] font-semibold text-foreground">
                 Mesita Partner
               </Text>

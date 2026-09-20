@@ -54,7 +54,7 @@ jobs:
       # of the three deletions (folder · config.toml · cloud). Idempotent:
       # a name already gone is a skip, not a failure. check-web-submit-bill
       # was removed earlier (MESITA-1093).
-      # MESITA-1362: Intake Sourcing get/update EFs — unread after Map became
+      # MESITA-1362: Crenup Sourcing get/update EFs — unread after Map became
       # the Search/Add gate.
       # MESITA-1728: the nineteen admin config functions MESITA-1724 collapsed
       # into admin-web-get-config + admin-web-update-config. They were left OUT

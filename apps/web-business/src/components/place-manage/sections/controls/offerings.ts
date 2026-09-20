@@ -195,7 +195,7 @@ export type LadderInput = {
     credits: boolean;
     pickup: boolean;
     delivery: boolean;
-    /** Observed by the Intaker, not declared by the operator, and null when
+    /** Observed by the Enricher, not declared by the operator, and null when
      *  the payload did not carry it. `false` here would be a claim nobody
      *  checked — see the reservations row. */
     reservations: boolean | null;
@@ -242,7 +242,7 @@ export type LadderInput = {
 
 const NEEDS_PARTNER = "Needs Mesita Partner";
 const NEEDS_STRIPE = "Needs an active Stripe account";
-const NEEDS_PAY = "Needs Mesita Payments";
+const NEEDS_PAY = "Needs Online Payments";
 // The product's own switch is off, one level up in Products. Not "Needs
 // Mesita Pay in Products": the Reason chip is `w-[9.5rem] sm:w-[11rem]` and
 // that overflows it, and the row's own label already says Mesita Pay — the
@@ -430,7 +430,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       // NO SWITCH HERE, but the operator does own the fact (MESITA-1737).
       // The control is the ReservationsCard's ChannelPicker further down this
       // page — pick a channel and `reservations_enabled` follows it, pick
-      // "Not" and it goes false. The Intaker's `reservationsLikely` is only a
+      // "Not" and it goes false. The Enricher's `reservationsLikely` is only a
       // SEED now, and only survives while no channel has been picked; a
       // trigger on `place_profiles` states the fact once so a contents re-run
       // can no longer overwrite an answer. A switch here would still return
@@ -537,14 +537,14 @@ function disagreementOf(
         row.state.needs === NEEDS_ORG_PAY;
       return {
         reason: `You asked for ${row.label}, but guests do not get it yet — ${row.state.needs.toLowerCase()}.`,
-        fixLabel: "Mesita Payments",
+        fixLabel: "Online Payments",
         fix: inSetup ? "setup" : null,
       };
     }
     if (row.state.kind === "blocked") {
       return {
         reason: `You asked for ${row.label}, but Stripe turned it off.`,
-        fixLabel: "Mesita Payments",
+        fixLabel: "Online Payments",
         fix: "setup",
       };
     }
@@ -732,7 +732,7 @@ export type TopPrerequisite =
  * never says "below". It names WHO can re-join instead, which is true on all
  * six.
  *
- * The Stripe line is Mesita Payments' concern, so it only shows once that
+ * The Stripe line is Online Payments' concern, so it only shows once that
  * switch is known ON: with it off (or unknown) the rung already says "Off in
  * Products" / "Checking…", and a page that nags a Partner-only place to
  * connect Stripe would be re-selling the add-on.

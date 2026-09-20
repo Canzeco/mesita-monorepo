@@ -45,28 +45,36 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-// THE ACHROMATIC RE-SEPARATION (MESITA-1954). These three tones used to differ
-// in HUE ALONE — sky for "Mesita Partner", amber for an unclaimed "Web listing",
-// slate for the Created/Updated dates — with bg/border/text/dot lightnesses near
-// identical by construction. Greyed in place they would have rendered as one
-// interchangeable chip: a status claim and a timestamp reading as peers, and the
-// single most load-bearing fact about a place (claimed vs not) lost. That is the
-// exact failure the web repaint shipped. The distinction now rides on FILL and
-// WEIGHT, never on two similar greys:
-//   solid   — the affirmative fact (Mesita Partner): ink pill, white label, filled dot.
-//   outline — a real state nobody must act on (Web listing): hairline pill, hollow dot.
-//   quiet   — metadata, not status (Created / Updated): muted fill, no visible
-//             hairline, muted label.
+// THREE TONES, TWO DIFFERENT LAWS NOW. MESITA-1954 achromatized all three —
+// sky for "Mesita Partner", amber for an unclaimed "Web listing", slate for
+// Created/Updated dates — because in hue alone they were three near-identical
+// lightnesses, and greyed in place they would have rendered as one
+// interchangeable chip: a status claim and a timestamp reading as peers.
+// MESITA-2031 (Pato, merged after, "verified icon... but RED") reversed that
+// for Partner specifically: it is now RESERVED chroma, the same clause the
+// Class metals ride — a tier the product names out loud. `amber` and `slate`
+// were never touched by that decision and stay under the original achromatic
+// re-separation, on FILL and WEIGHT rather than a second and third hue:
+//   partner — RESERVED (MESITA-2031): tinted from --partner, the one status
+//             this app now colours on purpose.
+//   amber   — a real state nobody must act on (Web listing): hairline pill,
+//             hollow dot. Renamed in intent, not in key, from web's `amber`.
+//   slate   — metadata, not status (Created / Updated): muted fill, no
+//             visible hairline, muted label.
 const PILL_TONES = {
-  solid: {
-    bg: COLORS.foreground,
-    text: COLORS.primaryForeground,
-    border: COLORS.foreground,
-    dot: COLORS.primaryForeground,
+  // MESITA-2031: the partner row was `sky` — the last of the four colours
+  // this one fact wore. Tinted from `--partner` (#d41f37); `text` is
+  // pink-800-dark enough to clear AA on its own wash. A filled dot, like the
+  // achromatic `solid` tone it replaced.
+  partner: {
+    bg: '#fef2f3',
+    text: '#9f1626',
+    border: '#f8ccd1',
+    dot: COLORS.partner,
     dotBorder: 'transparent',
     hollowDot: false,
   },
-  outline: {
+  amber: {
     bg: COLORS.card,
     text: COLORS.foreground,
     border: COLORS.border,
@@ -74,7 +82,7 @@ const PILL_TONES = {
     dotBorder: COLORS.foreground,
     hollowDot: true,
   },
-  quiet: {
+  slate: {
     bg: COLORS.muted,
     text: COLORS.mutedForeground,
     border: COLORS.muted,
@@ -119,15 +127,15 @@ export function VerificationBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Verification"
       icon={isPartner ? BadgeCheck : CircleHelp}
-      // Partner-blue vs unverified-amber grey out to two mid-greys a 16px glyph
-      // at strokeWidth 1.75 cannot hold apart, so the header now carries the
-      // fact by WEIGHT (ink = present, muted = absent) on top of the glyph swap.
-      iconColor={isPartner ? COLORS.foreground : COLORS.mutedForeground}
+      // MESITA-2031 reserved partner's own chroma; the unverified state stays
+      // under this file's achromatic re-separation, at the same foreground
+      // weight as the `amber` pill's hairline + hollow dot.
+      iconColor={isPartner ? COLORS.partner : COLORS.foreground}
     >
       <View className="flex-row flex-wrap gap-2">
         <MetaPill
           label={isPartner ? 'Mesita Partner' : 'Web listing'}
-          tone={isPartner ? 'solid' : 'outline'}
+          tone={isPartner ? 'partner' : 'amber'}
         />
       </View>
       <Text className="text-xs leading-relaxed text-muted-foreground">
@@ -166,8 +174,8 @@ export function DatesBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Dates" icon={Clock} iconColor={COLORS.mutedForeground}>
       <View className="flex-row flex-wrap gap-2">
-        {created ? <MetaPill label={`Created · ${created}`} tone="quiet" /> : null}
-        {updated ? <MetaPill label={`Updated · ${updated}`} tone="quiet" /> : null}
+        {created ? <MetaPill label={`Created · ${created}`} tone="slate" /> : null}
+        {updated ? <MetaPill label={`Updated · ${updated}`} tone="slate" /> : null}
       </View>
     </Box>
   );

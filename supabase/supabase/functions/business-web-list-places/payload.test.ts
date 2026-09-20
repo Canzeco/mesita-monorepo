@@ -103,16 +103,16 @@ Deno.test("the enrichment column is selected — it feeds enrichFunctions", () =
 // point.
 //
 // It began as `assert(!SRC.includes("functions:"))` — right while the console
-// row read `Intake 3/10`. MESITA-1608 flipped it to REQUIRE the map, because
-// a states matrix with one column per intake function cannot be fed by a
+// row read `Crenup 3/8`. MESITA-1608 flipped it to REQUIRE the map, because
+// a states matrix with one column per Crenup function cannot be fed by a
 // high-water that stops at the first gap. MESITA-1637 flipped it back:
-// Pato, 2026-09-07, "the intake states are internal."
+// Pato, 2026-09-07, "the Crenup states are internal."
 //
 // MESITA-1687 reverses that reversal. Pato, 2026-09-08: ship it to everyone;
 // the console's own collapse toggle (default hidden) is the thing that keeps
 // it out of sight now, not a server-side withhold.
 
-Deno.test("the per-function intake map DOES ship, guarded", () => {
+Deno.test("the per-function Crenup map DOES ship, guarded", () => {
   assert(
     CODE.includes("enrichFunctions"),
     "the wire key must be back, camelCase like every other field on this row",
@@ -128,13 +128,15 @@ Deno.test("the METER goes too — it was feeding a discarded value", () => {
   // generalHeaderFacts, which computes Enriched from it, and then overrode
   // that with the EF's own isPlaceEnriched answer so the list agrees with the
   // Place screen it links to. Enriching never read the meter at all.
-  assert(!CODE.includes("intakePulse"), "the high-water must not ship");
-  assert(!CODE.includes("intakeTotal"), "nor its denominator");
-  assert(!CODE.includes("pulseOf("), "and the reader has no caller here");
+  // Named under the CURRENT identifiers (MESITA-2028 took `pulse` off the
+  // meter). A guard on a retired name passes for the wrong reason.
+  assert(!CODE.includes("enrichCrenup"), "the high-water must not ship");
+  assert(!CODE.includes("CRENUP_TOTAL"), "nor its denominator");
+  assert(!CODE.includes("crenupOf("), "and the reader has no caller here");
 });
 
 Deno.test("Enriching and Enriched survive, off the ROW", () => {
-  // The two general columns that intake used to sit beside. They are facts
+  // The two general columns that Crenup used to sit beside. They are facts
   // about the place; losing them with the machinery would be the overshoot.
   assert(CODE.includes("isPlaceEnriching("), "Enriching stays");
   assert(CODE.includes("isPlaceEnriched("), "Enriched stays");
@@ -200,7 +202,7 @@ Deno.test("the direct-owner filter spares rows I hold", () => {
 Deno.test("pool rows withhold the facts a guest has no claim to", () => {
   // getAuthedUser accepts ANY valid bearer token and the backend is a
   // singleton, so every consumer account can call scope=public. Ownership
-  // proof, plan, and now the intake map on a place nobody holds are withheld
+  // proof, plan, and now the Crenup map on a place nobody holds are withheld
   // there — as `undefined`, which renders "?", never a false "no". Pato's
   // "ship it to everyone" (MESITA-1687) meant every BUSINESS browser, and
   // memberScope is exactly that gate — the same one partner/verified already

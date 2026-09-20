@@ -206,9 +206,9 @@ Deno.test("validatePlaceProfilePatch: rejects a hallucinated key or wrong-typed 
 Deno.test("validatePlaceProfilePatch: accepts a real place_profiles.enrichment patch", () => {
   const res = validatePlaceProfilePatch({
     enrichment: {
-      functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+      functions: { details: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
       highWater: 1,
-      blockedAt: { key: "details", index: 2, state: "missing" },
+      blockedAt: { key: "serp", index: 2, state: "missing" },
     },
   });
   assert(res.ok);

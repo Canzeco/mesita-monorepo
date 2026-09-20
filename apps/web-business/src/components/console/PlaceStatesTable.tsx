@@ -25,16 +25,16 @@
 // box — decides which those are.
 //
 // NOTHING HERE COMPUTES A STATE. `generalHeaderFacts()` and
-// `intakeFunctionRows()` already exist in this app and already answer these
+// `crenupStepRows()` already exist in this app and already answer these
 // exact questions for the Place screen. Porting web-admin's `factOn` would
 // have been a fourth mapper for one question, and its trailing `return false`
 // means a fact nobody wired renders "no" forever, with total confidence.
 //
-// INTAKE IS BACK, BEHIND ONE TOGGLE (MESITA-1687, reversing MESITA-1637's
-// "the intake states are internal"). Pato, 2026-09-08: ship the per-function
+// CRENUP IS BACK, BEHIND ONE TOGGLE (MESITA-1687, reversing MESITA-1637's
+// "the Crenup states are internal"). Pato, 2026-09-08: ship the per-function
 // map to every business browser again — the toggle is what keeps it out of
 // sight by default, not a server-side withhold, so "internal" is now a UI
-// default rather than a wire-level guarantee. `showIntake` starts `false`:
+// default rather than a wire-level guarantee. `showCrenup` starts `false`:
 // the eleven functions answer an operator question most managers never ask,
 // and a collapsed toggle keeps the matrix at its MESITA-1651 width until
 // someone actually wants the detail. This file has to be a Client Component
@@ -43,7 +43,7 @@
 // plain Record of already-rendered nodes, because a function cannot cross
 // the server/client boundary but a rendered element can.
 //
-// What SURVIVES from intake regardless of the toggle is the general pair,
+// What SURVIVES from Crenup regardless of the toggle is the general pair,
 // Enriching and Enriched: those are facts about the PLACE, not about our
 // machinery. Neither needs the map — Enriching is its own boolean and
 // Enriched is the EF's `isPlaceEnriched(enriched_at)` answer, read straight
@@ -61,12 +61,12 @@ import { CountCell, StateCell } from "@/components/console/StateCell";
 import { placeHref } from "@/lib/console-routes";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import { generalHeaderFacts } from "@/components/place-manage/place-header-state";
-import { intakeFunctionRows } from "@/components/place-manage/sections/state-enrichment";
+import { crenupStepRows } from "@/components/place-manage/sections/state-enrichment";
 import {
   GENERAL_STATE_FACTS,
-  INTAKE_FUNCTIONS,
+  CRENUP_STEPS,
   STATE_FACT_FALSE_TONE,
-  intakeFunctionLabel,
+  crenupStepLabel,
   type GeneralStateKey,
 } from "@/lib/state-vocabulary";
 import {
@@ -121,16 +121,16 @@ const GENERAL_COLUMNS = GENERAL_COLUMN_ORDER.map((key) => ({
   label: LABEL_BY_KEY[key] ?? key,
 }));
 
-/** The eleven Intake functions, 0. Seed … 10. Embedding — same keys and
- *  order the single-place Intake States box uses, so a manager who expands
+/** The eleven Crenup functions, 0. Seed … 10. Embedding — same keys and
+ *  order the single-place Crenup States box uses, so a manager who expands
  *  both never sees them disagree. */
-const INTAKE_COLUMNS = INTAKE_FUNCTIONS.map((f) => ({
+const CRENUP_COLUMNS = CRENUP_STEPS.map((f) => ({
   key: f.key,
-  label: intakeFunctionLabel(f.n, f.label),
+  label: crenupStepLabel(f.n, f.label),
 }));
 
 /** Sortable columns: the identity column by name, plus every general state
- *  column. Intake columns stay unsorted — an operator question, not a list
+ *  column. Crenup columns stay unsorted — an operator question, not a list
  *  order anyone asked for. */
 type SortKey = "name" | GeneralStateKey;
 type SortDir = "asc" | "desc";
@@ -259,7 +259,7 @@ export function PlaceStatesTable({
 }: {
   places: ConsolePlace[];
   /** The action cell, INJECTED as already-rendered nodes rather than a
-   *  function — this component is now a Client Component (the intake toggle
+   *  function — this component is now a Client Component (the Crenup toggle
    *  needs `useState`), and a function prop cannot cross the server/client
    *  boundary the way a rendered element can. The caller (a Server
    *  Component) renders each place's action JSX itself — PlaceHoldButton and
@@ -272,7 +272,7 @@ export function PlaceStatesTable({
   actionsByPlaceId?: Record<string, React.ReactNode>;
 }) {
   const showActions = Boolean(actionsByPlaceId);
-  const [showIntake, setShowIntake] = useState(false);
+  const [showCrenup, setShowCrenup] = useState(false);
   const [sort, setSort] = useState<Sort | null>(null);
 
   function toggleSort(key: SortKey) {
@@ -316,11 +316,11 @@ export function PlaceStatesTable({
       <div className="border-border/60 flex items-center justify-end border-b px-4 py-2">
         <button
           type="button"
-          onClick={() => setShowIntake((v) => !v)}
+          onClick={() => setShowCrenup((v) => !v)}
           className={GHOST_PILL_BUTTON_CLASS}
-          aria-expanded={showIntake}
+          aria-expanded={showCrenup}
         >
-          {showIntake ? "Hide Intake states" : "Show Intake states"}
+          {showCrenup ? "Hide Crenup states" : "Show Crenup states"}
         </button>
       </div>
       {/* A focusable, named scrolling region. Without tabIndex a keyboard user
@@ -334,14 +334,14 @@ export function PlaceStatesTable({
         aria-label="Places and their states"
       >
         {/* 1180px carries identity + nine state columns + the action cell.
-              Expanded, the eleven Intake columns need room of their own — this
+              Expanded, the eleven Crenup columns need room of their own — this
               is the same 20-column width MESITA-1651 measured before trimming
               back down to nine, so the layout that toggle removed is exactly
               the one this toggle brings back, on request instead of always. */}
           <table
             className={cn(
               "w-full border-separate border-spacing-0 text-sm",
-              showIntake ? "min-w-[2200px]" : "min-w-[1180px]",
+              showCrenup ? "min-w-[2200px]" : "min-w-[1180px]",
             )}
           >
           <caption className="sr-only">
@@ -351,12 +351,12 @@ export function PlaceStatesTable({
           <thead className={STATES_HEAD_STICKY}>
             {/* THE GROUP ROW ONLY EXISTS BECAUSE THERE ARE TWO GROUPS
                 (MESITA-1651's own rule, honored on the way back in). It was
-                removed when Intake left the table because a heading spanning
+                removed when Crenup left the table because a heading spanning
                 every column named nothing the column heads did not already
                 say; now that a second group can be on screen, the row
                 distinguishing them earns its place again — collapsed away
                 with the columns it labels. */}
-            {showIntake ? (
+            {showCrenup ? (
               <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
                 <th scope="col" className={cn("px-4 py-2", STATES_COL_HEAD)} />
                 <th
@@ -368,10 +368,10 @@ export function PlaceStatesTable({
                 </th>
                 <th
                   scope="col"
-                  colSpan={INTAKE_COLUMNS.length}
+                  colSpan={CRENUP_COLUMNS.length}
                   className="px-3 py-2 text-center"
                 >
-                  Intake States
+                  Crenup States
                 </th>
                 {showActions ? (
                   <th scope="col" className={cn("px-4 py-2", STATES_ACTION_HEAD)} />
@@ -397,8 +397,8 @@ export function PlaceStatesTable({
                   />
                 </th>
               ))}
-              {showIntake
-                ? INTAKE_COLUMNS.map((c) => (
+              {showCrenup
+                ? CRENUP_COLUMNS.map((c) => (
                     <th key={c.key} scope="col" className="px-3 py-3 text-center font-semibold">
                       {c.label}
                     </th>
@@ -417,7 +417,7 @@ export function PlaceStatesTable({
                 key={place.id}
                 place={place}
                 showActions={showActions}
-                showIntake={showIntake}
+                showCrenup={showCrenup}
                 action={actionsByPlaceId?.[place.id]}
               />
             ))}
@@ -431,18 +431,18 @@ export function PlaceStatesTable({
 function PlaceStatesRow({
   place,
   showActions,
-  showIntake,
+  showCrenup,
   action,
 }: {
   place: ConsolePlace;
   showActions: boolean;
-  showIntake: boolean;
+  showCrenup: boolean;
   action: React.ReactNode;
 }) {
   const href = placeHref(place.id);
   const facts = factsFor(place);
-  const intakeRows = showIntake
-    ? intakeFunctionRows(
+  const crenupRows = showCrenup
+    ? crenupStepRows(
         place.enrichFunctions ?? null,
         typeof place.seeded === "boolean" ? place.seeded : "unknown",
       )
@@ -490,8 +490,8 @@ function PlaceStatesRow({
         </td>
       ))}
 
-      {intakeRows
-        ? intakeRows.map((row) => (
+      {crenupRows
+        ? crenupRows.map((row) => (
             <td key={row.key} className="px-3 py-3 text-center">
               <StateCell
                 label={row.label}

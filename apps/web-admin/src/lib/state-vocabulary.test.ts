@@ -5,9 +5,9 @@ import {
   ENGINELESS_STATE_FACT_KEYS,
   GENERAL_STATE_COUNT,
   GENERAL_STATE_FACTS,
-  INTAKE_FUNCTION_COUNT,
-  INTAKE_FUNCTIONS,
-  intakeFunctionLabel,
+  CRENUP_STEP_COUNT,
+  CRENUP_STEPS,
+  crenupStepLabel,
   STATE_FACT_FALSE_TONE,
   operatorPromotingLevel,
   promotingLevelChip,
@@ -18,12 +18,12 @@ import {
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is twelve general facts plus eleven Intake functions 0–10", () => {
+  it("is twelve general facts plus nine Crenup steps 0–8", () => {
     // Owned joined with MESITA-1608 — somebody holds this place (the claim
     // on `places` since MESITA-1892; an organization before that), which
     // is not the same claim as Verified (having PROVED you hold it).
     expect(GENERAL_STATE_COUNT).toBe(12);
-    expect(INTAKE_FUNCTION_COUNT).toBe(11);
+    expect(CRENUP_STEP_COUNT).toBe(9);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Active",
@@ -38,21 +38,19 @@ describe("state vocabulary", () => {
       "Mesita Pay",
       "Mesita Credits",
     ]);
-    expect(INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`)).toEqual([
+    expect(CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`)).toEqual([
       "0. Seed",
-      "1. Pulse",
-      "2. Details",
-      "3. Serp",
-      "4. Links",
-      "5. Social",
+      "1. Details",
+      "2. Serp",
+      "3. Links",
+      "4. Social",
+      "5. Reviews",
       "6. Images",
-      "7. Menu",
-      "8. Reviews",
-      "9. Description",
-      "10. Embedding",
+      "7. Description",
+      "8. Embedding",
     ]);
-    expect(INTAKE_FUNCTIONS.map((f) => intakeFunctionLabel(f.n, f.label))).toEqual(
-      INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`),
+    expect(CRENUP_STEPS.map((f) => crenupStepLabel(f.n, f.label))).toEqual(
+      CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`),
     );
   });
 

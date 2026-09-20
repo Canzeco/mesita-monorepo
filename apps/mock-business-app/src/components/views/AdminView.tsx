@@ -46,7 +46,7 @@ export function AdminView() {
         <ul className="flex flex-col gap-2">
           {[
             ["Verified", place.verified, "Mesita checked the place is real."],
-            ["Partner", place.partnered, "The place pays. This is the gate the products read."],
+            ["Partner", place.partnered, "The badge, granted by Mesita Ultra alone. NOT \u201Cthe place pays\u201D \u2014 Mesita Pro pays and wears none."],
             ["Promoting", place.promoting, "The place is buying reach in Discovery."],
           ].map(([label, on, why]) => (
             <li key={String(label)} className="border-border flex items-start gap-3 rounded-xl border px-3 py-2.5">

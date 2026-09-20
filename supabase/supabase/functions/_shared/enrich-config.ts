@@ -1,4 +1,4 @@
-// Intaker pipeline: run-time config + shared types.
+// Enricher pipeline: run-time config + shared types.
 //
 // Every knob lives in app_config.enrichment_config (MESITA-1248 fold of the
 // leftover atlas_* scalars) and is read at run time — the DB is the single
@@ -62,9 +62,17 @@ export const COST = {
   googleDetails: 0.025, // Place Details, Enterprise+Atmosphere SKU, $25/1k
   googlePhoto: 0.007, // Place Photo (New) media fetch, $7/1k, per photo (≤10/place)
   googleTimezone: 0.005, // Time Zone API, $5/1k
-  // Apify compass/crawler-google-places: $1.50/1k places + $0.20/place details +
-  // reviews $0.50/100 (maxReviews:100). ~0.30 typical, ~0.65 at 100 reviews.
-  compass: 0.3,
+  // Apify compass/crawler-google-places — PAY PER EVENT, so this is four
+  // prices, not one. The flat `compass: 0.3` that stood here was ~5x the real
+  // spend and could not move when atlasGatherReviews did; its comment priced
+  // reviews at $0.50/100 when Apify bills $0.50 per THOUSAND (MESITA-2032).
+  // Rates are the Free/Bronze tier from Apify's own actor API, matching the
+  // list prices the other Apify lines below use. See googleMapsRunCost.
+  gmapsPlace: 0.004, // event place-scraped, $4/1k
+  gmapsDetails: 0.002, // event place-details-scraped, flat per place
+  gmapsReview: 0.0005, // event review-scraped, $0.50/1k, PER REVIEW
+  gmapsImage: 0.0005, // event image-scraped, $0.50/1k, per image
+  gmapsStart: 0.00005, // event apify-actor-start, once per run
   instagramProfile: 0.0026, // Apify instagram-profile-scraper, $2.60/1k results
   instagramPost: 0.0027, // Apify instagram-post-scraper, $2.70/1k, per post (depth)
   // Identity verification of the IG candidate: the LLM judge plus, worst case,
@@ -107,7 +115,7 @@ export type EnrichConfig = {
   // GATHER caps — how many to PULL per source before anything else.
   gatherGoogleImages: number;
   // Instagram: DEPTH = newest posts pulled. POSTS (likes-keep) follows vision Y
-  // from Intake (≤ depth). Google photos already come best-first — no likes step.
+  // from Crenup (≤ depth). Google photos already come best-first — no likes step.
   gatherInstagramDepth: number;
   gatherInstagramPosts: number;
   // How many Google reviews the Apify Maps scrape pulls (0–googleReviews.max),
@@ -138,7 +146,7 @@ export type EnrichConfig = {
   perRunCostCapUsd: number;
 };
 
-// Read the Intake admin knobs from app_config.enrichment_config (row id=1).
+// Read the Crenup admin knobs from app_config.enrichment_config (row id=1).
 // The select is a single string LITERAL on purpose: supabase-js infers the
 // row type only from a literal argument — anything that widens to `string`
 // falls back to GenericStringError.

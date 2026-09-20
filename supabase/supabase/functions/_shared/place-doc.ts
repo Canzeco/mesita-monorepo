@@ -3,7 +3,7 @@
 // 2026-08-23 21:58 comment for the per-aggregate write-surface count this
 // issue was scoped from: place is the largest of the three remaining
 // aggregates, 29 write call sites across 16 files against THREE surfaces:
-//   • place_profiles   — the Google-observed / Intaker-owned profile
+//   • place_profiles   — the Google-observed / Enricher-owned profile
 //   • places — the owned Mesita entity: state, billing, membership
 //   • profiles — a SECURITY INVOKER VIEW joining the two (`p.* JOIN u.*`,
 //     see the 20260602-era migrations), NOT a base table. It carries two
@@ -19,7 +19,7 @@
 //     site writes through changes here — only that every patch now passes
 //     through one validator before Postgres sees it.
 //
-// THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; see
+// THE TWO-BELT PATTERN (StampableCrenupStep, crenup-report.ts; see
 // consumer-doc.ts for the fuller writeup):
 //   Belt 1 — TypeScript. PlaceWriteArgs.patch is typed PlaceProfilePatch /
 //     PlacePatch / ProfilePatch (closed key sets), not
@@ -102,7 +102,7 @@ export type PlaceProfileRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
-  /** Super Categories (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
+  /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
   family_keys: string[] | null;
   vibe: string | null;
   price_level: number | null;
@@ -306,7 +306,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
 >)[];
 
 // Compile-time exhaustiveness the other direction — same discipline
-// CONSUMER_PATCH_KEYS uses (borrowed from PULSE_PIECE_META, MESITA-1222): a
+// CONSUMER_PATCH_KEYS uses (borrowed from CRENUP_STEP_META, MESITA-1222): a
 // field added to PlaceProfileRow and forgotten here fails the build, not a review.
 type _MissingFromPlaceProfilePatchKeys = Exclude<
   keyof Omit<PlaceProfileRow, "id" | "created_at" | "updated_at" | "name">,

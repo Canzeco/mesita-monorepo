@@ -51,7 +51,7 @@ describe("SHELL_ROUTES are the addresses that name no place", () => {
     // ceremony that remains is Add place, which is the catalogue's.
     expect(Object.keys(SHELL_ROUTES)).toEqual([
       "root",
-      "account",
+      "settings",
       "places",
       "placesNew",
     ]);
@@ -121,9 +121,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
       // than a trap.
       "capital",
       "admin",
-      "settings",
-      "products",
-      "customers",
+      "setup",
       "activity",
     ]);
     expect(Object.keys(FLAT_ROUTES)).not.toContain("capabilities");
@@ -179,7 +177,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     for (const tab of PLACE_TABS) {
       expect(flatViewFromPathname(FLAT_ROUTES[tab])).toBe(tab);
     }
-    expect(flatViewFromPathname(FLAT_ROUTES.products)).toBeNull();
+    expect(flatViewFromPathname(FLAT_ROUTES.setup)).toBeNull();
     expect(flatViewFromPathname(placeTabHref("p-1", "profile"))).toBeNull();
     expect(flatViewFromPathname("/profiles")).toBeNull();
   });
@@ -194,7 +192,7 @@ describe("FLAT_ROUTES are the scope-free addresses that resolve (MESITA-1839)", 
     expect(flatPlacePageFromPathname(FLAT_ROUTES.profile)).toBeNull();
     // A canonical address is never a flat one, and a name that merely STARTS
     // with a live one is not either.
-    expect(flatPlacePageFromPathname(placePageHref("p-x", "products"))).toBeNull();
+    expect(flatPlacePageFromPathname(placePageHref("p-x", "setup"))).toBeNull();
     expect(flatPlacePageFromPathname("/productsx")).toBeNull();
     // Neither `/payments` (MESITA-1869) nor `/places` is a flat address: the
     // redirect table owns the first, the catalogue owns the second.
@@ -259,9 +257,7 @@ describe("the place's pages (MESITA-1892)", () => {
     // targets are the same array. Two lists is how an address ends up live in
     // one and dead in the other.
     expect(PLACE_PAGES).toEqual([
-      "settings",
-      "products",
-      "customers",
+      "setup",
       "activity",
     ]);
     // `places` IS NOT ONE (MESITA-1892). The catalogue lists every place you
@@ -289,7 +285,7 @@ describe("the place's pages (MESITA-1892)", () => {
     // (MESITA-1900). `isPlaceTerminalPathname` and `placeTerminalHref` are
     // deleted with it — the two helpers existed only because that one row
     // could not be addressed like the other seven.
-    expect(placePayHref("p-x")).toBe("/places/p-x/products/pay");
+    expect(placePayHref("p-x")).toBe("/places/p-x/pay/setup");
     expect(PLACE_PAGES).not.toContain("pay");
     expect(PLACE_PAGES).not.toContain("terminal");
   });
@@ -316,20 +312,24 @@ describe("the place's pages (MESITA-1892)", () => {
   });
 
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(placePageHref("a/b", "settings")).toBe("/places/a%2Fb/settings");
+    expect(placePageHref("a/b", "setup")).toBe("/places/a%2Fb/setup");
     expect(placeRootHref("a/b")).toBe("/places/a%2Fb");
-    expect(placePayHref("a/b")).toBe("/places/a%2Fb/products/pay");
+    expect(placePayHref("a/b")).toBe("/places/a%2Fb/pay/setup");
     expect(placeHref("a/b")).toBe("/places/a%2Fb/profile");
-    expect(placeIdFromPathname(placePageHref("a/b", "settings"))).toBe("a/b");
+    expect(placeIdFromPathname(placePageHref("a/b", "setup"))).toBe("a/b");
     expect(placeIdFromPathname(placeRootHref("a/b"))).toBe("a/b");
   });
 
-  it("names the page a pathname is on, and Pay reads as Products", () => {
+  it("names the page a pathname is on, and Pay reads as no page at all", () => {
     for (const p of PLACE_PAGES) {
       expect(placePageFromPathname(placePageHref("p-x", p))).toBe(p);
     }
-    expect(placePageFromPathname(placePayHref("p-x"))).toBe("products");
-    expect(placePageFromPathname("/places/p-x/products/")).toBe("products");
+    // PAY'S SETUP IS A SUB-STEP OF THE VIEW NOW (MESITA-1974), not of the
+    // catalogue. It used to read as Products so the catalogue row stayed lit
+    // while an operator stood in it; there is no product row left to light,
+    // and the two-segment page address went with it.
+    expect(placePageFromPathname(placePayHref("p-x"))).toBeNull();
+    expect(placePageFromPathname("/places/p-x/setup/")).toBe("setup");
   });
 
   it("is null for a view and for the bare address", () => {
@@ -343,7 +343,7 @@ describe("the place's pages (MESITA-1892)", () => {
     expect(placePageFromPathname("/places/p-x/settings/x")).toBeNull();
     expect(placePageFromPathname(SHELL_ROUTES.places)).toBeNull();
     expect(placePageFromPathname(SHELL_ROUTES.placesNew)).toBeNull();
-    expect(placePageFromPathname(SHELL_ROUTES.account)).toBeNull();
+    expect(placePageFromPathname(SHELL_ROUTES.settings)).toBeNull();
   });
 });
 
@@ -449,7 +449,7 @@ describe("placeIdFromPathname — the rail's scope", () => {
     expect(placeIdFromPathname(placePayHref("p-x"))).toBe("p-x");
   });
   it("is null on every address that names no place", () => {
-    expect(placeIdFromPathname(SHELL_ROUTES.account)).toBeNull();
+    expect(placeIdFromPathname(SHELL_ROUTES.settings)).toBeNull();
     expect(placeIdFromPathname("/")).toBeNull();
     expect(placeIdFromPathname("/profile")).toBeNull();
   });

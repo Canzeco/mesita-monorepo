@@ -56,7 +56,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // with no card — and the second renders `undefined` straight into a
     // className. The bijection is the assertion, in both directions.
     expect([...PRODUCT_ORDER].sort()).toEqual([...PRODUCT_KEYS].sort());
-    expect(PRODUCT_ORDER).toHaveLength(16);
+    expect(PRODUCT_ORDER).toHaveLength(15);
   });
 
   it("is Pato's list, and the RAIL is a SUBSEQUENCE of it (MESITA-1949)", () => {
@@ -65,6 +65,11 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // Reservations / Payments / Terminal / Credits / Capital / Whats Bot /
     // Phone Bot / Intelligence (Soon)" — then "maybe include POS, but for the
     // future", which is why POS sits beside Terminal rather than last.
+    //
+    // THE TWO BOTS ARE ONE PRODUCT NOW (MESITA-1951): *"Mesita AI Line
+    // instead"* — named Mesita Host since MESITA-1955. It takes the slot the
+    // pair occupied rather than going last, because the position was never
+    // about either channel.
     //
     // WHERE REWARDS SITS IS THE ARGUMENT, and it reversed once (MESITA-1928).
     // MESITA-1900 filed it with money — "beside Payments and Credits, not at
@@ -85,8 +90,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       "pos",
       "credits",
       "capital",
-      "whatsapp",
-      "phone",
+      "line",
       "intelligence",
     ]);
 
@@ -98,31 +102,17 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // different ways. That drift is what this still catches.
     //
     // What it stops catching is a product the rail has no row for, and that is
-    // deliberate (MESITA-1949): nine of the sixteen are catalogue-only. A rail
+    // deliberate (MESITA-1949): most of the suite is catalogue-only. A rail
     // row must land somewhere real (MESITA-1833) and MESITA-1900 deleted
     // Terminal for being "the one row whose address was a SoonStrip", so a
     // Soon product gets a card and no row. `RailProduct` makes that a compile
     // error rather than a convention.
-    const railProducts = RAIL_ROWS.filter((r) => r.kind === "product").map(
-      (r) => r.product,
-    );
-    // Every rail product is a real product...
-    for (const p of railProducts) expect(PRODUCT_ORDER).toContain(p);
-    // ...and the rail's relative order is the catalogue's. A subsequence check
-    // walks both lists once: if the rail ever reorders two products the
-    // catalogue did not, the walk runs off the end.
-    const positions = railProducts.map((p) => PRODUCT_ORDER.indexOf(p));
-    expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    // The rail is a STRICT subset — if that ever stops being true, the
-    // subsequence check above is weaker than the equality it replaced and
-    // should go back to being one.
-    expect(railProducts.length).toBeLessThan(PRODUCT_ORDER.length);
-
-    // TERMINAL IS A CARD AGAIN AND STILL NOT A ROW (MESITA-1949). MESITA-1900
-    // removed the product because the row's only address was a SoonStrip; the
-    // card carries no address at all, which is the shape that objection wanted.
-    expect(PRODUCT_ORDER).toContain("terminal");
-    expect(railProducts).not.toContain("terminal");
+    // THE RAIL HAS NO PRODUCT ROWS TO CHECK (MESITA-1974). It is two page
+    // rows now — Setup and Activity — so there is no rail order that could
+    // disagree with the catalogue's, and this assertion has nothing left to
+    // walk. What replaced it is stronger: `RailRow` is page-only, so a product
+    // row is a compile error rather than a test failure.
+    expect(RAIL_ROWS.every((r) => r.kind === "page")).toBe(true);
   });
 
   it("there is ONE vocabulary, and the grid re-exports it (MESITA-1900)", () => {
@@ -134,7 +124,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     expect(PRODUCT_KEYS).toBe(VOCABULARY_KEYS);
   });
 
-  it("renders all sixteen in EVERY state, so no read can hide a product", () => {
+  it("renders EVERY product in EVERY state, so no read can hide one", () => {
     // A catalogue is also a price list: a product this place has not bought is
     // exactly the one it most needs to see. A filter hides it; a failed read
     // must not.
@@ -144,7 +134,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       { place: null },
       { partnered: true, mesitaPayEnabled: true },
     ]) {
-      expect(Object.keys(build(input))).toHaveLength(16);
+      expect(Object.keys(build(input))).toHaveLength(15);
     }
   });
 
@@ -219,9 +209,23 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     }
   });
 
-  it("every card names itself Mesita, and says one thing", () => {
+  // THE PREFIX IS A CLAIM NOW, NOT A HABIT (MESITA-1955). Every card used to
+  // begin "Mesita ", which made the brand the only word fifteen cards had in
+  // common and the one word none of them needed. Pato's rename leaves it on
+  // exactly three — the three where MESITA IS THE COUNTERPARTY: the page lives
+  // on Mesita, the money advanced is Mesita's, and the voice answering the
+  // phone is Mesita's. Asserted as a SET, in both directions, because "some
+  // cards say Mesita" passes for a file that put it back on all fifteen.
+  it("only the three Mesita-is-the-counterparty cards wear the brand", () => {
+    const branded = Object.values(build())
+      .filter((c) => c.name.startsWith("Mesita "))
+      .map((c) => c.key)
+      .sort();
+    expect(branded).toEqual(["capital", "line", "profile"]);
+  });
+
+  it("every card says one thing, and finishes it", () => {
     for (const card of Object.values(build())) {
-      expect(card.name.startsWith("Mesita ")).toBe(true);
       expect(card.blurb.endsWith(".")).toBe(true);
     }
   });
@@ -380,7 +384,7 @@ describe("Mesita Pay's verb is the one that stays on this page", () => {
   });
 });
 
-describe("Soon is nine of the sixteen, and every one of them is unbuilt", () => {
+describe("Soon is most of the suite, and every one of them is unbuilt", () => {
   it("is exactly the products with no engine, in catalogue order", () => {
     // The set is closed on purpose. A card with a real fact behind it that
     // paints Soon is a product quietly withdrawn from sale by a typo.
@@ -399,8 +403,7 @@ describe("Soon is nine of the sixteen, and every one of them is unbuilt", () => 
       "terminal",
       "pos",
       "capital",
-      "whatsapp",
-      "phone",
+      "line",
       "intelligence",
     ]);
   });
@@ -442,7 +445,7 @@ describe("Soon is nine of the sixteen, and every one of them is unbuilt", () => 
   });
 });
 
-describe("Mesita Customers is a SUBSCRIPTION, unbuilt, and says both", () => {
+describe("Guest Catalog is a SUBSCRIPTION, unbuilt, and says both", () => {
   // Pato wrote it "Costumers (Free)" and then replaced the model on
   // 2026-09-16: *"you don't buy the data forever, you subscribe to a catalog
   // of customers and you can track their activity, visits per month, spent per

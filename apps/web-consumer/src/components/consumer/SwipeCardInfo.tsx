@@ -1,5 +1,4 @@
 import {
-  BadgeCheck,
   Clock,
   Globe,
   Instagram,
@@ -80,7 +79,7 @@ export function SwipeCardInfo({
           {place.name}
         </span>
         {partner && (
-          <PartnerMark className="text-primary drop-shadow-media h-[18px] w-[18px] shrink-0" />
+          <PartnerMark className="text-partner drop-shadow-media h-[18px] w-[18px] shrink-0" />
         )}
       </h2>
 
@@ -98,7 +97,7 @@ export function SwipeCardInfo({
         {place.is_enriching && (
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-border bg-muted font-semibold whitespace-nowrap text-muted-foreground backdrop-blur-md",
+              "border-border bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-md border font-semibold whitespace-nowrap backdrop-blur-md",
               compact ? "type-label px-[9px] py-[3px]" : "px-2.5 py-1 text-xs",
             )}
             aria-live="polite"
@@ -106,7 +105,7 @@ export function SwipeCardInfo({
             <Spinner
               size="sm"
               label="Enriching"
-              className="h-3 w-3 border-border border-t-emerald-100"
+              className="border-border h-3 w-3 border-t-emerald-100"
             />
             Enriching
           </span>
@@ -117,10 +116,11 @@ export function SwipeCardInfo({
             room". */}
         <MetaChip compact={compact}>
           {partner ? (
-            <BadgeCheck
-              className="text-primary h-3 w-3 shrink-0 fill-current"
-              strokeWidth={2}
-            />
+            /* The chip icon is the SAME mark as the one beside the name — it
+               was lucide `BadgeCheck` with `fill-current text-primary`, which
+               paints fill and stroke the same colour: the check disappeared
+               into the blob and the chip lost its only glyph (MESITA-2031). */
+            <PartnerMark className="text-partner h-3 w-3 shrink-0" />
           ) : (
             <Globe className="h-3 w-3 shrink-0 text-white/70" />
           )}
@@ -141,7 +141,7 @@ export function SwipeCardInfo({
         {ratingLabel && (
           <MetaChip compact={compact}>
             <span className="font-semibold">{ratingLabel}</span>
-            <Star className="h-3 w-3 shrink-0 fill-foreground text-muted-foreground" />
+            <Star className="fill-foreground text-muted-foreground h-3 w-3 shrink-0" />
             {ratingCountLabel && (
               <span className="text-white/70">({ratingCountLabel})</span>
             )}
@@ -149,7 +149,7 @@ export function SwipeCardInfo({
         )}
         {igFollowersLabel && (
           <MetaChip compact={compact}>
-            <Instagram className="h-3 w-3 shrink-0 text-muted-foreground/80" />
+            <Instagram className="text-muted-foreground/80 h-3 w-3 shrink-0" />
             <span className="font-semibold">{igFollowersLabel}</span>
             <Users className="h-3 w-3 shrink-0 text-white/70" />
           </MetaChip>

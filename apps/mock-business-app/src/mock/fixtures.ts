@@ -16,6 +16,7 @@
 import type {
   MockClass,
   MockCreditBalance,
+  MockCreditCampaign,
   MockCreditPurchase,
   MockCustomer,
   MockMember,
@@ -33,6 +34,7 @@ import type {
   MockSettingChange,
   MockSex,
   MockVisit,
+  MockMenuSection,
 } from "@/mock/types";
 
 /** A place's photo, as a data URI.
@@ -76,7 +78,10 @@ function daysAhead(days: number): string {
  *  panel both reach for it, so a place the panel puts back on `active` renews
  *  on the same day it renewed before — two sources would let the strip print a
  *  date the fixture never held. A year out, because the Membership is yearly. */
-export const MEMBERSHIP_RENEWS_AT = daysAhead(365);
+// MONTHLY NOW (MESITA-1997). It was `daysAhead(365)` while the Membership was
+// a yearly purchase; a plan billed every month that renews in a year is the
+// kind of number a reader checks against the price and does not believe.
+export const MEMBERSHIP_RENEWS_AT = daysAhead(30);
 
 export const PLACES: MockPlace[] = [
   {
@@ -91,13 +96,24 @@ export const PLACES: MockPlace[] = [
     myRole: "owner",
     verified: true,
     partnered: true,
+    plan: "ultra",
     promoting: true,
+    pulsing: true,
+    disabled: false,
     membership: "active",
     renewsAt: MEMBERSHIP_RENEWS_AT,
     customerIntel: true,
     customerIntelSince: daysAgo(188),
     pickupOrders: true,
     deliveryOrders: false,
+    orders: {
+      paused: false,
+      prepMinutes: 20,
+      windowNote: null,
+      radiusKm: null,
+      deliveryFeeCents: null,
+      minimumCents: 12000,
+    },
     reservations: true,
     visitRewards: true,
     credits: true,
@@ -106,6 +122,37 @@ export const PLACES: MockPlace[] = [
     reviewCount: 218,
     photoCount: 8,
     menuCount: 3,
+    // ── MESITA-2017: the place with everything on ─────────────────────────
+    menuPublishedAt: daysAgo(3),
+    verificationRequested: false,
+    partnerHeld: true,
+    partnerLapsedAt: null,
+    notificationsNumber: "+52 81 5555 0142",
+    rewards: { mode: "cashback", cap: 500, welcome: true, story: true, mesita: true },
+    cashbackPaused: false,
+    // One marketplace with a token that died — the most common real state —
+    // and one never connected, so the channel list shows three states at once.
+    orderChannels: {
+      app: "connected",
+      web: "connected",
+      whatsapp: "connected",
+      ubereats: "connected",
+      rappi: "token_expired",
+      didi: "disconnected",
+    },
+    reviewSources: {
+      google: { connected: true, lastSyncedAt: daysAgo(0, 2) },
+      mesita: { connected: true, lastSyncedAt: daysAgo(0, 1) },
+      instagram: { connected: true, lastSyncedAt: daysAgo(1) },
+      facebook: { connected: true, lastSyncedAt: daysAgo(1) },
+    },
+    lineState: "full",
+    lineFactsPending: 2,
+    lineLabel: "Pedidos y reservaciones",
+    websiteState: "published",
+    websiteTemplate: "elegant",
+    websiteDomain: "lumbreysal.mx",
+    acceptedIssuers: ["plc_hoja"],
   },
   {
     id: "plc_pardo",
@@ -119,13 +166,24 @@ export const PLACES: MockPlace[] = [
     myRole: "owner",
     verified: true,
     partnered: false,
+    plan: "free",
     promoting: false,
+    pulsing: true,
+    disabled: false,
     membership: "none",
     renewsAt: null,
     customerIntel: false,
     customerIntelSince: null,
     pickupOrders: true,
     deliveryOrders: true,
+    orders: {
+      paused: true,
+      prepMinutes: 25,
+      windowNote: null,
+      radiusKm: 3.0,
+      deliveryFeeCents: 4000,
+      minimumCents: 15000,
+    },
     reservations: false,
     visitRewards: false,
     credits: false,
@@ -134,6 +192,35 @@ export const PLACES: MockPlace[] = [
     reviewCount: 61,
     photoCount: 5,
     menuCount: 1,
+    // ── MESITA-2017: Free, and the badge it once held ────────────────────
+    menuPublishedAt: null,
+    verificationRequested: false,
+    partnerHeld: true,
+    partnerLapsedAt: daysAgo(12),
+    notificationsNumber: null,
+    rewards: { mode: "discount", cap: 200, welcome: true, story: false, mesita: true },
+    cashbackPaused: false,
+    orderChannels: {
+      app: "disconnected",
+      web: "disconnected",
+      whatsapp: "disconnected",
+      ubereats: "connecting",
+      rappi: "disconnected",
+      didi: "disconnected",
+    },
+    reviewSources: {
+      google: { connected: true, lastSyncedAt: daysAgo(2) },
+      mesita: { connected: true, lastSyncedAt: daysAgo(0, 1) },
+      instagram: { connected: false, lastSyncedAt: null },
+      facebook: { connected: false, lastSyncedAt: null },
+    },
+    lineState: "off",
+    lineFactsPending: 0,
+    lineLabel: "Pedidos y reservaciones",
+    websiteState: "none",
+    websiteTemplate: null,
+    websiteDomain: null,
+    acceptedIssuers: [],
   },
   {
     id: "plc_hoja",
@@ -147,13 +234,20 @@ export const PLACES: MockPlace[] = [
     myRole: "editor",
     verified: true,
     partnered: true,
+    plan: "pro",
     promoting: false,
+    pulsing: true,
+    disabled: false,
     membership: "none",
     renewsAt: null,
-    customerIntel: true,
+    // PRO, SO THE CATALOG IS CLOSED (MESITA-1997). Customer Intelligence sits
+    // in Ultra now; the `Since` date survives the lapse on purpose, exactly
+    // as `renewsAt` does, so a place that goes back up does not read as new.
+    customerIntel: false,
     customerIntelSince: daysAgo(96),
     pickupOrders: false,
     deliveryOrders: false,
+    orders: null,
     reservations: true,
     visitRewards: true,
     credits: false,
@@ -162,6 +256,35 @@ export const PLACES: MockPlace[] = [
     reviewCount: 37,
     photoCount: 2,
     menuCount: 2,
+    // ── MESITA-2017: Pro, cashback with Credits off, a site half built ─────
+    menuPublishedAt: daysAgo(20),
+    verificationRequested: false,
+    partnerHeld: false,
+    partnerLapsedAt: null,
+    notificationsNumber: "+52 81 5555 0163",
+    rewards: { mode: "cashback", cap: 1000, welcome: false, story: true, mesita: true },
+    cashbackPaused: true,
+    orderChannels: {
+      app: "connected",
+      web: "connected",
+      whatsapp: "disconnected",
+      ubereats: "disconnected",
+      rappi: "disconnected",
+      didi: "disconnected",
+    },
+    reviewSources: {
+      google: { connected: true, lastSyncedAt: daysAgo(1) },
+      mesita: { connected: true, lastSyncedAt: daysAgo(0, 1) },
+      instagram: { connected: false, lastSyncedAt: null },
+      facebook: { connected: false, lastSyncedAt: null },
+    },
+    lineState: "activating",
+    lineFactsPending: 0,
+    lineLabel: "Pedidos y reservaciones",
+    websiteState: "preview",
+    websiteTemplate: "casual",
+    websiteDomain: null,
+    acceptedIssuers: [],
   },
   {
     id: "plc_norte",
@@ -175,13 +298,17 @@ export const PLACES: MockPlace[] = [
     myRole: "viewer",
     verified: false,
     partnered: false,
+    plan: "free",
     promoting: false,
+    pulsing: true,
+    disabled: false,
     membership: "none",
     renewsAt: null,
     customerIntel: false,
     customerIntelSince: null,
     pickupOrders: false,
     deliveryOrders: false,
+    orders: null,
     reservations: false,
     visitRewards: false,
     credits: false,
@@ -190,6 +317,35 @@ export const PLACES: MockPlace[] = [
     reviewCount: 12,
     photoCount: 2,
     menuCount: 0,
+    // ── MESITA-2017: unverified, verification requested, nothing else ─────
+    menuPublishedAt: null,
+    verificationRequested: true,
+    partnerHeld: false,
+    partnerLapsedAt: null,
+    notificationsNumber: null,
+    rewards: { mode: "discount", cap: 500, welcome: true, story: true, mesita: true },
+    cashbackPaused: false,
+    orderChannels: {
+      app: "disconnected",
+      web: "disconnected",
+      whatsapp: "disconnected",
+      ubereats: "disconnected",
+      rappi: "disconnected",
+      didi: "disconnected",
+    },
+    reviewSources: {
+      google: { connected: false, lastSyncedAt: null },
+      mesita: { connected: true, lastSyncedAt: daysAgo(0, 1) },
+      instagram: { connected: false, lastSyncedAt: null },
+      facebook: { connected: false, lastSyncedAt: null },
+    },
+    lineState: "off",
+    lineFactsPending: 0,
+    lineLabel: "Pedidos y reservaciones",
+    websiteState: "none",
+    websiteTemplate: null,
+    websiteDomain: null,
+    acceptedIssuers: [],
   },
 ];
 
@@ -197,10 +353,10 @@ export const PLACES: MockPlace[] = [
  *  `?owned=public`, and Claim is the verb — there is no membership to hold
  *  first, because claiming is what mints the owner row. */
 export const POOL_PLACES: MockPoolPlace[] = [
-  { id: "plc_pool_a", name: "Tostador Regio", category: "Café", city: "Monterrey", verified: true, claimable: true },
-  { id: "plc_pool_b", name: "La Cuchara Azul", category: "Restaurant", city: "Guadalupe", verified: true, claimable: true },
-  { id: "plc_pool_c", name: "Bar Once", category: "Bar", city: "Monterrey", verified: false, claimable: false },
-  { id: "plc_pool_d", name: "Mercadito Sur", category: "Market", city: "Santa Catarina", verified: true, claimable: true },
+  { id: "plc_pool_a", name: "Tostador Regio", category: "Café", city: "Monterrey", verified: true, claimable: true, pulsing: true, disabled: false },
+  { id: "plc_pool_b", name: "La Cuchara Azul", category: "Restaurant", city: "Guadalupe", verified: true, claimable: true, pulsing: true, disabled: false },
+  { id: "plc_pool_c", name: "Bar Once", category: "Bar", city: "Monterrey", verified: false, claimable: false, pulsing: false, disabled: false },
+  { id: "plc_pool_d", name: "Mercadito Sur", category: "Market", city: "Santa Catarina", verified: true, claimable: true, pulsing: true, disabled: false },
 ];
 
 /** The invented guests, and each one's sex ALONGSIDE the name rather than
@@ -551,6 +707,111 @@ const SETTING_SHAPES: Array<Omit<MockSettingChange, "id" | "placeId" | "at" | "w
   { area: "reservations", what: "Provider", from: "None", to: "OpenTable" },
 ];
 
+// THE CAMPAIGNS (MESITA-2017). Prepaid Credits sells by CAMPAIGN, not at a
+// standing rate: a window, an offer, a cap on the cash raised, a per-guest
+// limit. One fixture per lifecycle state the screen has to draw, spread over
+// the places that have Credits at all.
+export const CREDIT_CAMPAIGNS: MockCreditCampaign[] = [
+  {
+    id: "cmp_lumbre_0",
+    placeId: "plc_lumbre",
+    name: "Otoño",
+    payCents: 80_000,
+    getCents: 100_000,
+    capCents: 5_000_000,
+    soldCents: 3_120_000,
+    perGuestCents: 400_000,
+    startsAt: daysAgo(9),
+    endsAt: daysAhead(21),
+    redeemUntil: daysAhead(120),
+    state: "selling",
+  },
+  {
+    id: "cmp_lumbre_1",
+    placeId: "plc_lumbre",
+    name: "Verano",
+    payCents: 85_000,
+    getCents: 100_000,
+    capCents: 2_000_000,
+    soldCents: 2_000_000,
+    perGuestCents: 200_000,
+    startsAt: daysAgo(70),
+    endsAt: daysAgo(40),
+    redeemUntil: daysAhead(50),
+    state: "redeeming",
+  },
+  {
+    id: "cmp_lumbre_2",
+    placeId: "plc_lumbre",
+    name: "Diciembre",
+    payCents: 75_000,
+    getCents: 100_000,
+    capCents: 8_000_000,
+    soldCents: 0,
+    perGuestCents: 500_000,
+    startsAt: daysAhead(60),
+    endsAt: daysAhead(90),
+    redeemUntil: daysAhead(210),
+    state: "scheduled",
+  },
+  {
+    id: "cmp_lumbre_3",
+    placeId: "plc_lumbre",
+    name: "Primavera",
+    payCents: 90_000,
+    getCents: 100_000,
+    capCents: 1_000_000,
+    soldCents: 640_000,
+    perGuestCents: 200_000,
+    startsAt: daysAgo(190),
+    endsAt: daysAgo(160),
+    redeemUntil: daysAgo(10),
+    state: "expired",
+  },
+  {
+    id: "cmp_hoja_0",
+    placeId: "plc_hoja",
+    name: "Apertura",
+    payCents: 80_000,
+    getCents: 100_000,
+    capCents: 500_000,
+    soldCents: 500_000,
+    perGuestCents: 100_000,
+    startsAt: daysAgo(30),
+    endsAt: daysAhead(10),
+    redeemUntil: daysAhead(100),
+    state: "sold_out",
+  },
+  {
+    id: "cmp_hoja_1",
+    placeId: "plc_hoja",
+    name: "Borrador",
+    payCents: 80_000,
+    getCents: 100_000,
+    capCents: 1_000_000,
+    soldCents: 0,
+    perGuestCents: 200_000,
+    startsAt: daysAhead(30),
+    endsAt: daysAhead(60),
+    redeemUntil: daysAhead(180),
+    state: "draft",
+  },
+  {
+    id: "cmp_pardo_0",
+    placeId: "plc_pardo",
+    name: "Lanzamiento",
+    payCents: 80_000,
+    getCents: 100_000,
+    capCents: 300_000,
+    soldCents: 120_000,
+    perGuestCents: 100_000,
+    startsAt: daysAgo(120),
+    endsAt: daysAgo(90),
+    redeemUntil: daysAhead(30),
+    state: "closed",
+  },
+];
+
 export const SETTING_CHANGES: MockSettingChange[] = build(ALL_IDS, 9, (placeId, i, rnd) => {
   // THE AUTHOR COMES FROM THE TEAM, not from a name pool. A change log
   // attributed to somebody who is not on this place's team is the one kind of
@@ -774,7 +1035,7 @@ export const PROFILES: Record<string, MockPlaceProfile> = {
     mesita_name: null,
     google_name: "Panadería Norte",
     // The undefined category — a real row, and the one that makes the Family
-    // field fall back to the Intaker's inferred keys with "(inferred)".
+    // field fall back to the Enricher's inferred keys with "(inferred)".
     category: "undefined",
     category_label: "Bakery",
     family_keys: ["cafes_bakeries"],
@@ -885,3 +1146,102 @@ export const GOOGLE_REVIEWS: MockReview[] = build(GOOGLE_SCRAPED, 8, (placeId, i
     reply: null,
   };
 });
+
+// ── THE DIGITAL MENU ────────────────────────────────────────────────────────
+//
+// Dishes and prices as something Mesita can READ (Main §4), which is the whole
+// difference between this product and the PDF it replaces. Every dish carries
+// three prices because a place sets them independently: the table pays for the
+// room, pickup is often the cheapest thing on the menu on purpose, and delivery
+// carries a courier.
+//
+// A NULL PRICE IS A REAL ANSWER. The tuétano does not survive a courier and the
+// place does not send it, so delivery is null rather than a number nobody
+// should be able to charge. A dash says "not on that channel"; a zero would say
+// "free".
+//
+// Invented like everything else here, and deliberately a steakhouse's menu so
+// the prices read as this place's rather than as lorem.
+export const MENU_SECTIONS: readonly MockMenuSection[] = [
+  {
+    id: "sec_brasa",
+    name: "De la brasa",
+    dishes: [
+      {
+        id: "dish_tomahawk",
+        name: "Tomahawk 1.2kg",
+        blurb: "Dry-aged 40 days, over live coals, carved at the table for two.",
+        photoUrl: gradient("#3f3f3f", "#141414", "T"),
+        table: 189000,
+        pickup: 179000,
+        delivery: null,
+      },
+      {
+        id: "dish_arrachera",
+        name: "Arrachera al carbón",
+        blurb: "Marinated overnight, served with grilled spring onion and salsa martajada.",
+        photoUrl: gradient("#4a3a2a", "#1b1410", "A"),
+        table: 42000,
+        pickup: 39000,
+        delivery: 44000,
+      },
+      {
+        id: "dish_tuetano",
+        name: "Tuétano a la leña",
+        blurb: "Roasted marrow, lime, flour tortillas. Eaten hot or not at all.",
+        photoUrl: gradient("#6b5433", "#241a0e", "T"),
+        table: 28000,
+        pickup: null,
+        delivery: null,
+      },
+    ],
+  },
+  {
+    id: "sec_entradas",
+    name: "Para empezar",
+    dishes: [
+      {
+        id: "dish_aguachile",
+        name: "Aguachile de la casa",
+        blurb: "Shrimp, serrano, cucumber and a chile oil the kitchen makes weekly.",
+        photoUrl: gradient("#2f6b5a", "#0f231d", "A"),
+        table: 31000,
+        pickup: 29000,
+        delivery: 33000,
+      },
+      {
+        id: "dish_queso",
+        name: "Queso fundido con chistorra",
+        blurb: "Skillet cheese, chistorra, warm tortillas. The lightest thing here is not this.",
+        photoUrl: gradient("#8a6a2f", "#2b1f0d", "Q"),
+        table: 24000,
+        pickup: 22000,
+        delivery: 26000,
+      },
+    ],
+  },
+  {
+    id: "sec_barra",
+    name: "De la barra",
+    dishes: [
+      {
+        id: "dish_mezcal",
+        name: "Mezcal flight",
+        blurb: "Three pours from Oaxaca and Durango, poured side by side with sal de gusano.",
+        photoUrl: gradient("#5c5a3a", "#1d1c11", "M"),
+        table: 35000,
+        pickup: null,
+        delivery: null,
+      },
+      {
+        id: "dish_paloma",
+        name: "Paloma de la casa",
+        blurb: "Grapefruit pressed in house, mezcal instead of tequila, salt on half the rim.",
+        photoUrl: gradient("#8a4a55", "#2b141a", "P"),
+        table: 18000,
+        pickup: null,
+        delivery: null,
+      },
+    ],
+  },
+];

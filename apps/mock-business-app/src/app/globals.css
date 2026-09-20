@@ -26,9 +26,25 @@
    COLOR DESIGN, LIKE IN INSTAGRAM, BLACK AND WHITE."*
 
    THE RULE, and it is the whole file: every neutral keeps its LIGHTNESS and
-   loses its CHROMA. Chroma survives in exactly three places — where a third
-   party owns the colour, where money is at risk, or where a tier is named.
-   Never on state, never on hierarchy, never on hover.
+   loses its CHROMA. Chroma survives in exactly FOUR places — where a third
+   party owns the colour, where money is at risk, where a tier is named, and
+   (MESITA-2001) where a product is RUNNING. Never on hierarchy, never on
+   hover.
+
+   THE FOURTH IS NEW AND IT IS PATO'S. 2026-09-19, on the Setup index: *"add
+   maybe a color to the list to indicate if Inactive or Active or whatever"*.
+   The original clause said "never on state" and it was right about the
+   general case — a console that tints every state ends up with a legend. It
+   was wrong about this one: the Setup index's entire job is saying which of
+   twelve products are live, and it was saying it in five words that all
+   rendered #5d5d5d at 12px.
+
+   ONE FACT GETS THE HUE, NOT FIVE. `--state-live` is running; Locked reuses
+   the gold that already names the rung it needs; Off and Soon stay achromatic
+   on the outline/dashed axis `Badges.tsx` built for exactly this. And the
+   colour is ADDED to that shape axis, never substituted for it — every badge
+   still carries its word, so the fact survives greyscale, print and a
+   colourblind operator.
 
    It was never a pink-ACCENT problem. The accent was ~5% of the pixels; the
    other 95% was neutrals that all carried chroma. Measured off the running
@@ -130,6 +146,17 @@
      achromatic. */
   --tier-gold-ink: oklch(0.42 0.11 78);
 
+  /* RUNNING (MESITA-2001). A fill and an ink, the same pair gold carries and
+     for the same reason: the tint alone is 1.1:1 against the card, so the WORD
+     inside it is what has to pass. `--state-live-ink` measures 6.4:1 on the
+     18% tint, which clears AA for the 11px semibold badge label.
+
+     GREEN AND NOT THE INK ITSELF, because "on" and "selected" must not be one
+     colour. The index's chosen row is the page grey; if running were also a
+     neutral fill the two would collide on the one row that is both. */
+  --state-live: oklch(0.62 0.15 152);
+  --state-live-ink: oklch(0.43 0.11 152);
+
   /* Depth is additive here, not load-bearing: Section already carries a
      hairline AND a shadow, so the cards survive on the hairline alone. What is
      left is kept for the two surfaces that genuinely float — Modal and the
@@ -137,20 +164,23 @@
      old alpha reads heavier and colder than the warm ink it replaces. */
   --shadow-elev: 0 25px 60px -15px oklch(0 0 0 / 0.14);
 
-  /* THE RAIL IS DARK (MESITA-1831, Pato 2026-09-13: "more contrast, sidebar
-     menu must be dark") — and it is --ink, NOT pure black. Two measurements
+  /* THE DARK GROUND (MESITA-1831, Pato 2026-09-13: "more contrast, sidebar
+     menu must be dark") — and it is --ink, NOT pure black. It painted the rail
+     until MESITA-1975 replaced that column with a light top menu; the AskBar
+     band is what wears it now. Two measurements
      decided that. --dock-surface is the rail's hover fill, white at 10%: over
      #000 it composites to #1a1a1a, a 1.20:1 step you cannot see; over #171717
      it is #2e2e2e, 1.73:1, which you can. And --dock paints the AskBar band as
-     well as the rail, so pure black would put two identical black slabs on a
-     white page and break the law in AskBar.tsx that the band is the one dark
-     object on Home.
+     well as the rail once did, so pure black would put two identical black
+     slabs on a white page and break the law in AskBar.tsx that the band is the
+     one dark object on Home — which is also why the top menu is light.
 
      Rows at rest are --dock-muted (64% white, 7.84:1 on the ink), full white on
      hover, and the active pill inverts to white with ink text. Those three
      states always rode on LUMINANCE, never on hue, so the repaint does not
-     touch them. Nothing in the rail may paint with a page token
-     (text-muted-foreground, bg-foreground): on this ground those are ink on ink. */
+     touch them. Nothing on this dark ground may paint with a page token
+     (text-muted-foreground, bg-foreground): there those are ink on ink. The
+     rail is gone (MESITA-1975) and AskBar is the last surface that has it. */
   --dock: var(--ink);
   --dock-foreground: oklch(0.98 0 0);
   --dock-muted: oklch(1 0 0 / 0.64);
@@ -158,19 +188,13 @@
   --dock-surface: oklch(1 0 0 / 0.1);
   --dock-surface-hover: oklch(1 0 0 / 0.18);
 
-  --sidebar: var(--dock);
-  --sidebar-foreground: var(--dock-foreground);
-  --sidebar-muted: var(--dock-muted);
-  --sidebar-accent: var(--dock-surface);
-  --sidebar-accent-foreground: var(--dock-foreground);
-  --sidebar-border: var(--dock-border);
-  /* WHITE, and deliberately not var(--ring). The page ring is ink, and an ink
-     ring on the ink rail is no ring at all. This token used to be a LITERAL
-     oklch(0.65 0.24 5) rather than var(--brand-pink), so deleting the brand
-     ramp would have left a hot-pink focus ring in the rail with every check
-     green. Sidebar.tsx pairs it with ring-offset-sidebar, because a white ring
-     drawn flush against the white active pill only makes the pill 2px fatter. */
-  --sidebar-ring: oklch(1 0 0);
+  /* THE `--sidebar-*` ALIASES ARE GONE (MESITA-1975). They were eight names
+     for values `--dock-*` already held, and their only reader was
+     `Sidebar.tsx`, which the top menu replaced. Kept, they would be a live
+     invitation: `bg-sidebar` and `ring-sidebar-ring` still autocomplete, and
+     white-at-10% behind white-at-64% on the new white bar renders as nothing
+     at all, on a public URL, with every check green. The dark ground that
+     survives is the AskBar band, and it paints with `--dock-*` by name. */
 }
 
 @theme inline {
@@ -207,15 +231,10 @@
   --color-ring: var(--ring);
   --color-tier-gold: var(--tier-gold);
   --color-tier-gold-ink: var(--tier-gold-ink);
+  --color-state-live: var(--state-live);
+  --color-state-live-ink: var(--state-live-ink);
   --color-mock-strip: var(--mock-strip);
   --color-ink-hover: var(--ink-hover);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-muted: var(--sidebar-muted);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --color-dock: var(--dock);
   --color-dock-foreground: var(--dock-foreground);
   --color-dock-muted: var(--dock-muted);

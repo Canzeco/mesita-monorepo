@@ -1,446 +1,384 @@
 "use client";
 
-// THE RAIL. One dark column, a head, a venue, FIVE rows, a foot.
+// THE MENU. A column again — lockup, venue, fourteen rows (MESITA-2004…2012).
 //
-// ── THE SHAPE (MESITA-1937) ───────────────────────────────────────────────
+// ── THE SHAPE ──────────────────────────────────────────────────────────────
 //
-//   ┌──────────────────┐
-//   │  mesita.         │  the HEAD: the lockup, pinned, scrolls with nothing
-//   ├──────────────────┤
-//   │  ▣ Lumbre y Sal ⌄│  the VENUE: the subject. Name → Home, caret → places
-//   │  ▦ Products      │  ┐
-//   │  ▤ Profile       │  │
-//   │  ▧ Customers     │  │ THE FIVE. The only thing that scrolls, and every
-//   │  ▥ Activity      │  │ row of it is about the venue named above.
-//   │  ⚙ Settings      │  ┘
-//   │                  │  the slack falls HERE, between the place and you
-//   ├──────────────────┤
-//   │  ⬤ Account       │  the FOOT: the PERSON, pinned
-//   └──────────────────┘
+//   ┌────────────────────────┐
+//   │  mesita.               │   the lockup, fixed, never scrolls
+//   │  ┌──────────────────┐  │
+//   │  │ 🏞  Lumbre y Sal │  │   the venue band — back from the rail
+//   │  │    Mesita Pro    │  │
+//   │  └──────────────────┘  │
+//   │   📍 Place             │
+//   │   💳 Plan              │
+//   │   ⚙️ Settings          │
+//   │                        │
+//   │   PRODUCTS             │
+//   │   🏪 Mesita Profile    │
+//   │   🤝 Partner Badge   [On]│  the badge, not the purchase
+//   │   …eight of them…      │
+//   │   🔮 Future products 10│   the eleventh row, a door
+//   └────────────────────────┘
 //
-// Pato, 2026-09-16, with the shipped rail on screen: *"Noooo — make it like
-// this: Logo / Place Explorer-Selector / Products / Profile / Customers /
-// Activity / Settings / (gap) / Account. keep congruent simple design."*
+// ── WHY IT IS INK ──────────────────────────────────────────────────────────
 //
-// ── THE THREE BANDS ────────────────────────────────────────────────────────
+// MESITA-1981 ruled the menu black and MESITA-1975's line carried that; the
+// line is gone and the ruling is not, so the black moves into the column.
 //
-// THE HEAD SAYS THE PRODUCT, THE SCROLLER SAYS THE PLACE, THE FOOT SAYS THE
-// PERSON. Each band answers a different question, so none can be mistaken for a
-// row of another's list — which is why the logo is not the first entry in
-// `RAIL_ROWS` and Account is not the last one.
+// THE COST MESITA-1981 PAID IS REFUNDED HERE. That issue put an ink bar above
+// an ink AskBar band and wrote down that Home now had two ink surfaces
+// separated only by shape. A column and a band do not stack: the menu is
+// beside the page rather than above it, so the console is back to ONE dark
+// object and the band is the only ink thing on Home again.
 //
-// THE SCOPE IS THE DIVIDER, NOT THE SUBJECT MATTER (MESITA-1937). MESITA-1935
-// read Settings and Account as two rows that both meant configuration and
-// merged them; they are not. Settings configures the PLACE — Team and
-// Developers at `/places/<id>/settings` — and Account is YOU, across every
-// place you hold. Scoping them apart is what makes each one legible; the seam
-// above the foot is where the scope changes, and it is the only seam left.
+// IT PAINTS WITH `--dock-*` AND MAY NOT READ A PAGE TOKEN. `--dock` is
+// `--ink`, not pure black; `text-muted-foreground` (#5d5d5d) is unreadable on
+// it and `bg-foreground` is invisible. Rest is `--dock-muted` (white at 64%,
+// 7.84:1 on the ink), hover is full white, the chosen row is `--dock-surface`
+// (white at 10%, which composites to #2e2e2e — a 1.73:1 step you can see), and
+// the focus ring is `--sidebar-ring`, which is pure white and exists for
+// exactly this reason.
 //
-// THE EXIT IS ON THE FOOT, WHICH IS WHY THE FOOT IS ACCOUNT. `showRows` draws
-// `RAIL_ROWS` only in the `solo` and `multi` shapes; `unknown` and `zero` get
-// one button and no rows. This band renders in all four, and Sign out lives on
-// its page and nowhere else — so whatever the scroller is doing, and whatever
-// went wrong with the places, the person can still leave. A Settings row in the
-// scroller is fine precisely because Settings is not where Sign out is.
+// PURE BLACK IS STILL RESERVED for `--mock-strip`, which sits directly above
+// this column. Two identical black slabs read as chrome rather than as a
+// warning, and the warning is the more important of the two.
 //
-// THE VENUE IS NOT A ROW EITHER, and it is not the selector returning
-// (MESITA-1918 deleted a MENU). It is the SUBJECT of the column: the one thing
-// in the rail that says which venue the five rows are about — Pato's "Place
-// Explorer/Selector". Two SIBLING links, never nested — nested interactive
-// elements are invalid and the inner one is unreachable by keyboard:
+// ── THE ACTIVE ROW IS A FILL, NOT A RULE ───────────────────────────────────
 //
-//   the photo and the name  → the place's bare address, which is HOME
-//   the caret              → the catalogue, which is what switches places
+// MESITA-1975 argued a solid pill was a slab across a 1400px line and replaced
+// it with a 2px underline. That argument was about a LINE. In a 320px column a
+// fill is the rail's original idiom and it is the right one: an underline under
+// one row in a stack of thirteen reads as a separator between two of them.
 //
-// HOME KEEPS THE SCREEN AND LOSES THE ROW. The venue row is its door, and the
-// pill lights on it there, which is how an operator learns that. MESITA-1914's
-// rule holds — the console still opens on Home — without a sixth row naming an
-// address the venue already names.
+// ── ROWS ARE ABSENT, NEVER DIMMED ──────────────────────────────────────────
 //
-// THE SLACK BELONGS TO THE MIDDLE. The foot is pinned rather than trailing the
-// rows, so a console with one row and a console with five put the person in the
-// same place. A footer that floats up under a short list is how an operator
-// learns to hunt for their own name.
-//
-// ── THE LAWS IT KEEPS ──────────────────────────────────────────────────────
-//
-// ONE COLUMN, FROM ONE ARRAY. Every row comes from `RAIL_ROWS`; there is no
-// second list anywhere. Moving a row is an edit to one line in
-// lib/console-routes.ts.
-//
-// ONE ROW SHAPE. No indent, one glyph, one label, no id, no count, no badge.
-// The section HEADS are gone with the sections (MESITA-1933): a title over a
-// handful of rows is a taxonomy drawn over a list.
-//
-// ROWS NEVER DIM. A product that is not live still gets a live page, and the
-// PAGE says it is not here yet (SoonStrip). A dimmed row makes the column a
-// place where some entries are real and some are not.
-//
-// ONE WIDTH. There is no chips-only rail and no control to reach one
-// (MESITA-1905). The rail is `w-60` on desktop and the drawer below `lg`.
-//
-// HIDDEN IS NOT PROTECTED, AND IT IS NOT THE GATE EITHER. `tabsForAccess` and
-// `pagesForAccess` drop the rows a viewer may not see; the `[view]` gate and
-// each page's own `notFound` are what actually refuse the address. Until
-// MESITA-1933 the product rows were running the only role check the console
-// had, which is why the second matrix now exists.
-//
-// THE DARK GROUND IS ITS OWN VOCABULARY. `--sidebar-*` only, including the
-// focus ring: the page's `--ring` is the brand pink drawn against a light
-// background, and the rail has `--sidebar-ring` for the same reason it has its
-// own foreground. Do not unify them.
-import { useMemo } from "react";
-import Link from "next/link";
+// `TopNav`'s law, inherited: *a destination a caller cannot reach is NOT
+// RENDERED*. A viewer gets no products, so the whole Products group goes —
+// label and all, because a heading over nothing is worse than neither. Hiding
+// is not the gate; every page still refuses its own address.
 import { usePathname } from "next/navigation";
-import {
-  ChartNoAxesColumn,
-  ChevronDown,
-  LayoutGrid,
-  Plus,
-  RotateCw,
-  Settings,
-  Store,
-  UserRound,
-  Users,
-} from "lucide-react";
+import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { PlaceChip } from "@/components/console/PlaceChip";
+import { ProductStateBadge } from "@/components/shared/Badges";
+import { buildProductCards, type ProductCard } from "@/lib/products";
+import { PRODUCT_MARK } from "@/lib/product-marks";
+import type { ProductKey } from "@/lib/product-keys";
+import { primaryHalf } from "@/lib/product-halves";
+import { FUTURE_SLUG, PRODUCT_SLUG, productHref } from "@/lib/product-routes";
 import {
-  PLACE_PAGE_LABEL,
-  RAIL_ROWS,
+  SIDEBAR_GROUPS,
+  SIDEBAR_PLACE_LABEL,
+  SIDEBAR_PLACE_MARK,
+  SIDEBAR_PLAN_LABEL,
+  SIDEBAR_PLAN_MARK,
+  SIDEBAR_ROADMAP_LABEL,
+  SIDEBAR_ROADMAP_MARK,
+  SIDEBAR_SETTINGS_LABEL,
+  SIDEBAR_SETTINGS_MARK,
+  type SidebarRow,
+} from "@/lib/sidebar-rows";
+import {
   SHELL_ROUTES,
-  flatPlacePageFromPathname,
   isPlaceHomePathname,
-  placePageFromPathname,
-  placePageHref,
-  placeRootHref,
-  type PlacePage,
-  type PlaceRailView,
+  placePayHref,
+  placePlanHref,
 } from "@/lib/console-routes";
-import {
-  PLACE_TAB_LABEL,
-  pagesForAccess,
-  placeTabFromPathname,
-  placeTabHref,
-  tabsForAccess,
-  type PlaceTab,
-} from "@/lib/place-tabs";
-import { flatViewFromPathname } from "@/lib/console-routes";
+import { pagesForAccess, placeTabHref } from "@/lib/place-tabs";
+import { PLAN_LABEL, type MockPlace } from "@/mock/types";
 import type { RailScope } from "@/lib/rail-scope";
 import { cn } from "@/lib/utils";
 
-const ICON = "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5";
+/** 13px, the size the rail landed on after five passes (MESITA-1956 → 1958)
+ *  and the size MESITA-2001 brought the top menu back down to. A nav label is
+ *  a LABEL, not body copy, and it is the same size under a finger and a cursor.
+ *
+ *  `min-h-9` is 36px, not 44. The 44px target was a TOP BAR rule, where four
+ *  tabs had a whole bar's height to spend; fifteen rows at 44px is 660px of
+ *  column before the lockup and the venue. 36px with a 4px gap between rows
+ *  keeps the touch slop the guideline is actually about, and the drawer — the
+ *  only place these are touched — has the full width of the panel per row. */
+const ROW =
+  "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset";
+const ROW_REST = "text-dock-muted hover:bg-dock-surface/70 hover:text-dock-foreground";
+const ROW_ON = "bg-dock-surface text-dock-foreground font-semibold";
 
-const ROW_BASE =
-  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px] outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
-const ROW_REST =
-  "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground";
-// The active row is a SOLID pill, not a tint: on the dark rail it is the
-// off-white fill with ink text — the brightest thing in the column, which is
-// what makes "you are here" survive a glance down it.
-const ROW_ACTIVE = "bg-sidebar-foreground text-sidebar font-semibold";
-const SECTION_SEAM = "border-sidebar-border/50 mt-2 border-t pt-2";
+/** The mark's box. Fixed width so every name starts on the same x — a ragged
+ *  left edge across thirteen rows is the thing that makes a list look generated. */
+const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
 
-// THE VENUE'S TWO TARGETS. They share a flex line and nothing else: each keeps
-// its own hit area and its own ring, because a row with one ring around two
-// destinations tells a keyboard which one it is on by lying.
-const VENUE_LINE = "flex items-center gap-1";
-const VENUE_NAME =
-  "flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-sm font-semibold tracking-tight transition min-h-11 lg:min-h-0 lg:py-1.5 lg:text-[13px] outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
-// 44×44 under the finger, 32×32 under the cursor. A caret sized to the glyph
-// it draws is a 14px target, which is the whole reason this constant exists.
-const VENUE_CARET =
-  "flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl transition lg:h-8 lg:min-h-0 lg:w-8 outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+/** THE COLUMN'S WIDTH, IN ONE PLACE. Pato, twice: *"make the menu wider."*
+ *
+ *  320px, up from the 272 MESITA-2010 shipped (itself up from 252). The rule
+ *  MESITA-2004 wrote — a navigator is not content, so it is as wide as its
+ *  longest name plus its badge and no wider — was read twice as the tightest
+ *  width that merely FITS, and twice that produced a column Pato asked to
+ *  widen. Fitting is the floor, not the target: at 272 "Online Reservations"
+ *  and its `On` badge cleared each other by ~20px, which is a gap but not a
+ *  margin. 320 leaves the longest row about a third of the column in air, so
+ *  the names read as a list and the badges as a column beside it, and it is
+ *  still narrower than any content pane it sits next to.
+ *
+ *  IT LIVES HERE BECAUSE `AppShell` RENDERS THE MENU TWICE — the fixed column
+ *  above `lg` and the drawer panel below it. Two literals is the drift trap
+ *  that file's own comment warns about: an edit lands on one copy and every
+ *  gate stays green. */
+export const SIDEBAR_WIDTH = "w-[320px]";
 
-// THE MARKS NAME THE SUBJECT, NOT THE LABEL:
-//   Settings  Settings           the cog. The foot does NOT wear it any more
-//                                (MESITA-1937): the foot is the person, and
-//                                it wears UserRound
-//   Customers Users              PEOPLE, plural — the pairing IS the meaning
-//   Products  LayoutGrid         the CATALOGUE: a grid of tiles, which is
-//                                literally what the page is
-//   Activity  ChartNoAxesColumn  counts over time; a squiggle reads medical
-//   Profile   Store              the PLACE's public page, not a document
-//
-// EXHAUSTIVE OVER `PlacePage`, AND AS OF MESITA-1937 EVERY ENTRY DRAWS A ROW.
-// It stayed exhaustive through two issues where two of them did not — Customers
-// left with the eight products (MESITA-1933) and Settings left for the foot
-// (MESITA-1935) — which is exactly why both marks were still here to use. Keep
-// it exhaustive: a page added to the contract has to pick a mark rather than
-// render blank the day it gets a row.
-const PAGE_ICON: Record<PlacePage, React.ComponentType<{ className?: string }>> = {
-  settings: Settings,
-  products: LayoutGrid,
-  customers: Users,
-  activity: ChartNoAxesColumn,
-};
+const GROUP_LABEL =
+  "px-2.5 pb-1.5 text-[9.5px] font-semibold tracking-[0.14em] text-white/45 uppercase";
 
-/** The one view that kept a row. It wears the mark its own catalogue CARD
- *  wears — one product drawn two ways is how an operator learns to distrust
- *  both drawings — and the card's tint does not come along: the only colour in
- *  this column is the pill. */
-const VIEW_ICON: Record<PlaceRailView, React.ComponentType<{ className?: string }>> = {
-  profile: Store,
-};
-
-function NavRow({
-  href,
-  label,
-  Icon,
-  active,
+export function Sidebar({
+  scope,
+  place,
+  isSuperAdmin,
   onNavigate,
-  title,
+}: {
+  scope: RailScope;
+  /** THE WHOLE RECORD, not `scope.place`. `RailPlace` is a six-field `Pick`
+   *  and `buildProductCards` reads far more than six — every `atPlace`
+   *  predicate in `lib/products.ts` interrogates the place directly. `AppShell`
+   *  looks it up in `world.places` by the id the scope resolved, so the scope
+   *  is still the one thing deciding WHICH place, and this is only how much of
+   *  it the menu can see. Null whenever the scope holds none. */
+  place: MockPlace | null;
+  isSuperAdmin: boolean;
+  /** Fired on every row click. The drawer closes itself with this; the fixed
+   *  column passes nothing, because there is nothing to close. */
+  onNavigate?: () => void;
+}) {
+  const pathname = usePathname();
+  const placeId = place?.id ?? null;
+
+  // WHICH ROWS THIS CALLER MAY SEE. `pagesForAccess` is the only filter, and it
+  // is all-or-nothing: a viewer gets neither half, so a viewer gets no products
+  // and no per-place log. Their menu is Place and Settings.
+  const allowed = new Set(
+    pagesForAccess({
+      held: place !== null,
+      role: place?.myRole ?? null,
+      isSuperAdmin,
+    }),
+  );
+
+  // THE PLACE-SCOPED ROWS NEED A PLACE TO POINT AT. At `unknown` and `zero`
+  // there is none, so they are absent rather than dead — the same call the rail
+  // made with `showRows` and the line made with `showPages`.
+  const held =
+    (scope.mode === "solo" || scope.mode === "multi") &&
+    placeId !== null &&
+    allowed.size > 0;
+
+  const cards: ProductCard[] = place
+    ? buildProductCards({
+        plan: place.plan,
+        mesitaPayEnabled: place.pay === "enabled",
+        place,
+        placeHref: (view) => placeTabHref(place.id, view),
+        payHref: placePayHref(place.id),
+      })
+    : [];
+  const byKey = new Map(cards.map((c) => [c.key, c]));
+  const soonCount = cards.filter((c) => c.state === "soon").length;
+
+  const last = pathname.split("/").filter(Boolean).at(-1) ?? "";
+
+  function render(row: SidebarRow): React.ReactNode {
+    switch (row.kind) {
+      case "place":
+        // `/places`, THE PORTFOLIO. Place is the switcher, not a home
+        // (MESITA-1976) — and it is the one row that renders at every mode,
+        // because at `zero` it carries the Add door.
+        return (
+          <Row
+            key="place"
+            href={SHELL_ROUTES.places}
+            mark={SIDEBAR_PLACE_MARK}
+            name={SIDEBAR_PLACE_LABEL}
+            on={
+              pathname === SHELL_ROUTES.places ||
+              pathname === SHELL_ROUTES.placesNew ||
+              isPlaceHomePathname(pathname)
+            }
+            onNavigate={onNavigate}
+          />
+        );
+      case "plan":
+        // THE PURCHASE, ON ITS OWN ROW AGAIN (MESITA-2012). It needs a place
+        // to point at, so it is absent at `unknown` and `zero` — the same
+        // call every place-scoped row makes. Unlike a product row it does NOT
+        // read `allowed`: a viewer may see what the place pays, which is the
+        // rule Settings' own Billing section already runs on, and the one
+        // control that spends anything is owner-only inside the screen.
+        if (!placeId || (scope.mode !== "solo" && scope.mode !== "multi"))
+          return null;
+        return (
+          <Row
+            key="plan"
+            href={placePlanHref(placeId)}
+            mark={SIDEBAR_PLAN_MARK}
+            name={SIDEBAR_PLAN_LABEL}
+            on={last === "plan"}
+            onNavigate={onNavigate}
+          />
+        );
+      case "settings":
+        // LAST-RESORT ROW. It renders at EVERY mode, including `unknown` and
+        // `zero`, because Sign out lives on it and a console whose only exit
+        // disappears behind a failed read is the defect MESITA-1937 named.
+        return (
+          <Row
+            key="settings"
+            href={SHELL_ROUTES.settings}
+            mark={SIDEBAR_SETTINGS_MARK}
+            name={SIDEBAR_SETTINGS_LABEL}
+            on={pathname === SHELL_ROUTES.settings}
+            onNavigate={onNavigate}
+          />
+        );
+      // MESITA PARTNER IS STILL A PRODUCT ROW (MESITA-2011), drawn below with
+      // the state badge every other product wears rather than its own
+      // gold/off pair. The Plan row above it is a different destination, not
+      // the one that issue folded in here — see MESITA-2012.
+      case "product": {
+        if (!held || !place) return null;
+        const card = byKey.get(row.key);
+        if (!card) return null;
+        const slug = PRODUCT_SLUG[row.key];
+        return (
+          <Row
+            key={row.key}
+            // THE HALF THE PRODUCT HAS, not always Setup. Eight of the ten
+            // open on their configuration; Prepaid Credits has no Setup half
+            // since MESITA-2003 emptied it and Online Reputation has none at all
+            // (MESITA-2011), so those two rows open the log rather than a 404.
+            href={productHref(place.id, primaryHalf(row.key), slug)}
+            mark={PRODUCT_MARK[row.key as ProductKey]}
+            name={card.name}
+            // THE ROW STAYS LIT ON BOTH HALVES. `/activity/<slug>` is the same
+            // product seen from its other side, not a different destination —
+            // the tab pair inside the pane says which half you are on, and a
+            // menu that went dark when you pressed that pair would be teaching
+            // the operator that they had left the product.
+            on={last === slug}
+            // `onDock` because this menu is ink. Only `soon` moves — it is
+            // the one tone with no fill of its own, so it is the one that
+            // would otherwise print a white-card grey onto near-black.
+            badge={<ProductStateBadge state={card.state} onDock />}
+            onNavigate={onNavigate}
+          />
+        );
+      }
+      case "roadmap":
+        // NO DOOR ONTO AN EMPTY LIST. When every product has shipped the count
+        // is zero and the row — and with it the group's label — is gone.
+        if (!held || !place || soonCount === 0) return null;
+        return (
+          <Row
+            key="roadmap"
+            href={productHref(place.id, "products", FUTURE_SLUG)}
+            mark={SIDEBAR_ROADMAP_MARK}
+            name={SIDEBAR_ROADMAP_LABEL}
+            on={last === FUTURE_SLUG}
+            badge={
+              <span className="rounded-full bg-white/14 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {soonCount}
+              </span>
+            }
+            onNavigate={onNavigate}
+          />
+        );
+    }
+  }
+
+  return (
+    <div className="bg-dock flex h-full min-h-0 flex-col">
+      {/* THE LOCKUP IS A LABEL, NOT A LINK, and it is OUTSIDE the scroller.
+          Every address this menu reaches is in the list below it, so a logo
+          that navigated would be a sixteenth destination in different clothes —
+          the rail and the line both made this call. Keeping it out of the
+          scroller is what stops the brand sliding away on a short window. */}
+      <div className="flex h-13 shrink-0 items-center px-4">
+        <MesitaLogo
+          variant="horizontal"
+          className="text-dock-foreground h-[18px] w-auto"
+        />
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+        {/* THE VENUE BAND IS BACK (MESITA-2004). MESITA-1975 deleted it because
+            a LINE has no room for a photo and a name, and MESITA-1985 put the
+            venue at the line's right end instead. The line is gone, so without
+            this the console would never say which place it is pointed at — and
+            the pages below it have had no heading of their own since
+            MESITA-1985 took theirs away.
+
+            IT IS A LABEL, NOT A LINK. Place, one row below, already opens the
+            portfolio; a venue that navigated would be the same door drawn twice,
+            which is exactly what MESITA-1918 deleted the selector caret for. */}
+        {place && (
+          <div className="bg-dock-surface mb-3 flex items-center gap-2.5 rounded-xl px-2.5 py-2">
+            <PlaceChip photoUrl={place.photoUrl} size="menu" />
+            <div className="min-w-0">
+              <p className="text-dock-foreground truncate text-[12.5px] font-semibold">
+                {place.name}
+              </p>
+              <p className="text-dock-muted truncate text-[10.5px]">
+                {PLAN_LABEL[place.plan]}
+                {place.partnered ? " · Partner" : ""}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <nav aria-label="Console" className="flex flex-col gap-3">
+          {SIDEBAR_GROUPS.map((group) => {
+            const rows = group.rows.map(render).filter(Boolean);
+            // A GROUP WITH NO ROWS HAS NO LABEL EITHER. "Products" over empty
+            // space is a promise the console is not keeping, and a viewer would
+            // read it as a failed load rather than as a permission.
+            if (rows.length === 0) return null;
+            return (
+              <div key={group.label ?? "root"}>
+                {group.label && <p className={GROUP_LABEL}>{group.label}</p>}
+                <div className="flex flex-col gap-0.5">{rows}</div>
+              </div>
+            );
+          })}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+function Row({
+  href,
+  mark,
+  name,
+  on,
+  badge,
+  onNavigate,
 }: {
   href: string;
-  label: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  active: boolean;
+  mark: string;
+  name: string;
+  on: boolean;
+  badge?: React.ReactNode;
   onNavigate?: () => void;
-  title?: string;
 }) {
   return (
     <Link
       href={href}
+      aria-current={on ? "page" : undefined}
       onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
-      // Only a GIVEN title renders one. The label is on screen at every width
-      // this rail has, so a tooltip repeating it would be a second copy of the
-      // row's own text.
-      title={title}
-      className={cn(ROW_BASE, active ? ROW_ACTIVE : ROW_REST)}
+      className={cn(ROW, on ? ROW_ON : ROW_REST)}
     >
-      <Icon className={ICON} />
-      <span className="truncate">{label}</span>
+      <span aria-hidden className={MARK}>
+        {mark}
+      </span>
+      <span className="min-w-0 flex-1 truncate">{name}</span>
+      {badge && <span className="shrink-0">{badge}</span>}
     </Link>
-  );
-}
-
-/** A row that is a FACT, not a link: the places could not be read. */
-function MutedRow({
-  label,
-  Icon,
-}: {
-  label: string;
-  Icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div role="status" className={cn(ROW_BASE, "text-sidebar-muted")}>
-      <Icon className={ICON} />
-      <span className="truncate">{label}</span>
-    </div>
-  );
-}
-
-/** THE VENUE — the subject of the column, and Home's door.
- *
- *  A PHOTO, NEVER AN ICON: an icon is identical on every venue, and the whole
- *  job of this band is to say WHICH one the five rows below are about.
- *
- *  THE CARET IS NOT A MENU. It is a link to the catalogue — the surface that
- *  has done the switching since MESITA-1918 — and it renders at every mode,
- *  because at one place the catalogue is still the pool and the Add door. It
- *  replaces the `multi`-only All places row, which was the same door drawn
- *  twice at one of the four shapes. */
-function VenueRow({
-  placeId,
-  name,
-  photoUrl,
-  onHome,
-  onNavigate,
-}: {
-  placeId: string;
-  name: string;
-  photoUrl: string | null;
-  onHome: boolean;
-  onNavigate?: () => void;
-}) {
-  return (
-    <div className={VENUE_LINE}>
-      <Link
-        href={placeRootHref(placeId)}
-        onClick={onNavigate}
-        aria-current={onHome ? "page" : undefined}
-        title={`Home · ${name}`}
-        className={cn(VENUE_NAME, onHome ? ROW_ACTIVE : ROW_REST)}
-      >
-        <PlaceChip photoUrl={photoUrl} />
-        <span className="truncate">{name}</span>
-      </Link>
-      <Link
-        href={SHELL_ROUTES.places}
-        onClick={onNavigate}
-        aria-label="All places"
-        title="All places"
-        className={cn(VENUE_CARET, ROW_REST)}
-      >
-        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden />
-      </Link>
-    </div>
-  );
-}
-
-export function Sidebar({
-  scope,
-  isSuperAdmin,
-  viewerLabel,
-  onNavigate,
-  onRetry,
-}: {
-  scope: RailScope;
-  // NO `places` (MESITA-1918): the rail took the whole portfolio only to fill
-  // the selector's menu. It needs the SCOPE now — which venue is open, and
-  // what this viewer may see of it.
-  isSuperAdmin: boolean;
-  /** The person's own name, for the foot row's tooltip only. */
-  viewerLabel: string;
-  onNavigate?: () => void;
-  onRetry: () => void;
-}) {
-  const pathname = usePathname();
-  const place = scope.place;
-  const placeId = place?.id ?? null;
-
-  const currentView: PlaceTab | null =
-    placeTabFromPathname(pathname) ?? flatViewFromPathname(pathname);
-  const currentPage: PlacePage | null =
-    placePageFromPathname(pathname) ?? flatPlacePageFromPathname(pathname);
-
-  const onAccount = pathname === SHELL_ROUTES.account;
-  const onAddPlace = pathname === SHELL_ROUTES.placesNew;
-
-  // WHICH ROWS THIS CALLER MAY SEE, from ONE access object and TWO matrices.
-  // The matrices are applied to the SELECTED place's own role, so switching
-  // from a place you own to one you only view drops FOUR of the five rows and
-  // leaves Profile — which is the honest picture, not a bug.
-  //
-  // TWO, because a page is not a view. `tabsForAccess` was the only role check
-  // the rail ran, and it only ever saw the product rows; with those gone it
-  // would have had nothing left to filter while every page row stayed open to
-  // a viewer, with every check green (MESITA-1933). Four of the five rows are
-  // pages now, so `pagesForAccess` is carrying almost all of this.
-  const allowed = useMemo(() => {
-    const access = {
-      held: place !== null,
-      role: place?.myRole ?? null,
-      isSuperAdmin,
-    };
-    return {
-      views: new Set<PlaceTab>(tabsForAccess(access)),
-      pages: new Set<PlacePage>(pagesForAccess(access)),
-    };
-  }, [place, isSuperAdmin]);
-
-  // THE FOUR SHAPES. `unknown` is NOT `zero` with a sad face: it offers a
-  // retry and never the word "add", because a failed read has not established
-  // that the caller holds nothing.
-  const showRows = (scope.mode === "solo" || scope.mode === "multi") && placeId !== null;
-
-  return (
-    <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-3 pb-3">
-      {/* THE HEAD. The lockup is a LABEL, not a link: every address this rail
-          reaches is below it, and a logo that navigates somewhere would be
-          one more destination wearing different clothes. It takes the rail's own
-          foreground so it reads as part of the dark column rather than as a
-          sticker on it, and it is inset by a row's own padding so its mark
-          lines up with the glyph column underneath. */}
-      <div className="border-sidebar-border/50 flex shrink-0 items-center border-b px-2.5 pt-1 pb-3">
-        <MesitaLogo variant="horizontal" className="text-sidebar-foreground h-5 w-auto" />
-      </div>
-
-      <nav
-        aria-label="Console"
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain pt-2"
-      >
-        {scope.mode === "unknown" && (
-          <>
-            <MutedRow label="Places unavailable" Icon={Store} />
-            <button
-              type="button"
-              onClick={onRetry}
-              className={cn(ROW_BASE, ROW_REST, "w-full")}
-            >
-              <RotateCw className={ICON} />
-              <span className="truncate">Try again</span>
-            </button>
-          </>
-        )}
-
-        {scope.mode === "zero" && (
-          <NavRow
-            href={SHELL_ROUTES.placesNew}
-            label="Add your place"
-            Icon={Plus}
-            active={onAddPlace}
-            onNavigate={onNavigate}
-          />
-        )}
-
-        {showRows && place && (
-          <VenueRow
-            placeId={place.id}
-            name={place.name}
-            photoUrl={place.photoUrl}
-            onHome={isPlaceHomePathname(pathname)}
-            onNavigate={onNavigate}
-          />
-        )}
-
-        {showRows &&
-          RAIL_ROWS.map((row) => {
-            // NO WRAPPER. Every row used to be wrapped so a seam or a section
-            // head could hang off it; both are gone, so a row is a row.
-            if (row.kind === "page") {
-              if (!allowed.pages.has(row.target)) return null;
-              return (
-                <NavRow
-                  key={`page:${row.target}`}
-                  href={placePageHref(placeId ?? "", row.target)}
-                  label={PLACE_PAGE_LABEL[row.target]}
-                  Icon={PAGE_ICON[row.target]}
-                  active={currentPage === row.target}
-                  onNavigate={onNavigate}
-                />
-              );
-            }
-            if (!allowed.views.has(row.view)) return null;
-            return (
-              <NavRow
-                key={`place:${row.view}`}
-                href={placeTabHref(placeId ?? "", row.view)}
-                label={PLACE_TAB_LABEL[row.view]}
-                Icon={VIEW_ICON[row.view]}
-                active={currentView === row.view}
-                onNavigate={onNavigate}
-              />
-            );
-          })}
-      </nav>
-
-      {/* THE FOOT: THE PERSON, pinned, alone (MESITA-1905, MESITA-1937).
-
-          IT IS ACCOUNT AND NOT SETTINGS, and the difference is scope, not
-          subject. Settings is a row in the scroller because it configures the
-          PLACE the whole scroller is about; this band is YOU, across every
-          place you hold, which is why it sits below the seam where the scope
-          changes.
-
-          IT RENDERS IN EVERY STATE, including the failed read: whatever went
-          wrong with the places, the person is still signed in — and Sign out
-          lives on that page and nowhere else, so a rail without this band is a
-          console with no exit. That is the one constraint the shape of this
-          rail is not allowed to lose, and it is why the exit sits on ACCOUNT
-          rather than on Settings, which draws nothing at all in two of the four
-          shapes. */}
-      <div className={cn(SECTION_SEAM, "shrink-0")}>
-        <NavRow
-          href={SHELL_ROUTES.account}
-          label="Account"
-          title={`Account · ${viewerLabel}`}
-          Icon={UserRound}
-          active={onAccount}
-          onNavigate={onNavigate}
-        />
-      </div>
-    </aside>
   );
 }

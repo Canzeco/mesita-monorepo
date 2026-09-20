@@ -18,99 +18,81 @@ import type { PlaceTab } from "@/lib/place-tabs";
 
 export const SHELL_ROUTES = {
   root: "/",
-  // TWO DESTINATIONS AGAIN, AND THEY ARE SCOPED DIFFERENTLY (MESITA-1937).
-  // `account` is the PERSON — You, your places, Sign out — and it is what the
-  // rail's foot links. `settings` is the flat twin of a PLACE's settings, which
-  // resolves onto `/places/<id>/settings` through `(shell)/[flat]`; the rail
-  // links that canonical address, never this one.
-  account: "/account",
+  // ONE DESTINATION NOW, AND IT IS NOT PLACE-SCOPED (MESITA-1973). `/settings`
+  // is the fourth tab: the person, what they owe, and the open place's own
+  // config, on one screen. MESITA-1937 split this into `/account` (the person)
+  // and `/places/<id>/settings` (the place) on the argument that scoping them
+  // apart is what makes each legible. Four tabs overrule it — Pato put
+  // *"Settings, Account also here"* in the same breath — and the split's real
+  // job survives the merge: this address needs NO place, so the exit still
+  // renders in the `unknown` and `zero` shapes, which is the one constraint
+  // MESITA-1935 actually broke when it tried this before.
+  //
+  // IT IS A REAL PAGE, NOT A FLAT TWIN, so it is gone from `FLAT_ROUTES`: a
+  // static segment shadows `[flat]` in Next's router, and a name in both lists
+  // is a resolver that never runs.
   settings: "/settings",
   places: "/places",
   placesNew: "/places/new",
 } as const;
 
-/** The segments BENEATH `/places/<id>` that are PAGES rather than views. */
-export const PLACE_PAGES = [
-  "settings",
-  "products",
-  "customers",
-  "activity",
-] as const;
+/** The segments BENEATH `/places/<id>` that are PAGES rather than views.
+ *
+ *  TWO, SINCE MESITA-1973. `products` became `setup`, `customers` went back to
+ *  being a future product with a row in Setup and no page of its own, and
+ *  `settings` left the place entirely for `/settings`. */
+export const PLACE_PAGES = ["products", "activity"] as const;
 export type PlacePage = (typeof PLACE_PAGES)[number];
 
 export const PLACE_PAGE_LABEL: Record<PlacePage, string> = {
-  settings: "Settings",
-  products: "Products",
-  customers: "Customers",
+  // THE SHOP AND THE CONFIG ARE ONE LIST (MESITA-1973). `products` named a
+  // catalogue that only stated facts, while every switch lived on a product's
+  // own view — so a product existed twice and the two could disagree, which is
+  // the bug MESITA-1953 had to work around on the Visits card. Setup is the
+  // one list: Off says what a product does, On says how it is set.
+  // PRODUCTS AGAIN (MESITA-1986). Pato: *"rename setup to products"*, which
+  // reverses MESITA-1973's `products` → `setup`. That rename was made on the
+  // argument that Setup is the ONE list where Off says what a product does and
+  // On says how it is set; the list did not change, but what you open from it
+  // did — every row now leads to that product's own screen, and a screen per
+  // product is a catalogue of products rather than a page of settings.
+  //
+  // SETUP, A THIRD TIME (MESITA-2001). Pato: *"rename products to setup"*.
+  // What settles it is what MESITA-1986 leaned on and what has happened
+  // since: a screen per product was going to make this a catalogue, and the
+  // panes did not become catalogue pages. Every one of them is a form, a
+  // dial, or a stated absence — the Bookings table left for Activity in
+  // MESITA-1986 itself. The sibling tab is Activity, and Setup / Activity is
+  // the pair an operator can hold: how it is configured, and what it did.
+  // Products / Activity is a noun beside a verb.
+  //
+  // THE LABEL ONLY. The route segment stays `/products`: renaming it touches
+  // `product-routes.ts`, every `productHref` caller and the Activity twin,
+  // and a pasted link is written down in blocker rows.
+  products: "Setup",
   activity: "Activity",
 };
 
-/** A rail row names a place PAGE or a place VIEW.
+/** THE MENU'S ROWS LEFT THIS FILE (MESITA-2004). `NavRow` and `NAV_ROWS` held
+ *  the four destinations MESITA-1975 drew across one ink line; the menu is a
+ *  COLUMN again and it holds every destination there is, so its list lives in
+ *  `lib/sidebar-rows.ts` beside `PRODUCT_ORDER`, which is where all but three
+ *  of its rows come from. The count is deliberately not written here: it has
+ *  moved four times since MESITA-2004 and this file never needed to know it.
  *
- *  TWO KINDS FOR FIVE ROWS, not one. A page and a view are different ADDRESS
- *  SHAPES — `/places/<id>/products` is a static segment, `/places/<id>/profile`
- *  goes through the `[view]` gate — and they light from different readers. A
- *  single string kind would make the rail GUESS which, and guessing wrong is a
- *  404 three files from its cause.
- *
- *  `kind: "home"` and `kind: "product"` are gone (MESITA-1933). See below. */
-export type RailRow =
-  | { kind: "page"; target: PlacePage }
-  | { kind: "place"; view: PlaceRailView };
+ *  THIS FILE IS THE ROUTE VOCABULARY AGAIN, and only that. The reason it is
+ *  worth keeping the two apart is written a few lines up: `place-tabs.ts`
+ *  imports a VALUE from here and this file imports only a TYPE back, because a
+ *  value import in the other direction closes a cycle in a permission matrix
+ *  and a cycle there evaluates to `undefined`, which reads as "allowed". A menu
+ *  that needs `PRODUCT_ORDER` would have dragged that risk into this file. */
 
-/** The place views that keep a rail row OF THEIR OWN — NOT `PLACE_TABS`.
- *  Profile is the only one, and the eight beside it are products: a product is
- *  reached from the catalogue now, never from a row. */
-export const PLACE_RAIL_VIEWS = ["profile"] as const;
-export type PlaceRailView = (typeof PLACE_RAIL_VIEWS)[number];
-
-/** THE RAIL — FIVE ROWS, in Pato's order (MESITA-1937).
+/** The two labels that are not a `PlacePage`.
  *
- *  Pato, 2026-09-16, with the shipped rail on screen: *"Noooo — make it like
- *  this: Logo / Place Explorer-Selector / Products / Profile / Customers /
- *  Activity / Settings / (gap) / Account. keep congruent simple design."*
- *
- *  EVERY ROW HERE IS PLACE-SCOPED, and that is what makes the list one list.
- *  Products, Profile, Customers, Activity and Settings are all things you do TO
- *  the venue named in the band above them. The PERSON is not in this array —
- *  Account is a pinned band in `Sidebar.tsx` — and neither is the venue itself.
- *
- *  CUSTOMERS IS BACK, reversing its removal in MESITA-1933. It left with the
- *  eight products because it read as a ninth; it is not one. A product is
- *  something a place turns on, and the people who walk in are not. It keeps its
- *  Soon card in the catalogue, because the catalogue names every product this
- *  place could have and says which ones this caller may open — a card that
- *  states a fact and a row that is a door are not the same drawing twice.
- *
- *  SETTINGS IS BACK IN THE SCROLLER, reversing MESITA-1935. That issue folded
- *  Account into Settings on the grounds that two rows both meaning
- *  configuration is a thing a reader has to disambiguate. The answer here is
- *  that they do not both mean configuration: one configures the PLACE (Team,
- *  Developers) and one is the PERSON. Scoping them apart is what makes them
- *  legible, not merging them.
- *
- *  AND THE EXIT SURVIVES ANYWAY. MESITA-1935's real objection was that
- *  `showRows` draws this array only in the `solo` and `multi` shapes, so a
- *  Settings row holding Sign out would strand the console's only exit in
- *  `unknown` and `zero`. It does not apply: Sign out is on ACCOUNT, and Account
- *  is the pinned foot, which renders in all four. The band that must never
- *  disappear is still a band.
- *
- *  HOME KEEPS THE SCREEN AND LOSES THE ROW (MESITA-1933, unchanged). The VENUE
- *  row above this list is its door — the one thing in the column that is
- *  unambiguously THIS PLACE, at the place's own bare address.
- *
- *  THE ORDER IS PRODUCTS FIRST, and that is the argument: the catalogue is
- *  where an operator turns the place on. Settings is last of the five because
- *  it is the only one you visit to change how the console behaves rather than
- *  to read what the place did. */
-export const RAIL_ROWS: readonly RailRow[] = [
-  { kind: "page", target: "products" },
-  { kind: "place", view: "profile" },
-  { kind: "page", target: "customers" },
-  { kind: "page", target: "activity" },
-  { kind: "page", target: "settings" },
-];
+ *  Kept because `[flat]` and the screen-title reader still name them. The menu
+ *  reads `SIDEBAR_*_LABEL` in `sidebar-rows.ts`. */
+export const NAV_HOME_LABEL = "Place";
+export const NAV_SETTINGS_LABEL = "Settings";
 
 export function placePageHref(placeId: string, page: PlacePage): string {
   return `/places/${encodeURIComponent(placeId)}/${page}`;
@@ -136,10 +118,30 @@ export function placesNewHref(): string {
   return SHELL_ROUTES.placesNew;
 }
 
-/** Mesita Payments' Stripe account is a SUB-STEP of the catalogue, not a
- *  ninth card: `products/pay`. */
+/** PLAN, THE PLACE'S PURCHASE (MESITA-2012). One screen under the place, and
+ *  deliberately NOT a `PlacePage`: that list is the Setup/Activity pair, and
+ *  Plan is neither half of anything. It is served by a static `plan` folder
+ *  beside `[view]`, which shadows the dynamic segment, so `PlaceTabGate` never
+ *  has to admit a name that is not a `PlaceTab`.
+ *
+ *  THE ROW THAT OPENS IT came back in the same issue. MESITA-2011 deleted it
+ *  on the argument that Partner is a product and the Plan row was it; Pato:
+ *  *"this goes into plan, not mesita partner, different things."* A rung is a
+ *  purchase and a badge is a status, and only one of them has a price. */
+export function placePlanHref(placeId: string): string {
+  return `/places/${encodeURIComponent(placeId)}/plan`;
+}
+
+/** Online Payments' Stripe account, ON THE PAYMENTS VIEW (MESITA-1973).
+ *
+ *  It was `products/pay` — config living inside the shop, which is the same
+ *  duplication Setup exists to end, and the one product whose switch was not
+ *  where the product was. The literal is written out rather than read through
+ *  `placeTabHref`: `place-tabs.ts` imports a VALUE from this file, so a value
+ *  import back would close a cycle in a permission matrix, and a cycle there
+ *  evaluates to undefined, which reads as "allowed". */
 export function placePayHref(placeId: string): string {
-  return `${placePageHref(placeId, "products")}/pay`;
+  return `/places/${encodeURIComponent(placeId)}/pay`;
 }
 
 export function placePageFromPathname(pathname: string): PlacePage | null {
@@ -151,14 +153,14 @@ export function placePageFromPathname(pathname: string): PlacePage | null {
     : null;
 }
 
-export function isPlacePayPathname(pathname: string): boolean {
-  const parts = pathname.split("/");
-  return parts[1] === "places" && parts[3] === "products" && parts[4] === "pay";
-}
-
 /** THE FLAT NAMES. One file — `(shell)/[flat]` — resolves all of them onto the
  *  canonical address. A name NOT in this list 404s on purpose, so that a typo
- *  never renders a generic page. */
+ *  never renders a generic page.
+ *
+ *  `/settings` IS NOT HERE ANY MORE (MESITA-1973): it is a real page on its own
+ *  static segment, and a static segment shadows `[flat]`, so a name in both
+ *  lists is a resolver that can never run. `/products` and `/customers` went
+ *  with the pages they resolved onto. */
 export const FLAT_ROUTES = {
   home: "/home",
   profile: "/profile",
@@ -171,17 +173,13 @@ export const FLAT_ROUTES = {
   // The ninth product owes a flat twin like every other view (MESITA-1929).
   capital: "/capital",
   admin: "/admin",
-  // `/settings` IS A FLAT NAME AGAIN (MESITA-1937), and it means the PLACE's:
-  // it resolves onto `/places/<id>/settings` like every other page twin.
-  // MESITA-1935 briefly gave this address to the person and stood a real
-  // `(shell)/settings/page.tsx` on it — a static segment shadows `[flat]` in
-  // Next's router, so that file WON the address whatever this list said. The
-  // file is gone with it, and the person is back at `/account`, which is the
-  // one the rail's foot links.
-  settings: "/settings",
   products: "/products",
-  customers: "/customers",
-  activity: "/activity",
+  // `/activity` IS GONE (MESITA-2006). It resolved onto the whole-place log,
+  // and that screen was deleted — a flat name whose canonical address 404s is
+  // a resolver that can only ever produce a 404 two files from its cause.
+  // `PLACE_PAGES` KEEPS `"activity"`: it is still the route half that
+  // `/places/<id>/activity/<slug>` is served from, and still what
+  // `pagesForAccess` gates. What died is the INDEX, not the half.
 } as const;
 export type FlatRoute = (typeof FLAT_ROUTES)[keyof typeof FLAT_ROUTES];
 export const FLAT_ROUTE_LIST: readonly string[] = Object.values(FLAT_ROUTES);
@@ -191,7 +189,7 @@ export function isFlatRoute(pathname: string): boolean {
 }
 
 /** The place VIEW a flat name resolves to, or null when the flat name is a
- *  PAGE (`/settings`, `/products`, `/customers`, `/activity`) or not flat. */
+ *  PAGE (`/setup`, `/activity`) or not flat. */
 export function flatViewFromPathname(pathname: string): PlaceTab | null {
   const name = pathname.startsWith("/") ? pathname.slice(1) : pathname;
   if (!isFlatRoute(`/${name}`) || isFlatHome(pathname)) return null;

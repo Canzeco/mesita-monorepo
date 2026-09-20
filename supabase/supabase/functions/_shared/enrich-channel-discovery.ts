@@ -178,7 +178,7 @@ async function gatherCandidates(
 
 // ── S5 — Resolver, "Review & Select Links" (single Perplexity Agent pass) ──────
 
-// Exported so admin Intake can RENDER it (intake-prompts.ts → the console). The
+// Exported so admin Crenup can RENDER it (crenup-prompts.ts → the console). The
 // console shows this exact constant, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const RESOLVER_INSTRUCTIONS =
@@ -234,7 +234,7 @@ export async function selectChannels(
   return { channels };
 }
 
-// The per-place message. Pure and exported so intake-prompts.ts can render the
+// The per-place message. Pure and exported so crenup-prompts.ts can render the
 // REAL template with sentinel values — the console never re-types this prose.
 export function buildResolverInput(
   place: { name: string; locationLine: string; category: string | null },

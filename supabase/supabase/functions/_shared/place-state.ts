@@ -1,13 +1,14 @@
 // State — the facts that say where a place stands (MESITA-1171 · MESITA-1186 · MESITA-1323).
-// Renamed from `pulse` 2026-08-22: PULSE now names the enrichment pipeline.
+// Renamed from `pulse` 2026-08-22. Since MESITA-2028 the ladder is CRENUP
+// and `pulse` names only the liveness subprocess inside step 1.
 //
 //   seeded      a google_place_id exists — the identity spine every enrichment
 //               run starts from. Without it nothing can be gathered.
 //   listed      a guest can reach the place at all. projects.state is what the
 //               consumer RLS policy gates on.
-//   enriched    HOW FAR the PULSE queue got — a 0-10 high-water off
+//   enriched    HOW FAR the CRENUP queue got — a 0-8 high-water off
 //               place_enrichment_events, never a boolean. It does NOT live
-//               here: `pulseHighWater` in pulse-pieces.ts owns it, beside the
+//               here: `crenupHighWater` in crenup-ladder.ts owns it, beside the
 //               ladder it counts. This file kept a rival 0-3 stage level until
 //               MESITA-1218; two numbers for one fact disagreed on every row.
 //   verified    an approved project_verifications row (ownership proof).
@@ -56,12 +57,12 @@ export function isPlaceListed(state: unknown): boolean {
 }
 
 /**
- * Requested is guest demand for Intaker — never a projects.state
+ * Requested is guest demand for Enricher — never a projects.state
  * label. pending_review / pending_verification stay on the enum and stay
  * unlisted; they are not this fact.
  *
  * Derived: request_count > 0 and not Enriched. Enriched is
- * `places.enriched_at` (Intaker finished). Create-without-enrich stamps
+ * `places.enriched_at` (Enricher finished). Create-without-enrich stamps
  * content_state ready with enriched_at null — those rows can still be
  * requested. When enrichedAt is omitted, ready still wins (legacy callers).
  */
@@ -78,12 +79,12 @@ export function isPlaceRequested(input: {
   return Number.isFinite(count) && count > 0;
 }
 
-/** Intaker finished — contents stamped places.enriched_at. */
+/** Enricher finished — contents stamped places.enriched_at. */
 export function isPlaceEnriched(enrichedAt: unknown): boolean {
   return typeof enrichedAt === "string" && enrichedAt.trim() !== "";
 }
 
-/** Intaker pipeline mid-flight. content_state generating/queued covers the
+/** Enricher pipeline mid-flight. content_state generating/queued covers the
  *  whole run after MESITA-453 (re-enrich flips the column; never clear after
  *  research alone). Stage research|analysis|contents is the other half, read
  *  by admin-web-get-place-enrichment — notifications only have this column. */

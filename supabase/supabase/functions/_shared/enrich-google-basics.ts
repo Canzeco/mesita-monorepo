@@ -101,7 +101,7 @@ export type GoogleBasics = {
    * Google Places displayName — a cached observation, not an identity spine
    * (google_place_id is). There is deliberately no `name` here: `place_profiles.name`
    * is a generated column and `mesita_name` belongs to the operator, so the
-   * Intaker has nothing to say about either.
+   * Enricher has nothing to say about either.
    */
   google_name: string;
   category: string | null;
@@ -260,7 +260,7 @@ export async function fetchGoogleBasics(
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an
-      // identity spine (google_place_id is). The Intaker never writes `name`
+      // identity spine (google_place_id is). The Enricher never writes `name`
       // or `mesita_name`: `name` is a generated display column
       // (coalesce(mesita_name, google_name)) and `mesita_name` belongs to the
       // operator. Writing either would clobber an editorial label.

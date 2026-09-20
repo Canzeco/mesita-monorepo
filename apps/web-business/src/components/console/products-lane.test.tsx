@@ -46,18 +46,18 @@ import type { PaymentAccountState } from "@/lib/model/types";
 const CARD_SRC = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
 const PARTNER_SRC = readFileSync(path.join(__dirname, "./PartnerCard.tsx"), "utf8");
 const PAGE_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/products/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/setup/page.tsx"),
   "utf8",
 );
 // Mesita Pay's controls got their own address (MESITA-1872): Pato took the
 // Section off the catalogue — *"just leave the 8 boxes and the 1 partnership
 // box shit"* — so the composition this file asserts lives one path deeper.
 const PAY_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/products/pay/page.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/pay/setup/page.tsx"),
   "utf8",
 );
 const LOADING_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/products/loading.tsx"),
+  path.join(__dirname, "../../app/(shell)/places/[id]/setup/loading.tsx"),
   "utf8",
 );
 const LADDER_SRC = readFileSync(
@@ -210,7 +210,7 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
     for (const gone of [
       "<PaymentsCard",
       "<MesitaPayCard",
-      'title="Mesita Payments"',
+      'title="Online Payments"',
       "apiGetPaymentAccount",
       "ConnectReturnNotice",
       "SoonStrip",
@@ -536,7 +536,7 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
   it("every branch renders a track named Mesita Pay — locked included", () => {
     for (const html of [...INERT(), pay(), pay({ mesitaPayEnabled: true })]) {
       expect(html).toContain("h-6 w-11");
-      expect(html).toContain('aria-label="Mesita Payments"');
+      expect(html).toContain('aria-label="Online Payments"');
       expect(html).toContain('role="switch"');
       // The pill is gone: one control, one line, never a third atom.
       expect(html).not.toContain("type-label");
@@ -581,7 +581,7 @@ describe("the Mesita Pay switch: locked branches show, the owner's flips", () =>
     // page; without the refresh they disagree until the next navigation.
     expect(code).toContain("router.refresh()");
     // A raw Edge Function string never reaches the DOM.
-    expect(code).toContain('railWriteFailure("Mesita Payments", next)');
+    expect(code).toContain('railWriteFailure("Online Payments", next)');
     expect(code).toContain("console.error(");
     // And the local copy loses to a fresher server render: the page remounts
     // the card on the bit it was seeded with.

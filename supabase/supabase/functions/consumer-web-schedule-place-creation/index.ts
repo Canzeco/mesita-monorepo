@@ -2,7 +2,7 @@
 //
 // COMPATIBILITY ALIAS of consumer-web-create-place (MESITA-128) — the slug the
 // previously-deployed consumer app still calls. Places are created IMMEDIATELY
-// as the ugly profile (ready, not Enriched). Intaker is not queued. The
+// as the ugly profile (ready, not Enriched). Enricher is not queued. The
 // queue this EF used to feed is retired.
 //
 // Legacy response semantics preserved for the deployed app:

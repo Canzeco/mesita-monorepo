@@ -58,25 +58,31 @@ export function CurrentClassCard() {
           width: 40,
           height: 40,
           borderRadius: 12,
-          backgroundColor: isElevated
-            ? 'rgba(255,255,255,0.2)'
-            : 'rgba(23,23,23,0.06)',
+          // The card is ALWAYS painted with the class's own metal-ink
+          // gradient now (line above), never a plain light neutral — Bronze
+          // included, since CLASS_METAL_INK_GRADIENT.standard gave it a real
+          // (dark) metal identity in this same fix. Content on top always
+          // needs the light/white treatment; `isElevated` is a PERK gate
+          // (see isElevatedClass), not a "is this background dark" signal,
+          // so it must not drive contrast here. passport.tsx's own measured
+          // comment agrees: Bronze is the darkest metal and is "the only
+          // metal dark enough to carry white" on its fill — its ink ramp,
+          // documented as one lightness step darker still, needs white even
+          // more, not the dark ink text this used to fall back to.
+          backgroundColor: 'rgba(255,255,255,0.2)',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon
-          color={isElevated ? COLORS.primaryForeground : COLORS.foreground}
-          size={20}
-        />
+        <Icon color={COLORS.primaryForeground} size={20} />
       </View>
       <View style={{ flex: 1 }}>
         <Text
           className="font-display font-semibold tracking-tight"
           style={{
-            color: isElevated ? COLORS.primaryForeground : COLORS.foreground,
+            color: COLORS.primaryForeground,
             fontSize: 22,
-            textShadowColor: isElevated ? 'rgba(0,0,0,0.35)' : 'transparent',
+            textShadowColor: 'rgba(0,0,0,0.35)',
             textShadowOffset: { width: 0, height: 1 },
             textShadowRadius: 6,
           }}
@@ -86,12 +92,10 @@ export function CurrentClassCard() {
         {via ? (
           <Text
             style={{
-              color: isElevated
-                ? 'rgba(255,255,255,0.95)'
-                : COLORS.mutedForeground,
+              color: 'rgba(255,255,255,0.95)',
               fontSize: 11,
               marginTop: 2,
-              textShadowColor: isElevated ? 'rgba(0,0,0,0.3)' : 'transparent',
+              textShadowColor: 'rgba(0,0,0,0.3)',
               textShadowOffset: { width: 0, height: 1 },
               textShadowRadius: 4,
             }}

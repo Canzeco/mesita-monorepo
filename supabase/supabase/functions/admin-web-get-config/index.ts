@@ -3,16 +3,16 @@
 // THE admin config read. Two behaviours, one door (MESITA-1724, which folded
 // nine per-page getters in here):
 //
-//   { }                  the Intake payload below — verification flags,
+//   { }                  the Crenup payload below — verification flags,
 //                        enrichment config, triggers, and the two read-only
 //                        meta blocks. Unchanged, and deliberately NOT a
 //                        section: there is no admin-web-get-enricher-config
-//                        because this IS the Intake page's load.
+//                        because this IS the Crenup page's load.
 //   { section: "<key>" } one section of public.app_config —
 //                        { ok, config, updatedAt }, per
 //                        _shared/config-sections.ts.
 //
-// The Intake payload's flags:
+// The Crenup payload's flags:
 //   autoVerifyAiCall  — verification auto-approve (call OTP)
 //   autoVerifyAiEmail — verification auto-approve (email OTP)
 //   (both live in the verification_config jsonb column, MESITA-1248 fold)
@@ -42,7 +42,7 @@ import {
   normalizeEnrichmentTriggers,
 } from "../_shared/enrich-triggers.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
-import { intakePromptsMeta } from "../_shared/intake-prompts.ts";
+import { crenupPromptsMeta } from "../_shared/crenup-prompts.ts";
 import { normalizeVerificationConfig } from "../_shared/verification-config.ts";
 
 Deno.serve(async (req) => {
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  // Body is OPTIONAL: the Intake page has always posted `{}`, and an absent or
+  // Body is OPTIONAL: the Crenup page has always posted `{}`, and an absent or
   // unparseable body must keep meaning "the whole payload", not a 400.
   const body = await readJsonOr<{ section?: unknown }>(req, {});
   const key = typeof body.section === "string" ? body.section.trim() : "";
@@ -89,9 +89,9 @@ Deno.serve(async (req) => {
     autoVerifyAiEmail: verificationConfig.autoVerifyAiEmail,
     ...enrichmentConfig,
     enrichmentTriggersMeta: enrichmentTriggersMeta(),
-    // Read-only: the prompts the Intaker actually sends, imported from the same
+    // Read-only: the prompts the Enricher actually sends, imported from the same
     // constants the pipeline calls. The console renders these; it keeps no copy.
-    intakePromptsMeta: intakePromptsMeta(),
+    crenupPromptsMeta: crenupPromptsMeta(),
     enrichmentTriggers: normalizeEnrichmentTriggers(
       (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,
     ),

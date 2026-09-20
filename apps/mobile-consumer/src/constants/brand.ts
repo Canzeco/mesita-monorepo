@@ -54,6 +54,15 @@ export const COLORS = {
   accent: '#efefef',
   /** RESERVED: the one thing that says "this destroys something". */
   destructive: '#e6000f',
+  /** RESERVED (MESITA-2031, merged after this file went achromatic): the
+   *  Mesita Partner badge / verified rosette. Web `--partner`
+   *  oklch(0.56 0.21 22) = #d41f37. A SECOND red on purpose — `destructive`
+   *  means "this destroys something" and a badge meaning "this place is one
+   *  of ours" must not be the colour of a delete button by accident. Keeps
+   *  its chroma under the same third clause the Class metals ride: a tier
+   *  the product names out loud. */
+  partner: '#d41f37',
+  partnerForeground: '#ffffff',
   border: '#dbdbdb',
   input: '#efefef',
   ring: '#171717',

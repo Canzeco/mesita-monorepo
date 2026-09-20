@@ -143,7 +143,7 @@ function PriceDisplay({
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
-// Address is deliberately absent: it is native (Google/Intaker-sourced) and
+// Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // business-web-update-place rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
@@ -213,7 +213,7 @@ function boxToPatch(
       mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
-      // decision: Pato (MESITA-469) — admin may set category (Intaker + Admin + Business).
+      // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
       category: nz(f.category) || "undefined",
     };
   }
@@ -306,7 +306,7 @@ export function PlaceSection({
   // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
   // rewrites columns nobody touched — which matters for Basics in particular,
   // where re-sending an untouched `description` would count as an operator
-  // overwrite of Intaker output.
+  // overwrite of Enricher output.
   useSectionSaver(
     "place",
     placeDirty,
@@ -421,7 +421,7 @@ export function PlaceSection({
   const removePhoto = (idx: number) =>
     setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-photo Intaker analysis lives on the Admin tab. The ⓘ dialog on
+  // Per-photo Enricher analysis lives on the Admin tab. The ⓘ dialog on
   // Profile only has gallery order — vision text and SERP are operator
   // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
@@ -526,7 +526,7 @@ export function PlaceSection({
         {errors.basics ? <ErrorNote message={errors.basics} /> : null}
       </SectionCard>
 
-      {/* Location is native — Google Places seed + Intaker synthesis.
+      {/* Location is native — Google Places seed + Enricher synthesis.
           The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
@@ -535,8 +535,19 @@ export function PlaceSection({
         subtitle="Where it sits."
       >
         {/* One boxed field per row — same filled-input language as every
-            other card. Lat/Lng share one box (a coordinate pair is one
-            fact); everything else stacks. */}
+            other card.
+
+            THREE ROWS, NOT FIVE (MESITA-2012). Pato: *"hide stuff such as
+            latitude and so on. it looks too unprofessional. is okey if we
+            have that. but hide it."* `Lat / Lng` and `Timezone` were the
+            seed talking to itself — a coordinate pair and an IANA
+            identifier, both in a read-only `auto` box a restaurant owner
+            can neither read nor act on.
+
+            HIDDEN, NOT DELETED. `place.lat`, `place.lng` and
+            `place.timezone` still arrive on the record and are still
+            typed; the map below is drawn from the first two. What went is
+            the notation, not the fact. */}
         <div className="mt-5 grid gap-4">
           <ReadField label="Address" auto boxed>
             {place.address?.trim() ? place.address : "—"}
@@ -546,16 +557,6 @@ export function PlaceSection({
           </ReadField>
           <ReadField label="City" auto boxed>
             {place.city ?? "—"}
-          </ReadField>
-          <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono type-body tabular-nums">
-              {place.lat == null || place.lng == null
-                ? "—"
-                : `${place.lat}, ${place.lng}`}
-            </span>
-          </ReadField>
-          <ReadField label="Timezone" auto boxed>
-            {place.timezone?.trim() ? place.timezone : "—"}
           </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (
@@ -1020,7 +1021,7 @@ function sourceMetaRows(
   return rows;
 }
 
-// Gallery order for the tile you are curating. Intaker analysis text
+// Gallery order for the tile you are curating. Enricher analysis text
 // lives on the Admin tab — a restaurant reading vision copy as if it
 // were theirs is the bug MESITA-1740 named.
 function MediaMetaDialog({
@@ -1117,7 +1118,7 @@ function MediaMetaDialog({
           {!meta ? (
             <p className="text-muted-foreground text-sm italic">
               No information for this image yet — it hasn’t been analyzed by the
-              Intaker.
+              Enricher.
             </p>
           ) : (
             <>

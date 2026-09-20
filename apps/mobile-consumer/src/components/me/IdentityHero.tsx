@@ -359,7 +359,16 @@ export function IdentityHero({
                 <ChannelMark
                   channel="instagram"
                   size={14}
-                  color={igConnected ? '#c02670' : COLORS.mutedForeground}
+                  // Connected: no override — ChannelMark's own canonical
+                  // Instagram brand fill (#E4405F, channel-marks.tsx
+                  // BRAND_COLOR.instagram), the same third-party colour
+                  // GRADIENTS.instagram carries on the ring above it. The
+                  // old literal here was '#c02670', a Mesita-pink-family
+                  // magenta that predates the achromatic repaint and never
+                  // matched Instagram's actual brand hex — a missed colour,
+                  // not a reserved one. Disconnected stays the achromatic
+                  // neutral token.
+                  color={igConnected ? undefined : COLORS.mutedForeground}
                 />
               )}
             </View>

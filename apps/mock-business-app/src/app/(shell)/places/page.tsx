@@ -12,9 +12,11 @@
 // The header pins to ITS OWN scrollport with no `top-[…]` offset, because
 // `position: sticky` resolves `top` against the nearest scrolling ancestor and
 // this header's is the card, not the page.
+import { useState } from "react";
+import { PageHeader } from "@/components/console/PageHeader";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Check, Minus } from "lucide-react";
+import { Check, Minus, RotateCw } from "lucide-react";
 import { useMock } from "@/mock/MockStore";
 import { Section } from "@/components/shared/Section";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -37,15 +39,45 @@ import {
 import { placeTabHref } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
 
+// THE GENERAL STATES — WHAT THE PORTFOLIO IS ACTUALLY FOR (MESITA-1977).
+//
+// Pato: *"focus more on the general states"* — Created · Pulsing (Google
+// Active) · Verified · Owned · Partnered · Disabled.
+//
+// This matrix used to carry EIGHT PRODUCT SWITCHES (Pickup, Delivery,
+// Reservations, Rewards, Credits alongside the three place facts). Five of
+// those are settings that live inside the product that owns them, on Setup;
+// reading them here made the switcher a second place to learn a product's
+// configuration, and a second place to get it wrong. What a switcher needs is
+// the state of the PLACE.
+//
+// THE FIRST FIVE ARE A LADDER, and that is why a matrix reads here at all:
+//
+//   Created    the row exists in the catalog
+//   Pulsing    Google answers for it — it is alive out there
+//   Verified   Mesita checked it is real
+//   Owned      somebody claimed it and holds it
+//   Partnered  it pays
+//
+// Each rung implies the ones above it, so a row's checks run left to right and
+// stop, and where they stop IS the place's stage. Six unrelated flags would
+// have no such reading.
+//
+// DISABLED IS NOT A RUNG. It can land at any height — a disabled Partner and a
+// disabled row nobody ever claimed are different problems — so it sits last,
+// after the ladder, and it is the one column where a check is BAD news.
 const STATE_COLUMNS = [
+  ["Created", () => true],
+  ["Pulsing", (p: { pulsing: boolean }) => p.pulsing],
   ["Verified", (p: { verified: boolean }) => p.verified],
+  // ALWAYS TRUE IN THIS TABLE, ON PURPOSE. `Your places` is the held set, so
+  // the column is constant here and constant the other way in the pool below
+  // — which is exactly the fact it is naming. It is the difference between
+  // the two surfaces written down instead of implied by which one you are
+  // looking at.
+  ["Owned", () => true],
   ["Partner", (p: { partnered: boolean }) => p.partnered],
-  ["Promoting", (p: { promoting: boolean }) => p.promoting],
-  ["Pickup", (p: { pickupOrders: boolean }) => p.pickupOrders],
-  ["Delivery", (p: { deliveryOrders: boolean }) => p.deliveryOrders],
-  ["Reservations", (p: { reservations: boolean }) => p.reservations],
-  ["Rewards", (p: { visitRewards: boolean }) => p.visitRewards],
-  ["Credits", (p: { credits: boolean }) => p.credits],
+  ["Disabled", (p: { disabled: boolean }) => p.disabled],
 ] as const;
 
 function Cell({ on }: { on: boolean }) {
@@ -65,7 +97,20 @@ function Cell({ on }: { on: boolean }) {
 export default function PlacesPage() {
   const search = useSearchParams();
   const owned = ownedFromParam(search.get("owned")) ?? "mine";
-  const { world, hydrated } = useMock();
+  const { world, hydrated, setScenario } = useMock();
+  // SEARCH, BECAUSE THIS TAB'S JOB SAYS SO (MESITA-1988). Pato: *"place is just
+  // to search places and to select them and claim it"*. It filters what is on
+  // screen rather than asking anything — the catalogue this mock holds is small
+  // enough that a round trip would be a spinner pretending to be work.
+  const [q, setQ] = useState("");
+
+  const needle = q.trim().toLowerCase();
+  const hit = (name: string, city: string) =>
+    needle === "" ||
+    name.toLowerCase().includes(needle) ||
+    city.toLowerCase().includes(needle);
+  const shown = world.places.filter((p) => hit(p.name, p.city));
+  const shownPool = world.poolPlaces.filter((p) => hit(p.name, p.city));
 
   if (!hydrated) {
     return <p className="text-muted-foreground text-sm" role="status">Reading…</p>;
@@ -82,20 +127,51 @@ export default function PlacesPage() {
           title="Could not read your places"
           hint="Nothing has been established about what you hold — only that we could not ask. Nothing has been created or removed."
         />
+        {/* THE RETRY, WHICH USED TO LIVE IN THE RAIL (MESITA-1975). The failed
+            read is stated here, so the door out of it belongs here too — the
+            menu is four tabs and a fifth control on it at one of four modes is
+            a menu that changes shape under you. In the real console this
+            re-runs the Edge Function; here it puts the scenario back on a
+            shape that has places, which is the same promise kept the only way
+            this app can. */}
+        <button
+          type="button"
+          onClick={() => setScenario({ mode: "solo" })}
+          className={cn(GHOST_PILL_BUTTON_CLASS, "self-start")}
+        >
+          <RotateCw className="h-3.5 w-3.5" aria-hidden />
+          Try again
+        </button>
       </Section>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Places</h1>
-          <p className="text-muted-foreground text-[12px]">
-            Yours, and the ones nobody holds yet.
-          </p>
-        </div>
-        <div className="flex gap-1.5">
+      {/* THE SHARED HEADER (MESITA-2008). It drew `text-2xl` while every pane
+          one click away drew `text-lg`, so the title changed size depending on
+          which door you came through. One size now, and it is `text-xl`.
+
+          NO MARK. This screen is about no single thing — it is the list of
+          them — and the alternative was inventing a glyph to fill a slot,
+          which is what the collapsing-slot rule exists to avoid. */}
+      <PageHeader
+        title="Places"
+        blurb="Yours, and the ones nobody holds yet."
+        right={
+          <div className="flex flex-wrap items-center gap-1.5">
+          {/* SEARCH, BECAUSE THE TAB'S JOB SAYS SO (MESITA-1988). Pato: *"place
+              is just to search places and to select them and claim it"*. It
+              filters what is on screen: this catalogue is small enough that a
+              round trip would be a spinner pretending to be work. */}
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search places"
+            aria-label="Search places"
+            className="border-border bg-card focus-visible:ring-ring h-9 w-56 rounded-full border px-4 text-[13px] outline-hidden focus-visible:ring-2"
+          />
           <Link
             href={placesHref("mine")}
             aria-current={owned === "mine" ? "page" : undefined}
@@ -119,8 +195,9 @@ export default function PlacesPage() {
           <Link href={SHELL_ROUTES.placesNew} className={CTA_BUTTON_CLASS}>
             Add your place
           </Link>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       {owned === "mine" ? (
         world.places.length === 0 ? (
@@ -133,7 +210,10 @@ export default function PlacesPage() {
             action={null}
           />
         ) : (
-          <Section title="Your places" description="One row each, and every state this console can switch.">
+          <Section
+            title="Your places"
+            description="Pick one to switch the console to it."
+          >
             {/* The card keeps its padding; the TABLE scrolls inside it. The
                 gutter/bleed pair is for a child that must reach the window's
                 edge, and cancelling the card's own inset for a table that
@@ -155,40 +235,49 @@ export default function PlacesPage() {
                         {label}
                       </th>
                     ))}
-                    <th scope="col" className="border-border border-b px-3 py-2 text-right text-[11px] font-semibold tracking-wide uppercase">
-                      Open
-                    </th>
+                    {/* NO `OPEN` COLUMN (MESITA-1982). Pato: *"fuck the open
+                        button, its confusing, it seems like an state"* — and
+                        he is right about WHY: it sat at the end of a row of
+                        six state columns, in the same uppercase header voice,
+                        so the eye read it as a seventh fact about the place
+                        rather than as the only control in the row. The place's
+                        NAME is the switch, which is the door a list has always
+                        had. */}
                   </tr>
                 </thead>
                 <tbody>
-                  {world.places.map((p) => (
+                  {shown.map((p) => (
                     <tr key={p.id} className="border-border hover:bg-muted/40 border-b last:border-0">
                       <td className={cn(STATES_COL_CELL, "px-3 py-2.5")}>
-                        <span className="flex min-w-0 items-center gap-2">
+                        {/* THE NAME IS THE SWITCH (MESITA-1976). This is the
+                            portfolio now — the Place tab points here and its
+                            whole job is picking one — and the door was a pill
+                            in the LAST column, past six state columns that
+                            scroll horizontally below `xl`. A switcher whose
+                            switch is off-screen is a list. The Open pill stays
+                            for the row's right edge; this is the same address
+                            on the first thing you read. */}
+                        <Link
+                          href={placeRootHref(p.id)}
+                          className="focus-visible:ring-ring flex min-w-0 items-center gap-2 rounded-lg outline-hidden focus-visible:ring-2"
+                        >
                           <PlaceChip photoUrl={p.photoUrl} />
                           <span className="min-w-0">
-                            <span className="block truncate font-medium">{p.name}</span>
+                            <span className="block truncate font-medium underline-offset-2 hover:underline">
+                              {p.name}
+                            </span>
                             <span className="text-muted-foreground block truncate text-[11px]">
                               {p.category} · {p.city} · {p.myRole}
                             </span>
                           </span>
-                        </span>
+                        </Link>
                       </td>
                       {STATE_COLUMNS.map(([label, read]) => (
                         <td key={label} className="px-3 py-2.5 text-center">
                           <Cell on={read(p)} />
                         </td>
                       ))}
-                      <td className="px-3 py-2.5 text-right">
-                        {/* A place you HOLD opens on its Home. The pool row
-                            below keeps Profile, and the difference is the
-                            point: nothing has been claimed there, so there is
-                            no Home to open — `tabsForAccess({held:false})` is
-                            Profile alone, and Home would 404. */}
-                        <Link href={placeRootHref(p.id)} className={GHOST_PILL_BUTTON_CLASS}>
-                          Open
-                        </Link>
-                      </td>
+
                     </tr>
                   ))}
                 </tbody>
@@ -199,10 +288,10 @@ export default function PlacesPage() {
       ) : (
         <Section
           title="Public places"
-          description="Mesita knows these are real and nobody holds them. Claiming one mints your owner row — there is no membership to hold first."
+          description="Created and not Owned — that is what public means here. Claiming one mints your owner row; there is no membership to hold first."
         >
           <ul className="flex flex-col gap-2">
-            {world.poolPlaces.map((p) => (
+            {shownPool.map((p) => (
               <li key={p.id} className="border-border flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{p.name}</p>
@@ -210,7 +299,13 @@ export default function PlacesPage() {
                     {p.category} · {p.city}
                   </p>
                 </div>
+                {/* THE SAME GENERAL STATES AS THE TABLE ABOVE (MESITA-1977),
+                    in the shape this surface has. A pool row is Created and
+                    NOT Owned by construction — that is what "public" means
+                    here — so the two worth drawing are the ones that vary. */}
+                {p.pulsing && <Badge tone="on">Pulsing</Badge>}
                 {p.verified ? <Badge tone="on">Verified</Badge> : <Badge tone="off">Unverified</Badge>}
+                {p.disabled && <Badge tone="bad">Disabled</Badge>}
                 <Link href={placeTabHref(p.id, "profile")} className={GHOST_PILL_BUTTON_CLASS}>
                   Open
                 </Link>

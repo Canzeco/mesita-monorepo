@@ -9,7 +9,7 @@
 // enrich-pipeline.ts, and supabase-edgefunc-reservation-call carried a second
 // copy with the reason written above it — "not imported: it drags the
 // enrichment stages in". That reason was real: a seven-line helper is not
-// worth pulling the Intaker pipeline into a call engine's module graph. A leaf
+// worth pulling the Enricher pipeline into a call engine's module graph. A leaf
 // module is what makes the import free, so the copy could go.
 
 /**

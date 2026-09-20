@@ -2,7 +2,7 @@
 // run. ONE batched prompt infers all Description fields from the thin
 // Google-basics signals (name, address, zone/city, types, editorial summary),
 // so the door costs one LLM call, not five. Runs ONLY when the create does not
-// queue a full Enrich (business creates queue; the Intaker's function 9
+// queue a full Enrich (business creates queue; the Enricher's step 7
 // redoes this properly minutes later with rich grounding).
 //
 // Every output is validated against the LIVE vocabularies exactly like the

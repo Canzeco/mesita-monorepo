@@ -14,6 +14,7 @@
 //
 // A PERSON MAY HOLD SEVERAL PLACES and nothing caps the count.
 import { useState } from "react";
+import { PageHeader } from "@/components/console/PageHeader";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { useMock } from "@/mock/MockStore";
@@ -42,12 +43,12 @@ export default function AddPlacePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Add your place</h1>
-        <p className="text-muted-foreground text-[12px]">
-          Look for it first. Most places are already here.
-        </p>
-      </header>
+      {/* THE SHARED HEADER (MESITA-2008), down from `text-2xl` with the
+          portfolio it is reached from. */}
+      <PageHeader
+        title="Add your place"
+        blurb="Look for it first. Most places are already here."
+      />
 
       <Section title="Find it" description="Type the name as guests would write it.">
         <div className="relative">

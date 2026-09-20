@@ -2,14 +2,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { PromptView } from "./blocks";
-import type { IntakePrompt } from "./actions";
+import type { CrenupPrompt } from "./actions";
 
 // The prompt disclosure exists so an operator can read what a model is TOLD.
 // Two ways it could fail them: showing a prompt that is not the one being sent
-// (covered in supabase `_shared/intake-prompts.test.ts`, where the constants
+// (covered in supabase `_shared/crenup-prompts.test.ts`, where the constants
 // live), and LOOKING editable when it is not. This file pins the second.
 
-const SCOUT: IntakePrompt = {
+const SCOUT: CrenupPrompt = {
   key: "scout",
   fn: "3 · Serp",
   agent: "Scout",
@@ -21,7 +21,7 @@ const SCOUT: IntakePrompt = {
   input: 'Research the place "{place name}" in {street, zone, city}.',
 };
 
-const render = (prompt: IntakePrompt, preset?: string) =>
+const render = (prompt: CrenupPrompt, preset?: string) =>
   renderToStaticMarkup(<PromptView prompt={prompt} preset={preset} />);
 
 describe("PromptView", () => {

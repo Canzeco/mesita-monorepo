@@ -66,7 +66,7 @@ import {
 } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
-import { attachIntakeHighWater } from "../_shared/discovery-place.ts";
+import { attachCrenupHighWater } from "../_shared/discovery-place.ts";
 import {
   applyGeneralGateQuery,
   clearsGeneralGate,
@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
   if (isNearby && guestMinReviews > 0) {
     filtered = filtered.gte("google_review_count", guestMinReviews);
   }
-  // Guest Super Category: same reason as Popularity. family_keys is
+  // Guest Family: same reason as Popularity. family_keys is
   // total on the row; overlaps so a dense bbox does not fill NEARBY_SCAN_LIMIT
   // with the wrong supers and drop closer matches. The JS familiesForPlace
   // pass still runs for Atlas-inferred rows whose stored keys lag.
@@ -532,14 +532,14 @@ Deno.serve(async (req) => {
     );
     const googleForMerge = wantGoogleNearby ? admitted.google : [];
     // The `enriched` signal's gradient (MESITA-1598, kept at MESITA-1858)
-    // needs `intake_high_water` on the row, and `profiles` doesn't carry it.
+    // needs `crenup_high_water` on the row, and `profiles` doesn't carry it.
     // One batched side-read merges it in before ranking, same pattern as
     // consumer-web-recommend-swipe. WITHOUT THIS every listed row scores the
     // same 1 — `keepListedForScope` already admitted only enriched rows.
     // Skipped when the Google-fill branch below keeps distance order instead.
     const willReorder = !(wantGoogleNearby && googleForMerge.length > 0);
     const listedForCatalog = willReorder && efEnv.ok
-      ? await attachIntakeHighWater(
+      ? await attachCrenupHighWater(
         adminClient(efEnv.env),
         admitted.listed as unknown as Record<string, unknown>[],
       ) as unknown as typeof admitted.listed

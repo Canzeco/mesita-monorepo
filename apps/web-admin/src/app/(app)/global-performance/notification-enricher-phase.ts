@@ -18,7 +18,7 @@ import { TONES, type Tone } from "./notification-config";
 //
 // The key is the stable thing. Renumbering the ladder has never moved a key,
 // which is exactly why the high-water reader matches on one — see
-// Docs › Intake §A. This mirrors §A2's stage table; if a function moves
+// Docs › Crenup §A. This mirrors §A2's stage table; if a function moves
 // between Edge Functions, it moves here too.
 //
 // Colors follow the catalog: Research≈Link=emerald, Analysis=sky,
@@ -62,7 +62,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 // it. THREE families live here, and the third is the one a hand-written list
 // forgets:
 //
-//   1. the TEN enrich functions 1–10 (Docs › Intake §A) —
+//   1. the TEN enrich functions 1–10 (Docs › Crenup §A) —
 //      pulse/details/description/embedding rows can ALSO come from the CREATE
 //      function or an on-update re-embed. Function 10 was renamed `semantic` →
 //      `embedding` (§8.4): the events table is append-only history, so BOTH
@@ -89,7 +89,6 @@ const STAGE_KEYS = ["research", "analysis", "contents"] as const;
 const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   // ── 1. the functions ──
   // Research
-  pulse: "research",
   details: "research",
   serp: "research",
   links: "research",
@@ -98,13 +97,20 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   // Analysis
   images: "analysis",
   // Contents
-  menu: "contents",
   description: "contents",
   summary: "contents",
   name: "contents",
   embedding: "contents",
-  // Legacy key for function 10 (renamed `embedding`, §8.4) — history keeps it.
+  // Legacy key for function 8 (renamed `embedding`, §8.4) — history keeps it.
   semantic: "contents",
+  // RETIRED RUNGS, kept because the LOG keeps them (MESITA-2027). `pulse` is a
+  // subprocess of Details now and `menu` is operator input the Intaker never
+  // derived, so neither is a function any more — but every place enriched
+  // before the change has rows under these keys, and a feed that cannot phase
+  // them renders them unplaced. The ladder walk ignores them
+  // (crenup-ladder.ts CRENUP_RETIRED); this map does not, on purpose.
+  pulse: "research",
+  menu: "contents",
 
   // ── 2. the legacy stage beacons ──
   gather: "research",

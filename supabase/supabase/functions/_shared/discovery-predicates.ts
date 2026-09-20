@@ -91,7 +91,7 @@ function clampReviewFloor(value: unknown): number {
  * that sends none (or no `predicates` at all) gets the whole pool, which is the
  * pre-MESITA-1153 behaviour and what every deployed Expo binary does.
  *
- * Web (MESITA-1792) sends Super Category, Places scope, and Google review floor.
+ * Web (MESITA-1792) sends Family, Places scope, and Google review floor.
  * The retired visit/when/distance fields still cut when a deployed Expo binary
  * posts them.
  */

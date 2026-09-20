@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { NotificationItem, NotificationType } from "./actions";
 import {
   groupConsecutiveSteps,
-  intakeFactChips,
-  intakeFunctionChips,
-  intakeStateLine,
-  itemMatchesIntakeFilter,
+  crenupFactChips,
+  crenupStepChips,
+  crenupStateLine,
+  itemMatchesCrenupFilter,
   pinReports,
   showCategoryOnCompact,
   typesForFetch,
@@ -35,7 +35,7 @@ function item(
 }
 
 describe("typesInDomain", () => {
-  it("keeps only atlas types for Intake", () => {
+  it("keeps only atlas types for Crenup", () => {
     const types: NotificationType[] = [
       "atlas.place_created",
       "consumer.place_saved",
@@ -46,14 +46,14 @@ describe("typesInDomain", () => {
 });
 
 describe("typesForFetch", () => {
-  it("omits Intaker steps on All unless asked", () => {
+  it("omits Enricher steps on All unless asked", () => {
     const without = typesForFetch("all", false);
     expect(without).toBeDefined();
     expect(without).not.toContain("atlas.enrichment_step");
     expect(typesForFetch("all", true)).toBeUndefined();
   });
 
-  it("omits steps on Intake unless asked", () => {
+  it("omits steps on Crenup unless asked", () => {
     const without = typesForFetch("atlas", false);
     expect(without).toBeDefined();
     expect(without?.every((t) => t.startsWith("atlas."))).toBe(true);
@@ -74,7 +74,7 @@ describe("pinReports", () => {
   });
 });
 
-describe("intakeStateLine", () => {
+describe("crenupStateLine", () => {
   const facts = {
     seeded: true,
     active: true,
@@ -82,8 +82,8 @@ describe("intakeStateLine", () => {
     requested: false,
     enriching: false,
     enriched: false,
-    enrichPulse: 2,
-    enrichPulseTotal: 10,
+    enrichCrenup: 2,
+    enrichCrenupTotal: 10,
     verified: false,
     partner: false,
     promoting: false,
@@ -97,10 +97,10 @@ describe("intakeStateLine", () => {
       type: "atlas.place_created",
       meta: { stateFacts: facts, listingType: "unclaimed", claimed: false },
     });
-    expect(intakeStateLine(created)).toBe("Created · Active · Listed");
-    expect(intakeStateLine(created)).not.toMatch(/\d+\/\d+/);
-    expect(intakeStateLine(created)).not.toMatch(/claim/i);
-    expect(intakeStateLine(created)).not.toMatch(/new place/i);
+    expect(crenupStateLine(created)).toBe("Created · Active · Listed");
+    expect(crenupStateLine(created)).not.toMatch(/\d+\/\d+/);
+    expect(crenupStateLine(created)).not.toMatch(/claim/i);
+    expect(crenupStateLine(created)).not.toMatch(/new place/i);
   });
 
   it("names Enriched · Verified · Partnered · Visit Rewards when those facts are on", () => {
@@ -111,14 +111,14 @@ describe("intakeStateLine", () => {
         stateFacts: {
           ...facts,
           enriched: true,
-          enrichPulse: 10,
+          enrichCrenup: 10,
           verified: true,
           partner: true,
           promoting: true,
         },
       },
     });
-    expect(intakeStateLine(created)).toBe(
+    expect(crenupStateLine(created)).toBe(
       "Created · Active · Listed · Enriched · Verified · Partnered · Visit Rewards",
     );
   });
@@ -136,7 +136,7 @@ describe("intakeStateLine", () => {
         },
       },
     });
-    expect(intakeStateLine(created)).toBe(
+    expect(crenupStateLine(created)).toBe(
       "Created · Active · Listed · Requested · Enriching · Enriched",
     );
   });
@@ -149,12 +149,12 @@ describe("intakeStateLine", () => {
         stateFacts: { ...facts, mesita_pay: true, credits: true },
       },
     });
-    expect(intakeStateLine(created)).toBe(
+    expect(crenupStateLine(created)).toBe(
       "Created · Active · Listed · Mesita Pay · Mesita Credits",
     );
     // Engineless facts never render meta chips until a stamper exists
-    // (the gateway / Credits PRs lift the intakeFactChips filter).
-    const chipKeys = intakeFactChips(created).map((c) => c.key);
+    // (the gateway / Credits PRs lift the crenupFactChips filter).
+    const chipKeys = crenupFactChips(created).map((c) => c.key);
     expect(chipKeys).not.toContain("mesita_pay");
     expect(chipKeys).not.toContain("credits");
     expect(chipKeys).toContain("partner");
@@ -166,45 +166,46 @@ describe("intakeStateLine", () => {
       type: "atlas.place_created",
       meta: { state: "paused" },
     });
-    expect(intakeStateLine(created)).toBe("Created · Unlisted");
+    expect(crenupStateLine(created)).toBe("Created · Unlisted");
   });
 });
 
-describe("itemMatchesIntakeFilter", () => {
+describe("itemMatchesCrenupFilter", () => {
   const facts = {
     seeded: true,
     active: true,
     listed: true,
     enriched: false,
-    enrichPulse: 2,
-    enrichPulseTotal: 10,
+    enrichCrenup: 2,
+    enrichCrenupTotal: 10,
     verified: false,
     partner: false,
     promoting: false,
     functions: {
-      pulse: true,
       details: true,
       name: true,
     },
   };
 
-  it("matches general Created and Intake Pulse, not Serp", () => {
+  it("matches general Created and Crenup Details, not Serp", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
       meta: { stateFacts: facts },
     });
-    expect(itemMatchesIntakeFilter(created, "seeded")).toBe(true);
-    expect(itemMatchesIntakeFilter(created, "fn:seed")).toBe(true);
-    expect(itemMatchesIntakeFilter(created, "fn:pulse")).toBe(true);
-    expect(itemMatchesIntakeFilter(created, "fn:serp")).toBe(false);
-    expect(itemMatchesIntakeFilter(created, "fn:embedding")).toBe(false);
+    expect(itemMatchesCrenupFilter(created, "seeded")).toBe(true);
+    expect(itemMatchesCrenupFilter(created, "fn:seed")).toBe(true);
+    // @ts-expect-error — `pulse` is a retired rung, never a CrenupFilter
+    itemMatchesCrenupFilter(created, "fn:pulse");
+    expect(itemMatchesCrenupFilter(created, "fn:details")).toBe(true);
+    expect(itemMatchesCrenupFilter(created, "fn:serp")).toBe(false);
+    expect(itemMatchesCrenupFilter(created, "fn:embedding")).toBe(false);
   });
 });
 
-describe("intakeFunctionChips", () => {
+describe("crenupStepChips", () => {
   const chipsWith = (functions: Record<string, boolean>) =>
-    intakeFunctionChips(
+    crenupStepChips(
       item({
         id: "c",
         type: "atlas.place_created",
@@ -214,8 +215,8 @@ describe("intakeFunctionChips", () => {
             active: false,
             listed: false,
             enriched: false,
-            enrichPulse: 0,
-            enrichPulseTotal: 10,
+            enrichCrenup: 0,
+            enrichCrenupTotal: 10,
             verified: false,
             partner: false,
             promoting: false,
@@ -225,24 +226,30 @@ describe("intakeFunctionChips", () => {
       }),
     );
 
-  it("lists eleven functions 0–10 and turns Embedding on from its stamp", () => {
+  it("lists nine steps 0–8 and turns Embedding on from its stamp", () => {
     const chips = chipsWith({ embedding: true });
-    expect(chips).toHaveLength(11);
+    expect(chips).toHaveLength(9);
     expect(chips[0]).toMatchObject({ key: "seed", label: "0. Seed", on: true });
     expect(chips.find((c) => c.key === "embedding")).toMatchObject({
-      label: "10. Embedding",
+      label: "8. Embedding",
       on: true,
     });
     expect(chips.find((c) => c.key === "serp")).toMatchObject({
-      label: "3. Serp",
+      label: "2. Serp",
       on: false,
     });
+    // Pulse and Menu were steps until MESITA-2027 — liveness is a subprocess
+    // of Details, the menu is operator input. Neither gets a chip, and the
+    // chip key type no longer admits them (hence the cast: that IS the guard).
+    const keys = chips.map((c) => c.key as string);
+    expect(keys).not.toContain("pulse");
+    expect(keys).not.toContain("menu");
   });
 
   it("folds legacy `semantic` and `name`+`summary` stamps into Embedding", () => {
     const legacy = chipsWith({ semantic: true });
     expect(legacy.find((c) => c.key === "embedding")).toMatchObject({
-      label: "10. Embedding",
+      label: "8. Embedding",
       on: true,
     });
     const preMerge = chipsWith({ name: true, summary: true });
@@ -253,7 +260,7 @@ describe("intakeFunctionChips", () => {
 });
 
 describe("showCategoryOnCompact", () => {
-  it("hides category on Intake rows so it cannot pass as a state", () => {
+  it("hides category on Crenup rows so it cannot pass as a state", () => {
     expect(
       showCategoryOnCompact(item({ id: "c", type: "atlas.place_created" })),
     ).toBe(false);

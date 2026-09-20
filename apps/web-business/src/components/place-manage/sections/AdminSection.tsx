@@ -11,7 +11,7 @@ import {
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
-import { IntakeStateCard } from "./IntakeStateCard";
+import { CrenupStateCard } from "./CrenupStateCard";
 import { VerificationCard } from "./VerificationCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
@@ -27,12 +27,12 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         are acceptance intent bits set on the Partner tab;
 //                         engines still gate each rail. Carries the
 //                         listing_type drift warning, which is about these rows.
-//   Intake States       how far did the pipeline get? Enriched (last
+//   Crenup States       how far did the pipeline get? Enriched (last
 //                         completed) · Enriching (live run) over the eleven
 //                         functions 0. Seed … 10. Embedding. OWNS the
 //                         enrichment read — StateCard no longer fetches it.
 // Then the rest:
-//   Enrichment  queues the full Intaker process
+//   Enrichment  queues the full Enricher process
 //   Verification ownership proof (who / when / method + queue decide)
 //   SERP / Embedding / Metadata (UID & audit — not ownership)
 export function AdminSection({ place }: { place: AdminPlace }) {
@@ -72,7 +72,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
         verification={verification}
         verificationError={verificationError}
       />
-      <IntakeStateCard place={place} />
+      <CrenupStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <VerificationCard
@@ -89,7 +89,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
 }
 
 // No updated_by column exists, so attribute the last write by proximity: the
-// Intaker's final write stamps enriched_at and bumps updated_at in the same
+// Enricher's final write stamps enriched_at and bumps updated_at in the same
 // statement — a tiny gap means the AI wrote last; anything later is a human
 // edit (admin / business save).
 function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
@@ -153,7 +153,7 @@ function MetaCard({ place }: { place: AdminPlace }) {
                     : "bg-card text-muted-foreground border-border/70 border")
                 }
               >
-                by {by === "ai" ? "Intaker (AI)" : "human"}
+                by {by === "ai" ? "Enricher (AI)" : "human"}
               </span>
             )}
           </span>
@@ -192,7 +192,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // human-readable profile copy a GUEST reads (`places.description`); the
 // Semantic Summary is a separate, super-concise text purpose-built for
 // semantic search, and the only one the INDEX reads. Two of the three
-// enrichment texts named in `_shared/pulse-pieces.ts`, never collapsed.
+// enrichment texts named in `_shared/crenup-ladder.ts`, never collapsed.
 // Written on create + on profile update. Open by default; collapsible like
 // Metadata.
 // Hard ceiling for the Semantic Summary — must stay in lockstep with

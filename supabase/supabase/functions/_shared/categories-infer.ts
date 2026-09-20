@@ -28,7 +28,7 @@ type CategorySignals = {
 //
 // The category list is passed in (the caller reads it once) so a single run
 // never hits the table twice.
-// Exported so admin Intake can RENDER them (intake-prompts.ts → the console).
+// Exported so admin Crenup can RENDER them (crenup-prompts.ts → the console).
 // The console shows these exact values, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const CATEGORY_INSTRUCTIONS =

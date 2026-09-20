@@ -1,7 +1,7 @@
 import { MultiplePlacesClient } from "./MultiplePlacesClient";
 
-// The whole tool, one page. Three boxes. Intake is one Update box.
-// Spend estimates are on Intake Config — this page does not price a run.
+// The whole tool, one page. Three boxes: two read, Crenup writes.
+// Spend estimates are on the Crenup config page — this page does not price a run.
 
 export const dynamic = "force-dynamic";
 

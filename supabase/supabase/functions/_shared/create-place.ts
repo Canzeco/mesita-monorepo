@@ -1,33 +1,39 @@
-// Shared create-place core — THE CREATE RUN (Main §8.4 v3): one run,
-// synchronous, the front door. Create numbers 1–5 (not Enrich 1–10):
+// Shared create-place core — THE CREATE RUN (Main §8.4 v4, MESITA-2027): one
+// run, synchronous, the front door.
 //
-//   1 seed        → dedupe on google_place_id, mint the paired rows
-//                   (generating when queueing Enrich, ready when not)
-//   2 pulse       → the liveness gate: Google's businessStatus, read from the
-//                   same Basics call — a place reported CLOSED_PERMANENTLY is
-//                   REFUSED at the door, before any row exists.
-//   3 details     → the Google spine persisted (fetchGoogleBasics fields,
+// ONE LADDER, AND CREATE RUNS A SUBSET OF IT: 0, 1, 7, 8. Create used to
+// number itself 1–5 while Enrich numbered itself 1–10, so `details` was step 3
+// here and step 2 there — two answers to "which step is this". The numbers
+// belong to the ladder now (crenup-ladder.ts); a caller simply runs fewer.
+//
+//   0 seed        → dedupe on google_place_id, mint the paired rows
+//                   (generating when queueing Enrich, ready when not).
+//                   NEVER STAMPED: the row existing IS the seed.
+//   1 details     → the Google spine persisted (fetchGoogleBasics fields,
 //                   category='undefined' and family_keys=['undefined'] as the
 //                   floor) PLUS the first Google photo mirrored into
-//                   place-images so a Created place can show a thumb.
-//   4 description → the DOOR Description (gate D1): ONE batched prompt over
-//                   the thin Google signals infers Super Category, Category,
+//                   place-images so a Created place can show a thumb. The
+//                   LIVENESS GATE is a subprocess of this step, not a rung of
+//                   its own: a place reported CLOSED_PERMANENTLY is REFUSED at
+//                   the door, before any row exists.
+//   7 description → the DOOR Description (gate D1): ONE batched prompt over
+//                   the thin Google signals infers Family, Category,
 //                   Tags, Presentation, Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   SKIPPED when the create queues a full Enrich — the
-//                   Intaker's function 9 redoes it properly minutes later.
-//   5 embedding   → embed-only: Name vector + Summary vector of what the
+//                   Enricher's step 7 redoes it properly minutes later.
+//   8 embedding   → embed-only: Name vector + Summary vector of what the
 //                   door wrote, awaited in this same function. Also skipped
-//                   when Enrich is queued (function 10 will close it).
+//                   when Enrich is queued (step 8 will close it).
 //
-// Pulse, Details, Description and Embedding are SHARED with the ENRICH queue —
-// create AWAITS its subfunctions; enrich runs each as its own tick. Create
-// STAMPS what it ran so a fresh place reads its true rungs immediately and
-// state accumulates across create and every later run under one rule.
+// Details, Description and Embedding are SHARED with the ENRICH queue — create
+// AWAITS its subfunctions; enrich runs each as its own tick. Create STAMPS
+// what it ran so a fresh place reads its true rungs immediately and state
+// accumulates across create and every later run under one rule.
 //
 // queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
-// profile and do NOT seed Intaker. Enriched is `place_profiles.enriched_at`, not
-// content_state. Guests vote on the Enrich tab; the Intake threshold
+// profile and do NOT seed Enricher. Enriched is `place_profiles.enriched_at`, not
+// content_state. Guests vote on the Enrich tab; the Crenup threshold
 // seeds the queue. Business create still queues. Admin Enrich /
 // Create+Enrich is a second call.
 //
@@ -49,7 +55,7 @@ import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { synthesizeDoorProfile } from "./create-door-profile.ts";
 import { applyInferredMesitaName } from "./mesita-name-door.ts";
 import { writePlace } from "./place-doc.ts";
-import { pieceDone, pieceFailed, reportPulsePieces } from "./pulse-report.ts";
+import { stepDone, stepFailed, reportCrenupSteps } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 
@@ -92,7 +98,7 @@ export async function createMinimalPlace(opts: {
   googlePlaceId: string;
   // Caller-specific copy for the 409 (e.g. the business app adds claim advice).
   dedupeError?: string;
-  // true (default): seed Intaker from the on_create row. false: mint the
+  // true (default): seed Enricher from the on_create row. false: mint the
   // ugly profile and stop — votes (or admin Enrich) start the queue.
   queueEnrich?: boolean;
 }): Promise<CreatePlaceOutcome> {
@@ -132,8 +138,8 @@ export async function createMinimalPlace(opts: {
 
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
   // identity spine directly (no EF hop); category stays 'undefined' and
-  // family_keys ['undefined'] until the Intaker pipeline's contents stage infers
-  // Super Category + Category. No
+  // family_keys ['undefined'] until the Enricher pipeline's contents stage infers
+  // Family + Category. No
   // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
@@ -154,7 +160,7 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // ── CREATE step 2 — PULSE. Is this place still active? ──────────────────
+  // ── CREATE step 1 — DETAILS' LIVENESS subprocess. Still active? ────────
   // The same gate ENRICH runs at function 1, at the only moment it is cheaper
   // still: before a single row is minted. CLOSED_PERMANENTLY refuses the
   // create outright — a dead listing must not enter the catalog at all.
@@ -191,7 +197,7 @@ export async function createMinimalPlace(opts: {
     };
   }
 
-  // category 'undefined' until the Intaker resolves it; the category-label
+  // category 'undefined' until the Enricher resolves it; the category-label
   // trigger fills category_label from the 'undefined' catalog row.
   const place: Record<string, unknown> = {
     ...basicsRes.basics,
@@ -211,7 +217,7 @@ export async function createMinimalPlace(opts: {
   // ── 2) Persist the minimal rows (in-process). queueEnrich lands
   // content_state='generating' until contents flips it to ready. A cheap
   // mint lands 'ready' with enriched_at null — the ugly profile is
-  // viewable; Enriched stays no until Intaker finishes. ──
+  // viewable; Enriched stays no until Enricher finishes. ──
   const saveRes = await savePlaceData(
     admin,
     place,
@@ -243,25 +249,25 @@ export async function createMinimalPlace(opts: {
     }
   }
 
-  // ── CREATE stamps what it ran (MESITA-1253) ─────────────────────────────
-  // pulse: the gate above passed — the listing resolves and is not permanently
-  // closed. details: the spine the save just persisted IS the observed effect.
-  // Both best-effort (a stamp failure never fails a create).
-  // Result: a fresh, healthy place reads enriched 2/10 the moment it exists;
-  // an un-queued create climbs on to 9–10 via the door below.
-  await reportPulsePieces(admin, saved.place_id, {
-    pulse: pieceDone(
+  // ── CREATE stamps what it ran ───────────────────────────────────────────
+  // ONE stamp, because liveness is a subprocess of Details now (MESITA-2027),
+  // not a rung beside it: the gate above passed — the listing resolves and is
+  // not permanently closed — and the spine the save just persisted IS the
+  // observed effect. Best-effort (a stamp failure never fails a create).
+  // Result: a fresh, healthy place reads enriched 1/8 the moment it exists;
+  // an un-queued create climbs on to 7–8 via the door below.
+  await reportCrenupSteps(admin, saved.place_id, {
+    details: stepDone(
       basicsRes.businessStatus
-        ? `Google reports this listing ${basicsRes.businessStatus}.`
-        : "Google states no business status; the listing resolves.",
+        ? `Google spine persisted at create; listing ${basicsRes.businessStatus}.`
+        : "Google spine persisted at create; no business status stated.",
       { businessStatus: basicsRes.businessStatus, via: "create" },
     ),
-    details: pieceDone("Google spine persisted at create.", { via: "create" }),
   });
 
-  // ── 4 DESCRIPTION + 5 EMBEDDING at the door (§8.4 v3, gate D1) ─────────
+  // ── 7 DESCRIPTION + 8 EMBEDDING at the door (§8.4 v4, gate D1) ─────────
   // Only when this create does NOT queue a full Enrich: the queue's own
-  // functions 9+10 would redo this minutes later with rich grounding, so a
+  // steps 7+8 would redo this minutes later with rich grounding, so a
   // queued create skips the door and leaves both rungs pending. Best-effort —
   // nothing here ever fails the create.
   if (!queueEnrich) {
@@ -306,14 +312,14 @@ export async function createMinimalPlace(opts: {
               door.mesitaNameCandidate,
             );
           }
-          await reportPulsePieces(admin, saved.place_id, {
+          await reportCrenupSteps(admin, saved.place_id, {
             description: doorWrite.ok
-              ? pieceDone(
+              ? stepDone(
                 `Door Description — category “${door.category ?? "n/a"}”, ` +
                   `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
                 { via: "create" },
               )
-              : pieceFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
+              : stepFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
           });
         }
       }

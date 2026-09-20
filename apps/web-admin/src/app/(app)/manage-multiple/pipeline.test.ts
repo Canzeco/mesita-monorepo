@@ -8,58 +8,58 @@ import { LEGACY_HASHES, PIPELINE_STEPS } from "./pipeline";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PIPELINE_STEPS", () => {
-  it("is Google Search, Mesita Search, Mesita Intake", () => {
+  it("is Google Search, Mesita Search, Crenup", () => {
     expect(PIPELINE_STEPS.map((s) => s.label)).toEqual([
       "Google Search",
       "Mesita Search",
-      "Mesita Intake",
+      "Crenup",
     ]);
     expect(PIPELINE_STEPS.map((s) => s.n)).toEqual([1, 2, 3]);
     expect(new Set(PIPELINE_STEPS.map((s) => s.id)).size).toBe(3);
   });
 
-  it("routes the retired Edit hash onto Mesita Intake", () => {
-    expect(LEGACY_HASHES["edit-states"]).toBe("mesita-intake");
+  it("routes the retired Edit hash onto Crenup", () => {
+    expect(LEGACY_HASHES["edit-states"]).toBe("crenup");
   });
 });
 
 describe("the page chrome names the three surfaces", () => {
-  it("keeps Google Search, Mesita Search, Mesita Intake — Intake is five flat actions, no Update, no EditTab", () => {
+  it("keeps Google Search, Mesita Search, Crenup — Crenup is five flat actions, no Update, no EditTab", () => {
     const client = readFileSync(join(here, "MultiplePlacesClient.tsx"), "utf8");
-    const intake = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
+    const Crenup = readFileSync(join(here, "CrenupTab.tsx"), "utf8");
     expect(client).toContain("SearchTab");
     expect(client).toContain("MesitaSearchTab");
-    expect(client).toContain("IntakeTab");
+    expect(client).toContain("CrenupTab");
     expect(client).not.toContain("EditTab");
     // MESITA-1664 (decision: Pato) — "place cannot be partner from the
     // console": Active/Verified/Partnered write from web-business now
     // (claim → verify → own → Stripe onboarding), never from admin.
-    expect(intake).toContain('label="Create"');
-    expect(intake).toContain('label="Delete"');
-    expect(intake).toContain('label="List"');
-    expect(intake).toContain('label="Unlist"');
-    expect(intake).toContain('label="Enrich"');
-    expect(intake).toContain("alreadyExisted");
-    expect(intake).toContain("Copy failed IDs");
-    expect(intake).toContain("Promise.all(ids.map");
-    expect(intake).toContain("window.confirm");
-    expect(intake).toContain("deletePlace");
-    expect(intake).toContain("setPlaceListed");
-    expect(intake).not.toContain("EditTab");
-    expect(intake).not.toContain("UpdateFields");
-    expect(intake).not.toContain('label="Update"');
-    expect(intake).not.toContain("create_then_enrich");
-    expect(intake).not.toContain("create_enrich");
-    expect(intake).not.toContain("EditPanel");
-    expect(intake).not.toContain("type-eyebrow");
-    expect(intake).not.toContain("CONCURRENCY");
-    expect(intake).not.toContain("const worker = async");
-    expect(intake).not.toContain("Promoting");
-    expect(intake).not.toContain("Verified");
-    expect(intake).not.toContain("Partnered");
-    expect(intake).not.toContain("setPlaceActive");
-    expect(intake).not.toContain("setPlaceVerified");
-    expect(intake).not.toContain("setPlacePlan");
+    expect(Crenup).toContain('label="Create"');
+    expect(Crenup).toContain('label="Delete"');
+    expect(Crenup).toContain('label="List"');
+    expect(Crenup).toContain('label="Unlist"');
+    expect(Crenup).toContain('label="Enrich"');
+    expect(Crenup).toContain("alreadyExisted");
+    expect(Crenup).toContain("Copy failed IDs");
+    expect(Crenup).toContain("Promise.all(ids.map");
+    expect(Crenup).toContain("window.confirm");
+    expect(Crenup).toContain("deletePlace");
+    expect(Crenup).toContain("setPlaceListed");
+    expect(Crenup).not.toContain("EditTab");
+    expect(Crenup).not.toContain("UpdateFields");
+    expect(Crenup).not.toContain('label="Update"');
+    expect(Crenup).not.toContain("create_then_enrich");
+    expect(Crenup).not.toContain("create_enrich");
+    expect(Crenup).not.toContain("EditPanel");
+    expect(Crenup).not.toContain("type-eyebrow");
+    expect(Crenup).not.toContain("CONCURRENCY");
+    expect(Crenup).not.toContain("const worker = async");
+    expect(Crenup).not.toContain("Promoting");
+    expect(Crenup).not.toContain("Verified");
+    expect(Crenup).not.toContain("Partnered");
+    expect(Crenup).not.toContain("setPlaceActive");
+    expect(Crenup).not.toContain("setPlaceVerified");
+    expect(Crenup).not.toContain("setPlacePlan");
   });
 });
 
@@ -72,7 +72,7 @@ describe("Mesita Search returns the whole catalog too", () => {
     // button's input, so requiring IDs here would defeat the point.
     expect(tab).toContain("disabled={busy}");
     // The shortcut: the run loads the shared ID box with the catalog's Google
-    // Place IDs, so Mesita Intake is one scroll away with no paste. Capped
+    // Place IDs, so Crenup is one scroll away with no paste. Capped
     // where the box caps, and a place with no google_place_id is skipped.
     const run = tab.slice(
       tab.indexOf("async function runAllPlaces"),
@@ -106,13 +106,13 @@ describe("Mesita Search returns the whole catalog too", () => {
 });
 
 describe("spend calculator stays off this page", () => {
-  it("does not mount CostCalculator — Create/Enrich estimates live on Intake", () => {
+  it("does not mount CostCalculator — Create/Enrich estimates live on Crenup", () => {
     const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
-    const intakeTab = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
+    const crenupTab = readFileSync(join(here, "CrenupTab.tsx"), "utf8");
     const costUi = readFileSync(join(here, "search-cost.tsx"), "utf8");
     expect(searchTab).not.toContain("CostCalculator");
-    expect(intakeTab).not.toContain("computeEnrichmentCost");
-    expect(intakeTab).not.toContain("costSeed");
+    expect(crenupTab).not.toContain("computeEnrichmentCost");
+    expect(crenupTab).not.toContain("costSeed");
     expect(costUi).not.toContain("export function CostCalculator");
   });
 });

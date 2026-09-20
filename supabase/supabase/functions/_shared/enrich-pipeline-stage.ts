@@ -1,4 +1,4 @@
-// Place-research row lifecycle helpers for the Intaker stage machine.
+// Place-research row lifecycle helpers for the Enricher stage machine.
 // Extracted from enrich-pipeline.ts (stage claim / advance / fail I/O).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -11,7 +11,7 @@ import type {
   ResearchStage,
 } from "./enrich-pipeline.ts";
 
-/** True while the Intaker is mid-pipeline (any of the three live stages). */
+/** True while the Enricher is mid-pipeline (any of the three live stages). */
 export function isEnrichingStage(
   stage: string | null | undefined,
 ): boolean {
@@ -161,6 +161,31 @@ export async function openEnrichmentRun(
     return { ok: true, blocked: row.blocked };
   }
   return { ok: true, runId: row?.run_id ?? undefined };
+}
+
+/**
+ * The stage a run STARTED at, from the run row. Not the same fact as
+ * `place_research.stage`, which is wherever the pipeline is right now — and
+ * confusing the two is what silenced the cost ledger (MESITA-2032).
+ *
+ * null when there is no run row to ask (pre-runs-table rows) or the read
+ * failed; callers treat unknown as "walked from research".
+ */
+export async function loadRunEntryStage(
+  admin: SupabaseClient,
+  runId: string | null | undefined,
+): Promise<string | null> {
+  if (!runId) return null;
+  const { data, error } = await admin
+    .from("place_enrichment_runs")
+    .select("entry_stage")
+    .eq("id", runId)
+    .maybeSingle();
+  if (error) {
+    console.error("[enrich-pipeline] entry_stage:", error.message);
+    return null;
+  }
+  return (data as { entry_stage?: string | null } | null)?.entry_stage ?? null;
 }
 
 /**

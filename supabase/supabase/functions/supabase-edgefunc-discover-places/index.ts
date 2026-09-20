@@ -1,6 +1,6 @@
 // Supabase Edge Function — supabase-edgefunc-discover-places (internal caller)
 //
-// Part of the Intaker namespace (place intelligence + encyclopaedia).
+// Part of the Enricher namespace (place intelligence + encyclopaedia).
 // Runs many Google Places Text Search queries in one batch and returns
 // the union of Place IDs across all of them. Optional `placeIds` resolve
 // via Place Details (Text Search cannot). Paginates each query up to

@@ -1,6 +1,6 @@
 // On-Update place embeddings (MESITA-720).
 //
-// Intaker On-Update S2/S3 contract:
+// Enricher On-Update S2/S3 contract:
 //   1. Read place profile fields (never tags)
 //   2. Synthesize a short human blurb (LLM; deterministic facts fallback)
 //   3. Embed with text-embedding-3-small and persist text + hash + vector
@@ -36,7 +36,7 @@ import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
 import { writePlace, type PlaceProfilePatch } from "./place-doc.ts";
-import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
+import { stepDone, reportCrenupSteps } from "./crenup-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
 const DEFAULT_SYNTH_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
@@ -314,8 +314,8 @@ async function computeAndPersistPlaceEmbedding(
         ? `Mesita Name embedded — ${nameText}.`
         : null,
     ].filter((s): s is string => s != null);
-    await reportPulsePieces(admin, place.id, {
-      embedding: pieceDone(bits.join(" "), { via }),
+    await reportCrenupSteps(admin, place.id, {
+      embedding: stepDone(bits.join(" "), { via }),
     });
   }
 

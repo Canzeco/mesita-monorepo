@@ -28,7 +28,7 @@ describe("toDeckRequest", () => {
     });
   });
 
-  it("carries Super Category, scope, and review floor once any of them narrows", () => {
+  it("carries Family, scope, and review floor once any of them narrows", () => {
     const req = toDeckRequest(
       filters({ familyKeys: ["restaurants"], minReviews: 100 }),
       HERE,

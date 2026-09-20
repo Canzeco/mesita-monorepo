@@ -24,7 +24,7 @@ import { PIPELINE_STEPS } from "./pipeline";
 export function PipelineNav() {
   return (
     <nav
-      aria-label="Google Search, Mesita Search, Mesita Intake"
+      aria-label="Google Search, Mesita Search, Crenup"
       className="border-border bg-background sticky top-0 z-20 -mx-4 mb-4 border-b px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
       <ol className="flex gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:overflow-x-visible">

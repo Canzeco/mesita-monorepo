@@ -23,7 +23,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { SignalPlace } from "./discovery-signals.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
-import { pulseOf } from "./pulse-pieces.ts";
+import { crenupOf } from "./crenup-ladder.ts";
 
 /**
  * The columns a ranking engine must SELECT beyond PLACE_PUBLIC_COLUMNS.
@@ -112,11 +112,11 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
  * (no `plan`, no name vector, no `promoting`). New blend call sites use
  * this so Name, Partnership, and Promotion can actually fire.
  *
- * `intake_high_water` (MESITA-1598) is read straight off the row like any
+ * `crenup_high_water` (MESITA-1598) is read straight off the row like any
  * other field — it is NOT selected by `EARNED_LANE_COLUMNS` (`places.
  * enrichment` sits behind the `profiles` view and isn't in the public
  * projection), so a row only carries it when the caller ran
- * `attachIntakeHighWater` first. THE `enriched` SIGNAL READS IT (MESITA-1858
+ * `attachCrenupHighWater` first. THE `enriched` SIGNAL READS IT (MESITA-1858
  * kept the gradient: the binary alone is a constant on every lane that admits
  * only enriched rows). A row without it scores the binary instead.
  */
@@ -130,14 +130,14 @@ export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
       ? null
       : String(row.plan),
     promoting: isPlacePromoting(row),
-    intakeHighWater: nOrNull(row.intake_high_water),
+    crenupHighWater: nOrNull(row.crenup_high_water),
   };
 }
 
 /**
  * The side-read the retired `mesita_level` gradient needed and `profiles`
  * doesn't carry (MESITA-1598): `places.enrichment->highWater` for a batch of
- * place ids, merged onto each row as `intake_high_water` — the same shape
+ * place ids, merged onto each row as `crenup_high_water` — the same shape
  * `toLineupPlace` already knows how to read off any other column. Call this
  * AFTER the main admission query and BEFORE ranking.
  *
@@ -150,12 +150,12 @@ export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
  * into the ranking query itself, so a surface that doesn't call this pays
  * nothing extra.
  */
-export async function attachIntakeHighWater<
+export async function attachCrenupHighWater<
   T extends Record<string, unknown>,
 >(
   admin: SupabaseClient,
   rows: T[],
-): Promise<(T & { intake_high_water?: number })[]> {
+): Promise<(T & { crenup_high_water?: number })[]> {
   if (rows.length === 0) return [];
   const ids = rows
     .map((r) => r.id)
@@ -170,19 +170,19 @@ export async function attachIntakeHighWater<
     // Degrade to UNKNOWN for everyone, never to a confirmed-zero — a failed
     // side-read must not read as "the whole pool is at the Created floor".
     // Logged, not thrown: ranking must not 500 over this query hiccuping.
-    console.error("[discovery-place] attachIntakeHighWater:", error.message);
+    console.error("[discovery-place] attachCrenupHighWater:", error.message);
     return rows;
   }
   const byId = new Map<string, number>();
   for (const row of (data ?? []) as { id: string; enrichment: unknown }[]) {
-    byId.set(row.id, pulseOf(row.enrichment));
+    byId.set(row.id, crenupOf(row.enrichment));
   }
   // A row the query returned nothing for (a place-id-shaped id that isn't
   // actually in `places`, or an org-pool oddity) gets a real 0 — it IS
   // confirmed unenriched by absence, not merely un-fetched.
   return rows.map((r) => ({
     ...r,
-    intake_high_water: byId.get(r.id as string) ?? 0,
+    crenup_high_water: byId.get(r.id as string) ?? 0,
   }));
 }
 

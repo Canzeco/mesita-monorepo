@@ -10,7 +10,7 @@ import {
 } from "./actions";
 import {
   GENERAL_STATE_FACTS,
-  INTAKE_FUNCTIONS,
+  CRENUP_STEPS,
   OPERATOR_PROMOTING_LABEL,
   operatorPromotingLevel,
   STATE_FACT_FALSE_TONE,
@@ -49,7 +49,7 @@ function factOn(
   if (key === "listed") return hit.listed;
   if (key === "requested") return hit.request_count > 0;
   if (key === "enriched") {
-    return hit.enrich_pulse_total > 0 && hit.enrich_pulse === hit.enrich_pulse_total;
+    return hit.enrich_crenup_total > 0 && hit.enrich_crenup === hit.enrich_crenup_total;
   }
   if (key === "enriching") return hit.enriching;
   if (key === "verified") return hit.verified;
@@ -60,24 +60,24 @@ function factOn(
   return "unknown";
 }
 
-// PULSE is a high-water: it stops counting at the first gap by design (its
-// own comment in _shared/pulse-pieces.ts says so), so a place where `links`
+// CRENUP is a high-water: it stops counting at the first gap by design (its
+// own comment in _shared/crenup-ladder.ts says so), so a place where `links`
 // failed but `social`/`menu` later completed reads high-water 3 even though
 // 5 and 7 landed. `enrich_functions` (MESITA-1611) is the honest per-function
 // map — read it when the payload carries it, and only fall back to the
 // high-water comparison for a payload that predates the field. Seed is never
 // in that map (it is not a stamped Enrich function — the row existing IS the
 // seed), so it always reads off `seeded` directly.
-export function intakeCalled(
+export function crenupCalled(
   hit: PlaceHit,
-  fn: (typeof INTAKE_FUNCTIONS)[number],
+  fn: (typeof CRENUP_STEPS)[number],
 ): boolean {
   if (fn.key === "seed") return hit.seeded;
   if (hit.enrich_functions) {
     const state = hit.enrich_functions[fn.key]?.state;
     return state === "completed" || state === "failed";
   }
-  return hit.enrich_pulse >= fn.n;
+  return hit.enrich_crenup >= fn.n;
 }
 
 export function MesitaSearchTab({
@@ -130,7 +130,7 @@ export function MesitaSearchTab({
 
   // The whole catalog, no paste required — and the shortcut: every Google
   // Place ID it finds lands in the shared box, so the catalog moves on to a
-  // lookup, or to Mesita Intake, without anyone pasting 250 lines. The box
+  // lookup, or to Crenup, without anyone pasting 250 lines. The box
   // caps where parseGooglePlaceIds caps, and a place with no
   // google_place_id has no token to give — the summary says both out loud.
   async function runAllPlaces() {
@@ -324,31 +324,31 @@ export function MesitaSearchTab({
               </tbody>
             </table>
           </div>
-          {rows.some((r) => r.hit && r.hit.enrich_pulse_labels.length > 0) ? (
+          {rows.some((r) => r.hit && r.hit.enrich_crenup_labels.length > 0) ? (
             <ul className="border-border divide-border divide-y border-t">
               {rows.map((row) => {
                 const hit = row.hit;
-                if (!hit || hit.enrich_pulse_labels.length === 0) return null;
+                if (!hit || hit.enrich_crenup_labels.length === 0) return null;
                 return (
-                  <li key={`${row.key}-intake`} className="px-4 py-3">
+                  <li key={`${row.key}-Crenup`} className="px-4 py-3">
                     <p className="text-muted-foreground type-label mb-2">
-                      Intake · {hit.google_name || hit.name}
+                      Crenup · {hit.google_name || hit.name}
                     </p>
-                    {hit.enrich_pulse_blocked ? (
+                    {hit.enrich_crenup_blocked ? (
                       <p className="text-muted-foreground type-label mb-2">
                         Stopped at{" "}
-                        {hit.enrich_pulse_labels[hit.enrich_pulse_blocked.index] ??
-                          hit.enrich_pulse_blocked.key}{" "}
+                        {hit.enrich_crenup_labels[hit.enrich_crenup_blocked.index] ??
+                          hit.enrich_crenup_blocked.key}{" "}
                         —{" "}
-                        {hit.enrich_pulse_blocked.state === "failed"
+                        {hit.enrich_crenup_blocked.state === "failed"
                           ? "the function ran and failed"
                           : "no event yet"}
                         .
                       </p>
                     ) : null}
                     <div className="flex flex-wrap gap-1.5">
-                      {INTAKE_FUNCTIONS.map((fn) => {
-                        const called = intakeCalled(hit, fn);
+                      {CRENUP_STEPS.map((fn) => {
+                        const called = crenupCalled(hit, fn);
                         return (
                           <span
                             key={fn.key}

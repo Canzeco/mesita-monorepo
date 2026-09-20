@@ -1,4 +1,4 @@
-// Description → Actions (Intaker function 9): which guest CTAs are unlocked.
+// Description → Actions (Enricher step 7): which guest CTAs are unlocked.
 //
 // Visit is NOT stored here — it is computed at read time from `promoting`
 // (paid plan + live promo lane). These two flags are persisted:

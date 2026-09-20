@@ -25,7 +25,7 @@ export default function NotFound() {
           Open the console
         </Link>
         <Link
-          href={SHELL_ROUTES.account}
+          href={SHELL_ROUTES.settings}
           className={cn(
             "border-border text-foreground rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:opacity-80",
           )}

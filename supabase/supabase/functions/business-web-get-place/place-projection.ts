@@ -18,7 +18,7 @@ export const PLACE_COLUMNS: readonly string[] = [
   // The raw state. `listed` derives from it; the console shows the raw label
   // only as the REASON when listed is false (Paused, Waiting on review…).
   "state",
-  // Intaker lifecycle, so the screen can say Enriching rather than a bare No.
+  // Enricher lifecycle, so the screen can say Enriching rather than a bare No.
   "content_state",
   // ISO 4217 for this place. Already shown in Identity.
   "currency",

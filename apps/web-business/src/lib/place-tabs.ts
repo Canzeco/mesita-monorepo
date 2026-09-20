@@ -97,7 +97,7 @@ export const PLACE_TABS = [
   // Capital owes a tab (MESITA-1929) even while its page is a Soon strip.
   //
   // `PLACE_TABS` ⊇ `PRODUCT_KEYS` IS OVER (MESITA-1949). It held while the
-  // suite was these seven views plus Customers, and Pato's sixteen ended it:
+  // suite was these seven views plus Customers, and Pato's full suite ended it:
   // Website, Ads, Terminal, POS, the two bots and Intelligence have nothing to
   // open, and giving each an empty view to keep a containment true would be
   // seven SoonStrip pages nobody asked for — the exact shape MESITA-1900

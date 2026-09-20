@@ -8,9 +8,11 @@
 //
 // Here the scenario IS the answer. Pick a mode and the console is in it.
 import { MEMBERSHIP_RENEWS_AT, PLACES, POOL_PLACES, PROFILES } from "@/mock/fixtures";
+import { isPartner } from "@/mock/types";
 import type {
   MembershipState,
   MockPlace,
+  PlanTier,
   MockPlaceProfile,
   PayLadder,
   PlaceRole,
@@ -26,21 +28,32 @@ export type Scenario = {
   role: PlaceRole;
   /** Super-admin adds the Admin view, and nothing else. */
   isSuperAdmin: boolean;
-  /** Mesita Partner on the SELECTED place. The gate Visits, Rewards, Payments
-   *  and Credits read; off, they are Locked and carry no verb. */
-  partnered: boolean;
-  /** What the SUBSCRIPTION behind the gate is doing. Its own axis, because
-   *  `partnered` and the membership come apart in both directions — a
-   *  `past_due` place is still a partner, and a partner switched on by an
-   *  operator has no subscription at all. `withOverrides` holds the one pair
-   *  that cannot exist: not partnered, so nothing to be in a state. */
+  /** THE RUNG on the SELECTED place (MESITA-1997) — four values now,
+   *  replacing the `partnered` boolean this dial used to be. Everything a
+   *  product gates on is derived from this and never set beside it. A boolean
+   *  could not reach Ultra, which is the whole reason the dial changed shape —
+   *  and since 2026-09-20 it could not reach Start either, which is a rung
+   *  that PAYS and is not a Partner. */
+  plan: PlanTier;
+  /** THE TWO GENERAL STATES THE PANEL CAN MOVE (MESITA-1977). `verified` is
+   *  not one of them: it is a fixture fact per place, and a switch for it here
+   *  would let a caller build a Partner that Mesita never verified — a rung
+   *  below one it already has. `pulsing` and `disabled` are both reachable at
+   *  any height, which is why they are dials and the ladder is not. */
+  pulsing: boolean;
+  disabled: boolean;
+  /** What the BILLING under the rung is doing. Its own axis, because the rung
+   *  and the subscription come apart in both directions — a `past_due` place
+   *  is still on Pro, and a place switched up by an operator has no
+   *  subscription at all. `withOverrides` holds the one pair that cannot
+   *  exist: `free`, so nothing to be in a state. */
   membership: MembershipState;
   /** Where this place sits on Stripe's ladder. */
   pay: PayLadder;
-  /** The Customers subscription on this place. Its own dial, not part of the
-   *  Membership: the catalog is rented, and a partner who does not rent it
-   *  sees the closed form of the table. */
-  customerIntel: boolean;
+  // NO `customerIntel` DIAL ANY MORE (MESITA-1997). Customer Intelligence
+  // moved inside Mesita Ultra, so the closed form of the catalog is what a
+  // `free` or `pro` place sees — reachable by moving the rung, which is one
+  // dial instead of a second one that could contradict it.
   /** The per-place capability switches. */
   pickupOrders: boolean;
   deliveryOrders: boolean;
@@ -56,10 +69,11 @@ export const DEFAULT_SCENARIO: Scenario = {
   mode: "solo",
   role: "owner",
   isSuperAdmin: false,
-  partnered: true,
+  plan: "pro",
+  pulsing: true,
+  disabled: false,
   membership: "active",
   pay: "enabled",
-  customerIntel: true,
   pickupOrders: true,
   deliveryOrders: false,
   reservations: true,
@@ -84,38 +98,44 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   },
   {
     id: "unpartnered",
-    label: "Not a partner",
-    hint: "Visits, Rewards, Payments and Credits Locked, no verb on any of them.",
-    patch: { mode: "solo", partnered: false, membership: "none", pay: "never", visitRewards: false, credits: false, customerIntel: false },
+    label: "Free",
+    hint: "The bottom rung. Mesita Profile, Online Reputation and Digital Menu \u2014 the whole listing; everything else Locked and carrying no verb.",
+    patch: { mode: "solo", plan: "free", membership: "none", pay: "never", visitRewards: false, credits: false },
+  },
+  {
+    id: "ultra",
+    label: "Ultra",
+    hint: "The top rung. The Answering Agent unlocks and the customer catalog opens \u2014 the only preset where either does.",
+    patch: { mode: "solo", plan: "ultra" },
   },
   {
     id: "membership-past-due",
     label: "Membership past due",
     hint: "Stripe is retrying the card. Still a partner — LAPSE is not DROP.",
-    patch: { mode: "solo", partnered: true, membership: "past_due" },
+    patch: { mode: "solo", plan: "pro", membership: "past_due" },
   },
   {
     id: "membership-ending",
     label: "Membership ending",
     hint: "Cancelled, running to the paid-through date. Never says \u201crenews\u201d.",
-    patch: { mode: "solo", partnered: true, membership: "cancelling" },
+    patch: { mode: "solo", plan: "pro", membership: "cancelling" },
   },
   {
     id: "membership-none",
     label: "Partner, no subscription",
     hint: "Switched on by an operator. There is no date, so none is shown.",
-    patch: { mode: "solo", partnered: true, membership: "none" },
+    patch: { mode: "solo", plan: "pro", membership: "none" },
   },
   {
     id: "customers-closed",
     label: "Customers, not subscribed",
-    hint: "The catalog is counted and nobody in it is named. The other half of that table.",
-    patch: { mode: "solo", customerIntel: false },
+    hint: "The catalog is counted and nobody in it is named \u2014 what Pro sees, because the catalog is Ultra's.",
+    patch: { mode: "solo", plan: "pro" },
   },
   {
     id: "multi",
     label: "Four places",
-    hint: "The selector heads the rail and the console picks none of them.",
+    hint: "The console picks none of them: Place opens the catalogue.",
     patch: { mode: "multi" },
   },
   {
@@ -127,20 +147,20 @@ export const PRESETS: Array<{ id: string; label: string; hint: string; patch: Pa
   {
     id: "failed",
     label: "Read failed",
-    hint: "The rail says so and offers a retry. It never says 'add one'.",
+    hint: "The catalogue says so and offers a retry. It never says 'add one'.",
     patch: { mode: "unknown", empty: true },
   },
   {
     id: "stripe-fresh",
     label: "Stripe, day zero",
     hint: "Never started — which Stripe reports with a disabled_reason set.",
-    patch: { mode: "solo", partnered: true, pay: "never" },
+    patch: { mode: "solo", plan: "pro", pay: "never" },
   },
   {
     id: "stripe-restricted",
     label: "Stripe, restricted",
     hint: "Charges were on and are not any more.",
-    patch: { mode: "solo", partnered: true, pay: "restricted" },
+    patch: { mode: "solo", plan: "pro", pay: "restricted" },
   },
   {
     id: "superadmin",
@@ -159,7 +179,7 @@ export type World = {
   viewerError: boolean;
   poolPlaces: typeof POOL_PLACES;
   /** The profile record per place id — the fixture, or what Profile's save bar
-   *  last wrote over it. Keyed rather than nested on `MockPlace` so the rail
+   *  last wrote over it. Keyed rather than nested on `MockPlace` so the menu
    *  and the eight product views never carry thirty columns they do not read
    *  (mock/types.ts). */
   profiles: Record<string, MockPlaceProfile>;
@@ -173,17 +193,32 @@ function withOverrides(place: MockPlace, s: Scenario, primary: boolean): MockPla
   return {
     ...place,
     myRole: s.role,
-    partnered: s.partnered,
-    // THE ONE PAIR THAT CANNOT EXIST. A place that is not a partner has no
-    // subscription to be `past_due` or `cancelling` about, so the panel's two
-    // dials cannot be crossed into a state the real console never produces.
+    plan: s.plan,
+    // DERIVED, NEVER DIALLED — this is the one line that computes the badge,
+    // the way the real lane's `deriveListingType` is the one line over there.
+    // Two writers for one fact is how a console ends up showing a Partner
+    // badge on a place that did not buy one.
+    //
+    // `isPartner`, NOT `plan !== "free"` (2026-09-20). The badge starts at
+    // Mesita Pro; the rung below it pays and wears none.
+    partnered: isPartner(s.plan),
+    pulsing: s.pulsing,
+    disabled: s.disabled,
+    // THE ONE PAIR THAT CANNOT EXIST. A place on Free has no subscription to
+    // be `past_due` or `cancelling` about, so the panel's two dials cannot be
+    // crossed into a state the real console never produces. THE TEST IS THE
+    // RUNG, NOT THE BADGE: Mesita Pro pays, and a paying place has billing
+    // states.
     // Held here rather than in the panel because the panel is not the only
     // writer — a stored scenario from an older build arrives through
     // `getScenario`'s spread with whatever it was saved with.
-    membership: s.partnered ? s.membership : "none",
-    renewsAt: s.partnered && s.membership !== "none" ? place.renewsAt ?? MEMBERSHIP_RENEWS_AT : null,
+    membership: s.plan !== "free" ? s.membership : "none",
+    renewsAt: s.plan !== "free" && s.membership !== "none"
+      ? place.renewsAt ?? MEMBERSHIP_RENEWS_AT
+      : null,
     pay: s.pay,
-    customerIntel: s.customerIntel,
+    // The Ultra rung IS the Customers subscription now — see `MockPlace`.
+    customerIntel: s.plan === "ultra",
     pickupOrders: s.pickupOrders,
     deliveryOrders: s.deliveryOrders,
     reservations: s.reservations,
@@ -215,7 +250,7 @@ export function resolveWorld(
   }
   const chosen = s.mode === "solo" ? PLACES.slice(0, 1) : PLACES;
   return {
-    // A SAVED PROFILE MOVES THE PLACE, not just the form: the name the rail
+    // A SAVED PROFILE MOVES THE PLACE, not just the form: the name the menu
     // and the heading print is `mesita_name` falling back to `google_name`
     // (the real column is GENERATED as exactly that coalesce), and the photo
     // count Admin prints is the gallery's length. Re-deriving them here is

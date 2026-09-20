@@ -139,7 +139,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
 // shared with the place detail page so the SVG and pink-gradient mark
 // don't drift between surfaces.
 
-/** Intaker stores ISO `published`; mocks use relative strings — show either cleanly. */
+/** Enricher stores ISO `published`; mocks use relative strings — show either cleanly. */
 function formatReviewDate(raw: string): string {
   if (!raw) return "";
   const t = Date.parse(raw);

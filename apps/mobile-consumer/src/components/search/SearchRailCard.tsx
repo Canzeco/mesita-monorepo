@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, Star } from 'lucide-react-native';
+import { Star } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { PartnerMark } from '@/components/brand/PartnerMark';
 import {
   COLORS,
   GRADIENT_DIAGONAL,
@@ -80,13 +81,9 @@ export function RailCard({
           >
             {place.name}
           </Text>
-          {partner ? (
-            <BadgeCheck
-              color={COLORS.primary}
-              size={14}
-              accessibilityLabel="Mesita Partner"
-            />
-          ) : null}
+          {/* Was lucide BadgeCheck in brand pink — the same fact the title bar
+              painted sky and the profile chip painted blue (MESITA-2031). */}
+          {partner ? <PartnerMark size={14} /> : null}
         </View>
         {subtitle ? (
           <Text

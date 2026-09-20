@@ -1,6 +1,6 @@
 // Supabase Edge Function — supabase-cron-enrich-place-analysis (internal / cron)
 //
-// Stage 2 of the Intaker pipeline (the Intaker is a PROCESS — a cron-driven
+// Stage 2 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller claims
 // place_research rows at stage='analysis' and fires this EF with
 // { place_id }. It acks 202 immediately and runs the IMAGE half in a
@@ -37,7 +37,7 @@ import {
   serveEnrichStage,
   wants,
 } from "../_shared/enrich-pipeline.ts";
-import { pieceDone, reportPulsePieces } from "../_shared/pulse-report.ts";
+import { stepDone, reportCrenupSteps } from "../_shared/crenup-report.ts";
 
 serveEnrichStage("analysis", async (admin, _env, row) => {
   const projectId = row.place_id;
@@ -54,12 +54,12 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // the list is non-empty, so the place keeps the gallery it already had.
   if (!wants(row.subprocesses, "images")) {
     // NO BEACON HERE (MESITA-1209). This used to write
-    // { step_name: "images", state: "skipped" } — and `images` is a PULSE
+    // { step_name: "images", state: "skipped" } — and `images` is a CRENUP
     // piece key, so the high-water reader saw a non-completed piece mid-ladder
     // and stopped short of it. A cheap refresh that did not buy the funnel
     // therefore knocked a complete place back down, every time it ran.
     //
-    // The rule it broke is in pulse-report.ts: a piece a run did not BUY writes
+    // The rule it broke is in crenup-report.ts: a step a run did not BUY writes
     // NOTHING, so the previous run's result stands. What this run bought is
     // already recorded in place_research.subprocesses, so nothing is lost.
     await advanceResearchStage(admin, projectId, "contents", {
@@ -125,11 +125,11 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // Function. Its own `step` is decorative and does not track the ladder: the
   // stage runs exactly one function (6 images), stamped above.
   const described = funnel.imageAnalysisByUrl.size;
-  // PULSE function 6 (images). The funnel ran; `described` is the observed
+  // CRENUP step 6 (images). The funnel ran; `described` is the observed
   // effect. Zero described is still a pass when vision is off by config — the
   // pool was ranked in source order, which is the funnel doing its job.
-  await reportPulsePieces(admin, projectId, {
-    images: pieceDone(
+  await reportCrenupSteps(admin, projectId, {
+    images: stepDone(
       `Described ${funnel.imageAnalysisByUrl.size}, selected ${funnel.finalPhotos.length}.`,
       { described: funnel.imageAnalysisByUrl.size, finalPhotos: funnel.finalPhotos.length },
     ),

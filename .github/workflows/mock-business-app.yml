@@ -2,8 +2,11 @@ name: mock-business-app CI
 
 # The mock console. It HAS a Vercel project since MESITA-1903, so this workflow
 # is no longer the only thing that builds it — but it is still the only thing
-# that LINTS and TYPECHECKS it, and it is what catches a break on a pull request
-# rather than on the deployment that follows the merge.
+# that LINTS, TYPECHECKS and (since MESITA-2017) TESTS it, and it is what
+# catches a break on a pull request rather than on the deployment that follows
+# the merge. The tests pin the product order, the rewards table, the halves
+# map and the catalogue copy: the things a fixture app has no runtime to
+# refuse.
 #
 # NOT a required check on main, deliberately: nothing a customer touches ships
 # from this package, and blocking a console fix on a mock's build is the tail
@@ -31,7 +34,7 @@ defaults:
 
 jobs:
   check:
-    name: lint · typecheck · build
+    name: lint · typecheck · test · build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,6 +60,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
 
       - name: Build
         run: pnpm run build

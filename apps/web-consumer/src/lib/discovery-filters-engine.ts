@@ -4,7 +4,7 @@
 // connect current location. Nothing else. Visit/Order, Where search, distance
 // slider, When, and category chips are gone from this sheet.
 //
-//   · Super Category — the seven real families; empty = no constraint.
+//   · Family — the seven real families; empty = no constraint.
 //   · Scope          — three nested sets: Google ⊃ Mesita Enriched ⊃ Partner.
 //                      Default is the middle ring. On Feed/Scroll the pool is
 //                      listed Mesita places, so Google == all enriched; the

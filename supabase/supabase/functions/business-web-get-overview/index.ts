@@ -65,7 +65,7 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
-import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
+import { CRENUP_LABELS_IN_ORDER, CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
 
@@ -229,13 +229,13 @@ Deno.serve(async (req) => {
     }
     const enrichmentMap = (enrichmentRow.data?.enrichment as EnrichmentMap | null) ??
       { functions: {}, highWater: 0, blockedAt: null };
-    const enrichPulse = enrichmentMap.highWater;
+    const enrichCrenup = enrichmentMap.highWater;
     // WHY it stopped, beside where. Function 1 can now FAIL a place Google
     // reports permanently closed, so the number 0 carries two different facts
     // — "seeded, nothing tried" and "we asked, and the listing is dead". The
     // reason rides along with the same map the number came from, so the two
     // can never disagree.
-    const enrichPulseBlocked = enrichmentMap.blockedAt;
+    const enrichCrenupBlocked = enrichmentMap.blockedAt;
     // Tag as owner so any downstream UI that gates on role still works —
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)
@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
         // Read because the CONSUMER app already books off this column
         // (`isReserveActionEnabled`). The console used to hard-code the row
         // off, so it claimed a place takes no bookings while guests were
-        // making them (MESITA-1735). Written today only by the Intaker.
+        // making them (MESITA-1735). Written today only by the Enricher.
         reservations_enabled?: unknown;
       }
       | null;
@@ -274,10 +274,10 @@ Deno.serve(async (req) => {
           requestCount: placeFields.request_count,
           contentState: placeFields.content_state,
         }),
-        enrich_pulse: enrichPulse,
-        enrich_pulse_total: PULSE_TOTAL,
-        enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
-        enrich_pulse_blocked: enrichPulseBlocked,
+        enrich_crenup: enrichCrenup,
+        enrich_crenup_total: CRENUP_TOTAL,
+        enrich_crenup_labels: CRENUP_LABELS_IN_ORDER,
+        enrich_crenup_blocked: enrichCrenupBlocked,
         enrich_functions: operatorFunctionStates(
           enrichmentMap.functions as Partial<Record<string, FunctionState>>,
         ),

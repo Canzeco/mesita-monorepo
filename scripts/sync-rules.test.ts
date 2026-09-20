@@ -15,6 +15,7 @@ import {
   budgetsFor,
   buildAllowedFiles,
   CHAT_INSTRUCTIONS_WORD_BUDGET,
+  REDEYE_WORD_BUDGET,
   countWords,
   DEFAULT_PACKAGE_WORD_BUDGET,
   DEFAULT_SKILL_WORD_BUDGET,
@@ -312,6 +313,7 @@ const ALLOWED = buildAllowedFiles(TARGETS, repoRoot);
 Deno.test("buildAllowedFiles covers the quickstart source and every generated pair", () => {
   assert(ALLOWED.has("scripts/rules-quickstart.md"));
   assert(ALLOWED.has("scripts/chat-instructions.md"));
+  assert(ALLOWED.has("scripts/redeye.md"));
   assert(ALLOWED.has("CLAUDE.md"));
   assert(ALLOWED.has("AGENTS.md"));
   for (const { dir } of TARGETS) {
@@ -477,6 +479,28 @@ Deno.test("the shipped chat boot card is within budget", async () => {
     words <= CHAT_INSTRUCTIONS_WORD_BUDGET,
     `scripts/chat-instructions.md is ${words} words > ${CHAT_INSTRUCTIONS_WORD_BUDGET}`,
   );
+});
+
+Deno.test("the shipped Redeye protocol is within budget", async () => {
+  const card = await Deno.readTextFile(join(repoRoot, "scripts", "redeye.md"));
+  const words = countWords(card);
+  assert(
+    words <= REDEYE_WORD_BUDGET,
+    `scripts/redeye.md is ${words} words > ${REDEYE_WORD_BUDGET}`,
+  );
+});
+
+// The protocol is the half of Redeye no gate can enforce, and the two clauses a drifting rewrite
+// would soften first are the two that cost an agent nothing to ignore: asking, and stopping. A
+// card that no longer forbids either still passes every other check here, so both are pinned.
+Deno.test("the Redeye protocol still prohibits asking and still refuses to stop", async () => {
+  const card = await Deno.readTextFile(join(repoRoot, "scripts", "redeye.md"));
+  assertStringIncludes(card, "Asking is prohibited");
+  assertStringIncludes(card, "Never stop");
+  assertStringIncludes(card, "decision:");
+  assertStringIncludes(card, "needs-human");
+  // The bypass is the whole point, and the claim surviving it is the whole safety.
+  assertStringIncludes(card, "preflight.sh");
 });
 
 Deno.test("every shipped CLAUDE.md is within budget", async () => {

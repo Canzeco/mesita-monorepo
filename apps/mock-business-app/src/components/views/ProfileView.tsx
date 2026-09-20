@@ -20,11 +20,12 @@ import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
 import { Section } from "@/components/shared/Section";
 import { PlaceFormProvider } from "@/components/place-manage/PlaceContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
-import { MenusSection } from "@/components/place-manage/MenusSection";
 import { PlaceSection } from "@/components/place-manage/PlaceSection";
 import { ProfileCompleteness } from "@/components/place-manage/ProfileCompleteness";
 import { useMock } from "@/mock/MockStore";
-import { PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { Badge } from "@/components/shared/Badges";
+import { Rule, RULES_CARD } from "@/components/shared/Rule";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
 
 export function ProfileView() {
   const { place, pool } = usePlaceScope();
@@ -39,7 +40,7 @@ export function ProfileView() {
           right={<button type="button" className={PILL_BUTTON_CLASS}>Claim</button>}
           lane
         >
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <dl className="@container grid grid-cols-1 gap-3 @lg:grid-cols-2">
             <div>
               <dt className={TINY_LABEL_CLASS}>Category</dt>
               <dd className="text-sm">{pool.category}</dd>
@@ -78,9 +79,35 @@ export function ProfileView() {
           unsaved text across — the same reason the real screen remounts on a
           `placeId` change. */}
       <div key={place.id} className="flex flex-col">
+        {/* VERIFIED HAS A VERB NOW (MESITA-2017), and it is REQUEST-ONLY:
+            Mesita confirms a place is real; nobody on this side can set the
+            fact. It is the first row of the Partner checklist and the only
+            one with no product of its own, so it lives here. */}
+        <div className={`${RULES_CARD} mb-4 lg:mb-5`}>
+          <Rule
+            label="Verified"
+            note={
+              place.verified
+                ? "Mesita confirmed this place is real. It stays verified whatever the plan does."
+                : place.verificationRequested
+                  ? "Requested. Mesita usually answers within a day; nothing to do until it does."
+                  : "Not yet. Ask, and Mesita checks the place against what is public about it."
+            }
+            value={
+              place.verified ? (
+                <Badge tone="on">Verified</Badge>
+              ) : place.verificationRequested ? (
+                <Badge tone="soon">Requested</Badge>
+              ) : (
+                <button type="button" className={GHOST_PILL_BUTTON_CLASS} disabled={readOnly}>
+                  Verify this place
+                </button>
+              )
+            }
+          />
+        </div>
         <ProfileCompleteness place={profile} />
         <PlaceSection place={profile}>
-          <MenusSection place={profile} />
         </PlaceSection>
         <PlaceSaveBar />
       </div>

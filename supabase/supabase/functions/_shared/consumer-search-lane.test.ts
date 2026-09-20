@@ -24,7 +24,7 @@ import {
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
 import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
-import { PULSE_TOTAL } from "./pulse-pieces.ts";
+import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">): LaneItem {
   return {
@@ -362,9 +362,9 @@ function listed(
   };
 }
 
-/** The `attachIntakeHighWater` merge, in fixture form. */
+/** The `attachCrenupHighWater` merge, in fixture form. */
 const withHighWater = (row: ListedRow, highWater: number): ListedRow =>
-  ({ ...row, intake_high_water: highWater }) as ListedRow;
+  ({ ...row, crenup_high_water: highWater }) as ListedRow;
 
 const QUERY = [1, 0];
 const BEST = listed("best", "Best", [1, 0]);
@@ -398,14 +398,14 @@ Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
 });
 
 Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool ADMITS", () => {
-  // Carries "intake_high_water (MESITA-1601) reorders when Level is weighted"
+  // Carries "crenup_high_water (MESITA-1601) reorders when Level is weighted"
   // across the MESITA-1858 split, and comes back to high-water for the reason
   // that split's review found: this pool is already `.eq("content_state",
   // "ready")`, so every row Deep ranks satisfies the enrichment BOOLEAN and it
   // ties across the whole lane. Same name-embedding and same plan (so Name and
   // Partnered tie too) — only high-water differs, which is the only part of
   // Enriched that can still reorder an admitted pool.
-  const hi = withHighWater(listed("hi", "Hi", QUERY, "pro", "ready"), PULSE_TOTAL);
+  const hi = withHighWater(listed("hi", "Hi", QUERY, "pro", "ready"), CRENUP_TOTAL);
   const lo = withHighWater(listed("lo", "Lo", QUERY, "pro", "ready"), 2);
   // A row that never got admitted anywhere still floors below both.
   const un = listed("un", "Un", QUERY, "pro", "queued");

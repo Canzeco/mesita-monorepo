@@ -1,4 +1,4 @@
-// The ONE door through which the Intaker may write `mesita_name` (§8.4 v3).
+// The ONE door through which the Enricher may write `mesita_name` (§8.4 v3).
 //
 // The Description function infers a clean Mesita display name; this door
 // decides whether that inference may land. THE LAW (gate D2, 2026-08-29 —
@@ -16,7 +16,7 @@
 // stays GENERATED — nothing here writes `name`.
 //
 // place-name-writes.test.ts scans enrich-path files for raw `mesita_name:`
-// writes; the Intaker calls THIS module instead, which is the blessed door.
+// writes; the Enricher calls THIS module instead, which is the blessed door.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writePlace } from "./place-doc.ts";

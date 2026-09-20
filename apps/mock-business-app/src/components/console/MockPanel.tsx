@@ -23,6 +23,8 @@ import {
   PAY_LADDER_LABEL,
   type MembershipState,
   type PayLadder,
+  PLAN_LABEL,
+  type PlanTier,
   type PlaceRole,
 } from "@/mock/types";
 import type { RailMode } from "@/lib/rail-scope";
@@ -205,7 +207,7 @@ export function MockPanel() {
             </p>
           </Group>
 
-          <Group label="Mesita Payments">
+          <Group label="Online Payments">
             <Choice<PayLadder>
               value={scenario.pay}
               onPick={(pay) => set({ pay })}
@@ -221,7 +223,26 @@ export function MockPanel() {
             </p>
           </Group>
 
-          <Group label="Mesita Membership">
+          <Group label="Plan">
+            <Choice<PlanTier>
+              value={scenario.plan}
+              onPick={(plan) => set({ plan })}
+              options={(Object.keys(PLAN_LABEL) as PlanTier[]).map((k) => ({
+                id: k,
+                label: PLAN_LABEL[k],
+              }))}
+            />
+            <p className="text-muted-foreground text-[11px] leading-snug">
+              What this place BOUGHT. Every gate on the screen is derived from
+              this — there is no second switch that could disagree with it.
+              Start is the rung that PAYS AND IS NOT A PARTNER: the badge
+              starts at Pro, which is the one state worth moving this dial to
+              see. Ultra is the only rung that unlocks the Answering Agent and
+              opens the customer catalog.
+            </p>
+          </Group>
+
+          <Group label="Billing">
             <Choice<MembershipState>
               value={scenario.membership}
               onPick={(membership) => set({ membership })}
@@ -241,17 +262,21 @@ export function MockPanel() {
           </Group>
 
           <Group label="Switches on this place">
+            {/* THE TWO GENERAL STATES THAT MOVE (MESITA-1977). They sit above
+                the product switches because they are facts about the PLACE,
+                not settings inside a product — and because Disabled is the one
+                switch here that changes what every other row means. */}
             <Toggle
-              label="Mesita Partner"
-              hint="The gate Visits, Rewards, Payments and Credits read. Off, they are Locked and carry no verb."
-              on={scenario.partnered}
-              onChange={(partnered) => set({ partnered })}
+              label="Pulsing (Google Active)"
+              hint="Google answers for this place — the second rung of the general ladder, and the one rung Mesita does not control."
+              on={scenario.pulsing}
+              onChange={(pulsing) => set({ pulsing })}
             />
             <Toggle
-              label="Customer intelligence"
-              hint="The Customers catalog is a subscription. Off, the list is counted and nobody in it is named."
-              on={scenario.customerIntel}
-              onChange={(customerIntel) => set({ customerIntel })}
+              label="Disabled"
+              hint="Turned off. Not a rung: it can land at any height, so the portfolio reads it apart from the ladder."
+              on={scenario.disabled}
+              onChange={(disabled) => set({ disabled })}
             />
             <Toggle label="Pickup orders" on={scenario.pickupOrders} onChange={(v) => set({ pickupOrders: v })} />
             <Toggle label="Delivery orders" on={scenario.deliveryOrders} onChange={(v) => set({ deliveryOrders: v })} />

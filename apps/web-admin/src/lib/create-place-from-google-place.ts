@@ -3,7 +3,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 // Shared create-place helper. Both the single-place console and the bulk
 // creator run each Google Place ID through the SAME create pipeline:
 // admin-web-create-place fetches Google data and persists the ugly
-// profile (ready, not Enriched). Intaker is not queued — Enrich /
+// profile (ready, not Enriched). Enricher is not queued — Enrich /
 // Create+Enrich is a second call. The admin operator's session authorises
 // the call (admin allowlist). Callers invoke this once per Place ID.
 
@@ -15,7 +15,7 @@ type CreatePlaceOk = {
   photoCount: number;
   /** Already on Mesita — the batch continues; this row was not re-created. */
   alreadyExisted: boolean;
-  /** The create call enqueued async enrichment (Intaker cron pipeline). */
+  /** The create call enqueued async enrichment (Enricher cron pipeline). */
   enrichmentTriggered: boolean;
   enrichmentError: string | null;
 };

@@ -80,7 +80,7 @@ export function CallsCard({
         />
       </Group>
 
-      <Group title="Intake">
+      <Group title="Enrich">
         <Row
           label="Keep hand-picked contacts"
           help={

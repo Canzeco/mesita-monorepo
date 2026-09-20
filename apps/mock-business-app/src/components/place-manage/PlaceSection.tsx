@@ -20,10 +20,10 @@
 //   3. The save builds the next PROFILE rather than a column patch. The real
 //      `boxToPatch` exists so an untouched box never re-sends its columns —
 //      re-sending `description` would count as an operator overwrite of
-//      Intaker output — and there is no such hazard over a fixture. The
+//      Enricher output — and there is no such hazard over a fixture. The
 //      per-box dirty flags stay: they are what the save bar names.
 //   4. The photo dialog is the "not analyzed" branch only. Profile passes
-//      `meta={null}` in the real file too (per-photo Intaker analysis lives on
+//      `meta={null}` in the real file too (per-photo Enricher analysis lives on
 //      the Admin tab — a restaurant reading vision copy as if it were theirs is
 //      the bug MESITA-1740 named), so everything under the other branch is
 //      already unreachable there.
@@ -65,7 +65,6 @@ import {
   ALLOWED_IMAGE_ACCEPT,
   validateUploadFile,
 } from "@/lib/place-upload-utils";
-import { ReviewBoxes } from "./ReviewBoxes";
 import { FIELD_LIMITS } from "@/mock/atlas";
 import type { MockDay, MockPlaceProfile } from "@/mock/types";
 
@@ -169,7 +168,7 @@ function PriceDisplay({
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
-// Address is deliberately absent: it is native (Google/Intaker-sourced) and
+// Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // business-web-update-place rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
@@ -230,7 +229,7 @@ function formToProfile(f: Form): Partial<MockPlaceProfile> {
     mesita_name: mesitaName.length > 0 ? mesitaName : null,
     description: nz(f.description.slice(0, FIELD_LIMITS.descriptionMax)),
     tags: f.tags.slice(0, FIELD_LIMITS.tagsPerPlaceMax),
-    // decision: Pato (MESITA-469) — admin may set category (Intaker + Admin + Business).
+    // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
     category: nz(f.category) || "undefined",
     hours: Object.keys(hours).length > 0 ? hours : null,
     phone: nz(f.phone),
@@ -406,7 +405,7 @@ export function PlaceSection({
   const removePhoto = (idx: number) =>
     setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-photo Intaker analysis lives on the Admin tab. The ⓘ dialog on
+  // Per-photo Enricher analysis lives on the Admin tab. The ⓘ dialog on
   // Profile only has gallery order — vision text and SERP are operator
   // internals (MESITA-1740).
   const [metaFor, setMetaFor] = useState<string | null>(null);
@@ -434,7 +433,17 @@ export function PlaceSection({
     // `sm:`/`md:` fire on the window while the column is now ~700px, so a card
     // that splits itself in two splits at a width nobody measured. Size a card's
     // insides with rows or an unconditional grid, never with a screen query.
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+    // A CONTAINER QUERY, NOT A VIEWPORT ONE (MESITA-1983). Pato, with Profile
+    // open inside Setup's right half: *"don't use two subcolumns at the right,
+    // just one"*.
+    //
+    // `lg:columns-2` asked the WINDOW how wide it was and got 1440, while this
+    // masonry was living in a 700px pane — the same class of bug the note above
+    // names. `@container` on the wrapper plus `@4xl:` here asks the COLUMN
+    // instead: one column inside the pane, two at the standalone address where
+    // the screen really is that wide.
+    <div className="@container">
+      <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid @4xl:columns-2 @4xl:gap-5 @4xl:pb-10 @4xl:[&>section]:mb-5 @4xl:[&>details]:mb-5">
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         rank="lead"
@@ -498,7 +507,7 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
-      {/* Location is native — Google Places seed + Intaker synthesis.
+      {/* Location is native — Google Places seed + Enricher synthesis.
           The EF rejects manual address writes, so this card is read-only. */}
       <SectionCard
         icon={<MapPin className="h-4 w-4" />}
@@ -506,7 +515,19 @@ export function PlaceSection({
         subtitle="Where it sits."
       >
         {/* One boxed field per row — same filled-input language as every
-            other card. */}
+            other card.
+
+            THREE ROWS, NOT FIVE (MESITA-2012). Pato: *"hide stuff such as
+            latitude and so on. it looks too unprofessional. is okey if we
+            have that. but hide it."* `Lat / Lng` and `Timezone` were the
+            seed talking to itself — a coordinate pair and an IANA
+            identifier, both in a read-only `auto` box a restaurant owner
+            can neither read nor act on.
+
+            HIDDEN, NOT DELETED. `place.lat`, `place.lng` and
+            `place.timezone` are still on the record and still typed; the
+            map below is drawn from the first two. What went is the
+            notation, not the fact. */}
         <div className="mt-5 grid gap-4">
           <ReadField label="Address" auto boxed>
             {place.address?.trim() ? place.address : "—"}
@@ -517,21 +538,50 @@ export function PlaceSection({
           <ReadField label="City" auto boxed>
             {place.city ?? "—"}
           </ReadField>
-          <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono type-body tabular-nums">
-              {place.lat == null || place.lng == null
-                ? "—"
-                : `${place.lat}, ${place.lng}`}
-            </span>
-          </ReadField>
-          <ReadField label="Timezone" auto boxed>
-            {place.timezone?.trim() ? place.timezone : "—"}
-          </ReadField>
         </div>
-        {/* NO MAP IFRAME. The real card embeds maps.google.com here; this app
-            makes no request to anything, and a mock that quietly called Google
-            would be the one thing its banner promises it is not. The
-            coordinates above are the fact the band was drawing. */}
+        {/* THE MAP, LAST (MESITA-1994). Pato: *"location, include the map
+            preview at the bottom."*
+
+            THIS OVERTURNS THE COMMENT THAT STOOD HERE, and the comment was
+            half wrong. It said the app "makes no request to anything, and a
+            mock that quietly called Google would be the one thing its banner
+            promises it is not". The banner promises the DATA is invented — "no
+            backend, no account, no place — every name and number on this
+            screen is invented" — not that the page is offline, and the fixture
+            photos have been arriving from images.unsplash.com through
+            `next.config.ts` since the day it was written. A keyless embed
+            draws coordinates the card no longer prints (MESITA-2012). It reads an invented
+            number; it does not fetch a real place's record.
+
+            `output=embed` NEEDS NO API KEY, which is the only reason this is
+            possible in an app with no env and no backend.
+
+            AND IT IS LAST BECAUSE IT IS NOT A FOURTH FACT. It is the picture of
+            the three above it, so it closes the card rather than joining the
+            column of boxed fields. */}
+        {place.lat == null || place.lng == null ? (
+          // NO COORDINATES, NO FRAME. The obvious template string centres the
+          // world map on 0,0 — open water off West Africa — which reads as a
+          // broken embed rather than as a missing value. A stated absence is
+          // the same answer `ReadField` gives for any missing row.
+          <p className="border-border/60 text-muted-foreground mt-4 rounded-xl border border-dashed px-3.5 py-6 text-center text-xs">
+            No coordinates yet, so there is nothing to draw. They arrive with
+            the Google seed.
+          </p>
+        ) : (
+          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
+            <iframe
+              // The place's OWN name where there is one, and Google's where there
+              // is not — the same precedence the Basics card shows. It is the
+              // only label a screen reader gets for a frame it cannot read.
+              title={`Map of ${place.mesita_name?.trim() || place.google_name?.trim() || "this place"}`}
+              src={`https://www.google.com/maps?q=${place.lat},${place.lng}&z=16&output=embed`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block aspect-video w-full border-0"
+            />
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard
@@ -739,12 +789,13 @@ export function PlaceSection({
           always documented, filled again since MESITA-1917. */}
       {children}
 
-      {/* Reputation closes the masonry (Pato live 2026-09-01): every card
+      {/* REPUTATION USED TO CLOSE THE MASONRY, and it closes a screen of its
+          own now (MESITA-1993). The argument that put it here — "every card
           above is something an operator sets, these are the only things the
-          world says back. Read-only, so they sit after the editable set.
-          THREE boxes since MESITA-1930, and one wrapper rather than three
-          siblings so the masonry cannot deal them into three columns. */}
-      <ReviewBoxes place={place} />
+          world says back" — is the argument that eventually took it out: a
+          read-only trio at the bottom of a twelve-card form, inside a save bar
+          it could never dirty, was a different product wearing this one's
+          address. It is `ReviewsView` now, row three of Running. */}
 
       {metaFor !== null && (
         <MediaMetaDialog
@@ -754,6 +805,7 @@ export function PlaceSection({
           onClose={() => setMetaFor(null)}
         />
       )}
+    </div>
     </div>
   );
 }
@@ -908,7 +960,7 @@ function PhotosEditor({
 
 // Gallery order for the tile you are curating, and nothing else. The real
 // dialog has a second half for an analyzed image — source chip, caption,
-// likes, per-source metadata rows, the Intaker's vision text — which Profile
+// likes, per-source metadata rows, the Enricher's vision text — which Profile
 // never reaches, because it passes `meta={null}` on purpose (MESITA-1740).
 function MediaMetaDialog({
   url,
@@ -979,7 +1031,7 @@ function MediaMetaDialog({
 
           <p className="text-muted-foreground text-sm italic">
             No information for this image yet — it hasn&rsquo;t been analyzed by
-            the Intaker.
+            the Enricher.
           </p>
         </div>
       </div>

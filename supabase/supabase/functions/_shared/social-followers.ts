@@ -9,7 +9,7 @@
 //
 // Best-effort like every Apify call: a failed scrape writes null rather than
 // keeping the previous account's count. No identity judging here — the
-// account was chosen explicitly by a human, unlike the Intaker's discovery.
+// account was chosen explicitly by a human, unlike the Enricher's discovery.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { APIFY_ACTORS, instagramHandleFromUrl, runApifyActor } from "./apify.ts";
@@ -68,7 +68,7 @@ async function scrapeInstagramFollowers(
   return numOf(p.followersCount);
 }
 
-/** Ack-early: run the refresh after the response, same pattern as the Intaker. */
+/** Ack-early: run the refresh after the response, same pattern as the Enricher. */
 export function runFollowersRefreshInBackground(task: Promise<unknown>): void {
   const edgeRuntime = (globalThis as unknown as {
     EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };

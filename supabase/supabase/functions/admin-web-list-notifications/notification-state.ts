@@ -8,11 +8,11 @@
 //   listed     places.state ∈ (active, lead)
 //   requested  request_count > 0 and content_state is not ready
 //   enriching  content_state generating/queued (live run)
-//   enriched   PULSE high-water complete. Independent of enriching.
+//   enriched   CRENUP high-water complete. Independent of enriching.
 //   verified   an approved place_verifications row
 //   partner    plan ≠ free (operator label Partnered)
 //   promoting  live discount (isPlacePromoting)
-//   functions  completed Intake Create/Enrich subfunctions (pulse, details, …)
+//   functions  completed Crenup steps, Create's and Enrich's (pulse, details, …)
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
@@ -23,7 +23,7 @@ import {
   isPlaceRequested,
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
-import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
+import { CRENUP_TOTAL } from "../_shared/crenup-ladder.ts";
 import type { EnrichmentMap, FunctionStateMap } from "../_shared/schema-catalog.ts";
 import type { NotificationItem } from "./notification-mappers.ts";
 
@@ -34,8 +34,8 @@ export type PlaceStateFacts = {
   requested: boolean;
   enriching: boolean;
   enriched: boolean;
-  enrichPulse: number;
-  enrichPulseTotal: number;
+  enrichCrenup: number;
+  enrichCrenupTotal: number;
   verified: boolean;
   partner: boolean;
   promoting: boolean;
@@ -85,9 +85,9 @@ export function placeStateFacts(input: {
       contentState: input.contentState,
     }),
     enriching: isPlaceEnriching(input.contentState),
-    enriched: highWater === PULSE_TOTAL,
-    enrichPulse: highWater,
-    enrichPulseTotal: PULSE_TOTAL,
+    enriched: highWater === CRENUP_TOTAL,
+    enrichCrenup: highWater,
+    enrichCrenupTotal: CRENUP_TOTAL,
     verified: input.verified,
     partner: isPaidPlan(typeof input.plan === "string" ? input.plan : null),
     promoting: isPlacePromoting(input.promotingRow),

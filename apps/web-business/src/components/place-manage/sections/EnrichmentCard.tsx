@@ -15,7 +15,7 @@ import { isEnriching } from "../place-header-state";
 
 // Enrichment — one button. This is not a scheduler (Pato, 2026-08-25).
 // Cadence and mode chips lived here and made a press look like config.
-// The only action is Run the full Intaker process now.
+// The only action is Run the full Enricher process now.
 //
 // The live run STATE stays in the chrome. This box only queues.
 
@@ -91,7 +91,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . This queues the full Intaker process — gather, then write.
+              . This queues the full Enricher process — gather, then write.
             </p>
           )}
 
@@ -112,7 +112,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               <span className="text-destructive">{runError}</span>
             ) : queued ? (
               <span className="text-muted-foreground">
-                Queued — the Intaker picks it up within seconds.
+                Queued — the Enricher picks it up within seconds.
               </span>
             ) : running ? (
               <span className="text-muted-foreground">
