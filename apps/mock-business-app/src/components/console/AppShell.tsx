@@ -164,7 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
               aria-expanded={drawerOpen}
-              className="text-dock-foreground focus-visible:ring-sidebar-ring -ml-1 flex h-11 w-11 items-center justify-center rounded-lg outline-hidden focus-visible:ring-2"
+              className="text-dock-foreground focus-visible:ring-dock-foreground focus-visible:ring-inset -ml-1 flex h-11 w-11 items-center justify-center rounded-lg outline-hidden focus-visible:ring-2"
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
