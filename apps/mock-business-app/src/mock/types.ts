@@ -285,7 +285,7 @@ export type MockCreditCampaign = {
   state: CampaignState;
 };
 
-/** The six things a place sets on Visit Rewards, minus `on` — that is
+/** The six things a place sets on Rewards, minus `on` — that is
  *  `visitRewards`, which every other screen already reads. */
 export type MockRewardsSetup = {
   mode: "discount" | "cashback";

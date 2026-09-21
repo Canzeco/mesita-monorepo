@@ -4,7 +4,7 @@
 //
 // ONE PRODUCT SINCE MESITA-1953, AND STILL ONE DIAL. Rewards merged into this
 // card — Pato: *"FOR THE MOMENT I WILL MERGE VISIT & REWARDS"* — so the
-// catalogue names Visit Rewards and the second card is gone.
+// catalogue names Member Visits and the second card is gone.
 //
 // WHAT DID NOT MOVE IS THE STRATEGY. This view carries a DOOR to the dial, not
 // the dial: one product's state settable in two places is how two screens start
@@ -16,7 +16,7 @@
 // ── THE MANAGE HALF SAYS HOW IT IS SET, NOT WHAT IT DOES (MESITA-2016) ─────
 //
 // Pato, on the open pane: *"what to mention or wtf"*, then *"merge"*. Setup →
-// Visit Rewards was 400 words and no setting. The product was explained FIVE
+// Member Visits was 400 words and no setting. The product was explained FIVE
 // times before the operator reached anything they could change: the blurb, the
 // note, the "Visit checkout" description, its paragraph, and "What comes back"
 // twice over — the last three being one sentence at three font sizes. A sixth

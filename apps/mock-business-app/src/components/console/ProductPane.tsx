@@ -8,7 +8,7 @@
 //
 // ── IT RENDERS THE REAL VIEW, IT DOES NOT REBUILD IT ───────────────────────
 //
-// Seven products have a screen — Profile, Visit Rewards, Online Orders, Online
+// Seven products have a screen — Profile, Member Visits, Online Orders, Online
 // Reservations, Prepaid Credits, Mesita Capital, and Payments through its own
 // route — and those screens take NO PROPS: every one of them reads
 // `usePlaceScope()`, which `places/[id]/layout` publishes. Setup sits inside
@@ -120,7 +120,7 @@ const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>>
   website: WebsiteView,
 };
 
-/** Visit Rewards' own program screen, reached from `VisitsView`. Held here so
+/** Member Visits' own program screen, reached from `VisitsView`. Held here so
  *  the import is not dead weight the day a rewards row wants its own pane. */
 void RewardsView;
 

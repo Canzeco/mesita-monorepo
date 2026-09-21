@@ -9,7 +9,7 @@
 // Every product view was already written in two labelled halves: `Manage` is
 // how the product is configured, `Activity` is what it recorded. Both rendered
 // on one screen, which is why Setup → Online Reservations showed a Bookings
-// table and Setup → Visit Rewards showed a visit log.
+// table and Setup → Member Visits showed a visit log.
 //
 // ── ONE COMPONENT, TWO READINGS ────────────────────────────────────────────
 //
@@ -26,7 +26,7 @@
 // screen you are standing on. That was wrong, and Pato caught it on five
 // screens at once (MESITA-2003): *"setup is for fucking setup, not analytics
 // nor shit."* Setup → Online Reservations led with Upcoming 4 and No-shows 1;
-// Setup → Visit Rewards opened on Settled total $7,306. Those are yesterday's
+// Setup → Member Visits opened on Settled total $7,306. Those are yesterday's
 // numbers on the screen you came to change a setting, and a number is not
 // context just because it is small and sits in a box.
 //

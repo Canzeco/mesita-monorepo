@@ -160,10 +160,10 @@ export function RewardsView() {
           )}
           <div className={RULES_CARD}>
             <Rule
-              label="Visit Rewards"
+              label="Rewards"
               note={off ? "Off. Guests still find, review and book this place; they just pay the whole bill." : "On. The next bill closed here runs what is below."}
               value={
-                <Switch on={draft.on} onChange={(on) => set({ on })} label="Visit Rewards" />
+                <Switch on={draft.on} onChange={(on) => set({ on })} label="Rewards" />
               }
             />
             <Rule
@@ -256,7 +256,7 @@ export function RewardsView() {
             /* The empty state is a feature. A row of 0% says the page is
                broken rather than that the place has chosen something. */
             <p className={INFO_BOX_CLASS}>
-              Nothing is given back here. Turn Visit Rewards on above to see
+              Nothing is given back here. Turn Rewards on above to see
               what a visit would earn.
             </p>
           ) : (
@@ -330,7 +330,7 @@ export function RewardsView() {
         <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">
-              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Visit Rewards off"}
+              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Rewards off"}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
               Applies to the next bill closed here. Nothing retroactive, ever.

@@ -176,7 +176,23 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   website: "Express Website",
   customers: "Customer Intelligence",
   ads: "Omnichannel Ads",
-  visits: "Visit Rewards",
+  // MEMBER VISITS, THE SIXTH LABEL ON THIS KEY (MESITA-2035). Pato:
+  // *"rename Visit Rewards to Member Visits in both consoles"*. It is the
+  // first one that agrees with the key it is stored under — "Visits" has been
+  // the persisted spelling through Visits+Rewards, Visit Checkout & Rewards,
+  // Visit Rewards and Visit Checkout, while the label drifted off it.
+  //
+  // "MEMBER" IS FREE BECAUSE "MEMBERSHIP" DIED (MESITA-2019): there is no
+  // Membership to have or not have, there are three rungs, so the word is
+  // gone from the business side and collides with nothing on the guest side.
+  //
+  // THE DIAL IS NOT RENAMED. `PLACE_TAB_LABEL.rewards` stays "Rewards" and so
+  // do the switch, the empty state and the ladder row in `lib/partner.ts` —
+  // that toggle turns the GIVING BACK on, and a place whose rewards are off
+  // still takes member visits. A switch labelled "Member Visits" that leaves
+  // member visits working is the "card stating a fact that is not true" this
+  // grid may not do (see the `atPlace: null` note on the spec).
+  visits: "Member Visits",
   orders: "Online Orders",
   tableorders: "Table Orders",
   reservations: "Online Reservations",

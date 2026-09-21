@@ -19,7 +19,7 @@
 // Every column is built from `SPECS` in `lib/products.ts` — the same array
 // that decides what a product's own card says about its floor. A hand-typed
 // list here would be a second writer for that fact, and the two would disagree
-// the first time a `minPlan` moved. Moving Visit Rewards up to Ultra in this
+// the first time a `minPlan` moved. Moving Member Visits up to Ultra in this
 // issue was one character in that array and this screen followed it.
 //
 // ── CUMULATIVE, AND IT SAYS SO ─────────────────────────────────────────────

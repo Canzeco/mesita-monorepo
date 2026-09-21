@@ -47,7 +47,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   visits: PRODUCT_LABEL.visits,
   orders: PRODUCT_LABEL.orders,
   reservations: PRODUCT_LABEL.reservations,
-  // A VIEW WITHOUT A CARD (MESITA-1953). Rewards merged into Visit Rewards
+  // A VIEW WITHOUT A CARD (MESITA-1953). Rewards merged into Member Visits
   // in the catalogue; the strategy dial stayed here, because one product's
   // state must be settable in exactly one place. The label is a literal now
   // — there is no `PRODUCT_LABEL.rewards` to read.
