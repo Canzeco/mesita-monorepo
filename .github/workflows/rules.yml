@@ -17,11 +17,17 @@ name: rules
 # from TS).
 #
 # This workflow is the repo's GENERATED-OUTPUT gate, so sync-shared rides here
-# too (MESITA-1614): shared/** is the source for the modules web-admin and
-# web-business both own, and apps/web-*/src/** carries the generated copies.
-# The app globs are the half that matters — a drifted copy is someone editing
-# the generated file, and without them the check that would catch it never
-# fires. `deno task test:shared` asserts filter and script stay in step.
+# too (MESITA-1614): shared/** is the source for the modules more than one app
+# owns, and each target app's src/** carries the generated copies. The app
+# globs are the half that matters — a drifted copy is someone editing the
+# generated file, and without them the check that would catch it never fires.
+# `deno task test:shared` asserts filter and script stay in step, and since
+# MESITA-2037 it DERIVES the app list from the script's TARGETS table rather
+# than repeating it, so a new target app that is missing from the globs below
+# fails that test instead of shipping a check that can never fire.
+#
+# THE APP LIST IS THREE NOW: web-admin, web-business and mock-business-app,
+# which joined when the product families became shared policy.
 #
 # The JOB NAME below is load-bearing: "instruction files in sync" is one of the
 # six required checks on main. Renaming it silently un-guards the branch.
@@ -45,6 +51,7 @@ on:
       - "shared/**"
       - "apps/web-admin/src/**"
       - "apps/web-business/src/**"
+      - "apps/mock-business-app/src/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
   # Unfiltered on `pull_request` (MESITA-1576): a required check a path
@@ -86,6 +93,7 @@ jobs:
               - 'shared/**'
               - 'apps/web-admin/src/**'
               - 'apps/web-business/src/**'
+              - 'apps/mock-business-app/src/**'
               - 'deno.json'
               - '.github/workflows/rules.yml'
 

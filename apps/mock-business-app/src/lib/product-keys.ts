@@ -181,7 +181,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   tableorders: "Table Orders",
   reservations: "Online Reservations",
   pay: "Online Payments",
-  terminal: "Physical Terminal",
+  terminal: "Digital Terminal",
   pos: "Physical POS",
   orderpad: "Physical Orderpad",
   credits: "Prepaid Credits",
