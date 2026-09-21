@@ -44,6 +44,22 @@ export const ICON_TOUCH_TARGET_CLASS =
 
 export const INPUT_CLASS = `h-11 w-full rounded-xl border border-border bg-card px-3 text-sm transition focus:border-foreground/40 ${FOCUS_RING_CLASS}`;
 
+// APPLE'S POPUP, NOT THE BROWSER'S OWN ARROW (MESITA-2034, Setup standard §3).
+// A native `<select>` for the keyboard/screen-reader behaviour, with the
+// browser's own dropdown arrow replaced by a lucide chevrons-up-down —
+// already the app's icon set (MenuDoor, EmptyState, Modal all import it).
+export const SELECT_CLASS = `h-8 appearance-none rounded-md border border-border bg-card pl-2.5 pr-7 text-[13px] font-medium text-foreground bg-no-repeat bg-[right_8px_center] bg-[length:12px] bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2724%27%20height%3D%2724%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%235d5d5d%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m7%2015%205%205%205-5%27%2F%3E%3Cpath%20d%3D%27m7%209%205-5%205%205%27%2F%3E%3C%2Fsvg%3E')] ${FOCUS_RING_CLASS}`;
+
+// THE SETUP GROUP GRAMMAR (MESITA-2034). One card, heading and footer
+// outside it — see `Group.tsx` for why. These three are the only type scale
+// a Group ever uses; nothing here changes per screen.
+export const GROUP_HEADING_CLASS =
+  "font-display text-[15px] font-semibold tracking-tight";
+export const GROUP_DESC_CLASS =
+  "text-muted-foreground mt-0.5 text-[12.5px] leading-snug";
+export const GROUP_FOOTER_CLASS =
+  "text-muted-foreground text-[12px] leading-snug";
+
 export const ERROR_BOX_CLASS =
   "rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive";
 
