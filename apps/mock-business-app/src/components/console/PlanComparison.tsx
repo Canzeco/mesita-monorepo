@@ -41,6 +41,7 @@
 // goes directly under the price and the list is the evidence for it.
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import { PRODUCT_LABEL } from "@/lib/product-keys";
+import { familyStyle } from "@/lib/product-families";
 import { SPECS } from "@/lib/products";
 import {
   PLAN_LABEL,
@@ -156,7 +157,22 @@ export function PlanComparison({
                       >
                         {PRODUCT_MARK[spec.key]}
                       </span>
-                      <span className="min-w-0">{PRODUCT_LABEL[spec.key]}</span>
+                      {/* THE NAME TAKES ITS FAMILY INK, THE ROW TAKES NO
+                          TINT (MESITA-2037). This is a list, not a grid of
+                          tiles: eight tinted strips inside a plan column would
+                          paint the PLAN, and a plan is a rung, not a family —
+                          Pato's own line, *"Plans (Free, Pro, Ultra) are NOT
+                          colors."* The ink is the product's identity carried
+                          across from the catalogue, and the plan chip above it
+                          stays neutral. */}
+                      <span
+                        className={cn(
+                          "min-w-0",
+                          familyStyle(spec.key).ink,
+                        )}
+                      >
+                        {PRODUCT_LABEL[spec.key]}
+                      </span>
                     </li>
                   ))}
                 </ul>
