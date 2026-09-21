@@ -31,17 +31,24 @@
 // The key hangs on the PLACE, like the Stripe account and the Credits balance
 // do (🦚 Main §7, Places Governance). A place that changes hands keeps its
 // integrations; a manager who leaves takes nothing with them. That is the one
-// sentence this screen has to make unambiguous, so it is stated where the key
-// is and not in a footnote.
+// sentence this screen has to make unambiguous — it is the API key Group's
+// footer, not a footnote buried under the secret.
 //
 // THE KEY IS DERIVED FROM THE PLACE ID, not a constant. A mock that shows
 // every place the same secret teaches that the secret is not per place, which
 // is the exact fact this screen exists to teach.
-import { KeyRound, Plug, RefreshCw, Copy } from "lucide-react";
-import { Section } from "@/components/shared/Section";
+//
+// ── SETUP STANDARD (MESITA-2034) ────────────────────────────────────────────
+//
+// Three Groups: API key (one Rule row, footer = the per-place sentence),
+// MCP connector (one Rule row), What it carries (one info block, allowOneRow —
+// it is a two-item explainer, not a list of settings).
+import { KeyRound, Plug, RefreshCw } from "lucide-react";
+import { Group } from "@/components/shared/Group";
+import { Rule } from "@/components/shared/Rule";
 import { Half } from "@/components/shared/Half";
 import { useHeldPlace } from "@/components/console/PlaceScope";
-import { GHOST_PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 /** A stable, obviously-fake tail for this place's key. Hex so it reads like a
  *  secret rather than like the slug it came from. */
@@ -54,36 +61,6 @@ function tail(placeId: string): string {
   return h.toString(16).padStart(8, "0").slice(0, 8);
 }
 
-/** One monospaced value with a copy affordance beside it. The value never
- *  wraps mid-token — a half-copied key and a half-copied URL both fail in ways
- *  that look like the product is broken. */
-function Secret({
-  label,
-  value,
-  hint,
-  action,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  action: React.ReactNode;
-}) {
-  return (
-    <div className="border-border bg-page flex flex-wrap items-center gap-3 rounded-xl border p-3">
-      <div className="min-w-0 flex-1 basis-64">
-        <p className={TINY_LABEL_CLASS}>{label}</p>
-        <p className="mt-1 truncate font-mono text-[13px] tracking-tight">
-          {value}
-        </p>
-        <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-          {hint}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">{action}</div>
-    </div>
-  );
-}
-
 export function DevelopersView() {
   const place = useHeldPlace();
   const suffix = tail(place.id);
@@ -91,7 +68,7 @@ export function DevelopersView() {
   return (
     <div className="flex flex-col gap-4">
       <Half label="Manage">
-        <Section
+        <Group
           title="API key"
           description="One secret per place. Whoever builds for you authenticates with it — your POS, a script, an agency."
           right={
@@ -100,78 +77,79 @@ export function DevelopersView() {
               Rotate
             </button>
           }
+          footer={
+            <>
+              <KeyRound className="mr-1.5 -mt-0.5 inline h-3.5 w-3.5" aria-hidden />
+              Keys are issued per place, never per person. It belongs to{" "}
+              {place.name} the way the Stripe account and the Credits balance
+              do: a manager who leaves takes nothing with them, and a place
+              that changes hands keeps its integrations running.
+            </>
+          }
         >
-          <Secret
+          <Rule
             label="Live key"
-            value={`mk_live_${"•".repeat(16)}${suffix}`}
-            hint="Shown once when it is issued, masked from then on. Rotating it breaks anything still using the old key, immediately and on purpose."
-            action={
-              <button type="button" className={GHOST_PILL_BUTTON_CLASS}>
-                <Copy className="h-3.5 w-3.5" aria-hidden />
-                Copy
-              </button>
+            note={
+              <>
+                <span className="font-mono tracking-tight">{`mk_live_${"•".repeat(16)}${suffix}`}</span>
+                <br />
+                Shown once when it is issued, masked from then on. Rotating it
+                breaks anything still using the old key, immediately and on
+                purpose.
+              </>
             }
+            control={{ kind: "button", label: "Copy", onClick: () => {} }}
           />
-          <div className="flex items-start gap-3 px-1">
-            <KeyRound
-              className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0"
-              aria-hidden
-            />
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              <span className="text-foreground font-medium">
-                Keys are issued per place, never per person.
-              </span>{" "}
-              It belongs to {place.name} the way the Stripe account and the
-              Credits balance do: a manager who leaves takes nothing with them,
-              and a place that changes hands keeps its integrations running.
-            </p>
-          </div>
-        </Section>
+        </Group>
 
-        <Section
+        <Group
           title="MCP connector"
           description="The same access, reachable by an AI assistant instead of by code."
+          footer="It reads and it books. It never changes your prices, your rewards or your payout account — those stay in this console, behind a person."
         >
-          <Secret
+          <Rule
             label="Endpoint"
-            value={`https://mcp.mesita.ai/places/${place.id}`}
-            hint="Add it in Claude or ChatGPT with the key above. The assistant then reads this place's orders and bookings, quotes its Digital Menu, and answers about its hours — the same account, no second login."
-            action={
-              <button type="button" className={GHOST_PILL_BUTTON_CLASS}>
-                <Copy className="h-3.5 w-3.5" aria-hidden />
-                Copy
-              </button>
+            note={
+              <>
+                <span className="font-mono tracking-tight">{`https://mcp.mesita.ai/places/${place.id}`}</span>
+                <br />
+                Add it in Claude or ChatGPT with the key above. The assistant
+                then reads this place&apos;s orders and bookings, quotes its
+                Digital Menu, and answers about its hours — the same account,
+                no second login.
+              </>
             }
+            control={{ kind: "button", label: "Copy", onClick: () => {} }}
           />
-          <p className="text-muted-foreground px-1 text-[12px] leading-snug">
-            It reads and it books. It never changes your prices, your rewards or
-            your payout account — those stay in this console, behind a person.
-          </p>
-        </Section>
+        </Group>
 
-        <Section
+        <Group
           title="What it carries"
           description="Orders and bookings land where you already work, instead of on a screen somebody has to watch."
+          allowOneRow
         >
-          <ul className="text-muted-foreground flex flex-col gap-2 text-[13px] leading-snug">
-            <li className="flex gap-2">
-              <Plug className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>
-                <span className="text-foreground font-medium">Push</span> — a
-                new order or reservation goes straight into your POS or your own
-                system, with the guest, the dishes and what was already paid.
-              </span>
-            </li>
-            <li className="flex gap-2">
-              <Plug className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>
-                <span className="text-foreground font-medium">Pull</span> — your
-                menu, hours and today&apos;s bookings, readable by whatever you
-                run, so nothing is maintained twice.
-              </span>
-            </li>
-          </ul>
-        </Section>
+          <div className="p-3">
+            <ul className="text-muted-foreground flex flex-col gap-2 text-[13px] leading-snug">
+              <li className="flex gap-2">
+                <Plug className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                  <span className="text-foreground font-medium">Push</span> — a
+                  new order or reservation goes straight into your POS or your
+                  own system, with the guest, the dishes and what was already
+                  paid.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <Plug className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                  <span className="text-foreground font-medium">Pull</span> —
+                  your menu, hours and today&apos;s bookings, readable by
+                  whatever you run, so nothing is maintained twice.
+                </span>
+              </li>
+            </ul>
+          </div>
+        </Group>
       </Half>
 
       {/* NO LOG OF ITS OWN, and that is not an oversight: what the API pushed

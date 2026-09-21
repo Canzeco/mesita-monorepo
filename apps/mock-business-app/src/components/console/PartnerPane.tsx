@@ -29,32 +29,23 @@
 // `ProductPane`'s header has held since MESITA-1981 — and here the absent
 // thing is the control, so saying why is the screen.
 //
-// ── IT SAYS ONLY WHAT THE HEADER CANNOT ────────────────────────────────────
+// ── SETUP STANDARD (MESITA-2034) ────────────────────────────────────────────
 //
-// `ProductPane` draws the mark, the name, the state badge, the blurb (*"The
-// badge on your page, and the rung that grants it…"*) and the card's note
-// (*"On here. Mesita Pro carries the badge."*) directly above this. A first
-// pass of this file opened with two boxes restating exactly that in a larger
-// type size, which is the same fact twice — the thing `shared/Badges.tsx`
-// opens by forbidding, and the reason MESITA-1997 cut the strip on the old
-// partnership screen down to one line.
-//
-// So three facts are left, and none of them is up there: EVERY paid rung
-// grants it, not only the one this place is on; nothing here can switch it;
-// and the rung is changed on Plan. One strip, the same shape as
-// `PartnerBanner`'s, because it is doing the same job — a sentence and the
-// door it points at.
-import Link from "next/link";
+// One Group, plain heading (D3 — the "N of 5" and "At risk" facts move into
+// the description, not a badge in the title). Each checklist row is
+// badge-alone except the plan-rung row, which also carries "Open Plan" — the
+// only row here with a verb, matching the whole product having exactly one
+// door.
 import { Check } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { placePlanHref } from "@/lib/console-routes";
-import { Section } from "@/components/shared/Section";
+import { Group } from "@/components/shared/Group";
+import { Rule } from "@/components/shared/Rule";
 import { Badge } from "@/components/shared/Badges";
-import { Rule, RULES_CARD } from "@/components/shared/Rule";
-import { ErrorNote } from "@/components/ErrorNote";
+import { Notice } from "@/components/shared/Notice";
 import { useMock } from "@/mock/MockStore";
 import { partnerChecks, partnerStatus } from "@/lib/partner";
 import { day } from "@/lib/format";
-import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import {
   isPartner,
   PARTNER_MIN_PLAN,
@@ -80,94 +71,74 @@ function grantingRungs(): string {
 
 export function PartnerPane({ place }: { place: MockPlace }) {
   const { world } = useMock();
+  const router = useRouter();
   const profile = world.profiles[place.id];
   const status = partnerStatus(place, profile);
   const checks = partnerChecks(place, profile);
+  const openPlan = () => router.push(placePlanHref(place.id));
+
+  const grantingSentence =
+    GRANTING.length === 1
+      ? `${grantingRungs()} carries the badge.`
+      : `${grantingRungs()} each carry the badge.`;
+  const ownRungSentence = place.partnered
+    ? `Nothing here switches it — it follows the rung, and it goes with the subscription if this place drops below ${PLAN_LABEL[PARTNER_MIN_PLAN]}.`
+    : `Nothing here switches it on — it arrives with the rung, the moment the rung changes. This place is on ${PLAN_LABEL[place.plan]}, so there is no badge.`;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* THE CHECKLIST, AND THE METER OVER IT (MESITA-2017). Pato, 2026-09-20:
-          Partner is "casi un producto" — a card in Setup with a list that ends
-          in a badge. Five rows, "N of 5", so on a fresh place the second row
-          of the menu reads as a goal rather than as a broken product. The
-          rung stays the fifth row and stays bought on Plan; nothing here
-          switches anything, which is the strip below's whole sentence. */}
-      {place.partnerLapsedAt && !status.badge && (
-        <ErrorNote
-          className="mt-0"
-          message={`Badge removed ${day(place.partnerLapsedAt)}.`}
-          cause="The plan dropped below the rung that carries it. Verified stays; the badge comes back the day every row is green again."
-          action={{ label: "Open Plan", href: placePlanHref(place.id) }}
-        />
-      )}
-      <Section
-        title={
-          <span className="flex items-center gap-2">
-            {status.badge ? "Partner" : "Becoming a Partner"}
-            <Badge tone={status.badge ? "gold" : "off"}>{status.done} of {checks.length}</Badge>
-            {status.atRisk && <Badge tone="bad">At risk</Badge>}
-          </span>
-        }
-        description={
+      <Notice
+        show={Boolean(place.partnerLapsedAt && !status.badge)}
+        tone="bad"
+        icon={<Check className="h-4 w-4" aria-hidden />}
+        title={`Badge removed ${place.partnerLapsedAt ? day(place.partnerLapsedAt) : ""}.`}
+        note="The plan dropped below the rung that carries it. Verified stays; the badge comes back the day every row is green again."
+        action={{ label: "Open Plan", onClick: openPlan }}
+      />
+
+      <Group
+        title={status.badge ? "Partner" : "Becoming a Partner"}
+        description={`${status.done} of ${checks.length} done. ${
           status.badge
             ? status.atRisk
-              ? "You hold the badge. A row below has gone red; the badge stays until the plan drops, but a guest who comes for what that row promised will not find it."
+              ? "A row below has gone red; the badge stays until the plan drops, but a guest who comes for what that row promised will not find it."
               : "Every row is green. A guest reading the map sees that Mesita stands behind this place."
             : "Complete the five and the badge appears on your page and on the map. Each row says where to do it."
-        }
+        }`}
+        footer={`${grantingSentence} ${ownRungSentence} The rung is on Plan.`}
       >
-        <div className={RULES_CARD}>
-          {checks.map((c) => (
+        {checks.map((c) =>
+          c.key === "plan" ? (
             <Rule
               key={c.key}
               label={c.label}
               note={c.done ? undefined : c.fix}
-              value={
+              badge={
                 c.done ? (
-                  <Badge tone="on">
-                    <Check className="h-3 w-3" aria-hidden /> Done
-                  </Badge>
+                  <Badge tone="on">Done</Badge>
                 ) : (
                   <Badge tone={status.badge ? "bad" : "off"}>{status.badge ? "At risk" : "Not yet"}</Badge>
                 )
               }
+              control={{ kind: "button", label: "Open Plan", onClick: openPlan }}
             />
-          ))}
-        </div>
-      </Section>
-    <div className="border-border bg-card flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border px-4 py-3">
-      <p className="text-muted-foreground min-w-0 grow basis-72 text-[13px] leading-snug">
-        {/* THE SET, NOT THIS PLACE'S RUNG. The note above names the one it is
-            on; what an operator is actually asking here is which of the four
-            would keep the badge, and on Free, which would earn it.
-            THE VERB COUNTS THE SET (MESITA-2021). It read "<rungs> each carry
-            the badge" while the granting set was two rungs wide; MESITA-2019
-            left one rung in it and the sentence on the screen became "Mesita
-            Ultra each carry the badge." `GRANTING` is already derived, so the
-            verb is derived from its length rather than typed for whichever
-            size the set happens to be this month. */}
-        <span className="text-foreground font-medium">
-          {GRANTING.length === 1
-            ? `${grantingRungs()} carries the badge.`
-            : `${grantingRungs()} each carry the badge.`}
-        </span>{" "}
-        {/* AND THE RUNG THIS PLACE IS ACTUALLY ON (MESITA-2014). The "off"
-            sentence used to name Free, because Free was the only rung
-            without the badge. Mesita Pro is another one, and telling a place
-            that pays every month that it is on Free is the plainest lie this
-            strip could tell. */}
-        {place.partnered
-          ? `Nothing on this screen switches it — it follows the rung, and it goes with the subscription if this place drops below ${PLAN_LABEL[PARTNER_MIN_PLAN]}.`
-          : `Nothing on this screen switches it on — it arrives with the rung, the moment the rung changes. This place is on ${PLAN_LABEL[place.plan]}, so there is no badge.`}{" "}
-        The rung is on Plan.
-      </p>
-      {/* THE DOOR, AND THE ONLY ONE. There is no verb on this screen because
-          there is no verb on this product: the badge is bought as a rung or
-          not at all. */}
-      <Link href={placePlanHref(place.id)} className={GHOST_PILL_BUTTON_CLASS}>
-        Plan
-      </Link>
-    </div>
+          ) : (
+            <Rule
+              key={c.key}
+              label={c.label}
+              note={c.done ? undefined : c.fix}
+              control={{
+                kind: "value",
+                text: c.done ? (
+                  <Badge tone="on">Done</Badge>
+                ) : (
+                  <Badge tone={status.badge ? "bad" : "off"}>{status.badge ? "At risk" : "Not yet"}</Badge>
+                ),
+              }}
+            />
+          ),
+        )}
+      </Group>
     </div>
   );
 }

@@ -15,51 +15,33 @@
 // until the account is enabled, so offering one earlier is a link to a 404 at
 // the exact moment an owner is least willing to believe the product works.
 //
-// ── ONE CARD, AND WHY THE REFERENCE IS FOLDED (MESITA-1916) ────────────────
+// ── SETUP STANDARD (MESITA-2034) ────────────────────────────────────────────
 //
-// This screen used to be three cards, and it printed the same sentence twice:
-// the current state's body rendered once as the summary and again inside a
-// five-rung list titled "The ladder", forty words apart, on every state. The
-// list was also the tallest thing on the page — four of its five rungs
-// describe states this place is NOT in, so a live venue's loudest paragraph
-// was "Stripe has paused this account".
-//
-// So: `lede` is what is true for YOU, now, in the second person. `reference`
-// is the third-person definition of the rung, and it lives inside the closed
-// disclosure. They are two different strings on purpose — if a future edit
-// makes them say the same thing, the bug is back.
-//
-// The disclosure opens by DEFAULT on the three pre-live states, where the map
-// is the point, and stays closed on `enabled` and `restricted`, where it is
-// trivia. Its `<ol>` and `aria-current="step"` are the originals, moved
-// inside unchanged: collapsing a list must not cost a screen reader the
-// announcement, and the card's heading carries the state as text so it is
-// heard before the summary either way.
+// `ProductPane` gates Locked upstream — this product has none, it is not in
+// `PRODUCT_HALVES`'s locked set. Two Groups on the Manage half: Stripe
+// account (the state row, the re-check row, the fact rows) and The ladder
+// — which renders ONLY on the three pre-live rungs (never/started/pending),
+// keeping MESITA-1916's fix: on `enabled`/`restricted` it does not render at
+// all, and the Stripe-account Group's footer carries the one glossary line
+// instead of an always-open five-rung list.
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpRight, RotateCw } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
+import { Group } from "@/components/shared/Group";
+import { Rule } from "@/components/shared/Rule";
+import { Notice } from "@/components/shared/Notice";
 import { Section } from "@/components/shared/Section";
 import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { FactRow, type Fact } from "@/components/shared/FactRow";
 import { PAYOUTS, VISITS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
 import { useMock } from "@/mock/MockStore";
 import { dayTime, money } from "@/lib/format";
 import { Badge } from "@/components/shared/Badges";
 import { PAY_LADDER_LABEL, type MockPayout, type MockVisit, type PayLadder } from "@/mock/types";
-import {
-  CTA_BUTTON_CLASS,
-  ERROR_BOX_CLASS,
-  INFO_BOX_CLASS,
-  QUIET_LINK_BUTTON_CLASS,
-  SECTION_TITLE_CLASS,
-  TINY_LABEL_CLASS,
-} from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 
 type PayState = {
   id: PayLadder;
@@ -69,17 +51,16 @@ type PayState = {
   tone: "neutral" | "soon" | "on" | "bad";
   /** Second person, present tense: what is true for this place right now. */
   lede: string;
-  /** Third person: what this rung MEANS. Lives in the disclosure, and must
-   *  never be `lede` — that duplication is what this rewrite deleted. */
+  /** Third person: what this rung MEANS. Lives in the ladder Group, and must
+   *  never be `lede` — that duplication is what an earlier rewrite deleted. */
   reference: string;
   /** Each state names its own facts. A fixed column set nulled out per state
    *  is how you get a label over a blank cell. */
-  facts: Fact[];
+  facts: { k: string; v: string; note?: string }[];
   verb: string | null;
   dashboard: boolean;
   /** `restricted` only: an account that WAS taking money has stopped, today.
-   *  A band inside the card, not a badge on the rail — the rail is shared law
-   *  across nine rows and both consoles. */
+   *  A Notice, not a fact buried in the lede. */
   alert?: string;
 };
 
@@ -163,18 +144,17 @@ const STATES: PayState[] = [
   },
 ];
 
-/** The three rungs where an owner is still on their way in. The reference is
- *  a map for them and trivia for everyone else, so it is open here and closed
- *  on the two ends. */
+/** The three rungs where an owner is still on their way in. The ladder is a
+ *  ROUTE for them ("what comes next") and does not render at all for the two
+ *  ends (MESITA-1916's fix, kept). */
 const PRE_LIVE: ReadonlySet<PayLadder> = new Set(["never", "started", "pending"]);
 
 const ENABLED_AT = STATES.findIndex((s) => s.id === "enabled");
 
-/** On the way in, the disclosure is a ROUTE and says "what comes next", so it
- *  runs from here to `enabled` and stops. `restricted` is not next: it is what
- *  can happen to an account that already works, and putting it at the end of a
- *  route reads as a destination. Once live, the disclosure is a glossary and
- *  shows every rung. */
+/** On the way in, the ladder runs from here to `enabled` and stops.
+ *  `restricted` is not "next": it is what can happen to an account that
+ *  already works, and putting it at the end of a route reads as a
+ *  destination. */
 function referenceRungs(current: PayLadder): PayState[] {
   if (!PRE_LIVE.has(current)) return STATES;
   return STATES.slice(
@@ -220,12 +200,11 @@ export function PayView() {
   const state = STATES.find((s) => s.id === place.pay)!;
   const preLive = PRE_LIVE.has(state.id);
 
-  // RE-CHECK HAS TO SAY SOMETHING WHEN THE ANSWER IS "NOTHING". Asking Stripe
-  // and getting no change back re-renders an identical screen, so the honest
-  // read is "the button did nothing" — the same failure MESITA-1645 fixed for
-  // errors, in the one case where nothing went wrong. There is no backend
-  // here, so the mock performs the wait; the point is the shape of the
-  // feedback, not the fetch.
+  // RE-CHECK HAS TO SAY SOMETHING WHEN THE ANSWER IS "NOTHING" (§7 Success).
+  // Asking Stripe and getting no change back re-renders an identical badge,
+  // so the honest read is a role=status NOTE, not a badge that looks the
+  // same before and after a click — the same failure MESITA-1645 fixed for
+  // errors, in the one case where nothing went wrong.
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -242,152 +221,89 @@ export function PayView() {
     }, 900);
   };
 
+  const badgeTone = state.tone === "on" ? "live" : state.tone === "bad" ? "bad" : state.tone === "soon" ? "soon" : "neutral";
+
   return (
     <div className="flex flex-col gap-4">
       <Half label="Manage">
-      {/* STRIPE'S STORED RETURN. The link's `return_url` was written when the
-          link was minted, so an owner can arrive here from a page they opened
-          weeks ago. Saying nothing would leave them wondering whether the eight
-          minutes they just spent counted. */}
-      {returned && (
-        <div className={INFO_BOX_CLASS} role="status">
-          You came back from Stripe. What it told us is below — if it still says
-          unfinished, Stripe is usually a minute behind.
-        </div>
-      )}
+        {/* PRIORITY 0: a failing account outranks the returned-from-Stripe
+            door (§7 Notice ordering). */}
+        <Notice
+          show={state.id === "restricted"}
+          tone="bad"
+          icon={<ArrowUpRight className="h-4 w-4" aria-hidden />}
+          title="Stripe needs your attention"
+          note={state.alert}
+        />
+        {/* STRIPE'S STORED RETURN. The link's `return_url` was written when
+            the link was minted, so an owner can arrive here from a page they
+            opened weeks ago. Saying nothing would leave them wondering
+            whether the eight minutes they just spent counted. */}
+        <Notice
+          show={Boolean(returned) && state.id !== "restricted"}
+          icon={<ArrowUpRight className="h-4 w-4" aria-hidden />}
+          title="You came back from Stripe"
+          note="What it told us is below — if it still says unfinished, Stripe is usually a minute behind."
+        />
 
-      <Section
-        title={
-          <>
-            {state.headline}
-            <Badge tone={state.tone}>{PAY_LADDER_LABEL[state.id]}</Badge>
-          </>
-        }
-        titleClassName={cn(
-          SECTION_TITLE_CLASS,
-          "flex flex-wrap items-center gap-x-3 gap-y-1.5",
-        )}
-      >
-        {state.alert && (
-          <p
-            className={cn(
-              ERROR_BOX_CLASS,
-              "-mt-0.5 px-3.5 py-2.5 text-[13px] leading-relaxed",
-            )}
-          >
-            {state.alert}
-          </p>
-        )}
-
-        <p className="max-w-[68ch] text-sm leading-relaxed">{state.lede}</p>
-
-        <FactRow facts={state.facts} />
-
-        <div className="mt-1 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
-          {state.verb && (
-            <button type="button" className={cn(CTA_BUTTON_CLASS, "w-full justify-center sm:w-auto")}>
-              {state.verb}
-            </button>
-          )}
-          {state.dashboard && (
-            <button type="button" className={cn(CTA_BUTTON_CLASS, "w-full justify-center sm:w-auto")}>
-              Open Stripe dashboard
-              <ArrowUpRight className="h-4 w-4" aria-hidden />
-            </button>
-          )}
-          {/* Nothing to re-check before an account exists. */}
-          {state.id !== "never" && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <button
-                type="button"
-                onClick={recheck}
-                disabled={checking}
-                className={QUIET_LINK_BUTTON_CLASS}
-              >
-                <RotateCw
-                  className={cn("h-3.5 w-3.5", checking && "animate-spin")}
-                  aria-hidden
-                />
-                {checking ? "Checking…" : "Re-check with Stripe"}
-              </button>
-              {checked && !checking && (
-                <span
-                  role="status"
-                  className="text-muted-foreground text-[12px] leading-relaxed"
-                >
-                  Checked just now — nothing has changed yet.
-                </span>
-              )}
-            </div>
-          )}
-          {/* NOT A DISABLED BUTTON. There is no dashboard to open yet, and a
-              greyed control says "you may not" where the truth is "it does not
-              exist". */}
-          {!state.dashboard && (
-            <p className="text-muted-foreground text-[12px]">
-              The Stripe dashboard appears once the account is on.
-            </p>
-          )}
-        </div>
-
-        <details
-          open={preLive}
-          className="border-border/70 group mt-1 border-t pt-3"
+        <Group
+          title="Stripe account"
+          footer={!preLive ? "Every other state Stripe can be in is explained on its dashboard." : undefined}
         >
-          <summary className="text-muted-foreground hover:text-foreground marker:content-[''] flex cursor-pointer list-none items-center gap-2 text-[12px] font-medium transition">
-            <svg
-              viewBox="0 0 24 24"
-              className="h-3 w-3 transition-transform duration-200 ease-out group-open:rotate-90"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-            {preLive ? "What comes next" : "What the other states mean"}
-          </summary>
-          <ol className="mt-3 flex flex-col">
+          <Rule
+            label={state.headline}
+            note={state.lede}
+            badge={<Badge tone={badgeTone}>{PAY_LADDER_LABEL[state.id]}</Badge>}
+            control={
+              state.verb
+                ? { kind: "button", label: state.verb, emphasis: "primary", onClick: () => {} }
+                : state.dashboard
+                  ? { kind: "button", label: "Open Stripe dashboard", onClick: () => {} }
+                  : undefined
+            }
+          />
+          {state.id !== "never" && (
+            <Rule
+              label="Stripe's answer"
+              note={
+                checked && !checking
+                  ? "Checked just now — nothing has changed yet."
+                  : !state.dashboard
+                    ? "The Stripe dashboard appears once the account is on."
+                    : undefined
+              }
+              control={{
+                kind: "button",
+                label: checking ? "Checking…" : "Re-check with Stripe",
+                disabled: checking,
+                onClick: recheck,
+              }}
+            />
+          )}
+          {state.facts.map((f) => (
+            <Rule key={f.k} label={f.k} note={f.note} control={{ kind: "value", text: f.v }} />
+          ))}
+        </Group>
+
+        {/* THE LADDER — ONLY ON THE THREE PRE-LIVE RUNGS (MESITA-1916, kept).
+            On `enabled`/`restricted` this Group does not render at all; the
+            Stripe-account Group's footer above carries the one glossary line
+            instead of an always-open five-rung list. */}
+        {preLive && (
+          <Group title="What comes next">
             {referenceRungs(state.id).map((s) => {
               const here = s.id === state.id;
               return (
-                <li
+                <Rule
                   key={s.id}
-                  aria-current={here ? "step" : undefined}
-                  // 220px, not 168: the widest label is "Setup unfinished"
-                  // and it carries the "you are here" marker, which wrapped
-                  // the label onto two lines at the narrower width.
-                  className="border-border/60 grid gap-x-5 gap-y-0.5 border-b py-2.5 last:border-b-0 sm:grid-cols-[220px_minmax(0,1fr)]"
-                >
-                  <p
-                    className={cn(
-                      TINY_LABEL_CLASS,
-                      here && "text-foreground",
-                    )}
-                  >
-                    {PAY_LADDER_LABEL[s.id]}
-                    {here && (
-                      <span className="text-muted-foreground ml-2 font-medium normal-case tracking-normal">
-                        you are here
-                      </span>
-                    )}
-                  </p>
-                  <p
-                    className={cn(
-                      "max-w-[78ch] text-[12.5px] leading-snug",
-                      here ? "text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    {s.reference}
-                  </p>
-                </li>
+                  label={here ? `${PAY_LADDER_LABEL[s.id]} — you are here` : PAY_LADDER_LABEL[s.id]}
+                  note={s.reference}
+                  control={here ? { kind: "value", text: <Badge tone="on">Now</Badge> } : undefined}
+                />
               );
             })}
-          </ol>
-        </details>
-      </Section>
+          </Group>
+        )}
       </Half>
 
       {/* THE EVENT CONSOLE (MESITA-2017). Express keeps identity, the bank
