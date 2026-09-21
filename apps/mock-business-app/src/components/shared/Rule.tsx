@@ -62,9 +62,15 @@ import { Switch } from "@/components/shared/Switch";
 function RuleControlView({
   control,
   labelId,
+  disabled,
 }: {
   control: RuleControl;
   labelId: string;
+  /** The row's own `disabled` (§3: greyed, never hidden). Every interactive
+   *  control honours it directly — dimming the row while leaving its switch
+   *  or select clickable would let an operator change a setting the row
+   *  claims is inert. */
+  disabled: boolean;
 }) {
   switch (control.kind) {
     case "switch":
@@ -73,6 +79,7 @@ function RuleControlView({
           on={control.on}
           onChange={control.onChange}
           label={control.label}
+          disabled={disabled}
         />
       );
     case "select":
@@ -82,6 +89,7 @@ function RuleControlView({
           aria-label={control["aria-label"]}
           value={control.value}
           onChange={(e) => control.onChange(e.target.value)}
+          disabled={disabled}
           className={SELECT_CLASS}
         >
           {control.options.map((o) => (
@@ -98,7 +106,7 @@ function RuleControlView({
         <button
           type="button"
           onClick={control.onClick}
-          disabled={control.disabled}
+          disabled={control.disabled || disabled}
           className={
             control.emphasis === "primary" ? PILL_BUTTON_CLASS : GHOST_PILL_BUTTON_CLASS
           }
@@ -115,6 +123,7 @@ function RuleControlView({
           onChange={(e) => control.onChange(e.target.value)}
           placeholder={control.placeholder}
           inputMode={control.inputMode}
+          disabled={disabled}
           className={cn(
             INPUT_CLASS,
             "h-8 w-full",
@@ -188,7 +197,11 @@ export function Rule({
         )}
       >
         {badge}
-        {control ? <RuleControlView control={control} labelId={labelId} /> : value}
+        {control ? (
+          <RuleControlView control={control} labelId={labelId} disabled={disabled} />
+        ) : (
+          value
+        )}
       </div>
     </div>
   );
