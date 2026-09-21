@@ -153,9 +153,9 @@ export function RewardsView() {
               cashback was the mode: what guests hold stays redeemable, and
               new visits fall back to a discount until Credits is back. */}
           <Rule
-            label="Visit Rewards"
+            label="Rewards"
             note={off ? "Off. Guests still find, review and book this place; they just pay the whole bill." : "On. The next bill closed here runs what is below."}
-            control={{ kind: "switch", on: draft.on, onChange: (on) => set({ on }), label: "Visit Rewards" }}
+            control={{ kind: "switch", on: draft.on, onChange: (on) => set({ on }), label: "Rewards" }}
           />
           <Rule
             label="Comes back as"
@@ -223,7 +223,7 @@ export function RewardsView() {
                broken rather than that the place has chosen something. */
             <div className="flex min-h-[20vh] flex-col items-center justify-center gap-2 px-4 py-8 text-center">
               <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
-                Nothing is given back here. Turn Visit Rewards on above to see what a visit would earn.
+                Nothing is given back here. Turn Rewards on above to see what a visit would earn.
               </p>
             </div>
           ) : (
@@ -302,7 +302,7 @@ export function RewardsView() {
         <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">
-              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Visit Rewards off"}
+              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Rewards off"}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
               Applies to the next bill closed here. Nothing retroactive, ever.

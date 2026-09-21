@@ -139,8 +139,10 @@ const MARK: Record<ProductKey, string> = {
   website: "\u{1F310}",
   customers: "\u{1F465}",
   ads: "\u{1F4E3}",
+  // 🎟️ IS THE MERGED CARD'S MARK, and it matches the mock byte for byte
+  // (`product-marks.ts`). Rewards' 🎁 left with its card (MESITA-2035); the
+  // dial keeps its view and has no mark, because a mark is a catalogue thing.
   visits: "\u{1F39F}\u{FE0F}",
-  rewards: "\u{1F381}",
   orders: "\u{1F6CD}\u{FE0F}",
   reservations: "\u{1F4C5}",
   pay: "\u{1F4B3}",

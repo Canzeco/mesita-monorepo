@@ -118,7 +118,11 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   visits: PRODUCT_LABEL.visits,
   orders: PRODUCT_LABEL.orders,
   reservations: PRODUCT_LABEL.reservations,
-  rewards: PRODUCT_LABEL.rewards,
+  // A VIEW WITHOUT A CARD (MESITA-2035), the shape the mock has had since
+  // MESITA-1953. Rewards merged into Member Visits in the catalogue and kept
+  // its dial here, so there is no `PRODUCT_LABEL.rewards` left to read — this
+  // and `admin` are the only literals, because neither is a product.
+  rewards: "Rewards",
   pay: PRODUCT_LABEL.pay,
   credits: PRODUCT_LABEL.credits,
   capital: PRODUCT_LABEL.capital,

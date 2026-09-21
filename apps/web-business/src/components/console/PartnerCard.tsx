@@ -101,8 +101,14 @@ import { cn } from "@/lib/utils";
  * Three lines, nouns not verbs, one clause each — held to that on purpose:
  * three check-lines would read as a pricing page inside an OPERATE surface.
  */
+// MEMBER VISITS (MESITA-2035). This array is the PRODUCT register — what the
+// subscription lets a place turn on — so it takes the catalogue's noun. It is
+// NOT coupled to the ladder row below it, which reads `CAP.visit_rewards.label`
+// out of the generated `state-vocabulary.ts` and still says "Visits Rewards"
+// (plural, and a typo nobody has caught). That file is mirrored into two apps
+// and pinned to Notion Main §11.2, so it moves on MESITA-2036, not here.
 export const PARTNER_PERKS = [
-  ["Visit Rewards", "Conservative or Aggressive discounts at the bill."],
+  ["Member Visits", "Conservative or Aggressive discounts at the bill."],
   ["Accept Prepays", "Redeem a guest's balance as a bill reduction."],
   [
     "Guest checks",

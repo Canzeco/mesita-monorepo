@@ -2,7 +2,7 @@
 //
 // `minPlan` reads like a free choice per product, and for most of the
 // catalogue it is. Three entries are not: Online Orders, Prepaid Credits and
-// Visit Rewards all move a guest's money, and the thing that moves it is
+// Member Visits all move a guest's money, and the thing that moves it is
 // Online Payments. Pato named it when the packing put Orders on Mesita Pro and
 // left Payments above it: *"online orders cannot work without online
 // payments."*
@@ -16,7 +16,7 @@
 //
 // IT IS AN INEQUALITY, NOT AN EQUALITY. Payments may sit BELOW its dependants
 // — that is just a cheaper rung carrying the rail — and it does today: Orders
-// and Payments are both Mesita Pro while Credits and Visit Rewards are Ultra.
+// and Payments are both Mesita Pro while Credits and Member Visits are Ultra.
 // Pinning them equal would fail the moment either one moved for a reason that
 // has nothing to do with this.
 import { describe, expect, it } from "vitest";
@@ -53,7 +53,7 @@ describe("the ladder", () => {
 //   FREE   1 Mesita Profile · 2 Online Reputation · 3 Digital Menu
 //   PRO    4 Express Website · 5 Online Payments · 6 Online Orders ·
 //          7 Online Reservations
-//   ULTRA  8 Partner Badge · 9 Visit Rewards · 10 Prepaid Credits ·
+//   ULTRA  8 Partner Badge · 9 Member Visits · 10 Prepaid Credits ·
 //          11 Answering Agent · 12 Developers Platform
 //
 // THAT IS WHY IT IS PINNED. MESITA-2021's version matched the file exactly and
@@ -107,7 +107,7 @@ describe("the rungs Pato dictated", () => {
   it("puts what brings a guest back on Mesita Ultra", () => {
     expect(live("ultra")).toEqual([
       "Partner Badge",
-      "Visit Rewards",
+      "Member Visits",
       "Prepaid Credits",
       "Answering Agent",
       "Developers Platform",

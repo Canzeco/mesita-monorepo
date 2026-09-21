@@ -4,7 +4,7 @@
 //
 // ONE PRODUCT SINCE MESITA-1953, AND STILL ONE DIAL. Rewards merged into this
 // card — Pato: *"FOR THE MOMENT I WILL MERGE VISIT & REWARDS"* — so the
-// catalogue names Visit Rewards and the second card is gone.
+// catalogue names Member Visits and the second card is gone.
 //
 // WHAT DID NOT MOVE IS THE STRATEGY. This view carries a DOOR to the dial, not
 // the dial: one product's state settable in two places is how two screens start

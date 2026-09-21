@@ -167,7 +167,7 @@ export function CreditsView() {
         />
         {place.cashbackPaused && (
           <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground" role="status">
-            Cashback from Visit Rewards is paused while Credits is off. Balances
+            Cashback from Rewards is paused while Credits is off. Balances
             already banked stay redeemable; no new ones are issued.
           </p>
         )}

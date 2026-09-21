@@ -71,8 +71,19 @@ export const PRODUCT_KEYS = [
   "website",
   "customers",
   "ads",
+  // ONE PRODUCT, NOT TWO (MESITA-2035) — the collapse MESITA-1953 shipped in
+  // the mock and named as this console's follow-on, never filed until now.
+  // MESITA-1971 settled the argument: can a place buy either half alone and
+  // be glad it did? Rewards alone is impossible (a reward is earned by
+  // closing a bill at a table and by nothing else) and checkout alone is a
+  // free QR that competes with the paper check. One card with a dial.
+  //
+  // THE KEY STAYS `visits` and `rewards` KEEPS ITS VIEW. It leaves the
+  // CATALOGUE only: `PLACE_TABS.rewards`, `FLAT_ROUTES.rewards` and
+  // `/places/<id>/rewards` are untouched, because one product's state must be
+  // settable in exactly one place or two screens disagree about which dial is
+  // live. `VisitsView` carries the door, since the card was the only way in.
   "visits",
-  "rewards",
   "orders",
   "reservations",
   "pay",
@@ -117,8 +128,18 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   website: "Website",
   customers: "Guest Catalog",
   ads: "Omnichannel Ads",
-  visits: "Visits",
-  rewards: "Rewards",
+  // MEMBER VISITS (MESITA-2035). Pato: *"rename Visit Rewards to Member
+  // Visits in both consoles"*. The sixth label on a key that has been spelled
+  // `visits` throughout, and the first one that agrees with it. "Member" is
+  // free because "Membership" died at MESITA-2019 — there is no Membership to
+  // have or not have, there are three rungs.
+  //
+  // `rewards` HAS NO ENTRY HERE ANY MORE: it is not a product in the
+  // catalogue, so its view label is a literal in `place-tabs.ts`, the shape
+  // `admin` already had. The DIAL is not renamed — that switch turns the
+  // giving back on, and a place whose rewards are off still takes member
+  // visits, so calling it "Member Visits" would state a fact that is untrue.
+  visits: "Member Visits",
   orders: "Online Orders",
   reservations: "Reservations",
   // "Online Payments", AND THE CARD SAYS THE SAME (MESITA-1955). MESITA-1884

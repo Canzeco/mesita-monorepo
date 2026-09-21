@@ -25,7 +25,15 @@
 // is a per-request computation (strategy ≠ zero AND an open promo lane) that
 // can flip false under a paid partner with no write at all, so beside two
 // badges that only move when somebody acts it read as a third of the same kind
-// — and the product calls that fact "Visit Rewards", never Promoting.
+// — and the product calls that fact "Rewards", never Promoting.
+//
+// TWO REGISTERS, ON PURPOSE (MESITA-2035). The console card is Member Visits
+// and its dial is Rewards; the STATES matrix still labels the `promoting`
+// wire key "Visit Rewards" in `shared/state-vocabulary.ts`, which is
+// generated, mirrored into web-admin and web-business, and pinned word for
+// word to Notion Main §11.2. That label names a place's CONDITION, not this
+// card, so it did not move with the rename — same standing exception that
+// keeps "Mesita Credits" and "Mesita Pay" in that file.
 // `promoting` stays on `MockPlace`, and stays a column in the `/places` states
 // matrix and a row in AdminView: those screens exist to list every state,
 // which is the point of this app.

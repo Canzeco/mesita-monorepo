@@ -22,8 +22,10 @@
 //
 // The two apps do not have the same `ProductKey`. The mock has twenty (it
 // leads: `partner`, `menu`, `tableorders`, `orderpad`, `access`); web-business
-// still has sixteen and still carries `rewards`, which the mock folded into
-// `visits` at MESITA-1953. A shared record cannot be typed `Record<ProductKey,
+// has fourteen. It used to carry `rewards` as well, and MESITA-2035 finished
+// the merge the mock made at MESITA-1953, so that key is gone from BOTH unions
+// now — the one difference this header was written around. The unions still
+// differ by the five above. A shared record cannot be typed `Record<ProductKey,
 // …>` against either union without breaking the other, so it is keyed by the
 // UNION and each app asserts its own subset in its own test. That assertion is
 // the gate: a twenty-first product with no family fails `pnpm test` in the app
@@ -139,10 +141,6 @@ export const FAMILY: Record<
  *    pos         Money — the till. It sits beside Digital Terminal in the
  *                catalogue for the same reason it sits beside it here.
  *    capital     Money — it is the advance.
- *    rewards     Loyalty — web-business only. The mock folded this key into
- *                `visits` at MESITA-1953; it is kept because web-business has
- *                not ported that merge (MESITA-2018), and a key missing from
- *                this map is a tile with no colour.
  *    menu        Presence — Pato's list puts it there, and MESITA-2026's
  *                reframe agrees: the scan is a guest surface, not an input.
  *
@@ -171,9 +169,12 @@ export const PRODUCT_FAMILY: Record<string, FamilyKey> = {
   capital: "money",
 
   // Loyalty — what brings the guest back.
+  // `rewards` LEFT THIS MAP (MESITA-2035). It was here for one reason — that
+  // web-business had not ported MESITA-1953's merge — and it has now; there is
+  // no `rewards` ProductKey in either app, so an entry for it would be a
+  // colour for a card that does not exist.
   visits: "loyalty",
   credits: "loyalty",
-  rewards: "loyalty",
 
   // Automation — the work nobody is doing.
   line: "automation",

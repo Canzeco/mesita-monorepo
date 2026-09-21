@@ -190,22 +190,24 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "visits",
-    name: "Visits",
+    name: "Member Visits",
+    // ONE SENTENCE FOR BOTH HALVES (MESITA-2035), in the order they happen:
+    // the bill closes, then a slice goes back. This is the mock's sentence,
+    // word for word — the two consoles said this product's name two different
+    // ways from MESITA-1949 until now, and one of them was going to be quoted
+    // at an operator. The old pair said them separately and the second
+    // ("you set the rungs, and you set the price") was the DIAL's own
+    // sentence, which belongs on the dial, which is where Rewards' view is.
     blurb:
-      "Close the bill at the table, and keep every visit on the record — cash or card, it settles the same way.",
+      "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you switch on what earns it.",
     tab: "visits",
     needsPartner: true,
+    // PARTNER-GATED, NOT `visitRewards` — the merged card may not read off the
+    // dial. `atPlace: (p) => p.visitRewards === true` was the Rewards card's
+    // predicate, and inheriting it here would print "Off" for a place whose
+    // visits work fine: a card stating a fact that is not true. The card says
+    // the product is available; the dial says how much comes back.
     atPlace: null,
-    soon: null,
-  },
-  {
-    key: "rewards",
-    name: "Rewards",
-    blurb:
-      "Give a slice of the bill back to the guests who keep showing up — you set the rungs, and you set the price.",
-    tab: "rewards",
-    needsPartner: true,
-    atPlace: (p) => p.visitRewards === true,
     soon: null,
   },
   {

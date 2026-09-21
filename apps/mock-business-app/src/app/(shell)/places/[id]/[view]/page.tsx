@@ -28,7 +28,7 @@ import { CapitalView } from "@/components/views/CapitalView";
 import { AdminView } from "@/components/views/AdminView";
 
 /** The mark each standalone view wears, where its subject has one. `rewards`
- *  is Visit Rewards' strategy screen and `admin` is the super-admin's, and
+ *  is Member Visits' strategy screen and `admin` is the super-admin's, and
  *  neither is a product in `PRODUCT_MARK` — they get none rather than a
  *  borrowed one. */
 const TAB_MARK: Partial<Record<PlaceTab, string>> = {
