@@ -67,7 +67,7 @@ import {
   type RewardsMode,
   type RewardsProgram,
 } from "@/lib/rewards";
-import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 /** Whole pesos with a thousands separator. `moneyShort` renders MX$1,000 as
@@ -234,7 +234,11 @@ export function RewardsView() {
                     key={s.key}
                     className="border-border flex min-w-[7.5rem] flex-1 flex-col rounded-xl border px-3 py-2.5"
                   >
-                    <span className={TINY_LABEL_CLASS}>{s.label}</span>
+                    {/* Not the shared small-caps eyebrow token: that
+                        treatment belongs to Activity's tiles (D17 bans it
+                        from a Manage-half Group, which is where this
+                        stack lives). */}
+                    <span className="text-muted-foreground text-[11px] font-semibold">{s.label}</span>
                     <span className={cn(NUM, "mt-1")}>{s.total}%</span>
                     <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
                       {pesos(capCostCents(s.total, draft.cap) / 100)}
