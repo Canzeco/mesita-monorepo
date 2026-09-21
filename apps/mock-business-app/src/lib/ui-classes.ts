@@ -94,17 +94,26 @@ export const SECTION_TITLE_CLASS =
 
 // ── The shell's one width law ──────────────────────────────────────────────
 //
-// The console is FLUID: no max-width. The gutter and the bleed are a PAIR and
-// must stay in lockstep — the bleed is exactly the negative of the gutter at
-// every breakpoint, so a full-bleed child of <main> lands flush against the
-// window. Change one, change the other.
+// The GROUND is still fluid: no max-width on it, ever. The gutter and the
+// bleed are a PAIR and must stay in lockstep — the bleed is exactly the
+// negative of the gutter at every breakpoint, so a full-bleed child of <main>
+// lands flush against the window. Change one, change the other.
 export const SHELL_GUTTER = "px-4 sm:px-6 lg:px-8";
 export const SHELL_BLEED = "-mx-4 sm:-mx-6 lg:-mx-8";
 
+// THE CONTENT, ON SETUP HALVES, IS NOT (MESITA-2034, confirmed by Pato). This
+// used to read "the console is FLUID: no max-width," full stop — true of the
+// ground, wrong about Setup's content the day Apple's own standard asked for
+// a measure. `ProductShell.tsx` wraps its children in `max-w-3xl` on Setup
+// halves alone, derived from `half`, never from a per-view opt-in prop, so
+// Activity and every out-of-scope surface keep this file's original law
+// unchanged. See `ProductShell.tsx` for the exact condition.
+//
 // Readable measure for a single-column FORM. Cap the form, not the card: a
 // 1700px box for a 13-character field reads as a mistake, and capping the card
 // instead is the `max-w-xl` that got deleted twice ("i mean, one full width
-// column, wtf is that"). There is deliberately no page-width constant here.
+// column, wtf is that"). There is deliberately no OTHER page-width constant
+// here — Setup's measure lives in `ProductShell.tsx`, not as a second export.
 export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
 
 // Account's ONE card of rows: hairlines instead of gaps, because three
