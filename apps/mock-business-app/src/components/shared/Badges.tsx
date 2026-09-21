@@ -76,29 +76,40 @@ const BASE =
 // (MESITA-2013). It said every tone here assumes a white card and that painting
 // one on `--dock` needs a variant, not a wrapper around the caller. This is it.
 //
-// WHY ONLY THIS ONE, so far: `live` and `gold` are TINTED FILLS. The fill lifts
-// its own ground, so the ink reads against the tint rather than against
-// whatever is behind it, and both survive the ink rail unchanged. `soon` is the
-// single tone with NO fill — `border-border` and `text-muted-foreground` land
-// directly on the surface — so it is the only one that ever needed this.
+// `soon` WAS NOT THE ONLY ONE THAT NEEDED IT (MESITA-2034, corrected). The
+// note used to claim `live` and `gold` are tinted fills that "survive the ink
+// rail unchanged" — that was asserted, not measured. Computed from the real
+// oklch tokens: `live`'s tint on `--dock` is ~1.3–1.8:1 depending on the
+// fixture, `gold`'s is 1.40:1. Both fail AA, and `live` is the badge on most
+// product rows in the default preset — the single most-seen sidebar badge was
+// unreadable. `off` (no fill, `--quiet` text) was never broken; it was simply
+// never given a dock variant either, so it is added here for completeness.
 //
-// IT WAS UNREACHABLE UNTIL NOW. A Soon badge reaches the rail only from a
-// sidebar row, and no row has been Soon since MESITA-2011 took Express Website
-// off `PRODUCT_ORDER`. MESITA-2013 put that row back and the tone came with it,
-// at roughly #5e5e5e on near-black.
+// THE FIX IS THE SAME MOVE `on` ALREADY MAKES (`text-paper` on `bg-foreground`):
+// the WORD goes to `--dock-foreground` (near-white) and the FILL carries the
+// hue at enough opacity to stay a visible, on-brand tint. Computed:
+// `--state-live`/28 + `--dock-foreground` text = 11.32:1 on `--dock`;
+// `--tier-gold`/28 + `--dock-foreground` = 8.57:1. Both comfortably clear
+// 4.5:1 — verified by direct oklch→sRGB→WCAG computation, not eyeballed (an
+// earlier draft of this fix used colour-matched text at /22 opacity, which
+// computes to 3.4–3.9:1 and fails).
 //
-// THE SHAPE AXIS IS UNTOUCHED: still a dashed outline, still no fill. Only the
-// two colours change, to the `--dock-*` pair globals.css already keeps for
-// exactly this surface — 64% white text (7.84:1 on the ink, and the same value
-// every row name in the menu rests at) inside a 16% white dash.
+// THE SHAPE AXIS IS UNTOUCHED everywhere: filled still means in force,
+// outline still means off, dashed still means not here yet. Only the word's
+// colour changes on the three filled/outline dock tones, and only because the
+// surface behind them is dark instead of white.
 const TONES: Record<string, string> = {
   on: "bg-foreground text-paper",
   live: "bg-[color:var(--state-live)]/18 text-[color:var(--state-live-ink)]",
+  liveDock: "bg-[color:var(--state-live)]/28 text-dock-foreground",
   off: "border-border text-muted-foreground border",
+  offDock: "border-dock-border text-dock-muted border",
   soon: "border-border text-muted-foreground border border-dashed",
   soonDock: "border-dock-border text-dock-muted border border-dashed",
   neutral: "bg-muted text-muted-foreground",
+  neutralDock: "bg-dock-surface text-dock-foreground",
   gold: "bg-[color:var(--tier-gold)]/18 text-[color:var(--tier-gold-ink)]",
+  goldDock: "bg-[color:var(--tier-gold)]/28 text-dock-foreground",
   bad: "bg-destructive/10 text-destructive",
 };
 
@@ -109,12 +120,16 @@ export function Badge({
 }: {
   tone?:
     | "neutral"
+    | "neutralDock"
     | "on"
     | "live"
+    | "liveDock"
     | "off"
+    | "offDock"
     | "soon"
     | "soonDock"
     | "gold"
+    | "goldDock"
     | "bad";
   children: React.ReactNode;
   className?: string;
@@ -142,11 +157,19 @@ const PRODUCT_WORD: Record<ProductState, string> = {
   soon: "Soon",
 };
 
+const DOCK_TONE: Record<"live" | "off" | "soon" | "gold", "liveDock" | "offDock" | "soonDock" | "goldDock"> = {
+  live: "liveDock",
+  off: "offDock",
+  soon: "soonDock",
+  gold: "goldDock",
+};
+
 /** `onDock` says the badge is being drawn on the ink menu rather than a white
  *  card. It is the CALLER's fact — only the caller knows its own ground — and
  *  it selects a tone rather than restyling one, which is the line the note
- *  above `TONES` draws. Today it moves exactly one state; a second tone that
- *  needs the rail is a second entry there, not a second prop here. */
+ *  above `TONES` draws. ALL FOUR states move now (MESITA-2034) — `live` and
+ *  `off`, not only `gold`/`soon`, measured unreadable on `--dock`; see the
+ *  note above `TONES`. */
 export function ProductStateBadge({
   state,
   onDock = false,
@@ -156,8 +179,6 @@ export function ProductStateBadge({
 }) {
   const tone = PRODUCT_TONE[state];
   return (
-    <Badge tone={onDock && tone === "soon" ? "soonDock" : tone}>
-      {PRODUCT_WORD[state]}
-    </Badge>
+    <Badge tone={onDock ? DOCK_TONE[tone] : tone}>{PRODUCT_WORD[state]}</Badge>
   );
 }

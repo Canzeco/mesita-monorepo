@@ -44,6 +44,22 @@ export const ICON_TOUCH_TARGET_CLASS =
 
 export const INPUT_CLASS = `h-11 w-full rounded-xl border border-border bg-card px-3 text-sm transition focus:border-foreground/40 ${FOCUS_RING_CLASS}`;
 
+// APPLE'S POPUP, NOT THE BROWSER'S OWN ARROW (MESITA-2034, Setup standard §3).
+// A native `<select>` for the keyboard/screen-reader behaviour, with the
+// browser's own dropdown arrow replaced by a lucide chevrons-up-down —
+// already the app's icon set (MenuDoor, EmptyState, Modal all import it).
+export const SELECT_CLASS = `h-8 appearance-none rounded-md border border-border bg-card pl-2.5 pr-7 text-[13px] font-medium text-foreground bg-no-repeat bg-[right_8px_center] bg-[length:12px] bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2724%27%20height%3D%2724%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%235d5d5d%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m7%2015%205%205%205-5%27%2F%3E%3Cpath%20d%3D%27m7%209%205-5%205%205%27%2F%3E%3C%2Fsvg%3E')] ${FOCUS_RING_CLASS}`;
+
+// THE SETUP GROUP GRAMMAR (MESITA-2034). One card, heading and footer
+// outside it — see `Group.tsx` for why. These three are the only type scale
+// a Group ever uses; nothing here changes per screen.
+export const GROUP_HEADING_CLASS =
+  "font-display text-[15px] font-semibold tracking-tight";
+export const GROUP_DESC_CLASS =
+  "text-muted-foreground mt-0.5 text-[12.5px] leading-snug";
+export const GROUP_FOOTER_CLASS =
+  "text-muted-foreground text-[12px] leading-snug";
+
 export const ERROR_BOX_CLASS =
   "rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive";
 
@@ -78,17 +94,26 @@ export const SECTION_TITLE_CLASS =
 
 // ── The shell's one width law ──────────────────────────────────────────────
 //
-// The console is FLUID: no max-width. The gutter and the bleed are a PAIR and
-// must stay in lockstep — the bleed is exactly the negative of the gutter at
-// every breakpoint, so a full-bleed child of <main> lands flush against the
-// window. Change one, change the other.
+// The GROUND is still fluid: no max-width on it, ever. The gutter and the
+// bleed are a PAIR and must stay in lockstep — the bleed is exactly the
+// negative of the gutter at every breakpoint, so a full-bleed child of <main>
+// lands flush against the window. Change one, change the other.
 export const SHELL_GUTTER = "px-4 sm:px-6 lg:px-8";
 export const SHELL_BLEED = "-mx-4 sm:-mx-6 lg:-mx-8";
 
+// THE CONTENT, ON SETUP HALVES, IS NOT (MESITA-2034, confirmed by Pato). This
+// used to read "the console is FLUID: no max-width," full stop — true of the
+// ground, wrong about Setup's content the day Apple's own standard asked for
+// a measure. `ProductShell.tsx` wraps its children in `max-w-3xl` on Setup
+// halves alone, derived from `half`, never from a per-view opt-in prop, so
+// Activity and every out-of-scope surface keep this file's original law
+// unchanged. See `ProductShell.tsx` for the exact condition.
+//
 // Readable measure for a single-column FORM. Cap the form, not the card: a
 // 1700px box for a 13-character field reads as a mistake, and capping the card
 // instead is the `max-w-xl` that got deleted twice ("i mean, one full width
-// column, wtf is that"). There is deliberately no page-width constant here.
+// column, wtf is that"). There is deliberately no OTHER page-width constant
+// here — Setup's measure lives in `ProductShell.tsx`, not as a second export.
 export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
 
 // Account's ONE card of rows: hairlines instead of gaps, because three

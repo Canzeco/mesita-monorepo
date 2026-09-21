@@ -2,6 +2,29 @@
 
 // THE WORK SURFACE. What is left of the two-column shell (MESITA-2004).
 //
+// ── THE SETUP MEASURE (MESITA-2034, confirmed at 768px by Pato) ───────────
+//
+// Apple's own settings panes read at a measure, not a full window's width —
+// the screenshot Pato sent had a control 1,400px from the label it acted on.
+// `max-w-3xl` wraps CHILDREN only, never the ground div below: the ground
+// still runs `SHELL_BLEED`/`SHELL_GUTTER` full-bleed to the window edge
+// exactly as before, so this is a measured pane on a full-width ground, not
+// a narrow card floating on a wide grey page.
+//
+// DERIVED FROM `half`, NOT AN OPT-IN PROP. This function already renders one
+// div for BOTH Setup ("products") and Activity ("activity") halves; if the
+// measure were a prop each of the twelve Setup call sites had to remember to
+// pass, a thirteenth view could forget it — the exact silent-drift shape this
+// whole redesign exists to close. Activity keeps its current fluid width with
+// no per-view choice to get wrong.
+//
+// PROFILE IS EXEMPT UNTIL ITS OWN PR CONVERTS IT. `openKey` is already
+// computed below for `PANE_ON_PAGE`; reusing it here means Profile's
+// still-unconverted masonry grid does not get squeezed to 768px (and lose
+// its grey ground — see `PANE_ON_PAGE`) before that PR lands. Whoever
+// converts Profile removes `openKey !== "profile"` from this condition in
+// the same commit that deletes `PANE_ON_PAGE`.
+//
 // ── WHAT LEFT ──────────────────────────────────────────────────────────────
 //
 // THE INDEX COLUMN. This file used to draw a 316px navigator — "Your plan", ten
@@ -63,6 +86,7 @@ export function ProductShell({
   const openSlug = last === half ? null : last;
   const openKey = openSlug === null ? null : productFromSlug(openSlug);
   const paneOnPage = openKey !== null && PANE_ON_PAGE.has(openKey);
+  const measured = half === "products" && openKey !== "profile";
 
   if (!place || !pages.includes(half)) return null;
 
@@ -84,7 +108,7 @@ export function ProductShell({
         paneOnPage ? "bg-background" : "bg-card",
       )}
     >
-      {children}
+      {measured ? <div className="max-w-3xl">{children}</div> : children}
     </div>
   );
 }

@@ -20,16 +20,21 @@
 // THE TRIO STAYS A TRIO. The aggregate and the two lists it aggregates stay
 // on one screen, which is the whole reason `ReviewBoxes` is a wrapper rather
 // than three siblings (MESITA-1930).
+//
+// ── SETUP STANDARD (MESITA-2034) ────────────────────────────────────────────
+//
+// Sources is one Group, one card, four rows. Mesita's row is badge-alone (the
+// Value control wearing a `<Badge>`, per §3) — it never disconnects, so it
+// gets no verb. The other three carry a badge and a Button.
 import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
 import { ReviewBoxes } from "@/components/place-manage/ReviewBoxes";
-import { Section } from "@/components/shared/Section";
+import { Group } from "@/components/shared/Group";
 import { Half } from "@/components/shared/Half";
+import { Rule } from "@/components/shared/Rule";
 import { Badge } from "@/components/shared/Badges";
-import { Rule, RULES_CARD } from "@/components/shared/Rule";
 import { useMock } from "@/mock/MockStore";
 import { REVIEW_SOURCES, REVIEW_SOURCE_LABEL } from "@/mock/types";
 import { since } from "@/lib/format";
-import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 export function ReviewsView() {
   const { place } = usePlaceScope();
@@ -46,39 +51,42 @@ export function ReviewsView() {
   return (
     <div key={place.id} className="flex flex-col gap-4">
       <Half label="Manage">
-        <Section
+        <Group
           title="Sources"
           description="Where the stars come from. Mesita's own never disconnects; the other three are accounts you connect once and reconnect when they lapse."
         >
-          <div className={RULES_CARD}>
-            {REVIEW_SOURCES.map((s) => {
-              const src = place.reviewSources[s];
+          {REVIEW_SOURCES.map((s) => {
+            const src = place.reviewSources[s];
+            const note = src.connected
+              ? `Synced ${src.lastSyncedAt ? since(src.lastSyncedAt, now) : "just now"}.`
+              : s === "mesita"
+                ? "Always on."
+                : "Not connected. Nothing from here is counted below.";
+            if (s === "mesita") {
               return (
                 <Rule
                   key={s}
                   label={REVIEW_SOURCE_LABEL[s]}
-                  note={
-                    src.connected
-                      ? `Synced ${src.lastSyncedAt ? since(src.lastSyncedAt, now) : "just now"}.`
-                      : s === "mesita"
-                        ? "Always on."
-                        : "Not connected. Nothing from here is counted below."
-                  }
-                  value={
-                    <>
-                      <Badge tone={src.connected ? "live" : "off"}>{src.connected ? "Connected" : "Off"}</Badge>
-                      {s !== "mesita" && (
-                        <button type="button" className={GHOST_PILL_BUTTON_CLASS}>
-                          {src.connected ? "Reconnect" : "Connect"}
-                        </button>
-                      )}
-                    </>
-                  }
+                  note={note}
+                  control={{ kind: "value", text: <Badge tone="live">Connected</Badge> }}
                 />
               );
-            })}
-          </div>
-        </Section>
+            }
+            return (
+              <Rule
+                key={s}
+                label={REVIEW_SOURCE_LABEL[s]}
+                note={note}
+                badge={<Badge tone={src.connected ? "live" : "off"}>{src.connected ? "Connected" : "Off"}</Badge>}
+                control={{
+                  kind: "button",
+                  label: src.connected ? "Reconnect" : "Connect",
+                  onClick: () => {},
+                }}
+              />
+            );
+          })}
+        </Group>
       </Half>
       <Half label="Activity">
         {/* NO `PlaceFormProvider`. These three cards register no dirty section
