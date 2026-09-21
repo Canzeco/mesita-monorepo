@@ -147,7 +147,7 @@ export function Rule({
   /** Precedes the control: a state fact with a verb beside it
    *  (`[Connected] [Reconnect]`). Never a second control. */
   badge?: React.ReactNode;
-  note?: string;
+  note?: React.ReactNode;
   /** Greyed, never hidden: a row that vanishes teaches an operator the
    *  setting does not exist. */
   disabled?: boolean;

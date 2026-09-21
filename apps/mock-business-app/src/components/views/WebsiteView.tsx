@@ -19,25 +19,29 @@
 // TWO SURFACES, ON PURPOSE (gate UC3). Mesita Profile lives at mesita.ai and
 // is the marketplace's page; this is the place's OWN site, on
 // `<slug>.mesita.co` by default, on their domain if they connect or buy one.
+//
+// ── SETUP STANDARD (MESITA-2034) ────────────────────────────────────────────
+//
+// Locked is gated once, upstream, by `ProductPane` (D12A) — this file no
+// longer checks `planAtLeast` itself; it is simply never mounted below Pro.
+// Three Groups: Site (a state row, + the URL as a second row once published),
+// Template (a picker-grid body), Address and promotion (3 rows).
 import Link from "next/link";
 import { Check, ExternalLink } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { useMock } from "@/mock/MockStore";
-import { Section } from "@/components/shared/Section";
+import { Group } from "@/components/shared/Group";
 import { Half } from "@/components/shared/Half";
+import { Rule } from "@/components/shared/Rule";
+import { Notice } from "@/components/shared/Notice";
 import { Badge } from "@/components/shared/Badges";
-import { MenuDoor } from "@/components/shared/MenuDoor";
-import { Rule, RULES_CARD } from "@/components/shared/Rule";
 import { profileComplete } from "@/lib/partner";
 import { productKeyHref } from "@/lib/product-routes";
 import {
-  PLAN_LABEL,
   WEBSITE_TEMPLATES,
   WEBSITE_TEMPLATE_LABEL,
-  planAtLeast,
   type WebsiteState,
 } from "@/mock/types";
-import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 export const WEBSITE_STATES: Record<
@@ -73,111 +77,114 @@ export const WEBSITE_STATES: Record<
 export function WebsiteView() {
   const place = useHeldPlace();
   const { world } = useMock();
-  const locked = !planAtLeast(place.plan, "pro");
   const state = WEBSITE_STATES[place.websiteState];
   const complete = profileComplete(world.profiles[place.id]);
   const slug = place.id.replace(/^plc_/, "");
   const url = place.websiteDomain ?? `${slug}.mesita.co`;
+  const generateDisabled = place.websiteState === "picked" && !complete;
 
   return (
     <div className="flex flex-col gap-4">
       <Half label="Manage">
-        {locked ? (
-          <p className={INFO_BOX_CLASS}>
-            Needs {PLAN_LABEL.pro}. The site books and takes orders, which is
-            what the rung carries.
-          </p>
-        ) : (
-          <>
-            <MenuDoor place={place} reads="The site" />
-            <Section
-              title={
-                <span className="flex items-center gap-2">
-                  {state.headline}
-                  <Badge tone={state.tone}>{place.websiteState === "published" ? "On" : place.websiteState === "none" ? "Off" : "Draft"}</Badge>
-                </span>
-              }
-              description={state.lede}
-              lane
-              right={
-                state.verb ? (
-                  <button
-                    type="button"
-                    disabled={place.websiteState === "picked" && !complete}
-                    className={`${CTA_BUTTON_CLASS} self-start`}
-                  >
-                    {state.verb}
-                    {place.websiteState === "published" && <ExternalLink className="h-4 w-4" aria-hidden />}
-                  </button>
-                ) : undefined
-              }
-            >
-              {place.websiteState === "picked" && !complete && (
-                <p className={INFO_BOX_CLASS}>
+        <Notice
+          show={place.menuPublishedAt === null}
+          icon={<Check className="h-4 w-4" aria-hidden />}
+          title="Publish your menu first"
+          note="The site reads the published menu, and nothing is published yet. It keeps working from the moment you press Publish on Digital Menu."
+          action={{ label: "Open Digital Menu", onClick: () => {} }}
+        />
+
+        <Group title="Site">
+          <Rule
+            label={state.headline}
+            note={
+              generateDisabled ? (
+                <>
                   Generate is off until the profile is complete — a name, an
                   address, hours and at least one photo. The draft is written
                   from them.{" "}
                   <Link href={productKeyHref(place.id, "products", "profile")} className="underline underline-offset-4">
                     Open Mesita Profile
                   </Link>
-                </p>
-              )}
-              {place.websiteState === "published" && (
-                <div className="bg-muted text-muted-foreground rounded-xl px-3 py-2.5 text-[12.5px] break-all">
-                  https://{url}
-                </div>
-              )}
-            </Section>
+                </>
+              ) : (
+                state.lede
+              )
+            }
+            badge={<Badge tone={state.tone}>{place.websiteState === "published" ? "On" : place.websiteState === "none" ? "Off" : "Draft"}</Badge>}
+            control={
+              state.verb
+                ? {
+                    kind: "button",
+                    label: state.verb,
+                    emphasis: "primary",
+                    disabled: generateDisabled,
+                    onClick: () => {},
+                  }
+                : undefined
+            }
+          />
+          {place.websiteState === "published" && (
+            <Rule
+              label="Address"
+              control={{
+                kind: "value",
+                text: (
+                  <span className="inline-flex items-center gap-1.5">
+                    {url}
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  </span>
+                ),
+              }}
+            />
+          )}
+        </Group>
 
-            <Section
-              title="Template"
-              description="Four, on purpose. A template fixes the structure and the buttons that book and order; asking changes everything else."
-            >
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {WEBSITE_TEMPLATES.map((t) => {
-                  const picked = place.websiteTemplate === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      aria-pressed={picked}
-                      className={cn(
-                        "border-border flex h-24 flex-col items-start justify-end rounded-xl border p-3 text-left text-[13px] font-semibold transition",
-                        picked ? "border-foreground" : "hover:border-foreground/30",
-                      )}
-                    >
-                      {WEBSITE_TEMPLATE_LABEL[t]}
-                      {picked && <Check className="mt-1 h-3.5 w-3.5" aria-hidden />}
-                    </button>
-                  );
-                })}
-              </div>
-            </Section>
+        <Group
+          title="Template"
+          description="Four, on purpose. A template fixes the structure and the buttons that book and order; asking changes everything else."
+        >
+          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
+            {WEBSITE_TEMPLATES.map((t) => {
+              const picked = place.websiteTemplate === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={picked}
+                  className={cn(
+                    "border-border flex h-24 flex-col items-start justify-end rounded-xl border p-3 text-left text-[13px] font-semibold transition",
+                    picked ? "border-foreground" : "hover:border-foreground/30",
+                  )}
+                >
+                  {WEBSITE_TEMPLATE_LABEL[t]}
+                  {picked && <Check className="mt-1 h-3.5 w-3.5" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
+        </Group>
 
-            <Section
-              title="Address and promotion"
-              description="Included: a Mesita subdomain and organic search. Optional: your own domain, and a small Google budget with its own line on the bill."
-            >
-              <div className={RULES_CARD}>
-                <Rule
-                  label="Address"
-                  note={place.websiteDomain ? "Your own domain, connected." : "Included. Connect a domain you own, or buy one here — Mesita renews it for you."}
-                  value={<span className="font-normal">{url}</span>}
-                />
-                <Rule
-                  label="Google promotion"
-                  note="Shown as its own line: MX$200 of MX$1,000 a month goes to ads that bring people to this site. Pause it here any time."
-                  value={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>Pause</button>}
-                />
-                <Rule
-                  label="Books and orders through"
-                  note="Online Reservations and Online Orders. The site never holds a booking of its own."
-                  value={<Badge tone="on">Mesita</Badge>}
-                />
-              </div>
-            </Section>
-          </>
-        )}
+        <Group
+          title="Address and promotion"
+          description="Included: a Mesita subdomain and organic search. Optional: your own domain, and a small Google budget with its own line on the bill."
+        >
+          <Rule
+            label="Address"
+            note={place.websiteDomain ? "Your own domain, connected." : "Included. Connect a domain you own, or buy one here — Mesita renews it for you."}
+            control={{ kind: "value", text: url }}
+          />
+          <Rule
+            label="Google promotion"
+            note="Shown as its own line: MX$200 of MX$1,000 a month goes to ads that bring people to this site. Pause it here any time."
+            control={{ kind: "button", label: "Pause", onClick: () => {} }}
+          />
+          <Rule
+            label="Books and orders through"
+            note="Online Reservations and Online Orders. The site never holds a booking of its own."
+            control={{ kind: "value", text: <Badge tone="on">Mesita</Badge> }}
+          />
+        </Group>
       </Half>
     </div>
   );
