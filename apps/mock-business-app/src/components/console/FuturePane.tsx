@@ -41,6 +41,8 @@ import { PLAN_LABEL } from "@/mock/types";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import { PRODUCT_CATALOG_COPY } from "@/lib/product-catalog";
 import { MIN_PLAN, type ProductCard } from "@/lib/products";
+import { familyStyle, SOON_PILL, SOON_TILE } from "@/lib/product-families";
+import { cn } from "@/lib/utils";
 
 const STATE_WORD: Record<ProductCard["state"], string> = {
   free: "Free",
@@ -56,23 +58,72 @@ const STATE_WORD: Record<ProductCard["state"], string> = {
  *  than a column anybody reads comfortably. Two at `sm`, one on a phone. */
 const GRID = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
 
+/** A BOX WEARS ITS FAMILY (MESITA-2037).
+ *
+ *  Pato: *"Give every Mesita product a background color based on its
+ *  family."* This is the surface that asked for it — twenty boxes in one grid,
+ *  scanned by somebody deciding what they want, and until now twenty identical
+ *  white rectangles distinguished only by an emoji.
+ *
+ *  THREE THINGS CARRY THE HUE and nothing else does. The box's own fill is the
+ *  family tint; the square behind the mark is the same tint one step stronger;
+ *  the NAME is the family ink. The blurb stays `text-muted-foreground` — the
+ *  family says which product this is, not which sentence to read, and a
+ *  coloured paragraph in a 280px box is how a catalogue turns into a fruit
+ *  bowl.
+ *
+ *  THE SQUARE IS THE "ICON ACCENT", because the mark is an EMOJI: a glyph that
+ *  paints its own colour and ignores `color` entirely (MESITA-1952 chose it
+ *  for exactly that). The accent had to land on something, so it lands on the
+ *  plate behind it.
+ *
+ *  NO HOVER AND NO FOCUS RING HERE. A box on this pane is not a link — the
+ *  suite page is read, not navigated — and a hover state on a thing that does
+ *  not respond is a lie the pointer tells. The interactive catalogue is
+ *  web-business's `ProductCatalog`, and its tiles carry both.
+ *
+ *  SOON KEEPS ITS FAMILY. The tint stays and the whole tile steps back instead
+ *  (`SOON_TILE`), because dropping the colour would read as "belongs to no
+ *  family" rather than "not built". The word becomes a PILL — the one state
+ *  that needed to stop being a bare word beside four others now that the
+ *  others sit on colour. */
 function Box({ card }: { card: ProductCard }) {
   const min = MIN_PLAN[card.key];
+  const family = familyStyle(card.key);
+  const soon = card.state === "soon";
   return (
-    <div className="border-border/60 bg-card flex flex-col gap-2 rounded-xl border p-3.5">
+    <div
+      className={cn(
+        "border-border/60 flex flex-col gap-2 rounded-xl border p-3.5",
+        family.tint,
+        soon && `border-dashed ${SOON_TILE}`,
+      )}
+    >
       <div className="flex items-start gap-2.5">
         <span
           aria-hidden
-          className="flex h-6 w-6 shrink-0 items-center justify-center text-[17px] leading-none"
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[16px] leading-none",
+            family.tintStrong,
+          )}
         >
           {PRODUCT_MARK[card.key]}
         </span>
-        <p className="min-w-0 flex-1 text-[13.5px] leading-snug font-semibold">
+        <p
+          className={cn(
+            "min-w-0 flex-1 text-[13.5px] leading-snug font-semibold",
+            family.ink,
+          )}
+        >
           {card.name}
         </p>
-        <span className="text-muted-foreground shrink-0 text-[11px]">
-          {STATE_WORD[card.state]}
-        </span>
+        {soon ? (
+          <span className={cn(SOON_PILL, "shrink-0")}>Soon</span>
+        ) : (
+          <span className="text-muted-foreground shrink-0 text-[11px]">
+            {STATE_WORD[card.state]}
+          </span>
+        )}
       </div>
       <p className="text-muted-foreground text-[12.5px] leading-relaxed">
         {PRODUCT_CATALOG_COPY[card.key]}

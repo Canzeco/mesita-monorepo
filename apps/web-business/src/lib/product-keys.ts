@@ -176,7 +176,7 @@ export const PRODUCT_LABEL: Record<ProductKey, string> = {
   // label, the rail row, the catalogue card, the view heading, the breadcrumb,
   // the ladder rung and the setup page.
   pay: "Online Payments",
-  terminal: "Physical Terminal",
+  terminal: "Digital Terminal",
   pos: "Point of Sale",
   credits: "Prepaid Credits",
   capital: "Capital",

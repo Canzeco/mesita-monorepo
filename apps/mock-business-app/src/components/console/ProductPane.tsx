@@ -63,6 +63,7 @@ import {
 import type { ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
+import { familyStyle } from "@/lib/product-families";
 import { hasHalf, isSplit } from "@/lib/product-halves";
 import { PRODUCT_SLUG, productHref, type PlaceHalf } from "@/lib/product-routes";
 import { placeIdFromPathname, placePlanHref } from "@/lib/console-routes";
@@ -259,6 +260,13 @@ export function ProductPane({ card }: { card: ProductCard }) {
     <div className="flex flex-col gap-4">
       <PageHeader
         mark={PRODUCT_MARK[card.key]}
+        // THE PRODUCT'S FAMILY, CARRIED THROUGH FROM THE CATALOGUE
+        // (MESITA-2037). The tile an operator clicked was tinted; arriving on
+        // a grey header would read as having landed somewhere else. Only the
+        // plate and the NAME take the hue — the blurb, the badge and every
+        // section below stay exactly as achromatic as they were.
+        markClass={familyStyle(card.key).tintStrong}
+        titleClass={familyStyle(card.key).ink}
         title={card.name}
         badges={<ProductStateBadge state={card.state} />}
         blurb={card.blurb}

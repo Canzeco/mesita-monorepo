@@ -26,10 +26,14 @@
    COLOR DESIGN, LIKE IN INSTAGRAM, BLACK AND WHITE."*
 
    THE RULE, and it is the whole file: every neutral keeps its LIGHTNESS and
-   loses its CHROMA. Chroma survives in exactly FOUR places — where a third
-   party owns the colour, where money is at risk, where a tier is named, and
-   (MESITA-2001) where a product is RUNNING. Never on hierarchy, never on
-   hover.
+   loses its CHROMA. Chroma survives in exactly FIVE places — where a third
+   party owns the colour, where money is at risk, where a tier is named,
+   (MESITA-2001) where a product is RUNNING, and (MESITA-2037) where a product
+   names its FAMILY. Never on hierarchy, never on hover.
+
+   THE FIFTH IS THE ONLY ONE THAT IS AN IDENTITY rather than a signal, and it
+   is the narrowest: six hues, confined to the screens that LIST products, on
+   one square and one name per tile. Everything around them stays grey.
 
    THE FOURTH IS NEW AND IT IS PATO'S. 2026-09-19, on the Setup index: *"add
    maybe a color to the list to indicate if Inactive or Active or whatever"*.
@@ -137,7 +141,12 @@
      Gold/Diamond). The third reserved family — the platform marks in Digital
      Presence — needs no token at all: they are SVGs in public/channels/, so
      they were never at risk from a repaint, and going fully monochrome would
-     have meant ADDING a grayscale filter, not removing a colour. */
+     have meant ADDING a grayscale filter, not removing a colour.
+
+     A FOURTH RESERVED FAMILY ARRIVED AT MESITA-2037: a product's own family
+     hue, below. It is neither a warning nor a tier — it is an identity — and
+     it is confined to the screens that LIST products. Everywhere else in this
+     app the paragraph above is still the whole truth. */
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: var(--paper);
   --tier-gold: oklch(0.84 0.16 88);
@@ -145,6 +154,73 @@
      an actual Tailwind amber sitting inside a palette that claims to be
      achromatic. */
   --tier-gold-ink: oklch(0.42 0.11 78);
+
+  /* ── THE PRODUCT FAMILIES: chroma comes back, and only here (MESITA-2037) ─
+     Pato, 2026-09-21: *"Give every Mesita product a background color based on
+     its family."* Six families, six hues, and a product wears its family's.
+
+     THIS IS THE FOURTH RESERVED SIGNAL, and it is the first one that is not a
+     WARNING or a TIER — it is an identity. MESITA-1934 stripped the tints
+     because the accent was 5% of the pixels and the other 95% was tinted
+     neutrals; nothing here touches a neutral. The hue lands on one square, one
+     name and one wash per tile, on the two screens that list products, and
+     nowhere else in either console.
+
+     WHAT IS SAFE TO PAINT WITH, AND WHAT IS NOT. The base hue is Pato's value
+     unaltered and it is NOT TEXT: four of the six fail WCAG AA on this card —
+     loyalty 2.48:1, money 3.18:1, presence 4.11:1, insights 4.15:1. The base
+     paints the mark, the tint and the focus ring, where 3:1 is the bar. The
+     `-ink` is the same hue darkened until it clears 5:1 on `--card`, and it is
+     the ONLY one a product name may use. Same pair as `--tier-gold` /
+     `--tier-gold-ink`, six times over; see shared/product-families.ts, which
+     records both numbers so the stylesheet is not their only home.
+
+     THE TINT IS A MIX, NOT AN ALPHA. `bg-[#E23D69]/11` composites against
+     whatever is behind the tile — the card here, the dock's ink on a rail —
+     so the tint would be a different colour on two surfaces and its contrast
+     unknowable. `color-mix` against `--card` makes it a real value: 11% at
+     rest, 16% on hover, which is the "slightly stronger" step.
+
+     PLANS GET NONE OF THIS. Free, Pro and Ultra are a rung, not a family, and
+     a coloured plan chip beside a coloured product tile is two palettes
+     arguing on one card. The plan tag stays neutral.
+
+     THERE IS NO DARK HALF IN THIS FILE, and that is not an omission. This app
+     has no `.dark` block at all and no toggle — its rule is "light theme,
+     semantic tokens" — so a dark half here would be the only dark declaration
+     in the stylesheet, and a `@media (prefers-color-scheme: dark)` would FIRE,
+     on a light-only page, and tint six tiles against a white card. The dark
+     values exist: web-business carries them in its own (dead, kept) `.dark`
+     block, and shared/product-families.ts records `inkDark` for all six. */
+  --family-presence: #e23d69;
+  --family-presence-ink: #d12a5c;
+  --family-presence-tint: color-mix(in srgb, var(--family-presence) 11%, var(--card));
+  --family-presence-tint-strong: color-mix(in srgb, var(--family-presence) 16%, var(--card));
+
+  --family-operations: #2f6feb;
+  --family-operations-ink: #2968e4;
+  --family-operations-tint: color-mix(in srgb, var(--family-operations) 11%, var(--card));
+  --family-operations-tint-strong: color-mix(in srgb, var(--family-operations) 16%, var(--card));
+
+  --family-money: #22a559;
+  --family-money-ink: #008138;
+  --family-money-tint: color-mix(in srgb, var(--family-money) 11%, var(--card));
+  --family-money-tint-strong: color-mix(in srgb, var(--family-money) 16%, var(--card));
+
+  --family-loyalty: #f08c00;
+  --family-loyalty-ink: #b35400;
+  --family-loyalty-tint: color-mix(in srgb, var(--family-loyalty) 11%, var(--card));
+  --family-loyalty-tint-strong: color-mix(in srgb, var(--family-loyalty) 16%, var(--card));
+
+  --family-automation: #9146e8;
+  --family-automation-ink: #9045e7;
+  --family-automation-tint: color-mix(in srgb, var(--family-automation) 11%, var(--card));
+  --family-automation-tint-strong: color-mix(in srgb, var(--family-automation) 16%, var(--card));
+
+  --family-insights: #0b8a92;
+  --family-insights-ink: #007b84;
+  --family-insights-tint: color-mix(in srgb, var(--family-insights) 11%, var(--card));
+  --family-insights-tint-strong: color-mix(in srgb, var(--family-insights) 16%, var(--card));
 
   /* RUNNING (MESITA-2001). A fill and an ink, the same pair gold carries and
      for the same reason: the tint alone is 1.1:1 against the card, so the WORD
@@ -231,6 +307,34 @@
   --color-ring: var(--ring);
   --color-tier-gold: var(--tier-gold);
   --color-tier-gold-ink: var(--tier-gold-ink);
+  /* The families (MESITA-2037). FOUR NAMES EACH, and every one is spelled out
+     in shared/product-families.ts as a literal class string — Tailwind scans
+     source text, so `bg-family-${f}-tint` resolves to nothing and drops
+     silently. */
+  --color-family-presence: var(--family-presence);
+  --color-family-presence-ink: var(--family-presence-ink);
+  --color-family-presence-tint: var(--family-presence-tint);
+  --color-family-presence-tint-strong: var(--family-presence-tint-strong);
+  --color-family-operations: var(--family-operations);
+  --color-family-operations-ink: var(--family-operations-ink);
+  --color-family-operations-tint: var(--family-operations-tint);
+  --color-family-operations-tint-strong: var(--family-operations-tint-strong);
+  --color-family-money: var(--family-money);
+  --color-family-money-ink: var(--family-money-ink);
+  --color-family-money-tint: var(--family-money-tint);
+  --color-family-money-tint-strong: var(--family-money-tint-strong);
+  --color-family-loyalty: var(--family-loyalty);
+  --color-family-loyalty-ink: var(--family-loyalty-ink);
+  --color-family-loyalty-tint: var(--family-loyalty-tint);
+  --color-family-loyalty-tint-strong: var(--family-loyalty-tint-strong);
+  --color-family-automation: var(--family-automation);
+  --color-family-automation-ink: var(--family-automation-ink);
+  --color-family-automation-tint: var(--family-automation-tint);
+  --color-family-automation-tint-strong: var(--family-automation-tint-strong);
+  --color-family-insights: var(--family-insights);
+  --color-family-insights-ink: var(--family-insights-ink);
+  --color-family-insights-tint: var(--family-insights-tint);
+  --color-family-insights-tint-strong: var(--family-insights-tint-strong);
   --color-state-live: var(--state-live);
   --color-state-live-ink: var(--state-live-ink);
   --color-mock-strip: var(--mock-strip);

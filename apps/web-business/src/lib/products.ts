@@ -244,7 +244,19 @@ const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "terminal",
-    name: "Physical Terminal",
+    // DIGITAL TERMINAL, NOT "Physical Terminal" (MESITA-2037). Pato:
+    // *"Use \"Answering Agent\" (singular) and \"Digital Terminal\"
+    // everywhere."*
+    //
+    // IT BREAKS A RHYME ON PURPOSE. MESITA-1958 paired this with Physical POS
+    // — *"the two boxes on your counter"* — and spelling one out while the
+    // other kept its qualifier was the thing that argument refused. The pair
+    // is broken now, and the reason is that PHYSICAL was never the true
+    // distinction: Online Payments and this product both take a card, and what
+    // separates them is whose screen the tap happens on, not whether the thing
+    // has a body. The POS keeps `Physical` because its opposite really is a
+    // software till.
+    name: "Digital Terminal",
     // BACK AFTER MESITA-1900 REMOVED IT, and still Soon for the same reason it
     // went: there is no hardware. The old blurb ("Take in-person payments with
     // Mesita hardware") named the box; this one names why a place that already
