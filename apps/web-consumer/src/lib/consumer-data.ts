@@ -276,43 +276,16 @@ export const REACH_ENTRY_CLASS = CLASSES.filter(
 /** Every surface quoting or applying the bar derives from this one constant. */
 export const REACH_ENTRY_FOLLOWERS = REACH_ENTRY_CLASS.followerThreshold;
 
-/** Guest-facing captions on Me › Passport's two door tiles (MESITA-1819).
- *  Class says the perk, as a sentence. Climb doors are named only when the
- *  guest can still climb. Instagram says the next Instagram action. Never
- *  glue perk and doors with a middle-dot — that is how Diamond read
- *  "Highest discount · Instagram or an invite". Origin stays unnamed
- *  (MESITA-902). Connected Instagram still prints the follower count the
- *  caller already formatted. */
-export function passportDoorCaptions(input: {
-  unknown: boolean;
-  onFloor: boolean;
-  atCeiling: boolean;
-  igConnected: boolean;
-  followersLabel: string;
-  reachFollowers: number;
-  reachLabel: string;
-}): { classNote: string; igNote: string } {
-  const classNote = (() => {
-    if (input.unknown) return "Come back to try";
-    if (input.atCeiling) return "Highest discount at every table.";
-    if (!input.igConnected) {
-      return input.onFloor
-        ? "Starting discount. Climb with Instagram or an invite."
-        : "Higher discount. Climb with Instagram or an invite.";
-    }
-    return input.onFloor
-      ? "Starting discount at every table."
-      : "Higher discount at every table.";
-  })();
-
-  const igNote = input.igConnected
-    ? input.followersLabel
-    : input.atCeiling
-      ? "Connect to share Stories and earn extra Rewards."
-      : `${input.reachFollowers.toLocaleString("en-US")}+ followers lifts you to ${input.reachLabel}`;
-
-  return { classNote, igNote };
-}
+// `passportDoorCaptions` LIVED HERE AND IS GONE (MESITA-1819 -> MESITA-2040).
+// It produced the two captions on Me › Passport's door tiles, and its whole
+// job was keeping a PERK (the class's discount) from being glued to a DOOR
+// (how to climb) with a middle dot — Diamond once read "Highest discount ·
+// Instagram or an invite", telling a ceiling guest how to reach the rung they
+// already held. The four states it switched on were (floor | mid | ceiling) ×
+// (connected | not), which only exist on a ladder. The captions are one line
+// per fact now, in `consumer-identity.ts`; do not reintroduce a helper here
+// that takes both facts at once, because that is the shape that lets one
+// caption talk about the other fact.
 
 // Canonical class icon set: one mark + one color per class, ascending as a
 // single readable progression — Medal → Award → Trophy → Gem. The v1 set

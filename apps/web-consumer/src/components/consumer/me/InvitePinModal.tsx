@@ -10,10 +10,16 @@ import { Button } from "@/components/ui/button";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInviteCode } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { classProperLabel, identityForClassKey } from "@/lib/consumer-data";
 import { errMsg } from "@/lib/utils";
 
 // The invitation PIN sheet (MESITA-1168) — the TRANSFERABLE door.
+//
+// IT GRANTS ONE THING NOW (MESITA-2040). A PIN used to NAME a class — any
+// class — so this screen had to read `result.classKey` back, bridge the legacy
+// key, and tell the guest which rung they had just landed on. There is one
+// fact to land on, so the success line is fixed and the response's class key
+// is no longer read. The server still returns it and the rewards engine still
+// stores it; nothing guest-facing asks.
 //
 // This replaces a button that fired a toast saying invitations are by hand and
 // then did nothing. The real flow: Mesita hands a partner a batch of PINs, the
@@ -46,13 +52,10 @@ export function InvitePinModal() {
     setClaiming(true);
     setError(null);
     try {
-      const result = await apiClaimInviteCode(supabase, { code: digits });
-      // `classKey` is the EFFECTIVE class the server settled on, and it is a
-      // legacy key — bridge it rather than comparing it to a metal.
-      const label = classProperLabel(identityForClassKey(result.classKey).cls);
-      // Full reload so every surface reads the new class from a fresh server
+      await apiClaimInviteCode(supabase, { code: digits });
+      // Full reload so every surface reads the new account from a fresh server
       // seed, the same thing the Instagram claim does on success.
-      window.location.href = `${CONSUMER_ROUTES.me}?invite=${encodeURIComponent(label)}`;
+      window.location.href = `${CONSUMER_ROUTES.me}?invite=1`;
     } catch (e) {
       setError(errMsg(e, "That PIN didn't work."));
       setClaiming(false);
@@ -66,7 +69,7 @@ export function InvitePinModal() {
           <KeyRound className="h-5 w-5" aria-hidden />
         </span>
         <p className="text-muted-foreground text-xs">
-          Ten digits. It names your class outright.
+          Ten digits. It makes you Diamond.
         </p>
       </div>
 

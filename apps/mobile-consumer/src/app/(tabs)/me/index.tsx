@@ -13,6 +13,8 @@ import {
   Users,
   Wallet as WalletIcon,
   Crown,
+  Gem,
+  AtSign,
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
@@ -28,8 +30,8 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { apiFetchConsumerMetrics } from '@/lib/api/auth';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
-import { CLASSES } from '@/lib/consumer-classes';
-import { useEffectiveClass } from '@/lib/mock-class';
+import { diamondSummary, instagramSummary } from '@/lib/consumer-identity';
+import { useEffectiveFacts } from '@/lib/mock-class';
 import {
   ageFromBirthday,
   formatPhoneDisplay,
@@ -37,13 +39,20 @@ import {
 } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same seven pairs
-// as web (MESITA-1787 moved Instagram/Class into Passport + header). Parked
-// cells stay Soon. No Stripe checkout (Apple review).
+// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same EIGHT pairs as
+// web. Parked cells stay Soon. No Stripe checkout (Apple review).
+//
+// INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add instagram and
+// then diamond"). Read the history before assuming this is a revert: the pair
+// was cells (MESITA-1650), then header only (MESITA-1652), then cells again
+// (MESITA-1682), then Passport rows (MESITA-1787) — and every round was about
+// where ONE AXIS lives, with "the hero already says the rung" as the argument
+// against a cell. There is no rung. These are two unrelated destinations, and
+// the ORDER is load-bearing: Instagram first, here and on the hero.
 
 export default function MeHub() {
   const { profile, consumerClass, stats } = useAuth();
-  const effective = useEffectiveClass(
+  const facts = useEffectiveFacts(
     consumerClass,
     profile?.instagram_handle ?? null,
   );
@@ -57,10 +66,18 @@ export default function MeHub() {
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
 
-  const classLabel =
-    CLASSES.find((c) => c.id === effective.key)?.label ?? 'Bronze';
-  const handle = effective.handle ?? profile?.instagram_handle ?? null;
-  const igConnected = effective.origin === 'instagram' || Boolean(handle);
+  // The auth provider seeds the class row and the profile separately, so the
+  // handle can arrive from either. The facts win when they have one; the
+  // profile row covers the cold load.
+  const igFacts = facts.igHandle
+    ? facts
+    : {
+        ...facts,
+        igHandle: profile?.instagram_handle ?? null,
+        igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
+      };
+  const igLabel = instagramSummary(igFacts);
+  const diamondLabel = diamondSummary(facts);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,17 +114,17 @@ export default function MeHub() {
             <IdentityHeroSkeleton />
           ) : (
             <IdentityHero
-              classKey={effective.key}
               name={name}
               sexLabel={sexLabel}
               age={age}
               phone={formatPhoneDisplay(profile?.phone)}
               phoneRaw={profile?.phone}
               avatarUrl={profile?.avatar_url}
-              igConnected={igConnected}
-              handle={handle}
-              followers={effective.followers}
-              classLabel={classLabel}
+              igConnected={igFacts.igConnected}
+              handle={igFacts.igHandle}
+              followers={igFacts.igFollowers}
+              diamond={facts.diamond}
+              diamondLabel={diamondLabel}
               savedCents={savedCents}
               visits={visits ?? stats?.visits ?? null}
             />
@@ -125,8 +142,26 @@ export default function MeHub() {
             <DestTile
               Icon={IdCard}
               title="Passport"
-              summary="Class and Instagram"
+              summary="Member number and details"
               href={pages.passport}
+            />
+          </DestGrid>
+          <DestGrid>
+            {/* `AtSign`, not `Instagram`: lucide-react-native does not ship
+                the brand glyph web uses, and `DestTile` takes a LucideIcon.
+                It is the same stand-in MockControls and VerifySocialSheet
+                already use for this platform. */}
+            <DestTile
+              Icon={AtSign}
+              title="Instagram"
+              summary={igLabel}
+              href={pages.instagram}
+            />
+            <DestTile
+              Icon={Gem}
+              title="Diamond"
+              summary={diamondLabel}
+              href={pages.diamond}
             />
           </DestGrid>
           <DestGrid>

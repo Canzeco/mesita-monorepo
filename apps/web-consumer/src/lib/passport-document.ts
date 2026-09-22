@@ -29,7 +29,7 @@ export const MRZ_DOCUMENT_CODE = "PM";
 export const MRZ_ISSUING_STATE = "MTA";
 /** The name field on line 1: 44 minus `PM` minus `MTA`. */
 const MRZ_NAME_LENGTH = MRZ_LINE_LENGTH - 5;
-/** Line 2's optional-data field, which carries the class metal. */
+/** Line 2's optional-data field, which carries the guest's standing. */
 const MRZ_OPTIONAL_LENGTH = 14;
 
 export type PassportDocumentInput = {
@@ -45,17 +45,19 @@ export type PassportDocumentInput = {
    *  (see COUNTRIES.iso3). Passed in rather than derived here so this module
    *  stays free of the country table and of `phoneCountry`'s platform copy. */
   nationality?: string | null;
-  /** The class metal the card's own band is printing — "Bronze" | "Silver" |
-   *  "Gold" | "Diamond", or null when the class failed to load.
+  /** The standing the card's own band is printing — "DIAMOND" when the guest
+   *  holds an invitation, "MEMBER" when they do not, or null when the account
+   *  failed to load.
    *
-   *  WHY THE LABEL AND NOT THE KEY (decision, MESITA-1820): web speaks the
-   *  metals (bronze/silver/gold/diamond) and mobile still speaks the legacy
-   *  keys (standard/influencer/premium/aura), and the two bridge tables do
-   *  NOT agree on `premium` — web's LEGACY_CLASS_IDENTITY maps it to bronze,
-   *  mobile's CLASSES labels it Gold. Encoding the key would make the MRZ
-   *  contradict the band printed two centimetres above it on the same card.
-   *  Encoding the label the card already renders makes that impossible. */
-  classLabel?: string | null;
+   *  IT WAS `classLabel` AND IT CARRIED A METAL (MESITA-1820 -> MESITA-2040).
+   *  The old field encoded the LABEL rather than the class key on the stated
+   *  ground that web and mobile disagreed about which metal a legacy key
+   *  meant, so encoding the key would have made the MRZ contradict the band
+   *  printed two centimetres above it. The reasoning survives the rename: this
+   *  still encodes what the card RENDERS, not what the database stores — and
+   *  with one fact left to render, the two platforms can no longer disagree
+   *  about it at all. */
+  standing?: string | null;
 };
 
 /**
@@ -144,7 +146,7 @@ export function buildMrz(input: PassportDocumentInput): [string, string] {
   const sex = mrzSex(input.sex);
   const expiry = MRZ_FILLER.repeat(6);
   const expiryCheck = MRZ_FILLER;
-  const optional = mrzPad(input.classLabel, MRZ_OPTIONAL_LENGTH);
+  const optional = mrzPad(input.standing, MRZ_OPTIONAL_LENGTH);
   const optionalCheck = mrzCheckDigit(optional);
 
   const composite = mrzCheckDigit(

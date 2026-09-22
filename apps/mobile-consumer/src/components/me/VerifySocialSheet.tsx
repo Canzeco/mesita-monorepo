@@ -9,18 +9,22 @@ import { Switch } from '@/components/ui/Switch';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENTS } from '@/constants/brand';
 import { apiClaimInstagram } from '@/lib/api/auth';
-import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
+import { INSTAGRAM_REACH_FOLLOWERS } from '@/lib/consumer-identity';
 import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
-import { useMockClass } from '@/lib/mock-class';
+import { useMockFacts } from '@/lib/mock-class';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 const VERIFICATION_CODE_LENGTH = 8;
 
+// IT GRANTS NO CLASS ANY MORE (Pato, MESITA-2040: "instagram is just 1000
+// followers"). Both lines used to end on a rung. Crossing the bar makes an
+// account VERIFIED; Story Bonus rides a connected HANDLE and always has
+// (MESITA-909), bar or no bar. Kept in lockstep with web's InstagramModal.
 const WHY_LINES = [
-  `Your class updates automatically — ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString('en-US')}+ followers puts you on Influencer, free, and a better class means better Rewards.`,
-  `Post Stories on your visits for even better Rewards.`,
+  `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
+  `Post a tagged Story on your visits for extra Rewards, whatever your count.`,
 ];
 
 type Props = {
@@ -31,12 +35,12 @@ type Props = {
 
 export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) {
   const { refreshProfile } = useAuth();
-  const [override, setMockClass] = useMockClass();
+  const [mock, setMock] = useMockFacts();
   const [handle, setHandle] = useState('');
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
 
-  const previewConnected = override === 'influencer';
+  const previewConnected = mock?.instagram ?? false;
 
   const canVerify =
     HANDLE_RE.test(handle.trim()) &&
@@ -47,16 +51,15 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
     if (!canVerify) return;
     setVerifying(true);
     try {
-      const result = await apiClaimInstagram({
+      await apiClaimInstagram({
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, '').toLowerCase(),
       });
       await refreshProfile();
-      const message =
-        result.tier === 'influencer'
-          ? 'Connected — Rewards unlocked.\nYour class updated.'
-          : 'Connected — Rewards unlocked.';
-      Alert.alert('Connected', message);
+      // The class the server echoed back is no longer what changed: a
+      // connected handle is a new fact whatever the follower count, so the
+      // message no longer branches on `result.tier` (MESITA-2040).
+      Alert.alert('Connected', 'Instagram connected.');
       setHandle('');
       setCode('');
       onClose();
@@ -76,7 +79,7 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
       onClose={onClose}
       asRoute={asRoute}
       title="Instagram"
-      subtitle="Connect Instagram for better Rewards."
+      subtitle={`${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers verifies you. Stories earn extra Rewards.`}
     >
       <LinearGradient
         colors={[...GRADIENTS.instagram]}
@@ -135,7 +138,7 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
           </Text>
           <Switch
             value={previewConnected}
-            onValueChange={(on) => setMockClass(on ? 'influencer' : null)}
+            onValueChange={(on) => setMock({ instagram: on })}
             accessibilityLabel="Preview connected Instagram"
           />
         </View>

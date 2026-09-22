@@ -232,16 +232,26 @@ export const CONSUMER_ROUTES = {
   // already made for Buy/Gift/Redeem (isModalContractPath stays place +
   // reservation detail only).
   me: "/me",
-  // Every live DestTile on /me, and every door inside Passport / Class /
+  // Every live DestTile on /me, and every door inside Passport / Diamond /
   // Settings. Hub stays `/me`. These are real pages under (shell)/me/<box>.
-  // /me/class, /me/settings and /me/plan used to 308 onto the hub (MESITA-188);
-  // they are canonical again, not legacy.
+  // /me/settings and /me/plan used to 308 onto the hub (MESITA-188); they are
+  // canonical again, not legacy. /me/class went the other way (MESITA-2040) —
+  // canonical, then retired to the legacy block below.
   mePages: {
     passport: "/me/passport",
     profile: "/me/profile",
-    class: "/me/class",
-    classInvite: "/me/class/invite",
+    // THE TWO FACTS, AT TWO ADDRESSES (Pato, MESITA-2040: "separate instagram
+    // and diamond… those are independent"). `/me/class` was ONE page holding
+    // a ladder with two doors on it; there is no ladder, so there is no page
+    // for one. Instagram leads because it is the door anyone can walk
+    // through; Diamond follows because it is the one that has to be opened
+    // for you.
     instagram: "/me/instagram",
+    diamond: "/me/diamond",
+    // The 10-digit PIN. It nests under Diamond rather than sitting beside it
+    // because a PIN grants exactly one thing now — it used to NAME a class,
+    // any class, which is why it lived on the ladder's page.
+    diamondInvite: "/me/diamond/invite",
     plan: "/me/plan",
     settings: "/me/settings",
     settingsMetrics: "/me/settings/metrics",
@@ -253,6 +263,16 @@ export const CONSUMER_ROUTES = {
   },
   legacy: {
     profile: "/profile",
+    // The class ladder's two pages (MESITA-188 -> MESITA-2040). Both were
+    // canonical and both shipped, so the bookmarks are real. `/me/class`
+    // forwards to Diamond rather than to Instagram: the ladder's own CTA
+    // order put Instagram first, but the page a guest bookmarked as "my
+    // class" was the one telling them which rung they held, and the only
+    // rung left is Diamond. The invite PIN forwards straight to its new
+    // address — never through /me/diamond, which would be the 2-hop chain
+    // route-structure T4 caps.
+    meClass: "/me/class",
+    meClassInvite: "/me/class/invite",
     // Premium checkout was a page until the plan became a sheet on Me
     // (MESITA-1129). Kept as a redirect, not deleted: this was the live URL,
     // and it is the one an external link-out would still carry. If iOS ever

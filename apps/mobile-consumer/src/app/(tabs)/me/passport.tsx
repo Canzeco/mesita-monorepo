@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Copy } from 'lucide-react-native';
+import { ChevronRight, Copy, Gem } from 'lucide-react-native';
 import { Platform, Pressable, Share, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 
@@ -10,9 +10,14 @@ import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { COUNTRIES } from '@/lib/countries';
-import { CLASSES, CLASS_ICONS } from '@/lib/consumer-classes';
+import {
+  diamondNote,
+  diamondSummary,
+  instagramNote,
+  instagramSummary,
+} from '@/lib/consumer-identity';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
-import { useEffectiveClass } from '@/lib/mock-class';
+import { useEffectiveFacts } from '@/lib/mock-class';
 import {
   buildMrz,
   completionLine,
@@ -40,20 +45,18 @@ import { useAuth } from '@/providers/auth';
 // ladder, invite PIN, and connect form stay there. No Profile row (Me › Profile
 // is the editor). No Plan (MESITA-1619). No privacy (MESITA-1688).
 //
-// Colour means class: metal on the band, the portrait frame, the guilloche and
-// the Class 44px glyph. Instagram's brand gradient stays inside its glyph,
-// never a full-width pink field. Copy is origin-aware — Class is the perk;
-// climb doors are named only while the guest can still climb (MESITA-1819).
-// Do not tell a Diamond guest to climb.
-
-const CLASS_FLOOR = CLASSES[0];
-const CLASS_CEILING = CLASSES[CLASSES.length - 1];
-const REACH_CANDIDATES = CLASSES.filter((c) => c.followerThreshold > 0);
-const REACH_ENTRY = REACH_CANDIDATES.reduce(
-  (lowest, c) =>
-    c.followerThreshold < lowest.followerThreshold ? c : lowest,
-  REACH_CANDIDATES[0] ?? CLASSES[0],
-);
+// ONE METAL LEFT, AND IT MEANS ONE THING (MESITA-2040). Colour used to mean
+// the class — a metal on the band, the portrait frame, the guilloche and the
+// Class glyph, picked from a four-way switch. There is no ladder, so all four
+// carry DIAMOND and a guest without an invitation gets the neutral document.
+// Instagram's brand gradient stays inside its own glyph, never a full-width
+// pink field.
+//
+// THE LADDER'S FLOOR, CEILING AND REACH RUNG LIVED HERE. They existed so the
+// door captions could say "you are at the bottom / the top / this bar lifts
+// you to that rung" without naming a metal by hand. Two independent facts have
+// no floor and no ceiling; each caption states its own fact, and both live in
+// `consumer-identity.ts` beside their web twins.
 
 /** The MRZ's face. Neither app loads a monospace family, so each platform
  *  borrows the one its OS already ships — web takes Tailwind's `font-mono`
@@ -68,64 +71,15 @@ const MRZ_FONT = Platform.select({
   default: 'monospace',
 });
 
-/** Guest-facing captions — keep in lockstep with web `passportDoorCaptions`
- *  (MESITA-1819). Class is the perk. Climb doors only while the guest can
- *  still climb. Instagram is the next Instagram action. */
-function passportDoorCaptions(input: {
-  onFloor: boolean;
-  atCeiling: boolean;
-  igConnected: boolean;
-  followersLabel: string;
-  reachFollowers: number;
-  reachLabel: string;
-}): { classNote: string; igNote: string } {
-  const classNote = (() => {
-    if (input.atCeiling) return 'Highest discount at every table.';
-    if (!input.igConnected) {
-      return input.onFloor
-        ? 'Starting discount. Climb with Instagram or an invite.'
-        : 'Higher discount. Climb with Instagram or an invite.';
-    }
-    return input.onFloor
-      ? 'Starting discount at every table.'
-      : 'Higher discount at every table.';
-  })();
-
-  const igNote = input.igConnected
-    ? input.followersLabel
-    : input.atCeiling
-      ? 'Connect to share Stories and earn extra Rewards.'
-      : `${input.reachFollowers.toLocaleString('en-US')}+ followers lifts you to ${input.reachLabel}`;
-
-  return { classNote, igNote };
-}
-
-function classBadgeColors(classKey: string): readonly [string, string] {
-  if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
-  if (classKey === 'influencer') return ['#fecaca', '#ef4444'] as const;
-  if (classKey === 'premium') return ['#bfdbfe', '#2563eb'] as const;
-  return ['#e5e7eb', '#9ca3af'] as const;
-}
-
-function classBadgeIconColor(classKey: string): string {
-  if (classKey === 'aura') return '#78350f';
-  if (classKey === 'influencer') return '#7f1d1d';
-  if (classKey === 'premium') return '#1e3a8a';
-  return '#171717';
-}
-
-function classWash(classKey: string): readonly [string, string] {
-  if (classKey === 'aura') {
-    return ['rgba(245,204,88,0.18)', 'rgba(235,136,31,0.10)'] as const;
-  }
-  if (classKey === 'influencer') {
-    return ['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const;
-  }
-  if (classKey === 'premium') {
-    return ['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const;
-  }
-  return ['rgba(156,163,175,0.16)', 'rgba(156,163,175,0.06)'] as const;
-}
+/** Diamond's colours, and the only conditional colour on this document. The
+ *  three helpers that stood here each switched on four rungs (amber aura, red
+ *  influencer, blue premium, grey floor); one fact needs one pair. */
+const DIAMOND_BADGE = ['#bfdbfe', '#2563eb'] as const;
+const PLAIN_BADGE = ['#e5e7eb', '#9ca3af'] as const;
+const DIAMOND_INK = '#1e3a8a';
+const PLAIN_INK = '#171717';
+const DIAMOND_WASH = ['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const;
+const PLAIN_WASH = ['rgba(156,163,175,0.16)', 'rgba(156,163,175,0.06)'] as const;
 
 function phoneCountry(phone: string | null | undefined) {
   if (!phone) return null;
@@ -221,18 +175,21 @@ function Row({
 export default function PassportPage() {
   const router = useRouter();
   const { profile, consumerClass } = useAuth();
-  const effective = useEffectiveClass(
+  const facts = useEffectiveFacts(
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const classLabel =
-    CLASSES.find((c) => c.id === effective.key)?.label ?? CLASS_FLOOR.label;
-  const ClassIcon = CLASS_ICONS[effective.key];
-  const handle = effective.handle ?? profile?.instagram_handle ?? null;
-  const igConnected = effective.origin === 'instagram' || Boolean(handle);
+  const igFacts = facts.igHandle
+    ? facts
+    : {
+        ...facts,
+        igHandle: profile?.instagram_handle ?? null,
+        igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
+      };
+  const diamond = facts.diamond;
+  const badge = diamond ? DIAMOND_BADGE : PLAIN_BADGE;
+  const badgeInk = diamond ? DIAMOND_INK : PLAIN_INK;
   const code = profile?.code ?? null;
-  const atCeiling = effective.key === CLASS_CEILING.id;
-  const onFloor = effective.key === CLASS_FLOOR.id;
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
@@ -252,32 +209,22 @@ export default function PassportPage() {
     birthday: profile?.birthday ?? null,
     sex: profile?.sex ?? null,
     nationality: country?.iso3 ?? null,
-    // The LABEL the band is printing, not the class key: mobile still speaks
-    // the legacy keys and web speaks the metals, and encoding the key would
-    // make the MRZ contradict the band two centimetres above it.
-    classLabel,
+    // What the band is PRINTING, not what the database stores. `DIAMOND` or
+    // `MEMBER`, never a blank: the strip is fixed-width and a filler run there
+    // would read as a field the document declined to print.
+    standing: diamond ? 'DIAMOND' : 'MEMBER',
   };
   const { fields, missing } = passportFields(dataPage);
   const [mrzLine1, mrzLine2] = buildMrz(dataPage);
   const completion = completionLine(missing.length);
   const byId = (id: string) => fields.find((f) => f.id === id)?.value ?? null;
 
-  const { classNote, igNote } = passportDoorCaptions({
-    onFloor,
-    atCeiling,
-    igConnected,
-    followersLabel: `${formatCompactCount(effective.followers)} followers`,
-    reachFollowers: REACH_ENTRY.followerThreshold,
-    reachLabel: REACH_ENTRY.label,
-  });
-
-  const igHeadline = igConnected
-    ? handle
-      ? `@${handle}`
-      : 'Connected'
-    : atCeiling
-      ? 'Not connected'
-      : 'Connect it';
+  const igHeadline = instagramSummary(igFacts);
+  const igNote = instagramNote(
+    igFacts,
+    `${formatCompactCount(igFacts.igFollowers)} followers`,
+  );
+  const diamondHeadline = diamondSummary(facts);
 
   async function copyCode() {
     if (!code) return;
@@ -298,7 +245,7 @@ export default function PassportPage() {
       <View className="gap-3.5">
         <View className="overflow-hidden rounded-2xl border border-border bg-card">
           <LinearGradient
-            colors={[...classWash(effective.key)]}
+            colors={diamond ? [...DIAMOND_WASH] : [...PLAIN_WASH]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{
@@ -314,7 +261,7 @@ export default function PassportPage() {
               naming the metal there spends the colour budget on the one
               surface licensed to hold it, and cannot be read as a button. */}
           <LinearGradient
-            colors={[...classBadgeColors(effective.key)]}
+            colors={[...badge]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{
@@ -330,7 +277,7 @@ export default function PassportPage() {
               style={{
                 fontSize: 12,
                 letterSpacing: 1.68,
-                color: classBadgeIconColor(effective.key),
+                color: badgeInk,
               }}
             >
               Mesita
@@ -340,20 +287,20 @@ export default function PassportPage() {
               style={{
                 fontSize: 10,
                 letterSpacing: 1.2,
-                color: classBadgeIconColor(effective.key),
+                color: badgeInk,
               }}
             >
-              {classLabel}
+              {diamond ? 'Diamond' : 'Member'}
             </Text>
           </LinearGradient>
 
           <View className="p-4">
-            <Guilloche color={classBadgeColors(effective.key)[1]} />
+            <Guilloche color={badge[1]} />
 
             <View className="flex-row gap-4">
               {/* 35:45 — the ratio a passport photo actually is. */}
               <LinearGradient
-                colors={[...classBadgeColors(effective.key)]}
+                colors={[...badge]}
                 start={GRADIENT_DIAGONAL.start}
                 end={GRADIENT_DIAGONAL.end}
                 style={{ borderRadius: 6, padding: 2.5 }}
@@ -474,48 +421,8 @@ export default function PassportPage() {
           </View>
         </View>
 
-        <Pressable
-          onPress={() => router.push(CONSUMER_ROUTES.mePages.class)}
-          accessibilityRole="link"
-          accessibilityLabel={`Class: ${classLabel}`}
-          className="min-h-[72px] flex-row items-center gap-3 rounded-2xl border border-border bg-card p-3.5 active:scale-[0.99]"
-        >
-          <LinearGradient
-            colors={[...classBadgeColors(effective.key)]}
-            start={GRADIENT_DIAGONAL.start}
-            end={GRADIENT_DIAGONAL.end}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ClassIcon color={classBadgeIconColor(effective.key)} size={20} />
-          </LinearGradient>
-          <View className="min-w-0 flex-1">
-            <Text
-              className="font-bold uppercase text-muted-foreground"
-              style={{ fontSize: 10, letterSpacing: 1.2 }}
-            >
-              Class
-            </Text>
-            <View className="mt-0.5 self-start rounded-full px-2.5 py-0.5" style={{ backgroundColor: classBadgeColors(effective.key)[0] }}>
-              <Text
-                className="text-sm font-bold"
-                style={{ color: classBadgeIconColor(effective.key) }}
-              >
-                {classLabel}
-              </Text>
-            </View>
-            <Text className="mt-0.5 text-xs leading-snug text-muted-foreground">
-              {classNote}
-            </Text>
-          </View>
-          <ChevronRight color={COLORS.mutedForeground} size={16} />
-        </Pressable>
-
+        {/* INSTAGRAM FIRST, THEN DIAMOND — the order Pato named the two facts
+            (MESITA-2040), matching the Me grid and the identity hero. */}
         <Pressable
           onPress={() => router.push(CONSUMER_ROUTES.mePages.instagram)}
           accessibilityRole="link"
@@ -555,6 +462,46 @@ export default function PassportPage() {
           </View>
           <ChevronRight color={COLORS.mutedForeground} size={16} />
         </Pressable>
+        <Pressable
+          onPress={() => router.push(CONSUMER_ROUTES.mePages.diamond)}
+          accessibilityRole="link"
+          accessibilityLabel={`Diamond: ${diamondHeadline}`}
+          className="min-h-[72px] flex-row items-center gap-3 rounded-2xl border border-border bg-card p-3.5 active:scale-[0.99]"
+        >
+          <LinearGradient
+            colors={[...badge]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Gem color={badgeInk} size={20} />
+          </LinearGradient>
+          <View className="min-w-0 flex-1">
+            <Text
+              className="font-bold uppercase text-muted-foreground"
+              style={{ fontSize: 10, letterSpacing: 1.2 }}
+            >
+              Diamond
+            </Text>
+            <Text
+              className="mt-0.5 text-sm font-bold text-foreground"
+              numberOfLines={1}
+            >
+              {diamondHeadline}
+            </Text>
+            <Text className="mt-0.5 text-xs leading-snug text-muted-foreground">
+              {diamondNote(facts)}
+            </Text>
+          </View>
+          <ChevronRight color={COLORS.mutedForeground} size={16} />
+        </Pressable>
+
       </View>
     </FullScreenSheet>
   );

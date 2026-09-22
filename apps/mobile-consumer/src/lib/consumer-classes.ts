@@ -60,12 +60,13 @@ export const CLASSES: {
   },
 ];
 
-// The Influencer follower bar — mirrors classes.follower_threshold in the DB
-// (the gate consumer-web-claim-instagram grants off). Story Bonus is gated
-// on a connected handle (MESITA-909), not this threshold.
-export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
-  (c) => c.id === 'influencer',
-)!.followerThreshold;
+// `INFLUENCER_FOLLOWER_THRESHOLD` LIVED HERE AND IS GONE (MESITA-2040). It
+// carried 2,000 while web's ladder carried 1,000, both claiming to mirror
+// `classes.follower_threshold`, and nothing on either side compared them — the
+// drift guard was a comment. The bar is `INSTAGRAM_REACH_FOLLOWERS` in
+// consumer-identity.ts now, 1,000 on both platforms, and it grants no class at
+// all: it makes an account VERIFIED. Story Bonus still rides a connected
+// handle (MESITA-909), never the bar.
 
 // Canonical class icon set (MESITA-929): Smile gray · Megaphone red ·
 // CreditCard blue · Crown yellow. Mirrors web CLASS_ICONS.
