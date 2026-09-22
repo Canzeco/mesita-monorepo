@@ -3,11 +3,18 @@
 import { DemoBox, DemoSwitch } from "@/components/consumer/me/demo/DemoBox";
 import { setMockAccount, useMockAccount } from "@/lib/class-context";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
+import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
 
 // The Instagram axis of the emulator — a connected account with a follower
-// count, which is what actually decides the class the ladder shows. Its switch
-// rides the DemoBox header row because "connected or not" is a state, not a
-// choice between named rungs; the count only exists once it is on.
+// count. Its switch rides the DemoBox header row because "connected or not" is
+// a state, not a choice between named options; the count only exists once it
+// is on.
+//
+// IT DECIDES NOTHING BUT ITSELF (MESITA-2040). This box used to be the control
+// that "actually decides the class the ladder shows" — connecting at or over
+// the bar rewrote the guest's rung. Instagram grants no class now; crossing
+// INSTAGRAM_REACH_FOLLOWERS makes the account VERIFIED and nothing else, so
+// this emulator and DiamondEmulator can both be on without either winning.
 
 export function InstagramEmulator() {
   const mock = useMockAccount();
@@ -50,7 +57,7 @@ export function InstagramEmulator() {
             className="border-border bg-muted/30 h-8 w-24 rounded-lg border px-2.5 text-right text-xs font-semibold outline-none"
           />
           <span className="text-muted-foreground type-meta ml-auto">
-            Class preview uses this
+            {followers >= INSTAGRAM_REACH_FOLLOWERS ? "Verified" : "Under the bar"}
           </span>
         </div>
       )}

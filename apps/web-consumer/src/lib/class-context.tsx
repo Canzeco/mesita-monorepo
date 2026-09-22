@@ -13,13 +13,14 @@ import {
   DEMO_INSTAGRAM_HANDLE,
 } from "@/lib/instagram-demo";
 import {
-  CLASS_ORDER,
-  REACH_ENTRY_CLASS,
-  REACH_ENTRY_FOLLOWERS,
   identityForClassKey,
   type ClassKey,
   type PlanKey,
 } from "@/lib/consumer-data";
+import {
+  INSTAGRAM_REACH_FOLLOWERS,
+  type ConsumerFacts,
+} from "@/lib/consumer-identity";
 
 // Real, server-sourced class for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the Profile Class tab, the
@@ -29,20 +30,21 @@ import {
 // replaces the old hardcoded CURRENT_USER mock that pinned everyone to
 // Premium — key now reflects the real consumers.class_key from the profile EF.
 
-/** The two doors UP THE CLASS LADDER (MESITA-972, re-cut for v2). Bronze is
- *  always open, so only the earned doors are carried — and paying is no longer
- *  one of them: Premium moved to the plan axis, where money belongs. */
-type ClassDoors = {
-  /** Instagram reach at or above the entry bar — the Silver door. */
-  reach: boolean;
-  /** Your class was handed to you directly by Mesita. Not tied to any rung:
-   *  an invitation NAMES a class (the EF's `invitationClassKey`), so it can
-   *  grant Bronze or Diamond alike. */
-  invitation: boolean;
-};
+/** THE DOORS ARE GONE WITH THE LADDER THEY CLIMBED (MESITA-2040). `ClassDoors`
+ *  carried `{ reach, invitation }` — the two ways UP one axis. There is no
+ *  axis now: Instagram and Diamond are two independent facts, each true or
+ *  false on its own, and they live on `ConsumerFacts` in consumer-identity.ts.
+ *
+ *  What was `doors.reach` is `igReach`; what was `doors.invitation` is
+ *  `diamond`. They are not renames of each other — the old pair described HOW
+ *  a rung was granted, this pair describes WHAT the guest holds. */
 
 type ConsumerClassState = {
-  /** Class axis — who you are. Public; shows on the Passport. */
+  /** STORAGE, NOT VOCABULARY (MESITA-2040). `consumers.class_key` still
+   *  prices Rewards — place detail's matrix, the ticket screen and Help all
+   *  read a rung because the engine really applies one. NOTHING ON THE
+   *  IDENTITY SURFACE may name it: Me, the Passport and the two doors read
+   *  `facts` instead. */
   key: ClassKey;
   /** Plan axis — what you pay. Private; never shown to a place. */
   plan: PlanKey;
@@ -56,7 +58,9 @@ type ConsumerClassState = {
    *  consumers.instagram_handle (read off the profile); this carries the
    *  demo handle for the Instagram preview state where no profile exists. */
   handle: string | null;
-  doors: ClassDoors;
+  /** The two guest-facing facts (MESITA-2040). Everything a surface should
+   *  SAY about an account is here; `key`/`origin` below are storage. */
+  facts: ConsumerFacts;
   /** TRUE when the profile read FAILED and this state is the floor fallback
    *  rather than the guest's real class (MESITA design review 2026-08-22).
    *
@@ -84,19 +88,25 @@ const FLOOR_CLASS: ConsumerClassState = {
   renewsAt: null,
   followers: 0,
   handle: null,
-  doors: { reach: false, invitation: false },
+  facts: {
+    diamond: false,
+    igConnected: false,
+    igHandle: null,
+    igFollowers: 0,
+    igReach: false,
+    unknown: false,
+  },
   // The bare default (no provider) is NOT a failed read — it is a tree that
   // never asked. Only the layout's catch sets `unknown`.
   unknown: false,
 };
 
-// Unknown/stale keys render as the floor instead of crashing a Record lookup.
-function isClassKey(value: unknown): value is ClassKey {
-  return (
-    typeof value === "string" &&
-    (CLASS_ORDER as readonly string[]).includes(value)
-  );
-}
+// `isClassKey` LIVED HERE AND IS GONE (MESITA-2040). It guarded the demo
+// blob's `class` field — a four-value enum — so a stale localStorage write
+// naming a retired key degraded to "no override" instead of crashing a Record
+// lookup. The demo blob carries booleans now; there is no key to validate, and
+// `identityForClassKey` below already falls back to the floor for any string
+// the server sends.
 
 function normalize(
   c: ConsumerClass | null | undefined,
@@ -107,6 +117,12 @@ function normalize(
     return {
       ...FLOOR_CLASS,
       handle: instagramHandle,
+      facts: {
+        ...FLOOR_CLASS.facts,
+        igConnected: Boolean(instagramHandle),
+        igHandle: instagramHandle,
+        unknown,
+      },
       unknown,
     };
   }
@@ -140,18 +156,30 @@ function normalize(
         : null,
     followers,
     handle: instagramHandle,
-    // TWO WAYS IN, and only two (decision: Pato, MESITA-1126): follower count,
-    // automatic; or an invitation, manual.
+    // THE TWO FACTS, READ OFF THE STORAGE THAT ALREADY EXISTS (MESITA-2040).
     //
-    // `reach` still reads the server's legacy `influencer` door — that key is
-    // storage, not vocabulary. `invitation` no longer asks "are you Diamond?":
-    // an invitation names ANY class, so the honest question is whether an
-    // invitation is what granted the class you hold. The old `aura` door and
-    // the `cls === "diamond"` fallback both encoded the retired idea that
-    // invitations only ever led to the top rung.
-    doors: {
-      reach: c.doors?.influencer ?? followers >= REACH_ENTRY_FOLLOWERS,
-      invitation: c.origin === "invitation",
+    // DIAMOND IS THE BRIDGED CLASS KEY, not the origin. It was tempting to
+    // ask `origin === "invitation"` — an invitation is the only door — but
+    // the two answer different questions. Origin says HOW the row was last
+    // written, and `admin-web-grant-class` writes Diamond with no origin at
+    // all; the class key says WHAT the guest holds. A hand-granted Diamond
+    // whose origin never got stamped is still a Diamond, and reading origin
+    // would have quietly told them they are not.
+    //
+    // INSTAGRAM IS THE HANDLE PLUS THE BAR, and the two are separate on
+    // purpose. Story Bonus rides a connected handle and always has
+    // (MESITA-909); the 1,000 bar is what makes a guest VERIFIED. Folding
+    // them into one boolean would either promise the bonus to nobody under
+    // the bar or call everyone with a handle verified.
+    facts: {
+      diamond: cls === "diamond",
+      igConnected: Boolean(instagramHandle) || c.origin === "instagram",
+      igHandle: instagramHandle,
+      igFollowers: followers,
+      igReach:
+        (Boolean(instagramHandle) || c.origin === "instagram") &&
+        followers >= INSTAGRAM_REACH_FOLLOWERS,
+      unknown,
     },
   };
 }
@@ -184,32 +212,35 @@ const IdentityContext = createContext<ConsumerIdentity>({
 
 // Demo/design override. The Me-page demo toggles write this JSON blob so
 // every account state is previewable regardless of the real server-seeded
-// class. THREE independent axes now, mirroring the real v2 model:
-//   • class     — forced class ("bronze" down-previews a real elevated
-//                 account; diamond = via invitation, silver/gold = via reach).
-//                 null = real class.
-//   • premium   — the PLAN axis, independent of class. A Bronze guest on
-//                 Premium is a normal, previewable state; under v1 it was
-//                 unrepresentable because paying WAS the class.
-//   • instagram — a connected Instagram (handle + follower reach). Crossing
-//                 REACH_ENTRY_FOLLOWERS grants Silver — exactly like a
-//                 qualifying consumer-web-claim-instagram claim writes it.
+// account. THREE independent booleans now, mirroring the real model
+// (MESITA-2040):
+//   • diamond   — invited, by hand. The only door there is.
+//   • instagram — a connected Instagram (handle + follower count).
+//   • premium   — the PLAN axis, independent of both. A guest who is neither
+//                 Diamond nor on Instagram can still be Premium.
+//
+// THE CLASS AXIS IS GONE FROM HERE, and that is the point: `class` was a
+// four-value enum, so the demo could express "Silver" — a state the product
+// no longer has. Three booleans give eight states and every one of them is
+// real.
+//
 // Purely a client-side dev affordance; absent = the real account. Remove the
 // toggles + this key once the states can be produced with real data.
 //
-// Blobs written by the v1 toggles carry retired keys ("standard", "aura", …);
-// isClassKey rejects them, so a stale blob degrades to "no class override"
-// rather than pinning a preview to a class that no longer exists.
+// Blobs written by the older toggles carry a `class` field instead. It is
+// ignored, EXCEPT that a stored `"diamond"` is honoured — that is the one
+// value of the old enum which still names something true, so a design session
+// parked on Diamond does not silently drop to nothing on reload.
 const MOCK_ACCOUNT_KEY = "mesita:mock-account";
 export type MockAccount = {
-  class: ClassKey | null;
+  diamond: boolean;
   premium: boolean;
   instagram: boolean;
   followers: number;
 };
 
 const MOCK_ACCOUNT_OFF: MockAccount = {
-  class: null,
+  diamond: false,
   premium: false,
   instagram: false,
   followers: DEMO_INSTAGRAM_FOLLOWERS,
@@ -244,18 +275,19 @@ let mockAccountCache: MockAccount | null = null;
 function parseMockAccount(raw: string | null): MockAccount | null {
   if (!raw) return null;
   try {
-    const v = JSON.parse(raw) as Partial<MockAccount>;
-    const cls = isClassKey(v.class) ? v.class : null;
+    const v = JSON.parse(raw) as Partial<MockAccount> & { class?: unknown };
+    // A legacy blob's `class` survives only where it still names a fact.
+    const diamond = v.diamond === true || v.class === "diamond";
     const premium = v.premium === true;
     const instagram = v.instagram === true;
-    if (cls == null && !premium && !instagram) return null; // nothing overridden
+    if (!diamond && !premium && !instagram) return null; // nothing overridden
     const followers =
       typeof v.followers === "number" &&
       Number.isFinite(v.followers) &&
       v.followers >= 0
         ? Math.trunc(v.followers)
         : DEMO_INSTAGRAM_FOLLOWERS;
-    return { class: cls, premium, instagram, followers };
+    return { diamond, premium, instagram, followers };
   } catch {
     return null;
   }
@@ -290,7 +322,7 @@ export function setMockAccount(patch: Partial<MockAccount> | null): void {
       window.localStorage.removeItem(MOCK_ACCOUNT_KEY);
     } else {
       const next = { ...(readMockAccount() ?? MOCK_ACCOUNT_OFF), ...patch };
-      if (next.class == null && !next.premium && !next.instagram) {
+      if (!next.diamond && !next.premium && !next.instagram) {
         window.localStorage.removeItem(MOCK_ACCOUNT_KEY);
       } else {
         window.localStorage.setItem(MOCK_ACCOUNT_KEY, JSON.stringify(next));
@@ -306,68 +338,56 @@ function mockAccountState(
   mock: MockAccount,
   base: ConsumerClassState,
 ): ConsumerClassState {
-  // Instagram reach wins over the class axis (except an explicit Diamond
-  // preview — an invitation outranks the reach door), exactly like a
-  // qualifying consumer-web-claim-instagram claim writes class_key
-  // server-side but never clobbers a higher-ranked invitation class.
-  const igReach =
-    mock.instagram &&
-    mock.followers >= REACH_ENTRY_FOLLOWERS &&
-    mock.class !== "diamond";
+  // THREE BOOLEANS, NO PRECEDENCE (MESITA-2040). The old function had a
+  // ladder to resolve — IG reach granted the entry rung, an explicit Diamond
+  // preview outranked it, a bare `class` override sat underneath — because
+  // both doors wrote the SAME field and one of them had to win. Nothing
+  // competes now: Diamond and Instagram land in different fields, so the
+  // preview is the toggles, verbatim.
+  const igFollowers = mock.instagram ? mock.followers : 0;
+  const igReach = mock.instagram && igFollowers >= INSTAGRAM_REACH_FOLLOWERS;
 
-  let key: ConsumerClassState["key"];
-  let origin: ConsumerClassState["origin"];
-  if (igReach) {
-    // The ENTRY rung, named by the ladder rather than by hand. Deliberately
-    // not "the highest bar this count clears": the EF grants off `classes`,
-    // which has no gold row, so a 5,000-follower claim really does land on
-    // the entry rung server-side. Promoting the preview past it would make
-    // the demo promise a class production cannot grant.
-    key = REACH_ENTRY_CLASS.id;
-    origin = "instagram";
-  } else if (mock.class === "diamond") {
-    // Diamond is previewed through the manual door. Not because Diamond is
-    // special — an invitation can name any class — but because the reach
-    // branch above already covers the automatic route.
-    key = "diamond";
-    origin = "invitation";
-  } else if (mock.class === "silver" || mock.class === "gold") {
-    // A reach preview without the IG axis on — still the reach door.
-    key = mock.class;
-    origin = "instagram";
-  } else if (mock.class === "bronze") {
-    key = "bronze";
-    origin = "default";
-  } else {
-    // No class override — the real class shows through the IG emulation.
-    ({ key, origin } = base);
-  }
+  // `key` and `origin` are STORAGE, and the demo still has to seed them:
+  // place detail, the ticket screen and Help read a rung off them because the
+  // rewards engine really applies one. Diamond maps to the diamond row; every
+  // other previewed account sits on the floor, which is what an account with
+  // no invitation actually holds. An Instagram preview does NOT lift the rung
+  // any more — that was the ladder's doing, and the ladder is gone.
+  const key: ConsumerClassState["key"] = mock.diamond ? "diamond" : "bronze";
+  const origin: ConsumerClassState["origin"] = mock.diamond
+    ? "invitation"
+    : mock.instagram
+      ? "instagram"
+      : "default";
 
-  // The plan axis is mocked INDEPENDENTLY of the class, which is the whole
-  // point of v2: Bronze-on-Premium is a real state, and under v1 it could not
-  // even be expressed because paying was itself the class.
+  // The plan axis is mocked INDEPENDENTLY of both facts. A guest who is
+  // neither Diamond nor on Instagram can still be Premium, and that state has
+  // to be previewable or the Plan surfaces cannot be designed.
   const renews = new Date();
   renews.setMonth(renews.getMonth() + 1);
 
   return {
-    // A previewed class is a KNOWN class — the demo toggle states it outright.
-    // Without this a degraded read would leak into every preview and the
-    // Demo box would be unable to demonstrate the very states it exists for.
+    // A previewed account is a KNOWN account — the toggles state it outright.
+    // Without this a degraded read would leak into every preview and the Demo
+    // box would be unable to demonstrate the very states it exists for.
     unknown: false,
     key,
     plan: mock.premium ? "premium" : "free",
     origin,
     renewsAt: mock.premium ? renews.toISOString() : null,
-    // Mock IG always surfaces the demo profile (@mock / 5k) so the Me card
-    // preview is deterministic (MESITA-935).
+    // Mock IG always surfaces the demo profile (@mock / 5k) so the preview is
+    // deterministic (MESITA-935).
     followers: mock.instagram ? mock.followers : base.followers,
     handle: mock.instagram ? DEMO_INSTAGRAM_HANDLE : base.handle,
-    // Preview doors mirror ONLY the mocked axes so each demo state is
-    // deterministic (a Bronze preview shows every door locked, regardless of
-    // the real account underneath).
-    doors: {
-      reach: igReach || mock.class === "silver" || mock.class === "gold",
-      invitation: origin === "invitation",
+    // The facts mirror ONLY the toggles, so each demo state is deterministic
+    // regardless of the real account underneath.
+    facts: {
+      diamond: mock.diamond,
+      igConnected: mock.instagram,
+      igHandle: mock.instagram ? DEMO_INSTAGRAM_HANDLE : null,
+      igFollowers,
+      igReach,
+      unknown: false,
     },
   };
 }

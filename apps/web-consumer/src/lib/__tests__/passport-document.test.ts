@@ -32,7 +32,7 @@ const ADA = {
   birthday: "1996-03-14",
   sex: "female",
   nationality: "MEX",
-  classLabel: "Gold",
+  standing: "MEMBER",
 };
 
 describe("the MRZ is two real TD3 lines", () => {
@@ -47,10 +47,10 @@ describe("the MRZ is two real TD3 lines", () => {
     // Line 1: PM (document code) + MTA (issuing state) + SURNAME<<GIVEN NAMES.
     // José María Pérez-Gómez folds to JOSE MARIA PEREZ GOMEZ: the accents are
     // stripped, the hyphen and the spaces become fillers.
-    // Line 2: 1234<5678 | 0 | MEX | 960314 | 9 | F | <<<<<< | < | GOLD… | 6 | 0
+    // Line 2: 1234<5678 | 0 | MEX | 960314 | 9 | F | <<<<<< | < | MEMBER… | 4 | 6
     expect(buildMrz(ADA)).toEqual([
       "PMMTAPEREZ<GOMEZ<<JOSE<MARIA<<<<<<<<<<<<<<<<",
-      "1234<56780MEX9603149F<<<<<<<GOLD<<<<<<<<<<60",
+      "1234<56780MEX9603149F<<<<<<<MEMBER<<<<<<<<46",
     ]);
   });
 
@@ -64,7 +64,7 @@ describe("the MRZ is two real TD3 lines", () => {
         birthday: "2001-12-31",
         sex: "male",
         nationality: "USA",
-        classLabel: "Diamond",
+        standing: "DIAMOND",
       }),
     ).toEqual([
       "PMMTALOPEZ<<ANA<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",

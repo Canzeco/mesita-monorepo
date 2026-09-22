@@ -155,6 +155,14 @@ const nextConfig: NextConfig = {
       { source: "/inbox/credits", destination: "/new-visit/wallet", permanent: true },
       { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
       { source: "/profile", destination: "/me/profile", permanent: true },
+      // The class ladder's two pages (MESITA-2040). Deepest source FIRST:
+      // Next takes the first match, and `/me/class` listed above would not
+      // swallow `/me/class/invite` (these are exact, not prefix, sources) —
+      // but the order states the intent and survives someone turning either
+      // into a `:param` form. Each is ONE hop; the invite PIN never chains
+      // through /me/diamond.
+      { source: "/me/class/invite", destination: "/me/diamond/invite", permanent: true },
+      { source: "/me/class", destination: "/me/diamond", permanent: true },
       { source: "/notifications", destination: "/me/notifications", permanent: true },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). Its three sections are
       // pages under /me now (MESITA-1789), and /inbox still 308s onto the hub
