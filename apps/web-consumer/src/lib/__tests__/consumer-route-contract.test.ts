@@ -110,9 +110,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       mePages: {
         passport: "/me/passport",
         profile: "/me/profile",
-        class: "/me/class",
-        classInvite: "/me/class/invite",
         instagram: "/me/instagram",
+        diamond: "/me/diamond",
+        diamondInvite: "/me/diamond/invite",
         plan: "/me/plan",
         settings: "/me/settings",
         settingsMetrics: "/me/settings/metrics",
@@ -124,6 +124,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       },
       legacy: {
         profile: "/profile",
+        // The class ladder's two pages (MESITA-2040). Both were canonical and
+        // both shipped, so the bookmarks are real.
+        meClass: "/me/class",
+        meClassInvite: "/me/class/invite",
         subscribe: "/subscribe/premium",
         invite: "/invite",
         homeAi: "/home/ai",
@@ -314,7 +318,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/me",
     "/me/passport",
     "/me/profile",
-    "/me/class",
+    "/me/diamond",
     "/me/plan",
     "/inbox/mine",
     "/subscribe/premium",
@@ -439,6 +443,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
       { source: "/profile", destination: "/me/profile", permanent: true },
+      // Deepest source first; each is ONE hop, and the invite PIN never
+      // chains through /me/diamond (T4 caps a chain at 2).
+      { source: "/me/class/invite", destination: "/me/diamond/invite", permanent: true },
+      { source: "/me/class", destination: "/me/diamond", permanent: true },
       { source: "/notifications", destination: "/me/notifications", permanent: true },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626) — its sections are
       // sheets on Me and a sheet has no URL, so every remaining /inbox

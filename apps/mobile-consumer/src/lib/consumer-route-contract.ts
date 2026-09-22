@@ -145,9 +145,13 @@ export const CONSUMER_ROUTES = {
   mePages: {
     passport: '/(tabs)/me/passport',
     profile: '/(tabs)/me/profile',
-    class: '/(tabs)/me/class',
-    classInvite: '/(tabs)/me/class/invite',
+    // THE TWO FACTS, AT TWO ADDRESSES (Pato, MESITA-2040). `/me/class` was
+    // ONE page holding a ladder with several doors on it; there is no ladder,
+    // so there is no page for one. Instagram leads because it is the door
+    // anyone can walk through. Mirrors web's contract exactly.
     instagram: '/(tabs)/me/instagram',
+    diamond: '/(tabs)/me/diamond',
+    diamondInvite: '/(tabs)/me/diamond/invite',
     plan: '/(tabs)/me/plan',
     settings: '/(tabs)/me/settings',
     settingsMetrics: '/(tabs)/me/settings/metrics',

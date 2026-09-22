@@ -27,7 +27,9 @@ export default function InvitePage() {
     try {
       await apiClaimInviteCode({ code: cleaned });
       await refreshProfile();
-      toast.success('Invitation redeemed — your class updated.');
+      // The PIN grants one thing now (MESITA-2040); it used to NAME a class,
+      // any class, which is why the toast used to be vague about what changed.
+      toast.success("Invitation redeemed — you're Diamond.");
       router.replace(CONSUMER_ROUTES.me);
     } catch (e) {
       setError(errMsg(e, "That PIN didn't work."));
@@ -41,7 +43,7 @@ export default function InvitePage() {
       asRoute
       onClose={() => router.back()}
       title="Invitation PIN"
-      subtitle="Ten digits. It names your class outright."
+      subtitle="Ten digits. It makes you Diamond."
     >
       <View className="rounded-2xl border border-border bg-card p-4">
         <TextField

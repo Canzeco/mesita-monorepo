@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { BadgeCheck, Instagram } from "lucide-react";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -12,30 +11,37 @@ import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { REACH_ENTRY_CLASS, identityForClassKey } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
+import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
 import { InstagramEmulator } from "@/components/consumer/me/demo/InstagramEmulator";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 // Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
-// Bar AND rung both come off REACH_ENTRY_CLASS, so the sentence can never
-// quote one class’s threshold next to another class’s name. Neither half is
-// written out here — no metal is named in this file, and the ladder
-// (mirroring classes.follower_threshold) stays the only place either lives.
+//
+// IT GRANTS NO CLASS ANY MORE (Pato, MESITA-2040: "instagram is just 1000
+// followers"). Every sentence on this screen used to end on a rung — the bar
+// and the rung both came off `REACH_ENTRY_CLASS` precisely so the copy could
+// not quote one class's threshold next to another class's name, which it had
+// done once (MESITA-1141). There is no rung to quote. The bar is the bar, it
+// lives in `INSTAGRAM_REACH_FOLLOWERS`, and this file names it once.
+//
+// TWO THINGS, STILL SEPARATE. Crossing the bar makes an account VERIFIED;
+// Story Bonus rides a connected HANDLE and always has (MESITA-909), bar or no
+// bar. Folding them would either promise the bonus only above 1,000 or call
+// every connected account verified.
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
 const WHY_LINES = [
-  `Your class updates automatically — ${REACH_ENTRY_CLASS.followerThreshold.toLocaleString("en-US")}+ followers puts you on ${REACH_ENTRY_CLASS.label}, free, and a better class means better Rewards.`,
-  `Post Stories on your visits for even better Rewards.`,
+  `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
+  `Post a tagged Story on your visits for extra Rewards, whatever your count.`,
 ] as const;
 
 export function InstagramModal() {
-  const router = useRouter();
   const supabase = useBrowserSupabase();
-  const { origin } = useConsumerClass();
-  const connected = origin === "instagram";
+  const { facts } = useConsumerClass();
+  const connected = facts.igConnected;
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -56,20 +62,18 @@ export function InstagramModal() {
     if (!canVerify) return;
     setVerifying(true);
     try {
-      const result = await apiClaimInstagram(supabase, {
+      await apiClaimInstagram(supabase, {
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
-      // `tier` echoes the class key the SERVER wrote, which is still a legacy
-      // key — so it goes through the bridge rather than being compared to one
-      // (MESITA-1079). Any class off the floor means the claim granted reach.
-      if (identityForClassKey(result.tier).cls !== "bronze") {
-        window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
-        return;
-      }
-      toast("Connected — Rewards unlocked.");
-      setVerifying(false);
-      router.back();
+      // ALWAYS A FULL RELOAD (MESITA-2040). This used to branch on the `tier`
+      // the server echoed back — a reload when the claim moved the class, a
+      // toast and a `router.back()` when it did not. The class is no longer
+      // what changed: a connected handle is a new fact on every surface that
+      // reads it, whatever the follower count, so every successful claim
+      // re-seeds from the server the same way. The old fast path also left
+      // the header chip stale on a sub-bar connect.
+      window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
     } catch (e) {
       toast(errMsg(e, "Couldn’t verify — try again."));
       setVerifying(false);
@@ -88,7 +92,8 @@ export function InstagramModal() {
           <Instagram className="h-5 w-5" />
         </span>
         <p className="text-muted-foreground text-xs">
-          Connect Instagram for better Rewards.
+          {INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers
+          verifies you. Stories earn extra Rewards.
         </p>
       </div>
 
@@ -241,7 +246,9 @@ function ConnectModule({
 }
 
 function CurrentConnectionCard() {
-  const { handle } = useConsumerClass();
+  const { facts } = useConsumerClass();
+  const handle = facts.igHandle;
+  const verified = facts.igReach;
 
   return (
     <div className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
@@ -257,7 +264,11 @@ function CurrentConnectionCard() {
         <p className="truncate text-sm font-bold tracking-tight">
           {handle ? `@${handle}` : "Instagram connected"}
         </p>
-        <p className="text-muted-foreground text-xs">Rewards unlocked</p>
+        <p className="text-muted-foreground text-xs">
+          {verified
+            ? "Verified · Stories earn extra Rewards"
+            : "Stories earn extra Rewards"}
+        </p>
       </div>
     </div>
   );

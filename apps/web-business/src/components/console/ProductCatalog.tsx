@@ -36,9 +36,15 @@
 //
 // A React component is not serializable across the server/client boundary, so
 // the page hands over plain data keyed by `ProductKey` and this file owns the
-// mark and the tint. That also keeps every product's look in ONE table: eight
-// cards drifting into eight palettes is what a catalogue does if you let each
-// one carry its own colours.
+// mark. That keeps every product's glyph in ONE table: sixteen cards drifting
+// into sixteen palettes is what a catalogue does if you let each one carry its
+// own drawing.
+//
+// THE TINT NO LONGER LIVES HERE (MESITA-2037). It is the product's FAMILY, and
+// a family is shared with the mock console through
+// `shared/product-families.ts` — the one record neither app may keep by hand,
+// because a hue that drifts makes two consoles say two different things about
+// what a product IS.
 //
 // The filter is why this is a client component at all. Three pills, one piece
 // of state, no round trip — and "Not enabled" is the view an operator with a
@@ -47,10 +53,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 // THE ONLY LUCIDE LEFT IS THE STATE CHIP'S (MESITA-1952). Every product mark
-// is an emoji in `LOOK` below; check / dash / lock stay drawn glyphs, because
+// is an emoji in `MARK` below; check / dash / lock stay drawn glyphs, because
 // state is a shape and a shape is what a chip can carry at 12px.
 import { Check, Lock, Minus, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { familyStyle, SOON_PILL, SOON_TILE } from "@/lib/product-families";
 
 // THE EIGHT, IN PATO'S ORDER (2026-09-16): *"Profile · Costumers // Visits ·
 // Orders · Reservations // Rewards · Payments · Credits"*, with the
@@ -112,34 +119,50 @@ export type ProductCard = {
  *
  *  THE STATE CHIP KEEPS ITS LUCIDE GLYPHS. State is a shape, not a hue
  *  (MESITA-1936) — check, dash, lock — and an emoji beside an emoji is two
- *  marks competing to be the card's identity. */
-const LOOK: Record<ProductKey, { mark: string; tint: string }> = {
-  profile: { mark: "\u{1F3EA}", tint: "bg-muted" },
-  website: { mark: "\u{1F310}", tint: "bg-muted" },
-  customers: { mark: "\u{1F465}", tint: "bg-muted" },
-  ads: { mark: "\u{1F4E3}", tint: "bg-muted" },
-  visits: { mark: "\u{1F39F}\u{FE0F}", tint: "bg-muted" },
-  rewards: { mark: "\u{1F381}", tint: "bg-muted" },
-  orders: { mark: "\u{1F6CD}\u{FE0F}", tint: "bg-muted" },
-  reservations: { mark: "\u{1F4C5}", tint: "bg-muted" },
-  pay: { mark: "\u{1F4B3}", tint: "bg-muted" },
+ *  marks competing to be the card's identity.
+ *
+ *  ── THE TINT COLUMN IS GONE, AND THE TINT IS BACK (MESITA-2037) ──────────
+ *
+ *  This record was `{ mark, tint }` and every single `tint` read `bg-muted` —
+ *  sixteen identical values, left standing after MESITA-1936 emptied the
+ *  column of its only job. Pato, 2026-09-21: *"Give every Mesita product a
+ *  background color based on its family."*
+ *
+ *  A TILE'S WASH IS ITS FAMILY'S NOW, and a family is not a property of this
+ *  file. It is `shared/product-families.ts` — one record, generated into both
+ *  consoles — because a hue kept by hand in two apps means two apps making two
+ *  different claims about what a product IS, in colour, with every check
+ *  green. So this record holds the mark and nothing else, which is all it has
+ *  actually held since 1936. */
+const MARK: Record<ProductKey, string> = {
+  profile: "\u{1F3EA}",
+  website: "\u{1F310}",
+  customers: "\u{1F465}",
+  ads: "\u{1F4E3}",
+  // 🎟️ IS THE MERGED CARD'S MARK, and it matches the mock byte for byte
+  // (`product-marks.ts`). Rewards' 🎁 left with its card (MESITA-2035); the
+  // dial keeps its view and has no mark, because a mark is a catalogue thing.
+  visits: "\u{1F39F}\u{FE0F}",
+  orders: "\u{1F6CD}\u{FE0F}",
+  reservations: "\u{1F4C5}",
+  pay: "\u{1F4B3}",
   // ONE MARK PER CARD, THE RULE THE GLYPH TABLE ALREADY LIVED BY. Terminal is
   // the TAP and POS is what was rung up before anybody tapped — 📲 and 🧾,
   // never a second 💳, because one mark on two cards in the same grid is how
   // an operator learns to distrust both drawings.
-  terminal: { mark: "\u{1F4F2}", tint: "bg-muted" },
-  pos: { mark: "\u{1F9FE}", tint: "bg-muted" },
+  terminal: "\u{1F4F2}",
+  pos: "\u{1F9FE}",
   // A COIN, NOT A WALLET: Pay › Wallet is the guest's; credits are a balance
   // the place sold.
-  credits: { mark: "\u{1FA99}", tint: "bg-muted" },
+  credits: "\u{1FA99}",
   // The BANK'S FRONT, the same mark the landing page gives Capital
   // (MESITA-1929).
-  capital: { mark: "\u{1F3E6}", tint: "bg-muted" },
+  capital: "\u{1F3E6}",
   // NOT A HANDSET AND NOT A CHAT BUBBLE (MESITA-1951): either one would make
   // the card look like one channel's product again, which is the whole thing
   // the merge undid. 🤖 is what the name now says out loud.
-  line: { mark: "\u{1F916}", tint: "bg-muted" },
-  intelligence: { mark: "\u{2728}", tint: "bg-muted" },
+  line: "\u{1F916}",
+  intelligence: "\u{2728}",
 };
 /** The state, as the operator reads it. One word where one will do — the
  *  card's own note carries the detail, so the chip never becomes a sentence. */
@@ -301,26 +324,53 @@ export function ProductCatalog({ products }: { products: readonly ProductCard[] 
   );
 }
 
+/** A TILE WEARS ITS FAMILY (MESITA-2037).
+ *
+ *  THREE THINGS CARRY THE HUE. The tile's fill is the family tint, the plate
+ *  behind the mark is that tint one step stronger, and the NAME is the family
+ *  ink. Everything else stays exactly as achromatic as MESITA-1936 left it:
+ *  the blurb, the note, the state chip and the action button.
+ *
+ *  THE NAME TAKES THE INK, NEVER THE BASE HUE. Four of the six families FAIL
+ *  WCAG AA as text on this card — loyalty is 2.48:1 — so the base paints only
+ *  the plate, the wash and the focus ring, where 3:1 is the bar. See
+ *  `shared/product-families.ts`, which carries both numbers and the reasoning.
+ *
+ *  THE STATE CHIP IS STILL A SHAPE (MESITA-1936). Check, dash, lock, dashed —
+ *  and a Soon tile now says so twice over: the dashed border it already drew,
+ *  plus a pill, on a card that is otherwise carrying colour and would read as
+ *  live without one. Soon KEEPS its family tint and steps the whole tile back
+ *  instead, because a colourless tile in a coloured grid reads as "belongs to
+ *  no family" rather than "not built yet". It has no action to click, which is
+ *  what makes it not clickable — there is nothing to disable.
+ *
+ *  HOVER AND FOCUS ARE THE ACTION'S, not the tile's. This is an `li`, and the
+ *  only thing an operator can actually press is the verb at the bottom: it
+ *  takes the family's focus ring, and the TILE takes the stronger tint on
+ *  hover, so the whole card answers a pointer that is aimed at its button. */
 function ProductTile({ product }: { product: ProductCard }) {
-  const { mark, tint } = LOOK[product.key];
+  const mark = MARK[product.key];
+  const family = familyStyle(product.key);
+  const soon = product.state === "soon";
   return (
     <li
       className={cn(
         // Section's geometry (rounded-2xl, border, card) so a product tile and
-        // a console box are visibly the same family. What differs is the LIFT:
+        // a console box are visibly the same shape. What differs is the LIFT:
         // a live product lifts, a Soon one lies flat — the rank-by-depth rule
         // SoonStrip.tsx wrote, applied to a grid.
-        "border-border bg-card flex min-w-0 flex-col gap-3 rounded-2xl border p-4 transition",
-        product.state === "soon"
-          ? "border-dashed"
-          : "shadow-card hover:border-foreground/20",
+        "border-border flex min-w-0 flex-col gap-3 rounded-2xl border p-4 transition",
+        family.tint,
+        soon
+          ? `border-dashed ${SOON_TILE}`
+          : `shadow-card hover:border-foreground/20 ${family.hover}`,
       )}
     >
       <span
         aria-hidden
         className={cn(
           "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-          tint,
+          family.tintStrong,
         )}
       >
         {/* `leading-none` because an emoji's line box is taller than its
@@ -329,7 +379,12 @@ function ProductTile({ product }: { product: ProductCard }) {
       </span>
 
       <div className="flex min-w-0 flex-col gap-1">
-        <h3 className="font-display text-sm font-semibold tracking-tight">
+        <h3
+          className={cn(
+            "font-display text-sm font-semibold tracking-tight",
+            family.ink,
+          )}
+        >
           {product.name}
         </h3>
         <p className="text-muted-foreground text-[12px] leading-snug">
@@ -345,7 +400,7 @@ function ProductTile({ product }: { product: ProductCard }) {
           as a difference. `mt-auto` on the action alone puts every button on
           one baseline and lets the chips align with each other. */}
       <div className="flex flex-col gap-2">
-        <StateChip state={product.state} />
+        {soon ? <span className={SOON_PILL}>Soon</span> : <StateChip state={product.state} />}
         {product.note && (
           <p className="text-muted-foreground text-[12px] leading-snug">
             {product.note}
@@ -356,7 +411,13 @@ function ProductTile({ product }: { product: ProductCard }) {
         <Link
           href={product.action.href}
           className={cn(
-            "focus-visible:ring-foreground/30 mt-auto inline-flex h-9 w-full items-center justify-center rounded-xl text-[12px] font-semibold transition outline-none focus-visible:ring-2",
+            "mt-auto inline-flex h-9 w-full items-center justify-center rounded-xl text-[12px] font-semibold transition",
+            // THE RING IS THE FAMILY'S (MESITA-2037). It used to be
+            // `focus-visible:ring-foreground/30`, which is the achromatic
+            // default and is the one thing on this tile a keyboard user
+            // navigates BY — on a grid of sixteen it now says which product
+            // they are standing on, not just that they are standing somewhere.
+            family.focus,
             ON_STATES.includes(product.state)
               ? BRAND_SOFT_ACTION
               : "border-border text-foreground hover:border-foreground/30 border",

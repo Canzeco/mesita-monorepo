@@ -4,7 +4,7 @@
 //
 // ONE PRODUCT SINCE MESITA-1953, AND STILL ONE DIAL. Rewards merged into this
 // card — Pato: *"FOR THE MOMENT I WILL MERGE VISIT & REWARDS"* — so the
-// catalogue names Visit Rewards and the second card is gone.
+// catalogue names Member Visits and the second card is gone.
 //
 // WHAT DID NOT MOVE IS THE STRATEGY. This view carries a DOOR to the dial, not
 // the dial: one product's state settable in two places is how two screens start
@@ -13,40 +13,27 @@
 // only way in — this rail carries no product rows — so without it the dial's
 // address is reachable by typing and by nothing else.
 //
-// ── THE MANAGE HALF SAYS HOW IT IS SET, NOT WHAT IT DOES (MESITA-2016) ─────
+// ── THE MANAGE HALF IS A DOOR, ONE ROW (MESITA-2034) ────────────────────────
 //
-// Pato, on the open pane: *"what to mention or wtf"*, then *"merge"*. Setup →
-// Visit Rewards was 400 words and no setting. The product was explained FIVE
-// times before the operator reached anything they could change: the blurb, the
-// note, the "Visit checkout" description, its paragraph, and "What comes back"
-// twice over — the last three being one sentence at three font sizes. A sixth
-// copy lives in `product-catalog.ts` and a seventh in the grid row.
+// Pato, on the open pane: *"what to mention or wtf"*, then *"merge"*. The
+// product was explained five times before an operator reached anything they
+// could change; the Setup standard's Group grammar cuts that to one Group,
+// one row, one door. A one-row Group is normally banned (§2), but there is
+// nothing else this Setup half owns — the actual dial is `RewardsView.tsx`,
+// reached from here.
 //
-// Docs › Apps already carried the law this violates: when Products became
-// Setup, *"Off says what a product does, On says how it is set"*. Visit
-// Rewards is On here and the pane read like a brochure.
-//
-// SO THE FOUR SURFACES STOP OVERLAPPING. The grid row's `blurb` is one
-// sentence to tell this product from its neighbour; `PRODUCT_CATALOG_COPY` is
-// the paragraph that sells it, read once while deciding; the Manage half is
-// what you can CHANGE — a control, or one honest door to it; the Activity half
-// is what the product did, and what its own columns mean.
-//
-// Inside a Manage `Section` that splits in two: the `description` says what you
-// can do, the body says the CURRENT STATE. Neither re-explains the product.
-//
-// "Visit checkout" is gone because it failed that test completely — no state,
-// no setting, and an inert *How it works* button for its only affordance. It
-// was catalogue copy that took up residence on an operating screen, where the
-// owner who has run this for six months reads the tutorial every time. Its one
-// load-bearing fact — multi-tender settlement, and what `Paid with` means —
-// MOVED rather than died: it is the Activity half's table description now,
-// beside the column it is about.
+// LOCKED IS GATED BY `ProductPane` NOW (D12A), not here. This view used to be
+// mounted under a Locked header with a live door beneath it, because nothing
+// in this file ever checked `planAtLeast` — `ProductPane` refuses to render
+// this component at all when `card.state === "locked"`, so that bug cannot
+// recur by construction.
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
+import { Group } from "@/components/shared/Group";
 import { Section } from "@/components/shared/Section";
 import { Half } from "@/components/shared/Half";
+import { Rule } from "@/components/shared/Rule";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -58,7 +45,6 @@ import type { MockTender, MockVisit } from "@/mock/types";
 import { placeTabHref } from "@/lib/place-tabs";
 import { dayTime, money } from "@/lib/format";
 import { TENDER_LABEL } from "@/lib/tender";
-import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 const STATE_TONE: Record<MockVisit["state"], "on" | "soon" | "bad"> = {
   settled: "on",
@@ -125,39 +111,25 @@ export function VisitsView() {
         />
       </Half>
       <Half label="Manage">
-        {/* THE DOOR TO THE DIAL (MESITA-1953). Rewards merged into this product
-            in the catalogue, and the card was the only way in — the rail here
-            carries no product rows at all, so without this link
-            `/places/<id>/rewards` is reachable by typing it and by nothing
-            else. That is the same stranding `products/pay` needed a back link
-            for (MESITA-1943).
-
-            A DOOR, NOT THE DIAL ITSELF. The strategy still lives on one screen,
-            because one product's state settable in two places is how two
-            screens start disagreeing about which dial is live — which is the
-            reason this view has carried no rewards box since MESITA-1928. What
-            merged is the CARD; the setting did not move. */}
-        <Section
-          title="What comes back"
-          description="How much of each settled bill goes back to the guest."
-          right={
-            <Link
-              href={placeTabHref(place.id, "rewards")}
-              className={GHOST_PILL_BUTTON_CLASS}
-            >
-              Open Rewards
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-            </Link>
-          }
-          lane
-        >
-          <p className="text-muted-foreground text-[13px] leading-relaxed">
-            Rewards are {place.visitRewards ? "on" : "off"} here.{" "}
-            {place.visitRewards
-              ? "Every settled bill pays out at the rate the strategy sets."
-              : "Bills still close and still land on the record — nothing goes back until a strategy is on."}
-          </p>
-        </Section>
+        {/* THE DOOR TO THE DIAL (MESITA-1953). One row, allowed to be alone —
+            there is nothing else this Setup half owns; the dial itself is
+            RewardsView.tsx, reached from here. */}
+        <Group title="What comes back" allowOneRow>
+          <Rule
+            label={place.visitRewards ? "Rewards are on" : "Rewards are off"}
+            note={
+              place.visitRewards
+                ? "Every settled bill pays out at the rate the strategy sets."
+                : "Bills still close and still land on the record — nothing goes back until a strategy is on."
+            }
+            control={{ kind: "value", text: (
+              <Link href={placeTabHref(place.id, "rewards")} className="inline-flex items-center gap-1.5 font-semibold">
+                Open Rewards
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            ) }}
+          />
+        </Group>
       </Half>
       <Half label="Activity">
         {/* THE COLUMN IS EXPLAINED WHERE IT IS RENDERED (MESITA-2016). This

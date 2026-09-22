@@ -140,7 +140,11 @@
   /* ── RESERVED SIGNALS: the only chroma left on this page ────────────────
      Red is the sole thing that says "this destroys something"; gold is a tier
      the product names out loud (Bronze/Silver/Gold/Diamond); WhatsApp is a
-     third party's own mark. Nothing else may carry a hue. */
+     third party's own mark. Nothing else may carry a hue.
+     — AND SINCE MESITA-2037 there is a fourth: a product's FAMILY, below. It
+     is the first reserved signal that is neither a warning nor a tier, and it
+     is confined to the product listings. The sentence above still holds
+     everywhere else: outside those two screens, nothing carries a hue. */
   --destructive: oklch(0.58 0.24 28);
   --destructive-foreground: var(--paper);
 
@@ -148,6 +152,65 @@
   /* Gold needs an INK as well as a fill, or a badge reaches for a Tailwind
      amber inside a palette that claims to be achromatic. */
   --tier-gold-ink: oklch(0.42 0.11 78);
+
+  /* ── THE PRODUCT FAMILIES: chroma comes back, and only here (MESITA-2037) ─
+     Pato, 2026-09-21: *"Give every Mesita product a background color based on
+     its family."* Six families, six hues, and a product wears its family's.
+
+     THIS IS THE FOURTH RESERVED SIGNAL, and it is the first one that is not a
+     WARNING or a TIER — it is an identity. MESITA-1934 stripped the tints
+     because the accent was 5% of the pixels and the other 95% was tinted
+     neutrals; nothing here touches a neutral. The hue lands on one square, one
+     name and one wash per tile, on the two screens that list products, and
+     nowhere else in either console.
+
+     WHAT IS SAFE TO PAINT WITH, AND WHAT IS NOT. The base hue is Pato's value
+     unaltered and it is NOT TEXT: four of the six fail WCAG AA on this card —
+     loyalty 2.48:1, money 3.18:1, presence 4.11:1, insights 4.15:1. The base
+     paints the mark, the tint and the focus ring, where 3:1 is the bar. The
+     `-ink` is the same hue darkened until it clears 5:1 on `--card`, and it is
+     the ONLY one a product name may use. Same pair as `--tier-gold` /
+     `--tier-gold-ink`, six times over; see shared/product-families.ts, which
+     records both numbers so the stylesheet is not their only home.
+
+     THE TINT IS A MIX, NOT AN ALPHA. `bg-[#E23D69]/11` composites against
+     whatever is behind the tile — the card here, the dock's ink on a rail —
+     so the tint would be a different colour on two surfaces and its contrast
+     unknowable. `color-mix` against `--card` makes it a real value: 11% at
+     rest, 16% on hover, which is the "slightly stronger" step.
+
+     PLANS GET NONE OF THIS. Free, Pro and Ultra are a rung, not a family, and
+     a coloured plan chip beside a coloured product tile is two palettes
+     arguing on one card. The plan tag stays neutral. */
+  --family-presence: #e23d69;
+  --family-presence-ink: #d12a5c;
+  --family-presence-tint: color-mix(in srgb, var(--family-presence) 11%, var(--card));
+  --family-presence-tint-strong: color-mix(in srgb, var(--family-presence) 16%, var(--card));
+
+  --family-operations: #2f6feb;
+  --family-operations-ink: #2968e4;
+  --family-operations-tint: color-mix(in srgb, var(--family-operations) 11%, var(--card));
+  --family-operations-tint-strong: color-mix(in srgb, var(--family-operations) 16%, var(--card));
+
+  --family-money: #22a559;
+  --family-money-ink: #008138;
+  --family-money-tint: color-mix(in srgb, var(--family-money) 11%, var(--card));
+  --family-money-tint-strong: color-mix(in srgb, var(--family-money) 16%, var(--card));
+
+  --family-loyalty: #f08c00;
+  --family-loyalty-ink: #b35400;
+  --family-loyalty-tint: color-mix(in srgb, var(--family-loyalty) 11%, var(--card));
+  --family-loyalty-tint-strong: color-mix(in srgb, var(--family-loyalty) 16%, var(--card));
+
+  --family-automation: #9146e8;
+  --family-automation-ink: #9045e7;
+  --family-automation-tint: color-mix(in srgb, var(--family-automation) 11%, var(--card));
+  --family-automation-tint-strong: color-mix(in srgb, var(--family-automation) 16%, var(--card));
+
+  --family-insights: #0b8a92;
+  --family-insights-ink: #007b84;
+  --family-insights-tint: color-mix(in srgb, var(--family-insights) 11%, var(--card));
+  --family-insights-tint-strong: color-mix(in srgb, var(--family-insights) 16%, var(--card));
 
   /* ── OVERRIDES OF GENERATED TOKENS, AND WHY THIS IS NOT A HAND-EDIT ─────
      `--gradient-pink` and `--gradient-brand` are declared INSIDE the
@@ -283,6 +346,42 @@
   --dock-border: oklch(1 0 0 / 0.12);
   --dock-surface: oklch(1 0 0 / 0.08);
   --dock-surface-hover: oklch(1 0 0 / 0.14);
+
+  /* THE FAMILIES IN DARK (MESITA-2037). Two things move and the BASE HUE does
+     not: it is the product's identity and it must be the same colour in both
+     modes.
+
+     THE TINTS GO UP, 11%/16% → 20%/26%, because the mix is against the dark
+     card now and the same 11% of a hue into #262626 is a step you cannot see.
+     Pato asked for 18–22% here; 20% is the middle of it.
+
+     THE INK FLIPS DIRECTION. Light darkens the hue until it clears 5:1 on
+     white; dark lightens it until it clears 5:1 on the card. Loyalty is the
+     one that needs no move — #F08C00 is already 6.09:1 on this ground, which
+     is the same fact that made it the worst of the six in light.
+
+     THIS BLOCK IS STILL DEAD CODE, exactly as the comment above it says.
+     Nothing applies `.dark` in this app. It is written because the values are
+     the hard part, not the toggle, and a family palette with no dark half is
+     what makes somebody invent one per component the day a toggle lands. */
+  --family-presence-ink: #fe5980;
+  --family-presence-tint: color-mix(in srgb, var(--family-presence) 20%, var(--card));
+  --family-presence-tint-strong: color-mix(in srgb, var(--family-presence) 26%, var(--card));
+  --family-operations-ink: #5093ff;
+  --family-operations-tint: color-mix(in srgb, var(--family-operations) 20%, var(--card));
+  --family-operations-tint-strong: color-mix(in srgb, var(--family-operations) 26%, var(--card));
+  --family-money-ink: #29aa5d;
+  --family-money-tint: color-mix(in srgb, var(--family-money) 20%, var(--card));
+  --family-money-tint-strong: color-mix(in srgb, var(--family-money) 26%, var(--card));
+  --family-loyalty-ink: #f08c00;
+  --family-loyalty-tint: color-mix(in srgb, var(--family-loyalty) 20%, var(--card));
+  --family-loyalty-tint-strong: color-mix(in srgb, var(--family-loyalty) 26%, var(--card));
+  --family-automation-ink: #b973ff;
+  --family-automation-tint: color-mix(in srgb, var(--family-automation) 20%, var(--card));
+  --family-automation-tint-strong: color-mix(in srgb, var(--family-automation) 26%, var(--card));
+  --family-insights-ink: #36a3aa;
+  --family-insights-tint: color-mix(in srgb, var(--family-insights) 20%, var(--card));
+  --family-insights-tint-strong: color-mix(in srgb, var(--family-insights) 26%, var(--card));
 }
 
 @theme inline {
@@ -322,6 +421,34 @@
   --color-ink-hover: var(--ink-hover);
   --color-tier-gold: var(--tier-gold);
   --color-tier-gold-ink: var(--tier-gold-ink);
+  /* The families (MESITA-2037). FOUR NAMES EACH, and every one is spelled out
+     in shared/product-families.ts as a literal class string — Tailwind scans
+     source text, so `bg-family-${f}-tint` resolves to nothing and drops
+     silently. */
+  --color-family-presence: var(--family-presence);
+  --color-family-presence-ink: var(--family-presence-ink);
+  --color-family-presence-tint: var(--family-presence-tint);
+  --color-family-presence-tint-strong: var(--family-presence-tint-strong);
+  --color-family-operations: var(--family-operations);
+  --color-family-operations-ink: var(--family-operations-ink);
+  --color-family-operations-tint: var(--family-operations-tint);
+  --color-family-operations-tint-strong: var(--family-operations-tint-strong);
+  --color-family-money: var(--family-money);
+  --color-family-money-ink: var(--family-money-ink);
+  --color-family-money-tint: var(--family-money-tint);
+  --color-family-money-tint-strong: var(--family-money-tint-strong);
+  --color-family-loyalty: var(--family-loyalty);
+  --color-family-loyalty-ink: var(--family-loyalty-ink);
+  --color-family-loyalty-tint: var(--family-loyalty-tint);
+  --color-family-loyalty-tint-strong: var(--family-loyalty-tint-strong);
+  --color-family-automation: var(--family-automation);
+  --color-family-automation-ink: var(--family-automation-ink);
+  --color-family-automation-tint: var(--family-automation-tint);
+  --color-family-automation-tint-strong: var(--family-automation-tint-strong);
+  --color-family-insights: var(--family-insights);
+  --color-family-insights-ink: var(--family-insights-ink);
+  --color-family-insights-tint: var(--family-insights-tint);
+  --color-family-insights-tint-strong: var(--family-insights-tint-strong);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

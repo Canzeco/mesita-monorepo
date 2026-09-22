@@ -1,27 +1,25 @@
-import { AtSign, Crown } from 'lucide-react-native';
+import { AtSign, Gem } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Switch } from '@/components/ui/Switch';
 import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import {
-  useEffectiveClass,
-  useMockClass,
-} from '@/lib/mock-class';
-import { useAuth } from '@/providers/auth';
+import { useMockFacts } from '@/lib/mock-class';
 
-// Demo-only emulation controls while conversion rows can be previewed without
-// real billing / 1K IG. Mirrors web MockControls.
+// Demo-only emulation controls while the two facts cannot be produced with
+// real data. Mirrors web's DemoBox pair.
+//
+// TWO SWITCHES, NOT A CLASS PICKER (MESITA-2040). The second row used to
+// emulate Mesita Premium, because under the ladder a subscription was a CLASS
+// and so belonged beside Instagram. Paying grants no fact on this surface; the
+// facts are Instagram and Diamond, and both can be on at once because they no
+// longer compete for one slot.
 
 export function MockControls() {
-  const { consumerClass, profile } = useAuth();
-  const { key, origin } = useEffectiveClass(
-    consumerClass,
-    profile?.instagram_handle ?? null,
-  );
-  const [override, setMockClass] = useMockClass();
-  const igOn = origin === 'instagram';
-  const classPremium = key === 'premium';
+  const [mock, setMock] = useMockFacts();
+  const igOn = mock?.instagram ?? false;
+  const diamondOn = mock?.diamond ?? false;
+  const override = mock != null;
 
   return (
     <View
@@ -57,9 +55,9 @@ export function MockControls() {
         </Text>
         {override ? (
           <Pressable
-            onPress={() => setMockClass(null)}
+            onPress={() => setMock(null)}
             accessibilityRole="button"
-            accessibilityLabel="Reset mock class"
+            accessibilityLabel="Reset the demo account"
             hitSlop={8}
           >
             <Text
@@ -79,15 +77,15 @@ export function MockControls() {
       <EmulateRow
         ig
         title="Emulate Instagram"
-        summary="Preview the Influencer (Instagram) profile"
+        summary="Preview a connected account over the bar"
         on={igOn}
-        onToggle={() => setMockClass(igOn ? 'standard' : 'influencer')}
+        onToggle={() => setMock({ instagram: !igOn })}
       />
       <EmulateRow
-        title="Emulate Class"
-        summary="Preview Mesita Premium"
-        on={classPremium}
-        onToggle={() => setMockClass(classPremium ? 'standard' : 'premium')}
+        title="Emulate Diamond"
+        summary="Preview an invitation"
+        on={diamondOn}
+        onToggle={() => setMock({ diamond: !diamondOn })}
       />
     </View>
   );
@@ -147,7 +145,7 @@ function EmulateRow({
             justifyContent: 'center',
           }}
         >
-          <Crown color={COLORS.primaryForeground} size={18} />
+          <Gem color={COLORS.primaryForeground} size={18} />
         </LinearGradient>
       )}
       <View style={{ flex: 1, minWidth: 0 }}>

@@ -82,7 +82,7 @@ import { cn } from "@/lib/utils";
  *  the step below does not have. */
 // `PLAN_RUNGS` AND `rungFor` ARE GONE (MESITA-2009). They were a hand-typed
 // price-and-perk list for two rungs, and they had ALREADY DRIFTED from the
-// array that actually decides entitlement: they sold Visit Rewards and Online
+// array that actually decides entitlement: they sold Member Visits and Online
 // Payments as Pro perks, grouped "Orders and Reservations" into one line that
 // matches no product, and listed "The Partner badge", which is not a product
 // at all.

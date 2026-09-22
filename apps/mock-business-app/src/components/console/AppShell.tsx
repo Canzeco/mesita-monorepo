@@ -164,7 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
               aria-expanded={drawerOpen}
-              className="text-dock-foreground focus-visible:ring-sidebar-ring -ml-1 flex h-11 w-11 items-center justify-center rounded-lg outline-hidden focus-visible:ring-2"
+              className="text-dock-foreground focus-visible:ring-dock-foreground focus-visible:ring-inset -ml-1 flex h-11 w-11 items-center justify-center rounded-lg outline-hidden focus-visible:ring-2"
             >
               <Menu className="h-5 w-5" aria-hidden />
             </button>
@@ -176,10 +176,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* THE ONLY PAGE SCROLLER. */}
           <main className="min-h-0 flex-1 overflow-y-auto">
-            {/* FLUID: no max-width. A full-bleed child cancels SHELL_GUTTER
-                with SHELL_BLEED and only reaches the column edge if nothing
-                caps it. Readability is protected per-element
-                (FORM_COLUMN_CLASS), not by squeezing the console. */}
+            {/* THIS OUTER STACK IS STILL FLUID: no max-width here. A
+                full-bleed child cancels SHELL_GUTTER with SHELL_BLEED and
+                only reaches the column edge if nothing caps it. Setup halves
+                cap their CONTENT at `max-w-3xl` one level down, inside
+                `ProductShell.tsx` (MESITA-2034) — never here, so Activity and
+                every other screen this file renders keep this law
+                unconditionally. Readability elsewhere is protected
+                per-element (FORM_COLUMN_CLASS), not by squeezing the
+                console. */}
             <div
               className={cn(
                 // `min-h-full` SO A SHORT PANE STILL REACHES THE BOTTOM. The

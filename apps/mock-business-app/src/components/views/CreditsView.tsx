@@ -20,25 +20,29 @@
 // confidently wrong, on the one screen where being wrong about a number is a
 // liability. The exposure tiles count what this page can DEFEND.
 //
-// Credits are ORG-scoped in the real product, because Stripe has no account
-// merge; the accepted-issuers list may only ever name a sister in the same
-// organisation, and the fixtures never name anything else.
+// ── SETUP STANDARD (MESITA-2034) ────────────────────────────────────────────
+//
+// `ProductPane` gates Locked upstream (D12A); this file no longer checks
+// `planAtLeast`. Two Groups: Campaigns (a `Table` with `inCard`, "New
+// campaign" moves into the empty row when there are none), Credits from
+// other branches (one Switch row per sister, or one empty row), footer = the
+// debt sentence.
 import { useState } from "react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
 import { useMock } from "@/mock/MockStore";
-import { Section } from "@/components/shared/Section";
-import { Half } from "@/components/shared/Half";
+import { Group } from "@/components/shared/Group";
+import { Rule } from "@/components/shared/Rule";
 import { Table, type Column } from "@/components/shared/Table";
 import { Tiles } from "@/components/shared/Tiles";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Section } from "@/components/shared/Section";
 import { Badge } from "@/components/shared/Badges";
-import { Rule, RULES_CARD } from "@/components/shared/Rule";
-import { Switch } from "@/components/shared/Switch";
+import { Half } from "@/components/shared/Half";
 import { CREDIT_BALANCES, CREDIT_CAMPAIGNS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
-import { PLAN_LABEL, planAtLeast, type CampaignState, type MockCreditBalance, type MockCreditCampaign } from "@/mock/types";
+import type { CampaignState, MockCreditBalance, MockCreditCampaign } from "@/mock/types";
 import { day, money } from "@/lib/format";
-import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 const PAGE = 8;
 
@@ -60,7 +64,6 @@ export const CAMPAIGN_STATES: Record<
 export function CreditsView() {
   const place = useHeldPlace();
   const { scenario, world } = useMock();
-  const locked = !planAtLeast(place.plan, "ultra");
   const all = listFor(CREDIT_BALANCES.filter((b) => b.placeId === place.id), scenario);
   const campaigns = listFor(CREDIT_CAMPAIGNS.filter((c) => c.placeId === place.id), scenario);
   const [page, setPage] = useState(0);
@@ -72,11 +75,6 @@ export function CreditsView() {
   const [accepting, setAccepting] = useState<Set<string>>(new Set(place.acceptedIssuers));
   const raised = campaigns.reduce((n, c) => n + c.soldCents, 0);
 
-  const balanceColumns: Column<MockCreditBalance>[] = [
-    { key: "guest", head: "Guest", cell: (b) => <span className="font-medium">{b.guest}</span> },
-    { key: "last", head: "Last move", cell: (b) => <span className="text-muted-foreground">{day(b.lastMoveAt)}</span> },
-    { key: "balance", head: "Balance", align: "right", cell: (b) => <span className="font-semibold">{money(b.balanceCents)}</span> },
-  ];
   const campaignColumns: Column<MockCreditCampaign>[] = [
     { key: "name", head: "Campaign", cell: (c) => <span className="font-medium">{c.name}</span> },
     { key: "offer", head: "Offer", cell: (c) => <span className="tabular-nums">pay {money(c.payCents)}, get {money(c.getCents)}</span> },
@@ -85,86 +83,73 @@ export function CreditsView() {
     { key: "state", head: "State", cell: (c) => <Badge tone={CAMPAIGN_STATES[c.state].tone}>{CAMPAIGN_STATES[c.state].label}</Badge> },
     { key: "verb", head: "", cell: (c) => CAMPAIGN_STATES[c.state].verb ? <button type="button" className={GHOST_PILL_BUTTON_CLASS}>{CAMPAIGN_STATES[c.state].verb}</button> : null },
   ];
+  const balanceColumns: Column<MockCreditBalance>[] = [
+    { key: "guest", head: "Guest", cell: (b) => <span className="font-medium">{b.guest}</span> },
+    { key: "last", head: "Last move", cell: (b) => <span className="text-muted-foreground">{day(b.lastMoveAt)}</span> },
+    { key: "balance", head: "Balance", align: "right", cell: (b) => <span className="font-semibold">{money(b.balanceCents)}</span> },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
       <Half label="Manage">
-        {locked ? (
-          <p className={INFO_BOX_CLASS}>
-            Needs {PLAN_LABEL.ultra}. Selling meals forward creates a debt to a
-            guest, and that is the top rung&apos;s to carry.
-          </p>
-        ) : (
-          <>
-            <Section
-              title="Campaigns"
-              description="A campaign sells a balance at a bonus, for a while, up to a cap. You receive the cash now and owe the meals until they are eaten."
-              right={<button type="button" className={CTA_BUTTON_CLASS}>New campaign</button>}
-            >
-              <Table
-                columns={campaignColumns}
-                rows={campaigns}
-                empty={
-                  <EmptyState
-                    title="No campaign yet"
-                    hint="Nothing is on sale until you open one. Guests cannot buy a balance here in the meantime."
-                    action={{ label: "New campaign", onClick: () => {} }}
-                  />
-                }
+        <Group
+          title="Campaigns"
+          description="A campaign sells a balance at a bonus, for a while, up to a cap. You receive the cash now and owe the meals until they are eaten."
+          right={campaigns.length > 0 ? <button type="button" className={PILL_BUTTON_CLASS}>New campaign</button> : undefined}
+          footer="Every campaign says the same thing plainly before it opens: you receive X pesos today; in return you owe Y pesos of meals."
+        >
+          <Table
+            columns={campaignColumns}
+            rows={campaigns}
+            inCard
+            empty={
+              <EmptyState
+                title="No campaign yet"
+                hint="Nothing is on sale until you open one. Guests cannot buy a balance here in the meantime."
+                action={{ label: "New campaign", onClick: () => {} }}
               />
-              <p className={INFO_BOX_CLASS}>
-                Every campaign says the same thing plainly before it opens: you
-                receive X pesos today; in return you owe Y pesos of meals. That is
-                a financing decision, and the screen treats it as one.
-              </p>
-            </Section>
+            }
+          />
+        </Group>
 
-            <Section
-              title="Credits from other branches"
-              description="One direction, your choice. Their guests can spend here; they sold the credits, they keep the cash, and they settle with you."
-            >
-              {sisters.length === 0 ? (
-                <EmptyState
-                  title="No other branch"
-                  hint="This is the only place you hold. A second branch in the same organisation appears here the day it exists."
-                />
-              ) : (
-                <div className={RULES_CARD}>
-                  {sisters.map((s) => (
-                    <Rule
-                      key={s.id}
-                      label={s.name}
-                      note={
-                        accepting.has(s.id)
-                          ? "Accepting. Their guests' credits are honoured here until you switch this off; what they already spent is settled with them."
-                          : "Not accepting. Their guests pay the whole bill here."
-                      }
-                      value={
-                        <Switch
-                          on={accepting.has(s.id)}
-                          label={`Accept credits from ${s.name}`}
-                          onChange={(on) =>
-                            setAccepting((prev) => {
-                              const next = new Set(prev);
-                              if (on) next.add(s.id);
-                              else next.delete(s.id);
-                              return next;
-                            })
-                          }
-                        />
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-              <p className={INFO_BOX_CLASS}>
-                By accepting a branch&apos;s credits you carry its guests&apos; redemptions
-                until it settles with you. The debt to the guest never moves: it
-                stays with the branch that sold the credits.
+        <Group
+          title="Credits from other branches"
+          description="One direction, your choice. Their guests can spend here; they sold the credits, they keep the cash, and they settle with you."
+          footer="By accepting a branch's credits you carry its guests' redemptions until it settles with you. The debt to the guest never moves: it stays with the branch that sold the credits."
+        >
+          {sisters.length === 0 ? (
+            <div className="flex min-h-[30vh] flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+              <p className="font-display text-sm font-semibold tracking-tight">No other branch</p>
+              <p className="text-muted-foreground max-w-[42ch] text-[12px] leading-snug">
+                This is the only place you hold. A second branch in the same organisation appears here the day it exists.
               </p>
-            </Section>
-          </>
-        )}
+            </div>
+          ) : (
+            sisters.map((s) => (
+              <Rule
+                key={s.id}
+                label={s.name}
+                note={
+                  accepting.has(s.id)
+                    ? "Accepting. Their guests' credits are honoured here until you switch this off; what they already spent is settled with them."
+                    : "Not accepting. Their guests pay the whole bill here."
+                }
+                control={{
+                  kind: "switch",
+                  on: accepting.has(s.id),
+                  label: `Accept credits from ${s.name}`,
+                  onChange: (on) =>
+                    setAccepting((prev) => {
+                      const next = new Set(prev);
+                      if (on) next.add(s.id);
+                      else next.delete(s.id);
+                      return next;
+                    }),
+                }}
+              />
+            ))
+          )}
+        </Group>
       </Half>
 
       <Half label="Activity">
@@ -181,8 +166,8 @@ export function CreditsView() {
           ]}
         />
         {place.cashbackPaused && (
-          <p className={INFO_BOX_CLASS} role="status">
-            Cashback from Visit Rewards is paused while Credits is off. Balances
+          <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground" role="status">
+            Cashback from Rewards is paused while Credits is off. Balances
             already banked stay redeemable; no new ones are issued.
           </p>
         )}
@@ -210,7 +195,7 @@ export function CreditsView() {
               />
             }
           />
-          <p className={INFO_BOX_CLASS}>
+          <p className="text-muted-foreground mt-3 text-xs">
             There is no outstanding total on this screen, on purpose. This list is
             paginated and the balance endpoint returns no aggregate, so any total
             computed here would be the total of the page you happen to be on —

@@ -65,6 +65,8 @@ import { cn } from "@/lib/utils";
 
 export function PageHeader({
   mark,
+  markClass,
+  titleClass,
   title,
   badges,
   blurb,
@@ -77,6 +79,16 @@ export function PageHeader({
    *  `PlaceChip`. Absent on the portfolio and Add place, which are about no
    *  single thing. */
   mark?: React.ReactNode;
+  /** WHAT THE MARK'S PLATE IS PAINTED WITH, and what the title is written in
+   *  (MESITA-2037). Both default to the achromatic pair every other screen
+   *  uses; a PRODUCT page passes its family's tint and ink, so the header of
+   *  Online Orders is the same blue an operator just clicked in the catalogue.
+   *
+   *  THIS IS A SLOT, NOT A LOOKUP. `PageHeader` must not learn what a product
+   *  is — Add place, the portfolio and Settings all render it and none of them
+   *  has a `ProductKey` — so the caller that knows brings the classes. */
+  markClass?: string;
+  titleClass?: string;
   title: string;
   /** Rendered beside the title, wrapping with it. The Plan pane passes two;
    *  everything else passes one or none. */
@@ -105,7 +117,8 @@ export function PageHeader({
             aria-hidden
             className={cn(
               SCOPE_CHIP_CLASS,
-              "bg-muted text-foreground flex shrink-0 items-center justify-center overflow-hidden",
+              "text-foreground flex shrink-0 items-center justify-center overflow-hidden",
+              markClass ?? "bg-muted",
             )}
           >
             {typeof mark === "string" ? (
@@ -118,7 +131,12 @@ export function PageHeader({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h1 className="font-display text-xl font-semibold tracking-tight">
+            <h1
+              className={cn(
+                "font-display text-xl font-semibold tracking-tight",
+                titleClass,
+              )}
+            >
               {title}
             </h1>
             {badges}

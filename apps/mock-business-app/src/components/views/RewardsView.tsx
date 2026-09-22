@@ -27,18 +27,27 @@
 // CASHBACK NEEDS PREPAID CREDITS, which is Ultra's. The row never hides: it
 // stays visible, disabled, with the reason and the door, because a hidden
 // option teaches an operator the product does not exist.
+//
+// ── SETUP STANDARD (MESITA-2034, D15/D16) ───────────────────────────────────
+//
+// "Comes back as" and "Cap per visit" become native Selects (D4) — the
+// `aria-pressed` pill pairs a screen reader announced as unlabelled buttons.
+// The commit bar keeps its own shape (D16's SaveBar model): one line naming
+// what's dirty, Cancel ghost, Save primary, rendered only while dirty — this
+// screen already had exactly that shape, so it stays rather than being
+// rewired onto Profile's PlaceSaveBar, which is wired to a different form
+// context this screen does not use.
 import { useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { useHeldPlace } from "@/components/console/PlaceScope";
+import { Group } from "@/components/shared/Group";
 import { Section } from "@/components/shared/Section";
 import { Half } from "@/components/shared/Half";
 import { Table, type Column } from "@/components/shared/Table";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Tiles } from "@/components/shared/Tiles";
-import { SoonStrip } from "@/components/shared/SoonStrip";
-import { Rule, RULES_CARD } from "@/components/shared/Rule";
-import { Switch } from "@/components/shared/Switch";
+import { Rule } from "@/components/shared/Rule";
 import { Badge } from "@/components/shared/Badges";
 import { VISITS } from "@/mock/fixtures";
 import { listFor } from "@/mock/scenario";
@@ -55,16 +64,10 @@ import {
   capCostCents,
   ceiling,
   stack,
-  type CapMxn,
   type RewardsMode,
   type RewardsProgram,
 } from "@/lib/rewards";
-import {
-  CTA_BUTTON_CLASS,
-  GHOST_PILL_BUTTON_CLASS,
-  INFO_BOX_CLASS,
-  TINY_LABEL_CLASS,
-} from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 /** Whole pesos with a thousands separator. `moneyShort` renders MX$1,000 as
@@ -141,133 +144,101 @@ export function RewardsView() {
   return (
     <div className="flex flex-col gap-4">
       <Half label="Manage">
-        <Section
+        <Group
           title="The program"
           description="Six things this place decides. The rates are Mesita's; your cap is the ceiling."
+          footer={noActions ? "No bonuses active — every visit pays the base and nothing more." : undefined}
         >
           {/* CASHBACK PAUSED IS A STATE, NOT AN ERROR. Credits went off while
               cashback was the mode: what guests hold stays redeemable, and
               new visits fall back to a discount until Credits is back. */}
-          {place.cashbackPaused && (
-            <p className={INFO_BOX_CLASS} role="status">
-              Cashback is paused: Prepaid Credits is off here, so new visits
-              get a discount instead. Balances guests already hold are still
-              theirs to spend.{" "}
-              <Link href={creditsHref} className="underline underline-offset-4">
-                Open Prepaid Credits
-              </Link>
-            </p>
-          )}
-          <div className={RULES_CARD}>
+          <Rule
+            label="Rewards"
+            note={off ? "Off. Guests still find, review and book this place; they just pay the whole bill." : "On. The next bill closed here runs what is below."}
+            control={{ kind: "switch", on: draft.on, onChange: (on) => set({ on }), label: "Rewards" }}
+          />
+          <Rule
+            label="Comes back as"
+            note={
+              place.cashbackPaused ? (
+                <>
+                  Cashback is paused: Prepaid Credits is off here, so new visits get
+                  a discount instead. Balances guests already hold are still theirs
+                  to spend.{" "}
+                  <Link href={creditsHref} className="underline underline-offset-4">
+                    Open Prepaid Credits
+                  </Link>
+                </>
+              ) : cashbackOk ? (
+                "A discount leaves this bill; cashback becomes a balance for the next one."
+              ) : (
+                <>
+                  {cashbackWhy}.{" "}
+                  <Link href={creditsHref} className="underline underline-offset-4">
+                    Prepaid Credits
+                  </Link>
+                </>
+              )
+            }
+            disabled={off}
+            control={{
+              kind: "select",
+              value: draft.mode,
+              onChange: (v) => set({ mode: v as RewardsMode }),
+              options: (["discount", "cashback"] as RewardsMode[]).map((m) => ({
+                value: m,
+                label: m === "cashback" && !cashbackOk ? `${MODE_LABEL[m]} (needs Credits)` : MODE_LABEL[m],
+              })),
+            }}
+          />
+          <Rule
+            label="Cap per visit"
+            note={`Up to ${pesos(draft.cap)} per visit, all bonuses combined. Every rate applies to the first ${pesos(draft.cap)} of the bill.`}
+            disabled={off}
+            control={{
+              kind: "select",
+              value: String(draft.cap),
+              onChange: (v) => set({ cap: Number(v) as RewardsProgram["cap"] }),
+              options: CAPS_MXN.map((c) => ({ value: String(c), label: pesos(c) })),
+            }}
+          />
+          {ACTION_KEYS.map((key) => (
             <Rule
-              label="Visit Rewards"
-              note={off ? "Off. Guests still find, review and book this place; they just pay the whole bill." : "On. The next bill closed here runs what is below."}
-              value={
-                <Switch on={draft.on} onChange={(on) => set({ on })} label="Visit Rewards" />
-              }
-            />
-            <Rule
-              label="Comes back as"
-              note={cashbackOk ? "A discount leaves this bill; cashback becomes a balance for the next one." : cashbackWhy}
+              key={key}
+              label={ACTION_LABEL[key]}
+              note={ACTION_HINT[key]}
               disabled={off}
-              value={
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {(["discount", "cashback"] as RewardsMode[]).map((m) => {
-                    const blocked = m === "cashback" && !cashbackOk;
-                    return (
-                      <button
-                        key={m}
-                        type="button"
-                        aria-pressed={draft.mode === m}
-                        disabled={off || blocked}
-                        onClick={() => set({ mode: m })}
-                        className={cn(
-                          GHOST_PILL_BUTTON_CLASS,
-                          draft.mode === m &&
-                            "border-foreground hover:border-foreground text-foreground",
-                        )}
-                      >
-                        {MODE_LABEL[m]}
-                        {draft.mode === m && <Check className="h-3 w-3 shrink-0" aria-hidden />}
-                      </button>
-                    );
-                  })}
-                  {!cashbackOk && (
-                    <Link href={creditsHref} className="text-muted-foreground text-[12px] underline underline-offset-4">
-                      Prepaid Credits
-                    </Link>
-                  )}
-                </div>
-              }
+              control={{ kind: "switch", on: draft[key], onChange: (v) => set({ [key]: v }), label: ACTION_LABEL[key] }}
             />
-            <Rule
-              label="Cap per visit"
-              note={`Up to ${pesos(draft.cap)} per visit, all bonuses combined. Every rate applies to the first ${pesos(draft.cap)} of the bill.`}
-              disabled={off}
-              value={
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {CAPS_MXN.map((c: CapMxn) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-pressed={draft.cap === c}
-                      disabled={off}
-                      onClick={() => set({ cap: c })}
-                      className={cn(
-                        GHOST_PILL_BUTTON_CLASS,
-                        draft.cap === c &&
-                          "border-foreground hover:border-foreground text-foreground",
-                      )}
-                    >
-                      {pesos(c)}
-                      {draft.cap === c && <Check className="h-3 w-3 shrink-0" aria-hidden />}
-                    </button>
-                  ))}
-                </div>
-              }
-            />
-            {ACTION_KEYS.map((key) => (
-              <Rule
-                key={key}
-                label={ACTION_LABEL[key]}
-                note={ACTION_HINT[key]}
-                disabled={off}
-                value={
-                  <Switch
-                    on={draft[key]}
-                    disabled={off}
-                    onChange={(v) => set({ [key]: v })}
-                    label={ACTION_LABEL[key]}
-                  />
-                }
-              />
-            ))}
-          </div>
-          {noActions && (
-            <p className={cn(TINY_LABEL_CLASS, "px-1")}>No bonuses active — every visit pays the base and nothing more</p>
-          )}
-        </Section>
+          ))}
+        </Group>
 
-        <Section
+        <Group
           title="What that stacks to"
           description="Left to right is the addition: each step adds one more bonus to the one before it. The peso under every total is the most it can cost, at this cap."
+          footer="Rewards on orders is not a thing, and will not be — a reward is earned by turning up, an order is prepaid and has no table. Use Credits for the prepaid case."
         >
           {off ? (
             /* The empty state is a feature. A row of 0% says the page is
                broken rather than that the place has chosen something. */
-            <p className={INFO_BOX_CLASS}>
-              Nothing is given back here. Turn Visit Rewards on above to see
-              what a visit would earn.
-            </p>
+            <div className="flex min-h-[20vh] flex-col items-center justify-center gap-2 px-4 py-8 text-center">
+              <p className="text-muted-foreground max-w-[42ch] text-[13px] leading-snug">
+                Nothing is given back here. Turn Rewards on above to see what a visit would earn.
+              </p>
+            </div>
           ) : (
-            <>
+            <div className="p-3">
               <ol className="flex flex-wrap gap-2">
                 {steps.map((s) => (
                   <li
                     key={s.key}
                     className="border-border flex min-w-[7.5rem] flex-1 flex-col rounded-xl border px-3 py-2.5"
                   >
-                    <span className={TINY_LABEL_CLASS}>{s.label}</span>
+                    {/* Not the shared small-caps eyebrow token: that
+                        treatment belongs to Activity's tiles (D17 bans it
+                        from a Manage-half Group, which is where this
+                        stack lives). */}
+                    <span className="text-muted-foreground text-[11px] font-semibold">{s.label}</span>
                     <span className={cn(NUM, "mt-1")}>{s.total}%</span>
                     <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
                       {pesos(capCostCents(s.total, draft.cap) / 100)}
@@ -275,16 +246,16 @@ export function RewardsView() {
                   </li>
                 ))}
               </ol>
-              <p className={INFO_BOX_CLASS}>
+              <p className="text-muted-foreground mt-3 text-[12px] leading-snug">
                 A percentage is not a peso. Every rate above applies to the first{" "}
                 {pesos(draft.cap)} of the bill, so a guest who earns everything you
                 have on costs you {pesos(capCostCents(top, draft.cap) / 100)},
                 whatever they ordered. Mesita sets the bonuses; your cap is the
                 ceiling.
               </p>
-            </>
+            </div>
           )}
-        </Section>
+        </Group>
       </Half>
 
       <Half label="Activity">
@@ -323,14 +294,15 @@ export function RewardsView() {
         </Section>
       </Half>
 
-      {/* The commit bar exists only when something changed. A permanent Save
-          that looks identical before and after a click cannot answer the one
+      {/* THE COMMIT BAR (D16) — one line naming what's dirty, Cancel ghost,
+          Save primary, rendered only while dirty. A permanent Save that
+          looks identical before and after a click cannot answer the one
           question an owner asks on a money screen: did that take? */}
       {dirty && (
         <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">
-              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Visit Rewards off"}
+              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Rewards off"}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
               Applies to the next bill closed here. Nothing retroactive, ever.
@@ -344,7 +316,7 @@ export function RewardsView() {
             >
               Cancel
             </button>
-            <button type="button" onClick={save} className={CTA_BUTTON_CLASS}>
+            <button type="button" onClick={save} className={PILL_BUTTON_CLASS}>
               Save
             </button>
           </div>
@@ -357,12 +329,6 @@ export function RewardsView() {
           {saved.on ? `, capped at the first ${pesos(saved.cap)}.` : "."}
         </p>
       )}
-
-      <SoonStrip title="Rewards on orders is not a thing, and will not be">
-        A reward is earned by turning up. An order is prepaid and has no table,
-        so there is nothing to reward and nobody standing there to see it
-        happen. Use Credits for the prepaid case.
-      </SoonStrip>
     </div>
   );
 }

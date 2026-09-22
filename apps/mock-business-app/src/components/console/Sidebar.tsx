@@ -1,6 +1,6 @@
 "use client";
 
-// THE MENU. A column again — lockup, venue, fourteen rows (MESITA-2004…2012).
+// THE MENU. Apple's row anatomy on the ink column (MESITA-2004…2012, 2034).
 //
 // ── THE SHAPE ──────────────────────────────────────────────────────────────
 //
@@ -10,15 +10,14 @@
 //   │  │ 🏞  Lumbre y Sal │  │   the venue band — back from the rail
 //   │  │    Mesita Pro    │  │
 //   │  └──────────────────┘  │
-//   │   📍 Place             │
-//   │   💳 Plan              │
-//   │   ⚙️ Settings          │
-//   │                        │
-//   │   PRODUCTS             │
-//   │   🏪 Mesita Profile    │
-//   │   🤝 Partner Badge   [On]│  the badge, not the purchase
+//   │   [📍] Place           │   32px row · 22px rounded-[6px] tile
+//   │   [💳] Plan            │
+//   │   [⚙️] Settings        │
+//   │                        │   12px gap — NO caption rendered here
+//   │  ▓[🏪] Mesita Profile  │  ← SELECTED: full white fill, ink text
+//   │   [🤝] Partner Badge [On]│  the badge, not the purchase
 //   │   …eight of them…      │
-//   │   🔮 Future products 10│   the eleventh row, a door
+//   │   [🔮] Future products 10│  the eleventh row, a door
 //   └────────────────────────┘
 //
 // ── WHY IT IS INK ──────────────────────────────────────────────────────────
@@ -35,21 +34,31 @@
 // IT PAINTS WITH `--dock-*` AND MAY NOT READ A PAGE TOKEN. `--dock` is
 // `--ink`, not pure black; `text-muted-foreground` (#5d5d5d) is unreadable on
 // it and `bg-foreground` is invisible. Rest is `--dock-muted` (white at 64%,
-// 7.84:1 on the ink), hover is full white, the chosen row is `--dock-surface`
-// (white at 10%, which composites to #2e2e2e — a 1.73:1 step you can see), and
-// the focus ring is `--sidebar-ring`, which is pure white and exists for
-// exactly this reason.
+// 7.84:1 on the ink), hover is full white. THE SELECTED ROW IS `--dock-foreground`
+// AT FULL OPACITY NOW (MESITA-2034), not the old 10% fill — see "THE ACTIVE ROW
+// IS A FILL" below. The focus ring is real again, and it is split by state:
+// `--dock-foreground` (white, inset) at rest, `--dock` (ink, inset) on the
+// selected row — the OLD `--sidebar-ring` token was deleted in MESITA-1975 and
+// every row rendered NO visible ring at all until this fix.
 //
 // PURE BLACK IS STILL RESERVED for `--mock-strip`, which sits directly above
 // this column. Two identical black slabs read as chrome rather than as a
 // warning, and the warning is the more important of the two.
 //
-// ── THE ACTIVE ROW IS A FILL, NOT A RULE ───────────────────────────────────
+// ── THE ACTIVE ROW IS A FILL, NOT A RULE — AND NOW IT INVERTS (MESITA-2034) ─
 //
 // MESITA-1975 argued a solid pill was a slab across a 1400px line and replaced
 // it with a 2px underline. That argument was about a LINE. In a 320px column a
 // fill is the rail's original idiom and it is the right one: an underline under
 // one row in a stack of thirteen reads as a separator between two of them.
+//
+// Apple's selection is the loudest thing in its own sidebar; the achromatic
+// translation of "accent fill" is the INVERSE — full `--dock-foreground` white,
+// ink text — replacing the 10% `--dock-surface` fill this file used to draw
+// (1.73:1, a step you could barely see). Every badge and the focus ring on
+// that one row have to read the inversion too: badges pass `onDock={!on}` so
+// the selected row's badges use the white-card tones, and the ring flips to
+// `--dock` (ink) so it stays visible on white.
 //
 // ── ROWS ARE ABSENT, NEVER DIMMED ──────────────────────────────────────────
 //
@@ -61,7 +70,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { PlaceChip } from "@/components/console/PlaceChip";
-import { ProductStateBadge } from "@/components/shared/Badges";
+import { Badge, ProductStateBadge } from "@/components/shared/Badges";
 import { buildProductCards, type ProductCard } from "@/lib/products";
 import { PRODUCT_MARK } from "@/lib/product-marks";
 import type { ProductKey } from "@/lib/product-keys";
@@ -94,19 +103,44 @@ import { cn } from "@/lib/utils";
  *  and the size MESITA-2001 brought the top menu back down to. A nav label is
  *  a LABEL, not body copy, and it is the same size under a finger and a cursor.
  *
- *  `min-h-9` is 36px, not 44. The 44px target was a TOP BAR rule, where four
- *  tabs had a whole bar's height to spend; fifteen rows at 44px is 660px of
- *  column before the lockup and the venue. 36px with a 4px gap between rows
- *  keeps the touch slop the guideline is actually about, and the drawer — the
- *  only place these are touched — has the full width of the panel per row. */
+ *  `min-h-8` IS 32PX, DOWN FROM 36 (MESITA-2034, Apple's row anatomy). Apple's
+ *  own current guidance separately tables 32pt as an accepted SECONDARY
+ *  control size — this is a documented trade, not the invented one MESITA-1956
+ *  argued against at 44. Fifteen rows at 32 = 480px, so the drawer and the
+ *  fixed column both fit a 812px phone with the lockup and venue band still
+ *  on screen; the drawer — the only place these are touched — still has the
+ *  full width of the panel per row, which is what keeps the touch slop real.
+ *
+ *  THE FOCUS RING IS SPLIT BY STATE, NOT SHARED. `ROW` used to carry
+ *  `focus-visible:ring-sidebar-ring`, a token MESITA-1975 deleted — no
+ *  `--color-sidebar-ring` exists in `@theme`, so every row and the drawer's
+ *  hamburger rendered NO visible keyboard ring at all. `ROW_REST`'s ring is
+ *  `--dock-foreground` (white, inset, visible on ink); `ROW_ON`'s is `--dock`
+ *  (ink, inset, visible on the now-white selected fill) — the ring has to
+ *  invert with the row or it goes invisible on exactly the row a keyboard
+ *  user lands on most. */
 const ROW =
-  "flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset";
-const ROW_REST = "text-dock-muted hover:bg-dock-surface/70 hover:text-dock-foreground";
-const ROW_ON = "bg-dock-surface text-dock-foreground font-semibold";
+  "flex min-h-8 items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium transition outline-hidden focus-visible:ring-2 focus-visible:ring-inset";
+const ROW_REST =
+  "text-dock-muted hover:bg-dock-surface/70 hover:text-dock-foreground focus-visible:ring-dock-foreground";
+/** SELECTED ROW INVERTS (MESITA-2034). Apple's selection is the loudest thing
+ *  in its sidebar; the achromatic translation of "accent fill" is the
+ *  inverse, replacing the old 10% white fill (`bg-dock-surface`, 1.73:1) with
+ *  a full white fill and ink text. Badges inside this row read `onDock=false`
+ *  from the caller (they are on white now), and the focus ring flips to ink
+ *  so it stays visible on the white fill. */
+const ROW_ON = "bg-dock-foreground text-dock font-semibold focus-visible:ring-dock";
 
-/** The mark's box. Fixed width so every name starts on the same x — a ragged
- *  left edge across thirteen rows is the thing that makes a list look generated. */
-const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
+/** THE MARK'S TILE (MESITA-2034). 22px, `rounded-[6px]` — NOT `rounded-md`:
+ *  at this token set `rounded-md` is `radius - 2px` = 12px, which on a 22px
+ *  box rounds past the midpoint into a coin, not a tile. `bg-white/10` at
+ *  rest, `bg-black/8` on the selected (white) row — the same luminance step
+ *  `--dock-surface` already means, read against whichever ground the row is
+ *  actually on. This is what makes a ragged emoji column read as Apple's icon
+ *  column instead of a list of ungrouped glyphs. */
+const MARK =
+  "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[6px] bg-white/10 text-center text-[13px] leading-none";
+const MARK_ON = "bg-black/8";
 
 /** THE COLUMN'S WIDTH, IN ONE PLACE. Pato, twice: *"make the menu wider."*
  *
@@ -126,8 +160,12 @@ const MARK = "w-[18px] shrink-0 text-center text-[13px] leading-none";
  *  gate stays green. */
 export const SIDEBAR_WIDTH = "w-[320px]";
 
-const GROUP_LABEL =
-  "px-2.5 pb-1.5 text-[9.5px] font-semibold tracking-[0.14em] text-white/45 uppercase";
+// THE `PRODUCTS` CAPTION STOPS RENDERING (MESITA-2034). Apple separates
+// sidebar groups by gap alone, no label — a 12px gap under the venue band is
+// the only boundary now. `group.label` is still a real string on
+// `SidebarGroup` (`lib/sidebar-rows.ts`); it is wired to the group's own
+// `aria-label` below rather than dropped, so a screen reader still hears
+// "Products, group of ten" even though nothing sighted reads the word.
 
 export function Sidebar({
   scope,
@@ -262,10 +300,14 @@ export function Sidebar({
             // menu that went dark when you pressed that pair would be teaching
             // the operator that they had left the product.
             on={last === slug}
-            // `onDock` because this menu is ink. Only `soon` moves — it is
-            // the one tone with no fill of its own, so it is the one that
-            // would otherwise print a white-card grey onto near-black.
-            badge={<ProductStateBadge state={card.state} onDock />}
+            // `onDock={!on}` (MESITA-2034): three tones need the ink-column
+            // variant now, not only `soon` — `live`/`gold` measured as low as
+            // 1.3–1.8:1 on `--dock` (checked against the real oklch tokens),
+            // not the "survive the ink rail unchanged" the tones' own old
+            // comment claimed. The SELECTED row is white now (§8), so its
+            // badge reads the white-card tone instead — `onDock` is false
+            // exactly when the row it's drawn in has already inverted.
+            badge={<ProductStateBadge state={card.state} onDock={!(last === slug)} />}
             onNavigate={onNavigate}
           />
         );
@@ -281,10 +323,16 @@ export function Sidebar({
             mark={SIDEBAR_ROADMAP_MARK}
             name={SIDEBAR_ROADMAP_LABEL}
             on={last === FUTURE_SLUG}
+            // ROUTED THROUGH `Badge` NOW (MESITA-2034). This used to be a
+            // hand-inlined `bg-white/14 text-white` span — white text on
+            // white/14 composited over `--dock` measures 1.05:1, invisible on
+            // the one row an operator can be standing on (the selected row is
+            // white now too). `neutralDock` is this fact's ink-column tone;
+            // `neutral` is what the selected (white) row reads instead.
             badge={
-              <span className="rounded-full bg-white/14 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+              <Badge tone={last === FUTURE_SLUG ? "neutral" : "neutralDock"}>
                 {soonCount}
-              </span>
+              </Badge>
             }
             onNavigate={onNavigate}
           />
@@ -340,9 +388,13 @@ export function Sidebar({
             // read it as a failed load rather than as a permission.
             if (rows.length === 0) return null;
             return (
-              <div key={group.label ?? "root"}>
-                {group.label && <p className={GROUP_LABEL}>{group.label}</p>}
-                <div className="flex flex-col gap-0.5">{rows}</div>
+              <div
+                key={group.label ?? "root"}
+                role={group.label ? "group" : undefined}
+                aria-label={group.label ?? undefined}
+                className="flex flex-col gap-0.5"
+              >
+                {rows}
               </div>
             );
           })}
@@ -374,7 +426,7 @@ function Row({
       onClick={onNavigate}
       className={cn(ROW, on ? ROW_ON : ROW_REST)}
     >
-      <span aria-hidden className={MARK}>
+      <span aria-hidden className={cn(MARK, on && MARK_ON)}>
         {mark}
       </span>
       <span className="min-w-0 flex-1 truncate">{name}</span>

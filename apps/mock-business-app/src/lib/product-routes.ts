@@ -1,8 +1,8 @@
 // THE PRODUCT ADDRESSES — one slug, two surfaces (MESITA-1986).
 //
 // Pato: *"create all these routes and subroutes — setup/mesita-profile,
-// setup/digital-menu, setup/visit-rewards… activity/mesita-profile,
-// activity/digital-menu, activity/visit-rewards… I MEAN, A SYMMETRY MUST
+// setup/digital-menu, setup/member-visits… activity/mesita-profile,
+// activity/digital-menu, activity/member-visits… I MEAN, A SYMMETRY MUST
 // EXIST."*
 //
 //   /places/<id>/products/<slug>    how this product is configured
@@ -15,9 +15,9 @@
 // has none.
 //
 // THE SLUG IS THE NAME, NOT THE KEY. `visits` is a persisted spelling from
-// before Visit Rewards was called that, and `pay` is three letters chosen for a
+// before Member Visits was called that, and `pay` is three letters chosen for a
 // column: neither is what an operator would type. A person reading
-// `/setup/visit-rewards` in a URL bar knows where they are, and that is the
+// `/setup/member-visits` in a URL bar knows where they are, and that is the
 // only job a slug has. The keys stay exactly where they are — this maps.
 //
 // `?p=` IS RETIRED. A query parameter cannot be symmetrical across two
@@ -109,7 +109,7 @@ export const PRODUCT_SLUG: Record<ProductKey, string> = {
   website: "express-website",
   customers: "customer-intelligence",
   ads: "omnichannel-ads",
-  visits: "visit-rewards",
+  visits: "member-visits",
   orders: "online-orders",
   tableorders: "table-orders",
   reservations: "online-reservations",

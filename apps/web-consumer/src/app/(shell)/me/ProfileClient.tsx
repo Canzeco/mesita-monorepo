@@ -7,8 +7,10 @@ import {
   CircleHelp,
   Bot,
   Footprints,
+  Gem,
   Gift,
   IdCard,
+  Instagram,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -24,19 +26,20 @@ import {
   type ConsumerProfile,
 } from "@/lib/api/profile";
 import {
-  CLASSES,
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
+import { diamondSummary, instagramSummary } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { PassportBar } from "./PassportBar";
 
-// The Me surface — the passport header, then seven pairs:
+// The Me surface — the passport header, then eight pairs:
 //
-//   passport       identity + the two axes; the bar IS a door (MESITA-1652)
+//   passport       identity + the two facts; the bar IS a door (MESITA-1652)
 //   2              Profile · Passport
+//   2              Instagram · Diamond
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
@@ -49,38 +52,48 @@ import { PassportBar } from "./PassportBar";
 // stay Soon and inert. Number copy stays in-place on the passport page.
 // SearchResultsPanel is a different product rule and is not this surface.
 //
-// INSTAGRAM AND CLASS HAVE TWO PATHS, AND BOTH MUST STAY. Each is a header
-// chip (MESITA-1652) and a row inside `PassportModal`. The Me cells came back
-// in MESITA-1682 as a third path and left again (MESITA-1787, Pato: "Move
-// instagram and class into Passport. Yes. but keep them in the header.").
-// Those remaining paths are routes now (`/me/class`, `/me/instagram`), not
-// stacked sheets. Never make either inert without adding another first:
-// Instagram is the only reach door, and the Class ladder carries the ONLY
-// entrance for a 10-digit invite PIN (Docs › Passport §C).
+// THE TWO FACTS ARE CELLS AGAIN, AND THIS TIME THEY ARE THE PRODUCT (Pato,
+// MESITA-2040: "so add instagram and then diamond. those are independent").
+//
+// This pair has been added and removed twice — MESITA-1682 put Instagram and
+// Class in the grid, MESITA-1787 pulled them back into Passport ("Move
+// instagram and class into Passport. Yes. but keep them in the header."). Read
+// that history before assuming this is the same move a third time: it is not.
+// Both earlier rounds were about WHERE ONE AXIS lives, and the argument
+// against a cell was that the header already stated the same rung. There is no
+// rung. Instagram and Diamond are two unrelated facts with two unrelated
+// doors, and a grid of destinations is exactly where two unrelated
+// destinations belong.
+//
+// PASSPORT KEPT ITS CELL AND LOST ITS SUBTITLE'S JOB. It used to read "Class
+// and Instagram" because it owned both axes once the grid gave them up. It
+// owns the DOCUMENT — the member number, the printed fields, the MRZ — and
+// that is what the cell says now.
 //
 // NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
 // /new-visit/wallet so Stripe's return still lands on the list.
 
 export function ProfileClient() {
   const supabase = useBrowserSupabase();
-  const {
-    plan,
-    key: classKey,
-    origin,
-    handle: classHandle,
-  } = useConsumerClass();
+  const { plan, facts } = useConsumerClass();
 
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const classLabel = CLASSES.find((c) => c.id === classKey)?.label ?? "Bronze";
-  const igHandle = classHandle ?? profile?.instagram_handle ?? null;
-  const igSummary =
-    origin === "instagram" || igHandle
-      ? igHandle
-        ? `@${igHandle}`
-        : "Connected"
-      : "Connect it";
+  // THE CONTEXT IS SEEDED SERVER-SIDE AND THE PROFILE IS FETCHED HERE, so the
+  // handle can land in either place first. The context wins when it has one —
+  // a fresh connect updates it before the profile refetches — and the profile
+  // row covers the cold load. Same precedence the old `classHandle ??
+  // profile.instagram_handle` had; it just reads off `facts` now.
+  const igFacts = facts.igHandle
+    ? facts
+    : {
+        ...facts,
+        igHandle: profile?.instagram_handle ?? null,
+        igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
+      };
+  const igSummary = instagramSummary(igFacts);
+  const diamondLabel = diamondSummary(facts);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,11 +122,12 @@ export function ProfileClient() {
       toast("Checkout cancelled — you can subscribe anytime.");
     }
     if (params.get("instagram") === "success") {
-      toast.success("Connected — Rewards unlocked. Your class updated.");
+      toast.success("Instagram connected.");
     }
-    const invite = params.get("invite");
-    if (invite) {
-      toast.success(`You're ${invite} now.`);
+    // The PIN grants one thing now, so the toast names it rather than echoing
+    // a class label back off the query string (MESITA-2040).
+    if (params.get("invite")) {
+      toast.success("You're Diamond.");
     }
   }, []);
 
@@ -125,7 +139,7 @@ export function ProfileClient() {
       <PassportBar
         profile={profile}
         loading={loading}
-        classLabel={classLabel}
+        diamondSummary={diamondLabel}
         instagramSummary={igSummary}
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
@@ -133,18 +147,17 @@ export function ProfileClient() {
           {/* PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648. That
               issue put Passport first because it "sits directly under the
               card, so naming it first continues what the card just said". The
-              header now states the identity in full — photo, name, class,
-              Instagram, phone — so the first cell is the one that EDITS it,
-              and Passport is the document you open to read it back.
+              header now states the identity in full — photo, name, Instagram,
+              Diamond, phone — so the first cell is the one that EDITS it, and
+              Passport is the document you open to read it back.
 
-              PASSPORT SAYS "Class and Instagram" because that is what the
-              cell owns now that the axes left the grid (MESITA-1787). The
-              member number is still the one fact nowhere else in the app
-              prints, and it lives inside the page. MESITA-1688 dropped the
-              privacy switch this comment used to also name — profile_public
-              defaults true for every account and Settings owns the toggle
-              exclusively, so restating it here or in the page was the same
-              two-surfaces-disagree risk this page otherwise guards against. */}
+              PASSPORT SAYS WHAT IS ON THE DOCUMENT. It read "Class and
+              Instagram" while it owned both axes (MESITA-1787); those are
+              their own cells now, so the subtitle names what only this page
+              prints — the member number and the passport's own fields.
+              MESITA-1688 dropped the privacy switch this comment used to also
+              name: profile_public defaults true for every account and Settings
+              owns the toggle exclusively. */}
           <DestGrid>
             <DestTile
               Icon={UserRound}
@@ -155,17 +168,31 @@ export function ProfileClient() {
             <DestTile
               Icon={IdCard}
               title="Passport"
-              summary="Class and Instagram"
+              summary="Member number and details"
               href={CONSUMER_ROUTES.mePages.passport}
             />
           </DestGrid>
 
-          {/* THE AXES ARE NOT CELLS (MESITA-1787). They were, then they
-              weren't, then they were again (MESITA-1682). Pato moved them
-              into Passport and kept the header chips, so the grid no longer
-              restates the two facts already on the bar. Both remaining
-              doors are routes (MESITA-1789): chips and Passport rows Link
-              to /me/class and /me/instagram. */}
+          {/* INSTAGRAM, THEN DIAMOND — the order Pato named them
+              (MESITA-2040), and the order the header chips run in. Each
+              summary is the FACT, not an invitation to read about it: the
+              tile is the door, so the line it carries is the one thing the
+              guest would open it to check. */}
+          <DestGrid>
+            <DestTile
+              Icon={Instagram}
+              title="Instagram"
+              summary={loading ? "…" : igSummary}
+              href={CONSUMER_ROUTES.mePages.instagram}
+            />
+            <DestTile
+              Icon={Gem}
+              title="Diamond"
+              summary={loading ? "…" : diamondLabel}
+              href={CONSUMER_ROUTES.mePages.diamond}
+            />
+          </DestGrid>
+
           <DestGrid>
             <DestTile
               Icon={WalletIcon}

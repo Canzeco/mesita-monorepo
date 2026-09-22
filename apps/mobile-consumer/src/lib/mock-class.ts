@@ -2,29 +2,58 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ConsumerClass } from '@/lib/api/auth';
-import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
+import {
+  INSTAGRAM_REACH_FOLLOWERS,
+  type ConsumerFacts,
+} from '@/lib/consumer-identity';
 import {
   DEMO_INSTAGRAM_FOLLOWERS,
   DEMO_INSTAGRAM_HANDLE,
 } from '@/lib/instagram-demo';
 
-// Client-only demo override (Me → Class preview / MockControls). Same key as
-// web (`mesita:mock-class`) so mental model stays aligned.
+// Client-only demo override (MockControls, the Diamond page). Same shape as
+// web's `mesita:mock-account` blob so the mental model stays aligned.
 //
-// Segments v6: the override is the previewed CLASS KEY — each class implies
-// its door (premium = subscription, influencer = instagram, aura =
-// invitation). A single explicit value per preview means the IG emulation can
-// never override an explicit Aura preview (unlike web's two-axis MockAccount,
-// which guards that case by hand).
+// IT WAS ONE CLASS KEY (MESITA-2040). The override used to be the previewed
+// CLASS, and each class implied its door — premium meant a subscription,
+// influencer meant Instagram, aura meant an invitation. One value per preview
+// was the whole design: it meant the IG emulation could never outrank an
+// explicit Aura preview, because there was one slot and only one thing could
+// hold it.
+//
+// Two independent facts need two independent switches, and nothing competes
+// for a slot any more: Diamond and Instagram can both be on, and the preview
+// is simply both. `premium` is deliberately NOT here — a subscription grants
+// no fact on this surface and Me › Plan owns that axis.
+//
+// A stored string from the old shape parses to "nothing overridden", except
+// `'aura'`, the one value of the old enum that still names something true.
 
 const MOCK_CLASS_KEY = 'mesita:mock-class';
-export type MockClass = 'standard' | 'premium' | 'influencer' | 'aura';
-const MOCK_CLASS_VALUES: MockClass[] = [
-  'standard',
-  'premium',
-  'influencer',
-  'aura',
-];
+export type MockFacts = { diamond: boolean; instagram: boolean };
+const MOCK_OFF: MockFacts = { diamond: false, instagram: false };
+
+function parseMock(raw: string | null): MockFacts | null {
+  if (!raw) return null;
+  // The legacy single-key shape. `aura` was the invitation class.
+  if (!raw.startsWith('{')) {
+    return raw === 'aura'
+      ? { diamond: true, instagram: false }
+      : raw === 'influencer'
+        ? { diamond: false, instagram: true }
+        : null;
+  }
+  try {
+    const v = JSON.parse(raw) as Partial<MockFacts>;
+    const next = {
+      diamond: v.diamond === true,
+      instagram: v.instagram === true,
+    };
+    return next.diamond || next.instagram ? next : null;
+  } catch {
+    return null;
+  }
+}
 
 const listeners = new Set<() => void>();
 
@@ -85,7 +114,7 @@ function normalize(
     // what the payload already proves (reach from followers, the paid door
     // from the live subscription, Aura only when it holds the slot).
     doors: c.doors ?? {
-      influencer: followers >= INFLUENCER_FOLLOWER_THRESHOLD,
+      influencer: followers >= INSTAGRAM_REACH_FOLLOWERS,
       premium: c.subscription != null,
       aura: key === 'aura',
     },
@@ -93,107 +122,132 @@ function normalize(
 }
 
 function applyMock(
-  mock: MockClass,
+  mock: MockFacts,
   base: ConsumerClassState,
 ): ConsumerClassState {
-  // Preview doors mirror ONLY the mocked class so each demo state is
-  // deterministic (a Standard preview shows every door locked, regardless of
-  // the real account underneath) — same rule as web's mockAccountState.
-  const doors: ClassDoors = {
-    influencer: mock === 'influencer',
-    premium: mock === 'premium',
-    aura: mock === 'aura',
+  // `key` and `origin` are STORAGE, and the demo still has to seed them: the
+  // ticket screen, the promo chip and place detail read a rung because the
+  // rewards engine really applies one. Diamond maps to `aura`, the invitation
+  // class; everything else previews on the floor, which is what an account
+  // with no invitation actually holds. Instagram no longer lifts the rung —
+  // that was the ladder's doing.
+  const key: ConsumerClassState['key'] = mock.diamond ? 'aura' : 'standard';
+  const origin: ConsumerClassState['origin'] = mock.diamond
+    ? 'invitation'
+    : mock.instagram
+      ? 'instagram'
+      : 'default';
+  return {
+    ...base,
+    key,
+    origin,
+    // Mock IG always uses the demo profile (@mock / 5k) — MESITA-935.
+    followers: mock.instagram ? DEMO_INSTAGRAM_FOLLOWERS : base.followers,
+    handle: mock.instagram ? DEMO_INSTAGRAM_HANDLE : base.handle,
+    // Preview doors mirror ONLY the toggles, so each demo state is
+    // deterministic regardless of the real account underneath.
+    doors: {
+      influencer: mock.instagram,
+      premium: false,
+      aura: mock.diamond,
+    },
   };
-  switch (mock) {
-    case 'standard':
-      return { ...base, key: 'standard', origin: 'default', doors };
-    case 'influencer':
-      // Instagram reach (≥ 2,000 followers) is the door into Influencer.
-      // Mock always uses the demo profile (@mock / 5k) — MESITA-935.
-      return {
-        ...base,
-        key: 'influencer',
-        origin: 'instagram',
-        followers: DEMO_INSTAGRAM_FOLLOWERS,
-        handle: DEMO_INSTAGRAM_HANDLE,
-        doors,
-      };
-    case 'premium':
-      return {
-        ...base,
-        key: 'premium',
-        origin: 'subscription',
-        doors,
-      };
-    case 'aura':
-      // The invite-only presence class — the manual-invitation door.
-      return {
-        ...base,
-        key: 'aura',
-        origin: 'invitation',
-        doors,
-      };
-  }
 }
 
-export function useMockClass(): [
-  MockClass | null,
-  (next: MockClass | null) => void,
+/** THE GUEST-FACING READ (MESITA-2040). Everything a surface should SAY about
+ *  an account comes from here; `useEffectiveClass` below is the storage view
+ *  that the rewards surfaces still need.
+ *
+ *  DIAMOND IS THE CLASS KEY, NOT THE ORIGIN. The admin console's grant writes
+ *  the class and leaves origin alone, so an `origin === 'invitation'` test
+ *  would tell a hand-granted Diamond they are not one. `aura` is the stored
+ *  key; `diamond` is accepted too, for rows written after the metals landed.
+ *  (The granting function is named in Docs › Passport §C, never here —
+ *  `ef-caller-acl.test.ts` string-scans this package for admin-actor EFs.)
+ *
+ *  INSTAGRAM IS THE HANDLE PLUS THE BAR, separately: Story Bonus rides a
+ *  connected handle (MESITA-909), the 1,000 bar makes an account verified. */
+function factsFor(
+  state: ConsumerClassState,
+  unknown: boolean,
+): ConsumerFacts {
+  const connected = Boolean(state.handle) || state.origin === 'instagram';
+  return {
+    diamond: state.key === 'aura',
+    igConnected: connected,
+    igHandle: state.handle,
+    igFollowers: state.followers,
+    igReach: connected && state.followers >= INSTAGRAM_REACH_FOLLOWERS,
+    unknown,
+  };
+}
+
+export function useMockFacts(): [
+  MockFacts | null,
+  (patch: Partial<MockFacts> | null) => void,
 ] {
-  const [value, setValue] = useState<MockClass | null>(null);
+  const [value, setValue] = useState<MockFacts | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void AsyncStorage.getItem(MOCK_CLASS_KEY).then((stored) => {
-      if (cancelled) return;
-      setValue(
-        MOCK_CLASS_VALUES.includes(stored as MockClass)
-          ? (stored as MockClass)
-          : null,
-      );
-    });
-    const onChange = () => {
+    const load = () => {
       void AsyncStorage.getItem(MOCK_CLASS_KEY).then((stored) => {
-        if (!cancelled) {
-          setValue(
-            MOCK_CLASS_VALUES.includes(stored as MockClass)
-              ? (stored as MockClass)
-              : null,
-          );
-        }
+        if (!cancelled) setValue(parseMock(stored));
       });
     };
-    listeners.add(onChange);
+    load();
+    listeners.add(load);
     return () => {
       cancelled = true;
-      listeners.delete(onChange);
+      listeners.delete(load);
     };
   }, []);
 
-  const set = useCallback((next: MockClass | null) => {
-    setValue(next);
-    void (async () => {
-      try {
-        if (next == null) await AsyncStorage.removeItem(MOCK_CLASS_KEY);
-        else await AsyncStorage.setItem(MOCK_CLASS_KEY, next);
-      } catch {
-        // best-effort
-      }
-      notify();
-    })();
+  const set = useCallback((patch: Partial<MockFacts> | null) => {
+    setValue((current) => {
+      const next =
+        patch == null ? null : { ...(current ?? MOCK_OFF), ...patch };
+      const settled = next && (next.diamond || next.instagram) ? next : null;
+      void (async () => {
+        try {
+          if (settled == null) await AsyncStorage.removeItem(MOCK_CLASS_KEY);
+          else
+            await AsyncStorage.setItem(MOCK_CLASS_KEY, JSON.stringify(settled));
+        } catch {
+          // best-effort
+        }
+        notify();
+      })();
+      return settled;
+    });
   }, []);
 
   return [value, set];
 }
 
+/** The storage view. Still read by the rewards surfaces (the ticket screen,
+ *  the promo chip, AI Connect's gate) because the engine really does apply a
+ *  rung. NOTHING ON THE IDENTITY SURFACE may call it. */
 export function useEffectiveClass(
   consumerClass: ConsumerClass | null,
   profileHandle: string | null,
 ): ConsumerClassState {
-  const [mock] = useMockClass();
+  const [mock] = useMockFacts();
   return useMemo(() => {
     const base = normalize(consumerClass, profileHandle);
     if (mock) return applyMock(mock, base);
     return base;
   }, [consumerClass, profileHandle, mock]);
+}
+
+/** The guest view — what Me, the Passport and the two doors render. */
+export function useEffectiveFacts(
+  consumerClass: ConsumerClass | null,
+  profileHandle: string | null,
+  unknown = false,
+): ConsumerFacts {
+  const [mock] = useMockFacts();
+  const state = useEffectiveClass(consumerClass, profileHandle);
+  // A previewed account is a KNOWN account — the toggles state it outright.
+  return useMemo(() => factsFor(state, mock ? false : unknown), [state, mock, unknown]);
 }

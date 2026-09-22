@@ -2,12 +2,20 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// THE PASSPORT PRINTS WHAT IS EARNED AND PUBLIC (MESITA-1619).
+// THE PASSPORT PRINTS WHAT IS EARNED AND PUBLIC (MESITA-1619 · MESITA-2040).
 //
-// Class is earned and public; the plan is bought and private. So the identity
-// card — and the document behind it — carry the class and the Instagram
-// handle, and the plan keeps its own surfaces (Me › Plan, Help, the
-// place-detail matrix).
+// The two FACTS are earned and public; the plan is bought and private. So the
+// header — and the document behind it — carry Instagram and Diamond, and the
+// plan keeps its own surfaces (Me › Plan, Help, the place-detail matrix).
+//
+// WHAT MESITA-2040 CHANGED HERE, so the next reader does not mistake a rewrite
+// for a weakening. Every assertion below used to be written about ONE AXIS
+// (the class) and ONE DOOR ONTO IT (Instagram). Two independent facts need the
+// same guards pointed at two independent things — the counts do not drop, and
+// one gets stricter: the ORDER Instagram-then-Diamond is now pinned on THREE
+// surfaces (the bar, the Me grid, the Passport doors) instead of two, because
+// three surfaces printing the same pair is exactly how one of them silently
+// reflows.
 //
 // Consumer web is OTP-gated and has no visual QA path, so this is a SOURCE
 // contract, the shape ticket-state-drift and route-structure already use.
@@ -94,11 +102,11 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     // PIN. A display-only header plus deleted cells would have stranded both
     // silently. The bar is fixed, so these are 1 tap from anywhere on the
     // page; the cells they replace had to be scrolled to.
-    // MESITA-1789: the chips navigate to /me/class and /me/instagram, not
-    // stacked sheets.
+    // MESITA-1789: the chips navigate, they do not open stacked sheets.
+    // MESITA-2040: to /me/instagram and /me/diamond.
     expect([...bar.matchAll(/<Link\b/g)]).toHaveLength(2);
-    expect(bar).toContain("CONSUMER_ROUTES.mePages.class");
     expect(bar).toContain("CONSUMER_ROUTES.mePages.instagram");
+    expect(bar).toContain("CONSUMER_ROUTES.mePages.diamond");
     // ...and still no plan door. NO PLAN is the older law and it survives.
     for (const prop of ["onOpenPassport", "onOpenProfile", "onOpenPlan"]) {
       expect(bar).not.toContain(prop);
@@ -115,8 +123,7 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(bar).not.toMatch(/coming soon/i);
     expect(codeOnly(bar)).not.toMatch(/\bsoon\b/i);
     // Two live doors, and only two: the phone and the name are display.
-    // MESITA-1789: doors are Links to /me/class and /me/instagram, not
-    // onClick handlers that opened sheets.
+    // MESITA-1789: doors are Links, not onClick handlers that opened sheets.
     expect([...bar.matchAll(/<Link\b/g)]).toHaveLength(2);
     expect(codeOnly(bar)).not.toMatch(/onClick=\{onOpen/);
   });
@@ -172,22 +179,24 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(read(SHEET)).not.toContain("privacy_public");
   });
 
-  it("prints BOTH axes on the bar, and they are NOT grid cells", () => {
-    // MESITA-1787 (Pato: keep them in the header, move them into Passport).
-    // The chips stay — 1 tap from anywhere, because the bar never scrolls
-    // away. The Me cells that restated the same two facts (MESITA-1682) are
-    // gone; the Passport sheet is the second path. A change that silently
-    // drops either chip, or puts the cells back, has to come here.
-    expect(bar).toContain("classLabel");
+  it("prints BOTH facts on the bar, AND they are grid cells", () => {
+    // THE CELLS ARE BACK, AND THE CHIPS STAY (Pato, MESITA-2040). This
+    // inverts MESITA-1787's assertion rather than deleting it, which is the
+    // point: that issue banned the cells because the header already stated
+    // the same rung, and the ban has to be lifted explicitly now that there
+    // is no rung and these are two unrelated destinations. A change that
+    // silently drops either chip, or either cell, still has to come here.
+    expect(bar).toContain("diamondSummary");
     expect(bar).toContain("instagramSummary");
     const client = codeOnly(read(CLIENT));
-    expect(client).not.toContain('title="Instagram"');
+    expect(client).toContain('title="Instagram"');
+    expect(client).toContain('title="Diamond"');
+    // No cell anywhere on Me may name the retired axis.
     expect(client).not.toContain('title="Class"');
-    expect(client).not.toContain("summary={igSummary}");
-    expect(client).not.toContain("summary={classLabel}");
-    // The chips still read those values; only the cells dropped them.
+    // The chips read the same two values the cells do — one computation, so
+    // a chip and its cell cannot disagree about the same account.
     expect(client).toContain("instagramSummary={igSummary}");
-    expect(client).toContain("classLabel={classLabel}");
+    expect(client).toContain("diamondSummary={diamondLabel}");
   });
 
   it("no longer shares a height with the tab bar, and says so", () => {
@@ -216,18 +225,36 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(bar).toContain("flex flex-col items-center");
   });
 
-  it("reads Name · Class / Phone · Instagram", () => {
-    // The drawing's order (Pato, MESITA-1656). It flips MESITA-1653's
-    // "insta first, class second", which was a left-right call on a single
-    // ROW and does not survive the 2x2 — so the pin moves rather than being
-    // deleted. Order stays pinned because it has now been called three times
-    // on this header and nothing else would catch a silent reflow.
+  it("reads Name · Instagram / Phone · Diamond", () => {
+    // MESITA-2040 restores MESITA-1653's "insta first" — which MESITA-1656
+    // had flipped on the grounds that a left-right call on a single ROW does
+    // not survive a 2x2. It survives now for a different reason: Pato named
+    // the two facts in this order, and the same order runs down the Me grid
+    // and the Passport doors. Order stays pinned because it has been called
+    // four times on this header and nothing else would catch a silent
+    // reflow.
     const hrefs = [
       ...bar.matchAll(/href=\{CONSUMER_ROUTES\.mePages\.(\w+)\}/g),
     ].map((m) => m[1]);
-    expect(hrefs).toEqual(["class", "instagram"]);
+    expect(hrefs).toEqual(["instagram", "diamond"]);
     const grid = bar.slice(bar.indexOf('className="grid w-full grid-cols-2'));
-    expect(grid.indexOf("{name}")).toBeLessThan(grid.indexOf("mePages.class"));
+    expect(grid.indexOf("{name}")).toBeLessThan(
+      grid.indexOf("mePages.instagram"),
+    );
+  });
+
+  it("the three surfaces that print the pair print it in ONE order", () => {
+    // The bar's chips, Me's grid cells and the Passport's door tiles. Three
+    // copies of the same pair is three chances for one of them to reflow with
+    // every gate green, which is why the order is compared ACROSS files
+    // rather than pinned three times independently.
+    const order = (source: string) =>
+      [...source.matchAll(/mePages\.(instagram|diamond)\b/g)].map((m) => m[1]);
+    expect(order(bar)).toEqual(["instagram", "diamond"]);
+    expect(order(read(SHEET))).toEqual(["instagram", "diamond"]);
+    // The client also carries mePages.diamondInvite nowhere and mePages.
+    // instagram/diamond exactly once each, in that order.
+    expect(order(read(CLIENT))).toEqual(["instagram", "diamond"]);
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {
@@ -236,37 +263,50 @@ describe("the Passport is the page HEADER, and it is the door", () => {
 
   it("does not read the plan axis off the class context", () => {
     const bound = destructuredFrom(bar, "useConsumerClass");
-    expect(bound).toContain("key");
+    // MESITA-2040: the bar reads `facts`, never the storage key. Naming `key`
+    // here would put a rung back in the header with nothing to stop it.
+    expect(bound).toContain("facts");
+    expect(bound).not.toContain("key");
     expect(bound).not.toContain("plan");
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("states the rung in words, so the band and ring may stay aria-hidden", () => {
+  it("states the fact in words, so the band and ring may stay aria-hidden", () => {
     // The band and ring are colour-only and aria-hidden on the stated ground
-    // that something says the rung in words. That something is now the class
-    // CHIP, inside this subtree — closer than since MESITA-1650 put it on a
-    // cell further down the page. Losing it makes both undescribed, silently.
+    // that something says the fact in words. That something is the Diamond
+    // CHIP's own label, inside this subtree. Losing it makes both
+    // undescribed, silently.
     expect(bar).toContain("aria-hidden");
-    expect(bar).toContain("${classLabel} class");
-    expect(bar).toContain("`Class: ${classLabel}`");
+    expect(bar).toContain("Your Mesita passport, Diamond");
+    expect(bar).toContain("`Diamond: ${diamondSummary}`");
+    expect(bar).toContain("`Instagram: ${instagramSummary}`");
     expect(codeOnly(bar)).not.toContain("Earned, not bought");
   });
 
-  it("wears no metal FILL beyond band and ring — colour past that is wash or ink, never a third fill", () => {
-    // Colour means class and lives on the passport (MESITA-1132) — and the
-    // passport is the chrome now. Exactly two metal FILL surfaces, still:
-    // the full-width band and the avatar ring. The class chip still carries
-    // no FILL; a third FILL surface inside 62px turns a law about meaning
-    // into decoration.
-    expect([...bar.matchAll(/classFillClass\(key\)/g)]).toHaveLength(2);
-    expect(bar).not.toContain("classBadgeClass");
-    // MESITA-1688 spends the same budget two other ways, neither a fill: a
-    // WASH (a soft gradient behind the header, not a hard-edged surface) and
-    // INK (the class word finally reads in its own tier colour). The
-    // Instagram chip's own brand gradient is a different axis (platform
-    // branding, never class colour), so it isn't gated by this rule either.
-    expect(bar).toContain("classWashClass(key)");
-    expect(bar).toContain("CLASS_TEXT[key]");
+  it("wears ONE metal, on exactly two fill surfaces, and it means Diamond", () => {
+    // Colour means the fact and lives on the passport (MESITA-1132) — and the
+    // passport is the chrome. Exactly two metal FILL surfaces, still: the
+    // full-width band and the avatar ring, both off the SAME expression, so
+    // they cannot disagree about whether this account is Diamond.
+    const code = codeOnly(bar);
+    expect([...code.matchAll(/metalFill/g)].length).toBeGreaterThanOrEqual(3);
+    expect(code).toContain('diamond ? "bg-tier-diamond" : "bg-border"');
+    // NO FOUR-RUNG PALETTE. The helpers took a ClassKey and switched on four
+    // metals; importing one back here is how a rung returns to the header.
+    for (const helper of [
+      "classFillClass",
+      "classBadgeClass",
+      "classWashClass",
+      "classInkClass",
+      "CLASS_TEXT",
+    ]) {
+      expect(code, helper).not.toContain(helper);
+    }
+    // The wash and the ink survive as Diamond's own, neither a third fill.
+    expect(code).toContain("wash-diamond");
+    expect(code).toContain("text-diamond");
+    // The Instagram chip's brand gradient is platform branding, a different
+    // axis than the metal, and was never gated by this rule.
     expect(bar).toContain("INSTAGRAM_ICON_GRADIENT_CLASS");
   });
 
@@ -300,67 +340,80 @@ describe("the Passport is the page HEADER, and it is the door", () => {
 describe("the Passport sheet is the same document as the bar", () => {
   const sheet = read(SHEET);
 
-  it("imports nothing plan-shaped from consumer-data", () => {
-    const named = importedFrom(sheet, "@/lib/consumer-data");
-    expect(named).toContain("CLASSES");
-    expect(planShaped(named)).toEqual([]);
+  it("imports NOTHING from consumer-data — the ladder's module", () => {
+    // It used to import eleven symbols from there: the CLASSES array, the
+    // floor, the ceiling, the reach rung, four palette helpers and the
+    // caption builder. The document reads `consumer-identity` now, and an
+    // import list that is empty is the cheapest possible guard against a rung
+    // coming back onto the passport (MESITA-2040).
+    expect(importedFrom(sheet, "@/lib/consumer-data")).toEqual([]);
+    expect(importedFrom(sheet, "@/lib/consumer-identity")).toContain(
+      "diamondSummary",
+    );
   });
 
-  it("does not read the plan axis off the class context", () => {
+  it("does not read the plan axis, or the storage key, off the context", () => {
     const bound = destructuredFrom(sheet, "useConsumerClass");
-    expect(bound).toContain("key");
-    expect(bound).toContain("unknown");
+    expect(bound).toContain("facts");
+    expect(bound).not.toContain("key");
     expect(bound).not.toContain("plan");
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("Class and Instagram each say one thing — perk vs next action, never glued", () => {
+  it("each door says its OWN fact, and the caption helper is gone", () => {
     // MESITA-1819: Diamond used to read "Highest discount · Instagram or an
-    // invite". Perk glued to doors. A ceiling guest was told how to get the
-    // class they already hold. Captions live in passportDoorCaptions so the
-    // four states cannot drift from a ternary in the page.
-    const named = importedFrom(sheet, "@/lib/consumer-data");
-    expect(named).toContain("passportDoorCaptions");
-    expect(codeOnly(sheet)).toContain("passportDoorCaptions({");
-    expect(codeOnly(sheet)).not.toMatch(/\$\{cls\?\.reward\} · Instagram/);
-    expect(codeOnly(sheet)).not.toContain("Connect for Stories and Rewards");
-    expect(read(DATA)).toContain("Highest discount at every table.");
-    expect(read(DATA)).toContain(
-      "Starting discount. Climb with Instagram or an invite.",
-    );
-    expect(read(DATA)).toContain(
-      "Connect to share Stories and earn extra Rewards.",
-    );
+    // invite". A perk glued to a door, so a ceiling guest was told how to
+    // reach the class they already held. `passportDoorCaptions` existed to
+    // hold those four states apart — and the four states were (floor | mid |
+    // ceiling) x (connected | not), which only exist on a ladder.
+    //
+    // MESITA-2040 deletes the helper rather than porting it, and the ban has
+    // to be on the SHAPE, not the name: any caption function that takes both
+    // facts at once can glue one to the other again. So the sheet's captions
+    // come from the two single-fact helpers and nothing else.
+    expect(codeOnly(sheet)).not.toContain("passportDoorCaptions");
+    expect(read(DATA)).not.toContain("export function passportDoorCaptions");
+    const named = importedFrom(sheet, "@/lib/consumer-identity");
+    expect(named.sort()).toEqual([
+      "diamondNote",
+      "diamondSummary",
+      "instagramNote",
+      "instagramSummary",
+    ]);
+    // Each note reads ONE fact. `diamondNote(facts)` is the whole account,
+    // deliberately — the helper itself is what cannot mention Instagram, and
+    // diamond-and-instagram.test.tsx pins that across every state.
+    expect(codeOnly(sheet)).toContain("diamondNote(facts)");
+    expect(codeOnly(sheet)).toContain("instagramNote(");
   });
 
-  it("is identity plus two doors — Class then Instagram, not a field list", () => {
+  it("is identity plus two doors — Instagram then Diamond, not a field list", () => {
     // MESITA-1801: the page used to be a settings list (Number · Profile ·
     // Class · Instagram). Identity is a document now; the only buttons are
     // the two doors. Pin via the route hrefs and the absence of Field /
-    // Profile / happy talk — not `label="Class"`, which also hits the bar.
+    // Profile / happy talk — not `label="Diamond"`, which also hits the bar.
     const hrefs = [
       ...sheet.matchAll(/href=\{CONSUMER_ROUTES\.mePages\.(\w+)\}/g),
     ].map((m) => m[1]);
-    expect(hrefs).toEqual(["class", "instagram"]);
+    expect(hrefs).toEqual(["instagram", "diamond"]);
     expect(codeOnly(sheet)).not.toContain("function Field");
     expect(codeOnly(sheet)).not.toContain("IdCard");
     expect(codeOnly(sheet)).not.toMatch(/Who you are at Mesita/);
     expect(codeOnly(sheet)).not.toContain("Name, phone, birthday, photo");
     expect(codeOnly(sheet)).not.toMatch(/climb a class/i);
-    expect(sheet).toContain("CLASS_FLOOR");
-    expect(sheet).toContain("REACH_ENTRY_CLASS");
-    expect(sheet).toContain("REACH_ENTRY_FOLLOWERS");
-    expect(sheet).toContain("Couldn't load your class");
+    // A FAILED READ IS STILL NEVER STATED AS A FACT. The sentence moved from
+    // "Couldn't load your class" to the invitation, but the guard is the same
+    // one and it is the reason the branch exists at all.
+    expect(sheet).toContain("Couldn't read your invitation");
   });
 
   it("carries the two doors the card gave up, and only those two", () => {
-    // The bar now carries these two as chips (MESITA-1652), so the page is
-    // the SECOND path, exactly as it was while the cells existed. Keeping it
-    // matters: Instagram is the only reach door and the Class ladder holds
-    // "Join with Invitation", Docs › Passport §C's only entrance for a
-    // 10-digit PIN. Two paths beat one for the doors that cannot be lost.
-    expect(sheet).toContain("CONSUMER_ROUTES.mePages.class");
+    // The bar carries these two as chips (MESITA-1652) and Me carries them as
+    // cells (MESITA-2040), so the page is the THIRD path. Keeping it matters:
+    // Instagram is the only connect door and Diamond holds the only entrance
+    // for a 10-digit PIN (Docs › Passport §C).
     expect(sheet).toContain("CONSUMER_ROUTES.mePages.instagram");
+    expect(sheet).toContain("CONSUMER_ROUTES.mePages.diamond");
     // Profile is NOT a door here — it is a cell on Me, one tap away, and a
     // second door to a promoted surface is MESITA-1609's removed-not-demoted.
     expect(sheet).not.toContain("onOpenProfile");

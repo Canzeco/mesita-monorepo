@@ -6,7 +6,7 @@
 //
 //   1. Verified              somebody at Mesita confirmed the place is real
 //   2. Profile complete      name, address, hours, at least one photo
-//   3. Visit Rewards on      the guest can earn something here
+//   3. Rewards on           the guest can earn something here
 //   4. Online Payments on    the guest can pay here (Stripe enabled)
 //   5. The rung              `PARTNER_MIN_PLAN` or above (Mesita Ultra since
 //                            MESITA-2019) — the plan that carries the badge
@@ -68,8 +68,8 @@ export function partnerChecks(
     },
     {
       key: "rewards",
-      label: "Visit Rewards on",
-      fix: "Turn the program on in Visit Rewards",
+      label: "Rewards on",
+      fix: "Turn the program on in Rewards",
       done: place.visitRewards,
       removes: false,
     },

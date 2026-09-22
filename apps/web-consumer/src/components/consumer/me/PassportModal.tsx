@@ -3,25 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronRight, Copy, Instagram } from "lucide-react";
+import { ChevronRight, Copy, Gem, Instagram } from "lucide-react";
 
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Skeleton } from "@/components/shared";
 import { useConsumerClass } from "@/lib/class-context";
 import {
-  CLASSES,
-  CLASS_FLOOR,
-  CLASS_ICONS,
-  CLASS_MARK_ICON,
-  REACH_ENTRY_CLASS,
-  REACH_ENTRY_FOLLOWERS,
-  classBadgeClass,
-  classFillClass,
-  classInkClass,
-  classWashClass,
-  passportDoorCaptions,
-} from "@/lib/consumer-data";
+  diamondNote,
+  diamondSummary,
+  instagramNote,
+  instagramSummary,
+} from "@/lib/consumer-identity";
 import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
@@ -64,12 +57,24 @@ import { toast } from "@/lib/toast";
 // member number sit on a document card. The number is still the only print of
 // consumers.code — it copies in place; it is not a view.
 //
-// TWO TILES ARE THE ONLY BUTTONS, AND THEY ARE THE ONLY ONES. Class and
-// Instagram navigate to /me/class and /me/instagram. The ladder, Join with
-// Instagram, Join with Invitation, and the connect form stay on those pages.
-// Captions: Class is the perk; climb doors are named only while the guest
-// can still climb (MESITA-1819). Inlining the destinations here would be
-// the twice-rendered CTA ClassModal already killed.
+// TWO TILES ARE THE ONLY BUTTONS, AND THEY ARE THE ONLY ONES. Instagram and
+// Diamond navigate to /me/instagram and /me/diamond; the connect form, the
+// invitation request and the PIN field all stay on those pages. Inlining any
+// of them here would be the twice-rendered CTA the class sheet already killed.
+//
+// THEY WERE CLASS AND INSTAGRAM (MESITA-2040). One tile named a rung and the
+// other named a door onto that rung, which is why their captions needed a
+// four-state helper (`passportDoorCaptions`, MESITA-1819) to stop Diamond
+// reading "Highest discount · Instagram or an invite". Two independent facts
+// need no such helper: each tile says its own fact and nothing about the
+// other, and the middle-dot glue that rule was written against is
+// unconstructable.
+//
+// THE METAL IS DIAMOND OR NOTHING. MESITA-1132 licensed colour to mean class
+// and to live on the passport; there is no ladder to mean, so the band, the
+// portrait frame, the wash and the guilloche all carry one fact. A guest who
+// is not Diamond gets the neutral document, which is the same document
+// MESITA-1820 designed — it simply is not engraved.
 //
 // TYPE AND CODE ARE NOT FIELDS (MESITA-1820, D3). They printed `PM` and `MTA`
 // for every guest forever and were taking the row the member number needed.
@@ -88,8 +93,6 @@ import { toast } from "@/lib/toast";
 // PROFILE IS NOT A DOOR HERE. It is a cell on Me, one tap away
 // (MESITA-1609: removed, not demoted). The completion line under the grid is
 // a COUNT, not a link, for exactly that reason — see the note on it below.
-
-const CLASS_CEILING = CLASSES[CLASSES.length - 1];
 
 function Door({
   href,
@@ -206,13 +209,8 @@ export function PassportModal() {
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
-  const {
-    key,
-    origin,
-    followers,
-    handle: classHandle,
-    unknown,
-  } = useConsumerClass();
+  const { facts } = useConsumerClass();
+  const { diamond, unknown } = facts;
 
   useEffect(() => {
     let cancelled = false;
@@ -240,9 +238,16 @@ export function PassportModal() {
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
 
-  const cls = CLASSES.find((c) => c.id === key);
-  const classLabel = unknown ? null : (cls?.label ?? CLASS_FLOOR.label);
-  const ClassIcon = unknown ? CLASS_MARK_ICON : CLASS_ICONS[key];
+  // The context is seeded server-side; this page fetches the profile itself,
+  // so the handle can arrive from either. The context wins when it has one (a
+  // fresh connect updates it first) and the profile row covers the cold load.
+  const igFacts = facts.igHandle
+    ? facts
+    : {
+        ...facts,
+        igHandle: profile?.instagram_handle ?? null,
+        igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
+      };
 
   // NATIONALITY comes from the phone dial code, not from `consumers.country`:
   // onboarding never writes that column, so the dial code the guest already
@@ -263,7 +268,10 @@ export function PassportModal() {
     birthday: profile?.birthday ?? null,
     sex: profile?.sex ?? null,
     nationality,
-    classLabel,
+    // The MRZ's optional-data field. `DIAMOND` or `MEMBER`, never a blank:
+    // the strip is fixed-width and a filler run there would read as a field
+    // the document declined to print rather than as an ordinary account.
+    standing: unknown ? null : diamond ? "DIAMOND" : "MEMBER",
   };
   const { fields, missing } = passportFields(dataPage);
   const [mrzLine1, mrzLine2] = buildMrz(dataPage);
@@ -277,30 +285,13 @@ export function PassportModal() {
   const completion = loaded && !failed ? completionLine(missing.length) : null;
   const byId = (id: string) => fields.find((f) => f.id === id)?.value ?? null;
 
-  const handle = classHandle ?? profile?.instagram_handle ?? null;
-  const igConnected = origin === "instagram" || Boolean(handle);
-
   const code = profile?.code ?? null;
-  const atCeiling = !unknown && key === CLASS_CEILING.id;
-  const onFloor = !unknown && key === CLASS_FLOOR.id;
-
-  const { classNote, igNote } = passportDoorCaptions({
-    unknown,
-    onFloor,
-    atCeiling,
-    igConnected,
-    followersLabel: `${formatCompactCount(followers)} followers`,
-    reachFollowers: REACH_ENTRY_FOLLOWERS,
-    reachLabel: REACH_ENTRY_CLASS.label,
-  });
-
-  const igHeadline = igConnected
-    ? handle
-      ? `@${handle}`
-      : "Connected"
-    : atCeiling
-      ? "Not connected"
-      : "Connect it";
+  const igHeadline = instagramSummary(igFacts);
+  const igNote = instagramNote(
+    igFacts,
+    `${formatCompactCount(igFacts.igFollowers)} followers`,
+  );
+  const diamondHeadline = diamondSummary(facts);
 
   async function copyCode() {
     if (!code) return;
@@ -322,43 +313,44 @@ export function PassportModal() {
             <div
               className={cn(
                 "pointer-events-none absolute inset-0",
-                unknown ? "bg-muted/40" : classWashClass(key),
+                unknown || !diamond ? "bg-muted/30" : "wash-diamond",
               )}
               aria-hidden
             />
 
             {/* The band. A real passport's top strip names the issuing state;
-                naming the metal there spends MESITA-1132's colour budget on
+                naming the standing there spends MESITA-1132's colour budget on
                 the one surface that holds the license, cannot be mistaken for
-                a button, and adds neither a field nor a third door. Unknown
-                class: neutral strip, no name. */}
+                a button, and adds neither a field nor a third door. Not
+                Diamond, or unknown: neutral strip and no second word. */}
             <div
               className={cn(
                 "relative flex items-center justify-between gap-3 px-4 py-2.5",
-                unknown ? "bg-muted text-foreground" : classBadgeClass(key),
+                diamond && !unknown
+                  ? "bg-tier-diamond text-foreground"
+                  : "bg-muted text-foreground",
               )}
             >
               <span className="font-display type-eyebrow truncate">
                 Mesita
               </span>
-              {classLabel ? (
+              {diamond && !unknown ? (
                 <span className="type-meta shrink-0 font-bold tracking-[0.12em] uppercase">
-                  {classLabel}
+                  Diamond
                 </span>
               ) : null}
             </div>
 
             <div className="relative p-4">
-              {/* The guilloche, suppressed when there is no metal to engrave. */}
-              {unknown ? null : (
+              {/* The guilloche, suppressed when there is no metal to engrave —
+                  which is now every account without an invitation, not only an
+                  unreadable one. */}
+              {diamond && !unknown ? (
                 <div
                   aria-hidden
-                  className={cn(
-                    "guilloche pointer-events-none absolute inset-0",
-                    classInkClass(key),
-                  )}
+                  className="guilloche text-diamond pointer-events-none absolute inset-0"
                 />
-              )}
+              ) : null}
 
               <div className="relative flex gap-4">
                 {/* 35:45 — the ratio a passport photo actually is, not a
@@ -366,7 +358,7 @@ export function PassportModal() {
                 <div
                   className={cn(
                     "shrink-0 rounded-[6px] p-[2.5px]",
-                    unknown ? "bg-muted" : classFillClass(key),
+                    diamond && !unknown ? "bg-tier-diamond" : "bg-muted",
                   )}
                   aria-hidden
                 >
@@ -480,37 +472,10 @@ export function PassportModal() {
             </div>
           </section>
 
-          <Door
-            href={CONSUMER_ROUTES.mePages.class}
-            eyebrow="Class"
-            glyph={
-              <span
-                className={cn(
-                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                  unknown ? "bg-muted text-foreground" : classBadgeClass(key),
-                )}
-                aria-hidden
-              >
-                <ClassIcon className="h-5 w-5" />
-              </span>
-            }
-            headline={
-              unknown ? (
-                "Couldn't load your class"
-              ) : (
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
-                    classBadgeClass(key),
-                  )}
-                >
-                  {classLabel}
-                </span>
-              )
-            }
-            note={classNote}
-          />
-
+          {/* INSTAGRAM FIRST, THEN DIAMOND — the order Pato named the two
+              facts (MESITA-2040), matching the header chips and the Me grid.
+              Three surfaces, one order; a reflow on any of them is visible
+              against the other two. */}
           <Door
             href={CONSUMER_ROUTES.mePages.instagram}
             eyebrow="Instagram"
@@ -527,6 +492,28 @@ export function PassportModal() {
             }
             headline={igHeadline}
             note={igNote}
+          />
+
+          <Door
+            href={CONSUMER_ROUTES.mePages.diamond}
+            eyebrow="Diamond"
+            glyph={
+              <span
+                className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                  diamond && !unknown
+                    ? "bg-tier-diamond text-foreground"
+                    : "bg-muted text-muted-foreground",
+                )}
+                aria-hidden
+              >
+                <Gem className="h-5 w-5" />
+              </span>
+            }
+            headline={
+              unknown ? "Couldn't read your invitation" : diamondHeadline
+            }
+            note={diamondNote(facts)}
           />
         </div>
       )}

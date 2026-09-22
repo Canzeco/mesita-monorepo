@@ -8,7 +8,7 @@
 //
 // ── IT RENDERS THE REAL VIEW, IT DOES NOT REBUILD IT ───────────────────────
 //
-// Seven products have a screen — Profile, Visit Rewards, Online Orders, Online
+// Seven products have a screen — Profile, Member Visits, Online Orders, Online
 // Reservations, Prepaid Credits, Mesita Capital, and Payments through its own
 // route — and those screens take NO PROPS: every one of them reads
 // `usePlaceScope()`, which `places/[id]/layout` publishes. Setup sits inside
@@ -34,7 +34,7 @@
 // panel is not, and a fake form for a product that does not exist is worse than
 // either.
 import { useMemo } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useHalf } from "@/components/shared/Half";
 import { NotHeld, usePlaceScope } from "@/components/console/PlaceScope";
@@ -63,9 +63,13 @@ import {
 import type { ProductCard } from "@/lib/products";
 import type { ProductKey } from "@/lib/product-keys";
 import { PRODUCT_MARK } from "@/lib/product-marks";
+import { familyStyle } from "@/lib/product-families";
 import { hasHalf, isSplit } from "@/lib/product-halves";
 import { PRODUCT_SLUG, productHref, type PlaceHalf } from "@/lib/product-routes";
-import { placeIdFromPathname } from "@/lib/console-routes";
+import { placeIdFromPathname, placePlanHref } from "@/lib/console-routes";
+import { PLAN_LABEL } from "@/mock/types";
+import { Group } from "@/components/shared/Group";
+import { Rule } from "@/components/shared/Rule";
 import { cn } from "@/lib/utils";
 
 /** MESITA PARTNER'S SCREEN IS ITS OWN NOW (MESITA-2012).
@@ -120,7 +124,7 @@ const PRODUCT_VIEW: Partial<Record<ProductKey, () => React.ReactElement | null>>
   website: WebsiteView,
 };
 
-/** Visit Rewards' own program screen, reached from `VisitsView`. Held here so
+/** Member Visits' own program screen, reached from `VisitsView`. Held here so
  *  the import is not dead weight the day a rewards row wants its own pane. */
 void RewardsView;
 
@@ -131,8 +135,35 @@ export function ProductPane({ card }: { card: ProductCard }) {
   const hasBody = View !== null || card.key === "customers";
 
   const half = useHalf();
+  const { place } = usePlaceScope();
+  const router = useRouter();
 
   const body = useMemo(() => {
+    // LOCKED IS GATED ONCE, HERE (MESITA-2034, D12A). Every view used to
+    // decide its own Locked state — `LineView`/`WebsiteView` checked
+    // `planAtLeast` themselves and `VisitsView` never checked at all, so a
+    // place below Ultra saw a live "Open Rewards" door under a header reading
+    // Locked. One gate for every product, on both halves, replaces eleven
+    // chances to forget it. `card.note` already carries "Needs {rung}." —
+    // `buildProductCards` writes it, so this reads the fact rather than
+    // re-deriving it.
+    if (card.state === "locked" && place) {
+      return (
+        <Group title={card.note ?? "Locked"} allowOneRow>
+          <Rule
+            label={`This place is on ${PLAN_LABEL[place.plan]}`}
+            note="Move the rung on Plan and this screen fills in."
+            control={{
+              kind: "button",
+              label: "Open Plan",
+              emphasis: "primary",
+              onClick: () => router.push(placePlanHref(place.id)),
+            }}
+          />
+        </Group>
+      );
+    }
+
     // THE VIEW ONLY RENDERS ON A HALF THE PRODUCT ACTUALLY HAS (MESITA-2004).
     //
     // This line used to read `if (View) return <View />` with no mention of
@@ -216,6 +247,8 @@ export function ProductPane({ card }: { card: ProductCard }) {
   }, [
     View,
     half,
+    place,
+    router,
     card.key,
     card.name,
     card.state,
@@ -227,6 +260,13 @@ export function ProductPane({ card }: { card: ProductCard }) {
     <div className="flex flex-col gap-4">
       <PageHeader
         mark={PRODUCT_MARK[card.key]}
+        // THE PRODUCT'S FAMILY, CARRIED THROUGH FROM THE CATALOGUE
+        // (MESITA-2037). The tile an operator clicked was tinted; arriving on
+        // a grey header would read as having landed somewhere else. Only the
+        // plate and the NAME take the hue — the blurb, the badge and every
+        // section below stay exactly as achromatic as they were.
+        markClass={familyStyle(card.key).tintStrong}
+        titleClass={familyStyle(card.key).ink}
         title={card.name}
         badges={<ProductStateBadge state={card.state} />}
         blurb={card.blurb}

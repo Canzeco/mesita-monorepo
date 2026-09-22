@@ -18,7 +18,9 @@ import { cn } from "@/lib/utils";
 const SIZES = {
   /** In a list row or beside a page heading. */
   rail: "h-6 w-6 rounded-md",
-  menu: "h-5 w-5 rounded-md",
+  // 30px (MESITA-2034, Apple's account-row anatomy in the sidebar's venue
+  // band). Up from 20px — the only caller is Sidebar.tsx's venue chip.
+  menu: "h-[30px] w-[30px] rounded-lg",
   /** THE PLACE PAGE, where the venue is the subject rather than a label. */
   page: "h-11 w-11 rounded-xl",
 } as const;

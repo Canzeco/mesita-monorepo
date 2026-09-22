@@ -56,7 +56,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // with no card — and the second renders `undefined` straight into a
     // className. The bijection is the assertion, in both directions.
     expect([...PRODUCT_ORDER].sort()).toEqual([...PRODUCT_KEYS].sort());
-    expect(PRODUCT_ORDER).toHaveLength(15);
+    expect(PRODUCT_ORDER).toHaveLength(14);
   });
 
   it("is Pato's list, and the RAIL is a SUBSEQUENCE of it (MESITA-1949)", () => {
@@ -82,7 +82,6 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       "customers",
       "ads",
       "visits",
-      "rewards",
       "orders",
       "reservations",
       "pay",
@@ -134,7 +133,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
       { place: null },
       { partnered: true, mesitaPayEnabled: true },
     ]) {
-      expect(Object.keys(build(input))).toHaveLength(15);
+      expect(Object.keys(build(input))).toHaveLength(14);
     }
   });
 
@@ -475,11 +474,18 @@ describe("Guest Catalog is a SUBSCRIPTION, unbuilt, and says both", () => {
   });
 });
 
-describe("Visits and Rewards are two cards, and neither borrows (MESITA-1900)", () => {
-  // Pato, 2026-09-16, separated what MESITA-1884 merged on *"should i separate
-  // visits and rewards into two?? i don't think so."*
+describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)", () => {
+  // Pato, 2026-09-21: *"rename Visit Rewards to Member Visits in both
+  // consoles"* — and web-business had no such label to rename, because it
+  // still shipped the pair. MESITA-1971 settled the argument for good: a
+  // place cannot buy either half alone and be glad it did, so one card.
   //
-  // THE TRAP IS THE SAME ONE, AND THE SPLIT IS WHAT DISARMS IT. MESITA-1882
+  // THE SPLIT'S TESTS MOSTLY SURVIVE THE MERGE, WHICH IS THE POINT. Every
+  // assertion below that Visits does NOT move with `visitRewards` was written
+  // for the split and passes unchanged here — the merge kept `atPlace: null`,
+  // so the merged card still reads the container and never the dial.
+  //
+  // THE TRAP IS THE OLD ONE, AND `atPlace: null` IS WHAT DISARMS IT. MESITA-1882
   // fixed a Rewards card that claimed Enabled at strategy Zero — 0% to every
   // guest, no Partner badge in the guest app, reported as "on" by the one
   // screen whose job is saying what is on. MESITA-1884 then refused to give
@@ -487,10 +493,11 @@ describe("Visits and Rewards are two cards, and neither borrows (MESITA-1900)", 
   // whose checkout works — guests scan, the bill closes, money moves — would
   // have read "Not enabled" because the discount is zero.
   //
-  // Two cards, two states, neither borrowed. Visits' state is the container's
-  // and Rewards' is `visitRewards`, where "Not on here yet" is the dial's own
-  // truth and accuses nothing. Every test below is the bijection between
-  // them.
+  // ONE CARD NOW, AND IT IS THE CONTAINER'S STATE. Merging on `visitRewards`
+  // would have re-armed MESITA-1884's lie from the other side: a partner
+  // whose checkout works — guests scan, the bill closes, money moves — would
+  // read "Off" because the discount is zero. The dial keeps its VIEW and its
+  // own truth at `/places/<id>/rewards`; it just has no card.
 
   it("stays Enabled for a partner whose rewards are at Zero", () => {
     // The card must NOT move with the dial. This is the assertion that fails
@@ -522,30 +529,38 @@ describe("Visits and Rewards are two cards, and neither borrows (MESITA-1900)", 
     expect(build({ partnered: false }).visits.state).toBe("locked");
   });
 
-  it("REWARDS' card moves with the dial, which is the other half", () => {
-    // The bijection MESITA-1884 could not have: the same two reads that must
-    // NOT move Visits must move Rewards, or the split bought nothing and the
-    // dial is once again a fact with no card of its own.
-    const zero = build({
-      partnered: true,
-      place: place({ visitRewards: false }),
-    }).rewards;
-    const on = build({
-      partnered: true,
-      place: place({ visitRewards: true }),
-    }).rewards;
-
-    expect(zero.state).toBe("off");
-    expect(on.state).toBe("enabled");
-    expect(zero.action?.href).toBe(placeTabHref("p-1", "rewards"));
+  it("has NO Rewards card — the catalogue carries one, not two", () => {
+    // The merge, asserted where it can actually fail. `buildProductCards`
+    // is keyed by `ProductKey`, so a `rewards` card can only come back if
+    // somebody puts the key back in `PRODUCT_KEYS` — which is exactly the
+    // reversal this console has now made four times (1884 merge, 1900 split,
+    // 1949 shipped split, 1953 merged the mock only).
+    const cards = build({ partnered: true, place: place({ visitRewards: true }) });
+    expect(Object.keys(cards)).not.toContain("rewards");
+    expect(PRODUCT_ORDER).not.toContain("rewards");
   });
 
-  it("Rewards is Partner-gated, and reads Locked rather than Off", () => {
-    // Conservative and Aggressive are what the Membership prices, so a
-    // non-partner has no switch to be walked to — the ladder grammar every
-    // partner-gated card on this page uses.
-    const card = build({ partnered: false, place: place({ visitRewards: true }) })
-      .rewards;
+  it("but the DIAL keeps its view, and the view keeps its door", () => {
+    // THE HALF OF THE MERGE THAT IS EASY TO LOSE (MESITA-1953's law). Only
+    // the CARD merged. `rewards` is still a tab and still an address, because
+    // one product's state must be settable in exactly one place — and the
+    // card was the only way in, so deleting the tab along with the card is
+    // how `/places/<id>/rewards` becomes reachable by typing and nothing
+    // else, the same stranding `products/pay` needed a back link for
+    // (MESITA-1943). This fails the day someone "finishes" the cleanup.
+    expect(PLACE_TABS).toContain("rewards");
+    expect(placeTabHref("p-1", "rewards")).toBe("/places/p-1/rewards");
+  });
+
+  it("the merged card is Partner-gated, and reads Locked rather than Off", () => {
+    // The ladder grammar every partner-gated card on this page uses: a
+    // non-partner has no switch to be walked to. Note the place says its
+    // rewards are ON — Locked must still outrank that, or the gate is
+    // readable around.
+    const card = build({
+      partnered: false,
+      place: place({ visitRewards: true }),
+    }).visits;
     expect(card.state).toBe("locked");
     expect(card.action).toBeNull();
   });
@@ -561,12 +576,15 @@ describe("Visits and Rewards are two cards, and neither borrows (MESITA-1900)", 
     }
   });
 
-  it("A FAILED READ FABRICATES NO REWARDS STATE", () => {
-    // The rule the whole file exists to hold, now applied to the card that
-    // actually reads the column: `place: null` is a read that FAILED, and Off
-    // is the most believable fabrication there is.
-    const rewards = build({ partnered: true, place: null }).rewards;
-    expect(rewards.note).toBeNull();
+  it("A FAILED READ FABRICATES NO DIAL STATE", () => {
+    // The rule the whole file exists to hold. `place: null` is a read that
+    // FAILED, and after the merge the believable fabrication moved: there is
+    // no Rewards card left to print "Off", so the lie would now be the
+    // MERGED card inventing a dial state in its own note. It may not — and
+    // it may not go Off either, because the container is still up.
+    const visits = build({ partnered: true, place: null }).visits;
+    expect(visits.state).toBe("enabled");
+    expect(visits.note).not.toMatch(/rewards|off|zero/i);
   });
 
   it("never promises cashback — nothing accumulates on Mesita", () => {

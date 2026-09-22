@@ -26,7 +26,7 @@
 //   pro    Express Website, Online Orders, Online Reservations, Online
 //          Payments — the selling surface: where a guest reads the menu that
 //          Free already gave them, and the rail that charges them.
-//   ultra  Partner Badge, Visit Rewards, Prepaid Credits, Answering Agent,
+//   ultra  Partner Badge, Member Visits, Prepaid Credits, Answering Agent,
 //          Developers Platform, Table Orders, Customer Intelligence,
 //          Marketing Intelligence — what brings a guest BACK, plus anything
 //          that costs us per use (model minutes, compute, API bandwidth).
@@ -50,7 +50,7 @@
 // work without online payments"* — Online Orders is prepaid by definition
 // ("paid the moment the order is placed"), so a rung carrying Orders without
 // Payments is an order button that cannot charge anybody. Prepaid Credits and
-// Visit Rewards have the same dependency. `products.test.ts` pins it, because
+// Member Visits have the same dependency. `products.test.ts` pins it, because
 // the next person to move a `minPlan` will not read this paragraph.
 //
 // WHY REWARDS IS UP AT ULTRA and not beside the rails it resembles. Pato:
@@ -375,7 +375,7 @@ export const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "visits",
-    name: "Visit Rewards",
+    name: "Member Visits",
     // ONE SENTENCE FOR BOTH HALVES (MESITA-1953), in the order they happen:
     // the bill closes, then a slice goes back. The old pair said them
     // separately and the second one ("you set the rungs, you set the price")
@@ -387,8 +387,10 @@ export const SPECS: readonly ProductSpec[] = [
       "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you switch on what earns it.",
     tab: "visits",
     minPlan: "ultra",
-    // PARTNER-GATED, NOT `visitRewards`. Visits is included with the
-    // Membership and has no per-place switch; only the rewards half has one.
+    // RUNG-GATED, NOT `visitRewards`. Member Visits comes with the Ultra rung
+    // and has no per-place switch; only the rewards half has one. (It used to
+    // read "included with the Membership"; there is no Membership since
+    // MESITA-2019, which is also what freed "Member" for this card's name.)
     // Reading the merged card off that toggle would print "Off" for a place
     // whose visits work fine — a card stating a fact that is not true, which
     // is the one thing this grid may not do. The card says the product is
@@ -450,7 +452,19 @@ export const SPECS: readonly ProductSpec[] = [
   },
   {
     key: "terminal",
-    name: "Physical Terminal",
+    // DIGITAL TERMINAL, NOT "Physical Terminal" (MESITA-2037). Pato:
+    // *"Use \"Answering Agent\" (singular) and \"Digital Terminal\"
+    // everywhere."*
+    //
+    // IT BREAKS A RHYME ON PURPOSE. MESITA-1958 paired this with Physical POS
+    // — *"the two boxes on your counter"* — and spelling one out while the
+    // other kept its qualifier was the thing that argument refused. The pair
+    // is broken now, and the reason is that PHYSICAL was never the true
+    // distinction: Online Payments and this product both take a card, and what
+    // separates them is whose screen the tap happens on, not whether the thing
+    // has a body. The POS keeps `Physical` because its opposite really is a
+    // software till.
+    name: "Digital Terminal",
     // BACK AFTER MESITA-1900 TOOK IT OUT, on Pato's 2026-09-16 list, and still
     // Soon for the same reason it left: there is no hardware. The old blurb
     // ("Take in-person payments with Mesita hardware") named the box; this one

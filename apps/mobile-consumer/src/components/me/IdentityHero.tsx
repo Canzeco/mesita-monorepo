@@ -13,53 +13,39 @@ import {
   SHADOW_ELEV,
 } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
-import {
-  CLASS_ICONS,
-  CLASS_METAL_INK_GRADIENT,
-  isElevatedClass,
-} from '@/lib/consumer-classes';
+import { Gem } from 'lucide-react-native';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
-// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) — web parity.
-// Centered photo + IG/Class badges (IG leading/left — MESITA-956), then five
-// equal-height identity rows: name·sex·age / phone / IG / class / visits·saved.
-// Phone shows dial flag; class row + badge use CLASS_ICONS.
+// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937 / MESITA-2040)
+// — web parity. Centered photo + IG/Diamond badges (IG leading/left —
+// MESITA-956), then five equal-height identity rows: name·sex·age / phone / IG
+// / Diamond / visits·saved. Phone shows dial flag.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
+//
+// ONE METAL LEFT, AND IT MEANS ONE THING (MESITA-2040). `classBadgeColors` and
+// `classBadgeIconColor` switched on four rungs — amber for aura, red for
+// influencer, blue for premium, grey for the floor — and `isElevatedClass`
+// decided whether the ring and the wash were coloured at all. There is no
+// ladder: the ring, the wash and the badge carry DIAMOND, and a guest who is
+// not Diamond gets the brand pink the card has always fallen back to.
 
 const ROW_HEIGHT = 44;
 
-// THE CLASS LADDER keeps its hue (MESITA-1954): a tier the product names out
-// loud to the guest is one of the three things chroma survives for. What it
-// stops doing is naming its own metal — CLASS_METAL_INK_GRADIENT is the one
-// map the ring and the wash below also take, so badge, ring and wash cannot
-// name different metals for one class.
-//
-// THIS FILE USED TO HAND-ROLL THE BRIDGE ITSELF, matching on key NAME rather
-// than on meaning (`aura: GRADIENTS.gold` reads as a deliberate choice but is
-// really "aura and gold are both four letters starting with a vowel or not" —
-// GRADIENTS.gold is Gold's own ink, and aura is Diamond). Every class on this
-// screen rendered the wrong metal until this pointed at the canonical map.
-function classBadgeColors(classKey: string): readonly [string, string] {
-  return (
-    CLASS_METAL_INK_GRADIENT[classKey as keyof typeof CLASS_METAL_INK_GRADIENT]
-    ?? CLASS_METAL_INK_GRADIENT.standard
-  );
-}
-
-// The ink ON the metal, at the ink-anchor scale (measured, not eyeballed —
-// contrast() run against both stops of each metal's ring gradient, worst case
-// kept). Bronze and Diamond are dark enough here to carry white (3.94:1,
-// 3.60:1); Silver and Gold are not (2.98:1, 3.20:1) and take foreground ink
-// instead (3.68:1, 3.66:1). This is the ink-anchor scale, one step darker
-// than the badge FILL scale passport.tsx uses — the two pairings differ on
-// purpose; don't copy one onto the other.
-function classBadgeIconColor(classKey: string): string {
-  if (classKey === 'aura') return COLORS.primaryForeground; // Diamond
-  if (classKey === 'influencer') return COLORS.foreground; // Silver
-  if (classKey === 'premium') return COLORS.foreground; // Gold
-  return COLORS.primaryForeground; // Bronze
-}
+/** Diamond's badge, and the only conditional colour on this card.
+ *
+ *  DIAMOND KEEPS ITS HUE, NOT-DIAMOND LOSES ITS PINK (MESITA-1954 +
+ *  MESITA-2040). Diamond is a tier the product names out loud to the guest,
+ *  which is the achromatic rule's "where a tier is named" clause exactly. The
+ *  blue is spelled out here rather than read from `GRADIENTS.premium`, because
+ *  that token went to an ink ramp when this app went achromatic — reading it
+ *  would paint Diamond the same grey as everyone else. Everything the card
+ *  showed a NOT-Diamond guest was brand pink, and pink is not a tier: the ring
+ *  takes `GRADIENTS.pink` (an ink ramp now) and the wash takes that ink at the
+ *  alphas the pink wash had. */
+const DIAMOND_BADGE = ['#bfdbfe', '#2563eb'] as const;
+const PLAIN_BADGE = ['#e5e7eb', '#9ca3af'] as const;
+const PLAIN_WASH = ['rgba(23,23,23,0.10)', 'rgba(64,64,64,0.06)'] as const;
 
 export function IdentityHeroSkeleton() {
   return (
@@ -84,7 +70,7 @@ export function IdentityHeroSkeleton() {
 }
 
 export function IdentityHero({
-  classKey,
+  diamond,
   name,
   sexLabel,
   age,
@@ -94,11 +80,12 @@ export function IdentityHero({
   igConnected,
   handle,
   followers,
-  classLabel,
+  diamondLabel,
   savedCents,
   visits,
 }: {
-  classKey: string;
+  /** Invited, by hand. The card's only conditional colour. */
+  diamond: boolean;
   name: string;
   sexLabel: string | null;
   age: number | null;
@@ -109,30 +96,13 @@ export function IdentityHero({
   igConnected: boolean;
   handle: string | null;
   followers: number;
-  classLabel: string;
+  /** "Diamond" or "Ask for it" — Me computes it from the shared facts. */
+  diamondLabel: string;
   savedCents: number | null;
   visits: number | null;
 }) {
   const router = useRouter();
-  const isElevated = isElevatedClass(classKey);
-  // ONE MAP (MESITA-1954): this used to match on key NAME the same wrong way
-  // classBadgeColors above did — aura->gold, influencer->influencer,
-  // else->premium — which named the wrong metal for all three elevated
-  // classes. `standard` is unreachable here (isElevated excludes it) but the
-  // map covers it too, so there is nothing left to get wrong by omission.
-  const elevatedRing =
-    CLASS_METAL_INK_GRADIENT[classKey as keyof typeof CLASS_METAL_INK_GRADIENT]
-    ?? CLASS_METAL_INK_GRADIENT.standard;
-  // The tier wash = the same metal as the ring above, at the alpha it had.
-  // Keyed correctly now: aura->Diamond's rgb(0,144,201), influencer->Silver's
-  // rgb(154,148,148), premium->Gold's rgb(184,136,10) — the ring's own three
-  // ink-anchor stops, decimal, not re-derived.
-  const elevatedWash =
-    classKey === 'aura'
-      ? (['rgba(0,144,201,0.16)', 'rgba(0,114,160,0.10)'] as const)
-      : classKey === 'influencer'
-        ? (['rgba(154,148,148,0.16)', 'rgba(117,112,112,0.10)'] as const)
-        : (['rgba(184,136,10,0.18)', 'rgba(144,107,0,0.10)'] as const);
+  const diamondWash = ['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const;
 
   const identityLine = [name, sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
@@ -148,12 +118,6 @@ export function IdentityHero({
   ].join(' · ');
 
   const flag = phoneCountryFlag(phoneRaw ?? phone);
-  const classId = (
-    Object.hasOwn(CLASS_ICONS, classKey)
-      ? classKey
-      : 'standard'
-  ) as keyof typeof CLASS_ICONS;
-  const ClassIcon = CLASS_ICONS[classId];
 
   const rows: {
     key: string;
@@ -222,18 +186,26 @@ export function IdentityHero({
       ),
     },
     {
-      key: 'class',
-      href: CONSUMER_ROUTES.mePages.class,
-      accessibilityLabel: `Class: ${classLabel}`,
+      key: 'diamond',
+      href: CONSUMER_ROUTES.mePages.diamond,
+      accessibilityLabel: `Diamond: ${diamondLabel}`,
       content: (
         <View className="flex-row items-center gap-1.5">
-          <ClassIcon color="#171717B3" size={14} strokeWidth={2.25} />
+          <Gem
+            color={diamond ? '#2563eb' : '#171717B3'}
+            size={14}
+            strokeWidth={2.25}
+          />
           <Text
-            className="font-semibold text-foreground"
+            className={
+              diamond
+                ? 'font-semibold text-foreground'
+                : 'font-semibold text-muted-foreground'
+            }
             style={{ fontSize: 13 }}
             numberOfLines={1}
           >
-            {classLabel}
+            {diamondLabel}
           </Text>
         </View>
       ),
@@ -260,14 +232,7 @@ export function IdentityHero({
     >
       <LinearGradient
         colors={
-          isElevated
-            ? elevatedWash
-            // Standard/Bronze wears its OWN metal. This was silver's rgb
-            // (154,148,148) — the same "matched the wrong metal by habit"
-            // slip as the ring below, just carried one level further, since
-            // CLASS_METAL_INK_GRADIENT.standard didn't exist yet when this
-            // was authored. Bronze's own ink-anchor light stop, rgb(180,112,63).
-            : ['rgba(180,112,63,0.12)', 'rgba(149,76,40,0.08)']
+          diamond ? diamondWash : PLAIN_WASH
         }
         start={GRADIENT_DIAGONAL.start}
         end={GRADIENT_DIAGONAL.end}
@@ -293,11 +258,7 @@ export function IdentityHero({
           style={{ width: 72, height: 72, overflow: 'visible' }}
         >
           <LinearGradient
-            // Non-elevated = Standard/Bronze's own metal, from the same
-            // canonical map its badge below and CurrentClassCard both read —
-            // CLASS_METAL_INK_GRADIENT.standard, not silver's or the Plan's
-            // ink ramp.
-            colors={isElevated ? elevatedRing : [...CLASS_METAL_INK_GRADIENT.standard]}
+            colors={diamond ? [...DIAMOND_BADGE] : [...GRADIENTS.pink]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{ borderRadius: 999, padding: 2 }}
@@ -318,11 +279,9 @@ export function IdentityHero({
             </View>
           </LinearGradient>
 
-          {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Class
-              right so Instagram leads Class everywhere (MESITA-956).
-              Instagram's gradient and its mark keep Instagram's colour — a
-              third party owns it (MESITA-1954); not-connected is the flat
-              hairline neutral, so the two states are colour vs no colour. */}
+          {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Diamond
+              right, so Instagram leads on every surface (MESITA-956, and the
+              order Pato named the two facts in MESITA-2040). */}
           <LinearGradient
             colors={
               igConnected
@@ -360,14 +319,8 @@ export function IdentityHero({
                   channel="instagram"
                   size={14}
                   // Connected: no override — ChannelMark's own canonical
-                  // Instagram brand fill (#E4405F, channel-marks.tsx
-                  // BRAND_COLOR.instagram), the same third-party colour
-                  // GRADIENTS.instagram carries on the ring above it. The
-                  // old literal here was '#c02670', a Mesita-pink-family
-                  // magenta that predates the achromatic repaint and never
-                  // matched Instagram's actual brand hex — a missed colour,
-                  // not a reserved one. Disconnected stays the achromatic
-                  // neutral token.
+                  // Instagram fill, the third-party colour GRADIENTS.instagram
+                  // carries on the ring above it. Disconnected is the neutral.
                   color={igConnected ? undefined : COLORS.mutedForeground}
                 />
               )}
@@ -375,7 +328,7 @@ export function IdentityHero({
           </LinearGradient>
 
           <LinearGradient
-            colors={[...classBadgeColors(classKey)]}
+            colors={diamond ? [...DIAMOND_BADGE] : [...PLAIN_BADGE]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{
@@ -390,10 +343,10 @@ export function IdentityHero({
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            accessibilityLabel={`Class: ${classLabel}`}
+            accessibilityLabel={`Diamond: ${diamondLabel}`}
           >
-            <ClassIcon
-              color={classBadgeIconColor(classKey)}
+            <Gem
+              color={diamond ? '#1e3a8a' : '#171717'}
               size={14}
               strokeWidth={2.5}
             />
