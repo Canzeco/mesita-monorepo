@@ -8,31 +8,28 @@ import { ChannelMark } from '@/components/brand/channel-marks';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
-import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
+import { Gem } from 'lucide-react-native';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
-// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) — web parity.
-// Centered photo + IG/Class badges (IG leading/left — MESITA-956), then five
-// equal-height identity rows: name·sex·age / phone / IG / class / visits·saved.
-// Phone shows dial flag; class row + badge use CLASS_ICONS.
+// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937 / MESITA-2040)
+// — web parity. Centered photo + IG/Diamond badges (IG leading/left —
+// MESITA-956), then five equal-height identity rows: name·sex·age / phone / IG
+// / Diamond / visits·saved. Phone shows dial flag.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
+//
+// ONE METAL LEFT, AND IT MEANS ONE THING (MESITA-2040). `classBadgeColors` and
+// `classBadgeIconColor` switched on four rungs — amber for aura, red for
+// influencer, blue for premium, grey for the floor — and `isElevatedClass`
+// decided whether the ring and the wash were coloured at all. There is no
+// ladder: the ring, the wash and the badge carry DIAMOND, and a guest who is
+// not Diamond gets the brand pink the card has always fallen back to.
 
 const ROW_HEIGHT = 44;
 
-function classBadgeColors(classKey: string): readonly [string, string] {
-  if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
-  if (classKey === 'influencer') return ['#fecaca', '#ef4444'] as const;
-  if (classKey === 'premium') return ['#bfdbfe', '#2563eb'] as const;
-  return ['#e5e7eb', '#9ca3af'] as const;
-}
-
-function classBadgeIconColor(classKey: string): string {
-  if (classKey === 'aura') return '#78350f';
-  if (classKey === 'influencer') return '#7f1d1d';
-  if (classKey === 'premium') return '#1e3a8a';
-  return '#171717';
-}
+/** Diamond's badge, and the only conditional colour on this card. */
+const DIAMOND_BADGE = ['#bfdbfe', '#2563eb'] as const;
+const PLAIN_BADGE = ['#e5e7eb', '#9ca3af'] as const;
 
 export function IdentityHeroSkeleton() {
   return (
@@ -57,7 +54,7 @@ export function IdentityHeroSkeleton() {
 }
 
 export function IdentityHero({
-  classKey,
+  diamond,
   name,
   sexLabel,
   age,
@@ -67,11 +64,12 @@ export function IdentityHero({
   igConnected,
   handle,
   followers,
-  classLabel,
+  diamondLabel,
   savedCents,
   visits,
 }: {
-  classKey: string;
+  /** Invited, by hand. The card's only conditional colour. */
+  diamond: boolean;
   name: string;
   sexLabel: string | null;
   age: number | null;
@@ -82,24 +80,13 @@ export function IdentityHero({
   igConnected: boolean;
   handle: string | null;
   followers: number;
-  classLabel: string;
+  /** "Diamond" or "Ask for it" — Me computes it from the shared facts. */
+  diamondLabel: string;
   savedCents: number | null;
   visits: number | null;
 }) {
   const router = useRouter();
-  const isElevated = isElevatedClass(classKey);
-  const elevatedRing =
-    classKey === 'aura'
-      ? GRADIENTS.gold
-      : classKey === 'influencer'
-        ? GRADIENTS.influencer
-        : GRADIENTS.premium;
-  const elevatedWash =
-    classKey === 'aura'
-      ? (['rgba(245,204,88,0.18)', 'rgba(235,136,31,0.10)'] as const)
-      : classKey === 'influencer'
-        ? (['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const)
-        : (['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const);
+  const diamondWash = ['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const;
 
   const identityLine = [name, sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
@@ -115,12 +102,6 @@ export function IdentityHero({
   ].join(' · ');
 
   const flag = phoneCountryFlag(phoneRaw ?? phone);
-  const classId = (
-    Object.hasOwn(CLASS_ICONS, classKey)
-      ? classKey
-      : 'standard'
-  ) as keyof typeof CLASS_ICONS;
-  const ClassIcon = CLASS_ICONS[classId];
 
   const rows: {
     key: string;
@@ -189,18 +170,26 @@ export function IdentityHero({
       ),
     },
     {
-      key: 'class',
-      href: CONSUMER_ROUTES.mePages.class,
-      accessibilityLabel: `Class: ${classLabel}`,
+      key: 'diamond',
+      href: CONSUMER_ROUTES.mePages.diamond,
+      accessibilityLabel: `Diamond: ${diamondLabel}`,
       content: (
         <View className="flex-row items-center gap-1.5">
-          <ClassIcon color="#260409B3" size={14} strokeWidth={2.25} />
+          <Gem
+            color={diamond ? '#2563eb' : '#260409B3'}
+            size={14}
+            strokeWidth={2.25}
+          />
           <Text
-            className="font-semibold text-foreground"
+            className={
+              diamond
+                ? 'font-semibold text-foreground'
+                : 'font-semibold text-muted-foreground'
+            }
             style={{ fontSize: 13 }}
             numberOfLines={1}
           >
-            {classLabel}
+            {diamondLabel}
           </Text>
         </View>
       ),
@@ -227,8 +216,8 @@ export function IdentityHero({
     >
       <LinearGradient
         colors={
-          isElevated
-            ? elevatedWash
+          diamond
+            ? diamondWash
             : ['rgba(251,43,123,0.12)', 'rgba(255,90,171,0.08)']
         }
         start={GRADIENT_DIAGONAL.start}
@@ -255,7 +244,7 @@ export function IdentityHero({
           style={{ width: 72, height: 72, overflow: 'visible' }}
         >
           <LinearGradient
-            colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
+            colors={diamond ? GRADIENTS.premium : [...GRADIENTS.pink]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{ borderRadius: 999, padding: 2 }}
@@ -276,8 +265,9 @@ export function IdentityHero({
             </View>
           </LinearGradient>
 
-          {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Class
-              right so Instagram leads Class everywhere (MESITA-956). */}
+          {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Diamond
+              right, so Instagram leads on every surface (MESITA-956, and the
+              order Pato named the two facts in MESITA-2040). */}
           <LinearGradient
             colors={
               igConnected
@@ -321,7 +311,7 @@ export function IdentityHero({
           </LinearGradient>
 
           <LinearGradient
-            colors={[...classBadgeColors(classKey)]}
+            colors={diamond ? [...DIAMOND_BADGE] : [...PLAIN_BADGE]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{
@@ -336,10 +326,10 @@ export function IdentityHero({
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            accessibilityLabel={`Class: ${classLabel}`}
+            accessibilityLabel={`Diamond: ${diamondLabel}`}
           >
-            <ClassIcon
-              color={classBadgeIconColor(classKey)}
+            <Gem
+              color={diamond ? '#1e3a8a' : '#171717'}
               size={14}
               strokeWidth={2.5}
             />
