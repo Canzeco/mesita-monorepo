@@ -1,110 +1,160 @@
-// THE PROGRAM ADDS UP, AND THE OPERATOR ONLY FLIPS SWITCHES (MESITA-2017).
+// WHAT THIS CONSOLE OWNS, WHICH IS NO LONGER THE MATH (MESITA-2038).
 //
-// Every assertion here is a bijection where one exists: the rate with a
-// switch on against the same rate with it off. "welcome adds ten" passes
-// trivially for a function that returns ten; "welcome adds ten only when the
-// place has it on AND the guest earned it, and zero otherwise" does not.
+// The rates, the base and the ceiling moved to `shared/rewards-model.ts` and
+// are tested there, in Deno, once, for all six packages that read them. Testing
+// them again here would assert a generated copy against itself.
+//
+// What is left for this file is the SEAM: the shape a place saves, how that
+// shape becomes the lever map the engine wants, and which levers a plan
+// carries. Every assertion is a bijection where one exists — "welcome is on"
+// passes for a function that returns true, "welcome is on when the place set it
+// and absent when it did not" does not.
 import { describe, expect, it } from "vitest";
 import {
-  CAPS_MXN,
-  CLASS_STEP,
+  BONUS_KEYS,
   DEFAULT_PROGRAM,
-  EVERYTHING_EARNED,
-  NOTHING_EARNED,
-  RATE,
-  capCostCents,
-  ceiling,
-  rate,
-  stack,
+  LEVER_HINT,
+  LEVER_LABEL,
+  MODE_LABEL,
+  planCarries,
+  toLeverState,
   type RewardsProgram,
 } from "./rewards";
-import { PLACES } from "@/mock/fixtures";
+import {
+  activeLevers,
+  ceilingPct,
+  LEVER_PCT,
+  planMaxCentavos,
+  rewardCentavos,
+} from "./rewards-model";
 
-const ALL_ON: RewardsProgram = { ...DEFAULT_PROGRAM, on: true, welcome: true, story: true, mesita: true };
-const ALL_OFF: RewardsProgram = { ...ALL_ON, welcome: false, story: false, mesita: false };
+const ON: RewardsProgram = { on: true, mode: "discount", welcome: true, story: true };
+const OFF: RewardsProgram = { ...ON, on: false };
 
-describe("the rate", () => {
-  it("is zero when the program is off, whatever the guest did", () => {
-    expect(rate({ ...ALL_ON, on: false }, EVERYTHING_EARNED)).toBe(0);
-    expect(stack({ ...ALL_ON, on: false })).toEqual([]);
+describe("the shape a place saves", () => {
+  it("carries exactly the three things an operator decides", () => {
+    expect(Object.keys(DEFAULT_PROGRAM).sort()).toEqual([
+      "mode",
+      "on",
+      "story",
+      "welcome",
+    ]);
   });
 
-  it("is the base and nothing more when every action is off", () => {
-    expect(rate(ALL_OFF, EVERYTHING_EARNED)).toBe(RATE.base);
-    expect(rate(ALL_OFF, NOTHING_EARNED)).toBe(RATE.base);
+  it("has no cap: the rewardable base is fixed for every place", () => {
+    expect("cap" in DEFAULT_PROGRAM).toBe(false);
   });
 
-  it("adds welcome only when the place has it on and the guest earned it", () => {
-    const earned = { ...NOTHING_EARNED, welcome: true };
-    expect(rate({ ...ALL_OFF, welcome: true }, earned)).toBe(RATE.base + RATE.welcome);
-    expect(rate({ ...ALL_OFF, welcome: false }, earned)).toBe(RATE.base);
-    expect(rate({ ...ALL_OFF, welcome: true }, NOTHING_EARNED)).toBe(RATE.base);
+  it("has no mesita review lever: Pato's table is four levers and this is not one", () => {
+    expect("mesita" in DEFAULT_PROGRAM).toBe(false);
   });
 
-  it("pays one flat story bonus — no class reads into it", () => {
-    const earned = { ...NOTHING_EARNED, story: true };
-    const withStory = rate({ ...ALL_OFF, story: true }, earned);
-    expect(withStory).toBe(RATE.base + RATE.story);
-    // The class ladder exists for the engine and prices nothing here: a
-    // diamond and a bronze guest earn the same story bonus.
-    expect(CLASS_STEP.diamond).toBeGreaterThan(CLASS_STEP.bronze);
-    expect(withStory - RATE.base).toBe(RATE.story);
-  });
-
-  it("keeps the Mesita review as a toggle of its own", () => {
-    const earned = { ...NOTHING_EARNED, mesita: true };
-    expect(rate({ ...ALL_OFF, mesita: true }, earned)).toBe(RATE.base + RATE.mesita);
-    expect(rate({ ...ALL_OFF, mesita: false }, earned)).toBe(RATE.base);
-  });
-
-  it("clamps at one hundred", () => {
-    // The table cannot reach 100 today; the clamp is asserted against a
-    // program whose numbers are forced past it, so the guard exists before
-    // the day the table does.
-    const total = RATE.base + RATE.welcome + RATE.story + RATE.mesita;
-    expect(total).toBeLessThanOrEqual(100);
-    expect(ceiling(ALL_ON)).toBe(Math.min(100, total));
+  it("offers exactly two switchable bonuses — base and Diamond are not toggles", () => {
+    expect([...BONUS_KEYS]).toEqual(["welcome", "story"]);
   });
 });
 
-describe("the cap", () => {
-  it("is one of the three legal caps, and bounds the cost separately from the rate", () => {
-    expect([...CAPS_MXN]).toEqual([200, 500, 1000]);
-    // 45% of the first MX$500 is MX$225, in centavos.
-    expect(capCostCents(45, 500)).toBe(22_500);
-    expect(capCostCents(0, 1000)).toBe(0);
+describe("the program becomes the lever map the engine wants", () => {
+  it("base follows the program switch, not a bonus row", () => {
+    expect(toLeverState(ON).base).toBe(true);
+    expect(toLeverState(OFF).base).toBe(false);
+  });
+
+  it("diamond is always true — Mesita's list, not the place's switch", () => {
+    expect(toLeverState(ON).diamond).toBe(true);
+    expect(toLeverState({ ...ON, welcome: false, story: false }).diamond).toBe(true);
+  });
+
+  it("welcome and story carry what the place actually set, both ways", () => {
+    expect(toLeverState({ ...ON, welcome: true }).welcome).toBe(true);
+    expect(toLeverState({ ...ON, welcome: false }).welcome).toBe(false);
+    expect(toLeverState({ ...ON, story: true }).story).toBe(true);
+    expect(toLeverState({ ...ON, story: false }).story).toBe(false);
+  });
+
+  it("the program off means nothing pays, whatever the bonuses say", () => {
+    expect(activeLevers("ultra", toLeverState(OFF), {
+      welcome: true,
+      story: true,
+      diamond: true,
+    })).toEqual([]);
+    expect(rewardCentavos("ultra", toLeverState(OFF), { welcome: true }, 100_000)).toBe(0);
   });
 });
 
-describe("the stack", () => {
-  it("is a running total in engine order, with switched-off actions absent", () => {
-    expect(stack(ALL_ON).map((s) => s.total)).toEqual([20, 30, 40, 45]);
-    expect(stack({ ...ALL_ON, story: false }).map((s) => s.key)).toEqual(["base", "welcome", "mesita"]);
+describe("what a plan carries", () => {
+  it("Story is Ultra's alone", () => {
+    expect(planCarries("ultra", "story")).toBe(true);
+    expect(planCarries("pro", "story")).toBe(false);
+    expect(planCarries("free", "story")).toBe(false);
+  });
+
+  it("Pro carries the other three", () => {
+    expect(planCarries("pro", "base")).toBe(true);
+    expect(planCarries("pro", "welcome")).toBe(true);
+    expect(planCarries("pro", "diamond")).toBe(true);
+  });
+
+  it("Free carries nothing", () => {
+    expect(planCarries("free", "base")).toBe(false);
+    expect(planCarries("free", "welcome")).toBe(false);
+    expect(planCarries("free", "diamond")).toBe(false);
+  });
+
+  it("a Pro place that saved story:true still cannot pay it", () => {
+    // The saved value is PRESERVED — the row renders locked, not off, so an
+    // upgrade turns it back on without the operator re-deciding. But the plan
+    // is what decides whether it pays, and it does not.
+    const proLevers = toLeverState({ ...ON, story: true });
+    expect(proLevers.story).toBe(true);
+    expect(activeLevers("pro", proLevers, { story: true }).includes("story")).toBe(false);
+    expect(ceilingPct("pro", proLevers)).toBe(40);
+    expect(ceilingPct("ultra", proLevers)).toBe(60);
   });
 });
 
-describe("regression: today's fixture places under the new table", () => {
-  // GENERATED FROM THE TABLE, THEN PINNED. When the table changes, the
-  // second expectation changes with it in the same commit — a silent change
-  // to what every running place pays is the thing this test exists to catch.
-  const expected = PLACES.map((p) => ({
-    id: p.id,
-    ceiling: rate({ on: p.visitRewards, ...p.rewards }, EVERYTHING_EARNED),
-  }));
+describe("the ceiling this console prints is the plan's", () => {
+  it("Pro tops out at MX$80 and Ultra at MX$120", () => {
+    expect(planMaxCentavos("pro")).toBe(8_000);
+    expect(planMaxCentavos("ultra")).toBe(12_000);
+    // The two differ — which is what makes printing one number a bug.
+    expect(planMaxCentavos("pro")).not.toBe(planMaxCentavos("ultra"));
+  });
 
-  it("matches the table for every place", () => {
-    for (const { id, ceiling: c } of expected) {
-      const p = PLACES.find((x) => x.id === id)!;
-      expect(c).toBe(ceiling({ on: p.visitRewards, ...p.rewards }));
+  it("a big bill does not raise it", () => {
+    expect(rewardCentavos("pro", toLeverState(ON), {
+      welcome: true,
+      story: true,
+      diamond: true,
+    }, 1_000_000)).toBe(8_000);
+  });
+});
+
+describe("the copy names the right thing", () => {
+  it("base wears the program's name, because base off is the program off", () => {
+    expect(LEVER_LABEL.base).toBe("Rewards");
+  });
+
+  it("diamond's hint says Mesita owns it, so the row reads as disclosure", () => {
+    expect(LEVER_HINT.diamond).toMatch(/Mesita/);
+    expect(LEVER_HINT.diamond).toMatch(/you do not switch it/);
+  });
+
+  it("story's hint does not promise a follower threshold that is not enforced", () => {
+    expect(LEVER_HINT.story).not.toMatch(/1,?000/);
+    expect(LEVER_HINT.story).not.toMatch(/follower/i);
+  });
+
+  it("every lever the model prices has a label and a hint here", () => {
+    for (const key of Object.keys(LEVER_PCT) as (keyof typeof LEVER_PCT)[]) {
+      expect(LEVER_LABEL[key]).toBeTruthy();
+      expect(LEVER_HINT[key]).toBeTruthy();
     }
   });
 
-  it("is pinned", () => {
-    expect(expected).toEqual([
-      { id: "plc_lumbre", ceiling: 45 },
-      { id: "plc_pardo", ceiling: 0 },
-      { id: "plc_hoja", ceiling: 35 },
-      { id: "plc_norte", ceiling: 0 },
-    ]);
+  it("both modes are named", () => {
+    expect(MODE_LABEL.discount).toBeTruthy();
+    expect(MODE_LABEL.cashback).toBeTruthy();
+    expect(MODE_LABEL.discount).not.toBe(MODE_LABEL.cashback);
   });
 });

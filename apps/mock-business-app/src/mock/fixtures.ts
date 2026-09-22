@@ -127,7 +127,7 @@ export const PLACES: MockPlace[] = [
     partnerHeld: true,
     partnerLapsedAt: null,
     notificationsNumber: "+52 81 5555 0142",
-    rewards: { mode: "cashback", cap: 500, welcome: true, story: true, mesita: true },
+    rewards: { mode: "cashback", welcome: true, story: true },
     cashbackPaused: false,
     // One marketplace with a token that died — the most common real state —
     // and one never connected, so the channel list shows three states at once.
@@ -197,7 +197,7 @@ export const PLACES: MockPlace[] = [
     partnerHeld: true,
     partnerLapsedAt: daysAgo(12),
     notificationsNumber: null,
-    rewards: { mode: "discount", cap: 200, welcome: true, story: false, mesita: true },
+    rewards: { mode: "discount", welcome: true, story: false },
     cashbackPaused: false,
     orderChannels: {
       app: "disconnected",
@@ -261,7 +261,7 @@ export const PLACES: MockPlace[] = [
     partnerHeld: false,
     partnerLapsedAt: null,
     notificationsNumber: "+52 81 5555 0163",
-    rewards: { mode: "cashback", cap: 1000, welcome: false, story: true, mesita: true },
+    rewards: { mode: "cashback", welcome: false, story: true },
     cashbackPaused: true,
     orderChannels: {
       app: "connected",
@@ -322,7 +322,7 @@ export const PLACES: MockPlace[] = [
     partnerHeld: false,
     partnerLapsedAt: null,
     notificationsNumber: null,
-    rewards: { mode: "discount", cap: 500, welcome: true, story: true, mesita: true },
+    rewards: { mode: "discount", welcome: true, story: true },
     cashbackPaused: false,
     orderChannels: {
       app: "disconnected",

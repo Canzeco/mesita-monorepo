@@ -9,6 +9,29 @@
 // REWARDS ARE VISIT-ONLY. A reward is earned by showing up and closing a bill,
 // never by placing an order — an order is prepaid and has no table to reward.
 //
+// ── THREE ROWS NOW, NOT SIX (MESITA-2038) ──────────────────────────────────
+//
+// The cap row is gone: the model fixes the rewardable base at the first MX$200
+// for every place, so there is nothing to choose. The Mesita review row is gone
+// with the lever. What is left is Rewards on/off, how it comes back, and the
+// two earnable bonuses — Welcome and Story.
+//
+// BASE AND DIAMOND ARE NOT SWITCHES. Base off IS the program off, so it wears
+// the "Rewards" row. Diamond is Mesita's invitation list and applies whether
+// the guest posts or not, so this console DISCLOSES it and never offers a
+// toggle the operator does not actually own.
+//
+// STORY IS ULTRA'S. It is the only lever that cannot be settled at quote time,
+// so it is the only one that can need a late top-up, and the top-up vehicle is
+// Prepaid Credits — which Pro does not have. A Pro place sees the row LOCKED
+// with its door, never hidden and never as a plain switch: an operator who
+// cannot tell "we turned it off" from "you cannot have it" will read the
+// first, and be wrong.
+//
+// THE CEILING IS PER PLAN. Pro tops out at 40% and MX$80, Ultra at 60% and
+// MX$120. Printing one number for every place is how a Pro operator ends up
+// quoting MX$120 at a table that can only pay MX$80.
+//
 // ── SIX ROWS, NOT NINE RUNGS (MESITA-2017) ─────────────────────────────────
 //
 // This page used to be two tables: a ladder priced by strategy column, and
@@ -56,17 +79,22 @@ import { dayTime, money } from "@/lib/format";
 import { PLAN_LABEL, planAtLeast, type MockVisit } from "@/mock/types";
 import { productKeyHref } from "@/lib/product-routes";
 import {
-  ACTION_HINT,
-  ACTION_KEYS,
-  ACTION_LABEL,
-  CAPS_MXN,
+  BONUS_KEYS,
+  LEVER_HINT,
+  LEVER_LABEL,
   MODE_LABEL,
-  capCostCents,
-  ceiling,
-  stack,
+  planCarries,
+  toLeverState,
   type RewardsMode,
   type RewardsProgram,
 } from "@/lib/rewards";
+import {
+  LEVER_PCT,
+  ceilingPct,
+  leverStack,
+  planMaxCentavos,
+  REWARD_BASE_CENTAVOS,
+} from "@/lib/rewards-model";
 import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +103,12 @@ import { cn } from "@/lib/utils";
  *  and `money` adds two decimals no rate ever needs. */
 function pesos(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
+/** What a running total costs at the fixed base, in CENTAVOS. `pct` of
+ *  MX$200 — the same arithmetic the engine does, with the round-trip removed. */
+function stepCostCents(pct: number): number {
+  return Math.floor((REWARD_BASE_CENTAVOS * pct) / 100);
 }
 
 const NUM = "font-display text-base font-semibold tracking-tight tabular-nums";
@@ -114,9 +148,18 @@ export function RewardsView() {
     : "Needs Prepaid Credits on";
   const creditsHref = productKeyHref(place.id, "products", "credits");
 
-  const noActions = draft.on && !draft.welcome && !draft.story && !draft.mesita;
-  const steps = stack(draft);
-  const top = ceiling(draft);
+  // PLAN-AWARE, EVERY ONE OF THESE. The levers a place can run, the ceiling it
+  // can reach and the peso that ceiling costs all depend on its rung.
+  const plan = place.plan;
+  const levers = toLeverState(draft);
+  const storyCarried = planCarries(plan, "story");
+  const steps = leverStack(plan, levers);
+  const topPct = ceilingPct(plan, levers);
+  const topCents = planMaxCentavos(plan);
+  const runningBonuses = BONUS_KEYS.filter(
+    (k) => draft[k] && planCarries(plan, k),
+  );
+  const noActions = draft.on && runningBonuses.length === 0;
 
   const visits = listFor(VISITS.filter((v) => v.placeId === place.id), scenario);
   const earned = visits.filter((v) => v.rewardCents > 0);
@@ -191,26 +234,46 @@ export function RewardsView() {
               })),
             }}
           />
+          {/* THE TWO EARNABLE BONUSES. A lever this plan does not carry renders
+              LOCKED with its door — greyed, never hidden, and never a switch
+              that would read as "we turned it off". */}
+          {BONUS_KEYS.map((key) => {
+            const carried = planCarries(plan, key);
+            return (
+              <Rule
+                key={key}
+                label={`${LEVER_LABEL[key]} · ${LEVER_PCT[key]}%`}
+                note={
+                  carried ? (
+                    LEVER_HINT[key]
+                  ) : (
+                    <>
+                      {LEVER_HINT[key]}. Needs {PLAN_LABEL.ultra} — it is the only
+                      bonus Mesita verifies after the bill closes, so it needs
+                      Prepaid Credits behind it.{" "}
+                      <Link href={creditsHref} className="underline underline-offset-4">
+                        See {PLAN_LABEL.ultra}
+                      </Link>
+                    </>
+                  )
+                }
+                disabled={off || !carried}
+                control={
+                  carried
+                    ? { kind: "switch", on: draft[key], onChange: (v) => set({ [key]: v }), label: LEVER_LABEL[key] }
+                    : { kind: "value", text: <Badge>{PLAN_LABEL.ultra}</Badge> }
+                }
+              />
+            );
+          })}
+          {/* DIAMOND IS DISCLOSED, NOT SWITCHED. Mesita's list, Mesita's cost
+              to explain — a place does not decline the guests Mesita sends. */}
           <Rule
-            label="Cap per visit"
-            note={`Up to ${pesos(draft.cap)} per visit, all bonuses combined. Every rate applies to the first ${pesos(draft.cap)} of the bill.`}
+            label={`${LEVER_LABEL.diamond} · ${LEVER_PCT.diamond}%`}
+            note={LEVER_HINT.diamond}
             disabled={off}
-            control={{
-              kind: "select",
-              value: String(draft.cap),
-              onChange: (v) => set({ cap: Number(v) as RewardsProgram["cap"] }),
-              options: CAPS_MXN.map((c) => ({ value: String(c), label: pesos(c) })),
-            }}
+            control={{ kind: "value", text: <Badge>Always on</Badge> }}
           />
-          {ACTION_KEYS.map((key) => (
-            <Rule
-              key={key}
-              label={ACTION_LABEL[key]}
-              note={ACTION_HINT[key]}
-              disabled={off}
-              control={{ kind: "switch", on: draft[key], onChange: (v) => set({ [key]: v }), label: ACTION_LABEL[key] }}
-            />
-          ))}
         </Group>
 
         <Group
@@ -241,17 +304,20 @@ export function RewardsView() {
                     <span className="text-muted-foreground text-[11px] font-semibold">{s.label}</span>
                     <span className={cn(NUM, "mt-1")}>{s.total}%</span>
                     <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
-                      {pesos(capCostCents(s.total, draft.cap) / 100)}
+                      {pesos(stepCostCents(s.total) / 100)}
                     </span>
                   </li>
                 ))}
               </ol>
               <p className="text-muted-foreground mt-3 text-[12px] leading-snug">
                 A percentage is not a peso. Every rate above applies to the first{" "}
-                {pesos(draft.cap)} of the bill, so a guest who earns everything you
-                have on costs you {pesos(capCostCents(top, draft.cap) / 100)},
-                whatever they ordered. Mesita sets the bonuses; your cap is the
-                ceiling.
+                {pesos(REWARD_BASE_CENTAVOS / 100)} of the bill and to nothing past
+                it, so a guest who earns everything you have on costs you{" "}
+                {pesos(topCents / 100)} — {topPct}% of the first{" "}
+                {pesos(REWARD_BASE_CENTAVOS / 100)} — whatever they ordered. On a{" "}
+                {pesos(1200)} bill that is still {pesos(topCents / 100)}, which is{" "}
+                {((topCents / 120000) * 100).toFixed(1)}% of the cheque. Mesita sets
+                the rates and the ceiling; you choose which bonuses run.
               </p>
             </div>
           )}
@@ -302,7 +368,9 @@ export function RewardsView() {
         <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium">
-              {draft.on ? `${MODE_LABEL[draft.mode]}, capped at ${pesos(draft.cap)}` : "Rewards off"}
+              {draft.on
+                ? `${MODE_LABEL[draft.mode]}, up to ${pesos(topCents / 100)} a visit`
+                : "Rewards off"}
             </p>
             <p className="text-muted-foreground mt-0.5 text-[12px]">
               Applies to the next bill closed here. Nothing retroactive, ever.
@@ -325,8 +393,11 @@ export function RewardsView() {
       {!dirty && justSaved && (
         <p className="text-muted-foreground flex items-center gap-2 px-1 text-[12px]">
           <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Saved. The next bill closed here runs {saved.on ? MODE_LABEL[saved.mode].toLowerCase() : "nothing"}
-          {saved.on ? `, capped at the first ${pesos(saved.cap)}.` : "."}
+          Saved. The next bill closed here runs{" "}
+          {saved.on ? MODE_LABEL[saved.mode].toLowerCase() : "nothing"}
+          {saved.on
+            ? `, on the first ${pesos(REWARD_BASE_CENTAVOS / 100)} of the bill.`
+            : "."}
         </p>
       )}
     </div>
