@@ -232,10 +232,11 @@ export const CONSUMER_ROUTES = {
   // already made for Buy/Gift/Redeem (isModalContractPath stays place +
   // reservation detail only).
   me: "/me",
-  // Every live DestTile on /me, and every door inside Passport / Class /
+  // Every live DestTile on /me, and every door inside Passport / Diamond /
   // Settings. Hub stays `/me`. These are real pages under (shell)/me/<box>.
-  // /me/class, /me/settings and /me/plan used to 308 onto the hub (MESITA-188);
-  // they are canonical again, not legacy.
+  // /me/settings and /me/plan used to 308 onto the hub (MESITA-188); they are
+  // canonical again, not legacy. /me/class went the other way (MESITA-2040) —
+  // canonical, then retired to the legacy block below.
   mePages: {
     passport: "/me/passport",
     profile: "/me/profile",

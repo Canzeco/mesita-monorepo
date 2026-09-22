@@ -4,7 +4,9 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export const dynamic = "force-dynamic";
 
 // Catch-all for unknown /me/<segment> leftovers. Static folders
-// (/me/class, /me/settings, /me/plan, …) win over this dynamic route.
+// (/me/diamond, /me/settings, /me/plan, …) win over this dynamic route, and a
+// next.config redirect runs BEFORE routing, so a retired segment with an entry
+// there (/me/class, MESITA-2040) lands on its successor rather than here.
 // Anything else 308s onto the hub.
 
 export default async function LegacyMeTabPage({
