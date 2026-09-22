@@ -1,5 +1,4 @@
 import {
-  Camera,
   Globe,
   MessageCircle,
   Phone,
@@ -7,11 +6,20 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
+import { ChannelMark } from '@/components/brand/channel-marks';
+import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
 type ContactRow = {
   key: string;
-  Icon: LucideIcon;
+  // Every row but one takes a plain lucide glyph. Instagram is RESERVED — a
+  // third party owns that colour — so it renders <ChannelMark> instead, which
+  // carries its own brand fill; Icon is absent on that row on purpose rather
+  // than pointing at a generic Camera decorating a colour Instagram never
+  // published. Matches web-consumer's PlaceContactSheet, which keeps this one
+  // row branded while whatsapp/phone/website go achromatic.
+  Icon?: LucideIcon;
+  isInstagram?: boolean;
   tint: string;
   iconColor: string;
   label: string;
@@ -35,8 +43,8 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
     rows.push({
       key: 'whatsapp',
       Icon: MessageCircle,
-      tint: '#ecfdf5',
-      iconColor: '#059669',
+      tint: COLORS.muted,
+      iconColor: COLORS.mutedForeground,
       label: 'WhatsApp',
       sub: 'Chat on WhatsApp',
       href: whatsapp_url,
@@ -46,8 +54,8 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
     rows.push({
       key: 'phone',
       Icon: Phone,
-      tint: '#ecfdf5',
-      iconColor: '#059669',
+      tint: COLORS.muted,
+      iconColor: COLORS.mutedForeground,
       label: 'Call',
       sub: place.phone,
       href: `tel:${place.phone.replace(/\s+/g, '')}`,
@@ -56,9 +64,9 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
   if (instagram_url) {
     rows.push({
       key: 'instagram',
-      Icon: Camera,
-      tint: '#fdf2f8',
-      iconColor: '#db2777',
+      isInstagram: true,
+      tint: COLORS.muted,
+      iconColor: COLORS.mutedForeground, // unused on this row; kept for the type
       label: 'Instagram',
       sub: 'Send a direct message',
       href: instagram_url,
@@ -68,8 +76,8 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
     rows.push({
       key: 'website',
       Icon: Globe,
-      tint: '#f0f9ff',
-      iconColor: '#0284c7',
+      tint: COLORS.muted,
+      iconColor: COLORS.mutedForeground,
       label: 'Website',
       sub: prettyHost(website_url),
       href: website_url,
@@ -102,7 +110,7 @@ export function PlaceContactSheet({
         onPress={onClose}
         style={{
           flex: 1,
-          backgroundColor: 'rgba(38,4,9,0.4)',
+          backgroundColor: 'rgba(23,23,23,0.4)',
           justifyContent: 'center',
           paddingHorizontal: 16,
         }}
@@ -113,8 +121,8 @@ export function PlaceContactSheet({
           className="rounded-[20px] border border-border bg-card py-2"
         >
           <View className="flex-row items-center gap-3 px-4 pb-2 pt-3">
-            <View className="size-12 items-center justify-center rounded-full bg-emerald-500/10">
-              <MessageCircle color="#059669" size={20} />
+            <View className="size-12 items-center justify-center rounded-full bg-muted">
+              <MessageCircle color={COLORS.mutedForeground} size={20} />
             </View>
             <View className="min-w-0 flex-1">
               <Text
@@ -155,7 +163,11 @@ export function PlaceContactSheet({
                   className="size-10 items-center justify-center rounded-full"
                   style={{ backgroundColor: row.tint }}
                 >
-                  <row.Icon color={row.iconColor} size={18} />
+                  {row.isInstagram ? (
+                    <ChannelMark channel="instagram" size={18} />
+                  ) : row.Icon ? (
+                    <row.Icon color={row.iconColor} size={18} />
+                  ) : null}
                 </View>
                 <View className="min-w-0 flex-1">
                   <Text

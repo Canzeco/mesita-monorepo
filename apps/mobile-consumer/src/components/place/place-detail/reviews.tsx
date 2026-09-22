@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { ReviewCard } from '@/components/place/ReviewCard';
+import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { formatCompactCount, formatRating } from '@/lib/utils';
 import {
@@ -29,7 +30,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
     ['Value', hasReviews ? place.mesita_reviews.value : 5.0],
   ];
   return (
-    <Box title="Reviews summary" icon={Star} iconColor="#a78bfa">
+    <Box title="Reviews summary" icon={Star} iconColor={COLORS.foreground}>
       <View className="gap-4 rounded-xl bg-background p-4">
         <View className="flex-row items-center gap-2">
           <MesitaBadge variant="sm" />
@@ -39,12 +40,12 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
           </Text>
         </View>
         <View className="flex-row items-center gap-4">
-          <View className="h-20 w-20 items-center justify-center gap-1 rounded-2xl bg-pink-500/10">
+          <View className="h-20 w-20 items-center justify-center gap-1 rounded-2xl bg-foreground/10">
             <View className="flex-row items-baseline gap-1">
               <Text className="font-display text-2xl font-semibold text-foreground">
                 {formatRating(overall)}
               </Text>
-              <Star color="#fbbf24" fill="#fbbf24" size={12} />
+              <Star color={COLORS.foreground} fill={COLORS.foreground} size={12} />
             </View>
             <Text className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
               Overall
@@ -107,7 +108,7 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Google reviews"
       icon={Star}
-      iconColor="#fbbf24"
+      iconColor={COLORS.foreground}
       right={`${formatCompactCount(place.google.count, true)} total`}
     >
       <ReviewSortChips
@@ -148,12 +149,12 @@ export function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
       <Box
         title="Mesita reviews"
         icon={MessageCircle}
-        iconColor="#f472b6"
+        iconColor={COLORS.foreground}
         right={`${place.mesita_reviews.total} total`}
       >
         <View className="items-center gap-3 py-3">
           <View className="size-12 items-center justify-center rounded-full bg-muted">
-            <MessageCircle color="#775254" size={20} />
+            <MessageCircle color={COLORS.mutedForeground} size={20} />
           </View>
           <Text className="text-sm font-semibold text-foreground">
             No Mesita reviews yet
@@ -169,7 +170,7 @@ export function MesitaReviewsBox({ place }: { place: PlaceDetail }) {
     <Box
       title="Mesita reviews"
       icon={MessageCircle}
-      iconColor="#f472b6"
+      iconColor={COLORS.foreground}
       right={`${place.mesita_reviews.total} total`}
     >
       <ReviewSortChips

@@ -8,6 +8,7 @@ import {
   withUserDistance,
   type Coords,
 } from '@/components/swipe/swipe-deck-shells';
+import { COLORS } from '@/constants/brand';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import type { Place } from '@/lib/api/places';
 import { filtersPath } from '@/lib/consumer-route-contract';
@@ -131,7 +132,7 @@ export function CatalogTab() {
   if (deckQuery.isLoading && deckPlaces.length === 0) {
     return (
       <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color="#fb2b7b" />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }
@@ -185,7 +186,7 @@ export function CatalogTab() {
                 accessibilityLabel="Change sort order"
                 className="flex-row items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1"
               >
-                <ArrowUpDown color="#775254" size={12} />
+                <ArrowUpDown color={COLORS.mutedForeground} size={12} />
                 <Text className="text-[11px] font-semibold text-muted-foreground">
                   {sort === 'suggested' ? 'Suggested' : 'Open first'}
                 </Text>
@@ -201,7 +202,11 @@ export function CatalogTab() {
               }
             >
               <SlidersHorizontal
-                color={filtersActive ? '#ffffff' : '#775254'}
+                color={
+                  filtersActive
+                    ? COLORS.primaryForeground
+                    : COLORS.mutedForeground
+                }
                 size={12}
               />
               <Text

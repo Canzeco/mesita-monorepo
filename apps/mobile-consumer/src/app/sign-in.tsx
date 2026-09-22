@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CountryCodePicker } from '@/components/auth/CountryCodePicker';
 import { Button } from '@/components/ui/Button';
 import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
+import { COLORS } from '@/constants/brand';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
 import { COUNTRY_BY_CODE, type Country } from '@/lib/countries';
 import {
@@ -121,7 +122,7 @@ export default function SignIn() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
       <HeroBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
@@ -137,7 +138,11 @@ export default function SignIn() {
             </Text>
             <Text
               className="text-muted-foreground"
-              style={{ marginTop: 12, textAlign: 'center', color: '#775254' }}
+              style={{
+                marginTop: 12,
+                textAlign: 'center',
+                color: COLORS.mutedForeground,
+              }}
             >
               Tu mesa favorita te está esperando
             </Text>
@@ -147,7 +152,7 @@ export default function SignIn() {
             className="rounded-2xl border border-border bg-card"
             style={{
               padding: 24,
-              shadowColor: '#260409',
+              shadowColor: COLORS.foreground,
               shadowOpacity: 0.08,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 4 },
@@ -160,7 +165,7 @@ export default function SignIn() {
                   className="font-semibold text-muted-foreground"
                   style={{
                     marginBottom: 8,
-                    color: '#775254',
+                    color: COLORS.mutedForeground,
                     letterSpacing: 1.2,
                   }}
                 >
@@ -171,10 +176,10 @@ export default function SignIn() {
                     flexDirection: 'row',
                     alignItems: 'stretch',
                     borderWidth: 1,
-                    borderColor: '#ebd9db',
+                    borderColor: COLORS.border,
                     borderRadius: 12,
                     overflow: 'hidden',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: COLORS.card,
                   }}
                 >
                   <Pressable
@@ -186,24 +191,24 @@ export default function SignIn() {
                       gap: 6,
                       paddingHorizontal: 12,
                       borderRightWidth: 1,
-                      borderRightColor: '#ebd9db',
+                      borderRightColor: COLORS.border,
                     }}
                   >
                     <Text style={{ fontSize: 16 }}>{country.flag}</Text>
                     <Text className="font-semibold text-foreground">
                       +{country.dial}
                     </Text>
-                    <ChevronDown color="#775254" size={12} />
+                    <ChevronDown color={COLORS.mutedForeground} size={12} />
                   </Pressable>
                   <TextInput
                     style={{
                       flex: 1,
-                      backgroundColor: '#ffffff',
-                      color: '#260409',
+                      backgroundColor: COLORS.card,
+                      color: COLORS.foreground,
                       paddingHorizontal: 12,
                       fontSize: 15,
                     }}
-                    placeholderTextColor="#77525499"
+                    placeholderTextColor={`${COLORS.mutedForeground}99`}
                     keyboardType="phone-pad"
                     autoComplete="tel"
                     placeholder="55 1234 5678"
@@ -234,7 +239,7 @@ export default function SignIn() {
                   className="font-semibold text-muted-foreground"
                   style={{
                     marginBottom: 8,
-                    color: '#775254',
+                    color: COLORS.mutedForeground,
                     letterSpacing: 1.2,
                   }}
                 >
@@ -247,7 +252,7 @@ export default function SignIn() {
                     letterSpacing: 8,
                     fontSize: 24,
                   }}
-                  placeholderTextColor="#77525499"
+                  placeholderTextColor={`${COLORS.mutedForeground}99`}
                   keyboardType="number-pad"
                   textContentType="oneTimeCode"
                   autoComplete="sms-otp"

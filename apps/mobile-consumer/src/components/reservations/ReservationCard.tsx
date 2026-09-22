@@ -10,6 +10,7 @@ import {
 } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import { reservationPath } from '@/lib/consumer-route-contract';
 import type {
   ReservationItem,
@@ -22,6 +23,12 @@ import { guestNoun } from '@/lib/utils';
 // visit ticket that snapshots them.
 // Web parity: apps/web-consumer/src/components/consumer/ReservationCard.tsx.
 
+// Achromatic (MESITA-1954). Amber "Booking" and emerald "Booked" greyscale to
+// the SAME pill as "Cancelled" — L97 fills, L~57 icons — so the three phases
+// are re-separated by RANK, not by three greys nobody can tell apart at 10px:
+// filled ink = the table is yours · dashed outline = waiting on the place ·
+// flat muted + dimmed label = spent. The glyph (CheckCircle2 / Clock / X) and
+// the `opacity-70` + `line-through` on a cancelled card carry the rest.
 const STATE_META: Record<
   ReservationState,
   { label: string; Icon: LucideIcon; pill: string; text: string; icon: string }
@@ -29,23 +36,23 @@ const STATE_META: Record<
   booking: {
     label: 'Booking',
     Icon: Clock,
-    pill: 'border-amber-500/30 bg-amber-50',
-    text: 'text-amber-800',
-    icon: '#d97706',
+    pill: 'border-dashed border-foreground bg-card',
+    text: 'text-foreground',
+    icon: COLORS.foreground,
   },
   booked: {
     label: 'Booked',
     Icon: CheckCircle2,
-    pill: 'border-emerald-500/30 bg-emerald-50',
-    text: 'text-emerald-800',
-    icon: '#059669',
+    pill: 'border-primary bg-primary',
+    text: 'text-primary-foreground',
+    icon: COLORS.primaryForeground,
   },
   cancelled: {
     label: 'Cancelled',
     Icon: X,
     pill: 'border-border bg-muted',
     text: 'text-muted-foreground',
-    icon: '#775254',
+    icon: COLORS.mutedForeground,
   },
 };
 
@@ -73,7 +80,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
             />
           ) : (
             <View className="h-full w-full items-center justify-center">
-              <Calendar color="#775254" size={20} />
+              <Calendar color={COLORS.mutedForeground} size={20} />
             </View>
           )}
         </View>
@@ -100,12 +107,12 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
 
           <View className="mt-1.5 flex-row flex-wrap items-center gap-x-2 gap-y-1">
             <View className="flex-row items-center gap-1">
-              <Calendar color="#775254" size={12} />
+              <Calendar color={COLORS.mutedForeground} size={12} />
               <Text className="text-[12px] text-muted-foreground">{r.when}</Text>
             </View>
             <Text className="text-[12px] text-muted-foreground/60">·</Text>
             <View className="flex-row items-center gap-1">
-              <Users color="#775254" size={12} />
+              <Users color={COLORS.mutedForeground} size={12} />
               <Text className="text-[12px] text-muted-foreground">
                 {r.partySize} {guestNoun(r.partySize)}
               </Text>
@@ -117,12 +124,14 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       {r.stateNote ? (
         <View
           className={`mt-3 rounded-xl px-3 py-2 ${
-            r.state === 'booking' ? 'bg-amber-50' : 'bg-muted'
+            r.state === 'booking'
+              ? 'border border-dashed border-foreground bg-muted'
+              : 'bg-muted'
           }`}
         >
           <Text
             className={`text-[12px] leading-snug ${
-              r.state === 'booking' ? 'text-amber-900' : 'text-muted-foreground'
+              r.state === 'booking' ? 'text-foreground' : 'text-muted-foreground'
             }`}
           >
             {r.stateNote}

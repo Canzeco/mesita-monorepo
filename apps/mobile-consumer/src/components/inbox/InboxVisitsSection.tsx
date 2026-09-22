@@ -5,6 +5,7 @@ import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
 import { TicketRow } from '@/components/rewards/TicketRow';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { COLORS } from '@/constants/brand';
 import { useConsumerTickets } from '@/lib/hooks/useConsumerTickets';
 import { rewardsTicketPath } from '@/lib/consumer-route-contract';
 
@@ -33,7 +34,7 @@ export function InboxVisitsSection({ userId }: { userId: string }) {
   if (tickets.state === 'loading') {
     return (
       <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color="#fb2b7b" />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }

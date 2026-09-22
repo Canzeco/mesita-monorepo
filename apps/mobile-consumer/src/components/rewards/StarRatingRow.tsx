@@ -1,6 +1,8 @@
 import { Star } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
+
 export function StarRatingRow({
   label,
   value,
@@ -19,7 +21,7 @@ export function StarRatingRow({
     <View
       style={
         isHero
-          ? { gap: 6, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0e4e6' }
+          ? { gap: 6, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border }
           : {
               flexDirection: 'row',
               alignItems: 'center',
@@ -27,7 +29,7 @@ export function StarRatingRow({
               gap: 12,
               paddingVertical: 10,
               borderBottomWidth: 1,
-              borderBottomColor: '#f0e4e6',
+              borderBottomColor: COLORS.border,
             }
       }
     >
@@ -43,7 +45,7 @@ export function StarRatingRow({
           style={{
             fontWeight: isHero ? '800' : '600',
             fontSize: isHero ? 14 : 13,
-            color: '#260409',
+            color: COLORS.foreground,
           }}
         >
           {label}
@@ -51,7 +53,7 @@ export function StarRatingRow({
         {value > 0 ? (
           <Text
             style={{
-              color: '#775254',
+              color: COLORS.mutedForeground,
               fontSize: 11,
               fontVariant: ['tabular-nums'],
             }}
@@ -87,8 +89,8 @@ export function StarRatingRow({
             >
               <Star
                 size={starSize}
-                color={on ? '#fbbf24' : 'rgba(119,82,84,0.35)'}
-                fill={on ? '#fbbf24' : 'transparent'}
+                color={on ? COLORS.foreground : 'rgba(93,93,93,0.35)'}
+                fill={on ? COLORS.foreground : 'transparent'}
                 strokeWidth={on ? 0 : 1.5}
               />
             </Pressable>

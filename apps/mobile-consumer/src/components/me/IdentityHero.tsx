@@ -6,7 +6,12 @@ import { Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENT_DIAGONAL,
+  GRADIENTS,
+  SHADOW_ELEV,
+} from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
 import { Gem } from 'lucide-react-native';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
@@ -27,9 +32,20 @@ import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
 const ROW_HEIGHT = 44;
 
-/** Diamond's badge, and the only conditional colour on this card. */
+/** Diamond's badge, and the only conditional colour on this card.
+ *
+ *  DIAMOND KEEPS ITS HUE, NOT-DIAMOND LOSES ITS PINK (MESITA-1954 +
+ *  MESITA-2040). Diamond is a tier the product names out loud to the guest,
+ *  which is the achromatic rule's "where a tier is named" clause exactly. The
+ *  blue is spelled out here rather than read from `GRADIENTS.premium`, because
+ *  that token went to an ink ramp when this app went achromatic — reading it
+ *  would paint Diamond the same grey as everyone else. Everything the card
+ *  showed a NOT-Diamond guest was brand pink, and pink is not a tier: the ring
+ *  takes `GRADIENTS.pink` (an ink ramp now) and the wash takes that ink at the
+ *  alphas the pink wash had. */
 const DIAMOND_BADGE = ['#bfdbfe', '#2563eb'] as const;
 const PLAIN_BADGE = ['#e5e7eb', '#9ca3af'] as const;
+const PLAIN_WASH = ['rgba(23,23,23,0.10)', 'rgba(64,64,64,0.06)'] as const;
 
 export function IdentityHeroSkeleton() {
   return (
@@ -159,7 +175,7 @@ export function IdentityHero({
         <Text
           className={
             igConnected
-              ? 'font-semibold text-secondary'
+              ? 'font-semibold text-foreground'
               : 'font-semibold text-muted-foreground'
           }
           style={{ fontSize: 13 }}
@@ -176,7 +192,7 @@ export function IdentityHero({
       content: (
         <View className="flex-row items-center gap-1.5">
           <Gem
-            color={diamond ? '#2563eb' : '#260409B3'}
+            color={diamond ? '#2563eb' : '#171717B3'}
             size={14}
             strokeWidth={2.25}
           />
@@ -216,9 +232,7 @@ export function IdentityHero({
     >
       <LinearGradient
         colors={
-          diamond
-            ? diamondWash
-            : ['rgba(251,43,123,0.12)', 'rgba(255,90,171,0.08)']
+          diamond ? diamondWash : PLAIN_WASH
         }
         start={GRADIENT_DIAGONAL.start}
         end={GRADIENT_DIAGONAL.end}
@@ -244,7 +258,7 @@ export function IdentityHero({
           style={{ width: 72, height: 72, overflow: 'visible' }}
         >
           <LinearGradient
-            colors={diamond ? GRADIENTS.premium : [...GRADIENTS.pink]}
+            colors={diamond ? [...DIAMOND_BADGE] : [...GRADIENTS.pink]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{ borderRadius: 999, padding: 2 }}
@@ -272,7 +286,7 @@ export function IdentityHero({
             colors={
               igConnected
                 ? [...GRADIENTS.instagram]
-                : (['#ebd9db', '#ebd9db'] as const)
+                : ([COLORS.border, COLORS.border] as const)
             }
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
@@ -285,7 +299,7 @@ export function IdentityHero({
               borderRadius: 999,
               padding: 2,
               borderWidth: 2,
-              borderColor: '#fff',
+              borderColor: COLORS.card,
             }}
             accessibilityLabel={
               igConnected
@@ -304,7 +318,10 @@ export function IdentityHero({
                 <ChannelMark
                   channel="instagram"
                   size={14}
-                  color={igConnected ? '#c02670' : '#775254'}
+                  // Connected: no override — ChannelMark's own canonical
+                  // Instagram fill, the third-party colour GRADIENTS.instagram
+                  // carries on the ring above it. Disconnected is the neutral.
+                  color={igConnected ? undefined : COLORS.mutedForeground}
                 />
               )}
             </View>
@@ -322,7 +339,7 @@ export function IdentityHero({
               height: 28,
               borderRadius: 999,
               borderWidth: 2,
-              borderColor: '#fff',
+              borderColor: COLORS.card,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -338,7 +355,7 @@ export function IdentityHero({
 
         <View
           accessibilityLabel="Your identity"
-          className="mt-4 w-full overflow-hidden rounded-xl border border-border/80 bg-white/55"
+          className="mt-4 w-full overflow-hidden rounded-xl border border-border/80 bg-card/55"
         >
           {rows.map((row, i) => {
             const rowClass =

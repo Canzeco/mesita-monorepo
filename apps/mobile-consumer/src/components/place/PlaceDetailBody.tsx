@@ -98,7 +98,7 @@ function PlaceTabBar({
             accessibilityState={{ selected: active }}
             accessibilityLabel={t.label}
             className={`flex-1 items-center border-b-2 py-3 ${
-              active ? 'border-pink-500' : 'border-transparent'
+              active ? 'border-foreground' : 'border-transparent'
             }`}
           >
             <Text

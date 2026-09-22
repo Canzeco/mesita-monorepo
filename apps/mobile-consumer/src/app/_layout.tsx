@@ -23,6 +23,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Toaster } from '@/components/ui/Toaster';
+import { COLORS } from '@/constants/brand';
 import { Sentry } from '@/lib/sentry';
 import { AuthProvider } from '@/providers/auth';
 
@@ -41,7 +42,7 @@ const MODAL_SCREEN = {
   presentation: 'modal' as const,
   animation: 'slide_from_bottom' as const,
   gestureEnabled: true,
-  contentStyle: { backgroundColor: '#fff7f8' },
+  contentStyle: { backgroundColor: COLORS.background },
 };
 
 function RootLayout() {
@@ -64,7 +65,7 @@ function RootLayout() {
 
   // Branded wash while fonts load — avoids blank flash before splash hide (#50).
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: '#fff7f8' }} />;
+    return <View style={{ flex: 1, backgroundColor: COLORS.background }} />;
   }
 
   return (
@@ -75,7 +76,7 @@ function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: '#fff7f8' },
+              contentStyle: { backgroundColor: COLORS.background },
             }}
           >
             {/* Place / reservation / filters — web @modal peers. */}

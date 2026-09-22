@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 
 import { ReservationDetailBody } from '@/components/reservations/ReservationDetailBody';
 import { ReservationDetailModalShell } from '@/components/reservations/ReservationDetailModalShell';
+import { COLORS } from '@/constants/brand';
 import { apiListReservations } from '@/lib/api/reservations';
 import type { ReservationItem } from '@/lib/mock/reservations-mock';
 import { toReservationItem } from '@/lib/reservations-adapter';
@@ -59,7 +60,7 @@ export default function ReservationDetailScreen() {
     return (
       <ReservationDetailModalShell placeName="Reservation">
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#ec006c" />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       </ReservationDetailModalShell>
     );
@@ -69,7 +70,7 @@ export default function ReservationDetailScreen() {
     return (
       <ReservationDetailModalShell placeName="Reservation">
         <View className="flex-1 items-center justify-center gap-3 px-8">
-          <Calendar color="#775254" size={28} />
+          <Calendar color={COLORS.mutedForeground} size={28} />
           <Text className="font-display text-xl font-semibold text-foreground">
             Reservation not found
           </Text>

@@ -3,7 +3,7 @@ import { Check, Mail, Share2, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Pressable, Share, Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import { copyText } from '@/lib/clipboard';
 
 const MESITA_CONTACT_EMAIL = 'support@mesita.ai';
@@ -54,6 +54,13 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
     }
   };
 
+  // ACHROMATIC (MESITA-1954). Nothing in this file needed greying: the card's
+  // only hue came from `card.colors`, now the deck's five ink steps, and the
+  // glow under it from COLORS.primary. Everything here is WHITE — the on-ink
+  // label and the gloss/emblem/pill washes that read as light, not colour — so
+  // it survives at the same alphas, with the hardcoded `#fff` moved onto the
+  // token. The share pill's affirmative state is carried by the Check GLYPH
+  // and the label ('Shared'/'Copied'), never by hue; keep it that way.
   return (
     <LinearGradient
       colors={[...card.colors]}
@@ -106,7 +113,7 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {contact ? (
             <PillButton
-              icon={<Mail color="#fff" size={14} />}
+              icon={<Mail color={COLORS.primaryForeground} size={14} />}
               label="Contact"
               onPress={() =>
                 void Linking.openURL(
@@ -120,9 +127,9 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
           <PillButton
             icon={
               flash ? (
-                <Check color="#fff" size={14} />
+                <Check color={COLORS.primaryForeground} size={14} />
               ) : (
-                <Share2 color="#fff" size={14} />
+                <Share2 color={COLORS.primaryForeground} size={14} />
               )
             }
             label={
@@ -139,7 +146,7 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
 
       <View style={{ marginTop: 'auto', paddingTop: 24 }}>
         <Text
-          style={{ color: '#fff', fontWeight: '700' }}
+          style={{ color: COLORS.primaryForeground, fontWeight: '700' }}
         >
           {card.audience}
         </Text>
@@ -177,7 +184,7 @@ function PillButton({
     >
       {icon}
       <Text
-        style={{ color: '#fff', fontWeight: '700' }}
+        style={{ color: COLORS.primaryForeground, fontWeight: '700' }}
       >
         {label}
       </Text>

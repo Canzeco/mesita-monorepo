@@ -5,7 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { MesitaMark } from '@/components/brand/MesitaMark';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { formatRating } from '@/lib/utils';
 
@@ -58,7 +58,7 @@ export function FacebookBadge({ size = 32 }: { size?: number }) {
   );
 }
 
-/** Mesita flame in a pink-gradient badge — circle (md) or rounded square (sm). */
+/** Mesita flame in an ink-gradient badge — circle (md) or rounded square (sm). */
 export function MesitaBadge({
   variant = 'md',
 }: {
@@ -78,7 +78,7 @@ export function MesitaBadge({
         justifyContent: 'center',
       }}
     >
-      <MesitaMark size={Math.round(size * 0.6)} color="#ffffff" />
+      <MesitaMark size={Math.round(size * 0.6)} color={COLORS.primaryForeground} />
     </LinearGradient>
   );
 }
@@ -121,9 +121,9 @@ export function ExternalCard({
       <View className="mb-1">{logo}</View>
       <View className="flex-row items-center gap-1">
         {icon === 'star' ? (
-          <Star color="#fbbf24" fill="#fbbf24" size={14} />
+          <Star color={COLORS.foreground} fill={COLORS.foreground} size={14} />
         ) : (
-          <Users color="#775254" size={14} />
+          <Users color={COLORS.mutedForeground} size={14} />
         )}
         <Text className="text-sm font-semibold text-foreground">{value}</Text>
       </View>

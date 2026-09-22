@@ -2,6 +2,7 @@ import { Text, TextInput, View } from 'react-native';
 
 import { StarRatingRow } from '@/components/rewards/StarRatingRow';
 import { Button } from '@/components/ui/Button';
+import { COLORS } from '@/constants/brand';
 
 const NOTE_MIN = 50;
 
@@ -75,13 +76,29 @@ export function TicketReviewForm({
             marginBottom: 4,
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#260409' }}>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: COLORS.foreground,
+            }}
+          >
             Notes
           </Text>
+          {/* The green/grey flip was the ONLY live feedback for the gate that
+              disables Send review (canSubmit reads the same predicate above),
+              and the helper sentence below it vanishes the instant the gate
+              passes. Greyscaled by lightness the two states would have landed
+              ~16 L* apart AND INVERTED — the 'you can send now' state lighter
+              and weaker than 'you cannot' — at 11px. So the distinction moves
+              onto WEIGHT: cleared reads at full ink and bold, below the line
+              stays muted at normal weight. */}
           <Text
             style={{
               fontSize: 11,
-              color: noteLen >= NOTE_MIN ? '#059669' : '#775254',
+              color:
+                noteLen >= NOTE_MIN ? COLORS.foreground : COLORS.mutedForeground,
+              fontWeight: noteLen >= NOTE_MIN ? '700' : '400',
               fontVariant: ['tabular-nums'],
             }}
           >
@@ -96,15 +113,15 @@ export function TicketReviewForm({
           numberOfLines={2}
           style={{
             borderWidth: 1,
-            borderColor: '#ebd9db',
+            borderColor: COLORS.border,
             borderRadius: 12,
             padding: 12,
             minHeight: 64,
-            backgroundColor: '#ffffff',
-            color: '#260409',
+            backgroundColor: COLORS.card,
+            color: COLORS.foreground,
             textAlignVertical: 'top',
           }}
-          placeholderTextColor="rgba(119,82,84,0.5)"
+          placeholderTextColor="rgba(93,93,93,0.5)"
         />
       </View>
 
@@ -112,8 +129,12 @@ export function TicketReviewForm({
         <Text
           style={{
             fontSize: 12,
-            color: '#b91c1c',
-            backgroundColor: '#fef2f2',
+            // RESERVED: danger keeps its hue. These were raw Tailwind reds
+            // rather than the destructive token, so a token-driven carve-out
+            // would have missed them and greyed the one error in this screen
+            // while every other error in the area kept its red.
+            color: COLORS.destructive,
+            backgroundColor: `${COLORS.destructive}1a`,
             paddingHorizontal: 12,
             paddingVertical: 8,
             borderRadius: 10,
@@ -124,7 +145,7 @@ export function TicketReviewForm({
       ) : null}
 
       {!canSubmit ? (
-        <Text style={{ color: '#775254', fontSize: 12 }}>
+        <Text style={{ color: COLORS.mutedForeground, fontSize: 12 }}>
           {ratingsSet
             ? `Your note needs at least ${NOTE_MIN} characters.`
             : 'Rate every row to continue.'}

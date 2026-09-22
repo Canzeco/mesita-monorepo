@@ -17,6 +17,7 @@ import {
 import { ScrollView, Text, View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import { COLORS } from '@/constants/brand';
 import {
   PEAK_STRATEGY,
   REWARD_SEGMENTS,
@@ -82,17 +83,23 @@ export function HelpModal({
         showsVerticalScrollIndicator={false}
       >
         <ExplainRow
-          icon={<Percent size={18} color="#cf0360" />}
+          icon={<Percent size={18} color={COLORS.secondary} />}
           bold="Instant discounts."
           rest="Start a ticket, show its QR at the table — the discount comes straight off the bill. Mesita never holds your money."
         />
+        {/* RESERVED (MESITA-1954): this row NAMES the metals out loud —
+            Bronze, Gold, Silver, Diamond — so its Crown keeps a hue while its
+            two siblings go grey. It was #ce74e3, the purple mobile had drifted
+            to; converged here on web's `tier.diamond`, the top rung the
+            sentence names. `fill` carries the hue too, so a sweep on `color=`
+            alone would have left half a purple crown behind. */}
         <ExplainRow
-          icon={<Crown size={18} color="#ce74e3" fill="#ce74e3" />}
+          icon={<Crown size={18} color="#0072a0" fill="#0072a0" />}
           bold="Elevated classes boost them."
           rest="Bronze gets the base discount; Gold, Silver and Diamond unlock bigger ones — Silver is free with Instagram reach, Diamond is invite-only."
         />
         <ExplainRow
-          icon={<Sparkles size={18} color="#cf0360" />}
+          icon={<Sparkles size={18} color={COLORS.secondary} />}
           bold="Actions beat your class."
           rest="A first visit, a Google review, or an Instagram story (with Instagram connected) can pay more than your class rate. You always keep your single best one, never a sum."
         />
@@ -116,14 +123,17 @@ export function HelpModal({
                 className={`flex-row items-center gap-2.5 rounded-xl px-2.5 py-2 ${
                   isMine ? '' : 'bg-muted/40'
                 }`}
-                style={isMine ? { backgroundColor: '#e91f64' } : undefined}
+                style={isMine ? { backgroundColor: COLORS.primary } : undefined}
               >
                 <View
                   className={`h-7 w-7 items-center justify-center rounded-lg ${
                     isMine ? 'bg-white/20' : 'bg-secondary/10'
                   }`}
                 >
-                  <Icon size={14} color={isMine ? '#fff' : '#cf0360'} />
+                  <Icon
+                    size={14}
+                    color={isMine ? COLORS.primaryForeground : COLORS.secondary}
+                  />
                 </View>
                 <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
                   <Text

@@ -96,10 +96,10 @@ export function FavoriteTile({
             {openingLabel ? (
               <View className="flex-row items-center gap-1">
                 <View
-                  className={`size-1.5 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
+                  className={`size-1.5 rounded-full ${isOpen ? 'bg-foreground' : 'bg-muted-foreground/40'}`}
                 />
                 <Text
-                  className={`text-[11px] font-medium ${isOpen ? 'text-emerald-600' : 'text-muted-foreground'}`}
+                  className={`text-[11px] font-medium ${isOpen ? 'text-foreground' : 'text-muted-foreground'}`}
                 >
                   {openingLabel}
                 </Text>
@@ -125,8 +125,8 @@ export function FavoriteTile({
         }`}
       >
         <Heart
-          color={saved ? '#f43f5e' : '#ffffff'}
-          fill={saved ? '#f43f5e' : 'transparent'}
+          color={saved ? COLORS.mutedForeground : '#ffffff'}
+          fill={saved ? COLORS.foreground : 'transparent'}
           size={16}
         />
       </Pressable>

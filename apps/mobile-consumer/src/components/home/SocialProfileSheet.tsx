@@ -4,7 +4,8 @@ import { AtSign, CreditCard, Megaphone, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
-import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { CLASS_METAL_INK_GRADIENT } from '@/lib/consumer-classes';
 import type { SocialPerson } from '@/lib/social-feed-data';
 
 // Profile dialog for the Social feed — port of web SocialProfileModal.
@@ -57,8 +58,12 @@ export function SocialProfileSheet({
         >
           {shown ? (
             <>
+              {/* Atmosphere only — two brand pinks and a stray amber that
+                  matched no token. The ink ramp at the SAME alphas; the amber
+                  keeps its lightness (L*~91) and loses its chroma, so the band
+                  still fades diagonally instead of flattening to the card. */}
               <LinearGradient
-                colors={['rgba(251,43,123,0.25)', 'rgba(255,110,180,0.25)', 'rgba(253,230,138,0.6)']}
+                colors={['rgba(23,23,23,0.25)', 'rgba(64,64,64,0.25)', 'rgba(229,229,229,0.6)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{ height: 80 }}
@@ -68,7 +73,7 @@ export function SocialProfileSheet({
                 accessibilityLabel="Close"
                 className="absolute top-3 right-3 size-8 items-center justify-center rounded-full bg-background/70"
               >
-                <X color="#260409" size={16} />
+                <X color={COLORS.foreground} size={16} />
               </Pressable>
 
               <View className="-mt-10 px-5 pb-5">
@@ -84,10 +89,18 @@ export function SocialProfileSheet({
                     }}
                     contentFit="cover"
                   />
+                  {/* RESERVED: two NAMED tiers, and both badges land in the
+                      SAME absolute slot, so the fill is the only thing telling
+                      them apart before the glyph is read. Values come from
+                      CLASS_METAL_INK_GRADIENT (deep stop), pinned to
+                      social-activity-row.tsx — NOT GRADIENTS.influencer /
+                      .premium directly, which are Diamond's ink and the
+                      Plan's ink respectively and showed the wrong metal for
+                      both badges until this pointed at the canonical map. */}
                   {shown.plan === 'influencer' ? (
                     <View
                       className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
-                      style={{ backgroundColor: '#dc2626' }}
+                      style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.influencer[1] }}
                     >
                       <Megaphone color="#fff" size={14} />
                     </View>
@@ -95,7 +108,7 @@ export function SocialProfileSheet({
                   {shown.plan === 'premium' ? (
                     <View
                       className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
-                      style={{ backgroundColor: '#2563eb' }}
+                      style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.premium[1] }}
                     >
                       <CreditCard color="#fff" size={14} />
                     </View>
@@ -139,7 +152,7 @@ export function SocialProfileSheet({
                           height: 28,
                           paddingHorizontal: 10,
                           gap: 4,
-                          backgroundColor: '#dc2626',
+                          backgroundColor: CLASS_METAL_INK_GRADIENT.influencer[1],
                         }}
                       >
                         <Megaphone color="#fff" size={12} />
@@ -149,7 +162,7 @@ export function SocialProfileSheet({
                       </View>
                     ) : (
                       <LinearGradient
-                        colors={[...GRADIENTS.premium]}
+                        colors={[...CLASS_METAL_INK_GRADIENT.premium]}
                         start={GRADIENT_DIAGONAL.start}
                         end={GRADIENT_DIAGONAL.end}
                         style={{

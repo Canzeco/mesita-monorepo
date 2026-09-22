@@ -7,6 +7,7 @@ import {
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { PartnerMark } from '@/components/brand/PartnerMark';
+import { COLORS } from '@/constants/brand';
 import { formatPlacePriceChip } from '@/lib/place-price';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { formatCompactCount, formatDistanceKm, formatRating } from '@/lib/utils';
@@ -65,9 +66,15 @@ export function ProfileSummary({
 
       <View className="flex-row flex-wrap items-center gap-1.5">
         {place.is_enriching ? (
-          <View className="flex-row items-center gap-1.5 rounded-md border border-emerald-200/70 bg-emerald-50 px-2.5 py-1">
-            <ActivityIndicator color="#059669" size="small" />
-            <Text className="text-[11.5px] font-semibold text-emerald-900">
+          // Greyed in place this chip becomes byte-identical to the neutral
+          // ProfileMetaChips beside it ('Polanco', '1.2 km') — a transient system
+          // state reading as a fact about the place. It is the row's one "not
+          // here yet", so it takes the DASHED hairline and the lighter card fill
+          // while its neighbours stay solid-bordered and filled; the spinner's
+          // MOTION, which no repaint can take, stays the strongest tell.
+          <View className="flex-row items-center gap-1.5 rounded-md border border-dashed border-border bg-card px-2.5 py-1">
+            <ActivityIndicator color={COLORS.foreground} size="small" />
+            <Text className="text-[11.5px] font-semibold text-foreground">
               Enriching
             </Text>
           </View>
@@ -85,7 +92,7 @@ export function ProfileSummary({
             </>
           ) : (
             <>
-              <Globe color="#775254" size={14} />
+              <Globe color={COLORS.mutedForeground} size={14} />
               <Text className="text-[11.5px] font-semibold text-foreground">
                 Not Verified
               </Text>
@@ -107,7 +114,7 @@ export function ProfileSummary({
           </ProfileMetaChip>
         ) : null}
         <ProfileMetaChip>
-          <MapPin color="#775254" size={12} />
+          <MapPin color={COLORS.mutedForeground} size={12} />
           <Text
             className="max-w-[160px] text-[11.5px] font-semibold text-foreground"
             numberOfLines={1}
@@ -116,19 +123,27 @@ export function ProfileSummary({
           </Text>
         </ProfileMetaChip>
         <ProfileMetaChip>
-          <Navigation color="#775254" size={12} />
+          <Navigation color={COLORS.mutedForeground} size={12} />
           <Text className="text-[11.5px] font-semibold text-foreground">
             {formatDistanceKm(place.distance_km)}
           </Text>
         </ProfileMetaChip>
         <ProfileMetaChip>
+          {/* Open/closed was carried three ways and two of them INVERTED: the
+              label was emerald-700 when open but near-black foreground when
+              closed, so a blanket greyscale would have rendered CLOSED as the
+              heavier of the two. One idiom for the whole app now, the one
+              HoursBox took in hours-location.tsx — open = ink + bold, closed =
+              muted + medium — on top of the word the chip already says. */}
           <Clock
-            color={place.open_now ? '#059669' : '#775254'}
+            color={place.open_now ? COLORS.foreground : COLORS.mutedForeground}
             size={12}
           />
           <Text
-            className={`text-[11.5px] font-semibold ${
-              place.open_now ? 'text-emerald-700' : 'text-foreground'
+            className={`text-[11.5px] ${
+              place.open_now
+                ? 'font-bold text-foreground'
+                : 'font-medium text-muted-foreground'
             }`}
           >
             {stateValue}

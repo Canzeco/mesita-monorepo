@@ -6,6 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import { CLASS_METAL_INK_GRADIENT } from '@/lib/consumer-classes';
 import { placePath } from '@/lib/consumer-route-contract';
 import {
   SOCIAL_ACTION_META,
@@ -41,10 +42,19 @@ export function SocialActivityRow({
             style={{ width: 44, height: 44, borderRadius: 22 }}
             contentFit="cover"
           />
+          {/* RESERVED: two NAMED tiers. They keep their hue, from
+              CLASS_METAL_INK_GRADIENT (deep stop), so this disc cannot drift
+              from ClassRail / IdentityHero again. This used to read
+              GRADIENTS.influencer / GRADIENTS.premium directly — the same
+              key-name-not-meaning mistake as everywhere else: GRADIENTS.
+              influencer is Diamond's ink and GRADIENTS.premium is the Plan's,
+              so Influencer showed Diamond-blue and Premium showed black. Now
+              Silver's grey and Gold's ink, so the 10px glyph is never the
+              only thing telling Influencer from Premium apart. */}
           {person.plan === 'influencer' ? (
             <View
               className="absolute -bottom-0.5 -left-0.5 size-4 items-center justify-center rounded-full"
-              style={{ backgroundColor: '#dc2626' }}
+              style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.influencer[1] }}
             >
               <Megaphone color="#fff" size={10} />
             </View>
@@ -52,7 +62,7 @@ export function SocialActivityRow({
           {person.plan === 'premium' ? (
             <View
               className="absolute -bottom-0.5 -left-0.5 size-4 items-center justify-center rounded-full"
-              style={{ backgroundColor: '#2563eb' }}
+              style={{ backgroundColor: CLASS_METAL_INK_GRADIENT.premium[1] }}
             >
               <CreditCard color="#fff" size={10} />
             </View>
@@ -107,7 +117,7 @@ export function SocialActivityRow({
         <Pressable
           onPress={() => router.push(placePath(place.slug || place.id))}
           accessibilityLabel={`Open ${place.name}`}
-          className="max-w-[40%] flex-row items-center gap-2 rounded-xl border border-border bg-background/80 p-1.5 pr-2 active:opacity-90"
+          className="max-w-[40%] flex-row items-center gap-2 rounded-xl border border-border bg-background p-1.5 pr-2 active:opacity-90"
         >
           <PlaceThumb name={place.name} photo={place.photos[0]} />
           <Text
@@ -118,7 +128,10 @@ export function SocialActivityRow({
           </Text>
         </Pressable>
       ) : (
-        <View className="max-w-[40%] flex-row items-center gap-2 rounded-xl border border-border bg-muted/40 p-1.5 pr-2">
+        /* No real place behind this row: dashed + unfilled, the app's "not
+           here yet" chip. bg-muted/40 and bg-background/80 are the same
+           off-white once the pink leaves, so shape carries it now. */
+        <View className="max-w-[40%] flex-row items-center gap-2 rounded-xl border border-dashed border-border bg-transparent p-1.5 pr-2">
           <PlaceThumb name={person.fallbackPlaceName} />
           <Text
             className="max-w-[80px] text-[11px] font-semibold text-muted-foreground"

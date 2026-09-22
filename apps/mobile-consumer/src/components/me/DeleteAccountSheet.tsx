@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
+import { COLORS } from '@/constants/brand';
 import { apiDeleteConsumerAccount } from '@/lib/api/auth';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -54,20 +55,24 @@ export function DeleteAccountSheet({ visible, onClose }: Props) {
           width: 48,
           height: 48,
           borderRadius: 14,
-          backgroundColor: 'rgba(220,38,38,0.1)',
+          // RESERVED (danger): still red, but off stock red-600 and onto
+          // COLORS.destructive at 10% — what bg-destructive/10 tints with.
+          backgroundColor: 'rgba(230,0,15,0.1)',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Trash2 color="#dc2626" size={22} />
+        <Trash2 color={COLORS.destructive} size={22} />
       </View>
 
-      <Text style={{ color: '#775254', lineHeight: 20, fontSize: 14 }}>
+      <Text
+        style={{ color: COLORS.mutedForeground, lineHeight: 20, fontSize: 14 }}
+      >
         Your profile, tickets, reservations and rewards will be permanently
         deleted, and your sign-in will stop working immediately. If you’d rather
         we handle it manually, email{' '}
         <Text
-          style={{ color: '#ec006c', textDecorationLine: 'underline' }}
+          style={{ color: COLORS.foreground, textDecorationLine: 'underline' }}
           onPress={() =>
             void Linking.openURL(
               `mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent(
@@ -83,9 +88,11 @@ export function DeleteAccountSheet({ visible, onClose }: Props) {
         .
       </Text>
 
-      <Text style={{ fontWeight: '600', fontSize: 14, color: '#260409' }}>
+      <Text
+        style={{ fontWeight: '600', fontSize: 14, color: COLORS.foreground }}
+      >
         Type{' '}
-        <Text style={{ color: '#dc2626', fontFamily: 'monospace' }}>
+        <Text style={{ color: COLORS.destructive, fontFamily: 'monospace' }}>
           {CONFIRM_WORD}
         </Text>{' '}
         to confirm:
@@ -118,8 +125,14 @@ export function DeleteAccountSheet({ visible, onClose }: Props) {
             accessibilityLabel="Delete forever"
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Trash2 color="#fff" size={16} />
-              <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
+              <Trash2 color={COLORS.primaryForeground} size={16} />
+              <Text
+                style={{
+                  color: COLORS.primaryForeground,
+                  fontWeight: '600',
+                  fontSize: 14,
+                }}
+              >
                 Delete forever
               </Text>
             </View>
@@ -128,7 +141,7 @@ export function DeleteAccountSheet({ visible, onClose }: Props) {
       </View>
       <Text
         accessibilityRole="alert"
-        style={{ color: '#dc2626', fontSize: 12, textAlign: 'center' }}
+        style={{ color: COLORS.destructive, fontSize: 12, textAlign: 'center' }}
       >
         This action cannot be undone.
       </Text>

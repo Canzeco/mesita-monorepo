@@ -31,7 +31,7 @@ import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { SexSelector, toSexValue, type SexValue } from '@/components/ui/SexSelector';
 import { TextField } from '@/components/ui/TextField';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import {
   mimeFromUri,
@@ -250,14 +250,14 @@ export function PersonalDetailsSheet({
               width: 28,
               height: 28,
               borderRadius: 999,
-              backgroundColor: '#260409',
+              backgroundColor: COLORS.foreground,
               borderWidth: 2,
-              borderColor: '#fff7f8',
+              borderColor: COLORS.background,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Camera color="#fff7f8" size={14} />
+            <Camera color={COLORS.primaryForeground} size={14} />
           </View>
         </Pressable>
         <Text
@@ -493,9 +493,14 @@ export function SettingsSheet({
           )
         }
       />
+      {/* RESERVED hue (MESITA-1954): every other tile on this page — Communities,
+          both selects, Metrics, Contact, both legal links, Export — now resolves
+          to `bg-muted`, so the one irreversible row would have been one more
+          identical grey box. `destructive` is the tint BoxRow already ships for
+          exactly this. */}
       <BoxRow
         Icon={Trash2}
-        tint="muted"
+        tint="destructive"
         title="Delete account"
         summary="Permanently delete your account"
         onPress={() => {

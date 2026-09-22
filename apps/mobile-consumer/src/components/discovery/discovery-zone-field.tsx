@@ -129,7 +129,7 @@ export function DiscoveryZoneField({
                 borderRadius: 999,
               }}
             >
-              <MapPin color="#fff" size={14} />
+              <MapPin color={COLORS.primaryForeground} size={14} />
               <Text
                 className="min-w-0 flex-1 text-[13px] font-medium text-white"
                 numberOfLines={1}
@@ -142,7 +142,7 @@ export function DiscoveryZoneField({
                 hitSlop={8}
                 className="h-6 w-6 items-center justify-center rounded-full"
               >
-                <X color="#fff" size={14} />
+                <X color={COLORS.primaryForeground} size={14} />
               </Pressable>
             </LinearGradient>
           </View>
@@ -151,7 +151,7 @@ export function DiscoveryZoneField({
             value={query}
             onChangeText={updateQuery}
             placeholder="Search a city, zone or address…"
-            placeholderTextColor="#77525466"
+            placeholderTextColor={`${COLORS.mutedForeground}66`}
             className="min-w-0 flex-1 px-2 text-[13px] text-foreground"
             autoCorrect={false}
             returnKeyType="search"
@@ -191,7 +191,7 @@ export function DiscoveryZoneField({
                 justifyContent: 'center',
               }}
             >
-              <LocateFixed color="#fff" size={16} />
+              <LocateFixed color={COLORS.primaryForeground} size={16} />
             </LinearGradient>
           ) : (
             <LocateFixed color={COLORS.mutedForeground} size={16} />

@@ -4,7 +4,12 @@ import { Star } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { PartnerMark } from '@/components/brand/PartnerMark';
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENT_DIAGONAL,
+  GRADIENTS,
+  SHADOW_ELEV,
+} from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { formatPlacePriceLevelSymbols } from '@/lib/place-price';
@@ -91,7 +96,14 @@ export function RailCard({
         <View className="flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
           {rating ? (
             <View className="flex-row items-center gap-0.5">
-              <Star color="#f59e0b" fill="#f59e0b" size={11} />
+              {/* The Google rating star. The FILLED GLYPH is what says
+                  "rating", not the amber — web's own repaint greyed it to
+                  fill-foreground / text-muted-foreground, so mobile matches. */}
+              <Star
+                color={COLORS.mutedForeground}
+                fill={COLORS.foreground}
+                size={11}
+              />
               <Text className="text-[11px] font-medium text-foreground">
                 {rating}
               </Text>
@@ -104,11 +116,17 @@ export function RailCard({
             <Text className="text-[11px] text-muted-foreground">{distance}</Text>
           ) : null}
         </View>
+        {/* Open vs closed used to be emerald vs muted — hue was the only
+            carrier, so greying it in place would have left `isOpen ? grey :
+            grey`. Re-separated on WEIGHT + LIGHTNESS the way web does it:
+            open is ink and semibold, everything else stays muted and regular.
+            (`Until X`, open_now null, has always shared the muted style with
+            `Closed` — only the copy parts them, as on web.) */}
         {opening ? (
           <Text
             className={`text-[10px] ${
               place.open_now === true
-                ? 'text-emerald-600'
+                ? 'font-semibold text-foreground'
                 : 'text-muted-foreground'
             }`}
             numberOfLines={1}

@@ -80,6 +80,10 @@ function renderPillLabel(children: ReactNode, textClassName: string) {
 
 // `disabled` is for options the model knows but the product can't back yet
 // (Order, MESITA-1081) — shown rather than hidden, so the axis reads whole.
+// THE THREE-WAY STILL READS ACHROMATIC (MESITA-1954): active is the filled INK
+// chip with an inverted label; disabled parts from idle on the `soon` glyph its
+// only caller always pairs it with, plus ~26 L* of label tone. Never on the two
+// muted washes — those were already within a step of each other when pink.
 export function Pill({
   active,
   onClick,
@@ -128,7 +132,10 @@ export function Pill({
             borderRadius: 999,
           }}
         >
-          {renderPillLabel(children, 'text-[13px] font-medium text-white')}
+          {renderPillLabel(
+            children,
+            'text-[13px] font-medium text-primary-foreground',
+          )}
         </LinearGradient>
       </Pressable>
     );
@@ -172,7 +179,7 @@ export function PillText({
   const tone = disabled
     ? 'text-muted-foreground/60'
     : active
-      ? 'text-white'
+      ? 'text-primary-foreground'
       : 'text-foreground/70';
   return <Text className={`text-[13px] font-medium ${tone}`}>{children}</Text>;
 }
@@ -257,7 +264,7 @@ export function RangeSlider({
               borderRadius: SLIDER_THUMB_SIZE / 2,
               backgroundColor: COLORS.primary,
               borderWidth: 2,
-              borderColor: '#fff',
+              borderColor: COLORS.card,
               top: 6,
             }}
           />

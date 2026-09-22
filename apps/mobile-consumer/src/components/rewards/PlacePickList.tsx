@@ -16,6 +16,7 @@ import { ChevronRight, Lock, MapPin, QrCode, Store } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
+import { COLORS } from "@/constants/brand";
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { filterPlacesByQuery } from "@/lib/place-list-filter";
 import { supabase } from "@/lib/supabase";
@@ -111,7 +112,7 @@ export function PlacePickList({
     return (
       <View className="items-center gap-2 rounded-2xl border border-border bg-card px-4 py-8">
         <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
-          <MapPin size={20} color="#775254" />
+          <MapPin size={20} color={COLORS.mutedForeground} />
         </View>
         <Text className="text-muted-foreground" style={{ fontSize: 12.5 }}>
           No places on Mesita yet — check back soon.
@@ -218,8 +219,16 @@ function PlaceRow({
           className={`h-12 w-12 items-center justify-center rounded-xl ${
             isPartner ? "bg-secondary/10" : "bg-muted"
           }`}
+          // Achromatic (MESITA-1954): the crimson Store glyph was the only
+          // thing ranking this branch, and it greyed onto the locked one. The
+          // photo above dims to 0.5 — the placeholder now obeys the same rule,
+          // so both halves of the thumbnail fork say "inactive" the same way.
+          style={{ opacity: isPartner ? 1 : 0.5 }}
         >
-          <Store size={20} color={isPartner ? "#cf0360" : "#775254"} />
+          <Store
+            size={20}
+            color={isPartner ? COLORS.secondary : COLORS.mutedForeground}
+          />
         </View>
       )}
       <View className="min-w-0 flex-1">
@@ -242,8 +251,13 @@ function PlaceRow({
       </View>
       {!isPartner ? (
         // One unambiguous locked signal, in one place.
-        <View className="flex-row items-center gap-1 rounded-full bg-muted px-2 py-0.5">
-          <Lock size={10} color="#775254" />
+        // Achromatic (MESITA-1954): "Soon" and "Open" mean opposite things in
+        // the same slot, and bg-muted vs bg-primary/10 greyscale to the same
+        // near-white pill. Re-separated by RANK, the vocabulary ReservationCard
+        // already speaks: dashed outline = waiting on the place · filled ink =
+        // yours, act on it. The Lock / word pair carries the rest.
+        <View className="flex-row items-center gap-1 rounded-full border border-dashed border-muted-foreground/50 px-2 py-0.5">
+          <Lock size={10} color={COLORS.mutedForeground} />
           <Text
             className="font-extrabold uppercase text-muted-foreground"
             style={{ fontSize: 10, letterSpacing: 0.5 }}
@@ -252,9 +266,9 @@ function PlaceRow({
           </Text>
         </View>
       ) : hasOpen ? (
-        <View className="rounded-full bg-primary/10 px-2 py-0.5">
+        <View className="rounded-full border border-primary bg-primary px-2 py-0.5">
           <Text
-            className="font-extrabold uppercase text-primary"
+            className="font-extrabold uppercase text-primary-foreground"
             style={{ fontSize: 10, letterSpacing: 0.5 }}
           >
             Open
@@ -271,13 +285,17 @@ function PlaceRow({
             importantForAccessibility="no-hide-descendants"
             className="h-9 w-9 items-center justify-center rounded-lg border border-dashed border-primary/30 bg-primary/5"
           >
+            {/* Achromatic (MESITA-1954): both states were the same crimson,
+                which left "creating your ticket" invisible at a glance once the
+                hue went. The spinner now runs at full ink and the idle glyph
+                sits at muted weight — live vs quiet, on top of motion. */}
             {busy ? (
-              <ActivityIndicator size="small" color="#cf0360" />
+              <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
-              <QrCode size={18} color="#cf0360" opacity={0.7} />
+              <QrCode size={18} color={COLORS.mutedForeground} opacity={0.7} />
             )}
           </View>
-          <ChevronRight size={16} color="#775254" />
+          <ChevronRight size={16} color={COLORS.mutedForeground} />
         </>
       )}
     </>

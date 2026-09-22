@@ -4,8 +4,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { GRADIENTS } from '@/constants/brand';
 
-// Approximates web `--gradient-hero` (two radial pink blobs + vertical wash).
+// Approximates web `--gradient-hero` (two soft radial blobs + vertical wash).
 // RN has no CSS radials — soft absolute blobs + a linear wash get close.
+// MESITA-1954: the blobs were pink; a gradient whose only job is atmosphere is
+// the first thing the achromatic rule takes, so they fade the page grey in at
+// the same alphas instead. Web dropped its two radials outright.
 export function HeroBackdrop() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -17,7 +20,7 @@ export function HeroBackdrop() {
       />
       {/* left blob ≈ radial at 20% -10% */}
       <LinearGradient
-        colors={['rgba(255, 158, 176, 0.55)', 'rgba(255, 158, 176, 0)']}
+        colors={['rgba(239, 239, 239, 0.55)', 'rgba(239, 239, 239, 0)']}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
         style={{
@@ -31,7 +34,7 @@ export function HeroBackdrop() {
       />
       {/* right blob ≈ radial at 90% 10% */}
       <LinearGradient
-        colors={['rgba(255, 143, 184, 0.5)', 'rgba(255, 143, 184, 0)']}
+        colors={['rgba(239, 239, 239, 0.5)', 'rgba(239, 239, 239, 0)']}
         start={{ x: 0.9, y: 0 }}
         end={{ x: 0.2, y: 1 }}
         style={{

@@ -12,6 +12,7 @@ import { Pressable, Text, View } from 'react-native';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { PlaceContactSheet } from '@/components/place/PlaceContactSheet';
 import { ReservationSheet } from '@/components/place/place-detail/ReservationSheet';
+import { COLORS } from '@/constants/brand';
 import { useSavedPlaces } from '@/lib/saved-places';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
@@ -95,25 +96,29 @@ function ActionBtn({
   saved?: boolean;
   filled?: boolean;
 }) {
+  // Saved used to be four red signals at once (tint, border, icon, label) and
+  // red here was never danger — it was a heart. Achromatic, a 12% tint is a
+  // 5-point lightness step no one reads, so the state moves onto carriers that
+  // never depended on hue: a FILLED heart against an outline one (the glyph
+  // does the work), an ink border against the hairline the other three wear,
+  // and the label already flipping Save → Saved.
   return (
     <Pressable
       onPress={onPress}
       className={`h-11 flex-1 flex-row items-center justify-center gap-1 rounded-xl border ${
         saved
-          ? 'border-red-500/50 bg-red-500/12'
+          ? 'border-foreground bg-muted'
           : 'border-border bg-card active:bg-muted'
       }`}
     >
       <Icon
-        color={saved ? '#dc2626' : '#260409'}
+        color={COLORS.foreground}
         size={15}
-        fill={filled ? '#dc2626' : 'transparent'}
+        fill={filled ? COLORS.foreground : 'transparent'}
         strokeWidth={2.25}
       />
       <Text
-        className={`text-[13px] font-semibold ${
-          saved ? 'text-red-600' : 'text-foreground'
-        }`}
+        className="text-[13px] font-semibold text-foreground"
         numberOfLines={1}
       >
         {label}

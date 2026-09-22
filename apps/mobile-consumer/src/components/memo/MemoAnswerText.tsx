@@ -105,7 +105,7 @@ export function MemoAnswerText({
         accessibilityRole="link"
         accessibilityLabel={`Open ${prediction.mainText}`}
         className={`font-medium text-foreground underline ${adding ? 'opacity-60' : ''}`}
-        style={{ textDecorationColor: 'rgba(251,43,123,0.5)' }}
+        style={{ textDecorationColor: 'rgba(23,23,23,0.5)' }}
       >
         {children}
       </Text>

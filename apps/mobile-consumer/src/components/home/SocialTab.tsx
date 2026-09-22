@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ConsumerActivityList } from '@/components/inbox/ConsumerActivityList';
 import { SocialActivityRow } from '@/components/home/social-activity-row';
 import { SocialProfileSheet } from '@/components/home/SocialProfileSheet';
+import { COLORS } from '@/constants/brand';
 import { GLOBAL_ACTIVITY } from '@/lib/consumer-activity-data';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import {
@@ -79,9 +80,15 @@ export function SocialTab() {
             Activity
           </Text>
           <View className="flex-row items-center gap-2">
-            <View className="flex-row items-center gap-1.5 rounded-full bg-primary/10 px-2 py-1">
-              <View className="size-1.5 rounded-full bg-primary" />
-              <Text className="text-[10px] font-semibold text-primary">Live</Text>
+            {/* Live is a STATUS; Refresh beside it is a CONTROL. The pink tint
+                used to be the only thing telling them apart, and achromatic
+                would have made them two grey pills of the same height — one
+                tappable, one not. Filled ink = the status, outlined card =
+                the control (web keeps them apart with an animate-ping the
+                native feed has no equivalent for). */}
+            <View className="flex-row items-center gap-1.5 rounded-full bg-primary px-2 py-1">
+              <View className="size-1.5 rounded-full bg-primary-foreground" />
+              <Text className="text-[10px] font-semibold text-primary-foreground">Live</Text>
             </View>
             <Pressable
               onPress={refresh}
@@ -89,7 +96,7 @@ export function SocialTab() {
               accessibilityLabel="Refresh activity"
               className="h-7 flex-row items-center gap-1.5 rounded-full border border-border bg-card px-2.5 disabled:opacity-60"
             >
-              <RefreshCw color="#775254" size={12} />
+              <RefreshCw color={COLORS.mutedForeground} size={12} />
               <Text className="text-[11px] font-semibold text-muted-foreground">
                 Refresh
               </Text>

@@ -22,9 +22,40 @@ import {
   Smile,
   type LucideIcon,
 } from 'lucide-react-native';
+import { GRADIENTS } from '@/constants/brand';
 
 const CLASS_ORDER = ['standard', 'influencer', 'premium', 'aura'] as const;
-type ClassId = (typeof CLASS_ORDER)[number];
+export type ClassId = (typeof CLASS_ORDER)[number];
+
+// THE CLASS METAL RING — one canonical bridge from the legacy class id to its
+// achromatic-era ink ramp (MESITA-1954). Four files (IdentityHero.tsx,
+// CurrentClassCard.tsx, ClassRail.tsx, WaysToClimb.tsx) hand-rolled this
+// bridge independently after the achromatic repaint, and all four wired it
+// the same wrong way: they matched on KEY NAME rather than on MEANING —
+// `influencer: GRADIENTS.influencer` reads as correct because the strings
+// match, but `GRADIENTS.influencer` is documented in brand.ts as Diamond's
+// ink band, not Influencer/Silver's. The result: standard(Bronze) got
+// Silver's grey, influencer(Silver) got Diamond's blue, premium(Gold) got the
+// Plan's ink ramp, and aura(Diamond) got Gold's gold — every guest saw the
+// wrong metal on every screen built after the repaint.
+//
+// This is the INK anchor: for a ring or a background NOTHING PRINTS ON, one
+// lightness step darker than the metal's badge fill. A surface with a label
+// ON the metal (a pass, a class badge) needs the LIGHTER fill instead — see
+// classBadgeColors in app/(tabs)/me/passport.tsx, not this map; the two are
+// deliberately different scales for the same reason web keeps
+// `--gradient-<metal>` (fill) and `--tier-<metal>` (ink) apart.
+export const CLASS_METAL_INK_GRADIENT: Record<ClassId, readonly [string, string]> = {
+  // Bronze has no entry of its own in GRADIENTS — every other metal's ink ramp
+  // lives there, keyed by a legacy name that happens to match, but bronze was
+  // never given one. Reusing TicketScreen's own vetted bronze stops (its
+  // 3-stop pass ramp is `#c9834f, #b4703f, #954c28`) rather than inventing a
+  // new hex: the mid and dark stops are already the measured, shipped values.
+  standard: ['#b4703f', '#954c28'],
+  influencer: GRADIENTS.free, // Silver — GRADIENTS.free is the silver grey
+  premium: GRADIENTS.gold, // Gold
+  aura: GRADIENTS.influencer, // Diamond — GRADIENTS.influencer IS diamond's band
+};
 
 export const CLASSES: {
   id: ClassId;

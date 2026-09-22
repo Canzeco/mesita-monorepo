@@ -25,7 +25,7 @@ export function EmptyState({
   return (
     <View className="flex-1 items-center justify-center gap-4 px-8">
       <View className="size-14 items-center justify-center rounded-2xl bg-muted">
-        <Compass color="#775254" size={24} />
+        <Compass color={COLORS.mutedForeground} size={24} />
       </View>
       <Text className="text-center font-display text-2xl font-semibold text-foreground">
         {title}
@@ -39,7 +39,7 @@ export function EmptyState({
           disabled={actionDisabled}
           className="mt-2 flex-row items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 active:opacity-90 disabled:opacity-70"
         >
-          {ActionIcon ? <ActionIcon color="#fff7f8" size={16} /> : null}
+          {ActionIcon ? <ActionIcon color={COLORS.background} size={16} /> : null}
           <Text className="text-sm font-semibold text-background">
             {actionLabel}
           </Text>
@@ -54,19 +54,22 @@ export function EmptyState({
 // because this package is NativeWind 4 / Tailwind 3.4 and the web one is
 // Tailwind v4.
 //
-// COLOUR IS NOT DECORATION HERE. The first pass gave each button its own hue
+// RANK IS NOT DECORATION HERE. The first pass gave each button its own hue
 // and it read cheap for three measurable reasons: every token in this app
-// lives in one warm band (background hue 10, primary hue 5), so amber/sky/
-// violet were an imported palette; Skip and Save were hue TWINS despite being
-// opposite verbs; and five equal rings cancelled the size hierarchy. So the
-// utilities recede to neutral, Skip is neutral but heavier, and Save is the
-// ONLY colour in the row.
+// lived in one warm band, so amber/sky/violet were an imported palette; Skip
+// and Save were hue TWINS despite being opposite verbs; and five equal rings
+// cancelled the size hierarchy. The row is achromatic now (MESITA-1954), so
+// hue cannot carry the last of that either — the ladder is FILL and WEIGHT:
+// the utilities recede (48px, hairline ring, muted glyph), Skip is bigger and
+// heavier but still an OUTLINE on white, and Save is the one SOLID ink disc
+// with an inverted glyph. Fill-vs-outline is the whole distinction between
+// the two opposite verbs now — never give Skip a fill.
 export type ActionVariant = 'utility' | 'skip' | 'save';
 
-const NEUTRAL_RING = '#e8d7db'; // --border, warm
-const NEUTRAL_GLYPH = '#775254'; // --muted-foreground
-const SKIP_RING = '#3a142040'; // foreground @ 25%
-const SKIP_GLYPH = '#3a1420cc';
+const NEUTRAL_RING = COLORS.border; // --border
+const NEUTRAL_GLYPH = COLORS.mutedForeground; // --muted-foreground
+const SKIP_RING = '#17171740'; // --foreground @ 25%
+const SKIP_GLYPH = '#171717cc'; // --foreground @ 80%
 
 export function ActionBtn({
   label,
@@ -83,7 +86,7 @@ export function ActionBtn({
   onPress?: () => void;
   disabled?: boolean;
   filled?: boolean;
-  /** Red status dot (top-right) — used for the "filters active" Filter button. */
+  /** Status dot (top-right) — used for the "filters active" Filter button. */
   showDot?: boolean;
 }) {
   const big = variant !== 'utility';
@@ -95,7 +98,7 @@ export function ActionBtn({
       ? SKIP_RING
       : NEUTRAL_RING;
   const glyph = save
-    ? '#ffffff'
+    ? COLORS.primaryForeground
     : variant === 'skip'
       ? SKIP_GLYPH
       : NEUTRAL_GLYPH;
@@ -112,9 +115,9 @@ export function ActionBtn({
         borderRadius: size / 2,
         borderWidth: 2,
         borderColor: ring,
-        backgroundColor: save ? COLORS.primary : '#ffffff',
+        backgroundColor: save ? COLORS.primary : COLORS.card,
         opacity: disabled ? 0.5 : 1,
-        shadowColor: save ? COLORS.primary : '#501428',
+        shadowColor: save ? COLORS.primary : COLORS.foreground,
         shadowOpacity: save ? 0.5 : 0.16,
         shadowRadius: save ? 12 : 7,
         shadowOffset: { width: 0, height: save ? 5 : 2 },
@@ -132,11 +135,13 @@ export function ActionBtn({
   );
 }
 
-// Filters-active indicator — the red dot on the Filter button (MESITA-633).
+// Filters-active indicator — the ink dot on the Filter button (MESITA-633).
+// NOT destructive: it reports a state, so it takes the ink, not #e6000f. The
+// border-2 border-card ring is what keeps a 10px ink dot off the white button.
 function ActionDot() {
   return (
     <View
-      className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-red-500"
+      className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-foreground"
       pointerEvents="none"
     />
   );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { GoogleBadge, MesitaBadge } from '@/components/place/place-detail/review-ui';
+import { COLORS } from '@/constants/brand';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { firstInitial } from '@/lib/utils';
 
@@ -181,8 +182,8 @@ function StarRow({ rating }: { rating: number }) {
         <Star
           key={i}
           size={12}
-          color="#fbbf24"
-          fill={i < filled ? '#fbbf24' : 'transparent'}
+          color={COLORS.foreground}
+          fill={i < filled ? COLORS.foreground : 'transparent'}
         />
       ))}
     </View>

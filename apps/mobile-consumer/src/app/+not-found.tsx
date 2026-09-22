@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
 import {
+  COLORS,
   GRADIENT_DIAGONAL,
   GRADIENTS,
   SHADOW_ELEV,
@@ -22,7 +23,7 @@ export default function NotFound() {
   const router = useRouter();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
       <HeroBackdrop />
       <SafeAreaView style={{ flex: 1 }}>
         <View
@@ -57,7 +58,7 @@ export default function NotFound() {
                 ...SHADOW_GLOW,
               }}
             >
-              <Compass color="#ffffff" size={24} />
+              <Compass color={COLORS.primaryForeground} size={24} />
             </LinearGradient>
 
             <Text
@@ -98,7 +99,7 @@ export default function NotFound() {
                 <View
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
                 >
-                  <MoveLeft color="#fffafb" size={16} />
+                  <MoveLeft color={COLORS.primaryForeground} size={16} />
                   <Text
                     className="font-semibold text-primary-foreground"
                     style={{ fontSize: 14 }}

@@ -28,7 +28,7 @@ import {
   withServerGreeting,
   type AiMessage,
 } from '@/components/memo/ask-ai-thread';
-import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { MemoAnswer, MemoTurn } from '@/lib/api/memo';
 import type { Place, PlacePrediction } from '@/lib/api/places';
 import { toast } from '@/lib/toast';
@@ -161,7 +161,7 @@ export function AskAiPanel({
             accessibilityLabel="Clear chat"
             className="absolute top-2 right-2 z-10 flex-row items-center gap-1 rounded-full border border-border bg-background/90 px-2.5 py-1.5"
           >
-            <RotateCcw color="#775254" size={14} />
+            <RotateCcw color={COLORS.mutedForeground} size={14} />
             <Text className="text-xs text-muted-foreground">Clear</Text>
           </Pressable>
         ) : null}
@@ -220,7 +220,7 @@ export function AskAiPanel({
           {thinking ? (
             <View className="flex-row justify-start">
               <View className="flex-row items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2">
-                <ActivityIndicator color="#fb2b7b" size="small" />
+                <ActivityIndicator color={COLORS.primary} size="small" />
                 <Text className="text-sm text-muted-foreground">Thinking…</Text>
               </View>
             </View>

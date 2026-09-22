@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
+import { COLORS } from '@/constants/brand';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 
 export function DestGrid({ children }: { children: ReactNode }) {
@@ -68,7 +69,7 @@ export function DestTile({
         </Text>
       )}
       <View className="pointer-events-none absolute bottom-2 right-2.5 opacity-20">
-        <Icon color="#260409" size={40} />
+        <Icon color={COLORS.foreground} size={40} />
       </View>
     </Pressable>
   );

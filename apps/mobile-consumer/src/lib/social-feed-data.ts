@@ -11,8 +11,31 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 
+import { COLORS } from '@/constants/brand';
+
 type SocialActionKind = 'visit' | 'like' | 'reward' | 'story';
 
+// THE FILL RANKS THE CHIP; THE GLYPH + LABEL NAME IT (MESITA-1954).
+//
+// These four kinds used to carry four hues — pink / rose / amber / fuchsia,
+// each a 10% wash under a matching mid-chroma glyph. Four hues on four
+// categories is chroma spent on hierarchy, which the rule takes. The washes
+// are also stock Tailwind palette classes stored as DATA in a .ts file, so no
+// token edit and no className sweep over .tsx ever reached them: left alone,
+// the feed would still ship rose and amber under an achromatic app.
+//
+// Flattening all four to one tint is the failure web shipped three times, so
+// `reward` — the money event, the one thing in this feed the guest gets back —
+// takes the FILLED ink chip and the other three take the quiet muted one. That
+// is the same rank ACTIVITY_KIND_META gives `earned` a tab away, so the money
+// row looks like the money row in both feeds. Within the quiet three the kind
+// was never carried by the hue anyway: social-activity-row renders a distinct
+// lucide glyph (MapPin / Heart / Camera) AND prints meta.label as text beside
+// it, which is the strongest carrier there is.
+//
+// `bg` stays a className (it is interpolated into the chip's class string) and
+// `color` stays a hex (it is an inline icon + text colour), so the pair reads
+// the same token layer through both of its halves.
 export const SOCIAL_ACTION_META: Record<
   SocialActionKind,
   { label: string; Icon: LucideIcon; color: string; bg: string }
@@ -20,26 +43,27 @@ export const SOCIAL_ACTION_META: Record<
   visit: {
     label: 'Visit',
     Icon: MapPin,
-    color: '#fb2b7b',
-    bg: 'bg-primary/10',
+    color: COLORS.foreground,
+    bg: 'bg-muted',
   },
   like: {
     label: 'Like',
     Icon: Heart,
-    color: '#e11d48',
-    bg: 'bg-rose-500/10',
+    color: COLORS.foreground,
+    bg: 'bg-muted',
   },
+  // The affirmative: the guest earned something.
   reward: {
     label: 'Reward',
     Icon: Sparkles,
-    color: '#d97706',
-    bg: 'bg-amber-500/10',
+    color: COLORS.primaryForeground,
+    bg: 'bg-primary',
   },
   story: {
     label: 'Story',
     Icon: Camera,
-    color: '#c026d3',
-    bg: 'bg-fuchsia-500/10',
+    color: COLORS.foreground,
+    bg: 'bg-muted',
   },
 };
 

@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MenuWebPane } from '@/components/place/MenuWebPane';
+import { COLORS } from '@/constants/brand';
 import {
   drivePreviewUrl,
   menuKindLabel,
@@ -78,11 +79,21 @@ function MenuViewerBody({
         style={{ paddingTop: Math.max(insets.top, 8) }}
       >
         <View className="flex-row items-center gap-2 border-b border-border px-4 py-3">
-          <View className="size-9 items-center justify-center rounded-full bg-amber-50">
+          {/* THE KIND MARK, RE-SEPARATED FROM THE TWO BUTTONS BESIDE IT
+              (MESITA-1954). Amber was the only thing saying "this disc is a
+              label, not a control": ProductsTab's mark could go `bg-muted`
+              because it sits on a white card, but this header IS `background`,
+              where `muted` is the same value — so the achromatic amber would
+              have been a third identical invisible size-9 disc in a row with
+              Open-externally and Close. It keeps the amber's near-white
+              LIGHTNESS instead (card), and its glyph drops one weight below the
+              ink of the live controls: passive = light tile + muted glyph,
+              actionable = muted tile + ink glyph, everywhere in this file. */}
+          <View className="size-9 items-center justify-center rounded-full bg-card">
             {menu.kind === 'image' ? (
-              <Utensils color="#d97706" size={16} />
+              <Utensils color={COLORS.mutedForeground} size={16} />
             ) : (
-              <FileText color="#d97706" size={16} />
+              <FileText color={COLORS.mutedForeground} size={16} />
             )}
           </View>
           <View className="min-w-0 flex-1">
@@ -105,14 +116,14 @@ function MenuViewerBody({
             accessibilityLabel="Open externally"
             className="size-9 items-center justify-center rounded-full bg-muted"
           >
-            <ExternalLink color="#260409" size={16} />
+            <ExternalLink color={COLORS.foreground} size={16} />
           </Pressable>
           <Pressable
             onPress={onClose}
             accessibilityLabel="Close"
             className="size-9 items-center justify-center rounded-full bg-muted"
           >
-            <X color="#260409" size={16} />
+            <X color={COLORS.foreground} size={16} />
           </Pressable>
         </View>
 
@@ -120,8 +131,12 @@ function MenuViewerBody({
           {embedFailed ? (
             // In-app visualization failed — the browser sheet still works.
             <View className="flex-1 items-center justify-center gap-4 px-8">
-              <View className="size-14 items-center justify-center rounded-2xl bg-amber-50">
-                <FileText color="#d97706" size={24} />
+              {/* The failed-embed illustration. Same passive form as the
+                  header mark — a light tile with a quiet glyph on the grey
+                  pane — which leaves the ink "Open menu" pill below as the
+                  only loud thing on the screen, the one that demands action. */}
+              <View className="size-14 items-center justify-center rounded-2xl bg-card">
+                <FileText color={COLORS.mutedForeground} size={24} />
               </View>
               <Text className="text-center font-display text-lg font-semibold text-foreground">
                 {menu.name}
@@ -140,7 +155,12 @@ function MenuViewerBody({
                 <Text className="text-sm font-semibold text-background">
                   Open menu
                 </Text>
-                <ExternalLink color="#fffaf8" size={16} />
+                {/* Was #fffaf8 — a near-white matching no token, one digit off
+                    the old primary-foreground and a shade off its own
+                    `text-background` sibling. It takes the sibling's token now,
+                    so the label and the glyph on this ink pill are one value
+                    (ProductsTab's View chevron took the same fix). */}
+                <ExternalLink color={COLORS.background} size={16} />
               </Pressable>
             </View>
           ) : menu.kind === 'image' ? (
@@ -185,7 +205,7 @@ function MenuViewerBody({
 
           {loading && !embedFailed ? (
             <View className="absolute inset-0 items-center justify-center gap-2">
-              <ActivityIndicator color="#fb2b7b" size="large" />
+              <ActivityIndicator color={COLORS.primary} size="large" />
               <Text className="text-xs font-medium text-muted-foreground">
                 Loading menu…
               </Text>
@@ -206,7 +226,7 @@ function MenuViewerBody({
               }
               className="size-9 items-center justify-center rounded-full bg-muted disabled:opacity-40"
             >
-              <Minus color="#260409" size={16} />
+              <Minus color={COLORS.foreground} size={16} />
             </Pressable>
             <Text className="w-12 text-center text-xs font-semibold tabular-nums text-muted-foreground">
               {Math.round(zoom * 100)}%
@@ -219,7 +239,7 @@ function MenuViewerBody({
               }
               className="size-9 items-center justify-center rounded-full bg-muted disabled:opacity-40"
             >
-              <Plus color="#260409" size={16} />
+              <Plus color={COLORS.foreground} size={16} />
             </Pressable>
           </View>
         ) : (
@@ -237,7 +257,7 @@ function MenuViewerBody({
               <Text className="text-xs font-semibold text-primary">
                 Open full
               </Text>
-              <ExternalLink color="#fb2b7b" size={12} />
+              <ExternalLink color={COLORS.primary} size={12} />
             </Pressable>
           </View>
         )}

@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import type { MembershipTone } from '@/lib/search-membership';
 
@@ -50,7 +50,7 @@ export function SearchMap(_props: SearchMapProps) {
     >
       <View className="items-center px-10">
         <View className="size-14 items-center justify-center rounded-2xl bg-primary/10">
-          <MapPin color="#fb2b7b" size={28} />
+          <MapPin color={COLORS.primary} size={28} />
         </View>
         <Text className="mt-3 font-display text-lg font-semibold text-foreground">
           Live map coming soon

@@ -8,7 +8,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import {
+  COLORS,
+  GRADIENT_DIAGONAL,
+  GRADIENTS,
+  SHADOW_GLOW,
+} from '@/constants/brand';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 
 type Variant = 'primary' | 'outline' | 'ghost';
@@ -50,7 +55,9 @@ export function Button({
     <View className="min-h-[48px] flex-row items-center justify-center gap-2 px-4 py-3.5">
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? '#fffafb' : '#fb2b7b'}
+          color={
+            variant === 'primary' ? COLORS.primaryForeground : COLORS.foreground
+          }
         />
       ) : (
         label

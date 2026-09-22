@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PartnerMark } from '@/components/brand/PartnerMark';
 import { PlaceDetailBody } from '@/components/place/PlaceDetailBody';
+import { COLORS } from '@/constants/brand';
 import { apiFetchPlaceDetail } from '@/lib/api/places';
 import {
   removeSavedPlacePreview,
@@ -35,7 +36,7 @@ export default function PlaceDetailScreen() {
           accessibilityLabel="Back"
           className="size-10 items-center justify-center rounded-full bg-muted active:opacity-80"
         >
-          <ArrowLeft color="#260409" size={20} />
+          <ArrowLeft color={COLORS.foreground} size={20} />
         </Pressable>
         <View className="min-w-0 flex-1 flex-row items-center justify-center gap-1.5">
           <Text
@@ -44,10 +45,12 @@ export default function PlaceDetailScreen() {
           >
             {place?.name ?? 'Place'}
           </Text>
-          {/* decision: Pato (MESITA-2031) — the verified rosette in partner
-              red, from one file shared with the swipe deck and web. It was a
-              sky disc with a ✓ TEXT GLYPH, so the check's weight and baseline
-              came from the system font. */}
+          {/* decision: Pato (MESITA-2031, merged after MESITA-1954's own ink-
+              disc fix here) — the verified rosette in partner red, from one
+              file shared with the swipe deck and web. It was a sky disc with
+              a ✓ TEXT GLYPH, so the check's weight and baseline came from the
+              system font; MESITA-1954 had already moved it to an ink disc,
+              which this supersedes with the real shared mark. */}
           {place?.listing_type === 'partner' ? (
             <PartnerMark size={16} />
           ) : null}
@@ -56,11 +59,11 @@ export default function PlaceDetailScreen() {
 
       {query.isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#fb2b7b" size="large" />
+          <ActivityIndicator color={COLORS.primary} size="large" />
         </View>
       ) : !place ? (
         <View className="flex-1 items-center justify-center gap-3 px-8">
-          <Store color="#775254" size={28} />
+          <Store color={COLORS.mutedForeground} size={28} />
           <Text className="font-display text-xl font-semibold text-foreground">
             Place not found
           </Text>

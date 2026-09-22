@@ -2,10 +2,12 @@ import { type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { type LucideIcon } from 'lucide-react-native';
 
+import { COLORS } from '@/constants/brand';
+
 export function Box({
   title,
   icon: Icon,
-  iconColor = '#775254',
+  iconColor = COLORS.mutedForeground,
   right,
   children,
   bare = false,

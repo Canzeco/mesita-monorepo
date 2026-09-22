@@ -11,6 +11,8 @@ import {
 import { ArrowLeft, X } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { COLORS } from '@/constants/brand';
+
 // Form sheet: RN Modal for keyboard + Android back — more reliable than
 // absolute Portal overlays for long forms. PortalHost stays mounted in root
 // for lightweight portals (MESITA-583).
@@ -47,9 +49,9 @@ function SheetChrome({
             className="h-9 w-9 items-center justify-center rounded-lg border border-border bg-card"
           >
             {asRoute ? (
-              <ArrowLeft color="#260409" size={16} />
+              <ArrowLeft color={COLORS.foreground} size={16} />
             ) : (
-              <X color="#260409" size={20} />
+              <X color={COLORS.foreground} size={20} />
             )}
           </Pressable>
           <View className="min-w-0 flex-1">

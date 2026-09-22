@@ -27,51 +27,85 @@ export const BRAND_PINK_RAMP = {
 } as const;
 // BRAND-TOKENS:END
 
+// ── THE ACHROMATIC SEMANTIC LAYER (MESITA-1954) ──────────────────────────────
+//
+// THE RULE: every neutral keeps its LIGHTNESS and loses its CHROMA. Chroma
+// survives ONLY where a third party owns the colour, where money is at risk, or
+// where a tier is named. Never on state, never on hierarchy, never on hover.
+//
+// COPIED VALUES, and for once literally: read off the SHIPPED
+// consumer.mesita.ai stylesheet rather than re-derived from oklch, so this file
+// cannot drift from web by a rounding step. The BRAND-TOKENS block above stays
+// generated and stays pink; nothing below writes to it.
+//
+// THIS FILE IS WHERE THE REPAINT ACTUALLY LANDS ON NATIVE. React Native has no
+// CSS variables, so a token change reaches only what imports COLORS — the 251
+// hardcoded hex literals elsewhere in src/ had to be changed one by one.
 /** Semantic palette — must stay string-equal with tailwind.config.js colors. */
 export const COLORS = {
-  background: '#fff7f8',
-  foreground: '#260409',
+  background: '#efefef',
+  foreground: '#171717',
   card: '#ffffff',
-  primary: '#fb2b7b',
-  primaryForeground: '#fffafb',
-  secondary: '#cf0360',
-  muted: '#faeff0',
-  mutedForeground: '#775254',
-  accent: '#ff6eb4',
-  destructive: '#e6000c',
-  /** The Mesita Partner badge (MESITA-2031). Web `--partner`
-   *  oklch(0.56 0.21 22). A SECOND red on purpose: `destructive` means
-   *  "this destroys something" and the badge must not borrow it. */
+  primary: '#171717',
+  primaryForeground: '#ffffff',
+  secondary: '#404040',
+  muted: '#efefef',
+  mutedForeground: '#5d5d5d',
+  accent: '#efefef',
+  /** RESERVED: the one thing that says "this destroys something". */
+  destructive: '#e6000f',
+  /** RESERVED (MESITA-2031, merged after this file went achromatic): the
+   *  Mesita Partner badge / verified rosette. Web `--partner`
+   *  oklch(0.56 0.21 22) = #d41f37. A SECOND red on purpose — `destructive`
+   *  means "this destroys something" and a badge meaning "this place is one
+   *  of ours" must not be the colour of a delete button by accident. Keeps
+   *  its chroma under the same third clause the Class metals ride: a tier
+   *  the product names out loud. */
   partner: '#d41f37',
   partnerForeground: '#ffffff',
-  border: '#ebd9db',
-  input: '#f5e7e9',
-  ring: '#fb2b7b',
-  swipepanel: '#116bb5',
-  swipepanelForeground: '#f9fcff',
+  border: '#dbdbdb',
+  input: '#efefef',
+  ring: '#171717',
+  /** The pressed/hover step for FILLED controls. Opacity cannot do this job on
+   *  ink — it fades the white LABEL with the fill, so a pressed black pill
+   *  reads as greying OUT rather than lifting. */
+  inkHover: '#404040',
+  swipepanel: '#171717',
+  swipepanelForeground: '#ffffff',
 } as const;
 
 export const GRADIENTS = {
-  // --gradient-pink · the primary CTA/brand surface (web class bg-pink-gradient).
-  // Sourced from the generated block above so it can't drift from web.
-  pink: BRAND_GRADIENT_PINK,
-  // --gradient-premium (web class bg-tier-premium) — Premium = blue
-  premium: ['#2563eb', '#60a5fa'] as const,
-  // --gradient-hero vertical wash; use <HeroBackdrop /> for the full
-  // radial-blob approximation (two soft pink blobs + this wash).
-  hero: ['#fff9fa', '#f5e6e8'] as const,
-  // Soft shell wash (web `from-background to-muted/30`) — end ≈ muted @ 30%.
-  shell: [COLORS.background, '#fcf3f4'] as const,
-  // --gradient-brand (web class bg-brand). Was `peacock`, a pre-pivot name.
-  brand: BRAND_GRADIENT,
-  // Instagram brand gradient (social verify + IG-connected chrome)
+  // THE BRAND GRADIENTS STOP REFERENCING THE GENERATED CONSTS (MESITA-1954).
+  // `pink` and `brand` used to read BRAND_GRADIENT_PINK / BRAND_GRADIENT from
+  // the block above so they could not drift from the brand. The brand is still
+  // pink and those consts still hold it; this app is achromatic, so the two
+  // deliberately part company here rather than by editing generated output.
+  // A gradient whose only job is atmosphere is the first thing the rule takes.
+  pink: ['#171717', '#404040'] as const,
+  brand: ['#171717', '#404040'] as const,
+  // Web's --gradient-premium went to an ink ramp in MESITA-1936; it was blue
+  // here, which was already drift.
+  premium: ['#404040', '#171717'] as const,
+  // The hero wash was two soft pink blobs over a pink-white page.
+  hero: ['#ffffff', '#efefef'] as const,
+  shell: [COLORS.background, '#e8e8e8'] as const,
+  // ── RESERVED ────────────────────────────────────────────────────────────
+  // INSTAGRAM'S OWN GRADIENT. A third party owns this colour; it is the mark,
+  // not decoration wearing a mark's colour. web-consumer skips
+  // place-detail-links.ts and BrandLogos.tsx whole for the same reason.
   instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,
-  gold: ['#f5cc58', '#eb881f'] as const,
-  // Influencer class identity — web bg-tier-influencer (red).
-  influencer: ['#ef4444', '#b91c1c'] as const,
+  // THE CLASS LADDER, converged on web's metals. These are tiers the product
+  // NAMES OUT LOUD to the guest, so they keep their hue — but they had drifted:
+  // gold was #f5cc58→#eb881f against web's #906b00, and `free` was a blue-grey.
+  // web-consumer pins each metal to an exclusive hue band in
+  // class-palette.test.ts; mobile has no such test, which is how it drifted.
+  gold: ['#b8880a', '#906b00'] as const,
+  // Influencer is the LEGACY class key; web's ladder is bronze/silver/gold/
+  // diamond, and this one bridges old rows (see class-context). Diamond's band.
+  influencer: ['#0090c9', '#0072a0'] as const,
   /** @deprecated Use `influencer` — kept as alias for any stale imports. */
-  sky: ['#ef4444', '#b91c1c'] as const,
-  free: ['#ced9e5', '#9ba6b1'] as const,
+  sky: ['#0090c9', '#0072a0'] as const,
+  free: ['#9a9494', '#757070'] as const,
 } as const;
 
 // 135° like the web's `linear-gradient(135deg, …)`.

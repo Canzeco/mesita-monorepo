@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
 import { ReservationCard } from '@/components/reservations/ReservationCard';
+import { COLORS } from '@/constants/brand';
 import {
   apiListReservations,
   type ReservationScope,
@@ -43,8 +44,12 @@ export function ReservationsList({
   if (error) {
     return (
       <View className="px-4 pt-4">
-        <View className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-          <Text className="text-[13px] font-medium text-red-600">{error}</Text>
+        {/* RESERVED — danger keeps its hue: this panel is the ONLY thing on
+            screen when the list fails, and greyed it reads as an empty state.
+            Stock `red-500`/`red-600` move onto the destructive token, which is
+            what the rest of the app's error surfaces already tint with. */}
+        <View className="rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3">
+          <Text className="text-[13px] font-medium text-destructive">{error}</Text>
         </View>
       </View>
     );
@@ -52,7 +57,7 @@ export function ReservationsList({
   if (items === null) {
     return (
       <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color="#ec006c" />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }

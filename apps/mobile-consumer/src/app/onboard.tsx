@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { COLORS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { ageFromBirthday, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -155,7 +156,7 @@ export default function Onboard() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       {/* Step bar — the mirror of web's OnboardStepBar. The dots are ONE
           control (a progressbar reading "Step 2 of 3"), not three announced
           elements, and the right-hand spacer keeps them from shifting
@@ -186,7 +187,7 @@ export default function Onboard() {
                 justifyContent: 'center',
               }}
             >
-              <ChevronLeft color="#260409" size={22} />
+              <ChevronLeft color={COLORS.foreground} size={22} />
             </Pressable>
           ) : null}
         </View>
@@ -362,7 +363,18 @@ export default function Onboard() {
             hitSlop={8}
             style={{ minHeight: 44, justifyContent: 'center' }}
           >
-            <Text className="font-semibold text-primary" style={{ fontSize: 12 }}>
+            {/* UNDERLINED (MESITA-1954). `text-primary` was brand pink, and
+                the pink WAS the affordance: the one tappable thing in this row,
+                against the muted phone label sitting 12px away from it.
+                Achromatic, primary IS foreground, so the link would differ from
+                a static label by font-weight alone — not an affordance at 12px,
+                and this is the only exit from step 1 (see the note above). The
+                rule that took the hue owes the shape back; DeleteAccountSheet
+                already underlines its own inline link. */}
+            <Text
+              className="font-semibold text-primary"
+              style={{ fontSize: 12, textDecorationLine: 'underline' }}
+            >
               Not you?
             </Text>
           </Pressable>
