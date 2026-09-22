@@ -127,7 +127,7 @@ export const PLACES: MockPlace[] = [
     partnerHeld: true,
     partnerLapsedAt: null,
     notificationsNumber: "+52 81 5555 0142",
-    rewards: { mode: "cashback", welcome: true, story: true },
+    rewards: { mode: "both", welcome: true, story: true },
     cashbackPaused: false,
     // One marketplace with a token that died — the most common real state —
     // and one never connected, so the channel list shows three states at once.

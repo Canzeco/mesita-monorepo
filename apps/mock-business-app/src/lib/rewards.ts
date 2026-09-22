@@ -50,10 +50,29 @@ export { LEVER_PCT, PLAN_LEVERS };
 
 /** Discount takes the slice off THIS bill; cashback banks it as Prepaid
  *  Credits for a later one — which is why cashback needs Credits on. */
-export type RewardsMode = "discount" | "cashback";
+export type RewardsMode = "discount" | "cashback" | "both";
 export const MODE_LABEL: Record<RewardsMode, string> = {
   discount: "Discount at the bill",
   cashback: "Cashback for next time",
+  both: "Guest chooses",
+};
+
+/** What each mode needs behind it. Discount takes the slice off THIS bill and
+ *  needs nothing — it works with cash and the place's own terminal. The other
+ *  two settle later, so they need somewhere to put the money: Prepaid Credits,
+ *  which is Ultra's, and Online Payments under it. */
+export const MODE_NEEDS_CREDITS: Record<RewardsMode, boolean> = {
+  discount: false,
+  cashback: true,
+  both: true,
+};
+
+export const MODE_HINT: Record<RewardsMode, string> = {
+  discount:
+    "The slice comes off the cheque in front of the guest. Cash or card, your terminal, nothing to settle afterwards.",
+  cashback:
+    "The guest pays in full and the slice lands as Prepaid Credits for their next visit here.",
+  both: "The guest picks at the table. Discount is preselected — cashback is money they cannot spend today.",
 };
 
 /** The two levers a place switches. Base is the master switch and Diamond is

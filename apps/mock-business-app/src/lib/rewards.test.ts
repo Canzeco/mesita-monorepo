@@ -15,7 +15,9 @@ import {
   DEFAULT_PROGRAM,
   LEVER_HINT,
   LEVER_LABEL,
+  MODE_HINT,
   MODE_LABEL,
+  MODE_NEEDS_CREDITS,
   planCarries,
   toLeverState,
   type RewardsProgram,
@@ -152,9 +154,31 @@ describe("the copy names the right thing", () => {
     }
   });
 
-  it("both modes are named", () => {
-    expect(MODE_LABEL.discount).toBeTruthy();
-    expect(MODE_LABEL.cashback).toBeTruthy();
-    expect(MODE_LABEL.discount).not.toBe(MODE_LABEL.cashback);
+  it("all three modes are named, and named differently", () => {
+    const labels = [MODE_LABEL.discount, MODE_LABEL.cashback, MODE_LABEL.both];
+    expect(labels.every(Boolean)).toBe(true);
+    expect(new Set(labels).size).toBe(3);
+  });
+});
+
+describe("what each mode needs behind it", () => {
+  it("discount needs nothing — it works with cash and the place's own terminal", () => {
+    expect(MODE_NEEDS_CREDITS.discount).toBe(false);
+  });
+
+  it("cashback and both need Credits, because both settle after the bill", () => {
+    expect(MODE_NEEDS_CREDITS.cashback).toBe(true);
+    expect(MODE_NEEDS_CREDITS.both).toBe(true);
+  });
+
+  it("every mode has a hint, and every mode is classified", () => {
+    for (const mode of ["discount", "cashback", "both"] as const) {
+      expect(MODE_HINT[mode]).toBeTruthy();
+      expect(typeof MODE_NEEDS_CREDITS[mode]).toBe("boolean");
+    }
+  });
+
+  it("the both hint says discount is preselected, so the nudge is stated not hidden", () => {
+    expect(MODE_HINT.both).toMatch(/Discount is preselected/);
   });
 });

@@ -296,7 +296,9 @@ export type MockCreditCampaign = {
  *  Base and Diamond are absent on purpose: base is `visitRewards` itself, and
  *  Diamond is Mesita's invitation list, which a place does not switch. */
 export type MockRewardsSetup = {
-  mode: "discount" | "cashback";
+  /** `both` lets the guest pick at the table. Like `cashback` it needs Prepaid
+   *  Credits behind it, so both are Ultra's. */
+  mode: "discount" | "cashback" | "both";
   welcome: boolean;
   story: boolean;
 };
