@@ -161,10 +161,13 @@ function normalize(
     // DIAMOND IS THE BRIDGED CLASS KEY, not the origin. It was tempting to
     // ask `origin === "invitation"` — an invitation is the only door — but
     // the two answer different questions. Origin says HOW the row was last
-    // written, and `admin-web-grant-class` writes Diamond with no origin at
-    // all; the class key says WHAT the guest holds. A hand-granted Diamond
+    // written, and the admin console's grant writes Diamond with no origin
+    // at all; the class key says WHAT the guest holds. A hand-granted Diamond
     // whose origin never got stamped is still a Diamond, and reading origin
-    // would have quietly told them they are not.
+    // would have quietly told them they are not. (The granting function is
+    // named in Docs › Passport §C — NOT here: `ef-caller-acl.test.ts`
+    // string-scans this package and an admin-actor EF named in consumer
+    // source is a caller violation, comment or not.)
     //
     // INSTAGRAM IS THE HANDLE PLUS THE BAR, and the two are separate on
     // purpose. Story Bonus rides a connected handle and always has

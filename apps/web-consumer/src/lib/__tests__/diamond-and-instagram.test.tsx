@@ -75,9 +75,10 @@ describe("Diamond is read off the class key, not off the origin", () => {
   });
 
   it("a `diamond` row with NO origin stamped is still Diamond", () => {
-    // `admin-web-grant-class` writes the class and leaves origin alone. An
+    // The admin console's grant writes the class and leaves origin alone. An
     // `origin === "invitation"` test would tell a hand-granted Diamond they
     // are not one — the exact bug shape class-naming-drift existed for.
+    // (Its EF name stays out of this package: ef-caller-acl.test.ts scans it.)
     expect(
       factsFrom(consumerClass({ key: "diamond", origin: "default" })).diamond,
     ).toBe(true);

@@ -158,10 +158,12 @@ function applyMock(
  *  an account comes from here; `useEffectiveClass` below is the storage view
  *  that the rewards surfaces still need.
  *
- *  DIAMOND IS THE CLASS KEY, NOT THE ORIGIN. `admin-web-grant-class` writes
+ *  DIAMOND IS THE CLASS KEY, NOT THE ORIGIN. The admin console's grant writes
  *  the class and leaves origin alone, so an `origin === 'invitation'` test
  *  would tell a hand-granted Diamond they are not one. `aura` is the stored
  *  key; `diamond` is accepted too, for rows written after the metals landed.
+ *  (The granting function is named in Docs › Passport §C, never here —
+ *  `ef-caller-acl.test.ts` string-scans this package for admin-actor EFs.)
  *
  *  INSTAGRAM IS THE HANDLE PLUS THE BAR, separately: Story Bonus rides a
  *  connected handle (MESITA-909), the 1,000 bar makes an account verified. */
