@@ -11,8 +11,8 @@
 //   2. TIER   — open now + closing buffer, the operator radius, and the
 //               Proximity reach. These BAND and never exclude (MESITA-2047):
 //               open-and-near leads, then open within reach, closed within
-//               reach, open beyond, closed beyond, unplaced. A catalog of one
-//               place that is shut tonight still serves that place.
+//               reach, beyond reach (nearest first), unplaced. A catalog of
+//               one place that is shut tonight still serves that place.
 //   3. RANK   — Places Lineup Π s^w inside each band: proximity, timing,
 //               category, popularity, enriched, partnered, randomness.
 //               Name / Summary / Social stay off. Then the bought slots,
@@ -23,8 +23,8 @@
 //
 // THE RADIUS IS STILL THE FIRST QUERY'S BOX. A located guest whose radius
 // cannot fill the deck gets wider asks — the reach box, 500 km, then no box —
-// each only while the rows it has proven close cannot fill the deck. At 50
-// places inside the radius none runs.
+// each only while the bands no farther place could outrank hold fewer than
+// the deck (`widenSwipePool`). At 50 OPEN places inside the radius none runs.
 //
 // BUILDS OLDER THAN MESITA-2047 re-sort the deck partners-first on the
 // client, so until a device takes the update a closed partner can lead there.
@@ -71,6 +71,7 @@ import {
   swipeDistanceKm,
   swipeLineupWeights,
   swipeReachKm,
+  widenSwipePool,
 } from "../_shared/discovery-swipe.ts";
 
 const DEFAULT_LIMIT = 50;
@@ -174,36 +175,31 @@ Deno.serve(async (req) => {
       lngOf: (r) => r.lng,
     });
 
-  let admitted = admit(pool);
-
   // Wider asks only for a located guest the radius box left short. Without
   // coordinates the first query was never boxed, so it already holds every
   // row the tiers could use.
-  //
-  // "Short" counts only rows PROVEN inside the circle just searched, not the
-  // box corners around it: a corner row at 6 km must not stop the reach ask
-  // that would find another at 6 km due east.
-  if (guestGeo) {
-    const provenWithin = (km: number) =>
-      admitted.filter((r) => swipeDistanceKm(guestGeo, r.lat, r.lng) <= km)
-        .length;
-    const seen = new Set(pool.map((r) => r.id));
-    let searchedKm = filters.maxDistanceKm;
-    for (const ringKm of [reachKm, ...OUTER_RINGS_KM]) {
-      if (provenWithin(searchedKm) >= limit) break;
-      if (ringKm !== 0 && ringKm <= searchedKm) continue;
-      const wider = await poolQuery(ringKm);
-      if (wider.error) {
-        // Keep what the rings so far found. A thinner deck beats a 502.
-        console.error("[recommend-swipe] wider pool:", wider.error.message);
-        break;
-      }
-      const fresh = wider.data.filter((r) => !seen.has(r.id));
-      for (const r of fresh) seen.add(r.id);
-      admitted = admitted.concat(admit(fresh));
-      searchedKm = ringKm === 0 ? Number.POSITIVE_INFINITY : ringKm;
-    }
-  }
+  const admitted = guestGeo
+    ? await widenSwipePool({
+      limit,
+      admitted: admit(pool),
+      seen: new Set(pool.map((r) => r.id)),
+      radiusKm: filters.maxDistanceKm,
+      reachKm,
+      rings: [reachKm, ...OUTER_RINGS_KM],
+      fetchRing: async (km) => {
+        const wider = await poolQuery(km);
+        if (wider.error) {
+          console.error("[recommend-swipe] wider pool:", wider.error.message);
+          return null;
+        }
+        return wider.data;
+      },
+      idOf: (r) => r.id,
+      admit,
+      tiersOf,
+      distanceOf: (r) => swipeDistanceKm(guestGeo, r.lat, r.lng),
+    })
+    : admit(pool);
   const tiers = tiersOf(admitted);
 
   const { deck: ordered, backfilled } = await fillSwipeDeck(

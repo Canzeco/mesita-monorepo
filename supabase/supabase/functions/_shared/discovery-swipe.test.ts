@@ -10,8 +10,11 @@ import {
   swipeAdmissionFilters,
   swipeLineupWeights,
   swipeOpenThrough,
+  swipeDistanceKm,
   swipeReachKm,
+  swipeSettledCount,
   swipeTierCount,
+  widenSwipePool,
 } from "./discovery-swipe.ts";
 import { isOpenThrough } from "./local-time-open.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
@@ -361,7 +364,7 @@ Deno.test("tiers: the same place at Wednesday noon is strict, not backfill", asy
 Deno.test("tiers: a located guest 400 km away still gets the one place", async () => {
   const guest = { lat: SLP.lat + 400 / 111, lng: SLP.lng };
   const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, guest);
-  assertEquals(ids(tiers.closedBeyond), ["dos-amores"]);
+  assertEquals(ids(tiers.beyond), ["dos-amores"]);
   const { deck } = await fillSwipeDeck(tiers, 50, rankLive(TUE_NIGHT, guest));
   assertEquals(ids(deck), ["dos-amores"]);
 });
@@ -397,8 +400,8 @@ Deno.test("tiers: each row lands in exactly one band", () => {
     "unknown-near",
     "closed-reach",
   ]);
-  assertEquals(ids(tiers.openBeyond), ["open-beyond"]);
-  assertEquals(ids(tiers.closedBeyond), ["closed-beyond"]);
+  // Beyond reach is one band, nearest first, open or not.
+  assertEquals(ids(tiers.beyond), ["closed-beyond", "open-beyond"]);
   assertEquals(ids(tiers.unplaced), ["unlocated"]);
   assertEquals(swipeTierCount(tiers), rows.length);
 });
@@ -428,23 +431,29 @@ Deno.test("tiers: THE GUEST'S OWN CITY BEATS AN OPEN BAR IN ANOTHER ONE", async 
   assertEquals(order.indexOf("slp-closed") < order.indexOf("cdmx-open"), true);
   // Beyond reach, nearest first.
   assertEquals(order.slice(2), ["cdmx-open", "tijuana-open"]);
+  assertEquals(ids(tiers.beyond), ["cdmx-open", "tijuana-open"]);
 });
 
-Deno.test("tiers: beyond-reach bands come out nearest-first through the REAL ranking", async () => {
-  // Past reach Proximity scores a flat 0 for every row; without the sort the
-  // band would rank in whatever order PostgREST returned.
+Deno.test("tiers: beyond reach is one band, nearest first, and ranking never reorders it", async () => {
+  // Past reach Proximity scores a flat 0 for every row, so distance is the
+  // only honest order — and the wider-ask stop rule relies on it.
   const rows = [
     slp("far-90", 90, SHUT),
-    slp("far-30", 30, SHUT),
+    { ...slp("far-30-promoting", 30, SHUT), ...PROMO_RATES, plan: "pro" },
     slp("open-60", 60),
     slp("far-45", 45, SHUT),
     slp("open-40", 40),
   ];
   const tiers = tiersAt(rows, WED_NOON, SLP);
-  assertEquals(ids(tiers.closedBeyond), ["far-30", "far-45", "far-90"]);
-  assertEquals(ids(tiers.openBeyond), ["open-40", "open-60"]);
-  const { deck } = await fillSwipeDeck(tiers, 50, rankLive(WED_NOON, SLP));
-  assertEquals(ids(deck), ["open-40", "open-60", "far-30", "far-45", "far-90"]);
+  const order = ["far-30-promoting", "open-40", "far-45", "open-60", "far-90"];
+  assertEquals(ids(tiers.beyond), order);
+  let rankedBeyond = false;
+  const { deck } = await fillSwipeDeck(tiers, 50, (band, tier) => {
+    if (tier === "beyond") rankedBeyond = true;
+    return [...band].reverse();
+  });
+  assertEquals(rankedBeyond, false);
+  assertEquals(ids(deck), order);
 });
 
 Deno.test("tiers: an unlocated place never ranks above located ones", async () => {
@@ -496,8 +505,8 @@ Deno.test("fill: a short strict band is topped up band by band, in band order", 
     "strict",
     "open-reach",
     "closed-near",
-    "open-beyond",
     "closed-beyond",
+    "open-beyond",
     "unlocated",
   ]);
   assertEquals(all.backfilled, 5);
@@ -507,8 +516,7 @@ Deno.test("fill: a short strict band is topped up band by band, in band order", 
     "strict",
     "openReach",
     "closedReach",
-    "openBeyond",
-    "closedBeyond",
+    "beyond",
     "unplaced",
   ]);
 });
@@ -560,6 +568,9 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
   assertEquals(src.includes("partitionSwipeTiers("), true);
   assertEquals(src.includes("fillSwipeDeck("), true);
   assertEquals(src.includes("swipeReachKm(filters.maxDistanceKm, cfg.params)"), true);
+  // The ring loop lives in the tested helper, not inline in the EF.
+  assertEquals(src.includes("await widenSwipePool({"), true);
+  assertEquals(src.includes("provenWithin"), false);
   assertEquals(src.includes("admitSwipeTiming"), false);
   assertEquals(src.includes("trimToRadius"), false);
   // The frozen Expo shape keeps its two keys; backfilled is additive.
@@ -567,4 +578,163 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
     src.includes("summary: { candidates: tiers.strict.length, embedded, backfilled }"),
     true,
   );
+});
+
+// ── The wider asks: stop only on bands no farther place can enter ────────────
+//
+// Re-review of MESITA-2047: the first stop rule counted every admitted row
+// inside the searched circle, open or closed, so ten open and forty-five
+// closed places inside 5 km "filled" the deck and the reach ask never ran —
+// thirty open places 10 km away never reached a guest the band order puts
+// them in front of.
+
+type CatalogRow = TierRow & { km: number };
+
+/** A fake pool query over a whole catalog: a box of `km` around the guest. */
+function ringOver(catalog: CatalogRow[], asked: number[]) {
+  return (km: number) => {
+    asked.push(km);
+    return Promise.resolve(
+      km === 0 ? catalog : catalog.filter((r) => r.km <= km),
+    );
+  };
+}
+
+function catalogOf(groups: Array<[prefix: string, n: number, km: number, hours: unknown]>) {
+  const out: CatalogRow[] = [];
+  for (const [prefix, n, km, hours] of groups) {
+    for (let i = 0; i < n; i++) out.push({ ...slp(`${prefix}-${i}`, km, hours), km });
+  }
+  return out;
+}
+
+async function deckFor(catalog: CatalogRow[], at: Date, limit = 50) {
+  const reachKm = swipeReachKm(DEFAULT_SWIPE.radiusKm, PARAMS);
+  const first = catalog.filter((r) => r.km <= DEFAULT_SWIPE.radiusKm);
+  const asked: number[] = [];
+  const tiersOf = (rows: CatalogRow[]) => tiersAt(rows, at, SLP);
+  const admitted = await widenSwipePool({
+    limit,
+    admitted: first,
+    seen: new Set(first.map((r) => r.id)),
+    radiusKm: DEFAULT_SWIPE.radiusKm,
+    reachKm,
+    rings: [reachKm, 500, 0],
+    fetchRing: ringOver(catalog, asked),
+    idOf: (r) => r.id,
+    admit: (rows) => rows,
+    tiersOf,
+    distanceOf: (r) => swipeDistanceKm(SLP, r.lat, r.lng),
+  });
+  const { deck } = await fillSwipeDeck(tiersOf(admitted), limit, (rows) => rows);
+  const count = (prefix: string) =>
+    deck.filter((r) => r.id.startsWith(`${prefix}-`)).length;
+  return { deck, asked, count };
+}
+
+Deno.test("widen: closed places inside the radius do not stop the reach ask", async () => {
+  const catalog = catalogOf([
+    ["open1", 10, 1, DOS_AMORES_HOURS],
+    ["closed2", 45, 2, SHUT],
+    ["open10", 30, 10, DOS_AMORES_HOURS],
+  ]);
+  const { asked, count } = await deckFor(catalog, WED_NOON);
+  assertEquals(asked[0], 25);
+  assertEquals(count("open1"), 10);
+  assertEquals(count("open10"), 30);
+  assertEquals(count("closed2"), 10);
+});
+
+Deno.test("widen: fifty open places inside the radius ask nothing wider", async () => {
+  const catalog = catalogOf([
+    ["open1", 50, 1, DOS_AMORES_HOURS],
+    ["open10", 30, 10, DOS_AMORES_HOURS],
+  ]);
+  const { asked, count } = await deckFor(catalog, WED_NOON);
+  assertEquals(asked, []);
+  assertEquals(count("open1"), 50);
+});
+
+Deno.test("widen: a full reach stops before 500 km", async () => {
+  const catalog = catalogOf([
+    ["open1", 5, 1, DOS_AMORES_HOURS],
+    ["closed20", 60, 20, SHUT],
+    ["open300", 10, 300, DOS_AMORES_HOURS],
+  ]);
+  const { asked, count } = await deckFor(catalog, WED_NOON);
+  assertEquals(asked, [25]);
+  assertEquals(count("open1"), 5);
+  assertEquals(count("closed20"), 45);
+});
+
+Deno.test("widen: beyond reach, the nearer city fills before the farther one", async () => {
+  // 500 km holds 60 places: they are final once 500 km is searched, so the
+  // unboxed ask never runs and nothing at 900 km can jump them.
+  const catalog = catalogOf([
+    ["open1", 3, 1, DOS_AMORES_HOURS],
+    ["closed200", 60, 200, SHUT],
+    ["open900", 10, 900, DOS_AMORES_HOURS],
+  ]);
+  const { asked, count } = await deckFor(catalog, WED_NOON);
+  assertEquals(asked, [25, 500]);
+  assertEquals(count("open1"), 3);
+  assertEquals(count("closed200"), 47);
+});
+
+Deno.test("widen: the one-place catalog 400 km away is found", async () => {
+  const catalog = catalogOf([["dos-amores", 1, 400, DOS_AMORES_HOURS]]);
+  const { asked, deck } = await deckFor(catalog, TUE_NIGHT);
+  // One row cannot fill fifty, so every ring is asked — three small queries.
+  assertEquals(asked, [25, 500, 0]);
+  assertEquals(deck.length, 1);
+});
+
+Deno.test("widen: an unplaced row only arrives from the unboxed ask, and sorts last", async () => {
+  const catalog: CatalogRow[] = [
+    { ...slp("unlocated", null), km: Infinity },
+    { ...slp("far", 900), km: 900 },
+  ];
+  const { asked, deck } = await deckFor(catalog, WED_NOON);
+  assertEquals(asked, [25, 500, 0]);
+  assertEquals(ids(deck), ["far", "unlocated"]);
+});
+
+Deno.test("widen: a failed ring keeps what the rings before it found", async () => {
+  const catalog = catalogOf([
+    ["open1", 2, 1, DOS_AMORES_HOURS],
+    ["open10", 3, 10, DOS_AMORES_HOURS],
+  ]);
+  const asked: number[] = [];
+  const admitted = await widenSwipePool({
+    limit: 50,
+    admitted: catalog.filter((r) => r.km <= 5),
+    seen: new Set(catalog.filter((r) => r.km <= 5).map((r) => r.id)),
+    radiusKm: 5,
+    reachKm: 25,
+    rings: [25, 500, 0],
+    fetchRing: (km) => {
+      asked.push(km);
+      return Promise.resolve(km === 25 ? catalog : null);
+    },
+    idOf: (r) => r.id,
+    admit: (rows) => rows,
+    tiersOf: (rows) => tiersAt(rows, WED_NOON, SLP),
+    distanceOf: (r) => swipeDistanceKm(SLP, r.lat, r.lng),
+  });
+  assertEquals(asked, [25, 500]);
+  assertEquals(admitted.length, 5);
+});
+
+Deno.test("settled: short of reach only strict is final; from reach, all of reach plus the searched beyond", () => {
+  const catalog = catalogOf([
+    ["open1", 2, 1, DOS_AMORES_HOURS],
+    ["closed2", 3, 2, SHUT],
+    ["open10", 4, 10, DOS_AMORES_HOURS],
+    ["far300", 5, 300, SHUT],
+  ]);
+  const tiers = tiersAt(catalog, WED_NOON, SLP);
+  const d = (r: CatalogRow) => swipeDistanceKm(SLP, r.lat, r.lng);
+  assertEquals(swipeSettledCount(tiers, 5, 25, d), 2);
+  assertEquals(swipeSettledCount(tiers, 25, 25, d), 9);
+  assertEquals(swipeSettledCount(tiers, 500, 25, d), 14);
 });

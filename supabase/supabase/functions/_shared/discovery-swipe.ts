@@ -15,7 +15,7 @@
 //   2. TIER   — open now + closing buffer, the operator radius, and the
 //               Proximity reach. These ORDER IN BANDS and never exclude
 //               (MESITA-2047): open-and-near leads, then open within reach,
-//               closed within reach, open beyond, closed beyond, unplaced.
+//               closed within reach, beyond reach (nearest first), unplaced.
 //   3. RANK   — Places Lineup Π s^w with the Swipe mask, inside each tier.
 //   4. SLOT   — the bought lane: every Nth position is a slot a promoting
 //               place is MOVED FORWARD into. MESITA-1855. Inside each tier.
@@ -104,19 +104,20 @@ export type SwipeTier =
   | "strict"
   | "openReach"
   | "closedReach"
-  | "openBeyond"
-  | "closedBeyond"
+  | "beyond"
   | "unplaced";
 
 /**
  * Band order. Three distances — inside the radius, inside REACH (where
- * Proximity still scores anything), beyond it — and open before closed
- * inside each.
+ * Proximity still scores anything), beyond it — with open before closed where
+ * open still means a table tonight.
  *
  * Open-within-reach beats closed-nearby: a table you can have 8 km away is
  * worth more tonight than one 1 km away that is shut. Closed-within-reach
- * beats open-beyond: a bar that is open 360 km away is not a table tonight
+ * beats anything beyond: a bar open 360 km away is not a table tonight
  * either, and the guest's own city, even shut, is the more useful card.
+ * BEYOND REACH IS ONE BAND, NEAREST FIRST, open or not — the next city is the
+ * next city — and it is never Lineup-ranked (see `SWIPE_DISTANCE_ORDERED`).
  * `unplaced` is last: with a located guest, a place with no coordinates
  * cannot say where it is, and Proximity would otherwise score it above every
  * real place past reach (missingGeo 0.35 beats 0).
@@ -125,10 +126,19 @@ export const SWIPE_TIER_ORDER: readonly SwipeTier[] = [
   "strict",
   "openReach",
   "closedReach",
-  "openBeyond",
-  "closedBeyond",
+  "beyond",
   "unplaced",
 ];
+
+/**
+ * Bands served in distance order, not Lineup order. Past reach Proximity is a
+ * flat 0, so the blend has nothing about distance left to say — and the
+ * wider-ask stop rule (`widenSwipePool`) is only exact if the rows it has not
+ * fetched yet, all farther away, cannot rank above the ones it has.
+ */
+export const SWIPE_DISTANCE_ORDERED: ReadonlySet<SwipeTier> = new Set([
+  "beyond",
+]);
 
 export type SwipeTiers<T> = Record<SwipeTier, T[]>;
 
@@ -176,9 +186,8 @@ export function swipeDistanceKm(
 
 /**
  * Split admitted rows into the bands. Input order is kept inside each band,
- * except the beyond bands, which are sorted nearest-first: Proximity is a
- * flat 0 past reach, so they would otherwise rank in whatever order PostgREST
- * happened to return.
+ * except `beyond`, which is sorted nearest-first: Proximity is a flat 0 past
+ * reach, so it would otherwise come out in whatever order PostgREST returned.
  *
  * NO GEO → EVERYTHING IS NEAR. Every deployed Expo binary and web's shared
  * deck send no coordinates, and there is no radius without a centre.
@@ -195,8 +204,7 @@ export function partitionSwipeTiers<T>(
     strict: [],
     openReach: [],
     closedReach: [],
-    openBeyond: [],
-    closedBeyond: [],
+    beyond: [],
     unplaced: [],
   };
   const distance = new Map<T, number>();
@@ -220,14 +228,13 @@ export function partitionSwipeTiers<T>(
     } else if (km <= reachKm) {
       (open ? tiers.openReach : tiers.closedReach).push(row);
     } else {
-      (open ? tiers.openBeyond : tiers.closedBeyond).push(row);
+      tiers.beyond.push(row);
     }
   }
   if (opts.geo) {
     const byDistance = (a: T, b: T) =>
       (distance.get(a) ?? Infinity) - (distance.get(b) ?? Infinity);
-    tiers.openBeyond.sort(byDistance);
-    tiers.closedBeyond.sort(byDistance);
+    tiers.beyond.sort(byDistance);
   }
   return tiers;
 }
@@ -258,11 +265,92 @@ export async function fillSwipeDeck<T>(
     const room = limit - deck.length;
     if (room <= 0) break;
     if (tiers[tier].length === 0) continue;
-    const ranked = (await rankTier(tiers[tier], tier)).slice(0, room);
+    const ranked = (
+      SWIPE_DISTANCE_ORDERED.has(tier)
+        ? tiers[tier]
+        : await rankTier(tiers[tier], tier)
+    ).slice(0, room);
     deck.push(...ranked);
     if (tier !== "strict") backfilled += ranked.length;
   }
   return { deck, backfilled };
+}
+
+/**
+ * How many rows at the head of the band order are FINAL once every place
+ * within `searchedKm` has been fetched — rows no place farther out could ever
+ * precede. The wider-ask loop stops on this, never on a raw count: counting
+ * closed places inside the radius as "the deck is full" skipped the reach ask
+ * and served forty shut places over thirty open ones 10 km away (review of
+ * MESITA-2047).
+ *
+ * Every unfetched place is farther than `searchedKm`, which is at least the
+ * radius, so it can never be strict. Short of reach it can still land in
+ * openReach, above closed-nearby rows — only `strict` is final. From reach on
+ * it can only be `beyond`, which is nearest-first, so everything within reach
+ * plus the beyond rows already inside `searchedKm` is final. `unplaced` sorts
+ * last and can never precede anything, so it never counts.
+ */
+export function swipeSettledCount<T>(
+  tiers: SwipeTiers<T>,
+  searchedKm: number,
+  reachKm: number,
+  distanceOf: (row: T) => number,
+): number {
+  if (searchedKm < reachKm) return tiers.strict.length;
+  return tiers.strict.length + tiers.openReach.length +
+    tiers.closedReach.length +
+    tiers.beyond.filter((r) => distanceOf(r) <= searchedKm).length;
+}
+
+export type WidenSwipePoolOpts<T> = {
+  limit: number;
+  /** What the radius query already admitted. */
+  admitted: T[];
+  /** Every id the radius query returned, admitted or not. */
+  seen: Set<string>;
+  /** The radius the first query searched. */
+  radiusKm: number;
+  reachKm: number;
+  /** Rings to ask, in order. 0 = no box. */
+  rings: readonly number[];
+  /** One pool query at `km` (0 = unboxed). null = the query failed. */
+  fetchRing: (km: number) => Promise<T[] | null>;
+  idOf: (row: T) => string;
+  /** The hard cuts: type batteries, then the guest's predicates. */
+  admit: (rows: T[]) => T[];
+  tiersOf: (rows: T[]) => SwipeTiers<T>;
+  distanceOf: (row: T) => number;
+};
+
+/**
+ * Ask wider rings until the band prefix no farther place can enter holds
+ * `limit` rows — for a located guest whose radius could not fill the deck.
+ * Pure but for `fetchRing`, so the stop rule is testable without a database.
+ * A failed ring keeps what the rings before it found: a thinner deck beats a
+ * 502.
+ */
+export async function widenSwipePool<T>(o: WidenSwipePoolOpts<T>): Promise<T[]> {
+  let admitted = o.admitted;
+  let searchedKm = o.radiusKm;
+  for (const ringKm of o.rings) {
+    const settled = swipeSettledCount(
+      o.tiersOf(admitted),
+      searchedKm,
+      o.reachKm,
+      o.distanceOf,
+    );
+    if (settled >= o.limit) break;
+    if (ringKm !== 0 && ringKm <= searchedKm) continue;
+    const rows = await o.fetchRing(ringKm);
+    if (rows === null) break;
+    const fresh = rows.filter((r) => !o.seen.has(o.idOf(r)));
+    for (const r of fresh) o.seen.add(o.idOf(r));
+    admitted = admitted.concat(o.admit(fresh));
+    searchedKm = ringKm === 0 ? Number.POSITIVE_INFINITY : ringKm;
+    if (!Number.isFinite(searchedKm)) break;
+  }
+  return admitted;
 }
 
 /**
