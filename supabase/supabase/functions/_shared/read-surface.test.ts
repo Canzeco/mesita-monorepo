@@ -219,6 +219,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/mesita-name-door.ts",
   "_shared/mesita-pay-readiness.ts",
   "_shared/crenup-report.ts",
+  "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
   "admin-web-enrich-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
   "admin-web-get-place-payment-account/index.ts",
