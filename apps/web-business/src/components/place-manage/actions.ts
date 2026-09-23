@@ -256,6 +256,12 @@ export type AdminMenuItem = {
   name?: string | null;
   url?: string | null;
   items?: unknown[] | null;
+  nutrition?: {
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  } | null;
 };
 
 // The full place row, loaded for a super-admin via business-get-overview

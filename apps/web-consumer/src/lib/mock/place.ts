@@ -150,6 +150,13 @@ export type PlaceDetail = {
       kind: "image" | "pdf" | "drive";
       pages: number | null;
       updated_label: string;
+      /** Headline facts. Null when the place has not estimated them. */
+      nutrition: {
+        kcal: number;
+        proteinG: number;
+        carbsG: number;
+        fatG: number;
+      } | null;
     }>;
   };
 

@@ -1,6 +1,7 @@
 // Maps consumer-web-get-place row → rich PlaceDetail (web parity + MESITA-560 menus).
 
 import { detectMenuKind } from '@/lib/menu-url';
+import { parseMenuNutrition } from '@/lib/nutrition';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { displayPlaceTagLabel } from '@/lib/place-tag-label';
 import {
@@ -65,6 +66,7 @@ function menusFromRow(row: Row): PlaceMenuItem[] {
         kind,
         pages,
         updated_label: str(m.updated_label) ?? '',
+        nutrition: parseMenuNutrition(m.nutrition),
       };
     })
     .filter((m): m is PlaceMenuItem => m != null);
@@ -81,6 +83,7 @@ function menusFromRow(row: Row): PlaceMenuItem[] {
       kind,
       pages: kind === 'image' ? 1 : null,
       updated_label: '',
+      nutrition: null,
     },
   ];
 }
