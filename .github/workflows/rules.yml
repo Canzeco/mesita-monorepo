@@ -26,8 +26,8 @@ name: rules
 # than repeating it, so a new target app that is missing from the globs below
 # fails that test instead of shipping a check that can never fire.
 #
-# THE APP LIST IS THREE NOW: web-admin, web-business and mock-business-app,
-# which joined when the product families became shared policy.
+# THE APP LIST IS web-admin and web-business. The mock console was the third
+# target until MESITA-2059 removed the app.
 #
 # The JOB NAME below is load-bearing: "instruction files in sync" is one of the
 # six required checks on main. Renaming it silently un-guards the branch.
@@ -51,7 +51,6 @@ on:
       - "shared/**"
       - "apps/web-admin/src/**"
       - "apps/web-business/src/**"
-      - "apps/mock-business-app/src/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
   # Unfiltered on `pull_request` (MESITA-1576): a required check a path
@@ -93,7 +92,6 @@ jobs:
               - 'shared/**'
               - 'apps/web-admin/src/**'
               - 'apps/web-business/src/**'
-              - 'apps/mock-business-app/src/**'
               - 'deno.json'
               - '.github/workflows/rules.yml'
 
