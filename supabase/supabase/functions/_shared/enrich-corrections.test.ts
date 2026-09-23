@@ -8,6 +8,9 @@ import {
   CORRECTION_PIN_DAYS,
   FIELD_PINS_KEY,
   type FieldPins,
+  buildFieldPin,
+  correctableFieldsInPatch,
+  mergeFieldPin,
   readFieldPins,
   stripPinnedColumns,
 } from "./enrich-corrections.ts";
@@ -156,6 +159,27 @@ Deno.test("Ojo never auto-applies; the place's own team always does", () => {
   );
   assertEquals(CORRECTION_AUTO_APPLY_FLOOR.reservationist, 0.8);
   assertEquals(CORRECTION_PIN_DAYS, 90);
+});
+
+Deno.test("correctableFieldsInPatch maps reservation columns to one field", () => {
+  assertEquals(
+    correctableFieldsInPatch({
+      reservation_channel: "phone",
+      reservation_target: "+521",
+    }).sort(),
+    ["reservation_target"],
+  );
+  assertEquals(
+    correctableFieldsInPatch({ hours: {}, description: "x" }).sort(),
+    ["hours"],
+  );
+});
+
+Deno.test("mergeFieldPin keeps sibling pins", () => {
+  const a = buildFieldPin("business", 1);
+  const b = buildFieldPin("admin", 1);
+  const merged = mergeFieldPin({ hours: a }, "phone", b);
+  assertEquals(Object.keys(merged).sort(), ["hours", "phone"]);
 });
 
 Deno.test("activeFieldPins keeps every unexpired field, not just the first", () => {

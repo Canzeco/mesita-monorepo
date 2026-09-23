@@ -48,6 +48,7 @@ import {
   loadEnrichmentTriggers,
   subprocessesFor,
 } from "../_shared/enrich-triggers.ts";
+import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
 
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -556,6 +557,14 @@ Deno.serve(async (req) => {
     );
   }
   const place = updRes.row;
+
+  const pinRes = await persistBusinessFieldPins(admin, placeId, update);
+  if (!pinRes.ok) {
+    return json(
+      { ok: false, error: `field_pin: ${pinRes.error}` },
+      500,
+    );
+  }
 
   // ── The on_update row of the trigger matrix, honoured (MESITA-1188) ──────
   // Until now this row was decorative: it rendered two editable cells and
