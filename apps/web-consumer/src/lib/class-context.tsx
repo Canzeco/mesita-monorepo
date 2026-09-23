@@ -43,7 +43,7 @@ type ConsumerClassState = {
   /** STORAGE, NOT VOCABULARY (MESITA-2040). `consumers.class_key` still
    *  prices Rewards — place detail's matrix, the ticket screen and Help all
    *  read a rung because the engine really applies one. NOTHING ON THE
-   *  IDENTITY SURFACE may name it: Me, the Passport and the two doors read
+   *  IDENTITY SURFACE may name it: Me and the two doors read
    *  `facts` instead. */
   key: ClassKey;
   /** Plan axis — what you pay. Private; never shown to a place. */

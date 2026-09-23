@@ -25,8 +25,8 @@ import {
 
 // Onboarding collects THREE things beyond the phone (already on the auth.user
 // from the OTP step): first name, birthday and sex. `consumer-onboarding.ts`
-// carries why sex came back and why it is required (MESITA-1829); briefly, the
-// Passport already printed it while nothing collected it. It also owns
+// carries why sex came back and why it is required (MESITA-1829); briefly, a
+// profile surface printed it while nothing collected it. It also owns
 // ONBOARD_STEPS — the field list and the step list are the same list.
 //
 // LAST NAME IS STILL NOT HERE, and that is not "not required". It is asked by
@@ -84,7 +84,7 @@ export type OnboardInitialValues = {
   sex: string;
 };
 
-/** Same pill vocabulary as the Passport header chips (PassportBar CHIP_CLASS),
+/** Same pill vocabulary as Me's header chips (IdentityBar CHIP_CLASS),
  *  grown to the 44px touch floor because this one is the primary control on
  *  the screen rather than a 36px chip in a 2x2. */
 const SEX_CHIP_CLASS =
@@ -308,7 +308,7 @@ export function OnboardForm({
             {/* The reassurance sits on the field it defends, not below the
                 button, which is past where anyone scanning has stopped. */}
             <p className="text-muted-foreground type-body mt-3">
-              Nobody sees it. It sets the age on your Passport.
+              Nobody sees it. It confirms you&apos;re old enough for Mesita.
             </p>
           </>
         ) : null}

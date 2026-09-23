@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           When you set up your account we ask for your first name, your date of
           birth and your sex. Your last name is asked later, the first time you
           book a table. The date of birth is what we check against the minimum
-          age of 14, and it is shown back to you on your Mesita passport.
+          age of 14.
         </p>
         <p>
           A profile photo and an Instagram handle are optional. The handle is

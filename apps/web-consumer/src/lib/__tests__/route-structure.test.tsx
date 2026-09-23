@@ -552,15 +552,17 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders sixteen cells as eight pairs, no tail", () => {
+  it("renders fifteen cells: Profile full-width, then seven pairs", () => {
     // Seven pairs, no four-up and no tail (MESITA-1639). MESITA-1636 broke the
     // rhythm with a four-up so the column would not read as undifferentiated,
     // and paid for it in the only four cells on the page with no summary. The
     // passport leads by being a different OBJECT — a document with a photo,
     // twice the height of a cell — not by the pairs below it varying.
     //
-    // PROFILE LEADS ITS PAIR (Pato, 2026-09-08), reversing MESITA-1648: the
-    // header states the identity, so the first cell is the one that edits it.
+    // PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648: the header
+    // states the identity, so the first cell is the one that edits it. It
+    // spans the row since the Passport died (MESITA-2043: "we don't have
+    // passports"), because fifteen cells cannot pair.
     //
     // INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add instagram
     // and then diamond"). Read the history before assuming this is a revert:
@@ -570,14 +572,13 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // header already says the rung" as the argument against a cell. There is
     // no rung. These are two unrelated destinations, and the ORDER is
     // load-bearing: Instagram first, on all three surfaces that print them
-    // (header chips, this grid, the Passport doors). The chips STAY.
+    // (header chips, this grid). The chips STAY.
     //
     // Still absent, each for its own reason: Metrics and Contact moved into
     // Settings; Cards is the same `CardsModal` Pay's Wallet already opens,
     // and Wallet is a cell right here.
     expect(gridTitles(ME)).toEqual([
       "Profile",
-      "Passport",
       "Instagram",
       "Diamond",
       "Wallet",
@@ -610,15 +611,19 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(order.at(-1)).toBe("Friends");
   });
 
-  it("every row is a pair, and the last is a deliberate full-width cell", () => {
+  it("Profile is the one full-width row; every other row is a pair", () => {
     // Eight `DestGrid`s of two. Counting grids and spans SEPARATELY on
     // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
     // would go on being true of any row width. Eight since Instagram and
     // Diamond became their own pair (MESITA-2040).
     expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(8);
-    // About was the only spanning cell and it folded into Help (MESITA-1650),
-    // so every row is now a pair and nothing spans.
-    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
+    // About was the only spanning cell and it folded into Help (MESITA-1650).
+    // Profile spans now (MESITA-2043) — exactly one, and it is Profile.
+    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
+    const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
+    expect(
+      cells.filter((c) => /^\s*full$/m.test(c)).map((c) => c.match(/title="([^"]+)"/)?.[1]),
+    ).toEqual(["Profile"]);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
 
@@ -722,8 +727,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     //
     // Comments STRIPPED first. The note explaining why the footer is gone
     // necessarily quotes it, so a raw scan fires on its own rationale and
-    // the cheapest way to green it would be deleting the rationale — the
-    // failure mode passport-axes.test.ts documents at length.
+    // the cheapest way to green it would be deleting the rationale.
     const help = readFileSync(
       join(__dirname, "..", "..", "components", "consumer", "me", "HelpModal.tsx"),
       "utf8",

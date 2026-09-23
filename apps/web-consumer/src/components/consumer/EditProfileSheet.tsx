@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Camera } from "lucide-react";
+import { Camera, Copy } from "lucide-react";
 import { BirthdayPicker, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
@@ -35,7 +35,7 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // last name, which the reservation flow collects rather than /onboard. The
 // claim that it was "the same set onboarding collects" was true until
 // MESITA-1806 dropped sex from signup and stayed in this comment for the
-// whole time the Passport was printing a field nothing asked for
+// whole time a profile surface was printing a field nothing asked for
 // (MESITA-1829). Re-derive it here if the gate moves again.
 // Both name halves are required and always sent together: the EF re-derives
 // full_name from them, and that's the name reservations are booked under.
@@ -43,6 +43,15 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // Photo upload (MESITA-953) is immediate on pick: Storage → EF avatar_url
 // patch. Name/sex/birthday still save via the Save button. Cancel and a
 // successful Save both pop history back to /me.
+//
+// THE MEMBER NUMBER LIVES HERE (MESITA-2043, Pato: "we don't have
+// passports"). `consumers.code` printed in exactly one place — the Passport —
+// and web-admin's invitation lookup takes it because a name can match several
+// people and the number never does. Diamond is invitation-only, so deleting
+// the Passport without rehoming this line would have hidden the one string
+// that opens the only door to Diamond. It copies in place; null is a real
+// state (`generate_consumer_code()` assigns on first profile read), so it
+// reads "Pending" and offers nothing to copy.
 
 export function EditProfileSheet() {
   const supabase = useBrowserSupabase();
@@ -113,6 +122,17 @@ function EditProfileForm({
 
   function goBack() {
     router.back();
+  }
+
+  const code = profile.code ?? null;
+  async function copyCode() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Member number copied");
+    } catch {
+      toast("Couldn't copy — select the number manually");
+    }
   }
 
   async function onPhotoPicked(file: File | undefined) {
@@ -237,6 +257,35 @@ function EditProfileForm({
       <p className="text-muted-foreground type-body mt-2 text-center">
         JPG, PNG, or WEBP · max 2 MB
       </p>
+
+      <div className="border-border bg-card mt-5 flex items-center gap-3 rounded-2xl border p-4">
+        <div className="min-w-0 flex-1">
+          <span className="text-muted-foreground type-label block font-medium">
+            Member number
+          </span>
+          <span
+            className={cn(
+              "font-display block truncate text-lg leading-tight tracking-wide tabular-nums",
+              code ? "text-foreground" : "text-muted-foreground",
+            )}
+          >
+            {code ?? "Pending"}
+          </span>
+          <span className="text-muted-foreground mt-1 block text-xs leading-snug">
+            Give this number when you ask for a Diamond invitation.
+          </span>
+        </div>
+        {code ? (
+          <button
+            type="button"
+            onClick={() => void copyCode()}
+            aria-label="Copy member number"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+        ) : null}
+      </div>
 
       <div className="mt-5 flex flex-col gap-3">
         <SheetField

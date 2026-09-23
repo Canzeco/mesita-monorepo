@@ -108,7 +108,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // holds events) and Alerts leads the row now.
       me: "/me",
       mePages: {
-        passport: "/me/passport",
         profile: "/me/profile",
         instagram: "/me/instagram",
         diamond: "/me/diamond",
@@ -128,6 +127,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         // both shipped, so the bookmarks are real.
         meClass: "/me/class",
         meClassInvite: "/me/class/invite",
+        // The Passport (MESITA-2043) — the member number moved to Profile.
+        mePassport: "/me/passport",
         subscribe: "/subscribe/premium",
         invite: "/invite",
         homeAi: "/home/ai",
@@ -316,7 +317,6 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/visit/t1",
     "/home/chat",
     "/me",
-    "/me/passport",
     "/me/profile",
     "/me/diamond",
     "/me/plan",
@@ -447,6 +447,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // chains through /me/diamond (T4 caps a chain at 2).
       { source: "/me/class/invite", destination: "/me/diamond/invite", permanent: true },
       { source: "/me/class", destination: "/me/diamond", permanent: true },
+      { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/notifications", destination: "/me/notifications", permanent: true },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626) — its sections are
       // sheets on Me and a sheet has no URL, so every remaining /inbox

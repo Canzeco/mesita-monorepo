@@ -213,7 +213,7 @@
 
   /* THE WASH — colour felt across a surface, not just at its edge (MESITA-1688).
      classFillClass's band + ring stay the ONLY metal FILL (MESITA-1132 still
-     holds: colour means class, lives on the passport, nowhere else). This is
+     holds: colour means Diamond, lives in Me's identity header). This is
      a third way to spend that same license without adding a third hard-edged
      surface: a soft gradient behind the header/card, using the same light
      stop each --gradient-* already uses, at low alpha, fading to transparent.
@@ -239,38 +239,12 @@
     transparent 85%
   );
 
-  /* THE GUILLOCHE — the engraved rosette lattice a security document prints
-     behind its field grid (MESITA-1820). The ONE genuinely new material the
-     passport's data page introduced; Docs › Design §D carries its vocabulary
-     line, because that page's rule is that a pattern not in the map does not
-     ship.
-     Two offset repeating-radial-gradients of hairline rings read as engraving
-     at any zoom and cost no asset. The ink is `currentColor`, so the metal is
-     chosen by the call site's `text-<metal>` utility and the pattern stays
-     parametric per class — never hardcode bronze.
-     12% is the alpha ceiling: the field values above it are `text-foreground`
-     on `bg-card` and stay >=4.5:1 on every metal, gold and diamond included,
-     which is the pair that fails first (MESITA-1142). Suppressed entirely when
-     the class is unknown — an unknown class has no metal to engrave. */
-  --guilloche-ink: color-mix(in oklab, currentColor 12%, transparent);
-  --guilloche:
-    repeating-radial-gradient(
-      circle at 18% 118%,
-      var(--guilloche-ink) 0 0.6px,
-      transparent 0.6px 8px
-    ),
-    repeating-radial-gradient(
-      circle at 82% -18%,
-      var(--guilloche-ink) 0 0.6px,
-      transparent 0.6px 8px
-    );
-
   /* The hero wash was two pink radials over a pink-white page. A gradient with
      no job but atmosphere is the first thing the achromatic rule takes. */
   --gradient-hero: linear-gradient(180deg, oklch(1 0 0), oklch(0.985 0 0));
   /* ── THE CLASS LADDER KEEPS EVERY HUE IT HAS ────────────────────────────
      Bronze · Silver · Gold · Diamond are four metals the product NAMES OUT
-     LOUD to the guest, on the Passport and in the header chip — which is the
+     LOUD to the guest, in the rewards rate table — which is the
      third reserved clause exactly: where a tier is named. Greyscaling them
      would not be a restyle, it would delete the ladder, because a metal read
      as a grey is no longer a metal. `--gradient-premium` below is the PLAN and
@@ -527,11 +501,6 @@
   }
   .wash-diamond {
     background: var(--wash-diamond);
-  }
-  /* Tint it at the call site with `text-bronze` / `text-silver` / … —
-     `classInkClass` in consumer-data.ts is the only map that spells them. */
-  .guilloche {
-    background-image: var(--guilloche);
   }
   .border-whatsapp {
     border-color: var(--whatsapp);

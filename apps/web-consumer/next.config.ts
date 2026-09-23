@@ -163,6 +163,8 @@ const nextConfig: NextConfig = {
       // through /me/diamond.
       { source: "/me/class/invite", destination: "/me/diamond/invite", permanent: true },
       { source: "/me/class", destination: "/me/diamond", permanent: true },
+      // The Passport (MESITA-2043). The member number lives on Profile now.
+      { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/notifications", destination: "/me/notifications", permanent: true },
       // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). Its three sections are
       // pages under /me now (MESITA-1789), and /inbox still 308s onto the hub

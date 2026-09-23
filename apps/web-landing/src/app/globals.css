@@ -101,6 +101,14 @@
     oklch(0.86 0.14 90),
     oklch(0.72 0.16 60)
   );
+  /* Diamond — the one identity mark left (MESITA-2040/2043). Copied from
+     web-consumer's --gradient-diamond so the landing's badge wears the same
+     metal the app's header does. */
+  --gradient-diamond: linear-gradient(
+    135deg,
+    oklch(0.88 0.07 205),
+    oklch(0.72 0.12 232)
+  );
   --gradient-card: linear-gradient(
     180deg,
     oklch(1 0 0 / 0.95),
@@ -246,6 +254,9 @@
   }
   .bg-tier-gold {
     background: var(--gradient-gold);
+  }
+  .bg-tier-diamond {
+    background: var(--gradient-diamond);
   }
   .bg-whatsapp {
     background: var(--whatsapp);

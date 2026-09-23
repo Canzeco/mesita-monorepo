@@ -1,17 +1,15 @@
 import {
+  Gem,
   Instagram,
   type LucideIcon,
   QrCode,
   ShieldCheck,
   Sparkles,
-  Star,
   Store,
   UserPlus,
   UtensilsCrossed,
 } from "lucide-react";
 import { SectionHeader } from "@/components/landing/section-header";
-
-const CLASSES = ["Bronze", "Silver", "Gold", "Diamond"] as const;
 
 // Four of the five rewards. Each carries its REASON, not just its trigger —
 // a reward nobody can explain reads as a coupon. Sharing is deliberately
@@ -35,11 +33,14 @@ const REWARDS: {
     why: "The hardest visit to buy is the first one. This is the reward that turns discovery into a guest.",
     Icon: UserPlus,
   },
+  // Diamond replaced the four-rung class ladder (MESITA-2040) and the
+  // Passport that printed it is gone (MESITA-2043): invitation only, never
+  // bought, never reached through Instagram, and anyone can ask for one.
   {
-    label: "Class",
-    when: "Bronze → Diamond",
+    label: "Diamond",
+    when: "Invitation only",
     why: "Presence. The guests who create the atmosphere everyone else came for, priced accordingly.",
-    Icon: Star,
+    Icon: Gem,
   },
   // A fourth "Plan — Free / Premium" rung sat here. The plan stopped pricing
   // rewards in MESITA-1705, so the reward stack is three groups: base and
@@ -155,27 +156,19 @@ function RewardsProgram() {
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_1fr]">
           <div className="border-border bg-card flex flex-col gap-5 rounded-3xl border p-8">
+            {/* TWO FACTS, NO PASSPORT (MESITA-2043). Instagram and Diamond
+                are independent: Instagram is connected reach, Diamond is an
+                invitation. The plan is private and never shown here. */}
             <div className="border-border bg-hero rounded-2xl border p-5">
               <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.16em] uppercase">
-                    Mesita Passport
-                  </p>
-                  <p className="font-display mt-1 text-xl font-semibold tracking-tight">
-                    Ana R.
-                  </p>
-                </div>
-                <span className="bg-gold text-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold">
-                  <Star className="h-3.5 w-3.5" aria-hidden />
-                  Gold
+                <p className="font-display text-xl font-semibold tracking-tight">
+                  Ana R.
+                </p>
+                <span className="bg-tier-diamond text-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold">
+                  <Gem className="h-3.5 w-3.5" aria-hidden />
+                  Diamond
                 </span>
               </div>
-              {/* The Passport prints what is EARNED: class and Instagram,
-                  nothing else (MESITA-1619). The plan used to sit in this row
-                  behind a blur, as a way of saying "private" — but the card
-                  does not carry it at all now, and a blurred row still claims
-                  it is on the card. The privacy claim moves to the copy
-                  below, where it can be stated instead of mimed. */}
               <div className="border-border mt-4 flex items-center justify-between border-t pt-4">
                 <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
                   <Instagram className="h-3.5 w-3.5" aria-hidden />
@@ -191,34 +184,18 @@ function RewardsProgram() {
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {CLASSES.map((c) => (
-                <span
-                  key={c}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                    c === "Gold"
-                      ? "bg-gold text-foreground border-transparent font-bold"
-                      : "border-border bg-background/70 text-muted-foreground"
-                  }`}
-                >
-                  {c}
-                </span>
-              ))}
-            </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              The card carries what you{" "}
-              <span className="text-foreground font-medium">earned</span> — your{" "}
-              <span className="text-foreground font-medium">class</span>,
-              climbed through Instagram reach or an invitation, and{" "}
+              Two things, and neither leads to the other.{" "}
+              <span className="text-foreground font-medium">Instagram</span> is
+              your connected account.{" "}
+              <span className="text-foreground font-medium">Diamond</span> is
+              by invitation only —{" "}
               <span className="text-foreground font-medium">
                 never for sale
               </span>
-              . Your <span className="text-foreground font-medium">plan</span>{" "}
-              is private: it raises your rewards everywhere, it{" "}
-              <span className="text-foreground font-medium">
-                never prints on the Passport
-              </span>
-              , and no place ever learns who pays.
+              , never reached through followers, and anyone can ask for one.
+              Your <span className="text-foreground font-medium">plan</span>{" "}
+              is private, and no place ever learns who pays.
             </p>
           </div>
 

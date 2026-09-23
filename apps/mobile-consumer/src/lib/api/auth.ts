@@ -73,7 +73,7 @@ export type ConsumerClass = {
   } | Record<string, unknown> | null;
 };
 
-// Passport stats returned by consumer-web-get-profile (MESITA-888).
+// Profile stats returned by consumer-web-get-profile (MESITA-888).
 // `visits` = tickets the v3 close sealed ("revealed") — completed visits.
 export type ConsumerStats = {
   visits: number;

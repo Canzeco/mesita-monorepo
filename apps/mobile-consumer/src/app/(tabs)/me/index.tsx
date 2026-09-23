@@ -5,7 +5,6 @@ import {
   Bot,
   Footprints,
   Gift,
-  IdCard,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -39,13 +38,18 @@ import {
 } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same EIGHT pairs as
-// web. Parked cells stay Soon. No Stripe checkout (Apple review).
+// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same grid as web:
+// Profile full-width, then seven pairs. Parked cells stay Soon. No Stripe
+// checkout (Apple review).
+//
+// THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports. its only
+// instagram and diamond"). The cell and /me/passport are deleted; the member
+// number it printed now leads Profile's summary and lives on the Profile page.
 //
 // INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add instagram and
 // then diamond"). Read the history before assuming this is a revert: the pair
 // was cells (MESITA-1650), then header only (MESITA-1652), then cells again
-// (MESITA-1682), then Passport rows (MESITA-1787) — and every round was about
+// (MESITA-1682), then rows on a since-deleted page (MESITA-1787) — and every round was about
 // where ONE AXIS lives, with "the hero already says the rung" as the argument
 // against a cell. There is no rung. These are two unrelated destinations, and
 // the ORDER is load-bearing: Instagram first, here and on the hero.
@@ -136,14 +140,14 @@ export default function MeHub() {
             <DestTile
               Icon={UserRound}
               title="Profile"
-              summary="Name, photo, birthday"
+              summary={
+                !profile
+                  ? 'Name, photo, birthday'
+                  : profile.code
+                    ? `Member ${profile.code}`
+                    : 'Member pending'
+              }
               href={pages.profile}
-            />
-            <DestTile
-              Icon={IdCard}
-              title="Passport"
-              summary="Member number and details"
-              href={pages.passport}
             />
           </DestGrid>
           <DestGrid>

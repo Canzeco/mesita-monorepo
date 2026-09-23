@@ -9,7 +9,6 @@ import {
   Footprints,
   Gem,
   Gift,
-  IdCard,
   Instagram,
   Settings as SettingsIcon,
   Share2,
@@ -33,12 +32,12 @@ import { useConsumerClass } from "@/lib/class-context";
 import { diamondSummary, instagramSummary } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
-import { PassportBar } from "./PassportBar";
+import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the passport header, then eight pairs:
+// The Me surface — the identity header, then one full row and seven pairs:
 //
-//   passport       identity + the two facts; the bar IS a door (MESITA-1652)
-//   2              Profile · Passport
+//   header         identity + the two facts; the bar IS a door (MESITA-1652)
+//   full           Profile (carries the member number)
 //   2              Instagram · Diamond
 //   2              Wallet · Plan
 //   2              Notifications · Visits
@@ -49,26 +48,25 @@ import { PassportBar } from "./PassportBar";
 //
 // EVERY LIVE CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub
 // stacked history as overlays. DestTiles now Link to /me/<box>. Parked cells
-// stay Soon and inert. Number copy stays in-place on the passport page.
-// SearchResultsPanel is a different product rule and is not this surface.
+// stay Soon and inert. SearchResultsPanel is a different product rule and is
+// not this surface.
 //
-// THE TWO FACTS ARE CELLS AGAIN, AND THIS TIME THEY ARE THE PRODUCT (Pato,
-// MESITA-2040: "so add instagram and then diamond. those are independent").
+// THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports. its only
+// instagram and diamond"). Two independent facts — Instagram is connected
+// reach, Diamond is invitation-only and anyone can ask for one — and neither
+// leads to the other. The Passport cell, its /me/passport page and its data
+// page are deleted; /me/passport 308s to /me/profile, because the one thing
+// the Passport printed that nothing else did was the member number, and that
+// lives on Profile now.
 //
-// This pair has been added and removed twice — MESITA-1682 put Instagram and
-// Class in the grid, MESITA-1787 pulled them back into Passport ("Move
-// instagram and class into Passport. Yes. but keep them in the header."). Read
-// that history before assuming this is the same move a third time: it is not.
-// Both earlier rounds were about WHERE ONE AXIS lives, and the argument
-// against a cell was that the header already stated the same rung. There is no
-// rung. Instagram and Diamond are two unrelated facts with two unrelated
-// doors, and a grid of destinations is exactly where two unrelated
-// destinations belong.
+// PROFILE TAKES THE FULL ROW. Deleting one cell leaves fifteen, which cannot
+// pair; spanning Profile keeps the seven pairs below untouched instead of
+// reshuffling every row.
 //
-// PASSPORT KEPT ITS CELL AND LOST ITS SUBTITLE'S JOB. It used to read "Class
-// and Instagram" because it owned both axes once the grid gave them up. It
-// owns the DOCUMENT — the member number, the printed fields, the MRZ — and
-// that is what the cell says now.
+// THE TWO FACTS ARE CELLS (Pato, MESITA-2040: "so add instagram and then
+// diamond. those are independent"). This pair was added and removed twice
+// before (MESITA-1682, MESITA-1787) when both were one ladder; they are two
+// unrelated destinations now, and a grid of destinations is where those go.
 //
 // NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
 // /new-visit/wallet so Stripe's return still lands on the list.
@@ -136,7 +134,7 @@ export function ProfileClient() {
 
   return (
     <div className="flex h-full flex-col">
-      <PassportBar
+      <IdentityBar
         profile={profile}
         loading={loading}
         diamondSummary={diamondLabel}
@@ -144,32 +142,27 @@ export function ProfileClient() {
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648. That
-              issue put Passport first because it "sits directly under the
-              card, so naming it first continues what the card just said". The
-              header now states the identity in full — photo, name, Instagram,
-              Diamond, phone — so the first cell is the one that EDITS it, and
-              Passport is the document you open to read it back.
-
-              PASSPORT SAYS WHAT IS ON THE DOCUMENT. It read "Class and
-              Instagram" while it owned both axes (MESITA-1787); those are
-              their own cells now, so the subtitle names what only this page
-              prints — the member number and the passport's own fields.
-              MESITA-1688 dropped the privacy switch this comment used to also
-              name: profile_public defaults true for every account and Settings
-              owns the toggle exclusively. */}
+          {/* PROFILE LEADS (Pato, 2026-09-08), and since MESITA-2043 it
+              spans the row. Its summary is the MEMBER NUMBER — the string
+              staff look a guest up by when granting a Diamond invitation —
+              because the tile is a Link and cannot hold a copy button; the
+              copy lives on /me/profile. A null code is a real state (assigned
+              on first profile read), and a failed read claims nothing. */}
           <DestGrid>
             <DestTile
               Icon={UserRound}
               title="Profile"
-              summary="Name, photo, birthday"
+              summary={
+                loading
+                  ? "…"
+                  : !profile
+                    ? "Name, photo, birthday"
+                    : profile.code
+                      ? `Member ${profile.code}`
+                      : "Member pending"
+              }
               href={CONSUMER_ROUTES.mePages.profile}
-            />
-            <DestTile
-              Icon={IdCard}
-              title="Passport"
-              summary="Member number and details"
-              href={CONSUMER_ROUTES.mePages.passport}
+              full
             />
           </DestGrid>
 

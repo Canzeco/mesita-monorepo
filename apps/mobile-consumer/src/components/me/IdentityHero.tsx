@@ -226,7 +226,7 @@ export function IdentityHero({
 
   return (
     <View
-      accessibilityLabel="Your Mesita passport"
+      accessibilityLabel="Your Mesita identity"
       className="w-full overflow-hidden rounded-2xl border border-border px-4 py-4"
       style={SHADOW_ELEV}
     >

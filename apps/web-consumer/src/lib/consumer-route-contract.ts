@@ -232,13 +232,12 @@ export const CONSUMER_ROUTES = {
   // already made for Buy/Gift/Redeem (isModalContractPath stays place +
   // reservation detail only).
   me: "/me",
-  // Every live DestTile on /me, and every door inside Passport / Diamond /
+  // Every live DestTile on /me, and every door inside Diamond /
   // Settings. Hub stays `/me`. These are real pages under (shell)/me/<box>.
   // /me/settings and /me/plan used to 308 onto the hub (MESITA-188); they are
   // canonical again, not legacy. /me/class went the other way (MESITA-2040) —
   // canonical, then retired to the legacy block below.
   mePages: {
-    passport: "/me/passport",
     profile: "/me/profile",
     // THE TWO FACTS, AT TWO ADDRESSES (Pato, MESITA-2040: "separate instagram
     // and diamond… those are independent"). `/me/class` was ONE page holding
@@ -273,6 +272,10 @@ export const CONSUMER_ROUTES = {
     // route-structure T4 caps.
     meClass: "/me/class",
     meClassInvite: "/me/class/invite",
+    // The Passport (MESITA-1789 -> MESITA-2043: "we don't have passports").
+    // Its one load-bearing print, the member number, moved to Profile, so
+    // the bookmark follows the number there.
+    mePassport: "/me/passport",
     // Premium checkout was a page until the plan became a sheet on Me
     // (MESITA-1129). Kept as a redirect, not deleted: this was the live URL,
     // and it is the one an external link-out would still carry. If iOS ever

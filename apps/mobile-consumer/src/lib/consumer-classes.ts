@@ -41,8 +41,8 @@ export type ClassId = (typeof CLASS_ORDER)[number];
 //
 // This is the INK anchor: for a ring or a background NOTHING PRINTS ON, one
 // lightness step darker than the metal's badge fill. A surface with a label
-// ON the metal (a pass, a class badge) needs the LIGHTER fill instead — see
-// classBadgeColors in app/(tabs)/me/passport.tsx, not this map; the two are
+// ON the metal (a pass, a class badge) needs the LIGHTER fill instead, not
+// this map; the two are
 // deliberately different scales for the same reason web keeps
 // `--gradient-<metal>` (fill) and `--tier-<metal>` (ink) apart.
 export const CLASS_METAL_INK_GRADIENT: Record<ClassId, readonly [string, string]> = {

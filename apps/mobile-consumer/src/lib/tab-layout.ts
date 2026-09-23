@@ -6,7 +6,7 @@
 export const TAB_SCROLL_PADDING_BOTTOM = 40;
 
 /**
- * True when the guest opened a nested Me box (`/me/passport`, `/me/class/invite`,
+ * True when the guest opened a nested Me box (`/me/profile`, `/me/diamond/invite`,
  * etc.). Web keeps BottomNav on those routes; mobile hides the tab bar so
  * full-page Me boxes own the frame (same feel as place detail / ticket routes).
  */

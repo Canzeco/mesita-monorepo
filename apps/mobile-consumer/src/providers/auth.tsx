@@ -40,7 +40,7 @@ type AuthState = {
   session: Session | null;
   profile: ConsumerProfile | null;
   consumerClass: ConsumerClass | null;
-  /** Passport stats (MESITA-888) — null until the first profile read lands. */
+  /** Profile stats (MESITA-888) — null until the first profile read lands. */
   stats: ConsumerStats | null;
   onboarded: boolean;
   refreshProfile: () => Promise<void>;
