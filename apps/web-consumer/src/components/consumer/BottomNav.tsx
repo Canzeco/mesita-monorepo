@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, ShoppingBag, User, Wallet } from "lucide-react";
+import { QrCode, Search, User, Wallet } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -17,14 +17,9 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
-// FOUR top-level surfaces, in this order (Pato, MESITA-2050):
+// FIVE visit-optimised surfaces, in this order (Pato, MESITA-2055):
 //
-//   Visit · Order · Wallet · Me
-//
-// STILL FOUR, a different four. Home · Search · Pay · Me (MESITA-1609) is
-// gone as a bar: Home, Search and Pay did not go anywhere — they are pills on
-// Visit's rail now, beside Chat and Favs (see ModeRail.tsx) — and the two
-// slots they freed went to Order and Wallet. Rules §2's "no fifth tab" holds.
+//   Home · Search · Visit · Wallet · Me
 //
 //   VISIT is everything about going somewhere: find it (Home, Search, Chat,
 //   Favs) and pay there (Pay). Its href is Home, the rail's leading pill.
@@ -68,37 +63,31 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Visit IS its rail's leading pill (Home, the Scroll deck) — no redirect
-    // hop, the href is the live surface itself.
+    // Home owns the recommendation deck plus Chat and Favs.
     href: CONSUMER_ROUTES.discoverDefault,
     Icon: MesitaMark,
-    label: "Visit",
-    // EVERY PILL NEEDS ITS OWN LINE, and so does every detail route Visit
-    // owns. A pill added to VISIT_MODES and missed here renders its screen
-    // with NO tab lit.
-    //   /discover/{scroll,chat,favs}  Home · Chat · Favs
-    //   /search                       Search
-    //   /new-visit                    Pay (exactly one page since Wallet left)
-    //   /place/{id}                   place detail, reached from every pill
-    //   /visit/{id}                   THE TICKET — Pay creates it, and a tab
-    //                                 named Visit is where a visit belongs.
-    //                                 It lit Me from MESITA-1609 to here.
+    label: "Home",
     matchPrefixes: [
       CONSUMER_ROUTES.discoverTabs.scroll,
-      CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.discoverTabs.chat,
       CONSUMER_ROUTES.discoverTabs.favs,
-      CONSUMER_ROUTE_PREFIX.newVisit,
       CONSUMER_ROUTE_PREFIX.place,
-      CONSUMER_ROUTE_PREFIX.visit,
     ],
   },
   {
-    href: CONSUMER_ROUTES.order.root,
-    // The same bag the parked Orders cell on Me wears.
-    Icon: ShoppingBag,
-    label: "Order",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.order],
+    href: CONSUMER_ROUTES.search,
+    Icon: Search,
+    label: "Search",
+    matchPrefixes: [CONSUMER_ROUTES.search],
+  },
+  {
+    href: CONSUMER_ROUTES.newVisit.root,
+    Icon: QrCode,
+    label: "Visit",
+    matchPrefixes: [
+      CONSUMER_ROUTE_PREFIX.newVisit,
+      CONSUMER_ROUTE_PREFIX.visit,
+    ],
   },
   {
     href: CONSUMER_ROUTES.wallet.root,
