@@ -82,6 +82,21 @@ export type CreditPlaceBalance = {
   lots: CreditLotSummary[];
 };
 
+/** Spendable balance at one place — same rule as CreditPlaceBalance.spendableCents. */
+export function spendableCreditsCentsAtPlace(
+  rows: readonly CreditLotRow[],
+  placeId: string,
+  nowMs: number,
+): number {
+  let spendableCents = 0;
+  for (const row of rows) {
+    if (row.placeId !== placeId) continue;
+    const lot = summarizeLot(row, nowMs);
+    if (!lot.pending && !lot.expired) spendableCents += lot.remainingCents;
+  }
+  return spendableCents;
+}
+
 export function summarizeLot(row: CreditLotRow, nowMs: number): CreditLotSummary {
   const activatesAtMs = Date.parse(row.activatesAt);
   const expiresAtMs = Date.parse(row.expiresAt);

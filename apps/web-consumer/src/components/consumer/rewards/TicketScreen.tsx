@@ -85,6 +85,7 @@ import {
 } from "@/components/consumer/rewards/ticket-steps";
 import { confirmCardAction } from "@/lib/stripe/confirm-card-action";
 import { submitTicketReview } from "@/lib/api/pay";
+import { apiApplyTicketCredits } from "@/lib/api/credits";
 import { formatCurrency } from "@/lib/api/profile";
 import {
   ACTIVE_TICKET_STATES,
@@ -474,6 +475,29 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     }
   }, [supabase, ticketId, setStepChoice]);
 
+  const applyCredits = useCallback(
+    async (amountCents: number) => {
+      setPayBusy(true);
+      setPayError(null);
+      try {
+        await apiApplyTicketCredits(supabase, { ticketId, amountCents });
+        const {
+          ticket: fresh,
+          visits: policy,
+          settlement: rails,
+        } = await apiGetTicket(supabase, ticketId);
+        if (policy) setVisits(policy);
+        if (rails) setSettlement(rails);
+        setPolled(fresh);
+      } catch (err) {
+        setPayError(errMsg(err, "Couldn't apply Credits to this bill."));
+      } finally {
+        setPayBusy(false);
+      }
+    },
+    [supabase, ticketId],
+  );
+
   const confirmMesitaPay = useCallback(async () => {
     setPayBusy(true);
     setPayError(null);
@@ -639,9 +663,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const discountCents = ticket.discount_cents ?? 0;
   const billedPct = ticket.discount_percent ?? 0;
   const billed = subtotalCents > 0;
-  const amountDueCents =
+  const creditsAppliedCents = ticket.credits_applied_cents ?? 0;
+  const grossDueCents =
     ticket.approved_amount_due_cents ??
     Math.max(0, subtotalCents - discountCents) + tipCents;
+  const amountDueCents = Math.max(0, grossDueCents - creditsAppliedCents);
 
   const strategy = strategyForPlaceRow(ticket.place);
   const priced = strategy !== "zero";
@@ -1164,11 +1190,15 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             tipPct={tipPct}
             discountCents={ticket.approved_discount_cents ?? discountCents}
             amountDueCents={amountDueCents}
+            creditsAppliedCents={creditsAppliedCents}
+            creditsSpendableCents={settlement?.creditsSpendableCents ?? 0}
+            payCredits={settlement?.payCredits ?? false}
             busy={payBusy}
             error={payError}
             cardRailAvailable={settlement?.cardRail ?? false}
             onConfirmAtPlace={() => void confirmAtPlace()}
             onPayMesitaPay={payWithMesitaPay}
+            onApplyCredits={(cents) => void applyCredits(cents)}
           />
         ) : null}
 
