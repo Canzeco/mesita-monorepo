@@ -438,8 +438,6 @@ export function name(
  * Old blobs stored this as `semantic`. normalize() folds that key here.
  */
 export const SUMMARY_UNEMBEDDED = 0.4;
-/** @deprecated Folded into Summary. Kept so old imports compile during the cut. */
-export const SEMANTIC_UNEMBEDDED = SUMMARY_UNEMBEDDED;
 
 export function summary(
   place: SignalPlace,

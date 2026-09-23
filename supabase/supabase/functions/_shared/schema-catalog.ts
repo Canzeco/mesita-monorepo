@@ -30,12 +30,11 @@ import { enumOf, nullable, num, object, refine, str, type Schema } from "./doc-s
 //
 // The canonical in-code money value: an integer minor-unit amount plus its
 // currency, always together — the codebase has never let one travel without
-// the other (stripe-billing.ts's ResolvedPrice, ticket-bill-payload.ts's
-// formatMoneyMx, every *_cents column). This is the VALUE shape, not a row
-// shape: DB columns stay their own names (price_cents, bill_subtotal_cents,
-// tip_cents, discount_cents, ...) because one row can carry several money
-// values that need distinct names; this is what a function returns or a
-// validator produces once it has picked one out.
+// the other (stripe-billing.ts's ResolvedPrice, every *_cents column). This
+// is the VALUE shape, not a row shape: DB columns stay their own names
+// (price_cents, bill_subtotal_cents, tip_cents, discount_cents, ...) because
+// one row can carry several money values that need distinct names; this is
+// what a function returns or a validator produces once it has picked one out.
 export type Money = {
   /** Integer minor units (centavos for MXN). Never a float. */
   cents: number;

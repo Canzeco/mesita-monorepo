@@ -40,11 +40,11 @@ import {
 import { stepDone, reportCrenupSteps } from "../_shared/crenup-report.ts";
 
 serveEnrichStage("analysis", async (admin, _env, row) => {
-  const projectId = row.place_id;
+  const placeId = row.place_id;
   const gathered = row.gathered;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
-    await advanceResearchStage(admin, projectId, "research");
+    await advanceResearchStage(admin, placeId, "research");
     return;
   }
 
@@ -62,7 +62,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     // The rule it broke is in crenup-report.ts: a step a run did not BUY writes
     // NOTHING, so the previous run's result stands. What this run bought is
     // already recorded in place_research.subprocesses, so nothing is lost.
-    await advanceResearchStage(admin, projectId, "contents", {
+    await advanceResearchStage(admin, placeId, "contents", {
       analysis: {
         finalPhotos: [],
         saved: [],
@@ -128,7 +128,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // CRENUP step 6 (images). The funnel ran; `described` is the observed
   // effect. Zero described is still a pass when vision is off by config — the
   // pool was ranked in source order, which is the funnel doing its job.
-  await reportCrenupSteps(admin, projectId, {
+  await reportCrenupSteps(admin, placeId, {
     images: stepDone(
       `Described ${funnel.imageAnalysisByUrl.size}, selected ${funnel.finalPhotos.length}.`,
       { described: funnel.imageAnalysisByUrl.size, finalPhotos: funnel.finalPhotos.length },
@@ -138,7 +138,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // The STAGE notification, named `analysis` rather than `images`: a beacon
   // that borrows a piece key lands in the same column the ladder reads, which
   // is how MESITA-1209 happened. The piece itself is reported above.
-  await reportEnrichmentStep(admin, projectId, "S5", "analysis", "completed",
+  await reportEnrichmentStep(admin, placeId, "S5", "analysis", "completed",
     `Image analysis complete — described ${described} candidate photo(s), selected ${funnel.finalPhotos.length} final photo(s) for the profile.`,
     { described, finalPhotos: funnel.finalPhotos.length, spentUsd: ledger.spentUsd });
 
@@ -149,7 +149,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     diag: funnel.diag,
   };
   // Persist the running ledger so contents can enforce the same per-run cap.
-  await advanceResearchStage(admin, projectId, "contents", {
+  await advanceResearchStage(admin, placeId, "contents", {
     analysis,
     gathered: { ...gathered, cost: ledger.snapshot() },
   });

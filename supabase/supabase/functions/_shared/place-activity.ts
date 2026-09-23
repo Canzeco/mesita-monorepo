@@ -43,7 +43,7 @@ export const COMPLETED_VISIT_STATES = ["paid", "approved", "revealed"];
 /** Reservation states worth showing as social proof. */
 export const FEATURED_RESERVATION_STATES = ["confirmed"];
 
-type ConsumerJoin = {
+export type ConsumerJoin = {
   first_name?: string | null;
   last_name?: string | null;
   full_name?: string | null;
@@ -55,7 +55,7 @@ type ConsumerJoin = {
   instagram_followers_count?: number | null;
 };
 
-type GuestFields = {
+export type GuestFields = {
   name: string;
   handle: string;
   class_key: MetalClassKey;
@@ -84,7 +84,7 @@ export type PlaceReservationCard = GuestFields & {
   party_size: number;
 };
 
-function asConsumer(c: unknown): ConsumerJoin {
+export function asConsumer(c: unknown): ConsumerJoin {
   if (!c) return {};
   return (Array.isArray(c) ? (c[0] ?? {}) : c) as ConsumerJoin;
 }
@@ -93,7 +93,7 @@ function classKey(raw: string | null | undefined): MetalClassKey {
   return identityForClassKey(raw).cls;
 }
 
-function guestFields(consumer: ConsumerJoin): GuestFields {
+export function guestFields(consumer: ConsumerJoin): GuestFields {
   const identity = publicGuestIdentity(consumer);
   const followers = consumer.instagram_followers_count;
   return {

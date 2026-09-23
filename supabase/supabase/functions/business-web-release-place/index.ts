@@ -24,8 +24,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOwner } from "../_shared/auth-membership.ts";
+import { adminClient, getAuthedUser, readEFEnv, requireOwner } from "../_shared/auth.ts";
 
 type Body = { placeId?: string; projectId?: string };
 

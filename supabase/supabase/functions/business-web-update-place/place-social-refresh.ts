@@ -1,9 +1,7 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-import {
-  refreshSocialFollowers,
-  runFollowersRefreshInBackground,
-} from "../_shared/social-followers.ts";
+import { runInBackground } from "../_shared/background.ts";
+import { refreshSocialFollowers } from "../_shared/social-followers.ts";
 
 export type PreviousSocialUrls = {
   instagram_url: string | null;
@@ -54,7 +52,7 @@ export function queueSocialFollowersRefresh(opts: {
 
   if (!igChanged && !fbChanged) return;
 
-  runFollowersRefreshInBackground(
+  runInBackground(
     refreshSocialFollowers({
       admin,
       apifyKey,

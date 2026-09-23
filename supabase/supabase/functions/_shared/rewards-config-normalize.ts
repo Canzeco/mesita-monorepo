@@ -1,6 +1,7 @@
 // Normalize the Rewards Config payload (v8 rules, MESITA-873) — the strict
-// gate on save. Mirrors coerceRules in the admin catalog. Self-contained (no
-// _shared import) so the contract lives beside the writer.
+// gate on save. Mirrors coerceRules in the admin catalog. Imports its rate and
+// cap snapping from promos-normalize.ts, so this v8 legacy path and the v12
+// path can never snap differently.
 //
 // v8 shape: a flat list of rules, one per (strategy × class × action), where
 // "standing" is the None column. v13's split — `grid` for standing plus
@@ -15,6 +16,8 @@
 //
 // Rate grid: 5% steps, floor 5%, ceiling 70% (0 = off) — MESITA-866/872.
 // Cap: categorical, one of {200, 500, 1000} MXN.
+
+import { snapCap, snapRate } from "./promos-normalize.ts";
 
 // Worst → best. Influencer sits BELOW Premium (v9, MESITA-877); they used to
 // tie, which left the ladder ambiguous.
@@ -44,16 +47,6 @@ export type RewardRule = {
 };
 
 export type RewardsPayload = { rules: RewardRule[]; cap: number };
-
-const RATE_STEP = 5;
-const RATE_FLOOR = 5;
-const RATE_MAX = 70;
-
-// The cap is categorical (MESITA-872, narrowed to three steps 2026-08-09):
-// a free number allowed both a meaningless cap (MX$37) and MX$0, which
-// silently meant NO ceiling — the opposite of what this knob promises.
-const ALLOWED_CAPS = [200, 500, 1000] as const;
-const CAP_DEFAULT = 500;
 
 // The defaults (v9, MESITA-877). Only cells a caller omits fall back here —
 // but they must stay byte-identical to the admin catalog's defaultRateFor
@@ -97,24 +90,6 @@ function defaultFor(
   return (
     REWARD_FLOOR + TYPE_STEP[action] + CLASS_STEP[cls] + STRATEGY_STEP[strategy]
   );
-}
-
-// Snap to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to the nearest 5.
-function snapRate(v: unknown, fallback: number): number {
-  if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
-  if (v <= 0) return 0;
-  const stepped = Math.round(v / RATE_STEP) * RATE_STEP;
-  return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
-}
-
-/** Snap the cap onto the categorical ladder — nearest allowed option. */
-function snapCap(v: unknown): number {
-  if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
-  let best: number = ALLOWED_CAPS[0];
-  for (const option of ALLOWED_CAPS) {
-    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
-  }
-  return best;
 }
 
 function isClass(v: unknown): v is ClassKey {

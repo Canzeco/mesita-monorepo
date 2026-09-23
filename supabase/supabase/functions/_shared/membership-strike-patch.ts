@@ -1,4 +1,7 @@
-import { deriveListingType } from "./partner-derivation.ts";
+import {
+  clearActivationStamps,
+  deriveListingType,
+} from "./partner-derivation.ts";
 
 export const PROMO_PAUSE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -46,8 +49,7 @@ export function buildStrikePatch(
       currentListingType: "partner",
     });
     if (listing !== undefined) patch.listing_type = listing;
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
+    clearActivationStamps(patch);
     patch.plan_forfeited_at = iso;
     patch.promo_paused_until = null;
   }

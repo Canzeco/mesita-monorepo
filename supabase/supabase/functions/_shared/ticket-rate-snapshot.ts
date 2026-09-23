@@ -2,13 +2,6 @@
 
 import { type PromoRates, ratesFromPlace } from "./promo-strategy.ts";
 
-const RATE_FIELDS = [
-  "welcome_free_rate",
-  "welcome_premium_rate",
-  "free_rate",
-  "premium_rate",
-] as const;
-
 /** The four rate columns copied from the place row at ticket creation. */
 export function snapshotRatesFromPlace(
   place: Record<string, unknown>,
@@ -36,5 +29,3 @@ export function ratesForBilling(
   if (hasTicketRateSnapshot(ticket)) return ratesFromPlace(ticket);
   return ratesFromPlace(place);
 }
-
-export { RATE_FIELDS };

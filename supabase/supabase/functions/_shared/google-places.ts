@@ -33,6 +33,11 @@ export const GOOGLE_PLACES_NEARBY_LEGACY_URL =
 export const GOOGLE_PLACES_DETAILS_BASE =
   "https://places.googleapis.com/v1/places";
 
+/** Places (New) ids may arrive as the resource name `places/ChIJ…`; keep the id. */
+export function stripPlacesPrefix(id: string): string {
+  return id.startsWith("places/") ? id.slice("places/".length) : id;
+}
+
 // Reads GMP_KEY (SUPA_GMP_KEY fallback), returning a typed error envelope when
 // missing so the EF can early-return. Wire status is always 200 — supabase-js's
 // invoke helper swallows non-2xx bodies and surfaces a generic message, hiding

@@ -114,7 +114,6 @@ const DELETE_VERB = /\.delete\s*\(/;
 
 // ── PLACE (place_profiles, profiles) — bootstrapped from a real findWriters() run ──
 const PLACE_PROFILE_UPDATE_ALLOWLIST = [
-  "_shared/embeddings.ts",
   "_shared/ojo-engine.ts", // windowing false positive — its .from("profiles") is read-only (.select); the write-verb match in the 2000-char window is the unrelated visit_tickets .update() a few lines later
   "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("place_profiles")), listed for a future reader's clarity
   "_shared/place-embeddings.ts",
@@ -273,7 +272,6 @@ Deno.test("TICKET: no new writer of visit_tickets outside the allowlist", async 
 // ── RESERVATION (reservation_tickets) ───────────────────────────────────
 const RESERVATION_ALLOWLIST = [
   "_shared/agent-tools.ts",
-  "_shared/reservation-attempts.ts", // complementary to reservation-doc.ts, not competing — different axis (AttemptEntry shape) on the same file (supabase-edgefunc-reservation-call/index.ts) that reservation-doc.ts's writeReservation door now also routes
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280) — 28/28 call sites routed, the last 13 (supabase-edgefunc-reservation-call/index.ts) in a follow-up PR (#1169) once the write-surface research confirmed every literal value that file writes was already covered by the closed sets
   "business-web-confirm-reservation/index.ts",
   "consumer-mcp/index.ts",

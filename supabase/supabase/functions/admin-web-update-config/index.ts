@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const body = bodyRes.body ?? {};
+  const body = bodyRes.body;
 
   const key = typeof body.section === "string" ? body.section.trim() : "";
   if (!key) {

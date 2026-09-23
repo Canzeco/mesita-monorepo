@@ -1,14 +1,16 @@
 // Supabase Edge Function — business-web-create-manager
 //
-// Naming: caller-verb-words. Caller = business, verb = create, words = manager.
+// Naming: actor-origin-verb-noun. Actor = business, origin = web, verb =
+// create, noun = manager.
 //
 // Authenticated. The business writes their own profile fields (full_name,
 // phone). Auto-creates the business row on first call so onboarding works
-// before business-web-get-manager has run. Used by /business/onboard.
+// before business-web-get-manager has run. Written for /business/onboard; no
+// app calls it today.
 //
-// Future split: when an edit-profile surface ships, a separate
-// `business-web-update-manager` function will handle edits (reject if missing).
-// For now this function double-duties as the initial onboard write.
+// There is no separate update EF: this one ensures the row exists, then patches
+// only the fields the caller sent, so it serves the onboard write and any later
+// profile edit alike.
 //
 // Self-contained: own JWT verification, own DB writes via the service role.
 

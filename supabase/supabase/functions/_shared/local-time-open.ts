@@ -1,5 +1,6 @@
 // Open/closed helpers for place ranking ("demote, don't hide").
-// Extracted from local-time.ts (pure open-state logic over weekly hours).
+// Pure open-state logic over weekly hours; the wall-clock and the WeeklyHours
+// shape come from local-time.ts.
 
 import { localClock, type WeeklyHours } from "./local-time.ts";
 

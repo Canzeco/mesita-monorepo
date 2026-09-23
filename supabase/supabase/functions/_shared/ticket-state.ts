@@ -12,9 +12,11 @@
 // that added `scanned`, `approved`, `paying` to the enum — the machine is
 // open → scanned → approved → paying → revealed (plan §12), with
 // fix_requested as a COLUMN at scanned, never a state.
-// `awaiting_payment_confirm` remains LIVE only while the transitional staff
-// bill path (validate-web-submit-bill) still writes it; it retires with
-// MESITA-1093 and then moves to LEGACY.
+// `awaiting_payment_confirm` has had NO writer since MESITA-1093 retired the
+// transitional staff bill path that set it. It stays LIVE for rows already
+// parked there (business-web-mark-ticket-paid still closes them); moving it
+// to LEGACY is a separate change, because LIVE_STATES is the wallet's active
+// scope and the app mirrors below must move with it.
 //
 // The web/mobile apps hold a mirror of LIVE_STATES as
 // `ACTIVE_TICKET_STATES` in their `lib/api/tickets.ts`; a drift test in

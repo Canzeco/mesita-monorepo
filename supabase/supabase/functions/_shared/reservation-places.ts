@@ -3,7 +3,7 @@
 // WHY THIS EXISTS: a PostgREST embed `place:place_profiles(...)` from
 // `reservation_tickets` is IMPOSSIBLE — the FK chain is two hops,
 //
-//   reservation_tickets.place_id → places.id → place_profiles.id  (units_place_fk)
+//   reservation_tickets.place_id → places.id → place_profiles.id  (places_place_fk)
 //
 // (The table was `reservations` and the column `project_id` when this was
 // written; both were renamed and the comment was not — MESITA-1718.)

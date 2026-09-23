@@ -221,7 +221,7 @@ Deno.test("subprocessesFor: an enabled row buys exactly its true cells", () => {
 // in migration 20260823005430. Postgres enforces it; nothing in TypeScript does,
 // so an added RunTrigger would type-check, deploy, and then fail at INSERT — on
 // a money-spending path, at the moment a run starts. Same idiom as
-// pulse-pieces.test.ts pinning `step ~ '^S[0-9]$'` from this side.
+// crenup-ladder.test.ts pinning `step ~ '^S([0-9]{1,2}|X)$'` from this side.
 Deno.test("runs: the run vocabulary matches the DB CHECK, literal for literal", () => {
   assertEquals([...RUN_TRIGGERS], [
     "on_create",

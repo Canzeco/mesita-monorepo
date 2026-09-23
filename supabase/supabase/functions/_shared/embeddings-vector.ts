@@ -1,5 +1,6 @@
 // Pure embedding + ranking helpers (no HTTP / DB).
-// Orchestration and OpenAI calls stay in embeddings.ts / place-embeddings.ts.
+// The OpenAI embeddings call lives in embeddings-http.ts; blurb synthesis
+// and persistence live in place-embeddings.ts.
 
 // Structural type satisfied by every EF's PlaceProfileRow definition. Only the
 // fields used for source-text + persistence are required; readers may carry
@@ -41,8 +42,8 @@ export function placeEmbeddingFacts(v: EmbeddablePlace): string {
   return lines.join("\n");
 }
 
-// Prefer the persisted on-update blurb; fall back to the facts block so a
-// cold place can still be embedded by the lazy embed path.
+// Prefer the persisted on-update blurb; fall back to the facts block for a
+// place with no blurb yet.
 export function placeSourceText(v: EmbeddablePlace): string {
   const stored = v.embedding_source_text?.trim();
   if (stored) return stored;

@@ -39,7 +39,8 @@ import {
   seedPlaceResearch,
 } from "../_shared/enrich-pipeline.ts";
 
-// placeId is the MESITA-26 alias for the place-row id (== project_id here).
+// `placeId` is the canonical MESITA-26 key; `projectId` is the legacy alias
+// both consoles still send here. readPlaceIdAlias accepts both (placeId wins).
 type ReenrichMode = "full" | "analysis" | "contents";
 type Body = { projectId?: string; placeId?: string; mode?: string };
 

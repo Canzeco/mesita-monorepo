@@ -5,8 +5,9 @@
 // Authenticated. Returns the caller's business profile, creating it on
 // first call. The row is bound 1:1 to auth.users via the shared id. The
 // email is mirrored from auth.users so it stays in sync if the user
-// changes their login email; full_name + phone come from the business's
-// own onboarding form (business-web-create-manager).
+// changes their login email. full_name is seeded from auth metadata when
+// an invite is accepted, and full_name + phone are editable through
+// business-web-create-manager.
 //
 // Self-contained: own JWT verification, own DB read/upsert via the
 // service role, never calls another Edge Function.
@@ -21,8 +22,8 @@ import {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  const _methodGuard = rejectUnlessMethods(req, "GET", "POST");
-  if (_methodGuard) return _methodGuard;
+  const methodReject = rejectUnlessMethods(req, "GET", "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -23,7 +23,7 @@ import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
-import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
+import { applyPromoRatesFromBody, hasPromoRatesInBody } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
   applyListingTypeToPatch,
@@ -91,10 +91,10 @@ type UpdateBody = {
   state?: "active" | "paused" | "archived";
   fiscal_type?: "formal" | "informal";
   // NOTE: `plan` is deliberately NOT editable here. Plan changes are billing
-  // and follow the organization's Mesita Membership (MESITA-1877), so a client
-  // can't grant itself Partner (plan=pro; ultra legacy) with a plain profile
-  // update. The per-place checkout that used to own this is retired
-  // (MESITA-1889).
+  // and follow the place's yearly Mesita Membership (MESITA-1877; place-scoped
+  // since MESITA-1892), so a client can't grant itself Partner (plan=pro;
+  // ultra legacy) with a plain profile update. The per-place checkout that
+  // used to own this is retired (MESITA-1889).
   // NOTE: `address` is native (Google/Enricher-sourced) and deliberately NOT
   // editable here — kept in the type only so stale clients get the reject.
   address?: string | null;
@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
   }
   if ("plan" in body) {
     // Plan is billing, not profile: reject instead of silently ignoring so a
-    // stale client learns the contract moved to the organization's Mesita
+    // stale client learns the contract moved to the place's Mesita
     // Membership (business-web-start-membership).
     return json(
       {
@@ -347,40 +347,14 @@ Deno.serve(async (req) => {
   }
   if ("pitch" in body) update.pitch = optString(body.pitch, 200);
   if ("story" in body) update.story = optString(body.story, 1500);
-  // Four per-tier promo rates. Each is nullable (null clears the offer). The
-  // The Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
-  // preset strategies (50 is the ceiling; legacy 70 retired — MESITA-543).
-  // The places CHECK constraints mirror this set.
-  for (const field of PROMO_RATE_FIELDS) {
-    if (!(field in body)) continue;
-    const rate = normalisePromoRate(field, body[field]);
-    if (!rate.ok) {
-      return json({ ok: false, error: rate.error }, 400);
-    }
-    update[field] = rate.value;
-  }
-
-  // Monthly promo spend cap. Nullable (null clears the ceiling) or one of
-  // {200, 500, 1000}. DB CHECK mirrors this; this is the friendly 400.
-  if ("monthly_promo_cap" in body) {
-    const raw = body.monthly_promo_cap;
-    if (raw == null) {
-      update.monthly_promo_cap = null;
-    } else {
-      const v = Number(raw);
-      if (![200, 500, 1000].includes(v)) {
-        return json(
-          {
-            ok: false,
-            error:
-              "monthly_promo_cap must be null or one of 200, 500, 1000",
-          },
-          400,
-        );
-      }
-      update.monthly_promo_cap = v;
-    }
-  }
+  // Four per-tier promo rates + monthly_promo_cap. Each is nullable (null
+  // clears the offer / the ceiling). The Promos page sends the tens grid via
+  // its four preset strategies (50 is the ceiling; legacy 70 retired —
+  // MESITA-543). The legal sets and their friendly 400s live in
+  // _shared/promo-rates.ts, shared with the two plan doors; the places CHECK
+  // constraints mirror them.
+  const ratesRes = applyPromoRatesFromBody(body, update);
+  if (!ratesRes.ok) return ratesRes.response;
   const mediaError = applyMediaUpdates(body, update, MAX_PHOTOS);
   if (mediaError) return mediaError;
 
@@ -502,8 +476,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  const writingRates = PROMO_RATE_FIELDS.some((f) => f in update) ||
-    "monthly_promo_cap" in update;
+  const writingRates = hasPromoRatesInBody(update);
   let currentRow: Record<string, unknown> | null = null;
   if (writingRates) {
     const { data: row, error: readErr } = await admin

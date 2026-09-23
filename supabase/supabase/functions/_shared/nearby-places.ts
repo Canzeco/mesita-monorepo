@@ -20,6 +20,7 @@ import {
   GOOGLE_PLACES_NEARBY_LEGACY_URL,
   GOOGLE_PLACES_NEARBY_URL,
   classifyGoogleError,
+  stripPlacesPrefix,
 } from "./google-places.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import {
@@ -28,7 +29,7 @@ import {
   takeClosest,
 } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
-import { NEARBY_TYPE_KEYS, type NearbyTypeKey } from "./discovery-config.ts";
+import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 
 /** Google bills Nearby in pages of 20. Legacy paginates with next_page_token
  *  (3 pages = 60); New caps one POST at maxResultCount 20 with no page token. */
@@ -38,12 +39,6 @@ const LEGACY_PAGE_TOKEN_DELAY_MS = 2_000;
 let legacyPageTokenDelayMs = LEGACY_PAGE_TOKEN_DELAY_MS;
 /** The guest's largest How many stop. Every lane cap clamps to it. */
 export const CATALOG_NEARBY_HARD_MAX = 60;
-export const MESITA_NEARBY_MAX = CATALOG_NEARBY_HARD_MAX;
-export const CATALOG_NEARBY_MAX = CATALOG_NEARBY_HARD_MAX;
-/** Mesita rows admitted from the 50 km box before distance rank. Not newest-N:
- *  a close listed place that is older than 200 newer rows in the city must
- *  still compete for its Partner / Mesita slot so merge can keep the listed pin. */
-export const MESITA_NEARBY_POOL = 1000;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
 
@@ -51,8 +46,6 @@ const NEARBY_CACHE_MS = 15_000;
 // out of lockstep the moment discovery_config grew (MESITA-1683); the test
 // below that pinned them together is now true by construction.
 export const NEARBY_TYPES = NEARBY_TYPE_KEYS;
-
-export type NearbyType = NearbyTypeKey;
 
 export type NearbyHit = {
   placeId: string;
@@ -66,10 +59,6 @@ export type NearbyHit = {
   businessStatus: string | null;
   reviewCount: number | null;
 };
-
-function stripPlacesPrefix(id: string): string {
-  return id.startsWith("places/") ? id.slice("places/".length) : id;
-}
 
 type NearbyOnce =
   | { ok: true; hits: NearbyHit[] }

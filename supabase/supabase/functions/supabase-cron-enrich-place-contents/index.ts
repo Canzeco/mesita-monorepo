@@ -61,9 +61,9 @@ import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
 import {
   fetchPlaceCategories,
   fetchPlaceFamilies,
-  inferPlaceCategory,
-  inferPlaceFamilies,
 } from "../_shared/categories.ts";
+import { inferPlaceCategory } from "../_shared/categories-infer.ts";
+import { inferPlaceFamilies } from "../_shared/infer-families.ts";
 import {
   familiesForAtlasCategory,
   resolveEnrichedFamilyKeys,
@@ -598,7 +598,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // content crawl was retired, so there was no menu source and the rung
   // reported nothing. MESITA-2027 removed it: the menu is OPERATOR INPUT
   // (`menu_pdf_url`, `menus`, the console's MenusSection), not something the
-  // Intaker derives. The menu data is untouched; only the claim went away.
+  // Enricher derives. The menu data is untouched; only the claim went away.
   const contentPieces: Partial<Record<StampableCrenupStep, StepOutcome>> = {};
   if (wants(buys, "synthesis")) {
     // DESCRIPTION (7) — the PRESENTATION, then category, then tags. NOT the

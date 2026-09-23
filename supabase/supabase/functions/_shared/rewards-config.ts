@@ -76,14 +76,6 @@ export const ACTION_SEGMENTS = [
 ] as const;
 export type ActionSegment = (typeof ACTION_SEGMENTS)[number];
 
-const REWARD_SEGMENTS = [
-  ...CLASS_SEGMENTS,
-  "story",
-  "welcome",
-  "review",
-] as const;
-export type RewardSegment = (typeof REWARD_SEGMENTS)[number];
-
 export function isClassSegment(
   key: string | null | undefined,
 ): key is ClassSegment {

@@ -161,16 +161,6 @@ export function circleBbox(
   return nearbyBbox(center.lat, center.lng, radiusKm);
 }
 
-export function bboxCenter(bbox: GeoBbox): { lat: number; lng: number } {
-  const lat = (bbox.south + bbox.north) / 2;
-  if (bbox.west <= bbox.east) {
-    return { lat, lng: (bbox.west + bbox.east) / 2 };
-  }
-  let lng = bbox.west + lngSpanDeg(bbox.west, bbox.east) / 2;
-  if (lng > 180) lng -= 360;
-  return { lat, lng };
-}
-
 export function sortByDistance<T extends { lat?: number | null; lng?: number | null }>(
   rows: T[],
   lat: number,

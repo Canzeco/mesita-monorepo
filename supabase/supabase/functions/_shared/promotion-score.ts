@@ -8,7 +8,8 @@
 // It must NEVER feed discovery ranking — "Rank is never for sale" and the
 // Lineup signals' "never a bought score" stay law (discovery-signals.ts).
 //
-// Twin: apps/web-admin/src/lib/business/promotion-score.ts — keep in lockstep.
+// Twin: shared/promotion-score.ts — keep in lockstep. scripts/sync-shared.ts
+// fans it out to web-admin and web-business; never edit those generated copies.
 
 export const PROMOTION_SCORE_MAX = 7;
 

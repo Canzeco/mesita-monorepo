@@ -25,14 +25,14 @@
 // `business_state`, and aborts before the cost ledger when the listing is
 // dead. Nothing is lost: the fact stays queryable as a COLUMN (which the
 // high-water never was), and Details' failure REASON distinguishes
-// "permanently closed" from "spine incomplete". Note the meter is still
-// called Pulse in this file's names; that is the collision MESITA-2027's
-// follow-up resolves by renaming the machinery to Intake.
+// "permanently closed" from "spine incomplete". MESITA-2028 renamed the
+// meter's machinery to Crenup, so `pulse` now names only that liveness
+// subprocess — and, in the event log, a RETIRED key (CRENUP_RETIRED).
 //
 // MENU IS GONE (MESITA-2027). It had been a stub since the website content
 // crawl was retired — it always passed with "no menu source yet", which is a
 // rung reporting nothing. The menu is OPERATOR INPUT (`menu_pdf_url`,
-// `menus`, the console's MenusSection), so the Intaker no longer claims to
+// `menus`, the console's MenusSection), so the Enricher no longer claims to
 // derive it. The menu DATA is untouched; only the claim went away.
 //
 // REVIEWS SITS BESIDE SOCIAL (4, 5). Both are Apify gathers of third-party
@@ -54,7 +54,7 @@
 //
 // EACH FUNCTION PERSISTS ITS OWN OUTPUT (MESITA-2027). There is no `publish`
 // stage and no `store` stage — those were steps that bought no function and
-// reported on writes that happened two stages away. Rule 2 of pulse-report
+// reported on writes that happened two stages away. Rule 2 of crenup-report
 // says `completed` means THE EFFECT LANDED, and that is far easier to honour
 // now that the function which WRITES is the function which REPORTS.
 // `content_state` still flips exactly ONCE, after 8, so a place never goes
@@ -150,7 +150,6 @@ export const CRENUP_RENAMES: Readonly<Record<string, CrenupStep>> = {
 };
 
 export type CrenupStep = (typeof CRENUP_LADDER)[number];
-export type CrenupExtra = (typeof CRENUP_EXTRAS)[number];
 
 /**
  * What level 0 is CALLED on the meter: Seed. It is function 0 of the ladder

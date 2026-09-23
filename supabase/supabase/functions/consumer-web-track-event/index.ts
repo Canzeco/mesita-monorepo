@@ -26,8 +26,8 @@ const ALLOWED_EVENTS = new Set([
   "wallet_open",
   "balance_card_tap",
   "ticket_created",
-  // MESITA-1619 — Me's Plan box, the one door to the plan sheet now that the
-  // Passport prints no plan. Mirrored in web-consumer's AnalyticsEvent union.
+  // MESITA-1619 — the plan page opening (Me's Plan tile). Mirrored in
+  // web-consumer's AnalyticsEvent union.
   "plan_open",
   // MESITA-1674 — the Wallet's real balance list is paginated (twenty places
   // is a named design case; it named twenty organizations until MESITA-1892

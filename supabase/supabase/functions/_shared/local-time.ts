@@ -1,12 +1,13 @@
-// Local-time + open-now helpers shared by the consumer place surfaces.
+// Local-time helpers: the Mexico zone for a longitude, the LOCAL wall clock,
+// the place-local hour, and the WeeklyHours shape stored on `places.hours`.
 //
 // The Edge runtime clock is UTC. Deriving a daypart or an "is it open" signal
 // from UTC is wrong for our users: at 5am in Mexico (UTC−6) `getUTCHours()`
 // reads ~11am and a surface pitches brunch. This module gives callers the
-// user's LOCAL wall-clock and a live open/closed signal computed from the
-// stored weekly hours — the same "when" fix consumer-web-ask-memo shipped in
-// PR #211, extracted here so every reader shares one implementation instead of
-// re-deriving it.
+// user's LOCAL wall-clock — the same "when" fix consumer-web-ask-memo shipped
+// in PR #211, extracted here so every reader shares one implementation instead
+// of re-deriving it. The open/closed signal over stored weekly hours lives in
+// local-time-open.ts.
 //
 // Timezone is a coarse Mexico-centric mapping by longitude (the market). We do
 // NOT read the DB `timezone` column here on purpose — memo established the
@@ -91,11 +92,3 @@ export function placeLocalHour(at: Date, lng: number | null): number {
     return at.getUTCHours();
   }
 }
-
-export {
-  demoteClosed,
-  isOpenAt,
-  isOpenNow,
-  isOpenThrough,
-  openScore,
-} from "./local-time-open.ts";

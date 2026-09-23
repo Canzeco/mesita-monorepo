@@ -7,11 +7,11 @@
 // Grants or revokes a membership directly. No Stripe, no money, no
 // place_subscriptions row — entitlement only. The admin console needs it
 // because business-web-update-place deliberately rejects `plan` (it is
-// billing, not profile), and the paid door is the organization's yearly
-// Mesita Membership (business-web-start-membership): owner-scoped, org-wide,
-// and it would open a real Stripe Checkout against someone else's
-// organization. (The per-place paid door, business-web-change-subscription,
-// was retired by MESITA-1889.)
+// billing, not profile), and the paid door is the place's yearly Mesita
+// Membership (business-web-start-membership): owner-scoped to that one place,
+// and it would open a real Stripe Checkout against someone else's place.
+// (The earlier per-place checkout, business-web-change-subscription, was
+// retired by MESITA-1889.)
 //
 // Deliberately NOT coupled to billing: if a place carries a live Stripe
 // subscription, setting plan here changes entitlement and leaves that
@@ -45,10 +45,12 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
-import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
+import { applyPromoRatesFromBody, hasPromoRatesInBody } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
   applyListingTypeToPatch,
+  clearActivationStamps,
+  clearForfeitStamps,
   effectiveRatesAfterPatch,
 } from "../_shared/partner-derivation.ts";
 import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
@@ -59,50 +61,12 @@ import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 const PLANS = ["free", "pro", "ultra"] as const;
 type Plan = (typeof PLANS)[number];
 
-const LEGAL_CAPS = [200, 500, 1000];
-
 type Body = {
   placeId?: unknown;
   projectId?: unknown;
   plan?: unknown;
   [key: string]: unknown;
 };
-
-function hasRatesInBody(body: Body): boolean {
-  return PROMO_RATE_FIELDS.some((f) => f in body) || "monthly_promo_cap" in body;
-}
-
-function applyRatesFromBody(
-  body: Body,
-  patch: Record<string, unknown>,
-): { ok: true } | { ok: false; response: Response } {
-  for (const field of PROMO_RATE_FIELDS) {
-    if (!(field in body)) continue;
-    const rate = normalisePromoRate(field, body[field]);
-    if (!rate.ok) return { ok: false, response: json({ ok: false, error: rate.error }, 400) };
-    patch[field] = rate.value;
-  }
-  if ("monthly_promo_cap" in body) {
-    const raw = body.monthly_promo_cap;
-    if (raw == null) {
-      patch.monthly_promo_cap = null;
-    } else if (!LEGAL_CAPS.includes(Number(raw))) {
-      return {
-        ok: false,
-        response: json(
-          {
-            ok: false,
-            error: `monthly_promo_cap must be null or one of ${LEGAL_CAPS.join(", ")}`,
-          },
-          400,
-        ),
-      };
-    } else {
-      patch.monthly_promo_cap = Number(raw);
-    }
-  }
-  return { ok: true };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -128,7 +92,7 @@ Deno.serve(async (req) => {
   }
 
   const hasPlan = body.plan !== undefined && body.plan !== null;
-  const hasRates = hasRatesInBody(body);
+  const hasRates = hasPromoRatesInBody(body);
   if (!hasPlan && !hasRates) {
     return json({ ok: false, error: "plan or promo rates are required" }, 400);
   }
@@ -165,7 +129,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const ratesRes = applyRatesFromBody(body, patch);
+    const ratesRes = applyPromoRatesFromBody(body, patch);
     if (!ratesRes.ok) return ratesRes.response;
 
     const fromRates = ratesFromPlace(row);
@@ -219,7 +183,7 @@ Deno.serve(async (req) => {
   const plan = body.plan as Plan;
   patch.plan = plan;
 
-  const ratesRes = applyRatesFromBody(body, patch);
+  const ratesRes = applyPromoRatesFromBody(body, patch);
   if (!ratesRes.ok) return ratesRes.response;
 
   const effectivePlan = plan;
@@ -232,19 +196,10 @@ Deno.serve(async (req) => {
   });
 
   // T10 — admin re-grant after forfeit restarts pending activation.
-  if (plan !== "free" && row.plan_forfeited_at) {
-    patch.plan_forfeited_at = null;
-    patch.strike_count = 0;
-    patch.promo_paused_until = null;
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
-  }
+  if (plan !== "free" && row.plan_forfeited_at) clearForfeitStamps(patch);
 
   // T13 — voluntary drop clears activation stamps for a fresh re-join.
-  if (plan === "free") {
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
-  }
+  if (plan === "free") clearActivationStamps(patch);
 
   const updRes = await writePlace(admin, {
     table: "places",
