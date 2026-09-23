@@ -9,6 +9,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   KnobState,
+  NumberField,
   SaveRow,
   SectionCard,
   Switch,
@@ -232,72 +233,30 @@ export function VisitsConfigClient({
           />
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              Guest poll (s)
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={2}
-              max={120}
-              step={1}
-              value={cfg.consumerPollSeconds}
-              disabled={pending}
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                patch({
-                  consumerPollSeconds: Math.min(120, Math.max(2, Math.round(raw))),
-                });
-              }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-          </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              Staff poll (s)
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={120}
-              step={1}
-              value={cfg.staffPollSeconds}
-              disabled={pending}
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                patch({
-                  staffPollSeconds: Math.min(120, Math.max(1, Math.round(raw))),
-                });
-              }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-          </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              Staff backoff cap (s)
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={600}
-              step={1}
-              value={cfg.staffPollMaxSeconds}
-              disabled={pending}
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                patch({
-                  staffPollMaxSeconds: Math.min(600, Math.max(1, Math.round(raw))),
-                });
-              }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-          </label>
+          <NumberField
+            label="Guest poll (s)"
+            value={cfg.consumerPollSeconds}
+            min={2}
+            max={120}
+            disabled={pending}
+            onChange={(v) => patch({ consumerPollSeconds: v })}
+          />
+          <NumberField
+            label="Staff poll (s)"
+            value={cfg.staffPollSeconds}
+            min={1}
+            max={120}
+            disabled={pending}
+            onChange={(v) => patch({ staffPollSeconds: v })}
+          />
+          <NumberField
+            label="Staff backoff cap (s)"
+            value={cfg.staffPollMaxSeconds}
+            min={1}
+            max={600}
+            disabled={pending}
+            onChange={(v) => patch({ staffPollMaxSeconds: v })}
+          />
         </div>
       </SectionCard>
 

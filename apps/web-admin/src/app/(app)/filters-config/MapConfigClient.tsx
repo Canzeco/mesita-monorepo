@@ -25,6 +25,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   ChoiceField,
+  ChoicePill,
   KnobState,
   SaveRow,
   SectionCard,
@@ -152,20 +153,14 @@ export function MapConfigClient({
               {GOOGLE_PULL_STOPS.map((stop) => {
                 const active = map.pinCount === stop;
                 return (
-                  <button
+                  <ChoicePill
                     key={stop}
-                    type="button"
+                    active={active}
                     disabled={pending || loadBlocked}
                     onClick={() => patch({ pinCount: stop })}
-                    aria-pressed={active}
-                    className={
-                      active
-                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                    }
                   >
                     {stop}
-                  </button>
+                  </ChoicePill>
                 );
               })}
             </div>
@@ -182,22 +177,16 @@ export function MapConfigClient({
                 const active =
                   map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
                 return (
-                  <button
+                  <ChoicePill
                     key={`${pair.km}-${pair.sec}`}
-                    type="button"
+                    active={active}
                     disabled={pending || loadBlocked}
                     onClick={() =>
                       patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
                     }
-                    aria-pressed={active}
-                    className={
-                      active
-                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                    }
                   >
                     {pair.km} km · {pair.sec}s
-                  </button>
+                  </ChoicePill>
                 );
               })}
             </div>

@@ -181,7 +181,7 @@ export function NumberField({
   onChange,
   disabled,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   value: number;
   min: number;
@@ -192,10 +192,14 @@ export function NumberField({
 }) {
   return (
     <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-      <span className="flex items-start gap-2 text-sm font-medium leading-snug">
-        {icon}
-        {label}
-      </span>
+      {icon ? (
+        <span className="flex items-start gap-2 text-sm font-medium leading-snug">
+          {icon}
+          {label}
+        </span>
+      ) : (
+        <span className="text-sm font-medium leading-snug">{label}</span>
+      )}
       <input
         type="number"
         inputMode={decimals ? "decimal" : "numeric"}
@@ -299,6 +303,36 @@ export function QueryConcatCaps({
         ))}
       </div>
     </div>
+  );
+}
+
+const PILL_ON =
+  "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50";
+const PILL_OFF =
+  "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50";
+
+/** One stop in a row of mutually exclusive choices; `aria-pressed` marks the pick. */
+export function ChoicePill({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-pressed={active}
+      className={active ? PILL_ON : PILL_OFF}
+    >
+      {children}
+    </button>
   );
 }
 

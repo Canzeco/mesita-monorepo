@@ -15,6 +15,7 @@ export {
   TextAreaField,
   NumberField,
   ChoiceField,
+  ChoicePill,
   QueryConcatCaps,
   Button,
   SaveRow,

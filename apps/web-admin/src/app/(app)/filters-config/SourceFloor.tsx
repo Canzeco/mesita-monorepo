@@ -20,11 +20,16 @@
 // there would have to write some other slice — editing "Mesita Socials Browse
 // Search" would silently move the Home rails. It prints the state instead.
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Layers, Star, Users } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
-import { NumberField, SaveRow, Switch } from "@/components/admin-ui/config";
+import {
+  ChoicePill,
+  NumberField,
+  SaveRow,
+  Switch,
+} from "@/components/admin-ui/config";
 import {
   getDiscoveryConfig,
   updateDiscoveryConfig,
@@ -148,7 +153,7 @@ function useFloorEditor(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
   }, []);
 
-  const dirty = useMemo(() => isDirty(cfg, saved), [cfg, saved, isDirty]);
+  const dirty = isDirty(cfg, saved);
 
   const save = () => {
     if (loadBlocked) return;
@@ -350,20 +355,14 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
         {GOOGLE_PULL_STOPS.map((stop) => {
           const active = pull === stop;
           return (
-            <button
+            <ChoicePill
               key={stop}
-              type="button"
+              active={active}
               disabled={ed.busy}
               onClick={() => patch(stop)}
-              aria-pressed={active}
-              className={
-                active
-                  ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-              }
             >
               {stop}
-            </button>
+            </ChoicePill>
           );
         })}
       </div>
