@@ -1,14 +1,15 @@
 "use client";
 
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { SYNTHESIS_QUALITIES, type SynthesisQuality } from "@/lib/synthesis-quality";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
 // Light-themed; semantic tokens only. Canonical for new config pages
 // (see the web-admin design map (Notion Docs › Design)). Config pages
 // import from here.
 
-/** Matches enricher `SynthesisQuality` — kept local so the kit does not import app routes. */
-export type SynthesisQuality = "economy" | "standard" | "high";
+/** The bordered well every labelled config field sits in. */
+export const FIELD_WELL = "border-border bg-background flex flex-col gap-2 rounded-xl border p-4";
 
 // Per-knob enforcement state (MESITA-738). The console is the operator's model
 // of the product, so a control that persists but changes nothing has to SAY so
@@ -157,7 +158,7 @@ export function TextAreaField({
   maxLength?: number;
 }) {
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       <span className="text-sm font-medium">{label}</span>
       <textarea
         value={value}
@@ -191,7 +192,7 @@ export function NumberField({
   disabled: boolean;
 }) {
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       {icon ? (
         <span className="flex items-start gap-2 text-sm font-medium leading-snug">
           {icon}
@@ -351,12 +352,7 @@ export function ChoiceField({
   className?: string;
 }) {
   return (
-    <div
-      className={
-        "border-border bg-background flex flex-col gap-2 rounded-xl border p-4" +
-        (className ? ` ${className}` : "")
-      }
-    >
+    <div className={FIELD_WELL + (className ? ` ${className}` : "")}>
       <span className="flex items-start gap-2 text-sm font-medium leading-snug">
         {icon}
         {label}
@@ -414,7 +410,7 @@ export function TextField({
   );
   if (!label) return field;
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       <span className="text-sm font-medium">{label}</span>
       {field}
     </label>
@@ -544,7 +540,7 @@ export function QualityPicker({
 }) {
   return (
     <div className="flex w-full gap-1">
-      {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
+      {SYNTHESIS_QUALITIES.map((q) => (
         <button
           key={q}
           type="button"

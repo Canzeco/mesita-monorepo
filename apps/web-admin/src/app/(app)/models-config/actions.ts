@@ -18,10 +18,10 @@
 
 import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import {
   updateAtlasConfig,
   type PerplexityPreset,
-  type SynthesisQuality,
 } from "../enricher-config/actions";
 import {
   coerceModelsConfig,

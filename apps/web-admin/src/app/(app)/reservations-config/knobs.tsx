@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Switch } from "@/components/admin-ui/config";
+import { FIELD_WELL, Switch } from "@/components/admin-ui/config";
 
 /** A labelled switch row. One line of help, and only when it earns one. */
 export function Row({
@@ -51,7 +51,7 @@ export function Cap({
   onChange: (v: number) => void;
 }) {
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       <span className="text-sm font-semibold">{label}</span>
       <input
         type="number"

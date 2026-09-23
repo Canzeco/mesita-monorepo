@@ -1,4 +1,5 @@
-import type { PerplexityPreset, SynthesisQuality } from "./actions";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import type { PerplexityPreset } from "./actions";
 
 // Image-funnel ceilings the EF already CHECKs. The page clamps so a Save
 // never 400s on a broken chain (analyze > collect, gallery > analyzed).

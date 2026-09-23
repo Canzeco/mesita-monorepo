@@ -13,10 +13,8 @@
 // is staged). Text / image quality tiers are atlas_* columns too; this page
 // edits those three alongside the models_config blob (MESITA-1811).
 
-import type {
-  PerplexityPreset,
-  SynthesisQuality,
-} from "../enricher-config/actions";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import type { PerplexityPreset } from "../enricher-config/actions";
 
 /** Live Enricher model picks — stored on atlas_* columns, edited on this page. */
 export type EnricherModelSettings = {

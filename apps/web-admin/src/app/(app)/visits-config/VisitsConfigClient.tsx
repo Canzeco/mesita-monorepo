@@ -3,17 +3,19 @@
 // Visits — three boxes of WIRED knobs. Unrendered keys still ride the whole
 // blob (Ojo/Reservations law): proof, send-backs, pay rails, abandonment, v3.
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import { Banknote, Flag, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
+  FIELD_WELL,
   KnobState,
   NumberField,
   SaveRow,
   SectionCard,
   Switch,
 } from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getVisitsConfig, updateVisitsConfig } from "./actions";
 import { VISITS_FALLBACK, type VisitsConfig } from "./defaults";
 
@@ -21,39 +23,9 @@ export function VisitsConfigClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
-}: {
-  initialConfig: VisitsConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
-}) {
-  const [cfg, setCfg] = useState<VisitsConfig>(initialConfig);
-  const [saved, setSaved] = useState<VisitsConfig>(initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getVisitsConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
+}: ConfigSeed<VisitsConfig>) {
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useConfigEditor({ initialConfig, initialUpdatedAt, loadError, load: getVisitsConfig });
 
   const dirty = useMemo(
     () => JSON.stringify(cfg) !== JSON.stringify(saved),
@@ -78,36 +50,25 @@ export function VisitsConfigClient({
     ? "The preselected tip is not a chip; saving snaps it to the lowest."
     : null;
 
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const presets = [...new Set(cfg.tipPresets.map(Math.round))]
+  const save = () =>
+    saveWith(async (c) => {
+      const presets = [...new Set(c.tipPresets.map(Math.round))]
         .filter((n) => Number.isFinite(n) && n >= 0 && n <= 100)
         .sort((a, b) => a - b)
         .slice(0, 4);
       const next: VisitsConfig = {
-        ...cfg,
+        ...c,
         tipPresets: presets.length ? presets : [...VISITS_FALLBACK.tipPresets],
-        defaultTipPct: presets.includes(cfg.defaultTipPct)
-          ? cfg.defaultTipPct
+        defaultTipPct: presets.includes(c.defaultTipPct)
+          ? c.defaultTipPct
           : (presets[0] ?? VISITS_FALLBACK.defaultTipPct),
         staffPollMaxSeconds: Math.max(
-          cfg.staffPollSeconds,
-          cfg.staffPollMaxSeconds,
+          c.staffPollSeconds,
+          c.staffPollMaxSeconds,
         ),
       };
-      const r = await updateVisitsConfig(next);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
+      return updateVisitsConfig(next);
     });
-  };
 
   return (
     <div className="space-y-6">
@@ -198,7 +159,7 @@ export function VisitsConfigClient({
             </div>
           </div>
 
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-sm font-medium leading-snug">
               Preselected chip
             </span>

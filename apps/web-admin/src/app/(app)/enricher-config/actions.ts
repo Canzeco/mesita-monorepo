@@ -2,10 +2,9 @@
 
 import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
 
 // ─── Settings read ─────────────────────────────────────────────────────────
-
-export type SynthesisQuality = "economy" | "standard" | "high";
 
 // Perplexity Agent preset — the "search model" for the Enricher's function 3
 // (the Scout, the SERP Summary) + function 4 (the Resolver, channel link discovery,

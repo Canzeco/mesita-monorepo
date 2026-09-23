@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { Collapsible } from "@/components/admin-ui/config";
+import { Collapsible, FIELD_WELL } from "@/components/admin-ui/config";
 import {
   fmtTime,
   money,
@@ -323,7 +323,7 @@ export function SelectField<T extends string>({
   disabled: boolean;
 }) {
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       <span className="text-sm leading-snug font-medium">{label}</span>
       <select
         value={value}
