@@ -1,7 +1,7 @@
 // Shared Models Config types + catalog. Kept OUT of actions.ts because that
 // file is a "use server" module (it may only export async functions to the
 // client) and it pulls in efInvoke / next/headers — importing the catalog or
-// SUBSYSTEMS from there would hand the client stubs and crash the picker. Same
+// defaults from there would hand the client stubs and crash the picker. Same
 // footgun the Memo types file documents.
 //
 // This page is the SoT for app_config.models_config (MESITA-941). Live readers
@@ -13,8 +13,6 @@
 // is staged). Text / image quality tiers are atlas_* columns too; this page
 // edits those three alongside the models_config blob (MESITA-1811).
 
-import type { LucideIcon } from "lucide-react";
-import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";
 import type {
   PerplexityPreset,
   SynthesisQuality,
@@ -44,8 +42,6 @@ export const ENRICHER_PERPLEXITY_PRESETS: readonly {
   { value: "advanced-deep-research", label: "advanced-deep-research" },
 ];
 
-type SubsystemKey = "supabase" | "enricher" | "embeddings" | "memo" | "ojo";
-
 // The persisted blob (app_config.models_config). supabase + memo + ojo are
 // edited here; enricher.model is informational (the stored atlas_* quality
 // tiers pick the live OpenAI model, with models_config.enricher.model as the
@@ -73,19 +69,6 @@ export const OPENAI_CHAT_MODELS = [
   "gpt-5.6-sol",
 ] as const;
 
-// One-line "what is this" per model, shown beside each option in the picker.
-// Descriptions are intentionally short; the gpt-5.6 tiers follow OpenAI's own
-// framing (Sol = flagship, Terra = balanced, Luna = cost-efficient).
-export const OPENAI_MODEL_INFO: Record<string, string> = {
-  "gpt-4o-mini": "fast · cheapest — safe default",
-  "gpt-4o": "stronger multimodal · pricier",
-  "gpt-4.1-mini": "fast · 1M-token context",
-  "gpt-4.1": "strong · 1M-token context",
-  "gpt-5.6-luna": "most cost-efficient of the 5.6 family",
-  "gpt-5.6-terra": "balanced 5.6 — everyday work",
-  "gpt-5.6-sol": "flagship 5.6 — most capable",
-};
-
 // Perplexity values accepted in the blob's enricher/memo legs ("off" = none).
 export const PERPLEXITY_OPTIONS = [
   "off",
@@ -94,96 +77,6 @@ export const PERPLEXITY_OPTIONS = [
   "sonar-reasoning",
   "sonar-reasoning-pro",
 ] as const;
-
-// ── Subsystem map ──────────────────────────────────────────────────────────
-// Drives the page. `editableHere` is true for rows this page owns (supabase +
-// memo). Enricher / Embeddings stay read-only — their values live in atlas_*
-// columns and models_config. Crenup edits the atlas_* quality/preset knobs;
-// this page does not.
-export type ModelState = "live" | "staged" | "locked";
-
-// A model shown "up front" on a card — the id (rendered as a mono chip) plus a
-// short note on what it is / what it's for.
-export type ModelChip = { id: string; note?: string };
-
-type SubsystemMeta = {
-  key: SubsystemKey;
-  label: string;
-  Icon: LucideIcon;
-  state: ModelState;
-  // The model(s) this subsystem uses, shown as chips at the top of the card.
-  // Omitted when the card renders live picks from cfg instead.
-  models?: ModelChip[];
-  // One line of context under the title.
-  detail: string;
-  editableHere: boolean;
-  // Where the model is really controlled (or shown). null → owned here.
-  owner: { label: string; href: string } | null;
-};
-
-export const SUBSYSTEMS: readonly SubsystemMeta[] = [
-  {
-    key: "supabase",
-    label: "Supabase Edge Functions",
-    Icon: Database,
-    state: "live",
-    detail:
-      "General OpenAI default for EFs without their own model (today: business-web-suggest-promo). Read live via models_config.supabase.model (MESITA-941).",
-    editableHere: true,
-    owner: null,
-  },
-  {
-    key: "enricher",
-    label: "Enricher",
-    Icon: Sparkles,
-    state: "live",
-    models: [
-      { id: "gpt-4o-mini · gpt-4o", note: "text — by the stored atlas_synthesis_quality" },
-      { id: "gpt-4o-mini · gpt-4o", note: "vision — by the stored atlas_vision_quality" },
-      {
-        id: "atlas_perplexity_preset",
-        note: "live search preset — models_config.enricher.perplexity is staged (unread)",
-      },
-    ],
-    detail:
-      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Enricher reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. Text, image and search picks on this page write the atlas_* knobs.",
-    editableHere: true,
-    owner: null,
-  },
-  {
-    key: "embeddings",
-    label: "Embeddings",
-    Icon: Layers,
-    state: "locked",
-    models: [
-      { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.embeddings.model" },
-    ],
-    detail:
-      "Place vectors behind Memo recall. Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.embeddings.model by _shared/embeddings.ts.",
-    editableHere: false,
-    owner: null,
-  },
-  {
-    key: "memo",
-    label: "Memo",
-    Icon: MessagesSquare,
-    state: "live",
-    detail:
-      "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.*. Memo has no editor page — it runs on these picks plus in-code defaults.",
-    editableHere: true,
-    owner: null,
-  },
-  {
-    key: "ojo",
-    label: "Ojo",
-    Icon: Eye,
-    state: "live",
-    detail:
-      "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. Enabled / threshold / fail-action live on Visits.",
-    editableHere: true,
-    owner: null,
-  },
-];
 
 // Defaults — mirror the migration's app_config.models_config seed. The client
 // shows these before load; the server coerces a null/partial blob to them.
@@ -199,7 +92,7 @@ export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
 export function coerceModelsConfig(raw: unknown): ModelsConfig {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  // Keyed by string, not SubsystemKey: the coercer also has to reach the
+  // Keyed by string, not a closed key union: the coercer also has to reach the
   // LEGACY `lineup` key, which is deliberately not a subsystem any more
   // (MESITA-1216) but still appears in blobs written before the rename.
   const obj = (k: string): Record<string, unknown> =>

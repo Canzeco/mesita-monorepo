@@ -3,8 +3,9 @@
 // Reservations Config — the Reservationist's operating limits.
 //
 // MINIMAL PAGE (Pato, 2026-08-21: "make this much simpler by far … simple and
-// clean UI minimalist few words"). TWO boxes: Calls · Testing. Kill switch
-// leads. A one-line fleet strip names a1–a4; no workflow diagram.
+// clean UI minimalist few words"). TWO boxes: Calls · Testing, plus a Needs
+// Attention card only when something needs attention. Kill switch leads. A
+// one-line fleet strip names a1–a4; no workflow diagram.
 //
 // STOP RENDERING, NEVER STOP CARRYING still applies: `attempts` (fixed at 2 by
 // protocol), the phone-only channel shape, and the legacy `consumerNumber` have
@@ -29,12 +30,10 @@ const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
 
 export function ReservationsConfigClient({
   initialConfig,
-  initialUpdatedAt,
   initialNeedsAttention,
   loadError,
 }: {
   initialConfig: ReservationsConfig;
-  initialUpdatedAt: string | null;
   initialNeedsAttention: NeedsAttentionRow[];
   loadError: string | null;
 }) {
@@ -44,7 +43,6 @@ export function ReservationsConfigClient({
   const [error, setError] = useState<string | null>(loadError);
   const [loadBlocked, setLoadBlocked] = useState(!!loadError);
   const [ok, setOk] = useState(false);
-  const [, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
   const [attention, setAttention] = useState<NeedsAttentionRow[]>(initialNeedsAttention);
 
   useEffect(() => {
@@ -58,7 +56,6 @@ export function ReservationsConfigClient({
       }
       setCfg(r.config);
       setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
       setAttention(r.needsAttention);
       setLoadBlocked(false);
       setError(null);
@@ -94,7 +91,6 @@ export function ReservationsConfigClient({
       if (r.ok) {
         setSaved(r.config);
         setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
         setOk(true);
       } else {
         setError(r.error);

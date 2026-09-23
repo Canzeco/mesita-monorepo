@@ -4,7 +4,8 @@ import { ReservationsConfigClient } from "./ReservationsConfigClient";
 import { DEFAULT_CONFIG } from "./catalog";
 import { FleetStrip } from "./FleetStrip";
 
-// Reservations Config — one page, no tabs. TWO boxes. Fleet strip names a1–a4.
+// Reservations Config — one page, no tabs. TWO boxes (plus Needs Attention when
+// non-empty). Fleet strip names a1–a4.
 export const dynamic = "force-dynamic";
 
 export default async function ReservationsConfigPage() {
@@ -20,7 +21,6 @@ export default async function ReservationsConfigPage() {
       <div className="mt-6 sm:mt-8">
         <ReservationsConfigClient
           initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-          initialUpdatedAt={res.ok ? res.updatedAt : null}
           initialNeedsAttention={res.ok ? res.needsAttention : []}
           loadError={res.ok ? null : res.error}
         />
