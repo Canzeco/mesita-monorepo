@@ -8,7 +8,7 @@ import {
 } from "../_shared/sourcing.ts";
 import { evaluatePlaceForMap } from "../_shared/map-engine.ts";
 import type { MapConfig } from "../_shared/discovery-config.ts";
-import { openScore } from "../_shared/local-time.ts";
+import { openScore } from "../_shared/local-time-open.ts";
 
 // The Prediction card contract now lives in _shared/memo-types.ts (shared with
 // the admin playground engine). Imported for this file's own use and re-exported

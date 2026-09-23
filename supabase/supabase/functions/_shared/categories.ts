@@ -1,4 +1,5 @@
-// Shared helper — dynamic place-category inference.
+// Place category / family vocabulary — live reads of public.place_categories
+// and public.place_families.
 //
 // Mesita's category vocabulary lives in public.place_categories (migration
 // 0061) and is intentionally editable: categories get added or removed over
@@ -7,11 +8,9 @@
 // the answer only if it is one of those live slugs. Both the create path
 // (business-web-create-place) and the enrich path (the Enricher) call this
 // so a place's category is always a canonical slug, never free text.
+// The classifiers themselves live in categories-infer.ts and infer-families.ts.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-
-export { inferPlaceCategory } from "./categories-infer.ts";
-export { inferPlaceFamilies } from "./infer-families.ts";
 
 export type PlaceCategory = {
   slug: string;
