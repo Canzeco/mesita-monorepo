@@ -20,10 +20,10 @@ The 2026-08-20 freeze is lifted (Pato, MESITA-1789): Me boxes are full-page rout
 - Env: `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, optional `EXPO_PUBLIC_GMP_KEY`/`EXPO_PUBLIC_SENTRY_DSN` — public values only, never a service key. EAS project `@canzeco/mesita-mobile-consumer`, secrets in EAS env. Bundle ID `com.mesita.consumer` is **STAGED** — no store submission until Pato confirms.
 
 ## Where native diverges from web
-- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,inbox,me}` — **five tabs** vs web's four. **Pay** label applies; route stays `(tabs)/rewards`.
-- **Activity (`/inbox`) renders three sections (Orders folded in) as `SegmentNav` segments** (web nests routes instead) — **order differs**: web leads with Alerts, mobile doesn't. `/inbox/*` and `/saved/reservations` redirect to the tab. `ReservationItem.reservedAt` exists here because `when` is a display string and cannot be sorted on.
+- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,chat,favs,rewards,order,wallet,me}`. The bar shows **four tabs, Visit · Order · Wallet · Me** (web parity); Visit's five rail pills are hidden tab screens (`TabRail`), all lighting Visit via `ConsumerTabBar`'s `BAR`. Pay's route stays `(tabs)/rewards`.
+- **No Activity tab**: its sections are Me pages; `/inbox/*`, `/notifications`, `/saved/reservations` land where web's redirect table sends them. `ReservationItem.reservedAt` exists here because `when` is a display string and cannot be sorted on.
 - **`SegmentNav` scrolls horizontally as its RESTING state** — a 375px phone cannot hold five icon+label pills, so unlike web this is not just the large-text fallback. Never shrink type below 12px to fix it; shorten a label.
-- Home-hub parked tabs are `ComingSoonModal`, not redirects; `CatalogTab`/`AskAiTab`/`SocialTab` stay in tree, each a one-flag un-park.
+- **Wallet has no body** (payment UI, Apple review); Order is an empty state (not built). `CatalogTab`/`SocialTab` stay in tree, unmounted.
 - Maps: react-native-maps, Google provider on both platforms (`SearchMap.native.tsx`); the web export and a missing `EXPO_PUBLIC_GMP_KEY` both fall back to the placeholder, and suggest/rail/add still work via EFs.
-- **The wallet + THE TICKET are at v4 parity (MESITA-1094):** searchbar over the bare place list → one-tap create at `base` → the seven-step journey at `/rewards/ticket/[id]`.
+- **Pay + THE TICKET are at v4 parity (MESITA-1094):** searchbar over the bare place list → one-tap create at `base` → the seven-step journey at `/rewards/ticket/[id]`.
 - `src/lib/api/` mirrors `apps/web-consumer/src/lib/api/*`. `src/providers/auth.tsx` holds session + profile and delegates `onboarded` to `isOnboarded` (`src/lib/api/auth.ts`): `first_name && birthday && sex` (MESITA-1829). Last name is the RESERVATION's gate, never signup's.

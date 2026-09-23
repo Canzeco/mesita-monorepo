@@ -17,7 +17,7 @@ describe("Pay list is nearby plus name search, never Open", () => {
   });
 
   it("wires Pay to device location with a Monterrey fallback", () => {
-    const src = read("app/(shell)/new-visit/NewVisitClient.tsx");
+    const src = read("app/(shell)/(visit)/new-visit/NewVisitClient.tsx");
     expect(src).toContain("useUserLocation");
     expect(src).toContain("MONTERREY_CENTER");
     expect(src).toContain("origin={origin}");

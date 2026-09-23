@@ -126,7 +126,7 @@ describe("Scroll rides the shared deck", () => {
   const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
 
   it("takes the deck as a prop", () => {
-    const page = read("app/(shell)/discover/scroll/page.tsx");
+    const page = read("app/(shell)/(visit)/discover/scroll/page.tsx");
     expect(page).toContain("useHomeDeck()");
     expect(scroll).not.toContain("apiListCatalog");
   });

@@ -74,7 +74,7 @@ import { IdentityBar } from "./IdentityBar";
 // unrelated destinations now, and a grid of destinations is where those go.
 //
 // NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
-// /new-visit/wallet so Stripe's return still lands on the list.
+// /wallet so Stripe's return still lands on the list.
 
 export function ProfileClient() {
   const supabase = useBrowserSupabase();
@@ -198,7 +198,7 @@ export function ProfileClient() {
               Icon={WalletIcon}
               title="Wallet"
               summary="Credits and cards"
-              href={CONSUMER_ROUTES.newVisit.wallet}
+              href={CONSUMER_ROUTES.wallet.root}
             />
             <DestTile
               Icon={PREMIUM_PLAN_ICON}
