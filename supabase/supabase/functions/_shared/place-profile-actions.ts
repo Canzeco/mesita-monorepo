@@ -38,12 +38,13 @@ export function placeHasOrderCatalog(
   return false;
 }
 
-/** Guest Order CTA — fail-closed until the order rail ships (MESITA-1155).
- *  `orders_enabled` remains menu-driven for operator surfaces only. */
+/** Guest Order CTA — menu on file (re-checked so manual menu edits unlock). */
 export function placeOrderActionEnabled(
-  _row: ActionFlagFields | null | undefined,
+  row: ActionFlagFields | null | undefined,
 ): boolean {
-  return false;
+  if (!row) return false;
+  if (row.orders_enabled === true) return true;
+  return placeHasOrderCatalog(row);
 }
 
 /** Guest Reserve CTA — off only on an explicit false (Not / walk-in). */
