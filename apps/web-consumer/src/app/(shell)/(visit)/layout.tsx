@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import { ModeRail, VISIT_MODES } from "@/components/consumer/ModeRail";
 
-// Visit's shared frame: the rail, then the active pill (Pato, MESITA-2050).
-//
-//   Home · Search · Chat · Favs · Pay
+// Route group retained to keep URLs stable. MESITA-2055 promotes Home,
+// Search and Visit to separate bottom tabs, so this shared frame draws no rail.
 //
 // A ROUTE GROUP, so no URL moved: the pills live at /discover/scroll,
 // /search, /discover/chat, /discover/favs and /new-visit, and `(visit)` adds
@@ -23,7 +21,6 @@ import { ModeRail, VISIT_MODES } from "@/components/consumer/ModeRail";
 export default function VisitLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ModeRail modes={VISIT_MODES} />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {children}
       </div>
