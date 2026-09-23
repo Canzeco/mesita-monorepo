@@ -283,10 +283,6 @@ export const TARGETS: Target[] = [
   // Apps, which is where deep knowledge is supposed to live, and leave this
   // file the routing and primitive rules an agent needs before its first edit.
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 680 },
-  // The disconnected console mock (MESITA-1902). Default budget on purpose:
-  // it is a harness, and the day it needs more than 450 words of law is the day
-  // it has grown a second product nobody asked for.
-  { label: "apps/mock-business-app", dir: join(repoRoot, "apps", "mock-business-app"), quickstart: false },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
   { label: "apps/web-validate", dir: join(repoRoot, "apps", "web-validate"), quickstart: false },
   // Native divergences + the toolchain constraints that silently break the bundle.
