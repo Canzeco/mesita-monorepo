@@ -229,7 +229,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "business-web-get-overview/index.ts",
   "business-web-get-payment-account/index.ts", // pay-readiness intent bit (MESITA-1740)
   "business-web-update-place/place-social-refresh.ts",
-  "consumer-web-apply-ticket-credits/index.ts",
   "consumer-web-confirm-reservation/index.ts",
   // The Credits surfaces resolve the PLACE a balance or a gift is spendable
   // at (MESITA-1892 — they resolved the organization, which had its own name

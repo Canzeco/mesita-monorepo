@@ -33,7 +33,7 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // FIXED BY FLEX, NOT BY `sticky`. Me renders `flex h-full flex-col` around a
 // `flex-1 overflow-y-auto px-4` scroller. This bar is a `shrink-0` SIBLING
 // above that scroller, so it never moves, spans the full width for free, and
-// never fights the scroller's own gutter or z-index. `DiscoverModeNav` uses
+// never fights the scroller's own gutter or z-index. `ModeRail` uses
 // `sticky top-0` because it lives INSIDE its scroller; this one does not have
 // to.
 //

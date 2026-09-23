@@ -74,7 +74,7 @@ export function useCreditBalances(): CreditBalancesApi {
       setNowMs(res.serverNowMs);
     } catch {
       if (!aliveRef.current) return;
-      setError("Couldn't load your Credits. Pull to refresh and try again.");
+      setError("Couldn't load your Credits.");
     } finally {
       if (aliveRef.current) setLoading(false);
     }

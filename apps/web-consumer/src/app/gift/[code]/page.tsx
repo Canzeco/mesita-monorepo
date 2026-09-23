@@ -28,7 +28,7 @@ import { PIN_LENGTH } from "@/components/consumer/PinField";
 // the day a hold returns this page already tells the truth about it.
 //
 // SIGN-IN IS STEP TWO. The CTA below carries `?next=` through `/` (sign-in)
-// -> `/auth/post-signin` -> `/new-visit/wallet/redeem?code=...`, which
+// -> `/auth/post-signin` -> `/wallet/redeem?code=...`, which
 // RedeemClient already reads server-side and prefills (unchanged by this
 // issue — MESITA-1692 built that half explicitly so this page would only
 // ever have to forward one query param).
@@ -146,7 +146,7 @@ export default async function GiftLandingPage({
 
   const claimHref = withNext(
     "/",
-    `${CONSUMER_ROUTES.newVisit.walletRedeem}?code=${code}`,
+    `${CONSUMER_ROUTES.wallet.redeem}?code=${code}`,
   );
 
   return (

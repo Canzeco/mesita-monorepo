@@ -1,49 +1,44 @@
 import { ActivityIndicator, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PayClient } from '@/components/rewards/PayClient';
-import { ShellWash } from '@/components/ui/HeroBackdrop';
+import { TabFrame, VISIT_RAIL } from '@/components/ui/TabRail';
 import { COLORS } from '@/constants/brand';
 import { useAuth } from '@/providers/auth';
 
-// Live Rewards page (web PayClient parity) — the tab unparked in #548.
-// No `profile` read: the wallet needs the user id and nothing else since the
-// identity header and the member code both left (MESITA-820).
+// Visit › Pay (MESITA-2050) — web's /new-visit, the place list that starts a
+// visit. The route stays `(tabs)/rewards`; only the label and the frame moved.
+// No `profile` read: the list needs the user id and nothing else (MESITA-820).
 export default function RewardsScreen() {
   const { loading, session } = useAuth();
 
   if (loading) {
     return (
-      <ShellWash>
-        <SafeAreaView className="flex-1 items-center justify-center">
+      <TabFrame items={VISIT_RAIL} value="pay">
+        <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={COLORS.primary} />
-        </SafeAreaView>
-      </ShellWash>
+        </View>
+      </TabFrame>
     );
   }
 
   if (!session?.user) {
     return (
-      <ShellWash>
-        <SafeAreaView className="flex-1" edges={['top']}>
-          <View className="p-6">
-            <Text
-              className="font-semibold text-foreground"
-              style={{ fontSize: 16 }}
-            >
-              Sign in to see your Rewards
-            </Text>
-          </View>
-        </SafeAreaView>
-      </ShellWash>
+      <TabFrame items={VISIT_RAIL} value="pay">
+        <View className="p-6">
+          <Text
+            className="font-semibold text-foreground"
+            style={{ fontSize: 16 }}
+          >
+            Sign in to pay
+          </Text>
+        </View>
+      </TabFrame>
     );
   }
 
   return (
-    <ShellWash>
-      <SafeAreaView className="flex-1" edges={['top']}>
-        <PayClient userId={session.user.id} />
-      </SafeAreaView>
-    </ShellWash>
+    <TabFrame items={VISIT_RAIL} value="pay">
+      <PayClient userId={session.user.id} />
+    </TabFrame>
   );
 }
