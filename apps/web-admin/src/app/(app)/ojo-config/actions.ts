@@ -6,6 +6,7 @@
 // the thresholds are a related set, so a per-key merge could persist an
 // inverted band. No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { num, bool } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { OJO_FALLBACK, type OjoConfig } from "./defaults";
@@ -44,9 +45,7 @@ function normalize(raw: unknown): OjoConfig {
   };
 }
 
-type GetResult =
-  | { ok: true; config: OjoConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{ config: OjoConfig; updatedAt: string | null }>;
 
 export async function getOjoConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -60,9 +59,7 @@ export async function getOjoConfig(): Promise<GetResult> {
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: OjoConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{ config: OjoConfig; updatedAt: string | null }>;
 
 export async function updateOjoConfig(config: OjoConfig): Promise<UpdateResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-update-config", {

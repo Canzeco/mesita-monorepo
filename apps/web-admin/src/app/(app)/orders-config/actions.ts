@@ -7,6 +7,7 @@
 // persist a Premium plan that allows fewer orders than Free. No client ever
 // touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { num, bool } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { ORDERS_FALLBACK, type OrdersConfig } from "./defaults";
@@ -56,9 +57,7 @@ function normalize(raw: unknown): OrdersConfig {
   };
 }
 
-type GetResult =
-  | { ok: true; config: OrdersConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{ config: OrdersConfig; updatedAt: string | null }>;
 
 export async function getOrdersConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -72,9 +71,7 @@ export async function getOrdersConfig(): Promise<GetResult> {
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: OrdersConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{ config: OrdersConfig; updatedAt: string | null }>;
 
 export async function updateOrdersConfig(
   config: OrdersConfig,

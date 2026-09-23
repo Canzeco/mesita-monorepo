@@ -11,18 +11,16 @@
 // engine prices (MESITA-992).
 // No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { coercePromosConfig, type PromosConfig } from "./promos";
 
-type GetPromosConfigResult =
-  | {
-      ok: true;
-      config: PromosConfig;
-      updatedAt: string | null;
-      /** True when no blob is stored yet and the knobs are the launch defaults — review, then Save. */
-      seeded: boolean;
-    }
-  | { ok: false; error: string };
+type GetPromosConfigResult = ActionResult<{
+  config: PromosConfig;
+  updatedAt: string | null;
+  /** True when no blob is stored yet and the knobs are the launch defaults — review, then Save. */
+  seeded: boolean;
+}>;
 
 export async function getPromosConfig(): Promise<GetPromosConfigResult> {
   const r = await efInvoke<{
@@ -51,9 +49,10 @@ export async function getPromosConfig(): Promise<GetPromosConfigResult> {
   };
 }
 
-type UpdatePromosConfigResult =
-  | { ok: true; config: PromosConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdatePromosConfigResult = ActionResult<{
+  config: PromosConfig;
+  updatedAt: string | null;
+}>;
 
 export async function updatePromosConfig(
   config: PromosConfig,

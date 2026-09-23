@@ -8,6 +8,7 @@
 // offered presets, and the staff backoff ceiling can never sit below its base
 // interval. No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { num, bool } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { VISITS_FALLBACK, type VisitsConfig } from "./defaults";
@@ -74,9 +75,7 @@ function normalize(raw: unknown): VisitsConfig {
   };
 }
 
-type GetResult =
-  | { ok: true; config: VisitsConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{ config: VisitsConfig; updatedAt: string | null }>;
 
 export async function getVisitsConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -90,9 +89,7 @@ export async function getVisitsConfig(): Promise<GetResult> {
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: VisitsConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{ config: VisitsConfig; updatedAt: string | null }>;
 
 export async function updateVisitsConfig(
   config: VisitsConfig,

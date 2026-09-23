@@ -7,6 +7,7 @@
 // is what lets this page save one switch at a time. No client ever touches
 // the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { normalizeVerificationConfig, type VerificationConfig } from "./defaults";
 
@@ -15,9 +16,10 @@ type ConfigPayload = {
   updatedAt: string | null;
 };
 
-type GetResult =
-  | { ok: true; config: VerificationConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{
+  config: VerificationConfig;
+  updatedAt: string | null;
+}>;
 
 export async function getVerificationConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -31,9 +33,10 @@ export async function getVerificationConfig(): Promise<GetResult> {
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: VerificationConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{
+  config: VerificationConfig;
+  updatedAt: string | null;
+}>;
 
 export async function updateVerificationConfig(
   patch: Partial<VerificationConfig>,
