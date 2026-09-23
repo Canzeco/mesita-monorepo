@@ -1,5 +1,5 @@
 // Promo rates → strategy preset.
-// Mirrors apps/web-admin/src/lib/business/strategies.ts strategyForPlace.
+// Mirrors apps/web-business/src/lib/business/strategies.ts strategyForPlace.
 //
 // Product (2026-08-09): three strategies only — Zero / Conservative /
 // Aggressive. Dominant retired; its old rate tuple (40/50/20/30) no longer

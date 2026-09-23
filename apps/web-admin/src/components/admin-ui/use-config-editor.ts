@@ -5,6 +5,7 @@
 // checks, patchers and payload shaping stay with each page.
 
 import { useEffect, useState, useTransition } from "react";
+import type { ActionResult } from "@/lib/action-result";
 
 /** What a config page's server component seeds its client with. */
 export type ConfigSeed<C> = {
@@ -13,9 +14,7 @@ export type ConfigSeed<C> = {
   loadError: string | null;
 };
 
-type Loaded<C> =
-  | { ok: true; config: C; updatedAt?: string | null }
-  | { ok: false; error: string };
+type Loaded<C> = ActionResult<{ config: C; updatedAt?: string | null }>;
 
 export function useConfigEditor<C, R extends Loaded<C>>({
   initialConfig,

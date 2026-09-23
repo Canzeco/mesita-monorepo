@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { snapDiscountCap } from "@/lib/business/strategies";
+import { snapDiscountCap } from "@/lib/business/discount-cap";
 import {
   DEFAULT_PROMOS,
   additivityError,

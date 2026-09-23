@@ -154,8 +154,8 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
 }
 
 // falseTone comes from the fact vocabulary (STATE_FACT_FALSE_TONE): rose for
-// a pending debt, plain grey for a fact that is merely not true — the same
-// taxonomy the catalog's BoolCell uses, so the two tables can't disagree.
+// a pending debt, plain grey for a fact that is merely not true. The taxonomy
+// lives in state-vocabulary.ts, so this table cannot pick its own.
 function StatePill({
   on,
   falseTone = "pending",

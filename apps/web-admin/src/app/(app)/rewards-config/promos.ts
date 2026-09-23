@@ -34,7 +34,7 @@ import {
   DEFAULT_DISCOUNT_CAP_MXN,
   DISCOUNT_CAPS_MXN,
   snapDiscountCap,
-} from "@/lib/business/strategies";
+} from "@/lib/business/discount-cap";
 
 export const STRATEGY_KEYS = [
   "conservative",
