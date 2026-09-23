@@ -4,11 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { Instagram, X } from "lucide-react";
 import type { SocialPerson } from "./social-feed-data";
-import {
-  CLASS_ICONS,
-  classBadgeClass,
-  classProperLabel,
-} from "@/lib/consumer-data";
+import { CLASS_ICONS, classBadgeClass } from "@/lib/consumer-data";
+import { DIAMOND_LIST } from "@/lib/consumer-identity";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -120,7 +117,7 @@ export function SocialProfileModal({
                   )}
                 >
                   <ShownIcon className="h-3 w-3" />
-                  {classProperLabel(shown.plan)}
+                  {DIAMOND_LIST}
                 </span>
               </div>
             )}

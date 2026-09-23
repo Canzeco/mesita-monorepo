@@ -31,7 +31,7 @@ export function AiConnectModal({ visible, onClose }: Props) {
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  // AI connect is an elevated-class perk — every class above Standard.
+  // AI connect is an elevated perk: the Premium plan or the Diamond List.
   const canConnect = isElevatedClass(classKey);
   const [minting, setMinting] = useState(false);
   const [fresh, setFresh] = useState<McpTokenMinted | null>(null);
@@ -152,8 +152,8 @@ export function AiConnectModal({ visible, onClose }: Props) {
       >
         Generate a personal access token, then add Mesita as an MCP server in
         Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
-        book tables, and check rewards — as you. Available for Gold,
-        Silver and Diamond members — not on Bronze.
+        book tables, and check rewards — as you. Available with Premium or on
+        the Diamond List.
       </Text>
 
       {/* THE GATE, RE-SEPARATED BY SHAPE (MESITA-1954). Amber was the only
@@ -195,9 +195,9 @@ export function AiConnectModal({ visible, onClose }: Props) {
               fontSize: 13,
             }}
           >
-            You’re on Bronze. Upgrade to Gold — or reach Silver via
-            Instagram — to create an MCP token and let an AI control your
-            profile.
+            You’re on the Free plan and not on the Diamond List. Premium —
+            or a place on the list — lets you create an MCP token and let an
+            AI control your profile.
           </Text>
         </View>
       ) : null}

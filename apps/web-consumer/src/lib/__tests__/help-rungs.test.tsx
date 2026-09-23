@@ -10,15 +10,12 @@ const SRC = readFileSync(
   "utf8",
 );
 
-describe("Help names every priced rung and quotes no static percent", () => {
-  it("lists Base, the metals, Welcome, and the three sharing actions", () => {
+describe("Help names everything priced and quotes no static percent", () => {
+  it("lists Base, the Diamond List, Welcome, and the three sharing actions", () => {
     const html = renderToStaticMarkup(<HelpRungList classKey="diamond" />);
     for (const label of [
       "Base",
-      "Bronze",
-      "Silver",
-      "Gold",
-      "Diamond",
+      "Diamond List",
       "Welcome",
       "Instagram Story",
       "Google Review",
@@ -28,6 +25,30 @@ describe("Help names every priced rung and quotes no static percent", () => {
     }
     expect(html).toContain("You");
     expect(html).not.toContain("%");
+  });
+
+  it("names no metal and no ladder (MESITA-2044)", () => {
+    for (const classKey of ["bronze", "diamond"]) {
+      // Text only — `class="…"` attributes are markup, not copy.
+      const html = renderToStaticMarkup(
+        <HelpRungList classKey={classKey} />,
+      ).replace(/<[^>]+>/g, " ");
+      expect(html).not.toMatch(/\b(Bronze|Silver|Gold|VIP|rung|class|tier)\b/i);
+      expect(html).not.toMatch(/You(&#x27;|')re Diamond/);
+    }
+  });
+
+  it("the You marker follows the list: Base off it, Diamond List on it", () => {
+    const off = renderToStaticMarkup(<HelpRungList classKey="bronze" />);
+    const on = renderToStaticMarkup(<HelpRungList classKey="diamond" />);
+    const you = (html: string) => html.indexOf(">You<");
+    expect(you(off)).toBeLessThan(off.indexOf("Diamond List"));
+    expect(you(on)).toBeGreaterThan(on.indexOf("Diamond List"));
+  });
+
+  it("says the discount line exactly, and only in the list's words", () => {
+    expect(SRC).toContain("DIAMOND_LIST_HELP_LINE");
+    expect(SRC).not.toMatch(/Elevated classes|every class above/);
   });
 
   it("names NO plan rung — the plan stopped pricing anything (MESITA-1705)", () => {

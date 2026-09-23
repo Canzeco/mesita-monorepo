@@ -15,7 +15,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   ArrowLeft,
-  Award,
   BadgeCheck,
   Camera,
   Check,
@@ -23,7 +22,6 @@ import {
   Crown,
   Gem,
   Gift,
-  Medal,
   PartyPopper,
   RefreshCw,
   Sparkles,
@@ -70,7 +68,13 @@ import {
   type ReportReason,
   type RewardQuote,
 } from "@/lib/api/tickets";
-import { classProperLabel } from "@/lib/consumer-classes";
+import { listLabelForClass, onDiamondList } from "@/lib/consumer-classes";
+import {
+  BASE_RATE_HINT,
+  BASE_RATE_LABEL,
+  DIAMOND_LIST,
+} from "@/lib/consumer-identity";
+import { identityRateRows } from "@/lib/reward-segments";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStoredString } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
@@ -90,18 +94,14 @@ import {
 import { useAuth } from "@/providers/auth";
 import { cn } from "@/lib/utils";
 
-// Pass gradients by CLASS. RESERVED (MESITA-1954): a class is a tier the
-// product NAMES OUT LOUD to the guest — and the pass is the object a member
-// holds up at the table — so the metals keep their hue. They converge here on
-// web's pinned values (bronze #954c28 · silver #757070 · gold #906b00 ·
-// diamond #0072a0), which is where GRADIENTS.gold and GRADIENTS.influencer
-// already land. What went: the orange first stop all four shared, so the class
-// rode on stops 2–3 alone, and bronze's pink-family ramp, which a sweep run by
-// hue would have stripped while leaving the other three coloured.
+// Pass gradients: on the Diamond List or not (MESITA-2044). RESERVED
+// (MESITA-1954): the list is something the product NAMES OUT LOUD to the
+// guest — and the pass is the object a member holds up at the table — so its
+// blue keeps its hue (web's pinned #0072a0, where GRADIENTS.influencer
+// lands). Everyone else holds the bronze-stop pass it always had; the silver
+// and gold passes went with the ladder.
 const PASS_GRADIENTS: Record<string, readonly [string, string, string]> = {
   diamond: ["#2ab3e8", ...GRADIENTS.influencer],
-  gold: ["#d8a422", ...GRADIENTS.gold],
-  silver: ["#b8b3b3", "#918c8c", "#757070"],
   bronze: ["#c9834f", "#b4703f", "#954c28"],
 };
 function passColors(key: string): readonly [string, string, string] {
@@ -173,18 +173,13 @@ export function TicketScreen({
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
   const { consumerClass, profile } = useAuth();
-  // The pass gradient keys on the Classes v2 metal; the stored key is LEGACY
-  // (standard/influencer/premium/aura) — bridge it the same way web's
-  // class-context does. classProperLabel below takes the legacy key as-is.
+  // On the Diamond List or not — the only identity the pass shows. The
+  // stored key is LEGACY after the auth provider's bridge; `listLabel` is
+  // "Diamond List" or null (no pill: there is no rung to print).
   const legacyKey = consumerClass?.class ?? "standard";
-  const classKey =
-    legacyKey === "influencer"
-      ? "silver"
-      : legacyKey === "premium"
-        ? "gold"
-        : legacyKey === "aura"
-          ? "diamond"
-          : "bronze";
+  const onList = onDiamondList(legacyKey);
+  const classKey = onList ? "diamond" : "bronze";
+  const listLabel = listLabelForClass(legacyKey);
   const guestName =
     profile?.full_name?.trim() ||
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -796,7 +791,7 @@ export function TicketScreen({
               if (!pickLocked) setStoredPick("base");
               setStepChoice("qr");
             }}
-            classLabel={classProperLabel(legacyKey)}
+            onList={onList}
             igConnected={igConnected}
             chosenAction={chosenAction}
             isFirstVisit={quote?.isFirstVisit ?? false}
@@ -906,14 +901,16 @@ export function TicketScreen({
                     ) : null}
                   </View>
                 </View>
-                <View className="rounded-full bg-white/25 px-2 py-0.5">
-                  <Text
-                    className="font-extrabold uppercase text-white"
-                    style={{ fontSize: 9, letterSpacing: 1 }}
-                  >
-                    {classProperLabel(legacyKey)}
-                  </Text>
-                </View>
+                {listLabel ? (
+                  <View className="rounded-full bg-white/25 px-2 py-0.5">
+                    <Text
+                      className="font-extrabold uppercase text-white"
+                      style={{ fontSize: 9, letterSpacing: 1 }}
+                    >
+                      {listLabel}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               {priced && headlinePct > 0 ? (
@@ -1102,14 +1099,16 @@ export function TicketScreen({
                 >
                   Mesita Pass
                 </Text>
-                <View className="rounded-full bg-white/25 px-2 py-0.5">
-                  <Text
-                    className="font-extrabold uppercase text-white"
-                    style={{ fontSize: 9, letterSpacing: 1 }}
-                  >
-                    {classProperLabel(legacyKey)}
-                  </Text>
-                </View>
+                {listLabel ? (
+                  <View className="rounded-full bg-white/25 px-2 py-0.5">
+                    <Text
+                      className="font-extrabold uppercase text-white"
+                      style={{ fontSize: 9, letterSpacing: 1 }}
+                    >
+                      {listLabel}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <View className="items-center gap-1.5 py-5">
                 {saved ? (
@@ -1716,6 +1715,7 @@ function LaneChip({
   on = false,
   faded = false,
   done = false,
+  you = false,
   glyph,
   onPress,
 }: {
@@ -1725,6 +1725,8 @@ function LaneChip({
   on?: boolean;
   faded?: boolean;
   done?: boolean;
+  /** The guest's own identity row (Base or Diamond List). */
+  you?: boolean;
   glyph?: React.ReactNode;
   onPress?: () => void;
 }) {
@@ -1742,6 +1744,14 @@ function LaneChip({
           </Text>
           {done ? (
             <Check size={10} color={COLORS.foreground} strokeWidth={4} />
+          ) : null}
+          {you ? (
+            <Text
+              className="font-extrabold uppercase text-primary"
+              style={{ fontSize: 7, letterSpacing: 0.8 }}
+            >
+              You
+            </Text>
           ) : null}
         </View>
         {sub ? (
@@ -1787,7 +1797,7 @@ function RewardLanes({
   quoteError,
   onRetryQuote,
   onShowQrAnyway,
-  classLabel,
+  onList,
   igConnected,
   chosenAction,
   isFirstVisit,
@@ -1803,7 +1813,7 @@ function RewardLanes({
   quoteError: boolean;
   onRetryQuote: () => void;
   onShowQrAnyway: () => void;
-  classLabel: string;
+  onList: boolean;
   igConnected: boolean;
   chosenAction: ActionKind | null;
   isFirstVisit: boolean;
@@ -1852,24 +1862,21 @@ function RewardLanes({
 
   const b = quote.breakdown ?? null;
   const welcome = quote.bonuses.welcome;
-  const myCls = b?.cls ?? null;
   const myPlan = b?.plan ?? "free";
-  const classGlyph = (k: "bronze" | "silver" | "gold" | "diamond") => {
-    const Icon =
-      k === "diamond"
-        ? Gem
-        : k === "gold"
-          ? Crown
-          : k === "silver"
-            ? Medal
-            : Award;
-    return <Icon size={14} color={COLORS.primary} />;
-  };
+  // WHO THE GUEST IS = TWO ROWS (MESITA-2044). The EF's breakdown is the
+  // engine's own decomposition: the Base is the bronze floor every guest
+  // gets (`automatic` + `classes.bronze`), and the Diamond List adder is the
+  // diamond row over bronze — same arithmetic as web's twin. The guest's list
+  // membership comes from the quote when it has one, else from the profile.
+  const listed = b ? b.cls === "diamond" : onList;
+  const baseValue = b ? b.automatic + b.classes.bronze : quote.base;
+  const listAdder = b ? Math.max(0, b.classes.diamond - b.classes.bronze) : 0;
+  const identity = b ? identityRateRows(baseValue, listAdder, listed) : null;
 
   const parts: string[] = [];
   if (b) {
-    if (myCls && b.classes[myCls] > 0) parts.push(`${b.classes[myCls]}% class`);
-    if (b.automatic > 0) parts.push(`${b.automatic}% automatic`);
+    if (baseValue > 0) parts.push(`${baseValue}% base`);
+    if (listed && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND_LIST}`);
     if (myPlan === "premium" && b.planUplift > 0)
       parts.push(`${b.planUplift}% plan`);
   } else if (quote.base > 0) {
@@ -1893,14 +1900,27 @@ function RewardLanes({
 
       {b ? (
         <>
-          <Lane title="Base discount" note="always on">
-            <LaneChip
-              label="Automatic"
-              sub="standing offer"
-              value={b.automatic}
-              on={b.automatic > 0}
-              glyph={<Zap size={14} color={COLORS.primary} />}
-            />
+          {/* Base + Diamond List, and nothing else. Base is paid to every
+              guest, so it is always lit; "You" marks the guest's own row. */}
+          <Lane title="Your rate" note="always on">
+            {identity!.map((r) => (
+              <LaneChip
+                key={r.key}
+                label={r.label}
+                sub={r.hint}
+                value={r.value}
+                on={r.key === "base" ? r.value > 0 : r.mine}
+                faded={r.key === "diamond" && !r.mine}
+                you={r.mine}
+                glyph={
+                  r.key === "diamond" ? (
+                    <Gem size={14} color={COLORS.primary} />
+                  ) : (
+                    <Zap size={14} color={COLORS.primary} />
+                  )
+                }
+              />
+            ))}
           </Lane>
           <Lane title="Visit" note="where you stand">
             <LaneChip
@@ -1926,19 +1946,6 @@ function RewardLanes({
               glyph={<RefreshCw size={14} color={COLORS.primary} />}
             />
           </Lane>
-          <Lane title="Class" note="earned, not bought">
-            {(["bronze", "silver", "gold", "diamond"] as const).map((k) => (
-              <LaneChip
-                key={k}
-                label={k.charAt(0).toUpperCase() + k.slice(1)}
-                sub={k === myCls ? "you" : "locked"}
-                value={b.classes[k]}
-                on={k === myCls}
-                faded={k !== myCls}
-                glyph={classGlyph(k)}
-              />
-            ))}
-          </Lane>
           <Lane title="Plan" note="visits and orders">
             <LaneChip
               label="Free"
@@ -1959,10 +1966,12 @@ function RewardLanes({
           </Lane>
         </>
       ) : (
-        <Lane title="Base discount" note="always on">
+        <Lane title="Your rate" note="always on">
+          {/* A legacy config sends no decomposition, so the adder cannot be
+              split out: this is the guest's whole standing rate. */}
           <LaneChip
-            label={`Your ${classLabel} base`}
-            sub="standing offer"
+            label={BASE_RATE_LABEL}
+            sub={onList ? `with the ${DIAMOND_LIST}` : BASE_RATE_HINT}
             value={quote.base}
             on={quote.base > 0}
             glyph={<Zap size={14} color={COLORS.primary} />}

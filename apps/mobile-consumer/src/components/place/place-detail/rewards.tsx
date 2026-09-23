@@ -24,12 +24,12 @@ import {
 } from '@/lib/promo-rates';
 import {
   REWARD_SEGMENT_BY_KEY,
-  segmentKeyForClass,
+  standingRate,
   type RewardClassKey,
 } from '@/lib/reward-segments';
 import type { ConsumerClassKey, PlaceDetail } from '@/lib/types/place-detail';
 import { useAuth } from '@/providers/auth';
-import { RewardStep, YourRewardsHere } from './reward-matrix';
+import { RewardStep, YourRate, YourRewardsHere } from './reward-matrix';
 import { Box, BoxLabel } from './shared';
 
 // ── Rewards tab (v7, MESITA-861) — web mirror ───────────────────────────
@@ -37,12 +37,10 @@ import { Box, BoxLabel } from './shared';
 // hero  — "Up to N%" and NOTHING about why (MESITA-860). N = the guest's
 //         best eligible rate at THIS place's strategy.
 // steps — the wallet's four steps, "Pick place" pre-checked.
-// list  — the guest's OWN row of the big table; the Standard-vs-Premium
-//         comparison died (it classified the guest, and only knew the v6
-//         first/returning model).
-// CTAs  — "Get my ticket" routes to the wallet (create flow + the
-//         Influencer story interstitial live there); Standard adds
-//         "Go Premium".
+// list  — Base + Diamond List (the two identity rows, MESITA-2044), then
+//         the actions.
+// CTAs  — "Get my ticket" routes to the wallet (create flow + the story
+//         interstitial live there); a Standard-key guest adds "Go Premium".
 
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const router = useRouter();
@@ -79,12 +77,12 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   }
 
   // Strategy recovered from the four rate columns; the guest's ceiling here
-  // = best of their standing rate and every action they can perform (story
-  // only for Influencers — the gate is upstream, per segments v6).
+  // = best of their standing rate (Base, plus the Diamond List adder when on
+  // it) and every action they can perform (Story's Instagram gate is
+  // upstream, per segments v6).
   const strategy = strategyForPromoMatrix(place.promo_matrix);
   const rewardsKey = classKey as RewardClassKey;
-  const mineRate =
-    REWARD_SEGMENT_BY_KEY[segmentKeyForClass(rewardsKey)].rates[strategy];
+  const mineRate = standingRate(rewardsKey, strategy);
   const candidates = [
     mineRate,
     REWARD_SEGMENT_BY_KEY.welcome.rates[strategy],
@@ -150,10 +148,15 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         />
       </View>
 
-      {/* The guest's own row of the big table. */}
+      {/* Your rate: Base + the Diamond List, the guest's own row marked. */}
+      <View className="gap-3">
+        <BoxLabel>Your rate</BoxLabel>
+        <YourRate strategy={strategy} classKey={rewardsKey} />
+      </View>
+
       <View className="gap-3">
         <BoxLabel>Your rewards here</BoxLabel>
-        <YourRewardsHere strategy={strategy} classKey={rewardsKey} />
+        <YourRewardsHere strategy={strategy} />
       </View>
 
       {/* Both CTAs used to be pink; the pair never rode on hue. It rides on

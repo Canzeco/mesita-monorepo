@@ -1,15 +1,16 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
+import { DIAMOND_LIST_KEY } from "./class-bridge";
 
-// ─── The invitation door, admin side (MESITA-1160) ───────────────────────
+// ─── The Diamond List, admin side (MESITA-1160, MESITA-2044) ─────────────
 //
 // ONE Edge Function serves both halves. `admin-web-grant-class` writes the
-// door FACT (consumers.invitation_class_key + invitation_granted_at) and then
-// calls the shared recompute (_shared/class-doors.ts, MESITA-972), which
-// settles the slot from every open door. Revoking is the same call with
-// `classKey: null` — it clears the fact and the recompute lands the best
-// door left (subscription → premium, reach → influencer, else standard).
+// invitation FACT (consumers.invitation_class_key + invitation_granted_at)
+// and then calls the shared recompute (_shared/class-doors.ts, MESITA-972),
+// which settles the slot. Adding a guest sends `classKey: "diamond"` — the
+// only key this console ever sends. Removing is the same call with
+// `classKey: null`: it clears the fact, and the guest is off the list.
 //
 // The consumer is named by `lookup`, not by uuid: the EF accepts a uuid, an
 // 8-digit consumer code, a phone, an @handle or a name, and it REFUSES to
@@ -61,13 +62,12 @@ async function callGrantClass(
   };
 }
 
-export async function grantInvitation(
-  lookup: string,
-  classKey: string,
-): Promise<DoorResult> {
-  return callGrantClass(lookup, classKey);
+/** Put a guest on the Diamond List. */
+export async function grantInvitation(lookup: string): Promise<DoorResult> {
+  return callGrantClass(lookup, DIAMOND_LIST_KEY);
 }
 
+/** Take a guest off the Diamond List. */
 export async function revokeInvitation(lookup: string): Promise<DoorResult> {
   return callGrantClass(lookup, null);
 }

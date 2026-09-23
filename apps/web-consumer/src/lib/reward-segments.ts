@@ -9,8 +9,8 @@
 // the bill engine reads. The consumer surface intentionally uses these static
 // defaults so it needs no new consumer Edge Function.
 //
-// Classes v2: four classes (Bronze / Silver / Gold / Diamond) + three
-// actions. Story is a universal action gated on connected Instagram
+// The Diamond List (MESITA-2044): two identity rows (Base / Diamond List) +
+// three actions. Story is a universal action gated on connected Instagram
 // (MESITA-909); Review and
 // Welcome are universal.
 
@@ -21,22 +21,22 @@ import type { ClassKey } from "@/lib/consumer-data";
 type GridStrategy = "zero" | "conservative" | "aggressive";
 
 // Ontology of a rung (per the canonical definitions):
-//   class  — who the guest is (Bronze / Silver / Gold / Diamond)
+//   class  — who the guest is: everyone (Base) or on the Diamond List. The
+//            kind stays "class" and the keys stay `bronze`/`diamond` because
+//            those are the engine's storage keys; neither is ever printed.
 //   action — a rewarded thing the guest does at the table (Story / Google Review)
 //   visit  — a state of the visit itself (Welcome = first ticket at the place)
 type RewardSegmentKind = "class" | "action" | "visit";
 
 export type RewardSegmentKey =
   | "bronze"
-  | "silver"
-  | "gold"
   | "diamond"
   | "story"
   | "welcome"
   | "review";
 
 type RewardSegment = {
-  /** Pato's worst→best ladder rank (1 Bronze … 7 Google Review). */
+  /** Pato's worst→best program order (1 Base … 7 Welcome). */
   rank: number;
   key: RewardSegmentKey;
   /** English chrome (app chrome stays English). */
@@ -50,45 +50,26 @@ type RewardSegment = {
   rates: Record<GridStrategy, number>;
 };
 
-// The canonical ladder, stored worst→best (rank order — the class ladder is
-// bronze < silver < gold < diamond per Classes v2, and the CLASS_STEP money
-// below (+5 / +10 / +15); the class BASE rows tie on rates, the step breaks
-// the tie — best-of makes ties harmless).
+// The canonical program, stored worst→best. The two identity rows tie on
+// rates; the CLASS_STEP below (+15 for the Diamond List) breaks the tie —
+// best-of makes ties harmless. Silver and Gold are gone (MESITA-2044).
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
     rank: 1,
     key: "bronze",
-    name: "Bronze",
-    nameEs: "Bronce",
+    name: "Base",
+    nameEs: "Base",
     kind: "class",
     blurb: "The base rate every guest gets, always.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
-    rank: 3,
-    key: "gold",
-    name: "Gold",
-    nameEs: "Oro",
-    kind: "class",
-    blurb: "A higher reach band — a bigger base at every place.",
-    rates: { zero: 0, conservative: 5, aggressive: 15 },
-  },
-  {
-    rank: 2,
-    key: "silver",
-    name: "Silver",
-    nameEs: "Plata",
-    kind: "class",
-    blurb: "2,000+ Instagram followers — automatic class upgrade.",
-    rates: { zero: 0, conservative: 5, aggressive: 15 },
-  },
-  {
     rank: 4,
     key: "diamond",
-    name: "Diamond",
-    nameEs: "Diamante",
+    name: "Diamond List",
+    nameEs: "Lista Diamante",
     kind: "class",
-    blurb: "20,000+ followers, or a direct invite — the highest base.",
+    blurb: "Invitation only — more on top of the base.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
@@ -97,7 +78,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     name: "Instagram Story",
     nameEs: "Historia de Instagram",
     kind: "action",
-    blurb: "Connect Instagram, post a tagged story — any class, any visit.",
+    blurb: "Connect Instagram, post a tagged story — every guest, any visit.",
     rates: { zero: 0, conservative: 15, aggressive: 25 },
   },
   {
@@ -128,8 +109,7 @@ export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
 // strategy, so the top of the ladder a place can reach is its aggressive rate.
 export const PEAK_STRATEGY: GridStrategy = "aggressive";
 
-// Which class rung a consumer sits on. Consumer classes map one-to-one onto
-// their same-named ladder rungs.
+// Which identity row a consumer sits on. Storage keys map one-to-one.
 function segmentKeyForClass(classKey: ClassKey): RewardSegmentKey {
   return classKey;
 }
@@ -159,12 +139,6 @@ function reachableSegments(classKey: ClassKey): RewardSegment[] {
 // the engine cell for cell.
 const CLASS_STEP: Record<ClassKey, number> = {
   bronze: 0,
-  silver: 5,
-  // Gold's step is the INTERPOLATION its neighbours imply, not a measured
-  // cell: no legacy class key maps to Gold, so the live engine has never
-  // quoted it. Safe only because this whole module is education — the real
-  // number always comes from consumer-web-get-discount-quote.
-  gold: 10,
   diamond: 15,
 };
 

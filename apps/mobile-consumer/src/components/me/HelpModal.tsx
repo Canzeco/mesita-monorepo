@@ -1,40 +1,62 @@
 // Help — the education home for the reward program (MESITA-809), mobile
-// mirror of web HelpModal: how rewards work + the seven-rung tier ladder.
-// Lives on Me, not on Rewards: the wallet is for doing, this is for
-// understanding. Opened from the Me > Help row.
+// mirror of web HelpModal. Lives on Me, not on Rewards: the wallet is for
+// doing, this is for understanding. Opened from the Me > Help row.
+//
+// Numbers never live here (web, MESITA-1017): a static ladder quoted
+// Aggressive defaults as if they were every place's bill. The live rates sit
+// on each place's Rewards tab; this list is what is priced, named.
+//
+// TWO IDENTITY ROWS (MESITA-2044): Base and the Diamond List. No metals, no
+// ladder — "either you are diamond or you are not".
 
 import type { LucideIcon } from 'lucide-react-native';
 import {
-  Camera,
-  Crown,
+  AtSign,
   DoorOpen,
-  Megaphone,
+  Gem,
   Percent,
   Sparkles,
   Star,
-  User,
+  Store,
+  UtensilsCrossed,
 } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { COLORS } from '@/constants/brand';
+import { onDiamondList } from '@/lib/consumer-classes';
 import {
-  PEAK_STRATEGY,
-  REWARD_SEGMENTS,
-  segmentKeyForClass,
-  type RewardSegmentKey,
-} from '@/lib/reward-segments';
+  BASE_RATE_HINT,
+  BASE_RATE_LABEL,
+  DIAMOND_LIST,
+  DIAMOND_LIST_HELP_LINE,
+  DIAMOND_LIST_RATE_HINT,
+} from '@/lib/consumer-identity';
 import { useAuth } from '@/providers/auth';
 
-const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
-  standard: User,
-  premium: Crown,
-  influencer: Megaphone,
-  aura: Sparkles,
-  story: Camera,
-  welcome: DoorOpen,
-  review: Star,
+type HelpRung = {
+  key: string;
+  label: string;
+  hint: string;
+  Icon: LucideIcon;
+  mine: boolean;
 };
+
+/** Everything PRICED, in engine order: Base, the Diamond List, Welcome, then
+ *  the three sharing actions. The guest's own identity row wears You.
+ *  Exported for the copy test. */
+export function helpRungs(classKey: string): HelpRung[] {
+  const onList = onDiamondList(classKey);
+  return [
+    { key: 'base', label: BASE_RATE_LABEL, hint: BASE_RATE_HINT, Icon: Store, mine: !onList },
+    { key: 'diamond', label: DIAMOND_LIST, hint: DIAMOND_LIST_RATE_HINT, Icon: Gem, mine: onList },
+    { key: 'welcome', label: 'Welcome', hint: 'First visit only', Icon: DoorOpen, mine: false },
+    // lucide-react-native has no Instagram glyph — AtSign is the house IG mark.
+    { key: 'story', label: 'Instagram Story', hint: 'Needs a connected handle', Icon: AtSign, mine: false },
+    { key: 'google', label: 'Google Review', hint: 'Once per place', Icon: Star, mine: false },
+    { key: 'mesita', label: 'Mesita Review', hint: 'In the app, once per place', Icon: UtensilsCrossed, mine: false },
+  ];
+}
 
 function ExplainRow({
   icon,
@@ -42,7 +64,7 @@ function ExplainRow({
   rest,
 }: {
   icon: React.ReactNode;
-  bold: string;
+  bold?: string;
   rest: string;
 }) {
   return (
@@ -54,7 +76,9 @@ function ExplainRow({
         className="flex-1 text-muted-foreground"
         style={{ fontSize: 13, lineHeight: 20 }}
       >
-        <Text className="font-semibold text-foreground">{bold} </Text>
+        {bold ? (
+          <Text className="font-semibold text-foreground">{bold} </Text>
+        ) : null}
         {rest}
       </Text>
     </View>
@@ -71,8 +95,7 @@ export function HelpModal({
   asRoute?: boolean;
 }) {
   const { consumerClass } = useAuth();
-  const key = consumerClass?.class ?? 'standard';
-  const mine = segmentKeyForClass(key);
+  const rows = helpRungs(consumerClass?.class ?? 'standard');
 
   return (
     <FullScreenSheet visible={visible} onClose={onClose} asRoute={asRoute} title="Help"
@@ -87,36 +110,28 @@ export function HelpModal({
           bold="Instant discounts."
           rest="Start a ticket, show its QR at the table — the discount comes straight off the bill. Mesita never holds your money."
         />
-        {/* RESERVED (MESITA-1954): this row NAMES the metals out loud —
-            Bronze, Gold, Silver, Diamond — so its Crown keeps a hue while its
-            two siblings go grey. It was #ce74e3, the purple mobile had drifted
-            to; converged here on web's `tier.diamond`, the top rung the
-            sentence names. `fill` carries the hue too, so a sweep on `color=`
-            alone would have left half a purple crown behind. */}
         <ExplainRow
-          icon={<Crown size={18} color="#0072a0" fill="#0072a0" />}
-          bold="Elevated classes boost them."
-          rest="Bronze gets the base discount; Gold, Silver and Diamond unlock bigger ones — Silver is free with Instagram reach, Diamond is invite-only."
+          icon={<Gem size={18} color={COLORS.secondary} />}
+          rest={DIAMOND_LIST_HELP_LINE}
         />
         <ExplainRow
           icon={<Sparkles size={18} color={COLORS.secondary} />}
-          bold="Actions beat your class."
-          rest="A first visit, a Google review, or an Instagram story (with Instagram connected) can pay more than your class rate. You always keep your single best one, never a sum."
+          bold="Actions can pay more."
+          rest="A first visit, a Google review, or an Instagram story (with Instagram connected) can pay more than your base. You always keep your single best one, never a sum. Live percents sit on each place's Rewards tab."
         />
 
-        {/* The ladder */}
         <View style={{ gap: 6 }}>
           <View className="flex-row items-baseline justify-between px-1 pb-1">
             <Text className="font-display font-bold text-foreground" style={{ fontSize: 14 }}>
-              Reward tiers
+              {"Everything that's priced"}
             </Text>
             <Text className="text-muted-foreground" style={{ fontSize: 11 }}>
               You keep your best one
             </Text>
           </View>
-          {REWARD_SEGMENTS.map((seg) => {
-            const Icon = SEGMENT_ICON[seg.key];
-            const isMine = seg.key === mine;
+          {rows.map((seg) => {
+            const Icon = seg.Icon;
+            const isMine = seg.mine;
             return (
               <View
                 key={seg.key}
@@ -135,31 +150,36 @@ export function HelpModal({
                     color={isMine ? COLORS.primaryForeground : COLORS.secondary}
                   />
                 </View>
-                <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
-                  <Text
-                    className={`font-bold ${isMine ? 'text-white' : 'text-foreground'}`}
-                    numberOfLines={1}
-                    style={{ fontSize: 12.5 }}
-                  >
-                    {seg.name}
-                  </Text>
-                  {isMine ? (
-                    <View className="rounded-full bg-white/25 px-1.5 py-0.5">
-                      <Text
-                        className="font-extrabold uppercase text-white"
-                        style={{ fontSize: 8.5, letterSpacing: 1 }}
-                      >
-                        You
-                      </Text>
-                    </View>
+                <View className="min-w-0 flex-1">
+                  <View className="flex-row items-center gap-1.5">
+                    <Text
+                      className={`font-bold ${isMine ? 'text-white' : 'text-foreground'}`}
+                      numberOfLines={1}
+                      style={{ fontSize: 12.5 }}
+                    >
+                      {seg.label}
+                    </Text>
+                    {isMine ? (
+                      <View className="rounded-full bg-white/25 px-1.5 py-0.5">
+                        <Text
+                          className="font-extrabold uppercase text-white"
+                          style={{ fontSize: 8.5, letterSpacing: 1 }}
+                        >
+                          You
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {seg.hint ? (
+                    <Text
+                      className={isMine ? 'text-white/80' : 'text-muted-foreground'}
+                      numberOfLines={1}
+                      style={{ fontSize: 11 }}
+                    >
+                      {seg.hint}
+                    </Text>
                   ) : null}
                 </View>
-                <Text
-                  className={`font-extrabold ${isMine ? 'text-white' : 'text-foreground/80'}`}
-                  style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}
-                >
-                  {seg.rates[PEAK_STRATEGY]}%
-                </Text>
               </View>
             );
           })}

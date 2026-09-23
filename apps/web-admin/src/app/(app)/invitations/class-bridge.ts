@@ -1,47 +1,38 @@
-// What a stored class key means, for the one console surface that has to
-// write one by hand.
+// What a stored class key means, for the one console surface that writes one
+// by hand.
 //
-// `consumers.class_key` and `consumers.invitation_class_key` both FK to
-// `public.classes`, which holds the four metals. Plan is a separate column.
-const STORED_CLASS_LABEL: Record<string, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
-  // Leftover keys, if a row is read mid-cutover.
-  standard: "Bronze",
-  influencer: "Silver",
-  premium: "Bronze · Premium",
-  aura: "Diamond",
-};
+// THE DIAMOND LIST (MESITA-2044). A guest is on it or not — nothing in
+// between. Pato: "either you are diamond or you are not. its more like a
+// List." So an operator reads exactly two states, never a metal.
+//
+// Storage did NOT move: `consumers.class_key` and
+// `consumers.invitation_class_key` still FK to `public.classes`, and a stray
+// `silver`/`gold` row (or a legacy `standard`/`influencer`/`premium` one) can
+// still be read. Those all mean "not on the list"; only `diamond` and its
+// legacy `aura` mean "on it".
+const ON_THE_LIST = new Set(["diamond", "aura"]);
+const OFF_THE_LIST = new Set([
+  "bronze",
+  "silver",
+  "gold",
+  "standard",
+  "influencer",
+  "premium",
+]);
 
-/** An unrecognised key prints as itself — never silently as the floor. */
-export function storedClassLabel(key: string | null): string {
-  if (!key) return "—";
-  return STORED_CLASS_LABEL[key] ?? key;
+/** Whether a stored key puts the guest on the Diamond List. */
+export function isOnDiamondList(key: string | null): boolean {
+  return key != null && ON_THE_LIST.has(key);
 }
 
-// Which classes an invitation may grant. Bronze is the floor (no invitation
-// needed). Premium is a PLAN, never granted as a class. Gold has no live
-// door yet — an invitation may still name it; the EF is generic over any
-// classes row.
-export const INVITATION_CLASSES: { key: string; label: string; blurb: string }[] =
-  [
-    {
-      key: "diamond",
-      label: "Diamond",
-      blurb: "Top of the ladder — what a hand-picked invitation normally means.",
-    },
-    {
-      key: "silver",
-      label: "Silver",
-      blurb: "The entry reach band, granted without waiting for the follower count.",
-    },
-  ];
+/** How a stored key reads to an operator: on the list or not. An
+ *  unrecognised key prints as itself — never silently as "not on the list". */
+export function diamondListLabel(key: string | null): string {
+  if (key == null || OFF_THE_LIST.has(key)) return "Not on the list";
+  if (ON_THE_LIST.has(key)) return "On the Diamond List";
+  return key;
+}
 
-/** How a settled `class_origin` reads to an operator. */
-export const ORIGIN_LABEL: Record<string, string> = {
-  invitation: "Direct invitation",
-  instagram: "Instagram reach",
-  default: "Nothing above the floor",
-};
+// The one key an invitation may grant. The list is the only thing an
+// invitation puts a guest on, so there is nothing to choose between.
+export const DIAMOND_LIST_KEY = "diamond";

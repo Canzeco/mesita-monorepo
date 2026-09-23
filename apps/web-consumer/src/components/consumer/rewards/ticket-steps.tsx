@@ -539,7 +539,8 @@ export function StepValidate({ placeName }: { placeName: string }) {
   );
 }
 
-// ── Step 7 — Results. What the visit paid, on the class-tinted pass. ───────
+// ── Step 7 — Results. What the visit paid, on the pass (Diamond List blue,
+//    or the house pink). ─────────────────────────────────────────────────────
 export function StepResults({
   passClassName,
   classLabel,
@@ -557,7 +558,8 @@ export function StepResults({
   capApplied,
 }: {
   passClassName: string;
-  classLabel: string;
+  /** "Diamond List" when the guest is on it; null prints no chip. */
+  classLabel: string | null;
   placeName: string;
   cancelled: boolean;
   revealed: boolean;
@@ -578,9 +580,11 @@ export function StepResults({
           <p className="type-meta font-bold tracking-[0.14em] text-white/75 uppercase">
             Mesita Pass
           </p>
-          <span className="type-meta rounded-full bg-white/22 px-2 py-0.5 font-bold tracking-widest uppercase">
-            {classLabel}
-          </span>
+          {classLabel ? (
+            <span className="type-meta rounded-full bg-white/22 px-2 py-0.5 font-bold tracking-widest uppercase">
+              {classLabel}
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-col items-center gap-1.5 py-5 text-center">
           {revealed ? (
@@ -682,6 +686,7 @@ export function LaneChip({
   on = false,
   faded = false,
   done = false,
+  mine = false,
   glyph,
   onClick,
 }: {
@@ -692,6 +697,8 @@ export function LaneChip({
   on?: boolean;
   faded?: boolean;
   done?: boolean;
+  /** The guest's own identity row (Base or Diamond List) — the You marker. */
+  mine?: boolean;
   glyph?: React.ReactNode;
   onClick?: () => void;
 }) {
@@ -703,6 +710,11 @@ export function LaneChip({
       <span className="min-w-0">
         <span className="text-foreground type-meta flex items-center gap-1 leading-tight font-bold">
           <span className="truncate">{label}</span>
+          {mine ? (
+            <span className="bg-primary text-primary-foreground type-meta shrink-0 rounded-full px-1 py-0.5 leading-none font-extrabold tracking-widest uppercase">
+              You
+            </span>
+          ) : null}
           {done ? (
             <Check
               className="size-2.5 shrink-0 text-muted-foreground"

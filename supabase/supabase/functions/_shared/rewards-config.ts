@@ -11,7 +11,11 @@
 // ticket carries a remote context yet — so a remote bill cannot be priced and
 // nothing here looks at those rates.
 //
-// IDENTITY: v12 prices ONE axis, class (bronze/silver/gold/diamond). The plan
+// IDENTITY: v12 prices ONE axis, class (bronze/silver/gold/diamond). Since
+// MESITA-2044 a guest only ever holds two of them — `bronze` (the Base) or
+// `diamond` (on the Diamond List, invitation-only); nothing can grant silver
+// or gold any more, so their grid cells are priced but unreachable. Rate math
+// is MESITA-2038's and is untouched here. The plan
 // axis died with MESITA-1705 (Pato, 2026-09-08) — Premium is still sold, it
 // just no longer moves a rate. identityForClassKey still maps leftover legacy
 // class_key values on the way in, and `premium` among them resolves to bronze,

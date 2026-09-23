@@ -14,7 +14,6 @@
 // 1000 / 2000 / 3000 tells a reviewer nothing about how the column handles a
 // wide value, and a rating of exactly 4.5 everywhere hides the half-star.
 import type {
-  MockClass,
   MockCreditBalance,
   MockCreditCampaign,
   MockCreditPurchase,
@@ -508,27 +507,17 @@ export const CREDIT_BALANCES: MockCreditBalance[] = build(ALL_IDS, 23, (placeId,
   lastMoveAt: daysAgo(i),
 }));
 
-/** A PYRAMID, not a flat draw. Most guests are Bronze, Silver is earned on
- *  Instagram, Gold is bought, and Diamond is invited — a column where all four
- *  are equally common would say the ladder means nothing. */
-function classFor(r: number): MockClass {
-  if (r > 0.94) return "Diamond";
-  if (r > 0.78) return "Gold";
-  if (r > 0.55) return "Silver";
-  return "Bronze";
+/** THE DIAMOND LIST IS RARE, not a coin flip (MESITA-2044). It is
+ *  invitation-only, so about one guest in seventeen is on it — a column where
+ *  half the room is on the list would say the list means nothing. */
+function onDiamondList(r: number): boolean {
+  return r > 0.94;
 }
 
-/** Plan FOLLOWS class, because in the real product it cannot contradict it.
- *
- *  Paying is what gets you Gold, so a Gold guest is on Premium and Bronze and
- *  Silver guests are not — a Silver who paid would rank up and stop being
- *  Silver. Diamond is the only free variable: it is invite-only and outranks
- *  Gold, so a Diamond guest may or may not also be paying, and Class alone
- *  cannot tell you which. Roll only that case. */
-function planFor(cls: MockClass, r: number): MockPlan {
-  if (cls === "Gold") return "Premium";
-  if (cls === "Diamond") return r > 0.5 ? "Premium" : "Free";
-  return "Free";
+/** Plan is ITS OWN draw. Paying never puts a guest on the Diamond List and
+ *  the list never implies a subscription, so neither is read off the other. */
+function planFor(r: number): MockPlan {
+  return r > 0.8 ? "Premium" : "Free";
 }
 
 /** "Ana Robles" -> "ana.robles". Accents out, because a handle cannot carry
@@ -546,7 +535,7 @@ function handleFor(name: string): string {
 
 export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) => {
   const guest = GUESTS[i % GUESTS.length];
-  const cls = classFor(rnd());
+  const diamondList = onDiamondList(rnd());
   const name = `${guest.name}${i >= GUESTS.length ? " Jr." : ""}`;
   const visits = 1 + Math.floor(rnd() * 19);
   const spendCents = 22_000 + Math.floor(rnd() * 480_000);
@@ -570,13 +559,12 @@ export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) =>
     placeId,
     name,
     age: 19 + Math.floor(rnd() * 49),
-    class: cls,
+    diamondList,
     sex: guest.sex,
-    plan: planFor(cls, rnd()),
-    // A Silver ALWAYS has a handle — Silver is the class Instagram earns, so a
-    // Silver with an empty cell is a contradiction on screen. Everyone else is
-    // a coin the reviewer can watch land both ways.
-    instagram: cls === "Silver" || rnd() > 0.55 ? handleFor(name) : null,
+    plan: planFor(rnd()),
+    // A coin the reviewer can watch land both ways. Instagram is its own
+    // fact: a handle puts nobody on the Diamond List.
+    instagram: rnd() > 0.55 ? handleFor(name) : null,
     visits,
     spendCents,
     phone: `+52 81 5555 ${String(1200 + Math.floor(rnd() * 8000)).padStart(4, "0")}`,

@@ -10,7 +10,6 @@ import { isPromoting, placeOffersMesitaRewards } from "@/lib/promo-rates";
 
 import { Box, BoxLabel } from "./box";
 import {
-  BaseRow,
   BonusList,
   ClassLadder,
   RateSheetSkeleton,
@@ -30,10 +29,10 @@ import {
 // steps at the moment the guest is furthest from using them.
 //
 //   hero    — "Up to N%", the total, and the cap. Still no reason (MESITA-860).
-//   classes — EVERY class's standing rate here, the guest's marked. Reverses
-//             MESITA-861, which showed the guest only their own row: a rate
-//             sheet that hides the rungs above you can't say what a class is
-//             worth, and the classes are the product.
+//   rate    — Base, then the Diamond List's adder, the guest's own row
+//             marked (MESITA-2044: two rows, no ladder). Reverses MESITA-861,
+//             which showed the guest only their own row: a sheet that hides
+//             the list's adder can't say what the list is worth.
 //   bonuses — the actions, priced, with the ones you can't do today muted.
 //   total   — the number that lands on the bill, and the cap it applies to.
 //
@@ -124,16 +123,9 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           </p>
         </div>
 
-        {quote?.breakdown ? (
-          <div className="flex flex-col gap-3">
-            <BoxLabel>Base</BoxLabel>
-            <BaseRow quote={quote} />
-          </div>
-        ) : null}
-
-        {/* Every class rung here, the guest's own marked. */}
+        {/* Base and the Diamond List, the guest's own row marked. */}
         <div className="flex flex-col gap-3">
-          <BoxLabel>Rate by class</BoxLabel>
+          <BoxLabel>Your rate</BoxLabel>
           {quote ? (
             <ClassLadder quote={quote} classKey={classKey} />
           ) : (

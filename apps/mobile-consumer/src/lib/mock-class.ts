@@ -126,11 +126,10 @@ function applyMock(
   base: ConsumerClassState,
 ): ConsumerClassState {
   // `key` and `origin` are STORAGE, and the demo still has to seed them: the
-  // ticket screen, the promo chip and place detail read a rung because the
-  // rewards engine really applies one. Diamond maps to `aura`, the invitation
-  // class; everything else previews on the floor, which is what an account
-  // with no invitation actually holds. Instagram no longer lifts the rung —
-  // that was the ladder's doing.
+  // ticket screen, the promo chip and place detail read the key because the
+  // rewards engine really prices Base vs Diamond List. On the list maps to
+  // `aura`; everything else previews as `standard`, which is what an account
+  // with no invitation actually holds. Instagram lifts nothing.
   const key: ConsumerClassState['key'] = mock.diamond ? 'aura' : 'standard';
   const origin: ConsumerClassState['origin'] = mock.diamond
     ? 'invitation'
@@ -158,10 +157,11 @@ function applyMock(
  *  an account comes from here; `useEffectiveClass` below is the storage view
  *  that the rewards surfaces still need.
  *
- *  DIAMOND IS THE CLASS KEY, NOT THE ORIGIN. The admin console's grant writes
- *  the class and leaves origin alone, so an `origin === 'invitation'` test
- *  would tell a hand-granted Diamond they are not one. `aura` is the stored
- *  key; `diamond` is accepted too, for rows written after the metals landed.
+ *  THE DIAMOND LIST IS THE CLASS KEY, NOT THE ORIGIN. The admin console's
+ *  grant writes the key and leaves origin alone, so an `origin ===
+ *  'invitation'` test would tell a hand-granted guest they are not on the
+ *  list. The auth provider folds both the metal `diamond` and the legacy
+ *  `aura` onto `aura` (`legacyKeyForStoredClass`), so `aura` is the one test.
  *  (The granting function is named in Docs › Passport §C, never here —
  *  `ef-caller-acl.test.ts` string-scans this package for admin-actor EFs.)
  *

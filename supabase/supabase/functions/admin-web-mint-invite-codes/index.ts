@@ -7,9 +7,12 @@
 // Diamond." So the unit of work is a batch with a label, not a single code —
 // the label is what later answers "the agency handed out 37 of the 50".
 //
-// classKey is a live `classes.key` (bronze/silver/gold/diamond). The FK
-// refuses a PIN for a class nothing can grant, so a bad batch fails at MINT
-// time rather than silently failing for 50 people at redemption.
+// classKey must be `diamond` — a PIN puts its holder on the Diamond List
+// (MESITA-2044: "you are in the list or you don't, not in between"), so the
+// retired `silver`/`gold` rungs are a 400 at MINT time rather than 50 PINs
+// that would each recreate an in-between (_shared/diamond-list.ts). The FK to
+// classes still backs it: a batch for a missing row fails before anyone is
+// handed a PIN.
 //
 // Codes are 10 digits from crypto.getRandomValues, not Math.random. A PIN is a
 // bearer credential; a predictable generator would make the whole batch
@@ -17,7 +20,7 @@
 // rather than being pre-checked, so two concurrent mints cannot interleave
 // into a duplicate.
 //
-// Body: { classKey: string, count: number, batchLabel?: string,
+// Body: { classKey: "diamond", count: number, batchLabel?: string,
 //         note?: string, expiresAt?: string | null }
 // Response: { ok: true, batchLabel, classKey, codes: string[] }
 //
@@ -36,6 +39,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { parseListGrantKey } from "../_shared/diamond-list.ts";
 
 type Body = {
   classKey?: string;
@@ -77,8 +81,10 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const classKey = String(body.classKey ?? "").trim();
-  if (!classKey) return json({ ok: false, error: "classKey is required" }, 400);
+  // No revoke here: a PIN only ever puts someone ON the list.
+  const keyRes = parseListGrantKey(body.classKey, { allowRevoke: false });
+  if (!keyRes.ok) return json({ ok: false, error: keyRes.error }, 400);
+  const classKey = keyRes.classKey as string;
 
   const count = Math.trunc(Number(body.count));
   if (!Number.isFinite(count) || count < 1 || count > MAX_BATCH) {
@@ -100,7 +106,7 @@ Deno.serve(async (req) => {
     expiresAt = when.toISOString();
   }
 
-  // Fail the WHOLE batch on an ungrantable class rather than minting PINs that
+  // Fail the WHOLE batch if the row is missing rather than minting PINs that
   // cannot be redeemed. The FK would catch it anyway; this just says why.
   const known = await admin
     .from("classes")
@@ -112,8 +118,8 @@ Deno.serve(async (req) => {
   }
   if (!known.data) {
     return json(
-      { ok: false, error: `No class '${classKey}'. Nothing can grant it.` },
-      400,
+      { ok: false, error: `classes has no '${classKey}' row. Nothing can grant it.` },
+      500,
     );
   }
 

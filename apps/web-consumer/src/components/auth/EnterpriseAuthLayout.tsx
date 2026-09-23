@@ -79,7 +79,7 @@ function LandingPane() {
           <ValueProp
             Icon={MapPin}
             title="Discover real places"
-            blurb="Swipe and explore places curated for your tier, your city, your vibe."
+            blurb="Swipe and explore places curated for you, your city, your vibe."
           />
           <ValueProp
             Icon={BadgePercent}

@@ -29,7 +29,12 @@ import {
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { diamondSummary, instagramSummary } from "@/lib/consumer-identity";
+import {
+  DIAMOND_LIST_PIN_SUCCESS,
+  diamondChipLabel,
+  diamondSummary,
+  instagramSummary,
+} from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
@@ -38,7 +43,7 @@ import { IdentityBar } from "./IdentityBar";
 //
 //   header         identity + the two facts; the bar IS a door (MESITA-1652)
 //   full           Profile (carries the member number)
-//   2              Instagram · Diamond
+//   2              Instagram · Diamond List
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
@@ -92,6 +97,7 @@ export function ProfileClient() {
       };
   const igSummary = instagramSummary(igFacts);
   const diamondLabel = diamondSummary(facts);
+  const diamondChip = diamondChipLabel(facts);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +131,7 @@ export function ProfileClient() {
     // The PIN grants one thing now, so the toast names it rather than echoing
     // a class label back off the query string (MESITA-2040).
     if (params.get("invite")) {
-      toast.success("You're Diamond.");
+      toast.success(DIAMOND_LIST_PIN_SUCCESS);
     }
   }, []);
 
@@ -138,6 +144,7 @@ export function ProfileClient() {
         profile={profile}
         loading={loading}
         diamondSummary={diamondLabel}
+        diamondChip={diamondChip}
         instagramSummary={igSummary}
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
@@ -180,7 +187,7 @@ export function ProfileClient() {
             />
             <DestTile
               Icon={Gem}
-              title="Diamond"
+              title="Diamond List"
               summary={loading ? "…" : diamondLabel}
               href={CONSUMER_ROUTES.mePages.diamond}
             />

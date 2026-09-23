@@ -127,6 +127,10 @@ jobs:
 
       - run: pnpm lint
 
+      # node:test over src/**/*.test.mts — the Diamond List copy guard
+      # (MESITA-2044) and the twin strings it pins against web-consumer.
+      - run: pnpm test
+
       # Full Metro + NativeWind compile — catches resolver/config breaks
       # that tsc and eslint can't see (e.g. css-interop hoisting).
       - run: npx expo export --platform web

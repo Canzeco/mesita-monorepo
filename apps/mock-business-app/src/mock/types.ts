@@ -636,27 +636,15 @@ export type MockMember = {
   state: "active" | "invited";
 };
 
-/** THE GUEST'S MESITA CLASS — Mesita's own ladder, not a census bracket.
+/** THE GUEST'S SUBSCRIPTION — a separate fact from the Diamond List.
  *
- *  This column shipped once as an AMAI socioeconomic level (A/B, C+, C…) and
- *  that was simply wrong: "class" already means something exact in this
- *  product. The consumer ladder is Bronze < Silver < Gold < Diamond
- *  (`classes.rank` in the DB still carries the legacy keys standard <
- *  influencer < premium < aura), and a business reading "Class" on a guest
- *  will read the ladder its own guests can see on their phones.
- *
- *  Stored as the GUEST-FACING label, because that is the word both sides of
- *  the product use. The legacy key belongs in the DB, not on a mock screen. */
-export type MockClass = "Bronze" | "Silver" | "Gold" | "Diamond";
-
-/** THE GUEST'S SUBSCRIPTION, which is not their class — the consumer app says
- *  so in as many words on its own Plan screen: "A subscription, not a class."
- *
- *  The two are coupled but not the same, and the coupling is why the column
- *  earns its place: paying gets you Gold, so Bronze and Silver are always
- *  Free and Gold is always Premium — but Diamond is invite-only and outranks
- *  Gold, so a Diamond guest may or may not be paying Mesita, and Class alone
- *  cannot tell you which. That case is the whole reason to print Plan. */
+ *  THERE IS NO LADDER (MESITA-2044). Pato: "either you are diamond or you are
+ *  not. its more like a List." A guest is on the Diamond List or not, and the
+ *  only way on is an invitation; paying never puts anyone on it, so the plan
+ *  and the list are independent and neither can be read off the other. The
+ *  metals this row once carried (Bronze < Silver < Gold < Diamond) are gone
+ *  from every screen; a stored `bronze`/`silver`/`gold` key means "not on
+ *  the list". */
 export type MockPlan = "Free" | "Premium";
 
 export type MockSex = "f" | "m";
@@ -668,7 +656,7 @@ export const SEX_LABEL: Record<MockSex, string> = {
 
 /** A guest of ONE place.
  *
- *  AGE, CLASS, SEX AND PLAN ARE NOT THINGS THE PLACE COLLECTED. They come off
+ *  AGE, THE DIAMOND LIST, SEX AND PLAN ARE NOT THINGS THE PLACE COLLECTED. They come off
  *  the guest's own Mesita profile, which is why every guest has them rather
  *  than only the ones who filled in a card at the till — and why this console
  *  shows them and never offers to edit them.
@@ -689,12 +677,13 @@ export type MockCustomer = {
   name: string;
   /** Years, from the birthday on the guest's profile. */
   age: number;
-  class: MockClass;
+  /** On the Diamond List or not — nothing in between (MESITA-2044). */
+  diamondList: boolean;
   sex: MockSex;
   plan: MockPlan;
   /** The handle WITHOUT the @, or null when the guest never connected one.
-   *  Locked behind the same purchase as the phone — see `contactUnlocked`. A
-   *  Silver guest always has one: Silver IS the class Instagram earns. */
+   *  Locked behind the same purchase as the phone — see `contactUnlocked`.
+   *  Instagram is its own fact: it puts nobody on the Diamond List. */
   instagram: string | null;
   visits: number;
   /** Centavos, across every visit. Integer money, as everywhere else here. */

@@ -580,7 +580,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
-      "Diamond",
+      "Diamond List",
       "Wallet",
       "Plan",
       "Notifications",

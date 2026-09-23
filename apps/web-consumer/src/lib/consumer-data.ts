@@ -1,21 +1,17 @@
-import {
-  Award,
-  CreditCard,
-  Gem,
-  Medal,
-  Pyramid,
-  Trophy,
-  type LucideIcon,
-} from "lucide-react";
+import { CreditCard, Gem, Store, type LucideIcon } from "lucide-react";
 
-// ── Classes v2 (MESITA-1039; surfaced here by MESITA-1079) ─────────────────
+import { DIAMOND_LIST } from "@/lib/consumer-identity";
+
+// ── The Diamond List (MESITA-2044; was Classes v2, MESITA-1039/-1079) ──────
 //
-// TWO INDEPENDENT AXES, and the entire point of v2 is that they never merge:
+// TWO INDEPENDENT AXES, and the entire point is that they never merge:
 //
-//   class — WHO YOU ARE. Bronze → Silver → Gold → Diamond, ascending, and
-//           never purchasable. Two doors up: Instagram reach (follower bands,
-//           operator-configured) or a direct invitation. Class is public —
-//           it shows on the Passport.
+//   list  — WHO YOU ARE. On the Diamond List or not, nothing in between
+//           (Pato, MESITA-2044). Invitation is the only way on; followers
+//           grant nothing. Stored as `consumers.class_key` = `bronze` (not on
+//           the list) or `diamond` (on it) — STORAGE KEYS, never read aloud.
+//           Silver and Gold are gone: a stray `silver`/`gold` row resolves to
+//           `bronze` below, i.e. "not on the list".
 //   plan  — WHAT YOU PAY. Free or Premium (MX$50/mo). Private from the
 //           BUSINESS side: a place never learns it. Private from the guest's
 //           own Passport too (MESITA-1619) — the identity card prints what is
@@ -28,7 +24,7 @@ import {
 // the paid subscription INSIDE the class ladder — "Premium" ranked above
 // "Influencer" as if money were reach. That merge is what this replaces, and
 // it is why `plan` is a separate type rather than a fifth class.
-export const CLASS_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
+export const CLASS_ORDER = ["bronze", "diamond"] as const;
 export type ClassKey = (typeof CLASS_ORDER)[number];
 
 export const PLAN_ORDER = ["free", "premium"] as const;
@@ -58,7 +54,8 @@ export type LegacyClassKey = (typeof LEGACY_CLASS_KEYS)[number];
 
 export const LEGACY_CLASS_IDENTITY: Record<LegacyClassKey, ClassIdentity> = {
   standard: { cls: "bronze", plan: "free" },
-  influencer: { cls: "silver", plan: "free" },
+  // Was Silver, which no longer exists: reach grants nothing (MESITA-2044).
+  influencer: { cls: "bronze", plan: "free" },
   premium: { cls: "bronze", plan: "premium" },
   aura: { cls: "diamond", plan: "free" },
 };
@@ -66,8 +63,9 @@ export const LEGACY_CLASS_IDENTITY: Record<LegacyClassKey, ClassIdentity> = {
 /**
  * Resolve a stored `consumers.class_key` onto the two v2 axes.
  *
- * Metals pass through. Leftover legacy keys still map. `plan` from
- * `consumers.plan` wins when provided.
+ * `bronze`/`diamond` pass through. Leftover legacy keys still map. Anything
+ * else — including a stray `silver`/`gold` row — is "not on the list".
+ * `plan` from `consumers.plan` wins when provided.
  */
 export function identityForClassKey(
   key: string | null | undefined,
@@ -84,7 +82,7 @@ export function identityForClassKey(
   return { cls: "bronze", plan: planArg ?? "free" };
 }
 
-// Elevated = off the floor on EITHER axis — a class above the floor, or the
+// Elevated = off the floor on EITHER axis — on the Diamond List, or the
 // Premium plan. Both unlock the same perk set (better recommendations, 10
 // reservations a month), which is exactly why one predicate spans two axes
 // instead of each surface re-deriving the union.
@@ -162,73 +160,29 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
+// The two identity rows every rate surface prints (MESITA-2044). `label` is
+// what a guest reads — "Base" and "Diamond List", never a metal.
+//
+// NO `priceMxn` and NO `perk`, on purpose: the list is never purchasable and
+// it moves ONE thing, the discount rate (decision: Pato, MESITA-1123).
 export const CLASSES: {
   id: ClassKey;
   label: string;
-  /** The rung's unlock line. On reach rungs it names BOTH doors — followers
-   *  and Invitation — because an invitation can grant ANY class outright
-   *  (MESITA-1126), so every bar the ladder quotes has a manual twin. Keeps
-   *  the rows symmetric with the two buttons under the ladder — "Join with
-   *  Instagram" / "Join with Invitation" (decision: Pato, 2026-08-22). */
+  /** How a guest lands on this row. */
   req: string;
-  /** Follower threshold via Instagram verification. 0 = not a reach door. */
-  followerThreshold: number;
   reward: string;
 }[] = [
-  // The class IS the brand — rendered as "Mesita Bronze" / "Mesita Diamond" in
-  // marketing and Passport surfaces. The compact `label` here is used inside
-  // tight UI (class badges, table rows) where the "Mesita" prefix is noise.
-  //
-  // NO `priceMxn` ON A CLASS, on purpose: under v2 a class is never
-  // purchasable. Money lives on PLANS below, and nowhere else.
-  //
-  // AND NO `perk` (decision: Pato, MESITA-1123). A class moves ONE thing: the
-  // discount rate, which is what `reward` names. It does not grant better
-  // recommendations, reservation quota, or anything else — those ride the PLAN.
-  // The old `perk` field claimed "Better recs · 10 reservations" on three rows
-  // and was read by nothing, so it was wrong AND dead. Do not re-add a second
-  // benefit field here; if a class ever confers more, that is a product
-  // decision, not a data-shape one.
   {
     id: "bronze",
-    label: "Bronze",
-    req: "Every account starts here",
-    followerThreshold: 0,
+    label: "Base",
+    req: "Every guest, every visit",
     reward: "Base discount",
   },
   {
-    id: "silver",
-    label: "Silver",
-    req: "1,000+ followers · Invitation",
-    // Mirrors classes.follower_threshold in the DB — the EF grants off that
-    // row (generic: highest-ranked row the count clears), so this constant is
-    // DISPLAY-ONLY and must track it. Changing it here without the migration
-    // makes the ladder quote a bar the grant engine doesn't honour.
-    // Story Bonus is separate (MESITA-909): any connected Instagram unlocks
-    // it, not just a reach class.
-    followerThreshold: 1_000,
-    reward: "Higher discount",
-  },
-  {
-    id: "gold",
-    label: "Gold",
-    // STILL UNGRANTABLE (MESITA-1076). The bar is real — Pato set it at 5,000
-    // — but `classes` has no gold row: `rank` is UNIQUE and rank 2 is held by
-    // the legacy `premium` row, so seating Gold between Silver and Diamond
-    // means re-ranking the live table and moving every consumer's effective
-    // class. Until that migration lands the ladder shows this bar and nothing
-    // clears it; a 5,000-follower account stays Silver.
-    req: "5,000+ followers · Invitation",
-    followerThreshold: 5_000,
-    reward: "Higher discount",
-  },
-  {
     id: "diamond",
-    label: "Diamond",
-    req: "20,000+ followers · Invitation",
-    followerThreshold: 20_000,
-    // Highest flat class rate — the house pays for presence, no posting asked.
-    reward: "Highest discount",
+    label: DIAMOND_LIST,
+    req: "Invitation only",
+    reward: "More on top of the base",
   },
 ];
 
@@ -250,31 +204,12 @@ export const PREMIUM_PLAN_PRICE_MXN = PLANS.find(
   (p) => p.id === "premium",
 )!.priceMxn;
 
-// The floor — the rung an account is on before it clears anything, found by
-// SHAPE (the one rung with no follower bar) rather than by naming a metal.
-// Bronze holds it today. Symmetric with REACH_ENTRY_CLASS below: one is the
-// rung you start on, the other the first you can climb to, and neither is
-// spelled out anywhere else. `find` takes the first match in ladder order, so
-// even a malformed ladder with two barless rungs resolves to the lower one.
-export const CLASS_FLOOR =
-  CLASSES.find((c) => c.followerThreshold === 0) ?? CLASSES[0];
-
-// The reach entry rung — the lowest class a follower count can open, found by
-// SHAPE (cheapest non-zero bar on the ladder) rather than by naming a metal.
-// Silver holds it today; if the ladder is re-ranked, re-priced, or renamed,
-// this follows without an edit, and copy that quotes the bar keeps quoting the
-// rung that bar actually grants. Its threshold mirrors
-// classes.follower_threshold in the DB — the gate
-// consumer-web-claim-instagram grants off. Story Bonus is gated on a connected
-// handle (MESITA-909), not this threshold.
-export const REACH_ENTRY_CLASS = CLASSES.filter(
-  (c) => c.followerThreshold > 0,
-).reduce((lowest, c) =>
-  c.followerThreshold < lowest.followerThreshold ? c : lowest,
-);
-
-/** Every surface quoting or applying the bar derives from this one constant. */
-export const REACH_ENTRY_FOLLOWERS = REACH_ENTRY_CLASS.followerThreshold;
+// The floor — where every account is before an invitation. `REACH_ENTRY_CLASS`
+// and `REACH_ENTRY_FOLLOWERS` lived beside it and are gone (MESITA-2044):
+// followers open nothing on this axis any more, so there is no entry rung to
+// derive. The Instagram bar is `INSTAGRAM_REACH_FOLLOWERS` in
+// consumer-identity.ts.
+export const CLASS_FLOOR = CLASSES[0];
 
 // `passportDoorCaptions` LIVED HERE AND IS GONE (MESITA-1819 -> MESITA-2040).
 // It produced the two captions on Me › Passport's door tiles, and its whole
@@ -287,24 +222,16 @@ export const REACH_ENTRY_FOLLOWERS = REACH_ENTRY_CLASS.followerThreshold;
 // that takes both facts at once, because that is the shape that lets one
 // caption talk about the other fact.
 
-// Canonical class icon set: one mark + one color per class, ascending as a
-// single readable progression — Medal → Award → Trophy → Gem. The v1 set
-// (Smile / Megaphone / CreditCard / Crown) named the old classes rather than a
-// ladder, and two of its marks were about the DOOR (a megaphone for reach, a
-// card for money) rather than the rung. CreditCard survives on PLAN_ICON,
-// which is the axis money actually belongs to.
+// One mark per identity row: the Base is the place's standing offer (Store),
+// the Diamond List is the gem. The Medal → Award → Trophy → Gem progression
+// drew a ladder, and there is no ladder (MESITA-2044).
 export const CLASS_ICONS: Record<ClassKey, LucideIcon> = {
-  bronze: Medal,
-  silver: Award,
-  gold: Trophy,
+  bronze: Store,
   diamond: Gem,
 };
 
 /** The plan axis has one mark — Free is the absence of it, not a badge. */
 export const PREMIUM_PLAN_ICON: LucideIcon = CreditCard;
-
-/** Sheet / section mark for the Classes surface (not a membership class). */
-export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 
 // Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with
@@ -316,15 +243,12 @@ export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 // ("white-on-silver fails contrast") never asked whether any OTHER rung was
 // also a light fill. Two were: white measured 1.53:1 on gold and 1.44:1 on
 // diamond (MESITA-1142). Bronze, the floor, is the only metal dark enough to
-// carry white.
+// carry white. Silver and Gold left with the ladder (MESITA-2044); their CSS
+// tokens are orphaned, not load-bearing.
 export function classBadgeClass(classKey: ClassKey): string {
   switch (classKey) {
     case "bronze":
       return "bg-tier-bronze text-white";
-    case "silver":
-      return "bg-tier-silver text-foreground";
-    case "gold":
-      return "bg-tier-gold text-foreground";
     case "diamond":
       return "bg-tier-diamond text-foreground";
   }
@@ -338,10 +262,6 @@ export function classFillClass(classKey: ClassKey): string {
   switch (classKey) {
     case "bronze":
       return "bg-tier-bronze";
-    case "silver":
-      return "bg-tier-silver";
-    case "gold":
-      return "bg-tier-gold";
     case "diamond":
       return "bg-tier-diamond";
   }
@@ -356,29 +276,13 @@ export function classWashClass(classKey: ClassKey): string {
   switch (classKey) {
     case "bronze":
       return "wash-bronze";
-    case "silver":
-      return "wash-silver";
-    case "gold":
-      return "wash-gold";
     case "diamond":
       return "wash-diamond";
   }
 }
 
-// Compact Title-Case label per class. Used by the swipe overlay, the
-// promo chip and the place detail rewards box — anywhere we render "Mesita Standard" / "Mesita Premium" /
-// "Mesita Influencer" / "Mesita Aura" alongside the lower-case class id.
-//
-// Accepts a strictly-typed ClassKey or a plain string so callers can hand us
-// either (e.g. a server-sourced class_key that flows as string) without an
-// extra cast; unknown values fall back to the "Mesita" brand word.
-const CLASS_LABELS: Record<ClassKey, string> = {
-  bronze: "Bronze",
-  silver: "Silver",
-  gold: "Gold",
-  diamond: "Diamond",
-};
-
-export function classProperLabel(classKey: ClassKey | string): string {
-  return CLASS_LABELS[classKey as ClassKey] ?? "Mesita";
-}
+// `classProperLabel` and its four-metal CLASS_LABELS map LIVED HERE and are
+// gone (MESITA-2044). They printed "Bronze"/"Silver"/"Gold"/"Diamond" on the
+// ticket pass, the rate sheet and the social cards. A surface that names the
+// guest's standing now prints `DIAMOND_LIST` (consumer-identity.ts) when they
+// are on the list and nothing when they are not.

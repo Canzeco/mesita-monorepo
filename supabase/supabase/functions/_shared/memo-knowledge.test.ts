@@ -57,7 +57,10 @@ Deno.test("knowledge: an internal reader does reach internal rows", () => {
 
 Deno.test("knowledge: the four asks from MESITA-1201 all match a guest row", () => {
   const asks: [string, string][] = [
-    ["¿Qué significa Gold Passport?", "class"],
+    // "Gold" and "Passport" are both gone (MESITA-2044, MESITA-2043); the ask
+    // must still land on the rows that SAY so, not fall through to the web.
+    ["¿Qué significa Gold Passport?", "diamond-list"],
+    ["¿Qué significa Gold Passport?", "member-number"],
     ["¿cómo funciona el descuento?", "discount"],
     ["¿qué es un ticket?", "ticket"],
     ["¿qué gano siendo Premium?", "plan"],
@@ -66,7 +69,7 @@ Deno.test("knowledge: the four asks from MESITA-1201 all match a guest row", () 
     const hits = lookupMesitaKnowledge(ask, "guest");
     assert(hits.length > 0, `no knowledge for "${ask}"`);
     // Membership, not first place: "Gold Passport" legitimately pulls both the
-    // class row and the Passport row, and the model is better off with both.
+    // Diamond List row and the member-number row, and the model needs both.
     assertEquals(
       hits.some((h) => h.id === expectedId),
       true,
@@ -137,34 +140,82 @@ Deno.test("knowledge: a lookup returns at most three rows", () => {
 // tells you nothing about truth; these fail exactly when the claim changes,
 // which is exactly when a human should look.
 
-Deno.test("knowledge: the passport row lists no plan among what it shows", () => {
-  const passport = MESITA_KNOWLEDGE.find((e) => e.id === "passport")!;
-  // Scoped to a SHOWS-claim on purpose. A bare `/plan/i` ban would fire on
-  // the sentence that carries the decision — "The plan is deliberately absent
-  // from it" — and the cheapest way to green it would be deleting the words
-  // that make the row correct.
-  assert(
-    !/\b(shows?|carries|prints?|tiles?)\b[^.]*\bplan\b/i.test(passport.fact),
-    `the passport row still lists the plan among what it shows: ${passport.fact}`,
-  );
+Deno.test("knowledge: no guest row describes a Passport as a live surface", () => {
+  // MESITA-2043 deleted the Passport. Only the member-number row may name it,
+  // and only to say it is gone — anything else tells the model to send a
+  // guest to a screen that does not exist.
+  for (const row of MESITA_KNOWLEDGE.filter((e) => e.audience === "guest")) {
+    if (!/passport/i.test(row.fact)) continue;
+    assertEquals(row.id, "member-number", `${row.id} still mentions the Passport`);
+    assert(/no Passport/.test(row.fact), row.fact);
+  }
+  const member = MESITA_KNOWLEDGE.find((e) => e.id === "member-number")!;
+  assert(/Me\s*›\s*Profile/.test(member.fact), member.fact);
 });
 
-Deno.test("knowledge: passport and plan cannot contradict inside one block", () => {
+Deno.test("knowledge: passport and plan still co-return without contradiction", () => {
   const block = knowledgeBlock("does my plan show on my passport?", "guest");
-  const passport = MESITA_KNOWLEDGE.find((e) => e.id === "passport")!;
+  const member = MESITA_KNOWLEDGE.find((e) => e.id === "member-number")!;
   const plan = MESITA_KNOWLEDGE.find((e) => e.id === "plan")!;
-  // Both really are grounded together. If that ever stops being true this
-  // test proves nothing, so it is asserted rather than assumed.
-  assert(block.includes(passport.fact), "the passport row no longer co-returns");
+  assert(block.includes(member.fact), "the member-number row no longer co-returns");
   assert(block.includes(plan.fact), "the plan row no longer co-returns");
-  assert(plan.fact.includes("never prints on the Passport"));
+  assertEquals(/passport/i.test(plan.fact), false, plan.fact);
+});
+
+// ── The Diamond List is binary (MESITA-2044) ────────────────────────────
+//
+// Pato: "there are no classes, either you are diamond or you are not." These
+// FAIL if a guest row ever again grounds the model in a class, a metal, a
+// ladder, VIP, or "Diamond" as a bare status noun ("You're Diamond").
+
+const BANNED_IN_GUEST_FACTS: [RegExp, string][] = [
+  [/\bVIP\b/i, "VIP"],
+  [/\bclass(es)?\b/i, "class"],
+  [/\btiers?\b/i, "tier"],
+  [/\branks?\b/i, "rank"],
+  [/\brungs?\b/i, "rung"],
+  [/\blevels?\b/i, "level"],
+  [/\bBronze\b/i, "Bronze"],
+  [/\bSilver\b/i, "Silver"],
+  [/\bGold\b/i, "Gold"],
+  [/\bclimb/i, "climb"],
+  [/unlock a higher/i, "unlock a higher"],
+  [/\bDiamond\b(?! List)/, "Diamond without List"],
+];
+
+Deno.test("knowledge: guest rows never speak of classes, metals or a ladder", () => {
+  for (const row of MESITA_KNOWLEDGE.filter((e) => e.audience === "guest")) {
+    for (const [re, name] of BANNED_IN_GUEST_FACTS) {
+      assertEquals(re.test(row.fact), false, `${row.id} fact says ${name}: ${row.fact}`);
+      assertEquals(re.test(row.topic), false, `${row.id} topic says ${name}: ${row.topic}`);
+    }
+  }
+});
+
+Deno.test("knowledge: the Diamond List row is binary and invitation-only", () => {
+  const row = MESITA_KNOWLEDGE.find((e) => e.id === "diamond-list")!;
+  assert(/on it or not/.test(row.fact), row.fact);
+  assert(/invitation-only/.test(row.fact), row.fact);
+  const join = MESITA_KNOWLEDGE.find((e) => e.id === "diamond-list-join")!;
+  assert(/invitation-only/.test(join.fact), join.fact);
+  // Instagram must never read as a way on.
+  assert(/grants nothing toward the list/.test(join.fact), join.fact);
+});
+
+Deno.test("knowledge: old ladder words still route to the Diamond List row", () => {
+  for (const ask of ["¿qué significa Gold?", "what is silver", "soy bronce?", "am I VIP"]) {
+    const hits = lookupMesitaKnowledge(ask, "guest");
+    assertEquals(hits.some((h) => h.id === "diamond-list"), true, ask);
+  }
+  const join = lookupMesitaKnowledge("¿cómo uso mi código de invitación?", "guest");
+  assertEquals(join[0].id, "diamond-list-join");
 });
 
 Deno.test("knowledge: the plan row names where Premium is bought", () => {
   // With the Passport tile gone, the concierge is the last surface that can
   // route a guest to checkout, and until MESITA-1619 no row in this file
-  // named a location for it. `class-doors` already set the idiom for the FREE
-  // door ("Me › Class › Join with Invitation").
+  // named a location for it. `diamond-list-join` sets the same idiom for the
+  // invitation ("Me › Diamond List").
   const plan = MESITA_KNOWLEDGE.find((e) => e.id === "plan")!;
   assert(/Me\s*›\s*Plan/.test(plan.fact), plan.fact);
 });

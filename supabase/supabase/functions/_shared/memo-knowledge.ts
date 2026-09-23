@@ -2,8 +2,8 @@
 // questions about Mesita itself.
 //
 // Ask Memo "¿qué significa Gold?" or "¿cómo funciona el descuento?" and there
-// is nothing on the open web to retrieve: Mesita's classes, Passport, plans and
-// tickets are house vocabulary, not published facts. Before this file every
+// is nothing on the open web to retrieve: the Diamond List, plans and tickets
+// are house vocabulary, not published facts. Before this file every
 // such ask fell through to the web tool (agent engine) or straight to Perplexity
 // (legacy engine), which had to decline or invent. Routing an internal question
 // outward was the bug; this is the inward answer.
@@ -30,9 +30,18 @@
 // row. That failure would be silent and unauditable, so it is tested, not
 // trusted.
 //
-// Facts here mirror Notion Docs (🔤 Vocabulary · 🛂 Passport · 🎁 Rewards ·
-// 🪑 Visits). Docs are the knowledge; when one changes, this file changes with
-// it in the same session.
+// Facts here mirror Notion Docs (🔤 Vocabulary · 🎁 Rewards · 🪑 Visits). Docs
+// are the knowledge; when one changes, this file changes with it in the same
+// session.
+//
+// THE DIAMOND LIST (MESITA-2044). Pato, 2026-09-22: "there are no classes,
+// either you are diamond or you are not. its more like a List." Guest rows
+// speak of the Diamond List only — on it or not — and never of a class, a
+// metal, a tier or a ladder; memo-knowledge.test.ts fails the build if one
+// does. The old words stay as MATCH TERMS so a guest who still asks "¿qué
+// significa Gold?" lands on the row that tells the model those are gone. The
+// Passport was deleted in MESITA-2043; its row now says so and points at
+// Profile, where the member number lives.
 
 export type KnowledgeAudience = "guest" | "internal";
 
@@ -70,26 +79,54 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
       "Mesita is where going out pays you back: at every place that is promoting, just by being you, you pay less — applied straight to tonight's bill. The place funds that discount as its own marketing spend; Mesita never charges the guest for a ticket. Using Mesita is free.",
   },
   {
-    id: "passport",
+    id: "member-number",
     audience: "guest",
-    topic: "The Mesita Passport",
-    terms: ["passport", "pasaporte"],
-    fact:
-      "The Passport is the guest's identity card on Mesita. It shows two things and no more: the class, and the Instagram handle. What the Passport prints is what the guest EARNED. The plan is deliberately absent from it — what you pay is private, and you read it under Me › Plan. Class and plan remain two independent axes that never merge: no class is purchasable, and no plan is a metal.",
-  },
-  {
-    id: "class",
-    audience: "guest",
-    topic: "Class (Bronze · Silver · Gold · Diamond)",
-    terms: ["class", "clase", "bronze", "bronce", "silver", "plata", "gold", "oro", "diamond", "diamante"],
-    fact:
-      "Class is who you are on Mesita, in rank order Bronze, Silver, Gold, Diamond. It is earned and public, and it is never purchasable. Bronze is the base every guest starts at and sets the floor rate; the metals above it climb the discount you resolve at a place that is promoting.",
-  },
-  {
-    id: "class-doors",
-    audience: "guest",
-    topic: "How to climb a class",
+    topic: "Your member number (there is no Passport)",
     terms: [
+      "passport",
+      "pasaporte",
+      "member number",
+      "numero de miembro",
+      "numero de socio",
+      "mi numero",
+      "my number",
+    ],
+    fact:
+      "There is no Passport on Mesita any more. Every guest has an 8-digit member number, shown under Me › Profile. It is what to give when you ask to join the Diamond List, and what staff or support can use to find you.",
+  },
+  {
+    id: "diamond-list",
+    audience: "guest",
+    topic: "The Diamond List",
+    terms: [
+      "diamond list",
+      "lista diamante",
+      "diamond",
+      "diamante",
+      "class",
+      "clase",
+      "bronze",
+      "bronce",
+      "silver",
+      "plata",
+      "gold",
+      "oro",
+      "vip",
+      "nivel",
+      "level",
+    ],
+    fact:
+      "The Diamond List is the one guest status on Mesita, and it is binary: a guest is on it or not, with nothing in between and nothing to work up to. It is invitation-only and can never be bought. Every guest gets the base discount at a place that is promoting; guests on the Diamond List get more on top. Older metal names a guest may have seen no longer exist — there is only the base and the Diamond List.",
+  },
+  {
+    id: "diamond-list-join",
+    audience: "guest",
+    topic: "How to join the Diamond List",
+    terms: [
+      "join",
+      "unirme",
+      "como entro",
+      "how do i get",
       "subir de clase",
       "como subo",
       "climb",
@@ -98,10 +135,11 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
       "invitacion",
       "invite code",
       "codigo de invitacion",
+      "invite pin",
       "aura",
     ],
     fact:
-      "There are two doors up the ladder and neither is a checkout. Connect an Instagram handle (reach), or arrive by invitation — either a grant Mesita gives you directly, or a 10-digit invite PIN you redeem under Me › Class › Join with Invitation. Eligibility is not sticky: it is recomputed from the live facts, and losing a door simply falls back to the next-best one you still hold.",
+      "The Diamond List is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one — both live under Me › Diamond List. Neither is a checkout, and Instagram is not a way on: connecting a handle unlocks the Story action and grants nothing toward the list. Being on the list is recomputed from the live facts; if an invitation is withdrawn, the guest is simply back on the base.",
   },
   {
     id: "plan",
@@ -109,7 +147,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "Plan (Free · Premium)",
     terms: ["plan", "premium", "free", "gratis", "suscripcion", "subscription", "membresia"],
     fact:
-      "Plan is what you pay, and it is private. Free gives the whole product — catalog, discovery, reservations, Passport, rewards. Premium is MX$50/month and resolves a better rate than Free at the same class, everywhere you transact. You subscribe and manage it under Me › Plan. It never prints on the Passport and never reaches the floor: the place sees a better percent, never the reason.",
+      "Plan is what you pay, and it is private. Free gives the whole product — catalog, discovery, reservations, rewards. Premium is MX$50/month and buys perks, such as more reservations a month; it never changes the discount and never puts anyone on the Diamond List. You subscribe and manage it under Me › Plan. It never reaches the floor.",
   },
   {
     id: "discount",
@@ -117,7 +155,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "How the discount is computed",
     terms: ["descuento", "discount", "cuanto ahorro", "how much off", "porcentaje", "percent", "reward", "recompensa"],
     fact:
-      "A bill resolves to exactly one percent, server-side. It stacks: your standing rate (lifted by your class, and by Premium) plus a one-time welcome bonus on your first verified ticket at that place plus every sharing action you actually completed — then it is capped and applied to the first pesos of the bill, up to the cap that place sets. Only the final percent ever leaves the server.",
+      "A bill resolves to exactly one percent, server-side. It stacks: your standing rate (the base every guest gets, plus more for guests on the Diamond List) plus a one-time welcome bonus on your first verified ticket at that place plus every sharing action you actually completed — then it is capped and applied to the first pesos of the bill, up to the cap that place sets. Only the final percent ever leaves the server.",
   },
   {
     id: "actions",
@@ -159,7 +197,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "Reservations",
     terms: ["reservacion", "reserva", "reservation", "booking", "mesa"],
     fact:
-      "A reservation ticket holds you a table, and it deliberately carries no reward. A reward comes from showing up, never from booking and never from saving. Free guests get 2 reservations a month; an elevated identity gets 10.",
+      "A reservation ticket holds you a table, and it deliberately carries no reward. A reward comes from showing up, never from booking and never from saving. Guests get 2 reservations a month; guests on the Diamond List or on Premium get 10.",
   },
   {
     id: "check",
@@ -167,7 +205,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "What the staff see",
     terms: ["staff", "mesero", "waiter", "escanear", "scan", "check", "qr"],
     fact:
-      "Staff open your ticket by scanning its QR with any phone camera — no app, no account. They see the bill, the tip, the reward and your proof, plus ONE resolved percent. They never see your class, your plan, or how the percent was reached.",
+      "Staff open your ticket by scanning its QR with any phone camera — no app, no account. They see the bill, the tip, the reward and your proof, plus ONE resolved percent. They never see whether you're on the Diamond List, your plan, or how the percent was reached.",
   },
   {
     id: "partner",
@@ -212,7 +250,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "The legacy class_key bridge",
     terms: ["class_key", "standard", "influencer", "identityforclasskey", "legacy class"],
     fact:
-      "The database stores metals on consumers.class_key (bronze, silver, gold, diamond) and what the guest pays on consumers.plan (free, premium). identityForClassKey still maps leftover legacy keys: standard→bronze·free, influencer→silver·free, premium→bronze·premium, aura→diamond·free. Never treat premium as a class.",
+      "consumers.class_key stores the Diamond List as a key: diamond = on the list, bronze = the base (off it). The silver and gold rows survive in storage since MESITA-2044 but nothing can grant them, and a stray one reads as off the list. What the guest pays is consumers.plan (free, premium). identityForClassKey still maps leftover legacy keys: standard→bronze, influencer→silver, premium→bronze, aura→diamond. Never treat premium as a class.",
   },
   {
     id: "reach-self-declared",
@@ -220,7 +258,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "Instagram reach is self-declared",
     terms: ["self declared", "autodeclarado", "follower count", "seguidores verificados", "demo count"],
     fact:
-      "Nothing about a connected Instagram is verified. The claim EF writes whatever follower count the client sends, and the shipped flow submits a fixed demo count, so connecting a handle grants Silver to any guest holding no higher door, whatever their real following.",
+      "Nothing about a connected Instagram is verified. The claim EF writes whatever follower count the client sends, and the shipped flow submits a fixed demo count. Since MESITA-2044 that count opens no class door at all — the reach door is closed and follower_threshold is null — so a self-declared number can no longer put anyone on the Diamond List.",
   },
 ];
 
@@ -270,7 +308,7 @@ export function lookupMesitaKnowledge(
   }
 
   // More matched terms wins; a longer matched phrase breaks the tie, so
-  // "codigo de invitacion" outranks a bare "class" hit.
+  // "codigo de invitacion" outranks a bare "diamond" hit.
   scored.sort((a, b) => b.hits - a.hits || b.longest - a.longest);
   return scored.slice(0, MAX_HITS).map((s) => s.entry);
 }

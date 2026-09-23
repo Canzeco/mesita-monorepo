@@ -29,7 +29,14 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { apiFetchConsumerMetrics } from '@/lib/api/auth';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
-import { diamondSummary, instagramSummary } from '@/lib/consumer-identity';
+import {
+  DIAMOND_LIST,
+  diamondChipA11y,
+  diamondChipLabel,
+  diamondSummary,
+  identityHeaderA11y,
+  instagramSummary,
+} from '@/lib/consumer-identity';
 import { useEffectiveFacts } from '@/lib/mock-class';
 import {
   ageFromBirthday,
@@ -46,8 +53,8 @@ import { useAuth } from '@/providers/auth';
 // instagram and diamond"). The cell and /me/passport are deleted; the member
 // number it printed now leads Profile's summary and lives on the Profile page.
 //
-// INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add instagram and
-// then diamond"). Read the history before assuming this is a revert: the pair
+// INSTAGRAM AND THE DIAMOND LIST ARE CELLS (Pato, MESITA-2040: "so add
+// instagram and then diamond"; renamed the Diamond List in MESITA-2044). Read the history before assuming this is a revert: the pair
 // was cells (MESITA-1650), then header only (MESITA-1652), then cells again
 // (MESITA-1682), then rows on a since-deleted page (MESITA-1787) — and every round was about
 // where ONE AXIS lives, with "the hero already says the rung" as the argument
@@ -81,7 +88,9 @@ export default function MeHub() {
         igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
       };
   const igLabel = instagramSummary(igFacts);
-  const diamondLabel = diamondSummary(facts);
+  // The tile and the header chip say different things on purpose: the tile
+  // is titled "Diamond List" already, the chip is a gem and a word.
+  const diamondTileSummary = diamondSummary(facts);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +137,9 @@ export default function MeHub() {
               handle={igFacts.igHandle}
               followers={igFacts.igFollowers}
               diamond={facts.diamond}
-              diamondLabel={diamondLabel}
+              diamondLabel={diamondChipLabel(facts)}
+              diamondA11y={diamondChipA11y(facts)}
+              identityA11y={identityHeaderA11y(facts)}
               savedCents={savedCents}
               visits={visits ?? stats?.visits ?? null}
             />
@@ -163,8 +174,8 @@ export default function MeHub() {
             />
             <DestTile
               Icon={Gem}
-              title="Diamond"
-              summary={diamondLabel}
+              title={DIAMOND_LIST}
+              summary={diamondTileSummary}
               href={pages.diamond}
             />
           </DestGrid>
