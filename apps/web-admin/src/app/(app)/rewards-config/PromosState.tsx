@@ -24,10 +24,8 @@ import {
 // ONE document. The visit knobs and the cap share this state; the dirty flag,
 // Save, and load error live HERE.
 //
-// The alternative — a Save button per subpage, each sending the whole blob —
-// would let a Save on Visits revert unsaved Orders edits, with a success
-// toast. That is exactly the stale-tab clobber MESITA-1098 closed, reintroduced
-// between two tabs of one page.
+// One Save for the whole blob — a per-box Save would let one box's write
+// revert another's unsaved edits (the MESITA-1098 clobber).
 //
 // The page edits COMPONENTS; storage keeps the GRID. Components are derived
 // once when config arrives and expanded back on save; `additivityError` gates

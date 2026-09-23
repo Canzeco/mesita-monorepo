@@ -36,18 +36,35 @@ import {
   snapDiscountCap,
 } from "@/lib/business/strategies";
 
-export type StrategyKey = "conservative" | "aggressive" | "dominant";
-/** Who you are. Never purchasable, always public (it prints on the Passport). */
-export type ClassKey = "bronze" | "silver" | "gold" | "diamond";
+export const STRATEGY_KEYS = [
+  "conservative",
+  "aggressive",
+  "dominant",
+] as const;
+export type StrategyKey = (typeof STRATEGY_KEYS)[number];
+/** Columns a place can pick. Dominant stays in the blob for leftover rows. */
+export const LIVE_STRATEGY_KEYS = ["conservative", "aggressive"] as const;
+// Worst → best. The ladder a guest climbs; rates must rise with it.
+export const CLASS_KEYS = [
+  "bronze",
+  "silver",
+  "gold",
+  "diamond",
+] as const;
+/** Who you are. Never purchasable. */
+export type ClassKey = (typeof CLASS_KEYS)[number];
+// Wire order for the legacy rule list (matches the v8 EF contract).
+export const ACTION_KEYS = [
+  "standing",
+  "mesita_review",
+  "story",
+  "review",
+  "welcome",
+] as const;
+export type ActionKey = (typeof ACTION_KEYS)[number];
 /** Context cuts before anything else: a visit, or a remote order. */
 export type ContextKey = "visits" | "orders";
 export type BonusKey = "welcome" | "mesita" | "story" | "google";
-export type ActionKey =
-  | "standing"
-  | "mesita_review"
-  | "story"
-  | "welcome"
-  | "review";
 
 export type ContextBonuses = Record<BonusKey, number>;
 
@@ -77,36 +94,6 @@ export type PromosConfig = {
   cap: number;
 };
 
-export const STRATEGY_KEYS: readonly StrategyKey[] = [
-  "conservative",
-  "aggressive",
-  "dominant",
-];
-/** Columns a place can pick. Dominant stays in the blob for leftover rows. */
-export const LIVE_STRATEGY_KEYS = ["conservative", "aggressive"] as const;
-// Worst → best. The ladder a guest climbs; rates must rise with it.
-export const CLASS_KEYS: readonly ClassKey[] = [
-  "bronze",
-  "silver",
-  "gold",
-  "diamond",
-];
-export const CONTEXT_KEYS: readonly ContextKey[] = ["visits", "orders"];
-export const BONUS_KEYS: readonly BonusKey[] = [
-  "welcome",
-  "mesita",
-  "story",
-  "google",
-];
-// Wire order for the legacy rule list (matches the v8 EF contract).
-export const ACTION_KEYS: readonly ActionKey[] = [
-  "standing",
-  "mesita_review",
-  "story",
-  "review",
-  "welcome",
-];
-
 export const STRATEGY_META: Record<
   StrategyKey,
   { name: string; emoji: string; blurb: string }
@@ -125,22 +112,6 @@ export const STRATEGY_META: Record<
     name: "Dominant",
     emoji: "👑",
     blurb: "Nearly the top rate for everyone, not just the best guests.",
-  },
-};
-
-export const CONTEXT_META: Record<
-  ContextKey,
-  { name: string; emoji: string; blurb: string }
-> = {
-  visits: {
-    name: "Visits",
-    emoji: "🍽️",
-    blurb: "A body in the room. Presence is the premium product.",
-  },
-  orders: {
-    name: "Orders",
-    emoji: "🛵",
-    blurb: "A kitchen ticket with nobody in the chair.",
   },
 };
 
@@ -168,15 +139,6 @@ export const CLASS_META: Record<
     emoji: "💎",
     blurb: "Top of the ladder — the largest reach, the strongest invitations.",
   },
-};
-
-// Shared action vocabulary. "standing" is the base/None column.
-export const ACTION_META: Record<ActionKey, { name: string; emoji: string }> = {
-  standing: { name: "None (Standing)", emoji: "🎫" },
-  mesita_review: { name: "Mesita Review", emoji: "🍽️" },
-  story: { name: "Instagram Story", emoji: "📸" },
-  welcome: { name: "Welcome Visit", emoji: "🚪" },
-  review: { name: "Google Review", emoji: "⭐" },
 };
 
 export const BONUS_META: Record<

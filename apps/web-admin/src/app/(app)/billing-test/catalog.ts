@@ -2,7 +2,10 @@
 // admin-web-check-api-health returns, plus the coercion the client needs so a
 // half-shaped EF response renders instead of throwing.
 
-export type Verdict = "ok" | "degraded" | "down" | "unconfigured";
+const VERDICTS = ["ok", "degraded", "down", "unconfigured"] as const;
+export type Verdict = (typeof VERDICTS)[number];
+const isVerdict = (v: unknown): v is Verdict =>
+  (VERDICTS as readonly unknown[]).includes(v);
 
 export type ProbeResult = {
   id: string;
@@ -73,13 +76,6 @@ export const KNOWN_PROBES: ReadonlyArray<{
 /** Every probe id, in registry order — what the one Run button sends. */
 export const ALL_PROBE_IDS: readonly string[] = KNOWN_PROBES.map((p) => p.id);
 
-const VERDICTS: ReadonlySet<string> = new Set([
-  "ok",
-  "degraded",
-  "down",
-  "unconfigured",
-]);
-
 function pickString(row: Record<string, unknown>, key: string, fallback: string): string {
   const v = row[key];
   return typeof v === "string" && v.trim() ? v : fallback;
@@ -100,9 +96,7 @@ export function coerceResults(raw: unknown): ProbeResult[] {
     const id = typeof row.id === "string" ? row.id : null;
     if (!id) continue;
     const known = KNOWN_PROBES.find((p) => p.id === id);
-    const verdict = typeof row.verdict === "string" && VERDICTS.has(row.verdict)
-      ? (row.verdict as Verdict)
-      : "down";
+    const verdict = isVerdict(row.verdict) ? row.verdict : "down";
     out.push({
       id,
       label: pickString(row, "label", known?.label ?? id),
