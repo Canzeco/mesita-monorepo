@@ -10,7 +10,7 @@ import {
   TextField,
 } from "@/components/admin-ui";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
-import { diamondListLabel, isOnDiamondList } from "./class-bridge";
+import { diamondLabel, isDiamondKey } from "./class-bridge";
 import {
   grantInvitation,
   revokeInvitation,
@@ -33,7 +33,7 @@ function stamp(iso: string | null): string {
       });
 }
 
-// THE DIAMOND LIST (MESITA-2044): a guest is on it or not, nothing in
+// DIAMOND (MESITA-2044, MESITA-2046): a guest is Diamond or not, nothing in
 // between, so this page has two verbs and no picker — add, and remove.
 export function InvitationsClient() {
   const [lookup, setLookup] = useState("");
@@ -80,14 +80,14 @@ export function InvitationsClient() {
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
         eyebrow="Manage · Invitations"
-        title="Diamond List"
-        description="Add a guest to the Diamond List, or remove them. The list is invitation-only and binary — a guest is on it or not, nothing in between. Instagram and the guest's plan are separate facts, and neither is touched here."
+        title="Diamond"
+        description="Make a guest Diamond, or take it away. Diamond is invitation-only and binary — a guest is Diamond or not, nothing in between. Instagram and the guest's plan are separate facts, and neither is touched here."
       />
 
       <ManageSectionCard
         icon={<Gem className="h-4 w-4" />}
         tint="violet"
-        title="Who is on the list"
+        title="Who is Diamond"
         subtitle="Name the guest however you have them — a uuid, an 8-digit consumer code, a phone, an @handle, or a name. A lookup that matches several people is refused rather than guessed at."
       >
         <div className="mt-5 flex flex-col gap-4">
@@ -106,7 +106,7 @@ export function InvitationsClient() {
               className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
             >
               {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              Add to the Diamond List
+              Make Diamond
             </button>
             <button
               type="button"
@@ -114,7 +114,7 @@ export function InvitationsClient() {
               disabled={pending || trimmed.length === 0}
               className="border-border hover:bg-muted inline-flex h-10 items-center justify-center rounded-xl border px-5 text-sm font-semibold transition disabled:opacity-50"
             >
-              Remove from the Diamond List
+              Remove Diamond
             </button>
           </div>
 
@@ -122,11 +122,10 @@ export function InvitationsClient() {
 
           {missed && (
             <p className="border-border bg-muted/50 text-muted-foreground rounded-xl border p-3 text-xs leading-relaxed">
-              A guest can only be added to the Diamond List once their account
+              A guest can only be made Diamond once their account
               exists. Phone OTP is the only way into the consumer app, and
-              nothing here holds a place on the list for a number that has
-              never signed in — so a guest added before they sign up has to be
-              added again afterwards.
+              nothing here can hold Diamond for a number that has never
+              signed in — so make them Diamond again after they sign up.
             </p>
           )}
         </div>
@@ -137,13 +136,13 @@ export function InvitationsClient() {
       <ConfirmDialog
         open={confirmRevoke}
         danger
-        title="Remove from the Diamond List?"
+        title="Remove Diamond?"
         body={
           <>
-            This takes whoever{" "}
+            This takes Diamond away from whoever{" "}
             <span className="text-foreground font-medium">{trimmed}</span>{" "}
-            resolves to off the Diamond List, whether they joined by a Mesita
-            invitation or a PIN. Their Instagram and their plan are untouched.
+            resolves to, whether they joined by a Mesita invitation or a
+            PIN. Their Instagram and their plan are untouched.
           </>
         }
         confirmLabel="Remove"
@@ -155,7 +154,7 @@ export function InvitationsClient() {
   );
 }
 
-// Who the lookup landed on, and whether they are on the list now — read back
+// Who the lookup landed on, and whether they are Diamond now — read back
 // from the EF rather than assumed from the button that was pressed.
 function ResultCard({
   consumer,
@@ -186,11 +185,11 @@ function ResultCard({
             </span>
           )}
         </ReadField>
-        <ReadField label="Diamond List" boxed>
-          {diamondListLabel(classKey)}
+        <ReadField label="Diamond" boxed>
+          {diamondLabel(classKey)}
         </ReadField>
         <ReadField label="Invited" boxed>
-          {isOnDiamondList(consumer.invitationClassKey)
+          {isDiamondKey(consumer.invitationClassKey)
             ? stamp(consumer.invitationGrantedAt)
             : "—"}
         </ReadField>

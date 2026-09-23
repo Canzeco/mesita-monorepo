@@ -68,11 +68,11 @@ import {
   type ReportReason,
   type RewardQuote,
 } from "@/lib/api/tickets";
-import { listLabelForClass, onDiamondList } from "@/lib/consumer-classes";
+import { diamondLabelForClass, isDiamond } from "@/lib/consumer-classes";
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
-  DIAMOND_LIST,
+  DIAMOND,
 } from "@/lib/consumer-identity";
 import { identityRateRows } from "@/lib/reward-segments";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
@@ -94,8 +94,8 @@ import {
 import { useAuth } from "@/providers/auth";
 import { cn } from "@/lib/utils";
 
-// Pass gradients: on the Diamond List or not (MESITA-2044). RESERVED
-// (MESITA-1954): the list is something the product NAMES OUT LOUD to the
+// Pass gradients: Diamond or not (MESITA-2044). RESERVED
+// (MESITA-1954): Diamond is something the product NAMES OUT LOUD to the
 // guest — and the pass is the object a member holds up at the table — so its
 // blue keeps its hue (web's pinned #0072a0, where GRADIENTS.influencer
 // lands). Everyone else holds the bronze-stop pass it always had; the silver
@@ -173,13 +173,13 @@ export function TicketScreen({
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
   const { consumerClass, profile } = useAuth();
-  // On the Diamond List or not — the only identity the pass shows. The
+  // Diamond or not — the only identity the pass shows. The
   // stored key is LEGACY after the auth provider's bridge; `listLabel` is
-  // "Diamond List" or null (no pill: there is no rung to print).
+  // "Diamond" or null (no pill: there is no rung to print).
   const legacyKey = consumerClass?.class ?? "standard";
-  const onList = onDiamondList(legacyKey);
+  const onList = isDiamond(legacyKey);
   const classKey = onList ? "diamond" : "bronze";
-  const listLabel = listLabelForClass(legacyKey);
+  const listLabel = diamondLabelForClass(legacyKey);
   const guestName =
     profile?.full_name?.trim() ||
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -1725,7 +1725,7 @@ function LaneChip({
   on?: boolean;
   faded?: boolean;
   done?: boolean;
-  /** The guest's own identity row (Base or Diamond List). */
+  /** The guest's own identity row (Base or Diamond). */
   you?: boolean;
   glyph?: React.ReactNode;
   onPress?: () => void;
@@ -1865,9 +1865,9 @@ function RewardLanes({
   const myPlan = b?.plan ?? "free";
   // WHO THE GUEST IS = TWO ROWS (MESITA-2044). The EF's breakdown is the
   // engine's own decomposition: the Base is the bronze floor every guest
-  // gets (`automatic` + `classes.bronze`), and the Diamond List adder is the
-  // diamond row over bronze — same arithmetic as web's twin. The guest's list
-  // membership comes from the quote when it has one, else from the profile.
+  // gets (`automatic` + `classes.bronze`), and the Diamond adder is the
+  // diamond row over bronze — same arithmetic as web's twin. Whether the guest
+  // is Diamond comes from the quote when it has one, else from the profile.
   const listed = b ? b.cls === "diamond" : onList;
   const baseValue = b ? b.automatic + b.classes.bronze : quote.base;
   const listAdder = b ? Math.max(0, b.classes.diamond - b.classes.bronze) : 0;
@@ -1876,7 +1876,7 @@ function RewardLanes({
   const parts: string[] = [];
   if (b) {
     if (baseValue > 0) parts.push(`${baseValue}% base`);
-    if (listed && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND_LIST}`);
+    if (listed && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND}`);
     if (myPlan === "premium" && b.planUplift > 0)
       parts.push(`${b.planUplift}% plan`);
   } else if (quote.base > 0) {
@@ -1900,7 +1900,7 @@ function RewardLanes({
 
       {b ? (
         <>
-          {/* Base + Diamond List, and nothing else. Base is paid to every
+          {/* Base + Diamond, and nothing else. Base is paid to every
               guest, so it is always lit; "You" marks the guest's own row. */}
           <Lane title="Your rate" note="always on">
             {identity!.map((r) => (
@@ -1971,7 +1971,7 @@ function RewardLanes({
               split out: this is the guest's whole standing rate. */}
           <LaneChip
             label={BASE_RATE_LABEL}
-            sub={onList ? `with the ${DIAMOND_LIST}` : BASE_RATE_HINT}
+            sub={onList ? `with ${DIAMOND}` : BASE_RATE_HINT}
             value={quote.base}
             on={quote.base > 0}
             glyph={<Zap size={14} color={COLORS.primary} />}

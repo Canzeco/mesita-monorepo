@@ -7,10 +7,10 @@
 // Diamond." So the unit of work is a batch with a label, not a single code —
 // the label is what later answers "the agency handed out 37 of the 50".
 //
-// classKey must be `diamond` — a PIN puts its holder on the Diamond List
+// classKey must be `diamond` — a PIN puts its holder on Diamond
 // (MESITA-2044: "you are in the list or you don't, not in between"), so the
 // retired `silver`/`gold` rungs are a 400 at MINT time rather than 50 PINs
-// that would each recreate an in-between (_shared/diamond-list.ts). The FK to
+// that would each recreate an in-between (_shared/diamond.ts). The FK to
 // classes still backs it: a batch for a missing row fails before anyone is
 // handed a PIN.
 //
@@ -39,7 +39,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { parseListGrantKey } from "../_shared/diamond-list.ts";
+import { parseDiamondGrantKey } from "../_shared/diamond.ts";
 
 type Body = {
   classKey?: string;
@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  // No revoke here: a PIN only ever puts someone ON the list.
-  const keyRes = parseListGrantKey(body.classKey, { allowRevoke: false });
+  // No revoke here: a PIN only ever makes someone Diamond.
+  const keyRes = parseDiamondGrantKey(body.classKey, { allowRevoke: false });
   if (!keyRes.ok) return json({ ok: false, error: keyRes.error }, 400);
   const classKey = keyRes.classKey as string;
 

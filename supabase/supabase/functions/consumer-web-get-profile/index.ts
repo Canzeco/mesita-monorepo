@@ -17,7 +17,7 @@ import {
 import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
-import { diamondListLabel } from "../_shared/diamond-list.ts";
+import { diamondLabel } from "../_shared/diamond.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   accountDeletedResponse,
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Membership payload ─────────────────────────────────────────────────
-  // Surfaces whether the consumer is on the Diamond List (class_key — the
+  // Surfaces whether the consumer is Diamond (class_key — the
   // storage name stays, MESITA-2044), how they got there, their open DOORS
   // (MESITA-972; `influencer` is always false now — followers open nothing),
   // their Instagram follower count, current subscription (if any), and this
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
   //
   // Self-healing: the effective class is recomputed from the door facts on
   // every profile read, so a missed webhook or admin edit can never leave the
-  // Diamond List on a stale slot. Everything below is best-effort: a transient
+  // Diamond on a stale slot. Everything below is best-effort: a transient
   // recompute failure falls back to the stored slot, a missing `classes` row
   // degrades to Free defaults — never a 500 on the user-facing Profile tab.
   let classKey = consumer.class_key ?? "bronze";
@@ -175,11 +175,11 @@ Deno.serve(async (req) => {
     key: classKey,
     origin: classOrigin,
     plan,
-    // "Diamond List" when on it, null when not. Never the classes row's own
-    // label (Bronze/Silver/…): the list is binary and a metal must not reach
+    // "Diamond" when Diamond, null when not. Never the classes row's own
+    // label (Bronze/Silver/…): Diamond is binary and a metal must not reach
     // a person (MESITA-2044). No app screen reads this field today; it stays
     // for the payload's shape.
-    label: diamondListLabel(classKey),
+    label: diamondLabel(classKey),
     followers: consumer.instagram_followers_count ?? null,
     expires_at: classExpiresAt,
     // Open doors, independent of which one currently wins the slot

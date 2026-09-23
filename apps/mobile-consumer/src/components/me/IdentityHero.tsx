@@ -26,15 +26,15 @@ import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 // ONE COLOUR LEFT, AND IT MEANS ONE THING (MESITA-2040, MESITA-2044).
 // `classBadgeColors` and `classBadgeIconColor` switched on four rungs, and
 // `isElevatedClass` decided whether the ring and the wash were coloured at
-// all. There is no ladder: the ring, the wash and the badge carry the DIAMOND
-// LIST, and a guest who is not on it gets the plain card.
+// all. There is no ladder: the ring, the wash and the badge carry DIAMOND,
+// and a guest who is not Diamond gets the plain card.
 
 const ROW_HEIGHT = 44;
 
-/** The Diamond List's badge, and the only conditional colour on this card.
+/** The Diamond badge, and the only conditional colour on this card.
  *
- *  THE LIST KEEPS ITS HUE, EVERYONE ELSE LOSES THE PINK (MESITA-1954 +
- *  MESITA-2040). The Diamond List is something the product names out loud to
+ *  DIAMOND KEEPS ITS HUE, EVERYONE ELSE LOSES THE PINK (MESITA-1954 +
+ *  MESITA-2040). Diamond is something the product names out loud to
  *  the guest, which is the achromatic rule's "where it is named" clause. The
  *  blue is spelled out here rather than read from `GRADIENTS.premium`, because
  *  that token went to an ink ramp when this app went achromatic — reading it
@@ -85,7 +85,7 @@ export function IdentityHero({
   savedCents,
   visits,
 }: {
-  /** On the Diamond List. The card's only conditional colour. */
+  /** Diamond. The card's only conditional colour. */
   diamond: boolean;
   name: string;
   sexLabel: string | null;
@@ -97,11 +97,11 @@ export function IdentityHero({
   igConnected: boolean;
   handle: string | null;
   followers: number;
-  /** The chip: "Diamond List" or "Ask to join" — `diamondChipLabel`. */
+  /** The chip: "Diamond" or "Ask to join" — `diamondChipLabel`. */
   diamondLabel: string;
-  /** "Diamond List: You're on it" / "Diamond List: Ask to join". */
+  /** "Diamond: You're in" / "Diamond: Ask to join". */
   diamondA11y: string;
-  /** "Your Mesita identity[, on the Diamond List]". */
+  /** "Your Mesita identity[, on Diamond]". */
   identityA11y: string;
   savedCents: number | null;
   visits: number | null;

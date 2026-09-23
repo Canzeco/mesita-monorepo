@@ -1,5 +1,6 @@
-// THE DIAMOND LIST, AND NOTHING IN BETWEEN (Pato, MESITA-2044: "there are no
-// classes, either you are diamond or you are not ... Diamond List").
+// DIAMOND, AND NOTHING IN BETWEEN (Pato, MESITA-2044: "there are no classes,
+// either you are diamond or you are not"; MESITA-2046: "Don't call diamond
+// list, just diamond").
 //
 // This package had no test runner, and a guest-facing string is exactly the
 // thing typecheck, lint and the web export all wave through. So: Node's own
@@ -10,8 +11,8 @@
 //      (type stripping) and the helpers are asserted string for string. These
 //      are the strings web's twin must match character for character.
 //   2. SCAN — every guest-facing module this lane owns, comments stripped,
-//      must not print a metal, VIP, a ladder word, or "Diamond" alone as a
-//      status. It FAILS the moment someone puts "Bronze" or "You're Diamond"
+//      must not print a metal, VIP, a ladder word, or the retired "Diamond
+//      List". It FAILS the moment someone puts "Bronze" or "the Diamond List"
 //      back on a screen.
 
 import assert from 'node:assert/strict';
@@ -37,62 +38,62 @@ const facts = (diamond: boolean, unknown = false) => ({
 const ON = facts(true);
 const OFF = facts(false);
 
-test('the name is always both words', () => {
-  assert.equal(identity.DIAMOND_LIST, 'Diamond List');
-  assert.equal(identity.DIAMOND_LIST_ES, 'Lista Diamante');
+test('the name is one word', () => {
+  assert.equal(identity.DIAMOND, 'Diamond');
+  assert.equal(identity.DIAMOND_ES, 'Diamante');
 });
 
 test('Me grid tile summary', () => {
-  assert.equal(identity.diamondSummary(ON), "You're on it");
+  assert.equal(identity.diamondSummary(ON), "You're in");
   assert.equal(identity.diamondSummary(OFF), 'Ask to join');
 });
 
 test('Me header chip label and its accessibility label', () => {
-  assert.equal(identity.diamondChipLabel(ON), 'Diamond List');
+  assert.equal(identity.diamondChipLabel(ON), 'Diamond');
   assert.equal(identity.diamondChipLabel(OFF), 'Ask to join');
-  assert.equal(identity.diamondChipA11y(ON), "Diamond List: You're on it");
-  assert.equal(identity.diamondChipA11y(OFF), 'Diamond List: Ask to join');
+  assert.equal(identity.diamondChipA11y(ON), "Diamond: You're in");
+  assert.equal(identity.diamondChipA11y(OFF), 'Diamond: Ask to join');
 });
 
 test('identity header accessibility label', () => {
   assert.equal(
     identity.identityHeaderA11y(ON),
-    'Your Mesita identity, on the Diamond List',
+    'Your Mesita identity: Diamond',
   );
   assert.equal(identity.identityHeaderA11y(OFF), 'Your Mesita identity');
 });
 
-test('Diamond List page headline and how line', () => {
-  assert.equal(identity.diamondHeadline(ON), "You're on the Diamond List");
-  assert.equal(identity.diamondHeadline(OFF), "You're not on the list yet");
+test('the Diamond page headline and how line', () => {
+  assert.equal(identity.diamondHeadline(ON), "You're Diamond");
+  assert.equal(identity.diamondHeadline(OFF), "You're not Diamond yet");
   assert.equal(
-    identity.DIAMOND_LIST_HOW,
-    'The Diamond List is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.',
+    identity.DIAMOND_HOW,
+    'Diamond is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.',
   );
-  assert.equal(identity.diamondNote(OFF), identity.DIAMOND_LIST_HOW);
+  assert.equal(identity.diamondNote(OFF), identity.DIAMOND_HOW);
 });
 
 test('request body, PIN, member number, Help, rate rows', () => {
   assert.equal(
-    identity.DIAMOND_LIST_REQUEST_BODY,
-    "Hi Mesita — I'd like to join the Diamond List.\n\nWho I am:\n",
+    identity.DIAMOND_REQUEST_BODY,
+    "Hi Mesita — I'd like to join Diamond.\n\nWho I am:\n",
   );
   assert.equal(
-    identity.DIAMOND_LIST_PIN_SUBTITLE,
-    'Ten digits. It puts you on the Diamond List.',
+    identity.DIAMOND_PIN_SUBTITLE,
+    'Ten digits. It makes you Diamond.',
   );
-  assert.equal(identity.DIAMOND_LIST_PIN_SUCCESS, "You're on the Diamond List.");
+  assert.equal(identity.DIAMOND_PIN_SUCCESS, "You're Diamond.");
   assert.equal(
-    identity.DIAMOND_LIST_MEMBER_NUMBER_LINE,
-    'Give this number when you ask to join the Diamond List.',
+    identity.DIAMOND_MEMBER_NUMBER_LINE,
+    'Give this number when you ask to join Diamond.',
   );
   assert.equal(
-    identity.DIAMOND_LIST_HELP_LINE,
-    'Every guest gets the base discount. Guests on the Diamond List get more — the list is invitation-only, and you can ask to join from Me.',
+    identity.DIAMOND_HELP_LINE,
+    'Every guest gets the base discount. Diamond guests get more — Diamond is invitation-only, and you can ask to join from Me.',
   );
   assert.equal(identity.BASE_RATE_LABEL, 'Base');
   assert.equal(identity.BASE_RATE_HINT, 'Every guest, every visit');
-  assert.equal(identity.DIAMOND_LIST_RATE_HINT, 'Invitation only');
+  assert.equal(identity.DIAMOND_RATE_HINT, 'Invitation only');
 });
 
 // ── The scan ─────────────────────────────────────────────────────────────
@@ -156,8 +157,8 @@ function isClassNameLike(s: string): boolean {
 // Case-sensitive: the metals and VIP are proper nouns in copy. `gold` (a
 // gradient key) and `aura` (a storage key) stay legal as code.
 const BANNED_PROPER = /\b(Bronze|Silver|Gold|VIP|Aura)\b/;
-// "Diamond" alone as a status noun. "Diamond List" is the only form.
-const BANNED_DIAMOND = /\bDiamond\b(?! List)/;
+// The retired name (MESITA-2046): it is "Diamond", one word, never a list.
+const BANNED_DIAMOND = /Diamond List|Lista Diamante|\bthe list\b/i;
 // Ladder vocabulary in anything that reads as copy.
 const BANNED_WORDS =
   /\b(class(es)?|tier(s)?|rank(s)?|rung(s)?|level(s)?|climb(s|ing)?)\b|unlock a higher|rank up/i;
@@ -178,9 +179,9 @@ for (const rel of GUEST_FACING) {
 
 test('the scan itself catches a regression', () => {
   const bad = [
-    `<Text>You're Diamond</Text>`,
+    `<Text>You're on the Diamond List</Text>`,
     `label="Bronze"`,
-    `title: 'Not Diamond yet'`,
+    `title: 'Not on the list yet'`,
     `sub="earned, not bought — your class"`,
   ];
   for (const b of bad) {

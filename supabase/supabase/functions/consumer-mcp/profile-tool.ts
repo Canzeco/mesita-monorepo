@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { diamondListLabel, onDiamondList } from "../_shared/diamond-list.ts";
+import { diamondLabel, isDiamond } from "../_shared/diamond.ts";
 import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { toolError, toolText } from "./rpc.ts";
 
@@ -38,15 +38,15 @@ export async function getProfileTool(
   return toolText({
     ok: true,
     consumer,
-    // The guest is on the Diamond List or not (MESITA-2044). `class.key` is
-    // the storage name; `diamond_list` and `label` are what an assistant
-    // should say. `label` is never a metal.
-    diamond_list: onDiamondList(classKey),
+    // The guest is Diamond or not (MESITA-2044, MESITA-2046). `class.key` is
+    // the storage name; `diamond` and `label` are what an assistant should
+    // say. `label` is never a metal.
+    diamond: isDiamond(classKey),
     class: {
       key: classKey,
       origin: consumer.class_origin ?? "default",
       plan: consumer.plan ?? "free",
-      label: diamondListLabel(classKey),
+      label: diamondLabel(classKey),
       followers: consumer.instagram_followers_count ?? null,
       expires_at: consumer.class_expires_at ?? null,
       usage: {

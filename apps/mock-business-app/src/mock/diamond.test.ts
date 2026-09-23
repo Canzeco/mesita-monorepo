@@ -1,9 +1,10 @@
-// THE DIAMOND LIST (MESITA-2044). Pato: "there are no classes, either you are
-// diamond or you are not. its more like a List." A guest is on the Diamond
-// List or not, so the console never shows staff a guest's metal — no Bronze,
-// Silver or Gold, no VIP, and never "Diamond" alone as a status noun.
+// DIAMOND (MESITA-2044, MESITA-2046). Pato: "there are no classes, either you
+// are diamond or you are not" — and then "Don't call diamond list, just
+// diamond". A guest is Diamond or not, so the console never shows staff a
+// guest's metal — no Bronze, Silver or Gold, no VIP, and never the retired
+// "Diamond List".
 //
-// Two pins: the guest fixture carries the list as a boolean and nothing else,
+// Two pins: the guest fixture carries Diamond as a boolean and nothing else,
 // and no source file under src/ can print a metal. The rewards engine
 // (`lib/rewards.ts`) still holds lowercase storage keys; the metal pattern is
 // case-sensitive, so those keys are not what it looks for.
@@ -15,7 +16,7 @@ import { CUSTOMERS } from "./fixtures";
 const SRC = path.join(__dirname, "..");
 
 const METALS =
-  /\b(Bronze|Silver|Gold|VIP)\b|You're Diamond|Not Diamond|Diamond guests?|\bDiamond\b(?! List)/;
+  /\b(Bronze|Silver|Gold|VIP)\b|Diamond List|Lista Diamante|Diamond (class|tier|rung)/;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -33,20 +34,20 @@ function renderable(file: string): string {
     .replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
-describe("the Diamond List in the mock", () => {
-  it("every guest is on the list or not, and carries no class", () => {
+describe("Diamond in the mock", () => {
+  it("every guest is Diamond or not, and carries no class", () => {
     expect(CUSTOMERS.length).toBeGreaterThan(0);
     for (const c of CUSTOMERS) {
-      expect(typeof c.diamondList).toBe("boolean");
+      expect(typeof c.diamond).toBe("boolean");
       expect(c).not.toHaveProperty("class");
     }
-    // Invitation-only reads as rare: somebody is on it, most are not.
-    const on = CUSTOMERS.filter((c) => c.diamondList).length;
+    // Invitation-only reads as rare: somebody is Diamond, most are not.
+    const on = CUSTOMERS.filter((c) => c.diamond).length;
     expect(on).toBeGreaterThan(0);
     expect(on).toBeLessThan(CUSTOMERS.length / 4);
   });
 
-  it("no source file renders Bronze, Silver, Gold, VIP or a bare Diamond", () => {
+  it("no source file renders Bronze, Silver, Gold, VIP or the Diamond List", () => {
     const files = sourceFiles(SRC);
     expect(files.length).toBeGreaterThan(50);
     const hits = files.flatMap((f) => {
@@ -57,10 +58,10 @@ describe("the Diamond List in the mock", () => {
   });
 
   it("the pattern bites", () => {
-    for (const s of ['"Silver"', "VIP guest", "You're Diamond", "Diamond guests"]) {
+    for (const s of ['"Silver"', "VIP guest", "On the Diamond List", "Diamond tier"]) {
       expect(METALS.test(s)).toBe(true);
     }
-    expect(METALS.test("On the Diamond List")).toBe(false);
+    expect(METALS.test("You're Diamond")).toBe(false);
     expect(METALS.test('tone="gold"')).toBe(false);
   });
 });

@@ -1,17 +1,17 @@
 import { CreditCard, Gem, Store, type LucideIcon } from "lucide-react";
 
-import { DIAMOND_LIST } from "@/lib/consumer-identity";
+import { DIAMOND } from "@/lib/consumer-identity";
 
-// ── The Diamond List (MESITA-2044; was Classes v2, MESITA-1039/-1079) ──────
+// ── Diamond (MESITA-2044; was Classes v2, MESITA-1039/-1079) ──────
 //
 // TWO INDEPENDENT AXES, and the entire point is that they never merge:
 //
-//   list  — WHO YOU ARE. On the Diamond List or not, nothing in between
+//   diamond — WHO YOU ARE. Diamond or not, nothing in between
 //           (Pato, MESITA-2044). Invitation is the only way on; followers
-//           grant nothing. Stored as `consumers.class_key` = `bronze` (not on
-//           the list) or `diamond` (on it) — STORAGE KEYS, never read aloud.
+//           grant nothing. Stored as `consumers.class_key` = `bronze` (not
+//           Diamond) or `diamond` (Diamond) — STORAGE KEYS, never read aloud.
 //           Silver and Gold are gone: a stray `silver`/`gold` row resolves to
-//           `bronze` below, i.e. "not on the list".
+//           `bronze` below, i.e. "not Diamond".
 //   plan  — WHAT YOU PAY. Free or Premium (MX$50/mo). Private from the
 //           BUSINESS side: a place never learns it. Private from the guest's
 //           own Passport too (MESITA-1619) — the identity card prints what is
@@ -64,7 +64,7 @@ export const LEGACY_CLASS_IDENTITY: Record<LegacyClassKey, ClassIdentity> = {
  * Resolve a stored `consumers.class_key` onto the two v2 axes.
  *
  * `bronze`/`diamond` pass through. Leftover legacy keys still map. Anything
- * else — including a stray `silver`/`gold` row — is "not on the list".
+ * else — including a stray `silver`/`gold` row — is "not Diamond".
  * `plan` from `consumers.plan` wins when provided.
  */
 export function identityForClassKey(
@@ -82,7 +82,7 @@ export function identityForClassKey(
   return { cls: "bronze", plan: planArg ?? "free" };
 }
 
-// Elevated = off the floor on EITHER axis — on the Diamond List, or the
+// Elevated = off the floor on EITHER axis — on Diamond, or the
 // Premium plan. Both unlock the same perk set (better recommendations, 10
 // reservations a month), which is exactly why one predicate spans two axes
 // instead of each surface re-deriving the union.
@@ -161,9 +161,9 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
 );
 
 // The two identity rows every rate surface prints (MESITA-2044). `label` is
-// what a guest reads — "Base" and "Diamond List", never a metal.
+// what a guest reads — "Base" and "Diamond", never a metal.
 //
-// NO `priceMxn` and NO `perk`, on purpose: the list is never purchasable and
+// NO `priceMxn` and NO `perk`, on purpose: Diamond is never purchasable and
 // it moves ONE thing, the discount rate (decision: Pato, MESITA-1123).
 export const CLASSES: {
   id: ClassKey;
@@ -180,7 +180,7 @@ export const CLASSES: {
   },
   {
     id: "diamond",
-    label: DIAMOND_LIST,
+    label: DIAMOND,
     req: "Invitation only",
     reward: "More on top of the base",
   },
@@ -223,7 +223,7 @@ export const CLASS_FLOOR = CLASSES[0];
 // caption talk about the other fact.
 
 // One mark per identity row: the Base is the place's standing offer (Store),
-// the Diamond List is the gem. The Medal → Award → Trophy → Gem progression
+// Diamond is the gem. The Medal → Award → Trophy → Gem progression
 // drew a ladder, and there is no ladder (MESITA-2044).
 export const CLASS_ICONS: Record<ClassKey, LucideIcon> = {
   bronze: Store,
@@ -284,5 +284,5 @@ export function classWashClass(classKey: ClassKey): string {
 // `classProperLabel` and its four-metal CLASS_LABELS map LIVED HERE and are
 // gone (MESITA-2044). They printed "Bronze"/"Silver"/"Gold"/"Diamond" on the
 // ticket pass, the rate sheet and the social cards. A surface that names the
-// guest's standing now prints `DIAMOND_LIST` (consumer-identity.ts) when they
-// are on the list and nothing when they are not.
+// guest's standing now prints `DIAMOND` (consumer-identity.ts) when they
+// are Diamond and nothing when they are not.

@@ -13,7 +13,7 @@ import { useMockFacts } from '@/lib/mock-class';
 // emulate Mesita Premium, because under the ladder a subscription was a CLASS
 // and so belonged beside Instagram. Paying grants no fact on this surface; the
 // facts are Instagram and Diamond, and both can be on at once because they no
-// longer compete for one slot. The second one is the Diamond List (MESITA-2044).
+// longer compete for one slot. The second one is Diamond (MESITA-2044).
 
 export function MockControls() {
   const [mock, setMock] = useMockFacts();
@@ -82,7 +82,7 @@ export function MockControls() {
         onToggle={() => setMock({ instagram: !igOn })}
       />
       <EmulateRow
-        title="Emulate the Diamond List"
+        title="Emulate Diamond"
         summary="Preview an invitation"
         on={diamondOn}
         onToggle={() => setMock({ diamond: !diamondOn })}

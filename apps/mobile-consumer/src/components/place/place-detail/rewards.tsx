@@ -37,7 +37,7 @@ import { Box, BoxLabel } from './shared';
 // hero  — "Up to N%" and NOTHING about why (MESITA-860). N = the guest's
 //         best eligible rate at THIS place's strategy.
 // steps — the wallet's four steps, "Pick place" pre-checked.
-// list  — Base + Diamond List (the two identity rows, MESITA-2044), then
+// list  — Base + Diamond (the two identity rows, MESITA-2044), then
 //         the actions.
 // CTAs  — "Get my ticket" routes to the wallet (create flow + the story
 //         interstitial live there); a Standard-key guest adds "Go Premium".
@@ -77,8 +77,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   }
 
   // Strategy recovered from the four rate columns; the guest's ceiling here
-  // = best of their standing rate (Base, plus the Diamond List adder when on
-  // it) and every action they can perform (Story's Instagram gate is
+  // = best of their standing rate (Base, plus the Diamond adder when
+  // Diamond) and every action they can perform (Story's Instagram gate is
   // upstream, per segments v6).
   const strategy = strategyForPromoMatrix(place.promo_matrix);
   const rewardsKey = classKey as RewardClassKey;
@@ -148,7 +148,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         />
       </View>
 
-      {/* Your rate: Base + the Diamond List, the guest's own row marked. */}
+      {/* Your rate: Base + Diamond, the guest's own row marked. */}
       <View className="gap-3">
         <BoxLabel>Your rate</BoxLabel>
         <YourRate strategy={strategy} classKey={rewardsKey} />

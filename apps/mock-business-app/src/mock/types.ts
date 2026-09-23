@@ -636,12 +636,12 @@ export type MockMember = {
   state: "active" | "invited";
 };
 
-/** THE GUEST'S SUBSCRIPTION — a separate fact from the Diamond List.
+/** THE GUEST'S SUBSCRIPTION — a separate fact from Diamond.
  *
  *  THERE IS NO LADDER (MESITA-2044). Pato: "either you are diamond or you are
- *  not. its more like a List." A guest is on the Diamond List or not, and the
- *  only way on is an invitation; paying never puts anyone on it, so the plan
- *  and the list are independent and neither can be read off the other. The
+ *  not." A guest is Diamond or not (MESITA-2046 dropped "List"), and the
+ *  only way in is an invitation; paying never makes anyone Diamond, so the
+ *  plan and Diamond are independent and neither can be read off the other. The
  *  metals this row once carried (Bronze < Silver < Gold < Diamond) are gone
  *  from every screen; a stored `bronze`/`silver`/`gold` key means "not on
  *  the list". */
@@ -656,7 +656,7 @@ export const SEX_LABEL: Record<MockSex, string> = {
 
 /** A guest of ONE place.
  *
- *  AGE, THE DIAMOND LIST, SEX AND PLAN ARE NOT THINGS THE PLACE COLLECTED. They come off
+ *  AGE, DIAMOND, SEX AND PLAN ARE NOT THINGS THE PLACE COLLECTED. They come off
  *  the guest's own Mesita profile, which is why every guest has them rather
  *  than only the ones who filled in a card at the till — and why this console
  *  shows them and never offers to edit them.
@@ -677,13 +677,13 @@ export type MockCustomer = {
   name: string;
   /** Years, from the birthday on the guest's profile. */
   age: number;
-  /** On the Diamond List or not — nothing in between (MESITA-2044). */
-  diamondList: boolean;
+  /** Diamond or not — nothing in between (MESITA-2044). */
+  diamond: boolean;
   sex: MockSex;
   plan: MockPlan;
   /** The handle WITHOUT the @, or null when the guest never connected one.
    *  Locked behind the same purchase as the phone — see `contactUnlocked`.
-   *  Instagram is its own fact: it puts nobody on the Diamond List. */
+   *  Instagram is its own fact: it makes nobody Diamond. */
   instagram: string | null;
   visits: number;
   /** Centavos, across every visit. Integer money, as everywhere else here. */

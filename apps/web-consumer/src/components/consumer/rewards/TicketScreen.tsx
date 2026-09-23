@@ -109,8 +109,8 @@ import { useConsumerClass, useConsumerIdentity } from "@/lib/class-context";
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
-  DIAMOND_LIST,
-  DIAMOND_LIST_RATE_HINT,
+  DIAMOND,
+  DIAMOND_RATE_HINT,
 } from "@/lib/consumer-identity";
 import { useStoredString, useStoredStringSet } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
@@ -134,7 +134,7 @@ const FOCUS_AFTER_APPROVE_MS = 900;
 const SCAN_PULSE_MS = 1400;
 const WAITING_TICK_MS = 15_000;
 
-// The ticket's own gradient: the Diamond List's blue, or the house pink for
+// The ticket's own gradient: Diamond's blue, or the house pink for
 // every other guest (MESITA-2044 — two states, no metals in between). Takes a
 // string because the caller hands it the context key straight through; any
 // value but `diamond` gets the house wash rather than rendering nothing.
@@ -144,11 +144,11 @@ function passGradient(key: string): string {
   return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
 }
 
-/** The pass chip: the list's name when the guest is on it, and NOTHING when
+/** The pass chip: the name when the guest is Diamond, and NOTHING when
  *  they are not — "Base" on a pass would read as a rank, which is the thing
  *  that no longer exists. */
 function passChipLabel(key: string): string | null {
-  return key === "diamond" ? DIAMOND_LIST : null;
+  return key === "diamond" ? DIAMOND : null;
 }
 
 type TaskState = "todo" | "busy" | "checking" | "done" | "rejected";
@@ -1455,7 +1455,7 @@ function RewardLanes({
 
   const b = quote.breakdown ?? null;
   const welcome = quote.bonuses.welcome;
-  // On the Diamond List, as the ENGINE priced it (`cls`), falling back to the
+  // Diamond, as the ENGINE priced it (`cls`), falling back to the
   // context only on a legacy quote with no decomposition.
   const onList = b ? b.cls === "diamond" : classKey === "diamond";
   const listAdder = b ? Math.max(0, b.classes.diamond - b.classes.bronze) : 0;
@@ -1465,7 +1465,7 @@ function RewardLanes({
   const parts: string[] = [];
   if (b) {
     if (baseValue > 0) parts.push(`${baseValue}% base`);
-    if (onList && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND_LIST}`);
+    if (onList && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND}`);
   } else if (quote.base > 0) {
     parts.push(`${quote.base}% base`);
   }
@@ -1497,8 +1497,8 @@ function RewardLanes({
               glyph={<Zap className="text-primary size-3.5" />}
             />
             <LaneChip
-              label={DIAMOND_LIST}
-              sub={DIAMOND_LIST_RATE_HINT}
+              label={DIAMOND}
+              sub={DIAMOND_RATE_HINT}
               value={listAdder}
               on={onList}
               faded={!onList}
@@ -1542,7 +1542,7 @@ function RewardLanes({
         <Lane title="Your rate" note="always on">
           <LaneChip
             label={BASE_RATE_LABEL}
-            sub={onList ? `with the ${DIAMOND_LIST}` : BASE_RATE_HINT}
+            sub={onList ? `with ${DIAMOND}` : BASE_RATE_HINT}
             value={quote.base}
             on={quote.base > 0}
             glyph={<Zap className="text-primary size-3.5" />}

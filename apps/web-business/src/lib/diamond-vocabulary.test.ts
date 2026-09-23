@@ -2,10 +2,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-// THE DIAMOND LIST (MESITA-2044). Pato: "there are no classes, either you are
-// diamond or you are not. its more like a List." A guest is on the Diamond
-// List or not, so the business console never shows staff a metal: no Bronze,
-// Silver or Gold, no VIP, and never "Diamond" alone as a status noun.
+// DIAMOND (MESITA-2044, MESITA-2046). Pato: "there are no classes, either you
+// are diamond or you are not" — and then "Don't call diamond list, just
+// diamond". A guest is Diamond or not, so the business console never shows
+// staff a metal: no Bronze, Silver or Gold, no VIP, and never the retired
+// "Diamond List".
 //
 // Nothing in this console renders a guest's identity today. This pins that:
 // the day a screen prints a guest's metal, it fails here.
@@ -18,7 +19,7 @@ const SRC = path.join(__dirname, "..");
 const ENGINE_TWIN = path.join(SRC, "lib", "rewards", "promos.ts");
 
 const METALS =
-  /\b(Bronze|Silver|Gold|VIP)\b|You're Diamond|Not Diamond|Diamond guests?|\bDiamond\b(?! List)/;
+  /\b(Bronze|Silver|Gold|VIP)\b|Diamond List|Lista Diamante|Diamond (class|tier|rung)/;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -45,7 +46,7 @@ describe("the business console shows staff no guest metal", () => {
     expect(files.length).toBeGreaterThan(50);
   });
 
-  it("no source file renders Bronze, Silver, Gold, VIP or a bare Diamond", () => {
+  it("no source file renders Bronze, Silver, Gold, VIP or the Diamond List", () => {
     const hits = files.flatMap((f) => {
       const m = renderable(f).match(METALS);
       return m ? [`${path.relative(SRC, f)}: ${m[0]}`] : [];
@@ -61,10 +62,11 @@ describe("the business console shows staff no guest metal", () => {
   });
 
   it("the pattern bites", () => {
-    for (const s of ['"Gold"', "VIP guest", "You're Diamond", "Diamond guests"]) {
+    for (const s of ['"Gold"', "VIP guest", "On the Diamond List", "Diamond class"]) {
       expect(METALS.test(s)).toBe(true);
     }
-    expect(METALS.test("On the Diamond List")).toBe(false);
+    expect(METALS.test("You're Diamond")).toBe(false);
+    expect(METALS.test("Diamond guests")).toBe(false);
     expect(METALS.test("tier-gold")).toBe(false);
   });
 });

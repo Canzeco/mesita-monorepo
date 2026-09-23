@@ -1,7 +1,7 @@
 // Run: deno test supabase/functions/_shared/class-doors.test.ts
 //
-// Locks the door-precedence table for the Diamond List (MESITA-2044): a
-// guest is ON the list (invitation → `diamond`) or on the base (`bronze`).
+// Locks the door-precedence table for Diamond (MESITA-2044): a
+// guest is Diamond (invitation → `diamond`) or on the base (`bronze`).
 // Followers open nothing — the reach door is closed — and a subscription is
 // a PLAN, never a class. The CLASSES fixture below deliberately keeps the old
 // follower thresholds so these tests prove the function ignores them even if
@@ -46,7 +46,7 @@ Deno.test("REACH DOOR CLOSED: 1,000 followers no longer opens silver", () => {
   assertEquals(eff.doors, { influencer: false, premium: false, aura: false });
 });
 
-Deno.test("REACH DOOR CLOSED: 20,000 followers does not put a guest on the Diamond List", () => {
+Deno.test("REACH DOOR CLOSED: 20,000 followers does not make a guest Diamond", () => {
   // The self-declared count used to grant diamond outright. Invitation is
   // the only way on.
   for (const followers of [2500, 5000, 20000, 10_000_000]) {
@@ -85,7 +85,7 @@ Deno.test("sub + big following → still the base, premium plan", () => {
   assertEquals(eff.plan, "premium");
 });
 
-Deno.test("diamond invitation → on the list; subscription stays a plan", () => {
+Deno.test("diamond invitation → Diamond; subscription stays a plan", () => {
   const eff = pickEffectiveClass(
     facts({
       followers: 5000,

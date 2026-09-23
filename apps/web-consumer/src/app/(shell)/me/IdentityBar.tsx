@@ -6,7 +6,7 @@ import { ChevronRight, Gem, Instagram, Phone } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { useConsumerClass } from "@/lib/class-context";
-import { DIAMOND_LIST } from "@/lib/consumer-identity";
+import { DIAMOND } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
@@ -66,8 +66,8 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // is unambiguous precisely because it is now unconditional.
 //
 // The band and the ring stay `aria-hidden` on the stated ground that something
-// says the fact in words. That something is the Diamond List CHIP's own label,
-// inside this subtree ("Diamond List: You're on it", MESITA-2044).
+// says the fact in words. That something is the Diamond CHIP's own label,
+// inside this subtree ("Diamond: You're in", MESITA-2046).
 //
 // NO PLAN (decision: Pato, MESITA-1619). The header prints what is EARNED
 // and PUBLIC; the plan is what you PAY. Plan is a cell in the grid below and
@@ -93,9 +93,9 @@ export function IdentityBar({
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "You're on it" or "Ask to join" — the accessible half of the chip. */
+  /** "You're in" or "Ask to join" — the accessible half of the chip. */
   diamondSummary: string;
-  /** "Diamond List" or "Ask to join" — what the chip shows. */
+  /** "Diamond" or "Ask to join" — what the chip shows. */
   diamondChip: string;
   /** "@handle", "Connected", or "Connect it". */
   instagramSummary: string;
@@ -120,7 +120,7 @@ export function IdentityBar({
     <header
       aria-label={
         diamond
-          ? `Your Mesita identity, on the ${DIAMOND_LIST}`
+          ? `Your Mesita identity, on the ${DIAMOND}`
           : "Your Mesita identity"
       }
       aria-busy={loading || undefined}
@@ -227,7 +227,7 @@ export function IdentityBar({
                   aria-hidden. */}
               <Link
                 href={CONSUMER_ROUTES.mePages.diamond}
-                aria-label={`${DIAMOND_LIST}: ${diamondSummary}`}
+                aria-label={`${DIAMOND}: ${diamondSummary}`}
                 className={cn(
                   CHIP_CLASS,
                   TAP_TARGET_CLASS,

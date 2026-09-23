@@ -11,19 +11,19 @@
 //
 // NO LADDER (Pato, MESITA-2044: "either you are diamond or you are not ...
 // Diamond List"). Who the guest is comes down to exactly TWO rows: the Base
-// every guest gets, and the Diamond List adder on top of it for a guest on
-// the list. They are the engine's `bronze` and `diamond` rows under the new
+// every guest gets, and the Diamond adder on top of it for a Diamond
+// guest. They are the engine's `bronze` and `diamond` rows under the new
 // names — the numbers did not move. Silver and Gold are gone; the actions
 // (Story, Welcome, Google review) are unchanged.
 
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
-  DIAMOND_LIST,
-  DIAMOND_LIST_ES,
-  DIAMOND_LIST_RATE_HINT,
+  DIAMOND,
+  DIAMOND_ES,
+  DIAMOND_RATE_HINT,
 } from '@/lib/consumer-identity';
-import { onDiamondList } from '@/lib/consumer-classes';
+import { isDiamond } from '@/lib/consumer-classes';
 
 // The storage key a consumer holds (legacy ids, after the auth provider's
 // bridge). STORAGE — never rendered.
@@ -50,7 +50,7 @@ export type RewardSegment = {
   rates: Record<GridStrategy, number>;
 };
 
-/** Base first, then the actions. The Diamond List is NOT a segment: it is an
+/** Base first, then the actions. Diamond is NOT a segment: it is an
  *  adder on the Base, so it lives in `identityRateRows` below. */
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
@@ -94,17 +94,17 @@ export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
 // The peak column — what "up to" quotes. Aggressive is the most generous strategy.
 export const PEAK_STRATEGY: GridStrategy = 'aggressive';
 
-// ── The Diamond List adder (v9, MESITA-877) ─────────────────────────────
+// ── The Diamond adder (v9, MESITA-877) ─────────────────────────────
 //
-// Every rate above is the BASE. A guest on the Diamond List gets this on top,
+// Every rate above is the BASE. A Diamond guest gets this on top,
 // exactly as the bill engine computes it (it is the engine's diamond-over-
 // bronze step, +15, unchanged by MESITA-2044). A strategy that pays nothing
 // pays no adder either.
-const DIAMOND_LIST_STEP = 15;
+const DIAMOND_STEP = 15;
 
-/** The adder a guest on the Diamond List gets at this strategy. */
-export function diamondListAdder(strategy: GridStrategy = PEAK_STRATEGY): number {
-  return REWARD_SEGMENT_BY_KEY.base.rates[strategy] > 0 ? DIAMOND_LIST_STEP : 0;
+/** The adder a Diamond guest gets at this strategy. */
+export function diamondAdder(strategy: GridStrategy = PEAK_STRATEGY): number {
+  return REWARD_SEGMENT_BY_KEY.base.rates[strategy] > 0 ? DIAMOND_STEP : 0;
 }
 
 /** One rung's rate for a specific guest — the number they'd actually be paid. */
@@ -115,15 +115,15 @@ function rateForSegment(
 ): number {
   const base = REWARD_SEGMENT_BY_KEY[key].rates[strategy];
   if (base <= 0) return 0;
-  return diamond ? base + diamondListAdder(strategy) : base;
+  return diamond ? base + diamondAdder(strategy) : base;
 }
 
-/** The guest's standing rate: the Base, plus the adder when on the list. */
+/** The guest's standing rate: the Base, plus the adder when Diamond. */
 export function standingRate(
   classKey: RewardClassKey | string,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
-  return rateForSegment('base', onDiamondList(classKey), strategy);
+  return rateForSegment('base', isDiamond(classKey), strategy);
 }
 
 /** The ceiling a consumer can reach across the Base and every action. */
@@ -131,7 +131,7 @@ export function peakRateForClass(
   classKey: RewardClassKey | string,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
-  const diamond = onDiamondList(classKey);
+  const diamond = isDiamond(classKey);
   return REWARD_SEGMENTS.reduce(
     (max, seg) => Math.max(max, rateForSegment(seg.key, diamond, strategy)),
     0,
@@ -142,22 +142,22 @@ export function peakRateForClass(
 //
 // Place detail's reward matrix, THE TICKET and Me › Help all show exactly
 // these two rows — never a third, never a ladder. The guest's own row carries
-// the "You" marker: Base for everyone not on the list, Diamond List for a
-// guest on it (who gets the Base too — the adder is on top).
+// the "You" marker: Base for everyone not Diamond, Diamond for a
+// Diamond guest (who gets the Base too — the adder is on top).
 
 export type IdentityRateRow = {
   key: 'base' | 'diamond';
   label: string;
   labelEs: string;
   hint: string;
-  /** Percent. For the Diamond List row this is the ADDER, not a total. */
+  /** Percent. For the Diamond row this is the ADDER, not a total. */
   value: number;
   /** "12%" for the Base, "+15%" for the adder. */
   display: string;
   mine: boolean;
 };
 
-/** Format a Diamond List adder: always signed, because it is on top. */
+/** Format the Diamond adder: always signed, because it is on top. */
 export function formatAdder(n: number): string {
   return `+${n}%`;
 }
@@ -179,9 +179,9 @@ export function identityRateRows(
     },
     {
       key: 'diamond',
-      label: DIAMOND_LIST,
-      labelEs: DIAMOND_LIST_ES,
-      hint: DIAMOND_LIST_RATE_HINT,
+      label: DIAMOND,
+      labelEs: DIAMOND_ES,
+      hint: DIAMOND_RATE_HINT,
       value: adder,
       display: formatAdder(adder),
       mine: diamond,
@@ -196,7 +196,7 @@ export function identityRateRowsAt(
 ): IdentityRateRow[] {
   return identityRateRows(
     REWARD_SEGMENT_BY_KEY.base.rates[strategy],
-    diamondListAdder(strategy),
-    onDiamondList(classKey),
+    diamondAdder(strategy),
+    isDiamond(classKey),
   );
 }

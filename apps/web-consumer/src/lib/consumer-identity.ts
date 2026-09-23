@@ -21,14 +21,14 @@
 // on, no rung to name, and the two doors lead to two different, independent
 // facts.
 //
-// THE DIAMOND LIST (Pato, MESITA-2044): "there are no classes, either you
-// are diamond or you are not. its more like a List. Diamond List. you are in
-// the list or you don't, not in between".
+// DIAMOND (Pato, MESITA-2044): "there are no classes, either you are diamond
+// or you are not". MESITA-2044 called it the Diamond List; an hour later Pato
+// cut the noun (MESITA-2046: "Don't call diamond list, just diamond").
 //
-// So the one invitation-only fact has a NAME now, and the name is always both
-// words. MESITA-2040 left the rate surfaces on the old ladder pending a rates
+// So the one invitation-only fact has a NAME now, and the name is one word:
+// you are Diamond or you are not. MESITA-2040 left the rate surfaces on the old ladder pending a rates
 // decision; MESITA-2044 is that decision, and it moves no number: every guest
-// gets the Base, a guest on the list gets the Diamond adder on top (the
+// gets the Base, a Diamond guest gets the Diamond adder on top (the
 // engine's `bronze` and `diamond` rows). `consumers.class_key` is still the
 // column this reads and `diamond` below is still a READ of that storage — only
 // what a person reads changed.
@@ -70,33 +70,33 @@ export function instagramSummary(f: ConsumerFacts): string {
   return f.igHandle ? `@${f.igHandle}` : "Connected";
 }
 
-/** The one name, everywhere a guest or a member of staff reads it. Never
- *  "Diamond" alone as a status — "You're Diamond" was the ladder talking. */
-export const DIAMOND_LIST = "Diamond List";
-export const DIAMOND_LIST_ES = "Lista Diamante";
+/** The one name, everywhere a guest or a member of staff reads it. One word
+ *  (MESITA-2046) — never "Diamond List", never "Diamond class" or a rung. */
+export const DIAMOND = "Diamond";
+export const DIAMOND_ES = "Diamante";
 
 /** The rate surfaces' two identity rows (place detail, THE TICKET, Help). */
 export const BASE_RATE_LABEL = "Base";
 export const BASE_RATE_HINT = "Every guest, every visit";
-export const DIAMOND_LIST_RATE_HINT = "Invitation only";
+export const DIAMOND_RATE_HINT = "Invitation only";
 
 /** The "how" line: the only door on, said once. */
-export const DIAMOND_LIST_HOW =
-  "The Diamond List is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.";
+export const DIAMOND_HOW =
+  "Diamond is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.";
 
 /** The body of the request mail / DM. */
-export const DIAMOND_LIST_REQUEST_BODY =
-  "Hi Mesita — I'd like to join the Diamond List.\n\nWho I am:\n";
+export const DIAMOND_REQUEST_BODY =
+  "Hi Mesita — I'd like to join Diamond.\n\nWho I am:\n";
 
-export const DIAMOND_LIST_PIN_SUBTITLE =
-  "Ten digits. It puts you on the Diamond List.";
-export const DIAMOND_LIST_PIN_SUCCESS = "You're on the Diamond List.";
-export const DIAMOND_LIST_MEMBER_NUMBER_LINE =
-  "Give this number when you ask to join the Diamond List.";
+export const DIAMOND_PIN_SUBTITLE =
+  "Ten digits. It makes you Diamond.";
+export const DIAMOND_PIN_SUCCESS = "You're Diamond.";
+export const DIAMOND_MEMBER_NUMBER_LINE =
+  "Give this number when you ask to join Diamond.";
 
 /** Me › Help's one line about discounts. */
-export const DIAMOND_LIST_HELP_LINE =
-  "Every guest gets the base discount. Guests on the Diamond List get more — the list is invitation-only, and you can ask to join from Me.";
+export const DIAMOND_HELP_LINE =
+  "Every guest gets the base discount. Diamond guests get more — Diamond is invitation-only, and you can ask to join from Me.";
 
 /** The Me grid tile's summary line. NEVER a rung name and never a percentage:
  *  the fact is binary, so the line is binary.
@@ -104,23 +104,23 @@ export const DIAMOND_LIST_HELP_LINE =
  *  "Ask to join" rather than "Not yet", and that is the whole parallel with
  *  Instagram's "Connect it": both are DOORS, so when the fact is false each
  *  one says what the guest can do about it. The tile's TITLE already says
- *  "Diamond List", so the summary answers "am I on it". */
+ *  "Diamond", so the summary answers "am I in". */
 export function diamondSummary(f: ConsumerFacts): string {
   if (f.unknown) return "Come back to try";
-  return f.diamond ? "You're on it" : "Ask to join";
+  return f.diamond ? "You're in" : "Ask to join";
 }
 
 /** The header chip's visible label. The chip has no title beside it, so the
- *  on-state names the list itself; the off-state is the same door as the
- *  tile. Its accessible name is `Diamond List: <diamondSummary>`. */
+ *  on-state names Diamond itself; the off-state is the same door as the
+ *  tile. Its accessible name is `Diamond: <diamondSummary>`. */
 export function diamondChipLabel(f: ConsumerFacts): string {
   if (f.unknown) return "Come back to try";
-  return f.diamond ? DIAMOND_LIST : "Ask to join";
+  return f.diamond ? DIAMOND : "Ask to join";
 }
 
 /** The Diamond page's status headline. */
 export function diamondHeadline(f: ConsumerFacts): string {
-  return f.diamond ? "You're on the Diamond List" : "You're not on the list yet";
+  return f.diamond ? "You're Diamond" : "You're not Diamond yet";
 }
 
 /** The sentence under the Instagram door. It states the bar when the bar is
@@ -142,11 +142,11 @@ export function instagramNote(
 }
 
 /** The sentence under the status headline. An invitation is the ONLY door,
- *  so a guest who is not on the list is told how to get on it — once, in the
+ *  so a guest who is not Diamond is told how to get in — once, in the
  *  "how" line — rather than how to climb. */
 export function diamondNote(f: ConsumerFacts): string {
   if (f.unknown) return "We couldn't read your invitation just now.";
   return f.diamond
     ? "Invited by Mesita. It never expires and nothing can take it."
-    : DIAMOND_LIST_HOW;
+    : DIAMOND_HOW;
 }
