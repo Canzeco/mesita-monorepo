@@ -248,7 +248,19 @@ jobs:
 
       - name: Start Postgres and replay every migration
         working-directory: supabase
-        run: supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta
+        run: |
+          # GHCR returns toomanyrequests with a microsecond retry-after when
+          # many PRs pull public Postgres images at once. The CLI retries
+          # inside that window and still fails; a longer gap gets a pull
+          # through. The job stays blocking (MESITA-1139) — five misses exit 1.
+          for i in 1 2 3 4 5; do
+            if supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta; then
+              exit 0
+            fi
+            echo "supabase start failed (try $i/5); sleeping $((i * 30))s"
+            sleep $((i * 30))
+          done
+          exit 1
 
       - name: Run pgTAP
         working-directory: supabase
