@@ -1,6 +1,7 @@
 // The per-place discount cap for Visits Rewards. The ladder is MX$200 / MX$500 /
 // MX$1000; Zero clears the cap and leaving Zero seeds the default. promos.ts
-// snaps every stored cap through snapDiscountCap.
+// snaps every stored cap through snapDiscountCap. Mirrors
+// supabase/functions/_shared/discount-cap.ts, which is authoritative.
 
 /** Legal per-place discount caps (MXN). Zero strategy clears the cap. */
 export const DISCOUNT_CAPS_MXN = [200, 500, 1000] as const;
