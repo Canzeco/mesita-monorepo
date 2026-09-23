@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { RotateCcw, SlidersHorizontal } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -40,13 +40,12 @@ import {
   SwipeExitStamp,
   SwipeTutorialOverlay,
 } from '@/components/swipe/SwipeDeckOverlays';
-import { requestHomeMode } from '@/components/swipe/home-mode-intent';
 import {
   apiFetchPublicPlaces,
   apiRecommendDeck,
   type Place,
 } from '@/lib/api/places';
-import { filtersPath } from '@/lib/consumer-route-contract';
+import { CONSUMER_ROUTES, filtersPath } from '@/lib/consumer-route-contract';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
@@ -364,14 +363,18 @@ function DeckBody({
       dismissTutorial();
       if (dir === 'right') {
         // Save + a "Saved · View" toast, only on a fresh save (web parity).
-        // "View" asks the Home hub to switch to Favorites (see home-mode-intent).
+        // "View" opens Visit › Favs, a sibling tab screen (MESITA-2050).
         const already = isSaved(v.id);
         upsertSavedPlacePreview(v);
         setSaved(v.id, true);
         if (!already) {
           toast.action(
             `Saved ${v.name}`,
-            { label: 'View', onClick: () => requestHomeMode('favorites') },
+            {
+              label: 'View',
+              onClick: () =>
+                router.navigate(CONSUMER_ROUTES.discoverTabs.favs as Href),
+            },
             { tone: 'success' },
           );
         }
@@ -386,7 +389,7 @@ function DeckBody({
         },
       );
     },
-    [advance, dismissTutorial, exiting, isSaved, setSaved, translateX, v],
+    [advance, dismissTutorial, exiting, isSaved, router, setSaved, translateX, v],
   );
 
   const pan = Gesture.Pan()

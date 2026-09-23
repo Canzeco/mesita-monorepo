@@ -5,7 +5,7 @@ import { GoogleLogo, MesitaSourceBadge } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
 import { cn, firstInitial } from "@/lib/utils";
 import { classBadgeClass } from "@/lib/consumer-data";
-import { DIAMOND_LIST } from "@/lib/consumer-identity";
+import { DIAMOND } from "@/lib/consumer-identity";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { CLASS_TEXT } from "@/lib/class-styles";
 
@@ -58,7 +58,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           }
           name={v.name}
           sub={v.handle}
-          // The chip names the Diamond List when the reviewer is on it and
+          // The chip names Diamond when the reviewer is Diamond and
           // is absent otherwise — "BRONZE" beside a name read as a rank
           // (MESITA-2044).
           rightChip={
@@ -69,7 +69,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
                   CLASS_TEXT[v.class_key],
                 )}
               >
-                {DIAMOND_LIST}
+                {DIAMOND}
               </span>
             ) : undefined
           }

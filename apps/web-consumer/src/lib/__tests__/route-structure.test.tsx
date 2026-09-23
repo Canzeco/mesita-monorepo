@@ -78,7 +78,7 @@ describe("T1 — every page lives inside the (shell) auth segment", () => {
     // identity rendered otherwise — sign-in is step TWO here, after the
     // guest has seen what they were given. Renders server-side from a
     // possession code (gift-web-preview-code, verify_jwt=false); the actual
-    // claim still happens behind the wall, at newVisit.walletRedeem.
+    // claim still happens behind the wall, at wallet.redeem.
     "gift/[code]/page.tsx",
   ]);
 
@@ -241,48 +241,38 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    // Home's modes (MESITA-1609 — was "Discover" before Search split out).
-    // Feed is here because it is the newest (MESITA-1621) and a mode added to
-    // the rail but missed in BottomNav's matchPrefixes renders with NO tab
-    // lit — nothing else catches that.
-    ["/discover/feed", "Home"],
-    ["/discover/chat", "Home"],
-    ["/discover/scroll", "Home"],
-    ["/discover/feed", "Home"],
-    ["/discover/favs", "Home"],
-    // /place rode the Home entry until the hub was retired (2026-09-01) and
-    // has no other consumer. If it is ever dropped from Home's
-    // matchPrefixes, place detail lights NOTHING and this row is what says so.
-    ["/place/abc", "Home"],
+    // Visit's five pills (MESITA-2050). Every one needs its own line in
+    // BottomNav's matchPrefixes: a pill added to VISIT_MODES and missed there
+    // renders its screen with NO tab lit, and nothing but this row notices.
+    ["/discover/scroll", "Visit"],
+    ["/search", "Visit"],
+    ["/discover/chat", "Visit"],
+    ["/discover/favs", "Visit"],
+    ["/new-visit", "Visit"],
+    // The two detail routes Visit owns outside its own pills. /place has
+    // ridden the leftmost tab since the hub era; /visit (THE TICKET) lit Me
+    // from MESITA-1609 until the tab named Visit existed.
+    ["/place/abc", "Visit"],
+    ["/visit/t1", "Visit"],
 
-    // Search is its own tab AND its own route now (MESITA-1609, MESITA-1616)
-    // — the same screen, promoted out of Home's mode rail and out from under
-    // discover/layout.tsx.
-    ["/search", "Search"],
+    // Order's one pill (MESITA-2050).
+    ["/order", "Order"],
 
-    ["/new-visit", "Pay"],
-    // Wallet is Pay's SECOND SECTION (MESITA-1581), so it lights Pay by
-    // nesting — no prefix of its own. /inbox/credits and /wallet are redirect
-    // SOURCES, never rendered, so neither belongs in this matrix.
-    ["/new-visit/wallet", "Pay"],
-    // Wallet's four children are full-screen ROUTES as of 2026-09-08, not
-    // sheets. They light Pay by the same nesting, and the tab bar stays under
-    // them: (shell)/layout.tsx's law is that every shell route keeps it. What
-    // a full-screen wallet view drops is the SECTION row, not the tab bar —
-    // PaySectionNav returns null off the two section roots.
-    ["/new-visit/wallet/buy", "Pay"],
-    ["/new-visit/wallet/gift", "Pay"],
-    ["/new-visit/wallet/redeem", "Pay"],
-    ["/new-visit/wallet/balance/bal_1", "Pay"],
+    // Wallet is a tab again, and its four full-screen children light it by
+    // nesting under /wallet. /credits, /inbox/credits and every
+    // /new-visit/wallet* path are redirect SOURCES, never rendered, so none
+    // of them belongs in this matrix.
+    ["/wallet", "Wallet"],
+    ["/wallet/buy", "Wallet"],
+    ["/wallet/gift", "Wallet"],
+    ["/wallet/redeem", "Wallet"],
+    ["/wallet/balance/bal_1", "Wallet"],
 
-    // Activity retired as a bottom tab (MESITA-1609) and then as a container
-    // (MESITA-1626) — its sections are sheets on Me, and a sheet has no path
-    // to light anything with. The DETAIL routes are what still has to nest
-    // under Me: a visit or reservation detail that stops matching Me's
-    // matchPrefixes lights NOTHING, and this is what would catch it.
-    ["/visit/t1", "Me"],
-    ["/reservation/r1", "Me"],
+    // Me's pages, and the one detail route it still owns: a reservation is
+    // reached from a place AND from Me › Reservations.
     ["/me", "Me"],
+    ["/me/visits", "Me"],
+    ["/reservation/r1", "Me"],
   ];
 
   it.each(MATRIX)("%s lights exactly %s", async (path, expected) => {
@@ -293,8 +283,9 @@ describe("T5 — exactly one tab lights per surface", () => {
   // Non-overlap is currently naming luck (/rewards vs /reservation share no
   // prefix). Pin it so a future rename that creates an overlap fails here.
   // /new-visit vs /visit is a genuine prefix hazard: "/visit".startsWith is
-  // false for "/new-visit", but a careless future rename could make the centre
-  // tab swallow its own detail route. Pin the cardinality.
+  // false for "/new-visit". Both light Visit now, but /wallet vs /new-visit
+  // is the live hazard — Wallet left /new-visit/wallet for its own tab, and a
+  // stale prefix would light two tabs. Pin the cardinality.
   it("never lights two tabs at once", async () => {
     for (const [path] of MATRIX) {
       expect((await activeTabFor(path)).length, path).toBe(1);
@@ -302,199 +293,201 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// MESITA-1609 — Home and Search split back apart, and Activity retires as a
-// tab (its sections move to Me). This directly REVERSES the guard
-// MESITA-1119 wrote below: that guard existed because a rejected mockup
-// tried to add an Agents tab and a class-suffixed Me label alongside a
-// Home/Search restoration nobody had reasoned through. This change is not
-// that mockup — it is a reviewed, reasoned IA change (design + eng review,
-// this same session), and the two tests MESITA-1119 actually cared about
-// (no class stamped into Me, no Agents tab) are UNCHANGED below. Only the
-// tab count and the specific "no Home or Search" assertion — the part of
-// that guard this PR deliberately overturns — are rewritten.
-describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
-  async function tabLabels(): Promise<string[]> {
+// MESITA-2050 — the bar is Visit · Order · Wallet · Me (Pato: "Visit. Order.
+// Wallet. Me."). Still FOUR, so Rules §2's "no fifth tab" holds; the four are
+// different. Home, Search and Pay are not gone — they are pills on Visit's
+// rail (T5b) — and the two freed slots went to Order and Wallet.
+//
+// This REPLACES the MESITA-1609 guard (Home · Search · Pay · Me), which had
+// itself reversed MESITA-1119's. Two things MESITA-1119 cared about are
+// unchanged below: no class stamped into Me, and no Agents tab.
+describe("MESITA-2050 — the bar is Visit · Order · Wallet · Me", () => {
+  async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
-      usePathname: () => "/search",
+      usePathname: () => pathname,
       useRouter: () => ({ push: () => {}, back: () => {} }),
     }));
     const { BottomNav } = await import("@/components/consumer/BottomNav");
-    const html = renderToStaticMarkup(<BottomNav />);
+    return renderToStaticMarkup(<BottomNav />);
+  }
+
+  async function tabLabels(): Promise<string[]> {
+    const html = await renderNav("/order");
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Me", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
+  it("is exactly Visit · Order · Wallet · Me", async () => {
+    expect(await tabLabels()).toEqual(["Visit", "Order", "Wallet", "Me"]);
   });
 
-  // The MESITA-1119 guard this replaces asserted `.not.toContain("Home")` and
-  // `.not.toContain("Search")` — the literal opposite of this row. That guard
-  // is not being silently bypassed: it is being deliberately overturned, with
-  // review, and this test is the record of that. A regression back to FIVE
-  // tabs (Home, Search AND Discover all at once, say) would still be caught —
-  // the count assertion above pins exactly four.
-  it("has Home and Search back, on purpose (MESITA-1609)", async () => {
+  // The three that left the bar are rail pills now. If one comes back as a
+  // TAB, the bar is five and this is the line that says so on review.
+  it("keeps Home, Search and Pay off the bar — they are Visit's pills", async () => {
     const labels = await tabLabels();
-    expect(labels).toContain("Home");
-    expect(labels).toContain("Search");
-    expect(labels).not.toContain("Discover");
+    for (const gone of ["Home", "Search", "Pay", "Discover"]) {
+      expect(labels).not.toContain(gone);
+    }
   });
 
-  // Unaffected by this PR — Docs › Apps §A still holds, MESITA-1119's other
-  // finding (a class-suffixed Me label, an Agents tab) is not what this PR
-  // touches.
   it("does not stamp class into Me and does not add an Agents tab", async () => {
     const labels = await tabLabels();
     expect(labels.some((l) => l.includes("·"))).toBe(false);
     expect(labels).not.toContain("Agents");
     expect(labels).not.toContain("Agent");
   });
+
+  // Every tab's href is a live page, never a redirect source — a tab that
+  // 308s costs a hop on every tap and lights nothing while it runs.
+  it("points every tab at its own live default", async () => {
+    const html = await renderNav("/me");
+    const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]);
+    expect(hrefs).toEqual([
+      CONSUMER_ROUTES.discoverDefault,
+      CONSUMER_ROUTES.order.root,
+      CONSUMER_ROUTES.wallet.root,
+      CONSUMER_ROUTES.me,
+    ]);
+    const sources = new Set(
+      (await nextConfig.redirects!()).map((r) => r.source),
+    );
+    expect(hrefs.filter((h) => sources.has(h))).toEqual([]);
+  });
 });
 
-// ── T5b — Home's mode rail ──────────────────────────────────────────────────
-// Same job T6 does for the Inbox row, one level down. A rail whose href stops
-// matching its own pathname lights NOTHING, and neither tsc nor the build nor
-// any other test notices — the row just quietly loses its selected state.
+// ── T5b — the tab rails (Visit's five, Order's one) ────────────────────────
+// A rail whose href stops matching its own pathname lights NOTHING, and
+// neither tsc nor the build nor any other test notices — the row just quietly
+// loses its selected state. This pins ORDER, COUNT, the width budget, and
+// that every pill is a real page.
 //
-// It also pins ORDER and COUNT. Search left this rail for its own tab
-// (MESITA-1609) and then its own route (MESITA-1616); Feed joined at
-// MESITA-1621. MESITA-1697 cut it to FOUR — Swipe became Scroll (same deck,
-// vertical) and Catalog's body moved under Feed's name, so the two words that
-// left are a rename and a merge rather than two deletions. The order is the
-// input-cost ladder DiscoverModeNav documents: zero input, structured,
-// freeform, recall.
-describe("T5b — Home's mode rail", () => {
-  it("is exactly Scroll · Feed · Chat · Favs", async () => {
-    const { MODES } = await import(
-      "@/components/consumer/discover/DiscoverModeNav"
-    );
-    expect(MODES.map((m) => m.label)).toEqual([
-      "Scroll",
-      "Feed",
+// The order is Pato's, verbatim (MESITA-2050): "Home(scroll). Search. Chat.
+// Favs. Pay." and "Order must have Home."
+describe("T5b — the tab rails", () => {
+  it("Visit's rail is exactly Home · Search · Chat · Favs · Pay", async () => {
+    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
+    expect(VISIT_MODES.map((m) => m.label)).toEqual([
+      "Home",
+      "Search",
       "Chat",
       "Favs",
+      "Pay",
     ]);
+  });
+
+  it("Order's rail is exactly Home", async () => {
+    const { ORDER_MODES } = await import("@/components/consumer/ModeRail");
+    expect(ORDER_MODES.map((m) => m.label)).toEqual(["Home"]);
+    expect(ORDER_MODES[0].href).toBe(CONSUMER_ROUTES.order.home);
+  });
+
+  // Feed left the rail (MESITA-2050). Its segment is a redirect source again,
+  // and the pill must not come back pointing at a 308.
+  it("has no Feed pill, and /discover/feed forwards to Home in one hop", async () => {
+    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
+    expect(VISIT_MODES.map((m) => m.label)).not.toContain("Feed");
+    const hop = (await nextConfig.redirects!()).find(
+      (r) => r.source === "/discover/feed",
+    );
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.scroll);
+    expect(
+      existsSync(join(SHELL, "(visit)", "discover", "feed", "page.tsx")),
+    ).toBe(false);
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
   // sizes every column to the WIDEST pill, so the track is N x widest plus
-  // (N-1) x 4px of gaps and it has to fit 359px (375 frame less px-2). Chrome
-  // 26px: a 14px icon, gap-1, and px-1 either side.
+  // (N-1) x 4px of gaps, and it has to fit 359px (375 frame less px-2).
   //
-  // THIS IS THE ASSERTION THAT JUST DID ITS JOB. It was written when Search
-  // left the rail, explicitly so "a FUTURE addition re-tightens it and gets
-  // caught here first" — Feed is that addition (MESITA-1621), and at five
-  // columns the budget lands at 347.5 of 359px. ~11px of margin: a SIXTH mode
-  // does not fit (6 x 66.3 + 20 = 417.8), and neither does any label wider
-  // than "Catalog". Do not add either without shortening a label first.
-  //
-  // MEASURED AT 11px (`type-label`). Feed's 25.4 is the conservative top of
-  // its band rather than a fresh measurement in these units — in Inter 600 at
-  // 11px it sits between Favs and Chat, and it is entered just above the
-  // wider of the two so the error can only over-reserve. Catalog is the
-  // widest by 15px, so nothing here turns on Feed's exact number.
-  it("keeps every label inside the 359px track", async () => {
-    const { MODES } = await import(
-      "@/components/consumer/discover/DiscoverModeNav"
-    );
+  // FIVE COLUMNS AT 12px FIT ONLY WITH A 14px ICON. Advance widths come from
+  // Inter 600's hmtx table (2048 units/em). Chrome per pill is 14px icon +
+  // gap-1 (4) + px-1 either side (8) = 26. Search is widest: 5 x (40.9 + 26)
+  // + 16 = 350.5. With the four-column 16px icon it would be 360.5 — over.
+  it("keeps every Visit label inside the 359px track", async () => {
+    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
     const navSrc = readFileSync(
-      join(
-        __dirname,
-        "..",
-        "..",
-        "components/consumer/discover/DiscoverModeNav.tsx",
-      ),
+      join(__dirname, "..", "..", "components/consumer/ModeRail.tsx"),
       "utf8",
     );
-    // Match the `base` class string itself, not the word anywhere in the file
-    // — both sizes are NAMED in that file's comment explaining the swap.
-    //
-    // 12px IS THE SIZE AGAIN (MESITA-1697). `type-label` (11px) was adopted
-    // only because Catalog at 40.3px made five columns overflow, and Catalog's
-    // label is gone. At four columns `auto-cols-fr` hands each pill ~87px for
-    // ~53px of content, and an 11px label floating in that reads as an
-    // unfinished render.
+    // Match the class strings themselves, not the words anywhere in the file.
     expect(navSrc).toContain('"text-xs flex items-center');
-    expect(navSrc).not.toContain('"type-label flex items-center');
-    // Advance widths at Inter 600. The four live labels are measured at 12px;
-    // the retired ones stay as the 11px figures the rail was budgeted with, so
-    // the reasoning survives its own rename.
+    expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
-      Scroll: 32.7,
-      Feed: 27.7,
-      Chat: 26.7,
-      Favs: 27.4,
+      Home: 34.2,
+      Search: 40.9,
+      Chat: 27.3,
+      Favs: 27.6,
+      Pay: 21.7,
     };
-    // Chrome per pill: 16px icon + 4px gap-1 + 8px px-1 = 28 (the icon grew
-    // with the type). Gaps between N columns = N-1, not N — the five-column
-    // version of this line said `+ 16` for four gaps.
     const widest = Math.max(
-      ...MODES.map((m) => {
+      ...VISIT_MODES.map((m) => {
         const text = TEXT_PX[m.label];
-        expect(text, `unmeasured label "${m.label}" — measure it at 375px`).
+        expect(text, `unmeasured label "${m.label}" — measure it at 12px`).
           toBeTypeOf("number");
-        return text + 28;
+        return text + 26;
       }),
     );
-    expect(widest * MODES.length + (MODES.length - 1) * 4).toBeLessThanOrEqual(
-      359,
-    );
+    expect(
+      widest * VISIT_MODES.length + (VISIT_MODES.length - 1) * 4,
+    ).toBeLessThanOrEqual(359);
   });
 
-  it("has no parked modes — all four are real destinations", async () => {
-    const { MODES } = await import(
-      "@/components/consumer/discover/DiscoverModeNav"
+  // Every pill is a LIVE page — never a redirect source, which would cost a
+  // hop and light no pill while it ran.
+  it("every pill href is a real page, one each", async () => {
+    const { VISIT_MODES, ORDER_MODES } = await import(
+      "@/components/consumer/ModeRail"
     );
-    // Scroll, Feed, Chat and Favs are all live (MESITA-1697). A `soon` flag
-    // reappearing means a mode shipped unfinished;
-    // that is allowed, but it should be a deliberate edit to this assertion
-    // rather than a silent regression.
-    expect(MODES.filter((m) => m.soon)).toEqual([]);
+    const pages = new Set(
+      allPages().map(
+        (p) =>
+          "/" +
+          p
+            .replace(/\/?page\.tsx$/, "")
+            .split("/")
+            .filter((seg) => seg && !seg.startsWith("(") && !seg.startsWith("@"))
+            .join("/"),
+      ),
+    );
+    const hrefs = [...VISIT_MODES, ...ORDER_MODES].map((m) => m.href);
+    for (const href of hrefs) expect(pages, href).toContain(href);
+    expect(new Set(VISIT_MODES.map((m) => m.href)).size).toBe(
+      VISIT_MODES.length,
+    );
+    // The three /discover pills are exactly the contract's discoverTabs.
+    expect(
+      VISIT_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
+    ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
   });
 
-  // Search has its own route now (MESITA-1616), fully out of the
-  // discoverTabs namespace — so this rail's routes and the contract's
-  // discoverTabs are an EXACT match again, the simple form this test held
-  // before Search ever needed a "deliberately excluded" carve-out.
-  it("every mode href is a real /discover route in the contract, one each", async () => {
-    const { MODES } = await import(
-      "@/components/consumer/discover/DiscoverModeNav"
-    );
-    const contract = Object.values(CONSUMER_ROUTES.discoverTabs);
-    for (const m of MODES) {
-      expect(contract, m.label).toContain(m.href);
-    }
-    expect(MODES).toHaveLength(contract.length);
-  });
-
-  // DEFAULT IS BACK ON THE LEADING PILL (MESITA-1609/1615), reversing the
-  // "default is not first" guard this row held from 2026-09-01 through
-  // MESITA-1609. That guard existed because Search — buried behind Catalog's
-  // width win — was the urgent mode nobody landed on by looking; once Search
-  // left the rail entirely, there was no more urgent mode among the
-  // remaining four to bury, so first-pill-is-default stopped being a trap.
-  // Scroll leading now (MESITA-1697; Swipe held it from MESITA-1615) doesn't
-  // reopen that — it just carries the same property to a different mode. See
-  // consumer-route-contract.ts's discoverDefault comment for the full
-  // reasoning. Do NOT re-derive this from Activity's still-live
-  // Alerts-leads/Visits-lands split (inboxDefault) — the two rows no longer
-  // share a justification.
-  it("lands Home on Scroll — its own leading pill", async () => {
-    const { MODES } = await import(
-      "@/components/consumer/discover/DiscoverModeNav"
-    );
+  // First pill is the default, the property this rail has preserved since
+  // MESITA-1609. Visit's bottom-tab href is Home's href.
+  it("lands Visit on Home — its own leading pill", async () => {
+    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
       CONSUMER_ROUTES.discoverTabs.scroll,
     );
-    expect(MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(MODES[0].label).toBe("Scroll");
-    // The guard that makes "the first tab lands on nothing" impossible to
-    // reintroduce: whatever the default points at must be a LIVE mode.
-    const landed = MODES.find(
-      (m) => m.href === CONSUMER_ROUTES.discoverDefault,
-    );
-    expect(landed?.soon ?? false).toBe(false);
+    expect(VISIT_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
+    expect(VISIT_MODES[0].label).toBe("Home");
+  });
+
+  // One layout draws Visit's rail over three namespaces; a pill whose page
+  // leaves the (visit) group loses the rail and nothing else notices.
+  it("every Visit pill's page lives inside the (visit) route group", () => {
+    for (const rel of [
+      ["discover", "scroll"],
+      ["discover", "chat"],
+      ["discover", "favs"],
+      ["search"],
+      ["new-visit"],
+    ]) {
+      expect(
+        existsSync(join(SHELL, "(visit)", ...rel, "page.tsx")),
+        rel.join("/"),
+      ).toBe(true);
+    }
+    const layout = readFileSync(join(SHELL, "(visit)", "layout.tsx"), "utf8");
+    expect(layout).toContain("<ModeRail modes={VISIT_MODES} />");
   });
 });
 
@@ -580,7 +573,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
-      "Diamond List",
+      "Diamond",
       "Wallet",
       "Plan",
       "Notifications",
@@ -752,17 +745,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
 // the redirect is ever dropped, this goes red instead of CI going green while
 // those links 404.
 describe("T7 — every former Wallet url still resolves after the move", () => {
-  // Wallet has now moved three times and come back: standalone /credits
-  // (#1429) -> Activity section (/inbox/credits) -> Pay section
-  // (/new-visit/wallet, 2026-09-01) -> its own tab (/wallet, 09-05) -> Pay
-  // section again (09-06). ALL THREE old urls were live in production, so all
-  // three sets of bookmarks are real.
+  // Wallet has moved five times: standalone /credits (#1429) -> Activity
+  // section (/inbox/credits) -> Pay section (/new-visit/wallet, 2026-09-01)
+  // -> its own tab (/wallet, 09-05) -> Pay section again (09-06) -> its own
+  // tab again (/wallet, MESITA-2050). Every old url was live in production,
+  // so every set of bookmarks is real.
   //
   // EACH RESOLVES IN ONE HOP, and that is why this asserts the destination
-  // rather than just the entry: pointing /credits at /inbox/credits, or
-  // /wallet at /inbox/credits, would still be a working redirect and would
-  // still be the 3-hop chain T4 refuses. T4 can validate a destination but
-  // never a redirect's ABSENCE, which is why this test exists alongside it.
+  // rather than just the entry: pointing /credits at /new-visit/wallet would
+  // still be a working redirect and would still be a two-hop chain.
   it.each([
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
     // container; Bookings is a sheet on Me now, so Me is where they go.
@@ -777,81 +768,67 @@ describe("T7 — every former Wallet url still resolves after the move", () => {
     expect(entry!.destination).toBe(destination);
   });
 
-  it.each(["/credits", "/inbox/credits", "/wallet"])(
-    "keeps %s redirecting straight to Pay > Wallet",
-    async (source) => {
-      const redirects = await nextConfig.redirects!();
-      const entry = redirects.find((r) => r.source === source);
-      expect(entry, `${source} redirect was removed`).toBeDefined();
-      expect(entry!.destination).toBe("/new-visit/wallet");
-    },
-  );
+  it.each([
+    ["/credits", "/wallet"],
+    ["/inbox/credits", "/wallet"],
+    ["/new-visit/wallet", "/wallet"],
+    ["/new-visit/wallet/buy", "/wallet/buy"],
+    ["/new-visit/wallet/gift", "/wallet/gift"],
+    ["/new-visit/wallet/redeem", "/wallet/redeem"],
+    ["/new-visit/wallet/balance/:id", "/wallet/balance/:id"],
+  ])("keeps %s redirecting straight to %s", async (source, destination) => {
+    const redirects = await nextConfig.redirects!();
+    const entry = redirects.find((r) => r.source === source);
+    expect(entry, `${source} redirect was removed`).toBeDefined();
+    expect(entry!.destination).toBe(destination);
+  });
+
+  // /wallet is the live page again. A redirect whose SOURCE is a live route
+  // shadows it — the page never renders and every gate stays green.
+  it("keeps /wallet itself out of the redirect table", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.find((r) => r.source === "/wallet")).toBeUndefined();
+  });
 });
 
-// ── T8 — the Pay pill row is what the guest sees ────────────────────────────
+// ── T9 — Wallet is a tab, and Pay is one page ───────────────────────────────
 //
-// Same argument as T6, one tab over: CONSUMER_ROUTES.newVisit's key order is
-// inert (every consumer reads a named key), and what a guest sees is
-// PaySectionNav.SECTIONS. Wallet has now been in and out of this row inside a
-// week, so the row that renders is the thing worth pinning — a change that
-// promotes it back to a tab has to delete this test to do it, which is exactly
-// the review moment that was missing on 2026-09-05.
-describe("T8 — the Pay section row renders as specified", () => {
-  async function renderNav(pathname: string): Promise<string> {
-    vi.resetModules();
-    vi.doMock("next/navigation", () => ({
-      usePathname: () => pathname,
-    }));
-    const { PaySectionNav } = await import(
-      "@/components/consumer/pay/PaySectionNav"
+// Wallet has been in and out of Pay three times. The Pay section row (QR ·
+// Wallet) is deleted, not emptied: a one-pill row that switches nothing is
+// chrome pretending to be a control. A change that puts Wallet back inside
+// Pay has to delete these lines to do it, which is the review moment.
+describe("T9 — Wallet is its own tab, and Pay has no section row", () => {
+  it("the Pay section row is gone from the codebase", () => {
+    expect(
+      existsSync(
+        join(__dirname, "..", "..", "components", "consumer", "pay", "PaySectionNav.tsx"),
+      ),
+    ).toBe(false);
+    const layout = readFileSync(
+      join(SHELL, "(visit)", "new-visit", "layout.tsx"),
+      "utf8",
     );
-    return renderToStaticMarkup(<PaySectionNav />);
-  }
-
-  /** Pill labels in render order. */
-  function labels(html: string): string[] {
-    return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
-  }
-
-  it("is exactly QR · Wallet, in that order", async () => {
-    expect(labels(await renderNav(CONSUMER_ROUTES.newVisit.new))).toEqual([
-      "QR",
-      "Wallet",
-    ]);
+    expect(layout).not.toMatch(/<\w+SectionNav\b/);
   });
 
-  // The failure this catches: /new-visit is a PREFIX of /new-visit/wallet, so
-  // a startsWith match here lights QR on both pages. PaySectionNav compares
-  // exactly, and this is what proves it still does.
-  const ACTIVE: [string, string][] = [
-    ["/new-visit", "QR"],
-    ["/new-visit/wallet", "Wallet"],
-  ];
-
-  it.each(ACTIVE)("%s lights exactly %s", async (pathname, expected) => {
-    const html = await renderNav(pathname);
-    const lit = html
-      .split("<a ")
-      .slice(1)
-      .filter((chunk) => chunk.includes("bg-primary"))
-      .map((chunk) => chunk.match(/<span>([^<]+)</)?.[1] ?? "?");
-    expect(lit).toEqual([expected]);
+  it("Wallet's pages live under /wallet, outside Visit's rail", () => {
+    for (const rel of [
+      [],
+      ["buy"],
+      ["gift"],
+      ["redeem"],
+      ["balance", "[id]"],
+    ]) {
+      expect(existsSync(join(SHELL, "wallet", ...rel, "page.tsx")), rel.join("/")).
+        toBe(true);
+    }
+    expect(existsSync(join(SHELL, "(visit)", "new-visit", "wallet"))).toBe(false);
   });
 
-  // Wallet's four full-screen children inherit new-visit/layout.tsx, so the
-  // section row would ride along above their own back-and-title header —
-  // two rows of chrome disagreeing about where the guest is, and a lateral
-  // exit out of a half-finished purchase. The failure this catches is a
-  // future edit relaxing the membership test to a prefix match, which puts
-  // the row back on all four without touching either of them.
-  const SUBROUTES = [
-    CONSUMER_ROUTES.newVisit.walletBuy,
-    CONSUMER_ROUTES.newVisit.walletGift,
-    CONSUMER_ROUTES.newVisit.walletRedeem,
-    `${CONSUMER_ROUTES.newVisit.walletBalance.prefix}bal_1`,
-  ];
-
-  it.each(SUBROUTES)("does not render on %s", async (pathname) => {
-    expect(await renderNav(pathname)).toBe("");
+  // The layout's force-dynamic is what covers the four children; a page's own
+  // declaration never reaches below it (found the hard way on 2026-09-05).
+  it("Wallet's layout forces the whole tab dynamic", () => {
+    const layout = readFileSync(join(SHELL, "wallet", "layout.tsx"), "utf8");
+    expect(layout).toContain('export const dynamic = "force-dynamic"');
   });
 });

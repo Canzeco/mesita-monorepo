@@ -8,8 +8,8 @@ import { TextField } from '@/components/ui/TextField';
 import { apiClaimInviteCode } from '@/lib/api/auth';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import {
-  DIAMOND_LIST_PIN_SUBTITLE,
-  DIAMOND_LIST_PIN_SUCCESS,
+  DIAMOND_PIN_SUBTITLE,
+  DIAMOND_PIN_SUCCESS,
 } from '@/lib/consumer-identity';
 import { errMsg } from '@/lib/utils';
 import { toast } from '@/lib/toast';
@@ -33,7 +33,7 @@ export default function InvitePage() {
       await refreshProfile();
       // The PIN grants one thing now (MESITA-2040): a place on the Diamond
       // List (MESITA-2044). It used to NAME a class, any class.
-      toast.success(DIAMOND_LIST_PIN_SUCCESS);
+      toast.success(DIAMOND_PIN_SUCCESS);
       router.replace(CONSUMER_ROUTES.me);
     } catch (e) {
       setError(errMsg(e, "That PIN didn't work."));
@@ -47,7 +47,7 @@ export default function InvitePage() {
       asRoute
       onClose={() => router.back()}
       title="Invitation PIN"
-      subtitle={DIAMOND_LIST_PIN_SUBTITLE}
+      subtitle={DIAMOND_PIN_SUBTITLE}
     >
       <View className="rounded-2xl border border-border bg-card p-4">
         <TextField

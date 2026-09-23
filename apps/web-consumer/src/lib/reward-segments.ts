@@ -9,7 +9,7 @@
 // the bill engine reads. The consumer surface intentionally uses these static
 // defaults so it needs no new consumer Edge Function.
 //
-// The Diamond List (MESITA-2044): two identity rows (Base / Diamond List) +
+// Diamond (MESITA-2044): two identity rows (Base / Diamond) +
 // three actions. Story is a universal action gated on connected Instagram
 // (MESITA-909); Review and
 // Welcome are universal.
@@ -21,7 +21,7 @@ import type { ClassKey } from "@/lib/consumer-data";
 type GridStrategy = "zero" | "conservative" | "aggressive";
 
 // Ontology of a rung (per the canonical definitions):
-//   class  — who the guest is: everyone (Base) or on the Diamond List. The
+//   class  — who the guest is: everyone (Base) or Diamond. The
 //            kind stays "class" and the keys stay `bronze`/`diamond` because
 //            those are the engine's storage keys; neither is ever printed.
 //   action — a rewarded thing the guest does at the table (Story / Google Review)
@@ -51,7 +51,7 @@ type RewardSegment = {
 };
 
 // The canonical program, stored worst→best. The two identity rows tie on
-// rates; the CLASS_STEP below (+15 for the Diamond List) breaks the tie —
+// rates; the CLASS_STEP below (+15 for Diamond) breaks the tie —
 // best-of makes ties harmless. Silver and Gold are gone (MESITA-2044).
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
@@ -66,8 +66,8 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
     rank: 4,
     key: "diamond",
-    name: "Diamond List",
-    nameEs: "Lista Diamante",
+    name: "Diamond",
+    nameEs: "Diamante",
     kind: "class",
     blurb: "Invitation only — more on top of the base.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },

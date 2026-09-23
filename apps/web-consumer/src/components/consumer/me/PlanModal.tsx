@@ -280,7 +280,7 @@ export function PlanModal() {
           )}
 
           <p className="text-muted-foreground type-body leading-relaxed">
-            Premium is a subscription. It does not put you on the Diamond List —
+            Premium is a subscription. It does not make you Diamond —
             only an invitation does. You become Premium the moment payment
             clears.
           </p>

@@ -28,11 +28,11 @@ const rows = (html: string) =>
   [...html.matchAll(/type-body flex[^>]*>([^<]+)/g)].map((m) => m[1]);
 
 describe("the Rewards rate sheet names exactly two identity rows", () => {
-  it("prints Base, then the Diamond List as an adder — nothing else", () => {
+  it("prints Base, then Diamond as an adder — nothing else", () => {
     const html = renderToStaticMarkup(
       <ClassLadder quote={QUOTE} classKey="diamond" />,
     );
-    expect(rows(html)).toEqual(["Base", "Diamond List"]);
+    expect(rows(html)).toEqual(["Base", "Diamond"]);
     expect(html).toContain("Every guest, every visit");
     expect(html).toContain("Invitation only");
     expect(html).toContain("20%");
@@ -41,7 +41,7 @@ describe("the Rewards rate sheet names exactly two identity rows", () => {
     expect(html).not.toContain("50%");
   });
 
-  it("marks the guest's own row: the list when on it, Base when not", () => {
+  it("marks the guest's own row: Diamond when Diamond, Base when not", () => {
     const on = renderToStaticMarkup(
       <ClassLadder quote={QUOTE} classKey="diamond" />,
     );
@@ -49,12 +49,12 @@ describe("the Rewards rate sheet names exactly two identity rows", () => {
       <ClassLadder quote={QUOTE} classKey="bronze" />,
     );
     // "You" sits inside the marked row's label, after the label text.
-    expect(on.indexOf("You")).toBeGreaterThan(on.indexOf("Diamond List"));
-    expect(off.indexOf("You")).toBeLessThan(off.indexOf("Diamond List"));
+    expect(on.indexOf("You")).toBeGreaterThan(on.indexOf("Diamond"));
+    expect(off.indexOf("You")).toBeLessThan(off.indexOf("Diamond"));
     expect(off.indexOf("You")).toBeGreaterThan(off.indexOf("Base"));
   });
 
-  it("a legacy ladder reads Base off `standard` and the list's adder off `aura`", () => {
+  it("a legacy ladder reads Base off `standard` and Diamond's adder off `aura`", () => {
     const legacy: RewardQuote = {
       ...QUOTE,
       additive: false,
@@ -64,7 +64,7 @@ describe("the Rewards rate sheet names exactly two identity rows", () => {
     const html = renderToStaticMarkup(
       <ClassLadder quote={legacy} classKey="bronze" />,
     );
-    expect(rows(html)).toEqual(["Base", "Diamond List"]);
+    expect(rows(html)).toEqual(["Base", "Diamond"]);
     expect(html).toContain("15%");
     expect(html).toContain("+20%");
   });

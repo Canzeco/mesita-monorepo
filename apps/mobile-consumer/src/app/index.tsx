@@ -24,5 +24,5 @@ export default function Index() {
   if (!onboarded) {
     return <Redirect href={CONSUMER_ROUTES.onboard} />;
   }
-  return <Redirect href={CONSUMER_ROUTES.homeDefault} />;
+  return <Redirect href={CONSUMER_ROUTES.discoverDefault} />;
 }

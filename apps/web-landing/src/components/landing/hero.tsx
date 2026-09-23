@@ -96,7 +96,7 @@ function Hero() {
           </span>
           <span className="bg-tier-diamond text-foreground absolute top-4 right-4 hidden items-center gap-1.5 rounded-2xl px-3.5 py-2 shadow-lg md:flex">
             <Gem className="h-4 w-4" aria-hidden />
-            <span className="text-[13px] font-semibold">Diamond List</span>
+            <span className="text-[13px] font-semibold">Diamond</span>
           </span>
         </figure>
       </div>

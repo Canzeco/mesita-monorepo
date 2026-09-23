@@ -61,9 +61,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // entirely, so the two cannot both exist; the redirect lost. If this
       // key and a `legacy.discoverFeed` ever appear together, the page is
       // dead and only this pairing shows it.
+      // Three of Visit's five pills (MESITA-2050); Search is `search` and
+      // Pay is `newVisit.root`. FEED LEFT the rail and is a legacy source
+      // below again — a page and a redirect for one path cannot coexist, so
+      // this key and `legacy.discoverFeed` must never both appear.
       discoverTabs: {
         scroll: "/discover/scroll",
-        feed: "/discover/feed",
         chat: "/discover/chat",
         favs: "/discover/favs",
       },
@@ -77,22 +80,24 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       discoverDefault: "/discover/scroll",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
-      // Pay is a container again: New (bare) + Wallet. Wallet spent 2026-09-05
-      // to 09-06 as a top-level tab and came back — /wallet is a redirect
-      // source now, not a key.
+      // Pay is ONE page again (MESITA-2050): Wallet left for its own tab.
       newVisit: {
         root: "/new-visit",
         new: "/new-visit",
-        wallet: "/new-visit/wallet",
-        // Wallet's four children are ROUTES, not sheets and not @modal
-        // intercepts (Pato, 2026-09-08). Nothing here belongs in
-        // isModalContractPath — see the reversal note in the contract.
-        walletBuy: "/new-visit/wallet/buy",
-        walletGift: "/new-visit/wallet/gift",
-        walletRedeem: "/new-visit/wallet/redeem",
-        walletBalance: { prefix: "/new-visit/wallet/balance/" },
       },
       newVisitDefault: "/new-visit",
+      // Wallet is a bottom tab (MESITA-2050). Its four children are ROUTES,
+      // not sheets and not @modal intercepts (Pato, 2026-09-08) — nothing
+      // here belongs in isModalContractPath.
+      wallet: {
+        root: "/wallet",
+        buy: "/wallet/buy",
+        gift: "/wallet/gift",
+        redeem: "/wallet/redeem",
+        balance: { prefix: "/wallet/balance/" },
+      },
+      // Order is a bottom tab (MESITA-2050), one pill: Home at the bare route.
+      order: { root: "/order", home: "/order" },
       visit: { prefix: "/visit/" },
       // The public gift landing link (MESITA-1677) — a stranger's entry
       // point, no session assumed. route-structure.test.tsx T1 carries the
@@ -148,8 +153,11 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverCatalog: "/discover/catalog",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
-        // Wallet's address for the day it was a top-level tab (09-05 -> 09-06).
-        wallet: "/wallet",
+        // Pay's Wallet section (2026-09-01 -> MESITA-2050). `/wallet` is
+        // CANONICAL again, so it is not here.
+        newVisitWallet: "/new-visit/wallet",
+        // Feed's segment, off Visit's rail since MESITA-2050.
+        discoverFeed: "/discover/feed",
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
@@ -178,6 +186,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       reservations: "/reservations",
       newVisit: "/new-visit",
       visit: "/visit",
+      // The two tabs MESITA-2050 added.
+      wallet: "/wallet",
+      order: "/order",
       // NO `inbox` key (MESITA-1626, removed): the container is gone and every
       // /inbox address 308s to /me, so the middleware never sees one.
       me: "/me",
@@ -214,8 +225,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     // Wallet on 2026-09-01. It must stay ABOVE the catch-all — Next takes the
     // first match, so a catch-all listed first would swallow it and land a
     // wallet bookmark on Me.
+    //
+    // /inbox/orders is the second exception (MESITA-2050): Orders' old
+    // Activity section has a home again, the Order tab.
     expect(inbox.map((r) => [r.source, r.destination])).toEqual([
-      ["/inbox/credits", "/new-visit/wallet"],
+      ["/inbox/credits", "/wallet"],
+      ["/inbox/orders", "/order"],
       ["/inbox", "/me"],
       ["/inbox/:path*", "/me"],
     ]);
@@ -233,16 +248,16 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     expect(CONSUMER_ROUTES.newVisit.new).toBe(CONSUMER_ROUTES.newVisit.root);
   });
 
-  // Wallet is a SECTION of Pay, not a tab and not a section of Activity. Both
-  // halves have been tried: /inbox/credits (wrong container — a wallet holds
-  // instruments, Activity holds events) and /wallet (right idea, one tab too
-  // many). A change that moves it again has to delete this line to do it.
-  it("keeps Wallet inside Pay, and nowhere else", () => {
-    expect(CONSUMER_ROUTES.newVisit.wallet).toBe("/new-visit/wallet");
+  // Wallet is a TAB (MESITA-2050) — the 09-05 idea again, and this time on
+  // a four-tab bar rather than a fifth tab. It is not a section of Pay and
+  // not a section of Activity. A change that moves it again has to delete
+  // these lines to do it.
+  it("keeps Wallet at its own top-level /wallet, outside Pay", () => {
+    expect(CONSUMER_ROUTES.wallet.root).toBe("/wallet");
     expect(
-      CONSUMER_ROUTES.newVisit.wallet.startsWith(CONSUMER_ROUTES.newVisit.root),
-    ).toBe(true);
-    expect(CONSUMER_ROUTES).not.toHaveProperty("wallet");
+      CONSUMER_ROUTES.wallet.root.startsWith(CONSUMER_ROUTES.newVisit.root),
+    ).toBe(false);
+    expect(CONSUMER_ROUTES.newVisit).not.toHaveProperty("wallet");
   });
 });
 
@@ -255,7 +270,7 @@ describe("path helpers", () => {
     // ticket (the DB column, the EFs and the row types all say ticket), so
     // call sites talking about the OBJECT keep reading naturally.
     expect(ticketPath("t1")).toBe("/visit/t1");
-    expect(walletBalancePath("bal_1")).toBe("/new-visit/wallet/balance/bal_1");
+    expect(walletBalancePath("bal_1")).toBe("/wallet/balance/bal_1");
     expect(giftClaimPath("1234567890")).toBe("/gift/1234567890");
   });
 
@@ -266,14 +281,14 @@ describe("path helpers", () => {
   // "simplified" it back to /new-visit/wallet/[id].
   it("keeps Buy, Gift and Redeem out of the balance id space", () => {
     for (const href of [
-      CONSUMER_ROUTES.newVisit.walletBuy,
-      CONSUMER_ROUTES.newVisit.walletGift,
-      CONSUMER_ROUTES.newVisit.walletRedeem,
+      CONSUMER_ROUTES.wallet.buy,
+      CONSUMER_ROUTES.wallet.gift,
+      CONSUMER_ROUTES.wallet.redeem,
     ]) {
       expect(
-        href.startsWith(CONSUMER_ROUTES.newVisit.walletBalance.prefix),
+        href.startsWith(CONSUMER_ROUTES.wallet.balance.prefix),
       ).toBe(false);
-      expect(href.startsWith(`${CONSUMER_ROUTES.newVisit.wallet}/`)).toBe(true);
+      expect(href.startsWith(`${CONSUMER_ROUTES.wallet.root}/`)).toBe(true);
     }
   });
 
@@ -281,9 +296,9 @@ describe("path helpers", () => {
   // an @modal intercept and undone the 2026-09-08 reversal by the back door.
   it("keeps every wallet subroute out of the modal contract", () => {
     for (const href of [
-      CONSUMER_ROUTES.newVisit.walletBuy,
-      CONSUMER_ROUTES.newVisit.walletGift,
-      CONSUMER_ROUTES.newVisit.walletRedeem,
+      CONSUMER_ROUTES.wallet.buy,
+      CONSUMER_ROUTES.wallet.gift,
+      CONSUMER_ROUTES.wallet.redeem,
       walletBalancePath("bal_1"),
     ]) {
       expect(isModalContractPath(href), href).toBe(false);
@@ -311,6 +326,9 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/search",
     "/reservations",
     "/new-visit",
+    "/wallet",
+    "/wallet/balance/bal_1",
+    "/order",
     // THE TICKET is a full page, not a routed modal — /rewards/ticket/ used to
     // sit in the predicate with no intercept behind it (inert). Removed with
     // the rename rather than carried forward as an inert /visit/ branch.
@@ -408,9 +426,12 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // never rendering. This table is exhaustive — `toEqual` on the whole
       // array — so re-adding the entry fails HERE, which is the point: the
       // page it would break is otherwise silent.
+      //
+      // FEED LEFT VISIT'S RAIL (MESITA-2050): /discover/feed is a redirect
+      // source for the second time, and /discover/home points past it.
       {
         source: "/discover/home",
-        destination: "/discover/feed",
+        destination: "/discover/scroll",
         permanent: true,
       },
       // MESITA-1697's two renames. Both one hop; the /explore* and /home*
@@ -422,26 +443,32 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       {
         source: "/discover/catalog",
-        destination: "/discover/feed",
+        destination: "/discover/scroll",
         permanent: true,
       },
+      { source: "/discover/feed", destination: "/discover/scroll", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
-      // Wallet's three former addresses, each pointing STRAIGHT at
-      // /new-visit/wallet — never at one another, which would be the 3-hop
-      // chain T4 refuses. route-structure T7 asserts these separately, because
-      // T4 can only validate a destination, never an absence.
-      { source: "/credits", destination: "/new-visit/wallet", permanent: true },
+      // Wallet is a tab at /wallet again (MESITA-2050). Every former address
+      // points STRAIGHT at it — never at one another. Four explicit children
+      // rather than a `:path*`, so T4 can prove each destination is a page.
+      // route-structure T7 asserts these separately, because T4 can only
+      // validate a destination, never an absence.
+      { source: "/credits", destination: "/wallet", permanent: true },
+      { source: "/inbox/credits", destination: "/wallet", permanent: true },
+      { source: "/new-visit/wallet", destination: "/wallet", permanent: true },
+      { source: "/new-visit/wallet/buy", destination: "/wallet/buy", permanent: true },
+      { source: "/new-visit/wallet/gift", destination: "/wallet/gift", permanent: true },
+      { source: "/new-visit/wallet/redeem", destination: "/wallet/redeem", permanent: true },
       {
-        source: "/inbox/credits",
-        destination: "/new-visit/wallet",
+        source: "/new-visit/wallet/balance/:id",
+        destination: "/wallet/balance/:id",
         permanent: true,
       },
-      { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
       { source: "/profile", destination: "/me/profile", permanent: true },
       // Deepest source first; each is ONE hop, and the invite PIN never
       // chains through /me/diamond (T4 caps a chain at 2).
@@ -454,6 +481,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // address lands on Me in ONE hop. These sit BELOW /inbox/credits on
       // purpose: Next takes the first match, and Credits still belongs to
       // Pay's Wallet.
+      // Orders' Activity section has a home again (MESITA-2050).
+      { source: "/inbox/orders", destination: "/order", permanent: true },
       { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },
     ]);
@@ -499,6 +528,10 @@ describe("middleware auth wall (shouldGate)", () => {
     "/me/anything",
     "/new-visit",
     "/visit/t1",
+    // The two tabs MESITA-2050 added, and a Wallet child.
+    "/wallet",
+    "/wallet/buy",
+    "/order",
     "/reservations",
     "/reservation/r1",
     "/inbox/mine",

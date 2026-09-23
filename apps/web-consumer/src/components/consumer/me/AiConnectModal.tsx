@@ -28,8 +28,8 @@ import {
 //
 // decision: Pato — real Consumer MCP, not a copy-paste tip (MESITA-265).
 // decision: Pato — elevated identities only (MESITA-266). Since MESITA-2044
-// that is the Diamond List or the Premium plan, which is why the gate reads
-// both axes instead of comparing a single key. The copy names the list, never
+// that is Diamond or the Premium plan, which is why the gate reads
+// both axes instead of comparing a single key. The copy names Diamond, never
 // a metal: there are no metals left to name.
 
 function cursorSnippet(mcpUrl: string, token: string): string {
@@ -58,7 +58,7 @@ export function AiConnectModal({
 }) {
   const supabase = useBrowserSupabase();
   const { key: classKey, plan } = useConsumerClass();
-  // AI connect is an elevated perk — the Diamond List, or Premium.
+  // AI connect is an elevated perk — Diamond, or Premium.
   const canConnect = isElevatedIdentity({ cls: classKey, plan });
   const [tokens, setTokens] = useState<McpTokenMeta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -154,7 +154,7 @@ export function AiConnectModal({
           Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
           book tables, and check rewards — as you.{" "}
           <span className="text-foreground font-semibold">
-            Available on Premium, or on the Diamond List.
+            Available on Premium, or with Diamond.
           </span>
         </p>
 
@@ -162,8 +162,8 @@ export function AiConnectModal({
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-muted px-4 py-3">
             <Crown className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
             <p className="text-xs leading-relaxed text-foreground">
-              You’re on the Free plan and not on the Diamond List. Subscribe to
-              Premium — or ask to join the Diamond List from Me — to create an
+              You’re on the Free plan and not Diamond. Subscribe to
+              Premium — or ask to join Diamond from Me — to create an
               MCP token and let an AI control your profile.
             </p>
           </div>

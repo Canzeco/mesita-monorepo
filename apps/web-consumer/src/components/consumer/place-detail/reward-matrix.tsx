@@ -13,8 +13,8 @@ import type { ClassKey } from "@/lib/consumer-data";
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
-  DIAMOND_LIST,
-  DIAMOND_LIST_RATE_HINT,
+  DIAMOND,
+  DIAMOND_RATE_HINT,
 } from "@/lib/consumer-identity";
 import type { RewardQuote } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 //
 // TWO IDENTITY ROWS SINCE MESITA-2044 (Pato: "there are no classes, either
 // you are diamond or you are not… Diamond List"). The ladder is Base — every
-// guest — and the Diamond List's adder on top. No Bronze/Silver/Gold rows.
+// guest — and Diamond's adder on top. No Bronze/Silver/Gold rows.
 //
 // EVERY number here comes from `quote` — the live engine (MESITA-1017). None
 // of it is reconstructed from `reward-segments.ts`, which is program
@@ -141,10 +141,10 @@ function baseRate(quote: RewardQuote): number | null {
   return quote.ladder?.standard ?? null;
 }
 
-/** The Diamond List's ADDER over the Base — never a standing total, so the
+/** Diamond's ADDER over the Base — never a standing total, so the
  *  row reads "+N%" beside Base's N%. Legacy ladders carry no decomposition, so
- *  the adder is `aura` (the list's legacy key) minus `standard`. */
-function diamondListAdder(quote: RewardQuote): number | null {
+ *  the adder is `aura` (Diamond's legacy key) minus `standard`. */
+function diamondAdder(quote: RewardQuote): number | null {
   if (quote.breakdown) {
     const b = quote.breakdown;
     return (b.classes.diamond ?? 0) - (b.classes.bronze ?? 0);
@@ -155,7 +155,7 @@ function diamondListAdder(quote: RewardQuote): number | null {
   return Math.max(0, standing - base);
 }
 
-// THE TWO IDENTITY ROWS (MESITA-2044). Base, then the Diamond List as an
+// THE TWO IDENTITY ROWS (MESITA-2044). Base, then Diamond as an
 // adder; the guest's own row carries the You marker. Was `BaseRow` + a
 // four-metal `ClassLadder` — the Base row now lives here, so a caller can
 // never render it twice or forget it.
@@ -169,7 +169,7 @@ export function ClassLadder({
   if (!quote.breakdown && !quote.ladder) return null;
   const onList = classKey === "diamond";
   const base = baseRate(quote);
-  const adder = diamondListAdder(quote);
+  const adder = diamondAdder(quote);
   return (
     <div className="flex flex-col gap-1.5">
       <Row
@@ -182,8 +182,8 @@ export function ClassLadder({
       />
       <Row
         icon={Gem}
-        label={DIAMOND_LIST}
-        hint={DIAMOND_LIST_RATE_HINT}
+        label={DIAMOND}
+        hint={DIAMOND_RATE_HINT}
         value={adder}
         plus
         mine={onList}

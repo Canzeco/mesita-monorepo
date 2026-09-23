@@ -4,7 +4,7 @@ import { Text, View } from 'react-native';
 import { Switch } from '@/components/ui/Switch';
 import { useMockFacts } from '@/lib/mock-class';
 
-// The Diamond List half of the emulator — on the list or not, and nothing in
+// The Diamond half of the emulator — Diamond or not, and nothing in
 // between (MESITA-2040, MESITA-2044).
 //
 // IT IS A SWITCH NOW, NOT A FOUR-WAY PICKER. `ClassPreviewToggle` offered a
@@ -37,16 +37,16 @@ export function DiamondEmulator() {
           className="font-bold text-foreground"
           style={{ fontSize: 14 }}
         >
-          Preview the Diamond List
+          Preview Diamond
         </Text>
         <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
-          Demo only — puts this account on the list
+          Demo only — makes this account Diamond
         </Text>
       </View>
       <Switch
         value={on}
         onValueChange={() => setMock({ diamond: !on })}
-        accessibilityLabel="Preview the Diamond List"
+        accessibilityLabel="Preview Diamond"
       />
     </View>
   );

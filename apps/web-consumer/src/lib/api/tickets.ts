@@ -148,7 +148,7 @@ export type RewardQuote = {
    *
    * KEYED BY THE FOUR LEGACY SEGMENTS for the best-of fallback. v12 quotes
    * carry `breakdown.classes` instead. Guests read two rows off either shape
-   * (MESITA-2044): Base (`standard` / `bronze`) and the Diamond List (`aura`
+   * (MESITA-2044): Base (`standard` / `bronze`) and Diamond (`aura`
    * / `diamond`).
    *
    * Optional only to survive the deploy window where a cached client meets a
@@ -159,7 +159,7 @@ export type RewardQuote = {
   /**
    * THE TICKET v4's Reward lanes (MESITA-1089): the base decomposed on the
    * SAME v12 grid the bill pays — automatic = the Base, `classes.diamond` =
-   * the Diamond List's adder over it. automatic + classes[cls] === base, by
+   * Diamond's adder over it. automatic + classes[cls] === base, by
    * construction. Absent on legacy best-of configs and on stale
    * EFs — render the flat receipt then.
    *
@@ -171,7 +171,7 @@ export type RewardQuote = {
     /** `silver`/`gold` may still arrive from an EF that has not dropped
      *  them; nothing reads them (MESITA-2044). */
     classes: { bronze: number; diamond: number; silver?: number; gold?: number };
-    /** Storage key. Only `"diamond"` means "on the Diamond List". */
+    /** Storage key. Only `"diamond"` means "Diamond". */
     cls: string;
   };
   storyEligible: boolean;

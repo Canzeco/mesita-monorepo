@@ -84,9 +84,17 @@ function classifyFailure(err: unknown): SearchFailureKind {
   return 'server';
 }
 
-export function SearchClient() {
+export function SearchClient({
+  topInset,
+}: {
+  /** Space above the floating bar. Defaults to the status-bar inset; Visit's
+   *  Search pill passes 0 because its rail band already owns the safe area
+   *  (MESITA-2050). */
+  topInset?: number;
+} = {}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const top = topInset ?? insets.top;
   const sessionTokenRef = useRef(newSessionToken());
 
   const [places, setPlaces] = useState<Place[]>([]);
@@ -551,7 +559,7 @@ export function SearchClient() {
 
       <SearchBar
         query={query}
-        top={insets.top + 8}
+        top={top + 8}
         countryCode={scope.country}
         locationSet={location != null}
         onChangeQuery={updateQuery}
@@ -566,7 +574,7 @@ export function SearchClient() {
         <View
           className="absolute inset-x-0 z-20 overflow-hidden rounded-b-2xl border-b border-border bg-card"
           style={{
-            top: insets.top + 60,
+            top: top + 60,
             maxHeight: '70%',
             ...SHADOW_ELEV,
           }}

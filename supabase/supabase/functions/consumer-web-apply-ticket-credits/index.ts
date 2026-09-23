@@ -7,7 +7,8 @@
 // that, so a client retry after a timeout returns the original result rather
 // than double-spending.
 //
-// Gate is credits_enabled (place) AND payCredits (rail) — NOT
+// Gate is credits_enabled (place) AND payCredits (rail), computed by
+// placesHonouringCredits (MESITA-2051) — NOT
 // resolveChargeablePlaceForCredits from _shared/credits-readiness.ts, which
 // also requires Stripe Connect charge-readiness. That chain answers "can this
 // place receive a NEW Credits purchase" (MESITA-1676); spending an existing
@@ -31,6 +32,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
+import { placesHonouringCredits } from "../_shared/credits-readiness.ts";
 
 type Body = { ticketId?: string; amountCents?: number };
 
@@ -78,22 +80,19 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
+  // A FAILED LOOKUP IS NOT "NOT ACCEPTED" (MESITA-2051). This read used to be
+  // inline and never looked at its error, so a database blip told a guest at
+  // the table "Credits aren't accepted here." The shared predicate returns
+  // ok:false instead, and that is a 500 with a name, not a false 409.
   const visitsConfig = await loadVisitsConfig(admin);
-  if (!visitsConfig.payCredits) {
-    return json(
-      { ok: false, code: "not_chargeable", error: "Credits aren't accepted here." },
-      409,
-    );
-  }
   const placeId = ticket.place_id as string | null;
-  const place = await admin
-    .from("place_profiles")
-    .select("credits_enabled")
-    .eq("id", placeId)
-    .maybeSingle();
-  const creditsEnabled =
-    (place.data as { credits_enabled?: boolean } | null)?.credits_enabled === true;
-  if (!placeId || !creditsEnabled) {
+  const honour = placeId
+    ? await placesHonouringCredits(admin, [placeId], visitsConfig.payCredits)
+    : null;
+  if (honour && !honour.ok) {
+    return jsonError(`credits_honour_lookup: ${honour.error}`, 500);
+  }
+  if (!placeId || !honour?.ok || !honour.honoured.has(placeId)) {
     return json(
       { ok: false, code: "not_chargeable", error: "Credits aren't accepted here." },
       409,

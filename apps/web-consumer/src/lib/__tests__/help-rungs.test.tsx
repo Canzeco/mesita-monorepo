@@ -11,11 +11,11 @@ const SRC = readFileSync(
 );
 
 describe("Help names everything priced and quotes no static percent", () => {
-  it("lists Base, the Diamond List, Welcome, and the three sharing actions", () => {
+  it("lists Base, Diamond, Welcome, and the three sharing actions", () => {
     const html = renderToStaticMarkup(<HelpRungList classKey="diamond" />);
     for (const label of [
       "Base",
-      "Diamond List",
+      "Diamond",
       "Welcome",
       "Instagram Story",
       "Google Review",
@@ -38,16 +38,16 @@ describe("Help names everything priced and quotes no static percent", () => {
     }
   });
 
-  it("the You marker follows the list: Base off it, Diamond List on it", () => {
+  it("the You marker follows Diamond: Base off it, Diamond on it", () => {
     const off = renderToStaticMarkup(<HelpRungList classKey="bronze" />);
     const on = renderToStaticMarkup(<HelpRungList classKey="diamond" />);
     const you = (html: string) => html.indexOf(">You<");
-    expect(you(off)).toBeLessThan(off.indexOf("Diamond List"));
-    expect(you(on)).toBeGreaterThan(on.indexOf("Diamond List"));
+    expect(you(off)).toBeLessThan(off.indexOf("Diamond"));
+    expect(you(on)).toBeGreaterThan(on.indexOf("Diamond"));
   });
 
-  it("says the discount line exactly, and only in the list's words", () => {
-    expect(SRC).toContain("DIAMOND_LIST_HELP_LINE");
+  it("says the discount line exactly, and only in Diamond's words", () => {
+    expect(SRC).toContain("DIAMOND_HELP_LINE");
     expect(SRC).not.toMatch(/Elevated classes|every class above/);
   });
 

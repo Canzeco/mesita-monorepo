@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import { QrCode, TicketX } from "lucide-react";
 
 import { TicketRow } from "@/components/consumer/rewards/TicketRow";
-import { TicketCardSkeleton } from "@/app/(shell)/new-visit/NewVisitLoading";
+import { TicketCardSkeleton } from "@/app/(shell)/(visit)/new-visit/NewVisitLoading";
 import { EmptyState } from "@/components/shared";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
