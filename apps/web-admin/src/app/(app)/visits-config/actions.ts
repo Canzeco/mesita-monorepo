@@ -8,20 +8,11 @@
 // offered presets, and the staff backoff ceiling can never sit below its base
 // interval. No client ever touches the DB.
 
+import { num, bool } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { VISITS_FALLBACK, type VisitsConfig } from "./defaults";
 
 type ConfigPayload = { config: unknown; updatedAt: string | null };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 function presets(raw: unknown): number[] {
   if (!Array.isArray(raw)) return [...VISITS_FALLBACK.tipPresets];

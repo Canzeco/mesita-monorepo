@@ -9,16 +9,11 @@
 // the default for, and Credits may never expire before they mature, which ties
 // the expiry floor to the hold ceiling. No client ever touches the DB.
 
+import { num } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { CONTROLS_FALLBACK, type ControlsConfig } from "./defaults";
 
 type ConfigPayload = { config: unknown; updatedAt: string | null };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
 
 // Mirrors supabase/functions/_shared/controls-config.ts — the EF is
 // authoritative; this keeps the form honest if the blob is older than the

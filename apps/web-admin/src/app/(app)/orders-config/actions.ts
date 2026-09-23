@@ -7,20 +7,11 @@
 // persist a Premium plan that allows fewer orders than Free. No client ever
 // touches the DB.
 
+import { num, bool } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { ORDERS_FALLBACK, type OrdersConfig } from "./defaults";
 
 type ConfigPayload = { config: unknown; updatedAt: string | null };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 // Mirrors supabase/functions/_shared/orders-config.ts — the EF is
 // authoritative; this keeps the form honest if the blob is older than the
