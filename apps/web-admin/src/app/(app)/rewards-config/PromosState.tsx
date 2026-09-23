@@ -16,6 +16,7 @@ import {
   deriveVisits,
   expandVisits,
   type BonusKey,
+  type ContextKey,
   type PromosConfig,
   type StrategyKey,
   type VisitsComponents,
@@ -41,7 +42,7 @@ type PromosStateValue = {
   visits: VisitsComponents;
   setVisits: (next: VisitsComponents) => void;
   setBonus: (
-    context: "visits" | "orders",
+    context: ContextKey,
     strategy: StrategyKey,
     key: BonusKey,
     value: number,

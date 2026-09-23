@@ -1,7 +1,7 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from "@/lib/create-place-from-google-place";
+import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from "./create-place";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -303,8 +303,8 @@ export async function enrichPlace(
   return { ok: true, data: true };
 }
 
-// The create-place pipeline is shared with the bulk creator — see the single
-// canonical implementation in @/lib/create-place-from-google-place.
+// The create-place pipeline lives beside this file in ./create-place; this
+// "use server" wrapper is how the Crenup tab reaches it.
 export async function createPlaceFromGooglePlaceId(placeId: string) {
   return createPlaceFromGooglePlaceIdImpl(placeId);
 }

@@ -10,6 +10,7 @@ type VerificationMethod =
   | "postcard"
   | "manual_contact";
 type VerificationState = "pending" | "approved" | "rejected";
+export type VerificationDecision = Exclude<VerificationState, "pending">;
 
 export type AdminVerification = {
   id: string;
@@ -53,7 +54,7 @@ type DecideResult = ActionResult;
 
 export async function decideVerification(
   verificationId: string,
-  decision: "approved" | "rejected",
+  decision: VerificationDecision,
   rejectReason: string,
 ): Promise<DecideResult> {
   const r = await efInvoke<unknown>("admin-web-decide-verification", {

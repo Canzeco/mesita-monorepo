@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AdminVerification } from "./actions";
+import type { AdminVerification, VerificationDecision } from "./actions";
 import { VerificationRow } from "./VerificationRow";
 
 export function VerificationsClient({
@@ -13,7 +13,7 @@ export function VerificationsClient({
 
   const onDecided = (
     id: string,
-    decision: "approved" | "rejected",
+    decision: VerificationDecision,
     rejectReason: string,
   ) => {
     setVerifications((rows) =>

@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, Clock, X } from "lucide-react";
+import type { AdminVerification } from "./actions";
 
 export function StateBadge({
   state,
   decidedVia,
 }: {
-  state: "pending" | "approved" | "rejected";
-  decidedVia: "auto" | "admin" | null;
+  state: AdminVerification["state"];
+  decidedVia: AdminVerification["decided_via"];
 }) {
   if (state === "pending") {
     return (

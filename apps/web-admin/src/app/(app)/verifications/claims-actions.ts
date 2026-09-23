@@ -28,10 +28,11 @@ export async function listPlaceClaims(): Promise<ListResult> {
 }
 
 type DecideResult = ActionResult;
+export type PlaceClaimDecision = "clear" | "reverse";
 
 export async function decidePlaceClaim(
   placeId: string,
-  decision: "clear" | "reverse",
+  decision: PlaceClaimDecision,
 ): Promise<DecideResult> {
   const r = await efInvoke<unknown>("admin-web-decide-place-claim", {
     placeId,
