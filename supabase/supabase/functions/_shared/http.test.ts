@@ -1,5 +1,12 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { jsonError, jsonOk, methodNotAllowed, readJsonOr, rejectUnlessMethods } from "./http.ts";
+import {
+  jsonError,
+  jsonOk,
+  methodNotAllowed,
+  readJson,
+  readJsonOr,
+  rejectUnlessMethods,
+} from "./http.ts";
 
 Deno.test("methodNotAllowed returns 405 + canonical body", async () => {
   const res = methodNotAllowed();
@@ -75,4 +82,56 @@ Deno.test("readJsonOr falls back on a JSON literal that is not an object", async
   // why these never crashed and `null` did.
   assertEquals(await readJsonOr<Record<string, unknown>>(bodyReq("5"), {}), 5 as never);
   assertEquals(await readJsonOr<Record<string, unknown>>(bodyReq("[]"), {}), [] as never);
+});
+
+// ── readJson: the strict reader honours the same null rule ───────────────
+//
+// readJson is the REQUIRED-body reader, so where readJsonOr falls back it
+// answers the canonical 400 instead. A literal `null` parses fine, and callers
+// read a field off `bodyRes.body` right after the guard, so letting it through
+// was the MESITA-1730 crash again: a bare 500 with no CORS headers.
+
+Deno.test("readJson returns the parsed object when there is one", async () => {
+  assertEquals(await readJson<{ a?: number }>(bodyReq('{"a":1}')), {
+    ok: true,
+    body: { a: 1 },
+  });
+  assertEquals(await readJson<Record<string, unknown>>(bodyReq("{}")), {
+    ok: true,
+    body: {},
+  });
+});
+
+Deno.test("readJson answers 400 Invalid JSON when the body is absent or unparseable", async () => {
+  for (const raw of [null, "not json"]) {
+    const res = await readJson<{ a?: number }>(bodyReq(raw));
+    assertEquals(res.ok, false);
+    if (res.ok) continue;
+    assertEquals(res.response.status, 400);
+    assertEquals(await res.response.json(), {
+      ok: false,
+      error: "Invalid JSON",
+    });
+  }
+});
+
+Deno.test("readJson answers 400 Invalid JSON on a literal null body", async () => {
+  const res = await readJson<{ placeId?: unknown }>(bodyReq("null"));
+  assertEquals(res.ok, false);
+  if (res.ok) return;
+  assertEquals(res.response.status, 400);
+  assertEquals(await res.response.json(), { ok: false, error: "Invalid JSON" });
+});
+
+Deno.test("readJson passes a JSON literal that is not an object through", async () => {
+  // Same as readJsonOr: only `null` crashes a field read; scalars and arrays
+  // yield undefined, so they are left alone.
+  assertEquals(await readJson<Record<string, unknown>>(bodyReq("5")), {
+    ok: true,
+    body: 5 as never,
+  });
+  assertEquals(await readJson<Record<string, unknown>>(bodyReq("[]")), {
+    ok: true,
+    body: [] as never,
+  });
 });

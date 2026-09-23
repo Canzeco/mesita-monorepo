@@ -53,11 +53,21 @@ export function rejectUnlessMethods(
 //
 // A malformed/empty body yields a 400 `{ ok: false, error: "Invalid JSON" }`
 // — the canonical shape every other validation error in these EFs uses.
+//
+// So does a literal `null` body: `JSON.parse` accepts it, and nearly every
+// caller reads a field off `bodyRes.body` at once, so it used to throw out
+// of the Deno.serve handler as a bare 500 with no CORS headers — the same
+// hole readJsonOr closed for MESITA-1730 below. Scalars and arrays still
+// pass: a field read on them is `undefined`, not a throw.
 export async function readJson<T>(
   req: Request,
 ): Promise<{ ok: true; body: T } | { ok: false; response: Response }> {
   try {
-    return { ok: true, body: (await req.json()) as T };
+    const parsed = await req.json();
+    if (parsed === null) {
+      return { ok: false, response: jsonError("Invalid JSON", 400) };
+    }
+    return { ok: true, body: parsed as T };
   } catch {
     return {
       ok: false,

@@ -27,8 +27,8 @@ import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  const _methodGuard = rejectUnlessMethods(req, "GET", "POST");
-  if (_methodGuard) return _methodGuard;
+  const methodReject = rejectUnlessMethods(req, "GET", "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
