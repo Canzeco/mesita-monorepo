@@ -42,9 +42,29 @@ export function timeAgo(iso: string, nowMs: number): string {
 // Compact pesos from cents ("MX$1,250", "MX$12K", "MX$1.2M"). The stat boxes
 // on a place page abbreviate past a thousand so each figure stays one line;
 // callers that must render an empty state guard for it themselves.
+//
+// THIS ONE ROUNDS. It is for aggregates a reader scans, never for a figure
+// somebody is owed — MX$19.99 prints here as "MX$20". Money a guest is paid or
+// a place is charged goes through `formatPesosExact` below.
 export function formatPesosCompact(cents: number): string {
   const pesos = cents / 100;
   if (pesos >= 1_000_000) return `MX$${(pesos / 1_000_000).toFixed(1)}M`;
   if (pesos >= 1_000) return `MX$${Math.round(pesos / 1_000)}K`;
   return `MX$${Math.round(pesos).toLocaleString()}`;
+}
+
+// Exact pesos from cents ("MX$19.99", "MX$1,250.00"). Two decimals, always, and
+// no abbreviation at any size.
+//
+// The reward figure a guest is quoted and the figure the till takes must print
+// the same string, on two different devices, or the table argues about a
+// centavo. That is the whole reason this exists beside the compact formatter
+// rather than reusing it: one rounding rule for money owed, one for dashboard
+// aggregates, and a name that says which is which.
+export function formatPesosExact(cents: number): string {
+  const safe = Number.isFinite(cents) ? Math.trunc(cents) : 0;
+  return `MX$${(safe / 100).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }

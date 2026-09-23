@@ -51,6 +51,9 @@ on:
       - "shared/**"
       - "apps/web-admin/src/**"
       - "apps/web-business/src/**"
+      - "apps/web-consumer/src/**"
+      - "apps/mobile-consumer/src/**"
+      - "supabase/supabase/functions/_shared/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
   # Unfiltered on `pull_request` (MESITA-1576): a required check a path
@@ -92,6 +95,9 @@ jobs:
               - 'shared/**'
               - 'apps/web-admin/src/**'
               - 'apps/web-business/src/**'
+              - 'apps/web-consumer/src/**'
+              - 'apps/mobile-consumer/src/**'
+              - 'supabase/supabase/functions/_shared/**'
               - 'deno.json'
               - '.github/workflows/rules.yml'
 
@@ -131,6 +137,16 @@ jobs:
       - name: Test the shared-module gate
         if: needs.changes.outputs.changed == 'true'
         run: deno task test:shared
+
+      # The shared MODULES themselves, not just the machinery that copies them
+      # (MESITA-2038). Until the reward model landed, `shared/**` held no test
+      # and no command ran one: `test:shared` covers scripts/sync-shared.ts, and
+      # the per-app suites only ever see the GENERATED copies. A money rule whose
+      # only gate is an app's own vitest is a money rule the Edge Functions never
+      # test.
+      - name: Test the shared modules
+        if: needs.changes.outputs.changed == 'true'
+        run: deno task test:shared-modules
 
       # The fleet tool and the write gate (scripts/worktree.ts, scripts/preflight.sh)
       # ran in no workflow before MESITA-1702: a claim step that had been fatal in
