@@ -39,11 +39,10 @@ type ConsumerTabBarProps = {
 
 // FIVE tabs, Home · Search · Visit · Wallet · Me (Pato, MESITA-2055) — web BottomNav
 // parity. The bar is a FIXED list, not `state.routes`: the navigator holds
-// eight screens (Visit's five pills, Order, Wallet, Me) and the bar shows
-// four. Each tab names the route it opens and every route that lights it —
-// Visit lights for all five of its pills, the same way web's matchPrefixes
-// list does. A pill screen missing from Visit's `routes` renders with NO tab
-// lit, the failure web's route-structure T5 exists to catch.
+// eight screens (Home rail siblings, Order, Wallet, Me) and the bar shows
+// five. Each tab names the route it opens and every route that lights it —
+// Home lights for chat and favs too, the same way web's matchPrefixes list
+// does. A screen missing from a tab's `routes` renders with NO tab lit.
 //
 // Visit carries the brand mark: the leftmost tab has worn it since Home held
 // that slot, and Visit is where Home went.

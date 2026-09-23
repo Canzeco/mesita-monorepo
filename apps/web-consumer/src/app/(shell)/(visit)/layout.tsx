@@ -8,9 +8,9 @@ import type { ReactNode } from "react";
 // nothing to any of them. The group exists only so ONE layout can draw the
 // rail above three namespaces that share no path segment.
 //
-// Search sits under this rail ON PURPOSE. MESITA-1616 took it out from under
-// discover/layout.tsx because Home's rail painting over the map was a bug
-// while Search was its own tab. It is a pill of Visit now.
+// Search is its own bottom tab again (MESITA-2055). MESITA-1616 had pulled it
+// out from under discover/layout.tsx because Home's rail painted over the map;
+// that bug cannot return now that Search is not under this group.
 //
 // Home's deck fetch stays one level down, in discover/layout.tsx — only Home,
 // Chat and Favs read it, and Search and Pay must not wait on it.
