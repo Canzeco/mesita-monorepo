@@ -68,7 +68,7 @@ export async function persistBusinessFieldPins(
   patch: Record<string, unknown>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const fields = correctableFieldsInPatch(patch);
-  return persistFieldPinsForFields(admin, placeId, fields, "business", 1);
+  return await persistFieldPinsForFields(admin, placeId, fields, "business", 1);
 }
 
 /** Queue or apply a proposal from any trusted writer (reservationist, Ojo, …). */
