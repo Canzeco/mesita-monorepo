@@ -58,8 +58,9 @@ import { cn } from "@/lib/utils";
 // `places.mesita_pay_enabled` ∧ `visits_config.payCard` ∧ Connect readiness,
 // all three false in production today. Credits BALANCES became real in
 // MESITA-1674, which deleted the "Emulated" footer this screen used to carry —
-// but SPENDING them did not: StepPay still renders its Credits row `soon`, so
-// "Soon" here is the only place the wallet says that tender is not live.
+// SPENDING them is gated by visits_config.payCredits and the guest's balance
+// at the place (MESITA-2052); when the rail is off, StepPay still parks the
+// row as `soon` and this tag stays honest.
 //
 // NO APPLE PAY OR GOOGLE PAY IN THIS COPY. Neither is built.
 
@@ -102,7 +103,7 @@ const THROUGH_MESITA: Way[] = [
     chip: "Credits",
     title: "Mesita Credits Payments",
     line: "Prepay a place for more than you paid. Reduces your bill, never the tip.",
-    tag: "Soon",
+    tag: "On your bill",
   },
 ];
 
