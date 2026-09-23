@@ -234,9 +234,6 @@ jobs:
     if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      contents: read
-      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -249,23 +246,18 @@ jobs:
         with:
           version: 2.100.0
 
-      # Anonymous GHCR pulls from shared Actions IPs are returning
-      # toomanyrequests even with a huge stated quota. An authenticated
-      # pull uses this repo's token instead of the anonymous bucket.
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Start Postgres and replay every migration
         working-directory: supabase
+        # setup-cli exports SUPABASE_INTERNAL_IMAGE_REGISTRY=ghcr.io, which
+        # disables the CLI's ECR → GHCR → Docker Hub fallback. GHCR's
+        # anonymous quota is what is returning toomanyrequests on every PR.
+        # Docker Hub is the other public mirror of the same images.
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: |
-          # GHCR returns toomanyrequests with a microsecond retry-after when
-          # many PRs pull public Postgres images at once. The CLI retries
-          # inside that window and still fails; a longer gap gets a pull
-          # through. The job stays blocking (MESITA-1139) — five misses exit 1.
+          # A rate-limited registry answers in a few seconds. The CLI's own
+          # retries stay inside that window. Five misses still fail the job
+          # (MESITA-1139).
           for i in 1 2 3 4 5; do
             if supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta; then
               exit 0
@@ -277,4 +269,6 @@ jobs:
 
       - name: Run pgTAP
         working-directory: supabase
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase test db --local supabase/tests/database
