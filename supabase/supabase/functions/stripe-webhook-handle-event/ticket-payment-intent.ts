@@ -17,6 +17,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
+import { mesitaPayTenderRows } from "../_shared/visit-tenders.ts";
 
 async function loadPayingMesitaPayTicket(
   admin: SupabaseClient,
@@ -24,7 +25,9 @@ async function loadPayingMesitaPayTicket(
 ) {
   const { data, error } = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, state, paid_method, place_id")
+    .select(
+      "id, consumer_id, state, paid_method, place_id, approved_amount_due_cents, credits_applied_cents",
+    )
     .eq("id", ticketId)
     .maybeSingle();
   // MESITA-1712: this select named `project_id`, retired by
@@ -61,12 +64,15 @@ export async function handleTicketPaymentIntentSucceeded(
   if (!ticketId) return;
   const ticket = await loadPayingMesitaPayTicket(admin, ticketId);
   if (!ticket) return; // already closed by the synchronous path, or not ours
+  const amountCents = intent.amount_received ?? intent.amount;
   const closed = await closeTicketAndEnqueueReview(
     admin,
     ticket.id,
     ticket.consumer_id,
     ticket.place_id,
-    { paidMethod: "mesita_pay" },
+    {
+      tenders: mesitaPayTenderRows(amountCents, intent.id),
+    },
   );
   if (!closed.ok) {
     throw new Error(`ticket_payment_intent_close: ${closed.error}`);
