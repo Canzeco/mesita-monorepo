@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 // two jobs this block was doing at once:
 //
 //   · NAMING the four tenders — the whole point of MESITA-1696, and now four
-//     chips that always render, cost one line, and cannot clip.
+//     words on one line that always render and cannot clip.
 //   · EXPLAINING them — a paragraph each, which a guest reads once and never
 //     again, and which now sits behind a press.
 //
@@ -65,7 +65,8 @@ import { cn } from "@/lib/utils";
 
 type Way = {
   Icon: typeof Banknote;
-  /** The chip label. Short enough that four fit two rows at 390px. */
+  /** The name on the always-visible line. Short enough that all four fit one
+   *  line at 390px. */
   chip: string;
   title: string;
   line: string;
@@ -110,22 +111,43 @@ const ALL: Way[] = [...AT_THE_PLACE, ...THROUGH_MESITA];
 /** The always-visible half. Four names, one line, no clipping possible.
  *  Not buttons — nothing here is pressable, and a chip that looks tappable and
  *  is not is the "control that cannot be pressed is decoration" mistake this
- *  codebase already made once with the Gift tile. */
+ *  codebase already made once with the Gift tile.
+ *
+ *  SO THEY ARE NOT CHIPS ANY MORE (MESITA-2051). They shipped as four
+ *  filled pills, which is exactly the shape of a button, and broke the rule
+ *  written directly above them. Now they are words on a line: icon + name,
+ *  a dot between them. The name keeps `chip` for the contract tests.
+ *
+ *  THE INK IS THE LIVENESS. Live tenders are foreground; Credits stays muted
+ *  with its "soon", so graying everything to look calm would erase the one
+ *  fact the line exists to state.
+ *
+ *  THE DOT LIVES INSIDE ITS `<li>`. A bare span between list items is invalid
+ *  markup, and a separator that is its own flex item can wrap to the start of
+ *  the next line. Trailing each name except the last, it wraps with the name
+ *  it follows. aria-hidden: a screen reader already hears a four-item list. */
 function Chips() {
   return (
-    <ul className="flex flex-wrap gap-1.5">
-      {ALL.map(({ Icon, chip, tag }) => (
+    <ul className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {ALL.map(({ Icon, chip, tag }, i) => (
         <li
           key={chip}
           className={cn(
-            "bg-muted type-label flex items-center gap-1.5 rounded-full px-2.5 py-1.5 font-semibold",
-            tag === "Soon" ? "text-muted-foreground" : "text-foreground",
+            "type-label flex items-center gap-1.5",
+            tag === "Soon"
+              ? "text-muted-foreground font-medium"
+              : "text-foreground font-medium",
           )}
         >
           <Icon className="size-3" aria-hidden />
           {chip}
           {tag === "Soon" ? (
             <span className="text-muted-foreground/80 type-meta">soon</span>
+          ) : null}
+          {i < ALL.length - 1 ? (
+            <span aria-hidden className="text-muted-foreground/60 ml-0.5">
+              ·
+            </span>
           ) : null}
         </li>
       ))}
