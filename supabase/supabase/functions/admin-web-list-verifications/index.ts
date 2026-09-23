@@ -28,6 +28,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { one } from "../_shared/postgrest.ts";
 
 type Body = {
   // Filter by state. Omit / undefined / null = all.
@@ -106,8 +107,6 @@ Deno.serve(async (req) => {
     state: string | null;
     place: PlaceProfileRow | PlaceProfileRow[] | null;
   };
-  const one = <T,>(v: T | T[] | null): T | null =>
-    Array.isArray(v) ? (v[0] ?? null) : v;
 
   const verifications = (data ?? []).map((row) => {
     const { placeEntity, ...rest } = row as typeof row & {

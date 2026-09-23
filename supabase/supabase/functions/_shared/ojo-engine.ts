@@ -20,9 +20,10 @@
 // consumer-web-submit-review AFTER they have already granted self_verified
 // optimistically and responded to the guest — this module must never block
 // or fail that response. `queueOjoVerification` is the fire-and-forget entry
-// point (same waitUntil idiom as _shared/place-embeddings.ts's
-// queuePlaceEmbeddingsOnUpdate); `verifyProof` is the awaitable core, kept
-// separate so tests can call it directly without a live EdgeRuntime.
+// point (it hands the task to _shared/background.ts's runInBackground, like
+// place-embeddings.ts's queuePlaceEmbeddingsOnUpdate); `verifyProof` is the
+// awaitable core, kept separate so tests can call it directly without a live
+// EdgeRuntime.
 //
 // ── The money-safety invariant this module respects, not reinvents ─────────
 //
@@ -72,9 +73,10 @@
 //
 // ── NOT in scope for this PR ────────────────────────────────────────────
 //
-// A dedicated admin review queue UI (staff already see the screenshot in
-// check-web via _shared/ticket-check.ts, which this change extends with the
-// verdict — a new page is a separable follow-up if that's not enough). A new
+// A dedicated admin review queue UI (staff already see the screenshot on the
+// validate page via _shared/ticket-check.ts, which deliberately never carries
+// the verdict; story_ojo_* rides on the business console's ticket reads
+// instead — a new page is a separable follow-up if that's not enough). A new
 // consumer_notifications entry for the retry prompt (the existing
 // fix_requested poll already surfaces it). A cost ledger / cap analogous to
 // the Enricher's atlas_per_run_cost_cap_usd — Ojo's natural volume is bounded
@@ -83,6 +85,7 @@
 // being true.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { runInBackground } from "./background.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
 import { safeParseJson } from "./parse-utils.ts";
 import { loadOjoConfig, type OjoConfig } from "./ojo-config.ts";
@@ -117,11 +120,7 @@ export function queueOjoVerification(opts: {
   const task = verifyProof(opts.admin, opts.ticketId, opts.kind).catch((err) => {
     console.error(`[${opts.logPrefix ?? "ojo"}] bg:`, err);
   });
-  const edgeRuntime = (globalThis as unknown as {
-    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
-  }).EdgeRuntime;
-  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-  else void task;
+  runInBackground(task);
 }
 
 /**
@@ -269,7 +268,8 @@ export async function verifyProof(
   }
   // unsure, and fail-but-not-withholding, intentionally touch nothing but
   // the annotation columns above: state stands, money stands, only the
-  // record exists now for staff to see in check-web.
+  // record exists now for staff (the business console's ticket reads carry
+  // story_ojo_*; the public check page never carries a verdict).
 
   return { ran: true, result };
 }

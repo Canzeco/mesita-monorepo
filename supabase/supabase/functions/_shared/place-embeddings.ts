@@ -20,6 +20,7 @@
 // when embedding-relevant fields change.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { runInBackground } from "./background.ts";
 import {
   type EmbeddablePlace,
   digest,
@@ -384,9 +385,5 @@ export function queuePlaceEmbeddingsOnUpdate(opts: {
   ).catch((err) => {
     console.error(`[${opts.logPrefix ?? "place-embeddings"}] bg:`, err);
   });
-  const edgeRuntime = (globalThis as unknown as {
-    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
-  }).EdgeRuntime;
-  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-  else void task;
+  runInBackground(task);
 }

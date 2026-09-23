@@ -67,12 +67,3 @@ async function scrapeInstagramFollowers(
   if (!p) return null;
   return numOf(p.followersCount);
 }
-
-/** Ack-early: run the refresh after the response, same pattern as the Enricher. */
-export function runFollowersRefreshInBackground(task: Promise<unknown>): void {
-  const edgeRuntime = (globalThis as unknown as {
-    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
-  }).EdgeRuntime;
-  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-  else void task;
-}
