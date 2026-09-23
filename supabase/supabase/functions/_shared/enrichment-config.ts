@@ -54,7 +54,7 @@ export type EnrichmentConfig = {
 
 export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasGatherGoogleImages: 10,
-  atlasGatherInstagramDepth: 30,
+  atlasGatherInstagramDepth: 10,
   atlasGatherInstagramPosts: 10,
   atlasGatherReviews: ENRICH_FIELD_LIMITS.googleReviews.max,
   atlasImageVisionEnabled: true,
