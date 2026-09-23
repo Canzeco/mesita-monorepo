@@ -244,11 +244,20 @@ export function CreditsClient() {
           // because gifting is ISSUANCE (MESITA-1677): you buy a balance for
           // someone else, so it starts by choosing a place exactly as Buy
           // does and needs no source balance selected first.
+          //
+          // THE DOT IS A SIBLING, NOT PART OF EITHER LINK (MESITA-2051). Two
+          // bold words 8px apart read as one phrase, "Gift Redeem". The dot
+          // sits between the two 44px hit boxes rather than inside one, so it
+          // widens neither, and it is aria-hidden because a screen reader
+          // already hears two separate links.
           actions={
             <>
               <HeadAction href={CONSUMER_ROUTES.wallet.gift}>
                 Gift
               </HeadAction>
+              <span aria-hidden className="text-muted-foreground">
+                ·
+              </span>
               <HeadAction href={CONSUMER_ROUTES.wallet.redeem}>
                 Redeem
               </HeadAction>
@@ -270,6 +279,26 @@ export function CreditsClient() {
                 <Skeleton className="h-full w-full rounded-2xl" />
               </div>
             </>
+          ) : credits.error && balances.length === 0 ? (
+            // A FAILED READ IS NOT AN EMPTY WALLET (MESITA-2051). This branch
+            // used to fall through to the zero state, so a guest holding
+            // MX$2,000 whose read failed was shown "MX$0 · No balances yet"
+            // with the alert underneath: the one screen about their money
+            // stating a wrong amount. With nothing loaded there is no honest
+            // figure to print, so the panel says what happened and offers
+            // the one thing that can fix it. The button is 44px tall.
+            <div className="flex flex-col items-start">
+              <p role="alert" className="text-destructive type-body">
+                {credits.error}
+              </p>
+              <button
+                type="button"
+                onClick={() => void credits.reload()}
+                className="border-border bg-card hover:bg-muted text-foreground mt-3 inline-flex min-h-11 items-center rounded-xl border px-4 text-sm font-semibold transition active:scale-[0.98]"
+              >
+                Try again
+              </button>
+            </div>
           ) : balances.length === 0 ? (
             // `WalletPanelEmpty`, not the shared screen-scale `EmptyState` —
             // see its header. The old one nested a tinted icon tile and a
@@ -337,8 +366,9 @@ export function CreditsClient() {
               from the only read that can produce it — so a failed balance
               fetch announced itself under the tab bar while Credits sat
               looking merely empty. An error belongs where its content would
-              have been. */}
-          {credits.error ? (
+              have been. Only once balances exist (a failed "Show more"): with
+              nothing loaded, the branch above already says it. */}
+          {credits.error && balances.length > 0 ? (
             <p role="alert" className="text-destructive type-body mt-3">
               {credits.error}
             </p>

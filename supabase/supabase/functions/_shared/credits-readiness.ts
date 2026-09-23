@@ -8,6 +8,10 @@
 //   ∧ isConnectChargeReady          (Stripe-derived Connect capability, on
 //                                     the PLACE's own account — MESITA-1892)
 //
+// That is the BUY chain. The SPEND chain is its first two legs only, and it
+// lives here too, as placesHonouringCredits (MESITA-2051): spending a balance
+// never touches Stripe, so a missing Connect account must not block it.
+//
 // THE CHAIN USED TO STRADDLE TWO ROWS. `credits_enabled` was the place's,
 // while the Connect account hung off the place's ORGANIZATION, so this file
 // had to resolve places → organization → account and could return a balance
@@ -128,6 +132,56 @@ export async function placesAcceptingCredits(
     if (isConnectChargeReady(row)) ready.add(row.place_id);
   }
   return ready;
+}
+
+// ── Honouring, not accepting: the SPEND chain (MESITA-2051) ────────────────
+//
+// TWO QUESTIONS, TWO FUNCTIONS. placesAcceptingCredits answers "can a guest
+// BUY Credits here today": intent bit, rail switch AND a charge-ready Connect
+// account, because a purchase is a charge. Spending a balance the guest
+// already holds never touches Stripe, so the spend gate is the first two legs:
+//
+//   place_profiles.credits_enabled  ∧  visits_config.payCredits
+//
+// consumer-web-apply-ticket-credits used to carry this rule inline, and it
+// read a FAILED query as "not accepted": a database blip answered a guest at
+// the table with a false 409 "Credits aren't accepted here." This returns
+// ok:false instead, never a silent empty set, so each caller says what a
+// failed lookup means (the spend EF answers 500 credits_honour_lookup).
+//
+// MESITA-2052 (Pato, 2026-09-22): a place always honours Credits it already
+// sold; turning Credits off stops new sales only. That lands with the Pay
+// step, as an issuer rule HERE, not as a second copy of the rule elsewhere.
+
+export type HonourLookup =
+  | { ok: true; honoured: ReadonlySet<string> }
+  | { ok: false; error: string };
+
+/**
+ * Which of `placeIds` honour Credits right now: the place's own
+ * `credits_enabled` bit AND the `payCredits` rail. No Connect leg.
+ * `payCredits` is passed in (from visits_config), like every resolver here.
+ */
+export async function placesHonouringCredits(
+  admin: SupabaseClient,
+  placeIds: readonly string[],
+  payCredits: boolean,
+): Promise<HonourLookup> {
+  if (!payCredits || placeIds.length === 0) {
+    return { ok: true, honoured: new Set() };
+  }
+  const res = await admin
+    .from("place_profiles")
+    .select("id, credits_enabled")
+    .in("id", [...placeIds]);
+  if (res.error) return { ok: false, error: res.error.message };
+  const honoured = new Set<string>();
+  for (
+    const row of (res.data ?? []) as { id: string; credits_enabled: boolean | null }[]
+  ) {
+    if (row.credits_enabled === true) honoured.add(row.id);
+  }
+  return { ok: true, honoured };
 }
 
 /**

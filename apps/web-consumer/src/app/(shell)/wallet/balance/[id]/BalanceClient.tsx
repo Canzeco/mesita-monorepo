@@ -39,11 +39,13 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // one), so a balance can now open on its way to spendable too.
 //
 // NO SPEND HERE. The old emulator let a guest draw a balance down from this
-// screen; spend-at-the-table (MESITA-1678) has no real engine yet — it is
-// blocked on who funds the bonus — so there is nothing this screen could
-// wire a Spend button to without lying about what pressing it does. The
-// activity list below is real: every row is a credit_ledger entry, read
-// straight off the lot.
+// screen. The real engine exists now (MESITA-1678 shipped
+// apply_ticket_credits), but spending happens on THE TICKET's Pay step, and
+// that row is still parked until MESITA-2052 un-parks it. Until then the
+// parked note sits directly under the summary (MESITA-2051): "you cannot
+// spend this yet" is the most useful fact on the page, and it used to be the
+// last line, under the purchase history. The activity list below is real:
+// every row is a credit_ledger entry, read straight off the lot.
 
 function LotRow({ lot }: { lot: CreditLot }) {
   const state = lot.expired ? "expired" : lot.pending ? "pending" : "active";
@@ -100,6 +102,13 @@ function BalanceBody({ balance, nowMs }: { balance: CreditPlaceBalance; nowMs: n
       </div>
 
       {state !== "expired" && (
+        <WalletParkedNote>
+          Paying at the table with Credits is coming soon — this balance is
+          real, but spending it here isn&rsquo;t wired up yet.
+        </WalletParkedNote>
+      )}
+
+      {state !== "expired" && (
         <dl className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-3">
             <dt className="text-muted-foreground text-xs">You paid</dt>
@@ -137,11 +146,6 @@ function BalanceBody({ balance, nowMs }: { balance: CreditPlaceBalance; nowMs: n
           ))}
         </ul>
       </div>
-
-      <WalletParkedNote>
-        Paying at the table with Credits is coming soon — this balance is
-        real, but spending it here isn&rsquo;t wired up yet.
-      </WalletParkedNote>
     </div>
   );
 }

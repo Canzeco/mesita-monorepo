@@ -265,6 +265,37 @@ describe("wallet block order", () => {
     expect(alert).toBeLessThan(bare.lastIndexOf("</WalletPanel>"));
   });
 
+  it("never prints MX$0 over a read that failed", () => {
+    // MESITA-2051. With nothing loaded, a failed read fell through to the
+    // zero state, so a guest holding money was shown "MX$0 · No balances
+    // yet" with the alert underneath. The failed branch must come BEFORE the
+    // zero branch and offer a 44px Try again; the trailing alert only renders
+    // once balances exist, so the error prints exactly once.
+    const bare = code(CLIENT);
+    const failed = bare.indexOf("credits.error && balances.length === 0 ?");
+    const zero = bare.indexOf("<WalletMoney");
+    expect(failed).toBeGreaterThan(-1);
+    expect(failed).toBeLessThan(zero);
+    const branch = bare.slice(failed, zero);
+    expect(branch).toContain('role="alert"');
+    expect(branch).toContain("credits.reload()");
+    expect(branch).toContain("min-h-11");
+    expect(bare).toContain("credits.error && balances.length > 0 ?");
+    expect(bare.match(/role="alert"/g)).toHaveLength(2);
+  });
+
+  it("separates Gift and Redeem with a dot outside both links", () => {
+    // MESITA-2051. Two bold words 8px apart read as one phrase, "Gift Redeem".
+    // The dot is a sibling so neither 44px hit box grows.
+    const bare = code(CLIENT);
+    const between = bare.slice(
+      bare.indexOf("CONSUMER_ROUTES.wallet.gift"),
+      bare.indexOf("CONSUMER_ROUTES.wallet.redeem"),
+    );
+    expect(between).toContain("</HeadAction>");
+    expect(between).toMatch(/<span aria-hidden[^>]*>\s*·\s*<\/span>/);
+  });
+
   it("skeletons the money line, not only the card", () => {
     // MESITA-1825 T5. Skeletoning only the card height meant the figure above
     // it popped in from nothing on every load — the one element the eye is
@@ -409,5 +440,39 @@ describe("ways to pay", () => {
   it("promises no rail that does not exist", () => {
     // There is no Stripe wallet button anywhere in this app.
     expect(WAYS).not.toMatch(/Apple Pay|Google Pay/);
+  });
+
+  it("draws the names as words, not pills that look pressable", () => {
+    // MESITA-2051. The four names shipped as filled pills, the exact shape of
+    // a button, under a comment saying nothing here is pressable. Ink still
+    // carries liveness: live tenders stay foreground, Credits stays muted.
+    const bare = code(WAYS);
+    const chips = bare.slice(
+      bare.indexOf("function Chips"),
+      bare.indexOf("function GroupLabel"),
+    );
+    expect(chips).not.toContain("rounded-full");
+    expect(chips).not.toContain("bg-muted");
+    expect(chips).toContain("aria-hidden");
+    expect(chips).toContain('"text-foreground');
+  });
+});
+
+describe("the balance page", () => {
+  const BALANCE = readFileSync(
+    join(__dirname, "..", "..", "app", "(shell)", "wallet", "balance", "[id]", "BalanceClient.tsx"),
+    "utf8",
+  );
+
+  it("says spending is parked right under the summary, not at the bottom", () => {
+    // MESITA-2051. "You cannot spend this yet" is the most useful fact on the
+    // page while THE TICKET's Credits row is parked (MESITA-2052), and it was
+    // the last line, under the purchase history.
+    const bare = code(BALANCE);
+    const note = bare.indexOf("<WalletParkedNote>");
+    expect(note).toBeGreaterThan(-1);
+    expect(note).toBeLessThan(bare.indexOf("<dl"));
+    expect(note).toBeLessThan(bare.indexOf("Purchases"));
+    expect(bare.match(/<WalletParkedNote>/g)).toHaveLength(1);
   });
 });
