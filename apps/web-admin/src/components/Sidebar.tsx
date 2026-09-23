@@ -22,10 +22,7 @@ import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
 import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
-
-function isNavActive(pathname: string, href: string): boolean {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { isNavActive } from "@/lib/nav-active";
 
 type SidebarProps = {
   onNavigate?: () => void;
@@ -123,13 +120,7 @@ const CONFIGURATIONS_NAV: NavItem[] = [
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.
-const TESTING_NAV: NavItem[] = [
-  {
-    href: BILLING_TEST_PARENT.href,
-    label: BILLING_TEST_PARENT.label,
-    Icon: BILLING_TEST_PARENT.Icon,
-  },
-];
+const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
 
 // The first group is deliberately unlabelled: a heading reading "Account" above
 // a lone "Account" link is the redundancy this menu is trying to shed.
@@ -152,10 +143,7 @@ function NavLink({
   active,
   collapsed,
   onNavigate,
-}: {
-  href: string;
-  label: string;
-  Icon: React.ComponentType<{ className?: string }>;
+}: NavItem & {
   active: boolean;
   collapsed: boolean;
   onNavigate?: () => void;

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
+import { isNavActive } from "@/lib/nav-active";
 
 type ConfigSubRoute = {
   href: string;
@@ -29,7 +30,7 @@ export function ConfigTabNav({
       className="border-border -mx-4 mt-5 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:mt-6 sm:px-0"
     >
       {subroutes.map(({ href, label, Icon }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
+        const active = isNavActive(pathname, href);
         return (
           <Link
             key={href}
