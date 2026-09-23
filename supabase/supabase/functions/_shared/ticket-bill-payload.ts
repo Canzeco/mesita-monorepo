@@ -2,7 +2,6 @@
 // notifications.
 
 import { instagramHandleFromUrl } from "./apify.ts";
-import type { InformalBillCalc } from "./ticket-informal.ts";
 
 export function formatMoneyMx(cents: number, currency = "MXN"): string {
   const major = (cents / 100).toFixed(2);
@@ -15,6 +14,17 @@ export function placeInstagramHandleForPayload(
 ): string | null {
   return instagramHandleFromUrl(instagramUrl);
 }
+
+export type InformalBillCalc = {
+  subtotal: number;
+  tip: number;
+  total: number;
+  eligibleCents: number;
+  ratePercent: number;
+  discountPercent: number;
+  discountCents: number;
+  amountDueCents: number;
+};
 
 export function buildConsumerBillPayload(
   place: {

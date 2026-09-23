@@ -1,9 +1,10 @@
-// Unit tests for the pure promo/format helpers in ticket-informal (MESITA-142).
+// Unit tests for the pure promo/format helpers in ticket-informal and
+// ticket-bill-payload (MESITA-142).
 //   deno test supabase/functions/_shared/ticket-informal.test.ts
 //
-// computeInformalBill/finalizeInformalTicket etc. take a live SupabaseClient
-// and belong to integration coverage; here we lock the pure money helpers that
-// the discount math depends on.
+// finalizeInformalTicket/closeTicketAndEnqueueReview take a live
+// SupabaseClient and belong to integration coverage; here we lock the pure
+// money helpers that the discount math depends on.
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { formatMoneyMx } from "./ticket-bill-payload.ts";
