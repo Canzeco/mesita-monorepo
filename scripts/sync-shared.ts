@@ -125,8 +125,11 @@ const TARGETS: { source: string; apps: Record<string, string> }[] = [
         "src/components/place-manage/notifications/notification-enricher-phase.ts",
     },
   },
-  // Product family policy for the business console (MESITA-2059 removed the
-  // disconnected mock; web-admin has no product catalogue to paint).
+  // Product families are policy web-business paints. web-admin has no
+  // catalogue. The mock console was the other copy until MESITA-2059 removed
+  // the app. The writer still loops `Object.entries(target.apps)`: one app
+  // here is a fact about what is shared now, not a rule that a target must
+  // come in a pair.
   {
     source: "product-families.ts",
     apps: {

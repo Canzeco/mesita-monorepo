@@ -6,30 +6,18 @@
 //
 // ── WHY THIS FILE IS SHARED AND NOT COPIED ────────────────────────────────
 //
-// `product-keys.ts` exists twice — canonical in `web-business`, hand-snapshot
-// in `web-business` — and the snapshot is what a rename is typed into
-// second, when it is typed at all. web-business is four labels stale right now
-// (Host, Market Intelligence, Guest Catalog, Point of Sale) for exactly that
-// reason. A COLOUR is worse than a label to keep by hand: two consoles showing
-// one product in two hues is not a typo an operator can read past, it is two
-// different claims about what the product IS.
-//
-// So this is a `shared/` source and `scripts/sync-shared.ts` writes the copies.
-// The mock is a sync target for the first time here — it had never been one,
-// because until now nothing it owned was policy both consoles had to agree on.
+// A colour kept by hand drifts. `scripts/sync-shared.ts` writes this source
+// into `apps/web-business/src/lib/product-families.ts`. The disconnected
+// console was the other copy until MESITA-2059 removed the app.
 //
 // ── THE KEY UNION IS THE SUPERSET, DELIBERATELY ───────────────────────────
 //
-// The two apps do not have the same `ProductKey`. The mock has twenty (it
-// leads: `partner`, `menu`, `tableorders`, `orderpad`, `access`); web-business
-// has fourteen. It used to carry `rewards` as well, and MESITA-2035 finished
-// the merge the mock made at MESITA-1953, so that key is gone from BOTH unions
-// now — the one difference this header was written around. The unions still
-// differ by the five above. A shared record cannot be typed `Record<ProductKey,
-// …>` against either union without breaking the other, so it is keyed by the
-// UNION and each app asserts its own subset in its own test. That assertion is
-// the gate: a twenty-first product with no family fails `pnpm test` in the app
-// that added it, rather than rendering a colourless tile nobody notices.
+// The record is keyed by the union, not by web-business's `ProductKey`. It
+// still names the products the mock led with (`partner`, `menu`,
+// `tableorders`, `orderpad`, `access`) so a later port does not land
+// colourless. `rewards` left both vocabularies at MESITA-2035. web-business
+// asserts its own subset in `product-families.test.ts`: a product added there
+// with no family fails `pnpm test`, rather than rendering a colourless tile.
 //
 // ── WHAT THE HUE MAY AND MAY NOT PAINT ────────────────────────────────────
 //

@@ -1,12 +1,12 @@
-import { BlurView } from 'expo-blur';
-import { ShoppingBag, User, Wallet } from 'lucide-react-native';
-import type { ComponentType } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from "expo-blur";
+import { QrCode, Search, User, Wallet } from "lucide-react-native";
+import type { ComponentType } from "react";
+import { Platform, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { MesitaMark } from '@/components/brand/MesitaMark';
-import { COLORS } from '@/constants/brand';
-import { useReduceMotion } from '@/lib/useReduceMotion';
+import { MesitaMark } from "@/components/brand/MesitaMark";
+import { COLORS } from "@/constants/brand";
+import { useReduceMotion } from "@/lib/useReduceMotion";
 
 type IconComponent = ComponentType<{
   color?: string;
@@ -37,13 +37,12 @@ type ConsumerTabBarProps = {
   };
 };
 
-// FOUR tabs, Visit · Order · Wallet · Me (Pato, MESITA-2050) — web BottomNav
+// FIVE tabs, Home · Search · Visit · Wallet · Me (Pato, MESITA-2055) — web BottomNav
 // parity. The bar is a FIXED list, not `state.routes`: the navigator holds
-// eight screens (Visit's five pills, Order, Wallet, Me) and the bar shows
-// four. Each tab names the route it opens and every route that lights it —
-// Visit lights for all five of its pills, the same way web's matchPrefixes
-// list does. A pill screen missing from Visit's `routes` renders with NO tab
-// lit, the failure web's route-structure T5 exists to catch.
+// eight screens (Home rail siblings, Order, Wallet, Me) and the bar shows
+// five. Each tab names the route it opens and every route that lights it —
+// Home lights for chat and favs too, the same way web's matchPrefixes list
+// does. A screen missing from a tab's `routes` renders with NO tab lit.
 //
 // Visit carries the brand mark: the leftmost tab has worn it since Home held
 // that slot, and Visit is where Home went.
@@ -61,14 +60,15 @@ type BarItem = {
 
 export const BAR: readonly BarItem[] = [
   {
-    label: 'Visit',
+    label: "Home",
     Icon: MesitaMark as IconComponent,
-    target: 'home',
-    routes: ['home', 'search', 'chat', 'favs', 'rewards'],
+    target: "home",
+    routes: ["home", "chat", "favs"],
   },
-  { label: 'Order', Icon: ShoppingBag, target: 'order', routes: ['order'] },
-  { label: 'Wallet', Icon: Wallet, target: 'wallet', routes: ['wallet'] },
-  { label: 'Me', Icon: User, target: 'me', routes: ['me'] },
+  { label: "Search", Icon: Search, target: "search", routes: ["search"] },
+  { label: "Visit", Icon: QrCode, target: "rewards", routes: ["rewards"] },
+  { label: "Wallet", Icon: Wallet, target: "wallet", routes: ["wallet"] },
+  { label: "Me", Icon: User, target: "me", routes: ["me"] },
 ];
 
 // Custom tab bar — RN port of web BottomNav: card/95 + blur, active top
@@ -83,22 +83,16 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
       className="border-t border-border"
       style={{ paddingBottom: Math.max(insets.bottom, 6) }}
     >
-      {Platform.OS === 'web' ? (
-        <View
-          className="absolute inset-0 bg-card/95"
-          pointerEvents="none"
-        />
+      {Platform.OS === "web" ? (
+        <View className="absolute inset-0 bg-card/95" pointerEvents="none" />
       ) : (
         <BlurView
           intensity={56}
           tint="light"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
         />
       )}
-      <View
-        className="absolute inset-0 bg-card/80"
-        pointerEvents="none"
-      />
+      <View className="absolute inset-0 bg-card/80" pointerEvents="none" />
 
       <View className="relative flex-row items-end justify-around px-0.5 pt-2">
         {BAR.map(({ label, Icon, target, routes }) => {
@@ -116,7 +110,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
               onPress={() => {
                 if (!route) return;
                 const event = navigation.emit({
-                  type: 'tabPress',
+                  type: "tabPress",
                   target: route.key,
                   canPreventDefault: true,
                 });
@@ -134,15 +128,15 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
               {focused ? (
                 <View
                   className="absolute h-0.5 w-5 rounded-full bg-primary"
-                  style={{ top: -8, left: '50%', marginLeft: -10 }}
+                  style={{ top: -8, left: "50%", marginLeft: -10 }}
                 />
               ) : null}
 
               <View
                 className={
                   focused
-                    ? 'h-8 w-8 items-center justify-center rounded-full bg-primary/10'
-                    : 'h-8 w-8 items-center justify-center rounded-full'
+                    ? "h-8 w-8 items-center justify-center rounded-full bg-primary/10"
+                    : "h-8 w-8 items-center justify-center rounded-full"
                 }
                 style={
                   focused
@@ -157,8 +151,8 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
                 numberOfLines={1}
                 className={
                   focused
-                    ? 'w-full text-center font-medium text-primary'
-                    : 'w-full text-center font-medium text-muted-foreground'
+                    ? "w-full text-center font-medium text-primary"
+                    : "w-full text-center font-medium text-muted-foreground"
                 }
                 style={{ fontSize: 10 }}
               >

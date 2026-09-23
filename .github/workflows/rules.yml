@@ -26,8 +26,8 @@ name: rules
 # than repeating it, so a new target app that is missing from the globs below
 # fails that test instead of shipping a check that can never fire.
 #
-# App globs for sync-shared targets: web-admin and web-business (derived in
-# scripts/sync-shared.test.ts from TARGETS).
+# THE APP LIST IS web-admin and web-business. The mock console was the third
+# target until MESITA-2059 removed the app (derived in sync-shared.test.ts).
 #
 # The JOB NAME below is load-bearing: "instruction files in sync" is one of the
 # six required checks on main. Renaming it silently un-guards the branch.
