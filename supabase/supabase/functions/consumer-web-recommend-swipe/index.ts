@@ -80,12 +80,16 @@ const POOL_CAP = 1000;
 /**
  * Where a located guest looks when their radius cannot fill the deck, after
  * the reach box: the Search map's default reach, then the whole catalog
- * (0 = no box). Stepping out keeps each ask as close as it can be, but a ring
- * past POOL_CAP rows is still an arbitrary 1000 of them — PostgREST cannot
- * order by distance before the cap bites. That only matters once one ring
- * holds 1000+ ready places and the rings inside it fewer than 50.
+ * (0 = no box). Each ring pages by id until it comes back whole, because a
+ * single capped ask is an arbitrary slice — PostgREST cannot order by
+ * distance — and the stop rule is only exact over a whole ring.
  */
 const OUTER_RINGS_KM = [NEARBY_DEFAULT_RADIUS_KM, 0] as const;
+/**
+ * A ring bigger than this many ready places ends the widening, best effort:
+ * every ring after it is bigger still. Pages carry the card columns only.
+ */
+const RING_PAGES_MAX = 3;
 
 type Body = {
   lat?: number;
@@ -141,6 +145,26 @@ Deno.serve(async (req) => {
     };
   };
 
+  // A wider ring, one page at a time, in a stable order so pages never
+  // overlap or skip. No embedding: only the radius pool's `embedded` count
+  // reads it, and it is the heaviest column by far.
+  const ringPage = async (maxDistanceKm: number, from: number, size: number) => {
+    const base = admin
+      .from("profiles")
+      .select(PLACE_CARD_COLUMNS)
+      .eq("state", "active");
+    const { data, error } = await applyDiscoveryFilters(
+      base,
+      { ...filters, maxDistanceKm },
+      geo,
+    ).order("id").range(from, from + size - 1);
+    if (error) {
+      console.error("[recommend-swipe] wider pool:", error.message);
+      return null;
+    }
+    return (data ?? []) as unknown as PlaceProfileRow[];
+  };
+
   const { data: pool, error } = await poolQuery(filters.maxDistanceKm);
   if (error) {
     console.error("[recommend-swipe] pool:", error.message);
@@ -186,14 +210,9 @@ Deno.serve(async (req) => {
       radiusKm: filters.maxDistanceKm,
       reachKm,
       rings: [reachKm, ...OUTER_RINGS_KM],
-      fetchRing: async (km) => {
-        const wider = await poolQuery(km);
-        if (wider.error) {
-          console.error("[recommend-swipe] wider pool:", wider.error.message);
-          return null;
-        }
-        return wider.data;
-      },
+      fetchPage: ringPage,
+      pageSize: POOL_CAP,
+      maxPagesPerRing: RING_PAGES_MAX,
       idOf: (r) => r.id,
       admit,
       tiersOf,
@@ -233,6 +252,8 @@ Deno.serve(async (req) => {
   );
 
   const deck = ordered.map((r) => stripInternal(r));
+  // Ring pages never select the vector, so this counts the radius pool's own
+  // strict rows — the number it always meant.
   const embedded = tiers.strict.filter((r) => r.embedding != null).length;
 
   return json({

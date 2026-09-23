@@ -571,6 +571,8 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
   // The ring loop lives in the tested helper, not inline in the EF.
   assertEquals(src.includes("await widenSwipePool({"), true);
   assertEquals(src.includes("provenWithin"), false);
+  // Each wider ring pages in a stable order until it comes back whole.
+  assertEquals(src.includes('.order("id").range(from, from + size - 1)'), true);
   assertEquals(src.includes("admitSwipeTiming"), false);
   assertEquals(src.includes("trimToRadius"), false);
   // The frozen Expo shape keeps its two keys; backfilled is additive.
@@ -590,13 +592,16 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
 
 type CatalogRow = TierRow & { km: number };
 
-/** A fake pool query over a whole catalog: a box of `km` around the guest. */
+/**
+ * A fake paged pool query over a whole catalog: a box of `km` around the
+ * guest, in catalog order (inner rows first when the catalog lists them
+ * first — the worst case for a capped ask).
+ */
 function ringOver(catalog: CatalogRow[], asked: number[]) {
-  return (km: number) => {
-    asked.push(km);
-    return Promise.resolve(
-      km === 0 ? catalog : catalog.filter((r) => r.km <= km),
-    );
+  return (km: number, from: number, size: number) => {
+    if (from === 0) asked.push(km);
+    const box = km === 0 ? catalog : catalog.filter((r) => r.km <= km);
+    return Promise.resolve(box.slice(from, from + size));
   };
 }
 
@@ -608,7 +613,12 @@ function catalogOf(groups: Array<[prefix: string, n: number, km: number, hours: 
   return out;
 }
 
-async function deckFor(catalog: CatalogRow[], at: Date, limit = 50) {
+async function deckFor(
+  catalog: CatalogRow[],
+  at: Date,
+  limit = 50,
+  paging = { pageSize: 1000, maxPagesPerRing: 3 },
+) {
   const reachKm = swipeReachKm(DEFAULT_SWIPE.radiusKm, PARAMS);
   const first = catalog.filter((r) => r.km <= DEFAULT_SWIPE.radiusKm);
   const asked: number[] = [];
@@ -620,7 +630,8 @@ async function deckFor(catalog: CatalogRow[], at: Date, limit = 50) {
     radiusKm: DEFAULT_SWIPE.radiusKm,
     reachKm,
     rings: [reachKm, 500, 0],
-    fetchRing: ringOver(catalog, asked),
+    fetchPage: ringOver(catalog, asked),
+    ...paging,
     idOf: (r) => r.id,
     admit: (rows) => rows,
     tiersOf,
@@ -712,10 +723,12 @@ Deno.test("widen: a failed ring keeps what the rings before it found", async () 
     radiusKm: 5,
     reachKm: 25,
     rings: [25, 500, 0],
-    fetchRing: (km) => {
-      asked.push(km);
-      return Promise.resolve(km === 25 ? catalog : null);
+    fetchPage: (km, from, size) => {
+      if (from === 0) asked.push(km);
+      return Promise.resolve(km === 25 ? catalog.slice(from, from + size) : null);
     },
+    pageSize: 1000,
+    maxPagesPerRing: 3,
     idOf: (r) => r.id,
     admit: (rows) => rows,
     tiersOf: (rows) => tiersAt(rows, WED_NOON, SLP),
@@ -723,6 +736,44 @@ Deno.test("widen: a failed ring keeps what the rings before it found", async () 
   });
   assertEquals(asked, [25, 500]);
   assertEquals(admitted.length, 5);
+});
+
+Deno.test("widen: a ring bigger than one page is paged whole before it counts (round-3 review)", async () => {
+  // Scaled-down reproduction of the review's case, cap 10 instead of 1000:
+  // the reach box holds far more rows than one page, the inner (closed) rows
+  // come first, and the open places within reach sit behind them. One capped
+  // ask saw only closed rows and called them final.
+  const catalog = catalogOf([
+    ["open2", 4, 2, DOS_AMORES_HOURS],
+    ["closed3", 12, 3, SHUT],
+    ["closed15", 6, 15, SHUT],
+    ["open12", 3, 12, DOS_AMORES_HOURS],
+  ]);
+  const { count } = await deckFor(catalog, WED_NOON, 7, {
+    pageSize: 10,
+    maxPagesPerRing: 5,
+  });
+  assertEquals(count("open2"), 4);
+  assertEquals(count("open12"), 3);
+  assertEquals(count("closed3"), 0);
+});
+
+Deno.test("widen: a ring too big to finish ends the widening where it is", async () => {
+  // Two pages allowed, three needed: the reach ring never counts as searched,
+  // and nothing wider is asked — every wider ring is bigger still.
+  const catalog = catalogOf([
+    ["open2", 1, 2, DOS_AMORES_HOURS],
+    ["closed15", 25, 15, SHUT],
+    ["open300", 5, 300, DOS_AMORES_HOURS],
+  ]);
+  const { asked, count } = await deckFor(catalog, WED_NOON, 50, {
+    pageSize: 10,
+    maxPagesPerRing: 2,
+  });
+  assertEquals(asked, [25]);
+  assertEquals(count("open300"), 0);
+  // Two pages of the 26-row reach box: open2 (already held) + 19 closed.
+  assertEquals(count("closed15"), 19);
 });
 
 Deno.test("settled: short of reach only strict is final; from reach, all of reach plus the searched beyond", () => {

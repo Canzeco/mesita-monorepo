@@ -314,8 +314,14 @@ export type WidenSwipePoolOpts<T> = {
   reachKm: number;
   /** Rings to ask, in order. 0 = no box. */
   rings: readonly number[];
-  /** One pool query at `km` (0 = unboxed). null = the query failed. */
-  fetchRing: (km: number) => Promise<T[] | null>;
+  /**
+   * One page of the pool at `km` (0 = unboxed), rows `from`..`from+size-1` in
+   * a STABLE order. null = the query failed.
+   */
+  fetchPage: (km: number, from: number, size: number) => Promise<T[] | null>;
+  pageSize: number;
+  /** Pages per ring before the ring is given up as too big to finish. */
+  maxPagesPerRing: number;
   idOf: (row: T) => string;
   /** The hard cuts: type batteries, then the guest's predicates. */
   admit: (rows: T[]) => T[];
@@ -326,13 +332,26 @@ export type WidenSwipePoolOpts<T> = {
 /**
  * Ask wider rings until the band prefix no farther place can enter holds
  * `limit` rows — for a located guest whose radius could not fill the deck.
- * Pure but for `fetchRing`, so the stop rule is testable without a database.
- * A failed ring keeps what the rings before it found: a thinner deck beats a
- * 502.
+ * Pure but for `fetchPage`, so the stop rule is testable without a database.
+ *
+ * A RING COUNTS AS SEARCHED ONLY WHEN IT CAME BACK WHOLE. The stop rule is
+ * exact only if every place inside `searchedKm` was fetched; a single capped
+ * query (PostgREST cannot order by distance) could return a thousand closed
+ * places and miss the open ones behind them, and the rule would call the
+ * closed ones final (round-3 review of MESITA-2047). So each ring pages in a
+ * stable order until a short page, and a ring still unfinished after
+ * `maxPagesPerRing` pages ends the widening where it is — best effort, and
+ * every wider ring would be bigger still. A failed page does the same: a
+ * thinner deck beats a 502.
  */
 export async function widenSwipePool<T>(o: WidenSwipePoolOpts<T>): Promise<T[]> {
   let admitted = o.admitted;
   let searchedKm = o.radiusKm;
+  const take = (rows: T[]) => {
+    const fresh = rows.filter((r) => !o.seen.has(o.idOf(r)));
+    for (const r of fresh) o.seen.add(o.idOf(r));
+    admitted = admitted.concat(o.admit(fresh));
+  };
   for (const ringKm of o.rings) {
     const settled = swipeSettledCount(
       o.tiersOf(admitted),
@@ -342,11 +361,17 @@ export async function widenSwipePool<T>(o: WidenSwipePoolOpts<T>): Promise<T[]> 
     );
     if (settled >= o.limit) break;
     if (ringKm !== 0 && ringKm <= searchedKm) continue;
-    const rows = await o.fetchRing(ringKm);
-    if (rows === null) break;
-    const fresh = rows.filter((r) => !o.seen.has(o.idOf(r)));
-    for (const r of fresh) o.seen.add(o.idOf(r));
-    admitted = admitted.concat(o.admit(fresh));
+    let whole = false;
+    for (let page = 0; page < o.maxPagesPerRing; page++) {
+      const rows = await o.fetchPage(ringKm, page * o.pageSize, o.pageSize);
+      if (rows === null) break;
+      take(rows);
+      if (rows.length < o.pageSize) {
+        whole = true;
+        break;
+      }
+    }
+    if (!whole) break;
     searchedKm = ringKm === 0 ? Number.POSITIVE_INFINITY : ringKm;
     if (!Number.isFinite(searchedKm)) break;
   }
