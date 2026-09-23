@@ -81,7 +81,7 @@ export function RewardStep({
 // ── Your rewards at THIS place (v7, MESITA-861; MESITA-2044) ────────────
 //
 // The guest's rewards at the place's strategy, action by action. Who the
-// guest is takes exactly TWO rows — Base (every guest) and Diamond List (the
+// guest is takes exactly TWO rows — Base (every guest) and Diamond (the
 // adder on top, invitation only) — and the guest's own one carries "You".
 // There is no ladder to show (Pato, MESITA-2044).
 
@@ -95,7 +95,7 @@ type Row = {
 };
 
 /** "Your rate" — the two identity rows and nothing else: Base (N%) and the
- *  Diamond List adder (+N%), the guest's own one marked "You". */
+ *  the Diamond adder (+N%), the guest's own one marked "You". */
 export function YourRate({
   strategy,
   classKey,
@@ -113,7 +113,7 @@ export function YourRate({
   return <RewardRows rows={rows} />;
 }
 
-/** The actions at this place — every guest, on the list or not. */
+/** The actions at this place — every guest, Diamond or not. */
 export function YourRewardsHere({ strategy }: { strategy: PlaceStrategy }) {
   const rows: Row[] = [
     {

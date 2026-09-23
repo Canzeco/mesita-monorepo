@@ -14,7 +14,7 @@
 //
 // Like every other door writer it persists a FACT and then defers to the shared
 // recompute (_shared/class-doors.ts, MESITA-972) rather than setting the class
-// slot by hand. A redeemed PIN puts its holder on the Diamond List
+// slot by hand. A redeemed PIN puts its holder on Diamond
 // (MESITA-2044): PINs are minted for `diamond` only, and a subscriber who
 // redeems one keeps the subscription running underneath — plan is not a class.
 //

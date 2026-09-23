@@ -8,7 +8,7 @@
 // if they were every place's bill (MESITA-1017). The live sheet is the
 // place Rewards tab; this list is what is priced, named.
 //
-// TWO IDENTITY ROWS (MESITA-2044): Base and the Diamond List. No metals, no
+// TWO IDENTITY ROWS (MESITA-2044): Base and Diamond. No metals, no
 // ladder — "either you are diamond or you are not".
 
 import type { LucideIcon } from "lucide-react";
@@ -31,9 +31,9 @@ import { useConsumerClass } from "@/lib/class-context";
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
-  DIAMOND_LIST,
-  DIAMOND_LIST_HELP_LINE,
-  DIAMOND_LIST_RATE_HINT,
+  DIAMOND,
+  DIAMOND_HELP_LINE,
+  DIAMOND_RATE_HINT,
 } from "@/lib/consumer-identity";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
@@ -93,7 +93,7 @@ function RungRow({ icon: Icon, label, hint, mine }: Omit<HelpRung, "key">) {
   );
 }
 
-// Everything PRICED, in engine order: Base, the Diamond List, Welcome, then
+// Everything PRICED, in engine order: Base, Diamond, Welcome, then
 // the three sharing actions. The guest's own identity row wears You.
 //
 // Free / Premium sat between the classes and Welcome until MESITA-1705. The
@@ -112,8 +112,8 @@ export function HelpRungList({ classKey }: { classKey: string }) {
     },
     {
       key: "diamond",
-      label: DIAMOND_LIST,
-      hint: DIAMOND_LIST_RATE_HINT,
+      label: DIAMOND,
+      hint: DIAMOND_RATE_HINT,
       icon: Gem,
       mine: onList,
     },
@@ -175,7 +175,7 @@ export function HelpModal() {
             <Info className="size-[18px]" />
           </span>
           <p className="text-muted-foreground text-xs">
-            Instant discounts, the Diamond List, and the actions that stack.
+            Instant discounts, Diamond, and the actions that stack.
           </p>
         </div>
 
@@ -197,7 +197,7 @@ export function HelpModal() {
             <Gem className="size-[18px]" />
           </span>
           <p className="text-muted-foreground type-body leading-relaxed">
-            {DIAMOND_LIST_HELP_LINE}
+            {DIAMOND_HELP_LINE}
           </p>
         </div>
 

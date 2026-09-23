@@ -6,11 +6,11 @@
 // The ids below stay the legacy standard/influencer/premium/aura keys because
 // every comparison in this app (isElevatedClass, the mock, the ticket pass)
 // was written against them — they are STORAGE, never copy. Nothing here names
-// a rung to a guest; `listLabelForClass` is the only label left and it says
-// "Diamond List" or nothing.
+// a rung to a guest; `diamondLabelForClass` is the only label left and it says
+// "Diamond" or nothing.
 
 import { GRADIENTS } from '@/constants/brand';
-import { DIAMOND_LIST } from '@/lib/consumer-identity';
+import { DIAMOND } from '@/lib/consumer-identity';
 
 const CLASS_ORDER = ['standard', 'influencer', 'premium', 'aura'] as const;
 export type ClassId = (typeof CLASS_ORDER)[number];
@@ -54,7 +54,7 @@ export const CLASS_METAL_INK_GRADIENT: Record<ClassId, readonly [string, string]
 // handle (MESITA-909), never the bar.
 
 // Elevated-perk gate (AI Connector, the elevated promo rate): the Premium
-// plan or the Diamond List — after `legacyKeyForStoredClass`, those are the
+// plan or Diamond — after `legacyKeyForStoredClass`, those are the
 // only two non-`standard` keys this app ever holds. A perk, never a rate row.
 export function isElevatedClass(classKey: string): boolean {
   return (
@@ -67,14 +67,14 @@ export function isElevatedClass(classKey: string): boolean {
  *  `silver`/`gold` row can still exist); older payloads and this app speak the
  *  legacy keys. One bridge, used by the auth provider:
  *
- *    diamond / aura            → aura      (on the Diamond List)
+ *    diamond / aura            → aura      (Diamond)
  *    premium plan, not listed  → premium   (the perk carrier, never a rate)
- *    everything else           → standard  (not on the list)
+ *    everything else           → standard  (not Diamond)
  *
  *  Before MESITA-2044 the provider only knew the legacy keys, so EVERY metal —
  *  including a real `diamond` — normalized to `standard`, and a guest on the
  *  list read "not on it" on mobile while web told them the truth. Silver and
- *  Gold map to "not on the list" on purpose: they no longer exist for guests,
+ *  Gold map to "not Diamond" on purpose: they no longer exist for guests,
  *  and a row still carrying one must not surface as anything. */
 export function legacyKeyForStoredClass(
   rawKey: string | null | undefined,
@@ -85,15 +85,15 @@ export function legacyKeyForStoredClass(
   return 'standard';
 }
 
-/** On the Diamond List? Accepts the legacy key or the metal. */
-export function onDiamondList(classKey: string | null | undefined): boolean {
+/** Diamond? Accepts the legacy key or the metal. */
+export function isDiamond(classKey: string | null | undefined): boolean {
   return classKey === 'aura' || classKey === 'diamond';
 }
 
-/** The ONLY guest-facing label a stored class key has: the list's name when
- *  the guest is on it, nothing otherwise. There is no "Bronze" to print. */
-export function listLabelForClass(classKey: string | null | undefined): string | null {
-  return onDiamondList(classKey) ? DIAMOND_LIST : null;
+/** The ONLY guest-facing label a stored class key has: the name when
+ *  the guest is Diamond, nothing otherwise. There is no "Bronze" to print. */
+export function diamondLabelForClass(classKey: string | null | undefined): string | null {
+  return isDiamond(classKey) ? DIAMOND : null;
 }
 
 /**

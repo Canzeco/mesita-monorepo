@@ -6,7 +6,7 @@
 // Aggressive defaults as if they were every place's bill. The live rates sit
 // on each place's Rewards tab; this list is what is priced, named.
 //
-// TWO IDENTITY ROWS (MESITA-2044): Base and the Diamond List. No metals, no
+// TWO IDENTITY ROWS (MESITA-2044): Base and Diamond. No metals, no
 // ladder — "either you are diamond or you are not".
 
 import type { LucideIcon } from 'lucide-react-native';
@@ -24,13 +24,13 @@ import { ScrollView, Text, View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { COLORS } from '@/constants/brand';
-import { onDiamondList } from '@/lib/consumer-classes';
+import { isDiamond } from '@/lib/consumer-classes';
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
-  DIAMOND_LIST,
-  DIAMOND_LIST_HELP_LINE,
-  DIAMOND_LIST_RATE_HINT,
+  DIAMOND,
+  DIAMOND_HELP_LINE,
+  DIAMOND_RATE_HINT,
 } from '@/lib/consumer-identity';
 import { useAuth } from '@/providers/auth';
 
@@ -42,14 +42,14 @@ type HelpRung = {
   mine: boolean;
 };
 
-/** Everything PRICED, in engine order: Base, the Diamond List, Welcome, then
+/** Everything PRICED, in engine order: Base, Diamond, Welcome, then
  *  the three sharing actions. The guest's own identity row wears You.
  *  Exported for the copy test. */
 export function helpRungs(classKey: string): HelpRung[] {
-  const onList = onDiamondList(classKey);
+  const onList = isDiamond(classKey);
   return [
     { key: 'base', label: BASE_RATE_LABEL, hint: BASE_RATE_HINT, Icon: Store, mine: !onList },
-    { key: 'diamond', label: DIAMOND_LIST, hint: DIAMOND_LIST_RATE_HINT, Icon: Gem, mine: onList },
+    { key: 'diamond', label: DIAMOND, hint: DIAMOND_RATE_HINT, Icon: Gem, mine: onList },
     { key: 'welcome', label: 'Welcome', hint: 'First visit only', Icon: DoorOpen, mine: false },
     // lucide-react-native has no Instagram glyph — AtSign is the house IG mark.
     { key: 'story', label: 'Instagram Story', hint: 'Needs a connected handle', Icon: AtSign, mine: false },
@@ -112,7 +112,7 @@ export function HelpModal({
         />
         <ExplainRow
           icon={<Gem size={18} color={COLORS.secondary} />}
-          rest={DIAMOND_LIST_HELP_LINE}
+          rest={DIAMOND_HELP_LINE}
         />
         <ExplainRow
           icon={<Sparkles size={18} color={COLORS.secondary} />}

@@ -127,7 +127,7 @@ function applyMock(
 ): ConsumerClassState {
   // `key` and `origin` are STORAGE, and the demo still has to seed them: the
   // ticket screen, the promo chip and place detail read the key because the
-  // rewards engine really prices Base vs Diamond List. On the list maps to
+  // rewards engine really prices Base vs Diamond. Diamond maps to
   // `aura`; everything else previews as `standard`, which is what an account
   // with no invitation actually holds. Instagram lifts nothing.
   const key: ConsumerClassState['key'] = mock.diamond ? 'aura' : 'standard';
@@ -157,7 +157,7 @@ function applyMock(
  *  an account comes from here; `useEffectiveClass` below is the storage view
  *  that the rewards surfaces still need.
  *
- *  THE DIAMOND LIST IS THE CLASS KEY, NOT THE ORIGIN. The admin console's
+ *  DIAMOND IS THE CLASS KEY, NOT THE ORIGIN. The admin console's
  *  grant writes the key and leaves origin alone, so an `origin ===
  *  'invitation'` test would tell a hand-granted guest they are not on the
  *  list. The auth provider folds both the metal `diamond` and the legacy

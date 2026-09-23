@@ -425,12 +425,12 @@ select is(
   'bronze is rank 0'
 );
 
--- MESITA-2044: the Diamond List is invitation-only. A follower_threshold on
+-- MESITA-2044: Diamond is invitation-only. A follower_threshold on
 -- any row would name a class the (self-declared) Instagram count can open;
 -- class-doors.ts no longer reads it, and this keeps the data honest too.
 select is_empty(
   $$select key from public.classes where follower_threshold is not null$$,
-  'no class opens from followers (Diamond List is invitation-only)'
+  'no class opens from followers (Diamond is invitation-only)'
 );
 
 select is_empty(

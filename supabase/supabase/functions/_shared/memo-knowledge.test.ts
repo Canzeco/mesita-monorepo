@@ -59,7 +59,7 @@ Deno.test("knowledge: the four asks from MESITA-1201 all match a guest row", () 
   const asks: [string, string][] = [
     // "Gold" and "Passport" are both gone (MESITA-2044, MESITA-2043); the ask
     // must still land on the rows that SAY so, not fall through to the web.
-    ["¿Qué significa Gold Passport?", "diamond-list"],
+    ["¿Qué significa Gold Passport?", "diamond"],
     ["¿Qué significa Gold Passport?", "member-number"],
     ["¿cómo funciona el descuento?", "discount"],
     ["¿qué es un ticket?", "ticket"],
@@ -69,7 +69,7 @@ Deno.test("knowledge: the four asks from MESITA-1201 all match a guest row", () 
     const hits = lookupMesitaKnowledge(ask, "guest");
     assert(hits.length > 0, `no knowledge for "${ask}"`);
     // Membership, not first place: "Gold Passport" legitimately pulls both the
-    // Diamond List row and the member-number row, and the model needs both.
+    // the Diamond row and the member-number row, and the model needs both.
     assertEquals(
       hits.some((h) => h.id === expectedId),
       true,
@@ -162,11 +162,12 @@ Deno.test("knowledge: passport and plan still co-return without contradiction", 
   assertEquals(/passport/i.test(plan.fact), false, plan.fact);
 });
 
-// ── The Diamond List is binary (MESITA-2044) ────────────────────────────
+// ── Diamond is binary (MESITA-2044, MESITA-2046) ────────────────────────
 //
-// Pato: "there are no classes, either you are diamond or you are not." These
-// FAIL if a guest row ever again grounds the model in a class, a metal, a
-// ladder, VIP, or "Diamond" as a bare status noun ("You're Diamond").
+// Pato: "there are no classes, either you are diamond or you are not" — and
+// then "Don't call diamond list, just diamond". These FAIL if a guest row
+// ever again grounds the model in a class, a metal, a ladder, VIP, or the
+// retired "Diamond List".
 
 const BANNED_IN_GUEST_FACTS: [RegExp, string][] = [
   [/\bVIP\b/i, "VIP"],
@@ -180,7 +181,7 @@ const BANNED_IN_GUEST_FACTS: [RegExp, string][] = [
   [/\bGold\b/i, "Gold"],
   [/\bclimb/i, "climb"],
   [/unlock a higher/i, "unlock a higher"],
-  [/\bDiamond\b(?! List)/, "Diamond without List"],
+  [/Diamond List|Lista Diamante/i, "the retired Diamond List"],
 ];
 
 Deno.test("knowledge: guest rows never speak of classes, metals or a ladder", () => {
@@ -192,30 +193,30 @@ Deno.test("knowledge: guest rows never speak of classes, metals or a ladder", ()
   }
 });
 
-Deno.test("knowledge: the Diamond List row is binary and invitation-only", () => {
-  const row = MESITA_KNOWLEDGE.find((e) => e.id === "diamond-list")!;
-  assert(/on it or not/.test(row.fact), row.fact);
+Deno.test("knowledge: the Diamond row is binary and invitation-only", () => {
+  const row = MESITA_KNOWLEDGE.find((e) => e.id === "diamond")!;
+  assert(/Diamond or not/.test(row.fact), row.fact);
   assert(/invitation-only/.test(row.fact), row.fact);
-  const join = MESITA_KNOWLEDGE.find((e) => e.id === "diamond-list-join")!;
+  const join = MESITA_KNOWLEDGE.find((e) => e.id === "diamond-join")!;
   assert(/invitation-only/.test(join.fact), join.fact);
   // Instagram must never read as a way on.
-  assert(/grants nothing toward the list/.test(join.fact), join.fact);
+  assert(/grants nothing toward Diamond/.test(join.fact), join.fact);
 });
 
-Deno.test("knowledge: old ladder words still route to the Diamond List row", () => {
+Deno.test("knowledge: old ladder words still route to the Diamond row", () => {
   for (const ask of ["¿qué significa Gold?", "what is silver", "soy bronce?", "am I VIP"]) {
     const hits = lookupMesitaKnowledge(ask, "guest");
-    assertEquals(hits.some((h) => h.id === "diamond-list"), true, ask);
+    assertEquals(hits.some((h) => h.id === "diamond"), true, ask);
   }
   const join = lookupMesitaKnowledge("¿cómo uso mi código de invitación?", "guest");
-  assertEquals(join[0].id, "diamond-list-join");
+  assertEquals(join[0].id, "diamond-join");
 });
 
 Deno.test("knowledge: the plan row names where Premium is bought", () => {
   // With the Passport tile gone, the concierge is the last surface that can
   // route a guest to checkout, and until MESITA-1619 no row in this file
-  // named a location for it. `diamond-list-join` sets the same idiom for the
-  // invitation ("Me › Diamond List").
+  // named a location for it. `diamond-join` sets the same idiom for the
+  // invitation ("Me › Diamond").
   const plan = MESITA_KNOWLEDGE.find((e) => e.id === "plan")!;
   assert(/Me\s*›\s*Plan/.test(plan.fact), plan.fact);
 });

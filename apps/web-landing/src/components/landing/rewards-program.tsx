@@ -33,19 +33,19 @@ const REWARDS: {
     why: "The hardest visit to buy is the first one. This is the reward that turns discovery into a guest.",
     Icon: UserPlus,
   },
-  // The Diamond List (MESITA-2044) is binary: a guest is on it or not,
+  // Diamond (MESITA-2044) is binary: a guest is Diamond or not,
   // nothing in between. It replaced the four-rung ladder (MESITA-2040) and
   // the Passport that printed it (MESITA-2043). Invitation only, never
   // bought, never reached through Instagram, and anyone can ask to join.
   {
-    label: "Diamond List",
+    label: "Diamond",
     when: "Invitation only",
-    why: "Presence. The guests who create the atmosphere everyone else came for — on the list or not, nothing in between — priced accordingly.",
+    why: "Presence. The guests who create the atmosphere everyone else came for — Diamond or not, nothing in between — priced accordingly.",
     Icon: Gem,
   },
   // A fourth "Plan — Free / Premium" card sat here. The plan stopped pricing
   // rewards in MESITA-1705, so the reward stack is three groups: base and
-  // welcome, the Diamond List, sharing. Premium is still sold; it just does
+  // welcome, Diamond, sharing. Premium is still sold; it just does
   // not buy a bigger discount.
 ];
 
@@ -158,8 +158,8 @@ function RewardsProgram() {
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_1fr]">
           <div className="border-border bg-card flex flex-col gap-5 rounded-3xl border p-8">
             {/* TWO FACTS, NO PASSPORT (MESITA-2043). Instagram and the
-                Diamond List are independent: Instagram is connected reach,
-                the Diamond List is an invitation, on or off (MESITA-2044).
+                Diamond are independent: Instagram is connected reach,
+                Diamond is an invitation, on or off (MESITA-2044).
                 The plan is private and never shown here. */}
             <div className="border-border bg-hero rounded-2xl border p-5">
               <div className="flex items-start justify-between">
@@ -168,7 +168,7 @@ function RewardsProgram() {
                 </p>
                 <span className="bg-tier-diamond text-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold">
                   <Gem className="h-3.5 w-3.5" aria-hidden />
-                  Diamond List
+                  Diamond
                 </span>
               </div>
               <div className="border-border mt-4 flex items-center justify-between border-t pt-4">
@@ -191,9 +191,9 @@ function RewardsProgram() {
               <span className="text-foreground font-medium">Instagram</span> is
               your connected account.{" "}
               <span className="text-foreground font-medium">
-                The Diamond List
+                Diamond
               </span>{" "}
-              is invitation-only — you are on it or you are not, nothing in
+              is invitation-only — you are Diamond or you are not, nothing in
               between. It is{" "}
               <span className="text-foreground font-medium">
                 never for sale

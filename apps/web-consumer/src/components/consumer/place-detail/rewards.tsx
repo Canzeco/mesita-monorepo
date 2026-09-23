@@ -29,10 +29,10 @@ import {
 // steps at the moment the guest is furthest from using them.
 //
 //   hero    — "Up to N%", the total, and the cap. Still no reason (MESITA-860).
-//   rate    — Base, then the Diamond List's adder, the guest's own row
+//   rate    — Base, then Diamond's adder, the guest's own row
 //             marked (MESITA-2044: two rows, no ladder). Reverses MESITA-861,
 //             which showed the guest only their own row: a sheet that hides
-//             the list's adder can't say what the list is worth.
+//             Diamond's adder can't say what Diamond is worth.
 //   bonuses — the actions, priced, with the ones you can't do today muted.
 //   total   — the number that lands on the bill, and the cap it applies to.
 //
@@ -123,7 +123,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           </p>
         </div>
 
-        {/* Base and the Diamond List, the guest's own row marked. */}
+        {/* Base and Diamond, the guest's own row marked. */}
         <div className="flex flex-col gap-3">
           <BoxLabel>Your rate</BoxLabel>
           {quote ? (

@@ -539,7 +539,7 @@ export function StepValidate({ placeName }: { placeName: string }) {
   );
 }
 
-// ── Step 7 — Results. What the visit paid, on the pass (Diamond List blue,
+// ── Step 7 — Results. What the visit paid, on the pass (Diamond blue,
 //    or the house pink). ─────────────────────────────────────────────────────
 export function StepResults({
   passClassName,
@@ -558,7 +558,7 @@ export function StepResults({
   capApplied,
 }: {
   passClassName: string;
-  /** "Diamond List" when the guest is on it; null prints no chip. */
+  /** "Diamond" when the guest is Diamond; null prints no chip. */
   classLabel: string | null;
   placeName: string;
   cancelled: boolean;
@@ -697,7 +697,7 @@ export function LaneChip({
   on?: boolean;
   faded?: boolean;
   done?: boolean;
-  /** The guest's own identity row (Base or Diamond List) — the You marker. */
+  /** The guest's own identity row (Base or Diamond) — the You marker. */
   mine?: boolean;
   glyph?: React.ReactNode;
   onClick?: () => void;

@@ -30,7 +30,7 @@ import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { apiFetchConsumerMetrics } from '@/lib/api/auth';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import {
-  DIAMOND_LIST,
+  DIAMOND,
   diamondChipA11y,
   diamondChipLabel,
   diamondSummary,
@@ -53,8 +53,8 @@ import { useAuth } from '@/providers/auth';
 // instagram and diamond"). The cell and /me/passport are deleted; the member
 // number it printed now leads Profile's summary and lives on the Profile page.
 //
-// INSTAGRAM AND THE DIAMOND LIST ARE CELLS (Pato, MESITA-2040: "so add
-// instagram and then diamond"; renamed the Diamond List in MESITA-2044). Read the history before assuming this is a revert: the pair
+// INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add
+// instagram and then diamond"; renamed Diamond in MESITA-2044). Read the history before assuming this is a revert: the pair
 // was cells (MESITA-1650), then header only (MESITA-1652), then cells again
 // (MESITA-1682), then rows on a since-deleted page (MESITA-1787) — and every round was about
 // where ONE AXIS lives, with "the hero already says the rung" as the argument
@@ -89,7 +89,7 @@ export default function MeHub() {
       };
   const igLabel = instagramSummary(igFacts);
   // The tile and the header chip say different things on purpose: the tile
-  // is titled "Diamond List" already, the chip is a gem and a word.
+  // is titled "Diamond" already, the chip is a gem and a word.
   const diamondTileSummary = diamondSummary(facts);
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function MeHub() {
             />
             <DestTile
               Icon={Gem}
-              title={DIAMOND_LIST}
+              title={DIAMOND}
               summary={diamondTileSummary}
               href={pages.diamond}
             />

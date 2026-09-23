@@ -4,7 +4,7 @@
 // when sent) and then recomputes the slot from every open door
 // (_shared/class-doors.ts, MESITA-972).
 //
-// Instagram is a SEPARATE FACT and grants nothing toward the Diamond List
+// Instagram is a SEPARATE FACT and grants nothing toward Diamond
 // (MESITA-2044). The reach door this endpoint used to open — Silver at 1,000,
 // Diamond at 20,000, off a self-declared count — is closed: the recompute no
 // longer reads followers, and migration 20260923022245 nulled every

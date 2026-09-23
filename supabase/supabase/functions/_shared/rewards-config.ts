@@ -13,7 +13,7 @@
 //
 // IDENTITY: v12 prices ONE axis, class (bronze/silver/gold/diamond). Since
 // MESITA-2044 a guest only ever holds two of them — `bronze` (the Base) or
-// `diamond` (on the Diamond List, invitation-only); nothing can grant silver
+// `diamond` (on Diamond, invitation-only); nothing can grant silver
 // or gold any more, so their grid cells are priced but unreachable. Rate math
 // is MESITA-2038's and is untouched here. The plan
 // axis died with MESITA-1705 (Pato, 2026-09-08) — Premium is still sold, it

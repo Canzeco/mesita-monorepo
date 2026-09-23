@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import {
-  DIAMOND_LIST,
-  DIAMOND_LIST_RATE_HINT,
-  DIAMOND_LIST_REQUEST_BODY,
+  DIAMOND,
+  DIAMOND_RATE_HINT,
+  DIAMOND_REQUEST_BODY,
   diamondHeadline,
   diamondNote,
 } from '@/lib/consumer-identity';
@@ -16,7 +16,7 @@ import { useEffectiveFacts } from '@/lib/mock-class';
 import { useAuth } from '@/providers/auth';
 import { DiamondEmulator } from './DiamondEmulator';
 
-// THE DIAMOND LIST, AND NOTHING ELSE ON THIS PAGE (Pato, MESITA-2044: "you
+// DIAMOND, AND NOTHING ELSE ON THIS PAGE (Pato, MESITA-2044: "you
 // are in the list or you don't, not in between"). Hand-mirrored from web's
 // `DiamondModal`.
 //
@@ -54,18 +54,18 @@ export function DiamondModal({ visible, onClose, asRoute = false }: Props) {
 
   const requestMail =
     `mailto:${SUPPORT_EMAIL}` +
-    `?subject=${encodeURIComponent(`${DIAMOND_LIST} request`)}` +
-    `&body=${encodeURIComponent(DIAMOND_LIST_REQUEST_BODY)}`;
+    `?subject=${encodeURIComponent(`${DIAMOND} request`)}` +
+    `&body=${encodeURIComponent(DIAMOND_REQUEST_BODY)}`;
 
   return (
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
       asRoute={asRoute}
-      title={DIAMOND_LIST}
+      title={DIAMOND}
       // The "how" line itself sits under the headline for a guest who is
-      // not on the list (`diamondNote`); the subtitle only says the rule.
-      subtitle={DIAMOND_LIST_RATE_HINT}
+      // not Diamond (`diamondNote`); the subtitle only says the rule.
+      subtitle={DIAMOND_RATE_HINT}
     >
       {/* Demo state is declared before the surface it changes. */}
       <DiamondEmulator />
@@ -74,7 +74,7 @@ export function DiamondModal({ visible, onClose, asRoute = false }: Props) {
           plus a marked current one; a boolean needs one card that says which
           of two things is true. Filled when the guest holds the invitation,
           outlined when they do not — "the one coloured thing means the
-          fact", with one fact left: on the Diamond List or not. */}
+          fact", with one fact left: Diamond or not. */}
       <View
         className={
           diamond
@@ -115,7 +115,7 @@ export function DiamondModal({ visible, onClose, asRoute = false }: Props) {
 
       {/* TWO DOORS, AND BOTH ARE THE SAME DOOR FROM DIFFERENT SIDES: ask
           Mesita, or redeem what Mesita already handed someone. They never gate
-          on whether the guest is on the list — hiding them would make the
+          on whether the guest is Diamond — hiding them would make the
           page blank for the people it is written for. */}
       <View className="flex-row gap-2">
         <View className="flex-1">
