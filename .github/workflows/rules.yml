@@ -95,13 +95,9 @@ jobs:
               - 'shared/**'
               - 'apps/web-admin/src/**'
               - 'apps/web-business/src/**'
-<<<<<<< HEAD
-              - 'apps/mock-business-app/src/**'
               - 'apps/web-consumer/src/**'
               - 'apps/mobile-consumer/src/**'
               - 'supabase/supabase/functions/_shared/**'
-=======
->>>>>>> refs/tmp/main-sync
               - 'deno.json'
               - '.github/workflows/rules.yml'
 

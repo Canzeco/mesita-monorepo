@@ -176,7 +176,6 @@ const TARGETS: {
     apps: {
       "web-admin": "src/lib/rewards-model.ts",
       "web-business": "src/lib/rewards-model.ts",
-      "mock-business-app": "src/lib/rewards-model.ts",
       "web-consumer": "src/lib/rewards-model.ts",
       "mobile-consumer": "src/lib/rewards-model.ts",
     },
