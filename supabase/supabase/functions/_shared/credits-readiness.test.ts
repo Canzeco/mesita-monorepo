@@ -208,17 +208,17 @@ function fakeHonourAdmin(
   } as unknown as SupabaseClient;
 }
 
-Deno.test("honour: credits_enabled places are honoured, others are not", async () => {
+Deno.test("honour: every named place is honoured when payCredits is on (G4)", async () => {
   const admin = fakeHonourAdmin({
     data: [
-      { id: "place_a", credits_enabled: true },
-      { id: "place_b", credits_enabled: false },
-      { id: "place_c", credits_enabled: null },
+      { id: "place_a" },
+      { id: "place_b" },
+      { id: "place_c" },
     ],
   });
   const res = await placesHonouringCredits(admin, ["place_a", "place_b", "place_c"], true);
   assertEquals(res.ok, true);
-  if (res.ok) assertEquals([...res.honoured], ["place_a"]);
+  if (res.ok) assertEquals([...res.honoured].sort(), ["place_a", "place_b", "place_c"]);
 });
 
 Deno.test("honour: a failed query is ok:false with the message, never an empty set", async () => {

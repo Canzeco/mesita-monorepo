@@ -1,23 +1,14 @@
 // THE GATE UNDER THE SHARED RECORD (MESITA-2037).
 //
-// `PRODUCT_FAMILY` is keyed by the UNION of both consoles' product keys, not
-// by this app's `ProductKey`, and it has to be: the two unions differ — this
-// app has twenty keys, web-business sixteen, and only web-business still
-// carries `rewards`. A `Record<string, FamilyKey>` is the only shape that can
-// serve both, and the price of that shape is that `tsc` will not notice a key
-// with no family.
+// `PRODUCT_FAMILY` is keyed by a superset, not by this app's `ProductKey`.
+// The disconnected console was the other half of that union until MESITA-2059
+// removed it. The record still names products that console led with, so a
+// later port does not land colourless. `tsc` will not notice a key with no
+// family.
 //
-// So the type check moves here. A seventeenth product added to
-// `PRODUCT_KEYS` without a family fails `pnpm test` in the app that added it,
-// which is the whole reason `familyOf` is allowed to fall back instead of
-// throwing: production gets a wrong tint, never a blank screen, and this file
-// is what stops it reaching production.
-//
-// THE SAME FILE EXISTS IN mock-business-app, deliberately not shared. It
-// asserts the SAME property against a DIFFERENT union — this one still
-// includes `rewards`, which the mock folded into `visits` at MESITA-1953 and
-// which this console has not ported (MESITA-2018) — and that is a thing one
-// shared test cannot do.
+// So the type check lives here. A product added to `PRODUCT_KEYS` without a
+// family fails `pnpm test` in this app, which is why `familyOf` falls back
+// instead of throwing: production gets a wrong tint, never a blank screen.
 import { describe, expect, it } from "vitest";
 import { PRODUCT_KEYS, type ProductKey } from "@/lib/product-keys";
 import {

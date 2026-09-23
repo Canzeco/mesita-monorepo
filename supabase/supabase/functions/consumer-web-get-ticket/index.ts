@@ -28,6 +28,11 @@ import {
   loadVisitsConfig,
 } from "../_shared/visits-config.ts";
 import { resolveChargeablePlaceAccount } from "../_shared/mesita-pay-readiness.ts";
+import {
+  spendableCreditsCentsAtPlace,
+  type CreditLotRow,
+} from "../_shared/credits-balances.ts";
+import { placesHonouringCredits } from "../_shared/credits-readiness.ts";
 
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
@@ -36,7 +41,7 @@ const TICKET_COLUMNS =
   "review_state, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, " +
   "check_code, first_scanned_at, bill_subtotal_cents, tip_cents, tip_pct, total_cents, redeem_cents, " +
   "discount_percent, discount_cents, bill_source, revealed_at, " +
-  "approved_at, approved_discount_cents, approved_amount_due_cents, fix_requested, fix_note, paid_method, validated_at, " +
+  "approved_at, approved_discount_cents, approved_amount_due_cents, credits_applied_cents, fix_requested, fix_note, paid_method, validated_at, " +
   "currency, created_at, paid_at, cancelled_at, cancel_reason, " +
   "place_id, updated_at";
 
@@ -84,6 +89,45 @@ Deno.serve(async (req) => {
   const [ticket] = await attachPlaces(admin, [row]);
   const visitsConfig = await loadVisitsConfig(admin);
   const visits = guestVisitsPolicy(visitsConfig);
+  const placeId = row.project_id;
+  const nowMs = Date.now();
+  let creditsSpendableCents = 0;
+  if (visitsConfig.payCredits && placeId) {
+    const honour = await placesHonouringCredits(admin, [placeId], true);
+    if (honour.ok && honour.honoured.has(placeId)) {
+      const lots = await admin
+        .from("credit_lots")
+        .select(
+          "id, place_id, paid_cents, bonus_cents, spent_cents, currency, activates_at, expires_at, created_at",
+        )
+        .eq("consumer_id", authRes.user.id)
+        .eq("place_id", placeId);
+      if (!lots.error) {
+        const rows: CreditLotRow[] = ((lots.data ?? []) as {
+          id: string;
+          place_id: string;
+          paid_cents: number;
+          bonus_cents: number;
+          spent_cents: number;
+          currency: string;
+          activates_at: string;
+          expires_at: string;
+          created_at: string;
+        }[]).map((r) => ({
+          id: r.id,
+          placeId: r.place_id,
+          paidCents: r.paid_cents,
+          bonusCents: r.bonus_cents,
+          spentCents: r.spent_cents,
+          currency: r.currency,
+          activatesAt: r.activates_at,
+          expiresAt: r.expires_at,
+          createdAt: r.created_at,
+        }));
+        creditsSpendableCents = spendableCreditsCentsAtPlace(rows, placeId, nowMs);
+      }
+    }
+  }
   const settlement = {
     // Mesita Pay readiness for THIS ticket's place — the full three-leg
     // chain lives in _shared/mesita-pay-readiness.ts so this poll and
@@ -97,8 +141,10 @@ Deno.serve(async (req) => {
     cardRail: (await resolveChargeablePlaceAccount(
       admin,
       visitsConfig.payCard,
-      row.project_id,
+      placeId,
     )) !== null,
+    payCredits: visitsConfig.payCredits,
+    creditsSpendableCents,
   };
   return json({ ok: true, ticket, visits, settlement });
 });

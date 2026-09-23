@@ -324,7 +324,7 @@ export function CreditsClient() {
                 caption="No balances yet"
               />
               <WalletPanelEmpty
-                description="Prepay a place and get more than you paid. The place sets the bonus and how long it lasts."
+                description="Prepay a place and get more than you paid. Spend it there. The place sets the bonus and how long it lasts."
                 action={
                   <Link
                     href={CONSUMER_ROUTES.wallet.buy}
