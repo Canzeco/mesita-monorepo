@@ -284,8 +284,9 @@ export async function fillSwipeDeck<T>(
  * and served forty shut places over thirty open ones 10 km away (review of
  * MESITA-2047).
  *
- * Every unfetched place is farther than `searchedKm`, which is at least the
- * radius, so it can never be strict. Short of reach it can still land in
+ * Every unfetched place is farther than `searchedKm` — which starts at the
+ * radius only when the radius query came back whole, and at 0 otherwise — so
+ * it can never be strict. Short of reach it can still land in
  * openReach, above closed-nearby rows — only `strict` is final. From reach on
  * it can only be `beyond`, which is nearest-first, so everything within reach
  * plus the beyond rows already inside `searchedKm` is final. `unplaced` sorts
@@ -309,16 +310,28 @@ export type WidenSwipePoolOpts<T> = {
   admitted: T[];
   /** Every id the radius query returned, admitted or not. */
   seen: Set<string>;
-  /** The radius the first query searched. */
+  /**
+   * The radius the first query searched — or 0 when that query came back
+   * FULL (a single capped ask is an arbitrary slice, so nothing it holds past
+   * `strict` is final until a ring has been paged whole).
+   */
   radiusKm: number;
   reachKm: number;
   /** Rings to ask, in order. 0 = no box. */
   rings: readonly number[];
   /**
-   * One page of the pool at `km` (0 = unboxed), rows `from`..`from+size-1` in
-   * a STABLE order. null = the query failed.
+   * One page of the pool at `km` (0 = unboxed): up to `size` rows whose id
+   * sorts after `afterId` (null = from the start), in id order. KEYSET, not
+   * OFFSET: a row leaving the filter mid-scan (a re-enrich flipping
+   * content_state, a deactivation) would shift every later row back one and
+   * an OFFSET page would silently skip one — while the short page that
+   * follows still called the ring whole. null = the query failed.
    */
-  fetchPage: (km: number, from: number, size: number) => Promise<T[] | null>;
+  fetchPage: (
+    km: number,
+    afterId: string | null,
+    size: number,
+  ) => Promise<T[] | null>;
   pageSize: number;
   /** Pages per ring before the ring is given up as too big to finish. */
   maxPagesPerRing: number;
@@ -338,8 +351,8 @@ export type WidenSwipePoolOpts<T> = {
  * exact only if every place inside `searchedKm` was fetched; a single capped
  * query (PostgREST cannot order by distance) could return a thousand closed
  * places and miss the open ones behind them, and the rule would call the
- * closed ones final (round-3 review of MESITA-2047). So each ring pages in a
- * stable order until a short page, and a ring still unfinished after
+ * closed ones final (round-3 review of MESITA-2047). So each ring pages by
+ * id (keyset) until a short page, and a ring still unfinished after
  * `maxPagesPerRing` pages ends the widening where it is — best effort, and
  * every wider ring would be bigger still. A failed page does the same: a
  * thinner deck beats a 502.
@@ -362,14 +375,16 @@ export async function widenSwipePool<T>(o: WidenSwipePoolOpts<T>): Promise<T[]> 
     if (settled >= o.limit) break;
     if (ringKm !== 0 && ringKm <= searchedKm) continue;
     let whole = false;
+    let afterId: string | null = null;
     for (let page = 0; page < o.maxPagesPerRing; page++) {
-      const rows = await o.fetchPage(ringKm, page * o.pageSize, o.pageSize);
+      const rows = await o.fetchPage(ringKm, afterId, o.pageSize);
       if (rows === null) break;
       take(rows);
       if (rows.length < o.pageSize) {
         whole = true;
         break;
       }
+      afterId = o.idOf(rows[rows.length - 1]);
     }
     if (!whole) break;
     searchedKm = ringKm === 0 ? Number.POSITIVE_INFINITY : ringKm;

@@ -145,19 +145,26 @@ Deno.serve(async (req) => {
     };
   };
 
-  // A wider ring, one page at a time, in a stable order so pages never
-  // overlap or skip. No embedding: only the radius pool's `embedded` count
-  // reads it, and it is the heaviest column by far.
-  const ringPage = async (maxDistanceKm: number, from: number, size: number) => {
+  // A wider ring, one page at a time, keyset by id so a row that leaves the
+  // filter mid-scan cannot make a page skip one. No embedding: only the
+  // radius pool's `embedded` count reads it, and it is the heaviest column.
+  const ringPage = async (
+    maxDistanceKm: number,
+    afterId: string | null,
+    size: number,
+  ) => {
     const base = admin
       .from("profiles")
       .select(PLACE_CARD_COLUMNS)
       .eq("state", "active");
-    const { data, error } = await applyDiscoveryFilters(
+    const boxed = applyDiscoveryFilters(
       base,
       { ...filters, maxDistanceKm },
       geo,
-    ).order("id").range(from, from + size - 1);
+    );
+    const { data, error } = await (afterId === null
+      ? boxed
+      : boxed.gt("id", afterId)).order("id").limit(size);
     if (error) {
       console.error("[recommend-swipe] wider pool:", error.message);
       return null;
@@ -199,24 +206,27 @@ Deno.serve(async (req) => {
       lngOf: (r) => r.lng,
     });
 
-  // Wider asks only for a located guest the radius box left short. Without
-  // coordinates the first query was never boxed, so it already holds every
-  // row the tiers could use.
-  const admitted = guestGeo
+  // Wider asks, for a located guest the radius box left short — and for ANY
+  // guest whose first query came back full. That query is one unordered
+  // `.limit(POOL_CAP)`, an arbitrary slice once the box holds more: it is
+  // trusted as a whole search only when it came back short (round-4 review).
+  // A coordless guest's only wider ring is the unboxed one.
+  const firstWhole = pool.length < POOL_CAP;
+  const admitted = guestGeo || !firstWhole
     ? await widenSwipePool({
       limit,
       admitted: admit(pool),
       seen: new Set(pool.map((r) => r.id)),
-      radiusKm: filters.maxDistanceKm,
+      radiusKm: firstWhole ? filters.maxDistanceKm : 0,
       reachKm,
-      rings: [reachKm, ...OUTER_RINGS_KM],
+      rings: guestGeo ? [reachKm, ...OUTER_RINGS_KM] : [0],
       fetchPage: ringPage,
       pageSize: POOL_CAP,
       maxPagesPerRing: RING_PAGES_MAX,
       idOf: (r) => r.id,
       admit,
       tiersOf,
-      distanceOf: (r) => swipeDistanceKm(guestGeo, r.lat, r.lng),
+      distanceOf: (r) => guestGeo ? swipeDistanceKm(guestGeo, r.lat, r.lng) : 0,
     })
     : admit(pool);
   const tiers = tiersOf(admitted);

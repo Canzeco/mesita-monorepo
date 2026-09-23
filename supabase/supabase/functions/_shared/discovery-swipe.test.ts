@@ -571,8 +571,11 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
   // The ring loop lives in the tested helper, not inline in the EF.
   assertEquals(src.includes("await widenSwipePool({"), true);
   assertEquals(src.includes("provenWithin"), false);
-  // Each wider ring pages in a stable order until it comes back whole.
-  assertEquals(src.includes('.order("id").range(from, from + size - 1)'), true);
+  // Each wider ring pages keyset by id until it comes back whole, and a full
+  // first pool is never trusted as a whole search.
+  assertEquals(src.includes('boxed.gt("id", afterId)'), true);
+  assertEquals(src.includes(".range("), false);
+  assertEquals(src.includes("radiusKm: firstWhole ? filters.maxDistanceKm : 0"), true);
   assertEquals(src.includes("admitSwipeTiming"), false);
   assertEquals(src.includes("trimToRadius"), false);
   // The frozen Expo shape keeps its two keys; backfilled is additive.
@@ -598,11 +601,24 @@ type CatalogRow = TierRow & { km: number };
  * first — the worst case for a capped ask).
  */
 function ringOver(catalog: CatalogRow[], asked: number[]) {
-  return (km: number, from: number, size: number) => {
-    if (from === 0) asked.push(km);
-    const box = km === 0 ? catalog : catalog.filter((r) => r.km <= km);
-    return Promise.resolve(box.slice(from, from + size));
+  return (km: number, afterId: string | null, size: number) => {
+    if (afterId === null) asked.push(km);
+    return Promise.resolve(keysetPage(catalog, km, afterId, size));
   };
+}
+
+/** What the EF's ringPage asks PostgREST for: box, id > afterId, by id. */
+function keysetPage(
+  catalog: CatalogRow[],
+  km: number,
+  afterId: string | null,
+  size: number,
+) {
+  return catalog
+    .filter((r) => km === 0 || r.km <= km)
+    .filter((r) => afterId === null || r.id > afterId)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .slice(0, size);
 }
 
 function catalogOf(groups: Array<[prefix: string, n: number, km: number, hours: unknown]>) {
@@ -723,9 +739,9 @@ Deno.test("widen: a failed ring keeps what the rings before it found", async () 
     radiusKm: 5,
     reachKm: 25,
     rings: [25, 500, 0],
-    fetchPage: (km, from, size) => {
-      if (from === 0) asked.push(km);
-      return Promise.resolve(km === 25 ? catalog.slice(from, from + size) : null);
+    fetchPage: (km, afterId, size) => {
+      if (afterId === null) asked.push(km);
+      return Promise.resolve(km === 25 ? keysetPage(catalog, km, afterId, size) : null);
     },
     pageSize: 1000,
     maxPagesPerRing: 3,
@@ -772,8 +788,119 @@ Deno.test("widen: a ring too big to finish ends the widening where it is", async
   });
   assertEquals(asked, [25]);
   assertEquals(count("open300"), 0);
-  // Two pages of the 26-row reach box: open2 (already held) + 19 closed.
-  assertEquals(count("closed15"), 19);
+  // Two id-ordered pages of the 26-row reach box: twenty closed15 rows (the
+  // ids sort before "open2-0", which the radius query already held).
+  assertEquals(count("closed15"), 20);
+});
+
+Deno.test("widen: a row leaving the filter mid-scan cannot make a page skip one (round-4 review)", async () => {
+  // OFFSET paging lost the row at the page boundary when an earlier row left
+  // the filter between pages, and the short page after still called the ring
+  // whole. Keyset (id > last) cannot.
+  const catalog = catalogOf([
+    ["a-closed", 2, 3, SHUT],
+    ["b-open", 1, 10, DOS_AMORES_HOURS],
+  ]);
+  const live = [...catalog];
+  const asked: number[] = [];
+  const admitted = await widenSwipePool({
+    limit: 2,
+    admitted: [],
+    seen: new Set<string>(),
+    radiusKm: 5,
+    reachKm: 25,
+    rings: [25, 500, 0],
+    fetchPage: (km, afterId, size) => {
+      if (afterId === null) asked.push(km);
+      const page = keysetPage(live, km, afterId, size);
+      // After the first page, the first row is re-enriched out of the filter.
+      if (afterId === null) live.splice(live.findIndex((r) => r.id === "a-closed-0"), 1);
+      return Promise.resolve(page);
+    },
+    pageSize: 2,
+    maxPagesPerRing: 3,
+    idOf: (r) => r.id,
+    admit: (rows) => rows,
+    tiersOf: (rows) => tiersAt(rows, WED_NOON, SLP),
+    distanceOf: (r) => swipeDistanceKm(SLP, r.lat, r.lng),
+  });
+  assertEquals(ids(admitted).includes("b-open-0"), true);
+  const { deck } = await fillSwipeDeck(tiersAt(admitted, WED_NOON, SLP), 2, (r) => r);
+  assertEquals(ids(deck)[0], "b-open-0");
+});
+
+Deno.test("widen: a FULL first pool is not a whole search — radius at reach (round-4 review)", async () => {
+  // Radius 25, reach 25: the reach ring equals the radius. The radius query
+  // came back full (an arbitrary, closed-first slice), so the EF passes
+  // radiusKm 0 and the ring is still paged whole — the open places the slice
+  // missed lead, instead of closed ones the slice happened to hold.
+  const catalog = catalogOf([
+    ["a-closed", 12, 3, SHUT],
+    ["b-open", 3, 4, DOS_AMORES_HOURS],
+  ]);
+  const cap = 10;
+  const first = keysetPage(catalog, 25, null, cap); // ten closed rows
+  const asked: number[] = [];
+  const tiersOf = (rows: CatalogRow[]) =>
+    partitionSwipeTiers(rows, {
+      geo: SLP,
+      radiusKm: 25,
+      reachKm: 25,
+      bufferMin: 30,
+      hoursOf: (r) => r.hours,
+      latOf: (r) => r.lat,
+      lngOf: (r) => r.lng,
+      at: WED_NOON,
+    });
+  const admitted = await widenSwipePool({
+    limit: 5,
+    admitted: first,
+    seen: new Set(first.map((r) => r.id)),
+    radiusKm: first.length < cap ? 25 : 0,
+    reachKm: 25,
+    rings: [25, 500, 0],
+    fetchPage: ringOver(catalog, asked),
+    pageSize: cap,
+    maxPagesPerRing: 3,
+    idOf: (r) => r.id,
+    admit: (rows) => rows,
+    tiersOf,
+    distanceOf: (r) => swipeDistanceKm(SLP, r.lat, r.lng),
+  });
+  assertEquals(asked[0], 25);
+  const { deck } = await fillSwipeDeck(tiersOf(admitted), 5, (r) => r);
+  assertEquals(ids(deck).slice(0, 3), ["b-open-0", "b-open-1", "b-open-2"]);
+});
+
+Deno.test("widen: a FULL coordless pool pages the unboxed ring before closed rows count", async () => {
+  // No coordinates (every Expo binary, web's shared deck): the only ring is
+  // the unboxed one, asked only because the first pool came back full.
+  const catalog = catalogOf([
+    ["a-closed", 12, 3, SHUT],
+    ["b-open", 3, 900, DOS_AMORES_HOURS],
+  ]);
+  const cap = 10;
+  const first = keysetPage(catalog, 0, null, cap);
+  const asked: number[] = [];
+  const tiersOf = (rows: CatalogRow[]) => tiersAt(rows, WED_NOON, null);
+  const admitted = await widenSwipePool({
+    limit: 5,
+    admitted: first,
+    seen: new Set(first.map((r) => r.id)),
+    radiusKm: first.length < cap ? 5 : 0,
+    reachKm: 25,
+    rings: [0],
+    fetchPage: ringOver(catalog, asked),
+    pageSize: cap,
+    maxPagesPerRing: 3,
+    idOf: (r) => r.id,
+    admit: (rows) => rows,
+    tiersOf,
+    distanceOf: () => 0,
+  });
+  assertEquals(asked, [0]);
+  const { deck } = await fillSwipeDeck(tiersOf(admitted), 5, (r) => r);
+  assertEquals(ids(deck).slice(0, 3), ["b-open-0", "b-open-1", "b-open-2"]);
 });
 
 Deno.test("settled: short of reach only strict is final; from reach, all of reach plus the searched beyond", () => {
