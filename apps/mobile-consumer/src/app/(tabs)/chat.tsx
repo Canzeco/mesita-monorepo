@@ -1,5 +1,5 @@
-import { AskAiTab } from '@/components/memo/AskAiTab';
-import { TabFrame, VISIT_RAIL } from '@/components/ui/TabRail';
+import { AskAiTab } from "@/components/memo/AskAiTab";
+import { HOME_RAIL, TabFrame } from "@/components/ui/TabRail";
 
 // Visit › Chat (MESITA-2050) — Don Memo, web's /discover/chat. Un-parked here
 // in the same change: web's Chat has been live since 2026-09-01, and the
@@ -7,7 +7,7 @@ import { TabFrame, VISIT_RAIL } from '@/components/ui/TabRail';
 // ships.
 export default function ChatScreen() {
   return (
-    <TabFrame items={VISIT_RAIL} value="chat">
+    <TabFrame items={HOME_RAIL} value="chat">
       <AskAiTab />
     </TabFrame>
   );

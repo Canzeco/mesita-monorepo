@@ -248,8 +248,27 @@ jobs:
 
       - name: Start Postgres and replay every migration
         working-directory: supabase
-        run: supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta
+        # setup-cli exports SUPABASE_INTERNAL_IMAGE_REGISTRY=ghcr.io, which
+        # disables the CLI's ECR → GHCR → Docker Hub fallback. GHCR's
+        # anonymous quota is what is returning toomanyrequests on every PR.
+        # Docker Hub is the other public mirror of the same images.
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
+        run: |
+          # A rate-limited registry answers in a few seconds. The CLI's own
+          # retries stay inside that window. Five misses still fail the job
+          # (MESITA-1139).
+          for i in 1 2 3 4 5; do
+            if supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta; then
+              exit 0
+            fi
+            echo "supabase start failed (try $i/5); sleeping $((i * 30))s"
+            sleep $((i * 30))
+          done
+          exit 1
 
       - name: Run pgTAP
         working-directory: supabase
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
         run: supabase test db --local supabase/tests/database

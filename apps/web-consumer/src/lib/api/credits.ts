@@ -212,6 +212,22 @@ export type SentGift = {
   expiresAt: string;
 };
 
+export async function apiApplyTicketCredits(
+  client: SupabaseClient,
+  args: { ticketId: string; amountCents: number },
+): Promise<{
+  creditsAppliedCents: number;
+  netAmountDueCents: number;
+  idempotent?: boolean;
+}> {
+  return invokeEF(
+    client,
+    "consumer-web-apply-ticket-credits",
+    args,
+    "Couldn't apply Credits to this bill.",
+  );
+}
+
 export async function apiListSentGifts(client: SupabaseClient): Promise<SentGift[]> {
   const res = await invokeEF<{ gifts: SentGift[] }>(
     client,

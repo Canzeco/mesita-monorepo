@@ -204,7 +204,10 @@ describe("T4 — every redirect destination resolves", () => {
         expect(seen.has(cur), `redirect cycle at ${source}`).toBe(false);
         seen.add(cur);
       }
-      expect(hops, `redirect chain too long from ${source}`).toBeLessThanOrEqual(2);
+      expect(
+        hops,
+        `redirect chain too long from ${source}`,
+      ).toBeLessThanOrEqual(2);
     }
   });
 });
@@ -241,22 +244,13 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    // Visit's five pills (MESITA-2050). Every one needs its own line in
-    // BottomNav's matchPrefixes: a pill added to VISIT_MODES and missed there
-    // renders its screen with NO tab lit, and nothing but this row notices.
-    ["/discover/scroll", "Visit"],
-    ["/search", "Visit"],
-    ["/discover/chat", "Visit"],
-    ["/discover/favs", "Visit"],
+    ["/discover/scroll", "Home"],
+    ["/discover/chat", "Home"],
+    ["/discover/favs", "Home"],
+    ["/place/abc", "Home"],
+    ["/search", "Search"],
     ["/new-visit", "Visit"],
-    // The two detail routes Visit owns outside its own pills. /place has
-    // ridden the leftmost tab since the hub era; /visit (THE TICKET) lit Me
-    // from MESITA-1609 until the tab named Visit existed.
-    ["/place/abc", "Visit"],
     ["/visit/t1", "Visit"],
-
-    // Order's one pill (MESITA-2050).
-    ["/order", "Order"],
 
     // Wallet is a tab again, and its four full-screen children light it by
     // nesting under /wallet. /credits, /inbox/credits and every
@@ -293,15 +287,12 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// MESITA-2050 — the bar is Visit · Order · Wallet · Me (Pato: "Visit. Order.
-// Wallet. Me."). Still FOUR, so Rules §2's "no fifth tab" holds; the four are
-// different. Home, Search and Pay are not gone — they are pills on Visit's
-// rail (T5b) — and the two freed slots went to Order and Wallet.
+// MESITA-2055 — the visit-optimised bar is Home · Search · Visit · Wallet · Me.
 //
 // This REPLACES the MESITA-1609 guard (Home · Search · Pay · Me), which had
 // itself reversed MESITA-1119's. Two things MESITA-1119 cared about are
 // unchanged below: no class stamped into Me, and no Agents tab.
-describe("MESITA-2050 — the bar is Visit · Order · Wallet · Me", () => {
+describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -313,21 +304,22 @@ describe("MESITA-2050 — the bar is Visit · Order · Wallet · Me", () => {
   }
 
   async function tabLabels(): Promise<string[]> {
-    const html = await renderNav("/order");
+    const html = await renderNav("/search");
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Visit · Order · Wallet · Me", async () => {
-    expect(await tabLabels()).toEqual(["Visit", "Order", "Wallet", "Me"]);
+  it("is exactly Home · Search · Visit · Wallet · Me", async () => {
+    expect(await tabLabels()).toEqual([
+      "Home",
+      "Search",
+      "Visit",
+      "Wallet",
+      "Me",
+    ]);
   });
 
-  // The three that left the bar are rail pills now. If one comes back as a
-  // TAB, the bar is five and this is the line that says so on review.
-  it("keeps Home, Search and Pay off the bar — they are Visit's pills", async () => {
-    const labels = await tabLabels();
-    for (const gone of ["Home", "Search", "Pay", "Discover"]) {
-      expect(labels).not.toContain(gone);
-    }
+  it("keeps Order off the visit-optimised bar", async () => {
+    expect(await tabLabels()).not.toContain("Order");
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
@@ -341,10 +333,13 @@ describe("MESITA-2050 — the bar is Visit · Order · Wallet · Me", () => {
   // 308s costs a hop on every tap and lights nothing while it runs.
   it("points every tab at its own live default", async () => {
     const html = await renderNav("/me");
-    const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]);
+    const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map(
+      (m) => m[1],
+    );
     expect(hrefs).toEqual([
       CONSUMER_ROUTES.discoverDefault,
-      CONSUMER_ROUTES.order.root,
+      CONSUMER_ROUTES.search,
+      CONSUMER_ROUTES.newVisit.root,
       CONSUMER_ROUTES.wallet.root,
       CONSUMER_ROUTES.me,
     ]);
@@ -355,7 +350,7 @@ describe("MESITA-2050 — the bar is Visit · Order · Wallet · Me", () => {
   });
 });
 
-// ── T5b — the tab rails (Visit's five, Order's one) ────────────────────────
+// ── T5b — Home's supporting rail ───────────────────────────────────────────
 // A rail whose href stops matching its own pathname lights NOTHING, and
 // neither tsc nor the build nor any other test notices — the row just quietly
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
@@ -363,29 +358,17 @@ describe("MESITA-2050 — the bar is Visit · Order · Wallet · Me", () => {
 //
 // The order is Pato's, verbatim (MESITA-2050): "Home(scroll). Search. Chat.
 // Favs. Pay." and "Order must have Home."
-describe("T5b — the tab rails", () => {
-  it("Visit's rail is exactly Home · Search · Chat · Favs · Pay", async () => {
-    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
-    expect(VISIT_MODES.map((m) => m.label)).toEqual([
-      "Home",
-      "Search",
-      "Chat",
-      "Favs",
-      "Pay",
-    ]);
-  });
-
-  it("Order's rail is exactly Home", async () => {
-    const { ORDER_MODES } = await import("@/components/consumer/ModeRail");
-    expect(ORDER_MODES.map((m) => m.label)).toEqual(["Home"]);
-    expect(ORDER_MODES[0].href).toBe(CONSUMER_ROUTES.order.home);
+describe("T5b — Home's supporting rail", () => {
+  it("is exactly Home · Chat · Favs", async () => {
+    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    expect(HOME_MODES.map((m) => m.label)).toEqual(["Home", "Chat", "Favs"]);
   });
 
   // Feed left the rail (MESITA-2050). Its segment is a redirect source again,
   // and the pill must not come back pointing at a 308.
   it("has no Feed pill, and /discover/feed forwards to Home in one hop", async () => {
-    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
-    expect(VISIT_MODES.map((m) => m.label)).not.toContain("Feed");
+    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
+    expect(HOME_MODES.map((m) => m.label)).not.toContain("Feed");
     const hop = (await nextConfig.redirects!()).find(
       (r) => r.source === "/discover/feed",
     );
@@ -399,12 +382,8 @@ describe("T5b — the tab rails", () => {
   // sizes every column to the WIDEST pill, so the track is N x widest plus
   // (N-1) x 4px of gaps, and it has to fit 359px (375 frame less px-2).
   //
-  // FIVE COLUMNS AT 12px FIT ONLY WITH A 14px ICON. Advance widths come from
-  // Inter 600's hmtx table (2048 units/em). Chrome per pill is 14px icon +
-  // gap-1 (4) + px-1 either side (8) = 26. Search is widest: 5 x (40.9 + 26)
-  // + 16 = 350.5. With the four-column 16px icon it would be 360.5 — over.
-  it("keeps every Visit label inside the 359px track", async () => {
-    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
+  it("keeps every Home label inside the 359px track", async () => {
+    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     const navSrc = readFileSync(
       join(__dirname, "..", "..", "components/consumer/ModeRail.tsx"),
       "utf8",
@@ -420,24 +399,24 @@ describe("T5b — the tab rails", () => {
       Pay: 21.7,
     };
     const widest = Math.max(
-      ...VISIT_MODES.map((m) => {
+      ...HOME_MODES.map((m) => {
         const text = TEXT_PX[m.label];
-        expect(text, `unmeasured label "${m.label}" — measure it at 12px`).
-          toBeTypeOf("number");
+        expect(
+          text,
+          `unmeasured label "${m.label}" — measure it at 12px`,
+        ).toBeTypeOf("number");
         return text + 26;
       }),
     );
     expect(
-      widest * VISIT_MODES.length + (VISIT_MODES.length - 1) * 4,
+      widest * HOME_MODES.length + (HOME_MODES.length - 1) * 4,
     ).toBeLessThanOrEqual(359);
   });
 
   // Every pill is a LIVE page — never a redirect source, which would cost a
   // hop and light no pill while it ran.
   it("every pill href is a real page, one each", async () => {
-    const { VISIT_MODES, ORDER_MODES } = await import(
-      "@/components/consumer/ModeRail"
-    );
+    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     const pages = new Set(
       allPages().map(
         (p) =>
@@ -445,49 +424,48 @@ describe("T5b — the tab rails", () => {
           p
             .replace(/\/?page\.tsx$/, "")
             .split("/")
-            .filter((seg) => seg && !seg.startsWith("(") && !seg.startsWith("@"))
+            .filter(
+              (seg) => seg && !seg.startsWith("(") && !seg.startsWith("@"),
+            )
             .join("/"),
       ),
     );
-    const hrefs = [...VISIT_MODES, ...ORDER_MODES].map((m) => m.href);
+    const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
-    expect(new Set(VISIT_MODES.map((m) => m.href)).size).toBe(
-      VISIT_MODES.length,
-    );
+    expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
     // The three /discover pills are exactly the contract's discoverTabs.
     expect(
-      VISIT_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
+      HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
   });
 
   // First pill is the default, the property this rail has preserved since
   // MESITA-1609. Visit's bottom-tab href is Home's href.
-  it("lands Visit on Home — its own leading pill", async () => {
-    const { VISIT_MODES } = await import("@/components/consumer/ModeRail");
+  it("lands Home on its leading pill", async () => {
+    const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
       CONSUMER_ROUTES.discoverTabs.scroll,
     );
-    expect(VISIT_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(VISIT_MODES[0].label).toBe("Home");
+    expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
+    expect(HOME_MODES[0].label).toBe("Home");
   });
 
-  // One layout draws Visit's rail over three namespaces; a pill whose page
-  // leaves the (visit) group loses the rail and nothing else notices.
-  it("every Visit pill's page lives inside the (visit) route group", () => {
+  it("every Home pill's page lives under discover", () => {
     for (const rel of [
       ["discover", "scroll"],
       ["discover", "chat"],
       ["discover", "favs"],
-      ["search"],
-      ["new-visit"],
     ]) {
       expect(
         existsSync(join(SHELL, "(visit)", ...rel, "page.tsx")),
         rel.join("/"),
       ).toBe(true);
     }
-    const layout = readFileSync(join(SHELL, "(visit)", "layout.tsx"), "utf8");
-    expect(layout).toContain("<ModeRail modes={VISIT_MODES} />");
+    const layout = readFileSync(
+      join(SHELL, "(visit)", "discover", "layout.tsx"),
+      "utf8",
+    );
+    expect(layout).toContain("<ModeRail modes={HOME_MODES} />");
   });
 });
 
@@ -502,10 +480,7 @@ describe("T5b — the tab rails", () => {
 // The same class of bug still exists one layer over — a box wired to the wrong
 // sheet, or a sheet dropped in a refactor — so the pin moves rather than dies.
 describe("T6 — Activity's three sections are pages on Me", () => {
-  const ME = readFileSync(
-    join(SHELL, "me", "ProfileClient.tsx"),
-    "utf8",
-  );
+  const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
   it("routes each box to its own /me page: notifications · visits · reservations", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
@@ -615,7 +590,9 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
     const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
     expect(
-      cells.filter((c) => /^\s*full$/m.test(c)).map((c) => c.match(/title="([^"]+)"/)?.[1]),
+      cells
+        .filter((c) => /^\s*full$/m.test(c))
+        .map((c) => c.match(/title="([^"]+)"/)?.[1]),
     ).toEqual(["Profile"]);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
@@ -636,10 +613,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
   });
 
   it("DestTile is ONE shape, with no second branch to drift", () => {
-    const src = readFileSync(
-      join(SHELL, "me", "profile-sections.tsx"),
-      "utf8",
-    );
+    const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
     // MESITA-1633's rule, now structural rather than a convention: there is
     // no `compact` prop and no `cols` prop, so there is no second layout for
     // a cell or a row to be rendered in.
@@ -659,7 +633,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(ME).not.toContain("MoreModal");
     expect(
       existsSync(
-        join(__dirname, "..", "..", "components", "consumer", "me", "MoreModal.tsx"),
+        join(
+          __dirname,
+          "..",
+          "..",
+          "components",
+          "consumer",
+          "me",
+          "MoreModal.tsx",
+        ),
       ),
     ).toBe(false);
   });
@@ -671,7 +653,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(ME).not.toContain("SignOutButton");
     expect(
       readFileSync(
-        join(__dirname, "..", "..", "components", "consumer", "me", "SettingsModal.tsx"),
+        join(
+          __dirname,
+          "..",
+          "..",
+          "components",
+          "consumer",
+          "me",
+          "SettingsModal.tsx",
+        ),
         "utf8",
       ),
     ).toContain("SignOutButton");
@@ -722,7 +712,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // necessarily quotes it, so a raw scan fires on its own rationale and
     // the cheapest way to green it would be deleting the rationale.
     const help = readFileSync(
-      join(__dirname, "..", "..", "components", "consumer", "me", "HelpModal.tsx"),
+      join(
+        __dirname,
+        "..",
+        "..",
+        "components",
+        "consumer",
+        "me",
+        "HelpModal.tsx",
+      ),
       "utf8",
     );
     const code = (src: string) =>
@@ -761,12 +759,15 @@ describe("T7 — every former Wallet url still resolves after the move", () => {
     ["/saved/reservations", "/me/reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
-  ])("keeps the Saved-era redirect %s → %s (MESITA-1585)", async (source, destination) => {
-    const redirects = await nextConfig.redirects!();
-    const entry = redirects.find((r) => r.source === source);
-    expect(entry, `${source} redirect was removed`).toBeDefined();
-    expect(entry!.destination).toBe(destination);
-  });
+  ])(
+    "keeps the Saved-era redirect %s → %s (MESITA-1585)",
+    async (source, destination) => {
+      const redirects = await nextConfig.redirects!();
+      const entry = redirects.find((r) => r.source === source);
+      expect(entry, `${source} redirect was removed`).toBeDefined();
+      expect(entry!.destination).toBe(destination);
+    },
+  );
 
   it.each([
     ["/credits", "/wallet"],
@@ -801,7 +802,15 @@ describe("T9 — Wallet is its own tab, and Pay has no section row", () => {
   it("the Pay section row is gone from the codebase", () => {
     expect(
       existsSync(
-        join(__dirname, "..", "..", "components", "consumer", "pay", "PaySectionNav.tsx"),
+        join(
+          __dirname,
+          "..",
+          "..",
+          "components",
+          "consumer",
+          "pay",
+          "PaySectionNav.tsx",
+        ),
       ),
     ).toBe(false);
     const layout = readFileSync(
@@ -819,10 +828,14 @@ describe("T9 — Wallet is its own tab, and Pay has no section row", () => {
       ["redeem"],
       ["balance", "[id]"],
     ]) {
-      expect(existsSync(join(SHELL, "wallet", ...rel, "page.tsx")), rel.join("/")).
-        toBe(true);
+      expect(
+        existsSync(join(SHELL, "wallet", ...rel, "page.tsx")),
+        rel.join("/"),
+      ).toBe(true);
     }
-    expect(existsSync(join(SHELL, "(visit)", "new-visit", "wallet"))).toBe(false);
+    expect(existsSync(join(SHELL, "(visit)", "new-visit", "wallet"))).toBe(
+      false,
+    );
   });
 
   // The layout's force-dynamic is what covers the four children; a page's own

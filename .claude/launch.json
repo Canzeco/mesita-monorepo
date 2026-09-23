@@ -52,16 +52,6 @@
       "autoPort": true
     },
     {
-      "name": "mock-business-app",
-      "runtimeExecutable": "sh",
-      "runtimeArgs": [
-        "-c",
-        "cd apps/mock-business-app && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3006"
-      ],
-      "port": 3006,
-      "autoPort": true
-    },
-    {
       "name": "mobile-consumer",
       "runtimeExecutable": "sh",
       "runtimeArgs": [

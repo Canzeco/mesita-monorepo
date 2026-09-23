@@ -317,11 +317,15 @@ export function StepPay({
   tipPct,
   discountCents,
   amountDueCents,
+  creditsAppliedCents = 0,
+  creditsSpendableCents = 0,
+  payCredits = false,
   busy,
   error,
   cardRailAvailable = false,
   onConfirmAtPlace,
   onPayMesitaPay,
+  onApplyCredits,
 }: {
   placeName: string;
   pct: number;
@@ -330,6 +334,9 @@ export function StepPay({
   tipPct: number | null;
   discountCents: number;
   amountDueCents: number;
+  creditsAppliedCents?: number;
+  creditsSpendableCents?: number;
+  payCredits?: boolean;
   busy: boolean;
   error: string | null;
   /** Server-derived three-leg pay-readiness for this ticket's place. */
@@ -337,9 +344,18 @@ export function StepPay({
   onConfirmAtPlace: () => void;
   /** Omitted while cardRailAvailable is false — Mesita Pay isn't selectable. */
   onPayMesitaPay?: () => void;
+  onApplyCredits?: (amountCents: number) => void;
 }) {
   const [method, setMethod] = useState<"at_place" | "mesita_pay">("at_place");
   const payingWithCard = cardRailAvailable && method === "mesita_pay";
+  const billReductionCap = Math.max(0, subtotalCents - discountCents);
+  const creditsLive =
+    payCredits && creditsSpendableCents > 0 && creditsAppliedCents === 0;
+  const creditsSub = creditsAppliedCents > 0
+    ? `Applied · − ${formatCurrency(creditsAppliedCents)} off the bill`
+    : creditsLive
+      ? `${formatCurrency(creditsSpendableCents)} spendable here · covers the bill, never the tip`
+      : "Coming soon · covers the bill, never the tip";
 
   return (
     <div className="flex flex-col gap-3">
@@ -394,8 +410,16 @@ export function StepPay({
         <PayMethodRow
           icon={<Gift className="text-muted-foreground size-4" />}
           label="Spend my Credits on this"
-          sub="Coming soon · covers the bill, never the tip"
-          soon
+          sub={creditsSub}
+          soon={!creditsLive && creditsAppliedCents === 0}
+          onSelect={
+            creditsLive && onApplyCredits && !busy
+              ? () =>
+                  onApplyCredits(
+                    Math.min(creditsSpendableCents, billReductionCap),
+                  )
+              : undefined
+          }
         />
       </div>
 
@@ -405,6 +429,12 @@ export function StepPay({
           label={`Discount · ${pct}%`}
           value={`− ${formatCurrency(discountCents)}`}
         />
+        {creditsAppliedCents > 0 ? (
+          <MoneyRow
+            label="Credits"
+            value={`− ${formatCurrency(creditsAppliedCents)}`}
+          />
+        ) : null}
         <MoneyRow
           label="Tip (100% to the place)"
           value={formatCurrency(tipCents)}
