@@ -428,13 +428,8 @@ export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
 export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
-export const SOCIAL_RAILS_CAP = 24;
 
 export const MAP_MIN_POPULARITY_MAX = 1;
-export const MAP_RELOAD_MIN_KM_MIN = 0.25;
-export const MAP_RELOAD_MIN_KM_MAX = 4;
-export const MAP_RELOAD_MIN_SEC_MIN = 1;
-export const MAP_RELOAD_MIN_SEC_MAX = 15;
 /** Categorical reload pairs. Both must be true. Rail / pin pans do not count. */
 export const MAP_RELOAD_PAIRS = [
   { km: 0.25, sec: 1 },

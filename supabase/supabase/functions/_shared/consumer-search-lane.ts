@@ -45,6 +45,7 @@ import {
   GOOGLE_PLACES_AUTOCOMPLETE_URL,
   GOOGLE_PLACES_TEXT_SEARCH_URL,
   readGooglePlacesKey,
+  stripPlacesPrefix,
 } from "./google-places.ts";
 import {
   googleTypeFilterForSupers,
@@ -615,10 +616,9 @@ export function listedNotPartner<T extends { plan: string | null }>(
   return rows.filter((row) => !isPaidPlan(row.plan));
 }
 
-/** Same strip as nearby-places — Autocomplete/Text ids may be `places/ChIJ…`. */
-export function stripPlacesPrefix(id: string): string {
-  return id.startsWith("places/") ? id.slice("places/".length) : id;
-}
+// The strip lives in google-places.ts; re-exported only because
+// consumer-search-lane.test.ts imports it from here.
+export { stripPlacesPrefix };
 
 /** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
 export function deepModuleFlags(args: {

@@ -7,19 +7,6 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-export async function placeHasVerifiedOwner(
-  admin: SupabaseClient,
-  placeId: string,
-): Promise<boolean> {
-  const { count, error } = await admin
-    .from("place_members")
-    .select("id", { count: "exact", head: true })
-    .eq("place_id", placeId)
-    .eq("role", "owner");
-  if (error) return false;
-  return (count ?? 0) > 0;
-}
-
 export async function isLastOwnerOfPlace(
   admin: SupabaseClient,
   placeId: string,
