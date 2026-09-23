@@ -39,9 +39,10 @@ select is(
   'revealed',
   'reveal succeeds when tender sum matches net due');
 
--- Refusal: reveal without matching tenders.
+-- Refusal: reveal without matching tenders (deferrable trigger → force immediate).
 select throws_ok(
   $$
+    set constraints visit_tickets_tender_sum_on_reveal immediate;
     update public.visit_tickets
        set state = 'revealed', revealed_at = now(), paid_at = now()
      where id = 'cccccccc-0000-0000-0000-00000000000b'

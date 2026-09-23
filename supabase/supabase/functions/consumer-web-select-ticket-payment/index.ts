@@ -41,10 +41,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { TICKET_STATE, CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
-import {
-  mesitaPayTenderRows,
-  netAmountDueCents,
-} from "../_shared/visit-tenders.ts";
+import { mesitaPayTenderRows } from "../_shared/visit-tenders.ts";
 import { parseSelectTicketPaymentMethod } from "../_shared/select-ticket-payment-method.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
 import { resolveChargeablePlaceAccount } from "../_shared/mesita-pay-readiness.ts";
