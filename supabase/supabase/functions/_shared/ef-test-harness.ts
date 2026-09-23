@@ -32,7 +32,7 @@ export function setDummyEnv(extra: Record<string, string> = {}): void {
 // Loads an EF handler by intercepting Deno.serve during the module import.
 // The path is resolved relative to THIS harness file (which lives in
 // `_shared/`), so EFs one level up are addressed as
-// `../business-web-create-ticket/index.ts`.
+// `../stripe-webhook-handle-event/index.ts`.
 export async function loadEFHandler(modulePath: string): Promise<EFHandler> {
   const original = Deno.serve;
   let captured: EFHandler | null = null;

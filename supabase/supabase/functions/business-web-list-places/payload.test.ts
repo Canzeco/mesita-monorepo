@@ -34,7 +34,7 @@ Deno.test("state facts come from the shared helpers, never re-implemented", () =
   }
 });
 
-// ── Visit Rewards is a STRATEGY, not a column (MESITA-1882) ─────────────
+// ── Rewards is a STRATEGY, not a column (MESITA-1882) ───────────────────
 //
 // The console's Products grid used to hardcode Rewards as Enabled for every
 // partnered org, because no rewards fact was on this payload to read. A place

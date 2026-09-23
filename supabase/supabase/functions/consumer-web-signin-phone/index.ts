@@ -148,9 +148,9 @@ Deno.serve(async (req) => {
     // enforced by consumer-web-create-reservation.
     //
     // `sex` is checked against the two values the column's own constraint
-    // allows rather than for mere presence, so a legacy row holding anything
-    // else is routed to /onboard to fix it instead of into a Passport that
-    // cannot print it.
+    // allows rather than for mere presence — both client guards named above
+    // do the same — so a legacy row holding anything else is routed to
+    // /onboard to fix it instead of into the app and straight back out.
     onboarded: !!consumerRow?.first_name && !!consumerRow?.birthday &&
       (consumerRow?.sex === "male" || consumerRow?.sex === "female"),
   });

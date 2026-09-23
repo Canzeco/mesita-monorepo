@@ -57,7 +57,9 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  // placeId is the MESITA-26 alias for the place-row id (== projectId here).
+  // `placeId` is the canonical MESITA-26 key; `projectId` is the legacy alias
+  // the business console still sends here. readPlaceIdAlias accepts both
+  // (placeId wins).
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return jsonError("Missing placeId", 400);
 

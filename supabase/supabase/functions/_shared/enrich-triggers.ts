@@ -79,7 +79,7 @@ export const TRIGGER_KEYS: TriggerKey[] = [
  *
  * So the two vocabularies are siblings, not one list: TRIGGER_KEYS is what the
  * matrix PRICES, RUN_TRIGGERS is what the history RECORDS. This list is pinned
- * against the DB CHECK by a test, the same way pulse-pieces.test.ts pins the
+ * against the DB CHECK by a test, the same way crenup-ladder.test.ts pins the
  * `step ~ '^S([0-9]{1,2}|X)$'` constraint from TypeScript.
  */
 export const RUN_TRIGGERS = [...TRIGGER_KEYS, "manual"] as const;

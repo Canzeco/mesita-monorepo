@@ -27,7 +27,7 @@
 //      (Rules §2). Nothing here selects class_key, and the feed
 //      carries a first name at most. The issue's "redemption by segment" is
 //      therefore reported BY ACTION (welcome / story / review), never by
-//      class: the honest cut that doesn't leak who was Premium.
+//      class: the honest cut that leaks neither a guest's class nor their plan.
 //
 // WHAT IS DELIBERATELY ABSENT: views and swipes. There is no impressions
 // table in this database — no view is recorded anywhere — so the funnel
@@ -117,7 +117,7 @@ type FeedTicketRow = {
 /** Drain every closed ticket for this place (narrow columns only). */
 async function fetchAllClosedTickets(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
 ): Promise<{ ok: true; rows: ClosedTicketRow[] } | { ok: false; error: string }> {
   const rows: ClosedTicketRow[] = [];
   let from = 0;
@@ -129,7 +129,7 @@ async function fetchAllClosedTickets(
           "bill_subtotal_cents, total_cents, discount_cents, discount_percent, " +
           "bill_source, currency, created_at, revealed_at, first_scanned_at",
       )
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .eq("state", CLOSED_STATE)
       .order("created_at", { ascending: false })
       .range(from, from + CLOSED_PAGE - 1);
@@ -154,8 +154,8 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
+  const placeId = readPlaceIdAlias(bodyRes.body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const feedLimit = clampIntRange(
     Number(bodyRes.body.feedLimit ?? DEFAULT_FEED_LIMIT),
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
   );
 
   const admin = adminClient(envRes.env);
-  const memberRes = await requireMembership(admin, authRes.user, projectId);
+  const memberRes = await requireMembership(admin, authRes.user, placeId);
   if (!memberRes.ok) return memberRes.response;
 
   // Exact counts + capped lists in parallel. Closed-ticket money/guest math
@@ -192,53 +192,53 @@ Deno.serve(async (req) => {
     admin
       .from("favorites")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId),
+      .eq("place_id", placeId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId),
+      .eq("place_id", placeId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .not("first_scanned_at", "is", null),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .eq("state", CLOSED_STATE),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .eq("state", TICKET_STATE.cancelled),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .in("story_state", [...ATTESTED_STATES]),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .in("review_state", [...ATTESTED_STATES]),
     admin
       .from("ticket_reviews")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId),
+      .eq("place_id", placeId),
     admin
       .from("ticket_reviews")
       .select(
         "id, food, service, ambience, value, overall, comments, created_at, " +
           "consumer:consumers(first_name)",
       )
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .order("created_at", { ascending: false })
       .limit(reviewLimit),
     admin
       .from("favorites")
       .select("id, created_at")
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
     admin
@@ -247,20 +247,20 @@ Deno.serve(async (req) => {
         "id, state, first_scanned_at, created_at, revealed_at, cancelled_at, " +
           "bill_subtotal_cents, total_cents, discount_cents, discount_percent, bill_source",
       )
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .order("created_at", { ascending: false })
       .limit(FEED_TICKET_PAGE),
     admin
       .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("place_id", projectId),
+      .eq("place_id", placeId),
     admin
       .from("reservation_tickets")
       .select(
         "id, state, party_size, reserved_at, created_at, is_test, " +
           "consumer:consumers(first_name, instagram_handle)",
       )
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
   ]);
@@ -283,7 +283,7 @@ Deno.serve(async (req) => {
     if (r.error) return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
   }
 
-  const closedRes = await fetchAllClosedTickets(admin, projectId);
+  const closedRes = await fetchAllClosedTickets(admin, placeId);
   if (!closedRes.ok) {
     return json({ ok: false, error: `closed_tickets: ${closedRes.error}` }, 500);
   }

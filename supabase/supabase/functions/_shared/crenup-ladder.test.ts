@@ -91,7 +91,7 @@ Deno.test("crenup: `seed` is function 0 and is NEVER stamped", () => {
 Deno.test("crenup: PULSE and MENU are not steps — they are retired keys", () => {
   // MESITA-2027. Liveness is a SUBPROCESS of Details (one `fetchGoogleBasics`
   // call always served both, so the split bought a rung and no information),
-  // and the menu is OPERATOR INPUT the Intaker never derived.
+  // and the menu is OPERATOR INPUT the Enricher never derived.
   //
   // They must FALL OUT of the walk, not fold into a survivor. Folding `pulse`
   // into `details` would be the dangerous kind of wrong: an old `pulse`
@@ -239,7 +239,7 @@ Deno.test("crenup: serp runs BEFORE links — that is what serp is FOR", () => {
 
 Deno.test("crenup: Embedding CLOSES the queue at 8", () => {
   assertEquals(CRENUP_LADDER[CRENUP_LADDER.length - 1], "embedding");
-  assertEquals(CRENUP_STEP_META.embedding.index, CRENUP_TOTAL);
+  assertEquals(CRENUP_STEP_META.embedding.index, 8);
   assertEquals(CRENUP_STEP_META.description.index, 7);
 });
 
@@ -261,11 +261,11 @@ Deno.test("high water: Embedding is 8 — a gap before it still reads 7", () => 
 });
 
 Deno.test("crenup: the index is the position, and the labels ride in order", () => {
-  // MESITA-1222. The index is derived from CRENUP_LADDER, so this is a
-  // regression guard, not a spot-check: it fails the moment anyone reintroduces
-  // hand-written literals that drift from the array. `crenupHighWater` iterates
-  // the array and returns the META index, and reportCrenupSteps stamps
-  // `S${index}` into the DB, so a drift corrupts both the meter and the beacon.
+  // MESITA-1222. The literals below pin the eight positions and the nine
+  // names, so this fails the moment anyone reintroduces hand-written values
+  // that drift from the array. `crenupHighWater` iterates the array and
+  // returns the META index, and reportCrenupSteps stamps `S${index}` into the
+  // DB, so a drift corrupts both the meter and the beacon.
   assertEquals(
     CRENUP_LADDER.map((p) => CRENUP_STEP_META[p].index),
     [1, 2, 3, 4, 5, 6, 7, 8],
@@ -274,14 +274,19 @@ Deno.test("crenup: the index is the position, and the labels ride in order", () 
   // the piece list — labels[0] is Seed (function 0, never stamped),
   // labels[8] is Embedding. A client renders labels[level] with no
   // off-by-one.
-  assertEquals(CRENUP_LABELS_IN_ORDER.length, CRENUP_TOTAL + 1);
-  assertEquals(CRENUP_LABELS_IN_ORDER[0], CRENUP_FLOOR_LABEL);
   assertEquals(CRENUP_FLOOR_LABEL, "Seed");
   assertEquals(CRENUP_LABELS_IN_ORDER[CRENUP_TOTAL], "Embedding");
-  assertEquals(
-    [...CRENUP_LABELS_IN_ORDER],
-    [CRENUP_FLOOR_LABEL, ...CRENUP_LADDER.map((p) => CRENUP_STEP_META[p].label)],
-  );
+  assertEquals([...CRENUP_LABELS_IN_ORDER], [
+    "Seed",
+    "Details",
+    "Serp",
+    "Links",
+    "Social",
+    "Reviews",
+    "Images",
+    "Description",
+    "Embedding",
+  ]);
   assertEquals(CRENUP_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });
 

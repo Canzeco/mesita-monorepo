@@ -1,4 +1,4 @@
-// pulse-report.test.ts
+// crenup-report.test.ts
 //
 // reportCrenupSteps's event-log half is exercised end-to-end by every
 // caller's own tests (enrich-pipeline.ts's reportEnrichmentStep is a thin,
