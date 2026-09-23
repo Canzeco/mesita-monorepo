@@ -141,7 +141,10 @@ export async function placesAcceptingCredits(
 // account, because a purchase is a charge. Spending a balance the guest
 // already holds never touches Stripe, so the spend gate is the first two legs:
 //
-//   place_profiles.credits_enabled  ∧  visits_config.payCredits
+//   visits_config.payCredits  (Lake 2 issuer rule, MESITA-2052)
+//
+// `credits_enabled` gates NEW purchases only (placesAcceptingCredits). A place
+// that turned Credits off still honours balances it already sold (G4).
 //
 // consumer-web-apply-ticket-credits used to carry this rule inline, and it
 // read a FAILED query as "not accepted": a database blip answered a guest at
@@ -158,8 +161,8 @@ export type HonourLookup =
   | { ok: false; error: string };
 
 /**
- * Which of `placeIds` honour Credits right now: the place's own
- * `credits_enabled` bit AND the `payCredits` rail. No Connect leg.
+ * Which of `placeIds` honour Credits right now: `payCredits` on AND the place
+ * row exists. No Connect leg; no `credits_enabled` leg (issuer rule, G4).
  * `payCredits` is passed in (from visits_config), like every resolver here.
  */
 export async function placesHonouringCredits(
@@ -172,14 +175,12 @@ export async function placesHonouringCredits(
   }
   const res = await admin
     .from("place_profiles")
-    .select("id, credits_enabled")
+    .select("id")
     .in("id", [...placeIds]);
   if (res.error) return { ok: false, error: res.error.message };
   const honoured = new Set<string>();
-  for (
-    const row of (res.data ?? []) as { id: string; credits_enabled: boolean | null }[]
-  ) {
-    if (row.credits_enabled === true) honoured.add(row.id);
+  for (const row of (res.data ?? []) as { id: string }[]) {
+    honoured.add(row.id);
   }
   return { ok: true, honoured };
 }
