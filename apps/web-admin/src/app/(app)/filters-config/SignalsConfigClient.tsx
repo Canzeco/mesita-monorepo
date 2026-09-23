@@ -102,14 +102,10 @@ export function SignalsConfigClient({
       }
       // Never clobber a dirty form with the seed that arrives after the page
       // is already interactive.
-      if (dirtyRef.current) {
-        setUpdatedAt(r.updatedAt);
-        setError(null);
-        setLoadBlocked(false);
-        return;
+      if (!dirtyRef.current) {
+        setCfg(r.config);
+        setSaved(r.config);
       }
-      setCfg(r.config);
-      setSaved(r.config);
       setUpdatedAt(r.updatedAt);
       setError(null);
       setLoadBlocked(false);

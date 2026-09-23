@@ -4,12 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CONFIG } from "./catalog";
 import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
 
+// Keeps the "use server" actions.ts and its supabase-ef import out of the graph; never called (static render runs no effects).
 vi.mock("./actions", () => ({
-  getDiscoveryConfig: vi.fn(async () => ({
-    ok: true,
-    config: DEFAULT_CONFIG,
-    updatedAt: "2026-09-08T00:00:00.000Z",
-  })),
+  getDiscoveryConfig: vi.fn(),
   updateDiscoveryConfig: vi.fn(),
 }));
 
