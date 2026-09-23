@@ -7,9 +7,11 @@
 // the exact dishonesty the empty-state component's own header exists to
 // prevent, so the copy could not survive this PR.
 //
-// THREE FIELDS, BECAUSE THREE FIELDS HAVE A READER. `radiusKm` and
-// `minReviews` become the admission filters in `swipeAdmissionFilters`, and
-// `closingBufferMin` cuts the pool in consumer-web-recommend-swipe. The five
+// THREE FIELDS, BECAUSE THREE FIELDS HAVE A READER. `minReviews` is an
+// admission filter in `swipeAdmissionFilters`; `radiusKm` and
+// `closingBufferMin` draw the lead band in consumer-web-recommend-swipe —
+// open places inside the radius come first, everything else follows, and
+// neither can empty the deck any more (MESITA-2047). The five
 // 2026-08-26 ranking knobs that used to sit on this slice are deleted, not
 // hidden: the exponents live in one table, and a dead proximity/stars/log
 // multiplier beside a live per-mode Proximity exponent would read as a
@@ -125,7 +127,7 @@ export function SwipeConfigClient({
       <SectionCard
         icon={<GalleryHorizontalEnd className="text-primary h-4 w-4" />}
         title="Scroll"
-        subtitle="Home's ranked deck. Admission cuts the pool — radius, Google reviewers, and open now plus the closing buffer — then Places Lineup ranks what survived under the Scroll column."
+        subtitle="Home's ranked deck. Google reviewers cut the pool. Radius and the closing buffer pick who leads: places open inside the radius come first, then open-farther, closed-nearby and closed-farther — so Scroll is never empty while the catalog has a place. Places Lineup ranks each group under the Scroll column."
         state={
           <KnobState
             kind="enforced"

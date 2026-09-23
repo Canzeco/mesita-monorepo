@@ -235,10 +235,11 @@ verify_jwt = false
 [functions.consumer-web-ask-memo]
 verify_jwt = false
 
-# Consumer swipe deck. MESITA-1048 deleted the Lineup engine behind it: this
-# now returns active places in random order and ignores lat/lng/radius. The
-# slug and the {ok, deck, summary} shape are frozen because deployed Expo
-# binaries call it. JWT still required.
+# Home › Scroll deck. Admits ready listed places, bands them open-and-near
+# first (never empties on open-now or radius, MESITA-2047), then ranks each
+# band with Places Lineup under the Scroll column. The slug and the
+# {ok, deck, summary} shape are frozen because deployed Expo binaries call it.
+# JWT still required.
 [functions.consumer-web-recommend-swipe]
 verify_jwt = true
 

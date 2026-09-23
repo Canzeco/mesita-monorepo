@@ -47,6 +47,7 @@ import {
   type Place,
 } from '@/lib/api/places';
 import { filtersPath } from '@/lib/consumer-route-contract';
+import { cycleDeck } from '@/lib/cycle-deck';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
@@ -76,13 +77,15 @@ const DIRECTION_VELOCITY_MIN = 120;
 const EXIT_MS = 280;
 const SCREEN_W = Dimensions.get('window').width;
 
-// The deck EF returns a random sample of active places — there is no server
-// ranking. Partner-first is applied HERE, on the client, on both the deck and
-// the catalog fallback so the two paths order identically.
+// The deck EF RANKS now (Places Lineup, bought slots) and BANDS: open places
+// inside the radius first, then open-farther, closed-nearby, closed-farther
+// (MESITA-2047). Its order is kept as it arrives — a partner-first float here
+// would lift a closed partner above every open card. Only the catalog
+// fallback, which nothing ranked, still floats partners first.
 async function fetchSwipeDeck(): Promise<Place[]> {
   try {
     const result = await apiRecommendDeck(supabase, { limit: 50 });
-    return sortPartnersFirst(result.deck);
+    return result.deck;
   } catch (err) {
     console.warn(
       '[swipe] consumer-web-recommend-swipe failed, falling back:',
@@ -160,6 +163,12 @@ export function SwipeDeck() {
       ),
     [located, filters, orderSeed],
   );
+  // What the guest swipes through: the real `deck`, cycled to 50 (web Scroll
+  // parity, MESITA-2047). With one place in the catalog the stack is that
+  // place fifty times instead of one card and "You're caught up". `deck` stays
+  // the REAL list — the empty states and the Filters count read it, so the
+  // sheet never says "50 places" over a catalog of one.
+  const cycled = useMemo(() => cycleDeck(deck), [deck]);
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(places),
     [places],
@@ -239,9 +248,9 @@ export function SwipeDeck() {
     );
   }
 
-  // Past the last card in the (filtered) deck — caught up. Existing copy +
-  // Start over; no reset (MESITA-670).
-  if (idx >= deck.length) {
+  // Past the last card in the (filtered, cycled) deck — caught up. Existing
+  // copy + Start over; no reset (MESITA-670).
+  if (idx >= cycled.length) {
     return (
       <View className="flex-1">
         <EmptyState
@@ -259,7 +268,7 @@ export function SwipeDeck() {
   return (
     <View className="flex-1">
       <DeckBody
-        places={deck}
+        places={cycled}
         idx={idx}
         setIdx={setIdx}
         isSaved={isSaved}
@@ -464,13 +473,17 @@ function DeckBody({
             ]}
             pointerEvents="none"
           >
-            <PlaceSwipeCard key={next.id} place={next} />
+            {/* Keyed by POSITION too (MESITA-2047): a cycled deck repeats the
+                same id, and an id-only key would keep the same card instance
+                — photo index, load state — from one pass of a place into the
+                next instead of dealing a fresh card. */}
+            <PlaceSwipeCard key={`${next.id}-${idx + 1}`} place={next} />
           </Animated.View>
         ) : null}
 
         <GestureDetector gesture={pan}>
           <Animated.View style={[{ flex: 1 }, frontStyle]}>
-            <PlaceSwipeCard key={v.id} place={v} />
+            <PlaceSwipeCard key={`${v.id}-${idx}`} place={v} />
 
             <SwipeDecisionBadge side="left" translateX={translateX} />
             <SwipeDecisionBadge side="right" translateX={translateX} />

@@ -3,9 +3,14 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { DEFAULT_SWIPE, DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import {
+  fillSwipeDeck,
+  partitionSwipeTiers,
   rankSwipeDeck,
+  SWIPE_TIER_ORDER,
   swipeAdmissionFilters,
   swipeLineupWeights,
+  swipeOpenThrough,
+  swipeTierCount,
 } from "./discovery-swipe.ts";
 import { isOpenThrough } from "./local-time-open.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
@@ -251,4 +256,243 @@ Deno.test("recommend-swipe passes the slotting config, not a literal", async () 
     new URL("../consumer-web-recommend-swipe/index.ts", import.meta.url),
   );
   assertEquals(src.includes("cfg.slotting"), true);
+});
+
+// ── Tiers: open-now and the radius band the deck, never empty it (MESITA-2047)
+//
+// The live catalog on 2026-09-22 was ONE place — Dos Amores, San Luis Potosí,
+// 08:30–15:00, shut on Tuesdays — and Scroll said "No places yet" all Tuesday
+// because the timing gate was a cut. These fixtures are that place.
+
+/** Tue 2026-09-22 21:54 in San Luis Potosí (America/Mexico_City, UTC−6). */
+const TUE_NIGHT = new Date("2026-09-23T03:54:00Z");
+/** Wed 2026-09-23 12:00 local. */
+const WED_NOON = new Date("2026-09-23T18:00:00Z");
+const SLP = { lat: 22.1317, lng: -101.0135 };
+const DOS_AMORES_HOURS = Object.fromEntries(
+  ["monday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(
+    (d) => [d, [{ open: "08:30", close: "15:00" }]],
+  ),
+);
+
+type TierRow = {
+  id: string;
+  lat: number | null;
+  lng: number | null;
+  hours: unknown;
+  google_stars_overall?: number;
+  google_review_count?: number;
+  plan?: string;
+  category?: string;
+};
+
+function slp(
+  id: string,
+  kmSouth: number | null,
+  hours: unknown = DOS_AMORES_HOURS,
+): TierRow {
+  return {
+    id,
+    lat: kmSouth === null ? null : SLP.lat - kmSouth / 111,
+    lng: kmSouth === null ? null : SLP.lng,
+    hours,
+    google_stars_overall: 4.7,
+    google_review_count: 262,
+    plan: "free",
+    category: "brunch",
+  };
+}
+
+function tiersAt<T extends TierRow>(
+  rows: T[],
+  at: Date,
+  geo: { lat: number; lng: number } | null,
+) {
+  return partitionSwipeTiers(rows, {
+    geo,
+    radiusKm: DEFAULT_SWIPE.radiusKm,
+    bufferMin: DEFAULT_SWIPE.closingBufferMin,
+    hoursOf: (r) => r.hours,
+    // Unlocated rows keep the place's own clock; the zone is lng-banded.
+    latOf: (r) => r.lat,
+    lngOf: (r) => r.lng ?? SLP.lng,
+    at,
+  });
+}
+
+const ids = <T extends { id: string }>(rows: T[]) => rows.map((r) => r.id);
+
+Deno.test("tiers: the live case — one closed place, no geo, fills a deck of one", async () => {
+  // The exact request web's shared deck and every Expo binary send: no lat/lng.
+  const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, null);
+  assertEquals(ids(tiers.strict), []);
+  assertEquals(ids(tiers.closedNear), ["dos-amores"]);
+  const { deck, backfilled } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  assertEquals(ids(deck), ["dos-amores"]);
+  assertEquals(backfilled, 1);
+});
+
+Deno.test("tiers: the same place at Wednesday noon is strict, not backfill", async () => {
+  const tiers = tiersAt([slp("dos-amores", 0)], WED_NOON, SLP);
+  assertEquals(ids(tiers.strict), ["dos-amores"]);
+  const { deck, backfilled } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  assertEquals(ids(deck), ["dos-amores"]);
+  assertEquals(backfilled, 0);
+});
+
+Deno.test("tiers: a located guest 400 km away still gets the one place", async () => {
+  // Radius 5 km. Far and closed is the last band, and it still fills.
+  const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, {
+    lat: SLP.lat + 400 / 111,
+    lng: SLP.lng,
+  });
+  assertEquals(ids(tiers.closedFar), ["dos-amores"]);
+  const { deck } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  assertEquals(ids(deck), ["dos-amores"]);
+});
+
+Deno.test("tiers: each row lands in exactly one band", () => {
+  const rows = [
+    slp("open-near", 1),
+    slp("open-far", 10),
+    slp("closed-near", 1, { tuesday: [{ open: "08:30", close: "15:00" }] }),
+    // Open at noon, shut at 12:20 — inside the 30-minute buffer.
+    slp("closing-near", 1, { wednesday: [{ open: "08:30", close: "12:20" }] }),
+    // No hours: "cannot tell" is not "open".
+    slp("unknown-near", 1, null),
+    slp("closed-far", 30, { tuesday: [{ open: "08:30", close: "15:00" }] }),
+    // With geo, an unlocated row cannot prove it is near.
+    slp("unlocated", null),
+  ];
+  const tiers = tiersAt(rows, WED_NOON, SLP);
+  assertEquals(ids(tiers.strict), ["open-near"]);
+  assertEquals(ids(tiers.openFar), ["open-far", "unlocated"]);
+  assertEquals(ids(tiers.closedNear), [
+    "closed-near",
+    "closing-near",
+    "unknown-near",
+  ]);
+  assertEquals(ids(tiers.closedFar), ["closed-far"]);
+  assertEquals(swipeTierCount(tiers), rows.length);
+});
+
+Deno.test("tiers: no geo means every row is near — there is no radius without a centre", () => {
+  const rows = [slp("a", 1), slp("b", 900), slp("c", null)];
+  const tiers = tiersAt(rows, WED_NOON, null);
+  assertEquals(ids(tiers.strict), ["a", "b", "c"]);
+  assertEquals(tiers.openFar.length + tiers.closedFar.length, 0);
+});
+
+Deno.test("tiers: far bands come out nearest-first whatever the pool order", () => {
+  // Past 25 km Proximity scores a flat 0, so without this sort the band would
+  // rank in whatever order PostgREST returned.
+  const shut = { tuesday: [{ open: "08:30", close: "15:00" }] };
+  const rows = [
+    slp("far-90", 90, shut),
+    slp("far-30", 30, shut),
+    slp("open-60", 60),
+    slp("far-45", 45, shut),
+    slp("open-40", 40),
+  ];
+  const tiers = tiersAt(rows, WED_NOON, SLP);
+  assertEquals(ids(tiers.closedFar), ["far-30", "far-45", "far-90"]);
+  assertEquals(ids(tiers.openFar), ["open-40", "open-60"]);
+});
+
+Deno.test("fill: a full strict band never reaches, or ranks, a backfill band", async () => {
+  const tiers = tiersAt(
+    [slp("s1", 1), slp("s2", 2), slp("s3", 3), slp("far", 40)],
+    WED_NOON,
+    SLP,
+  );
+  const ranked: string[] = [];
+  const { deck, backfilled } = await fillSwipeDeck(tiers, 3, (rows, tier) => {
+    ranked.push(tier);
+    return rows;
+  });
+  assertEquals(ids(deck), ["s1", "s2", "s3"]);
+  assertEquals(backfilled, 0);
+  assertEquals(ranked, ["strict"]);
+});
+
+Deno.test("fill: a short strict band is topped up band by band, in band order", async () => {
+  const shut = { tuesday: [{ open: "08:30", close: "15:00" }] };
+  const tiers = tiersAt(
+    [
+      slp("closed-far", 40, shut),
+      slp("closed-near", 1, shut),
+      slp("open-far", 40),
+      slp("strict", 1),
+    ],
+    WED_NOON,
+    SLP,
+  );
+  const { deck, backfilled } = await fillSwipeDeck(tiers, 3, (rows) => rows);
+  assertEquals(ids(deck), ["strict", "open-far", "closed-near"]);
+  assertEquals(backfilled, 2);
+  assertEquals(SWIPE_TIER_ORDER, ["strict", "openFar", "closedNear", "closedFar"]);
+});
+
+Deno.test("fill: THE BAND INVARIANT — a bought slot cannot lift a closed place over an open one", async () => {
+  // Slotting every 2nd position, zero weights so merit is incoming order: in
+  // one merged ranking the promoting closed place would take slot 2, above an
+  // open one. Ranked per band, it waits below every strict row.
+  const rows = [
+    slp("open-a", 1),
+    slp("open-b", 1),
+    slp("open-c", 1),
+    {
+      ...slp("closed-promoting", 1, { tuesday: [{ open: "08:30", close: "15:00" }] }),
+      ...PROMO_RATES,
+      plan: "pro",
+    },
+  ];
+  const tiers = tiersAt(rows, WED_NOON, SLP);
+  const rankBand = (band: TierRow[]) =>
+    rankSwipeDeck(band, SLP, ZERO_WEIGHTS, { enabled: true, everyNth: 2 }, PARAMS, {
+      now: WED_NOON,
+      random: () => 0.5,
+    });
+  const { deck } = await fillSwipeDeck(tiers, 50, rankBand);
+  assertEquals(ids(deck), ["open-a", "open-b", "open-c", "closed-promoting"]);
+  // The control: the same rows ranked as ONE list do let money jump the band.
+  assertEquals(ids(rankBand(rows)).indexOf("closed-promoting") < 3, true);
+});
+
+Deno.test("fill: ranking off still bands (identity rank keeps band order)", async () => {
+  const shut = { tuesday: [{ open: "08:30", close: "15:00" }] };
+  const tiers = tiersAt(
+    [slp("closed", 1, shut), slp("open", 1)],
+    WED_NOON,
+    SLP,
+  );
+  const { deck } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  assertEquals(ids(deck), ["open", "closed"]);
+});
+
+Deno.test("swipeOpenThrough: open through the buffer, and unknown is not open", () => {
+  // Wed 14:45 local: open, but 15:00 close is inside a 30-minute buffer.
+  const wed1445 = new Date("2026-09-23T20:45:00Z");
+  assertEquals(swipeOpenThrough(DOS_AMORES_HOURS, SLP.lng, 30, wed1445), false);
+  assertEquals(swipeOpenThrough(DOS_AMORES_HOURS, SLP.lng, 10, wed1445), true);
+  assertEquals(swipeOpenThrough(DOS_AMORES_HOURS, SLP.lng, 0, WED_NOON), true);
+  assertEquals(swipeOpenThrough(DOS_AMORES_HOURS, SLP.lng, 30, TUE_NIGHT), false);
+  assertEquals(swipeOpenThrough(null, SLP.lng, 30, WED_NOON), false);
+});
+
+Deno.test("recommend-swipe bands instead of cutting on open-now and radius", async () => {
+  // The bug MESITA-2047 fixed was a gate, not a ranking: pin the wiring so a
+  // later "cleanup" cannot quietly put the cut back.
+  const src = await Deno.readTextFile(
+    new URL("../consumer-web-recommend-swipe/index.ts", import.meta.url),
+  );
+  assertEquals(src.includes("partitionSwipeTiers("), true);
+  assertEquals(src.includes("fillSwipeDeck("), true);
+  assertEquals(src.includes("admitSwipeTiming"), false);
+  assertEquals(src.includes("trimToRadius"), false);
+  // The frozen Expo shape keeps its two keys; backfilled is additive.
+  assertEquals(
+    src.includes("summary: { candidates: tiers.strict.length, embedded, backfilled }"),
+    true,
+  );
 });

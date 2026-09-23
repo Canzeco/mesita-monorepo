@@ -255,8 +255,10 @@ export type GeneralConfig = {
 };
 
 /**
- * Scroll admission knobs. Radius, reviews and closing buffer cut the pool;
- * ranking is Places Lineup under the Scroll mask (`weightsByMode.swipe`).
+ * Scroll knobs. Reviews cut the pool; radius and closing buffer draw the lead
+ * band (open and inside the radius) without cutting anything — the rest is
+ * backfilled behind it (MESITA-2047). Ranking is Places Lineup under the
+ * Scroll mask (`weightsByMode.swipe`), inside each band.
  *
  * THE FIVE 2026-08-26 RANKING KNOBS ARE GONE (MESITA-1859). weightProximity,
  * starsExponent, logDivisor, partnerBias and randomnessMax had carried the

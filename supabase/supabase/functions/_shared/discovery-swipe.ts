@@ -1,7 +1,8 @@
 // Scroll ranking — Places Lineup under the locked Swipe mask (Pato, 2026-08-28).
 //
 // The engine key stays `swipe`; the surface is Home's Scroll pill since
-// MESITA-1697. Admission cuts first; the blend then scores under
+// MESITA-1697. Admission cuts first, tiers band what survives (MESITA-2047),
+// then the blend scores each band under
 // the Scroll column of `weightsByMode` under the Scroll mask: proximity,
 // timing, category, popularity, enriched, partnered, randomness. Name,
 // Summary and Social stay 0. The 2026-08-26 two-signal SUM and its
@@ -9,11 +10,14 @@
 // those five unread fields off the blob rather than leave them beside a live
 // per-mode exponent.
 //
-//   1. ADMIT  — ready, review floor, operator radius, Map type batteries,
-//               open now + closing buffer, then guest predicates.
-//   2. RANK   — Places Lineup Π s^w with the Swipe mask.
-//   3. SLOT   — the bought lane: every Nth position is a slot a promoting
-//               place is MOVED FORWARD into. MESITA-1855.
+//   1. ADMIT  — ready, review floor, Map type batteries, then guest
+//               predicates. These EXCLUDE.
+//   2. TIER   — open now + closing buffer, and the operator radius. These
+//               ORDER IN BANDS and never exclude (MESITA-2047): open-and-near
+//               leads, then open-far, closed-near, closed-far.
+//   3. RANK   — Places Lineup Π s^w with the Swipe mask, inside each tier.
+//   4. SLOT   — the bought lane: every Nth position is a slot a promoting
+//               place is MOVED FORWARD into. MESITA-1855. Inside each tier.
 //
 // LANE 2 RUNS HERE (MESITA-1855). Until then `slotPromoted` had no production
 // caller anywhere — three tests asserted the absence — so the retired
@@ -28,6 +32,7 @@
 // Category abstains when the guest sent no intent (the usual Swipe case).
 
 import { isOpenNow } from "./local-time-open.ts";
+import { haversineKm } from "./geo.ts";
 import {
   discoveryRank,
   type SignalParamsByKey,
@@ -54,26 +59,155 @@ export function swipeAdmissionFilters(swipe: SwipeConfig): DiscoveryFilters {
 }
 
 /**
- * Discrete timing filter: open now, and still open after the closing buffer.
- * Unknown hours / unresolvable clock → exclude. A card the guest cannot sit
- * down at does not belong on Swipe.
+ * The sit-down window: open now, and still open after the closing buffer.
+ * Unknown hours / unresolvable clock → false, because "cannot tell" is not
+ * "open", and the strict tier promises a table right now.
  */
-export function admitSwipeTiming<T>(
-  rows: T[],
-  hoursOf: (row: T) => unknown,
-  lngOf: (row: T) => number | null,
+export function swipeOpenThrough(
+  hours: unknown,
+  lng: number | null,
   bufferMin: number,
   at: Date = new Date(),
-): T[] {
-  return rows.filter((row) => {
-    const hours = hoursOf(row);
-    const lng = lngOf(row);
-    const now = isOpenNow(hours, lng, at);
-    if (now !== true) return false;
-    if (!(bufferMin > 0)) return true;
-    const later = new Date(at.getTime() + bufferMin * 60_000);
-    return isOpenNow(hours, lng, later) === true;
-  });
+): boolean {
+  if (isOpenNow(hours, lng, at) !== true) return false;
+  if (!(bufferMin > 0)) return true;
+  const later = new Date(at.getTime() + bufferMin * 60_000);
+  return isOpenNow(hours, lng, later) === true;
+}
+
+// ── Tiers (MESITA-2047) ──────────────────────────────────────────────────────
+//
+// OPEN-NOW AND THE RADIUS ORDER THE DECK; THEY DO NOT EMPTY IT. Until
+// MESITA-2047 both were hard cuts, so a catalog of one brunch spot served
+// Scroll a blank "No places yet" every evening and all day on its closed
+// weekday — the place was live, ready and well reviewed, and the engine hid it
+// because nobody could sit down there at 21:54. Pato, live: "Make Scroll
+// functional, even if there is only one place."
+//
+// A TIER IS NEITHER A FILTER NOR A SIGNAL. A filter excludes; a signal demotes
+// inside one ranking, where merit can still interleave (Timing floors a closed
+// place at 0.2, not 0, and Proximity is a flat 0 past 25 km, so a merged
+// ranking would put a great closed place above a fair open one). A tier is a
+// hard BAND: every strict row precedes every backfill row, whatever they
+// score. That is what keeps the change invisible at scale — with 50 open
+// places inside the radius, no backfill row is ever reached.
+//
+// QUALITY FLOORS AND GUEST PREDICATES STAY EXCLUSIONS. Ready, the review floor
+// and the Map type batteries decide what a Mesita card IS; a guest's own
+// filter (including a legacy binary's "open now") is a promise to that guest.
+// Neither is tiered — only the two gates that answer "right here, right now".
+
+/** Where a place sits against Scroll's two soft gates. */
+export type SwipeTier = "strict" | "openFar" | "closedNear" | "closedFar";
+
+/**
+ * Band order. Open-far beats closed-near: a table you can have 8 km away is
+ * worth more tonight than one 1 km away that is shut.
+ */
+export const SWIPE_TIER_ORDER: readonly SwipeTier[] = [
+  "strict",
+  "openFar",
+  "closedNear",
+  "closedFar",
+];
+
+export type SwipeTiers<T> = Record<SwipeTier, T[]>;
+
+export type SwipeTierOpts<T> = {
+  /** The guest, when they sent coordinates. null = every row is "near". */
+  geo: { lat: number; lng: number } | null;
+  radiusKm: number;
+  bufferMin: number;
+  hoursOf: (row: T) => unknown;
+  latOf: (row: T) => number | null;
+  lngOf: (row: T) => number | null;
+  at?: Date;
+};
+
+/**
+ * Split admitted rows into the four bands. Input order is kept inside each
+ * band, except the far bands, which are sorted nearest-first: Proximity is a
+ * flat 0 beyond 25 km, so a far band would otherwise rank in whatever order
+ * PostgREST happened to return.
+ *
+ * NO GEO → EVERYTHING IS NEAR. Every deployed Expo binary and web's shared
+ * deck send no coordinates, and there is no radius without a centre.
+ * WITH GEO, AN UNLOCATED ROW IS FAR, sorted last: it cannot prove it is near,
+ * and the boxed pool query could never have returned it anyway.
+ */
+export function partitionSwipeTiers<T>(
+  rows: T[],
+  opts: SwipeTierOpts<T>,
+): SwipeTiers<T> {
+  const at = opts.at ?? new Date();
+  const tiers: SwipeTiers<T> = {
+    strict: [],
+    openFar: [],
+    closedNear: [],
+    closedFar: [],
+  };
+  const distance = new Map<T, number>();
+  for (const row of rows) {
+    let near = true;
+    if (opts.geo) {
+      const km = haversineKm(
+        opts.geo.lat,
+        opts.geo.lng,
+        opts.latOf(row),
+        opts.lngOf(row),
+      );
+      distance.set(row, km);
+      near = km <= opts.radiusKm;
+    }
+    const open = swipeOpenThrough(
+      opts.hoursOf(row),
+      opts.lngOf(row),
+      opts.bufferMin,
+      at,
+    );
+    if (open) (near ? tiers.strict : tiers.openFar).push(row);
+    else (near ? tiers.closedNear : tiers.closedFar).push(row);
+  }
+  if (opts.geo) {
+    const byDistance = (a: T, b: T) =>
+      (distance.get(a) ?? Infinity) - (distance.get(b) ?? Infinity);
+    tiers.openFar.sort(byDistance);
+    tiers.closedFar.sort(byDistance);
+  }
+  return tiers;
+}
+
+/** How many rows the bands hold in total. */
+export function swipeTierCount<T>(tiers: SwipeTiers<T>): number {
+  return SWIPE_TIER_ORDER.reduce((n, tier) => n + tiers[tier].length, 0);
+}
+
+/**
+ * Fill the deck band by band, ranking each band ON ITS OWN and concatenating.
+ *
+ * Ranking per band is the whole invariant: `slotPromoted` moves a promoting
+ * place forward over whatever list it is handed, so one ranking over the
+ * joined bands would let a promoting closed place buy slot 5 above an open
+ * one. Map already slots inside each lane for the same reason
+ * (nearby-lineup.ts). A band is only ranked if the deck still has room, so a
+ * full strict band costs exactly what Scroll cost before MESITA-2047.
+ */
+export async function fillSwipeDeck<T>(
+  tiers: SwipeTiers<T>,
+  limit: number,
+  rankTier: (rows: T[], tier: SwipeTier) => T[] | Promise<T[]>,
+): Promise<{ deck: T[]; backfilled: number }> {
+  const deck: T[] = [];
+  let backfilled = 0;
+  for (const tier of SWIPE_TIER_ORDER) {
+    const room = limit - deck.length;
+    if (room <= 0) break;
+    if (tiers[tier].length === 0) continue;
+    const ranked = (await rankTier(tiers[tier], tier)).slice(0, room);
+    deck.push(...ranked);
+    if (tier !== "strict") backfilled += ranked.length;
+  }
+  return { deck, backfilled };
 }
 
 /**
