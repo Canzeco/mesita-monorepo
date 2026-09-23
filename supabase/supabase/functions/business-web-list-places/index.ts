@@ -206,9 +206,9 @@ Deno.serve(async (req) => {
     .from("places")
     // `plan` is a places column, not a profile one — Partner is
     // `isPaidPlan(plan)` and needs no extra read. The four rate columns ride
-    // beside it for the same reason (MESITA-1882): Visit Rewards is not a
-    // boolean anywhere in this schema, it is the strategy those four rates
-    // spell, and `zero` IS off.
+    // beside it for the same reason (MESITA-1882): Rewards (the giving-back
+    // dial, not the Member Visits card) is not a boolean anywhere in this
+    // schema, it is the strategy those four rates spell, and `zero` IS off.
     .select(
       `id, state, content_state, claimed_at, plan, ` +
         `welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, ` +
@@ -460,7 +460,7 @@ Deno.serve(async (req) => {
             p.enrichment.functions !== null
           ? operatorFunctionStates(p.enrichment.functions)
           : undefined,
-        // Visit Rewards — the one commercial fact with NO column of its own
+        // The Rewards dial — the one commercial fact with NO column of its own
         // (MESITA-1882). It is the strategy the four rate columns spell, and
         // `zero` is off: a member may sit on Zero deliberately (Docs › Rewards
         // §C, "membership stays, discounts pause"). Derived through the SAME

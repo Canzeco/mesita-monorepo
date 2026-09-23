@@ -9,10 +9,12 @@
 // change).
 //
 // Welcome is NEVER asserted here: it is detected server-side at billing time
-// (isConsumerFirstVisit inside validate-web-submit-bill). The story opt-in is
-// re-checked against Instagram connection + the place's grid (offersAction);
-// a non-eligible opt-in silently downgrades to not_required — same posture
-// the old staff create had, and the class never leaks in the response.
+// (isConsumerFirstVisit, reached through _shared/ticket-reprice.ts when
+// consumer-web-submit-ticket-bill prices the guest-entered bill). The story
+// opt-in is re-checked against Instagram connection + the place's grid
+// (offersAction); a non-eligible opt-in silently downgrades to not_required —
+// same posture the old staff create had, and the class never leaks in the
+// response.
 //
 // Pick-one (MESITA wizard, D6): `chosenReward` names the ONE action that
 // gates the QR — the chosen action opens at 'pending', the other stays

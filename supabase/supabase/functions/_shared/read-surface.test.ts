@@ -409,14 +409,14 @@ Deno.test("GUEST CUSTOMER READ: no new raw reader of place_guest_customers outsi
  * guessing at, and a ratchet that guesses gets muted rather than fixed.
  *
  * That gap is not free, and it is worth naming what is in it rather than
- * implying the scan is complete. `_shared/membership.ts:138` builds
+ * implying the scan is complete. `_shared/membership.ts:117` builds
  * `let query = admin.from("visit_tickets").select("id", { count: "exact" })`
  * and awaits it three lines later as `const { count } = await query` — the
  * builder shape, invisible to this scan. On any error `count` is null,
  * `(count ?? 0) === 0` is true, and the caller concludes this is the guest's
  * FIRST visit at this place, which is what grants the welcome rate. (The FILE
- * is on the list below, but for a different read at :183. Fixing that one
- * does not fix this one, and deleting its line while :138 stands would be the
+ * is on the list below, but for a different read at :162. Fixing that one
+ * does not fix this one, and deleting its line while :117 stands would be the
  * wrong kind of green.) Reaching that shape needs a real parse, not a wider
  * window.
  *

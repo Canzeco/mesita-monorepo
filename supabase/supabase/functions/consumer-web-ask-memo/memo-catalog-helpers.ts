@@ -1,4 +1,4 @@
-import { openScore } from "../_shared/local-time.ts";
+import { openScore } from "../_shared/local-time-open.ts";
 import type { Prediction } from "./memo-google-text-search.ts";
 
 export function candidateBlock(

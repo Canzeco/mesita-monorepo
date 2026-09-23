@@ -1,5 +1,6 @@
 // Place-category inference: OpenAI classifier + token normaliser.
-// Extracted from categories.ts.
+// Callers pass the live slug list in, usually read by categories.ts
+// (fetchPlaceCategories).
 
 import type { PlaceCategory } from "./categories.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";

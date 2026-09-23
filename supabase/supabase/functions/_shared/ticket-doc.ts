@@ -542,8 +542,7 @@ export async function writeTicket(
   args: TicketWriteArgs,
 ): Promise<TicketWriteResult> {
   if (args.mode === "delete") {
-    // deno-lint-ignore no-explicit-any
-    let q: any = admin.from("visit_tickets").delete();
+    let q = admin.from("visit_tickets").delete();
     for (const [column, value] of Object.entries(args.match)) {
       q = q.eq(remapPlaceIdIdent(column), value);
     }
@@ -557,11 +556,11 @@ export async function writeTicket(
   const dbPatch = toPlaceIdPatch(validated.patch as Record<string, unknown>);
 
   if (args.mode === "insert") {
-    // deno-lint-ignore no-explicit-any
-    let q: any = admin.from("visit_tickets").insert(dbPatch);
+    const q = admin.from("visit_tickets").insert(dbPatch);
     if (args.select) {
-      q = q.select(remapPlaceIdSelect(args.select)).single();
-      const { data, error } = await q;
+      const { data, error } = await q
+        .select(remapPlaceIdSelect(args.select))
+        .single();
       if (error) return { ok: false, error: error.message, code: error.code };
       return { ok: true, row: fromPlaceIdRow(data as unknown as Record<string, unknown>) };
     }
@@ -571,8 +570,7 @@ export async function writeTicket(
   }
 
   // update
-  // deno-lint-ignore no-explicit-any
-  let q: any = admin.from("visit_tickets").update(dbPatch).eq(
+  let q = admin.from("visit_tickets").update(dbPatch).eq(
     "id",
     args.id,
   );
@@ -593,10 +591,9 @@ export async function writeTicket(
   }
   if (args.select) {
     const select = remapPlaceIdSelect(args.select);
-    q = args.single
-      ? q.select(select).single()
-      : q.select(select).maybeSingle();
-    const { data, error } = await q;
+    const { data, error } = args.single
+      ? await q.select(select).single()
+      : await q.select(select).maybeSingle();
     if (error) return { ok: false, error: error.message, code: error.code };
     return {
       ok: true,

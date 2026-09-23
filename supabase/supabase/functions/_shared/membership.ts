@@ -7,15 +7,6 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { identityForClassKey } from "./rewards-config.ts";
 
-// The subset of place columns the rate resolver needs. Any place row read
-// with PLACE_*_COLUMNS satisfies this.
-export type PlaceRates = {
-  welcome_free_rate: number | null;
-  welcome_premium_rate: number | null;
-  free_rate: number | null;
-  premium_rate: number | null;
-};
-
 // A class is WHO YOU ARE: earned, public, ranked. Price and the Stripe price
 // id are the PLAN — they live on consumer_plans and are read there (see
 // stripe-billing-catalog.ts), never here.
@@ -51,18 +42,6 @@ function planFor(
 ): PlanKey {
   if (plan === "premium" || plan === "free") return plan;
   return classKey === "premium" ? "premium" : "free";
-}
-
-// Consumer-class perk gate: which classes clear the "better than the base
-// class" bar. Every elevated class passes; the base class / null / unknown do
-// not. Generic on purpose (rank > 0 in classes-table terms): a future class
-// INSERT inherits the elevated perks without touching this gate.
-export function isElevatedClass(
-  classKey: string | null | undefined,
-  plan?: string | null,
-): boolean {
-  const { cls } = identityForClassKey(classKey);
-  return cls !== "bronze" || planFor(classKey, plan) === "premium";
 }
 
 /** True when the guest pays Premium — leftover `premium` class_key still counts. */

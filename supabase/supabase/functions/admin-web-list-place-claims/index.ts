@@ -26,6 +26,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { one } from "../_shared/postgrest.ts";
 
 type Body = {
   includeReviewed?: boolean;
@@ -68,9 +69,6 @@ Deno.serve(async (req) => {
   if (error) {
     return json({ ok: false, error: `claims_list: ${error.message}` }, 500);
   }
-
-  const one = <T,>(v: T | T[] | null): T | null =>
-    Array.isArray(v) ? (v[0] ?? null) : v;
 
   const claims = (data ?? []).map((row) => {
     const r = row as {

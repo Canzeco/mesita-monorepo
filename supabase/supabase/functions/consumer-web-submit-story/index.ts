@@ -24,9 +24,9 @@
 // The SCREENSHOT (MESITA-1030): the guest attaches a screenshot of the story
 // as the proof artifact — uploaded client-side to the ticket-proofs bucket
 // (RLS: own folder only), URL persisted on tickets.story_screenshot_url,
-// which check-web already surfaces to staff. Nothing inspects the image; the
-// declaration still verifies. Optional at the EF so older deployed clients
-// keep working — the web UI requires it.
+// which the validate page already surfaces to staff (_shared/ticket-check.ts).
+// Nothing inspects the image; the declaration still verifies. Optional at the
+// EF so older deployed clients keep working — the web UI requires it.
 //
 // Body:     { ticketId: string, screenshotUrl?: string }
 // Response: { ok: true, ticket: {...}, repricedPercent } | { ok, error }
@@ -195,8 +195,8 @@ Deno.serve(async (req) => {
   }
 
   // A task completed AFTER the bill was snapshotted re-prices it upward
-  // (bump-only). Before the bill, this no-ops — validate-web-submit-bill already
-  // prices with the verified story in the qualifying set.
+  // (bump-only). Before the bill, this no-ops — consumer-web-submit-ticket-bill
+  // already prices with the verified story in the qualifying set.
   let repricedPercent: number | null = null;
   const reprice = await repriceTicketAfterAction(admin, ticketId);
   if (reprice.ok) repricedPercent = reprice.ratePercent;

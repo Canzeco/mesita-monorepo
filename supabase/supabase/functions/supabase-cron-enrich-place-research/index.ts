@@ -76,14 +76,14 @@ import {
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("research", async (admin, _env, row) => {
-  const projectId = row.place_id;
+  const placeId = row.place_id;
   const googlePlaceId = row.google_place_id;
   // What this run bought, per the trigger matrix. S1 (the Google gate) is not
   // gated: it is the identity spine every stage downstream trusts.
   const buys = row.subprocesses;
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
-    await releaseResearchRow(admin, projectId, "server_misconfigured: missing GMP_KEY");
+    await releaseResearchRow(admin, placeId, "server_misconfigured: missing GMP_KEY");
     return;
   }
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
@@ -96,15 +96,15 @@ serveEnrichStage("research", async (admin, _env, row) => {
   if (!basicsRes.ok) {
     if (basicsRes.status === 422) {
       // Spine incomplete — not retryable. Terminal fail.
-      await reportEnrichmentStep(admin, projectId, "S1", "google_profile", "failed",
+      await reportEnrichmentStep(admin, placeId, "S1", "google_profile", "failed",
         "Google identity spine incomplete — no reliable Google Places match, so the enrichment run was aborted.");
-      await failResearchRow(admin, projectId, `google_spine: ${basicsRes.error}`, {
+      await failResearchRow(admin, placeId, `google_spine: ${basicsRes.error}`, {
         runId: row.run_id,
         stage: "research",
       });
     } else {
       // Transient Google trouble — release for a retry.
-      await releaseResearchRow(admin, projectId, `google_basics: ${basicsRes.error}`);
+      await releaseResearchRow(admin, placeId, `google_basics: ${basicsRes.error}`);
     }
     return;
   }
@@ -157,7 +157,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     const opRes = await writePlace(admin, {
       table: "place_profiles",
       mode: "update",
-      id: projectId,
+      id: placeId,
       patch: {
         business_state: (businessStatus ?? null) as
           | "OPERATIONAL"
@@ -178,14 +178,14 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // fail — the listing is dead, or Google's spine came back unusable — so the
     // message must say which. The spine failure returns far above with its own
     // wording; this is the dead-listing one.
-    await reportCrenupSteps(admin, projectId, {
+    await reportCrenupSteps(admin, placeId, {
       details: stepFailed("Google reports this place as permanently closed.", {
         businessStatus,
       }),
     });
     await failResearchRow(
       admin,
-      projectId,
+      placeId,
       "pulse: google reports CLOSED_PERMANENTLY",
       { runId: row.run_id, stage: "research" },
     );
@@ -334,7 +334,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     const { data: pinRow } = await admin
       .from("place_profiles")
       .select("enrichment_sources")
-      .eq("id", projectId)
+      .eq("id", placeId)
       .maybeSingle();
     const pins = activeFieldPins(
       readFieldPins((pinRow as { enrichment_sources?: unknown } | null)
@@ -351,7 +351,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       const phoneRes = await writePlace(admin, {
         table: "place_profiles",
         mode: "update",
-        id: projectId,
+        id: placeId,
         patch: { phone: basics.phone },
       });
       sources.contact_phone = !phoneRes.ok
@@ -393,7 +393,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       const nameRes = await writePlace(admin, {
         table: "place_profiles",
         mode: "update",
-        id: projectId,
+        id: placeId,
         patch: { google_name: next },
       });
       sources.name_sync = {
@@ -404,7 +404,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       console.log(
         JSON.stringify({
           event: "enrich_google_name_sync",
-          project_id: projectId,
+          project_id: placeId,
           google_name: next,
         }),
       );
@@ -510,7 +510,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // One beacon for the whole research stage (S1–S4) — one notification per
   // function. Summarises everything gathered; granular per-source diag lives
   // in gathered->sources.
-  await reportEnrichmentStep(admin, projectId, "S1", "gather", "completed",
+  await reportEnrichmentStep(admin, placeId, "S1", "gather", "completed",
     `Research complete for “${name}” — ${basics.photos.length} Google photo(s), ${reviews.length} review(s), ${resolvedCount} link/contact field(s); Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`,
     {
       photoCount: basics.photos.length,
@@ -642,7 +642,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       );
   }
 
-  await reportCrenupSteps(admin, projectId, pieces);
+  await reportCrenupSteps(admin, placeId, pieces);
 
   // ━━━ hand off to the analysis stage ━━━
   const gathered: GatheredPayload = {
@@ -662,5 +662,5 @@ serveEnrichStage("research", async (admin, _env, row) => {
     sources,
     cost: ledger.snapshot(),
   };
-  await advanceResearchStage(admin, projectId, "analysis", { gathered });
+  await advanceResearchStage(admin, placeId, "analysis", { gathered });
 });

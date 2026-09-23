@@ -32,7 +32,6 @@ export type ReminderConfig = {
   /** OFF by default — +1 call per confirmed reservation; flipped deliberately. */
   enabled: boolean;
 };
-export const REMINDER_SEED: ReminderConfig = { enabled: false };
 
 export type ReservationsCallConfig = {
   testCall: TestCall;

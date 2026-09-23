@@ -69,8 +69,8 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return json({ ok: false, error: "Missing projectId" }, 400);
+  const placeId = readPlaceIdAlias(bodyRes.body);
+  if (!placeId) return json({ ok: false, error: "Missing projectId" }, 400);
 
   // ── everyDays: null/0 both mean manual. Anything else must be a whole
   //    number of days inside the column's own 1–365 check. ──
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   const { data: place, error: placeErr } = await admin
     .from("place_profiles")
     .select("id, google_place_id, enriched_at")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (placeErr) return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
   if (!place) return json({ ok: false, error: "Place not found" }, 404);
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   const updRes = await writePlace(admin, {
     table: "place_profiles",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: { enrich_every_days: everyDays, enrich_mode: mode, enrich_next_at: nextAt },
     select: "enrich_every_days, enrich_mode, enrich_next_at, enriched_at",
     selectMode: "maybeSingle",

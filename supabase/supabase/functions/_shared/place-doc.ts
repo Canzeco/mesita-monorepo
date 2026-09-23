@@ -66,6 +66,7 @@
 // avatar_url.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { DISCOUNT_CAPS_MXN } from "./discount-cap.ts";
 import { nullable } from "./doc-schema.ts";
 import {
   GoogleReviewsSchema,
@@ -662,7 +663,6 @@ const PLACE_TIMESTAMP_KEYS = new Set<string>([
   "reward_lane_pending_review_at",
 ]);
 const RATE_LEGAL_VALUES = [10, 20, 30, 40, 50] as const;
-const PROMO_CAP_LEGAL_VALUES = [200, 500, 1000] as const;
 const SIX_DIGIT_PIN_RE = /^[0-9]{6}$/;
 
 const STATE_VALUES = new Set([
@@ -712,8 +712,8 @@ function checkPlaceField(key: string, v: unknown): string | null {
         : `content_state must be one of ${[...CONTENT_STATE_VALUES].join(", ")}`;
     // places_monthly_promo_cap_legal_values
     case "monthly_promo_cap":
-      return isNullableLegalSet(v, PROMO_CAP_LEGAL_VALUES) ? null
-        : `monthly_promo_cap must be null or one of ${PROMO_CAP_LEGAL_VALUES.join(", ")}`;
+      return isNullableLegalSet(v, DISCOUNT_CAPS_MXN) ? null
+        : `monthly_promo_cap must be null or one of ${DISCOUNT_CAPS_MXN.join(", ")}`;
     // places_reward_cap_cents_check
     case "discount_cap_cents":
       return isNullableNonNegInt(v) ? null : "discount_cap_cents must be a non-negative integer, or null";

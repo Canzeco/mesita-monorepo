@@ -1,5 +1,5 @@
 // _shared/place-jsonb-schemas.ts
-import { array, bool, nullable, num, object, str, type Infer } from "./doc-schema.ts";
+import { array, bool, nullable, num, object, str } from "./doc-schema.ts";
 
 // Mirrors PROFILE_SCHEMA.properties.details, _shared/enrich-synthesis.ts
 // verbatim — do not add or rename a field without updating that JSON-Schema
@@ -31,7 +31,6 @@ export const PlaceDetailsSchema = object({
   kid_friendly: nullable(bool()),
   pet_friendly: nullable(bool()),
 });
-export type PlaceDetails = Infer<typeof PlaceDetailsSchema>;
 
 // Mirrors enrich-google-basics.ts's GoogleBasics.google_reviews field type
 // exactly — non-nullable fields, the write site (mapGoogleReviews,
@@ -43,7 +42,6 @@ export const GoogleReviewSchema = object({
   date: str(),
 });
 export const GoogleReviewsSchema = array(GoogleReviewSchema);
-export type GoogleReviews = Infer<typeof GoogleReviewsSchema>;
 
 // Mirrors PROFILE_SCHEMA.properties.popular_times, enrich-synthesis.ts.
 export const PopularTimesEntrySchema = object({
@@ -51,4 +49,3 @@ export const PopularTimesEntrySchema = object({
   range: str(),
 });
 export const PopularTimesSchema = array(PopularTimesEntrySchema);
-export type PopularTimes = Infer<typeof PopularTimesSchema>;

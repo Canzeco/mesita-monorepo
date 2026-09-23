@@ -4,14 +4,9 @@ import {
   CONNECT_MCCS,
   DEFAULT_CONNECT_MCC,
   asHttpsUrl,
-  completePrefillWithLlm,
   deterministicConnectPrefill,
-  llmBusinessProfilePatch,
   mccFromPlace,
   mccFromPlaces,
-  needsLlmDescription,
-  needsLlmMcc,
-  parseLlmPrefill,
   rfcIfValid,
   sortPlacesForPrefill,
   trimProductDescription,
@@ -81,7 +76,7 @@ Deno.test("RFC is an allowlist, not a passthrough", () => {
   assertEquals(rfcIfValid(""), null);
 });
 
-Deno.test("deterministic prefill: restaurant website + RFC, no LLM needed", () => {
+Deno.test("deterministic prefill: restaurant website + RFC", () => {
   const out = deterministicConnectPrefill(
     { name: "Cabaret", legalName: "Cabaret Social Room SA de CV", rfc: "CSR010101ABC" },
     [{
@@ -98,12 +93,9 @@ Deno.test("deterministic prefill: restaurant website + RFC, no LLM needed", () =
   assertEquals(out.email, "hola@cabaret.mx");
   assertEquals(out.taxId, "CSR010101ABC");
   assertEquals(out.businessProfile.support_phone, "+52 55 1234 5678");
-  assertEquals(needsLlmMcc([{ category: "mexican" }]), false);
   assertEquals(
-    needsLlmDescription([{
-      description: "Late-night Mexican restaurant and cocktail bar in Roma Norte.",
-    }]),
-    false,
+    out.businessProfile.product_description,
+    "Late-night Mexican restaurant and cocktail bar in Roma Norte.",
   );
 });
 
@@ -125,74 +117,6 @@ Deno.test("Instagram is the URL when the place has no website", () => {
   assertEquals(out.businessProfile.url, "https://instagram.com/barx");
 });
 
-Deno.test("LLM parse rejects Software MCC and salvage fenced JSON", () => {
-  assertEquals(
-    parseLlmPrefill('{"mcc":"5734","product_description":"We make apps for restaurants."}'),
-    { mcc: null, product_description: "We make apps for restaurants." },
-  );
-  assertEquals(
-    parseLlmPrefill('```json\n{"mcc":"5813","product_description":"A cocktail bar in Condesa with a late kitchen."}\n```'),
-    {
-      mcc: CONNECT_MCCS.bars,
-      product_description: "A cocktail bar in Condesa with a late kitchen.",
-    },
-  );
-});
-
-Deno.test("LLM is skipped when Atlas already answered, and fail-open on a dead key", async () => {
-  let called = 0;
-  const fetchImpl: typeof fetch = () => {
-    called += 1;
-    return Promise.reject(new Error("should not run"));
-  };
-  const skipped = await completePrefillWithLlm({
-    places: [{ category: "mexican" }],
-    needMcc: false,
-    needDescription: false,
-    openaiKey: "sk-test",
-    fetchImpl,
-  });
-  assertEquals(skipped, { mcc: null, product_description: null });
-  assertEquals(called, 0);
-
-  const dead = await completePrefillWithLlm({
-    places: [{ name: "Mystery", category: "undefined" }],
-    needMcc: true,
-    needDescription: true,
-    openaiKey: "",
-    fetchImpl,
-  });
-  assertEquals(dead, { mcc: null, product_description: null });
-});
-
-Deno.test("LLM uses the allowlisted MCC the model returns", async () => {
-  const fetchImpl: typeof fetch = () =>
-    Promise.resolve(
-      new Response(
-        JSON.stringify({
-          choices: [{
-            message: {
-              content: JSON.stringify({
-                mcc: "5813",
-                product_description: "A mezcal bar with a small kitchen in Roma Norte.",
-              }),
-            },
-          }],
-        }),
-        { status: 200 },
-      ),
-    );
-  const out = await completePrefillWithLlm({
-    places: [{ name: "Mezcalería", category: "undefined" }],
-    needMcc: true,
-    needDescription: true,
-    openaiKey: "sk-test",
-    fetchImpl,
-  });
-  assertEquals(out.mcc, CONNECT_MCCS.bars);
-  assert(out.product_description?.includes("mezcal"));
-});
-
 Deno.test("firstOf is stable across shuffled place rows (Stripe create idempotency)", () => {
   const a = { id: "aaa", website_url: "https://first.mx", category: "mexican" };
   const b = { id: "bbb", website_url: "https://second.mx", category: "bar" };
@@ -205,31 +129,11 @@ Deno.test("firstOf is stable across shuffled place rows (Stripe create idempoten
   assertEquals(sortPlacesForPrefill([b, a]).map((p) => p.id), ["aaa", "bbb"]);
 });
 
-Deno.test("LLM leftovers are an update patch, never a different create body", () => {
-  const base = deterministicConnectPrefill(
+Deno.test("an unclassified place still gets the restaurant MCC, never Software", () => {
+  const out = deterministicConnectPrefill(
     { name: "Mystery", legalName: "", rfc: null },
     [{ id: "p1", category: "undefined" }],
   );
-  assertEquals(base.businessProfile.mcc, DEFAULT_CONNECT_MCC);
-  assertEquals(
-    llmBusinessProfilePatch(
-      base.businessProfile,
-      { mcc: CONNECT_MCCS.bars, product_description: "A cocktail bar in Condesa with a late kitchen." },
-      true,
-      true,
-    ),
-    {
-      mcc: CONNECT_MCCS.bars,
-      product_description: "A cocktail bar in Condesa with a late kitchen.",
-    },
-  );
-  assertEquals(
-    llmBusinessProfilePatch(
-      base.businessProfile,
-      { mcc: null, product_description: null },
-      true,
-      true,
-    ),
-    null,
-  );
+  assertEquals(out.businessProfile.mcc, DEFAULT_CONNECT_MCC);
+  assertEquals(out.businessProfile.product_description, undefined);
 });

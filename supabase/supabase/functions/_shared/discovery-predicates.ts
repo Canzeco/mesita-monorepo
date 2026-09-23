@@ -42,7 +42,7 @@
 import { familiesForPlace } from "./place-taxonomy.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { haversineKm } from "./geo.ts";
-import { isOpenAt, isOpenNow } from "./local-time.ts";
+import { isOpenAt, isOpenNow } from "./local-time-open.ts";
 import {
   isMesitaPartnerRow,
   parsePlacesScope,

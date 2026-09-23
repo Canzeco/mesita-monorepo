@@ -53,8 +53,7 @@ import {
   readPlaceIdAlias,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOwner } from "../_shared/auth-membership.ts";
+import { adminClient, getAuthedUser, readEFEnv, requireOwner } from "../_shared/auth.ts";
 import { isPlaceClaimable } from "../_shared/place-claim.ts";
 import { writeApprovedVerification } from "../_shared/place-verification.ts";
 

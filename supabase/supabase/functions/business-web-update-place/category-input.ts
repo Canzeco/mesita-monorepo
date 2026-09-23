@@ -1,8 +1,6 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import {
-  inferPlaceCategory,
-  type PlaceCategory,
-} from "../_shared/categories.ts";
+import { inferPlaceCategory } from "../_shared/categories-infer.ts";
+import type { PlaceCategory } from "../_shared/categories.ts";
 import {
   familiesForAtlasCategory,
   sanitizeFamilyKeys,

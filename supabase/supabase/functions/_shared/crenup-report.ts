@@ -100,7 +100,7 @@ export function stepFailed(
  */
 export async function reportCrenupSteps(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
   //   7. THE KEY IS `StampableCrenupStep`, NOT `string`. A misspelled key used to
   //      compile, write nothing, and cap the ladder at the rung before it — with
   //      the run reporting success. `socail` for `social` pinned every place at
@@ -111,7 +111,7 @@ export async function reportCrenupSteps(
   //      because 8 cannot skip a gap.
   //   9. PULSE AND MENU ARE NOT STAMPABLE (MESITA-2027). Liveness is
   //      a subprocess of `details` and reports through ITS outcome; the menu
-  //      is operator input the Intaker does not derive. Both keys fail to
+  //      is operator input the Enricher does not derive. Both keys fail to
   //      compile here and fall out of the walk on read.
   pieces: Partial<Record<StampableCrenupStep, StepOutcome>>,
 ): Promise<void> {
@@ -122,7 +122,7 @@ export async function reportCrenupSteps(
     if (!meta) continue;
     await reportEnrichmentStep(
       admin,
-      projectId,
+      placeId,
       `S${meta.index}`,
       key,
       outcome.state,
@@ -132,7 +132,7 @@ export async function reportCrenupSteps(
     stamped[key as StampableCrenupStep] = outcome;
   }
   if (Object.keys(stamped).length > 0) {
-    await mergeEnrichmentMap(admin, projectId, stamped);
+    await mergeEnrichmentMap(admin, placeId, stamped);
   }
 }
 
@@ -151,16 +151,16 @@ export async function reportCrenupSteps(
  */
 async function mergeEnrichmentMap(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
   stamped: Partial<Record<StampableCrenupStep, StepOutcome>>,
 ): Promise<void> {
   const { data, error: readError } = await admin
     .from("place_profiles")
     .select("enrichment")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (readError) {
-    console.error("[pulse-report] enrichment map read:", readError.message);
+    console.error("[crenup-report] enrichment map read:", readError.message);
     return;
   }
   const current = (data?.enrichment as EnrichmentMap | null | undefined) ??
@@ -189,10 +189,10 @@ async function mergeEnrichmentMap(
   const res = await writePlace(admin, {
     table: "place_profiles",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: { enrichment: next },
   });
   if (!res.ok) {
-    console.error("[pulse-report] enrichment map write:", res.error);
+    console.error("[crenup-report] enrichment map write:", res.error);
   }
 }

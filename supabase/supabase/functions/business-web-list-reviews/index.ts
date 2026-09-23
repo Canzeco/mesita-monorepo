@@ -23,9 +23,10 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
+  requireMembership,
 } from "../_shared/auth.ts";
 import { consumerDisplayName } from "../_shared/consumer-lookup.ts";
-import { requireMembership } from "../_shared/auth-membership.ts";
+import { one } from "../_shared/postgrest.ts";
 
 const CHECK_URL_BASE = "https://check.mesita.ai/";
 
@@ -62,11 +63,6 @@ type ReviewRow = {
   consumer: ConsumerJoin | ConsumerJoin[] | null;
   ticket?: TicketJoin | TicketJoin[] | null;
 };
-
-function asOne<T>(v: T | T[] | null): T | null {
-  if (!v) return null;
-  return Array.isArray(v) ? (v[0] ?? null) : v;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -138,10 +134,10 @@ Deno.serve(async (req) => {
 
   const rows = (data ?? []) as unknown as ReviewRow[];
   const reviews = rows.map((row) => {
-    const consumer = asOne(row.consumer);
+    const consumer = one(row.consumer);
     let visitUrl: string | null = null;
     if (mayLinkVisit) {
-      const ticket = asOne(row.ticket ?? null);
+      const ticket = one(row.ticket);
       const code = ticket?.check_code?.trim() ?? "";
       visitUrl = code ? `${CHECK_URL_BASE}${code}` : null;
     }

@@ -1,5 +1,5 @@
-// Review-inbox prep + consumer review notification — extracted from
-// ticket-informal so bill math and review notify can evolve independently.
+// Review-inbox prep + the consumer review notification that the ticket close
+// (ticket-informal.ts) queues.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";

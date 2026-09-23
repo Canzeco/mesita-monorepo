@@ -25,6 +25,8 @@
 // back to defaults, every rate snaps to the 5% grid. The only hard error is a
 // non-object body. A stored v10 or v11 blob MIGRATES rather than resetting.
 
+import { DEFAULT_DISCOUNT_CAP_MXN, snapDiscountCap } from "./discount-cap.ts";
+
 const STRATEGY_KEYS = ["conservative", "aggressive", "dominant"] as const;
 type StrategyKey = (typeof STRATEGY_KEYS)[number];
 
@@ -144,9 +146,6 @@ const RATE_STEP = 5;
 const RATE_FLOOR = 5;
 const RATE_MAX = 70;
 
-const ALLOWED_CAPS = [200, 500, 1000] as const;
-const CAP_DEFAULT = 500;
-
 // The v12 defaults. Byte-identical to DEFAULT_PROMOS in the web-admin catalog.
 //
 // These are v11's FREE column exactly — the premium column is what v12 drops,
@@ -178,24 +177,28 @@ export const DEFAULT_PROMOS_V12: PromosConfigV12 = {
     },
     soon: true,
   },
-  cap: CAP_DEFAULT,
+  cap: DEFAULT_DISCOUNT_CAP_MXN,
 };
 
-function snapRate(v: unknown, fallback: number): number {
+/**
+ * Snap to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to the nearest 5.
+ * Also the v8 legacy normalizer's snap (rewards-config-normalize.ts), so the
+ * two save gates can never grid a rate differently.
+ */
+export function snapRate(v: unknown, fallback: number): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
   if (v <= 0) return 0;
   const stepped = Math.round(v / RATE_STEP) * RATE_STEP;
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
-function snapCap(v: unknown): number {
-  if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
-  let best: number = ALLOWED_CAPS[0];
-  for (const option of ALLOWED_CAPS) {
-    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
-  }
-  return best;
-}
+// The cap is categorical (MESITA-872, narrowed to three steps 2026-08-09):
+// a free number allowed both a meaningless cap (MX$37) and MX$0, which
+// silently meant NO ceiling. It IS the place-level monthly_promo_cap ladder
+// (discount-cap.ts), same default and same snap, so this fallback and the
+// per-place knob can never snap a cap differently. Exported under this name
+// for rewards-config-normalize.ts.
+export const snapCap = snapDiscountCap;
 
 const isStrategy = (v: unknown): v is StrategyKey =>
   (STRATEGY_KEYS as readonly unknown[]).includes(v);
@@ -296,7 +299,7 @@ function migrateV11(r: Record<string, unknown>): PromosConfigV12 {
       bonuses: coerceBonuses(ordersRaw.bonuses, d.orders.bonuses),
       soon: true,
     },
-    cap: snapCap(r.cap),
+    cap: snapDiscountCap(r.cap),
   };
 }
 
@@ -345,7 +348,7 @@ function migrateV10(r: Record<string, unknown>): PromosConfigV12 {
       bonuses: coerceBonuses(r.bonuses, d.visits.bonuses),
     },
     orders: structuredClone(d.orders),
-    cap: snapCap(r.cap),
+    cap: snapDiscountCap(r.cap),
   };
 }
 
@@ -483,7 +486,7 @@ export function normalizePromos(
         // Never trust a stored value to un-park orders.
         soon: true,
       },
-      cap: snapCap(r.cap),
+      cap: snapDiscountCap(r.cap),
     },
   };
 }

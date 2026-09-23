@@ -62,8 +62,9 @@ async function runTool(
     case "list_saved_places": {
       const limit = clamp(args.limit, 1, 100, 50);
       const { data, error } = await admin
-        // favorites.project_id → projects → places is two hops; a direct
-        // places embed 500s. Stitch instead (_shared/reservation-places.ts).
+        // favorites.place_id → places → place_profiles is two hops
+        // (places_place_fk); a direct place_profiles embed 500s. Stitch via
+        // attachPlaces instead (_shared/reservation-places.ts).
         .from("favorites")
         .select("id, created_at, place_id")
         .eq("consumer_id", consumerId)
