@@ -84,7 +84,7 @@ function MenuViewerBody({
             {menu.name}
           </p>
           {nutritionLine(menu.nutrition) ? (
-            <p className="truncate text-[11px] tabular-nums">
+            <p className="type-label truncate tabular-nums">
               {nutritionLine(menu.nutrition)}
             </p>
           ) : null}
