@@ -285,22 +285,14 @@ export type MockCreditCampaign = {
   state: CampaignState;
 };
 
-/** What a place sets on Member Visits, minus `on` — that is `visitRewards`,
- *  which every other screen already reads.
- *
- *  THREE FIELDS NOW (MESITA-2038). `cap` went with the per-place cap: the
- *  rewardable base is fixed at the first MX$200 for every place, so there is
- *  nothing to choose and the peso ceiling follows from the plan. `mesita` went
- *  with the Mesita review lever, which is not in Pato's four-lever table.
- *
- *  Base and Diamond are absent on purpose: base is `visitRewards` itself, and
- *  Diamond is Mesita's invitation list, which a place does not switch. */
+/** The six things a place sets on Rewards, minus `on` — that is
+ *  `visitRewards`, which every other screen already reads. */
 export type MockRewardsSetup = {
-  /** `both` lets the guest pick at the table. Like `cashback` it needs Prepaid
-   *  Credits behind it, so both are Ultra's. */
-  mode: "discount" | "cashback" | "both";
+  mode: "discount" | "cashback";
+  cap: 200 | 500 | 1000;
   welcome: boolean;
   story: boolean;
+  mesita: boolean;
 };
 
 export type MockPlace = {

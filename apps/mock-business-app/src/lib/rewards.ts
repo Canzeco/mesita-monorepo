@@ -1,137 +1,163 @@
-// THE REWARD PROGRAM, AS THIS CONSOLE SHOWS IT.
+// THE REWARD PROGRAM, AND THE FACT THAT IT STILL ADDS UP.
 //
-// The math is NOT here any more. `@/lib/rewards-model` is a generated copy of
-// `shared/rewards-model.ts`, which every app and every Edge Function reads, so
-// the lever percentages, the rewardable base and the per-plan ceiling have one
-// definition and this file has none of them (MESITA-2038). What survives here
-// is presentation: the labels and hints a console prints, and the shape of the
-// thing a place saves.
+// The bill engine has resolved a ticket ADDITIVELY since v12 (MESITA-1705,
+// supabase `_shared/rewards-config.ts`):
 //
-// ── WHAT THE OPERATOR ACTUALLY DECIDES ─────────────────────────────────────
+//   rate = base + every earned bonus
 //
-// Three things, down from six:
+// clamped at 100%, then bounded in pesos by the place's cap.
+//
+// ── THE TIERS ARE GONE (MESITA-2017) ───────────────────────────────────────
+//
+// Until this issue the operator picked a COLUMN — Off, Conservative,
+// Aggressive — and nine priced rungs followed it. Pato, 2026-09-20: *"no hay
+// que poner tiers, o sea, no hay que poner de que agresivo o eso, porque es
+// como muy difícil de configurar… que un restaurante se ponga a pensar qué
+// pedo."* So the rates are MESITA'S, one table, and what a place decides is
+// six things:
 //
 //   1. whether the program is on
-//   2. how it comes back — discount at the bill, or cashback for a later visit
-//   3. which of the two earnable bonuses are running
+//   2. discount at the bill, or cashback for a later visit
+//   3. the cap, in pesos
+//   4. Welcome: first-ever visit, on or off
+//   5. Instagram story, on or off
+//   6. Mesita review, on or off
 //
-// THE CAP IS GONE. It used to be a choice between MX$200 / 500 / 1000; the
-// model now fixes the rewardable base at the first MX$200 for everyone, so
-// there is nothing to pick. The peso ceiling follows from the plan instead.
+// THE SURVIVING COLUMN IS THE AGGRESSIVE ONE. It was the shipped default
+// (`RewardsView` seeded a running place on it), and a table that is not a
+// choice any more should be the one places were actually running.
 //
-// THE MESITA REVIEW LEVER IS GONE. Pato's table names four levers and is
-// exhaustive; this one is not in it. Recorded as a decision rather than an
-// oversight, because the file used to argue for keeping it.
+// THE STORY BONUS IS FLAT. It used to add a class step — 2,000+ followers,
+// 20,000+ — and Meta exposes no follower count for a personal account, so
+// there is no data path to price it by (gate PC1, 2026-09-20). The class
+// ladder stays in the ENGINE (`CLASS_STEP`, engine-only, nothing in this
+// console reads it) for the day a path exists; it prices nothing today.
 //
-// GOOGLE REVIEWS PAY NOTHING, and that has not changed: Google's contribution
-// policy forbids a reward for a review and the penalty lands on the
-// restaurant's Business Profile, not on Mesita.
-//
-// ── BASE AND DIAMOND ARE NOT TOGGLES ───────────────────────────────────────
-//
-// Base is the program's MASTER SWITCH — base off IS the program off, so it is
-// the "Rewards" row, not a peer bonus beside Welcome and Story. Diamond is
-// Mesita's own invitation list and applies whether the guest posts or not; a
-// place does not get to decline Mesita's guests, so the console DISCLOSES it
-// and never renders a switch the operator appears to own.
-//
-// That leaves exactly two rows an operator flips: Welcome and Story.
-
-import {
-  LEVER_PCT,
-  PLAN_LEVERS,
-  type LeverKey,
-  type LeverState,
-  type PlanTier,
-} from "@/lib/rewards-model";
-
-export type { LeverKey, LeverState, PlanTier };
-export { LEVER_PCT, PLAN_LEVERS };
+// THE GOOGLE REVIEW IS NOT A REWARDED ACTION. Google's contribution policy
+// forbids a discount or a gift for a review, and the penalty lands on the
+// restaurant's Business Profile, not on Mesita. The Mesita review stays: it is
+// Mesita's own verifiable act, and it was in Pato's list of actions before a
+// later "five parameters" compression dropped it without a decision.
 
 /** Discount takes the slice off THIS bill; cashback banks it as Prepaid
  *  Credits for a later one — which is why cashback needs Credits on. */
-export type RewardsMode = "discount" | "cashback" | "both";
+export type RewardsMode = "discount" | "cashback";
 export const MODE_LABEL: Record<RewardsMode, string> = {
   discount: "Discount at the bill",
   cashback: "Cashback for next time",
-  both: "Guest chooses",
 };
 
-/** What each mode needs behind it. Discount takes the slice off THIS bill and
- *  needs nothing — it works with cash and the place's own terminal. The other
- *  two settle later, so they need somewhere to put the money: Prepaid Credits,
- *  which is Ultra's, and Online Payments under it. */
-export const MODE_NEEDS_CREDITS: Record<RewardsMode, boolean> = {
-  discount: false,
-  cashback: true,
-  both: true,
-};
-
-export const MODE_HINT: Record<RewardsMode, string> = {
-  discount:
-    "The slice comes off the cheque in front of the guest. Cash or card, your terminal, nothing to settle afterwards.",
-  cashback:
-    "The guest pays in full and the slice lands as Prepaid Credits for their next visit here.",
-  both: "The guest picks at the table. Discount is preselected — cashback is money they cannot spend today.",
-};
-
-/** The two levers a place switches. Base is the master switch and Diamond is
- *  Mesita's, so neither is here. */
-export type BonusKey = Extract<LeverKey, "welcome" | "story">;
-export const BONUS_KEYS: readonly BonusKey[] = ["welcome", "story"];
-
-export const LEVER_LABEL: Record<LeverKey, string> = {
-  base: "Rewards",
+/** The three things a guest can DO to earn more than the base. Each is a
+ *  switch the place owns; none is a number the place edits. */
+export type ActionKey = "welcome" | "story" | "mesita";
+export const ACTION_KEYS: readonly ActionKey[] = ["welcome", "story", "mesita"];
+export const ACTION_LABEL: Record<ActionKey, string> = {
   welcome: "Welcome",
   story: "Instagram story",
-  diamond: "Diamond",
+  mesita: "Mesita review",
+};
+export const ACTION_HINT: Record<ActionKey, string> = {
+  welcome: "Their first ever visit here. Once per guest, forever",
+  story: "Tagged, at the table, public. One flat bonus — Mesita cannot read follower counts",
+  mesita: "Once per place, on Mesita. The one review Mesita can verify itself",
 };
 
-export const LEVER_HINT: Record<LeverKey, string> = {
-  base: "Every visit paid through Mesita earns the base.",
-  welcome: "Their first ever visit here. Once per guest, forever",
-  story:
-    "Tagged, at the table, from a public account. Verified by Mesita, not by your staff",
-  diamond:
-    "Mesita's own list, invitation only. It applies on every visit, posting or not — you do not switch it, and you do not fund a guest Mesita did not send you",
+/** MESITA'S TABLE. The standing rate every guest gets on every visit, and
+ *  what each earned action adds to it. Whole percentage points. */
+export const RATE: Record<"base" | ActionKey, number> = {
+  base: 20,
+  welcome: 10,
+  story: 10,
+  mesita: 5,
 };
+
+/** ENGINE-ONLY. What class used to add to the base, kept so the shape of the
+ *  engine's config is still legible from here. No screen in this console
+ *  reads it, no test asserts a per-class rate, and the story bonus above is
+ *  flat on purpose. */
+export type ClassKey = "bronze" | "silver" | "gold" | "diamond";
+export const CLASS_STEP: Record<ClassKey, number> = {
+  bronze: 0,
+  silver: 10,
+  gold: 20,
+  diamond: 30,
+};
+
+// ── The cap ────────────────────────────────────────────────────────────────
+//
+// A percentage is not a peso. Every rate applies to the FIRST cap-pesos of the
+// bill, which is what keeps a 45% ceiling from being a 45% night: at MX$500 the
+// most generous guest there is costs MX$225, whatever they ordered. The three
+// legal caps are the product's (`DISCOUNT_CAPS_MXN`, web-business
+// `lib/business/strategies.ts`); a wider set is a product decision the mock
+// does not get to invent.
+
+export const CAPS_MXN = [200, 500, 1000] as const;
+export type CapMxn = (typeof CAPS_MXN)[number];
+export const DEFAULT_CAP: CapMxn = 500;
+
+/** The most a percentage can cost at this cap, in CENTAVOS — money is an
+ *  integer until the moment it is printed. `cap * pct` is `cap * 100 * pct/100`
+ *  with the round-trip removed. */
+export function capCostCents(pct: number, cap: CapMxn): number {
+  return cap * pct;
+}
+
+// ── The program ────────────────────────────────────────────────────────────
 
 /** What a place SET. `on` is the absence of the program, not a rung of it. */
 export type RewardsProgram = {
   on: boolean;
   mode: RewardsMode;
+  cap: CapMxn;
   welcome: boolean;
   story: boolean;
+  mesita: boolean;
 };
 
 export const DEFAULT_PROGRAM: RewardsProgram = {
   on: true,
   mode: "discount",
+  cap: DEFAULT_CAP,
   welcome: true,
   story: true,
+  mesita: true,
 };
 
-/**
- * The program as the shared model wants it: a lever map, with Base following
- * `on` and Diamond always true because it is Mesita's to run.
- *
- * A lever the PLAN does not carry is still `true` here — `activeLevers` is what
- * drops it. Keeping the two questions apart is what lets the console render a
- * locked Story row that shows what the place would get on Ultra, rather than a
- * row that silently reads as "off".
- */
-export function toLeverState(program: RewardsProgram): LeverState {
-  return {
-    base: program.on,
-    welcome: program.welcome,
-    story: program.story,
-    diamond: true,
-  };
+/** What one guest EARNED on one visit. */
+export type Earned = Record<ActionKey, boolean>;
+export const NOTHING_EARNED: Earned = { welcome: false, story: false, mesita: false };
+export const EVERYTHING_EARNED: Earned = { welcome: true, story: true, mesita: true };
+
+/** The rate this visit pays, clamped exactly as the engine clamps. An action
+ *  the place switched off pays nothing however loudly the guest earned it. */
+export function rate(program: RewardsProgram, earned: Earned): number {
+  if (!program.on) return 0;
+  let t: number = RATE.base;
+  for (const key of ACTION_KEYS) {
+    if (program[key] && earned[key]) t += RATE[key];
+  }
+  return Math.min(100, t);
 }
 
-/** Whether this plan carries a lever at all. A lever it does not carry is
- *  LOCKED, which is a different thing from off and must never render as a
- *  plain switch the operator can flip. */
-export function planCarries(plan: PlanTier, lever: LeverKey): boolean {
-  return PLAN_LEVERS[plan].includes(lever);
+/** The climb, in the order the engine adds: base, then each action the place
+ *  has on. Every step is a RUNNING total, so reading left to right is the
+ *  same act as adding. Actions switched off are absent, not zero. */
+export function stack(program: RewardsProgram): { key: "base" | ActionKey; label: string; total: number }[] {
+  if (!program.on) return [];
+  const out: { key: "base" | ActionKey; label: string; total: number }[] = [
+    { key: "base", label: "Base", total: RATE.base },
+  ];
+  let t: number = RATE.base;
+  for (const key of ACTION_KEYS) {
+    if (!program[key]) continue;
+    t = Math.min(100, t + RATE[key]);
+    out.push({ key, label: `+ ${ACTION_LABEL[key]}`, total: t });
+  }
+  return out;
+}
+
+/** The most any guest can reach: every action the place has on, earned. */
+export function ceiling(program: RewardsProgram): number {
+  return rate(program, EVERYTHING_EARNED);
 }

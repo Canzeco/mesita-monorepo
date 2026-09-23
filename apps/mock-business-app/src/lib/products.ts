@@ -53,25 +53,12 @@
 // Member Visits have the same dependency. `products.test.ts` pins it, because
 // the next person to move a `minPlan` will not read this paragraph.
 //
-// WHY REWARDS WAS UP AT ULTRA, AND WHY IT IS AT PRO NOW (MESITA-2038).
-//
-// The original reason still stands on its own terms. Pato: *"rewards must be
-// in ultra, because then they will not comply"* — a place promises a discount,
-// a guest walks in on the strength of it, and the staff shrug. That failure
-// lands on Mesita, not on the venue, and the price was the seriousness filter
-// in front of the strike ladder the schema already carries (`strike_count`,
-// `plan_forfeited_at`, `promo_paused_until`).
-//
-// What changed is that the product SPLIT. Three of the four levers — base,
-// welcome, Diamond — resolve at quote time and come off the bill at the till,
-// with no payment rail and nothing to settle afterwards. Those are at Pro. The
-// fourth, the Instagram story, is verified AFTER the bill closes, so it is the
-// only one that can need a late top-up, and the only top-up vehicle is Prepaid
-// Credits. That stays at Ultra, which is also where Credits is.
-//
-// So the compliance argument now buys what it was always aiming at, more
-// precisely: the lever that can leave a guest waiting on Mesita is the one
-// behind the price. `product-rungs.test.ts` pins both rungs.
+// WHY REWARDS IS UP AT ULTRA and not beside the rails it resembles. Pato:
+// *"rewards must be in ultra, because then they will not comply"* — a place
+// promises a discount, a guest walks in on the strength of it, and the staff
+// shrug. That failure lands on Mesita, not on the venue. The price is the
+// seriousness filter in front of the strike ladder the schema already carries
+// (`strike_count`, `plan_forfeited_at`, `promo_paused_until`).
 //
 // Anything with real cost of goods (hardware, Capital, the media spend behind
 // Ads) is not a rung at all: it prices itself, and only its `minPlan: "ultra"`
@@ -399,8 +386,8 @@ export const SPECS: readonly ProductSpec[] = [
     blurb:
       "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you switch on what earns it.",
     tab: "visits",
-    minPlan: "pro",
-    // RUNG-GATED, NOT `visitRewards`. Member Visits comes with the Pro rung
+    minPlan: "ultra",
+    // RUNG-GATED, NOT `visitRewards`. Member Visits comes with the Ultra rung
     // and has no per-place switch; only the rewards half has one. (It used to
     // read "included with the Membership"; there is no Membership since
     // MESITA-2019, which is also what freed "Member" for this card's name.)

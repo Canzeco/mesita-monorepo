@@ -95,29 +95,19 @@ describe("the rungs Pato dictated", () => {
     ]);
   });
 
-  // MEMBER VISITS LANDS SECOND, NOT LAST (MESITA-2038). The list is
-  // PRODUCT_KEYS order, where `visits` heads the "Serving the guest" band, so
-  // moving its `minPlan` to "pro" inserts it between Express Website and Online
-  // Orders. Appending it here instead would fail, and would read as the
-  // derivation being broken rather than the expectation being wrong.
   it("puts the selling surface on Mesita Pro", () => {
     expect(live("pro")).toEqual([
       "Express Website",
-      "Member Visits",
       "Online Orders",
       "Online Reservations",
       "Online Payments",
     ]);
   });
 
-  // Member Visits left this rung with MESITA-2038: three of its four levers
-  // settle at the till with no payment rail, so they are Pro's. What stayed at
-  // Ultra is the Instagram story lever, which is verified AFTER the bill closes
-  // and therefore needs the top-up vehicle Prepaid Credits provides — that
-  // gating lives on the lever in `lib/rewards.ts`, not on the card.
   it("puts what brings a guest back on Mesita Ultra", () => {
     expect(live("ultra")).toEqual([
       "Partner Badge",
+      "Member Visits",
       "Prepaid Credits",
       "Answering Agent",
       "Developers Platform",
