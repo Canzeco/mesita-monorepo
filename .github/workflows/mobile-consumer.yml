@@ -127,7 +127,7 @@ jobs:
 
       - run: pnpm lint
 
-      # node:test over src/**/*.test.mts — the Diamond List copy guard
+      # node:test over src/**/*.test.mts — the Diamond copy guard
       # (MESITA-2044) and the twin strings it pins against web-consumer.
       - run: pnpm test
 

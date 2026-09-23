@@ -15,9 +15,9 @@ import { supabase } from '@/lib/supabase';
 // The server writes metals (`bronze`/`diamond`); this app compares on the
 // legacy keys. `legacyKeyForStoredClass` is the one bridge — before
 // MESITA-2044 this function only knew the legacy keys, so a real `diamond`
-// normalized to Standard and a guest on the Diamond List read "Ask to join".
+// normalized to Standard and a Diamond guest read "Ask to join".
 // A stray or unknown key (the retired "magnetic", a leftover silver/gold)
-// still lands on Standard: not on the list.
+// still lands on Standard: not Diamond.
 function normalizeClass(raw: ConsumerClass | null): ConsumerClass | null {
   if (!raw) return null;
   const key = legacyKeyForStoredClass(raw.class ?? raw.key, raw.plan);

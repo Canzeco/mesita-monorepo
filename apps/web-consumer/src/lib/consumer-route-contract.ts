@@ -100,9 +100,21 @@ export const CONSUMER_ROUTES = {
   // CATALOG'S SEGMENT IS RETIRED, not its name: the mode key, CatalogRails,
   // `consumer-web-list-catalog` and the admin Discovery matrix all still say
   // catalog. Only the guest-facing address moved.
+  //
+  // VISIT'S RAIL, NOT HOME'S (Pato, MESITA-2050). The bottom bar is Visit ·
+  // Order · Wallet · Me, and Visit's rail is Home · Search · Chat · Favs ·
+  // Pay. Three of those five pills live here; Search is `search` and Pay is
+  // `newVisit.root`. NONE OF THE URLS MOVED — app/(shell)/(visit)/layout.tsx
+  // is a route group that draws the rail above all three namespaces. That
+  // ends the "segments match labels" exception described above: the pill
+  // reading Home sits at `/discover/scroll`, the same shape Pay has always
+  // had at `/new-visit`.
+  //
+  // FEED LEFT (MESITA-2050): Pato's rail does not list it. `/discover/feed`
+  // is a redirect source again (legacy.discoverFeed below), pointing at the
+  // Home pill; CatalogRails stays on disk, unrendered.
   discoverTabs: {
     scroll: "/discover/scroll",
-    feed: "/discover/feed",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
@@ -132,81 +144,72 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: "/reservation/",
   },
-  // The centre tab: pick a place, start a visit. A VERB on purpose — it is
-  // the primary action, and the visits LIST lives in Inbox > Visits, so this
-  // surface only ever creates. /rewards, /pay and /qr all 308 here.
+  // Visit › Pay (MESITA-2050; the centre bottom tab before that): pick a
+  // place, start a visit. A VERB on purpose — it is the primary action, and
+  // the visits LIST lives in Me › Visits, so this surface only ever creates.
+  // /rewards, /pay and /qr all 308 here.
   newVisit: {
     root: "/new-visit",
-    // PAY IS A CONTAINER AGAIN (Pato, 2026-09-06): QR · Wallet.
-    //
-    // WALLET CAME BACK. It was Pay's second section from 2026-09-01, left for
-    // a tab of its own at /wallet on 09-05, and returns here on 09-06 — the
-    // whole round trip inside six days. The tab was argued from what a wallet
-    // IS ("the money you hold is a destination, not a subsection"); it comes
-    // back on what the BAR is: five tabs is one more top-level choice than the
-    // guest has decisions, and the tab that pays for itself least is the one
-    // holding a balance you check, not a thing you do. Pay is where that
-    // balance gets spent, so it is where it is kept.
-    //
-    // Do not re-derive the tab from the "instruments, not events" argument
-    // either — that argument only ever said Wallet is not ACTIVITY, and it is
-    // still why Wallet is not a section of Inbox. It never said Wallet is not
-    // Pay.
-    //
-    // New is the bare route — pick a place, start a visit. The section labels
-    // are QR and Wallet; the segments are `/new-visit` and `/new-visit/wallet`.
-    // Same shape as Inbox: container + sections, bare route is the default.
+    // PAY IS ONE PAGE AGAIN (MESITA-2050): Visit's fifth pill, the QR place
+    // list and nothing else. Wallet left for a bottom tab of its own at
+    // `/wallet` — see `wallet` below — which also retires the QR · Wallet
+    // section row that used to sit here.
     new: "/new-visit",
-    wallet: "/new-visit/wallet",
-    // WALLET'S SUBROUTES ARE ROUTES, NOT SHEETS (Pato, 2026-09-08: "not modals
-    // but actually views with full-screen with own screen"). This REVERSES the
-    // call recorded on BalanceDetail four hours earlier, which read an older
-    // instruction ("que se abra de abajo para arriba") as covering the whole
-    // wallet. It covered the balance card's OPEN GESTURE, not the surfaces
-    // hanging off the section header.
-    //
-    // The reversal is the right one on its own merits, and the sheet was
-    // already straining: Buy is a purchase, Gift ends on a code someone has to
-    // hand over, Redeem is reached by a guest who holds nothing, and a balance
-    // detail is a statement with its own activity list. Every one of those is a
-    // destination you can be sent to, land on cold, and press Back out of — the
-    // definition of a route. A sheet has no URL, so none of it survived a
-    // reload or could be linked at all.
-    //
-    // They are NOT @modal intercepts either, and that is the same decision
-    // stated twice: an intercept would put them back in an overlay over the
-    // wallet, which is the thing being reversed. Nothing here goes near
-    // isModalContractPath.
-    walletBuy: "/new-visit/wallet/buy",
-    walletGift: "/new-visit/wallet/gift",
-    // REDEEM IS IN THE SHELL, behind the auth wall, because it credits a
-    // wallet and a wallet needs an account. The PUBLIC half of gifting — a link
-    // that lands a stranger who has no account yet — is a different route that
-    // does not exist yet (MESITA-1677); when it ships it is a top-level page
-    // outside (shell) with its own T1 exemption, and it funnels into this one
-    // after sign-in. Do not "fix" this by moving Redeem out of the wall.
-    walletRedeem: "/new-visit/wallet/redeem",
-    // One balance, opened. `balance/` rather than a bare [id] under wallet/:
-    // Next.js does give static segments priority over a dynamic sibling, so
-    // /new-visit/wallet/buy would still resolve, but a route map where three
-    // words are pages and everything else is an id is a trap for the next
-    // segment anyone adds.
-    walletBalance: {
-      prefix: "/new-visit/wallet/balance/",
+  },
+  // The Pay pill's one page, which is also its default: Pay has no sections
+  // left to choose between (MESITA-2050).
+  newVisitDefault: "/new-visit",
+  // WALLET IS A BOTTOM TAB (Pato, MESITA-2050: "Visit. Order. Wallet. Me.").
+  //
+  // This is Wallet's FOURTH home and its second time as a tab. It was
+  // standalone /credits (#1429), an Activity section at /inbox/credits, Pay's
+  // second section at /new-visit/wallet (2026-09-01), a tab at /wallet
+  // (2026-09-05), Pay's section again (09-06), and now a tab at /wallet
+  // again. The 09-06 argument for folding it back ("five tabs is one more
+  // top-level choice than the guest has decisions") does not reach this bar:
+  // it is still four tabs, and Wallet took Search's and Home's slots, not a
+  // fifth one.
+  //
+  // THE SUBROUTES CAME WITH IT, unchanged in kind: Buy, Gift, Redeem and one
+  // balance are full-screen ROUTES, not sheets and not @modal intercepts
+  // (Pato, 2026-09-08: "not modals but actually views with full-screen with
+  // own screen"). Nothing here goes near isModalContractPath.
+  //
+  // REDEEM IS IN THE SHELL, behind the auth wall, because it credits a
+  // wallet and a wallet needs an account. The PUBLIC half of gifting is
+  // /gift/[code] (MESITA-1677), outside (shell), and it funnels into Redeem
+  // after sign-in.
+  //
+  // `balance/` holds the id rather than a bare [id] under wallet/: Next does
+  // rank static segments above a dynamic sibling, but a map where three words
+  // are pages and everything else is an id is a trap for the next segment.
+  wallet: {
+    root: "/wallet",
+    buy: "/wallet/buy",
+    gift: "/wallet/gift",
+    redeem: "/wallet/redeem",
+    balance: {
+      prefix: "/wallet/balance/",
     },
   },
-  // Pay lands on New: you open this tab standing in a place, not to check a
-  // balance. Same reasoning as inboxDefault landing on Visits.
-  newVisitDefault: "/new-visit",
+  // ORDER IS A BOTTOM TAB (Pato, MESITA-2050: "Order must have Home. and
+  // thats it, i guess."). One rail pill, Home, at the bare route — the same
+  // container-plus-sections shape Visit has, with one section. The orders
+  // vertical is designed-not-built (Docs › Orders: no table, no Edge
+  // Function, no type), so the page is an honest empty state, never mock
+  // places. A second Order mode is a key here plus a pill in ORDER_MODES.
+  order: {
+    root: "/order",
+    home: "/order",
+  },
   // A single visit — THE TICKET (reward -> task -> QR -> results). Top-level
   // sibling of /place and /reservation, not a child of /new-visit: you reach
   // it from the centre tab when you start one AND from Inbox > Visits when you
   // return to one, so it belongs to neither.
   //
-  // It lights the ME tab now (see BottomNav matchPrefixes), not its own tab —
-  // Activity retired as a bottom tab MESITA-1609, and the Visits box that
-  // replaces it lives on Me. Same reasoning as always: the list is where you
-  // land back, and the list's box now lives there.
+  // It lights the VISIT tab (MESITA-2050), not Me. It lit Me from MESITA-1609
+  // because Activity's Visits box moved there; a tab named Visit now exists,
+  // it holds the Pay pill that creates the ticket, and the ticket is a visit.
   //
   // The OBJECT is still a ticket and the DB column is still `kind`. Only the
   // consumer-facing URL says visit. Do not let this cascade into a code or
@@ -292,11 +295,17 @@ export const CONSUMER_ROUTES = {
     // 2026-09-06, MESITA-1389). Live in production, so the bookmarks are
     // real; it 308s straight to Visits, the section it folded into.
     inboxOrders: "/inbox/orders",
-    // Wallet's route for the day it was a top-level TAB (#1492, 2026-09-05 ->
-    // 09-06). It shipped to production, so its bookmarks are as real as the
-    // other two, and like them it 308s STRAIGHT to /new-visit/wallet — never
-    // through /inbox/credits, which would be the 3-hop chain T4 refuses.
-    wallet: "/wallet",
+    // Wallet's address as Pay's section (2026-09-01 -> 09-05, and 09-06 ->
+    // MESITA-2050). The realest wallet bookmarks there are, and the one a
+    // Stripe return URL carried — `/me?cards=` used to forward here. The bare
+    // path and every subroute 308 to the same path under `/wallet` in ONE
+    // hop. `/wallet` itself is CANONICAL again and is not in this block: a
+    // redirect whose source is a live route shadows the page entirely.
+    newVisitWallet: "/new-visit/wallet",
+    // Feed's segment (MESITA-1621 -> MESITA-2050). It left Visit's rail, and
+    // 308s to the Home pill. The name is the THIRD time this key has existed:
+    // it was deleted at MESITA-1621 because Feed became a real page.
+    discoverFeed: "/discover/feed",
     // /discover/search's address for the six days it lived there (MESITA-1609,
     // 2026-09-06, -> MESITA-1616, 2026-09-07). Shipped to production, so the
     // bookmarks are real; forwards STRAIGHT to the new canonical `search`
@@ -370,6 +379,8 @@ export const CONSUMER_ROUTE_PREFIX = {
   reservations: "/reservations",
   newVisit: "/new-visit",
   visit: "/visit",
+  wallet: "/wallet",
+  order: "/order",
   me: "/me",
   saved: "/saved",
 } as const;
@@ -390,9 +401,9 @@ export function visitPath(id: string): string {
   return `${CONSUMER_ROUTES.visit.prefix}${id}`;
 }
 
-/** One balance in the wallet — a full page, not a sheet. See newVisit.walletBalance. */
+/** One balance in the wallet — a full page, not a sheet. See `wallet.balance`. */
 export function walletBalancePath(balanceId: string): string {
-  return `${CONSUMER_ROUTES.newVisit.walletBalance.prefix}${balanceId}`;
+  return `${CONSUMER_ROUTES.wallet.balance.prefix}${balanceId}`;
 }
 
 /** The public gift landing link (MESITA-1677) — what a sender actually shares. */

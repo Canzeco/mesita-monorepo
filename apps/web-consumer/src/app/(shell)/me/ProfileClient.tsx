@@ -30,7 +30,7 @@ import {
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
-  DIAMOND_LIST_PIN_SUCCESS,
+  DIAMOND_PIN_SUCCESS,
   diamondChipLabel,
   diamondSummary,
   instagramSummary,
@@ -43,7 +43,7 @@ import { IdentityBar } from "./IdentityBar";
 //
 //   header         identity + the two facts; the bar IS a door (MESITA-1652)
 //   full           Profile (carries the member number)
-//   2              Instagram · Diamond List
+//   2              Instagram · Diamond
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
@@ -74,7 +74,7 @@ import { IdentityBar } from "./IdentityBar";
 // unrelated destinations now, and a grid of destinations is where those go.
 //
 // NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
-// /new-visit/wallet so Stripe's return still lands on the list.
+// /wallet so Stripe's return still lands on the list.
 
 export function ProfileClient() {
   const supabase = useBrowserSupabase();
@@ -131,7 +131,7 @@ export function ProfileClient() {
     // The PIN grants one thing now, so the toast names it rather than echoing
     // a class label back off the query string (MESITA-2040).
     if (params.get("invite")) {
-      toast.success(DIAMOND_LIST_PIN_SUCCESS);
+      toast.success(DIAMOND_PIN_SUCCESS);
     }
   }, []);
 
@@ -187,7 +187,7 @@ export function ProfileClient() {
             />
             <DestTile
               Icon={Gem}
-              title="Diamond List"
+              title="Diamond"
               summary={loading ? "…" : diamondLabel}
               href={CONSUMER_ROUTES.mePages.diamond}
             />
@@ -198,7 +198,7 @@ export function ProfileClient() {
               Icon={WalletIcon}
               title="Wallet"
               summary="Credits and cards"
-              href={CONSUMER_ROUTES.newVisit.wallet}
+              href={CONSUMER_ROUTES.wallet.root}
             />
             <DestTile
               Icon={PREMIUM_PLAN_ICON}

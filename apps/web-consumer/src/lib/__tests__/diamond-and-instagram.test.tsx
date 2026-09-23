@@ -20,7 +20,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { ClassProvider, useConsumerClass } from "@/lib/class-context";
 import {
-  DIAMOND_LIST_HOW,
+  DIAMOND_HOW,
   INSTAGRAM_REACH_FOLLOWERS,
   diamondChipLabel,
   diamondHeadline,
@@ -223,30 +223,30 @@ describe("no sentence about one fact mentions the other", () => {
         expect(line).not.toMatch(
           /\b(bronze|silver|gold|class|vip|tier|rank|rung|level|climb)\b/i,
         );
-        // "Diamond" is only ever the Diamond List, never a status noun.
-        expect(line).not.toMatch(/Diamond(?! List)/);
+        // One word (MESITA-2046): never the retired "Diamond List".
+        expect(line).not.toMatch(/Diamond List|\bthe list\b/i);
       }
     }
   });
 });
 
-describe("the Diamond List's copy, pinned (web and mobile match this)", () => {
+describe("the Diamond copy, pinned (web and mobile match this)", () => {
   const off: ConsumerFacts = { diamond: false, igConnected: false, igHandle: null, igFollowers: 0, igReach: false, unknown: false };
   const on: ConsumerFacts = { ...off, diamond: true };
 
   it("the Me tile and the header chip", () => {
-    expect(diamondSummary(on)).toBe("You're on it");
+    expect(diamondSummary(on)).toBe("You're in");
     expect(diamondSummary(off)).toBe("Ask to join");
-    expect(diamondChipLabel(on)).toBe("Diamond List");
+    expect(diamondChipLabel(on)).toBe("Diamond");
     expect(diamondChipLabel(off)).toBe("Ask to join");
   });
 
   it("the page headline and the how line", () => {
-    expect(diamondHeadline(on)).toBe("You're on the Diamond List");
-    expect(diamondHeadline(off)).toBe("You're not on the list yet");
-    expect(diamondNote(off)).toBe(DIAMOND_LIST_HOW);
-    expect(DIAMOND_LIST_HOW).toBe(
-      "The Diamond List is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.",
+    expect(diamondHeadline(on)).toBe("You're Diamond");
+    expect(diamondHeadline(off)).toBe("You're not Diamond yet");
+    expect(diamondNote(off)).toBe(DIAMOND_HOW);
+    expect(DIAMOND_HOW).toBe(
+      "Diamond is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.",
     );
   });
 });

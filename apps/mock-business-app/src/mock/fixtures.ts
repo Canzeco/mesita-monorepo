@@ -507,15 +507,15 @@ export const CREDIT_BALANCES: MockCreditBalance[] = build(ALL_IDS, 23, (placeId,
   lastMoveAt: daysAgo(i),
 }));
 
-/** THE DIAMOND LIST IS RARE, not a coin flip (MESITA-2044). It is
- *  invitation-only, so about one guest in seventeen is on it — a column where
- *  half the room is on the list would say the list means nothing. */
-function onDiamondList(r: number): boolean {
+/** DIAMOND IS RARE, not a coin flip (MESITA-2044). It is invitation-only,
+ *  so about one guest in seventeen is Diamond — a column where half the room
+ *  is Diamond would say Diamond means nothing. */
+function isDiamond(r: number): boolean {
   return r > 0.94;
 }
 
-/** Plan is ITS OWN draw. Paying never puts a guest on the Diamond List and
- *  the list never implies a subscription, so neither is read off the other. */
+/** Plan is ITS OWN draw. Paying never makes a guest Diamond and
+ *  Diamond never implies a subscription, so neither is read off the other. */
 function planFor(r: number): MockPlan {
   return r > 0.8 ? "Premium" : "Free";
 }
@@ -535,7 +535,7 @@ function handleFor(name: string): string {
 
 export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) => {
   const guest = GUESTS[i % GUESTS.length];
-  const diamondList = onDiamondList(rnd());
+  const diamond = isDiamond(rnd());
   const name = `${guest.name}${i >= GUESTS.length ? " Jr." : ""}`;
   const visits = 1 + Math.floor(rnd() * 19);
   const spendCents = 22_000 + Math.floor(rnd() * 480_000);
@@ -559,11 +559,11 @@ export const CUSTOMERS: MockCustomer[] = build(ALL_IDS, 16, (placeId, i, rnd) =>
     placeId,
     name,
     age: 19 + Math.floor(rnd() * 49),
-    diamondList,
+    diamond,
     sex: guest.sex,
     plan: planFor(rnd()),
     // A coin the reviewer can watch land both ways. Instagram is its own
-    // fact: a handle puts nobody on the Diamond List.
+    // fact: a handle makes nobody Diamond.
     instagram: rnd() > 0.55 ? handleFor(name) : null,
     visits,
     spendCents,

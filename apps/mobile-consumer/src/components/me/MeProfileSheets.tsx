@@ -97,7 +97,7 @@ export function PersonalDetailsSheet({
   // THE MEMBER NUMBER LIVES HERE (MESITA-2043, Pato: "we don't have
   // passports"). Twin of web's EditProfileSheet: `consumers.code` printed
   // only on the Passport, and it is the one string staff can look a guest up
-  // by without collisions when adding them to the Diamond List. Null is a real
+  // by without collisions when adding them to Diamond. Null is a real
   // state (assigned on first profile read) and reads "Pending". Share, not a
   // clipboard write — mobile has no expo-clipboard, same as the Passport had.
   const code = profile?.code ?? null;
@@ -303,7 +303,7 @@ export function PersonalDetailsSheet({
             {code ?? 'Pending'}
           </Text>
           <Text className="mt-1 text-muted-foreground" style={{ fontSize: 12 }}>
-            Give this number when you ask to join the Diamond List.
+            Give this number when you ask to join Diamond.
           </Text>
         </View>
         {code ? (

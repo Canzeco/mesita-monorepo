@@ -42,6 +42,10 @@ const PROTECTED_PREFIXES = [
   "/me",
   "/new-visit",
   "/visit",
+  // The two tabs MESITA-2050 added. Wallet is personal money; Order holds
+  // nothing yet, but it is a guest's tab and gets the same fast path.
+  "/wallet",
+  "/order",
   "/reservations",
   "/reservation",
 ];

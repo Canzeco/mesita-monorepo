@@ -29,7 +29,7 @@ export default async function MePage({
   }
   if (sp.cards != null) {
     const cards = firstString(sp.cards) ?? "1";
-    redirect(`${CONSUMER_ROUTES.newVisit.wallet}?cards=${encodeURIComponent(cards)}`);
+    redirect(`${CONSUMER_ROUTES.wallet.root}?cards=${encodeURIComponent(cards)}`);
   }
   return <ProfileClient />;
 }

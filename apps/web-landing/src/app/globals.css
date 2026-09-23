@@ -101,8 +101,8 @@
     oklch(0.86 0.14 90),
     oklch(0.72 0.16 60)
   );
-  /* The Diamond List mark — the one identity mark left, and it is binary:
-     on the list or not (MESITA-2040/2043/2044). Copied from web-consumer's
+  /* The Diamond mark — the one identity mark left, and it is binary:
+     Diamond or not (MESITA-2040/2043/2044). Copied from web-consumer's
      --gradient-diamond so the landing's chip wears the same colour the
      app's header does. */
   --gradient-diamond: linear-gradient(

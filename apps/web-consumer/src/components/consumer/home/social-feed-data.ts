@@ -51,7 +51,7 @@ export type SocialPerson = {
   id: string;
   name: string;
   igHandle: string;
-  /** Storage key: `diamond` = on the Diamond List (MESITA-2044). */
+  /** Storage key: `diamond` = Diamond (MESITA-2044). */
   plan: "bronze" | "diamond";
   avatarUrl: string;
   action: SocialActionKind;
@@ -67,7 +67,7 @@ export type SocialPerson = {
 
 // Relevance score — how much this person should surface in the "Relevance"
 // sort. Weighted engagement (rewards + likes count most), with a bump for
-// guests on the Diamond List. Higher = more relevant. Pure function
+// Diamond guests. Higher = more relevant. Pure function
 // of the row so it stays stable.
 //
 // PARKED DATA, kept on Classes v2 anyway: Social is a one-flag un-park, and a

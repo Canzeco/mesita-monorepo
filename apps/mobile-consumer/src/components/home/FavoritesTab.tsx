@@ -1,3 +1,4 @@
+import { type Href, useRouter } from 'expo-router';
 import { ArrowUpDown, Heart } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -10,8 +11,8 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/ui/EmptyState';
-import { requestHomeMode } from '@/components/swipe/home-mode-intent';
 import { COLORS } from '@/constants/brand';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import type { Place } from '@/lib/api/places';
 import { pairs } from '@/lib/grid-pairs';
@@ -42,6 +43,7 @@ const SORT_CONTROL_MIN = 4;
 type Sort = 'recent' | 'open';
 
 export function FavoritesTab() {
+  const router = useRouter();
   const deckQuery = useHomeDeck();
   const deckPlaces = useMemo(() => deckQuery.data ?? [], [deckQuery.data]);
   const { savedIds, hydrated, setSaved } = useSavedPlaces();
@@ -130,7 +132,9 @@ export function FavoritesTab() {
         description="Swipe right on a place and it lands here — with its discount attached."
         action={{
           label: 'Start swiping',
-          onPress: () => requestHomeMode('swipe'),
+          // Visit › Home is a sibling tab screen (MESITA-2050), so this is a
+          // navigate, not the in-screen segment switch it used to request.
+          onPress: () => router.navigate(CONSUMER_ROUTES.discoverTabs.scroll as Href),
         }}
       />
     );
