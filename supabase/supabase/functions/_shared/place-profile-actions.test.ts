@@ -18,11 +18,11 @@ Deno.test("placeHasOrderCatalog: legacy menus and menu_pdf_url", () => {
   assertEquals(placeHasOrderCatalog({}), false);
 });
 
-Deno.test("placeOrderActionEnabled: flag or live menu", () => {
-  assertEquals(placeOrderActionEnabled({ orders_enabled: true }), true);
+Deno.test("placeOrderActionEnabled: fail-closed until order rail (MESITA-1967)", () => {
+  assertEquals(placeOrderActionEnabled({ orders_enabled: true }), false);
   assertEquals(
     placeOrderActionEnabled({ menu_pdf_url: "https://m.pdf", orders_enabled: false }),
-    true,
+    false,
   );
   assertEquals(placeOrderActionEnabled({ orders_enabled: false }), false);
 });

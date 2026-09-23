@@ -151,8 +151,8 @@ export function PlaceActionBar({
             Visit
           </button>
 
-          {/* ORDER — unlocked when Enricher stamped a menu/catalog (Actions).
-              Mesita table ordering is still staged; the slot stays visible. */}
+          {/* ORDER — locked until the order rail ships (MESITA-1155). Menus live
+              on the profile tab; this slot stays visible. */}
           <button
             type="button"
             disabled={!orderEnabled}
