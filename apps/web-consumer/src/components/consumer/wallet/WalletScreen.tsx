@@ -11,14 +11,14 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // balance were all `LocalSheet`s over the wallet until today. Each is a place
 // you can be SENT to — a code in a message, a Back press, a reload, eventually
 // a push — and a sheet has no URL, so none of that worked and none of it could
-// be built. See newVisit.walletBuy in the route contract for the full reversal.
+// be built. See wallet.buy in the route contract for the full reversal.
 //
 // THE BOTTOM NAV STAYS. (shell)/layout.tsx states the law — "the bottom nav is
 // shown on every shell route" — and the one surface that ever hid it (Invite)
 // had that reverted specifically because the chrome appeared to break on entry.
-// A full-screen view here means it owns the BODY, not the frame: the section
-// row above it is what goes (see PaySectionNav), because a guest inside Buy is
-// not choosing between QR and Wallet.
+// A full-screen view here means it owns the BODY, not the frame. Wallet has no
+// rail above it at all since it became a tab (MESITA-2050), so there is no
+// section row left to hide.
 //
 // BACK IS A HISTORY POP with a fallback, the same shape PlaceDetailPageHeader
 // settled on: a guest who arrived from the wallet returns to their scroll
@@ -34,7 +34,7 @@ export function WalletScreen({
   title,
   children,
   footer,
-  fallbackHref = CONSUMER_ROUTES.newVisit.wallet,
+  fallbackHref = CONSUMER_ROUTES.wallet.root,
 }: {
   title: string;
   children: React.ReactNode;

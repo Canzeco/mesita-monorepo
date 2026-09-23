@@ -191,7 +191,7 @@ export function BalanceClient({ placeId }: { placeId: string }) {
           description="Your other balances are still in the wallet."
           action={{
             label: "Back to Wallet",
-            href: CONSUMER_ROUTES.newVisit.wallet,
+            href: CONSUMER_ROUTES.wallet.root,
           }}
         />
       )}

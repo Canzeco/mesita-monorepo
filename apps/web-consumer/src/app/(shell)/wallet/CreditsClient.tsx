@@ -28,7 +28,7 @@ import { trackEvent } from "@/lib/analytics/track";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
-// The Pay tab's second section, at /new-visit/wallet.
+// The Wallet tab, at /wallet (MESITA-2050; Pay's second section before).
 //
 // REAL BALANCES (MESITA-1674). This screen read a browser emulator
 // (src/lib/mock/*, deleted this issue) until now; it reads
@@ -102,8 +102,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // EVERYTHING THIS SCREEN OPENS IS A ROUTE NOW (Pato, 2026-09-08: "not modals
 // but actually views with full-screen with own screen"). Buy, Gift, Redeem and
 // one balance were sheets mounted from this file's own state; they are four
-// pages under /new-visit/wallet/ and this file holds no overlay state at all.
-// The wallet is a LIST plus four doors. See newVisit.walletBuy in the route
+// pages under /wallet/ and this file holds no overlay state at all.
+// The wallet is a LIST plus four doors. See wallet.buy in the route
 // contract for the reversal, and WalletScreen for the frame they share.
 
 /** SECTION ACTIONS ARE LINKS, NOT PILLS (MESITA-1825 D4). MESITA-1708 D4 took
@@ -246,10 +246,10 @@ export function CreditsClient() {
           // does and needs no source balance selected first.
           actions={
             <>
-              <HeadAction href={CONSUMER_ROUTES.newVisit.walletGift}>
+              <HeadAction href={CONSUMER_ROUTES.wallet.gift}>
                 Gift
               </HeadAction>
-              <HeadAction href={CONSUMER_ROUTES.newVisit.walletRedeem}>
+              <HeadAction href={CONSUMER_ROUTES.wallet.redeem}>
                 Redeem
               </HeadAction>
             </>
@@ -298,7 +298,7 @@ export function CreditsClient() {
                 description="Prepay a place and get more than you paid. The place sets the bonus and how long it lasts."
                 action={
                   <Link
-                    href={CONSUMER_ROUTES.newVisit.walletBuy}
+                    href={CONSUMER_ROUTES.wallet.buy}
                     className={BUY_BUTTON_CLASS}
                   >
                     Buy Credits
@@ -314,7 +314,7 @@ export function CreditsClient() {
                 onOpen={openBalanceCard}
               />
               <Link
-                href={CONSUMER_ROUTES.newVisit.walletBuy}
+                href={CONSUMER_ROUTES.wallet.buy}
                 className={`${BUY_BUTTON_CLASS} mt-3.5`}
               >
                 Buy Credits

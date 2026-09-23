@@ -476,7 +476,7 @@ export function GiftClient() {
         <WalletParkedNote>
           Runs in Stripe TEST mode — no real money moves. Codes work with{" "}
           <Link
-            href={CONSUMER_ROUTES.newVisit.walletRedeem}
+            href={CONSUMER_ROUTES.wallet.redeem}
             className="underline"
           >
             Redeem

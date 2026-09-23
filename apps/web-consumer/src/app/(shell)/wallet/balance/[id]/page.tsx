@@ -1,6 +1,6 @@
 import { BalanceClient } from "./BalanceClient";
 
-// /new-visit/wallet/balance/[id] — one place's Credits, opened
+// /wallet/balance/[id] — one place's Credits, opened
 // (MESITA-1674 made `id` a real ledger id rather than an emulator key;
 // MESITA-1892 made that id a PLACE id, the organization having been removed).
 //
@@ -11,7 +11,7 @@ import { BalanceClient } from "./BalanceClient";
 // you can be sent to it, land on it cold, and press Back out of it.
 //
 // `balance/[id]` rather than a bare `[id]` under wallet/ — see
-// newVisit.walletBalance in the route contract.
+// wallet.balance in the route contract.
 //
 // The id is NOT trusted: it is whatever is in the URL, and BalanceClient
 // resolves it against the real list, saying plainly when it resolves to

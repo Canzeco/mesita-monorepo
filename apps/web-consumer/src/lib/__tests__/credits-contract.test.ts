@@ -77,15 +77,15 @@ describe("naming", () => {
     "src/components/consumer/credits/BalanceCard.tsx",
     "src/components/consumer/credits/BalanceList.tsx",
     "src/components/consumer/credits/PickCredits.tsx",
-    "src/app/(shell)/new-visit/wallet/buy/BuyClient.tsx",
-    "src/app/(shell)/new-visit/wallet/gift/GiftClient.tsx",
-    "src/app/(shell)/new-visit/wallet/redeem/RedeemClient.tsx",
-    "src/app/(shell)/new-visit/wallet/balance/[id]/BalanceClient.tsx",
+    "src/app/(shell)/wallet/buy/BuyClient.tsx",
+    "src/app/(shell)/wallet/gift/GiftClient.tsx",
+    "src/app/(shell)/wallet/redeem/RedeemClient.tsx",
+    "src/app/(shell)/wallet/balance/[id]/BalanceClient.tsx",
     "src/lib/credits.ts",
     "src/lib/api/credits.ts",
     "src/lib/use-credit-balances.ts",
   ];
-  const CONTAINER_SRC = ["src/app/(shell)/new-visit/wallet/CreditsClient.tsx"];
+  const CONTAINER_SRC = ["src/app/(shell)/wallet/CreditsClient.tsx"];
 
   // The FRAME may be named after the container, because it IS the container.
   const FRAME = /^(WalletScreen|WalletParkedNote)$/;
@@ -136,7 +136,7 @@ describe("wallet block order", () => {
     "utf8",
   );
   const CLIENT = readFileSync(
-    join(__dirname, "..", "..", "app", "(shell)", "new-visit", "wallet", "CreditsClient.tsx"),
+    join(__dirname, "..", "..", "app", "(shell)", "wallet", "CreditsClient.tsx"),
     "utf8",
   );
 

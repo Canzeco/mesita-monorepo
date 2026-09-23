@@ -120,7 +120,11 @@ const nextConfig: NextConfig = {
       // route entirely: the page would never render. So the entry is deleted,
       // not repointed, and Home must NOT be re-pointed through it either —
       // that would land Catalog's bookmarks on a different mode.
-      { source: "/discover/home", destination: "/discover/feed", permanent: true },
+      //
+      // FEED LEFT VISIT'S RAIL (MESITA-2050), so /discover/feed is a redirect
+      // source for the SECOND time and /discover/home points past it, at the
+      // Home pill, in one hop.
+      { source: "/discover/home", destination: "/discover/scroll", permanent: true },
       // MESITA-1697 — the two renamed segments. Swipe's address was
       // `discoverDefault` for a week (BottomNav's Home href, the post-signin
       // and onboarding targets, place detail's fallback), so its bookmarks are
@@ -128,14 +132,18 @@ const nextConfig: NextConfig = {
       // /explore* and /home* entry above was re-pointed at /discover/scroll in
       // the same change rather than being left to chain through here.
       //
-      // NOTHING MAY BE ADDED FOR /discover/scroll, /discover/feed,
-      // /discover/chat OR /discover/favs. A redirect whose SOURCE is a live
+      // NOTHING MAY BE ADDED FOR /discover/scroll, /discover/chat OR
+      // /discover/favs. A redirect whose SOURCE is a live
       // route shadows it entirely — the page never renders, and typecheck,
       // build and the whole vitest suite stay green. That is exactly how
       // /discover/feed was unreachable before MESITA-1621 deleted its entry.
       // route-structure.test.tsx now asserts this directly.
       { source: "/discover/swipe", destination: "/discover/scroll", permanent: true },
-      { source: "/discover/catalog", destination: "/discover/feed", permanent: true },
+      { source: "/discover/catalog", destination: "/discover/scroll", permanent: true },
+      // Feed's segment (MESITA-1621 -> MESITA-2050). Pato's Visit rail is
+      // Home · Search · Chat · Favs · Pay; Feed is not on it. The page file is
+      // deleted, so this entry no longer shadows anything.
+      { source: "/discover/feed", destination: "/discover/scroll", permanent: true },
       // The Saved tab (reservations, favorites) and the /saved/place dual path.
       // The contract still lists these legacy sources; without entries they 404ed
       // (MESITA-1585). One hop each, straight to the canonical surface.
@@ -144,16 +152,23 @@ const nextConfig: NextConfig = {
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
-      // Wallet's THREE former addresses, each live in production at some point
-      // so all three sets of bookmarks are real: standalone /credits (#1429),
-      // the Activity section /inbox/credits, and the top-level tab /wallet
-      // (#1492, 2026-09-05 -> 09-06). Each points STRAIGHT at /new-visit/wallet
-      // — chaining them would be 3 hops and route-structure T4 caps a chain at
-      // 2. T7 asserts these entries still exist: T4 can only validate a
-      // redirect's DESTINATION, never its absence.
-      { source: "/credits", destination: "/new-visit/wallet", permanent: true },
-      { source: "/inbox/credits", destination: "/new-visit/wallet", permanent: true },
-      { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
+      // WALLET IS A TAB AT /wallet (MESITA-2050) — its second time there.
+      // Every former address points STRAIGHT at it: standalone /credits
+      // (#1429), the Activity section /inbox/credits, and Pay's section at
+      // /new-visit/wallet with its four children. Chaining any of them through
+      // another would cost a second hop against T4's cap. T7 asserts these
+      // entries exist: T4 can only validate a redirect's DESTINATION, never
+      // its absence. There is NO `/wallet` source any more: it is the live
+      // page, and a redirect would shadow it.
+      { source: "/credits", destination: "/wallet", permanent: true },
+      { source: "/inbox/credits", destination: "/wallet", permanent: true },
+      { source: "/new-visit/wallet", destination: "/wallet", permanent: true },
+      // Four explicit children, not one `:path*` — T4 can only prove a
+      // destination resolves when it names a real page.
+      { source: "/new-visit/wallet/buy", destination: "/wallet/buy", permanent: true },
+      { source: "/new-visit/wallet/gift", destination: "/wallet/gift", permanent: true },
+      { source: "/new-visit/wallet/redeem", destination: "/wallet/redeem", permanent: true },
+      { source: "/new-visit/wallet/balance/:id", destination: "/wallet/balance/:id", permanent: true },
       { source: "/profile", destination: "/me/profile", permanent: true },
       // The class ladder's two pages (MESITA-2040). Deepest source FIRST:
       // Next takes the first match, and `/me/class` listed above would not
@@ -173,6 +188,10 @@ const nextConfig: NextConfig = {
       // points at Wallet, because Next takes the first match and Credits never
       // belonged to Activity.
       // Activity anyway (it is an instrument, not an event).
+      // Orders' Activity section (#1430 -> 2026-09-06) has a home again: the
+      // Order tab (MESITA-2050). Above the catch-all for the same reason
+      // /inbox/credits is.
+      { source: "/inbox/orders", destination: "/order", permanent: true },
       { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },
     ];

@@ -111,7 +111,7 @@ export function BuyClient() {
 
   async function submit() {
     if (target === "gift") {
-      router.push(CONSUMER_ROUTES.newVisit.walletGift);
+      router.push(CONSUMER_ROUTES.wallet.gift);
       return;
     }
     if (!place) return;
@@ -128,7 +128,7 @@ export function BuyClient() {
       }
       // replace(), not push(): a finished (or submitted) purchase is not a
       // page the back gesture should return into.
-      router.replace(CONSUMER_ROUTES.newVisit.wallet);
+      router.replace(CONSUMER_ROUTES.wallet.root);
     } catch (err) {
       setError(err instanceof EFError ? err.message : "Couldn't complete that purchase.");
     } finally {

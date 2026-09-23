@@ -9,7 +9,7 @@ import { useEffect } from "react";
  * `MobileFrame` is `h-dvh` and `max-w-md`, so every screen is already sized to
  * the viewport. A zoom level other than 1 cannot reveal anything; it can only
  * crop. The failure mode is ugly and easy to hit — the whole app scaled up and
- * panned, so `DiscoverModeNav`'s tab row bled off both edges and the fixed
+ * panned, so `ModeRail`'s tab row bled off both edges and the fixed
  * `RouteBadge` drifted over the chrome, because a zoomed visual viewport is a
  * window onto a layout viewport that is now wider than the screen.
  *

@@ -1,8 +1,8 @@
 import { BuyClient } from "./BuyClient";
 
-// /new-visit/wallet/buy — Buy Credits, a full page (Pato, 2026-09-08).
+// /wallet/buy — Buy Credits, a full page (Pato, 2026-09-08).
 //
-// It was a `LocalSheet` on the wallet until today. See newVisit.walletBuy in
+// It was a `LocalSheet` on the wallet until today. See wallet.buy in
 // the route contract for why every one of Wallet's four children is a route
 // now, and WalletScreen for what "full-screen" means inside a shell that keeps
 // its tab bar.

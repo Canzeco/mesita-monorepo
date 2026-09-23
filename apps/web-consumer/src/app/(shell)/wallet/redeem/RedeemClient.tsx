@@ -98,7 +98,7 @@ export function RedeemClient({ initialCode }: { initialCode: string }) {
         title="Claimed"
         footer={
           <Button
-            onClick={() => router.replace(CONSUMER_ROUTES.newVisit.wallet)}
+            onClick={() => router.replace(CONSUMER_ROUTES.wallet.root)}
             className="w-full"
           >
             See it in your wallet

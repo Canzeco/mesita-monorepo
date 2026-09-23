@@ -1,7 +1,7 @@
 import { RedeemClient } from "./RedeemClient";
 import { PIN_LENGTH } from "@/components/consumer/PinField";
 
-// /new-visit/wallet/redeem — claim gifted Credits with a ten-digit code.
+// /wallet/redeem — claim gifted Credits with a ten-digit code.
 //
 // REDEEM IS A GLOBAL ACTION BY NECESSITY, which is the argument for both this
 // route and its button. It is the door for someone who was GIVEN Credits and
