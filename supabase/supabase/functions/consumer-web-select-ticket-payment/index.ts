@@ -41,6 +41,10 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { TICKET_STATE, CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
+import {
+  mesitaPayTenderRows,
+  netAmountDueCents,
+} from "../_shared/visit-tenders.ts";
 import { parseSelectTicketPaymentMethod } from "../_shared/select-ticket-payment-method.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
 import { resolveChargeablePlaceAccount } from "../_shared/mesita-pay-readiness.ts";
@@ -113,7 +117,7 @@ Deno.serve(async (req) => {
       const start = await writeTicket(admin, {
         mode: "update",
         id: ticket.id,
-        patch: { state: TICKET_STATE.paying, paid_method: "credits" },
+        patch: { state: TICKET_STATE.paying },
         guard: { eq: { state: TICKET_STATE.approved } },
         select: "id, state",
       });
@@ -132,7 +136,7 @@ Deno.serve(async (req) => {
       ticket.id,
       ticket.consumer_id as string,
       ticket.place_id as string,
-      { paidMethod: "credits" },
+      { tenders: [] },
     );
     if (!closed.ok) {
       return json(
@@ -338,7 +342,9 @@ Deno.serve(async (req) => {
       ticket.id,
       ticket.consumer_id as string,
       ticket.place_id as string,
-      { paidMethod: "mesita_pay" },
+      {
+        tenders: mesitaPayTenderRows(amountCents, outcome.paymentIntentId),
+      },
     );
     if (!closed.ok) {
       // The charge succeeded — never leave the ticket stuck in `paying`

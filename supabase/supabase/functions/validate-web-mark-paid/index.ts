@@ -22,6 +22,10 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
 import {
+  impliedAtPlaceTenderRows,
+  netAmountDueCents,
+} from "../_shared/visit-tenders.ts";
+import {
   checkNotFound,
   hashRequestIp,
   isRateLimited,
@@ -100,11 +104,27 @@ Deno.serve(async (req) => {
     );
   }
 
+  const amounts = await admin
+    .from("visit_tickets")
+    .select("approved_amount_due_cents, credits_applied_cents")
+    .eq("id", ticket.id)
+    .maybeSingle();
+  if (amounts.error || !amounts.data) {
+    return json(
+      { ok: false, error: amounts.error?.message ?? "ticket amounts missing" },
+      500,
+    );
+  }
+  const net = netAmountDueCents(
+    amounts.data.approved_amount_due_cents as number | null,
+    amounts.data.credits_applied_cents as number | null,
+  );
   const closed = await closeTicketAndEnqueueReview(
     admin,
     ticket.id,
     ticket.consumer_id,
     ticket.project_id,
+    { tenders: impliedAtPlaceTenderRows(net) },
   );
   if (!closed.ok) {
     return json({ ok: false, error: closed.error }, 500);
