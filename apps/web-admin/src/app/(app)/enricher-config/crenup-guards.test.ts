@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   clampFunnel,
-  crenupSaveBlocked,
   type CrenupSettings,
 } from "./crenup-guards";
 
@@ -27,16 +26,6 @@ const seed: CrenupSettings = {
   discoverUbereatsN: 0,
   requestThreshold: 5,
 };
-
-describe("crenupSaveBlocked", () => {
-  it("lets Save through when the GET succeeded", () => {
-    expect(crenupSaveBlocked(null)).toBeNull();
-  });
-
-  it("blocks Save when the Enricher GET fails — client defaults must not POST", () => {
-    expect(crenupSaveBlocked("timeout")).toBe("timeout");
-  });
-});
 
 describe("clampFunnel", () => {
   it("leaves a legal chain alone", () => {

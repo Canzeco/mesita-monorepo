@@ -3,82 +3,14 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Library, Loader2, Search } from "lucide-react";
 
-import {
-  listAllPlaces,
-  searchPlacesByGoogleIds,
-  type PlaceHit,
-} from "./actions";
-import {
-  GENERAL_STATE_FACTS,
-  CRENUP_STEPS,
-  OPERATOR_PROMOTING_LABEL,
-  operatorPromotingLevel,
-  STATE_FACT_FALSE_TONE,
-} from "@/lib/state-vocabulary";
+import { listAllPlaces, searchPlacesByGoogleIds } from "./actions";
 import { MAX_GOOGLE_PLACE_IDS, parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
-import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
-
-// One table row. A paste run keys by the pasted Google Place ID and may have
-// no hit ("Not on Mesita"); an All places run keys by the Mesita id and always
-// has one — a place with no google_place_id still belongs in the catalog.
-type Row = { key: string; googleId: string | null; hit: PlaceHit | null };
+import type { Row } from "./mesita-search-facts";
+import { MesitaSearchResults } from "./MesitaSearchResults";
 
 /** Which button is mid-flight — both share the table below. */
 type Run = "ids" | "all";
-
-// A fact this payload cannot answer is "unknown", NEVER false.
-//
-// The trailing branch used to `return false`, which meant a fact added to
-// GENERAL_STATE_FACTS compiled, rendered "no" on every row, and said so with
-// total confidence — a silent wrong answer with nothing to catch it. Owned
-// (MESITA-1608) is exactly that case here: admin-web-search-places reads the
-// `profiles` view, which carries no claim column, so this table genuinely
-// does not know. It says so.
-function factOn(
-  hit: PlaceHit,
-  key: (typeof GENERAL_STATE_FACTS)[number]["key"],
-): boolean | "unknown" {
-  if (key === "seeded") return hit.seeded;
-  if (key === "active") {
-    // Google's silence is a third state. Flattening null to false asserts the
-    // business is closed, which is a claim we never read (MESITA-1239).
-    if (hit.business_state == null || hit.business_state === "") return "unknown";
-    return hit.business_state === "OPERATIONAL";
-  }
-  if (key === "listed") return hit.listed;
-  if (key === "requested") return hit.request_count > 0;
-  if (key === "enriched") {
-    return hit.enrich_crenup_total > 0 && hit.enrich_crenup === hit.enrich_crenup_total;
-  }
-  if (key === "enriching") return hit.enriching;
-  if (key === "verified") return hit.verified;
-  if (key === "partner") return hit.partner;
-  if (key === "promoting") return hit.promoting;
-  if (key === "mesita_pay") return hit.mesita_pay;
-  if (key === "credits") return hit.credits;
-  return "unknown";
-}
-
-// CRENUP is a high-water: it stops counting at the first gap by design (its
-// own comment in _shared/crenup-ladder.ts says so), so a place where `links`
-// failed but `social`/`menu` later completed reads high-water 3 even though
-// 5 and 7 landed. `enrich_functions` (MESITA-1611) is the honest per-function
-// map — read it when the payload carries it, and only fall back to the
-// high-water comparison for a payload that predates the field. Seed is never
-// in that map (it is not a stamped Enrich function — the row existing IS the
-// seed), so it always reads off `seeded` directly.
-export function crenupCalled(
-  hit: PlaceHit,
-  fn: (typeof CRENUP_STEPS)[number],
-): boolean {
-  if (fn.key === "seed") return hit.seeded;
-  if (hit.enrich_functions) {
-    const state = hit.enrich_functions[fn.key]?.state;
-    return state === "completed" || state === "failed";
-  }
-  return hit.enrich_crenup >= fn.n;
-}
 
 export function MesitaSearchTab({
   text,
@@ -93,6 +25,11 @@ export function MesitaSearchTab({
   const [rows, setRows] = useState<Row[] | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const busy = running !== null;
+  const fail = (message: string) => {
+    setError(message);
+    setRows(null);
+    setSummary(null);
+  };
 
   async function runLookup() {
     if (busy || placeIds.length === 0) return;
@@ -101,9 +38,7 @@ export function MesitaSearchTab({
     try {
       const r = await searchPlacesByGoogleIds(placeIds);
       if (!r.ok) {
-        setError(r.error);
-        setRows(null);
-        setSummary(null);
+        fail(r.error);
         return;
       }
       const byGid = new Map(
@@ -120,9 +55,7 @@ export function MesitaSearchTab({
       const found = next.filter((row) => row.hit !== null).length;
       setSummary(`${found} of ${next.length} on Mesita`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setRows(null);
-      setSummary(null);
+      fail(err instanceof Error ? err.message : String(err));
     } finally {
       setRunning(null);
     }
@@ -140,9 +73,7 @@ export function MesitaSearchTab({
     try {
       const r = await listAllPlaces();
       if (!r.ok) {
-        setError(r.error);
-        setRows(null);
-        setSummary(null);
+        fail(r.error);
         return;
       }
       const { places, total } = r.data;
@@ -168,9 +99,7 @@ export function MesitaSearchTab({
           (missing > 0 ? `, ${missing} without a Google ID` : ""),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setRows(null);
-      setSummary(null);
+      fail(err instanceof Error ? err.message : String(err));
     } finally {
       setRunning(null);
     }
@@ -231,184 +160,7 @@ export function MesitaSearchTab({
         <p className="text-muted-foreground mt-6 text-sm">No places to show.</p>
       ) : null}
 
-      {rows && rows.length > 0 ? (
-        // Bleeds through the card's padding on a phone so the scrollport is
-        // the full screen rather than the ~295px left inside it.
-        <div className="border-border bg-card -mx-5 mt-6 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-sm">
-              <thead>
-                <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
-                  <th className={`px-4 py-3 font-semibold ${STICKY_COL_HEAD}`}>
-                    Place
-                  </th>
-                  {GENERAL_STATE_FACTS.map((f) => (
-                    <th key={f.key} className="px-3 py-3 text-center font-semibold">
-                      {f.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  // Bind the hit to a const first: narrowing `row.hit` would
-                  // not survive into the per-fact closures below.
-                  const hit = row.hit;
-                  return (
-                    <tr
-                      key={row.key}
-                      className="[&>td]:border-border/60 [&>td]:border-t"
-                    >
-                      <td
-                        className={`max-w-[60vw] px-4 py-3 sm:max-w-[280px] ${STICKY_COL_CELL}`}
-                      >
-                        {hit ? (
-                          <p className="truncate font-medium">
-                            {hit.google_name || hit.name}
-                          </p>
-                        ) : (
-                          <>
-                            <p className="text-muted-foreground font-mono text-xs">
-                              {row.googleId}
-                            </p>
-                            <p className="text-muted-foreground type-label">
-                              Not on Mesita
-                            </p>
-                          </>
-                        )}
-                      </td>
-                      {hit
-                        ? GENERAL_STATE_FACTS.map((f) => (
-                            <td key={f.key} className="px-3 py-3 text-center">
-                              {f.key === "promoting" ? (
-                                <span className="tabular-nums">
-                                  {operatorPromotingLevel(hit.promoting_level)}{" "}
-                                  <span className="text-muted-foreground type-label">
-                                    {
-                                      OPERATOR_PROMOTING_LABEL[
-                                        operatorPromotingLevel(hit.promoting_level)
-                                      ]
-                                    }
-                                  </span>
-                                </span>
-                              ) : f.key === "requested" ? (
-                                <span
-                                  className={
-                                    "type-label font-semibold tabular-nums " +
-                                    (hit.request_count > 0
-                                      ? "text-foreground"
-                                      : "text-muted-foreground")
-                                  }
-                                >
-                                  {hit.request_count}
-                                </span>
-                              ) : (
-                                <StatePill
-                                  on={factOn(hit, f.key)}
-                                  falseTone={STATE_FACT_FALSE_TONE[f.key]}
-                                />
-                              )}
-                            </td>
-                          ))
-                        : GENERAL_STATE_FACTS.map((f) => (
-                            <td
-                              key={f.key}
-                              className="text-muted-foreground px-3 py-3 text-center"
-                            >
-                              —
-                            </td>
-                          ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {rows.some((r) => r.hit && r.hit.enrich_crenup_labels.length > 0) ? (
-            <ul className="border-border divide-border divide-y border-t">
-              {rows.map((row) => {
-                const hit = row.hit;
-                if (!hit || hit.enrich_crenup_labels.length === 0) return null;
-                return (
-                  <li key={`${row.key}-Crenup`} className="px-4 py-3">
-                    <p className="text-muted-foreground type-label mb-2">
-                      Crenup · {hit.google_name || hit.name}
-                    </p>
-                    {hit.enrich_crenup_blocked ? (
-                      <p className="text-muted-foreground type-label mb-2">
-                        Stopped at{" "}
-                        {hit.enrich_crenup_labels[hit.enrich_crenup_blocked.index] ??
-                          hit.enrich_crenup_blocked.key}{" "}
-                        —{" "}
-                        {hit.enrich_crenup_blocked.state === "failed"
-                          ? "the function ran and failed"
-                          : "no event yet"}
-                        .
-                      </p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-1.5">
-                      {CRENUP_STEPS.map((fn) => {
-                        const called = crenupCalled(hit, fn);
-                        return (
-                          <span
-                            key={fn.key}
-                            className={
-                              "rounded-full px-2 py-0.5 type-label font-medium " +
-                              (called
-                                ? "bg-green-500/10 text-green-700"
-                                : "bg-muted text-muted-foreground")
-                            }
-                          >
-                            {fn.n}. {fn.label}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
+      {rows && rows.length > 0 ? <MesitaSearchResults rows={rows} /> : null}
     </div>
-  );
-}
-
-// falseTone comes from the fact vocabulary (STATE_FACT_FALSE_TONE): rose for
-// a pending debt, plain grey for a fact that is merely not true — the same
-// taxonomy the catalog's BoolCell uses, so the two tables can't disagree.
-function StatePill({
-  on,
-  falseTone = "pending",
-}: {
-  on: boolean | "unknown";
-  falseTone?: "pending" | "neutral";
-}) {
-  // "?" is its own rendering, not a shade of no: the row is saying it does not
-  // know, and a grey "no" would read as an answer.
-  if (on === "unknown") {
-    return (
-      <span
-        title="This payload does not carry that fact"
-        className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold"
-      >
-        ?
-      </span>
-    );
-  }
-  return (
-    <span
-      className={
-        "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
-        (on
-          ? "bg-green-500/10 text-green-700"
-          : falseTone === "neutral"
-            ? "text-muted-foreground bg-muted"
-            : "bg-rose-500/10 text-rose-700")
-      }
-    >
-      {on ? "yes" : "no"}
-    </span>
   );
 }

@@ -1,14 +1,15 @@
 "use client";
 
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
+import { SYNTHESIS_QUALITIES, type SynthesisQuality } from "@/lib/synthesis-quality";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
 // Light-themed; semantic tokens only. Canonical for new config pages
 // (see the web-admin design map (Notion Docs › Design)). Config pages
 // import from here.
 
-/** Matches enricher `SynthesisQuality` — kept local so the kit does not import app routes. */
-export type SynthesisQuality = "economy" | "standard" | "high";
+/** The bordered well every labelled config field sits in. */
+export const FIELD_WELL = "border-border bg-background flex flex-col gap-2 rounded-xl border p-4";
 
 // Per-knob enforcement state (MESITA-738). The console is the operator's model
 // of the product, so a control that persists but changes nothing has to SAY so
@@ -157,7 +158,7 @@ export function TextAreaField({
   maxLength?: number;
 }) {
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       <span className="text-sm font-medium">{label}</span>
       <textarea
         value={value}
@@ -181,7 +182,7 @@ export function NumberField({
   onChange,
   disabled,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   label: string;
   value: number;
   min: number;
@@ -191,11 +192,15 @@ export function NumberField({
   disabled: boolean;
 }) {
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-      <span className="flex items-start gap-2 text-sm font-medium leading-snug">
-        {icon}
-        {label}
-      </span>
+    <label className={FIELD_WELL}>
+      {icon ? (
+        <span className="flex items-start gap-2 text-sm font-medium leading-snug">
+          {icon}
+          {label}
+        </span>
+      ) : (
+        <span className="text-sm font-medium leading-snug">{label}</span>
+      )}
       <input
         type="number"
         inputMode={decimals ? "decimal" : "numeric"}
@@ -302,6 +307,36 @@ export function QueryConcatCaps({
   );
 }
 
+const PILL_ON =
+  "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50";
+const PILL_OFF =
+  "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50";
+
+/** One stop in a row of mutually exclusive choices; `aria-pressed` marks the pick. */
+export function ChoicePill({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-pressed={active}
+      className={active ? PILL_ON : PILL_OFF}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** Same box chrome as NumberField. The control is a categorical picker. */
 export function ChoiceField({
   icon,
@@ -317,12 +352,7 @@ export function ChoiceField({
   className?: string;
 }) {
   return (
-    <div
-      className={
-        "border-border bg-background flex flex-col gap-2 rounded-xl border p-4" +
-        (className ? ` ${className}` : "")
-      }
-    >
+    <div className={FIELD_WELL + (className ? ` ${className}` : "")}>
       <span className="flex items-start gap-2 text-sm font-medium leading-snug">
         {icon}
         {label}
@@ -380,7 +410,7 @@ export function TextField({
   );
   if (!label) return field;
   return (
-    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+    <label className={FIELD_WELL}>
       <span className="text-sm font-medium">{label}</span>
       {field}
     </label>
@@ -510,7 +540,7 @@ export function QualityPicker({
 }) {
   return (
     <div className="flex w-full gap-1">
-      {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
+      {SYNTHESIS_QUALITIES.map((q) => (
         <button
           key={q}
           type="button"

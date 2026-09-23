@@ -1,5 +1,6 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ─── Reset database ─────────────────────────────────────────────────────
@@ -27,17 +28,14 @@ type ResetResponse = {
   };
 };
 
-type ResetResult =
-  | {
-    ok: true;
-    truncatedTables: number | null;
-    deletedAuthUsers: number | null;
-    purgedStorageObjects: number;
-    remainingStorageObjects: number;
-    storageDone: boolean;
-    storagePurgeError: string | null;
-  }
-  | { ok: false; error: string };
+type ResetResult = ActionResult<{
+  truncatedTables: number | null;
+  deletedAuthUsers: number | null;
+  purgedStorageObjects: number;
+  remainingStorageObjects: number;
+  storageDone: boolean;
+  storagePurgeError: string | null;
+}>;
 
 // The EF re-checks super_admins and requires confirm === "RESET", so these
 // actions are only thin pass-throughs.

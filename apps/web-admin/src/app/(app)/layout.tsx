@@ -37,72 +37,36 @@ export default async function AppLayout({
 
   if (!whoami.ok) {
     return (
-      <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
-        <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
-          <span className="bg-muted mx-auto flex h-10 w-10 items-center justify-center rounded-full">
-            <Shield className="text-muted-foreground h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
-              Could not verify access
-            </h1>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              Signed in as{" "}
-              <span className="text-foreground font-semibold">
-                {user.email ?? "(no email)"}
-              </span>
-              , but the admin identity check failed: {whoami.error}
-            </p>
-          </div>
-          <form action={authSignOut}>
-            <button
-              type="submit"
-              className="bg-foreground text-background mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      </div>
+      <AccessDenied title="Could not verify access">
+        Signed in as{" "}
+        <span className="text-foreground font-semibold">
+          {user.email ?? "(no email)"}
+        </span>
+        , but the admin identity check failed: {whoami.error}
+      </AccessDenied>
     );
   }
 
   if (!whoami.data.isSuperAdmin) {
     return (
-      <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
-        <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
-          <span className="bg-muted mx-auto flex h-10 w-10 items-center justify-center rounded-full">
-            <Shield className="text-muted-foreground h-5 w-5" />
-          </span>
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
-              Not authorised
-            </h1>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              You&apos;re signed in as{" "}
-              <span className="text-foreground font-semibold">
-                {user.email ?? "(no email)"}
-              </span>
-              , but that account isn&apos;t on the super-admin list. Ask an
-              existing admin to add you.
-            </p>
-          </div>
-          <form action={authSignOut}>
-            <button
-              type="submit"
-              className="bg-foreground text-background mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
-            >
-              Sign out
-            </button>
-          </form>
+      <AccessDenied
+        title="Not authorised"
+        footer={
           <p className="text-muted-foreground type-label">
             Trying to sign in as someone else?{" "}
             <Link href="/" className="font-semibold underline">
               Back to sign-in
             </Link>
           </p>
-        </div>
-      </div>
+        }
+      >
+        You&apos;re signed in as{" "}
+        <span className="text-foreground font-semibold">
+          {user.email ?? "(no email)"}
+        </span>
+        , but that account isn&apos;t on the super-admin list. Ask an existing
+        admin to add you.
+      </AccessDenied>
     );
   }
 
@@ -111,4 +75,41 @@ export default async function AppLayout({
     cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
 
   return <AppShell defaultCollapsed={sidebarCollapsed}>{children}</AppShell>;
+}
+
+function AccessDenied({
+  title,
+  children,
+  footer,
+}: {
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-hero flex min-h-dvh items-center justify-center px-4">
+      <div className="border-border bg-card shadow-elev flex w-full max-w-md flex-col gap-4 rounded-2xl border p-6 text-center">
+        <span className="bg-muted mx-auto flex h-10 w-10 items-center justify-center rounded-full">
+          <Shield className="text-muted-foreground h-5 w-5" />
+        </span>
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {title}
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            {children}
+          </p>
+        </div>
+        <form action={authSignOut}>
+          <button
+            type="submit"
+            className="bg-foreground text-background mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90"
+          >
+            Sign out
+          </button>
+        </form>
+        {footer}
+      </div>
+    </div>
+  );
 }

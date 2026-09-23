@@ -87,7 +87,6 @@
       transparent 60%
     ),
     linear-gradient(180deg, oklch(0.99 0.012 10), oklch(0.96 0.02 5));
-  --shadow-glow: 0 30px 80px -20px oklch(0.65 0.24 5 / 0.4);
   --shadow-elev: 0 25px 60px -15px oklch(0.18 0.06 15 / 0.18);
 }
 
@@ -186,12 +185,9 @@
   text-transform: uppercase;
 }
 
-/* Moved out of @layer utilities for the reason documented above: as plain
-   classes these silently no-opped under hover:/focus:. shadow-elev is now
+/* Moved out of @layer utilities for the reason documented above: as a plain
+   class this silently no-opped under hover:/focus:. shadow-elev is now
    reachable as hover:shadow-elev (MESITA-1217). */
-@utility shadow-glow {
-  box-shadow: var(--shadow-glow);
-}
 @utility shadow-elev {
   box-shadow: var(--shadow-elev);
 }
@@ -206,15 +202,6 @@
 /* Brand-gradient CTA shadow (save pills, primary actions). */
 @utility shadow-save {
   box-shadow: 0 8px 20px -8px oklch(0.65 0.24 5 / 0.55);
-}
-
-/* Gradient-filled text — self-contained so the background shorthand can't
-   reset background-clip out from under a separate utility. */
-@utility text-pink-gradient {
-  background: var(--gradient-pink);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /* Hide the scrollbar on a strip that scrolls sideways on purpose (tab rails,

@@ -1,7 +1,7 @@
 import { efInvoke } from "@/lib/supabase-ef";
 
-// Shared create-place helper. Both the single-place console and the bulk
-// creator run each Google Place ID through the SAME create pipeline:
+// Create-place helper; the Crenup tab on this page is its only caller. It
+// runs each Google Place ID through the create pipeline:
 // admin-web-create-place fetches Google data and persists the ugly
 // profile (ready, not Enriched). Enricher is not queued — Enrich /
 // Create+Enrich is a second call. The admin operator's session authorises
@@ -41,8 +41,6 @@ type CreatePlaceResponse = {
 };
 
 type CreatePlaceErrorBody = {
-  code?: string;
-  error?: string;
   existing?: { id?: string; slug?: string | null; name?: string };
 };
 
@@ -64,11 +62,7 @@ export async function createPlaceFromGooglePlaceId(
   if (!r.ok) {
     // Duplicate error responses carry an `existing` object.
     const body = (r.data ?? {}) as CreatePlaceErrorBody;
-    if (
-      r.status === 409 &&
-      (DUPLICATE_PLACE_CODES.has(r.code ?? "") ||
-        DUPLICATE_PLACE_CODES.has(body.code ?? ""))
-    ) {
+    if (r.status === 409 && DUPLICATE_PLACE_CODES.has(r.code ?? "")) {
       const existingId = body.existing?.id;
       if (!existingId) {
         return { ok: false, error: "This place is already on Mesita." };

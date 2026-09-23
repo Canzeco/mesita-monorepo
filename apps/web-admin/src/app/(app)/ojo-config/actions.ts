@@ -6,20 +6,12 @@
 // the thresholds are a related set, so a per-key merge could persist an
 // inverted band. No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
+import { num, bool } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { OJO_FALLBACK, type OjoConfig } from "./defaults";
 
 type ConfigPayload = { config: unknown; updatedAt: string | null };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 // Mirrors supabase/functions/_shared/ojo-config.ts — the EF is authoritative;
 // this keeps the form honest if the blob is older than the current shape.
@@ -53,9 +45,7 @@ function normalize(raw: unknown): OjoConfig {
   };
 }
 
-type GetResult =
-  | { ok: true; config: OjoConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{ config: OjoConfig; updatedAt: string | null }>;
 
 export async function getOjoConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -69,9 +59,7 @@ export async function getOjoConfig(): Promise<GetResult> {
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: OjoConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{ config: OjoConfig; updatedAt: string | null }>;
 
 export async function updateOjoConfig(config: OjoConfig): Promise<UpdateResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-update-config", {

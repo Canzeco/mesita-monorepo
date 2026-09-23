@@ -19,11 +19,3 @@ export const METHOD_LABEL = {
   // the queue can tell a mocked verification from a proven one.
   mock_code: "Mock code",
 } as const;
-
-export function methodLabel(method: string | null | undefined): string {
-  if (!method) return "";
-  const known = METHOD_LABEL[method as keyof typeof METHOD_LABEL];
-  if (known) return known;
-  const clean = method.replace(/_/g, " ").trim();
-  return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "";
-}

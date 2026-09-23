@@ -5,7 +5,7 @@
 // list. Each family sends its whole Google battery; the operator never toggles
 // a Google slug, and there is no ordered "first N" cap on top (MESITA-1695).
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import { Plug, SlidersHorizontal } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -15,6 +15,7 @@ import {
   SectionCard,
   Switch,
 } from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   SUPER_FIELDS,
@@ -26,39 +27,9 @@ export function FamiliesClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
-}: {
-  initialConfig: DiscoveryConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
-}) {
-  const [cfg, setCfg] = useState<DiscoveryConfig>(initialConfig);
-  const [saved, setSaved] = useState<DiscoveryConfig>(initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getDiscoveryConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
+}: ConfigSeed<DiscoveryConfig>) {
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useConfigEditor({ initialConfig, initialUpdatedAt, loadError, load: getDiscoveryConfig });
 
   const supers = cfg.map.supers;
   const dirty = useMemo(
@@ -82,21 +53,8 @@ export function FamiliesClient({
     });
   };
 
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg, ["nameFast", "nameDeep", "mapSupers"]);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
-    });
-  };
+  const save = () =>
+    saveWith((c) => updateDiscoveryConfig(c, ["nameFast", "nameDeep", "mapSupers"]));
 
   return (
     <div id="s-google-types" className="scroll-mt-16 flex flex-col gap-4">

@@ -12,17 +12,15 @@
 // The Playground actions that used to live here are gone with the Playground
 // itself (2026-07-27) — testing happens from the consumer app with test mode ON.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceConfig, type NeedsAttentionRow, type ReservationsConfig } from "./catalog";
 
-type GetReservationsConfigResult =
-  | {
-    ok: true;
-    config: ReservationsConfig;
-    updatedAt: string | null;
-    needsAttention: NeedsAttentionRow[];
-  }
-  | { ok: false; error: string };
+type GetReservationsConfigResult = ActionResult<{
+  config: ReservationsConfig;
+  updatedAt: string | null;
+  needsAttention: NeedsAttentionRow[];
+}>;
 
 export async function getReservationsConfig(): Promise<GetReservationsConfigResult> {
   const r = await efInvoke<{
@@ -42,9 +40,10 @@ export async function getReservationsConfig(): Promise<GetReservationsConfigResu
   };
 }
 
-type UpdateReservationsConfigResult =
-  | { ok: true; config: ReservationsConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateReservationsConfigResult = ActionResult<{
+  config: ReservationsConfig;
+  updatedAt: string | null;
+}>;
 
 export async function updateReservationsConfig(
   config: ReservationsConfig,

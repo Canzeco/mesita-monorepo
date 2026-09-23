@@ -4,12 +4,11 @@
 // wrappers over the admin-web-* Edge Functions via the Result-style
 // efInvoke (never throws). No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import type { CreditLiability } from "./types";
 
-type GetResult =
-  | { ok: true; liability: CreditLiability }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{ liability: CreditLiability }>;
 
 export async function getCreditLiability(): Promise<GetResult> {
   const r = await efInvoke<{ liability: CreditLiability }>(
@@ -29,9 +28,7 @@ export type ReverseCreditLotInput = {
   amountCents?: number;
 };
 
-type ReverseResult =
-  | { ok: true; data: Record<string, unknown> }
-  | { ok: false; error: string };
+type ReverseResult = ActionResult<{ data: Record<string, unknown> }>;
 
 export async function reverseCreditLot(
   input: ReverseCreditLotInput,

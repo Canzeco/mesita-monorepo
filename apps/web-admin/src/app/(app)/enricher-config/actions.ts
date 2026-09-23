@@ -1,10 +1,10 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
 
 // ─── Settings read ─────────────────────────────────────────────────────────
-
-export type SynthesisQuality = "economy" | "standard" | "high";
 
 // Perplexity Agent preset — the "search model" for the Enricher's function 3
 // (the Scout, the SERP Summary) + function 4 (the Resolver, channel link discovery,
@@ -16,46 +16,11 @@ export type PerplexityPreset =
   | "deep-research"
   | "advanced-deep-research";
 
-
-// ─── Enrichment trigger matrix ─────────────────────────────────────────────
-// The vocabulary (which triggers and subprocesses exist, which cells are
-// locked) is CODE-DEFINED in supabase `_shared/enrich-triggers.ts` and arrives
-// as `enrichmentTriggersMeta`. The console renders whatever the backend
-// declares — it deliberately keeps no copy of the list, because a second copy
-// drifts the first time a subprocess is added.
-
-export type TriggerCostTier = "free" | "low" | "high";
-
-export type EnrichmentTriggerRow = {
-  enabled: boolean;
-  cooldownHours: number;
-  subprocesses: Record<string, boolean>;
-};
-
-export type EnrichmentTriggersConfig = Record<string, EnrichmentTriggerRow>;
-
-export type EnrichmentTriggersMeta = {
-  triggers: { key: string; label: string; blurb: string; staged: boolean }[];
-  subprocesses: {
-    key: string;
-    label: string;
-    /**
-     * Which of the TEN enrich functions this purchase unit buys — a pointer into
-     * Docs › Crenup §A's numbering, never a numbering of its own. It held
-     * stage S-numbers until MESITA-1243, which read as a rival ladder.
-     */
-    functions: string;
-    cost: TriggerCostTier;
-    blurb: string;
-  }[];
-  locks: Record<string, Record<string, { value: boolean; reason: string }>>;
-};
-
 // ─── Crenup prompts (read-only) ────────────────────────────────────────────
-// Same contract as the trigger matrix above: the prompt TEXT is CODE-DEFINED in
-// supabase `_shared/crenup-prompts.ts`, which imports the very constants the
-// pipeline sends, and arrives as `crenupPromptsMeta`. The console keeps no copy
-// — a second copy drifts the first time someone edits the real prompt.
+// The prompt TEXT is CODE-DEFINED in supabase `_shared/crenup-prompts.ts`,
+// which imports the very constants the pipeline sends, and arrives as
+// `crenupPromptsMeta`. The console keeps no copy — a second copy drifts the
+// first time someone edits the real prompt.
 //
 // Read-only on purpose: these are not `app_config` knobs. Editing one live
 // needs validation, versioning and an empty-prompt guard.
@@ -73,22 +38,6 @@ export type CrenupPrompt = {
   instructions: string;
   input: string;
 };
-
-type UpdateTriggersResult =
-  | { ok: true; data: EnrichmentTriggersConfig }
-  | { ok: false; error: string };
-
-/** WHOLE-blob save: the page always sends the full grid, never a patch. */
-export async function updateEnrichmentTriggers(
-  enrichmentTriggers: EnrichmentTriggersConfig,
-): Promise<UpdateTriggersResult> {
-  const r = await efInvoke<{ enrichmentTriggers: EnrichmentTriggersConfig }>(
-    "admin-web-update-config",
-    { section: "enricher", enrichmentTriggers },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.enrichmentTriggers };
-}
 
 type SettingsResponse = {
   autoVerifyAiCall: boolean;
@@ -114,15 +63,11 @@ type SettingsResponse = {
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
   atlasRequestThreshold: number;
-  enrichmentTriggers: EnrichmentTriggersConfig;
-  enrichmentTriggersMeta: EnrichmentTriggersMeta;
   crenupPromptsMeta: CrenupPrompt[];
   updatedAt: string | null;
 };
 
-type GetSettingsResult =
-  | { ok: true; data: SettingsResponse }
-  | { ok: false; error: string };
+type GetSettingsResult = ActionResult<{ data: SettingsResponse }>;
 
 export async function getAtlasSettings(): Promise<GetSettingsResult> {
   const r = await efInvoke<SettingsResponse>("admin-web-get-config", {});
@@ -157,9 +102,7 @@ type AtlasConfigResponse = {
   updatedAt: string | null;
 };
 
-type UpdateAtlasConfigResult =
-  | { ok: true; data: AtlasConfigResponse }
-  | { ok: false; error: string };
+type UpdateAtlasConfigResult = ActionResult<{ data: AtlasConfigResponse }>;
 
 // Partial update — pass only the fields you want to change. The `enricher`
 // section takes its knobs FLAT on the body, not under `config`, which is why

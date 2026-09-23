@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { SidebarWithSuspense } from "@/components/SidebarWithSuspense";
+import { Sidebar } from "@/components/Sidebar";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 
 type AppShellProps = {
@@ -71,7 +71,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
           (collapsed ? "w-16" : "w-60")
         }
       >
-        <SidebarWithSuspense
+        <Sidebar
           collapsed={collapsed}
           onToggleCollapse={toggleCollapsed}
         />
@@ -102,7 +102,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
           role="dialog"
           aria-label="Admin navigation"
         >
-          <SidebarWithSuspense onNavigate={close} />
+          <Sidebar onNavigate={close} />
           {open && (
             <button
               type="button"

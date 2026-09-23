@@ -7,32 +7,19 @@
 // is what lets this page save one switch at a time. No client ever touches
 // the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
-
-export type VerificationConfig = {
-  createPlacesAsVerified: boolean;
-  autoVerifyAiCall: boolean;
-  autoVerifyAiEmail: boolean;
-};
+import { normalizeVerificationConfig, type VerificationConfig } from "./defaults";
 
 type ConfigPayload = {
   config: Partial<Record<keyof VerificationConfig, unknown>>;
   updatedAt: string | null;
 };
 
-function normalizeConfig(
-  raw: Partial<Record<keyof VerificationConfig, unknown>> | undefined,
-): VerificationConfig {
-  return {
-    createPlacesAsVerified: raw?.createPlacesAsVerified === true,
-    autoVerifyAiCall: raw?.autoVerifyAiCall !== false,
-    autoVerifyAiEmail: raw?.autoVerifyAiEmail !== false,
-  };
-}
-
-type GetResult =
-  | { ok: true; config: VerificationConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{
+  config: VerificationConfig;
+  updatedAt: string | null;
+}>;
 
 export async function getVerificationConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -41,14 +28,15 @@ export async function getVerificationConfig(): Promise<GetResult> {
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: normalizeConfig(r.data.config),
+    config: normalizeVerificationConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: VerificationConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{
+  config: VerificationConfig;
+  updatedAt: string | null;
+}>;
 
 export async function updateVerificationConfig(
   patch: Partial<VerificationConfig>,
@@ -60,7 +48,7 @@ export async function updateVerificationConfig(
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: normalizeConfig(r.data.config),
+    config: normalizeVerificationConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
   };
 }

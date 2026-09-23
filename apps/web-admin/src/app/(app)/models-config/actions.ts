@@ -16,11 +16,12 @@
 // Types + catalogs live in ./types (not here) — "use server" modules may only
 // export async functions to the client.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import {
   updateAtlasConfig,
   type PerplexityPreset,
-  type SynthesisQuality,
 } from "../enricher-config/actions";
 import {
   coerceModelsConfig,
@@ -29,9 +30,7 @@ import {
   type ModelsConfig,
 } from "./types";
 
-type GetModelsConfigResult =
-  | { ok: true; data: ModelsConfig }
-  | { ok: false; error: string };
+type GetModelsConfigResult = ActionResult<{ data: ModelsConfig }>;
 
 export async function getModelsConfig(): Promise<GetModelsConfigResult> {
   const r = await efInvoke<{ config: unknown }>(
@@ -43,9 +42,7 @@ export async function getModelsConfig(): Promise<GetModelsConfigResult> {
   return { ok: true, data: coerceModelsConfig(r.data.config) };
 }
 
-type UpdateModelsConfigResult =
-  | { ok: true; data: ModelsConfig }
-  | { ok: false; error: string };
+type UpdateModelsConfigResult = ActionResult<{ data: ModelsConfig }>;
 
 export async function updateModelsConfig(
   config: ModelsConfig,
@@ -64,9 +61,7 @@ type AtlasModelFields = {
   atlasPerplexityPreset: PerplexityPreset;
 };
 
-type GetEnricherModelSettingsResult =
-  | { ok: true; data: EnricherModelSettings }
-  | { ok: false; error: string };
+type GetEnricherModelSettingsResult = ActionResult<{ data: EnricherModelSettings }>;
 
 /** Enricher quality tiers + search preset — atlas_* on enrichment_config. */
 export async function getEnricherModelSettings(): Promise<GetEnricherModelSettingsResult> {
@@ -83,9 +78,7 @@ export async function getEnricherModelSettings(): Promise<GetEnricherModelSettin
   };
 }
 
-type UpdateEnricherModelSettingsResult =
-  | { ok: true; data: EnricherModelSettings }
-  | { ok: false; error: string };
+type UpdateEnricherModelSettingsResult = ActionResult<{ data: EnricherModelSettings }>;
 
 export async function updateEnricherModelSettings(
   settings: EnricherModelSettings,

@@ -3,14 +3,13 @@
 import { usePathname } from "next/navigation";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { PageHeader } from "@/components/PageContainer";
+import { isNavActive } from "@/lib/nav-active";
 import { DISCOVERY_TABS } from "./nav";
 
 // Title follows the active subpage: Matrix · Discovery Modes · Search Sources.
 export function DiscoveryChrome() {
   const pathname = usePathname();
-  const tab = DISCOVERY_TABS.find(
-    (t) => pathname === t.href || pathname.startsWith(`${t.href}/`),
-  );
+  const tab = DISCOVERY_TABS.find((t) => isNavActive(pathname, t.href));
   return (
     <>
       <PageHeader

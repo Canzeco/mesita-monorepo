@@ -8,12 +8,14 @@
 // admin-web-update-config, which read and write the discovery_config jsonb on
 // the public.app_config singleton. No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceConfig, type DiscoveryConfig } from "./catalog";
 
-type GetDiscoveryConfigResult =
-  | { ok: true; config: DiscoveryConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetDiscoveryConfigResult = ActionResult<{
+  config: DiscoveryConfig;
+  updatedAt: string | null;
+}>;
 
 export async function getDiscoveryConfig(): Promise<GetDiscoveryConfigResult> {
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
@@ -24,9 +26,10 @@ export async function getDiscoveryConfig(): Promise<GetDiscoveryConfigResult> {
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
 }
 
-type UpdateDiscoveryConfigResult =
-  | { ok: true; config: DiscoveryConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateDiscoveryConfigResult = ActionResult<{
+  config: DiscoveryConfig;
+  updatedAt: string | null;
+}>;
 
 export type DiscoverySlice =
   | "general"

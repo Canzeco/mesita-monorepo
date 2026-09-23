@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { Check, Loader2, Undo2 } from "lucide-react";
-import { type AdminPlaceClaim, decidePlaceClaim } from "./claims-actions";
+import {
+  type AdminPlaceClaim,
+  type PlaceClaimDecision,
+  decidePlaceClaim,
+} from "./claims-actions";
 import { KV, formatDate } from "./verification-ui";
 
 export function ClaimRow({
@@ -10,12 +14,12 @@ export function ClaimRow({
   onDecided,
 }: {
   claim: AdminPlaceClaim;
-  onDecided: (id: string, decision: "clear" | "reverse") => void;
+  onDecided: (id: string, decision: PlaceClaimDecision) => void;
 }) {
   const [pending, startDecide] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const decide = (decision: "clear" | "reverse") => {
+  const decide = (decision: PlaceClaimDecision) => {
     if (pending) return;
     setError(null);
     startDecide(async () => {

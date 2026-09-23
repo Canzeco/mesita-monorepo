@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { Check, Loader2, MessageSquare, X } from "lucide-react";
-import { type AdminVerification, decideVerification } from "./actions";
+import {
+  type AdminVerification,
+  type VerificationDecision,
+  decideVerification,
+} from "./actions";
 import { METHOD_ICON, METHOD_LABEL } from "./verification-config";
 import { KV, StateBadge, formatDate } from "./verification-ui";
 
@@ -13,7 +17,7 @@ export function VerificationRow({
   verification: AdminVerification;
   onDecided: (
     id: string,
-    decision: "approved" | "rejected",
+    decision: VerificationDecision,
     rejectReason: string,
   ) => void;
 }) {
@@ -23,7 +27,7 @@ export function VerificationRow({
   const [pending, startDecide] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const decide = (decision: "approved" | "rejected") => {
+  const decide = (decision: VerificationDecision) => {
     if (pending) return;
     if (decision === "rejected" && !rejectReason.trim()) {
       setError("Reject reason is required.");

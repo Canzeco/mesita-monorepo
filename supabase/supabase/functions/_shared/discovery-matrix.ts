@@ -1,8 +1,9 @@
 // Discovery mode × entity × pool × source × signal matrix.
 //
 // SPEC MIRROR, NOT A DISPATCHER. Twin of admin
-// `apps/web-admin/.../filters-config/catalog.ts` DISCOVERY_MODE_*. Change one,
-// change the other. Vercel root is apps/web-admin so that bundle cannot import
+// `apps/web-admin/.../filters-config/discovery-matrix.ts` DISCOVERY_MODE_*
+// (WEIGHTED_MODE_KEYS stays in that folder's catalog.ts). Change one, change
+// the other. Vercel root is apps/web-admin so that bundle cannot import
 // this file. Do not dispatch from modeCallsSource.
 //
 // TWO NOUNS, AND ONLY TWO: a **Mode** is a guest Discovery surface, a

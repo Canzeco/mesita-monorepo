@@ -38,14 +38,13 @@ function liveConfig(): DiscoveryConfig {
 /** Captures the blob the console tried to write. */
 function armed(live: DiscoveryConfig) {
   const sent: { config?: DiscoveryConfig } = {};
-  mockInvoke.mockImplementation((async (fn: string, body: unknown) => {
+  mockInvoke.mockImplementation(async (fn: string, body: unknown) => {
     if (fn === "admin-web-get-config") {
-      return { ok: true, data: { config: live, updatedAt: null } };
+      return { ok: true, status: 200, data: { config: live, updatedAt: null } };
     }
     sent.config = (body as { config: DiscoveryConfig }).config;
-    return { ok: true, data: { config: sent.config, updatedAt: null } };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- narrow mock
-  }) as any);
+    return { ok: true, status: 200, data: { config: sent.config, updatedAt: null } };
+  });
   return sent;
 }
 

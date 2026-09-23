@@ -1,4 +1,5 @@
-import type { PerplexityPreset, SynthesisQuality } from "./actions";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import type { PerplexityPreset } from "./actions";
 
 // Image-funnel ceilings the EF already CHECKs. The page clamps so a Save
 // never 400s on a broken chain (analyze > collect, gallery > analyzed).
@@ -30,13 +31,6 @@ export type CrenupSettings = {
 
 const clampN = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(v)));
-
-/** A failed GET disables Save — defaults must not overwrite live. */
-export function crenupSaveBlocked(
-  settingsLoadError: string | null,
-): string | null {
-  return settingsLoadError;
-}
 
 export function clampFunnel(s: CrenupSettings): CrenupSettings {
   const gatherGoogleImages = clampN(s.gatherGoogleImages, 1, MAX_GOOGLE_COLLECT);

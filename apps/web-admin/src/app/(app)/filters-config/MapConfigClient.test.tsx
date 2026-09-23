@@ -3,12 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_CONFIG, MAP_RELOAD_PAIRS } from "./catalog";
 
+// Keeps the "use server" actions.ts and its supabase-ef import out of the graph; never called (static render runs no effects).
 vi.mock("./actions", () => ({
-  getDiscoveryConfig: vi.fn(async () => ({
-    ok: true,
-    config: DEFAULT_CONFIG,
-    updatedAt: "2026-08-28T00:00:00.000Z",
-  })),
+  getDiscoveryConfig: vi.fn(),
   updateDiscoveryConfig: vi.fn(),
 }));
 

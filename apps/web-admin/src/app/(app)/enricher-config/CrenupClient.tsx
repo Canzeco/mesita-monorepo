@@ -1,14 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
-  CheckCircle2,
   Facebook,
   Gauge,
   Globe,
   Instagram,
   ListOrdered,
-  Loader2,
   MessageSquareQuote,
   RefreshCw,
   ShoppingBag,
@@ -16,7 +14,6 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import Link from "next/link";
 import {
@@ -32,9 +29,6 @@ import {
 } from "./cost-model";
 import { ImageFunnel } from "./ImageFunnel";
 import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
-
-/** The Crenup box on Manage Places — where Create actually runs. */
-const CRENUP_BOX_HREF = "/manage-multiple#crenup";
 import {
   updateAtlasConfig,
   type CrenupPrompt,
@@ -45,17 +39,22 @@ import {
   FlowPanel,
   FunctionModule,
   KnobElsewhere,
+  ModelRow,
   NoKnobs,
-  PromptView,
+  PromptDisclosure,
   Tag,
 } from "./blocks";
+import { CrenupSaveBar } from "./CrenupSaveBar";
 import { SectionStrip } from "./SectionStrip";
-import { clampFunnel, crenupSaveBlocked, type CrenupSettings } from "./crenup-guards";
+import { clampFunnel, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
 import {
   VerificationConfigClient,
 } from "../verification-config/VerificationConfigClient";
-import type { VerificationConfig } from "../verification-config/actions";
+import type { VerificationConfig } from "../verification-config/defaults";
+
+/** The Crenup box on Manage Places — where Create actually runs. */
+const CRENUP_BOX_HREF = "/manage-multiple#crenup";
 
 export type { CrenupSettings };
 
@@ -107,7 +106,8 @@ export function CrenupClient({
     [settings, savedSettings],
   );
 
-  const blocked = crenupSaveBlocked(settingsLoadError);
+  // A failed GET disables Save — defaults must not overwrite live (MESITA-737).
+  const blocked = settingsLoadError;
 
   const patch = (next: Partial<CrenupSettings>) => {
     setSettings((s) => clampFunnel({ ...s, ...next }));
@@ -163,6 +163,7 @@ export function CrenupClient({
     <>
       <SectionStrip />
 
+      {/* pb-24 keeps the last module clear of the sticky CrenupSaveBar. */}
       <div className="flex flex-col gap-4 pb-24">
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
@@ -559,116 +560,16 @@ export function CrenupClient({
         </div>
       </div>
 
-      {/* STICKY, NOT FIXED — same reason as SectionStrip: a `fixed` footer is
-          measured against the window, so it ran under the desktop rail and
-          sat on the phone's home indicator. Sticky still overlays the bottom
-          of the column, so the modules keep `pb-24` or Vote threshold (and
-          Functions) sit under Save Crenup. The row stacks under `sm`: label
-          over buttons rather than three items fighting for 343px. */}
-      <div className="border-border bg-card/90 pb-safe sticky bottom-0 z-20 -mx-4 border-t backdrop-blur sm:-mx-6 sm:pb-0 lg:-mx-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
-          <div className="min-w-0">
-            {blocked ? (
-              <p className="text-destructive m-0 text-sm font-semibold">
-                Save disabled — a config failed to load
-              </p>
-            ) : dirty ? (
-              <p className="m-0 text-sm font-semibold">
-                <span className="bg-primary mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle" />
-                Unsaved changes
-              </p>
-            ) : ok ? (
-              <p className="text-muted-foreground m-0 inline-flex items-center gap-1.5 text-sm">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Saved
-              </p>
-            ) : (
-              <p className="text-muted-foreground m-0 text-xs">
-                {settingsStamp
-                  ? `Last changed ${formatShortDate(settingsStamp)}`
-                  : "Nothing to save"}
-              </p>
-            )}
-          </div>
-          <span className="hidden flex-1 sm:block" />
-          <div className="flex shrink-0 items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={discard}
-              disabled={!dirty || pending}
-              className="text-muted-foreground hover:text-foreground rounded-full px-3 py-2 text-sm font-medium disabled:opacity-40"
-            >
-              Discard
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={!dirty || pending || !!blocked}
-              className="bg-primary text-primary-foreground inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50 sm:px-6"
-            >
-              {pending ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                "Save Crenup"
-              )}
-            </button>
-          </div>
-        </div>
-        {error && (
-          <div className="mx-auto max-w-5xl px-4 pb-3 sm:px-6">
-            <ErrorNote message={error} />
-          </div>
-        )}
-      </div>
+      <CrenupSaveBar
+        blocked={blocked}
+        dirty={dirty}
+        ok={ok}
+        pending={pending}
+        settingsStamp={settingsStamp}
+        error={error}
+        onDiscard={discard}
+        onSave={save}
+      />
     </>
-  );
-}
-
-/**
- * One prompt, tucked behind a disclosure on the function that sends it.
- *
- * Renders NOTHING when the prompt is absent — the GET failed, or the backend
- * stopped shipping that key. An empty disclosure would promise a prompt and
- * then fail to show one, which reads as "there is no prompt here"; silence at
- * least stays honest, and the page already surfaces a load error above.
- */
-function PromptDisclosure({
-  prompt,
-  preset,
-}: {
-  prompt: CrenupPrompt | undefined;
-  preset?: string;
-}) {
-  if (!prompt) return null;
-  // The summary names the agent when there is one, because that is how the rest
-  // of the page and the Place screen refer to this step.
-  const who = prompt.agent ? `the ${prompt.agent}` : prompt.label;
-  return (
-    <Collapsible summary={`What ${who} is told`}>
-      <PromptView prompt={prompt} preset={preset} />
-    </Collapsible>
-  );
-}
-
-function ModelRow({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="border-border grid grid-cols-1 items-center gap-2 border-t py-3 first:border-t-0 first:pt-0 sm:grid-cols-[6.5rem_minmax(12rem,20rem)_1fr] sm:gap-4">
-      <span className="text-sm font-medium">{label}</span>
-      <div className="min-w-0">{children}</div>
-      <span className="text-muted-foreground type-label sm:text-right">
-        {hint}
-      </span>
-    </div>
   );
 }

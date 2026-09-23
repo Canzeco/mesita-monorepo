@@ -9,16 +9,12 @@
 // the default for, and Credits may never expire before they mature, which ties
 // the expiry floor to the hold ceiling. No client ever touches the DB.
 
+import type { ActionResult } from "@/lib/action-result";
+import { num } from "@/lib/config-coerce";
 import { efInvoke } from "@/lib/supabase-ef";
 import { CONTROLS_FALLBACK, type ControlsConfig } from "./defaults";
 
 type ConfigPayload = { config: unknown; updatedAt: string | null };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
 
 // Mirrors supabase/functions/_shared/controls-config.ts — the EF is
 // authoritative; this keeps the form honest if the blob is older than the
@@ -65,9 +61,7 @@ function normalize(raw: unknown): ControlsConfig {
   };
 }
 
-type GetResult =
-  | { ok: true; config: ControlsConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type GetResult = ActionResult<{ config: ControlsConfig; updatedAt: string | null }>;
 
 export async function getControlsConfig(): Promise<GetResult> {
   const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
@@ -81,9 +75,7 @@ export async function getControlsConfig(): Promise<GetResult> {
   };
 }
 
-type UpdateResult =
-  | { ok: true; config: ControlsConfig; updatedAt: string | null }
-  | { ok: false; error: string };
+type UpdateResult = ActionResult<{ config: ControlsConfig; updatedAt: string | null }>;
 
 export async function updateControlsConfig(
   config: ControlsConfig,

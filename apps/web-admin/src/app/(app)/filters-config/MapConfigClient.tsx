@@ -19,16 +19,18 @@
 // to Search Sources instead: the Families strip and the Nearby
 // pull. `googleFill` here is what decides whether Google rows appear at all.
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import { Hash, Map as MapIcon, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   ChoiceField,
+  ChoicePill,
   KnobState,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
@@ -44,39 +46,9 @@ export function MapConfigClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
-}: {
-  initialConfig: DiscoveryConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
-}) {
-  const [cfg, setCfg] = useState<DiscoveryConfig>(initialConfig);
-  const [saved, setSaved] = useState<DiscoveryConfig>(initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getDiscoveryConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
+}: ConfigSeed<DiscoveryConfig>) {
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useConfigEditor({ initialConfig, initialUpdatedAt, loadError, load: getDiscoveryConfig });
 
   const dirty = useMemo(
     () => JSON.stringify(cfg.map) !== JSON.stringify(saved.map),
@@ -88,21 +60,7 @@ export function MapConfigClient({
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
 
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg, ["map"]);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
-    });
-  };
+  const save = () => saveWith((c) => updateDiscoveryConfig(c, ["map"]));
 
   const map = cfg.map ?? DEFAULT_CONFIG.map;
 
@@ -152,20 +110,14 @@ export function MapConfigClient({
               {GOOGLE_PULL_STOPS.map((stop) => {
                 const active = map.pinCount === stop;
                 return (
-                  <button
+                  <ChoicePill
                     key={stop}
-                    type="button"
+                    active={active}
                     disabled={pending || loadBlocked}
                     onClick={() => patch({ pinCount: stop })}
-                    aria-pressed={active}
-                    className={
-                      active
-                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                    }
                   >
                     {stop}
-                  </button>
+                  </ChoicePill>
                 );
               })}
             </div>
@@ -182,22 +134,16 @@ export function MapConfigClient({
                 const active =
                   map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
                 return (
-                  <button
+                  <ChoicePill
                     key={`${pair.km}-${pair.sec}`}
-                    type="button"
+                    active={active}
                     disabled={pending || loadBlocked}
                     onClick={() =>
                       patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
                     }
-                    aria-pressed={active}
-                    className={
-                      active
-                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                    }
                   >
                     {pair.km} km · {pair.sec}s
-                  </button>
+                  </ChoicePill>
                 );
               })}
             </div>

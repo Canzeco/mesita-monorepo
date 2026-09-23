@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { snapDiscountCap } from "@/lib/business/strategies";
+import { snapDiscountCap } from "@/lib/business/discount-cap";
 import {
   DEFAULT_PROMOS,
   additivityError,
@@ -449,8 +449,8 @@ describe("Visits Rewards lives on Visits", () => {
     // STRUCTURAL, never bare substrings: VisitsRewardsForm's own comment
     // records why the box was removed, so `not.toContain("PromosCalculator")`
     // fails on the sentence explaining the decision — and the cheapest way
-    // to green it would be deleting that sentence. Same trap
-    // passport-axes.test.ts documents. Assert on imports and JSX instead.
+    // to green it would be deleting that sentence.
+    // Assert on imports and JSX instead.
     expect(form).not.toContain('title="Expected Distribution"');
     for (const gone of [
       "PromosDistributionClient",

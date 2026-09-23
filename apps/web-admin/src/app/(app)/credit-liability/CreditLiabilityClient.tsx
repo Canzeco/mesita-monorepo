@@ -12,7 +12,11 @@ import {
   TextArea,
   TextField,
 } from "@/components/admin-ui/manage";
-import { getCreditLiability, reverseCreditLot } from "./actions";
+import {
+  type ReverseCreditLotInput,
+  getCreditLiability,
+  reverseCreditLot,
+} from "./actions";
 import type { CreditLiability } from "./types";
 
 function money(cents: number, currency: string): string {
@@ -69,7 +73,7 @@ function Table({
 }
 
 type FormState = {
-  kind: "refund" | "adjust";
+  kind: ReverseCreditLotInput["kind"];
   lotId: string;
   placeId: string;
   consumerId: string;

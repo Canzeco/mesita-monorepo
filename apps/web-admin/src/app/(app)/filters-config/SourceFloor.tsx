@@ -20,11 +20,16 @@
 // there would have to write some other slice — editing "Mesita Socials Browse
 // Search" would silently move the Home rails. It prints the state instead.
 
-import { useEffect, useMemo, useState, useTransition } from "react";
 import { Layers, Star, Users } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
-import { NumberField, SaveRow, Switch } from "@/components/admin-ui/config";
+import {
+  ChoicePill,
+  NumberField,
+  SaveRow,
+  Switch,
+} from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import {
   getDiscoveryConfig,
   updateDiscoveryConfig,
@@ -37,11 +42,7 @@ import {
   type DiscoveryConfig,
 } from "./catalog";
 
-export type FloorSeed = {
-  initialConfig: DiscoveryConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
-};
+export type FloorSeed = ConfigSeed<DiscoveryConfig>;
 
 function FloorFrame({
   label,
@@ -111,61 +112,16 @@ export function FloorSoonNote() {
   );
 }
 
-/** Shared editor state for the three owner boxes. One slice, one Save. */
+/** Shared editor state for the four owner boxes. One slice, one Save. */
 function useFloorEditor(
   seed: FloorSeed,
   slice: DiscoverySlice,
   isDirty: (a: DiscoveryConfig, b: DiscoveryConfig) => boolean,
 ) {
-  const [cfg, setCfg] = useState<DiscoveryConfig>(seed.initialConfig);
-  const [saved, setSaved] = useState<DiscoveryConfig>(seed.initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(seed.loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!seed.loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(
-    seed.initialUpdatedAt,
-  );
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getDiscoveryConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
-
-  const dirty = useMemo(() => isDirty(cfg, saved), [cfg, saved, isDirty]);
-
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg, [slice]);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
-    });
-  };
-
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useConfigEditor({ ...seed, load: getDiscoveryConfig });
+  const dirty = isDirty(cfg, saved);
+  const save = () => saveWith((c) => updateDiscoveryConfig(c, [slice]));
   const busy = pending || loadBlocked;
   return { cfg, setCfg, setOk, dirty, pending, busy, error, loadBlocked, ok, updatedAt, save };
 }
@@ -350,20 +306,14 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
         {GOOGLE_PULL_STOPS.map((stop) => {
           const active = pull === stop;
           return (
-            <button
+            <ChoicePill
               key={stop}
-              type="button"
+              active={active}
               disabled={ed.busy}
               onClick={() => patch(stop)}
-              aria-pressed={active}
-              className={
-                active
-                  ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-              }
             >
               {stop}
-            </button>
+            </ChoicePill>
           );
         })}
       </div>

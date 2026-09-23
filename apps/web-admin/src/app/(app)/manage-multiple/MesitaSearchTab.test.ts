@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crenupCalled } from "./MesitaSearchTab";
+import { crenupCalled } from "./mesita-search-facts";
 import type { PlaceHit } from "./actions";
 import { CRENUP_STEPS } from "@/lib/state-vocabulary";
 

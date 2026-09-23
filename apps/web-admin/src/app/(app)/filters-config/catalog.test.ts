@@ -17,7 +17,6 @@ import {
   DISCOVERY_POOLS,
   DISCOVERY_SOURCES,
   DISCOVERY_SOURCES_NO_CALLER,
-  ENGINES,
   GOOGLE_PULL_STOPS,
   LIBRARY_SIGNALS,
   modeCallsSource,
@@ -35,6 +34,7 @@ import {
   WEIGHTED_MODE_KEYS,
   weightMaxFor,
 } from "./catalog";
+import { ENGINES } from "./discovery-engines";
 
 describe("Discovery function APIs", () => {
   it("every signal is a stored-index function — no vendor API at rank time", () => {
@@ -512,7 +512,7 @@ describe("Discovery function APIs", () => {
         partnerBias: { dominant: 2 },
         randomnessMax: 1.3,
       },
-    }).swipe as unknown as Record<string, unknown>;
+    }).swipe;
     for (
       const dead of [
         "weightProximity",
@@ -522,7 +522,7 @@ describe("Discovery function APIs", () => {
         "randomnessMax",
       ]
     ) {
-      expect(dead in swipe, dead).toBe(false);
+      expect(swipe, dead).not.toHaveProperty(dead);
     }
   });
 
@@ -1102,7 +1102,7 @@ describe("Mesita Level splits into Enriched and Partnered", () => {
     // that, and the still-old EF would read a set 2 back as the default 1.
     resetLegacySignalWarnings();
     const cfg = coerceConfig({ weights: { mesita_level: 2, proximity: 1.5 } });
-    expect((cfg.weights as unknown as Record<string, number>).mesita_level).toBe(2);
+    expect(cfg.weights).toHaveProperty("mesita_level", 2);
     expect(cfg.weights.proximity).toBe(1.5);
   });
 
@@ -1118,8 +1118,7 @@ describe("Mesita Level splits into Enriched and Partnered", () => {
     });
     const afterSave = coerceConfig({ ...live, chat: { prompt: "after" } });
     expect(afterSave.weights).toEqual(live.weights);
-    expect((afterSave.weights as unknown as Record<string, number>).mesita_level)
-      .toBe(2);
+    expect(afterSave.weights).toHaveProperty("mesita_level", 2);
     expect(afterSave.chat.prompt).toBe("after");
   });
 

@@ -1,4 +1,4 @@
-import type { SynthesisQuality } from "./actions";
+import type { SynthesisQuality } from "@/lib/synthesis-quality";
 import type { CrenupSettings } from "./crenup-guards";
 
 // Cost estimate — the pure model behind the calculator + the inline cost card.

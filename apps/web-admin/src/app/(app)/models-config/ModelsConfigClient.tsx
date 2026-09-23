@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Cpu, Sparkles } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { QualityPicker, SaveRow, SectionCard } from "@/components/admin-ui/config";
+import { FIELD_WELL, QualityPicker, SaveRow, SectionCard } from "@/components/admin-ui/config";
 import {
   getEnricherModelSettings,
   getModelsConfig,
@@ -26,13 +26,11 @@ function Select({
   options,
   disabled,
   onChange,
-  labelFor,
 }: {
   value: string;
   options: readonly string[];
   disabled?: boolean;
   onChange: (v: string) => void;
-  labelFor?: (v: string) => string;
 }) {
   return (
     <select
@@ -43,7 +41,7 @@ function Select({
     >
       {options.map((o) => (
         <option key={o} value={o}>
-          {labelFor ? labelFor(o) : o}
+          {o}
         </option>
       ))}
     </select>
@@ -180,7 +178,7 @@ export function ModelsConfigClient({
         {error && <ErrorNote message={error} />}
 
         <div className="mt-5 grid gap-3 sm:grid-cols-4">
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">
               Edge Functions
             </span>
@@ -189,10 +187,9 @@ export function ModelsConfigClient({
               options={OPENAI_CHAT_MODELS}
               disabled={busy}
               onChange={setSupabaseModel}
-              labelFor={(id) => id}
             />
           </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">
               Memo · OpenAI
             </span>
@@ -201,10 +198,9 @@ export function ModelsConfigClient({
               options={OPENAI_CHAT_MODELS}
               disabled={busy}
               onChange={setMemoModel}
-              labelFor={(id) => id}
             />
           </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">
               Memo · Perplexity
             </span>
@@ -215,7 +211,7 @@ export function ModelsConfigClient({
               onChange={setMemoPerplexity}
             />
           </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">
               Ojo · Vision
             </span>
@@ -224,7 +220,6 @@ export function ModelsConfigClient({
               options={OPENAI_CHAT_MODELS}
               disabled={busy}
               onChange={setOjoModel}
-              labelFor={(id) => id}
             />
           </label>
         </div>
@@ -240,7 +235,7 @@ export function ModelsConfigClient({
         subtitle="Text, image and search quality tiers for the enrichment pipeline. Embeddings is locked."
       >
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">Text</span>
             <QualityPicker
               value={enricher.synthesisQuality}
@@ -250,7 +245,7 @@ export function ModelsConfigClient({
               9 · Description, image-rank
             </span>
           </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">Image</span>
             <QualityPicker
               value={enricher.visionQuality}
@@ -258,7 +253,7 @@ export function ModelsConfigClient({
             />
             <span className="text-muted-foreground type-label">6 · Images</span>
           </label>
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <label className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">Search</span>
             <select
               value={enricher.perplexityPreset}
@@ -281,7 +276,7 @@ export function ModelsConfigClient({
               3 · Serp · 4 · Links
             </span>
           </label>
-          <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <div className={FIELD_WELL}>
             <span className="text-muted-foreground type-eyebrow">
               Embeddings
             </span>
