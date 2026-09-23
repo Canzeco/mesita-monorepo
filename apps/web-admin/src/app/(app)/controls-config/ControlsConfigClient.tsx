@@ -17,7 +17,7 @@
 // dies. Five fields in one undivided grid is where an operator types 90 into an
 // hours box, so every label carries its unit and the rule sits above its pair.
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import { CalendarClock, CalendarX2, Gift, Hourglass, Percent, Timer } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -27,6 +27,7 @@ import {
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getControlsConfig, updateControlsConfig } from "./actions";
 import { type ControlsConfig } from "./defaults";
 
@@ -34,39 +35,9 @@ export function ControlsConfigClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
-}: {
-  initialConfig: ControlsConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
-}) {
-  const [cfg, setCfg] = useState<ControlsConfig>(initialConfig);
-  const [saved, setSaved] = useState<ControlsConfig>(initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getControlsConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
+}: ConfigSeed<ControlsConfig>) {
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useConfigEditor({ initialConfig, initialUpdatedAt, loadError, load: getControlsConfig });
 
   const dirty = useMemo(
     () => JSON.stringify(cfg) !== JSON.stringify(saved),
@@ -92,36 +63,25 @@ export function ControlsConfigClient({
         ? "The default expiry is below the shortest a place may set; saving raises it."
         : null;
 
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const maxHold = Math.max(cfg.minHoldHours, cfg.maxHoldHours);
+  const save = () =>
+    saveWith(async (c) => {
+      const maxHold = Math.max(c.minHoldHours, c.maxHoldHours);
       // Mirrors _shared/controls-config.ts. The EF normalizes regardless; doing
       // it here too means the value that comes back is the one the page already
       // warned about, rather than a surprise on the round trip.
-      const minExpiry = Math.max(Math.ceil(maxHold / 24), cfg.minExpiryDays);
+      const minExpiry = Math.max(Math.ceil(maxHold / 24), c.minExpiryDays);
       const next: ControlsConfig = {
-        ...cfg,
+        ...c,
         maxHoldHours: maxHold,
         defaultHoldHours: Math.min(
           maxHold,
-          Math.max(cfg.minHoldHours, cfg.defaultHoldHours),
+          Math.max(c.minHoldHours, c.defaultHoldHours),
         ),
         minExpiryDays: minExpiry,
-        defaultExpiryDays: Math.max(minExpiry, cfg.defaultExpiryDays),
+        defaultExpiryDays: Math.max(minExpiry, c.defaultExpiryDays),
       };
-      const r = await updateControlsConfig(next);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
+      return updateControlsConfig(next);
     });
-  };
 
   return (
     <div className="space-y-6">

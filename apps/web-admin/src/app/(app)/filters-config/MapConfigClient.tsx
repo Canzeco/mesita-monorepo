@@ -19,7 +19,7 @@
 // to Search Sources instead: the Families strip and the Nearby
 // pull. `googleFill` here is what decides whether Google rows appear at all.
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo } from "react";
 import { Hash, Map as MapIcon, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -30,6 +30,7 @@ import {
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
+import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
@@ -45,39 +46,9 @@ export function MapConfigClient({
   initialConfig,
   initialUpdatedAt,
   loadError,
-}: {
-  initialConfig: DiscoveryConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
-}) {
-  const [cfg, setCfg] = useState<DiscoveryConfig>(initialConfig);
-  const [saved, setSaved] = useState<DiscoveryConfig>(initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getDiscoveryConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
+}: ConfigSeed<DiscoveryConfig>) {
+  const { cfg, setCfg, saved, setOk, pending, error, loadBlocked, ok, updatedAt, saveWith } =
+    useConfigEditor({ initialConfig, initialUpdatedAt, loadError, load: getDiscoveryConfig });
 
   const dirty = useMemo(
     () => JSON.stringify(cfg.map) !== JSON.stringify(saved.map),
@@ -89,21 +60,7 @@ export function MapConfigClient({
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
 
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg, ["map"]);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
-    });
-  };
+  const save = () => saveWith((c) => updateDiscoveryConfig(c, ["map"]));
 
   const map = cfg.map ?? DEFAULT_CONFIG.map;
 
