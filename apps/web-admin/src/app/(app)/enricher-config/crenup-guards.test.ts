@@ -7,13 +7,13 @@ import {
 
 const seed: CrenupSettings = {
   gatherGoogleImages: 10,
-  gatherInstagramDepth: 30,
+  gatherInstagramDepth: 10,
   gatherReviews: 100,
   imageVisionEnabled: true,
   saveImagesToStorage: true,
   saveTotalImages: 10,
   analyzeGoogleImages: 10,
-  analyzeInstagramImages: 20,
+  analyzeInstagramImages: 10,
   imageAnalysisPrompt: "",
   imageSortingPrompt: "",
   synthesisQuality: "economy",

@@ -115,7 +115,7 @@ export function describeMembershipState(
   if (pillState === "review") {
     return {
       label:
-        "Visit Rewards on hold — a guest report was confirmed and Mesita is " +
+        "Rewards on hold — a guest report was confirmed and Mesita is " +
         "reviewing this place. The lane reopens when that review ends.",
       tone: "warn",
     };

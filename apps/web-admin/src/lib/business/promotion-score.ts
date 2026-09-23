@@ -2,7 +2,7 @@
 // hand-edit. Edit the source and run: deno task sync-shared
 // Promotion score — how much a place offers through Mesita, as ONE number
 // (Pato gate 2026-08-29). Partnership is the first step, then every offering
-// adds: Visit Rewards level (0|1|2) and one point per accepted rail. Mesita
+// adds: Rewards level (0|1|2) and one point per accepted rail. Mesita
 // Capital raises the max when it exists.
 //
 // DISPLAY-ONLY, derived, never stored. It expresses offering completeness to
@@ -16,7 +16,7 @@ export const PROMOTION_SCORE_MAX = 7;
 export type PromotionParts = {
   /** Paid plan (isMemberPlan) — the first step. */
   partner: boolean;
-  /** Live Visit Rewards ladder level. Engine 0–3 accepted; operator display
+  /** Live Rewards ladder level. Engine 0–3 accepted; operator display
    *  is 0|1|2, so Dominant (3) clamps to 2 — same collapse as
    *  operatorPromotingLevel. */
   visitRewardsLevel: number;
@@ -30,7 +30,7 @@ export type PromotionParts = {
   delivery: boolean;
 };
 
-/** 0…PROMOTION_SCORE_MAX. Partner +1 · Visit Rewards +0/1/2 · each rail +1. */
+/** 0…PROMOTION_SCORE_MAX. Partner +1 · Rewards +0/1/2 · each rail +1. */
 export function promotionScore(parts: PromotionParts): number {
   const raw =
     typeof parts.visitRewardsLevel === "number" && Number.isFinite(parts.visitRewardsLevel)

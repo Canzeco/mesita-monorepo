@@ -142,7 +142,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           n={4}
           icon={Sparkles}
           title="Pay less"
-          body={`Your best discount comes off the bill${
+          body={`Your stacked discount comes off the bill${
             capLabel ? ` — on the first ${capLabel}` : ''
           }. You pay the place directly.`}
         />
@@ -225,7 +225,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           </Pressable>
         )}
         <Text className="text-center text-[11px] leading-snug text-muted-foreground">
-          Open your ticket in Rewards — your best bonus applies on its own.
+          Open your ticket in Rewards — bonuses stack on your rate.
         </Text>
       </View>
     </Box>

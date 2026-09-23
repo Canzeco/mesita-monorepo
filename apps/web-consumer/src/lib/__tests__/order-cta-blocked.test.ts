@@ -13,9 +13,10 @@ const DIR = join(__dirname, "../../components/consumer/place-detail");
 const read = (file: string) => readFileSync(join(DIR, file), "utf8");
 
 describe("ORDER_BLOCKED copy", () => {
-  it("explains missing menu, not a global coming-soon", () => {
+  it("explains staged ordering, not a missing menu", () => {
     expect(ORDER_BLOCKED.aria).toBe("Ordering isn't available at this place yet");
-    expect(ORDER_BLOCKED.title).toContain("menu");
+    expect(ORDER_BLOCKED.title).toContain("isn't live yet");
+    expect(ORDER_BLOCKED.hint.toLowerCase()).toContain("menu");
   });
 });
 
@@ -76,6 +77,18 @@ describe("PlaceActionBar gates Order and Reserve", () => {
     expect(src).toContain("grid-cols-4");
     expect(src).not.toContain("grid-cols-3");
     expect(src).toContain("flex-col");
+  });
+});
+
+describe("Order CTA contract (MESITA-1967)", () => {
+  it("stays disabled for menu-on-file until the order rail ships", async () => {
+    const { isOrderActionEnabled } = await import("@/lib/place-profile-actions");
+    expect(
+      isOrderActionEnabled({
+        orders_enabled: true,
+        menu_pdf_url: "https://example.com/menu.pdf",
+      }),
+    ).toBe(false);
   });
 });
 

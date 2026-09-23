@@ -63,10 +63,10 @@ export type PlaceHit = {
   content_state: string | null;
   listing_type: string | null;
   // ── The state facts (labels: Created · Active · Listed · Requested ·
-  //    Enriching · Enriched · Verified · Partnered · Visit Rewards ·
+  //    Enriching · Enriched · Verified · Partnered · Rewards ·
   //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
   //    (promotion · pickup · delivery). Bools except Requested (0…n),
-  //    Visit Rewards (0|1|2) and promotion (0–7). All derived (or
+  //    Rewards (0|1|2) and promotion (0–7). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
   //    content_state generating/queued (MESITA-453 whole-pipeline). The
   //    acceptance bits are stored operator toggles on places.

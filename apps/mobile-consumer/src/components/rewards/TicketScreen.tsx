@@ -19,7 +19,6 @@ import {
   Camera,
   Check,
   CreditCard,
-  Crown,
   Gem,
   Gift,
   PartyPopper,
@@ -1862,7 +1861,6 @@ function RewardLanes({
 
   const b = quote.breakdown ?? null;
   const welcome = quote.bonuses.welcome;
-  const myPlan = b?.plan ?? "free";
   // WHO THE GUEST IS = TWO ROWS (MESITA-2044). The EF's breakdown is the
   // engine's own decomposition: the Base is the bronze floor every guest
   // gets (`automatic` + `classes.bronze`), and the Diamond adder is the
@@ -1877,8 +1875,6 @@ function RewardLanes({
   if (b) {
     if (baseValue > 0) parts.push(`${baseValue}% base`);
     if (listed && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND}`);
-    if (myPlan === "premium" && b.planUplift > 0)
-      parts.push(`${b.planUplift}% plan`);
   } else if (quote.base > 0) {
     parts.push(`${quote.base}% base`);
   }
@@ -1946,24 +1942,8 @@ function RewardLanes({
               glyph={<RefreshCw size={14} color={COLORS.primary} />}
             />
           </Lane>
-          <Lane title="Plan" note="visits and orders">
-            <LaneChip
-              label="Free"
-              sub={myPlan === "free" ? "yours" : "not active"}
-              value={0}
-              on={myPlan === "free"}
-              faded={myPlan !== "free"}
-              glyph={<Star size={14} color={COLORS.mutedForeground} />}
-            />
-            <LaneChip
-              label="Premium"
-              sub={myPlan === "premium" ? "yours" : "not active"}
-              value={b.planUplift}
-              on={myPlan === "premium"}
-              faded={myPlan !== "premium"}
-              glyph={<Crown size={14} color={COLORS.primary} />}
-            />
-          </Lane>
+          {/* A "Plan" lane (Free / Premium) sat here until MESITA-1705 — same as
+              web TicketScreen. The plan does not price a reward any more. */}
         </>
       ) : (
         <Lane title="Your rate" note="always on">

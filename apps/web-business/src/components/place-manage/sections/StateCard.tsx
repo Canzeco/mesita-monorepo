@@ -7,7 +7,7 @@
 //   General States      is this place real, reachable, and proven?
 //                         Created · Active · Listed · Requested · Verified
 //   Partnership States  what does it offer commercially?
-//                         Partnered · Visit Rewards · Mesita Pay · Mesita Credits
+//                         Partnered · Rewards · Mesita Pay · Mesita Credits
 //   Crenup States       how far has the pipeline gotten? Enriched ·
 //                         Enriching + the eleven functions — all of it in
 //                         CrenupStateCard, which OWNS the enrichment read.
@@ -349,7 +349,7 @@ export function StateCard({
             detail={partnerDetail}
           />
           <StateRow
-            name="Visit Rewards"
+            name="Rewards"
             on={promotingLevel > 0}
             chip={promotingLevelChip(promotingLevel)}
             tint="pink"
@@ -372,13 +372,13 @@ export function StateCard({
         </div>
 
         {/* The drift warning lives HERE: it is a disagreement between
-            Partnered and Visit Rewards, the two rows right above it. */}
+            Partnered and Rewards, the two rows right above it. */}
         {badged !== promoting ? (
           <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-border bg-muted/60 p-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
             <p className="type-label leading-relaxed text-foreground">
               <span className="font-semibold">
-                Guest surfaces disagree with Visit Rewards.
+                Guest surfaces disagree with Rewards.
               </span>{" "}
               {badged
                 ? "places.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed reward lane."

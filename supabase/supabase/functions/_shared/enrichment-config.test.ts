@@ -15,8 +15,8 @@ Deno.test("normalizeEnrichmentConfig: null/garbage falls back to the old scalar-
 Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
   const live = {
     atlasGatherGoogleImages: 10,
-    atlasGatherInstagramDepth: 30,
-    atlasGatherInstagramPosts: 30,
+    atlasGatherInstagramDepth: 10,
+    atlasGatherInstagramPosts: 10,
     atlasGatherReviews: 100,
     atlasImageVisionEnabled: true,
     atlasAnalyzeGoogleImages: 10,
