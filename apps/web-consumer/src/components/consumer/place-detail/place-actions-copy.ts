@@ -2,15 +2,15 @@
 // the pinned place-detail bar (PlaceActionBar) and the deck's Go sheet
 // (GoSheet).
 //
-// Visit is gated on `promoting` (live reward). Order uses `orders_enabled`
-// (locked by default; also unlocks when a menu is on file). Reserve is
-// offered unless `reservations_enabled` is explicitly false (operator Not
-// or a confirmed walk-in). Credits has no gate at all yet — see below.
+// Visit is gated on `promoting` (live reward). Order stays locked until the
+// order rail ships (MESITA-1155) — menus live on the profile, not here.
+// Reserve is offered unless `reservations_enabled` is explicitly false
+// (operator Not or a confirmed walk-in). Credits has no gate at all yet.
 
 export const ORDER_BLOCKED = {
   aria: "Ordering isn't available at this place yet",
-  title: "This place doesn't have a menu on Mesita yet.",
-  hint: "No menu on file yet.",
+  title: "Table ordering through Mesita isn't live yet.",
+  hint: "View menus on the place profile; ordering is coming.",
 } as const;
 
 export const RESERVE_BLOCKED = {

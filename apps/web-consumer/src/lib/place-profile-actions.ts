@@ -9,21 +9,13 @@ export type ActionFlagRow = {
   menu_pdf_url?: unknown;
 };
 
-function hasMenuCatalog(row: ActionFlagRow): boolean {
-  const products = row.products;
-  if (products && typeof products === "object" && !Array.isArray(products)) {
-    const menu = (products as Record<string, unknown>).menu;
-    if (Array.isArray(menu) && menu.length > 0) return true;
-  }
-  if (Array.isArray(row.menus) && row.menus.length > 0) return true;
-  if (typeof row.menu_pdf_url === "string" && row.menu_pdf_url.trim()) return true;
+/** Guest Order CTA — fail-closed until the order rail ships (MESITA-1155).
+ *  `places.orders_enabled` stays menu-driven for operator surfaces; a menu on
+ *  file is not a table-order destination (MESITA-1967). */
+export function isOrderActionEnabled(
+  _row: ActionFlagRow | null | undefined,
+): boolean {
   return false;
-}
-
-export function isOrderActionEnabled(row: ActionFlagRow | null | undefined): boolean {
-  if (!row) return false;
-  if (row.orders_enabled === true) return true;
-  return hasMenuCatalog(row);
 }
 
 /** Guest Reserve CTA — off only on an explicit false (Not / walk-in). */
