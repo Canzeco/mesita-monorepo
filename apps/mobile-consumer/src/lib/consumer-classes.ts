@@ -1,28 +1,16 @@
-// Compact class catalog — mirrored from web-consumer `lib/consumer-data.ts`.
-// Ascending ladder (segments v6, canonical order MESITA-972): standard
-// (default) < influencer (Instagram ≥ 2,000 followers, automatic) < premium
-// (paid) < aura (invite-only presence class) — mirrors classes.rank in the DB
-// and the money ladder (class steps +5 influencer / +10 premium / +15 aura).
+// Storage keys for a guest's `consumers.class_key`, and the bridge from what
+// the server sends to what this app compares on.
 //
-// GUEST-FACING NAMES ARE bronze/silver/gold/diamond (MESITA-1449): the `id`s
-// below stay the legacy standard/influencer/premium/aura keys — they are the
-// DB values (classes.rank) and drive every comparison in this file and its
-// consumers (isElevatedClass, follower-threshold lookups, etc.) — only the
-// display `label`s changed, matching TicketScreen.tsx's existing
-// legacyKey -> bronze/silver/gold/diamond bridge exactly (standard->Bronze,
-// influencer->Silver, premium->Gold, aura->Diamond). Same two-layer shape web
-// already documents for its own class-context: legacy keys bridge underneath,
-// never merged into the earned-name ladder guests actually see.
+// THERE ARE NO CLASSES FOR GUESTS (Pato, MESITA-2044: "either you are diamond
+// or you are not ... Diamond List"). A guest is on the Diamond List or not.
+// The ids below stay the legacy standard/influencer/premium/aura keys because
+// every comparison in this app (isElevatedClass, the mock, the ticket pass)
+// was written against them — they are STORAGE, never copy. Nothing here names
+// a rung to a guest; `listLabelForClass` is the only label left and it says
+// "Diamond List" or nothing.
 
-import {
-  CreditCard,
-  Crown,
-  Megaphone,
-  Pyramid,
-  Smile,
-  type LucideIcon,
-} from 'lucide-react-native';
 import { GRADIENTS } from '@/constants/brand';
+import { DIAMOND_LIST } from '@/lib/consumer-identity';
 
 const CLASS_ORDER = ['standard', 'influencer', 'premium', 'aura'] as const;
 export type ClassId = (typeof CLASS_ORDER)[number];
@@ -57,40 +45,6 @@ export const CLASS_METAL_INK_GRADIENT: Record<ClassId, readonly [string, string]
   aura: GRADIENTS.influencer, // Diamond — GRADIENTS.influencer IS diamond's band
 };
 
-export const CLASSES: {
-  id: ClassId;
-  label: string;
-  priceMxn: number;
-  followerThreshold: number;
-}[] = [
-  {
-    id: 'standard',
-    label: 'Bronze',
-    priceMxn: 0,
-    followerThreshold: 0,
-  },
-  {
-    id: 'influencer',
-    label: 'Silver',
-    priceMxn: 0,
-    // Mirrors classes.follower_threshold in the DB — the EF grants off that
-    // row, so this constant is display-only and must track it.
-    followerThreshold: 2_000,
-  },
-  {
-    id: 'premium',
-    label: 'Gold',
-    priceMxn: 50,
-    followerThreshold: 0,
-  },
-  {
-    id: 'aura',
-    label: 'Diamond',
-    priceMxn: 0,
-    followerThreshold: 0,
-  },
-];
-
 // `INFLUENCER_FOLLOWER_THRESHOLD` LIVED HERE AND IS GONE (MESITA-2040). It
 // carried 2,000 while web's ladder carried 1,000, both claiming to mirror
 // `classes.follower_threshold`, and nothing on either side compared them — the
@@ -99,21 +53,9 @@ export const CLASSES: {
 // all: it makes an account VERIFIED. Story Bonus still rides a connected
 // handle (MESITA-909), never the bar.
 
-// Canonical class icon set (MESITA-929): Smile gray · Megaphone red ·
-// CreditCard blue · Crown yellow. Mirrors web CLASS_ICONS.
-export const CLASS_ICONS: Record<ClassId, LucideIcon> = {
-  standard: Smile,
-  premium: CreditCard,
-  influencer: Megaphone,
-  aura: Crown,
-};
-
-/** Sheet / section mark for the Classes surface (not a membership class). */
-export const CLASS_MARK_ICON: LucideIcon = Pyramid;
-
-// Premium-perk gate: everything above Standard unlocks the same elevated perk
-// set. Generic on purpose: a future class joins the ladder by joining
-// CLASS_ORDER, never by another branch here.
+// Elevated-perk gate (AI Connector, the elevated promo rate): the Premium
+// plan or the Diamond List — after `legacyKeyForStoredClass`, those are the
+// only two non-`standard` keys this app ever holds. A perk, never a rate row.
 export function isElevatedClass(classKey: string): boolean {
   return (
     classKey !== 'standard' &&
@@ -121,16 +63,37 @@ export function isElevatedClass(classKey: string): boolean {
   );
 }
 
-// Compact Title-Case label per class id. Unknown values fall back to "Mesita".
-const CLASS_LABELS: Record<string, string> = {
-  standard: 'Bronze',
-  premium: 'Gold',
-  influencer: 'Silver',
-  aura: 'Diamond',
-};
+/** The server writes METALS now (`bronze`/`diamond`, and a stray
+ *  `silver`/`gold` row can still exist); older payloads and this app speak the
+ *  legacy keys. One bridge, used by the auth provider:
+ *
+ *    diamond / aura            → aura      (on the Diamond List)
+ *    premium plan, not listed  → premium   (the perk carrier, never a rate)
+ *    everything else           → standard  (not on the list)
+ *
+ *  Before MESITA-2044 the provider only knew the legacy keys, so EVERY metal —
+ *  including a real `diamond` — normalized to `standard`, and a guest on the
+ *  list read "not on it" on mobile while web told them the truth. Silver and
+ *  Gold map to "not on the list" on purpose: they no longer exist for guests,
+ *  and a row still carrying one must not surface as anything. */
+export function legacyKeyForStoredClass(
+  rawKey: string | null | undefined,
+  plan?: string | null,
+): ClassId {
+  if (rawKey === 'diamond' || rawKey === 'aura') return 'aura';
+  if (plan === 'premium' || rawKey === 'premium') return 'premium';
+  return 'standard';
+}
 
-export function classProperLabel(classKey: string): string {
-  return CLASS_LABELS[classKey] ?? 'Mesita';
+/** On the Diamond List? Accepts the legacy key or the metal. */
+export function onDiamondList(classKey: string | null | undefined): boolean {
+  return classKey === 'aura' || classKey === 'diamond';
+}
+
+/** The ONLY guest-facing label a stored class key has: the list's name when
+ *  the guest is on it, nothing otherwise. There is no "Bronze" to print. */
+export function listLabelForClass(classKey: string | null | undefined): string | null {
+  return onDiamondList(classKey) ? DIAMOND_LIST : null;
 }
 
 /**

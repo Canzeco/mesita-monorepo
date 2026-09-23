@@ -22,13 +22,9 @@ import type { ClassKey } from "@/lib/consumer-data";
 // white ended up on three light metals. A filled element that carries content
 // takes `classBadgeClass` from @/lib/consumer-data, which pairs the two.
 
+// Two rows since MESITA-2044 (Base / Diamond List). Silver and Gold's ink
+// left with the ladder.
 export const CLASS_TEXT: Record<ClassKey, string> = {
   bronze: "text-bronze",
-  // Silver is ink again. It was demoted to the muted foreground because the
-  // metal "only works as a fill" — true of the old token, which was a 0.72
-  // near-white. The solids are tuned as TEXT now, so silver reads at 4.85:1
-  // on card and no longer needs a stand-in.
-  silver: "text-silver",
-  gold: "text-gold",
   diamond: "text-diamond",
 };

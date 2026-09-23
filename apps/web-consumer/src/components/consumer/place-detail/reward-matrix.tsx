@@ -2,20 +2,20 @@ import type { LucideIcon } from "lucide-react";
 import {
   ChevronRight,
   DoorOpen,
+  Gem,
   Instagram,
   Star,
   Store,
   UtensilsCrossed,
 } from "lucide-react";
 
+import type { ClassKey } from "@/lib/consumer-data";
 import {
-  CLASS_FLOOR,
-  CLASS_ICONS,
-  CLASS_ORDER,
-  classProperLabel,
-  type ClassKey,
-  type LegacyClassKey,
-} from "@/lib/consumer-data";
+  BASE_RATE_HINT,
+  BASE_RATE_LABEL,
+  DIAMOND_LIST,
+  DIAMOND_LIST_RATE_HINT,
+} from "@/lib/consumer-identity";
 import type { RewardQuote } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,10 @@ import { cn } from "@/lib/utils";
 // Standard-vs-Premium comparison); Pato has reversed that — the whole ladder
 // is back, because a rate sheet that hides the rungs above you can't tell you
 // what a class is worth, and the classes are the product.
+//
+// TWO IDENTITY ROWS SINCE MESITA-2044 (Pato: "there are no classes, either
+// you are diamond or you are not… Diamond List"). The ladder is Base — every
+// guest — and the Diamond List's adder on top. No Bronze/Silver/Gold rows.
 //
 // EVERY number here comes from `quote` — the live engine (MESITA-1017). None
 // of it is reconstructed from `reward-segments.ts`, which is program
@@ -127,78 +131,64 @@ export function RateSheetSkeleton() {
   );
 }
 
-// Which LEGACY segment carries each v2 class's rate. Used only when the quote
-// has no v12 `breakdown` (best-of fallback / stale EF).
-const LADDER_SOURCE: Record<ClassKey, LegacyClassKey | null> = {
-  bronze: "standard",
-  silver: "influencer",
-  gold: null,
-  diamond: "aura",
-};
-
-function standingForClass(quote: RewardQuote, key: ClassKey): number | null {
+/** The Base: what every guest gets here. v12 decomposes it as `automatic`
+ *  (the `bronze` row's adder is 0 by construction); the legacy best-of ladder
+ *  quotes it as the `standard` standing rate. */
+function baseRate(quote: RewardQuote): number | null {
   if (quote.breakdown) {
-    return quote.breakdown.automatic + quote.breakdown.classes[key];
+    return quote.breakdown.automatic + (quote.breakdown.classes.bronze ?? 0);
   }
-  const source = LADDER_SOURCE[key];
-  if (!source || !quote.ladder) return null;
-  return quote.ladder[source] ?? 0;
+  return quote.ladder?.standard ?? null;
 }
 
-function classAdder(quote: RewardQuote, key: ClassKey): number | null {
-  if (quote.breakdown) return quote.breakdown.classes[key];
-  const standing = standingForClass(quote, key);
-  const floor = standingForClass(quote, CLASS_FLOOR.id);
-  if (standing == null || floor == null) return standing;
-  return standing - floor;
+/** The Diamond List's ADDER over the Base — never a standing total, so the
+ *  row reads "+N%" beside Base's N%. Legacy ladders carry no decomposition, so
+ *  the adder is `aura` (the list's legacy key) minus `standard`. */
+function diamondListAdder(quote: RewardQuote): number | null {
+  if (quote.breakdown) {
+    const b = quote.breakdown;
+    return (b.classes.diamond ?? 0) - (b.classes.bronze ?? 0);
+  }
+  const standing = quote.ladder?.aura;
+  const base = quote.ladder?.standard;
+  if (standing == null || base == null) return null;
+  return Math.max(0, standing - base);
 }
 
-// The bronze floor — named as its own rung so Base is never folded into a
-// class total on a v12 quote. Legacy quotes have no decomposition; skip.
-export function BaseRow({ quote }: { quote: RewardQuote }) {
-  if (!quote.breakdown) return null;
-  return (
-    <Row
-      icon={Store}
-      label="Base"
-      hint="Standing offer — every guest, every visit"
-      value={quote.breakdown.automatic}
-    />
-  );
-}
-
-// Class adders on v12 (Base is a separate row). Standing rates on the legacy
-// ladder, where Gold still cannot be quoted.
+// THE TWO IDENTITY ROWS (MESITA-2044). Base, then the Diamond List as an
+// adder; the guest's own row carries the You marker. Was `BaseRow` + a
+// four-metal `ClassLadder` — the Base row now lives here, so a caller can
+// never render it twice or forget it.
 export function ClassLadder({
   quote,
   classKey,
 }: {
   quote: RewardQuote;
-  classKey: ClassKey;
+  classKey: ClassKey | string;
 }) {
   if (!quote.breakdown && !quote.ladder) return null;
-  const additive = Boolean(quote.breakdown);
+  const onList = classKey === "diamond";
+  const base = baseRate(quote);
+  const adder = diamondListAdder(quote);
   return (
     <div className="flex flex-col gap-1.5">
-      {CLASS_ORDER.map((key) => {
-        const value = additive
-          ? classAdder(quote, key)
-          : standingForClass(quote, key);
-        return (
-          <Row
-            key={key}
-            icon={CLASS_ICONS[key]}
-            label={classProperLabel(key)}
-            hint={value == null ? "Not priced here yet" : undefined}
-            value={value}
-            plus={additive && (value ?? 0) > 0}
-            mine={key === classKey}
-            muted={
-              value == null || (additive && value === 0 && key !== classKey)
-            }
-          />
-        );
-      })}
+      <Row
+        icon={Store}
+        label={BASE_RATE_LABEL}
+        hint={BASE_RATE_HINT}
+        value={base}
+        mine={!onList}
+        muted={base == null}
+      />
+      <Row
+        icon={Gem}
+        label={DIAMOND_LIST}
+        hint={DIAMOND_LIST_RATE_HINT}
+        value={adder}
+        plus
+        mine={onList}
+        muted={adder == null || (adder === 0 && !onList)}
+      />
     </div>
   );
 }
@@ -281,7 +271,7 @@ export function RewardTotal({
     <div className="border-primary/20 bg-primary/8 flex flex-col gap-1 rounded-xl border px-3 py-2.5">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-foreground type-body font-bold">
-          {quote.additive ? "Everything stacked" : "Your best single rung"}
+          {quote.additive ? "Everything stacked" : "Your best single reward"}
         </span>
         <span className="font-display text-primary text-xl leading-none font-extrabold tabular-nums">
           {total}%
@@ -289,7 +279,7 @@ export function RewardTotal({
       </div>
       <p className="text-muted-foreground type-body leading-snug">
         {quote.additive
-          ? "Your class plus every bonus you complete, added together"
+          ? "Your rate plus every bonus you complete, added together"
           : "Bonuses don't stack here — you keep the single best one"}
         {capLabel ? ` · applied to your first ${capLabel}` : ""}
       </p>

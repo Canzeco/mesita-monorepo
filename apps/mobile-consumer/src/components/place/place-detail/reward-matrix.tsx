@@ -2,19 +2,19 @@
 import {
   AtSign,
   DoorOpen,
+  Gem,
   Star,
-  User,
+  Store,
   UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { COLORS } from '@/constants/brand';
-import { classProperLabel } from '@/lib/consumer-classes';
 import type { PlaceStrategy } from '@/lib/promo-rates';
 import {
+  identityRateRowsAt,
   REWARD_SEGMENT_BY_KEY,
-  segmentKeyForClass,
   type RewardClassKey,
 } from '@/lib/reward-segments';
 
@@ -78,38 +78,44 @@ export function RewardStep({
   );
 }
 
-// ── Your rewards at THIS place (v7, MESITA-861) ─────────────────────────
+// ── Your rewards at THIS place (v7, MESITA-861; MESITA-2044) ────────────
 //
-// The guest's own row of the big Strategy × Class table, action by action,
-// at the place's strategy. Replaces the Standard-vs-Premium comparison: the
-// guest sees what THEY can get here, never class arithmetic (MESITA-860).
+// The guest's rewards at the place's strategy, action by action. Who the
+// guest is takes exactly TWO rows — Base (every guest) and Diamond List (the
+// adder on top, invitation only) — and the guest's own one carries "You".
+// There is no ladder to show (Pato, MESITA-2044).
 
 type Row = {
   Icon: LucideIcon;
   label: string;
   hint: string;
-  /** null = show ★ (the Mesita review, unpriced today); number = percent. */
-  value: number | null;
+  /** null = show ★ (the Mesita review, unpriced today); string = as shown. */
+  value: string | null;
   mine?: boolean;
 };
 
-export function YourRewardsHere({
+/** "Your rate" — the two identity rows and nothing else: Base (N%) and the
+ *  Diamond List adder (+N%), the guest's own one marked "You". */
+export function YourRate({
   strategy,
   classKey,
 }: {
   strategy: PlaceStrategy;
   classKey: RewardClassKey;
 }) {
-  const mine = REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)];
+  const rows: Row[] = identityRateRowsAt(strategy, classKey).map((r) => ({
+    Icon: r.key === 'diamond' ? Gem : Store,
+    label: r.label,
+    hint: r.hint,
+    value: r.display,
+    mine: r.mine,
+  }));
+  return <RewardRows rows={rows} />;
+}
 
+/** The actions at this place — every guest, on the list or not. */
+export function YourRewardsHere({ strategy }: { strategy: PlaceStrategy }) {
   const rows: Row[] = [
-    {
-      Icon: User,
-      label: `${classProperLabel(classKey)} — always on`,
-      hint: 'Your standing discount, every visit',
-      value: mine.rates[strategy],
-      mine: true,
-    },
     {
       Icon: UtensilsCrossed,
       label: 'Mesita review',
@@ -120,22 +126,35 @@ export function YourRewardsHere({
       Icon: AtSign,
       label: 'Instagram story',
       hint: 'Tag the place — any connected Instagram',
-      value: REWARD_SEGMENT_BY_KEY.story.rates[strategy],
+      value: `${REWARD_SEGMENT_BY_KEY.story.rates[strategy]}%`,
     },
     {
       Icon: DoorOpen,
       label: 'Welcome visit',
       hint: 'Automatic on your first visit here',
-      value: REWARD_SEGMENT_BY_KEY.welcome.rates[strategy],
+      value: `${REWARD_SEGMENT_BY_KEY.welcome.rates[strategy]}%`,
     },
     {
       Icon: Star,
       label: 'Google review',
       hint: 'At the table, once per place',
-      value: REWARD_SEGMENT_BY_KEY.review.rates[strategy],
+      value: `${REWARD_SEGMENT_BY_KEY.review.rates[strategy]}%`,
     },
   ];
+  return (
+    <View style={{ gap: 6 }}>
+      <RewardRows rows={rows} />
+      <Text
+        className="mt-1 px-1 text-muted-foreground"
+        style={{ fontSize: 10.5, lineHeight: 14 }}
+      >
+        You always keep your single best one — never added together.
+      </Text>
+    </View>
+  );
+}
 
+function RewardRows({ rows }: { rows: Row[] }) {
   return (
     <View style={{ gap: 6 }}>
       {rows.map((r) => (
@@ -183,16 +202,10 @@ export function YourRewardsHere({
             className="font-extrabold text-foreground"
             style={{ fontSize: 15 }}
           >
-            {r.value == null ? '★' : `${r.value}%`}
+            {r.value == null ? '★' : r.value}
           </Text>
         </View>
       ))}
-      <Text
-        className="mt-1 px-1 text-muted-foreground"
-        style={{ fontSize: 10.5, lineHeight: 14 }}
-      >
-        You always keep your single best one — never added together.
-      </Text>
     </View>
   );
 }

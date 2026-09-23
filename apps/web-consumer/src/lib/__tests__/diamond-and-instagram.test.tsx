@@ -20,7 +20,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { ClassProvider, useConsumerClass } from "@/lib/class-context";
 import {
+  DIAMOND_LIST_HOW,
   INSTAGRAM_REACH_FOLLOWERS,
+  diamondChipLabel,
+  diamondHeadline,
   diamondNote,
   diamondSummary,
   instagramNote,
@@ -166,6 +169,7 @@ describe("a read that FAILED is never stated as a fact", () => {
     // The floor fallback makes a thrown read look like a plain account. These
     // four lines are what stop the app asserting the guess.
     expect(diamondSummary(unknown)).toBe("Come back to try");
+    expect(diamondChipLabel(unknown)).toBe("Come back to try");
     expect(instagramSummary(unknown)).toBe("Come back to try");
     expect(diamondNote(unknown)).not.toMatch(/invitation only|Invited by/);
     expect(instagramNote(unknown, "0 followers")).not.toMatch(
@@ -178,7 +182,7 @@ describe("a read that FAILED is never stated as a fact", () => {
     // boolean apart; only the second may hedge.
     const empty = factsFrom(null, null, false);
     expect(empty.unknown).toBe(false);
-    expect(diamondSummary(empty)).toBe("Ask for it");
+    expect(diamondSummary(empty)).toBe("Ask to join");
   });
 });
 
@@ -193,6 +197,8 @@ describe("no sentence about one fact mentions the other", () => {
 
   it.each(states)("the Diamond line never says Instagram (%j)", (f) => {
     expect(diamondSummary(f)).not.toMatch(/instagram|follower/i);
+    expect(diamondChipLabel(f)).not.toMatch(/instagram|follower/i);
+    expect(diamondHeadline(f)).not.toMatch(/instagram|follower/i);
     expect(diamondNote(f)).not.toMatch(/instagram|follower/i);
   });
 
@@ -208,12 +214,39 @@ describe("no sentence about one fact mentions the other", () => {
     for (const f of states) {
       for (const line of [
         diamondSummary(f),
+        diamondChipLabel(f),
+        diamondHeadline(f),
         diamondNote(f),
         instagramSummary(f),
         instagramNote(f, "5k followers"),
       ]) {
-        expect(line).not.toMatch(/\b(bronze|silver|gold|class)\b/i);
+        expect(line).not.toMatch(
+          /\b(bronze|silver|gold|class|vip|tier|rank|rung|level|climb)\b/i,
+        );
+        // "Diamond" is only ever the Diamond List, never a status noun.
+        expect(line).not.toMatch(/Diamond(?! List)/);
       }
     }
+  });
+});
+
+describe("the Diamond List's copy, pinned (web and mobile match this)", () => {
+  const off: ConsumerFacts = { diamond: false, igConnected: false, igHandle: null, igFollowers: 0, igReach: false, unknown: false };
+  const on: ConsumerFacts = { ...off, diamond: true };
+
+  it("the Me tile and the header chip", () => {
+    expect(diamondSummary(on)).toBe("You're on it");
+    expect(diamondSummary(off)).toBe("Ask to join");
+    expect(diamondChipLabel(on)).toBe("Diamond List");
+    expect(diamondChipLabel(off)).toBe("Ask to join");
+  });
+
+  it("the page headline and the how line", () => {
+    expect(diamondHeadline(on)).toBe("You're on the Diamond List");
+    expect(diamondHeadline(off)).toBe("You're not on the list yet");
+    expect(diamondNote(off)).toBe(DIAMOND_LIST_HOW);
+    expect(DIAMOND_LIST_HOW).toBe(
+      "The Diamond List is invitation-only. Ask Mesita to join, or enter a PIN if someone gave you one.",
+    );
   });
 });

@@ -147,8 +147,9 @@ export type RewardQuote = {
    * Rewards tab never reconstructs it from the static CLASS_STEP ladder.
    *
    * KEYED BY THE FOUR LEGACY SEGMENTS for the best-of fallback. v12 quotes
-   * carry `breakdown.classes` instead — Bronze · Silver · Gold · Diamond
-   * standing rates, so Gold is a priced rung, not a star.
+   * carry `breakdown.classes` instead. Guests read two rows off either shape
+   * (MESITA-2044): Base (`standard` / `bronze`) and the Diamond List (`aura`
+   * / `diamond`).
    *
    * Optional only to survive the deploy window where a cached client meets a
    * not-yet-redeployed EF; treat absent as "don't render the ladder", never
@@ -157,9 +158,9 @@ export type RewardQuote = {
   ladder?: Partial<Record<LegacyClassKey, number>>;
   /**
    * THE TICKET v4's Reward lanes (MESITA-1089): the base decomposed on the
-   * SAME v12 grid the bill pays — automatic = the bronze floor, each class
-   * chip = that class's rate over the floor. automatic + classes[cls] ===
-   * base, by construction. Absent on legacy best-of configs and on stale
+   * SAME v12 grid the bill pays — automatic = the Base, `classes.diamond` =
+   * the Diamond List's adder over it. automatic + classes[cls] === base, by
+   * construction. Absent on legacy best-of configs and on stale
    * EFs — render the flat receipt then.
    *
    * `plan` and `planUplift` were here until MESITA-1705. The plan no longer
@@ -167,8 +168,11 @@ export type RewardQuote = {
    */
   breakdown?: {
     automatic: number;
-    classes: { bronze: number; silver: number; gold: number; diamond: number };
-    cls: "bronze" | "silver" | "gold" | "diamond";
+    /** `silver`/`gold` may still arrive from an EF that has not dropped
+     *  them; nothing reads them (MESITA-2044). */
+    classes: { bronze: number; diamond: number; silver?: number; gold?: number };
+    /** Storage key. Only `"diamond"` means "on the Diamond List". */
+    cls: string;
   };
   storyEligible: boolean;
   cap: number;

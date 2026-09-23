@@ -14,9 +14,9 @@
 //
 // Like every other door writer it persists a FACT and then defers to the shared
 // recompute (_shared/class-doors.ts, MESITA-972) rather than setting the class
-// slot by hand. So a PIN never demotes anyone: a subscriber who redeems a
-// Diamond PIN keeps the subscription running underneath, and if the PIN's class
-// ranks below a door they already hold, the slot does not move.
+// slot by hand. A redeemed PIN puts its holder on the Diamond List
+// (MESITA-2044): PINs are minted for `diamond` only, and a subscriber who
+// redeems one keeps the subscription running underneath — plan is not a class.
 //
 // SECURITY — the error message is deliberately the same for every rejection.
 // "Unknown PIN", "already used" and "expired" as distinct replies would turn

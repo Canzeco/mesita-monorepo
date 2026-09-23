@@ -46,9 +46,14 @@ export type ConsumerProfile = {
 // Matches consumer-web-get-profile `class` payload (EF uses `key`).
 // AuthProvider.normalizeClass fills both `key` and `class` for call-site compat.
 export type ConsumerClass = {
+  /** On the wire: a metal (`bronze`/`diamond`) or a legacy key. The auth
+   *  provider normalizes it to the legacy key (`legacyKeyForStoredClass`)
+   *  before any screen reads it. */
   key?: 'standard' | 'premium' | 'influencer' | 'aura';
   /** Normalized alias of `key` — existing screens still read `.class`. */
   class?: 'standard' | 'premium' | 'influencer' | 'aura';
+  /** `consumers.plan` — the Premium perk carrier, never a rate. */
+  plan?: 'free' | 'premium' | string | null;
   origin?: 'default' | 'instagram' | 'subscription' | 'invitation' | string | null;
   label?: string;
   followers?: number | null;

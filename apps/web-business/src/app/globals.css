@@ -138,8 +138,9 @@
   --ring: oklch(0.205 0 0);
 
   /* ── RESERVED SIGNALS: the only chroma left on this page ────────────────
-     Red is the sole thing that says "this destroys something"; gold is a tier
-     the product names out loud (Bronze/Silver/Gold/Diamond); WhatsApp is a
+     Red is the sole thing that says "this destroys something"; gold is the
+     status the product names out loud (Mesita Partner — guests carry no
+     metals since MESITA-2044, only the binary Diamond List); WhatsApp is a
      third party's own mark. Nothing else may carry a hue.
      — AND SINCE MESITA-2037 there is a fourth: a product's FAMILY, below. It
      is the first reserved signal that is neither a warning nor a tier, and it

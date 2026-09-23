@@ -1,21 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { DoorOpen, Loader2, UserRound } from "lucide-react";
+import { Gem, Loader2, UserRound } from "lucide-react";
 import {
   ConfirmDialog,
   ErrorNote,
   ManageSectionCard,
   ReadField,
-  SelectField,
   TextField,
 } from "@/components/admin-ui";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
-import {
-  INVITATION_CLASSES,
-  ORIGIN_LABEL,
-  storedClassLabel,
-} from "./class-bridge";
+import { diamondListLabel, isOnDiamondList } from "./class-bridge";
 import {
   grantInvitation,
   revokeInvitation,
@@ -38,9 +33,10 @@ function stamp(iso: string | null): string {
       });
 }
 
+// THE DIAMOND LIST (MESITA-2044): a guest is on it or not, nothing in
+// between, so this page has two verbs and no picker — add, and remove.
 export function InvitationsClient() {
   const [lookup, setLookup] = useState("");
-  const [classKey, setClassKey] = useState(INVITATION_CLASSES[0].key);
   const [result, setResult] = useState<
     { consumer: ConsumerSummary; classKey: string; origin: string } | null
   >(null);
@@ -52,8 +48,6 @@ export function InvitationsClient() {
   const [pending, start] = useTransition();
 
   const trimmed = lookup.trim();
-  const chosen =
-    INVITATION_CLASSES.find((c) => c.key === classKey) ?? INVITATION_CLASSES[0];
 
   const settle = (r: DoorResult) => {
     if (!r.ok) {
@@ -71,7 +65,7 @@ export function InvitationsClient() {
     if (!trimmed || pending) return;
     setError(null);
     setMissed(false);
-    start(async () => settle(await grantInvitation(trimmed, classKey)));
+    start(async () => settle(await grantInvitation(trimmed)));
   };
 
   const revoke = () => {
@@ -86,38 +80,23 @@ export function InvitationsClient() {
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
         eyebrow="Manage · Invitations"
-        title="Invitations"
-        description="Open or close a guest's invitation door by hand. The invitation never cancels the other doors — a paying member granted Diamond keeps their subscription running underneath, and revoking drops them to the best door they still hold."
+        title="Diamond List"
+        description="Add a guest to the Diamond List, or remove them. The list is invitation-only and binary — a guest is on it or not, nothing in between. Instagram and the guest's plan are separate facts, and neither is touched here."
       />
 
       <ManageSectionCard
-        icon={<DoorOpen className="h-4 w-4" />}
+        icon={<Gem className="h-4 w-4" />}
         tint="violet"
-        title="The invitation door"
+        title="Who is on the list"
         subtitle="Name the guest however you have them — a uuid, an 8-digit consumer code, a phone, an @handle, or a name. A lookup that matches several people is refused rather than guessed at."
       >
         <div className="mt-5 flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-            <TextField
-              label="Guest"
-              value={lookup}
-              onChange={setLookup}
-              placeholder="+52 81 1234 5678 · 0000-0000 · @handle · name"
-            />
-            <SelectField
-              label="Class"
-              value={classKey}
-              onChange={setClassKey}
-              options={INVITATION_CLASSES.map((c) => ({
-                value: c.key,
-                label: c.label,
-              }))}
-            />
-          </div>
-
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            {chosen.blurb}
-          </p>
+          <TextField
+            label="Guest"
+            value={lookup}
+            onChange={setLookup}
+            placeholder="+52 81 1234 5678 · 0000-0000 · @handle · name"
+          />
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
@@ -127,7 +106,7 @@ export function InvitationsClient() {
               className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
             >
               {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-              Grant {chosen.label}
+              Add to the Diamond List
             </button>
             <button
               type="button"
@@ -135,7 +114,7 @@ export function InvitationsClient() {
               disabled={pending || trimmed.length === 0}
               className="border-border hover:bg-muted inline-flex h-10 items-center justify-center rounded-xl border px-5 text-sm font-semibold transition disabled:opacity-50"
             >
-              Revoke invitation
+              Remove from the Diamond List
             </button>
           </div>
 
@@ -143,11 +122,11 @@ export function InvitationsClient() {
 
           {missed && (
             <p className="border-border bg-muted/50 text-muted-foreground rounded-xl border p-3 text-xs leading-relaxed">
-              An invitation can only land on an account that already exists.
-              Phone OTP is the only way into the consumer app, and nothing here
-              holds an invitation for a number that has never signed in — so a
-              guest invited before they sign up has to be granted again
-              afterwards.
+              A guest can only be added to the Diamond List once their account
+              exists. Phone OTP is the only way into the consumer app, and
+              nothing here holds a place on the list for a number that has
+              never signed in — so a guest added before they sign up has to be
+              added again afterwards.
             </p>
           )}
         </div>
@@ -158,17 +137,16 @@ export function InvitationsClient() {
       <ConfirmDialog
         open={confirmRevoke}
         danger
-        title="Revoke this invitation?"
+        title="Remove from the Diamond List?"
         body={
           <>
-            This clears the invitation door for whoever{" "}
+            This takes whoever{" "}
             <span className="text-foreground font-medium">{trimmed}</span>{" "}
-            resolves to. Their class falls back to the best door they still
-            hold — a live subscription, then their Instagram reach, then the
-            floor. It does not say which class they had.
+            resolves to off the Diamond List, whether they joined by a Mesita
+            invitation or a PIN. Their Instagram and their plan are untouched.
           </>
         }
-        confirmLabel="Revoke"
+        confirmLabel="Remove"
         busy={pending}
         onConfirm={revoke}
         onCancel={() => setConfirmRevoke(false)}
@@ -177,17 +155,14 @@ export function InvitationsClient() {
   );
 }
 
-// Who the lookup landed on, and what the recompute settled — read back from
-// the EF rather than assumed, because the granted class is not always the
-// effective one (a Diamond subscriber granted Silver stays Diamond).
+// Who the lookup landed on, and whether they are on the list now — read back
+// from the EF rather than assumed from the button that was pressed.
 function ResultCard({
   consumer,
   classKey,
-  origin,
 }: {
   consumer: ConsumerSummary;
   classKey: string;
-  origin: string;
 }) {
   return (
     <ManageSectionCard
@@ -211,18 +186,13 @@ function ResultCard({
             </span>
           )}
         </ReadField>
-        <ReadField label="Invitation door" boxed>
-          {consumer.invitationClassKey
-            ? `${storedClassLabel(consumer.invitationClassKey)} · ${stamp(
-                consumer.invitationGrantedAt,
-              )}`
-            : "Closed"}
+        <ReadField label="Diamond List" boxed>
+          {diamondListLabel(classKey)}
         </ReadField>
-        <ReadField label="Effective class" boxed>
-          {storedClassLabel(classKey)}
-        </ReadField>
-        <ReadField label="Won by" boxed>
-          {ORIGIN_LABEL[origin] ?? origin}
+        <ReadField label="Invited" boxed>
+          {isOnDiamondList(consumer.invitationClassKey)
+            ? stamp(consumer.invitationGrantedAt)
+            : "—"}
         </ReadField>
       </div>
     </ManageSectionCard>

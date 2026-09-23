@@ -4,8 +4,8 @@ import { Text, View } from 'react-native';
 import { Switch } from '@/components/ui/Switch';
 import { useMockFacts } from '@/lib/mock-class';
 
-// The Diamond axis of the emulator — invited or not, and nothing in between
-// (MESITA-2040).
+// The Diamond List half of the emulator — on the list or not, and nothing in
+// between (MESITA-2040, MESITA-2044).
 //
 // IT IS A SWITCH NOW, NOT A FOUR-WAY PICKER. `ClassPreviewToggle` offered a
 // button per rung because the thing it previewed was a four-value enum, and
@@ -37,16 +37,16 @@ export function DiamondEmulator() {
           className="font-bold text-foreground"
           style={{ fontSize: 14 }}
         >
-          Preview invited
+          Preview the Diamond List
         </Text>
         <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
-          Demo only — flips the Diamond fact
+          Demo only — puts this account on the list
         </Text>
       </View>
       <Switch
         value={on}
         onValueChange={() => setMock({ diamond: !on })}
-        accessibilityLabel="Preview a Diamond invitation"
+        accessibilityLabel="Preview the Diamond List"
       />
     </View>
   );

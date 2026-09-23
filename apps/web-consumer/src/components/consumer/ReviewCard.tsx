@@ -4,7 +4,8 @@ import { useState } from "react";
 import { GoogleLogo, MesitaSourceBadge } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
 import { cn, firstInitial } from "@/lib/utils";
-import { type ClassKey, classBadgeClass } from "@/lib/consumer-data";
+import { classBadgeClass } from "@/lib/consumer-data";
+import { DIAMOND_LIST } from "@/lib/consumer-identity";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { CLASS_TEXT } from "@/lib/class-styles";
 
@@ -22,12 +23,6 @@ import { CLASS_TEXT } from "@/lib/class-styles";
 
 const LONG_QUOTE_THRESHOLD = 220;
 
-const CLASS_LABEL: Record<ClassKey, string> = {
-  bronze: "BRONZE",
-  silver: "SILVER",
-  gold: "GOLD",
-  diamond: "DIAMOND",
-};
 
 type MesitaPayload = {
   kind: "mesita";
@@ -51,9 +46,9 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           avatar={
             <div
               className={cn(
-                // Ink comes from the metal, not from here: Silver, Gold and
-                // Diamond are light fills and the white wash this used to
-                // carry measured under 2:1 on all three (MESITA-1142).
+                // Ink comes from the metal, not from here: Diamond is a light
+                // fill and the white wash this used to carry measured under
+                // 2:1 on it (MESITA-1142).
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold opacity-90",
                 classBadgeClass(v.class_key),
               )}
@@ -63,15 +58,20 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           }
           name={v.name}
           sub={v.handle}
+          // The chip names the Diamond List when the reviewer is on it and
+          // is absent otherwise — "BRONZE" beside a name read as a rank
+          // (MESITA-2044).
           rightChip={
-            <span
-              className={cn(
-                "type-meta rounded-full border border-current/30 px-1.5 py-0 font-bold tracking-wider uppercase",
-                CLASS_TEXT[v.class_key],
-              )}
-            >
-              {CLASS_LABEL[v.class_key]}
-            </span>
+            v.class_key === "diamond" ? (
+              <span
+                className={cn(
+                  "type-meta rounded-full border border-current/30 px-1.5 py-0 font-bold tracking-wider uppercase",
+                  CLASS_TEXT[v.class_key],
+                )}
+              >
+                {DIAMOND_LIST}
+              </span>
+            ) : undefined
           }
           sourceLogo={<MesitaSourceBadge />}
         />

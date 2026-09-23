@@ -4,16 +4,17 @@
 //
 // The invitation door: grant/revoke write the invitation FACT
 // (consumers.invitation_class_key / invitation_granted_at) and then let the
-// shared recompute (_shared/class-doors.ts) settle the class slot from every
-// open CLASS door. A live subscription opens consumers.plan = premium, never
-// a class. Revoking an invitation with reach still open lands silver; else
-// bronze. The invitation never cancels the paid plan.
+// shared recompute (_shared/class-doors.ts) settle the class slot. A live
+// subscription opens consumers.plan = premium, never a class. Revoking lands
+// the base (bronze): the reach door is closed, so nothing else can hold a
+// guest on the list. The invitation never cancels the paid plan.
 //
-// Generic on purpose: `classKey` accepts any invitation-grantable class row
-// (Diamond today; Silver for a reach-band grant without waiting on
-// followers). Granting never
-// needs a rank guard — an explicit admin grant is the highest-intent write
-// (and the recompute keeps the slot honest anyway).
+// THE DIAMOND LIST (MESITA-2044). Pato, 2026-09-22: "either you are diamond
+// or you are not ... you are in the list or you don't, not in between". So
+// `classKey` accepts exactly `diamond` (grant) or null (revoke). The retired
+// `silver`/`gold` rungs — and anything else — are a 400 naming the two legal
+// values (_shared/diamond-list.ts parseListGrantKey). Granting never needs a
+// rank guard — an explicit admin grant is the highest-intent write.
 //
 // The consumer is named either by `consumerId` (a uuid, the original contract)
 // or by `lookup` — a free identifier the operator actually has at hand: uuid,
@@ -21,7 +22,7 @@
 // consumer; several matches come back as a 409 listing the candidates, because
 // guessing which guest gets an invitation is not this function's call.
 //
-// Body: { consumerId?: string, lookup?: string, classKey: metal | null }
+// Body: { consumerId?: string, lookup?: string, classKey: "diamond" | null }
 //       (classKey null = revoke; exactly one of consumerId / lookup)
 // Response: { ok: true, consumerId, classKey, origin, consumer }
 //
@@ -38,6 +39,7 @@ import {
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { parseListGrantKey } from "../_shared/diamond-list.ts";
 import {
   candidateLabel,
   classifyConsumerLookup,
@@ -193,10 +195,14 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const rawId = (bodyRes.body.consumerId ?? "").toString().trim();
   const rawLookup = (bodyRes.body.lookup ?? "").toString().trim();
-  const classKey = bodyRes.body.classKey ?? null;
   if (!rawId && !rawLookup) {
     return json({ ok: false, error: "consumerId or lookup is required" }, 400);
   }
+  // Validate the key BEFORE resolving the consumer: a refused grant should
+  // not cost a lookup, and must not 404/409 before saying why it's refused.
+  const keyRes = parseListGrantKey(bodyRes.body.classKey, { allowRevoke: true });
+  if (!keyRes.ok) return json({ ok: false, error: keyRes.error }, 400);
+  const classKey = keyRes.classKey;
 
   // An explicit id wins over a lookup — a caller that has the uuid is not
   // asking to be searched for.
@@ -216,7 +222,11 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `classes: ${classRow.error.message}` }, 500);
     }
     if (!classRow.data) {
-      return json({ ok: false, error: `Unknown class: ${classKey}` }, 400);
+      // The key is already validated, so a miss is the table, not the caller.
+      return json(
+        { ok: false, error: `classes has no '${classKey}' row to grant.` },
+        500,
+      );
     }
 
     const grant = await writeConsumer(admin, {
@@ -236,13 +246,13 @@ Deno.serve(async (req) => {
 
   // ── Revoke ───────────────────────────────────────────────────────────────
   // Only the invitation DOOR is revocable here — clearing the fact and
-  // recomputing lands the best remaining class door (reach → silver, else
-  // bronze). A live subscription stays on consumers.plan.
+  // recomputing lands the base (bronze): the guest is off the Diamond List.
+  // A live subscription stays on consumers.plan.
   if (!consumer.invitation_class_key) {
     return json(
       {
         ok: false,
-        error: "Nothing to revoke: no invitation-granted class on this consumer.",
+        error: "Nothing to revoke: this guest isn't on the Diamond List by invitation.",
       },
       409,
     );

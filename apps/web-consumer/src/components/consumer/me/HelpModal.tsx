@@ -6,12 +6,16 @@
 //
 // Numbers never live here. A static ladder quoted Aggressive defaults as
 // if they were every place's bill (MESITA-1017). The live sheet is the
-// place Rewards tab; this list is the rungs, named.
+// place Rewards tab; this list is what is priced, named.
+//
+// TWO IDENTITY ROWS (MESITA-2044): Base and the Diamond List. No metals, no
+// ladder — "either you are diamond or you are not".
 
 import type { LucideIcon } from "lucide-react";
 import {
   DoorOpen,
   FileText,
+  Gem,
   Info,
   Instagram,
   Percent,
@@ -25,12 +29,12 @@ import {
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { useConsumerClass } from "@/lib/class-context";
 import {
-  CLASS_FLOOR,
-  CLASS_ICONS,
-  CLASS_MARK_ICON,
-  CLASS_ORDER,
-  classProperLabel,
-} from "@/lib/consumer-data";
+  BASE_RATE_HINT,
+  BASE_RATE_LABEL,
+  DIAMOND_LIST,
+  DIAMOND_LIST_HELP_LINE,
+  DIAMOND_LIST_RATE_HINT,
+} from "@/lib/consumer-identity";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
 import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
@@ -89,29 +93,30 @@ function RungRow({ icon: Icon, label, hint, mine }: Omit<HelpRung, "key">) {
   );
 }
 
-// Every PRICED rung, in engine order: Base, the four classes, Welcome, then
-// the three sharing actions.
+// Everything PRICED, in engine order: Base, the Diamond List, Welcome, then
+// the three sharing actions. The guest's own identity row wears You.
 //
 // Free / Premium sat between the classes and Welcome until MESITA-1705. The
 // plan is not priced any more, so listing it here would tell the guest a
 // subscription changes their rate — which is now false. Premium's real perks
 // live on Me › Plan.
 export function HelpRungList({ classKey }: { classKey: string }) {
+  const onList = classKey === "diamond";
   const rungs: HelpRung[] = [
     {
       key: "base",
-      label: "Base",
-      hint: "Every guest, every visit",
+      label: BASE_RATE_LABEL,
+      hint: BASE_RATE_HINT,
       icon: Store,
-      mine: false,
+      mine: !onList,
     },
-    ...CLASS_ORDER.map((k) => ({
-      key: k,
-      label: classProperLabel(k),
-      hint: "Earned, not bought",
-      icon: CLASS_ICONS[k],
-      mine: k === classKey,
-    })),
+    {
+      key: "diamond",
+      label: DIAMOND_LIST,
+      hint: DIAMOND_LIST_RATE_HINT,
+      icon: Gem,
+      mine: onList,
+    },
     {
       key: "welcome",
       label: "Welcome",
@@ -146,7 +151,7 @@ export function HelpRungList({ classKey }: { classKey: string }) {
     <div className="flex flex-col gap-1.5 pt-1">
       <div className="flex items-baseline justify-between px-1 pb-1">
         <h3 className="text-foreground text-sm font-bold tracking-tight">
-          Every priced rung
+          Everything that&apos;s priced
         </h3>
         <span className="text-muted-foreground type-label">
           They add together
@@ -170,7 +175,7 @@ export function HelpModal() {
             <Info className="size-[18px]" />
           </span>
           <p className="text-muted-foreground text-xs">
-            Instant discounts, class, and the actions that stack.
+            Instant discounts, the Diamond List, and the actions that stack.
           </p>
         </div>
 
@@ -189,16 +194,10 @@ export function HelpModal() {
 
         <div className="flex items-start gap-3">
           <span className="bg-pink-gradient grid size-9 shrink-0 place-items-center rounded-xl text-white">
-            <CLASS_MARK_ICON className="size-[18px]" />
+            <Gem className="size-[18px]" />
           </span>
           <p className="text-muted-foreground type-body leading-relaxed">
-            <span className="text-foreground font-semibold">
-              Elevated classes boost them.
-            </span>{" "}
-            {CLASS_FLOOR.label} gets the base discount; every class above it
-            unlocks a bigger one. Followers lift you automatically; an invite is
-            by hand. Premium is a separate subscription, and it does not change
-            your rate.
+            {DIAMOND_LIST_HELP_LINE}
           </p>
         </div>
 
@@ -211,7 +210,7 @@ export function HelpModal() {
               Actions add on.
             </span>{" "}
             Welcome, Instagram Story, Google Review, and Mesita Review stack on
-            your class — not pick-one. The bill clamps at 100% and
+            your rate — not pick-one. The bill clamps at 100% and
             applies to the first cap-pesos. Live percents sit on each
             place&apos;s Rewards tab.
           </p>

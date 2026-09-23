@@ -6,13 +6,21 @@ import { BadgeCheck, Gem, KeyRound, Mail, TriangleAlert } from "lucide-react";
 import { DiamondEmulator } from "@/components/consumer/me/demo/DiamondEmulator";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { useConsumerClass } from "@/lib/class-context";
-import { diamondNote } from "@/lib/consumer-identity";
+import {
+  DIAMOND_LIST,
+  DIAMOND_LIST_REQUEST_BODY,
+  DIAMOND_LIST_RATE_HINT,
+  diamondHeadline,
+  diamondNote,
+} from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { MESITA_INSTAGRAM_HANDLE, MESITA_INSTAGRAM_URL, MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 import { cn } from "@/lib/utils";
 
-// DIAMOND, AND NOTHING ELSE ON THIS PAGE (Pato, MESITA-2040: "either you are
-// diamond or you are not").
+// THE DIAMOND LIST, AND NOTHING ELSE ON THIS PAGE (Pato, MESITA-2040: "either
+// you are diamond or you are not"; MESITA-2044: "its more like a List. Diamond
+// List. you are in the list or you don't, not in between"). The name is always
+// both words; "You're Diamond" was a status noun off the ladder.
 //
 // WHAT THIS REPLACES. `ClassModal` was a ladder of four rungs with two doors
 // under it — "Join with Instagram" on the left, "Join with Invitation" on the
@@ -31,8 +39,8 @@ import { cn } from "@/lib/utils";
 //
 // THE UNKNOWN BRANCH IS NOT OPTIONAL, and it is the same lesson the ladder
 // paid for (MESITA design review 2026-08-22). When the profile read throws,
-// the context falls back to the floor — so without this a Diamond guest is
-// told "Not yet" in a filled card, which is not a degraded answer but a wrong
+// the context falls back to the floor — so without this a guest on the list
+// is told they are not, which is not a degraded answer but a wrong
 // one. The doors below still render, because HOW Diamond is granted stays
 // true whatever we managed to read.
 //
@@ -49,19 +57,17 @@ export function DiamondModal() {
   const { diamond, unknown } = facts;
 
   const requestHref = `mailto:${MESITA_SUPPORT_EMAIL}?subject=${encodeURIComponent(
-    "Invitation request",
-  )}&body=${encodeURIComponent(
-    "Hi Mesita — I'd like an invitation to Diamond.\n\nWho I am:\n",
-  )}`;
+    `${DIAMOND_LIST} request`,
+  )}&body=${encodeURIComponent(DIAMOND_LIST_REQUEST_BODY)}`;
 
   return (
-    <MeScreen title="Diamond">
+    <MeScreen title="Diamond List">
       <div className="mb-4 flex items-center gap-3">
         <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
           <Gem className="h-5 w-5" aria-hidden />
         </span>
         <p className="text-muted-foreground text-xs">
-          By invitation. It is not something you can buy or climb to.
+          {DIAMOND_LIST_RATE_HINT}
         </p>
       </div>
 
@@ -89,7 +95,7 @@ export function DiamondModal() {
           /* THE STATUS CARD IS THE WHOLE ANSWER. The ladder needed a row per
              rung plus a marked current one; a boolean needs one card that
              says which of two things is true. It is FILLED when the guest
-             holds the invitation and outlined when they do not — the same
+             is on the list and outlined when they are not — the same
              "the one coloured thing means the fact" rule the metals were
              under (MESITA-1132), with one metal left to spend it on. */
           <div
@@ -112,7 +118,7 @@ export function DiamondModal() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-display text-sm leading-none font-bold tracking-tight">
-                  {diamond ? "You're Diamond" : "Not Diamond yet"}
+                  {diamondHeadline(facts)}
                 </span>
                 {diamond ? (
                   <BadgeCheck className="h-4 w-4 shrink-0" aria-hidden />
@@ -132,16 +138,16 @@ export function DiamondModal() {
 
         {/* TWO DOORS, AND BOTH ARE THE SAME DOOR FROM DIFFERENT SIDES: ask
             Mesita, or redeem what Mesita already handed someone. They never
-            gate on whether the guest is Diamond — a Diamond who loses nothing
-            by reading them, and hiding them would make the page blank for the
-            people it is written for. */}
+            gate on whether the guest is on the list — a guest on it loses
+            nothing by reading them, and hiding them would make the page blank
+            for the people it is written for. */}
         <div className="grid grid-cols-2 gap-2">
           <a
             href={requestHref}
             className="bg-foreground text-paper type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl px-2 font-semibold transition active:scale-[0.99]"
           >
             <Mail className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">Request one</span>
+            <span className="truncate">Ask to join</span>
           </a>
           {/* The KEY is the invitation door's glyph everywhere (Pato,
               2026-08-22) — lucide's Ticket collides with THE TICKET, the

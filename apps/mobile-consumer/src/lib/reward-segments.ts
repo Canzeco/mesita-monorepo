@@ -1,107 +1,75 @@
-// Promos v6 — the seven-segment reward ladder (MESITA-723, segments v6,
-// locked by Pato 2026-08-01). Verbatim port of
-// apps/web-consumer/src/lib/reward-segments.ts — same locked grid, same helpers.
-// When the web file changes, update this in the same PR (the two are the
-// consumer program-education model, mobile ↔ web parity).
+// Promos v6 — the reward program's education model (MESITA-723, segments v6,
+// locked by Pato 2026-08-01). Mirrors apps/web-consumer/src/lib/reward-segments.ts
+// — when the web file changes, update this in the same PR (mobile ↔ web
+// parity).
 //
-// PRESENTATION model: the canonical ladder + its rate grid, for the Rewards
-// program summary + the "max % for you" banner. Program education, not a
-// per-transaction promise — the numbers below are the locked defaults; the
-// admin "Rewards" config page persists the editable copy the bill engine
-// reads. Static locked defaults so no new consumer Edge Function is needed.
+// PRESENTATION model: the rate grid for the Rewards program summary + the
+// "up to" banner. Program education, not a per-transaction promise — the
+// numbers below are the locked defaults; the admin "Rewards" config page
+// persists the editable copy the bill engine reads. Anything quoting a rate
+// for a SPECIFIC place reads consumer-web-get-discount-quote instead.
 //
-// Segments v6: four classes (Standard / Premium / Influencer / Aura) + three
-// actions. Story is a universal action gated on connected Instagram
-// (MESITA-909); Review and
-// Welcome are universal.
+// NO LADDER (Pato, MESITA-2044: "either you are diamond or you are not ...
+// Diamond List"). Who the guest is comes down to exactly TWO rows: the Base
+// every guest gets, and the Diamond List adder on top of it for a guest on
+// the list. They are the engine's `bronze` and `diamond` rows under the new
+// names — the numbers did not move. Silver and Gold are gone; the actions
+// (Story, Welcome, Google review) are unchanged.
 
-// The class rung a consumer sits on. Mirrors the web ConsumerClass
-// ("standard" | "premium" | "influencer" | "aura").
+import {
+  BASE_RATE_HINT,
+  BASE_RATE_LABEL,
+  DIAMOND_LIST,
+  DIAMOND_LIST_ES,
+  DIAMOND_LIST_RATE_HINT,
+} from '@/lib/consumer-identity';
+import { onDiamondList } from '@/lib/consumer-classes';
+
+// The storage key a consumer holds (legacy ids, after the auth provider's
+// bridge). STORAGE — never rendered.
 export type RewardClassKey = 'standard' | 'premium' | 'influencer' | 'aura';
 
 // The business discount strategy that sets how generous a place's grid is:
 // Zero / Conservative / Aggressive (aggressive = peak).
 type GridStrategy = 'zero' | 'conservative' | 'aggressive';
 
-// Ontology of a rung (per the canonical definitions):
-//   class  — who the guest is (Standard / Premium / Influencer / Aura)
+//   base   — every guest, every visit
 //   action — a rewarded thing the guest does at the table (Story / Google Review)
 //   visit  — a state of the visit itself (Welcome = first ticket at the place)
-type RewardSegmentKind = 'class' | 'action' | 'visit';
+type RewardSegmentKind = 'base' | 'action' | 'visit';
 
-export type RewardSegmentKey =
-  | 'standard'
-  | 'premium'
-  | 'influencer'
-  | 'aura'
-  | 'story'
-  | 'welcome'
-  | 'review';
+export type RewardSegmentKey = 'base' | 'story' | 'welcome' | 'review';
 
 export type RewardSegment = {
-  /** Pato's worst→best ladder rank (1 Standard … 7 Google Review). */
-  rank: number;
   key: RewardSegmentKey;
   name: string;
   nameEs: string;
   kind: RewardSegmentKind;
   blurb: string;
-  /** The locked v6 grid, 5% steps, floor 10, 0 = off. Peak = aggressive. */
+  /** The locked v6 grid, 5% steps, 0 = off. Peak = aggressive. */
   rates: Record<GridStrategy, number>;
 };
 
-// The canonical ladder, stored worst→best (rank order — the class ladder is
-// standard < influencer < premium < aura, per classes.rank and the CLASS_STEP
-// money (+5 influencer / +10 premium / +15 aura); the class BASE rows tie on rates
-// today, as do {Story, Welcome} — best-of makes ties harmless).
+/** Base first, then the actions. The Diamond List is NOT a segment: it is an
+ *  adder on the Base, so it lives in `identityRateRows` below. */
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
-    rank: 1,
-    key: 'standard',
-    name: 'Standard',
-    nameEs: 'Estándar',
-    kind: 'class',
-    blurb: 'The base rate every guest gets, always.',
+    key: 'base',
+    name: BASE_RATE_LABEL,
+    nameEs: 'Base',
+    kind: 'base',
+    blurb: BASE_RATE_HINT,
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
-    rank: 3,
-    key: 'premium',
-    name: 'Premium',
-    nameEs: 'Premium',
-    kind: 'class',
-    blurb: 'Mesita Premium — a bigger base at every place.',
-    rates: { zero: 0, conservative: 5, aggressive: 15 },
-  },
-  {
-    rank: 2,
-    key: 'influencer',
-    name: 'Influencer',
-    nameEs: 'Influencer',
-    kind: 'class',
-    blurb: '2,000+ Instagram followers — automatic class upgrade.',
-    rates: { zero: 0, conservative: 5, aggressive: 15 },
-  },
-  {
-    rank: 4,
-    key: 'aura',
-    name: 'Aura',
-    nameEs: 'Aura',
-    kind: 'class',
-    blurb: 'Invite-only — the highest base, just for showing up.',
-    rates: { zero: 0, conservative: 5, aggressive: 15 },
-  },
-  {
-    rank: 5,
     key: 'story',
     name: 'Instagram Story',
     nameEs: 'Historia de Instagram',
     kind: 'action',
-    blurb: 'Connect Instagram, post a tagged story — any class, any visit.',
+    blurb: 'Connect Instagram, post a tagged story — any visit.',
     rates: { zero: 0, conservative: 15, aggressive: 25 },
   },
   {
-    rank: 7,
     key: 'welcome',
     name: 'Welcome Visit',
     nameEs: 'Visita de Bienvenida',
@@ -110,7 +78,6 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     rates: { zero: 0, conservative: 25, aggressive: 35 },
   },
   {
-    rank: 6,
     key: 'review',
     name: 'Google Review',
     nameEs: 'Reseña de Google',
@@ -127,59 +94,109 @@ export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
 // The peak column — what "up to" quotes. Aggressive is the most generous strategy.
 export const PEAK_STRATEGY: GridStrategy = 'aggressive';
 
-// Which class rung a consumer sits on. Consumer classes map one-to-one onto
-// their same-named ladder rungs.
-export function segmentKeyForClass(classKey: RewardClassKey): RewardSegmentKey {
-  return classKey;
-}
+// ── The Diamond List adder (v9, MESITA-877) ─────────────────────────────
+//
+// Every rate above is the BASE. A guest on the Diamond List gets this on top,
+// exactly as the bill engine computes it (it is the engine's diamond-over-
+// bronze step, +15, unchanged by MESITA-2044). A strategy that pays nothing
+// pays no adder either.
+const DIAMOND_LIST_STEP = 15;
 
-// The rungs a given consumer can actually reach: their own class rung plus
-// the universal actions (Welcome, Google review, Instagram Story —
-// MESITA-909). Story's Instagram-connected gate is enforced at create /
-// submit, not here — this set drives "up to" quotes. Returned worst→best.
-function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
-  const mine = segmentKeyForClass(classKey);
-  const universal: RewardSegmentKey[] = ['welcome', 'review', 'story'];
-  return REWARD_SEGMENTS.filter(
-    (s) => s.key === mine || universal.includes(s.key),
-  );
+/** The adder a guest on the Diamond List gets at this strategy. */
+export function diamondListAdder(strategy: GridStrategy = PEAK_STRATEGY): number {
+  return REWARD_SEGMENT_BY_KEY.base.rates[strategy] > 0 ? DIAMOND_LIST_STEP : 0;
 }
-
-/** Your class rung's peak rate — the "just for being you" number. */
-// ── The class step (v9, MESITA-877) ─────────────────────────────────────
-//
-// Every rate above is stored on the STANDARD row. A guest's real rate adds
-// their class step, exactly as the bill engine computes it:
-//
-//   rate = 5 + type step + CLASS STEP + strategy step
-//
-// Keeping the step here rather than baking four copies of every rung into
-// the table is what lets this file stay a flat ladder while still matching
-// the engine cell for cell.
-const CLASS_STEP: Record<RewardClassKey, number> = {
-  standard: 0,
-  influencer: 5,
-  premium: 10,
-  aura: 15,
-};
 
 /** One rung's rate for a specific guest — the number they'd actually be paid. */
 function rateForSegment(
   key: RewardSegmentKey,
-  classKey: RewardClassKey,
+  diamond: boolean,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   const base = REWARD_SEGMENT_BY_KEY[key].rates[strategy];
-  return base <= 0 ? 0 : base + CLASS_STEP[classKey];
+  if (base <= 0) return 0;
+  return diamond ? base + diamondListAdder(strategy) : base;
 }
 
-/** The ceiling a consumer can reach across every rung they can unlock. */
-export function peakRateForClass(
-  classKey: RewardClassKey,
+/** The guest's standing rate: the Base, plus the adder when on the list. */
+export function standingRate(
+  classKey: RewardClassKey | string,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
-  return reachableSegments(classKey).reduce(
-    (max, seg) => Math.max(max, rateForSegment(seg.key, classKey, strategy)),
+  return rateForSegment('base', onDiamondList(classKey), strategy);
+}
+
+/** The ceiling a consumer can reach across the Base and every action. */
+export function peakRateForClass(
+  classKey: RewardClassKey | string,
+  strategy: GridStrategy = PEAK_STRATEGY,
+): number {
+  const diamond = onDiamondList(classKey);
+  return REWARD_SEGMENTS.reduce(
+    (max, seg) => Math.max(max, rateForSegment(seg.key, diamond, strategy)),
     0,
+  );
+}
+
+// ── The two identity rows every rate surface renders ─────────────────────
+//
+// Place detail's reward matrix, THE TICKET and Me › Help all show exactly
+// these two rows — never a third, never a ladder. The guest's own row carries
+// the "You" marker: Base for everyone not on the list, Diamond List for a
+// guest on it (who gets the Base too — the adder is on top).
+
+export type IdentityRateRow = {
+  key: 'base' | 'diamond';
+  label: string;
+  labelEs: string;
+  hint: string;
+  /** Percent. For the Diamond List row this is the ADDER, not a total. */
+  value: number;
+  /** "12%" for the Base, "+15%" for the adder. */
+  display: string;
+  mine: boolean;
+};
+
+/** Format a Diamond List adder: always signed, because it is on top. */
+export function formatAdder(n: number): string {
+  return `+${n}%`;
+}
+
+export function identityRateRows(
+  baseRate: number,
+  adder: number,
+  diamond: boolean,
+): IdentityRateRow[] {
+  return [
+    {
+      key: 'base',
+      label: BASE_RATE_LABEL,
+      labelEs: 'Base',
+      hint: BASE_RATE_HINT,
+      value: baseRate,
+      display: `${baseRate}%`,
+      mine: !diamond,
+    },
+    {
+      key: 'diamond',
+      label: DIAMOND_LIST,
+      labelEs: DIAMOND_LIST_ES,
+      hint: DIAMOND_LIST_RATE_HINT,
+      value: adder,
+      display: formatAdder(adder),
+      mine: diamond,
+    },
+  ];
+}
+
+/** The two rows at a strategy, from the locked grid (education surfaces). */
+export function identityRateRowsAt(
+  strategy: GridStrategy,
+  classKey: RewardClassKey | string,
+): IdentityRateRow[] {
+  return identityRateRows(
+    REWARD_SEGMENT_BY_KEY.base.rates[strategy],
+    diamondListAdder(strategy),
+    onDiamondList(classKey),
   );
 }

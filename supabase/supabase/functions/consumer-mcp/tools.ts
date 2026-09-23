@@ -8,7 +8,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_profile",
     description:
-      "Get the connected Mesita consumer profile: name, class (Standard/Premium/Influencer/Aura), reservation usage, Instagram handle.",
+      "Get the connected Mesita guest profile: name, whether they are on the Diamond List (invitation-only; they are on it or not), plan (Free/Premium), reservation usage, Instagram handle.",
     inputSchema: {
       type: "object",
       properties: {},

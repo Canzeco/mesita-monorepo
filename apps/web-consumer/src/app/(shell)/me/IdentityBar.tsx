@@ -6,6 +6,7 @@ import { ChevronRight, Gem, Instagram, Phone } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { useConsumerClass } from "@/lib/class-context";
+import { DIAMOND_LIST } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
@@ -65,8 +66,8 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // is unambiguous precisely because it is now unconditional.
 //
 // The band and the ring stay `aria-hidden` on the stated ground that something
-// says the fact in words. That something is the Diamond CHIP's own label,
-// inside this subtree.
+// says the fact in words. That something is the Diamond List CHIP's own label,
+// inside this subtree ("Diamond List: You're on it", MESITA-2044).
 //
 // NO PLAN (decision: Pato, MESITA-1619). The header prints what is EARNED
 // and PUBLIC; the plan is what you PAY. Plan is a cell in the grid below and
@@ -87,12 +88,15 @@ export function IdentityBar({
   profile,
   loading,
   diamondSummary,
+  diamondChip,
   instagramSummary,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "Diamond" or "Ask for it" — Me computes it from the shared facts. */
+  /** "You're on it" or "Ask to join" — the accessible half of the chip. */
   diamondSummary: string;
+  /** "Diamond List" or "Ask to join" — what the chip shows. */
+  diamondChip: string;
   /** "@handle", "Connected", or "Connect it". */
   instagramSummary: string;
 }) {
@@ -115,7 +119,9 @@ export function IdentityBar({
   return (
     <header
       aria-label={
-        diamond ? "Your Mesita identity, Diamond" : "Your Mesita identity"
+        diamond
+          ? `Your Mesita identity, on the ${DIAMOND_LIST}`
+          : "Your Mesita identity"
       }
       aria-busy={loading || undefined}
       className="border-border bg-background/95 relative shrink-0 border-b backdrop-blur-xl"
@@ -221,7 +227,7 @@ export function IdentityBar({
                   aria-hidden. */}
               <Link
                 href={CONSUMER_ROUTES.mePages.diamond}
-                aria-label={`Diamond: ${diamondSummary}`}
+                aria-label={`${DIAMOND_LIST}: ${diamondSummary}`}
                 className={cn(
                   CHIP_CLASS,
                   TAP_TARGET_CLASS,
@@ -230,7 +236,7 @@ export function IdentityBar({
                 )}
               >
                 <Gem className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{diamondSummary}</span>
+                <span className="truncate">{diamondChip}</span>
                 <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
               </Link>
             </div>

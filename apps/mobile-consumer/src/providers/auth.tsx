@@ -9,18 +9,18 @@ import {
   type ConsumerProfile,
   type ConsumerStats,
 } from '@/lib/api/auth';
+import { legacyKeyForStoredClass } from '@/lib/consumer-classes';
 import { supabase } from '@/lib/supabase';
 
-// The known class keys — an unknown/stale server key (e.g. the retired
-// "magnetic") normalizes to Standard instead of leaking into gates.
-const KNOWN_CLASS_KEYS = ['standard', 'premium', 'influencer', 'aura'] as const;
-
+// The server writes metals (`bronze`/`diamond`); this app compares on the
+// legacy keys. `legacyKeyForStoredClass` is the one bridge — before
+// MESITA-2044 this function only knew the legacy keys, so a real `diamond`
+// normalized to Standard and a guest on the Diamond List read "Ask to join".
+// A stray or unknown key (the retired "magnetic", a leftover silver/gold)
+// still lands on Standard: not on the list.
 function normalizeClass(raw: ConsumerClass | null): ConsumerClass | null {
   if (!raw) return null;
-  const rawKey = raw.class ?? raw.key ?? 'standard';
-  const key = (KNOWN_CLASS_KEYS as readonly string[]).includes(rawKey)
-    ? (rawKey as (typeof KNOWN_CLASS_KEYS)[number])
-    : 'standard';
+  const key = legacyKeyForStoredClass(raw.class ?? raw.key, raw.plan);
   return {
     ...raw,
     class: key,

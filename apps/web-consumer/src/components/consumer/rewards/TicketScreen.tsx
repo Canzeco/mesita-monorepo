@@ -40,13 +40,10 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   AlertTriangle,
   ArrowLeft,
-  Award,
   BadgeCheck,
   Check,
-  Crown,
   Gem,
   Loader2,
-  Medal,
   RefreshCw,
   Sparkles,
   Star,
@@ -109,7 +106,12 @@ import {
 } from "@/lib/api/tickets";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerClass, useConsumerIdentity } from "@/lib/class-context";
-import { classProperLabel } from "@/lib/consumer-data";
+import {
+  BASE_RATE_HINT,
+  BASE_RATE_LABEL,
+  DIAMOND_LIST,
+  DIAMOND_LIST_RATE_HINT,
+} from "@/lib/consumer-identity";
 import { useStoredString, useStoredStringSet } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { peekTicketSeed } from "@/lib/ticket-seed";
@@ -132,17 +134,21 @@ const FOCUS_AFTER_APPROVE_MS = 900;
 const SCAN_PULSE_MS = 1400;
 const WAITING_TICK_MS = 15_000;
 
-// The ticket's own gradient, by CLASS (Classes v2). Takes a string because the
-// caller hands it the context key straight through; unknown values fall to the
-// Bronze wash rather than rendering nothing.
+// The ticket's own gradient: the Diamond List's blue, or the house pink for
+// every other guest (MESITA-2044 — two states, no metals in between). Takes a
+// string because the caller hands it the context key straight through; any
+// value but `diamond` gets the house wash rather than rendering nothing.
 function passGradient(key: string): string {
   if (key === "diamond")
     return "bg-[linear-gradient(150deg,#ff7a45_0%,#4aa8ff_55%,#2f7fd6_100%)]";
-  if (key === "gold")
-    return "bg-[linear-gradient(150deg,#ff7a45_0%,#ffb03d_55%,#e0982e_100%)]";
-  if (key === "silver")
-    return "bg-[linear-gradient(150deg,#ff7a45_0%,#c9ced6_55%,#98a1ad_100%)]";
   return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
+}
+
+/** The pass chip: the list's name when the guest is on it, and NOTHING when
+ *  they are not — "Base" on a pass would read as a rank, which is the thing
+ *  that no longer exists. */
+function passChipLabel(key: string): string | null {
+  return key === "diamond" ? DIAMOND_LIST : null;
 }
 
 type TaskState = "todo" | "busy" | "checking" | "done" | "rejected";
@@ -1010,9 +1016,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                     ) : null}
                   </span>
                 </span>
-                <span className="type-meta shrink-0 rounded-full bg-white/22 px-2 py-0.5 font-bold tracking-widest uppercase">
-                  {classProperLabel(classKey)}
-                </span>
+                {passChipLabel(classKey) ? (
+                  <span className="type-meta shrink-0 rounded-full bg-white/22 px-2 py-0.5 font-bold tracking-widest uppercase">
+                    {passChipLabel(classKey)}
+                  </span>
+                ) : null}
               </div>
 
               <div className="mt-2 text-center">
@@ -1177,7 +1185,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           <>
             <StepResults
               passClassName={passGradient(classKey)}
-              classLabel={classProperLabel(classKey)}
+              classLabel={passChipLabel(classKey)}
               placeName={placeName}
               cancelled={cancelled}
               revealed={saved}
@@ -1447,25 +1455,17 @@ function RewardLanes({
 
   const b = quote.breakdown ?? null;
   const welcome = quote.bonuses.welcome;
-  const classGlyph = (k: "bronze" | "silver" | "gold" | "diamond") => {
-    const Icon =
-      k === "diamond"
-        ? Gem
-        : k === "gold"
-          ? Crown
-          : k === "silver"
-            ? Medal
-            : Award;
-    return <Icon className="text-primary size-3.5" />;
-  };
-  const classLabel = (k: string) => classProperLabel(k);
-  const myCls = b?.cls ?? null;
+  // On the Diamond List, as the ENGINE priced it (`cls`), falling back to the
+  // context only on a legacy quote with no decomposition.
+  const onList = b ? b.cls === "diamond" : classKey === "diamond";
+  const listAdder = b ? Math.max(0, b.classes.diamond - b.classes.bronze) : 0;
+  const baseValue = b ? b.automatic + b.classes.bronze : quote.base;
 
   // Result line: earned terms only, in the mock's order.
   const parts: string[] = [];
   if (b) {
-    if (myCls && b.classes[myCls] > 0) parts.push(`${b.classes[myCls]}% class`);
-    if (b.automatic > 0) parts.push(`${b.automatic}% automatic`);
+    if (baseValue > 0) parts.push(`${baseValue}% base`);
+    if (onList && listAdder > 0) parts.push(`${listAdder}% ${DIAMOND_LIST}`);
   } else if (quote.base > 0) {
     parts.push(`${quote.base}% base`);
   }
@@ -1484,13 +1484,26 @@ function RewardLanes({
 
       {b ? (
         <>
-          <Lane title="Base discount" note="always on">
+          {/* THE TWO IDENTITY ROWS (MESITA-2044): Base, then the Diamond
+              List's adder. Was an "Automatic" chip here and a four-metal
+              "Class" lane below — the ladder, which is gone. */}
+          <Lane title="Your rate" note="always on">
             <LaneChip
-              label="Automatic"
-              sub="standing offer"
-              value={b.automatic}
-              on={b.automatic > 0}
+              label={BASE_RATE_LABEL}
+              sub={BASE_RATE_HINT}
+              value={baseValue}
+              on={baseValue > 0}
+              mine={!onList}
               glyph={<Zap className="text-primary size-3.5" />}
+            />
+            <LaneChip
+              label={DIAMOND_LIST}
+              sub={DIAMOND_LIST_RATE_HINT}
+              value={listAdder}
+              on={onList}
+              faded={!onList}
+              mine={onList}
+              glyph={<Gem className="text-primary size-3.5" />}
             />
           </Lane>
 
@@ -1519,31 +1532,17 @@ function RewardLanes({
             />
           </Lane>
 
-          <Lane title="Class" note="earned, not bought">
-            {(["bronze", "silver", "gold", "diamond"] as const).map((k) => (
-              <LaneChip
-                key={k}
-                label={classLabel(k)}
-                sub={k === myCls ? "you" : "locked"}
-                value={b.classes[k]}
-                on={k === myCls}
-                faded={k !== myCls}
-                glyph={classGlyph(k)}
-              />
-            ))}
-          </Lane>
-
           {/* A "Plan" lane (Free / Premium) sat here until MESITA-1705. The
               plan does not price a reward any more, so both chips would read
               +0% — a lane that shows the guest nothing is worse than no lane.
-              The Reward step is now exactly the formula: base, class, welcome,
-              sharing. */}
+              The Reward step is now exactly the formula: base, the Diamond
+              List, welcome, sharing. */}
         </>
       ) : (
-        <Lane title="Base discount" note="always on">
+        <Lane title="Your rate" note="always on">
           <LaneChip
-            label={`Your ${classLabel(classKey)} base`}
-            sub="standing offer"
+            label={BASE_RATE_LABEL}
+            sub={onList ? `with the ${DIAMOND_LIST}` : BASE_RATE_HINT}
             value={quote.base}
             on={quote.base > 0}
             glyph={<Zap className="text-primary size-3.5" />}

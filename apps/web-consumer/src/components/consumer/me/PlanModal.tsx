@@ -134,7 +134,7 @@ export function PlanModal() {
           <PREMIUM_PLAN_ICON className="h-5 w-5" />
         </span>
         <p className="text-muted-foreground text-xs">
-          A subscription, not a class. Cancel anytime.
+          A subscription. Cancel anytime.
         </p>
       </div>
 
@@ -280,8 +280,8 @@ export function PlanModal() {
           )}
 
           <p className="text-muted-foreground type-body leading-relaxed">
-            Premium is a subscription, not a class — your class still comes from
-            followers or an invitation. You become Premium the moment payment
+            Premium is a subscription. It does not put you on the Diamond List —
+            only an invitation does. You become Premium the moment payment
             clears.
           </p>
         </div>

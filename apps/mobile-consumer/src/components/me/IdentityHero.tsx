@@ -23,20 +23,19 @@ import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 // / Diamond / visits·saved. Phone shows dial flag.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 //
-// ONE METAL LEFT, AND IT MEANS ONE THING (MESITA-2040). `classBadgeColors` and
-// `classBadgeIconColor` switched on four rungs — amber for aura, red for
-// influencer, blue for premium, grey for the floor — and `isElevatedClass`
-// decided whether the ring and the wash were coloured at all. There is no
-// ladder: the ring, the wash and the badge carry DIAMOND, and a guest who is
-// not Diamond gets the brand pink the card has always fallen back to.
+// ONE COLOUR LEFT, AND IT MEANS ONE THING (MESITA-2040, MESITA-2044).
+// `classBadgeColors` and `classBadgeIconColor` switched on four rungs, and
+// `isElevatedClass` decided whether the ring and the wash were coloured at
+// all. There is no ladder: the ring, the wash and the badge carry the DIAMOND
+// LIST, and a guest who is not on it gets the plain card.
 
 const ROW_HEIGHT = 44;
 
-/** Diamond's badge, and the only conditional colour on this card.
+/** The Diamond List's badge, and the only conditional colour on this card.
  *
- *  DIAMOND KEEPS ITS HUE, NOT-DIAMOND LOSES ITS PINK (MESITA-1954 +
- *  MESITA-2040). Diamond is a tier the product names out loud to the guest,
- *  which is the achromatic rule's "where a tier is named" clause exactly. The
+ *  THE LIST KEEPS ITS HUE, EVERYONE ELSE LOSES THE PINK (MESITA-1954 +
+ *  MESITA-2040). The Diamond List is something the product names out loud to
+ *  the guest, which is the achromatic rule's "where it is named" clause. The
  *  blue is spelled out here rather than read from `GRADIENTS.premium`, because
  *  that token went to an ink ramp when this app went achromatic — reading it
  *  would paint Diamond the same grey as everyone else. Everything the card
@@ -81,10 +80,12 @@ export function IdentityHero({
   handle,
   followers,
   diamondLabel,
+  diamondA11y,
+  identityA11y,
   savedCents,
   visits,
 }: {
-  /** Invited, by hand. The card's only conditional colour. */
+  /** On the Diamond List. The card's only conditional colour. */
   diamond: boolean;
   name: string;
   sexLabel: string | null;
@@ -96,8 +97,12 @@ export function IdentityHero({
   igConnected: boolean;
   handle: string | null;
   followers: number;
-  /** "Diamond" or "Ask for it" — Me computes it from the shared facts. */
+  /** The chip: "Diamond List" or "Ask to join" — `diamondChipLabel`. */
   diamondLabel: string;
+  /** "Diamond List: You're on it" / "Diamond List: Ask to join". */
+  diamondA11y: string;
+  /** "Your Mesita identity[, on the Diamond List]". */
+  identityA11y: string;
   savedCents: number | null;
   visits: number | null;
 }) {
@@ -188,7 +193,7 @@ export function IdentityHero({
     {
       key: 'diamond',
       href: CONSUMER_ROUTES.mePages.diamond,
-      accessibilityLabel: `Diamond: ${diamondLabel}`,
+      accessibilityLabel: diamondA11y,
       content: (
         <View className="flex-row items-center gap-1.5">
           <Gem
@@ -226,7 +231,7 @@ export function IdentityHero({
 
   return (
     <View
-      accessibilityLabel="Your Mesita identity"
+      accessibilityLabel={identityA11y}
       className="w-full overflow-hidden rounded-2xl border border-border px-4 py-4"
       style={SHADOW_ELEV}
     >
@@ -343,7 +348,7 @@ export function IdentityHero({
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            accessibilityLabel={`Diamond: ${diamondLabel}`}
+            accessibilityLabel={diamondA11y}
           >
             <Gem
               color={diamond ? '#1e3a8a' : '#171717'}

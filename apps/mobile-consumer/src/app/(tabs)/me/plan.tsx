@@ -18,7 +18,7 @@ export default function PlanPage() {
       asRoute
       onClose={() => router.back()}
       title="Your plan"
-      subtitle="A subscription, not a class. Cancel anytime."
+      subtitle="A subscription, separate from the Diamond List. Cancel anytime."
     >
       <View className="rounded-2xl border border-border bg-card p-4">
         <Text className="font-display text-lg font-semibold text-foreground">

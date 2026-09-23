@@ -9,12 +9,14 @@ import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInviteCode } from "@/lib/api/profile";
+import { DIAMOND_LIST_PIN_SUBTITLE } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { errMsg } from "@/lib/utils";
 
 // The invitation PIN sheet (MESITA-1168) — the TRANSFERABLE door.
 //
-// IT GRANTS ONE THING NOW (MESITA-2040). A PIN used to NAME a class — any
+// IT GRANTS ONE THING NOW (MESITA-2040): a place on the Diamond List
+// (MESITA-2044). A PIN used to NAME a class — any
 // class — so this screen had to read `result.classKey` back, bridge the legacy
 // key, and tell the guest which rung they had just landed on. There is one
 // fact to land on, so the success line is fixed and the response's class key
@@ -29,7 +31,7 @@ import { errMsg } from "@/lib/utils";
 // non-digits stripped as you type — all of it moved out because Credits
 // gifting redeems a 10-digit code too, and its screen is a public route
 // rather than a sheet. What stays here is what is specific to an INVITATION:
-// the EF it calls and the class it grants.
+// the EF it calls and the list it puts you on.
 //
 // The failure moved with it, from a toast to an inline error. A toast at
 // z-140 is not reliably announced and cannot be re-read while you check your
@@ -69,7 +71,7 @@ export function InvitePinModal() {
           <KeyRound className="h-5 w-5" aria-hidden />
         </span>
         <p className="text-muted-foreground text-xs">
-          Ten digits. It makes you Diamond.
+          {DIAMOND_LIST_PIN_SUBTITLE}
         </p>
       </div>
 

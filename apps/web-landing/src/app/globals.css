@@ -101,9 +101,10 @@
     oklch(0.86 0.14 90),
     oklch(0.72 0.16 60)
   );
-  /* Diamond — the one identity mark left (MESITA-2040/2043). Copied from
-     web-consumer's --gradient-diamond so the landing's badge wears the same
-     metal the app's header does. */
+  /* The Diamond List mark — the one identity mark left, and it is binary:
+     on the list or not (MESITA-2040/2043/2044). Copied from web-consumer's
+     --gradient-diamond so the landing's chip wears the same colour the
+     app's header does. */
   --gradient-diamond: linear-gradient(
     135deg,
     oklch(0.88 0.07 205),
@@ -117,7 +118,7 @@
   /* Multi-stop "celebration" gradient used on the Welcome rate pill —
      violet → magenta → peach, distinct from the brand pink so the
      Welcome (first-visit, one-time) rate visually pops against the
-     per-tier rate cards. */
+     other rate cards. */
   --gradient-welcome: linear-gradient(
     90deg,
     oklch(0.72 0.18 305),

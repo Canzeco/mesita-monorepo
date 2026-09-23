@@ -1,22 +1,35 @@
 // Consumer class doors — the ONE recompute behind the class slot (MESITA-972).
 //
-// Model: a consumer can hold several OPEN DOORS at once; the slot columns on
-// consumers (class_key / class_origin / class_granted_at / class_expires_at)
-// are a CACHE of the highest-ranked open CLASS door. Plan is a second axis
-// (`consumers.plan`) and is never a class.
+// THE DIAMOND LIST (MESITA-2044). Pato, 2026-09-22: "there are no classes,
+// either you are diamond or you are not. its more like a List. Diamond List."
+// A guest is ON the list (class_key `diamond`) or NOT (`bronze`, the base).
+// The storage keeps its names — class_key, the metals table, ClassKey — only
+// what a person reads changed.
+//
+// Model: the slot columns on consumers (class_key / class_origin /
+// class_granted_at / class_expires_at) are a CACHE of the winning open door.
+// Plan is a second axis (`consumers.plan`) and is never a class.
 //
 //   door           fact                                        origin written
 //   ─────────────  ──────────────────────────────────────────  ──────────────
 //   invitation     consumers.invitation_class_key              'invitation'
-//   reach          instagram_followers_count vs the            'instagram'
-//                  highest classes.follower_threshold cleared
-//   bronze         always open                                 'default'
+//   base           always open                                 'default'
+//
+// THE REACH DOOR IS CLOSED. It used to open the highest classes row whose
+// follower_threshold the guest's Instagram count cleared (Silver at 1,000,
+// Diamond at 20,000) — and that count is self-declared, so the list was not
+// invitation-only. Instagram is now a separate fact (verified at 1,000+, the
+// Story bonus) that grants NOTHING toward the list, and this module does not
+// read follower_threshold at all: migration
+// 20260923022245_diamond_list_closes_reach_door.sql nulls the thresholds, and
+// ignoring them here means a re-seeded threshold cannot reopen the door.
+// `class_origin = 'instagram'` stays a legal stored value (the DB CHECK keeps
+// it for old rows); nothing writes it any more.
 //
 // Subscription opens the Premium PLAN, not a class. Doors never cancel each
-// other: granting Diamond does not touch a running subscription, and
-// cancelling the subscription leaves the metal the guest earned. Every writer
-// that changes a FACT calls recomputeConsumerClass afterwards instead of
-// hand-rolling precedence.
+// other: an invitation does not touch a running subscription, and cancelling
+// the subscription leaves the list alone. Every writer that changes a FACT
+// calls recomputeConsumerClass afterwards instead of hand-rolling precedence.
 //
 // Concurrency: read-facts-then-write-slot is not atomic, but every writer
 // recomputes from live facts, so any interleaving is healed by whichever
@@ -27,8 +40,12 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writeConsumer, type ConsumerPatch } from "./consumer-doc.ts";
 
 export type ConsumerDoors = {
-  /** Reach door — the follower count clears a classes.follower_threshold. */
-  influencer: boolean;
+  /**
+   * The retired reach door. ALWAYS false since MESITA-2044 — followers open
+   * nothing. Kept in the shape because consumer-web-get-profile returns
+   * `doors` to web-consumer and mobile-consumer, whose types still carry it.
+   */
+  influencer: false;
   /** Paid door — a live (active/past_due) subscription exists. Plan, not class. */
   premium: boolean;
   /** Invitation door — an invitation_class_key is set to a live metal. */
@@ -43,11 +60,17 @@ export type EffectiveClass = {
   doors: ConsumerDoors;
 };
 
-type ClassRow = { key: string; rank: number; follower_threshold: number | null };
+type ClassRow = {
+  key: string;
+  rank: number;
+  /** Ignored since MESITA-2044 — the reach door is closed. */
+  follower_threshold?: number | null;
+};
 
 type DoorFacts = {
   classes: ClassRow[];
-  followers: number;
+  /** Ignored since MESITA-2044: followers grant nothing toward the list. */
+  followers?: number;
   invitationClassKey: string | null;
   hasLiveSubscription: boolean;
 };
@@ -55,49 +78,23 @@ type DoorFacts = {
 /**
  * Pure door arithmetic — pick the effective class from the facts. Exported
  * separately so the precedence table is unit-testable without a DB.
+ *
+ * Invitation → its key (when it names a live classes row), else the base.
+ * Followers and follower_threshold are never read: the reach door is closed.
  */
 export function pickEffectiveClass(facts: DoorFacts): EffectiveClass {
-  const rankOf = (key: string | null): number =>
-    facts.classes.find((c) => c.key === key)?.rank ?? -1;
-
-  // Reach door: highest-ranked classes row whose threshold the count clears.
-  const reach =
-    facts.classes
-      .filter((c) => c.follower_threshold != null)
-      .sort((a, b) => b.rank - a.rank)
-      .find((c) => facts.followers >= (c.follower_threshold as number)) ?? null;
-
-  const candidates: Array<{
-    key: string;
-    origin: EffectiveClass["origin"];
-  }> = [];
-  // Highest-intent first on a rank tie: invitation > reach > default.
-  if (facts.invitationClassKey && rankOf(facts.invitationClassKey) >= 0) {
-    candidates.push({
-      key: facts.invitationClassKey,
-      origin: "invitation",
-    });
-  }
-  if (reach) {
-    candidates.push({ key: reach.key, origin: "instagram" });
-  }
-  candidates.push({ key: "bronze", origin: "default" });
-
-  let winner = candidates[0];
-  for (const c of candidates) {
-    if (rankOf(c.key) > rankOf(winner.key)) winner = c;
-  }
+  const invited = facts.invitationClassKey != null &&
+    facts.classes.some((c) => c.key === facts.invitationClassKey);
 
   return {
-    classKey: winner.key,
-    origin: winner.origin,
+    classKey: invited ? (facts.invitationClassKey as string) : "bronze",
+    origin: invited ? "invitation" : "default",
     expiresAt: null,
     plan: facts.hasLiveSubscription ? "premium" : "free",
     doors: {
-      influencer: reach != null,
+      influencer: false,
       premium: facts.hasLiveSubscription,
-      aura: facts.invitationClassKey != null &&
-        rankOf(facts.invitationClassKey) >= 0,
+      aura: invited,
     },
   };
 }
@@ -114,7 +111,7 @@ export async function recomputeConsumerClass(
 ): Promise<EffectiveClass> {
   const classesRes = await admin
     .from("classes")
-    .select("key, rank, follower_threshold");
+    .select("key, rank");
   if (classesRes.error) {
     throw new Error(`class_doors_classes: ${classesRes.error.message}`);
   }
@@ -123,7 +120,7 @@ export async function recomputeConsumerClass(
   const consumerRes = await admin
     .from("consumers")
     .select(
-      "id, class_key, class_origin, class_expires_at, plan, instagram_followers_count, invitation_class_key",
+      "id, class_key, class_origin, class_expires_at, plan, invitation_class_key",
     )
     .eq("id", consumerId)
     .maybeSingle();
@@ -155,7 +152,6 @@ export async function recomputeConsumerClass(
 
   const effective = pickEffectiveClass({
     classes,
-    followers: (consumer.instagram_followers_count as number) ?? 0,
     invitationClassKey: (consumer.invitation_class_key as string) ?? null,
     hasLiveSubscription: subRes.data != null,
   });

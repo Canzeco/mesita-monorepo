@@ -8,7 +8,7 @@
 //                       supabase-edgefunc-search-places
 //   • mesita_knowledge → Mesita's OWN words (_shared/memo-knowledge.ts), the
 //                       curated in-house set. Added by MESITA-1201: a question
-//                       about classes, Passport, plans or tickets has no answer
+//                       about the Diamond List, plans or tickets has no answer
 //                       on the open web, so before this tool it fell to
 //                       web_search and got declined or invented.
 //
@@ -195,7 +195,7 @@ const placeFactsTool: AirlockTool = {
 const knowledgeTool: AirlockTool = {
   name: "mesita_knowledge",
   description:
-    "Mesita's own explanations of how Mesita works — classes (Bronze/Silver/Gold/Diamond), the Passport, plans (Free/Premium), how the discount is computed, tickets, reservations, rewards and what a restaurant does or doesn't see. ALWAYS use this, never the web, when the person asks about Mesita itself: the answer is not published anywhere, so a web search will only guess.",
+    "Mesita's own explanations of how Mesita works — the Diamond List (invitation-only; a guest is on it or not), the member number, plans (Free/Premium), how the discount is computed, tickets, reservations, rewards and what a restaurant does or doesn't see. ALWAYS use this, never the web, when the person asks about Mesita itself: the answer is not published anywhere, so a web search will only guess.",
   schema: {
     properties: {
       topic: {

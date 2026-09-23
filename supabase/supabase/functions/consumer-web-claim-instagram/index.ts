@@ -1,22 +1,22 @@
 // Supabase Edge Function — consumer-web-claim-instagram (product caller)
 //
-// Authenticated. The Instagram "door" into the Influencer class (segments v6):
-// persists the claimed follower count (and handle when sent) as the REACH DOOR
-// FACT, then recomputes the effective class from every open door
-// (_shared/class-doors.ts, MESITA-972). A consumer at or above the Influencer
-// follower threshold (classes row, 2,000) holds the reach door open; the slot
-// lands on the highest-ranked open door — so a paying subscriber stays
-// Premium, an Aura member stays Aura, and losing reach falls back to the best
-// remaining door instead of hardcoded standard.
+// Authenticated. Persists the claimed Instagram follower count (and handle
+// when sent) and then recomputes the slot from every open door
+// (_shared/class-doors.ts, MESITA-972).
 //
-// Story access follows the connected handle (MESITA-909), not the Influencer
-// class: claiming Instagram (persisting `instagram_handle`) unlocks the Story
-// action for any class; crossing the follower threshold separately opens the
-// reach door and its class-step rate bump.
+// Instagram is a SEPARATE FACT and grants nothing toward the Diamond List
+// (MESITA-2044). The reach door this endpoint used to open — Silver at 1,000,
+// Diamond at 20,000, off a self-declared count — is closed: the recompute no
+// longer reads followers, and migration 20260923022245 nulled every
+// classes.follower_threshold. The recompute still runs so a guest whose slot
+// the old door was holding falls back to the base on their next claim.
+//
+// Story access follows the connected handle (MESITA-909): claiming Instagram
+// (persisting `instagram_handle`) unlocks the Story action for any guest.
 //
 // Body: { followers: number, handle?: string }
 // Response: { ok: true, tier: string, followers: number, handle: string | null,
-//             doors: { influencer, premium, aura } }
+//             doors: { influencer: false, premium, aura } }
 //
 // `tier` echoes the resulting EFFECTIVE class key. `handle` (when sent) is
 // normalized (leading @ stripped, lowercased) and persisted to

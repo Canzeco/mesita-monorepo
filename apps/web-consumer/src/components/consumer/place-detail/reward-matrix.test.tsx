@@ -3,41 +3,80 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import type { RewardQuote } from "@/lib/api/tickets";
 
-import { BaseRow, BonusList, ClassLadder } from "./reward-matrix";
+import { BonusList, ClassLadder } from "./reward-matrix";
 
 const QUOTE: RewardQuote = {
   strategy: "aggressive",
   classKey: "diamond",
   additive: true,
   isFirstVisit: false,
-  base: 70,
+  base: 50,
   bonuses: { welcome: 0, story: 10, google: 15, mesita: 5 },
   storyEligible: true,
   cap: 200,
   breakdown: {
     automatic: 20,
-    classes: { bronze: 0, silver: 10, gold: 20, diamond: 30 },
+    classes: { bronze: 0, diamond: 30 },
     cls: "diamond",
   },
 };
 
-describe("the Rewards rate sheet names every priced rung", () => {
-  it("prints Base as the bronze floor", () => {
-    const html = renderToStaticMarkup(<BaseRow quote={QUOTE} />);
-    expect(html).toContain("Base");
-    expect(html).toContain("20%");
-  });
+/** The ladder's words. None may render on the rate sheet (MESITA-2044). */
+const RETIRED = /\b(Bronze|Silver|Gold|VIP|class|tier|rank|rung|level|climb)\b|You(?:&#x27;|')re Diamond/i;
 
-  it("prints all four metals as adders, not standing totals", () => {
+const rows = (html: string) =>
+  [...html.matchAll(/type-body flex[^>]*>([^<]+)/g)].map((m) => m[1]);
+
+describe("the Rewards rate sheet names exactly two identity rows", () => {
+  it("prints Base, then the Diamond List as an adder — nothing else", () => {
     const html = renderToStaticMarkup(
       <ClassLadder quote={QUOTE} classKey="diamond" />,
     );
-    expect(html).toContain("Bronze");
-    expect(html).toContain("Silver");
-    expect(html).toContain("Gold");
-    expect(html).toContain("Diamond");
+    expect(rows(html)).toEqual(["Base", "Diamond List"]);
+    expect(html).toContain("Every guest, every visit");
+    expect(html).toContain("Invitation only");
+    expect(html).toContain("20%");
     expect(html).toContain("+30%");
+    // An adder, never a standing total.
     expect(html).not.toContain("50%");
+  });
+
+  it("marks the guest's own row: the list when on it, Base when not", () => {
+    const on = renderToStaticMarkup(
+      <ClassLadder quote={QUOTE} classKey="diamond" />,
+    );
+    const off = renderToStaticMarkup(
+      <ClassLadder quote={QUOTE} classKey="bronze" />,
+    );
+    // "You" sits inside the marked row's label, after the label text.
+    expect(on.indexOf("You")).toBeGreaterThan(on.indexOf("Diamond List"));
+    expect(off.indexOf("You")).toBeLessThan(off.indexOf("Diamond List"));
+    expect(off.indexOf("You")).toBeGreaterThan(off.indexOf("Base"));
+  });
+
+  it("a legacy ladder reads Base off `standard` and the list's adder off `aura`", () => {
+    const legacy: RewardQuote = {
+      ...QUOTE,
+      additive: false,
+      breakdown: undefined,
+      ladder: { standard: 15, influencer: 20, premium: 15, aura: 35 },
+    };
+    const html = renderToStaticMarkup(
+      <ClassLadder quote={legacy} classKey="bronze" />,
+    );
+    expect(rows(html)).toEqual(["Base", "Diamond List"]);
+    expect(html).toContain("15%");
+    expect(html).toContain("+20%");
+  });
+
+  it("FAILS if a retired ladder word renders, for either guest", () => {
+    for (const classKey of ["bronze", "diamond"]) {
+      const html =
+        renderToStaticMarkup(<ClassLadder quote={QUOTE} classKey={classKey} />) +
+        renderToStaticMarkup(<BonusList quote={QUOTE} />);
+      // Text only — `class="…"` attributes are markup, not copy.
+      expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(RETIRED);
+    }
   });
 
   // A Free/Premium pair sat between the class ladder and the bonuses, and its
@@ -46,7 +85,6 @@ describe("the Rewards rate sheet names every priced rung", () => {
   // is gone with it. Guarded structurally so it cannot come back unnoticed.
   it("names no plan rung and offers no button — the sheet is read-only", () => {
     const html =
-      renderToStaticMarkup(<BaseRow quote={QUOTE} />) +
       renderToStaticMarkup(<ClassLadder quote={QUOTE} classKey="diamond" />) +
       renderToStaticMarkup(<BonusList quote={QUOTE} />);
     expect(html).not.toContain("Premium");

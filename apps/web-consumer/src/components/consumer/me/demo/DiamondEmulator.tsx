@@ -3,8 +3,8 @@
 import { DemoBox, DemoSwitch } from "@/components/consumer/me/demo/DemoBox";
 import { setMockAccount, useMockAccount } from "@/lib/class-context";
 
-// The Diamond axis of the emulator — invited or not, and nothing in between
-// (MESITA-2040).
+// The Diamond List axis of the emulator — on the list or not, and nothing in
+// between (MESITA-2040, named MESITA-2044).
 //
 // IT IS A SWITCH NOW, NOT A SEGMENTED PICKER. `ClassPreviewToggle` offered
 // four buttons because the thing it previewed was a four-value enum, and it
@@ -19,11 +19,11 @@ export function DiamondEmulator() {
 
   return (
     <DemoBox
-      label="Preview invited"
+      label="Preview the Diamond List"
       action={
         <DemoSwitch
           checked={on}
-          ariaLabel="Preview a Diamond invitation"
+          ariaLabel="Emulate the Diamond List"
           onToggle={() => setMockAccount({ diamond: !on })}
         />
       }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { getTierConfig } from "../_shared/membership.ts";
+import { diamondListLabel, onDiamondList } from "../_shared/diamond-list.ts";
+import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { toolError, toolText } from "./rpc.ts";
 
 export async function getProfileTool(
@@ -18,7 +19,9 @@ export async function getProfileTool(
   const classKey = consumer.class_key ?? "bronze";
   let tier = null;
   try {
-    tier = await getTierConfig(admin, classKey);
+    // Perk row, the same one consumer-web-get-profile reads (a Premium plan
+    // at the base shares the elevated reservation cap).
+    tier = await getTierConfig(admin, perkClassKey(classKey, consumer.plan));
   } catch {
     tier = null;
   }
@@ -35,11 +38,15 @@ export async function getProfileTool(
   return toolText({
     ok: true,
     consumer,
+    // The guest is on the Diamond List or not (MESITA-2044). `class.key` is
+    // the storage name; `diamond_list` and `label` are what an assistant
+    // should say. `label` is never a metal.
+    diamond_list: onDiamondList(classKey),
     class: {
       key: classKey,
       origin: consumer.class_origin ?? "default",
       plan: consumer.plan ?? "free",
-      label: tier?.label ?? "Bronze",
+      label: diamondListLabel(classKey),
       followers: consumer.instagram_followers_count ?? null,
       expires_at: consumer.class_expires_at ?? null,
       usage: {

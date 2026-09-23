@@ -137,8 +137,9 @@
 
   /* ── RESERVED SIGNALS ───────────────────────────────────────────────────
      The only chroma left. Red is the sole thing that says "this destroys
-     something"; gold is a tier the product names out loud (Bronze/Silver/
-     Gold/Diamond). The third reserved family — the platform marks in Digital
+     something"; gold is the status the product names out loud (Mesita
+     Partner — guests carry no metals since MESITA-2044, only the binary
+     Diamond List). The third reserved family — the platform marks in Digital
      Presence — needs no token at all: they are SVGs in public/channels/, so
      they were never at risk from a repaint, and going fully monochrome would
      have meant ADDING a grayscale filter, not removing a colour.
