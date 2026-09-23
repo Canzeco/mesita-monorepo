@@ -16,10 +16,16 @@ import { isPromoting } from "@/lib/promo-rates";
 // and — because it's part of the layout subtree — it is NOT re-run when
 // navigating between sibling tabs (only the leaf page segment changes).
 //
-// Fetch mirrors the swipe deck: the deck EF (a random sample of active
-// places) first, public catalog as the fallback, partner rows floated to the
-// top HERE on the client, overview enrichment applied so cards carry
-// rating / zone / open-state.
+// Fetch mirrors the swipe deck: the deck EF (ranked, banded, bought slots
+// already placed) first, public catalog as the fallback, overview enrichment
+// applied so cards carry rating / zone / open-state.
+//
+// THE EF'S ORDER IS THE ORDER (MESITA-2047). This used to float every
+// promoting place to the top here, which quietly overrode the bought lane's
+// every-Nth slot — and once the deck started backfilling closed places behind
+// the open ones, it would have lifted a promoting CLOSED place above every
+// open card. Only the fallback, which nothing ranked, still floats promoting
+// places first.
 export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
   const supabase = await createServerSupabase();
 
@@ -34,20 +40,17 @@ export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
       errMsg(err, "recommend failed"),
     );
     try {
-      places = await apiFetchPublicPlaces(supabase);
+      const unranked = await apiFetchPublicPlaces(supabase);
+      places = [...unranked].sort(
+        (a, b) => (isPromoting(a) ? 0 : 1) - (isPromoting(b) ? 0 : 1),
+      );
     } catch (err2) {
       fetchError = errMsg(err2, "Failed to load places.");
     }
   }
 
-  const sorted = [...places]
-    .filter((p) => !p.googleOnly && !p.from_google)
-    .sort((a, b) => {
-      const aRank = isPromoting(a) ? 0 : 1;
-      const bRank = isPromoting(b) ? 0 : 1;
-      return aRank - bRank;
-    });
-  const enriched = sorted.map((v) => enrichPlaceOverview(v));
+  const listed = places.filter((p) => !p.googleOnly && !p.from_google);
+  const enriched = listed.map((v) => enrichPlaceOverview(v));
 
   return (
     <HomeDeckProvider places={enriched} fetchError={fetchError}>

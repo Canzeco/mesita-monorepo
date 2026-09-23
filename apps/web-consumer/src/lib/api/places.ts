@@ -176,7 +176,13 @@ type RecommendDeckInput = {
 };
 type RecommendDeckResponse = {
   deck: Place[];
-  summary: { candidates: number; embedded: number; intent?: string };
+  /** `backfilled`: cards from past the open-and-near band (MESITA-2047). */
+  summary: {
+    candidates: number;
+    embedded: number;
+    backfilled?: number;
+    intent?: string;
+  };
 };
 export async function apiFetchPublicPlaces(
   client: SupabaseClient,

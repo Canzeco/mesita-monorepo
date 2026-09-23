@@ -24,6 +24,7 @@ import type { SignalPlace } from "./discovery-signals.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { isEnrichedPlace } from "./place-family-keys.ts";
 import { crenupOf } from "./crenup-ladder.ts";
+import { chunked, ID_CHUNK } from "./postgrest.ts";
 
 /**
  * The columns a ranking engine must SELECT beyond PLACE_PUBLIC_COLUMNS.
@@ -146,9 +147,11 @@ export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
  * side-read it answers 1 for every row it is ever handed. The gradient it
  * feeds is the only part of the signal that can reorder an admitted pool.
  *
- * One batched query regardless of pool size — never N+1, and it never joins
+ * Batched in `ID_CHUNK`s, run in parallel — never N+1, and it never joins
  * into the ranking query itself, so a surface that doesn't call this pays
- * nothing extra.
+ * nothing extra. Chunked since MESITA-2047: an `in` list rides in the URL,
+ * and Scroll's closed-within-reach band can hand this hundreds of ids, which
+ * one request would have lost to the URL length limit.
  */
 export async function attachCrenupHighWater<
   T extends Record<string, unknown>,
@@ -162,20 +165,27 @@ export async function attachCrenupHighWater<
     .filter((id): id is string => typeof id === "string");
   if (ids.length === 0) return rows;
 
-  const { data, error } = await admin
-    .from("place_profiles")
-    .select("id, enrichment")
-    .in("id", ids);
-  if (error) {
+  const parts = await Promise.all(
+    chunked(ids, ID_CHUNK).map((part) =>
+      admin
+        .from("place_profiles")
+        .select("id, enrichment")
+        .in("id", part)
+    ),
+  );
+  const failed = parts.find((r) => r.error);
+  if (failed?.error) {
     // Degrade to UNKNOWN for everyone, never to a confirmed-zero — a failed
     // side-read must not read as "the whole pool is at the Created floor".
     // Logged, not thrown: ranking must not 500 over this query hiccuping.
-    console.error("[discovery-place] attachCrenupHighWater:", error.message);
+    console.error("[discovery-place] attachCrenupHighWater:", failed.error.message);
     return rows;
   }
   const byId = new Map<string, number>();
-  for (const row of (data ?? []) as { id: string; enrichment: unknown }[]) {
-    byId.set(row.id, crenupOf(row.enrichment));
+  for (const { data } of parts) {
+    for (const row of (data ?? []) as { id: string; enrichment: unknown }[]) {
+      byId.set(row.id, crenupOf(row.enrichment));
+    }
   }
   // A row the query returned nothing for (a place-id-shaped id that isn't
   // actually in `places`, or an org-pool oddity) gets a real 0 — it IS

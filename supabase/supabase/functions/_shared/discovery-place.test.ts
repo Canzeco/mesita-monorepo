@@ -208,6 +208,42 @@ Deno.test("attachCrenupHighWater: a query error leaves rows UNTOUCHED, never a c
   assert(!("crenup_high_water" in out[0]));
 });
 
+Deno.test("attachCrenupHighWater: a big band is read in ID_CHUNK slices, never one URL (MESITA-2047)", async () => {
+  const lists: number[] = [];
+  const chain = {
+    select: () => chain,
+    in: (_col: string, ids: string[]) => {
+      lists.push(ids.length);
+      return Promise.resolve({
+        data: ids.map((id) => ({ id, enrichment: { highWater: 5 } })),
+        error: null,
+      });
+    },
+  };
+  const admin = { from: () => chain } as unknown as SupabaseClient;
+  const rows = Array.from({ length: 450 }, (_, i) => ({ id: `p${i}` }));
+  const out = await attachCrenupHighWater(admin, rows);
+  assertEquals(lists, [200, 200, 50]);
+  assertEquals(out.every((r) => r.crenup_high_water === 5), true);
+});
+
+Deno.test("attachCrenupHighWater: one failed slice leaves every row UNTOUCHED", async () => {
+  let call = 0;
+  const chain = {
+    select: () => chain,
+    in: (_col: string, ids: string[]) =>
+      Promise.resolve(
+        call++ === 1
+          ? { data: null, error: { message: "boom" } }
+          : { data: ids.map((id) => ({ id, enrichment: { highWater: 5 } })), error: null },
+      ),
+  };
+  const admin = { from: () => chain } as unknown as SupabaseClient;
+  const rows = Array.from({ length: 450 }, (_, i) => ({ id: `p${i}` }));
+  const out = await attachCrenupHighWater(admin, rows);
+  assertEquals(out, rows);
+});
+
 Deno.test("attachCrenupHighWater: an empty pool or an id-less row set is a no-op, not a query", async () => {
   let queried = false;
   const admin = {

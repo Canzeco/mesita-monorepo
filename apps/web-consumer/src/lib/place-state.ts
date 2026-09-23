@@ -3,14 +3,15 @@ import type { Place } from "@/lib/api/places";
 // Shared opening-state label for place cards and overlays.
 //
 //   open_now === true  + closes_at → "Open · until 02:00"
-//   open_now === false + opens_at  → "Closed · opens 18:00"
+//   open_now === false + opens_at  → "Closed · opens 18:00" (later today)
+//                                    "Closed · opens tomorrow 08:30"
+//                                    "Closed · opens Wed 08:30"
 //   only closes_at present         → "Until 02:00" (partial info)
 //   nothing usable                 → null
 //
 // Two-fact phrasing keeps the binary state legible at a glance
-// without making the user parse the time. Day-aware copy
-// ("opens tomorrow at 18:00") drops in once the EF returns a real
-// date instead of just an HH:MM.
+// without making the user parse the time. The day rides inside
+// `opens_at` (computeOpenState's opensOnDay, MESITA-2047).
 export function getOpeningStateLabel(
   place: Pick<Place, "open_now" | "opens_at" | "closes_at">,
 ): string | null {

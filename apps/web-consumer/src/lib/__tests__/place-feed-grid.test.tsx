@@ -135,6 +135,39 @@ describe("Scroll rides the shared deck", () => {
     expect(scroll).toContain("apiRecommendDeck");
     expect(scroll).toContain("toDeckRequest");
   });
+
+  // MESITA-2047: the one real place sat behind "No places yet" all Tuesday.
+  // The engine now backfills closed and far places, and the client must not
+  // undo either half of that.
+  it("an empty located answer never blanks the shared deck when no filter is set", () => {
+    expect(scroll).toContain(
+      "geoDeck && (geoDeck.length > 0 || hasDiscoveryPredicates(filters))",
+    );
+    expect(scroll).not.toContain("geoDeck ?? places");
+  });
+
+  it("keeps the engine's banded order — no client promoting float over the deck", () => {
+    // A float here lifts a promoting CLOSED backfill card above open ones.
+    expect(scroll).not.toContain("isPromoting");
+    const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
+    expect(boundary).toContain("await apiRecommendDeck(supabase");
+    // Only the unranked list-places fallback may still float promoting rows:
+    // cut that block out and nothing left may sort by it. (The pre-2047 float
+    // sat AFTER the try/catch, so this fails on it.)
+    const s = boundary.indexOf("await apiFetchPublicPlaces(");
+    const e = boundary.indexOf("} catch (err2)");
+    expect(s).toBeGreaterThan(-1);
+    expect(e).toBeGreaterThan(s);
+    const outsideFallback = boundary.slice(0, s) + boundary.slice(e);
+    expect(outsideFallback).not.toContain("isPromoting(");
+  });
+
+  it("records the located key when its answer lands, not when it is asked", () => {
+    // Recording at request time dropped the located deck whenever the effect
+    // re-ran on the same key mid-flight.
+    expect(scroll).toContain("settledKeyRef.current = requestKey;");
+    expect(scroll).not.toContain("requestKeyRef");
+  });
 });
 
 // NO MOCK DATA ANYWHERE IN DISCOVERY (Pato, live, 2026-09-08: "don't put

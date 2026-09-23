@@ -12,7 +12,6 @@ import {
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
-import { isPromoting } from "@/lib/promo-rates";
 import { cn, errMsg } from "@/lib/utils";
 import { EmptyState } from "@/components/shared";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
@@ -108,16 +107,21 @@ export function ScrollDeck({
   // across would have shipped a Home with location silently removed from the
   // blend, on the same day the copy stopped claiming signals it does not have.
   const [geoDeck, setGeoDeck] = useState<Place[] | null>(null);
-  const requestKeyRef = useRef<string | null>(null);
+  // The key whose answer has LANDED, not the one last asked. Recording the key
+  // at request time meant an effect re-run with the same key (a fresh
+  // `center` object at the same rounded point, or StrictMode's double run)
+  // cancelled the in-flight fetch and then skipped asking again, so the
+  // located deck silently never arrived.
+  const settledKeyRef = useRef<string | null>(null);
   const requestKey = deckRequestKey(filters, center);
 
   useEffect(() => {
-    if (requestKeyRef.current === requestKey) return;
-    requestKeyRef.current = requestKey;
+    if (settledKeyRef.current === requestKey) return;
     let cancelled = false;
     if (requestKey === UNFILTERED_DECK_KEY) {
       const raf = requestAnimationFrame(() => {
         if (cancelled) return;
+        settledKeyRef.current = requestKey;
         setGeoDeck(null);
       });
       return () => {
@@ -129,9 +133,12 @@ export function ScrollDeck({
     apiRecommendDeck(supabase, req)
       .then((result) => {
         if (cancelled) return;
+        settledKeyRef.current = requestKey;
         setGeoDeck(result.deck.map((p) => enrichPlaceOverview(p)));
       })
       .catch((err) => {
+        if (cancelled) return;
+        settledKeyRef.current = requestKey;
         // Keep the server deck. It is ranked without proximity rather than
         // wrong, and an empty screen would be the worse answer.
         console.warn(
@@ -148,18 +155,32 @@ export function ScrollDeck({
   // a Discovery quality floor that `swipe-mesita-listed.test.ts` pins across
   // the EF and the client — it is NOT redundant with HomeDeckBoundary's copy,
   // because the geo re-fetch above bypasses that boundary entirely.
+  //
+  // THE EF'S ORDER IS KEPT (MESITA-2047). The deck arrives banded — open and
+  // near first, then open within reach, closed within reach, other cities
+  // last — with the bought slots already placed inside each band. A client
+  // re-sort that floated promoting places used to run here and would lift a
+  // promoting CLOSED place above every open card.
+  //
+  // AN EMPTY LOCATED ANSWER NEVER BLANKS A GOOD SHARED DECK when the guest set
+  // no filter. The engine backfills far and closed places, so an unfiltered
+  // located deck is only empty when the catalog is — but if it ever comes back
+  // empty anyway, the coordless deck is still a true answer, and "No places
+  // yet" over a catalog that has places is the bug this issue fixed.
   const rows = useMemo(() => {
-    const source = geoDeck ?? places;
+    const located =
+      geoDeck && (geoDeck.length > 0 || hasDiscoveryPredicates(filters))
+        ? geoDeck
+        : null;
+    const source = located ?? places;
     const listed = source.filter((place) => {
       if (place.googleOnly || place.from_google) {
         return filters.placesScope === "google";
       }
       return true;
     });
-    const ranked = [...listed]
-      .sort((a, b) => (isPromoting(a) ? 0 : 1) - (isPromoting(b) ? 0 : 1))
-      .map((p) => withUserDistance(p, center));
-    return applyDiscoveryFilters(ranked, filters);
+    const withDistance = listed.map((p) => withUserDistance(p, center));
+    return applyDiscoveryFilters(withDistance, filters);
   }, [geoDeck, places, center, filters]);
 
   // THE DECK IS ALWAYS 50, CYCLED FROM WHATEVER IS REAL (Pato, live: "the deck
@@ -341,8 +362,8 @@ export function ScrollDeck({
             }}
             // The first card is the only one that teaches. Letting the next
             // card peek under it is how every vertical feed says "there is
-            // more below" without an overlay — and at N=1 there is no second
-            // card to peek, which is exactly why the mock fallback exists.
+            // more below" without an overlay — and at N=1 the cycle above is
+            // what gives it a second card to peek.
             peek={i === 0 && deck.length > 1}
           />
         ))}

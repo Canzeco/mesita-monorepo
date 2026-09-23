@@ -97,7 +97,8 @@ export function isOpenNow(
 
 /**
  * Discrete sit-down window: open at `at`, and still open `bufferMin` later.
- * null when hours or zone cannot be judged. Swipe treats null as exclude.
+ * null when hours or zone cannot be judged. Scroll treats null as not open:
+ * the place drops out of the lead band, not out of the deck (MESITA-2047).
  */
 export function isOpenThrough(
   hours: unknown,
