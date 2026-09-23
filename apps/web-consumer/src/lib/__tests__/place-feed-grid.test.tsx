@@ -150,10 +150,16 @@ describe("Scroll rides the shared deck", () => {
     // A float here lifts a promoting CLOSED backfill card above open ones.
     expect(scroll).not.toContain("isPromoting");
     const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
-    // Only the unranked list-places fallback may still float promoting rows.
-    const ranked = boundary.slice(0, boundary.indexOf("} catch (err) {"));
-    expect(ranked).toContain("apiRecommendDeck");
-    expect(ranked).not.toContain("isPromoting(");
+    expect(boundary).toContain("await apiRecommendDeck(supabase");
+    // Only the unranked list-places fallback may still float promoting rows:
+    // cut that block out and nothing left may sort by it. (The pre-2047 float
+    // sat AFTER the try/catch, so this fails on it.)
+    const s = boundary.indexOf("await apiFetchPublicPlaces(");
+    const e = boundary.indexOf("} catch (err2)");
+    expect(s).toBeGreaterThan(-1);
+    expect(e).toBeGreaterThan(s);
+    const outsideFallback = boundary.slice(0, s) + boundary.slice(e);
+    expect(outsideFallback).not.toContain("isPromoting(");
   });
 
   it("records the located key when its answer lands, not when it is asked", () => {

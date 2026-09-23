@@ -31,7 +31,6 @@ import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
 import { SwipeDecisionBadge } from '@/components/swipe/SwipeDecisionBadge';
 import {
   EmptyState,
-  shuffleDeck,
   sortPartnersFirst,
   withUserDistance,
   type Coords,
@@ -78,8 +77,8 @@ const EXIT_MS = 280;
 const SCREEN_W = Dimensions.get('window').width;
 
 // The deck EF RANKS now (Places Lineup, bought slots) and BANDS: open places
-// inside the radius first, then open-farther, closed-nearby, closed-farther
-// (MESITA-2047). Its order is kept as it arrives — a partner-first float here
+// inside the radius first, then open within reach, closed within reach, then
+// other cities (MESITA-2047). Its order is kept as it arrives — a partner-first float here
 // would lift a closed partner above every open card. Only the catalog
 // fallback, which nothing ranked, still floats partners first.
 async function fetchSwipeDeck(): Promise<Place[]> {
@@ -190,13 +189,17 @@ export function SwipeDeck() {
   const restart = useCallback(async () => {
     if (restarting) return;
     setRestarting(true);
+    // "Start over from the top" means the engine's order again, not a shuffle
+    // (MESITA-2047): the deck carries closed places behind the open ones now,
+    // and a full shuffle would deal a shut place first. A guest who wants a
+    // fresh deal has the Randomness filter, applied on top in `deck`.
     try {
       const result = await apiRecommendDeck(supabase, { limit: 50 });
-      setOverridePlaces(shuffleDeck(sortPartnersFirst(result.deck)));
+      setOverridePlaces(result.deck);
       setIdx(0);
     } catch {
       const refreshed = await deckQuery.refetch();
-      if (refreshed.data) setOverridePlaces(shuffleDeck(refreshed.data));
+      if (refreshed.data) setOverridePlaces(refreshed.data);
       setIdx(0);
     } finally {
       setRestarting(false);

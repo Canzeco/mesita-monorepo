@@ -1,3 +1,4 @@
+import { opensOnDay } from '@/lib/opens-on-day';
 import { currencyPrefix, LEVEL_RANGES } from '@/lib/place-price';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
@@ -200,7 +201,11 @@ export function computeOpenState(
     const k = WEEK_KEYS[(dayIdx + i) % 7];
     const ranges = arr<{ open?: string }>(h[k]);
     if (ranges.length > 0 && ranges[0].open) {
-      return { open_now: false, opens_at: ranges[0].open, closes_at: '' };
+      return {
+        open_now: false,
+        opens_at: opensOnDay(i, dayIdx, ranges[0].open),
+        closes_at: '',
+      };
     }
   }
   return fallback;

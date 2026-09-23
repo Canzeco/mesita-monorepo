@@ -10,6 +10,7 @@ import {
   swipeAdmissionFilters,
   swipeLineupWeights,
   swipeOpenThrough,
+  swipeReachKm,
   swipeTierCount,
 } from "./discovery-swipe.ts";
 import { isOpenThrough } from "./local-time-open.ts";
@@ -311,23 +312,36 @@ function tiersAt<T extends TierRow>(
   return partitionSwipeTiers(rows, {
     geo,
     radiusKm: DEFAULT_SWIPE.radiusKm,
+    reachKm: swipeReachKm(DEFAULT_SWIPE.radiusKm, PARAMS),
     bufferMin: DEFAULT_SWIPE.closingBufferMin,
     hoursOf: (r) => r.hours,
-    // Unlocated rows keep the place's own clock; the zone is lng-banded.
     latOf: (r) => r.lat,
-    lngOf: (r) => r.lng ?? SLP.lng,
+    // Unlocated rows keep the place's own clock; the zone is lng-banded.
+    lngOf: (r) => r.lng,
     at,
   });
 }
 
 const ids = <T extends { id: string }>(rows: T[]) => rows.map((r) => r.id);
+const SHUT = { tuesday: [{ open: "08:30", close: "15:00" }] };
+/** The real blend, the real bought lane — what the EF hands fillSwipeDeck. */
+const rankLive = (at: Date, geo: { lat: number; lng: number } | null) =>
+<T,>(band: T[]) =>
+  rankSwipeDeck(band, geo, WEIGHTS, DISCOVERY_DEFAULTS.slotting, PARAMS, {
+    now: at,
+    random: () => 0.5,
+  });
 
 Deno.test("tiers: the live case — one closed place, no geo, fills a deck of one", async () => {
   // The exact request web's shared deck and every Expo binary send: no lat/lng.
   const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, null);
   assertEquals(ids(tiers.strict), []);
-  assertEquals(ids(tiers.closedNear), ["dos-amores"]);
-  const { deck, backfilled } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  assertEquals(ids(tiers.closedReach), ["dos-amores"]);
+  const { deck, backfilled } = await fillSwipeDeck(
+    tiers,
+    50,
+    rankLive(TUE_NIGHT, null),
+  );
   assertEquals(ids(deck), ["dos-amores"]);
   assertEquals(backfilled, 1);
 });
@@ -335,44 +349,57 @@ Deno.test("tiers: the live case — one closed place, no geo, fills a deck of on
 Deno.test("tiers: the same place at Wednesday noon is strict, not backfill", async () => {
   const tiers = tiersAt([slp("dos-amores", 0)], WED_NOON, SLP);
   assertEquals(ids(tiers.strict), ["dos-amores"]);
-  const { deck, backfilled } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  const { deck, backfilled } = await fillSwipeDeck(
+    tiers,
+    50,
+    rankLive(WED_NOON, SLP),
+  );
   assertEquals(ids(deck), ["dos-amores"]);
   assertEquals(backfilled, 0);
 });
 
 Deno.test("tiers: a located guest 400 km away still gets the one place", async () => {
-  // Radius 5 km. Far and closed is the last band, and it still fills.
-  const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, {
-    lat: SLP.lat + 400 / 111,
-    lng: SLP.lng,
-  });
-  assertEquals(ids(tiers.closedFar), ["dos-amores"]);
-  const { deck } = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  const guest = { lat: SLP.lat + 400 / 111, lng: SLP.lng };
+  const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, guest);
+  assertEquals(ids(tiers.closedBeyond), ["dos-amores"]);
+  const { deck } = await fillSwipeDeck(tiers, 50, rankLive(TUE_NIGHT, guest));
   assertEquals(ids(deck), ["dos-amores"]);
+});
+
+Deno.test("tiers: reach is the operator's Proximity maxKm, never under the radius", () => {
+  assertEquals(swipeReachKm(5, PARAMS), 25);
+  assertEquals(swipeReachKm(5, { proximity: { maxKm: 40 } }), 40);
+  assertEquals(swipeReachKm(5, { proximity: { maxKm: 2 } }), 5);
+  assertEquals(swipeReachKm(5, undefined), 25);
 });
 
 Deno.test("tiers: each row lands in exactly one band", () => {
   const rows = [
     slp("open-near", 1),
-    slp("open-far", 10),
-    slp("closed-near", 1, { tuesday: [{ open: "08:30", close: "15:00" }] }),
+    slp("open-reach", 10),
+    slp("closed-near", 1, SHUT),
     // Open at noon, shut at 12:20 — inside the 30-minute buffer.
     slp("closing-near", 1, { wednesday: [{ open: "08:30", close: "12:20" }] }),
     // No hours: "cannot tell" is not "open".
     slp("unknown-near", 1, null),
-    slp("closed-far", 30, { tuesday: [{ open: "08:30", close: "15:00" }] }),
-    // With geo, an unlocated row cannot prove it is near.
+    slp("closed-reach", 20, SHUT),
+    slp("open-beyond", 360),
+    slp("closed-beyond", 30, SHUT),
+    // With geo, an unlocated row cannot prove where it is.
     slp("unlocated", null),
   ];
   const tiers = tiersAt(rows, WED_NOON, SLP);
   assertEquals(ids(tiers.strict), ["open-near"]);
-  assertEquals(ids(tiers.openFar), ["open-far", "unlocated"]);
-  assertEquals(ids(tiers.closedNear), [
+  assertEquals(ids(tiers.openReach), ["open-reach"]);
+  assertEquals(ids(tiers.closedReach), [
     "closed-near",
     "closing-near",
     "unknown-near",
+    "closed-reach",
   ]);
-  assertEquals(ids(tiers.closedFar), ["closed-far"]);
+  assertEquals(ids(tiers.openBeyond), ["open-beyond"]);
+  assertEquals(ids(tiers.closedBeyond), ["closed-beyond"]);
+  assertEquals(ids(tiers.unplaced), ["unlocated"]);
   assertEquals(swipeTierCount(tiers), rows.length);
 });
 
@@ -380,23 +407,59 @@ Deno.test("tiers: no geo means every row is near — there is no radius without 
   const rows = [slp("a", 1), slp("b", 900), slp("c", null)];
   const tiers = tiersAt(rows, WED_NOON, null);
   assertEquals(ids(tiers.strict), ["a", "b", "c"]);
-  assertEquals(tiers.openFar.length + tiers.closedFar.length, 0);
+  assertEquals(swipeTierCount(tiers), 3);
 });
 
-Deno.test("tiers: far bands come out nearest-first whatever the pool order", () => {
-  // Past 25 km Proximity scores a flat 0, so without this sort the band would
-  // rank in whatever order PostgREST returned.
-  const shut = { tuesday: [{ open: "08:30", close: "15:00" }] };
+Deno.test("tiers: THE GUEST'S OWN CITY BEATS AN OPEN BAR IN ANOTHER ONE", async () => {
+  // Review finding on the first cut of MESITA-2047: with open-far above
+  // closed-near and no ceiling on "far", a guest in SLP at 23:00 was served a
+  // CDMX bar and a Tijuana bar before the SLP place still open for 20 minutes.
+  const tue2300 = new Date("2026-09-23T05:00:00Z");
   const rows = [
-    slp("far-90", 90, shut),
-    slp("far-30", 30, shut),
+    { ...slp("tijuana-open", 1800), hours: { tuesday: [{ open: "18:00", close: "03:00" }] } },
+    { ...slp("cdmx-open", 360), hours: { tuesday: [{ open: "18:00", close: "03:00" }] } },
+    slp("slp-closing-in-20", 1, { tuesday: [{ open: "18:00", close: "23:20" }] }),
+    slp("slp-closed", 1, { monday: [{ open: "08:30", close: "15:00" }] }),
+  ];
+  const tiers = tiersAt(rows, tue2300, SLP);
+  const { deck } = await fillSwipeDeck(tiers, 50, rankLive(tue2300, SLP));
+  const order = ids(deck);
+  assertEquals(order.indexOf("slp-closing-in-20") < order.indexOf("cdmx-open"), true);
+  assertEquals(order.indexOf("slp-closed") < order.indexOf("cdmx-open"), true);
+  // Beyond reach, nearest first.
+  assertEquals(order.slice(2), ["cdmx-open", "tijuana-open"]);
+});
+
+Deno.test("tiers: beyond-reach bands come out nearest-first through the REAL ranking", async () => {
+  // Past reach Proximity scores a flat 0 for every row; without the sort the
+  // band would rank in whatever order PostgREST returned.
+  const rows = [
+    slp("far-90", 90, SHUT),
+    slp("far-30", 30, SHUT),
     slp("open-60", 60),
-    slp("far-45", 45, shut),
+    slp("far-45", 45, SHUT),
     slp("open-40", 40),
   ];
   const tiers = tiersAt(rows, WED_NOON, SLP);
-  assertEquals(ids(tiers.closedFar), ["far-30", "far-45", "far-90"]);
-  assertEquals(ids(tiers.openFar), ["open-40", "open-60"]);
+  assertEquals(ids(tiers.closedBeyond), ["far-30", "far-45", "far-90"]);
+  assertEquals(ids(tiers.openBeyond), ["open-40", "open-60"]);
+  const { deck } = await fillSwipeDeck(tiers, 50, rankLive(WED_NOON, SLP));
+  assertEquals(ids(deck), ["open-40", "open-60", "far-30", "far-45", "far-90"]);
+});
+
+Deno.test("tiers: an unlocated place never ranks above located ones", async () => {
+  // Review finding: Proximity scores a missing place geo 0.35, above any
+  // located place past reach (0) and above one at 9 km (~0.3). Its own band,
+  // last, is what keeps it there under the REAL blend.
+  const rows = [
+    slp("unlocated", null),
+    slp("far-300", 300),
+    slp("reach-9", 9),
+    slp("far-40", 40),
+  ];
+  const tiers = tiersAt(rows, WED_NOON, SLP);
+  const { deck } = await fillSwipeDeck(tiers, 50, rankLive(WED_NOON, SLP));
+  assertEquals(ids(deck), ["reach-9", "far-40", "far-300", "unlocated"]);
 });
 
 Deno.test("fill: a full strict band never reaches, or ranks, a backfill band", async () => {
@@ -416,21 +479,38 @@ Deno.test("fill: a full strict band never reaches, or ranks, a backfill band", a
 });
 
 Deno.test("fill: a short strict band is topped up band by band, in band order", async () => {
-  const shut = { tuesday: [{ open: "08:30", close: "15:00" }] };
   const tiers = tiersAt(
     [
-      slp("closed-far", 40, shut),
-      slp("closed-near", 1, shut),
-      slp("open-far", 40),
+      slp("unlocated", null),
+      slp("closed-beyond", 40, SHUT),
+      slp("open-beyond", 40),
+      slp("closed-near", 1, SHUT),
+      slp("open-reach", 10),
       slp("strict", 1),
     ],
     WED_NOON,
     SLP,
   );
-  const { deck, backfilled } = await fillSwipeDeck(tiers, 3, (rows) => rows);
-  assertEquals(ids(deck), ["strict", "open-far", "closed-near"]);
-  assertEquals(backfilled, 2);
-  assertEquals(SWIPE_TIER_ORDER, ["strict", "openFar", "closedNear", "closedFar"]);
+  const all = await fillSwipeDeck(tiers, 50, (rows) => rows);
+  assertEquals(ids(all.deck), [
+    "strict",
+    "open-reach",
+    "closed-near",
+    "open-beyond",
+    "closed-beyond",
+    "unlocated",
+  ]);
+  assertEquals(all.backfilled, 5);
+  const three = await fillSwipeDeck(tiers, 3, (rows) => rows);
+  assertEquals(ids(three.deck), ["strict", "open-reach", "closed-near"]);
+  assertEquals(SWIPE_TIER_ORDER, [
+    "strict",
+    "openReach",
+    "closedReach",
+    "openBeyond",
+    "closedBeyond",
+    "unplaced",
+  ]);
 });
 
 Deno.test("fill: THE BAND INVARIANT — a bought slot cannot lift a closed place over an open one", async () => {
@@ -441,11 +521,7 @@ Deno.test("fill: THE BAND INVARIANT — a bought slot cannot lift a closed place
     slp("open-a", 1),
     slp("open-b", 1),
     slp("open-c", 1),
-    {
-      ...slp("closed-promoting", 1, { tuesday: [{ open: "08:30", close: "15:00" }] }),
-      ...PROMO_RATES,
-      plan: "pro",
-    },
+    { ...slp("closed-promoting", 1, SHUT), ...PROMO_RATES, plan: "pro" },
   ];
   const tiers = tiersAt(rows, WED_NOON, SLP);
   const rankBand = (band: TierRow[]) =>
@@ -460,12 +536,7 @@ Deno.test("fill: THE BAND INVARIANT — a bought slot cannot lift a closed place
 });
 
 Deno.test("fill: ranking off still bands (identity rank keeps band order)", async () => {
-  const shut = { tuesday: [{ open: "08:30", close: "15:00" }] };
-  const tiers = tiersAt(
-    [slp("closed", 1, shut), slp("open", 1)],
-    WED_NOON,
-    SLP,
-  );
+  const tiers = tiersAt([slp("closed", 1, SHUT), slp("open", 1)], WED_NOON, SLP);
   const { deck } = await fillSwipeDeck(tiers, 50, (rows) => rows);
   assertEquals(ids(deck), ["open", "closed"]);
 });
@@ -488,6 +559,7 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
   );
   assertEquals(src.includes("partitionSwipeTiers("), true);
   assertEquals(src.includes("fillSwipeDeck("), true);
+  assertEquals(src.includes("swipeReachKm(filters.maxDistanceKm, cfg.params)"), true);
   assertEquals(src.includes("admitSwipeTiming"), false);
   assertEquals(src.includes("trimToRadius"), false);
   // The frozen Expo shape keeps its two keys; backfilled is additive.

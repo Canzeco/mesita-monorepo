@@ -127,7 +127,7 @@ export function SwipeConfigClient({
       <SectionCard
         icon={<GalleryHorizontalEnd className="text-primary h-4 w-4" />}
         title="Scroll"
-        subtitle="Home's ranked deck. Google reviewers cut the pool. Radius and the closing buffer pick who leads: places open inside the radius come first, then open-farther, closed-nearby and closed-farther — so Scroll is never empty while the catalog has a place. Places Lineup ranks each group under the Scroll column."
+        subtitle="Home's ranked deck. Google reviewers cut the pool. Radius and the closing buffer pick who leads: places open inside the radius come first, then open and closed places within Proximity's reach (its max km), then other cities — so Scroll is never empty while the catalog has a place. Places Lineup ranks each group under the Scroll column."
         state={
           <KnobState
             kind="enforced"

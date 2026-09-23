@@ -157,10 +157,10 @@ export function ScrollDeck({
   // because the geo re-fetch above bypasses that boundary entirely.
   //
   // THE EF'S ORDER IS KEPT (MESITA-2047). The deck arrives banded — open and
-  // near first, then open-far, closed-near, closed-far — with the bought slots
-  // already placed inside each band. A client re-sort that floated promoting
-  // places used to run here and would lift a promoting CLOSED place above
-  // every open card.
+  // near first, then open within reach, closed within reach, other cities
+  // last — with the bought slots already placed inside each band. A client
+  // re-sort that floated promoting places used to run here and would lift a
+  // promoting CLOSED place above every open card.
   //
   // AN EMPTY LOCATED ANSWER NEVER BLANKS A GOOD SHARED DECK when the guest set
   // no filter. The engine backfills far and closed places, so an unfiltered

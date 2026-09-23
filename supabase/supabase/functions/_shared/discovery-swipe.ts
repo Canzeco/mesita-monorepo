@@ -12,9 +12,10 @@
 //
 //   1. ADMIT  — ready, review floor, Map type batteries, then guest
 //               predicates. These EXCLUDE.
-//   2. TIER   — open now + closing buffer, and the operator radius. These
-//               ORDER IN BANDS and never exclude (MESITA-2047): open-and-near
-//               leads, then open-far, closed-near, closed-far.
+//   2. TIER   — open now + closing buffer, the operator radius, and the
+//               Proximity reach. These ORDER IN BANDS and never exclude
+//               (MESITA-2047): open-and-near leads, then open within reach,
+//               closed within reach, open beyond, closed beyond, unplaced.
 //   3. RANK   — Places Lineup Π s^w with the Swipe mask, inside each tier.
 //   4. SLOT   — the bought lane: every Nth position is a slot a promoting
 //               place is MOVED FORWARD into. MESITA-1855. Inside each tier.
@@ -33,6 +34,7 @@
 
 import { isOpenNow } from "./local-time-open.ts";
 import { haversineKm } from "./geo.ts";
+import { PROXIMITY_MAX_KM } from "./discovery-signals.ts";
 import {
   discoveryRank,
   type SignalParamsByKey,
@@ -97,26 +99,62 @@ export function swipeOpenThrough(
 // filter (including a legacy binary's "open now") is a promise to that guest.
 // Neither is tiered — only the two gates that answer "right here, right now".
 
-/** Where a place sits against Scroll's two soft gates. */
-export type SwipeTier = "strict" | "openFar" | "closedNear" | "closedFar";
+/** Where a place sits against Scroll's soft gates. */
+export type SwipeTier =
+  | "strict"
+  | "openReach"
+  | "closedReach"
+  | "openBeyond"
+  | "closedBeyond"
+  | "unplaced";
 
 /**
- * Band order. Open-far beats closed-near: a table you can have 8 km away is
- * worth more tonight than one 1 km away that is shut.
+ * Band order. Three distances — inside the radius, inside REACH (where
+ * Proximity still scores anything), beyond it — and open before closed
+ * inside each.
+ *
+ * Open-within-reach beats closed-nearby: a table you can have 8 km away is
+ * worth more tonight than one 1 km away that is shut. Closed-within-reach
+ * beats open-beyond: a bar that is open 360 km away is not a table tonight
+ * either, and the guest's own city, even shut, is the more useful card.
+ * `unplaced` is last: with a located guest, a place with no coordinates
+ * cannot say where it is, and Proximity would otherwise score it above every
+ * real place past reach (missingGeo 0.35 beats 0).
  */
 export const SWIPE_TIER_ORDER: readonly SwipeTier[] = [
   "strict",
-  "openFar",
-  "closedNear",
-  "closedFar",
+  "openReach",
+  "closedReach",
+  "openBeyond",
+  "closedBeyond",
+  "unplaced",
 ];
 
 export type SwipeTiers<T> = Record<SwipeTier, T[]>;
+
+/**
+ * Reach: the distance where the Scroll column's Proximity curve hits 0 — the
+ * operator's own `proximity.maxKm`, never less than the radius. Past it every
+ * place scores the same on distance, so "beyond reach" is where a guest's
+ * nearest city ends as far as the engine can tell.
+ */
+export function swipeReachKm(
+  radiusKm: number,
+  params?: SignalParamsByKey,
+): number {
+  const v = params?.proximity?.maxKm;
+  const reach = typeof v === "number" && Number.isFinite(v) && v > 0
+    ? v
+    : PROXIMITY_MAX_KM;
+  return Math.max(radiusKm, reach);
+}
 
 export type SwipeTierOpts<T> = {
   /** The guest, when they sent coordinates. null = every row is "near". */
   geo: { lat: number; lng: number } | null;
   radiusKm: number;
+  /** See `swipeReachKm`. Clamped up to `radiusKm`. */
+  reachKm: number;
   bufferMin: number;
   hoursOf: (row: T) => unknown;
   latOf: (row: T) => number | null;
@@ -124,55 +162,72 @@ export type SwipeTierOpts<T> = {
   at?: Date;
 };
 
+/** Guest → row in km. Infinity when either side has no coordinates. */
+export function swipeDistanceKm(
+  geo: { lat: number; lng: number } | null,
+  lat: number | null,
+  lng: number | null,
+): number {
+  if (!geo || typeof lat !== "number" || typeof lng !== "number") {
+    return Number.POSITIVE_INFINITY;
+  }
+  return haversineKm(geo.lat, geo.lng, lat, lng);
+}
+
 /**
- * Split admitted rows into the four bands. Input order is kept inside each
- * band, except the far bands, which are sorted nearest-first: Proximity is a
- * flat 0 beyond 25 km, so a far band would otherwise rank in whatever order
- * PostgREST happened to return.
+ * Split admitted rows into the bands. Input order is kept inside each band,
+ * except the beyond bands, which are sorted nearest-first: Proximity is a
+ * flat 0 past reach, so they would otherwise rank in whatever order PostgREST
+ * happened to return.
  *
  * NO GEO → EVERYTHING IS NEAR. Every deployed Expo binary and web's shared
  * deck send no coordinates, and there is no radius without a centre.
- * WITH GEO, AN UNLOCATED ROW IS FAR, sorted last: it cannot prove it is near,
- * and the boxed pool query could never have returned it anyway.
+ * WITH GEO, AN UNLOCATED ROW IS `unplaced`: it cannot prove it is near, and
+ * the boxed pool query could never have returned it anyway.
  */
 export function partitionSwipeTiers<T>(
   rows: T[],
   opts: SwipeTierOpts<T>,
 ): SwipeTiers<T> {
   const at = opts.at ?? new Date();
+  const reachKm = Math.max(opts.radiusKm, opts.reachKm);
   const tiers: SwipeTiers<T> = {
     strict: [],
-    openFar: [],
-    closedNear: [],
-    closedFar: [],
+    openReach: [],
+    closedReach: [],
+    openBeyond: [],
+    closedBeyond: [],
+    unplaced: [],
   };
   const distance = new Map<T, number>();
   for (const row of rows) {
-    let near = true;
-    if (opts.geo) {
-      const km = haversineKm(
-        opts.geo.lat,
-        opts.geo.lng,
-        opts.latOf(row),
-        opts.lngOf(row),
-      );
-      distance.set(row, km);
-      near = km <= opts.radiusKm;
+    const km = opts.geo
+      ? swipeDistanceKm(opts.geo, opts.latOf(row), opts.lngOf(row))
+      : 0;
+    if (!Number.isFinite(km)) {
+      tiers.unplaced.push(row);
+      continue;
     }
+    distance.set(row, km);
     const open = swipeOpenThrough(
       opts.hoursOf(row),
       opts.lngOf(row),
       opts.bufferMin,
       at,
     );
-    if (open) (near ? tiers.strict : tiers.openFar).push(row);
-    else (near ? tiers.closedNear : tiers.closedFar).push(row);
+    if (km <= opts.radiusKm) {
+      (open ? tiers.strict : tiers.closedReach).push(row);
+    } else if (km <= reachKm) {
+      (open ? tiers.openReach : tiers.closedReach).push(row);
+    } else {
+      (open ? tiers.openBeyond : tiers.closedBeyond).push(row);
+    }
   }
   if (opts.geo) {
     const byDistance = (a: T, b: T) =>
       (distance.get(a) ?? Infinity) - (distance.get(b) ?? Infinity);
-    tiers.openFar.sort(byDistance);
-    tiers.closedFar.sort(byDistance);
+    tiers.openBeyond.sort(byDistance);
+    tiers.closedBeyond.sort(byDistance);
   }
   return tiers;
 }

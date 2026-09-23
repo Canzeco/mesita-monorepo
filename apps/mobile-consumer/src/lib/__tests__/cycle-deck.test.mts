@@ -19,13 +19,12 @@ const { DECK_SIZE, cycleDeck } = await import(
   pathToFileURL(join(SRC, 'lib', 'cycle-deck.ts')).href
 );
 
+// A hand-mirrored twin of web's `const DECK_SIZE = 50;`, which web pins in
+// place-feed-grid.test.tsx. Not read across packages on purpose: this job only
+// runs on mobile paths, so a web-only PR could break it and hand the red to
+// the next unrelated mobile PR.
 test('the deck is 50, the same as web Scroll', () => {
   assert.equal(DECK_SIZE, 50);
-  const web = readFileSync(
-    join(SRC, '..', '..', 'web-consumer', 'src', 'components', 'consumer', 'home', 'scroll', 'ScrollDeck.tsx'),
-    'utf8',
-  );
-  assert.ok(web.includes('const DECK_SIZE = 50;'));
 });
 
 test('one place fills the deck with that place', () => {
@@ -59,10 +58,20 @@ test('SwipeDeck swipes the cycled deck and counts the real one', () => {
 
 test('the ranked deck keeps the engine order — no partner float over it', () => {
   const src = readFileSync(join(SRC, 'components', 'swipe', 'SwipeDeck.tsx'), 'utf8');
-  const fetchFn = src.slice(
-    src.indexOf('async function fetchSwipeDeck'),
-    src.indexOf('} catch (err) {', src.indexOf('async function fetchSwipeDeck')),
-  );
+  const fetchStart = src.indexOf('async function fetchSwipeDeck');
+  const fetchFn = src.slice(fetchStart, src.indexOf('} catch (err) {', fetchStart));
   assert.ok(fetchFn.includes('return result.deck;'));
   assert.ok(!fetchFn.includes('sortPartnersFirst('));
+});
+
+test('Start over deals the engine order again — never a shuffle', () => {
+  // The deck carries closed places behind the open ones since MESITA-2047; a
+  // shuffle on restart would deal a shut place first.
+  const src = readFileSync(join(SRC, 'components', 'swipe', 'SwipeDeck.tsx'), 'utf8');
+  const start = src.indexOf('const restart = useCallback');
+  assert.ok(start > -1);
+  const restart = src.slice(start, src.indexOf('}, [deckQuery, restarting]);', start));
+  assert.ok(restart.includes('setOverridePlaces(result.deck);'));
+  assert.ok(!restart.includes('shuffleDeck('));
+  assert.ok(!restart.includes('sortPartnersFirst('));
 });

@@ -155,15 +155,6 @@ export function sortPartnersFirst(input: Place[]): Place[] {
   });
 }
 
-export function shuffleDeck(input: Place[]): Place[] {
-  const out = [...input];
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j]!, out[i]!];
-  }
-  return out;
-}
-
 export function withUserDistance(place: Place, coords: Coords | null): Place {
   if (coords) {
     const lat = toCoord(place.lat);

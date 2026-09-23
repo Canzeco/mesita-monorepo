@@ -251,10 +251,34 @@ export function computeOpenState(
     const k = WEEK_KEYS[(dayIdx + i) % 7];
     const ranges = arr<HourRange>(h[k]);
     if (ranges.length > 0 && ranges[0].open) {
-      return { open_now: false, opens_at: ranges[0].open, closes_at: "" };
+      return {
+        open_now: false,
+        opens_at: opensOnDay(i, dayIdx, ranges[0].open),
+        closes_at: "",
+      };
     }
   }
   return fallback;
+}
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * `opens_at` for an opening on a LATER day: "tomorrow 08:30", "Wed 08:30",
+ * "next Tue 08:30" a week out. A bare "08:30" means later today and nothing
+ * else (MESITA-2047) — on a Tuesday a place shut all day used to read "opens
+ * 08:30" at 07:00, and Scroll now shows closed places, so the chip is read.
+ * Every reader prints `opens ${opens_at}`, so the day rides inside the string.
+ */
+export function opensOnDay(
+  daysAhead: number,
+  dayIdx: number,
+  time: string,
+): string {
+  if (daysAhead <= 0) return time;
+  if (daysAhead === 1) return `tomorrow ${time}`;
+  const day = WEEKDAY_SHORT[(dayIdx + daysAhead) % 7];
+  return daysAhead >= 7 ? `next ${day} ${time}` : `${day} ${time}`;
 }
 
 export function hoursTable(hours: unknown): PlaceDetail["hours_table"] {
