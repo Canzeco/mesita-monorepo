@@ -25,11 +25,9 @@
 // obeyed today.
 //
 // ━━━ WHAT IS NOT ━━━
-// Nothing WRITES a pin yet. There is no `place_field_proposals` table, no
-// proposal writer for the Reservationist, and no routing into the Verification
-// Queue — those need a migration, which is serialised by hand. `FieldProposal`,
-// `CORRECTION_AUTO_APPLY_FLOOR` and `autoApplies()` below are still the types
-// that engine will fill.
+// The proposal TABLE and reservationist/Ojo writers land in MESITA-2029.
+// Business-console edits now write pins via `field-correction-writer.ts`.
+// Low-confidence proposals queue in `place_field_proposals` (pending admin UI).
 //
 // Order is on purpose. The guard ships FIRST because the alternative — a writer
 // landing while persist still clobbers — produces corrections that revert
@@ -239,6 +237,57 @@ export function carryFieldPins(
  * that absent keys are untouched, so there is nothing to withhold and nothing
  * to report.
  */
+/** ISO instant `days` from `now` when a pin expires and the Enricher owns the field again. */
+export function pinnedUntilFromNow(
+  now = new Date(),
+  days = CORRECTION_PIN_DAYS,
+): string {
+  const d = new Date(now.getTime());
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString();
+}
+
+export function buildFieldPin(
+  source: CorrectionSource,
+  confidence: number,
+  observedAt = new Date().toISOString(),
+  now = new Date(),
+): FieldPin {
+  return {
+    source,
+    confidence,
+    pinnedUntil: pinnedUntilFromNow(now),
+    observedAt,
+  };
+}
+
+/** Merge one live pin without dropping siblings on the row. */
+export function mergeFieldPin(
+  pins: FieldPins,
+  field: CorrectableField,
+  pin: FieldPin,
+): FieldPins {
+  return { ...pins, [field]: pin };
+}
+
+/** Which correctable fields a place_profiles patch touches (reservation is one field, two columns). */
+export function correctableFieldsInPatch(
+  patch: Record<string, unknown>,
+): CorrectableField[] {
+  const out: CorrectableField[] = [];
+  for (const field of CORRECTABLE_FIELDS) {
+    if (field === "reservation_target") {
+      if ("reservation_channel" in patch || "reservation_target" in patch) {
+        out.push(field);
+      }
+      continue;
+    }
+    const cols = CORRECTABLE_FIELD_COLUMNS[field];
+    if (cols.some((c) => c in patch)) out.push(field);
+  }
+  return out;
+}
+
 export function stripPinnedColumns<T extends Record<string, unknown>>(
   update: T,
   pins: FieldPins,
