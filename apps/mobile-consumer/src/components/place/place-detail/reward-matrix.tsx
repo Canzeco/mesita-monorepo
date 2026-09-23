@@ -148,7 +148,7 @@ export function YourRewardsHere({ strategy }: { strategy: PlaceStrategy }) {
         className="mt-1 px-1 text-muted-foreground"
         style={{ fontSize: 10.5, lineHeight: 14 }}
       >
-        You always keep your single best one — never added together.
+        Your rate plus every bonus you complete, added together.
       </Text>
     </View>
   );

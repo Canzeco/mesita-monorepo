@@ -9,8 +9,7 @@ import { useAuth } from '@/providers/auth';
 export default function PlanPage() {
   const router = useRouter();
   const { consumerClass } = useAuth();
-  const origin = consumerClass?.origin;
-  const isPremium = origin === 'subscription';
+  const isPremium = consumerClass?.plan === 'premium';
 
   return (
     <FullScreenSheet
