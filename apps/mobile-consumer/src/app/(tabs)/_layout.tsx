@@ -1,14 +1,14 @@
-import { Redirect, Tabs, useSegments } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
+import { Redirect, Tabs, useSegments } from "expo-router";
+import { ActivityIndicator, View } from "react-native";
 
-import { ConsumerTabBar } from '@/components/ui/ConsumerTabBar';
-import { COLORS } from '@/constants/brand';
-import { isMeNestedRoute } from '@/lib/tab-layout';
-import { useAuth } from '@/providers/auth';
+import { ConsumerTabBar } from "@/components/ui/ConsumerTabBar";
+import { COLORS } from "@/constants/brand";
+import { isMeNestedRoute } from "@/lib/tab-layout";
+import { useAuth } from "@/providers/auth";
 
 type RoutedTabBarProps = {
-  state: Parameters<typeof ConsumerTabBar>[0]['state'];
-  navigation: Parameters<typeof ConsumerTabBar>[0]['navigation'];
+  state: Parameters<typeof ConsumerTabBar>[0]["state"];
+  navigation: Parameters<typeof ConsumerTabBar>[0]["navigation"];
 };
 
 function RoutedTabBar({ state, navigation }: RoutedTabBarProps) {
@@ -17,8 +17,8 @@ function RoutedTabBar({ state, navigation }: RoutedTabBarProps) {
   return <ConsumerTabBar state={state} navigation={navigation} />;
 }
 
-// Custom tab bar ports web BottomNav (MESITA-581). The bar shows FOUR tabs,
-// Visit · Order · Wallet · Me (MESITA-2050), over EIGHT screens: Visit's five
+// Custom tab bar ports web BottomNav (MESITA-581). The bar shows FIVE tabs,
+// Home · Search · Visit · Wallet · Me (MESITA-2055).
 // rail pills (home · search · chat · favs · rewards) are sibling tab routes,
 // so each pill keeps its state across switches. ConsumerTabBar's BAR list
 // decides what the bar shows and which routes light which tab; the order of
@@ -66,14 +66,14 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: COLORS.background },
       }}
     >
-      <Tabs.Screen name="home" options={{ title: 'Home' }} />
-      <Tabs.Screen name="search" options={{ title: 'Search' }} />
-      <Tabs.Screen name="chat" options={{ title: 'Chat' }} />
-      <Tabs.Screen name="favs" options={{ title: 'Favs' }} />
-      <Tabs.Screen name="rewards" options={{ title: 'Pay' }} />
-      <Tabs.Screen name="order" options={{ title: 'Order' }} />
-      <Tabs.Screen name="wallet" options={{ title: 'Wallet' }} />
-      <Tabs.Screen name="me" options={{ title: 'Me' }} />
+      <Tabs.Screen name="home" options={{ title: "Home" }} />
+      <Tabs.Screen name="search" options={{ title: "Search" }} />
+      <Tabs.Screen name="chat" options={{ title: "Chat" }} />
+      <Tabs.Screen name="favs" options={{ title: "Favs" }} />
+      <Tabs.Screen name="rewards" options={{ title: "Pay" }} />
+      <Tabs.Screen name="order" options={{ title: "Order" }} />
+      <Tabs.Screen name="wallet" options={{ title: "Wallet" }} />
+      <Tabs.Screen name="me" options={{ title: "Me" }} />
     </Tabs>
   );
 }

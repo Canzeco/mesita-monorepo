@@ -54,6 +54,7 @@ export type ConsumerTicketRow = {
   approved_at?: string | null;
   approved_discount_cents?: number | null;
   approved_amount_due_cents?: number | null;
+  credits_applied_cents?: number | null;
   fix_requested?: string | null;
   fix_note?: string | null;
   paid_method?: string | null;
@@ -301,6 +302,10 @@ export type TicketSettlement = {
    *  visits_config.payCard ∧ Connect charge-readiness. One derived boolean —
    *  the legs stay server-side (mesita_pay_enabled is an admin-only fact). */
   cardRail: boolean;
+  /** Global Credits spend rail (visits_config.payCredits). */
+  payCredits?: boolean;
+  /** Spendable balance at this ticket's place, when honour + rail allow. */
+  creditsSpendableCents?: number;
 };
 
 export async function apiGetTicket(

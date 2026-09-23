@@ -21,7 +21,7 @@ The 2026-08-20 freeze is lifted (Pato, MESITA-1789): Me boxes are full-page rout
 - Env: `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, optional `EXPO_PUBLIC_GMP_KEY`/`EXPO_PUBLIC_SENTRY_DSN` — public values only, never a service key. EAS project `@canzeco/mesita-mobile-consumer`, secrets in EAS env. Bundle ID `com.mesita.consumer` is **STAGED** — no store submission until Pato confirms.
 
 ## Where native diverges from web
-- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,chat,favs,rewards,order,wallet,me}`. The bar shows **four tabs, Visit · Order · Wallet · Me** (web parity); Visit's five rail pills are hidden tab screens (`TabRail`), all lighting Visit via `ConsumerTabBar`'s `BAR`. Pay's route stays `(tabs)/rewards`.
+- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,chat,favs,rewards,order,wallet,me}`. The bar shows **five tabs, Home · Search · Visit · Wallet · Me** (web parity); Chat and Favs remain hidden Home rail screens (`TabRail`). Visit's route stays `(tabs)/rewards`; Order remains routable but is not a tab.
 - **No Activity tab**: its sections are Me pages; `/inbox/*`, `/notifications`, `/saved/reservations` land where web's redirect table sends them. `ReservationItem.reservedAt` exists here because `when` is a display string and cannot be sorted on.
 - **`SegmentNav` scrolls horizontally as its RESTING state** — a 375px phone cannot hold five icon+label pills, so unlike web this is not just the large-text fallback. Never shrink type below 12px to fix it; shorten a label.
 - **Wallet has no body** (payment UI, Apple review); Order is an empty state (not built). `CatalogTab`/`SocialTab` stay in tree, unmounted.

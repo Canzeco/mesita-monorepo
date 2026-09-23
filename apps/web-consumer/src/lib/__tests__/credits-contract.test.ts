@@ -412,11 +412,8 @@ describe("ways to pay", () => {
     expect(WAYS).toContain("Through Mesita");
   });
 
-  it("says Credits are not live yet", () => {
-    // MESITA-1674 deleted the "Emulated" footer because the BALANCES became
-    // real. SPENDING them did not: StepPay still renders its Credits row
-    // `soon`. This tag is now the only place the wallet says so.
-    expect(WAYS).toMatch(/tag: "Soon"/);
+  it("names Credits as a bill reduction, not a full settlement", () => {
+    expect(WAYS).toMatch(/tag: "On your bill"/);
   });
 
   it("never calls Credits a way to settle the whole bill", () => {

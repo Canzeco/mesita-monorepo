@@ -1,19 +1,12 @@
-import { type Href, useRouter } from 'expo-router';
-import {
-  Flame,
-  Heart,
-  MapPin,
-  QrCode,
-  Search,
-  Sparkles,
-} from 'lucide-react-native';
-import type { ReactNode } from 'react';
-import { View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { type Href, useRouter } from "expo-router";
+import { Flame, Heart, MapPin, Sparkles } from "lucide-react-native";
+import type { ReactNode } from "react";
+import { View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ShellWash } from '@/components/ui/HeroBackdrop';
-import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
-import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
+import { ShellWash } from "@/components/ui/HeroBackdrop";
+import { SegmentNav, type SegmentItem } from "@/components/ui/SegmentNav";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // The top rail of a bottom tab — RN port of web ModeRail (Pato, MESITA-2050:
 // "Visit. Order. Wallet. Me. · Home(scroll). Search. Chat. Favs. Pay. · Order
@@ -36,16 +29,35 @@ import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 // makes Order the same kind of tab as Visit. The next Order mode is an append.
 type RailItem = SegmentItem & { href: string };
 
-export const VISIT_RAIL: readonly RailItem[] = [
-  { key: 'home', title: 'Home', Icon: Flame, href: CONSUMER_ROUTES.discoverTabs.scroll },
-  { key: 'search', title: 'Search', Icon: Search, href: CONSUMER_ROUTES.search },
-  { key: 'chat', title: 'Chat', Icon: Sparkles, href: CONSUMER_ROUTES.discoverTabs.chat },
-  { key: 'favs', title: 'Favs', Icon: Heart, href: CONSUMER_ROUTES.discoverTabs.favs },
-  { key: 'pay', title: 'Pay', Icon: QrCode, href: CONSUMER_ROUTES.rewards.root },
+export const HOME_RAIL: readonly RailItem[] = [
+  {
+    key: "home",
+    title: "Home",
+    Icon: Flame,
+    href: CONSUMER_ROUTES.discoverTabs.scroll,
+  },
+  {
+    key: "chat",
+    title: "Chat",
+    Icon: Sparkles,
+    href: CONSUMER_ROUTES.discoverTabs.chat,
+  },
+  {
+    key: "favs",
+    title: "Favs",
+    Icon: Heart,
+    href: CONSUMER_ROUTES.discoverTabs.favs,
+  },
 ];
 
+// Order remains deep-linkable, but is no longer a bottom-bar destination.
 export const ORDER_RAIL: readonly RailItem[] = [
-  { key: 'home', title: 'Home', Icon: MapPin, href: CONSUMER_ROUTES.order.home },
+  {
+    key: "home",
+    title: "Home",
+    Icon: MapPin,
+    href: CONSUMER_ROUTES.order.home,
+  },
 ];
 
 export function TabRail({
@@ -88,7 +100,7 @@ export function TabFrame({
 }) {
   return (
     <ShellWash>
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <TabRail items={items} value={value} />
         <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
       </SafeAreaView>

@@ -125,23 +125,14 @@ const TARGETS: { source: string; apps: Record<string, string> }[] = [
         "src/components/place-manage/notifications/notification-enricher-phase.ts",
     },
   },
-  // THE FIRST TARGET THAT IS NOT web-admin + web-business (MESITA-2037).
-  //
-  // The product FAMILIES are policy the two CONSOLES share — mock-business-app
-  // and web-business — and web-admin has no product catalogue to paint. Every
-  // entry above happens to pair the same two apps, which is a fact about what
-  // has been shared so far and never a rule; the writer loops
-  // `Object.entries(target.apps)` and has always been generic.
-  //
-  // WHY THE MOCK IS A TARGET AT ALL. It keeps a hand-snapshot of
-  // `product-keys.ts` with no gate under it, and that snapshot is exactly how
-  // web-business ended up four product names stale. A hue drifting the same
-  // way is worse than a label: the two consoles would be making two different
-  // claims about what a product IS, in colour, with every check green.
+  // Product families are policy web-business paints. web-admin has no
+  // catalogue. The mock console was the other copy until MESITA-2059 removed
+  // the app. The writer still loops `Object.entries(target.apps)`: one app
+  // here is a fact about what is shared now, not a rule that a target must
+  // come in a pair.
   {
     source: "product-families.ts",
     apps: {
-      "mock-business-app": "src/lib/product-families.ts",
       "web-business": "src/lib/product-families.ts",
     },
   },

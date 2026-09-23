@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@/components/shared";
 import { HomeDeckBoundary } from "@/components/consumer/home/HomeDeckBoundary";
+import { HOME_MODES, ModeRail } from "@/components/consumer/ModeRail";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
 export default function DiscoverLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <ModeRail modes={HOME_MODES} />
       <Suspense
         fallback={
           <div className="min-h-0 flex-1 p-4">
