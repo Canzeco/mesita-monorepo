@@ -4,11 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { BadgeCheck, Mail, Phone } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { SectionCard, Switch } from "@/components/admin-ui/config";
-import {
-  getVerificationConfig,
-  updateVerificationConfig,
-  type VerificationConfig,
-} from "./actions";
+import { getVerificationConfig, updateVerificationConfig } from "./actions";
+import { type VerificationConfig } from "./defaults";
 
 type KnobKey = keyof VerificationConfig;
 

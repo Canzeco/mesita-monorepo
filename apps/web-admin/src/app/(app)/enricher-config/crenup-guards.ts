@@ -31,13 +31,6 @@ export type CrenupSettings = {
 const clampN = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(v)));
 
-/** A failed GET disables Save — defaults must not overwrite live. */
-export function crenupSaveBlocked(
-  settingsLoadError: string | null,
-): string | null {
-  return settingsLoadError;
-}
-
 export function clampFunnel(s: CrenupSettings): CrenupSettings {
   const gatherGoogleImages = clampN(s.gatherGoogleImages, 1, MAX_GOOGLE_COLLECT);
   const gatherInstagramDepth = clampN(

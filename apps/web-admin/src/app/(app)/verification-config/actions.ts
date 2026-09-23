@@ -8,27 +8,12 @@
 // the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
-
-export type VerificationConfig = {
-  createPlacesAsVerified: boolean;
-  autoVerifyAiCall: boolean;
-  autoVerifyAiEmail: boolean;
-};
+import { normalizeVerificationConfig, type VerificationConfig } from "./defaults";
 
 type ConfigPayload = {
   config: Partial<Record<keyof VerificationConfig, unknown>>;
   updatedAt: string | null;
 };
-
-function normalizeConfig(
-  raw: Partial<Record<keyof VerificationConfig, unknown>> | undefined,
-): VerificationConfig {
-  return {
-    createPlacesAsVerified: raw?.createPlacesAsVerified === true,
-    autoVerifyAiCall: raw?.autoVerifyAiCall !== false,
-    autoVerifyAiEmail: raw?.autoVerifyAiEmail !== false,
-  };
-}
 
 type GetResult =
   | { ok: true; config: VerificationConfig; updatedAt: string | null }
@@ -41,7 +26,7 @@ export async function getVerificationConfig(): Promise<GetResult> {
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: normalizeConfig(r.data.config),
+    config: normalizeVerificationConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
   };
 }
@@ -60,7 +45,7 @@ export async function updateVerificationConfig(
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: normalizeConfig(r.data.config),
+    config: normalizeVerificationConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
   };
 }

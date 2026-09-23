@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { Collapsible } from "@/components/admin-ui/config";
 import {
   fmtTime,
   money,
@@ -11,7 +12,7 @@ import {
 import type { CrenupPrompt } from "./actions";
 
 // Crenup's page-local layout kit. Structural only — controls come from
-// `@/components/admin-ui/config`. Five SectionCards own the page; these
+// `@/components/admin-ui/config`. Four SectionCards own the page; these
 // primitives live *inside* a card. A function is a disclosure row, never a
 // card of its own.
 
@@ -340,5 +341,51 @@ export function SelectField<T extends string>({
         <span className="text-muted-foreground type-label">{hint}</span>
       ) : null}
     </label>
+  );
+}
+
+/**
+ * One prompt, tucked behind a disclosure on the function that sends it.
+ *
+ * Renders NOTHING when the prompt is absent — the GET failed, or the backend
+ * stopped shipping that key. An empty disclosure would promise a prompt and
+ * then fail to show one, which reads as "there is no prompt here"; silence at
+ * least stays honest, and the page already surfaces a load error above.
+ */
+export function PromptDisclosure({
+  prompt,
+  preset,
+}: {
+  prompt: CrenupPrompt | undefined;
+  preset?: string;
+}) {
+  if (!prompt) return null;
+  // The summary names the agent when there is one, because that is how the rest
+  // of the page and the Place screen refer to this step.
+  const who = prompt.agent ? `the ${prompt.agent}` : prompt.label;
+  return (
+    <Collapsible summary={`What ${who} is told`}>
+      <PromptView prompt={prompt} preset={preset} />
+    </Collapsible>
+  );
+}
+
+export function ModelRow({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-border grid grid-cols-1 items-center gap-2 border-t py-3 first:border-t-0 first:pt-0 sm:grid-cols-[6.5rem_minmax(12rem,20rem)_1fr] sm:gap-4">
+      <span className="text-sm font-medium">{label}</span>
+      <div className="min-w-0">{children}</div>
+      <span className="text-muted-foreground type-label sm:text-right">
+        {hint}
+      </span>
+    </div>
   );
 }

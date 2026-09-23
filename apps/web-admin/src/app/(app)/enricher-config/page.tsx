@@ -1,10 +1,8 @@
 import { getAtlasSettings } from "./actions";
 import { CrenupClient } from "./CrenupClient";
 import { type CrenupSettings } from "./crenup-guards";
-import {
-  getVerificationConfig,
-  type VerificationConfig,
-} from "../verification-config/actions";
+import { getVerificationConfig } from "../verification-config/actions";
+import { VERIFICATION_FALLBACK } from "../verification-config/defaults";
 
 // CRENUP — how a place becomes a profile. Models · Create · Enrich ·
 // Functions · Verification. Search eligibility is Discovery › Map, not this page.
@@ -33,12 +31,6 @@ const SETTINGS_FALLBACK: CrenupSettings = {
   discoverOpentableN: 3,
   discoverUbereatsN: 0,
   requestThreshold: 5,
-};
-
-const VERIFICATION_FALLBACK: VerificationConfig = {
-  createPlacesAsVerified: false,
-  autoVerifyAiCall: true,
-  autoVerifyAiEmail: true,
 };
 
 export default async function CrenupPage() {
