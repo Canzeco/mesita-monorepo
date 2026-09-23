@@ -17,9 +17,12 @@ function RoutedTabBar({ state, navigation }: RoutedTabBarProps) {
   return <ConsumerTabBar state={state} navigation={navigation} />;
 }
 
-// Custom tab bar ports web BottomNav (MESITA-581). Rewards + Reservations
-// stay parked behind ComingSoonModal (web BottomNav parity); route screens
-// remain for deep links / unpark (MESITA-569 page shells).
+// Custom tab bar ports web BottomNav (MESITA-581). The bar shows FOUR tabs,
+// Visit · Order · Wallet · Me (MESITA-2050), over EIGHT screens: Visit's five
+// rail pills (home · search · chat · favs · rewards) are sibling tab routes,
+// so each pill keeps its state across switches. ConsumerTabBar's BAR list
+// decides what the bar shows and which routes light which tab; the order of
+// the screens below only sets `state.routes` order and the initial route.
 export default function TabsLayout() {
   const { loading, session, onboarded } = useAuth();
 
@@ -65,8 +68,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="home" options={{ title: 'Home' }} />
       <Tabs.Screen name="search" options={{ title: 'Search' }} />
+      <Tabs.Screen name="chat" options={{ title: 'Chat' }} />
+      <Tabs.Screen name="favs" options={{ title: 'Favs' }} />
       <Tabs.Screen name="rewards" options={{ title: 'Pay' }} />
-      <Tabs.Screen name="inbox" options={{ title: 'Activity' }} />
+      <Tabs.Screen name="order" options={{ title: 'Order' }} />
+      <Tabs.Screen name="wallet" options={{ title: 'Wallet' }} />
       <Tabs.Screen name="me" options={{ title: 'Me' }} />
     </Tabs>
   );

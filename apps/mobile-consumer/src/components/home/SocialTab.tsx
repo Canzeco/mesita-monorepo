@@ -15,7 +15,8 @@ import {
 } from '@/lib/social-feed-data';
 
 // Social mode — live activity feed (mock people + real deck places).
-// Kept mounted from Home keep-alive; unpark = flip PARKED.homeModes.social.soon.
+// Parked: nothing mounts it. Un-parking it means giving it a pill on a tab rail
+// (components/ui/TabRail.tsx), which web has not done either.
 //
 // GLOBAL ACTIVITY LIVES HERE NOW (Pato, 2026-08-17), web parity. It used to be
 // a toggle inside Inbox > Notifications, which was the wrong home twice over:

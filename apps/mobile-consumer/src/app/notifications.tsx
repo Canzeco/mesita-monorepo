@@ -1,8 +1,8 @@
 import { Redirect } from 'expo-router';
 
-import { inboxTabPath } from '@/lib/consumer-route-contract';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 
-/** Legacy web `/notifications` → inbox mine (parity). */
+// Legacy `/notifications` → Me › Notifications, web's one-hop destination.
 export default function NotificationsRedirect() {
-  return <Redirect href={inboxTabPath()} />;
+  return <Redirect href={CONSUMER_ROUTES.mePages.notifications} />;
 }

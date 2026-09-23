@@ -1,7 +1,7 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 
 import {
-  inboxTabPath,
+  CONSUMER_ROUTES,
   reservationPath,
 } from '@/lib/consumer-route-contract';
 
@@ -9,6 +9,6 @@ import {
 export default function LegacySavedReservationRedirect() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : (params.id?.[0] ?? '');
-  if (!id) return <Redirect href={inboxTabPath()} />;
+  if (!id) return <Redirect href={CONSUMER_ROUTES.mePages.reservations} />;
   return <Redirect href={reservationPath(id)} />;
 }

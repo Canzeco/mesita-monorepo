@@ -1,6 +1,6 @@
 // The wallet (v4 · MESITA-1094) — mobile mirror of web's NewVisitClient:
 // a SEARCHBAR over a bare place list, and nothing else. No tabs, no ticket
-// lists, no steps rail — history lives in Inbox › Visits, and the pointer
+// lists, no steps rail — history lives in Me › Visits, and the pointer
 // stays because a feature that MOVED needs a forwarding address.
 //
 // ONE TAP CREATES THE TICKET at "base" and opens THE TICKET, the seven-step
@@ -9,7 +9,7 @@
 // wantsStory interstitial died with v4). A place already holding a live
 // ticket re-opens it instead of 409-ing.
 
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 import { ChevronRight, Search, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -17,6 +17,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { PlacePickList } from "@/components/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/rewards/SavingsReveal";
 import { COLORS } from "@/constants/brand";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { Place } from "@/lib/api/places";
 import {
   ACTIVE_TICKET_STATES,
@@ -133,7 +134,7 @@ export function PayClient({ userId }: { userId: string }) {
           ) : null}
         </View>
         <Pressable
-          onPress={() => router.push("/(tabs)/inbox")}
+          onPress={() => router.push(CONSUMER_ROUTES.mePages.visits as Href)}
           className="mt-2 flex-row items-center justify-center gap-1"
           accessibilityRole="link"
         >
@@ -141,7 +142,7 @@ export function PayClient({ userId }: { userId: string }) {
             className="font-semibold text-muted-foreground"
             style={{ fontSize: 11.5 }}
           >
-            Your visits live in Inbox
+            Your visits live in Me
           </Text>
           <ChevronRight size={14} color={COLORS.mutedForeground} />
         </Pressable>

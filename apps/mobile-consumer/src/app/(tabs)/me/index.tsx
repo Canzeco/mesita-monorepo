@@ -184,7 +184,7 @@ export default function MeHub() {
               Icon={WalletIcon}
               title="Wallet"
               summary="Credits and cards"
-              href={CONSUMER_ROUTES.rewards.root}
+              href={CONSUMER_ROUTES.wallet.root}
             />
             <DestTile
               Icon={Crown}
