@@ -346,7 +346,7 @@ export function PartnershipBody({
 
         {underReview && (
           <p className="text-muted-foreground type-meta leading-snug">
-            Mesita is reviewing this place. Visit Rewards stay on hold
+            Mesita is reviewing this place. Rewards stay on hold
             until that review ends — an operator cannot lift their own hold.
           </p>
         )}

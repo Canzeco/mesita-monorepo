@@ -18,10 +18,16 @@ describe("isReserveActionEnabled", () => {
   });
 });
 
-describe("isOrderActionEnabled still fail-closed", () => {
-  it("stays locked without a flag or a menu", () => {
+describe("isOrderActionEnabled stays fail-closed until the order rail ships", () => {
+  it("ignores menu-on-file and enricher orders_enabled (MESITA-1967)", () => {
     expect(isOrderActionEnabled({})).toBe(false);
     expect(isOrderActionEnabled({ orders_enabled: false })).toBe(false);
-    expect(isOrderActionEnabled({ orders_enabled: true })).toBe(true);
+    expect(isOrderActionEnabled({ orders_enabled: true })).toBe(false);
+    expect(
+      isOrderActionEnabled({
+        orders_enabled: true,
+        menu_pdf_url: "https://m.pdf",
+      }),
+    ).toBe(false);
   });
 });

@@ -55,15 +55,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Flame,
-  Heart,
-  MapPin,
-  QrCode,
-  Search,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { Flame, Heart, MapPin, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -85,17 +77,13 @@ export type Mode = {
 // /discover/feed 308s to Home. CatalogRails stays on disk.
 //
 // Pay keeps the QR glyph it wore as a bottom tab: showing the QR is the pay.
-export const VISIT_MODES: Mode[] = [
+export const HOME_MODES: Mode[] = [
   { href: CONSUMER_ROUTES.discoverTabs.scroll, label: "Home", Icon: Flame },
-  { href: CONSUMER_ROUTES.search, label: "Search", Icon: Search },
   { href: CONSUMER_ROUTES.discoverTabs.chat, label: "Chat", Icon: Sparkles },
   { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },
-  { href: CONSUMER_ROUTES.newVisit.root, label: "Pay", Icon: QrCode },
 ];
 
-// A pin, not the flame: Order's Home is the places you could order from, and
-// the flame belongs to Visit's deck. Two pills with one glyph on two tabs
-// would read as one destination.
+// Order remains routable, but is no longer a bottom-bar destination.
 export const ORDER_MODES: Mode[] = [
   { href: CONSUMER_ROUTES.order.home, label: "Home", Icon: MapPin },
 ];

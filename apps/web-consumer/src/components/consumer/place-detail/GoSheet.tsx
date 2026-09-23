@@ -134,11 +134,11 @@ export function GoSheet({
             primary={promoting}
           />
 
-          {/* ORDER — unlocked when a menu/catalog is on file. */}
+          {/* ORDER — locked until the order rail ships (MESITA-1155). */}
           <GoOption
             Icon={orderEnabled ? UtensilsCrossed : Lock}
             title="Order"
-            hint={orderEnabled ? "Menu on file at this place." : ORDER_BLOCKED.hint}
+            hint={orderEnabled ? "Start a table order here." : ORDER_BLOCKED.hint}
             disabled={!orderEnabled}
           />
 

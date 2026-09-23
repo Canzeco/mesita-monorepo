@@ -11,6 +11,10 @@ import { recordFirstTicketHonored } from "./membership-enforcement.ts";
 import { ensureConsumerReviewNotification } from "./ticket-review-notify.ts";
 import { CLOSED_TICKET_STATE } from "./ticket-state.ts";
 import { writeTicket } from "./ticket-doc.ts";
+import {
+  type VisitTenderRow,
+  recordVisitTenders,
+} from "./visit-tenders.ts";
 
 /** Promo rate applies to food/drink subtotal only — tip is excluded. */
 export function promoEligibleSubtotalCents(
@@ -31,7 +35,6 @@ export function promoEligibleSubtotalCents(
 export async function finalizeInformalTicket(
   admin: SupabaseClient,
   ticketId: string,
-  opts?: { paidMethod?: "at_place" | "mesita_pay" | "credits" },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ticket = await admin
     .from("visit_tickets")
@@ -53,7 +56,6 @@ export async function finalizeInformalTicket(
       state: CLOSED_TICKET_STATE,
       revealed_at: now,
       paid_at: now,
-      ...(opts?.paidMethod ? { paid_method: opts.paidMethod } : {}),
     },
   });
   if (!update.ok) return { ok: false, error: update.error };
@@ -77,14 +79,18 @@ export async function finalizeInformalTicket(
 }
 
 /** Reveal a ticket and queue the consumer's review prompt. */
+export type CloseTicketSettlement = { tenders: VisitTenderRow[] };
+
 export async function closeTicketAndEnqueueReview(
   admin: SupabaseClient,
   ticketId: string,
   consumerId: string,
   projectId: string,
-  opts?: { paidMethod?: "at_place" | "mesita_pay" | "credits" },
+  settlement: CloseTicketSettlement,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const fin = await finalizeInformalTicket(admin, ticketId, opts);
+  const recorded = await recordVisitTenders(admin, ticketId, settlement.tenders);
+  if (!recorded.ok) return { ok: false, error: recorded.error };
+  const fin = await finalizeInformalTicket(admin, ticketId);
   if (!fin.ok) return fin;
   await ensureConsumerReviewNotification(admin, consumerId, ticketId, projectId);
   return { ok: true };

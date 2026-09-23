@@ -116,8 +116,8 @@ export function HelpModal({
         />
         <ExplainRow
           icon={<Sparkles size={18} color={COLORS.secondary} />}
-          bold="Actions can pay more."
-          rest="A first visit, a Google review, or an Instagram story (with Instagram connected) can pay more than your base. You always keep your single best one, never a sum. Live percents sit on each place's Rewards tab."
+          bold="Actions add on."
+          rest="Welcome, Instagram Story, Google Review, and Mesita Review stack on your rate — not pick-one. The bill clamps at 100% and applies to the first cap-pesos. Live percents sit on each place's Rewards tab."
         />
 
         <View style={{ gap: 6 }}>
@@ -126,7 +126,7 @@ export function HelpModal({
               {"Everything that's priced"}
             </Text>
             <Text className="text-muted-foreground" style={{ fontSize: 11 }}>
-              You keep your best one
+              They add together
             </Text>
           </View>
           {rows.map((seg) => {

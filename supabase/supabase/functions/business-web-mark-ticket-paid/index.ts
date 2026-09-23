@@ -17,6 +17,10 @@ import {
   requireEditor,
 } from "../_shared/auth.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
+import {
+  impliedAtPlaceTenderRows,
+  netAmountDueCents,
+} from "../_shared/visit-tenders.ts";
 import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 
 type Body = { ticketId?: string };
@@ -40,7 +44,9 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, place_id, consumer_id, state")
+    .select(
+      "id, place_id, consumer_id, state, approved_amount_due_cents, credits_applied_cents",
+    )
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -66,11 +72,16 @@ Deno.serve(async (req) => {
     );
   }
 
+  const net = netAmountDueCents(
+    ticket.approved_amount_due_cents as number | null,
+    ticket.credits_applied_cents as number | null,
+  );
   const closed = await closeTicketAndEnqueueReview(
     admin,
     ticketId,
     ticket.consumer_id,
     ticket.place_id,
+    { tenders: impliedAtPlaceTenderRows(net) },
   );
   if (!closed.ok) {
     return json({ ok: false, error: `ticket_close: ${closed.error}` }, 500);

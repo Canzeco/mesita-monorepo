@@ -265,7 +265,7 @@ export function crenupStateLine(item: NotificationItem): string | null {
     if (facts.enriched) parts.push("Enriched");
     if (facts.verified) parts.push("Verified");
     if (facts.partner) parts.push("Partnered");
-    if (facts.promoting) parts.push("Visit Rewards");
+    if (facts.promoting) parts.push("Rewards");
     if (facts.mesita_pay) parts.push("Mesita Pay");
     if (facts.credits) parts.push("Mesita Credits");
     return parts.join(" · ");

@@ -103,7 +103,7 @@ describe("crenupStateLine", () => {
     expect(crenupStateLine(created)).not.toMatch(/new place/i);
   });
 
-  it("names Enriched · Verified · Partnered · Visit Rewards when those facts are on", () => {
+  it("names Enriched · Verified · Partnered · Rewards when those facts are on", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -119,7 +119,7 @@ describe("crenupStateLine", () => {
       },
     });
     expect(crenupStateLine(created)).toBe(
-      "Created · Active · Listed · Enriched · Verified · Partnered · Visit Rewards",
+      "Created · Active · Listed · Enriched · Verified · Partnered · Rewards",
     );
   });
 
