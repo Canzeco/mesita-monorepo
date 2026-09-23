@@ -4,11 +4,11 @@ import { useState, useTransition } from "react";
 import { Gem, Loader2, UserRound } from "lucide-react";
 import {
   ConfirmDialog,
-  ErrorNote,
-  ManageSectionCard,
   ReadField,
+  SectionCard as ManageSectionCard,
   TextField,
-} from "@/components/admin-ui";
+} from "@/components/admin-ui/manage";
+import { ErrorNote } from "@/components/ErrorNote";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { diamondLabel, isDiamondKey } from "./class-bridge";
 import {
