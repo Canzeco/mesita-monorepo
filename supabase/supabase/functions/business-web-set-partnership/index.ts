@@ -53,16 +53,17 @@ import {
   requireOwner,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
-import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
+import { applyPromoRatesFromBody, hasPromoRatesInBody } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
   applyListingTypeToPatch,
+  clearActivationStamps,
+  clearForfeitStamps,
   effectiveRatesAfterPatch,
 } from "../_shared/partner-derivation.ts";
 import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
 import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 
-const LEGAL_CAPS = [200, 500, 1000];
 const ACTIONS = ["join", "drop", "strategy"] as const;
 type Action = (typeof ACTIONS)[number];
 
@@ -73,42 +74,6 @@ type Body = {
   plan?: unknown;
   [key: string]: unknown;
 };
-
-function hasRatesInBody(body: Body): boolean {
-  return PROMO_RATE_FIELDS.some((f) => f in body) || "monthly_promo_cap" in body;
-}
-
-function applyRatesFromBody(
-  body: Body,
-  patch: Record<string, unknown>,
-): { ok: true } | { ok: false; response: Response } {
-  for (const field of PROMO_RATE_FIELDS) {
-    if (!(field in body)) continue;
-    const rate = normalisePromoRate(field, body[field]);
-    if (!rate.ok) return { ok: false, response: json({ ok: false, error: rate.error }, 400) };
-    patch[field] = rate.value;
-  }
-  if ("monthly_promo_cap" in body) {
-    const raw = body.monthly_promo_cap;
-    if (raw == null) {
-      patch.monthly_promo_cap = null;
-    } else if (!LEGAL_CAPS.includes(Number(raw))) {
-      return {
-        ok: false,
-        response: json(
-          {
-            ok: false,
-            error: `monthly_promo_cap must be null or one of ${LEGAL_CAPS.join(", ")}`,
-          },
-          400,
-        ),
-      };
-    } else {
-      patch.monthly_promo_cap = Number(raw);
-    }
-  }
-  return { ok: true };
-}
 
 async function readPlaceAfterWrite(
   admin: ReturnType<typeof adminClient>,
@@ -239,10 +204,10 @@ Deno.serve(async (req) => {
         409,
       );
     }
-    if (!hasRatesInBody(body)) {
+    if (!hasPromoRatesInBody(body)) {
       return json({ ok: false, error: "promo rates are required" }, 400);
     }
-    const ratesRes = applyRatesFromBody(body, patch);
+    const ratesRes = applyPromoRatesFromBody(body, patch);
     if (!ratesRes.ok) return ratesRes.response;
 
     const fromRates = ratesFromPlace(row);
@@ -301,7 +266,7 @@ Deno.serve(async (req) => {
   }
 
   patch.plan = nextPlan;
-  const ratesRes = applyRatesFromBody(body, patch);
+  const ratesRes = applyPromoRatesFromBody(body, patch);
   if (!ratesRes.ok) return ratesRes.response;
 
   applyListingTypeToPatch(patch, {
@@ -310,17 +275,8 @@ Deno.serve(async (req) => {
     currentListingType: row.listing_type as string,
   });
 
-  if (joining && row.plan_forfeited_at) {
-    patch.plan_forfeited_at = null;
-    patch.strike_count = 0;
-    patch.promo_paused_until = null;
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
-  }
-  if (!joining) {
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
-  }
+  if (joining && row.plan_forfeited_at) clearForfeitStamps(patch);
+  if (!joining) clearActivationStamps(patch);
 
   const updRes = await writePlace(admin, {
     table: "places",

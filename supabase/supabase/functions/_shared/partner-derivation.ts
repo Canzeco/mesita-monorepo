@@ -2,6 +2,9 @@
 //
 // listing_type = 'partner' iff membership (plan ≠ free) AND strategy ≠ zero.
 // Otherwise demote partner → web; leave unclaimed untouched.
+//
+// Also holds the membership stamp resets that the two plan doors
+// (admin-web-set-plan, business-web-set-partnership) write with a join or drop.
 
 import {
   type PromoRates,
@@ -57,4 +60,19 @@ export function effectiveRatesAfterPatch(
     if (field in patch) merged[field] = patch[field];
   }
   return ratesFromPlace(merged);
+}
+
+/** Null the activation stamps so the next join starts pending again. */
+export function clearActivationStamps(patch: Record<string, unknown>): void {
+  patch.plan_live_at = null;
+  patch.first_ticket_honored_at = null;
+}
+
+/** Re-joining after a forfeit wipes the forfeit and strike state, then
+ *  restarts pending activation. */
+export function clearForfeitStamps(patch: Record<string, unknown>): void {
+  patch.plan_forfeited_at = null;
+  patch.strike_count = 0;
+  patch.promo_paused_until = null;
+  clearActivationStamps(patch);
 }

@@ -5,6 +5,10 @@
 // projects.monthly_promo_cap. Billing prefers the place cap; the platform
 // promos_config.cap is the fallback when a paid place has a null cap
 // (legacy / mid-migration).
+//
+// DISCOUNT_CAPS_MXN is also the legal set the backend validates writes
+// against (promo-rates.ts for the EF doors, place-doc.ts for the stored
+// shape); the places CHECK constraint mirrors it.
 
 export const DISCOUNT_CAPS_MXN = [200, 500, 1000] as const;
 export type DiscountCapMxn = (typeof DISCOUNT_CAPS_MXN)[number];
