@@ -58,11 +58,11 @@ import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./contr
 // (MESITA-1841, re-cut by MESITA-1885).
 //
 // ONE ENGINE, SIX VIEWS (MESITA-1900). `zone` selects which rungs and which
-// trailing blocks this renders: Rewards owns Visit Rewards, its strategy
+// trailing blocks this renders: Rewards owns Rewards, its strategy
 // ladder and the Partnership body that prices them; Visits owns NO rung and
 // keeps the internal "How this place is run" box; Orders owns pickup and
 // delivery; Reservations, Payments and Credits own theirs. The rungs depend on
-// one another (Partner unlocks Visit Rewards and Online Payments; Stripe
+// one another (Partner unlocks Rewards and Online Payments; Stripe
 // unlocks the money rungs), so the COMPUTATION is never split — two copies of
 // a dependency ladder is two copies that can disagree. `ZONE_ROWS` in
 // controls/offerings.ts owns the mapping and a test proves it is total.
@@ -535,7 +535,7 @@ export function PromosSection({
 
         <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
           {zone === "rewards"
-            ? "Turning Visit Rewards on saves instantly. A strategy is confirmed in its card."
+            ? "Turning Rewards on saves instantly. A strategy is confirmed in its card."
             : "Capability switches save instantly. Channel picks wait for Save."}
         </p>
       </section>
