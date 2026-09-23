@@ -402,8 +402,9 @@ describe("the rail is six nouns and one indent", () => {
   // MESITA-1871 renamed it Settings, label and segment — the flat `/settings`
   // came back from the permanent redirect that forced `configuration` in the
   // first place.
-  it("Settings is two boxes: the team, then Developers", () => {
+  it("Settings is Access, then Developers (live when a place is open)", () => {
     const page = readCode("app/(shell)/settings/page.tsx");
+    const body = readCode("app/(shell)/settings/SettingsBody.tsx");
     expect(page).not.toContain("DoorRow");
     // ONE MEMBERS SURFACE (MESITA-1892). `MembersCard` was the organization's
     // own, over four `business-web-*-org-member` endpoints that were twins of
@@ -411,16 +412,20 @@ describe("the rail is six nouns and one indent", () => {
     // deleted rather than repointed, and the section moved here from the
     // internal box on Visits.
     expect(page).toContain("<SettingsBody");
-    expect(readCode("app/(shell)/settings/SettingsBody.tsx")).toContain(
-      "<TeamSection place={place} />",
+    expect(body).toContain("<TeamSection place={place} />");
+    expect(body).toContain("<DevelopersSection");
+    expect(readCode("app/(shell)/settings/DevelopersSection.tsx")).toContain(
+      'title="API key"',
+    );
+    expect(readCode("app/(shell)/settings/DevelopersSection.tsx")).toContain(
+      'title="MCP connector"',
     );
     expect(existsSync(path.join(SRC, "components/console/MembersCard.tsx"))).toBe(false);
     expect(readCode("components/place-manage/sections/PromosSection.tsx")).not.toContain(
       "<TeamSection",
     );
-    expect(page).toContain("SOON_STRIPS.developers");
+    expect(page).toContain("DevelopersSoonFallback");
     expect(page).not.toContain("SOON_STRIPS.brand");
-    expect((page.match(/<SoonStrip/g) ?? []).length).toBe(1);
     // An entry nobody renders is how a vocabulary starts describing a screen
     // that no longer exists — the note this map already carries about
     // Prepaid Credits (MESITA-1869).

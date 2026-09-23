@@ -28,16 +28,20 @@
 import { TeamSection } from "@/components/place-manage/sections/TeamSection";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 import { Section } from "@/components/shared/Section";
+import { DevelopersSection } from "./DevelopersSection";
 
 export function SettingsBody() {
   const { place } = usePlaceContext();
   return (
-    <Section
-      lane
-      title="Access"
-      description="Owners, editors and viewers of this place. An owner can add and remove the rest."
-    >
-      <TeamSection place={place} />
-    </Section>
+    <>
+      <Section
+        lane
+        title="Access"
+        description="Owners, editors and viewers of this place. An owner can add and remove the rest."
+      >
+        <TeamSection place={place} />
+      </Section>
+      <DevelopersSection />
+    </>
   );
 }

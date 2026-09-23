@@ -26,8 +26,7 @@
 // somebody who holds none.
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { SoonStrip } from "@/components/console/SoonStrip";
-import { SOON_STRIPS } from "@/components/console/SoonStrips";
+import { DevelopersSoonFallback } from "./DevelopersSoonFallback";
 import { getServerUser } from "@/lib/supabase/server";
 import {
   GHOST_PILL_BUTTON_CLASS,
@@ -89,7 +88,8 @@ export default async function SettingsPage() {
 
       {/* THE PLACE: who may touch it, and how an agent drives it. */}
       <SettingsBody />
-      <SoonStrip {...SOON_STRIPS.developers} />
+      {/* No place open — honest Soon until a venue is selected (MESITA-1912). */}
+      <DevelopersSoonFallback />
     </>
   );
 }
