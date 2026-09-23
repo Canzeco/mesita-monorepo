@@ -1148,6 +1148,12 @@ export const GOOGLE_REVIEWS: MockReview[] = build(GOOGLE_SCRAPED, 8, (placeId, i
 // should be able to charge. A dash says "not on that channel"; a zero would say
 // "free".
 //
+// NUTRITION IS THE SAME KIND OF FACT. Each dish carries the four headline
+// numbers a guest scans first — kcal, protein, carbs, fat — estimated from
+// the dish as written. Null means not estimated yet (the paloma), and it
+// prints as a dash. A zero inside an estimate is real: the mezcal flight has
+// no protein.
+//
 // Invented like everything else here, and deliberately a steakhouse's menu so
 // the prices read as this place's rather than as lorem.
 export const MENU_SECTIONS: readonly MockMenuSection[] = [
@@ -1163,6 +1169,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 189000,
         pickup: 179000,
         delivery: null,
+        nutrition: { kcal: 1860, proteinG: 168, carbsG: 0, fatG: 128 },
       },
       {
         id: "dish_arrachera",
@@ -1172,6 +1179,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 42000,
         pickup: 39000,
         delivery: 44000,
+        nutrition: { kcal: 640, proteinG: 54, carbsG: 6, fatG: 44 },
       },
       {
         id: "dish_tuetano",
@@ -1181,6 +1189,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 28000,
         pickup: null,
         delivery: null,
+        nutrition: { kcal: 510, proteinG: 9, carbsG: 22, fatG: 44 },
       },
     ],
   },
@@ -1196,6 +1205,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 31000,
         pickup: 29000,
         delivery: 33000,
+        nutrition: { kcal: 290, proteinG: 32, carbsG: 8, fatG: 14 },
       },
       {
         id: "dish_queso",
@@ -1205,6 +1215,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 24000,
         pickup: 22000,
         delivery: 26000,
+        nutrition: { kcal: 780, proteinG: 34, carbsG: 16, fatG: 62 },
       },
     ],
   },
@@ -1220,6 +1231,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 35000,
         pickup: null,
         delivery: null,
+        nutrition: { kcal: 315, proteinG: 0, carbsG: 0, fatG: 0 },
       },
       {
         id: "dish_paloma",
@@ -1229,6 +1241,7 @@ export const MENU_SECTIONS: readonly MockMenuSection[] = [
         table: 18000,
         pickup: null,
         delivery: null,
+        nutrition: null,
       },
     ],
   },

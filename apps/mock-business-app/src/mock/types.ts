@@ -848,6 +848,19 @@ export type MockDish = {
   table: number | null;
   pickup: number | null;
   delivery: number | null;
+  /** Headline nutrition, estimated from the dish as written. Null means not
+   *  estimated yet — a dash, never a zero that would say the dish is free of
+   *  calories. The four facts are the ones a guest scans first. */
+  nutrition: DishNutrition | null;
+};
+
+/** The top of a nutrition label, and nothing under it. Kilocalories plus the
+ *  three macros, in grams. No micronutrients and no percent of a daily value. */
+export type DishNutrition = {
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
 };
 
 export type MockMenuSection = {

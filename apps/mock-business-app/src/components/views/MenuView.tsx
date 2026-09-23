@@ -13,7 +13,9 @@
 //    you already have — a photo, a file, your website — so you approve a draft
 //    rather than type eighty dishes, and it can generate the dish photography
 //    you never shot. Every dish carries a price per channel: one at the table,
-//    another for pickup, another for delivery. Guests reach it by scanning the
+//    another for pickup, another for delivery. Each dish also carries the
+//    headline nutrition a guest scans before the blurb — kcal, protein, carbs,
+//    fat — and a missing estimate is a dash (MESITA-2060). Guests reach it by scanning the
 //    QR on the table, with no app and no account… It is also the one menu the
 //    rest of the suite reads: Online Orders sells from it and the Answering
 //    Agent quotes it on the phone."
@@ -43,6 +45,7 @@ import { day } from "@/lib/format";
 import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { MENU_SECTIONS } from "@/mock/fixtures";
 import { money } from "@/lib/format";
+import { nutritionLine } from "@/lib/nutrition";
 
 type Dish = (typeof MENU_SECTIONS)[number]["dishes"][number];
 
@@ -73,6 +76,9 @@ export function MenuView() {
       cell: (d) => (
         <div className="min-w-0">
           <p className="text-[13px] font-semibold">{d.name}</p>
+          <p className={d.nutrition ? "text-[11.5px] tabular-nums" : "text-muted-foreground text-[11.5px]"}>
+            {nutritionLine(d.nutrition)}
+          </p>
           <p className="text-muted-foreground line-clamp-1 text-[11.5px] leading-snug">{d.blurb}</p>
         </div>
       ),
@@ -123,7 +129,7 @@ export function MenuView() {
 
       <Group
         title="The menu"
-        description={`${MENU_SECTIONS.length} sections · ${dishes} dishes · three prices each.`}
+        description={`${MENU_SECTIONS.length} sections · ${dishes} dishes · three prices each, and the headline nutrition.`}
         right={<button type="button" className={GHOST_PILL_BUTTON_CLASS}>Add a dish</button>}
       >
         <Table columns={columns} groups={groups} inCard minWidth={520} />
