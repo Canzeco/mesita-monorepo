@@ -520,6 +520,8 @@ Deno.test("the onboarding HANDLER prefills from the place before accounts.create
     /businessProfile:\s*prefill\.businessProfile/.test(src),
     "onboarding EF must pass the prefill into connectAccountCreateParams",
   );
+  // completePrefillWithLlm was deleted unwired (MESITA-2048). Its name stays
+  // here as a tombstone, so resurrecting it into the handler still fails.
   assert(
     !src.includes("completePrefillWithLlm") && !src.includes("stripe.accounts.update"),
     "LLM must not sit between accounts.create and the mirror write — a concurrent retry would del the account",

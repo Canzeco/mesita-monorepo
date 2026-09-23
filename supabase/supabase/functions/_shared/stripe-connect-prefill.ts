@@ -8,9 +8,10 @@
 // requirement_collection=stripe locks KYC). Missing MCC is how restaurants
 // saw Industry=Software: Stripe falls back to the platform MCC (5734).
 //
-// Atlas already classified the place. LLM is only for the leftover: undefined
-// category, a tied mix of supers, or a missing product description. Fail-open:
-// a missing key or a slow model still mints the link.
+// Prefill is deterministic: Atlas's classification and the place's own
+// columns, nothing else. accounts.create is idempotency-keyed, so its body must
+// be a pure function of the row. An unclassified place gets the restaurant MCC
+// (the owner can still change it); a missing description is simply not sent.
 //
 // THE ROW HELPERS STAY PLURAL ON PURPOSE. `sortPlacesForPrefill`,
 // `mccFromPlaces` and `firstOf` take an array, and the caller now passes one
@@ -21,12 +22,10 @@
 
 import {
   familiesForAtlasCategory,
-  familiesForPlace,
   sanitizeFamilyKeys,
   type FamilyKey,
 } from "./place-taxonomy.ts";
-import { OPENAI_URL } from "./enrich-config.ts";
-import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+import { isEmailish } from "./input.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isShapedRfc, normalizeRfc } from "./place-rfc.ts";
 
@@ -38,11 +37,8 @@ export { MEXICO_RFC_RE } from "./place-rfc.ts";
 /** Stripe's product_description cap. Keep the hosted field short. */
 export const PRODUCT_DESCRIPTION_MAX = 400;
 
-/** Don't stall Connect on a hung model. Deterministic prefill already ran. */
-export const PREFILL_LLM_TIMEOUT_MS = 4000;
-
 /**
- * Hospitality MCCs we will actually send. Closed so a model cannot pick the
+ * Hospitality MCCs we will actually send. Closed so prefill never sends the
  * platform default (5734 Computer Software Stores) or a junk code.
  */
 export const CONNECT_MCCS = {
@@ -185,12 +181,10 @@ export function asHttpsUrl(raw: unknown): string | null {
   }
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function asEmail(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const t = raw.trim();
-  return EMAIL_RE.test(t) ? t : null;
+  return isEmailish(t) ? t : null;
 }
 
 export function asPhone(raw: unknown): string | null {
@@ -236,7 +230,7 @@ export function mccFromPlace(place: PlacePrefillRow): string | null {
 
 /**
  * One MCC for the merchant. Majority wins; a restaurant/bar tie prefers
- * restaurants (Mesita's default hospitality) rather than calling the model.
+ * restaurants (Mesita's default hospitality).
  * With the account scoped to one place the majority is a formality — but it
  * is what makes the function total over zero rows, which is the case that
  * actually happens (a place with no profile row yet).
@@ -362,165 +356,4 @@ export function deterministicConnectPrefill(
     ...(rfcIfValid(merchant.rfc) ? { taxId: rfcIfValid(merchant.rfc)! } : {}),
     businessProfile: profile,
   };
-}
-
-export function needsLlmDescription(places: PlacePrefillRow[]): boolean {
-  return places.length > 0 &&
-    firstOf(places, (p) => trimProductDescription(p.description)) === null;
-}
-
-export function needsLlmMcc(places: PlacePrefillRow[]): boolean {
-  return places.length > 0 && mccFromPlaces(places) === null;
-}
-
-export function parseLlmPrefill(raw: string): {
-  mcc: string | null;
-  product_description: string | null;
-} {
-  const jsonText = extractJsonObject(raw);
-  if (!jsonText) return { mcc: null, product_description: null };
-  try {
-    const parsed = JSON.parse(jsonText) as Record<string, unknown>;
-    const mccRaw = typeof parsed.mcc === "string" ? parsed.mcc.trim() : "";
-    const mcc = ALLOWED_CONNECT_MCCS.has(mccRaw) ? mccRaw : null;
-    return {
-      mcc,
-      product_description: trimProductDescription(parsed.product_description),
-    };
-  } catch {
-    return { mcc: null, product_description: null };
-  }
-}
-
-function extractJsonObject(raw: string): string | null {
-  const trimmed = raw.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const body = (fenced ? fenced[1] : trimmed).trim();
-  const start = body.indexOf("{");
-  const end = body.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  return body.slice(start, end + 1);
-}
-
-function placeLines(places: PlacePrefillRow[]): string {
-  return places.slice(0, 8).map((p, i) => {
-    const families = familiesForPlace({
-      category: p.category,
-      family_keys: p.family_keys,
-    }).join(",");
-    return [
-      `${i + 1}. ${p.name ?? "unnamed"}`,
-      p.category_label || p.category ? `category=${p.category_label || p.category}` : "",
-      families ? `supers=${families}` : "",
-      p.description ? `about=${trimProductDescription(p.description) ?? p.description.slice(0, 280)}` : "",
-    ].filter(Boolean).join(" | ");
-  }).join("\n");
-}
-
-export async function completePrefillWithLlm(opts: {
-  places: PlacePrefillRow[];
-  needMcc: boolean;
-  needDescription: boolean;
-  openaiKey: string | undefined;
-  fetchImpl?: typeof fetch;
-  timeoutMs?: number;
-}): Promise<{ mcc: string | null; product_description: string | null }> {
-  const empty = { mcc: null, product_description: null };
-  const key = (opts.openaiKey ?? "").trim();
-  if (!key || (!opts.needMcc && !opts.needDescription)) return empty;
-  const catalog = Object.entries(CONNECT_MCCS)
-    .map(([k, code]) => `${code} ${k}`)
-    .join(", ");
-  const system =
-    "You classify a hospitality business for Stripe Connect onboarding. " +
-    "Reply with JSON only: {\"mcc\":\"<4-digit>\",\"product_description\":\"...\"}. " +
-    `mcc MUST be one of: ${catalog}. ` +
-    "product_description is 2 short sentences in English about what the business sells, no marketing fluff.";
-  const user =
-    `Need mcc: ${opts.needMcc}\nNeed description: ${opts.needDescription}\n\nPlaces:\n${placeLines(opts.places)}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(
-    () => ctrl.abort(),
-    opts.timeoutMs ?? PREFILL_LLM_TIMEOUT_MS,
-  );
-  try {
-    const fetchImpl = opts.fetchImpl ?? fetch;
-    const res = await fetchImpl(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      signal: ctrl.signal,
-      body: JSON.stringify({
-        model: DEFAULT_MODELS_CONFIG.enricher.model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      console.error("[stripe-connect-prefill] openai", res.status, await res.text());
-      return empty;
-    }
-    const body = await res.json() as {
-      choices?: { message?: { content?: unknown } }[];
-    };
-    const text = body.choices?.[0]?.message?.content;
-    return typeof text === "string" ? parseLlmPrefill(text) : empty;
-  } catch (e) {
-    console.error("[stripe-connect-prefill] openai", (e as Error).message);
-    return empty;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * Fields the LLM may PATCH onto an already-created Account. Never sent on
- * accounts.create — Stripe idempotency is place+country, so a fail-open or a
- * different model sentence would 409 the replay and orphan the first account.
- */
-export function llmBusinessProfilePatch(
-  base: ConnectBusinessProfilePrefill,
-  llm: { mcc: string | null; product_description: string | null },
-  needMcc: boolean,
-  needDescription: boolean,
-): ConnectBusinessProfilePrefill | null {
-  const patch: ConnectBusinessProfilePrefill = {};
-  if (needMcc && llm.mcc && llm.mcc !== base.mcc) patch.mcc = llm.mcc;
-  if (needDescription && llm.product_description) {
-    patch.product_description = llm.product_description;
-  }
-  return Object.keys(patch).length > 0 ? patch : null;
-}
-
-export async function resolveConnectPrefill(opts: {
-  merchant: MerchantPrefillRow;
-  places: PlacePrefillRow[];
-  openaiKey: string | undefined;
-  fetchImpl?: typeof fetch;
-}): Promise<ConnectPrefill> {
-  const base = deterministicConnectPrefill(opts.merchant, opts.places);
-  const needMcc = needsLlmMcc(opts.places);
-  const needDescription = needsLlmDescription(opts.places);
-  if (!needMcc && !needDescription) return base;
-  const llm = await completePrefillWithLlm({
-    places: opts.places,
-    needMcc,
-    needDescription,
-    openaiKey: opts.openaiKey,
-    fetchImpl: opts.fetchImpl,
-  });
-  const patch = llmBusinessProfilePatch(
-    base.businessProfile,
-    llm,
-    needMcc,
-    needDescription,
-  );
-  if (!patch) return base;
-  return { ...base, businessProfile: { ...base.businessProfile, ...patch } };
 }
