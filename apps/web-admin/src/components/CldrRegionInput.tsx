@@ -22,13 +22,10 @@ export function CldrRegionInput({
   value,
   onChange,
   disabled,
-  compact = false,
 }: {
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
-  /** Inline trigger for a sticky search row (no stacked label). */
-  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -55,19 +52,14 @@ export function CldrRegionInput({
         setQ("");
         setOpen((v) => !v);
       }}
-      className={
-        compact
-          ? "border-border bg-background focus:border-foreground inline-flex h-8 max-w-[10.5rem] shrink-0 items-center justify-between gap-1.5 rounded-lg border px-2 text-left text-xs outline-none disabled:cursor-not-allowed"
-          : "border-border bg-background focus:border-foreground inline-flex h-8 min-w-40 items-center justify-between gap-2 rounded-lg border px-2.5 text-left text-xs outline-none disabled:cursor-not-allowed"
-      }
+      className="border-border bg-background focus:border-foreground inline-flex h-8 max-w-[10.5rem] shrink-0 items-center justify-between gap-1.5 rounded-lg border px-2 text-left text-xs outline-none disabled:cursor-not-allowed"
     >
       <span
         className={
-          (selected ? "text-foreground" : "text-muted-foreground") +
-          (compact ? " truncate" : "")
+          (selected ? "text-foreground" : "text-muted-foreground") + " truncate"
         }
       >
-        {selected ? selected.name : compact ? "Country" : "Any"}
+        {selected ? selected.name : "Country"}
       </span>
       <span aria-hidden className="text-muted-foreground">
         ▾
@@ -77,16 +69,7 @@ export function CldrRegionInput({
 
   return (
     <div className="relative shrink-0">
-      {compact ? (
-        trigger
-      ) : (
-        <label className="text-muted-foreground flex shrink-0 flex-col gap-1">
-          <span className="type-label font-semibold tracking-[0.12em] uppercase">
-            Country
-          </span>
-          {trigger}
-        </label>
-      )}
+      {trigger}
       {open && !disabled ? (
         <div className="border-border bg-card absolute right-0 z-30 mt-1 w-64 overflow-hidden rounded-xl border shadow-card">
           <input

@@ -41,8 +41,6 @@ type CreatePlaceResponse = {
 };
 
 type CreatePlaceErrorBody = {
-  code?: string;
-  error?: string;
   existing?: { id?: string; slug?: string | null; name?: string };
 };
 
@@ -64,11 +62,7 @@ export async function createPlaceFromGooglePlaceId(
   if (!r.ok) {
     // Duplicate error responses carry an `existing` object.
     const body = (r.data ?? {}) as CreatePlaceErrorBody;
-    if (
-      r.status === 409 &&
-      (DUPLICATE_PLACE_CODES.has(r.code ?? "") ||
-        DUPLICATE_PLACE_CODES.has(body.code ?? ""))
-    ) {
+    if (r.status === 409 && DUPLICATE_PLACE_CODES.has(r.code ?? "")) {
       const existingId = body.existing?.id;
       if (!existingId) {
         return { ok: false, error: "This place is already on Mesita." };

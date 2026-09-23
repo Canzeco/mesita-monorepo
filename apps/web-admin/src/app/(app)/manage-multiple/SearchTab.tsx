@@ -217,7 +217,6 @@ export function SearchTab({
                 })}
               </div>
               <CldrRegionInput
-                compact
                 value={regionCode}
                 onChange={setRegionCode}
                 disabled={running}
