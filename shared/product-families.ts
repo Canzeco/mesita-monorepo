@@ -7,7 +7,7 @@
 // ── WHY THIS FILE IS SHARED AND NOT COPIED ────────────────────────────────
 //
 // `product-keys.ts` exists twice — canonical in `web-business`, hand-snapshot
-// in `mock-business-app` — and the snapshot is what a rename is typed into
+// in `web-business` — and the snapshot is what a rename is typed into
 // second, when it is typed at all. web-business is four labels stale right now
 // (Host, Market Intelligence, Guest Catalog, Point of Sale) for exactly that
 // reason. A COLOUR is worse than a label to keep by hand: two consoles showing

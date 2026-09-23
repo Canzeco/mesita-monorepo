@@ -13,7 +13,7 @@
 // throwing: production gets a wrong tint, never a blank screen, and this file
 // is what stops it reaching production.
 //
-// THE SAME FILE EXISTS IN mock-business-app, deliberately not shared. It
+// Generated copy of shared/product-families.ts (sync-shared). It
 // asserts the SAME property against a DIFFERENT union — this one still
 // includes `rewards`, which the mock folded into `visits` at MESITA-1953 and
 // which this console has not ported (MESITA-2018) — and that is a thing one
