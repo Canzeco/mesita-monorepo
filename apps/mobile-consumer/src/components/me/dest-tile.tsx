@@ -23,6 +23,8 @@ export function DestTile({
   href?: Href;
   soon?: boolean;
 }) {
+  // No `full` prop, unlike web: DestGrid is a flex row and every tile is
+  // `flex: 1`, so a lone tile in its own DestGrid already spans the row.
   const router = useRouter();
   const reduceMotion = useReduceMotion();
   const inert = soon || !href;

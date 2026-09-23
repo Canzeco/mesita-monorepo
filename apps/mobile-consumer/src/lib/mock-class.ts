@@ -240,7 +240,7 @@ export function useEffectiveClass(
   }, [consumerClass, profileHandle, mock]);
 }
 
-/** The guest view — what Me, the Passport and the two doors render. */
+/** The guest view — what Me and the two doors render. */
 export function useEffectiveFacts(
   consumerClass: ConsumerClass | null,
   profileHandle: string | null,

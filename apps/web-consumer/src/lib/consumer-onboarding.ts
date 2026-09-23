@@ -18,9 +18,8 @@
 // reverses MESITA-1806, which moved it to /me/profile as "segmentation
 // nothing downstream breaks without".
 //
-// What 1806 missed is that something downstream ALREADY PRINTS IT. The
-// Passport document builds `age · sex · country` (PassportModal, mobile
-// passport.tsx), and that line is a `.filter(Boolean).join(" · ")` — so every
+// What 1806 missed is that something downstream ALREADY PRINTED IT. The
+// Passport document (deleted at MESITA-2043) built `age · sex · country`, and that line is a `.filter(Boolean).join(" · ")` — so every
 // account created after 1806 renders "27 · 🇲🇽 México" with the hole
 // INVISIBLE rather than absent. No gap, no prompt, no way to learn the field
 // exists; the only surface that asks is the Edit-profile sheet, which is not

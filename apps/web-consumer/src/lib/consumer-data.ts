@@ -331,7 +331,7 @@ export function classBadgeClass(classKey: ClassKey): string {
 }
 
 /** The bare metal, with NO ink paired to it — for surfaces where nothing sits
- *  on top of the fill: the passport's band, the avatar ring. Anything that
+ *  on top of the fill: the identity header's band, the avatar ring. Anything that
  *  prints a label on the metal takes `classBadgeClass` instead, which is the
  *  only place fill and ink are paired (see the note above it). */
 export function classFillClass(classKey: ClassKey): string {
@@ -347,30 +347,9 @@ export function classFillClass(classKey: ClassKey): string {
   }
 }
 
-/** The metal as INK — the `text-<metal>` utility, for a mark that is drawn
- *  rather than filled. Today's only caller is the passport's guilloche
- *  (MESITA-1820), which paints itself in `currentColor` so the lattice stays
- *  parametric per class instead of hardcoding bronze.
- *
- *  This is NOT a third fill and it is NOT paired ink: anything that prints a
- *  LABEL on the metal still takes `classBadgeClass`, the only place fill and
- *  ink travel together (MESITA-1142). */
-export function classInkClass(classKey: ClassKey): string {
-  switch (classKey) {
-    case "bronze":
-      return "text-bronze";
-    case "silver":
-      return "text-silver";
-    case "gold":
-      return "text-gold";
-    case "diamond":
-      return "text-diamond";
-  }
-}
-
 /** A soft wash of the metal behind a surface — not a fill, not text ink.
  *  Mirrors classFillClass exactly so the wash stays parametric per class
- *  (MESITA-1688): the passport bar and sheet spend more of MESITA-1132's
+ *  (MESITA-1688): the identity header spends more of MESITA-1132's
  *  colour budget by letting the metal bleed across the header/card
  *  background, without adding a third hard-edged fill surface. */
 export function classWashClass(classKey: ClassKey): string {

@@ -19,7 +19,7 @@ const PRODUCTS: {
   {
     label: "Consumer app",
     kicker: "Where the guest lives",
-    body: "The whole plan in one place: eight discovery engines, both agents, the Passport, and the bill at the end of it.",
+    body: "The whole plan in one place: eight discovery engines, both agents, your rewards, and the bill at the end of it.",
     bullets: ["Discover and book", "Order pickup", "Scan and pay less"],
     Icon: Smartphone,
   },

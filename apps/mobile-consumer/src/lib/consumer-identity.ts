@@ -7,7 +7,7 @@
 //    followers."
 //
 // HAND-MIRRORED TWIN of `apps/web-consumer/src/lib/consumer-identity.ts`, same
-// convention as ef.ts, the route contract and passport-document.ts. Every
+// convention as ef.ts and the route contract. Every
 // string below renders to a guest on both platforms, so a change here is a
 // change there, in the same PR — consumer IA cannot diverge.
 //

@@ -8,13 +8,14 @@ import { cn } from "@/lib/utils";
 
 // ─── Modular boxes ─────────────────────────────────────────────────────────
 
-// COLOUR LIVES ON THE PASSPORT, NOWHERE ELSE ON THIS PAGE (decision: Pato,
-// MESITA-1132). Every box used to carry its own tinted icon chip — pink
+// COLOUR LIVES IN THE IDENTITY HEADER, NOWHERE ELSE ON THIS PAGE (decision:
+// Pato, MESITA-1132; re-anchored on Diamond when the Passport died,
+// MESITA-2043). Every box used to carry its own tinted icon chip — pink
 // Instagram, amber Class, blue Plan, violet AI, sky Profile — on the theory
 // that colour made the surface read premium. Seven accents in a vertical stack
 // did the opposite: they gave equal emphasis to seven things, so nothing led,
-// and they competed with the one place colour carries meaning. The passport
-// says the class in a metal; the list underneath is a list.
+// and they competed with the one place colour carries meaning. The header
+// says Diamond in a metal; the list underneath is a list.
 //
 // There is no `tint` prop any more, deliberately. A neutral chip cannot drift
 // back one box at a time.
@@ -136,7 +137,7 @@ export function BoxGroup({ children }: { children: ReactNode }) {
 // feel good is eleven colourful illustrations, and this page deleted exactly
 // that (MESITA-1132, see the note at the top of this file): tinted per-box
 // chips gave equal emphasis to seven things, so nothing led, and they competed
-// with the passport. DiDi can spend that colour budget because its identity is
+// with the header. DiDi can spend that colour budget because its identity is
 // one grey header line. Mesita's identity is a metal-banded card whose entire
 // job is that colour means class, sitting directly above this grid. So the
 // shape transfers and the colour does not — the glyph is `text-foreground` at
@@ -164,10 +165,10 @@ export function DestGrid({ children }: { children: ReactNode }) {
 }
 
 // ONE SHAPE, REPEATED (MESITA-1633). The page used to stack four cell shapes
-// and three fills — passport tiles, a white pair, a muted count band, then
+// and three fills — identity tiles, a white pair, a muted count band, then
 // this grid — and two of them were 2-up white cards that looked identical
 // while belonging to different groups. The band is gone and everything below
-// the passport is a `DestTile` now. `StatBand`/`StatTile` went with it; a
+// the header is a `DestTile` now. `StatBand`/`StatTile` went with it; a
 // count is a SUMMARY LINE on the cell, not a separate material.
 
 /** One grid cell. A DESTINATION — it has no count; things with counts are

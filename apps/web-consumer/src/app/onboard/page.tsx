@@ -18,7 +18,7 @@ import { errMsg } from "@/lib/utils";
 //   - signed in, no name    → render the form
 //
 // The gate is `consumerCanBrowse`: FIRST NAME + BIRTHDAY + SEX (MESITA-1829 —
-// sex came back because the Passport was already printing it). Last name is
+// sex came back because a profile surface was already printing it). Last name is
 // still asked by the reservation sheet instead, where the guest can see why.
 export const dynamic = "force-dynamic";
 

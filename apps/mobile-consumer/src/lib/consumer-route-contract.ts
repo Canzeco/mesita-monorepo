@@ -143,7 +143,6 @@ export const CONSUMER_ROUTES = {
   // Every live DestTile on /me (MESITA-1789) — full pages, not sheets.
   // Expo group is stripped in the public URL, so these match web's /me/<box>.
   mePages: {
-    passport: '/(tabs)/me/passport',
     profile: '/(tabs)/me/profile',
     // THE TWO FACTS, AT TWO ADDRESSES (Pato, MESITA-2040). `/me/class` was
     // ONE page holding a ladder with several doors on it; there is no ladder,

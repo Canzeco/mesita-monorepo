@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 //
 // BACK IS A HISTORY POP with a fallback, the same shape PlaceDetailPageHeader
 // and WalletScreen settled on: a guest who arrived from /me returns to their
-// scroll position; a cold load of /me/passport lands on /me rather than off
+// scroll position; a cold load of /me/profile lands on /me rather than off
 // the end of the app.
 
 export function MeScreen({

@@ -10,7 +10,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 
-// ─── The Passport, as the page header (MESITA-1079 v2 · -1619 · -1633 ·
+// ─── The identity header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652 · -2040) ───────────────
 //
 // IT IS NOT A CARD (Pato, MESITA-1652): "this must be a header, top menu
@@ -40,8 +40,8 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // scrolling grid cannot cost a third of a phone viewport, so three things did
 // not fit:
 //
-//   PASSPORT eyebrow  the bar IS the passport; a header that names itself in
-//                     a strip is spending the page on a label
+//   an eyebrow        a header that names itself in a strip is spending the
+//                     page on a label
 //   Public / Private  Settings owns the toggle, exclusively
 //   age · sex · country   Profile owns name, photo, birthday
 //
@@ -56,10 +56,11 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // no longer the last path to either — and the chips stay anyway, because a
 // fixed bar is one tap from anywhere and a cell has to be scrolled to.
 //
-// ONE METAL LEFT, AND IT MEANS ONE THING. MESITA-1132 licensed colour to mean
-// class and to live on the passport; with the ladder gone (MESITA-2040) there
-// is no rung for it to mean, so the band, the ring and the wash carry DIAMOND
-// and nothing else. A guest who is not Diamond gets a neutral header — which
+// ONE FACT, ONE COLOUR. MESITA-1132 licensed colour to mean class and to live
+// on the passport; the ladder died at MESITA-2040 and the Passport at
+// MESITA-2043, so the licence is re-anchored here, on Diamond directly: the
+// band, the ring and the wash carry DIAMOND and nothing else, and this header
+// is the only place on Me that spends it. A guest who is not Diamond gets a neutral header — which
 // is the same rule, not a weakening of it: the one coloured thing on the page
 // is unambiguous precisely because it is now unconditional.
 //
@@ -67,10 +68,9 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // says the fact in words. That something is the Diamond CHIP's own label,
 // inside this subtree.
 //
-// NO PLAN (decision: Pato, MESITA-1619). The Passport prints what is EARNED
-// and PUBLIC. The plan is what you PAY — Docs › Passport §B: "It never prints
-// on the Passport." Plan is a cell in the grid below and this bar takes no
-// plan handler.
+// NO PLAN (decision: Pato, MESITA-1619). The header prints what is EARNED
+// and PUBLIC; the plan is what you PAY. Plan is a cell in the grid below and
+// this bar takes no plan handler.
 
 /** One chip in the header's 2x2. */
 const CHIP_CLASS =
@@ -83,7 +83,7 @@ const CHIP_CLASS =
  *  (MESITA-1688). */
 const TAP_TARGET_CLASS = "after:absolute after:inset-[-4px] after:content-['']";
 
-export function PassportBar({
+export function IdentityBar({
   profile,
   loading,
   diamondSummary,
@@ -105,7 +105,7 @@ export function PassportBar({
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
   // `formatPhoneDisplay` already exists for exactly this — its own doc says
-  // it keeps a number from "rendering as a raw digit run on the passport".
+  // it keeps a number from rendering as a raw digit run.
   const phoneDisplay = formatPhoneDisplay(profile?.phone) ?? "Not set";
 
   // The metal, or nothing. Not a helper in consumer-data: those took a
@@ -115,7 +115,7 @@ export function PassportBar({
   return (
     <header
       aria-label={
-        diamond ? "Your Mesita passport, Diamond" : "Your Mesita passport"
+        diamond ? "Your Mesita identity, Diamond" : "Your Mesita identity"
       }
       aria-busy={loading || undefined}
       className="border-border bg-background/95 relative shrink-0 border-b backdrop-blur-xl"

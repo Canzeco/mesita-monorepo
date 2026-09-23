@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   BarChart3,
   Camera,
+  Copy,
   Download,
   MessageSquare,
   Trash2,
@@ -14,6 +15,7 @@ import {
   ActivityIndicator,
   Linking,
   Pressable,
+  Share,
   Text,
   View,
 } from 'react-native';
@@ -91,6 +93,22 @@ export function PersonalDetailsSheet({
   const [error, setError] = useState<string | null>(null);
 
   const avatarUrl = previewUrl ?? profile?.avatar_url ?? null;
+
+  // THE MEMBER NUMBER LIVES HERE (MESITA-2043, Pato: "we don't have
+  // passports"). Twin of web's EditProfileSheet: `consumers.code` printed
+  // only on the Passport, and it is the one string staff can look a guest up
+  // by without collisions when granting a Diamond invitation. Null is a real
+  // state (assigned on first profile read) and reads "Pending". Share, not a
+  // clipboard write — mobile has no expo-clipboard, same as the Passport had.
+  const code = profile?.code ?? null;
+  const shareCode = async () => {
+    if (!code) return;
+    try {
+      await Share.share({ message: code });
+    } catch {
+      toast("Couldn't share the number");
+    }
+  };
 
   const pickPhoto = async () => {
     if (uploadingPhoto) return;
@@ -266,6 +284,38 @@ export function PersonalDetailsSheet({
         >
           JPG, PNG, or WEBP · max 2 MB
         </Text>
+      </View>
+
+      <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4">
+        <View className="min-w-0 flex-1">
+          <Text className="font-semibold text-muted-foreground" style={{ fontSize: 12 }}>
+            Member number
+          </Text>
+          <Text
+            className={
+              code
+                ? 'font-display tabular-nums tracking-wide text-foreground'
+                : 'font-display tabular-nums tracking-wide text-muted-foreground'
+            }
+            style={{ fontSize: 18 }}
+            numberOfLines={1}
+          >
+            {code ?? 'Pending'}
+          </Text>
+          <Text className="mt-1 text-muted-foreground" style={{ fontSize: 12 }}>
+            Give this number when you ask for a Diamond invitation.
+          </Text>
+        </View>
+        {code ? (
+          <Pressable
+            onPress={() => void shareCode()}
+            accessibilityRole="button"
+            accessibilityLabel="Copy member number"
+            className="h-11 w-11 items-center justify-center rounded-xl"
+          >
+            <Copy color={COLORS.mutedForeground} size={16} />
+          </Pressable>
+        ) : null}
       </View>
 
       <TextField

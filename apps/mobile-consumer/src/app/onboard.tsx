@@ -54,8 +54,7 @@ export default function Onboard() {
   const router = useRouter();
   const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
   // THREE fields, mirroring web's OnboardForm (MESITA-1829): first name,
-  // birthday, sex. Sex is REQUIRED here as it is on web — the Passport
-  // document prints `age · sex · country` and nothing else collects it. Last
+  // birthday, sex. Sex is REQUIRED here as it is on web (MESITA-1829). Last
   // name is still asked by the reservation flow instead, where the guest can
   // see why the place needs it.
   //
@@ -268,7 +267,7 @@ export default function Onboard() {
                     className="mt-3 text-muted-foreground"
                     style={{ fontSize: 12, lineHeight: 16 }}
                   >
-                    Nobody sees it. It sets the age on your Passport.
+                    Nobody sees it. It confirms you’re old enough for Mesita.
                   </Text>
                 )}
               </>

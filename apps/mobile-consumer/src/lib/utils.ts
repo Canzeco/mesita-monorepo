@@ -41,7 +41,7 @@ export function formatSex(sex: string | null | undefined): string | null {
  * Display form of the stored phone (E.164 digits, usually without the +).
  * MX numbers ("52" + 10 digits) get the local grouping — "+52 444 549 9597";
  * anything else keeps its digits with a leading + so it never renders as a
- * raw digit run on the passport card. Keep in sync with web-consumer.
+ * raw digit run. Keep in sync with web-consumer.
  */
 export function formatPhoneDisplay(
   phone: string | null | undefined,

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowRight, Star, Utensils } from "lucide-react";
+import { ArrowRight, Gem, Utensils } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
@@ -94,9 +94,9 @@ function Hero() {
               </span>
             </span>
           </span>
-          <span className="bg-gold text-foreground absolute top-4 right-4 hidden items-center gap-1.5 rounded-2xl px-3.5 py-2 shadow-lg md:flex">
-            <Star className="h-4 w-4" aria-hidden />
-            <span className="text-[13px] font-semibold">Gold Passport</span>
+          <span className="bg-tier-diamond text-foreground absolute top-4 right-4 hidden items-center gap-1.5 rounded-2xl px-3.5 py-2 shadow-lg md:flex">
+            <Gem className="h-4 w-4" aria-hidden />
+            <span className="text-[13px] font-semibold">Diamond</span>
           </span>
         </figure>
       </div>
