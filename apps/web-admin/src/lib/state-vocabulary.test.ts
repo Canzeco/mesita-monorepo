@@ -34,7 +34,7 @@ describe("state vocabulary", () => {
       "Verified",
       "Owned",
       "Partnered",
-      "Visit Rewards",
+      "Rewards",
       "Mesita Pay",
       "Mesita Credits",
     ]);
@@ -74,7 +74,7 @@ describe("state vocabulary", () => {
     expect(stateBoolChip(null)).toBe("?");
   });
 
-  it("Visit Rewards is 0 | 1 | 2 — engine Dominant displays as 2", () => {
+  it("Rewards is 0 | 1 | 2 — engine Dominant displays as 2", () => {
     expect(operatorPromotingLevel(0)).toBe(0);
     expect(operatorPromotingLevel(1)).toBe(1);
     expect(operatorPromotingLevel(2)).toBe(2);

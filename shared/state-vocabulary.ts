@@ -3,7 +3,7 @@
 //   STATES (12)   Created · Active · Listed · Enriching · Enriched ·
 //                 Verified · Owned · Partnered · Mesita Pay · Mesita Credits
 //                 are bools (`true` / `false`). Requested is the guest request
-//                 count, 0…n — not a Yes/No. Visit Rewards (wire key
+//                 count, 0…n — not a Yes/No. Rewards (wire key
 //                 `promoting`, formerly labeled Promoted) is 0 | 1 | 2. Never a
 //                 places.state. Mesita Pay / Mesita Credits are per-place
 //                 acceptance intent bits (place_profiles.mesita_pay_enabled /
@@ -54,7 +54,7 @@ export function stateBoolChip(
 }
 
 /**
- * Operator Visit Rewards: 0 Zero · 1 Conservative · 2 Aggressive.
+ * Operator Rewards: 0 Zero · 1 Conservative · 2 Aggressive.
  * Engine Dominant (3) displays as 2 — the picker has three strategies.
  */
 export function operatorPromotingLevel(
@@ -114,7 +114,7 @@ export const GENERAL_STATE_FACTS = [
   { key: "verified", label: "Verified" },
   { key: "owned", label: "Owned" },
   { key: "partner", label: "Partnered" },
-  { key: "promoting", label: "Visit Rewards" },
+  { key: "promoting", label: "Rewards" },
   { key: "mesita_pay", label: "Mesita Pay" },
   { key: "credits", label: "Mesita Credits" },
 ] as const;
@@ -247,7 +247,7 @@ export const PLACE_CAPABILITIES = [
   },
   {
     key: "visit_rewards",
-    label: "Visits Rewards",
+    label: "Rewards",
     detail: "What a visit pays back — Zero, Conservative or Aggressive.",
     writer: "administrative",
     column: null,

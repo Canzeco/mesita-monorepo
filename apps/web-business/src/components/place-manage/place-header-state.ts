@@ -118,7 +118,7 @@ export function generalHeaderFacts(input: {
     },
     {
       key: "promoting",
-      label: "Visit Rewards",
+      label: "Rewards",
       on: level > 0,
       chip: promotingLevelChip(level),
     },

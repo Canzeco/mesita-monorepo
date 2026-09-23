@@ -36,7 +36,7 @@ describe("T1 — the labels are Notion Main §11.2's words", () => {
     // §11.2, typed out. #2 "Visits Enabled" and #6 "Third-Party Delivery
     // Orders Enabled" are deliberately absent — see the absence test below.
     expect(bySpec.get(1)).toBe("Mesita Pay");
-    expect(bySpec.get(3)).toBe("Visits Rewards");
+    expect(bySpec.get(3)).toBe("Rewards");
     expect(bySpec.get(4)).toBe("Pickup Orders");
     expect(bySpec.get(5)).toBe("Delivery Orders");
     expect(bySpec.get(7)).toBe("Reservations");

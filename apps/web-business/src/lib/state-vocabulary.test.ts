@@ -36,7 +36,7 @@ describe("state vocabulary", () => {
       "Verified",
       "Owned",
       "Partnered",
-      "Visit Rewards",
+      "Rewards",
       "Mesita Pay",
       "Mesita Credits",
     ]);

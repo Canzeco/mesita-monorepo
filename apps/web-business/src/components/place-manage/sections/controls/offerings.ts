@@ -33,7 +33,7 @@ const CAP = Object.fromEntries(
 // both of them are the PLACE's own, on its Products pages:
 //
 //   Mesita Partner   the place's YEARLY partnership (`places.partnered`).
-//                    Unlocks Visit Rewards and Accept Prepays — arithmetic on
+//                    Unlocks Rewards and Accept Prepays — arithmetic on
 //                    the bill, no PSP.
 //   Mesita Pay       an optional add-on ON TOP of Partner: the place's Stripe
 //                    account (`place_payment_accounts`) and the
@@ -204,7 +204,7 @@ export type LadderInput = {
   /** The Connect mirror read is in flight. Independent of `connect`, which
    *  cannot distinguish "no account" from "not asked yet". */
   connectLoading?: boolean;
-  /** Ghost-partner hold (MESITA-1311): Visit Rewards is on but guests get
+  /** Ghost-partner hold (MESITA-1311): Rewards is on but guests get
    *  nothing until restore. */
   rewardLaneHeld?: boolean;
   /** This place's Mesita Partner subscription (`places.partnered`,
@@ -265,7 +265,7 @@ function railState(on: boolean): RowState {
  * ```
  *   Mesita Partner ─────────────────── the place's yearly partnership (Products)
  *        │
- *        ├── Visit Rewards ───────────── needs Mesita Partner
+ *        ├── Rewards ───────────── needs Mesita Partner
  *        ├── Accept Prepays ──────────── needs Mesita Partner (redeem ≠ charge)
  *        │
  *        ├── Mesita Pay in Products ──── the add-on switch (Products › Pay)
@@ -522,7 +522,7 @@ function disagreementOf(
   if (asked && !live) {
     if (row.key === "visit_rewards" && input.rewardLaneHeld) {
       return {
-        reason: "Visit Rewards is on, but a guest report is holding the lane.",
+        reason: "Rewards is on, but a guest report is holding the lane.",
         fixLabel: "Restore",
         fix: "restore",
       };
@@ -602,7 +602,7 @@ export function guestSummary(rows: readonly OfferingRow[]): string {
 //   Capabilities   what a guest CAN do here — pay by card, redeem prepays,
 //                  order pickup or delivery, book a table — plus the internal
 //                  "How this place is run" zone.
-//   Rewards        what a guest EARNS here: Visit Rewards, its strategy
+//   Rewards        what a guest EARNS here: Rewards, its strategy
 //                  ladder, and the Partnership body that prices them.
 //
 // The line is not new. `PromosSection` already drew it with its own headings;
@@ -748,9 +748,9 @@ export function topPrerequisite(input: LadderInput): TopPrerequisite | null {
     if (input.placePartnered === false) {
       return {
         action: "setup",
-        // No "here": this line paints on every zone, and Visit Rewards lives
+        // No "here": this line paints on every zone, and Rewards lives
         // on Rewards while Accept Prepays lives on Credits.
-        text: "Become a Mesita Partner in Products — it unlocks Visit Rewards and Accept Prepays.",
+        text: "Become a Mesita Partner in Products — it unlocks Rewards and Accept Prepays.",
       };
     }
     if (input.placePartnered === true) {

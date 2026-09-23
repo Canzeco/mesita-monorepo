@@ -216,7 +216,7 @@ describe("first paint — what guests can do, not a zero (MESITA-1739)", () => {
     expect(row.disagreement?.fix).toBe("restore");
   });
 
-  it("sends a locked Visit Rewards row to the setup page, never Join above", () => {
+  it("sends a locked Rewards row to the setup page, never Join above", () => {
     const row = rowFor(
       { ...BASE, member: false, visitRewardsLevel: 2 },
       "visit_rewards",
@@ -407,7 +407,7 @@ describe("the org's Mesita Pay switch gates the place's Pay rung above Stripe", 
   });
 
   it("the org switch never gates a rung the partnership alone unlocks", () => {
-    // Visit Rewards and Accept Prepays are bill arithmetic — Partner-only.
+    // Rewards and Accept Prepays are bill arithmetic — Partner-only.
     const input: LadderInput = {
       ...READY,
       placeMesitaPay: false,
@@ -437,7 +437,7 @@ describe("the top line: two partner facts, one precedence", () => {
       input: { member: false, placePartnered: false },
       expect: {
         action: "setup",
-        text: "Become a Mesita Partner in Products — it unlocks Visit Rewards and Accept Prepays.",
+        text: "Become a Mesita Partner in Products — it unlocks Rewards and Accept Prepays.",
       },
     },
     {
