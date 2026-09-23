@@ -72,24 +72,31 @@ export function GlobalPerformanceClient({
   }, []);
 
   const inFlightRef = useRef(false);
-  const refresh = useCallback(() => {
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    setError(null);
-    const fetchTypes = typesForFetch(domain, includeSteps, types);
-    startRefresh(async () => {
-      const r = await listNotifications(domain, {
-        ...(placeId ? { placeId } : {}),
-        ...(fetchTypes && fetchTypes.length > 0 ? { types: fetchTypes } : {}),
+  const load = useCallback(
+    (nextDomain: DomainKey, nextSteps: boolean) => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      setError(null);
+      const fetchTypes = typesForFetch(nextDomain, nextSteps, types);
+      startRefresh(async () => {
+        const r = await listNotifications(nextDomain, {
+          ...(placeId ? { placeId } : {}),
+          ...(fetchTypes && fetchTypes.length > 0 ? { types: fetchTypes } : {}),
+        });
+        inFlightRef.current = false;
+        if (!r.ok) {
+          setError(r.error);
+          return;
+        }
+        setData(r.data);
       });
-      inFlightRef.current = false;
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setData(r.data);
-    });
-  }, [placeId, types, domain, includeSteps]);
+    },
+    [placeId, types],
+  );
+  const refresh = useCallback(
+    () => load(domain, includeSteps),
+    [load, domain, includeSteps],
+  );
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -99,27 +106,23 @@ export function GlobalPerformanceClient({
     return () => clearInterval(iv);
   }, [refresh]);
 
-  const domainRef = useRef(domain);
-  const includeRef = useRef(includeSteps);
-  useEffect(() => {
-    const domainChanged = domainRef.current !== domain;
-    const stepsChanged = includeRef.current !== includeSteps;
-    domainRef.current = domain;
-    includeRef.current = includeSteps;
-    if (domainChanged || stepsChanged) refresh();
-  }, [domain, includeSteps, refresh]);
-
-  const onDomainChange = useCallback((next: DomainKey) => {
+  const onDomainChange = (next: DomainKey) => {
+    // Step events live only in the all and atlas feeds; any other domain drops them.
+    const nextSteps = next === "all" || next === "atlas" ? includeSteps : false;
     setDomain(next);
     setTypeFilter("all");
     setStateFilter("all");
-    if (next !== "all" && next !== "atlas") setIncludeSteps(false);
-  }, []);
+    setIncludeSteps(nextSteps);
+    if (next !== domain || nextSteps !== includeSteps) load(next, nextSteps);
+  };
 
-  const onTypeFilterChange = useCallback((next: TypeFilter) => {
+  const onTypeFilterChange = (next: TypeFilter) => {
     setTypeFilter(next);
-    if (next === "atlas.enrichment_step") setIncludeSteps(true);
-  }, []);
+    if (next === "atlas.enrichment_step" && !includeSteps) {
+      setIncludeSteps(true);
+      load(domain, true);
+    }
+  };
 
   const visible = useMemo(() => {
     const q = placeQuery.trim().toLowerCase();
@@ -172,6 +175,7 @@ export function GlobalPerformanceClient({
           if (!next && typeFilter === "atlas.enrichment_step") {
             setTypeFilter("all");
           }
+          if (next !== includeSteps) load(domain, next);
         }}
         onPlaceQueryChange={placeId ? undefined : setPlaceQuery}
         onRefresh={refresh}
