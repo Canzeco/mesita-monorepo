@@ -1,57 +1,13 @@
-// Consumer bill payload + money formatting helpers for ticket Realtime
-// notifications.
+// The place's Instagram handle, as the ticket payloads written to
+// consumer_notifications (the consumer's Pay inbox) carry it.
 
 import { instagramHandleFromUrl } from "./apify.ts";
 
-export function formatMoneyMx(cents: number, currency = "MXN"): string {
-  const major = (cents / 100).toFixed(2);
-  return `$${major} ${currency}`;
-}
-
-/** Payload for consumer Pay → Tickets (Realtime notification). */
+/** The place's bare Instagram handle for a ticket notification payload's
+ *  `place_instagram_handle`, or null when the URL is missing or not a
+ *  profile. */
 export function placeInstagramHandleForPayload(
   instagramUrl: string | null | undefined,
 ): string | null {
   return instagramHandleFromUrl(instagramUrl);
-}
-
-export type InformalBillCalc = {
-  subtotal: number;
-  tip: number;
-  total: number;
-  eligibleCents: number;
-  ratePercent: number;
-  discountPercent: number;
-  discountCents: number;
-  amountDueCents: number;
-};
-
-export function buildConsumerBillPayload(
-  place: {
-    name: string;
-    photos?: string[] | null;
-    slug?: string | null;
-    monthly_promo_cap?: number | null;
-    instagram_url?: string | null;
-  },
-  calc: InformalBillCalc,
-  projectId: string,
-): Record<string, unknown> {
-  const discount = calc.discountCents ?? 0;
-  return {
-    project_id: projectId,
-    place_slug: place.slug ?? null,
-    place_name: place.name,
-    place_photo_url: place.photos?.[0] ?? null,
-    place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
-    bill_subtotal_cents: calc.subtotal,
-    tip_cents: calc.tip,
-    total_cents: calc.total,
-    discount_cents: discount,
-    discount_percent: calc.discountPercent,
-    total_reward_cents: discount,
-    reward_cap_mxn: place.monthly_promo_cap ?? null,
-    amount_due_cents: calc.amountDueCents,
-    currency: "MXN",
-  };
 }

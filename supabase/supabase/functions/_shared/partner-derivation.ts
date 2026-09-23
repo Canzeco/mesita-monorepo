@@ -3,8 +3,10 @@
 // listing_type = 'partner' iff membership (plan ≠ free) AND strategy ≠ zero.
 // Otherwise demote partner → web; leave unclaimed untouched.
 //
-// Also holds the membership stamp resets that the two plan doors
-// (admin-web-set-plan, business-web-set-partnership) write with a join or drop.
+// Also holds the membership stamp resets every plan write shares: the two
+// plan doors (admin-web-set-plan, business-web-set-partnership), the
+// Membership cascade (place-partnership.ts) and strike 3
+// (membership-strike-patch.ts).
 
 import {
   type PromoRates,

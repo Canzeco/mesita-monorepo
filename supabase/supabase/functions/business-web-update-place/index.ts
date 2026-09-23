@@ -23,7 +23,7 @@ import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
-import { applyPromoRatesFromBody, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
+import { applyPromoRatesFromBody, hasPromoRatesInBody } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
   applyListingTypeToPatch,
@@ -476,8 +476,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  const writingRates = PROMO_RATE_FIELDS.some((f) => f in update) ||
-    "monthly_promo_cap" in update;
+  const writingRates = hasPromoRatesInBody(update);
   let currentRow: Record<string, unknown> | null = null;
   if (writingRates) {
     const { data: row, error: readErr } = await admin

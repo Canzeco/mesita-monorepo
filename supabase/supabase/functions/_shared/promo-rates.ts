@@ -37,7 +37,8 @@ export function normalisePromoRate(
   return { ok: true, value: v };
 }
 
-/** True when the body carries any promo rate key or `monthly_promo_cap`. */
+/** True when the object — a request body, or the patch built from one —
+ *  carries any promo rate key or `monthly_promo_cap`, even as null. */
 export function hasPromoRatesInBody(body: Record<string, unknown>): boolean {
   return PROMO_RATE_FIELDS.some((f) => f in body) || "monthly_promo_cap" in body;
 }

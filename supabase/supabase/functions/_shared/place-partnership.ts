@@ -33,7 +33,11 @@
 // payments on for a restaurant's guests.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { applyListingTypeToPatch } from "./partner-derivation.ts";
+import {
+  applyListingTypeToPatch,
+  clearActivationStamps,
+  clearForfeitStamps,
+} from "./partner-derivation.ts";
 import { type PlacePatch, writePlace } from "./place-doc.ts";
 
 export const ZERO_RATES = {
@@ -62,13 +66,7 @@ export function joinPlacePatch(
     rates: ZERO_RATES,
     currentListingType: row.listing_type,
   });
-  if (row.plan_forfeited_at) {
-    patch.plan_forfeited_at = null;
-    patch.strike_count = 0;
-    patch.promo_paused_until = null;
-    patch.plan_live_at = null;
-    patch.first_ticket_honored_at = null;
-  }
+  if (row.plan_forfeited_at) clearForfeitStamps(patch);
   return patch as PlacePatch;
 }
 
@@ -82,9 +80,8 @@ export function dropPlacePatch(
     plan: "free",
     ...ZERO_RATES,
     monthly_promo_cap: null,
-    plan_live_at: null,
-    first_ticket_honored_at: null,
   };
+  clearActivationStamps(patch);
   applyListingTypeToPatch(patch, {
     plan: "free",
     rates: ZERO_RATES,
