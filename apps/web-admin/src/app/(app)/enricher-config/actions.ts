@@ -1,5 +1,6 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ─── Settings read ─────────────────────────────────────────────────────────
@@ -74,22 +75,6 @@ export type CrenupPrompt = {
   input: string;
 };
 
-type UpdateTriggersResult =
-  | { ok: true; data: EnrichmentTriggersConfig }
-  | { ok: false; error: string };
-
-/** WHOLE-blob save: the page always sends the full grid, never a patch. */
-export async function updateEnrichmentTriggers(
-  enrichmentTriggers: EnrichmentTriggersConfig,
-): Promise<UpdateTriggersResult> {
-  const r = await efInvoke<{ enrichmentTriggers: EnrichmentTriggersConfig }>(
-    "admin-web-update-config",
-    { section: "enricher", enrichmentTriggers },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.enrichmentTriggers };
-}
-
 type SettingsResponse = {
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
@@ -120,9 +105,7 @@ type SettingsResponse = {
   updatedAt: string | null;
 };
 
-type GetSettingsResult =
-  | { ok: true; data: SettingsResponse }
-  | { ok: false; error: string };
+type GetSettingsResult = ActionResult<{ data: SettingsResponse }>;
 
 export async function getAtlasSettings(): Promise<GetSettingsResult> {
   const r = await efInvoke<SettingsResponse>("admin-web-get-config", {});
@@ -157,9 +140,7 @@ type AtlasConfigResponse = {
   updatedAt: string | null;
 };
 
-type UpdateAtlasConfigResult =
-  | { ok: true; data: AtlasConfigResponse }
-  | { ok: false; error: string };
+type UpdateAtlasConfigResult = ActionResult<{ data: AtlasConfigResponse }>;
 
 // Partial update — pass only the fields you want to change. The `enricher`
 // section takes its knobs FLAT on the body, not under `config`, which is why

@@ -1,5 +1,6 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 
 type VerificationMethod =
@@ -40,9 +41,7 @@ type ListResponse = {
   verifications: AdminVerification[];
 };
 
-type ListResult =
-  | { ok: true; data: ListResponse }
-  | { ok: false; error: string };
+type ListResult = ActionResult<{ data: ListResponse }>;
 
 export async function listVerifications(): Promise<ListResult> {
   const r = await efInvoke<ListResponse>("admin-web-list-verifications", {});
@@ -50,9 +49,7 @@ export async function listVerifications(): Promise<ListResult> {
   return { ok: true, data: { verifications: r.data.verifications } };
 }
 
-type DecideResult =
-  | { ok: true }
-  | { ok: false; error: string };
+type DecideResult = ActionResult;
 
 export async function decideVerification(
   verificationId: string,

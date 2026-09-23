@@ -1,5 +1,6 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // A CLAIM IS THE CLAIMER AND THE TIMESTAMP (MESITA-1892). It used to carry the
@@ -18,7 +19,7 @@ export type AdminPlaceClaim = {
 };
 
 type ListResponse = { claims: AdminPlaceClaim[] };
-type ListResult = { ok: true; data: ListResponse } | { ok: false; error: string };
+type ListResult = ActionResult<{ data: ListResponse }>;
 
 export async function listPlaceClaims(): Promise<ListResult> {
   const r = await efInvoke<ListResponse>("admin-web-list-place-claims", {});
@@ -26,7 +27,7 @@ export async function listPlaceClaims(): Promise<ListResult> {
   return { ok: true, data: { claims: r.data.claims } };
 }
 
-type DecideResult = { ok: true } | { ok: false; error: string };
+type DecideResult = ActionResult;
 
 export async function decidePlaceClaim(
   placeId: string,

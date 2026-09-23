@@ -1,5 +1,6 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ─── Admin allowlist (super_admins) ─────────────────────────────────────
@@ -11,9 +12,7 @@ export type AdminRow = {
   added_by: string | null;
 };
 
-type ListResult =
-  | { ok: true; admins: AdminRow[]; self: string | null }
-  | { ok: false; error: string };
+type ListResult = ActionResult<{ admins: AdminRow[]; self: string | null }>;
 
 export async function listAdmins(): Promise<ListResult> {
   const r = await efInvoke<{ admins: AdminRow[]; self: string | null }>(
@@ -24,9 +23,7 @@ export async function listAdmins(): Promise<ListResult> {
   return { ok: true, admins: r.data.admins ?? [], self: r.data.self ?? null };
 }
 
-type GrantResult =
-  | { ok: true; admin: AdminRow }
-  | { ok: false; error: string };
+type GrantResult = ActionResult<{ admin: AdminRow }>;
 
 export async function grantAdmin(
   email: string,
@@ -40,9 +37,7 @@ export async function grantAdmin(
   return { ok: true, admin: r.data.admin };
 }
 
-type RevokeResult =
-  | { ok: true; removed: number }
-  | { ok: false; error: string };
+type RevokeResult = ActionResult<{ removed: number }>;
 
 export async function revokeAdmin(email: string): Promise<RevokeResult> {
   const r = await efInvoke<{ removed: number }>("admin-web-revoke-admin", { email });

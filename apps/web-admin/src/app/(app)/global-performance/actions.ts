@@ -1,5 +1,6 @@
 "use server";
 
+import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 
 // Notification feed types — mirror of the admin-list-notifications EF
@@ -51,9 +52,7 @@ export type NotificationsPayload = {
   generatedAt: string;
 };
 
-type NotificationsResult =
-  | { ok: true; data: NotificationsPayload }
-  | { ok: false; error: string };
+type NotificationsResult = ActionResult<{ data: NotificationsPayload }>;
 
 // Optional server-side narrowing supported by the EF. `limit` caps the feed
 // size (step events are chatty, so we fetch a bigger window by default).
