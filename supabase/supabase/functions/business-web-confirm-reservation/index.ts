@@ -22,13 +22,17 @@ import {
   readEFEnv,
   requireEditor,
 } from "../_shared/auth.ts";
-import { RESERVATION_SELECT } from "../_shared/reservation-columns.ts";
 import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
 import { reminderParkPatch, REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
 import { type ReservationPatch, validateReservationPatch } from "../_shared/reservation-doc.ts";
 
 type Decision = "confirm" | "decline";
 type Body = { placeId?: string; projectId?: string; reservationId?: string; decision?: Decision };
+
+// The reservation row returned to the console, joined with the guest's display
+// fields + class. NO financial fields — reservations never carry money.
+const RESERVATION_SELECT =
+  "id, reserved_at, party_size, state, notes, confirmed_at, completed_at, cancelled_at, created_at, consumer:consumers(id, code, full_name, class_key, class_origin)";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

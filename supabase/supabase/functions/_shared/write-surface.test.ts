@@ -273,7 +273,6 @@ Deno.test("TICKET: no new writer of visit_tickets outside the allowlist", async 
 // ── RESERVATION (reservation_tickets) ───────────────────────────────────
 const RESERVATION_ALLOWLIST = [
   "_shared/agent-tools.ts",
-  "_shared/reservation-attempts.ts", // complementary to reservation-doc.ts, not competing — different axis (AttemptEntry shape) on the same file (supabase-edgefunc-reservation-call/index.ts) that reservation-doc.ts's writeReservation door now also routes
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280) — 28/28 call sites routed, the last 13 (supabase-edgefunc-reservation-call/index.ts) in a follow-up PR (#1169) once the write-surface research confirmed every literal value that file writes was already covered by the closed sets
   "business-web-confirm-reservation/index.ts",
   "consumer-mcp/index.ts",

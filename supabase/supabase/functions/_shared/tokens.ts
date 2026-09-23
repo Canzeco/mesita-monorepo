@@ -1,6 +1,6 @@
-// URL-safe random invite tokens. Same shape used by both
-// project_invites — 18 random bytes encoded as
-// base64url. Matches the SQL helper public.generate_invite_token().
+// URL-safe random invite tokens for place_invites — 18 random bytes encoded
+// as base64url. The only minter: the SQL helper public.generate_invite_token()
+// was dropped in migration 20260626200000_minimize_functions.sql.
 
 export function newInviteToken(byteLength = 18): string {
   const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
