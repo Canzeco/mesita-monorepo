@@ -2,7 +2,7 @@
 //
 // Cap is independent of strategy: a member picks Zero / Conservative /
 // Aggressive AND separately picks MX$200 / 500 / 1000. Persisted on
-// projects.monthly_promo_cap. Billing prefers the place cap; the platform
+// places.monthly_promo_cap. Billing prefers the place cap; the platform
 // promos_config.cap is the fallback when a paid place has a null cap
 // (legacy / mid-migration).
 //

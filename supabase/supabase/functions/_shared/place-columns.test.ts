@@ -22,7 +22,11 @@ function heavyFixtureRow(): Record<string, unknown> {
       row[key] = big;
     }
   }
-  // Worst-case heavy jsonb — must never reach the card:
+  // The five excluded jsonb keys, stuffed after the loop so they overwrite
+  // any plain string it wrote. The card never reads them while they stay in
+  // PLACE_CARD_EXCLUDED_COLUMNS; if details, products or google_reviews ever
+  // leaves that set, its stuffed value lands in the card and pushes it past
+  // the 50KB budget.
   row.details = { dining_style: big, service_options: Array(50).fill(big) };
   row.products = { menu: Array.from({ length: 100 }, () => ({ name: big, price: 100 })) };
   row.google_reviews = Array.from({ length: 50 }, () => ({ author: big, rating: 5, quote: big, date: "2026-01-01" }));

@@ -269,7 +269,7 @@ export async function verifyProof(
   // unsure, and fail-but-not-withholding, intentionally touch nothing but
   // the annotation columns above: state stands, money stands, only the
   // record exists now for staff (the business console's ticket reads carry
-  // story_ojo_*; the public check page never carries a verdict).
+  // story_ojo_*; the validate page never carries a verdict).
 
   return { ran: true, result };
 }

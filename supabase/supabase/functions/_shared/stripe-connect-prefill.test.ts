@@ -93,6 +93,10 @@ Deno.test("deterministic prefill: restaurant website + RFC", () => {
   assertEquals(out.email, "hola@cabaret.mx");
   assertEquals(out.taxId, "CSR010101ABC");
   assertEquals(out.businessProfile.support_phone, "+52 55 1234 5678");
+  assertEquals(
+    out.businessProfile.product_description,
+    "Late-night Mexican restaurant and cocktail bar in Roma Norte.",
+  );
 });
 
 Deno.test("no places still sends restaurant MCC so Stripe cannot fall back to Software", () => {

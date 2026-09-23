@@ -119,7 +119,7 @@ const COLUMNS: readonly string[] = [
   "menus",
   "popular_times",
   "enriched_at",
-  // Enrichment lifecycle (projects.content_state: queued | generating |
+  // Enrichment lifecycle (places.content_state: queued | generating |
   // ready | failed). Stays 'generating' for the FULL pipeline
   // (research → analysis → contents); only contents lands 'ready'.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
@@ -130,10 +130,11 @@ const COLUMNS: readonly string[] = [
   // Description/Actions (Enricher step 7) — guest Order / Reserve CTAs.
   "orders_enabled",
   "reservations_enabled",
-  // The EFFECTIVE Mesita Pay capability — the place's bit AND its org's,
-  // resolved by the `profiles` view so no reader re-derives the chain. It is
-  // the guest's filter for Pay > QR: a place Mesita cannot take a payment at
-  // is not a place to pay at, so it never reaches the list.
+  // The place's Mesita Pay capability bit (place_profiles.mesita_pay_enabled,
+  // surfaced by the `profiles` view). It stands alone since MESITA-1892; it
+  // used to be ANDed with the organization's. It is the guest's filter for
+  // Pay > QR: a place Mesita cannot take a payment at is not a place to pay
+  // at, so it never reaches the list.
   "mesita_pay_enabled",
   // Promos page section toggles. Boolean, business-controlled, persisted
   // so the on/off state survives page reloads.
@@ -141,7 +142,7 @@ const COLUMNS: readonly string[] = [
   "segmentation_advanced_enabled",
   "email",
   "created_at",
-  // Promos v4 membership / strikes (MESITA-542) — projects columns exposed via
+  // Promos v4 membership / strikes (MESITA-542) — places columns exposed via
   // profiles. Readers that hit `place_profiles` directly simply won't see them.
   "first_ticket_honored_at",
   "plan_live_at",
@@ -162,7 +163,7 @@ export const PLACE_PUBLIC_COLUMNS = COLUMNS.join(", ");
 // each is priced for one place read (a detail page), not N per request.
 // place-columns.test.ts (MESITA-1247 guard test 7 / MESITA-1283) proves a row
 // stripped of these stays under the 50KB card budget even worst-case-stuffed.
-export const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
+const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
   "details",
   "products",
   "google_reviews",
@@ -170,11 +171,12 @@ export const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
   "popular_times",
 ]);
 
-// The real card projection: every public column EXCEPT the five heavy jsonb
-// ones — not a hand-picked subset. Any consumer surface returning MORE THAN ONE
-// place per request (list, search, swipe/recommend) should select this, not
-// PLACE_PUBLIC_COLUMNS; a single-place detail read (consumer-web-get-place)
-// still wants the full projection, heavy columns included.
+// The real card projection: every public column EXCEPT the five heavy
+// jsonb ones — not a hand-picked subset. Any consumer surface returning
+// MORE THAN ONE place per request (list, search, swipe/recommend) should
+// select this, not PLACE_PUBLIC_COLUMNS; a single-place detail read
+// (consumer-web-get-place) still wants the full projection, heavy columns
+// included.
 export const PLACE_CARD_COLUMNS_ARRAY: readonly string[] = COLUMNS.filter(
   (c) => !PLACE_CARD_EXCLUDED_COLUMNS.has(c),
 );

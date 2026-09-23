@@ -2,7 +2,11 @@
 //   deno test supabase/functions/_shared/partner-derivation.test.ts
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { deriveListingType } from "./partner-derivation.ts";
+import {
+  clearActivationStamps,
+  clearForfeitStamps,
+  deriveListingType,
+} from "./partner-derivation.ts";
 
 const CONSERVATIVE = {
   welcome_free_rate: 20,
@@ -62,4 +66,31 @@ Deno.test("deriveListingType: ultra plan counts as member", () => {
     deriveListingType({ plan: "ultra", rates: CONSERVATIVE, currentListingType: "web" }),
     "partner",
   );
+});
+
+// Every plan write (both plan doors, the Membership cascade, strike 3) puts
+// these resets into the same patch as the plan change, so the exact key set
+// is the contract: a missing key leaves a stale stamp on the place, an extra
+// one clobbers a column the writer never meant to touch.
+Deno.test("clearActivationStamps: nulls exactly the two activation stamps, keeps the rest", () => {
+  const patch: Record<string, unknown> = { plan: "free" };
+  clearActivationStamps(patch);
+  assertEquals(patch, {
+    plan: "free",
+    plan_live_at: null,
+    first_ticket_honored_at: null,
+  });
+});
+
+Deno.test("clearForfeitStamps: wipes forfeit + strike state and restarts activation", () => {
+  const patch: Record<string, unknown> = { plan: "pro" };
+  clearForfeitStamps(patch);
+  assertEquals(patch, {
+    plan: "pro",
+    plan_forfeited_at: null,
+    strike_count: 0,
+    promo_paused_until: null,
+    plan_live_at: null,
+    first_ticket_honored_at: null,
+  });
 });

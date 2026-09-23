@@ -1,13 +1,13 @@
 // Guard tests for the sub-schema catalog (MESITA-1247).
 //
-// Two of the seven guard tests the issue names are testable today, against
-// what already exists, without waiting for the six aggregate validators:
+// Two of the seven guard tests the issue names were testable before the
+// aggregate validators existed:
 // closed-key-sets, and the derived-index discipline crenup-ladder.ts already
-// enforces for its own array. The other five — validator accept/reject,
-// deletion-law visibility, create-quota concurrency, review->rollup math,
-// place-card size budget — need the aggregate validators or a materialized
-// place-card projection that do not exist yet; they belong to the PRs that
-// build those.
+// enforces for its own array. The place-card size budget (guard test 7)
+// lives in place-columns.test.ts, next to the PLACE_CARD_COLUMNS projection
+// it measures. The other four — validator accept/reject, deletion-law
+// visibility, create-quota concurrency, review->rollup math — were left to
+// the PRs that build the aggregate validators.
 //
 // Guard test 2's THREE legs — "closed-key-sets (class, function, channel)" —
 // are now all covered, split across two files. Function (FUNCTION_STATE_KEYS

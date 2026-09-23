@@ -114,7 +114,6 @@ const DELETE_VERB = /\.delete\s*\(/;
 
 // ── PLACE (place_profiles, profiles) — bootstrapped from a real findWriters() run ──
 const PLACE_PROFILE_UPDATE_ALLOWLIST = [
-  "_shared/embeddings.ts",
   "_shared/ojo-engine.ts", // windowing false positive — its .from("profiles") is read-only (.select); the write-verb match in the 2000-char window is the unrelated visit_tickets .update() a few lines later
   "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("place_profiles")), listed for a future reader's clarity
   "_shared/place-embeddings.ts",
