@@ -7,7 +7,8 @@
 // that, so a client retry after a timeout returns the original result rather
 // than double-spending.
 //
-// Gate is credits_enabled (place) AND payCredits (rail), computed by
+// Gate is payCredits (rail) AND the place honours spend (issuer rule, G4),
+// computed by
 // placesHonouringCredits (MESITA-2051) — NOT
 // resolveChargeablePlaceForCredits from _shared/credits-readiness.ts, which
 // also requires Stripe Connect charge-readiness. That chain answers "can this
