@@ -172,6 +172,7 @@ const VISIT_TICKET_READ_ALLOWLIST = [
   "consumer-web-submit-ticket-total/index.ts",
   "stripe-webhook-handle-event/ticket-payment-intent.ts",
   "validate-web-approve-ticket/index.ts",
+  "validate-web-mark-paid/index.ts", // net due for implied-at-place tender rows on close — MESITA-1913
   "validate-web-poll-ticket/index.ts",
   "validate-web-request-fix/index.ts",
   "validate-web-validate-ticket/index.ts",
