@@ -14,7 +14,36 @@ type MediaUpdateBody = {
 const MENU_NAME_MAX = 80;
 const MENU_MAX_COUNT = 20;
 
-type MenuRow = { name: string | null; url: string };
+type MenuNutrition = {
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+};
+
+type MenuRow = { name: string | null; url: string; nutrition?: MenuNutrition };
+
+function menuNutrition(raw: unknown): MenuNutrition | undefined {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const o = raw as Record<string, unknown>;
+  const read = (key: string): number | null => {
+    const v = o[key];
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 20000) {
+      return null;
+    }
+    return Math.round(v);
+  };
+  const kcal = read("kcal");
+  const proteinG = read("proteinG");
+  const carbsG = read("carbsG");
+  const fatG = read("fatG");
+  if (kcal == null || proteinG == null || carbsG == null || fatG == null) {
+    return undefined;
+  }
+  return { kcal, proteinG, carbsG, fatG };
+}
 
 /** Normalize products.menu to [{ name, url }] with https URLs only. */
 function normalizeMenuEntries(
@@ -40,6 +69,7 @@ function normalizeMenuEntries(
       url?: unknown;
       pdf_url?: unknown;
       source_url?: unknown;
+      nutrition?: unknown;
     };
     const rawUrl =
       typeof row.url === "string"
@@ -59,9 +89,11 @@ function normalizeMenuEntries(
         error: "each products.menu entry needs a valid https:// url",
       };
     }
+    const nutrition = menuNutrition(row.nutrition);
     cleaned.push({
       name: optString(row.name, MENU_NAME_MAX),
       url: rawUrl,
+      ...(nutrition ? { nutrition } : {}),
     });
   }
   return { ok: true, value: cleaned };

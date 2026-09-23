@@ -17,6 +17,12 @@ export type PlaceMenuItem = {
   kind: MenuKind;
   pages: number | null;
   updated_label: string;
+  nutrition: {
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  } | null;
 };
 
 export type PlaceDetail = {

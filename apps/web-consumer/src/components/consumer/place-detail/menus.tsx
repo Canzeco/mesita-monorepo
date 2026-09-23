@@ -5,6 +5,7 @@ import { ChevronRight, Info, Utensils } from "lucide-react";
 
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { menuSubtitle } from "@/lib/menu-url";
+import { nutritionLine } from "@/lib/nutrition";
 import type { PlaceDetail } from "@/lib/mock/place";
 
 import { Box } from "./box";
@@ -77,6 +78,7 @@ function ProductRow({
   product: PlaceDetail["products"]["menu"][number];
   onView: () => void;
 }) {
+  const facts = nutritionLine(product.nutrition);
   return (
     <div className="bg-background flex items-center gap-3 rounded-xl p-3">
       <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
@@ -86,6 +88,9 @@ function ProductRow({
         <p className="font-display truncate text-base font-semibold">
           {product.name}
         </p>
+        {facts ? (
+          <p className="truncate text-xs tabular-nums">{facts}</p>
+        ) : null}
         <p className="text-muted-foreground truncate text-xs">
           {menuSubtitle({
             kind: product.kind,

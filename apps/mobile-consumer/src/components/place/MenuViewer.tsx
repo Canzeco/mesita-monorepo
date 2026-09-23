@@ -26,11 +26,13 @@ import {
   menuKindLabel,
   type MenuKind,
 } from '@/lib/menu-url';
+import { nutritionLine, type MenuNutrition } from '@/lib/nutrition';
 
 type MenuViewerItem = {
   name: string;
   url: string;
   kind: MenuKind;
+  nutrition?: MenuNutrition | null;
 };
 
 /** Full-screen menu viewer — web MenuViewer peer (zoom ± for images). */
@@ -103,6 +105,11 @@ function MenuViewerBody({
             >
               {menu.name}
             </Text>
+            {nutritionLine(menu.nutrition) ? (
+              <Text className="text-[11px] text-foreground" numberOfLines={2}>
+                {nutritionLine(menu.nutrition)}
+              </Text>
+            ) : null}
             <Text className="text-[11px] text-muted-foreground">
               {kindLabel}
               {menu.kind === 'pdf' && pageCount > 0

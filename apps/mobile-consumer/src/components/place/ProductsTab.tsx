@@ -9,6 +9,7 @@ import { Pressable, Text, View } from 'react-native';
 import { MenuViewer } from '@/components/place/MenuViewer';
 import { COLORS } from '@/constants/brand';
 import { menuSubtitle } from '@/lib/menu-url';
+import { nutritionLine } from '@/lib/nutrition';
 import type { PlaceMenuItem } from '@/lib/types/place-detail';
 
 export function ProductsTab({ menus }: { menus: PlaceMenuItem[] }) {
@@ -83,6 +84,14 @@ export function ProductsTab({ menus }: { menus: PlaceMenuItem[] }) {
                   >
                     {m.name}
                   </Text>
+                  {nutritionLine(m.nutrition) ? (
+                    <Text
+                      className="text-xs text-foreground"
+                      numberOfLines={2}
+                    >
+                      {nutritionLine(m.nutrition)}
+                    </Text>
+                  ) : null}
                   <Text
                     className="text-xs text-muted-foreground"
                     numberOfLines={1}

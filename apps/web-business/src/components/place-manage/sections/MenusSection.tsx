@@ -29,6 +29,12 @@ import { usePlaceContext, type PatchResult } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
 import { SectionCard, TextField } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
+import {
+  EMPTY_NUTRITION,
+  nutritionDraftFrom,
+  nutritionFromDraft,
+  type NutritionDraft,
+} from "@/lib/nutrition";
 
 const MENU_NAME_MAX = 80;
 
@@ -40,6 +46,7 @@ type MenuDraft = {
   url: string;
   /** Exclusive source — upload file XOR Drive link. Null until the operator picks. */
   source: MenuSource | null;
+  nutrition: NutritionDraft;
 };
 
 type ItemKind = "menu";
@@ -89,7 +96,13 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
               : "";
       const name = typeof m?.name === "string" ? m.name.trim() : "";
       if (!url && !name) return null;
-      return { key: newKey(), name, url, source: sourceFromUrl(url) };
+      return {
+        key: newKey(),
+        name,
+        url,
+        source: sourceFromUrl(url),
+        nutrition: nutritionDraftFrom((m as { nutrition?: unknown }).nutrition),
+      };
     })
     .filter((m): m is MenuDraft => m != null);
 
@@ -104,6 +117,7 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
         name: place.menu_pdf_name?.trim() ?? "",
         url,
         source: sourceFromUrl(url),
+        nutrition: { ...EMPTY_NUTRITION },
       },
     ];
   }
@@ -114,9 +128,11 @@ function serializeMenus(items: MenuDraft[]): AdminMenuItem[] {
   return items
     .map((m) => {
       const name = m.name.trim();
+      const nutrition = nutritionFromDraft(m.nutrition);
       return {
         name: name ? name.slice(0, MENU_NAME_MAX) : null,
         url: m.url.trim() || null,
+        ...(nutrition.ok && nutrition.value ? { nutrition: nutrition.value } : {}),
       };
     })
     .filter((m) => m.url);
@@ -144,6 +160,7 @@ export function MenusSection({
     // Incomplete drafts (source chosen, no file/link yet) count as dirty so
     // the nav guard still runs and can drain session uploads.
     if (items.some((m) => m.source != null && !m.url.trim())) return true;
+    if (items.some((m) => !nutritionFromDraft(m.nutrition).ok)) return true;
     if (items.some((m) => !m.source && !m.url.trim() && !m.name.trim())) {
       // Brand-new empty rows — dirty until removed or filled.
       if (items.length !== saved.length) return true;
@@ -208,7 +225,7 @@ export function MenusSection({
     }
     setItems((prev) => [
       ...prev,
-      { key: newKey(), name: "", url: "", source: null },
+      { key: newKey(), name: "", url: "", source: null, nutrition: { ...EMPTY_NUTRITION } },
     ]);
     setPickerOpen(false);
   };
@@ -319,6 +336,13 @@ export function MenusSection({
         return {
           kind: "invalid",
           error: "Each menu needs a source — Upload file or Google Drive.",
+        };
+      }
+      if (!nutritionFromDraft(m.nutrition).ok) {
+        return {
+          kind: "invalid",
+          error:
+            "Nutrition needs all four numbers — kilocalories, protein, carbs, and fat — or leave them blank.",
         };
       }
     }
@@ -525,7 +549,7 @@ function MenuItemCard({
   item: MenuDraft;
   pending: boolean;
   uploading: boolean;
-  onPatch: (patch: Partial<Pick<MenuDraft, "name" | "url">>) => void;
+  onPatch: (patch: Partial<Pick<MenuDraft, "name" | "url" | "nutrition">>) => void;
   onClearUpload: () => void;
   onSource: (source: MenuSource) => void;
   onRemove: () => void;
@@ -563,6 +587,34 @@ function MenuItemCard({
         maxLength={MENU_NAME_MAX}
         disabled={pending || uploading}
       />
+
+      <div className="mt-4">
+        <p className="text-sm font-medium">Nutrition</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          Optional. The four facts a guest reads first. Leave them blank when you have not estimated.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-4">
+          {(
+            [
+              ["kcal", "kcal"],
+              ["protein", "Protein g"],
+              ["carbs", "Carbs g"],
+              ["fat", "Fat g"],
+            ] as const
+          ).map(([key, label]) => (
+            <TextField
+              key={key}
+              label={label}
+              value={item.nutrition[key]}
+              onChange={(v) =>
+                onPatch({ nutrition: { ...item.nutrition, [key]: v.replace(/[^\d]/g, "") } })
+              }
+              placeholder="—"
+              disabled={pending || uploading}
+            />
+          ))}
+        </div>
+      </div>
 
       <div className="mt-4">
         <p className="text-sm font-medium">How do you want to add it?</p>

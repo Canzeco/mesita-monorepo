@@ -17,12 +17,14 @@ import {
 import { PdfPane } from "@/components/consumer/pdf-pane";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { drivePreviewUrl, menuKindLabel, type MenuKind } from "@/lib/menu-url";
+import { nutritionLine, type MenuNutrition } from "@/lib/nutrition";
 import { cn } from "@/lib/utils";
 
 type MenuViewerItem = {
   name: string;
   url: string;
   kind: MenuKind;
+  nutrition?: MenuNutrition | null;
 };
 
 export function MenuViewer({
@@ -81,6 +83,11 @@ function MenuViewerBody({
           <p className="font-display truncate text-sm font-semibold tracking-tight">
             {menu.name}
           </p>
+          {nutritionLine(menu.nutrition) ? (
+            <p className="type-label truncate tabular-nums">
+              {nutritionLine(menu.nutrition)}
+            </p>
+          ) : null}
           <p className="text-muted-foreground type-label truncate">
             {kindLabel}
             {menu.kind === "pdf" && pageCount > 0

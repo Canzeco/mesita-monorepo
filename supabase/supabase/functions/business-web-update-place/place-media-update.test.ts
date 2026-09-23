@@ -31,6 +31,39 @@ Deno.test("products.menu: sanitizes name/url and keeps sibling keys", () => {
   );
 });
 
+Deno.test("products.menu: keeps headline nutrition and drops a broken estimate", () => {
+  const update: Record<string, unknown> = {};
+  const res = applyMediaUpdates(
+    {
+      products: {
+        menu: [
+          {
+            name: "Dinner",
+            url: "https://example.com/menu.pdf",
+            nutrition: { kcal: 640, proteinG: 54, carbsG: 6, fatG: 44 },
+          },
+          {
+            name: "Bar",
+            url: "https://example.com/bar.pdf",
+            nutrition: { kcal: 10 },
+          },
+        ],
+      },
+    },
+    update,
+    10,
+  );
+  assertEquals(res, null);
+  assertEquals((update.products as { menu: unknown }).menu, [
+    {
+      name: "Dinner",
+      url: "https://example.com/menu.pdf",
+      nutrition: { kcal: 640, proteinG: 54, carbsG: 6, fatG: 44 },
+    },
+    { name: "Bar", url: "https://example.com/bar.pdf" },
+  ]);
+});
+
 Deno.test("products.menu: rejects non-https urls", async () => {
   const update: Record<string, unknown> = {};
   const res = applyMediaUpdates(
