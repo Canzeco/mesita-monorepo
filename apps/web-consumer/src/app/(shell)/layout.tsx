@@ -5,6 +5,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
+import { WebFrame } from "@/components/consumer/WebFrame";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
@@ -17,6 +18,11 @@ import { DiscountQuotesProvider } from "@/lib/discount-quotes";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
+import { prefixPath } from "@/lib/surface";
+import {
+  WEB_GET_THE_APP,
+  webRequiresRegisteredAccount,
+} from "@/lib/web-surface-auth";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -48,15 +54,28 @@ export default async function ConsumerShellLayout({
   // URL. `here` is what the guest actually asked for, params included, and
   // it rides every redirect below so nothing is lost at the wall.
   const pathname = requestHeaders.get("x-pathname") ?? "";
+  const barePathname = requestHeaders.get("x-bare-pathname") ?? pathname;
+  const surface = requestHeaders.get("x-surface") === "mob" ? "mob" : "web";
   const here = pathname
     ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
     : "";
   const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = (await supabase.auth.getUser()).data.user;
+  if (!user && surface === "web") {
+    await supabase.auth.signInAnonymously();
+    user = (await supabase.auth.getUser()).data.user;
+  }
   if (!user) {
-    redirect(withNext("/", here));
+    redirect(withNext(surface === "web" ? prefixPath("web", "/") : "/", here));
+  }
+  if (
+    surface === "web" &&
+    user.is_anonymous &&
+    webRequiresRegisteredAccount(barePathname)
+  ) {
+    redirect(
+      withNext(prefixPath("web", WEB_GET_THE_APP), here),
+    );
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
@@ -115,7 +134,9 @@ export default async function ConsumerShellLayout({
   }
   // Carry the destination into onboarding so finishing the form lands the
   // guest on what they originally opened, not a generic home tab.
-  if (needsOnboarding) redirect(withNext(CONSUMER_ROUTES.onboard, here));
+  if (needsOnboarding && surface !== "web" && !user.is_anonymous) {
+    redirect(withNext(CONSUMER_ROUTES.onboard, here));
+  }
 
   // Two-box layout strategy (per user spec):
   //   - Bottom: BottomNav (shrink-0).
@@ -130,8 +151,10 @@ export default async function ConsumerShellLayout({
   // The modal slot is rendered last in this relative shell wrapper.
   // Section-scoped modal routes mount absolute overlays that intentionally
   // cover BOTH top bar and bottom nav while preserving the underlying shell.
+  const Frame = surface === "mob" ? MobileFrame : WebFrame;
+
   return (
-    <MobileFrame>
+    <Frame>
       {/* Runs before the children subtree hydrates the saved set, so a fresh
           consumer never inherits the previous account's localStorage-backed
           favorites / reservations (survives sign-out + DB reset). */}
@@ -162,7 +185,10 @@ export default async function ConsumerShellLayout({
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
               <ShellChildrenSlot>{children}</ShellChildrenSlot>
             </div>
-            <BottomNav userId={user.id} />
+            <BottomNav
+              userId={user.id}
+              className={surface === "web" ? "md:hidden" : undefined}
+            />
             {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}
@@ -178,6 +204,6 @@ export default async function ConsumerShellLayout({
         </DiscountQuotesProvider>
       </ClassProvider>
       <Toaster />
-    </MobileFrame>
+    </Frame>
   );
 }

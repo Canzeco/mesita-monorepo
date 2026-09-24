@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgePercent, Camera, MapPin, Sparkles } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { SurfaceSwitch } from "@/components/consumer/SurfaceSwitch";
 
 // Two-column enterprise auth shell for the consumer subdomain.
 //
@@ -40,6 +41,7 @@ export function EnterpriseAuthLayout({
               <p className="text-muted-foreground mt-1.5 text-sm leading-[1.55]">
                 {subtitle}
               </p>
+              <SurfaceSwitch />
               {chip}
             </header>
             {children}

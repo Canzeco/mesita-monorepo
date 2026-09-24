@@ -14,6 +14,7 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
+import { barePath } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -112,11 +113,17 @@ const ITEMS: Item[] = [
   },
 ];
 
-export function BottomNav({ userId }: { userId?: string }) {
+export function BottomNav({
+  userId,
+  className,
+}: {
+  userId?: string;
+  className?: string;
+}) {
   // The inbox tab (and its pending-notification badge) left the tab bar at
   // MESITA-1609; the prop stays so the shell layout call site doesn't churn.
   void userId;
-  const pathname = usePathname();
+  const pathname = barePath(usePathname() ?? "/");
   const [soonItem, setSoonItem] = useState<Item | null>(null);
   const getSupabase = useLazyBrowserSupabase();
 
@@ -132,6 +139,7 @@ export function BottomNav({ userId }: { userId?: string }) {
         className={cn(
           "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
           Z_BOTTOM_NAV,
+          className,
         )}
       >
         <div className="flex items-end justify-around">
