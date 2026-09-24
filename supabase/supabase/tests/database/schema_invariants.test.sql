@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(132);
+select plan(134);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -461,8 +461,20 @@ select ok(
 
 select is(
   (select label from public.place_plans where key = 'pro'),
-  'Partner'::text,
-  'place_plans.pro is labelled Partner'
+  'Pro'::text,
+  'place_plans.pro is labelled Pro (MESITA-2020)'
+);
+
+select is(
+  (select price_cents from public.place_plans where key = 'pro'),
+  20000,
+  'place_plans.pro is MX$200/mo in centavos'
+);
+
+select is(
+  exists (select 1 from public.place_plans where key = 'free'),
+  true,
+  'place_plans includes a free row'
 );
 
 select is(

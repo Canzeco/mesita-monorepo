@@ -107,6 +107,7 @@ export default async function SetupPage(props: {
 
   const products = buildProductCards({
     partnered,
+    placePlan: place.plan ?? "free",
     mesitaPayEnabled: place.mesitaPayEnabled === true,
     place,
     placeHref: (view: PlaceTab) => placeTabHref(id, view),
