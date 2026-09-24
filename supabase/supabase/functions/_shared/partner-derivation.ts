@@ -1,6 +1,7 @@
 // Mesita Partner / promo-lane derivation (MESITA-912).
 //
-// listing_type = 'partner' iff membership (plan ≠ free) AND strategy ≠ zero.
+// listing_type = 'partner' iff plan is Ultra AND strategy ≠ zero (MESITA-2020).
+// Pro pays but does not wear the guest-facing badge until rewards are live.
 // Otherwise demote partner → web; leave unclaimed untouched.
 //
 // Also holds the membership stamp resets every plan write shares: the two
@@ -23,7 +24,7 @@ export function deriveListingType(params: {
 }): ListingType | undefined {
   const strategy = strategyForRates(params.rates);
   const shouldBePartner =
-    params.plan !== "free" && strategy !== null && strategy !== "zero";
+    params.plan === "ultra" && strategy !== null && strategy !== "zero";
 
   if (shouldBePartner) return "partner";
 
