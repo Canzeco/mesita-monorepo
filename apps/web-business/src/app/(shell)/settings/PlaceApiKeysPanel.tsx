@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy, KeyRound, Loader2, RefreshCw } from "lucide-react";
 import { useRailScopeContext } from "@/components/console/RailScopeContext";
 import { findPlace } from "@/lib/active-place";
+import { ErrorNote } from "@/components/ErrorNote";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import {
@@ -26,14 +26,17 @@ export function PlaceApiKeysPanel({ placeId }: { placeId: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<PlaceApiKeyMinted | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const list = await apiListPlaceApiKeys(supabase, placeId);
       setKeys(list.filter((k) => !k.revoked_at));
     } catch (e) {
-      toast(errMsg(e, "Couldn't load API keys."));
+      setError(errMsg(e, "Couldn't load API keys."));
     } finally {
       setLoading(false);
     }
@@ -48,18 +51,22 @@ export function PlaceApiKeysPanel({ placeId }: { placeId: string }) {
 
   async function mint(rotate: boolean) {
     if (!isOwner) {
-      toast("Only owners can mint or rotate API keys.");
+      setError("Only owners can mint or rotate API keys.");
       return;
     }
     setBusy(true);
     setFresh(null);
+    setError(null);
+    setNotice(null);
     try {
       const key = await apiCreatePlaceApiKey(supabase, placeId, { rotate });
       setFresh(key);
       await refresh();
-      toast(rotate ? "New API key issued — copy it now." : "API key created.");
+      setNotice(
+        rotate ? "New API key issued — copy it now." : "API key created.",
+      );
     } catch (e) {
-      toast(errMsg(e, "Couldn't create an API key."));
+      setError(errMsg(e, "Couldn't create an API key."));
     } finally {
       setBusy(false);
     }
@@ -68,13 +75,15 @@ export function PlaceApiKeysPanel({ placeId }: { placeId: string }) {
   async function revoke(keyId: string) {
     if (!isOwner) return;
     setBusy(true);
+    setError(null);
+    setNotice(null);
     try {
       await apiRevokePlaceApiKey(supabase, placeId, keyId);
       setFresh(null);
       await refresh();
-      toast("API key revoked.");
+      setNotice("API key revoked.");
     } catch (e) {
-      toast(errMsg(e, "Couldn't revoke the key."));
+      setError(errMsg(e, "Couldn't revoke the key."));
     } finally {
       setBusy(false);
     }
@@ -84,6 +93,10 @@ export function PlaceApiKeysPanel({ placeId }: { placeId: string }) {
 
   return (
     <div className="flex flex-col gap-3">
+      {error ? <ErrorNote message={error} /> : null}
+      {notice ? (
+        <p className="text-muted-foreground px-1 text-[12px]">{notice}</p>
+      ) : null}
       {loading ? (
         <p className="text-muted-foreground flex items-center gap-2 px-1 text-[12px]">
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -140,7 +153,7 @@ export function PlaceApiKeysPanel({ placeId }: { placeId: string }) {
               className="border-border hover:bg-muted/60 inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium"
               onClick={() => {
                 void navigator.clipboard.writeText(fresh.token);
-                toast("Copied.");
+                setNotice("Copied to clipboard.");
               }}
             >
               <Copy className="h-3 w-3" aria-hidden />
