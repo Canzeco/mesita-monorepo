@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(130);
+select plan(132);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1089,6 +1089,20 @@ select ok(
     select 1 from pg_policy where polrelid = 'public.place_guest_customers'::regclass
   ),
   'place_guest_customers is EF-only: RLS on with zero policies'
+);
+
+select has_table(
+  'public', 'place_api_keys',
+  'place_api_keys stores hashed place-scoped integration secrets (MESITA-2062)'
+);
+
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_api_keys'::regclass)
+  and not exists (
+    select 1 from pg_policy where polrelid = 'public.place_api_keys'::regclass
+  ),
+  'place_api_keys is EF-only: RLS on with zero policies'
 );
 
 -- ━━━ CRITERION 2 — every tenant-owned record is scoped to a place ━━━━━━━━━━
