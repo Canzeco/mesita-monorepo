@@ -9,6 +9,7 @@ import {
   useOverlayPresence,
 } from "@/components/consumer/overlay/overlay-presence";
 import { isModalContractPath } from "@/lib/consumer-route-contract";
+import { barePath } from "@/lib/surface";
 import { SEMI_MODAL_PANEL_CLASS } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 
@@ -39,7 +40,7 @@ export function BottomSheetShell({
   hideHeader?: boolean;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = barePath(usePathname() ?? "/");
   const onModalRoute = isModalContractPath(pathname);
   const { open, requestClose } = useOverlayPresence(() => router.back(), {
     active: onModalRoute,

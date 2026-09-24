@@ -16,3 +16,13 @@
 - **Proofs are screenshots** → `ticket-proofs` bucket (RLS: own folder), URL persisted. Nothing reads it yet (Ojo, staged).
 - **Identity = TWO INDEPENDENT FACTS** (`consumer-identity.ts`): **Instagram** = handle + 1,000 followers; **Diamond** = invitation only (request/PIN). No classes: `class_key` is storage only rate surfaces read. No Passport: the member number (`consumers.code`) prints on Profile. Both facts print twice, Instagram then Diamond: chips · cells; one metal, Diamond. **Me boxes are routes, never sheets** (`/me/profile|instagram|diamond|plan|settings|help|notifications|visits|reservations`; `/me/class*`, `/me/passport` 308s). Grid = Profile full, seven pairs; Legal + version in Help, not Settings; no Cards cell (Wallet lists them), no More. Favs = localStorage.
 - Edge Functions: `consumer-web-*`. CI: `web-consumer.yml` (lint · typecheck · test · build).
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
