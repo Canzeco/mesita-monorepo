@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 });
 
 const DESCRIPTION =
-  "An AI-native platform for going out: discovery, AI reservations, commission-free pickup orders, rewards and payments in one app. In development — launching in San Francisco, January 2027.";
+  "Every restaurant in your city, booked by an AI agent, prepaid with a bonus, and cheaper every time you go. In development — launching in San Francisco, January 2027.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),

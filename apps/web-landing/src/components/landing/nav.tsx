@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 
-const NAV_LINKS = [
-  { href: "/#catalog", label: "Catalog" },
-  { href: "/#agents", label: "Agents" },
+// One anchor per product, in page order. `footer.tsx` prints the same four;
+// keep them together.
+export const NAV_LINKS = [
+  { href: "/#discovery", label: "Discovery" },
+  { href: "/#reservations", label: "Reservations" },
+  { href: "/#prepay", label: "Prepayments" },
   { href: "/#rewards", label: "Rewards" },
-  { href: "/#money", label: "Money" },
 ];
 
 function Nav() {

@@ -1,67 +1,50 @@
 import {
-  CapitalCredits,
   Close,
-  DiscoveryEngines,
+  Discovery,
   Footer,
   Hero,
   Nav,
-  OrderAgents,
-  RewardsProgram,
-  Positioning,
-  Products,
+  PrepaidCredits,
   ReservationAgents,
-  Revenue,
-  Summary,
-  SuperCatalog,
-  ThreeSides,
+  RewardsProgram,
 } from "@/components/landing";
 
-// Landing page — the evaluator-facing pitch surface for mesita.ai.
+// Landing page — the guest-facing pitch for mesita.ai.
 //
-// The page IS the read: it assumes roughly ten minutes of attention and
-// nothing else, so anything deeper sits behind the CTA rather than being a
-// prerequisite. Written pre-launch (San Francisco, January 2027) — the status
-// badge in the hero does the honesty work for every section below it, which
-// is what lets the money system appear in product voice without ever
-// claiming to be live.
+// FOUR PRODUCTS, ALL OF THEM LIVE. Pato cut the page to what a guest can use
+// today (2026-09-28): the earlier fifteen-section evaluator read carried the
+// restaurant side, the order economics, the money system and three income
+// streams, and none of it is what a guest opens the app for. What stays is
+// the loop a visit actually runs — find the place, book it, prepay it, get
+// rewarded at the table — in that order, and nothing that is not built.
+//
+// The status badge in the hero still does the honesty work for the page: it
+// is pre-launch in its market, so every section speaks in product voice
+// without claiming liveness where it is.
 //
 // Composition stays flat: one function per section, top to bottom.
 //
-//   1.  <Nav />                 Sticky bar, anchors + CTA
-//   2.  <Hero />                State, promise, photo with UI chips
-//   3.  <Summary />             The quotable paragraph, typographic
-//   4.  <ThreeSides />          Guests · partners · everyone else (~100:1)
-//   5.  <Products />            Consumer app · consumer MCP · business app
-//   6.  <SuperCatalog />        The moat, with a card mid-enrichment
-//   7.  <DiscoveryEngines />    Eight doors, one intelligence
-//   8.  <ReservationAgents />   The wow: the agent phones the restaurant
-//   9.  <OrderAgents />         The economics: 0% against 25–30%
-//   10. <RewardsProgram />      Five rewards with reasons; Sharing dominates
-//   11. <CapitalCredits />      The money system, the page's one dark act
-//   12. <Revenue />             Three streams, three refusals
-//   13. <Positioning />         Demand · software · capital
-//   14. <Close />               Built-facts, status, dual CTA
-//   15. <Footer />
+//   1. <Nav />                Sticky bar, four anchors + CTA
+//   2. <Hero />               Promise, photo with UI chips
+//   3. <Discovery />          Citywide Discovery: the self-building catalog
+//   4. <ReservationAgents />  Reservations Agent: the agent phones the place
+//   5. <PrepaidCredits />     Prepaid Credits: pay 100, spend 110
+//   6. <RewardsProgram />     Visit Rewards: four action rewards
+//   7. <Close />              The four names, status, dual CTA
+//   8. <Footer />
 //
-// Every number on the page is structural (100:1, 0% vs 25–30%, 100 → 110,
-// ~2:1). Currency figures stay off the public site by design.
+// The numbers on the page are the ones Pato dictated for it: 30 US cents a
+// profile, 1,000 places in ten minutes, 100 → 110 on Credits.
 
 export default function Home() {
   return (
     <main className="bg-background min-h-screen">
       <Nav />
       <Hero />
-      <Summary />
-      <ThreeSides />
-      <Products />
-      <SuperCatalog />
-      <DiscoveryEngines />
+      <Discovery />
       <ReservationAgents />
-      <OrderAgents />
+      <PrepaidCredits />
       <RewardsProgram />
-      <CapitalCredits />
-      <Revenue />
-      <Positioning />
       <Close />
       <Footer />
     </main>
