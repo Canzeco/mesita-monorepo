@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { NAV_LINKS } from "@/components/landing/nav";
 
 const LEGAL_LINKS = [
@@ -12,8 +11,11 @@ function Footer() {
   return (
     <footer className="bg-background">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-10 md:flex-row md:items-center md:justify-between">
-        <Link href="/" className="text-foreground flex items-center">
-          <MesitaLogo variant="horizontal" className="h-6 w-auto" />
+        <Link
+          href="/"
+          className="text-foreground font-display text-lg font-semibold tracking-tight"
+        >
+          Mesita
         </Link>
         <p className="text-muted-foreground text-[12px]">
           © Mesita · {year} · Launching in San Francisco, January 2027
