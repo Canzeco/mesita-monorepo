@@ -25,12 +25,18 @@ function text(html: string): string {
 }
 
 describe("the landing says Diamond", () => {
-  it.each([
-    ["Hero", Hero],
-    ["RewardsProgram", RewardsProgram],
-  ])("%s names Diamond, never a metal or a ladder", (_, Component) => {
-    const read = text(renderToStaticMarkup(<Component />));
+  // Rewards is where Diamond lives; the Hero's third chip is Credits now
+  // (2026-09-28), so the Hero is held to the naming rule but not to
+  // mentioning Diamond at all.
+  it("RewardsProgram names Diamond, never a metal or a ladder", () => {
+    const read = text(renderToStaticMarkup(<RewardsProgram />));
     expect(read).toContain("Diamond");
+    expect(read.match(METALS)?.[0] ?? null).toBeNull();
+    expect(read.match(LADDER_WORDS)?.[0] ?? null).toBeNull();
+  });
+
+  it("Hero never says a metal or a ladder", () => {
+    const read = text(renderToStaticMarkup(<Hero />));
     expect(read.match(METALS)?.[0] ?? null).toBeNull();
     expect(read.match(LADDER_WORDS)?.[0] ?? null).toBeNull();
   });

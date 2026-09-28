@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { NAV_LINKS } from "@/components/landing/nav";
+
+const LEGAL_LINKS = [
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+];
 
 function Footer() {
   const year = new Date().getFullYear();
@@ -13,39 +19,15 @@ function Footer() {
           © Mesita · {year} · Launching in San Francisco, January 2027
         </p>
         <nav className="text-muted-foreground flex flex-wrap items-center gap-4 text-[12px]">
-          <Link
-            href="/#catalog"
-            className="hover:text-foreground py-2 transition"
-          >
-            Catalog
-          </Link>
-          <Link
-            href="/#agents"
-            className="hover:text-foreground py-2 transition"
-          >
-            Agents
-          </Link>
-          <Link
-            href="/#rewards"
-            className="hover:text-foreground py-2 transition"
-          >
-            Rewards
-          </Link>
-          <Link
-            href="/#money"
-            className="hover:text-foreground py-2 transition"
-          >
-            Money
-          </Link>
-          <Link href="/terms" className="hover:text-foreground py-2 transition">
-            Terms
-          </Link>
-          <Link
-            href="/privacy"
-            className="hover:text-foreground py-2 transition"
-          >
-            Privacy
-          </Link>
+          {[...NAV_LINKS, ...LEGAL_LINKS].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="hover:text-foreground py-2 transition"
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
       </div>
     </footer>
