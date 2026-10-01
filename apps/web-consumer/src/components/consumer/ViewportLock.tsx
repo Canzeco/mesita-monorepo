@@ -42,6 +42,7 @@ import { useEffect } from "react";
  */
 export function ViewportLock() {
   useEffect(() => {
+    if (document.documentElement.dataset.surface !== "mob") return;
     // Safari-only, non-standard, and absent from DocumentEventMap — hence the
     // plain Event and the string literals.
     const refuse = (event: Event) => event.preventDefault();

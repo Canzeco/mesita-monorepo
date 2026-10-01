@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
+import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { DeploymentWatcher } from "@/components/consumer/DeploymentWatcher";
 import { RouteBadge } from "@/components/consumer/RouteBadge";
+import { SurfacePrefixer } from "@/components/consumer/SurfacePrefixer";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
+import { isSurface } from "@/lib/surface";
 
 const inter = Inter({
   variable: "--font-body",
@@ -71,23 +75,39 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const surfaceHeader = requestHeaders.get("x-surface");
+  const surface = isSurface(surfaceHeader) ? surfaceHeader : "web";
+  const bare = requestHeaders.get("x-bare-pathname") ?? "/";
+  const preShell =
+    bare === "/" ||
+    bare.startsWith("/onboard") ||
+    bare.startsWith("/auth") ||
+    bare.startsWith("/gift");
+  const body = surface === "mob" && preShell ? (
+    <MobileFrame>{children}</MobileFrame>
+  ) : (
+    children
+  );
   return (
     <html
       lang="en"
+      data-surface={surface}
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
       <body className="bg-background text-foreground flex h-full flex-col">
-        {children}
+        {body}
+        <SurfacePrefixer />
         {/* The route, printed into the body — the preview panes and
             screenshot harnesses we QA in have no address bar. Mounted at
             the root so it covers every surface, shell and pre-auth alike. */}
-        <RouteBadge />
+        <RouteBadge surface={surface} />
         {/* The imperative half of the 100%-only lock: Safari ignores the
             viewport meta for pinch, but it does honour a refused
             gesturestart. See the viewport export above. */}
