@@ -4,8 +4,8 @@
 // Source of truth when present: app_config.promos_config.v12
 //   { version: 12, visits, orders, cap }
 // A bill pays visits base (strategy × class) + welcome (first verified ticket
-// at the place, D3-A) + each earned action bonus (mesita / story / google),
-// applied to the first cap-pesos.
+// at the place, D3-A) + each earned action bonus (mesita / story). A Google
+// review is not a bonus. Applied to the first cap-pesos.
 //
 // CONTEXT: only the `visits` ladder is ever read. `orders` is parked — no
 // ticket carries a remote context yet — so a remote bill cannot be priced and
@@ -119,12 +119,12 @@ export type RewardsGrid = {
 //
 //   type      Base & Mesita (retention + Mesita's own data)
 //               < Story (social reach)
-//               < Google & Welcome (acquisition + permanent public proof)
+//               < Welcome (the first visit)
+//             The review cells stay in this legacy table. They are not paid.
 //   class     Bronze < Silver < Gold < Diamond
 //   strategy  Zero < Conservative < Aggressive
 //
-// The two groupings Pato wrote as ties are made STRICT by one step each —
-// Mesita = Base + 5, Welcome = Google + 5. Under best-of a tie is a DEAD
+// Mesita = Base + 5. Under best-of a tie is a DEAD
 // RUNG: an action worth exactly what the guest already had pays nothing for
 // doing it, which would make both the Mesita review and the Welcome coupling
 // decorative.
@@ -441,7 +441,7 @@ function resolveAdditiveRate(
   // gated on a Google review (that was the v9 coupling).
   if (ctx.isFirstVisit) total += b.welcome;
   if (ctx.storyVerified) total += b.story;
-  if (ctx.reviewVerified) total += b.google;
+  // A Google review never moves the rate. Stored `b.google` is ignored.
   if (ctx.mesitaReviewed) total += b.mesita;
   return clampPercent(total);
 }
@@ -462,12 +462,12 @@ function resolveBestOfRate(
     grid.grid.bronze[strategy],
     grid.grid[segment][strategy],
   ];
-  // v9 coupling kept for the legacy path only.
-  if (ctx.isFirstVisit && ctx.reviewVerified) {
+  // Welcome pays for the first visit itself. A Google review does not
+  // unlock it and does not add its own rung.
+  if (ctx.isFirstVisit) {
     qualifying.push(a.welcome[segment][strategy]);
   }
   if (ctx.storyVerified) qualifying.push(a.story[segment][strategy]);
-  if (ctx.reviewVerified) qualifying.push(a.review[segment][strategy]);
   if (ctx.mesitaReviewed) qualifying.push(a.mesita_review[segment][strategy]);
   return clampPercent(qualifying.reduce((m, r) => (r > m ? r : m), 0));
 }
@@ -501,9 +501,10 @@ export function offersAction(
       case "story":
         return b.story > 0;
       case "review":
-        return b.google > 0;
+        return false;
     }
   }
+  if (action === "review") return false;
   return CLASS_SEGMENTS.some(
     (cls) => grid.actions[action][cls][strategy] > 0,
   );

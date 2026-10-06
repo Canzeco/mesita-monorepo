@@ -66,7 +66,10 @@ import {
 import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
 import { TicketHero } from "@/components/consumer/rewards/TicketHero";
 import { TicketSkeleton } from "@/components/consumer/rewards/TicketSkeleton";
-import { TaskProof } from "@/components/consumer/rewards/TaskProof";
+import {
+  TaskProof,
+  googleMapsSearchUrl,
+} from "@/components/consumer/rewards/TaskProof";
 import { MesitaPayDisclosureDialog } from "@/components/consumer/rewards/MesitaPayDisclosureDialog";
 import {
   GoogleGlyph,
@@ -95,7 +98,6 @@ import {
   apiGetTicket,
   apiReportTicket,
   apiSelectTicketPayment,
-  apiSubmitReview,
   apiSubmitStory,
   apiSubmitTicketBill,
   checkUrlForCode,
@@ -168,13 +170,12 @@ function pickStorageKey(ticketId: string): string {
 
 type TaskSheet = "mesita" | "report" | null;
 
-type ActionKind = "story" | "google" | "mesita";
+type ActionKind = "story" | "mesita";
 /** "base" = no action selected — the QR at the guest's floor. */
 type RewardPick = ActionKind | "base";
 
 const ACTION_SHORT = {
   story: "Instagram Story",
-  google: "Google Review",
   mesita: "Mesita Review",
 } as const satisfies Record<ActionKind, string>;
 
@@ -381,14 +382,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
   const [sheet, setSheet] = useState<TaskSheet>(null);
 
-  // ── Task submits (self-attested; the screenshot is the proof artifact). ──
-  const confirmGoogle = useCallback(
-    async (screenshotUrl: string) => {
-      await apiSubmitReview(supabase, ticketId, screenshotUrl);
-      await tickets.refresh();
-    },
-    [supabase, ticketId, tickets],
-  );
+  // ── Task submits (self-attested; the story screenshot is the proof). ──
   const confirmStory = useCallback(
     async (screenshotUrl: string) => {
       await apiSubmitStory(supabase, ticketId, screenshotUrl);
@@ -685,40 +679,25 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
   const storyOnTicket =
     ticket.story_state != null && ticket.story_state !== "not_required";
-  const reviewOnTicket =
-    ticket.review_state != null && ticket.review_state !== "not_required";
-  const persistedTask: ActionKind | null = storyOnTicket
-    ? "story"
-    : reviewOnTicket
-      ? "google"
-      : null;
+  const persistedTask: ActionKind | null = storyOnTicket ? "story" : null;
 
   const localPick: RewardPick | null =
-    storedPick === "review"
-      ? "google"
-      : storedPick === "base" ||
-          storedPick === "story" ||
-          storedPick === "google" ||
-          storedPick === "mesita"
-        ? storedPick
+    storedPick === "base" || storedPick === "story" || storedPick === "mesita"
+      ? storedPick
+      : storedPick === "google" || storedPick === "review"
+        ? "base"
         : null;
   const pick: RewardPick | null = localPick ?? persistedTask;
   const chosenAction: ActionKind | null = pick === "base" ? null : pick;
 
   const storyVerified = taskStateFor(ticket.story_state) === "done";
-  const googleVerified = taskStateFor(ticket.review_state) === "done";
   const mesitaVerified = reviewDone;
   const verifiedActions: ActionKind[] = [
     ...(storyVerified ? (["story"] as const) : []),
-    ...(googleVerified ? (["google"] as const) : []),
     ...(mesitaVerified ? (["mesita"] as const) : []),
   ];
   const isVerified = (a: ActionKind): boolean =>
-    a === "story"
-      ? storyVerified
-      : a === "google"
-        ? googleVerified
-        : mesitaVerified;
+    a === "story" ? storyVerified : mesitaVerified;
 
   const chosenState: TaskState =
     chosenAction === null
@@ -727,20 +706,14 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ? reviewDone
           ? "done"
           : "todo"
-        : taskStateFor(
-            chosenAction === "story"
-              ? ticket.story_state
-              : ticket.review_state,
-          );
+        : taskStateFor(ticket.story_state);
 
   const actionBonus = (a: ActionKind | null): number =>
     !quote || a === null
       ? 0
       : a === "story"
         ? quote.bonuses.story
-        : a === "google"
-          ? quote.bonuses.google
-          : quote.bonuses.mesita;
+        : quote.bonuses.mesita;
   const earnedExcept = (a: ActionKind | null): number =>
     !additive
       ? 0
@@ -770,15 +743,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     !live || ticket.state === "approved" || ticket.state === "paying";
   const storySelectable =
     Boolean(quote?.storyEligible) && igConnected && !pickLocked;
-  const googleSelectable = (quote?.bonuses.google ?? 0) > 0 && !pickLocked;
   const mesitaSelectable =
     (quote?.bonuses.mesita ?? 0) > 0 && !reviewDone && !pickLocked;
   const selectableFor = (a: ActionKind): boolean =>
-    a === "story"
-      ? storySelectable
-      : a === "google"
-        ? googleSelectable
-        : mesitaSelectable;
+    a === "story" ? storySelectable : mesitaSelectable;
 
   const commitAction = (a: RewardPick) => {
     if (!pickLocked) setStoredPick(a);
@@ -941,6 +909,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             selectedTotal={selectedTotal}
             actionBonus={actionBonus}
             capPesos={capPesos}
+            placeName={placeName}
+            placeAddress={ticket.place?.address}
           />
         ) : null}
 
@@ -989,15 +959,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             </div>
           ) : (
             <TaskProof
-              kind={chosenAction === "story" ? "story" : "review"}
               ticketId={ticketId}
               placeName={placeName}
-              placeAddress={ticket.place?.address}
               rate={selectedTotal}
               rejected={chosenState === "rejected"}
-              onConfirm={
-                chosenAction === "story" ? confirmStory : confirmGoogle
-              }
+              onConfirm={confirmStory}
               onDone={() => goToStep("qr")}
               onSkip={() => goToStep("qr")}
             />
@@ -1426,6 +1392,8 @@ function RewardLanes({
   selectedTotal,
   actionBonus,
   capPesos,
+  placeName,
+  placeAddress,
 }: {
   quote: RewardQuote | null;
   quoteError: boolean;
@@ -1443,6 +1411,8 @@ function RewardLanes({
   selectedTotal: number;
   actionBonus: (a: ActionKind | null) => number;
   capPesos: number | null;
+  placeName: string;
+  placeAddress?: string | null;
 }) {
   void pick;
   if (quoteError) {
@@ -1590,7 +1560,7 @@ function RewardLanes({
       )}
 
       <Lane title="Sharing" note="pick one">
-        {(["story", "google", "mesita"] as const).map((a) => {
+        {(["story", "mesita"] as const).map((a) => {
           const available =
             a === "story"
               ? Boolean(quote.storyEligible) && igConnected
@@ -1617,8 +1587,6 @@ function RewardLanes({
               glyph={
                 a === "story" ? (
                   <InstagramGlyph className="size-3.5" />
-                ) : a === "google" ? (
-                  <GoogleGlyph className="size-3.5" />
                 ) : (
                   <MesitaGlyph className="size-3.5" />
                 )
@@ -1628,6 +1596,21 @@ function RewardLanes({
           );
         })}
       </Lane>
+
+      <a
+        href={googleMapsSearchUrl(placeName, placeAddress)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-muted-foreground hover:text-foreground flex min-h-11 items-center justify-between gap-3 px-1 text-xs font-semibold"
+      >
+        <span className="flex items-center gap-2">
+          <GoogleGlyph className="size-3.5" />
+          Leave a review on Google
+        </span>
+        <span className="text-right font-medium">
+          Optional. It does not change your rate.
+        </span>
+      </a>
 
       <div className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted/40 flex items-baseline justify-between gap-2 px-3 py-1.5">

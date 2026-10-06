@@ -86,7 +86,6 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   const candidates = [
     mineRate,
     REWARD_SEGMENT_BY_KEY.welcome.rates[strategy],
-    REWARD_SEGMENT_BY_KEY.review.rates[strategy],
     REWARD_SEGMENT_BY_KEY.story.rates[strategy],
   ];
   const upTo = Math.max(...candidates);
@@ -129,7 +128,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           n={2}
           icon={Star}
           title="Post your review"
-          body="Do your bonuses before staff scan — a Google review, your Mesita rating, a story if Instagram is connected."
+          body="Do your bonuses before staff scan — your Mesita rating, and a story if Instagram is connected."
           accent
         />
         <RewardStep

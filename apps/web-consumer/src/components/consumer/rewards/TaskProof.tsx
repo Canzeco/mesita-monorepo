@@ -1,17 +1,8 @@
 "use client";
 
-// Step 2 of THE TICKET — "do tasks". One panel for both external rungs: open
-// the target app, do the thing, come back and POST THE SCREENSHOT (MESITA-1030,
-// Pato: "the screenshot is the way to validate — just post whatever screenshot
-// and it's done"). The screenshot is the proof artifact: it uploads to the
-// ticket-proofs bucket and rides the submit EF onto the ticket row. Nothing
-// inspects it — the submission still self-attests (`self_verified`,
-// MESITA-849) — but the confirm button requires one attached.
-//
-// This was two near-identical LocalSheets (GoogleReviewSheet /
-// InstagramStorySheet) stacked on top of the ticket panel. A sheet over a
-// stepped modal is a stack — the step IS the surface, so the body renders
-// inline and the two copies collapsed into one component.
+// Step 2 of THE TICKET — the Instagram story. Open Instagram, post the
+// tagged story, come back and attach the screenshot. The screenshot is the
+// proof for that story only. A Google review is not a task and not a reward.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -26,14 +17,9 @@ import {
 import { uploadTicketProof } from "@/lib/ticket-proofs";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  GoogleGlyph,
-  InstagramGlyph,
-} from "@/components/consumer/rewards/BrandGlyph";
+import { InstagramGlyph } from "@/components/consumer/rewards/BrandGlyph";
 import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-
-export type TaskKind = "review" | "story";
 
 export function googleMapsSearchUrl(
   placeName: string,
@@ -55,20 +41,16 @@ const OPEN_SETTLE_MS = 600;
 const CONFIRM_DONE_MS = 400;
 
 export function TaskProof({
-  kind,
   ticketId,
   placeName,
-  placeAddress,
   rate,
   rejected = false,
   onConfirm,
   onDone,
   onSkip,
 }: {
-  kind: TaskKind;
   ticketId: string;
   placeName: string;
-  placeAddress?: string | null;
   /** The rate this task unlocks — 0 hides the number rather than guess one. */
   rate: number;
   /** A proof that came back rejected: the base still holds, retry is allowed. */
@@ -84,7 +66,6 @@ export function TaskProof({
   const { userId } = useConsumerIdentity();
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
-  const isReview = kind === "review";
 
   // The attached screenshot. Preview via object URL, revoked on replace.
   const [shot, setShot] = useState<File | null>(null);
@@ -111,16 +92,10 @@ export function TaskProof({
 
   const openTarget = useCallback(() => {
     setPhase("opening");
-    window.open(
-      isReview
-        ? googleMapsSearchUrl(placeName, placeAddress)
-        : instagramOpenUrl(),
-      "_blank",
-      "noopener,noreferrer",
-    );
+    window.open(instagramOpenUrl(), "_blank", "noopener,noreferrer");
     if (openTimer.current !== null) window.clearTimeout(openTimer.current);
     openTimer.current = window.setTimeout(() => setPhase("idle"), OPEN_SETTLE_MS);
-  }, [isReview, placeName, placeAddress]);
+  }, []);
 
   const confirm = useCallback(async () => {
     if (!shot) return;
@@ -131,7 +106,7 @@ export function TaskProof({
         supabase,
         userId,
         ticketId,
-        isReview ? "review" : "story",
+        "story",
         shot,
       );
       await onConfirm(url);
@@ -143,7 +118,7 @@ export function TaskProof({
       setError(errMsg(err, "Couldn't confirm that just yet."));
       setPhase("error");
     }
-  }, [shot, supabase, userId, ticketId, isReview, onConfirm, onDone]);
+  }, [shot, supabase, userId, ticketId, onConfirm, onDone]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -156,19 +131,13 @@ export function TaskProof({
 
       <div className="surface-card rounded-2xl px-4 py-4 text-center">
         <span className="bg-muted/60 mx-auto grid size-11 place-items-center rounded-xl">
-          {isReview ? (
-            <GoogleGlyph className="size-6" />
-          ) : (
-            <InstagramGlyph className="size-6" />
-          )}
+          <InstagramGlyph className="size-6" />
         </span>
         <p className="text-foreground mt-2 text-sm font-extrabold tracking-tight">
-          {isReview ? "Leave your Google review" : "Post your tagged story"}
+          Post your tagged story
         </p>
         <p className="text-muted-foreground mt-1 text-xs leading-snug">
-          {isReview
-            ? "Rate your visit on Google, screenshot it, post it here."
-            : `Tag ${placeName} in your story, screenshot it, post it here.`}
+          {`Tag ${placeName} in your story, screenshot it, post it here.`}
         </p>
         {rate > 0 ? (
           <p className="text-foreground type-body mt-2 font-bold">
@@ -195,7 +164,7 @@ export function TaskProof({
         ) : (
           <ExternalLink className="size-4" />
         )}
-        {isReview ? "Open Google" : "Open Instagram"}
+        Open Instagram
       </button>
 
       {/* The proof slot — the screenshot IS the confirmation. */}

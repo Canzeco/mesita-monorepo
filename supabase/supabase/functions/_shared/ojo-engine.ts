@@ -16,10 +16,10 @@
 // that an unenforced config is a bug, and a config that LOOKS enforced while
 // silently doing nothing is worse, not better.
 //
-// Runs in the BACKGROUND, called from consumer-web-submit-story and
-// consumer-web-submit-review AFTER they have already granted self_verified
-// optimistically and responded to the guest — this module must never block
-// or fail that response. `queueOjoVerification` is the fire-and-forget entry
+// Runs in the BACKGROUND, called from consumer-web-submit-story AFTER it
+// has already granted self_verified and responded to the guest — this
+// module must never block or fail that response. A Google review is not
+// queued: posting one is not a Member Reward. `queueOjoVerification` is the entry
 // point (it hands the task to _shared/background.ts's runInBackground, like
 // place-embeddings.ts's queuePlaceEmbeddingsOnUpdate); `verifyProof` is the
 // awaitable core, kept separate so tests can call it directly without a live

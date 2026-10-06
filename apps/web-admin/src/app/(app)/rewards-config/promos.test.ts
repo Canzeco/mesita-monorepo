@@ -92,7 +92,7 @@ describe("v10 → v12 migration", () => {
 
   it("drops the influencer story override and keeps the cap", () => {
     const cfg = coercePromosConfig(V10);
-    const expected = { welcome: 10, mesita: 5, story: 10, google: 10 };
+    const expected = { welcome: 10, mesita: 5, story: 10, google: 0 };
     expect(cfg.visits.bonuses.conservative).toEqual(expected);
     expect(cfg.visits.bonuses.aggressive).toEqual(expected);
     expect(cfg.cap).toBe(200);
@@ -240,13 +240,10 @@ describe("modelWarnings", () => {
     expect(modelWarnings(DEFAULT_PROMOS)).toEqual([]);
   });
 
-  it("flags Google failing to out-pay the repeatable Story", () => {
-    // The one-shot rung must beat the one a guest can repeat every visit.
+  it("stays silent when a stored Google percent is below Story", () => {
     const cfg = structuredClone(DEFAULT_PROMOS);
     cfg.visits.bonuses.aggressive.google = cfg.visits.bonuses.aggressive.story;
-    expect(modelWarnings(cfg).map((w) => w.key)).toEqual([
-      "google-vs-story-aggressive",
-    ]);
+    expect(modelWarnings(cfg)).toEqual([]);
   });
 
   it("no longer reports class order — the guard makes it unstorable", () => {
@@ -346,8 +343,8 @@ describe("bonuses are per strategy", () => {
         },
       },
     });
-    expect(cfg.visits.bonuses.aggressive.google).toBe(25);
-    expect(cfg.visits.bonuses.conservative.google).toBe(15);
+    expect(cfg.visits.bonuses.aggressive.google).toBe(0);
+    expect(cfg.visits.bonuses.conservative.google).toBe(0);
   });
 
   it("totalFor pays the strategy's OWN action bonus", () => {

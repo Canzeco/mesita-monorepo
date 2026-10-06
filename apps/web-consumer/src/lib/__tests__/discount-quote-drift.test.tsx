@@ -3,8 +3,8 @@
 // printed different N (MESITA-1019). The box asked the engine; the chip
 // resolved N from the place's four v4 rate columns, which stopped being prices
 // when v10 additive shipped. On an aggressive place a bronze·free guest was
-// told "Up to 30%" in the header and "Up to 60%" below it, and 30 was neither
-// the guaranteed base (20) nor the reachable ceiling (60).
+// told "Up to 30%" in the header and "Up to 45%" below it, and 30 was neither
+// the guaranteed base (20) nor the reachable ceiling (45).
 //
 // Two failure modes are pinned here, because fixing one without the other just
 // moves the bug:
@@ -24,7 +24,8 @@ const SRC = join(__dirname, "..", "..");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
 // The live v11 visits grid at the time of the fix: an aggressive place pays a
-// bronze·free guest a base of 20, and the four bonuses add 40 more.
+// bronze·free guest a base of 20. Welcome, story, and Mesita add 25 more.
+// A Google percent on the quote is ignored.
 const AGGRESSIVE_BRONZE_FREE: RewardQuote = {
   strategy: "aggressive",
   classKey: "standard",
@@ -39,7 +40,7 @@ const AGGRESSIVE_BRONZE_FREE: RewardQuote = {
 
 describe("upToPercentFromQuote is the one definition of the ceiling", () => {
   it("ADDS every component under the additive engine", () => {
-    expect(upToPercentFromQuote(AGGRESSIVE_BRONZE_FREE)).toBe(60);
+    expect(upToPercentFromQuote(AGGRESSIVE_BRONZE_FREE)).toBe(45);
   });
 
   it("takes the single best rung on the legacy best-of fallback", () => {
@@ -59,7 +60,7 @@ describe("upToPercentFromQuote is the one definition of the ceiling", () => {
       isFirstVisit: false,
       bonuses: { ...AGGRESSIVE_BRONZE_FREE.bonuses, welcome: 0 },
     };
-    expect(upToPercentFromQuote(returning)).toBe(50);
+    expect(upToPercentFromQuote(returning)).toBe(35);
   });
 
   it("never promises more than the whole bill", () => {
@@ -128,9 +129,9 @@ describe("the chip prints the engine's number, whatever the columns say", () => 
       );
   };
 
-  it("quotes 60% on the aggressive place that used to read 30%", async () => {
+  it("quotes 45% on the aggressive place that used to read 30%", async () => {
     const render = await renderChip(AGGRESSIVE_BRONZE_FREE);
-    expect(render({})).toContain("Up to 60% Discount for You");
+    expect(render({})).toContain("Up to 45% Discount for You");
   });
 
   it("ignores the rate columns entirely", async () => {
@@ -143,7 +144,7 @@ describe("the chip prints the engine's number, whatever the columns say", () => 
     });
     const withoutColumns = render({});
     expect(withColumns).toBe(withoutColumns);
-    expect(withColumns).toContain("Up to 60%");
+    expect(withColumns).toContain("Up to 45%");
     expect(withColumns).not.toContain("30%");
   });
 
