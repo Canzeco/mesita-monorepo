@@ -3,7 +3,6 @@ import {
   AtSign,
   DoorOpen,
   Gem,
-  Star,
   Store,
   UtensilsCrossed,
   type LucideIcon,
@@ -133,12 +132,6 @@ export function YourRewardsHere({ strategy }: { strategy: PlaceStrategy }) {
       label: 'Welcome visit',
       hint: 'Automatic on your first visit here',
       value: `${REWARD_SEGMENT_BY_KEY.welcome.rates[strategy]}%`,
-    },
-    {
-      Icon: Star,
-      label: 'Google review',
-      hint: 'At the table, once per place',
-      value: `${REWARD_SEGMENT_BY_KEY.review.rates[strategy]}%`,
     },
   ];
   return (

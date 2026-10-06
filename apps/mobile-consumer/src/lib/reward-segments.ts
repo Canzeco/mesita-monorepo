@@ -13,8 +13,8 @@
 // Diamond List"). Who the guest is comes down to exactly TWO rows: the Base
 // every guest gets, and the Diamond adder on top of it for a Diamond
 // guest. They are the engine's `bronze` and `diamond` rows under the new
-// names — the numbers did not move. Silver and Gold are gone; the actions
-// (Story, Welcome, Google review) are unchanged.
+// names — the numbers did not move. Silver and Gold are gone; Story and
+// Welcome stay. A Google review is not a reward.
 
 import {
   BASE_RATE_HINT,
@@ -34,11 +34,11 @@ export type RewardClassKey = 'standard' | 'premium' | 'influencer' | 'aura';
 type GridStrategy = 'zero' | 'conservative' | 'aggressive';
 
 //   base   — every guest, every visit
-//   action — a rewarded thing the guest does at the table (Story / Google Review)
+//   action — a rewarded thing the guest does (Story)
 //   visit  — a state of the visit itself (Welcome = first ticket at the place)
 type RewardSegmentKind = 'base' | 'action' | 'visit';
 
-export type RewardSegmentKey = 'base' | 'story' | 'welcome' | 'review';
+export type RewardSegmentKey = 'base' | 'story' | 'welcome';
 
 export type RewardSegment = {
   key: RewardSegmentKey;
@@ -76,14 +76,6 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     kind: 'visit',
     blurb: 'Your first ever visit to a place.',
     rates: { zero: 0, conservative: 25, aggressive: 35 },
-  },
-  {
-    key: 'review',
-    name: 'Google Review',
-    nameEs: 'Reseña de Google',
-    kind: 'action',
-    blurb: 'Leave a Google review at the table — once per place.',
-    rates: { zero: 0, conservative: 20, aggressive: 30 },
   },
 ];
 

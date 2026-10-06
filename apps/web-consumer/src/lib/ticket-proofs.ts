@@ -1,7 +1,7 @@
 "use client";
 
 // Ticket proof screenshots (MESITA-1030): the guest attaches a screenshot of
-// their Google review / Instagram story as the proof. Uploaded straight to
+// an Instagram story as the proof. A Google review is not a proof. Uploaded straight to
 // the public `ticket-proofs` bucket as the signed-in JWT — the same house
 // pattern as consumer-avatars (RLS restricts writes to the caller's own
 // {consumer_id}/ folder) — then the public URL rides the submit EF, which

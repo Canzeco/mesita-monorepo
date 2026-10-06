@@ -86,15 +86,14 @@ function visitTotal(
   welcome: boolean,
   mesita: boolean,
   story: boolean,
-  google: boolean,
+  _google: boolean,
 ): number {
   const b = cfg.visits.bonuses[strategy];
   const total =
     visitsBaseFor(cfg, strategy, cls) +
     (welcome ? b.welcome : 0) +
     (mesita ? b.mesita : 0) +
-    (story ? b.story : 0) +
-    (google ? b.google : 0);
+    (story ? b.story : 0);
   return Math.min(100, total);
 }
 

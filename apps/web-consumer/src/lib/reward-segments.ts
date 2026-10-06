@@ -24,7 +24,7 @@ type GridStrategy = "zero" | "conservative" | "aggressive";
 //   class  — who the guest is: everyone (Base) or Diamond. The
 //            kind stays "class" and the keys stay `bronze`/`diamond` because
 //            those are the engine's storage keys; neither is ever printed.
-//   action — a rewarded thing the guest does at the table (Story / Google Review)
+//   action — a rewarded thing the guest does (Story / private Mesita review)
 //   visit  — a state of the visit itself (Welcome = first ticket at the place)
 type RewardSegmentKind = "class" | "action" | "visit";
 
@@ -32,8 +32,7 @@ export type RewardSegmentKey =
   | "bronze"
   | "diamond"
   | "story"
-  | "welcome"
-  | "review";
+  | "welcome";
 
 type RewardSegment = {
   /** Pato's worst→best program order (1 Base … 7 Welcome). */
@@ -90,15 +89,6 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     blurb: "Your first ever visit to a place.",
     rates: { zero: 0, conservative: 25, aggressive: 35 },
   },
-  {
-    rank: 6,
-    key: "review",
-    name: "Google Review",
-    nameEs: "Reseña de Google",
-    kind: "action",
-    blurb: "Leave a Google review at the table — once per place.",
-    rates: { zero: 0, conservative: 20, aggressive: 30 },
-  },
 ];
 
 export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
@@ -115,12 +105,12 @@ function segmentKeyForClass(classKey: ClassKey): RewardSegmentKey {
 }
 
 // The rungs a given consumer can actually reach: their own class rung plus
-// the universal actions (Welcome, Google review, Instagram Story —
-// MESITA-909). Story's Instagram-connected gate is enforced at create /
+// the universal actions (Welcome, Instagram Story — MESITA-909).
+// Story's Instagram-connected gate is enforced at create /
 // submit, not here — this set drives "up to" quotes. Returned worst→best.
 function reachableSegments(classKey: ClassKey): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
-  const universal: RewardSegmentKey[] = ["welcome", "review", "story"];
+  const universal: RewardSegmentKey[] = ["welcome", "story"];
   return REWARD_SEGMENTS.filter(
     (s) => s.key === mine || universal.includes(s.key),
   );
@@ -155,7 +145,7 @@ export function rateForSegment(
 /**
  * The ceiling a consumer can reach — the best rate across every rung they can
  * unlock, under the most generous strategy. This is the "Max X% for you" number.
- * Universal actions (a Google review) put the top of the ladder within reach of
+ * Universal actions put the top of the program within reach of
  * any class, so this is 50% today; the class rung still shows below it.
  */
 export function peakRateForClass(

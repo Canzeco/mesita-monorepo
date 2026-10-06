@@ -16,7 +16,6 @@ import {
   Gem,
   Percent,
   Sparkles,
-  Star,
   Store,
   UtensilsCrossed,
 } from 'lucide-react-native';
@@ -53,7 +52,6 @@ export function helpRungs(classKey: string): HelpRung[] {
     { key: 'welcome', label: 'Welcome', hint: 'First visit only', Icon: DoorOpen, mine: false },
     // lucide-react-native has no Instagram glyph — AtSign is the house IG mark.
     { key: 'story', label: 'Instagram Story', hint: 'Needs a connected handle', Icon: AtSign, mine: false },
-    { key: 'google', label: 'Google Review', hint: 'Once per place', Icon: Star, mine: false },
     { key: 'mesita', label: 'Mesita Review', hint: 'In the app, once per place', Icon: UtensilsCrossed, mine: false },
   ];
 }
@@ -117,7 +115,7 @@ export function HelpModal({
         <ExplainRow
           icon={<Sparkles size={18} color={COLORS.secondary} />}
           bold="Actions add on."
-          rest="Welcome, Instagram Story, Google Review, and Mesita Review stack on your rate — not pick-one. The bill clamps at 100% and applies to the first cap-pesos. Live percents sit on each place's Rewards tab."
+          rest="Welcome, Instagram Story, and Mesita Review stack on your rate — not pick-one. The bill clamps at 100% and applies to the first cap-pesos. Live percents sit on each place's Rewards tab."
         />
 
         <View style={{ gap: 6 }}>

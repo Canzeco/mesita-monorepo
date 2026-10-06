@@ -91,15 +91,14 @@ describe("the Rewards rate sheet names exactly two identity rows", () => {
     expect(html).not.toContain("<button");
   });
 
-  it("lists Welcome then Instagram Story, Google Review, Mesita Review", () => {
+  it("lists Welcome then Instagram Story, then Mesita Review", () => {
     const html = renderToStaticMarkup(<BonusList quote={QUOTE} />);
     const welcome = html.indexOf("Welcome");
     const story = html.indexOf("Instagram Story");
-    const google = html.indexOf("Google Review");
     const mesita = html.indexOf("Mesita Review");
     expect(welcome).toBeGreaterThan(-1);
     expect(story).toBeGreaterThan(welcome);
-    expect(google).toBeGreaterThan(story);
-    expect(mesita).toBeGreaterThan(google);
+    expect(mesita).toBeGreaterThan(story);
+    expect(html).not.toContain("Google Review");
   });
 });

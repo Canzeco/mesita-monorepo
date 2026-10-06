@@ -25,7 +25,7 @@ import type { RewardQuote } from "@/lib/api/tickets";
 export function upToPercentFromQuote(quote: RewardQuote): number {
   const b = quote.bonuses;
   if (!quote.additive) {
-    return Math.max(quote.base, b.welcome, b.story, b.google);
+    return Math.max(quote.base, b.welcome, b.story);
   }
-  return Math.min(100, quote.base + b.welcome + b.story + b.google + b.mesita);
+  return Math.min(100, quote.base + b.welcome + b.story + b.mesita);
 }

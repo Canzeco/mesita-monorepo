@@ -32,9 +32,9 @@ const REWARDS: {
     Icon: Instagram,
   },
   {
-    label: "Google Review",
-    when: "Posted at the table, once per place",
-    why: "Any rating counts, never sentiment-gated.",
+    label: "Mesita Review",
+    when: "Private feedback in the app",
+    why: "The place hears it here. The rate can include it.",
     Icon: Sparkles,
   },
   // Diamond (MESITA-2044, MESITA-2046) is binary: a guest is Diamond or
