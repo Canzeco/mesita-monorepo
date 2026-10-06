@@ -4,7 +4,7 @@
 //
 // This module is the ONLY definition of the lever percentages, the rewardable
 // base and the per-plan ceiling. Every app and every Edge Function reads it —
-// web-consumer, mobile-consumer, mock-business-app, web-business, web-admin and
+// web-consumer, mobile-consumer, web-business, web-admin and
 // supabase/functions/_shared — so a rate change is a one-file edit rather than a
 // sweep. Before this existed the same numbers lived in SEVEN hand-maintained
 // copies and two of them had already drifted in user-visible copy, with no
