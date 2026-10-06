@@ -266,9 +266,6 @@ export const TARGETS: Target[] = [
   // the deep knowledge to Notion Docs > Apps and leave this file the routing
   // and primitive rules alone.
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false, budget: 500 },
-  // The disconnected console. Restored so the product sidebar can be used
-  // without an OTP session (MESITA-2068). Law stays short: it is a mock.
-  { label: "apps/mock-business-app", dir: join(repoRoot, "apps", "mock-business-app"), quickstart: false },
   // Widest consumer surface, and the budget is an override of the 450 default
   // for that reason: four tabs, SEVEN Discover modes, three Inbox sections,
   // the wallet, the seven-step ticket journey, and two section-nav looks.
