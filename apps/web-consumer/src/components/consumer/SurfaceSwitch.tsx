@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+function subscribe() {
+  return () => {};
+}
+
+function surfaceIsWeb() {
+  return document.documentElement.dataset.surface !== "mob";
+}
 
 /** On the full site, a way into the phone emulator. The emulator labels itself. */
 export function SurfaceSwitch() {
-  const [web, setWeb] = useState(false);
-  useEffect(() => {
-    setWeb(document.documentElement.dataset.surface !== "mob");
-  }, []);
+  const web = useSyncExternalStore(subscribe, surfaceIsWeb, () => false);
   if (!web) return null;
   return (
     <p className="type-meta text-muted-foreground mt-3">
