@@ -138,7 +138,7 @@ export function GoSheet({
           <GoOption
             Icon={orderEnabled ? UtensilsCrossed : Lock}
             title="Order"
-            hint={orderEnabled ? "Start a table order here." : ORDER_BLOCKED.hint}
+            hint={orderEnabled ? "Order ahead for pickup or delivery." : ORDER_BLOCKED.hint}
             disabled={!orderEnabled}
           />
 

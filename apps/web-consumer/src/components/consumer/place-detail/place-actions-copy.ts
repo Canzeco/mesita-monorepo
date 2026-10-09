@@ -9,7 +9,7 @@
 
 export const ORDER_BLOCKED = {
   aria: "Ordering isn't available at this place yet",
-  title: "Table ordering through Mesita isn't live yet.",
+  title: "Ordering for pickup or delivery isn't live yet.",
   hint: "View menus on the place profile; ordering is coming.",
 } as const;
 

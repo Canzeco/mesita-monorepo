@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowRight, Gem, Utensils } from "lucide-react";
+import { ArrowRight, Coins, Utensils } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
@@ -7,7 +7,9 @@ import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 // Pre-launch hero. The status badge does the honesty work for the whole
 // page — every section below speaks in product voice without claiming
 // liveness. The UI chips are code overlays, never baked into the photo,
-// so page copy can never go stale inside a JPG.
+// so page copy can never go stale inside a JPG. The three chips are three
+// of the four products: a booked table, the reward on the bill, the credit
+// bought ahead.
 function Hero() {
   return (
     <section className="bg-hero relative overflow-hidden">
@@ -30,9 +32,9 @@ function Hero() {
         </h1>
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
-          Every restaurant, café and bar in your city — tailored to you, booked
-          by AI, and cheaper every time you go. One app for both sides of the
-          table.
+          Every restaurant, café and bar in your city. Booked by a phone call
+          you never make. Prepaid before you sit down. Cheaper every time you
+          go.
         </p>
 
         <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
@@ -63,7 +65,7 @@ function Hero() {
           </span>{" "}
           ·{" "}
           <span className="text-foreground font-medium">
-            seven app surfaces
+            rewards at the table
           </span>
         </p>
 
@@ -94,9 +96,14 @@ function Hero() {
               </span>
             </span>
           </span>
-          <span className="bg-tier-diamond text-foreground absolute top-4 right-4 hidden items-center gap-1.5 rounded-2xl px-3.5 py-2 shadow-lg md:flex">
-            <Gem className="h-4 w-4" aria-hidden />
-            <span className="text-[13px] font-semibold">Diamond</span>
+          <span className="border-border/60 bg-background/85 absolute top-4 right-4 hidden items-center gap-2 rounded-2xl border px-3.5 py-2 text-left shadow-lg backdrop-blur-md md:flex">
+            <Coins className="text-secondary h-4 w-4" aria-hidden />
+            <span className="text-[13px] leading-tight font-semibold">
+              Credits
+              <span className="text-muted-foreground block text-[11px] font-medium">
+                $110 for $100
+              </span>
+            </span>
           </span>
         </figure>
       </div>

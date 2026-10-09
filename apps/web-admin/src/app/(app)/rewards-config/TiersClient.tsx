@@ -43,11 +43,12 @@ const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
   mesita_review: "+ Mesita Review",
   story: "+ Instagram Story",
-  review: "+ Google Review",
+  review: "+ Google Review", // not shown; the preview skips this key
   welcome: "+ Welcome",
 };
 
-const ACTION_BONUS_KEYS = ["story", "google", "mesita"] as const;
+const ACTION_BONUS_KEYS = ["story", "mesita"] as const;
+const PREVIEW_KEYS = ACTION_KEYS.filter((a) => a !== "review");
 
 const COL_COUNT = 1 + LIVE_STRATEGY_KEYS.length;
 
@@ -289,7 +290,7 @@ export function TiersClient() {
                 >
                   Class
                 </th>
-                {ACTION_KEYS.map((a) => (
+                {PREVIEW_KEYS.map((a) => (
                   <th
                     key={a}
                     scope="col"
@@ -322,7 +323,7 @@ export function TiersClient() {
                       <td className="py-1.5 pr-3 whitespace-nowrap">
                         {CLASS_META[cls].name}
                       </td>
-                      {ACTION_KEYS.map((a) => (
+                      {PREVIEW_KEYS.map((a) => (
                         <td
                           key={a}
                           className="py-1.5 text-right font-mono font-semibold tabular-nums"

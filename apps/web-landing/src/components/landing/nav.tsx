@@ -1,22 +1,26 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 
-const NAV_LINKS = [
-  { href: "/#catalog", label: "Catalog" },
-  { href: "/#agents", label: "Agents" },
+// One anchor per product, in page order. `footer.tsx` prints the same four;
+// keep them together.
+export const NAV_LINKS = [
+  { href: "/#discovery", label: "Discovery" },
+  { href: "/#reservations", label: "Reservations" },
+  { href: "/#prepay", label: "Prepayments" },
   { href: "/#rewards", label: "Rewards" },
-  { href: "/#money", label: "Money" },
 ];
 
 function Nav() {
   return (
     <header className="border-border bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-30 w-full border-b backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5">
-        <Link href="/" className="text-primary flex items-center">
-          <MesitaLogo variant="horizontal" className="h-7 w-auto" />
+        <Link
+          href="/"
+          className="text-primary font-display text-lg font-semibold tracking-tight"
+        >
+          Mesita
         </Link>
         <nav className="text-muted-foreground hidden items-center gap-7 text-sm md:flex">
           {NAV_LINKS.map((link) => (

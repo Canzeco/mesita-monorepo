@@ -59,7 +59,6 @@ import {
   apiGetTicket,
   apiReportTicket,
   apiSelectTicketPayment,
-  apiSubmitReview,
   apiSubmitStory,
   apiSubmitTicketBill,
   checkUrlForCode,
@@ -128,12 +127,11 @@ function pickStorageKey(ticketId: string): string {
   return `mesita.ticket.reward.${ticketId}`;
 }
 
-type ActionKind = "story" | "google" | "mesita";
+type ActionKind = "story" | "mesita";
 type RewardPick = ActionKind | "base";
 
 const ACTION_SHORT: Record<ActionKind, string> = {
   story: "Instagram story",
-  google: "Google review",
   mesita: "Mesita review",
 };
 
@@ -388,15 +386,14 @@ export function TicketScreen({
   }, [ticketId, setStepChoice]);
 
   const submitProof = useCallback(
-    async (action: "story" | "google") => {
+    async () => {
       setProofBusy(true);
       setProofError(null);
       try {
         const asset = await pickProofScreenshot();
         if (!asset) return;
         const url = await uploadTicketProof(userId, ticketId, asset);
-        if (action === "story") await apiSubmitStory(ticketId, url);
-        else await apiSubmitReview(ticketId, url);
+        await apiSubmitStory(ticketId, url);
         await tickets.refresh();
         setStepChoice("qr");
       } catch (err) {
@@ -498,36 +495,22 @@ export function TicketScreen({
 
   const storyOnTicket =
     ticket.story_state != null && ticket.story_state !== "not_required";
-  const reviewOnTicket =
-    ticket.review_state != null && ticket.review_state !== "not_required";
-  const persistedTask: ActionKind | null = storyOnTicket
-    ? "story"
-    : reviewOnTicket
-      ? "google"
-      : null;
+  const persistedTask: ActionKind | null = storyOnTicket ? "story" : null;
   const localPick: RewardPick | null =
-    storedPick === "review"
-      ? "google"
-      : storedPick === "base" ||
-          storedPick === "story" ||
-          storedPick === "google" ||
-          storedPick === "mesita"
-        ? storedPick
+    storedPick === "base" || storedPick === "story" || storedPick === "mesita"
+      ? storedPick
+      : storedPick === "google" || storedPick === "review"
+        ? "base"
         : null;
   const pick: RewardPick | null = localPick ?? persistedTask;
   const chosenAction: ActionKind | null = pick === "base" ? null : pick;
 
   const storyVerified = taskStateFor(ticket.story_state) === "done";
-  const googleVerified = taskStateFor(ticket.review_state) === "done";
   const verified = (a: ActionKind): boolean =>
-    a === "story"
-      ? storyVerified
-      : a === "google"
-        ? googleVerified
-        : reviewDone;
-  const verifiedActions: ActionKind[] = (
-    ["story", "google", "mesita"] as const
-  ).filter(verified);
+    a === "story" ? storyVerified : reviewDone;
+  const verifiedActions: ActionKind[] = (["story", "mesita"] as const).filter(
+    verified,
+  );
 
   const chosenState: TaskState =
     chosenAction === null
@@ -536,20 +519,14 @@ export function TicketScreen({
         ? reviewDone
           ? "done"
           : "todo"
-        : taskStateFor(
-            chosenAction === "story"
-              ? ticket.story_state
-              : ticket.review_state,
-          );
+        : taskStateFor(ticket.story_state);
 
   const actionBonus = (a: ActionKind | null): number =>
     !quote || a === null
       ? 0
       : a === "story"
         ? quote.bonuses.story
-        : a === "google"
-          ? quote.bonuses.google
-          : quote.bonuses.mesita;
+        : quote.bonuses.mesita;
   const earnedExcept = (a: ActionKind | null): number =>
     !additive
       ? 0
@@ -582,9 +559,7 @@ export function TicketScreen({
       ? false
       : a === "story"
         ? Boolean(quote?.storyEligible) && igConnected
-        : a === "google"
-          ? (quote?.bonuses.google ?? 0) > 0
-          : (quote?.bonuses.mesita ?? 0) > 0 && !reviewDone;
+        : (quote?.bonuses.mesita ?? 0) > 0 && !reviewDone;
   const onPick = (a: ActionKind) => {
     if (!pickLocked) setStoredPick(pick === a ? "base" : a);
   };
@@ -801,6 +776,8 @@ export function TicketScreen({
             selectedTotal={selectedTotal}
             actionBonus={actionBonus}
             capPesos={capPesos}
+            placeName={placeName}
+            placeAddress={ticket.place?.address}
           />
         ) : null}
 
@@ -849,14 +826,12 @@ export function TicketScreen({
             </Card>
           ) : (
             <TaskStep
-              action={chosenAction}
               placeName={placeName}
-              placeAddress={ticket.place?.address}
               pct={selectedTotal}
               done={chosenState === "done"}
               busy={proofBusy}
               error={proofError}
-              onSubmitProof={() => void submitProof(chosenAction)}
+              onSubmitProof={() => void submitProof()}
               onShowQr={() => setStepChoice("qr")}
             />
           )
@@ -1807,6 +1782,8 @@ function RewardLanes({
   selectedTotal,
   actionBonus,
   capPesos,
+  placeName,
+  placeAddress,
 }: {
   quote: RewardQuote | null;
   quoteError: boolean;
@@ -1823,6 +1800,8 @@ function RewardLanes({
   selectedTotal: number;
   actionBonus: (a: ActionKind | null) => number;
   capPesos: number | null;
+  placeName: string;
+  placeAddress?: string | null;
 }) {
   if (quoteError) {
     return (
@@ -1969,7 +1948,7 @@ function RewardLanes({
       )}
 
       <Lane title="Sharing" note="pick one">
-        {(["google", "story", "mesita"] as const).map((a) => {
+        {(["story", "mesita"] as const).map((a) => {
           const available =
             a === "story"
               ? Boolean(quote.storyEligible) && igConnected
@@ -1998,6 +1977,23 @@ function RewardLanes({
           );
         })}
       </Lane>
+
+      <Pressable
+        onPress={() =>
+          void Linking.openURL(googleMapsSearchUrl(placeName, placeAddress))
+        }
+        className="min-h-11 flex-row items-center justify-between gap-3 px-1"
+      >
+        <Text className="font-semibold text-muted-foreground" style={{ fontSize: 12 }}>
+          Leave a review on Google
+        </Text>
+        <Text
+          className="shrink text-right font-medium text-muted-foreground"
+          style={{ fontSize: 11 }}
+        >
+          Optional. It does not change your rate.
+        </Text>
+      </Pressable>
 
       <View className="overflow-hidden rounded-2xl border border-border bg-card">
         <View className="flex-row items-baseline justify-between bg-muted/60 px-3 py-1.5">
@@ -2065,11 +2061,9 @@ function RewardLanes({
   );
 }
 
-// ── Step 3 — Task (story / google): do it, upload the proof here. ─────────
+// ── Step 3 — Task (Instagram story): do it, upload the proof here. ────────
 function TaskStep({
-  action,
   placeName,
-  placeAddress,
   pct,
   done,
   busy,
@@ -2077,9 +2071,7 @@ function TaskStep({
   onSubmitProof,
   onShowQr,
 }: {
-  action: "story" | "google";
   placeName: string;
-  placeAddress?: string | null;
   pct: number;
   done: boolean;
   busy: boolean;
@@ -2087,15 +2079,10 @@ function TaskStep({
   onSubmitProof: () => void;
   onShowQr: () => void;
 }) {
-  const isGoogle = action === "google";
   const openApp = async () => {
-    if (isGoogle) {
-      await Linking.openURL(googleMapsSearchUrl(placeName, placeAddress));
-    } else {
-      const app = "instagram://camera";
-      const can = await Linking.canOpenURL(app).catch(() => false);
-      await Linking.openURL(can ? app : "https://www.instagram.com/");
-    }
+    const app = "instagram://camera";
+    const can = await Linking.canOpenURL(app).catch(() => false);
+    await Linking.openURL(can ? app : "https://www.instagram.com/");
   };
 
   return (
@@ -2130,15 +2117,13 @@ function TaskStep({
           className="font-extrabold text-foreground"
           style={{ fontSize: 14.5 }}
         >
-          {isGoogle ? "Leave a Google review" : "Post an Instagram story"}
+          Post an Instagram story
         </Text>
         <Text
           className="mt-1 text-center text-muted-foreground"
           style={{ fontSize: 12 }}
         >
-          {isGoogle
-            ? "Any rating, any length. Screenshot it when it's live."
-            : "Tag the place in your story, then screenshot it."}
+          {`Tag ${placeName} in your story, then screenshot it.`}
         </Text>
         <Text className="mt-2 font-bold text-primary" style={{ fontSize: 12 }}>
           Unlocks {pct}% off
@@ -2150,7 +2135,7 @@ function TaskStep({
         className="min-h-11 items-center justify-center rounded-2xl bg-foreground"
       >
         <Text className="font-bold text-white" style={{ fontSize: 13 }}>
-          {isGoogle ? "Open Google" : "Open Instagram"}
+          Open Instagram
         </Text>
       </Pressable>
 

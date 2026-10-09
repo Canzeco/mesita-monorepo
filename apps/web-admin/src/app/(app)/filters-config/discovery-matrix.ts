@@ -1,4 +1,5 @@
 import type { SignalKey } from "./catalog";
+import { FILTERS_FLOOR_OWNER } from "./source-floor-copy";
 
 // Twin of `supabase/functions/_shared/discovery-matrix.ts`. Spec mirror,
 // not a dispatcher. Change one, change the other. Vercel root is
@@ -152,7 +153,7 @@ export const DISCOVERY_SOURCES = [
   "Google Places Text Search",
   "Google Places Nearby Search",
   "Mesita Places Name Search",
-  "Mesita Places Nearby Search",
+  FILTERS_FLOOR_OWNER,
   "Mesita Places Browse Search",
   "Mesita Places Flexible Search",
   "Mesita Socials Browse Search",
@@ -206,7 +207,7 @@ export const DISCOVERY_MODE_SOURCES = {
     "Google Places Text Search",
     "Mesita Places Name Search",
   ],
-  map: ["Google Places Nearby Search", "Mesita Places Nearby Search"],
+  map: ["Google Places Nearby Search", FILTERS_FLOOR_OWNER],
   catalog: ["Mesita Places Flexible Search", "Mesita Socials Browse Search"],
   swipe: ["Mesita Places Flexible Search"],
   chat: [

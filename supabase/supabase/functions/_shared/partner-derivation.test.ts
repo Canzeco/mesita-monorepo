@@ -22,23 +22,23 @@ const ZERO = {
   premium_rate: null,
 };
 
-Deno.test("deriveListingType: member + non-zero strategy → partner", () => {
+Deno.test("deriveListingType: pro + non-zero strategy stays web (badge is Ultra-only)", () => {
   assertEquals(
     deriveListingType({ plan: "pro", rates: CONSERVATIVE, currentListingType: "web" }),
-    "partner",
+    undefined,
   );
 });
 
-Deno.test("deriveListingType: member on Zero → demote partner to web", () => {
+Deno.test("deriveListingType: ultra on Zero → demote partner to web", () => {
   assertEquals(
-    deriveListingType({ plan: "pro", rates: ZERO, currentListingType: "partner" }),
+    deriveListingType({ plan: "ultra", rates: ZERO, currentListingType: "partner" }),
     "web",
   );
 });
 
-Deno.test("deriveListingType: member on Zero, already web → unchanged", () => {
+Deno.test("deriveListingType: ultra on Zero, already web → unchanged", () => {
   assertEquals(
-    deriveListingType({ plan: "pro", rates: ZERO, currentListingType: "web" }),
+    deriveListingType({ plan: "ultra", rates: ZERO, currentListingType: "web" }),
     undefined,
   );
 });

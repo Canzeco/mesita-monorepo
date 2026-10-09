@@ -16,6 +16,8 @@ describe("ORDER_BLOCKED copy", () => {
   it("explains staged ordering, not a missing menu", () => {
     expect(ORDER_BLOCKED.aria).toBe("Ordering isn't available at this place yet");
     expect(ORDER_BLOCKED.title).toContain("isn't live yet");
+    expect(ORDER_BLOCKED.title).toContain("pickup");
+    expect(ORDER_BLOCKED.title.toLowerCase()).not.toContain("table");
     expect(ORDER_BLOCKED.hint.toLowerCase()).toContain("menu");
   });
 });

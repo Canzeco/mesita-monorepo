@@ -432,6 +432,16 @@ verify_jwt = true
 [functions.consumer-web-revoke-connector]
 verify_jwt = true
 
+# Place API keys — mint/list/revoke from Settings › Developers (MESITA-2062).
+[functions.business-web-create-place-api-key]
+verify_jwt = true
+
+[functions.business-web-list-place-api-keys]
+verify_jwt = true
+
+[functions.business-web-revoke-place-api-key]
+verify_jwt = true
+
 [functions.consumer-mcp]
 verify_jwt = false
 

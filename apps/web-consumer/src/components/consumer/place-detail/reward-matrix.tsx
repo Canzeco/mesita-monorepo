@@ -4,7 +4,6 @@ import {
   DoorOpen,
   Gem,
   Instagram,
-  Star,
   Store,
   UtensilsCrossed,
 } from "lucide-react";
@@ -204,8 +203,8 @@ export function ClassLadder({
 // recommendations and subscriber terms on Credits — from Me › Plan, which is
 // now the only place that pitches it.
 // Every bonus the engine prices, in the same order as admin Tiers: Welcome,
-// Instagram Story, Google Review, Mesita Review. Zero is listed and faded —
-// hiding a rung makes the rate sheet lie about what exists.
+// Instagram Story, Mesita Review. A Google review is not a bonus. Zero is
+// listed and faded — hiding a rung makes the rate sheet lie about what exists.
 export function BonusList({ quote }: { quote: RewardQuote }) {
   const b = quote.bonuses;
   const rows = [
@@ -226,13 +225,6 @@ export function BonusList({ quote }: { quote: RewardQuote }) {
         : "Connect Instagram on Me to unlock",
       value: b.story,
       muted: b.story === 0 || !quote.storyEligible,
-    },
-    {
-      icon: Star,
-      label: "Google Review",
-      hint: "At the table, once per place",
-      value: b.google,
-      muted: b.google === 0,
     },
     {
       icon: UtensilsCrossed,

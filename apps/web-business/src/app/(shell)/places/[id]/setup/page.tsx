@@ -56,6 +56,7 @@ import { apiConsoleViewer, type ConsolePlace } from "@/lib/api/console";
 import { findPlace } from "@/lib/active-place";
 import { placePageHref, placePayHref } from "@/lib/console-routes";
 import { placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import { normalizePlacePlan } from "@/lib/plan-ladder";
 import { buildProductCards } from "@/lib/products";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 
@@ -107,6 +108,7 @@ export default async function SetupPage(props: {
 
   const products = buildProductCards({
     partnered,
+    placePlan: normalizePlacePlan(place.plan),
     mesitaPayEnabled: place.mesitaPayEnabled === true,
     place,
     placeHref: (view: PlaceTab) => placeTabHref(id, view),

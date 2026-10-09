@@ -11,19 +11,19 @@ const SRC = readFileSync(
 );
 
 describe("Help names everything priced and quotes no static percent", () => {
-  it("lists Base, Diamond, Welcome, and the three sharing actions", () => {
+  it("lists Base, Diamond, Welcome, and the sharing actions", () => {
     const html = renderToStaticMarkup(<HelpRungList classKey="diamond" />);
     for (const label of [
       "Base",
       "Diamond",
       "Welcome",
       "Instagram Story",
-      "Google Review",
       "Mesita Review",
     ]) {
       expect(html).toContain(label);
     }
     expect(html).toContain("You");
+    expect(html).not.toContain("Google Review");
     expect(html).not.toContain("%");
   });
 

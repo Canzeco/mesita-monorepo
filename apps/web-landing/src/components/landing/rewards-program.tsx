@@ -5,16 +5,14 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
-  Store,
   UserPlus,
-  UtensilsCrossed,
 } from "lucide-react";
 import { SectionHeader } from "@/components/landing/section-header";
 
-// Four of the five rewards. Each carries its REASON, not just its trigger —
-// a reward nobody can explain reads as a coupon. Sharing is deliberately
-// not in this grid: it gets the dominant block below, because it is the
-// only reward the place earns back.
+// Visit Rewards, as ACTION rewards: four of them, each carrying its REASON,
+// not just its trigger — a reward nobody can explain reads as a coupon.
+// The Base discount comes off the page on Pato's cut (2026-09-28): the
+// section sells the actions a guest takes, and Base is not one.
 const REWARDS: {
   label: string;
   when: string;
@@ -22,76 +20,67 @@ const REWARDS: {
   Icon: LucideIcon;
 }[] = [
   {
-    label: "Base",
-    when: "Every guest, every visit",
-    why: "The floor. It is what makes the place worth opening the app for on an ordinary Tuesday.",
-    Icon: Store,
-  },
-  {
-    label: "Welcome",
-    when: "First visit only",
-    why: "The hardest visit to buy is the first one. This is the reward that turns discovery into a guest.",
+    label: "Welcome Visit",
+    when: "Your first visit",
+    why: "The hardest visit to buy is the first one.",
     Icon: UserPlus,
   },
-  // Diamond (MESITA-2044) is binary: a guest is Diamond or not,
-  // nothing in between. It replaced the four-rung ladder (MESITA-2040) and
-  // the Passport that printed it (MESITA-2043). Invitation only, never
-  // bought, never reached through Instagram, and anyone can ask to join.
-  {
-    label: "Diamond",
-    when: "Invitation only",
-    why: "Presence. The guests who create the atmosphere everyone else came for — Diamond or not, nothing in between — priced accordingly.",
-    Icon: Gem,
-  },
-  // A fourth "Plan — Free / Premium" card sat here. The plan stopped pricing
-  // rewards in MESITA-1705, so the reward stack is three groups: base and
-  // welcome, Diamond, sharing. Premium is still sold; it just does
-  // not buy a bigger discount.
-];
-
-// The three sharing actions. Verified in the app BEFORE the discount
-// releases — that ordering is the whole product, so the copy has to lead
-// with it.
-const SHARING = [
   {
     label: "Instagram Story",
-    body: "A story tagging the place and @mesita, verified in the app before the discount releases. Repeatable every single visit.",
-    proof: "Guaranteed, authentic, measurable reach",
+    when: "A verified public story, every visit",
+    why: "The reward the place earns back in reach.",
     Icon: Instagram,
   },
   {
-    label: "Google Review",
-    body: "Posted at the table and verified, once per guest per place. Any rating qualifies — never sentiment-gated, so the signal stays honest.",
-    proof: "The reward that compounds after the guest leaves",
+    label: "Mesita Review",
+    when: "Private feedback in the app",
+    why: "The place hears it here. The rate can include it.",
     Icon: Sparkles,
   },
+  // Diamond (MESITA-2044, MESITA-2046) is binary: a guest is Diamond or
+  // not, nothing in between. Invitation only, never bought, never reached
+  // through Instagram, and anyone can ask to join. The page says "Diamond",
+  // one word, the way the app does — `__tests__/diamond.test.tsx` pins it.
   {
-    label: "Mesita Review",
-    body: "Food, Service, Ambience, Value, Overall — in the app, one per guest per place. A place's Mesita rating counts guests, not tickets.",
-    proof: "The rating Mesita owns",
-    Icon: UtensilsCrossed,
+    label: "Diamond",
+    when: "Invitation only",
+    why: "The guests who make the room.",
+    Icon: Gem,
   },
 ];
 
 function RewardsProgram() {
   return (
-    <section id="rewards" className="border-border border-b">
+    <section id="rewards" className="border-border bg-muted/30 border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
         <SectionHeader
-          eyebrow="Rewards Program"
-          title="Every reward has a reason."
-          aside="Five rewards on one table. A place funds them itself and picks which ones it runs — so the discount table behaves like a market."
+          eyebrow="Visit Rewards · action rewards, cheaper every time you go"
+          title="Do something for the place, and the place pays you back."
+          aside="Show your QR at the table. Staff scan it with any phone, the reward lands on the bill, and the quote is on screen before you close. Every reward is an action, and every action has a reason."
         />
 
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {REWARDS.map(({ label, when, why, Icon }) => (
-            <article
+        {/* FOUR ACTIONS, ONE ROW. Pato read the old layout as six: a 2×2 grid
+            of actions over two more cards (the Diamond story, the cap) that
+            looked exactly like them. So the four are numbered, sit on one
+            row from lg up, and everything below is ONE panel in a different
+            frame — the story and the cap are context, not actions. */}
+        <p className="text-muted-foreground mt-10 text-xs font-semibold tracking-[0.18em] uppercase">
+          The four actions
+        </p>
+        <ol className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {REWARDS.map(({ label, when, why, Icon }, i) => (
+            <li
               key={label}
               className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-6"
             >
-              <span className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-2xl">
-                <Icon className="h-5 w-5" aria-hidden />
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-2xl">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="text-muted-foreground font-display text-sm font-semibold">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+              </div>
               <div>
                 <h3 className="font-display text-lg font-semibold tracking-tight">
                   {label}
@@ -103,128 +92,66 @@ function RewardsProgram() {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {why}
               </p>
-            </article>
+            </li>
           ))}
-        </div>
+        </ol>
 
-        {/* Sharing dominates the section on purpose: it is the only reward
-            the place gets paid back for, so it earns the width. */}
-        <div className="border-primary/30 bg-hero shadow-elev mt-4 rounded-3xl border p-8 md:p-10">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-primary text-xs font-semibold tracking-[0.18em] uppercase">
-                Sharing · the reward that pays the place back
-              </p>
-              <h3 className="font-display mt-2 max-w-2xl text-2xl font-semibold tracking-tight md:text-3xl">
-                Every discounted visit doubles as promotion.
-              </h3>
-            </div>
-            <p className="text-muted-foreground max-w-xs text-sm leading-relaxed">
-              The other four rewards buy a visit. This one buys a visit{" "}
-              <span className="text-foreground font-medium">and</span> the reach
-              that brings the next guest.
-            </p>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-            {SHARING.map(({ label, body, proof, Icon }) => (
-              <article
-                key={label}
-                className="border-border bg-card/85 flex flex-col gap-3 rounded-2xl border p-6 backdrop-blur"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="bg-pink-gradient flex h-10 w-10 items-center justify-center rounded-2xl text-white">
-                    <Icon className="h-5 w-5" aria-hidden />
-                  </span>
-                  <h4 className="font-display text-lg font-semibold tracking-tight">
-                    {label}
-                  </h4>
+        {/* One panel, not two cards: the Diamond story with the cap as its
+            footnote. A different frame (gradient, no card border) so it
+            cannot be read as actions five and six. */}
+        <div className="border-primary/30 bg-hero shadow-elev mt-8 rounded-3xl border p-8 md:p-10">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[1.2fr_1fr] md:items-start">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-primary text-xs font-semibold tracking-[0.18em] uppercase">
+                    About Diamond
+                  </p>
+                  <h3 className="font-display mt-2 max-w-md text-2xl font-semibold tracking-tight md:text-3xl">
+                    The room is the product.
+                  </h3>
                 </div>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {body}
-                </p>
-                <p className="text-secondary inline-flex items-start gap-2 text-[13px] font-medium">
-                  <ShieldCheck
-                    className="mt-0.5 h-4 w-4 shrink-0"
-                    aria-hidden
-                  />
-                  {proof}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_1fr]">
-          <div className="border-border bg-card flex flex-col gap-5 rounded-3xl border p-8">
-            {/* TWO FACTS, NO PASSPORT (MESITA-2043). Instagram and the
-                Diamond are independent: Instagram is connected reach,
-                Diamond is an invitation, on or off (MESITA-2044).
-                The plan is private and never shown here. */}
-            <div className="border-border bg-hero rounded-2xl border p-5">
-              <div className="flex items-start justify-between">
-                <p className="font-display text-xl font-semibold tracking-tight">
-                  Ana R.
-                </p>
-                <span className="bg-tier-diamond text-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold">
+                <span className="bg-tier-diamond text-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold">
                   <Gem className="h-3.5 w-3.5" aria-hidden />
                   Diamond
                 </span>
               </div>
-              <div className="border-border mt-4 flex items-center justify-between border-t pt-4">
-                <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-                  <Instagram className="h-3.5 w-3.5" aria-hidden />
-                  Instagram
-                </span>
-                <span className="text-sm font-semibold">@ana.r</span>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <QrCode className="text-foreground h-9 w-9" aria-hidden />
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Mesita partners with modeling agencies, creators, and the people
+                who set the scene in the city, and makes them Diamond. A place
+                pays a bigger reward to fill its tables with the guests everyone
+                else came to sit next to.{" "}
+                <span className="text-foreground font-medium">
+                  Invitation only.
+                </span>{" "}
+                Never bought, never reached by followers, and anyone can ask.
+              </p>
+            </div>
+            <div className="border-border bg-background/70 flex flex-col gap-4 rounded-2xl border p-5">
+              <div className="flex items-center gap-3">
+                <QrCode
+                  className="text-foreground h-9 w-9 shrink-0"
+                  aria-hidden
+                />
                 <p className="text-muted-foreground text-[11px] leading-snug">
-                  Scanned at the table — the discount lands on the bill before
-                  you pay.
+                  Scanned at the table — the reward lands on the bill before you
+                  pay. Cash, card, or your phone, it applies the same way.
                 </p>
               </div>
+              <p className="text-muted-foreground border-border inline-flex items-start gap-2 border-t pt-4 text-[13px] leading-relaxed">
+                <ShieldCheck
+                  className="text-secondary mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden
+                />
+                <span>
+                  <span className="text-foreground font-medium">
+                    Capped per table.
+                  </span>{" "}
+                  The place funds every reward and caps it, never subsidized by
+                  Mesita, so a bold reward never becomes an open liability.
+                </span>
+              </p>
             </div>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Two things, and neither leads to the other.{" "}
-              <span className="text-foreground font-medium">Instagram</span> is
-              your connected account.{" "}
-              <span className="text-foreground font-medium">
-                Diamond
-              </span>{" "}
-              is invitation-only — you are Diamond or you are not, nothing in
-              between. It is{" "}
-              <span className="text-foreground font-medium">
-                never for sale
-              </span>
-              , never reached through followers, and anyone can ask to join.
-              Your <span className="text-foreground font-medium">plan</span>{" "}
-              is private, and no place ever learns who pays.
-            </p>
-          </div>
-
-          <div className="border-border bg-card flex flex-col justify-center gap-4 rounded-3xl border p-8">
-            <span className="border-secondary/40 text-secondary w-fit rounded-full border px-3 py-1 text-[11px] font-bold">
-              $25 cap
-            </span>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Every reward is funded by the place itself — never subsidized by
-              Mesita. A percentage sounds generous, but{" "}
-              <span className="text-foreground font-medium">
-                the cap is what actually prices the promo
-              </span>
-              : the worst case per table is known and bounded, so a bold offer
-              never becomes an open liability.
-            </p>
-            <p className="text-muted-foreground inline-flex items-start gap-2 text-[13px] leading-relaxed">
-              <ShieldCheck
-                className="text-secondary mt-0.5 h-4 w-4 shrink-0"
-                aria-hidden
-              />
-              Rewards price the visit. Pickup orders sell on 0% commission
-              instead.
-            </p>
           </div>
         </div>
       </div>

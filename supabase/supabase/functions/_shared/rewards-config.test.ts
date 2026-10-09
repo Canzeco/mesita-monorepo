@@ -37,11 +37,10 @@ Deno.test("resolveTicketRate: unknown class key falls to the Standard floor", ()
   assertEquals(resolveTicketRate("conservative", GRID, { classKey: "vip", isFirstVisit: false }), 5);
 });
 
-Deno.test("resolveTicketRate: a first visit ALONE pays only the standing rate", () => {
-  // v9 (MESITA-877): Welcome is unlocked by the Google review, so arriving
-  // for the first time and doing nothing is worth exactly the base bonus.
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true }), 15);
-  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "gold", isFirstVisit: true }), 15);
+Deno.test("resolveTicketRate: a first visit pays the Welcome cell", () => {
+  // Welcome pays for the visit itself. A Google review does not unlock it.
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true }), 35);
+  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "gold", isFirstVisit: true }), 35);
 });
 
 Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled upstream)", () => {
@@ -71,7 +70,7 @@ Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled 
 });
 
 Deno.test("resolveTicketRate: verified actions bump, best-of never stacks", () => {
-  // First visit + Google review → the coupled Welcome rung, the top rung.
+  // First visit pays Welcome. A verified Google review adds nothing on top.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true, reviewVerified: true }),
     35,
@@ -169,7 +168,7 @@ Deno.test("coerceRewardsGrid: v12 blob migrates by IDENTITY — flat action rows
   assertEquals(g.actions.mesita_review.diamond.aggressive, 35);
 });
 
-Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's row", () => {
+Deno.test("resolveTicketRate: a stored Google review cell is not paid", () => {
   const g = coerceRewardsGrid({
     actions: {
       review: {
@@ -178,18 +177,18 @@ Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's r
       },
     },
   });
-  // Same verified review, different class row → different rate.
+  // The cell can still sit in a legacy blob. It does not move the bill.
   assertEquals(
     resolveTicketRate("conservative", g, {
       classKey: "bronze", isFirstVisit: false, reviewVerified: true,
     }),
-    30,
+    5,
   );
   assertEquals(
     resolveTicketRate("conservative", g, {
       classKey: "gold", isFirstVisit: false, reviewVerified: true,
     }),
-    35,
+    15,
   );
 });
 
@@ -218,7 +217,7 @@ Deno.test("resolveTicketRate: the Mesita review rung pays only when priced", () 
 });
 
 Deno.test("offersAction: capability is ANY class > 0, per-class zeroing keeps the door open", () => {
-  assertEquals(offersAction("aggressive", GRID, "review"), true);
+  assertEquals(offersAction("aggressive", GRID, "review"), false);
   assertEquals(offersAction("zero", GRID, "review"), false);
   assertEquals(offersAction("aggressive", GRID, "mesita_review"), true); // priced since MESITA-876
   const partial = coerceRewardsGrid({
@@ -346,27 +345,22 @@ Deno.test("v9 defaults: every cell sits on the 5% grid, inside floor and ceiling
   }
 });
 
-Deno.test("v9: the Welcome bonus is UNLOCKED BY the Google review, never on its own", () => {
-  // A first visit with no review pays only the guest's standing rate — the
-  // welcome rung is coupled, so the business gets acquisition AND a
-  // permanent public review from one mechanism.
+Deno.test("v9: Welcome pays for the first visit; a Google review pays nothing", () => {
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true }),
-    GRID.grid.bronze.aggressive,
+    GRID.actions.welcome.bronze.aggressive,
   );
-  // Review on a first visit → the welcome rung, the top of the table.
   assertEquals(
     resolveTicketRate("aggressive", GRID, {
       classKey: "bronze", isFirstVisit: true, reviewVerified: true,
     }),
     GRID.actions.welcome.bronze.aggressive,
   );
-  // Same review on a RETURNING visit → the review rung, one step lower.
   assertEquals(
     resolveTicketRate("aggressive", GRID, {
       classKey: "bronze", isFirstVisit: false, reviewVerified: true,
     }),
-    GRID.actions.review.bronze.aggressive,
+    GRID.grid.bronze.aggressive,
   );
 });
 
@@ -434,7 +428,7 @@ Deno.test("resolveTicketRate: v12 additive — welcome on first visit alone (D3-
       isFirstVisit: true,
       reviewVerified: true,
     }),
-    45, // 20 + welcome 10 + google 15
+    30, // 20 + welcome 10; a Google review adds nothing
   );
 });
 
@@ -448,10 +442,9 @@ Deno.test("resolveTicketRate: v12 additive — bonuses stack", () => {
       reviewVerified: true,
       mesitaReviewed: true,
     }),
-    // influencer → silver·free base 30 + welcome 10 + story 10 + google 15
-    // + mesita 5 = 70. Under v10 this cell paid 85, because the retired
-    // per-class story override added 30 instead of the universal 10.
-    70,
+    // influencer → silver·free base 30 + welcome 10 + story 10
+    // + mesita 5 = 55. A Google review is not in the sum.
+    55,
   );
 });
 
@@ -494,6 +487,6 @@ Deno.test("resolveTicketRate: v12 additive — clamps at 100", () => {
 Deno.test("offersAction: v12 reads the visits bonuses", () => {
   const g = withPromos();
   assertEquals(offersAction("aggressive", g, "story"), true);
-  assertEquals(offersAction("aggressive", g, "review"), true);
+  assertEquals(offersAction("aggressive", g, "review"), false);
   assertEquals(offersAction("zero", g, "story"), false);
 });

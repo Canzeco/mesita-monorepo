@@ -1,0 +1,32 @@
+# Explicit app roots only — apps/mock-business-app was removed (MESITA-2059 / MESITA-2069)
+# and must not receive version bumps.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /apps/web-admin
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/web-business
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/web-consumer
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/web-landing
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/web-validate
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/mobile-consumer
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/mobile-business
+    schedule:
+      interval: weekly

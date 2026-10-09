@@ -168,7 +168,7 @@ export function strategyForPromoMatrix(matrix: {
  * The strategy a place row is running, straight from its four rate columns
  * (MESITA-869). Any surface holding a place summary — swipe card, place
  * detail, a ticket — can quote that place's REAL numbers instead of the
- * static peak: `REWARD_SEGMENT_BY_KEY.review.rates[strategyForPlaceRow(row)]`.
+ * static peak: `REWARD_SEGMENT_BY_KEY.story.rates[strategyForPlaceRow(row)]`.
  * Custom or cleared rates coerce to 'zero', exactly like the bill engine, so
  * the caller shows no percentage rather than a wrong one.
  */

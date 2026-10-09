@@ -156,6 +156,8 @@ export type ConsolePlace = {
    *  billing read failed. Every consumer of it must degrade to the plain
    *  yearly line rather than concluding anything about the partnership. */
   membership?: Membership | null;
+  /** `places.plan` — free | pro | ultra (MESITA-2020). Held rows only. */
+  plan?: string;
 };
 
 /** Everything the console shell learns about the caller in ONE call: the

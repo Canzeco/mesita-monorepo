@@ -28,7 +28,7 @@ import {
 
 Deno.test("STRIPE_CATALOG: every sold plan maps to its own DB row", () => {
   const byId = Object.fromEntries(STRIPE_CATALOG.map((e) => [e.id, e]));
-  assertEquals(STRIPE_CATALOG.length, 3);
+  assertEquals(STRIPE_CATALOG.length, 4);
 
   assertEquals(byId["consumer_premium"].table, "consumer_plans");
   assertEquals(byId["consumer_premium"].rowKey, "premium");
@@ -52,8 +52,14 @@ Deno.test("STRIPE_CATALOG: every sold plan maps to its own DB row", () => {
   // price and any subscription still billing on it.
   assertEquals(byId["business_verified"].table, "place_plans");
   assertEquals(byId["business_verified"].rowKey, "pro");
-  assertEquals(byId["business_verified"].lookupKey, "business_verified_yearly");
-  assertEquals(byId["business_verified"].interval, "year");
+  assertEquals(byId["business_verified"].lookupKey, "business_pro_monthly");
+  assertEquals(byId["business_verified"].interval, "month");
+  assertEquals(byId["business_verified"].productName, "Mesita Pro");
+
+  assertEquals(byId["business_ultra"].table, "place_plans");
+  assertEquals(byId["business_ultra"].rowKey, "ultra");
+  assertEquals(byId["business_ultra"].lookupKey, "business_ultra_monthly");
+  assertEquals(byId["business_ultra"].interval, "month");
 });
 
 Deno.test("STRIPE_CATALOG: lookup keys are unique (idempotency anchors)", () => {
@@ -279,9 +285,9 @@ Deno.test("resolvePlanPrice: a stale cached id that mismatches the row re-provis
   assertEquals(cached.value, "price_fresh");
 });
 
-Deno.test("resolvePlanPrice: Verified yearly provisions with year interval", async () => {
+Deno.test("resolvePlanPrice: Mesita Pro monthly provisions with month interval", async () => {
   const { admin, cached } = fakeAdmin({
-    price_cents: 100000,
+    price_cents: 20000,
     currency: "MXN",
     stripe_price_id: null,
   });
@@ -294,10 +300,10 @@ Deno.test("resolvePlanPrice: Verified yearly provisions with year interval", asy
         createdInterval = args.recurring.interval;
         return Promise.resolve(
           makePrice({
-            id: "price_verified",
-            unit_amount: 100000,
-            lookup_key: "business_verified_yearly",
-            recurring: { interval: "year" } as Stripe.Price.Recurring,
+            id: "price_pro",
+            unit_amount: 20000,
+            lookup_key: "business_pro_monthly",
+            recurring: { interval: "month" } as Stripe.Price.Recurring,
           }),
         );
       },
@@ -305,17 +311,17 @@ Deno.test("resolvePlanPrice: Verified yearly provisions with year interval", asy
     },
     products: {
       search: () => Promise.resolve({ data: [] }),
-      create: () => Promise.resolve({ id: "prod_verified" }),
+      create: () => Promise.resolve({ id: "prod_pro" }),
       update: () => Promise.resolve({}),
     },
   } as unknown as Stripe;
 
   const res = await resolvePlanPrice(admin, stripe, "business_verified");
   assert(res);
-  assertEquals(res.priceId, "price_verified");
-  assertEquals(res.priceCents, 100000);
-  assertEquals(createdInterval, "year");
-  assertEquals(cached.value, "price_verified");
+  assertEquals(res.priceId, "price_pro");
+  assertEquals(res.priceCents, 20000);
+  assertEquals(createdInterval, "month");
+  assertEquals(cached.value, "price_pro");
 });
 
 // ─── readPlaceBillingCustomer (MESITA-1891) ───────────────────────────────

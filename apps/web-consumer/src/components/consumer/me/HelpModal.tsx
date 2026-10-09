@@ -21,7 +21,6 @@ import {
   Percent,
   ScrollText,
   Sparkles,
-  Star,
   Store,
   UtensilsCrossed,
 } from "lucide-react";
@@ -132,13 +131,6 @@ export function HelpRungList({ classKey }: { classKey: string }) {
       mine: false,
     },
     {
-      key: "google",
-      label: "Google Review",
-      hint: "Once per place",
-      icon: Star,
-      mine: false,
-    },
-    {
       key: "mesita",
       label: "Mesita Review",
       hint: "In the app, once per place",
@@ -209,7 +201,7 @@ export function HelpModal() {
             <span className="text-foreground font-semibold">
               Actions add on.
             </span>{" "}
-            Welcome, Instagram Story, Google Review, and Mesita Review stack on
+            Welcome, Instagram Story, and Mesita Review stack on
             your rate — not pick-one. The bill clamps at 100% and
             applies to the first cap-pesos. Live percents sit on each
             place&apos;s Rewards tab.

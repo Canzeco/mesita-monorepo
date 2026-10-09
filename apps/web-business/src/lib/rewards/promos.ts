@@ -59,9 +59,9 @@ export type OrdersBase = Record<StrategyKey, number>;
 
 /**
  * Bonuses are per STRATEGY as well as per context: a place on Aggressive pays
- * more for a Google review than one on Conservative, exactly as it pays more
- * for standing. "Strategies write the ladder" means the WHOLE ladder, and the
- * four-box editor would otherwise bind two controls to one number.
+ * more for a story than one on Conservative, exactly as it pays more for
+ * standing. "Strategies write the ladder" means the WHOLE ladder, and the
+ * editor would otherwise bind two controls to one number. Google stays 0.
  */
 export type StrategyBonuses = Record<StrategyKey, ContextBonuses>;
 
@@ -207,7 +207,7 @@ export const BONUS_META: Record<
   google: {
     name: "Google Review",
     emoji: "⭐",
-    qualifier: "One-shot per guest per place — the top of the ladder",
+    qualifier: "Not a Member Reward",
     group: "action",
   },
 };
@@ -252,23 +252,19 @@ export const DEFAULT_PROMOS: PromosConfig = {
       dominant: { bronze: 40, silver: 45, gold: 50, diamond: 55 },
     },
     bonuses: {
-      conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
-      aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
-      // Google still has to out-pay the repeatable Story (modelWarnings
-      // enforces it: a Story a guest can post nightly must never beat a
-      // one-shot review, or the program buys stories). Google is already at
-      // the 15 the 95% worst case allows, so Story cannot rise past 10 and
-      // Dominant's edge lives in its base floor, not here. Mesita review is
-      // the one bonus with room: it is the review Mesita owns.
-      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
+      conservative: { welcome: 10, mesita: 5, story: 10, google: 0 },
+      aggressive: { welcome: 10, mesita: 5, story: 10, google: 0 },
+      // Google Review is not a Member Reward (google is always 0). Mesita
+      // review is the private in-app feedback that can be rewarded.
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 0 },
     },
   },
   orders: {
     base: { conservative: 5, aggressive: 10, dominant: 15 },
     bonuses: {
-      conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
-      aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
-      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
+      conservative: { welcome: 5, mesita: 5, story: 5, google: 0 },
+      aggressive: { welcome: 5, mesita: 5, story: 5, google: 0 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 0 },
     },
     soon: true,
   },
@@ -294,7 +290,7 @@ function coerceOneBonusSet(raw: unknown, d: ContextBonuses): ContextBonuses {
     welcome: snapRate(b.welcome, d.welcome),
     mesita: snapRate(b.mesita, d.mesita),
     story: snapRate(b.story, d.story),
-    google: snapRate(b.google, d.google),
+    google: 0,
   };
 }
 
@@ -521,7 +517,7 @@ function bonusForAction(
     case "story":
       return bonuses.story;
     case "review":
-      return bonuses.google;
+      return 0;
     case "welcome":
       return bonuses.welcome;
   }
@@ -653,19 +649,7 @@ export function additivityError(base: VisitsBase): string | null {
 
 export type ModelWarning = { key: string; message: string };
 
-export function modelWarnings(cfg: PromosConfig): ModelWarning[] {
-  const out: ModelWarning[] = [];
-  for (const s of STRATEGY_KEYS) {
-    const b = cfg.visits.bonuses[s];
-    if (b.google <= b.story) {
-      out.push({
-        key: `google-vs-story-${s}`,
-        message:
-          `${STRATEGY_META[s].name} · Google Review (${b.google}%) should ` +
-          `out-pay Instagram Story (${b.story}%) — Google is one-shot per ` +
-          `guest, the Story repeats.`,
-      });
-    }
-  }
-  return out;
+export function modelWarnings(_cfg: PromosConfig): ModelWarning[] {
+  // Google Review is not a priced action, so there is no rung to compare.
+  return [];
 }

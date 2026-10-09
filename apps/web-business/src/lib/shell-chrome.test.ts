@@ -418,6 +418,9 @@ describe("the rail is six nouns and one indent", () => {
       'title="API key"',
     );
     expect(readCode("app/(shell)/settings/DevelopersSection.tsx")).toContain(
+      "<PlaceApiKeysPanel",
+    );
+    expect(readCode("app/(shell)/settings/DevelopersSection.tsx")).toContain(
       'title="MCP connector"',
     );
     expect(existsSync(path.join(SRC, "components/console/MembersCard.tsx"))).toBe(false);

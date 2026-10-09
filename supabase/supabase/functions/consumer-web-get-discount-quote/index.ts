@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
         bonuses: {
           welcome: grid.actions.welcome[cls][strategy],
           story: grid.actions.story[cls][strategy],
-          google: grid.actions.review[cls][strategy],
+          google: 0,
           mesita: grid.actions.mesita_review[cls][strategy],
         },
         ladder,
@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
         // as an automatic row, never as a choice.
         welcome: isFirstVisit ? b.welcome : 0,
         story: b.story,
-        google: b.google,
+        google: 0,
         mesita: b.mesita,
       },
       ladder,

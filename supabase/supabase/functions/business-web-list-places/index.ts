@@ -506,6 +506,7 @@ Deno.serve(async (req) => {
             // that could disagree.
             mesitaPayEnabled: p.mesita_pay_enabled === true,
             membership: membershipByPlace.get(r.id) ?? null,
+            plan: r.plan ?? "free",
           }
           : {}),
       };

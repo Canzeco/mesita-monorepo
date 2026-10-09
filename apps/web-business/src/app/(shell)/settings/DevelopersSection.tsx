@@ -10,6 +10,7 @@ import { SoonStrip } from "@/components/console/SoonStrip";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 import { Section } from "@/components/shared/Section";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { PlaceApiKeysPanel } from "./PlaceApiKeysPanel";
 
 function ClientMarks() {
   return (
@@ -60,10 +61,7 @@ export function DevelopersSection() {
           title="API key"
           description="One secret per place. Whoever builds for you authenticates with it — your POS, a script, an agency."
         >
-          <SoonStrip
-            title="Mint a live key"
-            line="Shown once when issued, then masked. Rotating breaks anything still on the old key."
-          />
+          <PlaceApiKeysPanel placeId={place.id} />
           <div className="flex items-start gap-3 px-1">
             <KeyRound
               className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0"

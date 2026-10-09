@@ -100,6 +100,11 @@ import type { ProductCard } from "@/components/console/ProductCatalog";
 // to come from `ProductCatalog.tsx`, which held a second copy of the list;
 // `lib/product-keys.ts` is the only copy now and the component re-exports it.
 import type { ProductKey } from "@/lib/product-keys";
+import {
+  minPlanLockNote,
+  planMeetsMin,
+  type PlacePlanTier,
+} from "@/lib/plan-ladder";
 
 export type { ProductCard, ProductKey };
 
@@ -122,8 +127,8 @@ type ProductSpec = {
    *  gone. Without this, seven new keys render verbs pointing at
    *  `/places/<id>/undefined` with every check green. */
   tab: PlaceTab | null;
-  /** Mesita Partner unlocks it. */
-  needsPartner: boolean;
+  /** Minimum plan rung required; null = no plan gate. */
+  minPlan: PlacePlanTier | null;
   /** The per-place column(s) behind it, or null when the product is not a
    *  per-place switch (Profile, Visits, Payments). */
   atPlace: PlacePredicate | null;
@@ -143,7 +148,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Your public page on Mesita — the photos, the menu, the hours and the reviews a guest reads before they pick you.",
     tab: "profile",
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: null,
   },
@@ -153,7 +158,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "A real site on your own domain, built from the profile you already keep here instead of from scratch.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: "Built from your Mesita profile. Nothing is live yet.",
   },
@@ -163,7 +168,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Subscribe to the catalog of everyone who has eaten here: who came back, how often, and what they spend a month.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     // A SUBSCRIPTION, NOT A PURCHASE, AND NO LONGER "ALWAYS FREE".
     //
@@ -184,7 +189,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Reach the people who have not found you yet — Facebook, Instagram and Google, run from here instead of three dashboards.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: "Facebook, Instagram and Google. Nothing is connected yet.",
   },
@@ -201,7 +206,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Close the bill at the table and give a slice of it back — cash or card settles the same way, and you switch on what earns it.",
     tab: "visits",
-    needsPartner: true,
+    minPlan: "ultra",
     // PARTNER-GATED, NOT `visitRewards` — the merged card may not read off the
     // dial. `atPlace: (p) => p.visitRewards === true` was the Rewards card's
     // predicate, and inheriting it here would print "Off" for a place whose
@@ -216,7 +221,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Pickup and delivery, paid the moment the order is placed — a no-show costs the guest, never your kitchen.",
     tab: "orders",
-    needsPartner: false,
+    minPlan: "pro",
     atPlace: (p) => p.pickupOrders === true || p.deliveryOrders === true,
     soon: null,
   },
@@ -226,7 +231,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "The table bookings your own provider already holds, read here beside everything else this place does.",
     tab: "reservations",
-    needsPartner: false,
+    minPlan: null,
     atPlace: (p) => p.reservations === true,
     soon: null,
   },
@@ -238,7 +243,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "This place’s own Stripe account, so a guest can pay by card at the table and the money lands with you.",
     tab: null,
-    needsPartner: true,
+    minPlan: "pro",
     atPlace: null,
     soon: null,
   },
@@ -264,7 +269,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "A card reader on your counter for the guests who will never open their phone, on the same bill as everyone else.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: "Mesita hardware is not available yet.",
   },
@@ -283,7 +288,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "The till itself — items rung up, the ticket to the kitchen, and the bill Visits closes, on one system.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: "The furthest out of everything here. Nothing is live yet.",
   },
@@ -293,7 +298,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Branded money a guest buys once and can only spend here — paid up front, redeemed against a visit or an order.",
     tab: "credits",
-    needsPartner: true,
+    minPlan: "ultra",
     atPlace: (p) => p.credits === true,
     soon: null,
   },
@@ -314,7 +319,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Mesita pre-buys your future meals at a discount and resells them to guests — you take the cash now.",
     tab: "capital",
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: "An advance sale of food, never a loan. Nothing is live yet.",
   },
@@ -328,7 +333,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "Answers your number — a call or a WhatsApp — with the hours, the menu and the booking, so the floor never stops to pick up.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     soon: "Nothing is answering yet.",
   },
@@ -338,7 +343,7 @@ const SPECS: readonly ProductSpec[] = [
     blurb:
       "What to change and why: who to bring back, what to charge, and where this place is quietly losing guests.",
     tab: null,
-    needsPartner: false,
+    minPlan: null,
     atPlace: null,
     // IT READS THE OTHERS, and that is the honest prerequisite to state. An
     // advice engine over a place with no visits, no orders and no customer
@@ -413,6 +418,7 @@ export const PRODUCT_ORDER: readonly ProductKey[] = SPECS.map((s) => s.key);
 
 export function buildProductCards(input: {
   partnered: boolean;
+  placePlan: string | null | undefined;
   mesitaPayEnabled: boolean;
   /** THE PLACE this catalogue is about, or null when the read FAILED. Null is
    *  the only absence there is now (MESITA-1892): the catalogue lives at
@@ -428,7 +434,7 @@ export function buildProductCards(input: {
   /** Mesita Pay's own sub-step, under this same page. */
   payHref: string;
 }): ProductCard[] {
-  const { partnered, mesitaPayEnabled, place, placeHref, payHref } = input;
+  const { mesitaPayEnabled, place, placeHref, payHref, placePlan } = input;
   /** A verb, but only where there is somewhere to send it. A spec with no tab
    *  in a branch that wants one would otherwise render a button pointing at
    *  `/places/<id>/undefined` — which is what `key as PlaceTab` did silently,
@@ -464,13 +470,13 @@ export function buildProductCards(input: {
       };
     }
 
-    if (spec.needsPartner && !partnered) {
+    if (spec.minPlan && !planMeetsMin(placePlan, spec.minPlan)) {
       return {
         key: spec.key,
         name: spec.name,
         blurb: spec.blurb,
         state: "locked",
-        note: "Needs Mesita Partner.",
+        note: minPlanLockNote(spec.minPlan),
         action: null,
       };
     }
@@ -523,7 +529,7 @@ export function buildProductCards(input: {
       name: spec.name,
       blurb: spec.blurb,
       state: "enabled",
-      note: "Included with Mesita Partner.",
+      note: "Included with Mesita Ultra.",
       action: viewAction(spec, "Manage"),
     };
   });

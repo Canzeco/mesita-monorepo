@@ -163,17 +163,17 @@ export const DEFAULT_PROMOS_V12: PromosConfigV12 = {
       dominant: { bronze: 40, silver: 45, gold: 50, diamond: 55 },
     },
     bonuses: {
-      conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
-      aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
-      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
+      conservative: { welcome: 10, mesita: 5, story: 10, google: 0 },
+      aggressive: { welcome: 10, mesita: 5, story: 10, google: 0 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 0 },
     },
   },
   orders: {
     base: { conservative: 5, aggressive: 10, dominant: 15 },
     bonuses: {
-      conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
-      aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
-      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
+      conservative: { welcome: 5, mesita: 5, story: 5, google: 0 },
+      aggressive: { welcome: 5, mesita: 5, story: 5, google: 0 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 0 },
     },
     soon: true,
   },
@@ -211,7 +211,9 @@ function coerceOneBonusSet(raw: unknown, d: ContextBonuses): ContextBonuses {
     welcome: snapRate(b.welcome, d.welcome),
     mesita: snapRate(b.mesita, d.mesita),
     story: snapRate(b.story, d.story),
-    google: snapRate(b.google, d.google),
+    // A stored Google-review percent is discarded. Posting on Google is
+    // not a Member Reward.
+    google: 0,
   };
 }
 
@@ -500,7 +502,7 @@ function bonusForAction(bonuses: ContextBonuses, action: ActionKey): number {
     case "story":
       return bonuses.story;
     case "review":
-      return bonuses.google;
+      return 0;
     case "welcome":
       return bonuses.welcome;
   }

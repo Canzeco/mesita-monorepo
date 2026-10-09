@@ -41,6 +41,7 @@ function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
 function build(over: Partial<Parameters<typeof buildProductCards>[0]> = {}) {
   const cards = buildProductCards({
     partnered: false,
+    placePlan: "free",
     mesitaPayEnabled: false,
     place: place(),
     placeHref: HREF,
@@ -160,7 +161,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // card is asserted to be verbless and then left alone, and the two-way
     // check runs over the products that are actually built.
     const noView: readonly ProductKey[] = ["customers"];
-    const cards = build({ partnered: true });
+    const cards = build({ partnered: true, placePlan: "ultra" });
     for (const key of PRODUCT_ORDER) {
       if (cards[key].state === "soon") {
         expect(cards[key].action, key).toBeNull();
@@ -185,7 +186,7 @@ describe("the catalogue is the whole catalogue, in one order", () => {
     // Credits all opened `capabilities` — one screen, three verbs, and the
     // operator left to find which row was theirs. MESITA-1885 split the rooms
     // to match the rail, so each card opens the view of its own name.
-    const cards = build({ partnered: true });
+    const cards = build({ partnered: true, placePlan: "ultra" });
     expect(cards.orders.action?.href).toBe(placeTabHref("p-1", "orders"));
     expect(cards.reservations.action?.href).toBe(
       placeTabHref("p-1", "reservations"),
@@ -267,36 +268,42 @@ describe("Mesita Profile is free, and is the only card that says so", () => {
   });
 });
 
-describe("partner-gated products lock, and the lock is not an off switch", () => {
-  const GATED = ["visits", "pay", "credits"] as const;
-
-  it("read Locked with the prerequisite, and offer NO verb, without the partnership", () => {
-    const cards = build({ partnered: false, place: place({ credits: true }) });
-    for (const key of GATED) {
-      expect(cards[key].state, key).toBe("locked");
-      expect(cards[key].note, key).toBe("Needs Mesita Partner.");
-      // An Enable button here would walk an operator to a switch they cannot
-      // move — the fault the Capabilities ladder exists to prevent.
+describe("plan-gated products lock, and the lock is not an off switch", () => {
+  it("read Locked with the prerequisite, and offer NO verb, on the free rung", () => {
+    const cards = build({ placePlan: "free", place: place({ credits: true }) });
+    expect(cards.visits.state).toBe("locked");
+    expect(cards.visits.note).toBe("Needs Mesita Ultra.");
+    expect(cards.pay.state).toBe("locked");
+    expect(cards.pay.note).toBe("Needs Mesita Pro.");
+    expect(cards.orders.state).toBe("locked");
+    expect(cards.orders.note).toBe("Needs Mesita Pro.");
+    expect(cards.credits.state).toBe("locked");
+    expect(cards.credits.note).toBe("Needs Mesita Ultra.");
+    for (const key of ["visits", "orders", "pay", "credits"] as const) {
       expect(cards[key].action, key).toBeNull();
     }
-    // Even with the column ON: the subscription is the gate, and a place
-    // whose `credits_enabled` survived a lapsed partnership must not read as
-    // a live product.
+  });
+
+  it("Pro unlocks Payments and Orders but not Visits or Credits", () => {
+    const cards = build({ placePlan: "pro" });
+    expect(cards.pay.state).not.toBe("locked");
+    expect(cards.orders.state).not.toBe("locked");
+    expect(cards.visits.state).toBe("locked");
     expect(cards.credits.state).toBe("locked");
   });
 
-  it("unlock the moment the place partners — the same three", () => {
-    const cards = build({ partnered: true });
-    for (const key of GATED) {
+  it("Ultra unlocks the three gated products", () => {
+    const cards = build({ placePlan: "ultra", partnered: true });
+    for (const key of ["visits", "orders", "pay", "credits"] as const) {
       expect(cards[key].state, key).not.toBe("locked");
-      expect(cards[key].note ?? "", key).not.toContain("Needs Mesita Partner");
+      expect(cards[key].note ?? "", key).not.toMatch(/Needs Mesita (Pro|Ultra)/);
     }
   });
 
-  it("the ungated three never lock, partnered or not", () => {
+  it("the ungated two never lock, partnered or not", () => {
     for (const partnered of [true, false]) {
       const cards = build({ partnered });
-      for (const key of ["profile", "orders", "reservations"] as const) {
+      for (const key of ["profile", "reservations"] as const) {
         expect(cards[key].state, `${key}/${partnered}`).not.toBe("locked");
       }
     }
@@ -306,22 +313,28 @@ describe("partner-gated products lock, and the lock is not an off switch", () =>
 describe("a state is READ, and a failed read prints nothing (MESITA-1892)", () => {
   it("says on or not on, per column, for THIS place", () => {
     // Orders is ONE card over TWO columns, so each one alone turns it on.
-    const pickup = build({ partnered: true, place: place({ pickupOrders: true }) });
+    const pickup = build({
+      placePlan: "pro",
+      partnered: true,
+      place: place({ pickupOrders: true }),
+    });
     expect(pickup.orders.state).toBe("enabled");
     expect(pickup.orders.note).toBe("On here.");
     const delivery = build({
+      placePlan: "pro",
       partnered: true,
       place: place({ deliveryOrders: true }),
     });
     expect(delivery.orders.state).toBe("enabled");
 
-    const off = build({ partnered: true, place: place() });
+    const off = build({ placePlan: "pro", partnered: true, place: place() });
     expect(off.orders.state).toBe("off");
     expect(off.orders.note).toBe("Not on here yet.");
     expect(off.reservations.note).toBe("Not on here yet.");
 
     const on = build({
       partnered: true,
+      placePlan: "ultra",
       place: place({ reservations: true, credits: true }),
     });
     expect(on.reservations.note).toBe("On here.");
@@ -334,7 +347,7 @@ describe("a state is READ, and a failed read prints nothing (MESITA-1892)", () =
     // must refuse to tell it (SoonStrip's law). The STATE still falls to
     // `off`, because a card has to render something and a false "on" would be
     // the worse half of the pair — but nothing asserts it in words.
-    const failed = build({ partnered: true, place: null });
+    const failed = build({ partnered: true, placePlan: "ultra", place: null });
     for (const key of ["orders", "reservations", "credits"] as const) {
       expect(failed[key].note, key).toBeNull();
       expect(failed[key].state, key).toBe("off");
@@ -347,7 +360,11 @@ describe("a verb names the screen it opens", () => {
     // `Add a place` LEFT (MESITA-1892). It was the label a card wore while the
     // ORGANIZATION held no place and every verb landed on the Add ceremony;
     // this catalogue is one place's, so a page that renders at all has one.
-    const cards = build({ partnered: true, place: place({ reservations: true }) });
+    const cards = build({
+      placePlan: "pro",
+      partnered: true,
+      place: place({ reservations: true }),
+    });
     expect(cards.profile.action?.label).toBe("Manage");
     expect(cards.reservations.action?.label).toBe("Manage");
     expect(cards.orders.action?.label).toBe("Enable");
@@ -360,11 +377,11 @@ describe("a verb names the screen it opens", () => {
 
 describe("Mesita Pay's verb is the one that stays on this page", () => {
   it("reads the place's own column, and points at the setup sub-step", () => {
-    const on = build({ partnered: true, mesitaPayEnabled: true });
+    const on = build({ partnered: true, placePlan: "pro", mesitaPayEnabled: true });
     expect(on.pay.state).toBe("enabled");
     expect(on.pay.action).toEqual({ label: "Manage", href: PAY });
     expect(on.pay.note).toBe("On here. Guests can pay by card.");
-    const off = build({ partnered: true, mesitaPayEnabled: false });
+    const off = build({ partnered: true, placePlan: "pro", mesitaPayEnabled: false });
     expect(off.pay.state).toBe("off");
     expect(off.pay.action).toEqual({ label: "Set up", href: PAY });
     expect(off.pay.note).toBe("Set up this place's Stripe account first.");
@@ -373,7 +390,7 @@ describe("Mesita Pay's verb is the one that stays on this page", () => {
   it("is the ONLY product whose verb leaves the place's views behind", () => {
     // Every other verb lands on a VIEW — its own now (MESITA-1879), not the
     // place root every one of them shared before.
-    const cards = Object.values(build({ partnered: true }));
+    const cards = Object.values(build({ partnered: true, placePlan: "ultra" }));
     for (const c of cards) {
       if (!c.action) continue;
       expect(c.action.href, c.key).toBe(
@@ -420,7 +437,7 @@ describe("Soon is most of the suite, and every one of them is unbuilt", () => {
           if (c.state !== "soon") continue;
           expect(c.action, c.key).toBeNull();
           expect(c.note, c.key).toBeTruthy();
-          expect(c.note ?? "", c.key).not.toContain("Needs Mesita Partner");
+          expect(c.note ?? "", c.key).not.toMatch(/Needs Mesita (Pro|Ultra)/);
           expect(c.note ?? "", c.key).not.toMatch(/^(On here|Not on here)/);
         }
       }
@@ -504,6 +521,7 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     // if anyone "simplifies" Visits into the per-place branch.
     const zero = build({
       partnered: true,
+      placePlan: "ultra",
       place: place({ visitRewards: false }),
     }).visits;
     expect(zero.state).toBe("enabled");
@@ -519,14 +537,13 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
       place({ visitRewards: true }),
       null,
     ]) {
-      const visits = build({ partnered: true, place: p }).visits;
+      const visits = build({ placePlan: "ultra", partnered: true, place: p }).visits;
       expect(visits.state, JSON.stringify(p)).toBe("enabled");
     }
   });
 
-  it("but the partnership still gates it — on is not unconditional", () => {
-    // The bijection against the test above: same card, no partnership.
-    expect(build({ partnered: false }).visits.state).toBe("locked");
+  it("but the plan still gates it — on is not unconditional", () => {
+    expect(build({ placePlan: "free" }).visits.state).toBe("locked");
   });
 
   it("has NO Rewards card — the catalogue carries one, not two", () => {
@@ -535,7 +552,11 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     // somebody puts the key back in `PRODUCT_KEYS` — which is exactly the
     // reversal this console has now made four times (1884 merge, 1900 split,
     // 1949 shipped split, 1953 merged the mock only).
-    const cards = build({ partnered: true, place: place({ visitRewards: true }) });
+    const cards = build({
+      placePlan: "ultra",
+      partnered: true,
+      place: place({ visitRewards: true }),
+    });
     expect(Object.keys(cards)).not.toContain("rewards");
     expect(PRODUCT_ORDER).not.toContain("rewards");
   });
@@ -552,13 +573,9 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     expect(placeTabHref("p-1", "rewards")).toBe("/places/p-1/rewards");
   });
 
-  it("the merged card is Partner-gated, and reads Locked rather than Off", () => {
-    // The ladder grammar every partner-gated card on this page uses: a
-    // non-partner has no switch to be walked to. Note the place says its
-    // rewards are ON — Locked must still outrank that, or the gate is
-    // readable around.
+  it("the merged card is Ultra-gated, and reads Locked rather than Off", () => {
     const card = build({
-      partnered: false,
+      placePlan: "free",
       place: place({ visitRewards: true }),
     }).visits;
     expect(card.state).toBe("locked");
@@ -570,8 +587,8 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     // note reporting another product's dial would be the second place that
     // fact lives, which is the drift every comment in `products.ts` is about.
     for (const p of [place({ visitRewards: false }), place({ visitRewards: true }), null]) {
-      const visits = build({ partnered: true, place: p }).visits;
-      expect(visits.note, JSON.stringify(p)).toBe("Included with Mesita Partner.");
+      const visits = build({ placePlan: "ultra", partnered: true, place: p }).visits;
+      expect(visits.note, JSON.stringify(p)).toBe("Included with Mesita Ultra.");
       expect(visits.note).not.toMatch(/rewards/i);
     }
   });
@@ -582,7 +599,7 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     // no Rewards card left to print "Off", so the lie would now be the
     // MERGED card inventing a dial state in its own note. It may not — and
     // it may not go Off either, because the container is still up.
-    const visits = build({ partnered: true, place: null }).visits;
+    const visits = build({ partnered: true, placePlan: "ultra", place: null }).visits;
     expect(visits.state).toBe("enabled");
     expect(visits.note).not.toMatch(/rewards|off|zero/i);
   });
@@ -591,7 +608,7 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     // `_shared/memo-knowledge.ts` id "no-cashback": a reward is a discount on
     // tonight's bill. `cashback_ledger` is a dropped table. The word left
     // with MESITA-1882's blurb and must not return through the merge.
-    for (const card of Object.values(build({ partnered: true }))) {
+    for (const card of Object.values(build({ partnered: true, placePlan: "ultra" }))) {
       expect(card.blurb.toLowerCase(), card.key).not.toContain("cashback");
       expect((card.note ?? "").toLowerCase(), card.key).not.toContain("cashback");
     }
