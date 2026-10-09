@@ -1,9 +1,8 @@
 // memo-types.ts — the public place-card contract shared across Memo's engine.
 //
-// Extracted here (from consumer-web-ask-memo/memo-google-text-search.ts) so both
-// the consumer concierge EF and the admin playground EF share ONE definition of
-// the Prediction card. memo-google-text-search.ts re-exports these for its own
-// local importers, so nothing downstream had to change.
+// Extracted here so the consumer concierge EF and the admin playground EF
+// share ONE definition of the Prediction card. The old local re-export in
+// consumer-web-ask-memo/memo-google-text-search.ts is gone; nothing imported it.
 
 export type PredictionState =
   | "not_in_mesita"

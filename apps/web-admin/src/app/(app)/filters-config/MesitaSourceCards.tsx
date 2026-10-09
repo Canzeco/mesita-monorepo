@@ -7,7 +7,11 @@ import {
   FloorSoonNote,
   type FloorSeed,
 } from "./SourceFloor";
-import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
+import {
+  FILTERS_FLOOR_OWNER,
+  floorNumber,
+  GENERAL_FLOOR_OWNER,
+} from "./source-floor-copy";
 
 // The six Mesita sources, in taxonomy order: the four over Places, then the
 // two over Socials.
@@ -59,7 +63,7 @@ export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
       <div id="s-mesita-nearby" className="scroll-mt-16">
         <SectionCard
           icon={<MapPin className="text-primary h-4 w-4" />}
-          title="Mesita Places Nearby Search"
+          title={FILTERS_FLOOR_OWNER}
           subtitle="Closest N listed Mesita Places around the camera centre. Always runs; the Google lane beside it is the opt-in one."
           state={<KnobState kind="enforced" reason="list-places · Map" />}
         >
