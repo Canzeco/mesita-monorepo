@@ -74,7 +74,7 @@ export function MobileFrame({
         )}
       >
         <div className="border-border bg-card text-muted-foreground flex shrink-0 items-center justify-between gap-3 border-b px-3 py-1.5">
-          <p className="type-meta">
+          <p className="type-meta tracking-wide uppercase">
             Phone emulator
           </p>
           <Link

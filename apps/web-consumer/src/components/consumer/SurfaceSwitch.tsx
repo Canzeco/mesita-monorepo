@@ -16,7 +16,7 @@ export function SurfaceSwitch() {
   const web = useSyncExternalStore(subscribe, surfaceIsWeb, () => false);
   if (!web) return null;
   return (
-    <p className="type-meta text-muted-foreground mt-3">
+    <p className="type-body text-muted-foreground mt-3">
       The full site is browse-only — no sign-up here.{" "}
       <Link href="/mob" className="text-primary font-medium">
         Phone emulator

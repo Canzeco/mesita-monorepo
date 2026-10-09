@@ -15,7 +15,7 @@ export function DownloadAppScreen() {
         description="The full site is for browsing places and maps. Sign in, pay at a table, wallet, and your profile are in the iOS and Android app."
         action={{ label: "Download Mesita", href: "https://mesita.ai" }}
       />
-      <p className="type-meta text-muted-foreground pb-8 text-center">
+      <p className="type-body text-muted-foreground pb-8 text-center">
         <Link
           href={prefixPath("web", CONSUMER_ROUTES.discoverDefault)}
           className="text-primary font-medium"
