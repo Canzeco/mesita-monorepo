@@ -940,7 +940,13 @@ describe("Discovery page box order", () => {
     expect(googleSources).toContain("Word (Deep Search)");
     expect(googleSources).toContain("Word does not");
     expect(mesitaSources).toContain("Mesita Places Name Search");
-    expect(mesitaSources).toContain("Mesita Places Nearby Search");
+    // Nearby's title is the floor-owner constant, so the card and the matrix
+    // cannot drift. The words themselves live in source-floor-copy.ts.
+    expect(mesitaSources).toContain("title={FILTERS_FLOOR_OWNER}");
+    const floorCopy = readFileSync(join(__dirname, "source-floor-copy.ts"), "utf8");
+    expect(floorCopy).toContain(
+      'export const FILTERS_FLOOR_OWNER = "Mesita Places Nearby Search"',
+    );
     expect(mesitaSources).toContain("Mesita Places Browse Search");
     expect(mesitaSources).toContain("Mesita Places Flexible Search");
     expect(mesitaSources).toContain("Mesita Socials Browse Search");
