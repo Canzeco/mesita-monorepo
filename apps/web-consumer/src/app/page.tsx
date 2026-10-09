@@ -1,5 +1,8 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { WEB_HOME } from "@/lib/web-surface-auth";
+import { prefixPath } from "@/lib/surface";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 import { consumerAuthDestination } from "@/lib/auth-redirect";
@@ -20,6 +23,10 @@ export default async function ConsumerRootPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const params = await searchParams;
+  const requestHeaders = await headers();
+  if (requestHeaders.get("x-surface") === "web") {
+    redirect(prefixPath("web", WEB_HOME));
+  }
   const supabase = await createServerSupabase();
   const {
     data: { user },

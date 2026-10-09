@@ -55,6 +55,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { barePath } from "@/lib/surface";
 import { Flame, Heart, MapPin, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
@@ -89,7 +90,7 @@ export const ORDER_MODES: Mode[] = [
 ];
 
 export function ModeRail({ modes }: { modes: Mode[] }) {
-  const pathname = usePathname();
+  const pathname = barePath(usePathname() ?? "/");
   const supabase = useBrowserSupabase();
   const activeRef = useRef<HTMLAnchorElement | null>(null);
 
