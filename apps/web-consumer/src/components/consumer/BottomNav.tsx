@@ -129,7 +129,10 @@ export function BottomNav({ userId }: { userId?: string }) {
           {ITEMS.map((item) => {
             const { href, Icon, label, matchPrefixes, soon } = item;
             const active = matchPrefixes.some((p) => pathname.startsWith(p));
-            // Parked surfaces stay tappable — open ComingSoonModal (no Soon pill).
+            // Parked surfaces stay tappable — open ComingSoonModal. The tag is a
+            // quiet grey chip, sentence case, cut from the glyph by a card-colour
+            // ring: the solid-ink uppercase pill out-shouted every label in the
+            // bar (Pato, MESITA-2079).
             if (soon) {
               return (
                 <button
@@ -144,8 +147,8 @@ export function BottomNav({ userId }: { userId?: string }) {
                   className="text-muted-foreground hover:text-foreground type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition"
                 >
                   <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
-                    <Icon className="h-5 w-5" strokeWidth={1.75} />
-                    <span className="bg-foreground text-paper type-meta absolute -top-1 left-[calc(100%-10px)] rounded-full px-1.5 py-px leading-tight font-semibold tracking-wide whitespace-nowrap uppercase">
+                    <Icon className="h-5 w-5 opacity-60" strokeWidth={1.75} />
+                    <span className="bg-muted text-muted-foreground ring-card type-meta absolute -top-0.5 left-[calc(100%-8px)] flex h-4 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
                       Soon
                     </span>
                   </span>

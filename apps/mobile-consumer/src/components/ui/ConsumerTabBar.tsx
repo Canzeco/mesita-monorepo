@@ -162,16 +162,28 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
                     : undefined
                 }
               >
-                <Icon color={tint} size={20} strokeWidth={stroke} />
+                <View style={soon ? { opacity: 0.6 } : undefined}>
+                  <Icon color={tint} size={20} strokeWidth={stroke} />
+                </View>
+                {/* Quiet grey chip, sentence case, cut from the glyph by a
+                    card-colour ring — web BottomNav parity (MESITA-2079). */}
                 {soon ? (
                   <View
-                    className="absolute rounded-full bg-foreground px-1.5"
-                    style={{ top: -4, left: 22, paddingVertical: 1 }}
+                    className="absolute justify-center rounded-full bg-muted px-1.5"
+                    style={{
+                      // RN borders draw inside the box, web's ring outside:
+                      // 20 tall with a 2pt border is web's 16px chip + ring.
+                      height: 20,
+                      top: -4,
+                      left: 22,
+                      borderWidth: 2,
+                      borderColor: COLORS.card,
+                    }}
                   >
                     <Text
                       numberOfLines={1}
-                      className="font-semibold uppercase text-background"
-                      style={{ fontSize: 10, letterSpacing: 0.4 }}
+                      className="font-semibold text-muted-foreground"
+                      style={{ fontSize: 10, lineHeight: 12 }}
                     >
                       Soon
                     </Text>
