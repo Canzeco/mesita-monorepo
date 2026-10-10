@@ -14,12 +14,12 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
-import { CRENUP_PARENT } from "@/app/(app)/enricher-config/nav";
+import {
+  CREATION_PARENT,
+  ENRICHMENT_PARENT,
+} from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
-import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
 import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
@@ -68,23 +68,15 @@ const MANAGE_NAV: NavItem[] = [
   { href: "/manage-multiple", label: "Places", Icon: Building2 },
 ];
 
-// Configurations — ordered as the product flows, not alphabetically or by age.
-// Two lifecycles end to end, a place's then a guest's:
-//   platform  which model each subsystem thinks with (Models)
-//   supply    a place's life on Crenup: the Enricher that fills its profile,
-//             plus who may prove they own a place (Verification)
-//   demand    a guest's night: how they find a place (Discovery) → how they
-//             book it (Reservations) → the journey once they sit down (Visits,
-//             the local context — Bill · Sync · Report · Visits Rewards ·
-//             Ojo) → or ordering without going at all (Orders, the remote
-//             one; its rates stay parked)
-//   proof     who reads the screenshot (Ojo) — composed onto Visits, not a
-//             rail row; blob stays ojo_config
+// Configurations — exactly five rows (Pato, MESITA-2083: "Models, Creation,
+// Enrichment, Discovery, Reservations — Only those"), ordered as the product
+// flows: which model each subsystem thinks with, then a place's life on Crenup
+// (Creation, then Enrichment), then a guest's night (how they find a place,
+// how they book it).
 //
-// Ojo is not a sidebar row: it is the proof reader for THE TICKET, so its
-// knobs live on Visits. Visits Rewards is the same shape (MESITA-1784):
-// rates a visit pays, not a rail row; /rewards-config redirects here.
-// Orders still runs ahead of a reader (Soon).
+// OFF THE RAIL, STILL ROUTABLE: Visits (/visits-config, which also holds Ojo
+// and Visits Rewards), Orders (/orders-config) and Payments (/controls-config).
+// Putting one back is a one-line append here; its nav.ts still exports the row.
 //
 // Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
 // because it IS the chat engine. It has no editor at all — it runs on in-code
@@ -104,19 +96,15 @@ const MANAGE_NAV: NavItem[] = [
  * Anything that needs to know the set imports it. Anything that only needs to
  * NAME it points here instead of enumerating.
  */
-const CONFIGURATIONS_NAV: NavItem[] = [
+export const CONFIGURATIONS_NAV: NavItem[] = [
   // Models — four platform picks. /general-config redirects here (MESITA-1788).
-  // Ojo's policy lives on Visits; /ojo-config redirects there. Visits Rewards
-  // is the same: /rewards-config redirects to Visits.
   MODELS_PARENT,
-  // Crenup — Enricher modules plus Verification. /verification-config and
-  // /sourcing-config redirect here.
-  CRENUP_PARENT,
+  // Crenup's two halves. /verification-config lands on Creation.
+  CREATION_PARENT,
+  ENRICHMENT_PARENT,
+  // Discovery.
   FILTERS_PARENT,
-  VISITS_PARENT,
-  ORDERS_PARENT,
   RESERVATIONS_PARENT,
-  CONTROLS_PARENT,
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.

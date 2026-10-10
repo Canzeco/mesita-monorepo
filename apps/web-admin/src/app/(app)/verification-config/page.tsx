@@ -4,5 +4,5 @@ import { permanentRedirect } from "next/navigation";
 // redirect: Notion's Configs registry links it, and those links are external
 // and ungreppable.
 export default function VerificationConfigPage(): never {
-  permanentRedirect("/enricher-config#s-verification");
+  permanentRedirect("/enricher-config/creation#s-verification");
 }
