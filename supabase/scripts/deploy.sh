@@ -3,6 +3,11 @@
 # Apply pending migrations to the linked Supabase project and
 # regenerate TypeScript types into @mesita/supabase-contract (mesita monorepo).
 #
+# Since MESITA-2075 a merge to main applies migrations on its own: the
+# Supabase GitHub integration (Deploy to production, working dir `supabase`)
+# runs them. This script is the REPAIR path for a failed integration run,
+# plus the type regen a PR still owes.
+#
 # Run from the supabase/ package root (mesita-monorepo):
 #   ./scripts/deploy.sh
 #
