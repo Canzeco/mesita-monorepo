@@ -121,7 +121,7 @@ export function PlaceGallery({
 
       {/* The one line on this screen no other console shows, and it is true:
           `photos[0]` is the cover everywhere a guest meets this place. */}
-      <p className="text-muted-foreground mt-2 text-[12px]">
+      <p className="text-muted-foreground mt-2 text-xs">
         {photos.length === totalPhotos
           ? `${totalPhotos} ${totalPhotos === 1 ? "photo" : "photos"}`
           : `${photos.length} of ${totalPhotos} photos`}

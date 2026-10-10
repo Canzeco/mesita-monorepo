@@ -1,11 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { CRENUP_STEPS, GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
+import { CRENUP_STEPS } from "@/lib/state-vocabulary";
 import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 
 // Keeps the "use server" actions.ts and its supabase-ef import out of the
 // graph; never called (a static render runs no handlers).
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/app/(app)/manage-multiple/actions", () => ({
+  autocompleteGooglePlaces: vi.fn(),
   createPlaceFromGooglePlaceId: vi.fn(),
   deletePlace: vi.fn(),
   enrichPlace: vi.fn(),
@@ -14,7 +16,7 @@ vi.mock("@/app/(app)/manage-multiple/actions", () => ({
   setPlaceListed: vi.fn(),
 }));
 
-import { AbsentCard, PlaceCard, SinglePlaceClient } from "./SinglePlaceClient";
+import { AbsentCard, SinglePlaceClient } from "./SinglePlaceClient";
 
 const GID = "ChIJN1t_tDeuEmsRUsoyG83frY4";
 
@@ -47,7 +49,6 @@ export const FIXTURE_HIT: PlaceHit = {
   enrich_crenup_labels: CRENUP_STEPS.map((s) => s.label),
   enrich_crenup_blocked: { key: "reviews", index: 5, state: "failed" },
   enrich_functions: null,
-  verified: false,
   partner: false,
   promoting: false,
   promoting_level: 0,
@@ -59,23 +60,11 @@ export const FIXTURE_HIT: PlaceHit = {
 };
 
 describe("Single Place", () => {
-  it("opens on the Find box alone — no place, no Crenup box until a lookup", () => {
+  it("opens on the Find box alone — a hit opens the place, it is not drawn here", () => {
     const html = renderToStaticMarkup(<SinglePlaceClient />);
     expect(html).toContain("ChIJ… or a place name");
-    expect(html).not.toContain("Open in business console");
-    expect(html).not.toContain(">Enrich<");
-  });
-
-  it("reads one place: identity, every General State fact, the Crenup ladder, the editor door", () => {
-    const html = renderToStaticMarkup(<PlaceCard hit={FIXTURE_HIT} />);
-    expect(html).toContain("Cafe Nin");
-    expect(html).toContain("Calle Havre 73");
-    expect(html).toContain("4.6 · 2,431 reviews");
-    for (const f of GENERAL_STATE_FACTS) expect(html, f.label).toContain(f.label);
-    for (const s of CRENUP_STEPS) expect(html, s.label).toContain(`${s.n}. ${s.label}`);
-    expect(html).toContain("Stopped at Reviews");
-    expect(html).toContain(`https://business.mesita.ai/places/${FIXTURE_HIT.id}`);
-    expect(html).toContain(`place_id:${GID}`);
+    expect(html).not.toContain("General States");
+    expect(html).not.toContain(">Create<");
   });
 
   it("says Not on Mesita for an unknown Google Place ID, with what Google knows", () => {
@@ -102,6 +91,6 @@ describe("Single Place", () => {
     );
     expect(html).toContain("Taquería Orinoco");
     expect(html).toContain("4.4 · 918 reviews");
-    expect(html).not.toContain("Open in business console");
+    expect(html).toContain("Create");
   });
 });

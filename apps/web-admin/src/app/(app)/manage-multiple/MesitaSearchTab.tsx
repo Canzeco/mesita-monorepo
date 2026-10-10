@@ -63,7 +63,7 @@ export function MesitaSearchTab({
 
   // The whole catalog, no paste required — and the shortcut: every Google
   // Place ID it finds lands in the shared box, so the catalog moves on to a
-  // lookup, or to Crenup, without anyone pasting 250 lines. The box
+  // lookup, or to Create, Enrich and Update, without anyone pasting 250 lines. The box
   // caps where parseGooglePlaceIds caps, and a place with no
   // google_place_id has no token to give — the summary says both out loud.
   async function runAllPlaces() {

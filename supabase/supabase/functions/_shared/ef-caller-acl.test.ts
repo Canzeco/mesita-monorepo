@@ -35,7 +35,14 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
  */
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
-  business: ["web-business", "mobile-business"],
+  // web-admin joined the business actor with MESITA-2086: Manage › Single
+  // Place renders the business console's place surface, GENERATED from
+  // shared/place-console into both apps, so every business-web-* call that
+  // surface makes is the same call from either console. The operator's
+  // session is a super-admin, which _shared/auth-membership.ts already
+  // admits through every requireMembership/Owner/Editor gate — the EF name
+  // still names the surface that owns the call; admin merely hosts it too.
+  business: ["web-business", "mobile-business", "web-admin"],
   consumer: ["web-consumer", "mobile-consumer"],
   validate: ["web-validate"],
   // The public gift-landing page (MESITA-1677) — a stranger with a code, no
@@ -62,18 +69,14 @@ const NON_APP_ACTORS = new Set(["staff"]);
  * consoles — removes its line here in the same PR.
  */
 const GRANDFATHERED_VIOLATIONS = new Set([
-  "admin-web-decide-verification:web-business",
   "admin-web-enrich-place:web-business",
   "admin-web-find-place:web-business",
   "admin-web-get-place-enrichment:web-business",
-  "admin-web-get-place-verification:web-business",
-  "admin-web-list-verifications:web-business",
   "admin-web-reset-database:web-consumer",
   "admin-web-search-places:web-business",
   "admin-web-set-place-active:web-business",
   "admin-web-set-place-enrichment:web-business",
   "admin-web-set-place-listed:web-business",
-  "admin-web-set-place-verified:web-business",
   "admin-web-suggest-places:web-business",
   "consumer-web-create-reservation:web-admin",
 ]);

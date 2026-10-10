@@ -18,11 +18,11 @@ import {
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is twelve general facts plus nine Crenup steps 0–8", () => {
+  it("is eleven general facts plus nine Crenup steps 0–8", () => {
     // Owned joined with MESITA-1608 — somebody holds this place (the claim
     // on `places` since MESITA-1892; an organization before that), which
     // is not the same claim as Verified (having PROVED you hold it).
-    expect(GENERAL_STATE_COUNT).toBe(12);
+    expect(GENERAL_STATE_COUNT).toBe(11);
     expect(CRENUP_STEP_COUNT).toBe(9);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
@@ -31,7 +31,6 @@ describe("state vocabulary", () => {
       "Requested",
       "Enriching",
       "Enriched",
-      "Verified",
       "Owned",
       "Partnered",
       "Rewards",
@@ -59,7 +58,6 @@ describe("state vocabulary", () => {
     expect(STATE_FACT_FALSE_TONE.mesita_pay).toBeUndefined();
     expect(STATE_FACT_FALSE_TONE.credits).toBeUndefined();
     expect(STATE_FACT_FALSE_TONE.owned).toBeUndefined();
-    expect(STATE_FACT_FALSE_TONE.verified).toBeUndefined();
     expect(Object.keys(STATE_FACT_FALSE_TONE)).toEqual([]);
     // Acceptance bits are still engineless (no chips/segments) until their
     // engines land — that gate is unrelated to the false-tone color.

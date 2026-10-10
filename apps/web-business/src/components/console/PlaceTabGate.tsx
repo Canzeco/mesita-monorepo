@@ -42,7 +42,7 @@
 import { notFound, usePathname } from "next/navigation";
 import { placeTabFromPathname } from "@/lib/place-tabs";
 import { placePageFromPathname } from "@/lib/console-routes";
-import { usePlaceScope } from "@/app/(shell)/places/[id]/PlaceScope";
+import { usePlaceScope } from "@/components/console/PlaceScope";
 
 export function PlaceTabGate() {
   const pathname = usePathname();

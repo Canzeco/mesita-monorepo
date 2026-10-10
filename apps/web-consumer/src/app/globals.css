@@ -168,6 +168,21 @@
   /* Legibility for white chrome sitting on a photo — the same carve-out
      Docs > Design §D already grants bg-black/NN on media. Not a lift. */
   --shadow-media: 0 1px 4px oklch(0 0 0 / 0.5);
+  /* ON-MEDIA COLOURS (MESITA-2105). Chrome drawn ON a full-bleed photo —
+     Scroll's action discs, its name and meta lines — needs white on black,
+     and the package rule says semantic tokens only, never `text-white`. These
+     are those tokens: the photo is the surface, so they are the only colours
+     that may sit on it. Glass at 55% keeps a white glyph at 4.74:1 even over
+     a pure-white photo (#737373 under it), which a 40% glass does not. */
+  --on-media: oklch(1 0 0);
+  --on-media-muted: oklch(1 0 0 / 0.85);
+  --media-glass: oklch(0 0 0 / 0.55);
+  --media-scrim: linear-gradient(
+    to top,
+    oklch(0 0 0 / 0.72) 0%,
+    oklch(0 0 0 / 0.34) 38%,
+    transparent 70%
+  );
   /* Sheet edges are DIRECTIONAL: a drawer entering from the right casts left,
      a bottom sheet casts up. No single token can express both. */
   --shadow-sheet-up: 0 -12px 32px oklch(0 0 0 / 0.25);
@@ -204,6 +219,29 @@
    positioning called for near-black; that tradeoff was reversed
    2026-05-27 — consumer joins the rest of the suite on light. See
    project_theme_strategy memory note for the reasoning. */
+
+/* Scroll's double-tap heart (MESITA-2105): pops in, holds, fades. Animates
+   `transform` only — the centring rides Tailwind v4's separate `translate`
+   property, so the two never fight. Reduced motion hides it entirely
+   (`motion-reduce:hidden` on the element); the Save disc still fills. */
+@keyframes scroll-heart-burst {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  18% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  65% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
 
 /* First-time swipe hint — a hand drifts left then right to teach the
    gesture. Used by SwipeTutorialOverlay. Tailwind doesn't ship a
@@ -273,6 +311,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-on-media: var(--on-media);
+  --color-on-media-muted: var(--on-media-muted);
+  --color-media-glass: var(--media-glass);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -444,6 +485,9 @@
 }
 @utility shadow-media {
   box-shadow: var(--shadow-media);
+}
+@utility bg-media-scrim {
+  background-image: var(--media-scrim);
 }
 @utility shadow-sheet-up {
   box-shadow: var(--shadow-sheet-up);

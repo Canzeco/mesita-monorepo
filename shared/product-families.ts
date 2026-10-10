@@ -291,4 +291,4 @@ export const SOON_TILE = "opacity-65";
  *  product is and the pill says whether it exists, and a hue doing both jobs
  *  is the failure MESITA-1936 wrote down — state is a shape, never a colour. */
 export const SOON_PILL =
-  "inline-flex w-fit items-center rounded-full border border-dashed border-border px-2 py-0.5 text-[10.5px] font-semibold tracking-wide text-muted-foreground uppercase";
+  "inline-flex w-fit items-center rounded-full border border-dashed border-border px-2 py-0.5 text-[0.65625rem] font-semibold tracking-wide text-muted-foreground uppercase";

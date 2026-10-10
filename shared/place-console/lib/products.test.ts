@@ -17,6 +17,7 @@ import { PRODUCT_KEYS } from "@/components/console/ProductCatalog";
 import { PRODUCT_ORDER, buildProductCards } from "./products";
 import { PLACE_TABS, placeTabHref, type PlaceTab } from "./place-tabs";
 import { RAIL_ROWS, placePayHref } from "./console-routes";
+import { PLACE_BASE } from "@/lib/place-base";
 import {
   PRODUCT_KEYS as VOCABULARY_KEYS,
   type ProductKey,
@@ -570,7 +571,7 @@ describe("Member Visits is ONE card, and it may not read the dial (MESITA-2035)"
     // else, the same stranding `products/pay` needed a back link for
     // (MESITA-1943). This fails the day someone "finishes" the cleanup.
     expect(PLACE_TABS).toContain("rewards");
-    expect(placeTabHref("p-1", "rewards")).toBe("/places/p-1/rewards");
+    expect(placeTabHref("p-1", "rewards")).toBe(`${PLACE_BASE}/p-1/rewards`);
   });
 
   it("the merged card is Ultra-gated, and reads Locked rather than Off", () => {

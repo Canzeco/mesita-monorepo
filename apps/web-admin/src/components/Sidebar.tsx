@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 import {
   PanelLeftClose,
   PanelLeftOpen,
-  Radar,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
@@ -21,7 +19,6 @@ import {
 } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
 
@@ -46,10 +43,9 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },
 ];
 
-const ALERTS_NAV: NavItem[] = [
-  { href: "/global-performance", label: "Global Monitor", Icon: Radar },
-  CREDIT_LIABILITY_PARENT,
-];
+// The MVP First Stage rail (MESITA-2088): Account · Manage · Configurations.
+// Alerts (Global Monitor, Credits Liability) and Testing › Billing are
+// deleted, routes and all — Pato, 2026-10-10: "kill the stupid alerts".
 
 // Manage — the records of real things. Admins first (Pato, 2026-09-12):
 // who may operate the console is a record, not a policy blob, and a
@@ -59,10 +55,8 @@ const ALERTS_NAV: NavItem[] = [
 // label. Then widest scope: the backend itself, then the places Mesita
 // lists — MANY at once, then ONE (Pato, MESITA-2084: "Multiple Places /
 // Single Place"). Single Place is the one-place sibling of the bulk tool,
-// not the per-place editor MESITA-1588 deleted; that editor lives in the
-// business console and Single Place links to it. Not Configurations;
-// nothing here is a policy blob. Invitations left the rail with
-// MESITA-1783; the page still lives at /invitations.
+// not the per-place editor MESITA-1588 deleted. Not Configurations;
+// nothing here is a policy blob.
 export const MANAGE_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
   DB_PARENT,
@@ -76,9 +70,8 @@ export const MANAGE_NAV: NavItem[] = [
 // (Creation, then Enrichment), then a guest's night (how they find a place,
 // how they book it).
 //
-// OFF THE RAIL, STILL ROUTABLE: Visits (/visits-config, which also holds Ojo
-// and Visits Rewards), Orders (/orders-config) and Payments (/controls-config).
-// Putting one back is a one-line append here; its nav.ts still exports the row.
+// Visits (with Ojo and Visits Rewards), Orders and Payments were off-rail
+// pages until MESITA-2088 deleted them: the MVP has no Second Stage.
 //
 // Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
 // because it IS the chat engine. It has no editor at all — it runs on in-code
@@ -101,16 +94,13 @@ export const MANAGE_NAV: NavItem[] = [
 export const CONFIGURATIONS_NAV: NavItem[] = [
   // Models — four platform picks. /general-config redirects here (MESITA-1788).
   MODELS_PARENT,
-  // Crenup's two halves. /verification-config lands on Creation.
+  // Crenup's two halves.
   CREATION_PARENT,
   ENRICHMENT_PARENT,
   // Discovery.
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
 ];
-
-// Testing — operator tools that probe live systems rather than configure them.
-const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
 
 // The first group is deliberately unlabelled: a heading reading "Account" above
 // a lone "Account" link is the redundancy this menu is trying to shed.
@@ -120,10 +110,8 @@ const SIDEBAR_SECTIONS: {
   items: NavItem[];
 }[] = [
   { id: "primary", label: null, items: PRIMARY_NAV },
-  { id: "alerts", label: "Alerts", items: ALERTS_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
-  { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 
 function NavLink({

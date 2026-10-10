@@ -12,12 +12,18 @@ import {
 } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import {
+  SCROLL_USES_MOCK,
+  isMockPlace,
+  scrollMockPlaces,
+} from "@/lib/mock/scroll-places";
+import { placeHref } from "@/lib/place-route";
+import { sharePlace } from "@/lib/share-place";
 import { cn, errMsg } from "@/lib/utils";
 import { EmptyState } from "@/components/shared";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { trackEvent } from "@/lib/analytics/track";
-import { GoSheet } from "@/components/consumer/place-detail/GoSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -35,43 +41,40 @@ import {
   deckRequestKey,
   toDeckRequest,
 } from "@/lib/discovery-filters-wire";
-import { ScrollCard } from "./scroll-card";
+import { ScrollCard, scrollCardActions } from "./scroll-card";
 import { ScrollHint } from "./scroll-hint";
 import {
   readScrollPosition,
   writeScrollPosition,
 } from "./scroll-position";
 
-// SCROLL — Home's lead mode (MESITA-1697). One place per screen, vertical.
-// Filters match the map (MESITA-1792): Family, Places scope, Google
-// review floor, plus connect location. The CARD is unchanged
-// (`PlaceSwipeCardFace`), only the way you get to the next one.
+// SCROLL — Home's lead mode (MESITA-1697), a TikTok feed since MESITA-2105.
+// One place per screen, vertical. Filters match the map (MESITA-1792):
+// Family, Places scope, Google review floor, plus connect location.
 //
 // TWO AXES, TWO MEANINGS. Vertical moves to the next place, horizontal pages
-// that place's photos via the carousel already on the card face. In the stack
-// the horizontal axis was spent on skip/save, so the photos had nowhere to go;
-// freeing it is the thing that makes this shape earn itself, not the novelty
-// of scrolling.
+// that place's photos (the carousel's native scroller). Double-tap saves; a
+// single tap does nothing (design 4A). The card itself is ScrollCard: the
+// photo edge to edge, an action column on the right, the name bottom-left.
 //
 // SNAP IS MANDATORY, not proximity. At one card per viewport, a list that
 // comes to rest showing two half-cards reads as a broken render rather than a
 // feed — and mandatory snapping also gives the view analytics a real boundary
 // to fire on.
 //
-// NO SKIP, DELIBERATELY. Scrolling past a card IS the skip, which is why this
-// mode can drop two of the deck's five controls and still lose nothing. What
-// it must NOT drop is Go: Reserve lives behind it, and a Home whose actions
-// are all bookmarks is a Home that cannot convert (Pato, MESITA-1697 gate,
-// D2).
+// NO SKIP, DELIBERATELY. Scrolling past a card IS the skip. What it must NOT
+// drop is a conversion: a Home whose actions are all bookmarks cannot convert.
+// Since 2026-10-10 that is Reserve — the MVP's First Stage is reservations,
+// and Go's visit and order doors are Second Stage.
 //
-// `content-visibility: auto` IS NOT AN OPTIMISATION HERE, IT IS THE FEATURE.
-// Each card mounts an ImageCarousel and a hidden sizing clone of its own
-// fields; fifty of those at once is a reflow storm on a phone. Skipping layout
-// and paint for off-screen rows is what makes the list scroll at all, and it
-// is a CSS platform feature rather than a virtualization dependency.
-// `contain-intrinsic-size` keeps the scrollbar honest while rows are skipped.
+// ONLY THE CARD ON SCREEN AND ITS NEIGHBOURS LOAD PHOTOS EAGERLY (eng review
+// R3). All fifty cards are in the DOM; with the carousel in native mode each
+// would otherwise start three photo downloads at mount — about 4-7 MB before
+// the first swipe. `active` comes from the scroll listener this file already
+// keeps for position restore.
 /** Cards in a full deck. Cycled from the real rows until the catalog can fill it. */
 const DECK_SIZE = 50;
+const EMPTY_IDS: ReadonlySet<string> = new Set();
 
 export function ScrollDeck({
   places,
@@ -90,13 +93,33 @@ export function ScrollDeck({
   const appliedCount = countAppliedDiscoveryFilters(filters);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // ONE PAIR OF SHEETS FOR THE WHOLE LIST, not one per card: fifty mounted
-  // sheets for a guest who is only scrolling is fifty times the work. The
-  // card raises the intent and this owns the surface — and, like the stack
-  // deck, Go and Reserve SWAP rather than stack, because two sheets sliding
-  // up at the same z-tier read as a rendering bug.
-  const [goPlace, setGoPlace] = useState<Place | null>(null);
+  // ONE SHEET FOR THE WHOLE LIST, not one per card: the card raises the intent
+  // and this owns the surface. Reserve opens the reservation sheet directly —
+  // Go (Visit · Order · Reserve) left the card with the MVP's First Stage,
+  // where reservations are the conversion (Pato, 2026-10-10: "Profile, Save,
+  // Share, Reserve").
   const [reservePlace, setReservePlace] = useState<Place | null>(null);
+
+  // A mock card's heart lives here and nowhere else (design 3A): writing a
+  // `mock-` id into Favs would leave a ghost place on the Favs tab after the
+  // mock is gone.
+  const [mockSavedIds, setMockSavedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const setMockSaved = (id: string, saved: boolean) =>
+    setMockSavedIds((prev) => {
+      const next = new Set(prev);
+      if (saved) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  // The card on screen, from the scroll listener below (eng review R3).
+  const [active, setActive] = useState(0);
+  // Every card is the scrollport's size. A photo needs that box to decide
+  // whether it can cover the card or wears the reflection (ScrollCard).
+  const [cardSize, setCardSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
 
   // THE SHARED DECK ARRIVES WITHOUT COORDINATES. HomeDeckBoundary calls
   // apiRecommendDeck with `{ limit }` only, so the EF scores it at
@@ -115,6 +138,9 @@ export function ScrollDeck({
   const requestKey = deckRequestKey(filters, center);
 
   useEffect(() => {
+    // THE MOCK NEVER ASKS THE SERVER (design 2A). Its rows are filtered on the
+    // client below, so a located or filtered re-fetch would only be thrown away.
+    if (SCROLL_USES_MOCK) return;
     if (settledKeyRef.current === requestKey) return;
     let cancelled = false;
     if (requestKey === UNFILTERED_DECK_KEY) {
@@ -157,8 +183,9 @@ export function ScrollDeck({
   //
   // THE EF'S ORDER IS KEPT (MESITA-2047). The deck arrives banded — open and
   // near first, then open within reach, closed within reach, other cities
-  // last. No client re-sort runs here: one would lift a CLOSED place above
-  // every open card (place-feed-grid.test.tsx refuses a `.sort(`).
+  // last — with the bought slots already placed inside each band. A client
+  // re-sort that floated promoting places used to run here and would lift a
+  // promoting CLOSED place above every open card.
   //
   // AN EMPTY LOCATED ANSWER NEVER BLANKS A GOOD SHARED DECK when the guest set
   // no filter. The engine backfills far and closed places, so an unfiltered
@@ -170,7 +197,9 @@ export function ScrollDeck({
       geoDeck && (geoDeck.length > 0 || hasDiscoveryPredicates(filters))
         ? geoDeck
         : null;
-    const source = located ?? places;
+    // The switch replaces the WHOLE source, never part of it: fake and real
+    // cards never share a feed (design 2A).
+    const source = SCROLL_USES_MOCK ? scrollMockPlaces() : (located ?? places);
     const listed = source.filter((place) => {
       if (place.googleOnly || place.from_google) {
         return filters.placesScope === "google";
@@ -181,21 +210,20 @@ export function ScrollDeck({
     return applyDiscoveryFilters(withDistance, filters);
   }, [geoDeck, places, center, filters]);
 
-  // THE DECK IS ALWAYS 50, CYCLED FROM WHATEVER IS REAL (Pato, live: "the deck
-  // must be 50 items. then it repeats. if n is one, fill the 50 items deck with
-  // the same place. for the moment").
+  // THE DECK IS ALWAYS 50, CYCLED (Pato, live: "the deck must be 50 items.
+  // then it repeats. if n is one, fill the 50 items deck with the same place.
+  // for the moment").
   //
-  // NO MOCK DATA. This replaced a fallback that swapped in eight invented
-  // places whenever the catalog held fewer than two — Pato killed it on sight
-  // ("don't put shitty mock data"), and he is right that it was the wrong
-  // trade: a feed of plausible-looking places that cannot be visited teaches
-  // the reviewer nothing and quietly becomes the thing everyone demos.
-  // Repeating the ONE real place is honest by construction — you can tap it,
-  // save it, and reserve at it.
+  // WHAT IT CYCLES DEPENDS ON ONE SWITCH. With SCROLL_USES_MOCK on (MESITA-2105,
+  // Pato, 2026-10-10: "for the moment use mock data written in the frontend")
+  // it is the twelve shared mock places; off, it is whatever is real, the way
+  // it was from 2026-09-08 when Pato killed the last mock. That reversal is
+  // deliberate and bounded: one file, one switch, Scroll only, and the exit is
+  // MESITA-2095. A mock card can never reach Favs, analytics or a place URL
+  // (scrollCardActions).
   //
   // TEMPORARY, and the instruction said so. When the catalog holds 50+ this
-  // slice is a plain `rows.slice(0, DECK_SIZE)` and the modulo goes away;
-  // until then it is what makes the gesture reviewable at all.
+  // slice is a plain `rows.slice(0, DECK_SIZE)` and the modulo goes away.
   const deck = useMemo(() => {
     if (rows.length === 0) return [];
     return Array.from(
@@ -204,19 +232,20 @@ export function ScrollDeck({
     );
   }, [rows]);
 
-  const toggleSave = (place: Place) => {
-    const next = !savedIds.has(place.id);
-    if (next) {
+  const saveReal = (place: Place, saved: boolean) => {
+    if (saved) {
       upsertSavedPlacePreview(place);
       setSaved(place.id, true);
-      trackEvent(supabase, "home_card_save", { mode: "scroll", place_id: place.id });
-      // First save only. The filled, scaled heart is the receipt from then on;
-      // a toast on every save would be noise on a surface built for volume.
+      // First save only. The filled heart is the receipt from then on; a toast
+      // on every save would be noise on a surface built for volume.
       if (savedIds.size === 0) toast.success("Saved — find it in Favs");
     } else {
       setSaved(place.id, false);
     }
   };
+  const realSavedIds = hydrated ? savedIds : EMPTY_IDS;
+
+  const hasDeck = deck.length > 0;
 
   // Sibling modes share this layout, so Next unmounts the leaf on every tab
   // switch. Without this, Scroll → Feed → Scroll silently returns to the top;
@@ -229,14 +258,28 @@ export function ScrollDeck({
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => writeScrollPosition(el.scrollTop));
+      frame = requestAnimationFrame(() => {
+        writeScrollPosition(el.scrollTop);
+        if (el.clientHeight > 0) {
+          setActive(Math.round(el.scrollTop / el.clientHeight));
+        }
+      });
     };
     el.addEventListener("scroll", onScroll, { passive: true });
+    const measure = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setCardSize({ width, height });
+    });
+    measure.observe(el);
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", onScroll);
+      measure.disconnect();
     };
-  }, []);
+    // Re-attach when the list itself comes back: a filter that empties the
+    // deck unmounts the <ul>, and a listener bound to the old node would
+    // leave `active` (and so every card's eager photos) frozen.
+  }, [hasDeck]);
 
   const filtersSheet = (
     <LocalSheet
@@ -264,7 +307,7 @@ export function ScrollDeck({
       aria-haspopup="dialog"
       aria-pressed={appliedCount > 0}
       className={cn(
-        "shadow-elev absolute top-3 right-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.98]",
+        "shadow-elev absolute top-3 right-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-xl transition active:scale-[0.98]",
         appliedCount > 0
           ? "border-primary bg-primary text-primary-foreground shadow-glow"
           : "border-border bg-card/95 text-foreground",
@@ -282,10 +325,10 @@ export function ScrollDeck({
   // TWO DIFFERENT FAILURES, TWO DIFFERENT SCREENS. A deck that came back empty
   // means the catalog is still filling; a deck that FAILED means we could not
   // ask. Telling a guest the catalog is empty when the request 502'd sends them
-  // away from a screen that a retry would have fixed — and it is the exact
-  // conflation the mock strip used to paper over.
+  // away from a screen that a retry would have fixed. While the mock is on the
+  // server's answer is not read at all, so its failure is not shown either.
   if (deck.length === 0) {
-    if (fetchError) {
+    if (fetchError && !SCROLL_USES_MOCK) {
       return (
         <EmptyState
           icon={Compass}
@@ -296,7 +339,7 @@ export function ScrollDeck({
     }
     if (hasDiscoveryPredicates(filters)) {
       return (
-        <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="absolute inset-0 flex flex-col">
           {filtersDisc}
           {filtersSheet}
           <EmptyState
@@ -317,60 +360,67 @@ export function ScrollDeck({
     );
   }
 
-  return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      {/* ABSOLUTE, NOT `flex-1`, AND THAT IS THE WHOLE FIX. Each card asks for
-          `height: 100%`, and a percentage only resolves against a parent with a
-          DEFINITE height. As a flex child (`min-h-0 flex-1`) this list had none,
-          so every card fell back to content height — and the card face paints
-          its photo `absolute inset-0`, which contributes zero. The result was a
-          feed of bare action rows with no images at all. `absolute inset-0`
-          inside the relative parent gives a definite box, so 100% means the
-          scrollport.
+  const backToTop = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  };
 
-          NO `gap` EITHER: with full-height snap items a gap is a strip you can
-          come to rest on, showing two half cards. The spacing lives inside the
-          card instead. */}
+  return (
+    // A DEFINITE BOX, TWICE OVER. This root is `absolute inset-0` inside the
+    // page's `relative` wrapper, and the <ul> is `absolute inset-0` inside it,
+    // so every card's `h-full` resolves to the scrollport. Every child here is
+    // absolute, so a root that ASKED for its height (`flex-1` under a block
+    // parent, a39d4f40) got 0px and the whole feed vanished behind the filter
+    // disc for seventeen days. `scroll-layout-contract.test.tsx` pins this.
+    //
+    // NO `gap`: with full-height snap items a gap is a strip you can come to
+    // rest on, showing two half cards.
+    <div className="absolute inset-0">
       {filtersDisc}
       {filtersSheet}
 
       <ul
         ref={scrollerRef}
         aria-label="Places"
-        className="scrollbar-hide absolute inset-0 snap-y snap-mandatory overflow-y-auto overscroll-y-contain"
+        tabIndex={0}
+        className="scrollbar-hide absolute inset-0 snap-y snap-mandatory overflow-y-auto overscroll-y-contain focus-visible:outline-none"
       >
-        {deck.map((place, i) => (
-          <ScrollCard
-            // The same place can legitimately appear many times while the
-            // catalog is small, so the id alone is not unique.
-            key={`${place.id}-${i}`}
-            place={place}
-            priority={i === 0}
-            saved={hydrated && savedIds.has(place.id)}
-            onToggleSave={() => toggleSave(place)}
-            onGo={() => {
-              // Go is the conversion intent. `home_card_open` joins to the
-              // reservations row by place; the booking fires no event.
-              trackEvent(supabase, "home_card_open", {
-                mode: "scroll",
-                place_id: place.id,
-                position: i,
-              });
-              setGoPlace(place);
-            }}
-            // The first card is the only one that teaches. Letting the next
-            // card peek under it is how every vertical feed says "there is
-            // more below" without an overlay — and at N=1 the cycle above is
-            // what gives it a second card to peek.
-            peek={i === 0 && deck.length > 1}
-          />
-        ))}
+        {deck.map((place, i) => {
+          const actions = scrollCardActions(place, i, {
+            isMock: isMockPlace(place),
+            savedIds: realSavedIds,
+            mockSavedIds,
+            toast,
+            saveReal,
+            setMockSaved,
+            track: (event, props) => trackEvent(supabase, event, props),
+            share: (p) => void sharePlace(p),
+            openReserve: setReservePlace,
+            profileHref: (p) => placeHref(p.slug ?? p.id),
+          });
+          return (
+            <ScrollCard
+              // The same place appears many times in a cycled deck, so the id
+              // alone is not unique.
+              key={`${place.id}-${i}`}
+              place={place}
+              index={i}
+              total={deck.length}
+              near={Math.abs(i - active) <= 1}
+              cardSize={cardSize}
+              priority={i === 0}
+              {...actions}
+            />
+          );
+        })}
 
         {/* The list needs a terminal snap point, not a route-level empty
             screen — scrolling past the last card into blank space is the
             failure the stack deck answered with ExhaustedDeck. */}
-        <li className="flex snap-start snap-always shrink-0 items-center justify-center px-3 py-16">
-          <div className="text-center">
+        <li className="flex h-full snap-start snap-always shrink-0 flex-col items-center justify-center gap-4 px-6 text-center">
+          <div>
             <p className="text-foreground font-display text-base font-semibold tracking-tight">
               That&apos;s everywhere for now
             </p>
@@ -378,22 +428,17 @@ export function ScrollDeck({
               You&apos;ve reached the end of tonight&apos;s places.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={backToTop}
+            className="bg-foreground text-paper h-11 rounded-full px-5 text-sm font-semibold transition active:scale-[0.98]"
+          >
+            Back to top
+          </button>
         </li>
       </ul>
 
       <ScrollHint show={deck.length > 1} />
-
-      {goPlace && (
-        <GoSheet
-          place={goPlace}
-          open
-          onClose={() => setGoPlace(null)}
-          onReserve={() => {
-            setReservePlace(goPlace);
-            setGoPlace(null);
-          }}
-        />
-      )}
 
       {reservePlace && (
         <ReservationSheet

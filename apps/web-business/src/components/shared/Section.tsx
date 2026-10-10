@@ -69,7 +69,7 @@ export function Section({
           {title}
         </h3>
         {description && (
-          <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
             {description}
           </p>
         )}

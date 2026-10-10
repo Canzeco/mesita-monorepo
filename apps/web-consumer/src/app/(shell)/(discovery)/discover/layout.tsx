@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from "react";
-import { Skeleton } from "@/components/shared";
+import { DiscoverFallback } from "@/components/consumer/home/DiscoverFallback";
 import { HomeDeckBoundary } from "@/components/consumer/home/HomeDeckBoundary";
 import { ModeRail } from "@/components/consumer/ModeRail";
 
@@ -21,13 +21,7 @@ export default function DiscoverLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <ModeRail />
-      <Suspense
-        fallback={
-          <div className="min-h-0 flex-1 p-4">
-            <Skeleton className="h-full w-full rounded-2xl" />
-          </div>
-        }
-      >
+      <Suspense fallback={<DiscoverFallback />}>
         <HomeDeckBoundary>{children}</HomeDeckBoundary>
       </Suspense>
     </div>

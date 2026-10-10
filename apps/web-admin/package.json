@@ -12,13 +12,16 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
-    "@supabase/supabase-js": "^2.106.0",
+    "@supabase/supabase-js": "^2.117.3",
     "@vis.gl/react-google-maps": "^1.8.3",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
-    "next": "16.3.3",
+    "next": "16.4.0",
     "pdfjs-dist": "^6.2.108",
+    "radix-ui": "^1.7.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,7 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"

@@ -2,85 +2,42 @@
 
 import { useEffect, useState } from "react";
 import { Braces, ChevronDown, Fingerprint, Telescope } from "lucide-react";
-import {
-  getPlaceEnrichment,
-  getPlaceVerification,
-  type AdminPlace,
-  type PlaceVerificationGlance,
-} from "../actions";
+import { getPlaceEnrichment, type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
 import { CrenupStateCard } from "./CrenupStateCard";
-import { VerificationCard } from "./VerificationCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
 // Admin — states are THREE boxes (Pato, 2026-08-30), each answering one
 // question instead of one eleven-row wall answering all three:
-//   General States      is this place real, reachable, proven? Created ·
-//                         Active · Listed · Requested `0…n` · Verified.
+//   General States      is this place real and reachable? Created ·
+//                         Active · Listed · Requested `0…n`.
 //                         Owns both operator writes (Active, Listed).
 //   Partnership States  what does it offer? Partnered · Visit Rewards
 //                         `0|1|2` · Mesita Pay · Mesita Credits — the last two
 //                         are acceptance intent bits set on the Partner tab;
 //                         engines still gate each rail. Carries the
 //                         listing_type drift warning, which is about these rows.
-//   Crenup States       how far did the pipeline get? Enriched (last
+//   Enrichment States   how far did the pipeline get? Enriched (last
 //                         completed) · Enriching (live run) over the eleven
 //                         functions 0. Seed … 10. Embedding. OWNS the
 //                         enrichment read — StateCard no longer fetches it.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
-//   Verification ownership proof (who / when / method + queue decide)
-//   SERP / Embedding / Metadata (UID & audit — not ownership)
+//   SERP / Embedding / Metadata (UID & audit)
+// The Verification box (ownership proof + queue decide) went with
+// MESITA-2106: the MVP has no business app, so nobody proves ownership.
 export function AdminSection({ place }: { place: AdminPlace }) {
-  // undefined = in flight. Distinguished from null so a failed read can render
-  // as "?" rather than a false "not verified".
-  const [verification, setVerification] = useState<
-    PlaceVerificationGlance | null | undefined
-  >(undefined);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [verificationEpoch, setVerificationEpoch] = useState(0);
-
-  // No sync reset in the effect body (react-hooks/set-state-in-effect): the
-  // shell remounts this tab when the operator switches place, so state starts
-  // undefined on its own.
-  useEffect(() => {
-    let alive = true;
-    getPlaceVerification(place.id).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setVerificationError(r.error);
-        setVerification(null);
-        return;
-      }
-      setVerificationError(null);
-      setVerification(r.data);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [place.id, verificationEpoch]);
-
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
-      <StateCard
-        place={place}
-        verification={verification}
-        verificationError={verificationError}
-      />
+      <StateCard place={place} />
       <CrenupStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
-      <VerificationCard
-        place={place}
-        verification={verification}
-        verificationError={verificationError}
-        onChanged={() => setVerificationEpoch((n) => n + 1)}
-      />
       <SerpSummaryCard place={place} />
       <EmbeddingCard place={place} />
       <MetaCard place={place} />
@@ -101,8 +58,8 @@ function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
   return updated - enriched <= 90_000 ? "ai" : "human";
 }
 
-// Metadata — UID & audit trail only (MESITA-1320). Ownership proof lives
-// on the Verification box. Open by default (MESITA-588); collapsible.
+// Metadata — UID & audit trail only (MESITA-1320). Open by default
+// (MESITA-588); collapsible.
 function MetaCard({ place }: { place: AdminPlace }) {
   const by = lastUpdatedBy(place);
   return (

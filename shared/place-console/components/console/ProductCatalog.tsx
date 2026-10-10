@@ -192,7 +192,7 @@ const STATE_CLASS: Record<ProductState, string> = {
   // GOLD is reserved for a tier the product names out loud, and Locked is
   // exactly that: it is what Mesita Partner buys.
   locked:
-    "bg-[color:var(--tier-gold)]/18 text-[color:var(--tier-gold-ink)]",
+    "bg-tier-gold/18 text-tier-gold-ink",
   // DASHED means "not here yet" everywhere in this codebase.
   soon: "border border-dashed border-border text-muted-foreground",
 };
@@ -210,7 +210,7 @@ function StateChip({ state }: { state: ProductState }) {
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+        "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 type-label font-semibold",
         STATE_CLASS[state],
       )}
     >
@@ -285,7 +285,7 @@ export function ProductCatalog({ products }: { products: readonly ProductCard[] 
               aria-checked={on}
               onClick={() => setFilter(f.key)}
               className={cn(
-                "focus-visible:ring-foreground/30 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition outline-none focus-visible:ring-2",
+                "focus-visible:ring-foreground/30 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition outline-none focus-visible:ring-2",
                 on
                   ? BRAND_SOFT_ON
                   : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
@@ -304,7 +304,7 @@ export function ProductCatalog({ products }: { products: readonly ProductCard[] 
         // Reachable: a fresh place filtered to Enabled sees Profile
         // only, and a fully-enabled one filtered to Not enabled sees nothing.
         // A grid that silently empties reads as a failed load.
-        <p className="text-muted-foreground border-border rounded-2xl border border-dashed p-6 text-center text-[13px]">
+        <p className="text-muted-foreground border-border rounded-2xl border border-dashed p-6 text-center type-body">
           No products match this filter.
         </p>
       ) : (
@@ -317,7 +317,7 @@ export function ProductCatalog({ products }: { products: readonly ProductCard[] 
 
       {/* The one cost the cards themselves must not carry: a per-card "extra
           fees may apply" on two of eight is noise on all eight. */}
-      <p className="text-muted-foreground text-[12px] leading-snug">
+      <p className="text-muted-foreground text-xs leading-snug">
         Payment processing and hardware may have costs of their own.
       </p>
     </div>
@@ -375,7 +375,7 @@ function ProductTile({ product }: { product: ProductCard }) {
       >
         {/* `leading-none` because an emoji's line box is taller than its
             glyph: without it the mark sits low in its own square. */}
-        <span className="text-[22px] leading-none">{mark}</span>
+        <span className="text-[1.375rem] leading-none">{mark}</span>
       </span>
 
       <div className="flex min-w-0 flex-col gap-1">
@@ -387,7 +387,7 @@ function ProductTile({ product }: { product: ProductCard }) {
         >
           {product.name}
         </h3>
-        <p className="text-muted-foreground text-[12px] leading-snug">
+        <p className="text-muted-foreground text-xs leading-snug">
           {product.blurb}
         </p>
       </div>
@@ -402,7 +402,7 @@ function ProductTile({ product }: { product: ProductCard }) {
       <div className="flex flex-col gap-2">
         {soon ? <span className={SOON_PILL}>Soon</span> : <StateChip state={product.state} />}
         {product.note && (
-          <p className="text-muted-foreground text-[12px] leading-snug">
+          <p className="text-muted-foreground text-xs leading-snug">
             {product.note}
           </p>
         )}
@@ -411,7 +411,7 @@ function ProductTile({ product }: { product: ProductCard }) {
         <Link
           href={product.action.href}
           className={cn(
-            "mt-auto inline-flex h-9 w-full items-center justify-center rounded-xl text-[12px] font-semibold transition",
+            "mt-auto inline-flex h-9 w-full items-center justify-center rounded-xl text-xs font-semibold transition",
             // THE RING IS THE FAMILY'S (MESITA-2037). It used to be
             // `focus-visible:ring-foreground/30`, which is the achromatic
             // default and is the one thing on this tile a keyboard user

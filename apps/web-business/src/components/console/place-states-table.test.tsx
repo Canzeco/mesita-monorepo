@@ -81,7 +81,6 @@ describe("rows and columns", () => {
       "Requested",
       "Enriching",
       "Enriched",
-      "Verified",
       "Owned",
       "Partnered",
     ]);
@@ -112,7 +111,7 @@ describe("rows and columns", () => {
 describe("cell values", () => {
   it("says yes, no and ? in words", () => {
     const html = render({
-      places: [place({ listed: true, partner: false, verified: undefined })],
+      places: [place({ listed: true, owned: false, partner: undefined })],
     });
     expect(html).toContain(">yes<");
     expect(html).toContain(">no<");
@@ -147,9 +146,9 @@ describe("cell values", () => {
   });
 
   it("reports a withheld fact as unknown, never as no", () => {
-    const html = render({ places: [place({ verified: undefined })] });
-    expect(html).toContain('aria-label="Verified: unknown"');
-    expect(html).not.toContain('aria-label="Verified: no"');
+    const html = render({ places: [place({ partner: undefined })] });
+    expect(html).toContain('aria-label="Partnered: unknown"');
+    expect(html).not.toContain('aria-label="Partnered: no"');
   });
 });
 
@@ -194,13 +193,12 @@ describe("one list, both kinds of row", () => {
 
   // Every row comes from one membership-scoped read, so no column is
   // withheld any more — the "?" columns the pool used to force are gone.
-  it("answers Partner and Verified on a claimable row too", () => {
+  it("answers Partner on a claimable row too", () => {
     const html = render({
-      places: [place({ id: "free", owned: false, partner: false, verified: false })],
+      places: [place({ id: "free", owned: false, partner: false })],
     });
     expect(html).toContain('aria-label="Partnered: no"');
-    expect(html).toContain('aria-label="Verified: no"');
-    expect(html).not.toContain('aria-label="Verified: unknown"');
+    expect(html).not.toContain('aria-label="Partnered: unknown"');
   });
 });
 

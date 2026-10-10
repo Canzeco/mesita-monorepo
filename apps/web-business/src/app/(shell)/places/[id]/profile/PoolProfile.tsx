@@ -25,7 +25,7 @@ import { PlaceGallery } from "@/components/console/PlaceGallery";
 import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { canRelease } from "@/lib/active-place";
 import { placesHref } from "@/lib/console-routes";
-import { usePlaceScope } from "../PlaceScope";
+import { usePlaceScope } from "@/components/console/PlaceScope";
 
 export function PoolProfile() {
   const { view } = usePlaceScope();

@@ -56,7 +56,12 @@ function firedEvents(): string[] {
       if (statSync(full).isDirectory()) walk(full);
       else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) {
         const src = readFileSync(full, "utf8");
+        // Two call shapes: `trackEvent(supabase, "x", …)` and the Scroll
+        // card's injected `deps.track("x", …)`.
         for (const m of src.matchAll(/trackEvent\([^,]+,\s*"([^"]+)"/g)) {
+          out.add(m[1]);
+        }
+        for (const m of src.matchAll(/\btrack\(\s*"([^"]+)"/g)) {
           out.add(m[1]);
         }
       }

@@ -1,5 +1,6 @@
-import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
+import type { AutocompleteHit, PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import { parseGooglePlaceIds } from "@/app/(app)/manage-multiple/google-place-ids";
+import type { PlaceLite } from "@/lib/places-types";
 
 // Single Place takes ONE box and reads it two ways: a Google Place ID token
 // looks the place up by its identity spine (and, when it is not on Mesita,
@@ -44,19 +45,48 @@ export function filterCatalog(places: PlaceHit[], query: string): PlaceHit[] {
   return out;
 }
 
+/** One Google Text Search page — what a name in Find asks Google for, beside
+ *  the catalog match (MESITA-2094). The bulk page's default is 50; one page
+ *  is enough to find one place. */
+export const GOOGLE_NAME_RESULTS = 20;
+
+/** An Autocomplete row in the shape Find's Google lists draw. Autocomplete
+ *  carries a name and a locality, no rating and no coordinates — opening one
+ *  Mesita does not hold peeks Google by Place ID for the rest (MESITA-2116). */
+export function autocompleteToLite(hit: AutocompleteHit): PlaceLite {
+  return {
+    id: hit.placeId,
+    displayName: hit.mainText,
+    formattedAddress: hit.secondaryText,
+    lat: null,
+    lng: null,
+    rating: null,
+    userRatingCount: null,
+    existsInMesita: Boolean(hit.mesitaId) || hit.state !== "not_in_mesita",
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+/** Whether Mesita already holds a Google result. Three witnesses, any one
+ *  is enough: the discover EF's own google_place_id join, the IDs this page
+ *  knows are held (the catalog it read plus Autocomplete's resolve), and the
+ *  Adds this page made since — the EF's flag goes stale
+ *  the moment Add succeeds, and is all-false when its Mesita lookup failed. */
+export function googleOnMesita(
+  place: PlaceLite,
+  heldGoogleIds: ReadonlySet<string>,
+  added: { has(googleId: string): boolean },
+): boolean {
+  return place.existsInMesita || heldGoogleIds.has(place.id) || added.has(place.id);
+}
+
 function fold(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
-}
-
-/** The business console's editor for this place — a super-admin opens any
- *  place there (business-web-get-overview's super-admin branch), which is
- *  why admin keeps no second editor. */
-export function businessConsolePlaceHref(placeId: string): string {
-  return `https://business.mesita.ai/places/${encodeURIComponent(placeId)}`;
 }
 
 export function googleMapsPlaceHref(googlePlaceId: string): string {

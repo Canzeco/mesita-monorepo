@@ -10,16 +10,19 @@ import { ChevronsDown } from "lucide-react";
 // who ever opened Home. Reusing it would have shipped a hint that shows to
 // nobody — the failure being invisible is what makes it worth a comment.
 //
-// It is also the backstop, not the teacher. The first card leaving the next
-// one peeking under the fold (ScrollCard's `peek`) is what actually says
-// "scroll"; every vertical feed teaches itself that way and none of them
-// needs an overlay to do it. This fires only when that cue could be missed,
-// and it gets out of the way on the first scroll.
+// It is the TEACHER now. The first card used to leave the next one peeking
+// under the fold; the TikTok card (MESITA-2105) fills the screen exactly, so
+// this one-time line, centred over the photo, is what says "scroll". It gets
+// out of the way on the first scroll.
 //
 // Not a modal, not a dialog, and `pointer-events-none` throughout — it sits
 // over a snap scroller and must never eat the gesture it is describing.
 
-const STORAGE_KEY = "mesita:scroll-hint-seen";
+// v2 (MESITA-2105): from a39d4f40 the deck rendered at 0px, so this hint
+// "showed" — and marked itself seen — over a feed nobody could see. Every
+// guest who opened Scroll in that window holds a seen flag for a hint they
+// never saw, and with the peek gone this hint is now the only teacher.
+const STORAGE_KEY = "mesita:scroll-hint-seen-v2";
 const AUTO_DISMISS_MS = 4000;
 
 function readSeen(): boolean {
@@ -70,7 +73,7 @@ export function ScrollHint({ show }: { show: boolean }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center"
+      className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 justify-center"
     >
       <span className="bg-foreground/85 text-paper flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
         <ChevronsDown className="h-3.5 w-3.5 animate-bounce" strokeWidth={2.4} />

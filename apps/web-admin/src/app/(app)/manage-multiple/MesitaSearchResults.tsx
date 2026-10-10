@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { placeHref } from "@/lib/console-routes";
 import {
   GENERAL_STATE_FACTS,
   OPERATOR_PROMOTING_LABEL,
@@ -43,9 +45,14 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                     className={`max-w-[60vw] px-4 py-3 sm:max-w-[280px] ${STICKY_COL_CELL}`}
                   >
                     {hit ? (
-                      <p className="truncate font-medium">
+                      // The name is the door to Single Place (MESITA-2086):
+                      // the place surface, not a second facts card.
+                      <Link
+                        href={placeHref(hit.id)}
+                        className="block truncate font-medium underline-offset-4 hover:underline"
+                      >
                         {hit.google_name || hit.name}
-                      </p>
+                      </Link>
                     ) : (
                       <>
                         <p className="text-muted-foreground font-mono text-xs">
@@ -110,9 +117,9 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
             const hit = row.hit;
             if (!hit || hit.enrich_crenup_labels.length === 0) return null;
             return (
-              <li key={`${row.key}-Crenup`} className="px-4 py-3">
+              <li key={`${row.key}-ladder`} className="px-4 py-3">
                 <p className="text-muted-foreground type-label mb-2">
-                  Crenup · {hit.google_name || hit.name}
+                  Steps · {hit.google_name || hit.name}
                 </p>
                 <CrenupLadder hit={hit} />
               </li>

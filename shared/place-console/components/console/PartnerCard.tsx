@@ -151,7 +151,7 @@ function PriceLine({ price }: { price: MembershipPrice | null }) {
       <span className="font-display text-lg font-semibold tracking-tight">
         {label.amount}
       </span>
-      <span className="text-muted-foreground text-[12px]">{label.suffix}</span>
+      <span className="text-muted-foreground text-xs">{label.suffix}</span>
     </p>
   );
 }
@@ -167,7 +167,7 @@ function Perks() {
       <p className="text-muted-foreground text-xs leading-snug">
 This place then turns these on, from its own product views
       </p>
-      <ul className="flex flex-col gap-1 text-[13px] leading-snug">
+      <ul className="flex flex-col gap-1 type-body leading-snug">
         {PARTNER_PERKS.map(([name, clause]) => (
           <li key={name} className="flex gap-2">
             {/* A dash, never a check: on this route a check means "done". */}
@@ -202,7 +202,7 @@ function BuyForm({ placeId }: { placeId: string }) {
       </button>
       {/* Where the money goes, said before they leave rather than on the
           Stripe page where it is too late to be a decision. */}
-      <p className="text-muted-foreground text-center text-[11px] leading-snug">
+      <p className="text-muted-foreground text-center type-label leading-snug">
         Stripe takes the payment. Renews every year until you cancel.
       </p>
     </form>
