@@ -52,13 +52,6 @@ function fold(s: string): string {
     .trim();
 }
 
-/** The business console's editor for this place — a super-admin opens any
- *  place there (business-web-get-overview's super-admin branch), which is
- *  why admin keeps no second editor. */
-export function businessConsolePlaceHref(placeId: string): string {
-  return `https://business.mesita.ai/places/${encodeURIComponent(placeId)}`;
-}
-
 export function googleMapsPlaceHref(googlePlaceId: string): string {
   return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(googlePlaceId)}`;
 }
