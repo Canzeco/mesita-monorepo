@@ -2,9 +2,9 @@
 // the reservation UI speaks. Keeping the mapping in one place means the EF
 // contract and the view model evolve independently.
 //
-// THE TICKET LIFECYCLE (the app's model, derived here and nowhere else):
+// THE RESERVATION LIFECYCLE (the app's model, derived here and nowhere else):
 //
-//   created   → the ticket exists, the agent hasn't dialed yet
+//   created   → the reservation exists, the agent hasn't dialed yet
 //   booking   → eleven-a1 is calling the place (incl. counter-offer rounds)
 //   confirmed → both sides agreed, the table is yours, slot still ahead
 //   passed    → it was confirmed and the slot has come and gone
@@ -47,7 +47,7 @@ function reservationPhase(row: EFReservationRow): ReservationState {
       return slotPassed(row.reserved_at) ? "passed" : "confirmed";
     case "pending":
     default:
-      // A pending ticket whose slot went by never got booked — it's over.
+      // A pending reservation whose slot went by never got booked — it's over.
       if (slotPassed(row.reserved_at)) return "failed";
       // Dialing started (or is running) → booking; otherwise still just created.
       return (row.call_attempts ?? 0) > 0 || row.attempts_state === "running"
@@ -96,7 +96,7 @@ function noteFor(
       if (row.attempts_state === "exhausted") {
         return "The place didn't answer Mesita's calls. Try again or pick another time.";
       }
-      // running / answered / null-with-attempts → actively working the ticket.
+      // running / answered / null-with-attempts → actively working the reservation.
       return "Mesita is on the phone with the place — you'll see the answer here.";
     }
     case "passed":
@@ -170,7 +170,7 @@ function normalizeClientAlternatives(
 
 export function toReservationItem(row: EFReservationRow): ReservationItem {
   const state = reservationPhase(row);
-  // A ticket is still yours to move while it's live and ahead of us.
+  // A reservation is still yours to move while it's live and ahead of us.
   const live =
     state === "created" || state === "booking" || state === "confirmed";
   const alternatives = normalizeClientAlternatives(row.alternatives);
@@ -188,7 +188,7 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     stateNote: counterOffer
       ? "The place offered other times — pick one below, or reschedule."
       : noteFor(state, row),
-    // The 8-digit code the agents speak on calls — the guest's ticket handle.
+    // The 8-digit code the agents speak on calls — the guest's handle on the booking.
     referenceCode: row.reference_code ?? undefined,
     notes: row.notes ?? undefined,
     canCancel: live,

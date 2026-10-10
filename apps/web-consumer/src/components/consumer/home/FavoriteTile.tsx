@@ -19,8 +19,8 @@ import {
 // Replaces the old 64px-thumbnail row. A place is chosen by what the room
 // looks like, so the photo is the content: a tile gives it ~31,000px² against
 // the row's 4,096px², at slightly BETTER vertical density (≈107px per place vs
-// 114px). Two columns is a discovery pattern — it belongs here and on nothing
-// in /rewards, where a ticket is scanned for state, not browsed for looks.
+// 114px). Two columns is a discovery pattern — it belongs on a surface that is
+// browsed for looks, never on a list that is scanned for state.
 //
 // Every tile is the SAME size (Pato, 2026-08-10): a plain 2-column grid, no
 // hero span on odd counts. An earlier pass gave the first tile a full-width
@@ -109,10 +109,10 @@ export function FavoriteTile({
 
           {/* BOX TWO — 4:3 as a FLOOR, matching the photo above it. The rows
               are ordered by what a guest scans for: who it is, what it is,
-              how good, how far, and whether it is open right now with a
-              reward on it. Every row self-hides, so a bare catalog row still
-              reads — it just leaves the box short of its own ratio rather
-              than printing an empty cell. */}
+              how good, how far, and whether it is open right now. Every row
+              self-hides, so a bare catalog row still reads — it just leaves
+              the box short of its own ratio rather than printing an empty
+              cell. */}
           <div className="flex aspect-[4/3] min-w-0 flex-col justify-between gap-1 p-2.5">
             <div className="min-w-0">
               <p className="font-display text-foreground truncate text-sm font-semibold tracking-tight">
@@ -146,9 +146,7 @@ export function FavoriteTile({
                 </p>
               )}
               {/* Opening state. Self-hides when the tile has no hours table,
-                  so an info-less tile just shows its name. MVP cut
-                  (MESITA-2078): the reward chip is hidden while Pay is
-                  parked. */}
+                  so an info-less tile just shows its name. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 {openingLabel && (
                   <span className="type-label inline-flex items-center gap-1 font-medium">

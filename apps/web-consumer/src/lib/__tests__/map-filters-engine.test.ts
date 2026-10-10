@@ -7,6 +7,7 @@ import {
   MAP_PLACES_SCOPE_DEFAULT,
   MAP_FILTER_DEFAULTS,
   MAP_MIN_REVIEW_STOPS,
+  MAP_SEARCH_STOPS,
   mapFilterCount,
   mapFiltersAreActive,
   placeMapState,
@@ -22,7 +23,6 @@ function place(over: Partial<Place> = {}): Place {
     slug: "p1",
     name: "Place",
     category: null,
-    listing_type: "web",
     ...over,
   } as Place;
 }
@@ -32,13 +32,9 @@ function filters(over: Partial<MapFilters> = {}): MapFilters {
 }
 
 describe("placeMapState", () => {
-  it("ladders Google → promoted → partnered → enriched → requested → created", () => {
+  it("ladders Google → enriched → requested → created", () => {
     expect(placeMapState(place({ googleOnly: true }))).toBe("not_on_mesita");
     expect(placeMapState(place({ from_google: true }))).toBe("not_on_mesita");
-    expect(placeMapState(place({ promoting: true, partner: true }))).toBe(
-      "promoted",
-    );
-    expect(placeMapState(place({ partner: true }))).toBe("partnered");
     expect(placeMapState(place({ content_state: "ready" }))).toBe("enriched");
     expect(placeMapState(place({ enriched_at: "2026-08-01T00:00:00Z" }))).toBe(
       "enriched",
@@ -54,22 +50,12 @@ describe("placeMapState", () => {
 });
 
 describe("placeSearchScope", () => {
-  it("names the NARROWEST ring a place is in — enrichment gates both Mesita rings", () => {
-    expect(
-      placeSearchScope(place({ partner: true, content_state: "ready" })),
-    ).toBe("partners");
+  it("names the ring a place is in — enrichment gates the Mesita ring", () => {
     expect(placeSearchScope(place({ content_state: "ready" }))).toBe("mesita");
     expect(
       placeSearchScope(place({ enriched_at: "2026-08-01T00:00:00Z" })),
     ).toBe("mesita");
-    expect(placeSearchScope(place({ partner: true }))).toBeNull();
-    expect(
-      placeSearchScope(place({ partner: true, content_state: "queued" })),
-    ).toBeNull();
-    expect(placeSearchScope(place({ promoting: true }))).toBeNull();
-    expect(
-      placeSearchScope(place({ promoting: true, content_state: "ready" })),
-    ).toBe("mesita");
+    expect(placeSearchScope(place({ content_state: "queued" }))).toBeNull();
     expect(placeSearchScope(place({ googleOnly: true }))).toBe("google");
     expect(placeSearchScope(place({ from_google: true }))).toBe("google");
     expect(placeSearchScope(place())).toBeNull();
@@ -77,18 +63,22 @@ describe("placeSearchScope", () => {
 });
 
 describe("places scope", () => {
-  it("captions each ring and resolves anything unknown to the MIDDLE one", () => {
-    expect(placesScopeCaption("partners")).toBe("Mesita Partner Places only");
-    expect(placesScopeCaption("mesita")).toBe(
-      "Mesita Enriched Places, partners included",
-    );
+  it("is two stops, Mesita first, and the sheet reads them in that order", () => {
+    expect(MAP_SEARCH_STOPS.map((s) => s.key)).toEqual(["mesita", "google"]);
+  });
+
+  it("captions each ring and resolves anything unknown to the INNER one", () => {
+    expect(placesScopeCaption("mesita")).toBe("Mesita Enriched Places only");
     expect(placesScopeCaption("google")).toBe(
       "Google Places, Mesita places included",
     );
     expect(MAP_PLACES_SCOPE_DEFAULT).toBe("mesita");
     expect(parsePlacesScope(undefined)).toBe("mesita");
     expect(parsePlacesScope(null)).toBe("mesita");
-    expect(parsePlacesScope("PARTNERS")).toBe("partners");
+    expect(parsePlacesScope("GOOGLE")).toBe("google");
+    // The retired paid ring, still in a persisted v6 blob, lands on the
+    // default — never on the wider set.
+    expect(parsePlacesScope("partners")).toBe("mesita");
     expect(parsePlacesScope(1)).toBe("mesita");
     expect(parsePlacesScope(2)).toBe("google");
     expect(parsePlacesScope(0)).toBe("mesita");
@@ -96,12 +86,11 @@ describe("places scope", () => {
 });
 
 describe("applyMapFilters", () => {
-  const partner = place({
-    id: "partner",
-    partner: true,
-    content_state: "ready",
-  });
   const enriched = place({ id: "enriched", content_state: "ready" });
+  const stamped = place({
+    id: "stamped",
+    enriched_at: "2026-08-01T00:00:00Z",
+  });
   const created = place({ id: "created" });
   const requested = place({
     id: "requested",
@@ -109,21 +98,20 @@ describe("applyMapFilters", () => {
     content_state: "queued",
   });
   const google = place({ id: "google", googleOnly: true });
-  const deck = [partner, enriched, created, requested, google];
+  const deck = [enriched, stamped, created, requested, google];
 
   it("defaults to Mesita Enriched Places and still drops Created, Requested, and Google", () => {
     expect(MAP_FILTER_DEFAULTS.placesScope).toBe("mesita");
     expect(mapFiltersAreActive(filters())).toBe(false);
     expect(mapFilterCount(filters())).toBe(0);
     expect(applyMapFilters(deck, filters()).map((p) => p.id)).toEqual([
-      "partner",
       "enriched",
+      "stamped",
     ]);
   });
 
   it("counts leaving the default ring, each Family, or Popularity as one filter", () => {
     expect(mapFilterCount(filters({ placesScope: "google" }))).toBe(1);
-    expect(mapFilterCount(filters({ placesScope: "partners" }))).toBe(1);
     expect(
       mapFilterCount(
         filters({ placesScope: "mesita", familyKeys: ["restaurants"] }),
@@ -136,24 +124,16 @@ describe("applyMapFilters", () => {
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("resultLimit");
   });
 
-  it("nests Google ⊃ Mesita Enriched ⊃ Mesita Partner, and the rings differ", () => {
-    expect(
-      applyMapFilters(deck, filters({ placesScope: "partners" })).map(
-        (p) => p.id,
-      ),
-    ).toEqual(["partner"]);
+  it("nests Google ⊃ Mesita Enriched, and the rings differ", () => {
     expect(
       applyMapFilters(deck, filters({ placesScope: "mesita" })).map((p) => p.id),
-    ).toEqual(["partner", "enriched"]);
+    ).toEqual(["enriched", "stamped"]);
     expect(
       applyMapFilters(deck, filters({ placesScope: "google" })).map((p) => p.id),
-    ).toEqual(["partner", "enriched", "google"]);
-    const rawPartner = place({ id: "raw-partner", partner: true });
+    ).toEqual(["enriched", "stamped", "google"]);
+    // A thin Mesita stub is in NEITHER ring — not even the widest one.
     expect(
-      applyMapFilters([rawPartner], filters({ placesScope: "partners" })),
-    ).toEqual([]);
-    expect(
-      applyMapFilters([rawPartner], filters({ placesScope: "google" })),
+      applyMapFilters([created], filters({ placesScope: "google" })),
     ).toEqual([]);
   });
 

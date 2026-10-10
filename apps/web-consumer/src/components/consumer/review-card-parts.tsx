@@ -6,23 +6,18 @@ export function Header({
   avatar,
   name,
   sub,
-  rightChip,
   sourceLogo,
 }: {
   avatar: React.ReactNode;
   name: string;
   sub: string;
-  rightChip?: React.ReactNode;
   sourceLogo: React.ReactNode;
 }) {
   return (
     <div className="flex items-center gap-3">
       {avatar}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate text-sm font-semibold">{name}</p>
-          {rightChip}
-        </div>
+        <p className="truncate text-sm font-semibold">{name}</p>
         <p className="text-muted-foreground type-label truncate">{sub}</p>
       </div>
       {sourceLogo}
@@ -49,12 +44,10 @@ export function StarRow({ rating }: { rating: number }) {
 
 export function Quote({
   text,
-  italic,
   truncated,
   onExpand,
 }: {
   text: string;
-  italic?: boolean;
   truncated: boolean;
   onExpand?: () => void;
 }) {
@@ -63,7 +56,6 @@ export function Quote({
       <p
         className={cn(
           "text-foreground text-sm leading-snug",
-          italic && "font-display italic",
           truncated && "line-clamp-4",
         )}
       >

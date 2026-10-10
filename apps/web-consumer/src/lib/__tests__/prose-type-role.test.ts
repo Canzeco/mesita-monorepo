@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
 // are the sizes for LABELS and METADATA. A sentence the guest has to read to
 // understand what is happening is neither, and 61 `<p>` elements were wearing
 // one anyway — the notification body at 10px, a review's text at 10px, and
-// Help, Plan, Settings, Instagram, InvitePin, EditProfile, ReservationSheet
-// and the OTP form all explaining themselves at 11px.
+// Help, Settings, Instagram, EditProfile, ReservationSheet and the OTP form
+// all explaining themselves at 11px.
 //
 // WHY THIS IS THE FIX AND NOT A BIGGER SCALE. web-consumer's answer to small
 // text is that the roles are REM, so they scale with the guest's own browser
@@ -50,27 +50,23 @@ const EXEMPT = [
 
 const SMALL_ROLES = ["type-label", "type-meta"];
 
-/** LABEL BY CONTENT, not by class — the four the rule above cannot see.
+/** LABEL BY CONTENT, not by class — the two the rule above cannot see.
  *
  *  Each of these is metadata written inside a `<p>` with no `truncate`, no
  *  eyebrow tracking and no `tabular-nums` to say so, so the mechanical rule
  *  reads it as prose. The reason lives here rather than in a widened exemption
  *  because widening it (`h-4`? a glyph sibling?) would quietly excuse real
- *  prose too. A named list of four with a stated reason each is the honest
- *  shape, and the test below refuses to let it rot.
+ *  prose too. A named list with a stated reason each is the honest shape, and
+ *  the test below refuses to let it rot.
  *
  *  Keyed by `file:line`, which MOVES — that is deliberate. An entry that stops
  *  matching fails loudly and gets re-judged rather than silently covering
  *  whatever now sits on that line. */
 const LABEL_BY_CONTENT: Record<string, string> = {
-  "components/consumer/ConsumerActivityList.tsx:49":
-    "{a.when} — a timestamp beside the activity it stamps, not a sentence",
   "components/consumer/home/FavoriteTile.tsx:130":
     "the rating row inside the MEASURED 4:3+4:3 tile (Docs › Design §D); its sibling category line is type-label too, and 13px here would outrank it",
-  "components/consumer/search/SearchRailCard.tsx:83":
+  "components/consumer/search/SearchRailCard.tsx:81":
     "the rail card's meta row sits in a fixed h-4/leading-4 line box — 13px does not fit a 16px box, and this is a figure row anyway",
-  "components/consumer/wallet/WalletPanel.tsx:154":
-    "WalletMoney's caption LABELS the 36px figure above it (MESITA-1825) and has to stay subordinate to it",
 };
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -113,8 +109,10 @@ describe("prose does not wear a label role", () => {
   it("finds paragraphs to check at all (guards the regex itself)", () => {
     // A regex that silently stops matching would make this suite pass by
     // finding nothing — the exact failure `vacuous-route-tests` is named for.
+    // The app carries ~130 literal-class paragraphs; the floor sits well
+    // under that and well over zero.
     const all = files.flatMap(proseTags);
-    expect(all.length).toBeGreaterThan(200);
+    expect(all.length).toBeGreaterThan(100);
     expect(all.some((p) => p.classes.includes("type-body"))).toBe(true);
   });
 
@@ -151,8 +149,7 @@ describe("prose does not wear a label role", () => {
 // disabled/pending, never for rank"). `text-muted-foreground/80` on a
 // paragraph is the same defect in the other axis — it thins copy that is
 // already at the small end, and it does it to the muted token that is ALREADY
-// the app's way of saying secondary. The Stripe disclosure, a field hint and a
-// ticket sub-line were all doing it.
+// the app's way of saying secondary. A field hint was doing it.
 describe("prose is not dimmed for rank", () => {
   const files = walk(SRC);
 

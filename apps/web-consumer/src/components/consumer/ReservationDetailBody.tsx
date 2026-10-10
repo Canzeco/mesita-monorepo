@@ -14,14 +14,12 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
-// purpose — the ticket's lifecycle, its metadata, and the actions that can
-// move it. No reward surface (a discount is earned by showing up, on the
-// visit ticket); no payment, no bill math (that happens at the table); no
-// full place detail (that lives on /places/[id]).
+// purpose — the booking's lifecycle, its metadata, and the actions that can
+// move it. No full place detail (that lives on /place/[id]).
 
 // The happy path as a stepper: created → booking → confirmed → passed. A
-// ticket that exited the path (cancelled / failed) shows the banner instead —
-// drawing a half-lit ladder for a dead ticket reads as "still going".
+// reservation that exited the path (cancelled / failed) shows the banner
+// instead — drawing a half-lit ladder for a dead one reads as "still going".
 function LifecycleStepper({ state }: { state: ReservationItem["state"] }) {
   const index = RESERVATION_FLOW.indexOf(state);
   if (index < 0) return null;
@@ -96,7 +94,7 @@ export function ReservationDetailBody({
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
       {/* Hero — place photo + name + state pill stacked. Larger than the
-          list card so the screen reads like a ticket, not a list row. */}
+          list card so the screen reads as one reservation, not a list row. */}
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted relative aspect-[16/9] w-full">
           {r.placePhoto ? (

@@ -32,9 +32,9 @@ import {
 import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
 
-// Action cluster for reservation detail. The two that MOVE the ticket —
+// Action cluster for reservation detail. The two that MOVE the reservation —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a
-// reschedule sends the ticket back to `booking` because Mesita has to ask the
+// reschedule sends it back to `booking` because Mesita has to ask the
 // place again. `onChanged` lets the detail view refetch so the phase, banner
 // and available actions update in place.
 

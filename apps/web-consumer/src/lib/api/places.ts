@@ -16,34 +16,8 @@ import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/mock/place";
 import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
-type PlaceListingType = "partner" | "web";
-type PlaceState = "lead" | "active" | "paused" | "archived";
-type FiscalType = "formal" | "informal";
-// Place plan keys (public.membership enum): Free (default) + Mesita Partner
-// (`plan=pro`) + legacy `ultra` (folds onto Verified). Paid membership runs an
-// instant discount at the bill; sold SKU in the business console is Verified.
-type PlacePlan = "free" | "pro" | "ultra";
-
 export type Place = {
-  /** Server-computed per request (MESITA-1150): a guest gets a discount here
-   *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
-   *  stale collapsed enum and no longer decides anything a guest sees. */
-  promoting?: boolean | null;
-  /** Server-computed per request: this place PAYS Mesita. Independent of
-   *  `promoting` — a partner can be paused or running a zero strategy, and a
-   *  non-partner never promotes. Computed like `promoting` rather than read
-   *  off `listing_type`, which fuses the two and only updates when something
-   *  writes the place. Absent ⇒ NOT a partner. */
-  partner?: boolean | null;
-  /** The Mesita Pay capability: `place_profiles.mesita_pay_enabled`, read
-   *  through the `profiles` view. It used to be that bit AND the
-   *  organization's, conjoined server-side; MESITA-1892 folded the org half
-   *  into the place's, so there is one bit to read now. Mesita Pay is the
-   *  whole payments package, all or nothing (Docs > Checkout §0) — it is
-   *  never a tender. Absent ⇒ NOT payable, which is the safe default: a
-   *  place we cannot charge at must never be offered as one. */
-  mesita_pay_enabled?: boolean | null;
-  /** Server's answer: did we write a profile? Drives the membership colour.
+  /** Server's answer: did we write a profile? Drives the Enriched colour.
    *  Absent on an older payload — the client falls back to the enrichment
    *  columns, which ship on the same projection. */
   enriched?: boolean | null;
@@ -57,15 +31,10 @@ export type Place = {
   vibe: string | null;
   price_level: number | null;
   // ISO 4217 code from public.places.currency (default "MXN"). Every
-  // monetary amount on this place — price ranges, reward caps,
-  // future cover charges — is denominated in this currency so the
-  // UI can render the right prefix ("MX$", "$", "€") without
-  // hard-coding it.
+  // monetary amount on this place — price ranges, future cover charges —
+  // is denominated in this currency so the UI can render the right prefix
+  // ("MX$", "$", "€") without hard-coding it.
   currency: string;
-  listing_type: PlaceListingType;
-  state: PlaceState;
-  fiscal_type: FiscalType;
-  plan: PlacePlan;
   lat: number | null;
   lng: number | null;
   address: string | null;
@@ -74,13 +43,6 @@ export type Place = {
   pitch: string | null;
   story: string | null;
   photos: string[];
-  // v4 per-class rate columns (PLACE_PUBLIC_COLUMNS ships them; the type
-  // under-declared until the ticket wizard needed strategyForPlaceRow on a
-  // public place row — MESITA wizard, D9).
-  welcome_free_rate?: number | null;
-  welcome_premium_rate?: number | null;
-  free_rate?: number | null;
-  premium_rate?: number | null;
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
@@ -99,7 +61,7 @@ export type Place = {
   // ── Overview parity (optional) ────────────────────────────────────
   //
   // The swipe / catalog cards used to show only what's strictly on the
-  // places row (name, vibe, category, price_level, closes_at, reward).
+  // places row (name, vibe, category, price_level, closes_at).
   // The "all info on the tinder card too" checkpoint widens that to
   // mirror the place-detail overview grid. Every field below is
   // optional because the recommend-swipe / list-places EFs don't return
@@ -118,8 +80,6 @@ export type Place = {
   opens_at?: string | null;
   distance_km?: number | null;
   zone?: string | null;
-  /** Per-visit reward ceiling in the place's currency. */
-  reward_cap_mxn?: number | null;
   /**
    * True while Enricher is still building the profile
    * (`places.content_state` ∈ {queued, generating}). Drives the
@@ -132,8 +92,6 @@ export type Place = {
   from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
-  /** Guest Order CTA. Absent/false until a menu is on file. */
-  orders_enabled?: boolean | null;
   /** Guest Reserve CTA. Absent or true offers Reserve; false = Not / walk-in. */
   reservations_enabled?: boolean | null;
 
@@ -151,8 +109,6 @@ export type Place = {
   timezone?: string | null;
   city?: string | null;
   enriched_at?: string | null;
-  /** Per-visit promo cap in major currency units (source for `reward_cap_mxn`). */
-  monthly_promo_cap?: number | null;
   /** Enricher pipeline state (`queued` / `generating` / `ready` / …). */
   content_state?: string | null;
   /** Consumer Requests count. Requested on the map is count > 0 and not ready. */
@@ -196,12 +152,11 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
-/** The wire word for a Places ring. Mirrors `_shared/nearby-places.ts`. */
-export type PlacesScopeWire = "partners" | "mesita" | "google";
+/** The wire word for a Places ring. Mirrors `_shared/nearby-places.ts`:
+ *  a place is on Mesita or it is Google's. */
+export type PlacesScopeWire = "mesita" | "google";
 
 const LIST_PLACES_MAX = 200;
-export const CATALOG_NEARBY_MAX = 60;
-const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
 export type PlacesBbox = {
   south: number;
   west: number;
@@ -223,7 +178,7 @@ export type ViewportPlaces = {
  * Web Search posts Places scope, Family and Popularity
  * (MESITA-1790). How many stays operator `map.pinCount`. `google: true`
  * is not the ring — it is web Search saying it CAN render a Google-only
- * stub. Mobile and the Pay picker omit it and get listed rows.
+ * stub; a caller that omits it gets listed rows.
  */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
@@ -259,27 +214,6 @@ export async function apiFetchNearbyCatalog(
         ? data.reloadMinSec
         : undefined,
   };
-}
-
-/**
- * Listed nearby only — no Google stubs. The Pay place picker
- * (`PlacePickList`) is the caller here, and it wants EVERY Mesita place a
- * guest could start a ticket at, never just the ones that pay us. It sends
- * the scope explicitly rather than leaning on the EF default: the default
- * is safe today, but a silent narrowing of this call is a guest who cannot
- * open a ticket, and that should not depend on a default staying put.
- */
-export async function apiFetchNearbyPlaces(
-  client: SupabaseClient,
-  origin: { lat: number; lng: number },
-  limit = SEARCH_NEARBY_LIMIT,
-): Promise<Place[]> {
-  const { places } = await invokeEF<{ places: Place[] }>(
-    client,
-    "consumer-web-list-places",
-    { lat: origin.lat, lng: origin.lng, limit, placesScope: "mesita" },
-  );
-  return (places ?? []).map(stripInsecurePhotos);
 }
 
 /** Optional camera rectangle. Search does not use this as the default pool. */
@@ -360,15 +294,13 @@ export async function apiRecommendDeck(
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
 }
 
-// Per-row state mirrored from atlas-suggest-places. Drives the badge
-// in the consumer search picker:
+// Per-row state mirrored from atlas-suggest-places — the server's words,
+// kept verbatim because they are the wire:
 //   - not_in_mesita: Google has it, Mesita doesn't — show "Not on
 //     Mesita yet" + nudge users to ping us.
-//   - web_listed: Mesita has a web-listed (unclaimed) entry — show
-//     "Listed · unclaimed" so consumers know they can still see the
-//     basic profile.
-//   - verified_partner_other: A claimed partner row — primary CTA.
-//   - verified_partner_self: The caller owns this place.
+//   - web_listed: Mesita has an unclaimed entry — the basic profile is there.
+//   - verified_partner_other / verified_partner_self: a claimed row (the
+//     caller's own, in the second case). This app reads neither apart.
 type PlacePredictionState =
   | "not_in_mesita"
   | "web_listed"
@@ -380,8 +312,6 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   state: PlacePredictionState;
-  /** True when the place PAYS Mesita (plan, not strategy). Google-only is false. */
-  partner?: boolean;
   /** Server's answer: did we write a profile? No column fallback on this
    *  lane, so an older payload reads as not-enriched (gray understates). */
   enriched?: boolean;
@@ -403,14 +333,12 @@ export type PlacePrediction = {
   lng?: number | null;
 };
 
-/** `fast` Search while typing · `deep` Search after idle · `mesita` PAY —
- *  the Mesita name embeddings alone, because a ticket can only open at a
- *  place that is on Mesita (Pato, 2026-08-29). */
-export type SuggestPlacesMode = "fast" | "deep" | "mesita";
+/** `fast` Search while typing · `deep` Search after idle. */
+export type SuggestPlacesMode = "fast" | "deep";
 
 /**
  * Name search for the consumer /search bar and pickers.
- * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
+ * Fast (default) = Autocomplete. Deep = Mesita · Google.
  * Map Filters never ride this call — power and Family are map-only.
  * Country is always Any: Autocomplete and Text Search do not take a region.
  */

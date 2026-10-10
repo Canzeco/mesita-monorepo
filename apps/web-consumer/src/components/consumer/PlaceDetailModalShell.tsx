@@ -4,7 +4,6 @@ import { PlaceDetailTitle } from "@/components/consumer/PlaceDetailTitle";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 import { PlaceActionBar } from "@/components/consumer/place-detail/PlaceActionBar";
 import type { PlaceDetail } from "@/lib/mock/place";
-import { isPartner } from "@/lib/promo-rates";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
@@ -17,14 +16,14 @@ import { isPartner } from "@/lib/promo-rates";
 // decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
 // a chip in the profile summary (PlaceDetailBody), not the title row.
 // decision: Pato (MESITA-1065) — the body row is Save · Contact · Share and
-// scrolls; Visit · Order · Reserve are pinned in a third band.
+// scrolls; Reserve is pinned in a third band.
 //   1. SlideOverHeader (shrink-0) — dismiss + place name
 //   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody (ugly
 //      Create profile included). Enrich is a tab until Enriched.
-//   3. PlaceActionBar (shrink-0) — Visit · Order · Reserve
+//   3. PlaceActionBar (shrink-0) — Reserve
 //
-// Takes the whole `place` rather than id/name/listingType: the bar needs the
-// full detail anyway, and the three scalars were only ever projections of it.
+// Takes the whole `place` rather than id/name: the bar needs the full detail
+// anyway, and the scalars were only ever projections of it.
 
 export function PlaceDetailModalShell({
   children,
@@ -37,11 +36,7 @@ export function PlaceDetailModalShell({
     <>
       <SlideOverHeader
         title={
-          <PlaceDetailTitle
-            placeName={place.name}
-            partner={isPartner(place)}
-            className="flex-none"
-          />
+          <PlaceDetailTitle placeName={place.name} className="flex-none" />
         }
       />
       {/*

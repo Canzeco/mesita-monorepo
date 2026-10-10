@@ -1,51 +1,41 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   fetchConsumerNotifications,
   type ConsumerNotification,
 } from "@/lib/api/notifications";
-import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { MY_ACTIVITY } from "@/components/consumer/consumer-activity-data";
-import { ConsumerActivityList } from "@/components/consumer/ConsumerActivityList";
-import { NotificationRow } from "@/components/consumer/notification-row";
-import { SkeletonRow } from "@/components/shared";
+import {
+  NotificationRow,
+  RESERVATION_KINDS,
+} from "@/components/consumer/notification-row";
+import { EmptyState, SkeletonRow } from "@/components/shared";
 
-// Notifications is YOUR activity and nothing else (Pato, 2026-08-17).
+// Notifications is YOUR activity and nothing else (Pato, 2026-08-17): an
+// inbox of things that happened to YOU, with no switcher.
 //
-// The My activity / Global activity toggle is gone. Global activity was never
-// notifications — it's other people's moves, which is the Social feed's job,
-// so it moved to Home > Social where it belongs. What's left needs no
-// switcher: an inbox of things that happened to YOU.
-export function NotificationsClient({ userId }: { userId: string }) {
+// ONLY RESERVATION ROWS RENDER. `consumer_notifications` holds other kinds
+// too and the list EF returns every row; this screen shows the ones a
+// booking wrote (`RESERVATION_KINDS`), because those are the only ones that
+// name something the guest can act on here.
+export function NotificationsClient() {
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const data = await fetchConsumerNotifications(supabase, userId);
-      setRows(data);
-      setError(null);
-    } catch (e) {
-      setError(errMsg(e, "Couldn't load notifications."));
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, userId]);
-
-  // Initial load: run the async fetch inline in the effect body (cancellation
-  // guarded) so setState isn't called synchronously on mount.
+  // Run the async fetch inline in the effect body (cancellation guarded) so
+  // setState isn't called synchronously on mount.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchConsumerNotifications(supabase, userId);
+        const data = await fetchConsumerNotifications(supabase);
         if (!cancelled) {
           setRows(data);
           setError(null);
@@ -59,27 +49,17 @@ export function NotificationsClient({ userId }: { userId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [supabase, userId]);
+  }, [supabase]);
 
-  usePayNotificationPoll(load, Boolean(userId));
-
-  // MVP cut (MESITA-2078): "Your bill" rows are hidden while Pay is parked.
-  const visible = rows.filter((n) => n.kind !== "bill");
+  const visible = rows.filter((n) => RESERVATION_KINDS.has(n.kind));
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
-          moves. it looks NOT clean. be direct"). This section carried an
-          <h2> "Your recent moves" and it was the ONLY one of Activity's four
-          that did — Visits, Orders and Reservations all open straight into
-          their content, and the section row directly above already names this
-          one. A heading that repeats the pill you just tapped is furniture,
-          and the cute phrasing made it read as marketing over a list of
-          facts.
-
-          The 16px top rhythm the old header carried is unchanged: every
-          branch below opens on `mt-4`, which is the same step Visits and
-          Reservations get from their `py-4` scroller. */}
+          moves. it looks NOT clean. be direct"). The page header already
+          names this list; a heading that repeats the tile you just tapped is
+          furniture. Every branch below opens on `mt-4`, the same step
+          Reservations gets from its `py-4` scroller. */}
       {error ? (
         <p className={cn(ERROR_BOX_CLASS, "mt-4 rounded-xl text-sm")}>
           {error}
@@ -95,28 +75,21 @@ export function NotificationsClient({ userId }: { userId: string }) {
             />
           ))}
         </div>
-      ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          {visible.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
-            <div className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-8 text-center text-sm">
-              <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
-              No notifications yet.
-            </div>
-          ) : (
-            <>
-              {visible.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  {visible.map((n) => (
-                    <NotificationRow key={n.id} n={n} />
-                  ))}
-                </div>
-              ) : null}
-              {MY_ACTIVITY.length > 0 ? (
-                <ConsumerActivityList items={MY_ACTIVITY} />
-              ) : null}
-            </>
-          )}
+      ) : visible.length > 0 ? (
+        <div className="mt-4 flex flex-col gap-2">
+          {visible.map((n) => (
+            <NotificationRow key={n.id} n={n} />
+          ))}
         </div>
+      ) : error ? null : (
+        <EmptyState
+          icon={Bell}
+          title="No notifications yet"
+          action={{
+            label: "See your reservations",
+            href: CONSUMER_ROUTES.mePages.reservations,
+          }}
+        />
       )}
     </div>
   );

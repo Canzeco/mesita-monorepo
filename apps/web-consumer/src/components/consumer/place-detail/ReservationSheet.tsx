@@ -33,6 +33,13 @@ import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
 
 const DEFAULT_PARTY = 2;
 
+// consumer-web-create-reservation refuses a booking past the guest's monthly
+// cap with this code. Its own `error` string pitches a plan this app does not
+// sell, so the sheet says the fact in its own words instead.
+const RESERVATION_LIMIT_CODE = "reservation_limit_reached";
+const RESERVATION_LIMIT_MESSAGE =
+  "You've reached this month's reservation limit.";
+
 // MX_OFFSET (and everything else about the place's clock) lives in
 // @/lib/place-time — the single source of truth. The picked slot is the
 // place's wall-clock, so we stamp that offset: the agent reads the time back
@@ -57,7 +64,7 @@ type ReservationSheetPlace = {
 // What to do when the guest already holds a live table here.
 //   null         → they haven't answered the banner yet; submit stays locked
 //   "another"    → book a second table (normal create flow)
-//   "reschedule" → move the existing ticket instead of creating a twin
+//   "reschedule" → move the existing booking instead of creating a twin
 type DuplicateChoice = "another" | "reschedule";
 
 function resolveSubmitLabel(args: {
@@ -145,7 +152,7 @@ export function ReservationSheet({
   // Look for a live booking at this place whenever the sheet opens. `upcoming`
   // is exactly "active" server-side: consumer-web-list-reservations filters to
   // state pending|confirmed AND reserved_at >= now - 4h, so cancelled,
-  // declined, unreachable and long-gone tickets never come back.
+  // declined, unreachable and long-gone bookings never come back.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -172,7 +179,7 @@ export function ReservationSheet({
         if (!cancelled) setExisting(hit);
       } catch {
         // Fail OPEN: a flaky list read must not block someone from booking.
-        // Worst case is the pre-existing behaviour (a possible second ticket).
+        // Worst case is the pre-existing behaviour (a possible second booking).
         if (!cancelled) setExisting(null);
       } finally {
         const missing = await profilePromise;
@@ -259,6 +266,10 @@ export function ReservationSheet({
         setNeedsLastName(true);
         setError("Add your last name — it's the name your table is under.");
         setSubmitting(false);
+        return;
+      }
+      if (e instanceof EFError && e.code === RESERVATION_LIMIT_CODE) {
+        setError(RESERVATION_LIMIT_MESSAGE);
         return;
       }
       const msg = errMsg(e, "");

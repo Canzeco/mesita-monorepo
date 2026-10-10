@@ -1,15 +1,8 @@
-// Frontend API surface for the consumer-facing profile EFs.
-//
-// Pre-entity-split this file used to also house the ticket workflow /
-// taxonomy code under the name `api/tickets.ts`. After the split
-// (reservations got their own EFs) the ticket helpers were dropped and
-// the file was renamed to its current responsibility:
-// fetch + update the consumer profile, plus the currency display
-// helper that every money surface reuses.
+// Frontend API surface for the consumer-facing profile EFs: fetch + update
+// the consumer profile, delete the account, claim an Instagram handle.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
-import { DEFAULT_CURRENCY } from "@/lib/money";
 
 // ─── Consumer profile ───────────────────────────────────────────────────────
 
@@ -17,7 +10,7 @@ export type ConsumerProfile = {
   id: string;
   code: string;
   // Legacy concat of first + last. EFs keep it populated on every write
-  // so older readers (find-consumer search, ticket meta) keep working.
+  // so older readers (find-consumer search) keep working.
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -27,96 +20,13 @@ export type ConsumerProfile = {
   phone: string | null;
   // Claimed Instagram username (MESITA-74) — normalized, no leading @.
   instagram_handle: string | null;
+  // The follower count the guest claimed with the handle. Optional so an
+  // older EF payload still reads; absent reads as 0.
+  instagram_followers_count?: number | null;
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
   // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
   avatar_url?: string | null;
-  // Account-level visibility flags (MESITA-76 / MESITA-913) — Settings → Privacy.
-  // privacy_public=false → Private account (anonymous to other guests).
-  // privacy_show_stories → Mesita story visibility (independent of Instagram).
-  privacy_public: boolean;
-  privacy_show_saves: boolean;
-  privacy_show_visits: boolean;
-  privacy_show_stories: boolean;
 };
-
-// Class payload returned alongside the profile by consumer-web-get-profile.
-// The real class/origin/subscription state for the signed-in consumer — what
-// the (shell) layout feeds into the ClassProvider so every client
-// surface renders the consumer's actual class instead of a hardcoded mock.
-export type ConsumerClass = {
-  // Live metals (bronze/silver/gold/diamond). Leftover legacy keys still
-  // arrive mid-cutover and are bridged in class-context.
-  key: string;
-  origin: "default" | "instagram" | "invitation" | "subscription";
-  /** What the guest pays. Absent on a stale EF; the bridge then infers. */
-  plan?: "free" | "premium";
-  label: string;
-  followers: number | null;
-  /** consumers.class_expires_at — when a non-default class lapses. */
-  expires_at: string | null;
-  /** Open doors, independent of which one wins the slot (MESITA-972). The
-   *  class rail renders unlocked-vs-locked off this. Optional so a
-   *  not-yet-redeployed EF degrades to client-side derivation. */
-  doors?: {
-    influencer: boolean;
-    premium: boolean;
-    aura: boolean;
-  } | null;
-  subscription: {
-    state: string;
-    price_cents: number;
-    currency: string;
-    current_period_end: string | null;
-    cancel_at_period_end: boolean;
-  } | null;
-  usage: {
-    reservations_used: number;
-    reservations_limit: number | null;
-  };
-};
-
-// Profile stats returned by consumer-web-get-profile (MESITA-888).
-// `visits` = tickets the v3 close sealed ("revealed") — completed visits.
-type ConsumerStats = {
-  visits: number;
-};
-
-// Lifetime counters from consumer-web-get-metrics (MESITA-904) — the Me →
-// Metrics sheet (10 tiles). Fetched lazily when the sheet opens, never on
-// shell load. places_visited === rewards_claimed always (same EF source).
-export type ConsumerMetrics = {
-  /** Place-detail opens — not tracked yet; EF returns 0. */
-  places_viewed: number;
-  /** Saved places. */
-  places_saved: number;
-  /** Revealed tickets — same value as rewards_claimed. */
-  places_visited: number;
-  /** Revealed tickets (reward claims). */
-  rewards_claimed: number;
-  /** Confirmed, non-test reservations (all time). */
-  reservations_booked: number;
-  /** Mesita post-visit reviews (ticket_reviews). */
-  mesita_reviews: number;
-  /** Verified Google reviews on tickets. */
-  google_reviews: number;
-  /** Verified Instagram stories on tickets. */
-  instagram_stories: number;
-  /** Guest-paid cents on revealed tickets (bill − discount). */
-  spent_cents: number;
-  /** Discount cents earned on revealed tickets. */
-  saved_cents: number;
-};
-
-export async function apiFetchConsumerMetrics(
-  client: SupabaseClient,
-): Promise<ConsumerMetrics> {
-  const { metrics } = await invokeEF<{ metrics: ConsumerMetrics }>(
-    client,
-    "consumer-web-get-metrics",
-    {},
-  );
-  return metrics;
-}
 
 type ConsumerOnboardingInput = {
   // Each half of the name is written INDEPENDENTLY (MESITA-1806): onboarding
@@ -136,15 +46,6 @@ type ConsumerOnboardingInput = {
   phone?: string;
 };
 
-// Visibility-only patches (MESITA-913). Name fields are omitted so the EF
-// doesn't require the first/last pair for a privacy toggle flip.
-type ConsumerPrivacyPatch = {
-  privacy_public?: boolean;
-  privacy_show_saves?: boolean;
-  privacy_show_visits?: boolean;
-  privacy_show_stories?: boolean;
-};
-
 // Avatar-only patch after a Storage upload (MESITA-953). null clears.
 type ConsumerAvatarPatch = {
   avatar_url: string | null;
@@ -152,7 +53,7 @@ type ConsumerAvatarPatch = {
 
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: ConsumerOnboardingInput | ConsumerPrivacyPatch | ConsumerAvatarPatch,
+  input: ConsumerOnboardingInput | ConsumerAvatarPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
@@ -162,31 +63,26 @@ export async function apiUpdateConsumerProfile(
   return consumer;
 }
 
-export async function apiFetchConsumerProfile(client: SupabaseClient): Promise<{
-  consumer: ConsumerProfile;
-  consumerClass: ConsumerClass;
-  stats: ConsumerStats;
-}> {
-  // `stats` is optional in the response type so a not-yet-redeployed EF
-  // degrades to zeroes instead of breaking the profile read.
-  const {
-    consumer,
-    class: consumerClass,
-    stats,
-  } = await invokeEF<{
-    consumer: ConsumerProfile;
-    class: ConsumerClass;
-    stats?: ConsumerStats;
-  }>(client, "consumer-web-get-profile", {});
-  return { consumer, consumerClass, stats: stats ?? { visits: 0 } };
+// consumer-web-get-profile lazily creates the row, so a brand-new account
+// reads back successfully (just with null fields). The EF ships more than the
+// row; this app reads the row.
+export async function apiFetchConsumerProfile(
+  client: SupabaseClient,
+): Promise<{ consumer: ConsumerProfile }> {
+  const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
+    client,
+    "consumer-web-get-profile",
+    {},
+  );
+  return { consumer };
 }
 
 // ─── Account deletion ────────────────────────────────────────────────────
 
 // consumer-web-delete-account: irreversibly deletes the caller's account —
-// tickets first (RESTRICT FK), then the auth user (consumers row cascades).
-// The session is dead server-side afterwards; callers must locally sign out
-// and hard-navigate.
+// everything hanging off the consumer row first, then the auth user. The
+// session is dead server-side afterwards; callers must locally sign out and
+// hard-navigate.
 export async function apiDeleteConsumerAccount(
   client: SupabaseClient,
 ): Promise<void> {
@@ -195,13 +91,12 @@ export async function apiDeleteConsumerAccount(
 
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
-// consumer-web-claim-instagram: the social door into Influencer (segments
-// v6). Crossing classes.follower_threshold (2,000) grants Influencer with
-// origin "instagram"; below the threshold an instagram-origin class falls
-// back (live subscription → premium, else standard). The handle is persisted
-// to consumers.instagram_handle. `tier` echoes the resulting class key.
+// consumer-web-claim-instagram: persists the claimed follower count and the
+// handle to the consumer row. The handle is what makes the account
+// "connected"; the count against INSTAGRAM_REACH_FOLLOWERS is what makes it
+// verified (consumer-identity.ts). The EF echoes more than this; the rest is
+// ignored.
 type InstagramClaimResult = {
-  tier: string;
   followers: number;
   handle: string | null;
 };
@@ -215,48 +110,4 @@ export async function apiClaimInstagram(
     "consumer-web-claim-instagram",
     input,
   );
-}
-
-export type InviteCodeClaimResult = {
-  classKey: string;
-  origin: "default" | "instagram" | "subscription" | "invitation";
-  batchLabel: string | null;
-};
-
-/** Redeem a 10-digit invitation PIN (MESITA-1168). Bearer: whoever holds the
- *  PIN redeems it, unlike admin-web-grant-class which names a known consumer.
- *  The EF answers one generic message for every rejection on purpose, so the
- *  endpoint cannot be used to confirm which 10-digit strings are real PINs. */
-export async function apiClaimInviteCode(
-  client: SupabaseClient,
-  input: { code: string },
-): Promise<InviteCodeClaimResult> {
-  return await invokeEF<InviteCodeClaimResult>(
-    client,
-    "consumer-web-claim-invite-code",
-    input,
-  );
-}
-
-// ─── Display helpers ─────────────────────────────────────────────────────
-
-export function formatCurrency(
-  cents: number | null | undefined,
-  currency = DEFAULT_CURRENCY,
-): string {
-  if (cents == null) return "—";
-  const value = cents / 100;
-  try {
-    // Intl with `en-US` + `MXN` yields the unambiguous "MX$1,234" prefix
-    // (Mexican-locale formatting would collapse to just "$1,234", which
-    // reads as USD outside Mexico). Other ISO codes still format with
-    // their conventional prefix ("$", "€", etc.).
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return `${currency === DEFAULT_CURRENCY ? "MX$" : "$"}${value.toFixed(0)}`;
-  }
 }

@@ -1,27 +1,34 @@
 import Image from "next/image";
-import { Bell, MapPin, Star } from "lucide-react";
+import { CalendarCheck, MapPin } from "lucide-react";
 import type { ConsumerNotification } from "@/lib/api/notifications";
 
-function kindLabel(kind: string): string {
-  if (kind === "bill") return "Your bill";
-  if (kind === "review") return "Review update";
-  return "Update";
-}
+// The kinds a booking writes — the only rows Me › Notifications renders
+// (NotificationsClient filters on this set), so every row is a reservation
+// update.
+export const RESERVATION_KINDS: ReadonlySet<string> = new Set([
+  "reservation",
+  "booking",
+]);
 
-function KindIcon({ kind, className }: { kind: string; className?: string }) {
-  if (kind === "review") return <Star className={className} />;
-  return <Bell className={className} />;
+// `payload` is free-form JSON on the row. The two strings a booking row can
+// carry — the place's name and a photo — are read loosely; a payload without
+// them renders the pin and "Mesita".
+function payloadString(payload: unknown, key: string): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const v = (payload as Record<string, unknown>)[key];
+  return typeof v === "string" && v.length > 0 ? v : null;
 }
 
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
-  const p = n.bill;
+  const placeName = payloadString(n.payload, "place_name");
+  const placePhoto = payloadString(n.payload, "place_photo_url");
 
   return (
     <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
       <div className="bg-muted relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
-        {p.place_photo_url ? (
+        {placePhoto ? (
           <Image
-            src={p.place_photo_url}
+            src={placePhoto}
             alt=""
             fill
             className="object-cover"
@@ -36,15 +43,13 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className="text-foreground text-sm leading-snug font-semibold">
-            {p.place_name ?? "Mesita partner"}
+            {placeName ?? "Mesita"}
           </p>
         </div>
         <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
-          <KindIcon kind={n.kind} className="h-3.5 w-3.5 shrink-0" />
-          {kindLabel(n.kind)}
+          <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
+          Reservation update
         </p>
-        {/* MVP cut (MESITA-2078): the "Reward MX$…" line is hidden while
-            Pay is parked. */}
         <p className="text-muted-foreground type-body mt-1">
           {new Date(n.created_at).toLocaleString(undefined, {
             month: "short",

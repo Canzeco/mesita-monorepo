@@ -26,6 +26,7 @@ import nextConfig from "../../../next.config";
 
 const APP_DIR = join(__dirname, "..", "..", "app");
 const SHELL = join(APP_DIR, "(shell)");
+const COMPONENTS = join(__dirname, "..", "..", "components", "consumer");
 
 /** Recursively collect dirs whose basename matches `pred`. */
 function findDirs(root: string, pred: (name: string) => boolean): string[] {
@@ -59,6 +60,38 @@ function allPages(): string[] {
   return out;
 }
 
+/** The URL a page.tsx serves: route groups and parallel slots dropped,
+ *  `[id]` kept so `:id` destinations can be lined up against it. */
+function pageUrl(page: string): string {
+  return (
+    "/" +
+    page
+      .replace(/\/?page\.tsx$/, "")
+      .split("/")
+      .filter((seg) => seg && !seg.startsWith("(") && !seg.startsWith("@"))
+      .join("/")
+  );
+}
+
+/** Next's matcher, reduced to what this table uses: `:name` is ONE segment,
+ *  `:name*` ZERO OR MORE (path-to-regexp's `*` modifier). The contract test
+ *  carries the same eight lines; the two files cannot share a helper without
+ *  a module that exists only for tests. */
+function matches(source: string, address: string): boolean {
+  const re = source
+    .split("/")
+    .slice(1)
+    .map((seg) =>
+      /^:[A-Za-z]+\*$/.test(seg)
+        ? "(?:/[^/]+)*"
+        : /^:[A-Za-z]+$/.test(seg)
+          ? "/[^/]+"
+          : `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+    )
+    .join("");
+  return new RegExp(`^${re}$`).test(address);
+}
+
 // ── T1 — the auth wall is STRUCTURAL ────────────────────────────────────────
 //
 // (shell)/layout.tsx runs getUser() and every route inside the segment
@@ -73,13 +106,6 @@ describe("T1 — every page lives inside the (shell) auth segment", () => {
     "page.tsx", // "/" — the sign-in surface itself
     "onboard/page.tsx", // pre-profile, gated on session not profile
     "auth/post-signin/page.tsx", // the redirect hop that establishes session
-    // MESITA-1677: the public gift landing page. A recipient who has never
-    // heard of Mesita would hit OTP before a single pixel of the org's
-    // identity rendered otherwise — sign-in is step TWO here, after the
-    // guest has seen what they were given. Renders server-side from a
-    // possession code (gift-web-preview-code, verify_jwt=false); the actual
-    // claim still happens behind the wall, at wallet.redeem.
-    "gift/[code]/page.tsx",
   ]);
 
   it("catches a route authored outside the auth wall", () => {
@@ -101,8 +127,8 @@ describe("T1 — every page lives inside the (shell) auth segment", () => {
 // all stay green.
 //
 // ONE DIRECTION ONLY. The reverse is not an invariant: the predicate carries
-// /rewards/ticket/ with no intercept directory, deliberately — that surface is
-// a plain full page.
+// the two /saved/ legacy prefixes with no intercept directory behind them,
+// deliberately — they 308 to the canonical detail, which intercepts.
 describe("T2 — every @modal intercept is allowed by isModalContractPath", () => {
   it("catches the blank-modal trap", () => {
     const modalRoot = join(SHELL, "@modal");
@@ -113,7 +139,7 @@ describe("T2 — every @modal intercept is allowed by isModalContractPath", () =
       // just structure holding [id]; it has no page and paints nothing.
       .filter((dir) => existsSync(join(dir, "page.tsx")))
       .map((dir) => {
-        // (shell)/@modal/(.)me/class -> /me/class ; [id] -> a sample value
+        // (shell)/@modal/(.)place/[id] -> /place/sample-id
         const rel = dir.slice(modalRoot.length + 1);
         const path =
           "/" +
@@ -163,15 +189,7 @@ describe("T4 — every redirect destination resolves", () => {
 
     // A destination resolves if a real page matches it, or if it is itself a
     // redirect source (a legal one-hop chain).
-    const pages = allPages().map(
-      (p) =>
-        "/" +
-        p
-          .replace(/\/page\.tsx$/, "")
-          .split("/")
-          .filter((seg) => !seg.startsWith("(") && !seg.startsWith("@"))
-          .join("/"),
-    );
+    const pages = allPages().map(pageUrl);
 
     const resolves = (dest: string) => {
       if (sources.has(dest)) return true;
@@ -216,13 +234,13 @@ describe("T4 — every redirect destination resolves", () => {
 //
 // The failure this exists for: a DETAIL route that stops nesting under its
 // tab's prefix silently lights NOTHING. Nothing else catches it — not tsc, not
-// the contract test, not the build. Renaming /rewards/ticket/[id] to
-// /visit/[id] is precisely that severing, so this matrix is the only mechanism
-// that can hold the "visit detail lights Inbox" requirement.
+// the contract test, not the build. /reservation/[id] lighting Me while living
+// outside /me is precisely that shape, so this matrix is the only mechanism
+// that can hold it.
 //
 // Renders the real component with renderToStaticMarkup (react-dom/server is
 // already a direct dependency; vitest runs environment:node) and reads the
-// active tab off the pink underline span that only the active item renders.
+// active tab off the underline span that only the active item renders.
 describe("T5 — exactly one tab lights per surface", () => {
   async function activeTabFor(pathname: string): Promise<string[]> {
     vi.resetModules();
@@ -244,16 +262,18 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
+    ["/discover/feed", "Home"],
     ["/discover/scroll", "Home"],
     ["/discover/chat", "Home"],
     ["/discover/favs", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-
+    // Pay is one page and lights its own tab there.
+    ["/pay", "Pay"],
     // Me's pages, and the one detail route it still owns: a reservation is
     // reached from a place AND from Me › Reservations.
     ["/me", "Me"],
-    ["/me/visits", "Me"],
+    ["/me/reservations", "Me"],
     ["/reservation/r1", "Me"],
   ];
 
@@ -262,35 +282,57 @@ describe("T5 — exactly one tab lights per surface", () => {
     expect(lit).toEqual([expected]);
   });
 
-  // Non-overlap is currently naming luck (/rewards vs /reservation share no
-  // prefix). Pin it so a future rename that creates an overlap fails here.
+  // Non-overlap is currently naming luck (/pay vs /place share no prefix that
+  // the matcher reads). Pin it so a future rename that creates an overlap
+  // fails here.
   it("never lights two tabs at once", async () => {
     for (const [path] of MATRIX) {
       expect((await activeTabFor(path)).length, path).toBe(1);
     }
   });
 
-  // MESITA-2076 parked Pay and took Wallet off the bar. Their pages stay
-  // routable and, until Pay un-parks, light NOTHING — a parked tab drawn lit
-  // would promise a destination its tap does not open.
+  // THE SECOND STAGE IS A SET OF REDIRECT SOURCES AND NOTHING ELSE (Pato,
+  // MESITA-2087). Every address below shipped to production. Each one must be
+  // caught by next.config — first match, as Next fires it — and land on a
+  // page in ONE hop. A missing entry is a 404 on a printed QR; a dangling one
+  // is a 404 with extra steps.
   it.each([
     "/new-visit",
     "/visit/t1",
     "/wallet",
     "/wallet/buy",
     "/wallet/balance/bal_1",
-  ])("%s lights no tab while Pay is parked", async (path) => {
-    expect(await activeTabFor(path)).toEqual([]);
+    "/credits",
+    "/order",
+    "/rewards",
+    "/qr",
+    "/ticket/t1",
+    "/gift/1234567890",
+    "/me/plan",
+    "/me/diamond",
+    "/me/visits",
+    "/me/settings/metrics",
+    "/share",
+  ])("%s is a redirect source that resolves in one hop", async (address) => {
+    const redirects = await nextConfig.redirects!();
+    const hit = redirects.find((r) => matches(r.source, address));
+    expect(hit, `${address} has no redirect`).toBeDefined();
+    const pages = new Set(
+      allPages().map((p) => pageUrl(p).replace(/\[[^\]]+\]/g, ":id")),
+    );
+    expect(
+      pages.has(hit!.destination.replace(/:[A-Za-z]+/g, ":id")),
+      `${address} → ${hit!.destination} is not a page`,
+    ).toBe(true);
   });
 });
 
-// MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me (Pato: "BOTTOM
-// BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.").
-//
-// This REPLACES the MESITA-2055 guard (Home · Search · Visit · Wallet · Me).
-// Two things MESITA-1119 cared about are unchanged below: no class stamped
-// into Me, and no Agents tab.
-describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => {
+// The bar is Home · Search · Pay (Soon) · Me (Pato, MESITA-2076: "BOTTOM BAR
+// MUST ONLY BE. Home. Search. Pay(Soon). Me."), and Pay is a LINK like the
+// other three — its page is the Soon state. Two things
+// MESITA-1119 cared about are unchanged below: no class stamped into Me, and
+// no Agents tab.
+describe("the bar is Home · Search · Pay (Soon) · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -317,14 +359,16 @@ describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => 
     expect(labels).not.toContain("Order");
   });
 
-  // Pay is a button that opens ComingSoonModal, never a link to /new-visit,
-  // and it is the only tab tagged Soon.
-  it("parks Pay: a Soon-tagged button, not a link", async () => {
+  // Four <a> tabs, no <button>: Pay navigates to its page like every other
+  // tab, and it is the only one tagged Soon — exactly once.
+  it("draws four links, Pay among them with one Soon tag and no button", async () => {
     const html = await renderNav("/search");
-    const buttons = html.split("<button ").slice(1);
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toMatch(/text-center">Pay</);
-    expect(buttons[0]).toMatch(/>Soon</);
+    const anchors = html.split("<a ").slice(1);
+    expect(anchors).toHaveLength(4);
+    expect(html.includes("<button")).toBe(false);
+    const pay = anchors.find((a) => /text-center">Pay</.test(a));
+    expect(pay).toBeDefined();
+    expect(pay).toMatch(/>Soon</);
     expect(html.match(/>Soon</g)).toHaveLength(1);
   });
 
@@ -337,7 +381,7 @@ describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => 
 
   // Every tab's href is a live page, never a redirect source — a tab that
   // 308s costs a hop on every tap and lights nothing while it runs.
-  it("points every linked tab at its own live default", async () => {
+  it("points every tab at its own live default", async () => {
     const html = await renderNav("/me");
     const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map(
       (m) => m[1],
@@ -345,12 +389,15 @@ describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => 
     expect(hrefs).toEqual([
       CONSUMER_ROUTES.discoverDefault,
       CONSUMER_ROUTES.search,
+      CONSUMER_ROUTES.pay,
       CONSUMER_ROUTES.me,
     ]);
-    const sources = new Set(
-      (await nextConfig.redirects!()).map((r) => r.source),
-    );
-    expect(hrefs.filter((h) => sources.has(h))).toEqual([]);
+    const redirects = await nextConfig.redirects!();
+    expect(
+      hrefs.filter((h) => redirects.some((r) => matches(r.source, h))),
+    ).toEqual([]);
+    const pages = new Set(allPages().map(pageUrl));
+    for (const href of hrefs) expect(pages, href).toContain(href);
   });
 });
 
@@ -382,7 +429,7 @@ describe("T5b — Home's supporting rail", () => {
     );
     expect(hop).toBeUndefined();
     expect(
-      existsSync(join(SHELL, "(visit)", "discover", "feed", "page.tsx")),
+      existsSync(join(SHELL, "(discovery)", "discover", "feed", "page.tsx")),
     ).toBe(true);
   });
 
@@ -392,10 +439,7 @@ describe("T5b — Home's supporting rail", () => {
   //
   it("keeps every Home label inside the 359px track", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    const navSrc = readFileSync(
-      join(__dirname, "..", "..", "components/consumer/ModeRail.tsx"),
-      "utf8",
-    );
+    const navSrc = readFileSync(join(COMPONENTS, "ModeRail.tsx"), "utf8");
     // Match the class strings themselves, not the words anywhere in the file.
     expect(navSrc).toContain('"text-xs flex items-center');
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
@@ -428,19 +472,7 @@ describe("T5b — Home's supporting rail", () => {
   // hop and light no pill while it ran.
   it("every pill href is a real page, one each", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    const pages = new Set(
-      allPages().map(
-        (p) =>
-          "/" +
-          p
-            .replace(/\/?page\.tsx$/, "")
-            .split("/")
-            .filter(
-              (seg) => seg && !seg.startsWith("(") && !seg.startsWith("@"),
-            )
-            .join("/"),
-      ),
-    );
+    const pages = new Set(allPages().map(pageUrl));
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
@@ -451,7 +483,7 @@ describe("T5b — Home's supporting rail", () => {
   });
 
   // First pill is the default, the property this rail has preserved since
-  // MESITA-1609. Visit's bottom-tab href is Home's href.
+  // MESITA-1609. Home's bottom-tab href is the rail's first href.
   it("lands Home on its leading pill", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
@@ -469,33 +501,31 @@ describe("T5b — Home's supporting rail", () => {
       ["discover", "favs"],
     ]) {
       expect(
-        existsSync(join(SHELL, "(visit)", ...rel, "page.tsx")),
+        existsSync(join(SHELL, "(discovery)", ...rel, "page.tsx")),
         rel.join("/"),
       ).toBe(true);
     }
     const layout = readFileSync(
-      join(SHELL, "(visit)", "discover", "layout.tsx"),
+      join(SHELL, "(discovery)", "discover", "layout.tsx"),
       "utf8",
     );
-    expect(layout).toContain("<ModeRail modes={HOME_MODES} />");
+    expect(layout).toContain("<ModeRail />");
   });
 });
 
-// ── T6 — Activity is three sheets on Me, not a container ───────────────────
+// ── T6 — Activity is pages on Me, not a container ──────────────────────────
 //
 // This used to pin InboxSectionNav.SECTIONS, the hand-listed pill row a guest
 // actually saw, because the contract's key order pinned nothing at runtime.
-// MESITA-1626 deleted the row and the container under it: the three Me boxes
-// each deep-linked past that nav into one section, so its only job was asking
-// the guest to re-choose what they had just chosen.
+// MESITA-1626 deleted the row and the container under it: the Me boxes each
+// deep-linked past that nav into one section, so its only job was asking the
+// guest to re-choose what they had just chosen.
 //
 // The same class of bug still exists one layer over — a box wired to the wrong
-// sheet, or a sheet dropped in a refactor — so the pin moves rather than dies.
-describe("T6 — Activity's three sections are pages on Me", () => {
+// page, or a page dropped in a refactor — so the pin moves rather than dies.
+describe("T6 — Activity's sections are pages on Me", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
-  // Visits left the grid in the MVP cut (MESITA-2077); /me/visits is still a
-  // page (T1 walks it), just with no tile pointing at it.
   it("routes each box to its own /me page: notifications · reservations", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
     expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
@@ -514,15 +544,13 @@ describe("T6 — Activity's three sections are pages on Me", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// MESITA-1628 moved Me's long tail onto the page as a 2-up grid and left the
-// PARKED tail behind More. That split is the whole product decision: three
-// greyed cells out of eleven is a quarter of the block, and in a grid a dead
-// cell reads as broken rather than upcoming.
+// Me is a 2-up grid (MESITA-1628). In a grid a dead cell reads as broken
+// rather than upcoming, so the grid holds live doors only.
 //
-// The regression this catches is a parked feature drifting up into the grid
-// because it "looks ready" — the grid cell has no `soon` prop at all, so it
-// would ship as a live tile pointing at nothing.
-describe("T8 — Me's grid is live cells, More is the parked tail", () => {
+// The regression this catches is a tile for a surface that does not exist
+// — `DestTile` has no `soon` prop and its `href` is required, so such a tile
+// would ship as a live Link pointing at nothing.
+describe("T8 — Me's grid is six live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   /** `<DestTile … title="X">` values, in render order. */
   const gridTitles = (source: string) => {
@@ -535,17 +563,9 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
   };
 
   it("renders six cells: three pairs", () => {
-    // MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet,
-    // Plan, Visits and the five Soon cells left the grid; every one of their
-    // routes still exists. Before that it was Profile + seven pairs.
-    //
-    // PROFILE LEADS (Pato, 2026-09-08): the header states the identity, so
-    // the first cell is the one that edits it, spanning the row since the
-    // Passport died (MESITA-2043).
-    //
-    // DIAMOND IS PARKED and Help is SUPPORT (Pato, MESITA-2080: "Diamond
-    // goes for the future too. Its just only Profile Instagram /
-    // Notifications Reservations / Settings Support").
+    // Pato, MESITA-2080: "Its just only Profile Instagram / Notifications
+    // Reservations / Settings Support". PROFILE LEADS (Pato, 2026-09-08): the
+    // header states the identity, so the first cell is the one that edits it.
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
@@ -556,8 +576,8 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     ]);
   });
 
-  it("hides every money and not-built door for the MVP", () => {
-    for (const hidden of [
+  it("holds no money door and no Second Stage door", () => {
+    for (const gone of [
       "Wallet",
       "Plan",
       "Visits",
@@ -567,8 +587,10 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Integrations",
       "Friends",
       "Diamond",
+      "Cards",
+      "Metrics",
     ]) {
-      expect(gridTitles(ME), hidden).not.toContain(hidden);
+      expect(gridTitles(ME), gone).not.toContain(gone);
     }
   });
 
@@ -581,25 +603,23 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
   it("every row is a pair; nothing spans", () => {
     // Three `DestGrid`s of two. Counting grids and spans SEPARATELY on
     // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
-    // would go on being true of any row width. Profile spanned from
-    // MESITA-2043 until Diamond was parked (MESITA-2080) and Instagram moved
-    // up beside it.
+    // would go on being true of any row width.
     expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(3);
     expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(6);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
 
-  it("no cell is compact — every live cell says what it holds", () => {
+  it("no cell is compact or parked — every cell says what it holds", () => {
     // The four-up bought its width by dropping the summary line, which left
     // Activity as the only cells on Me that named a destination without
-    // saying what was in it. The prop is gone from `DestTile` entirely; this
-    // pins the page so a "make it fit" change cannot reintroduce the idea by
-    // hand. Parked cells are the exception — the Soon pill takes that slot.
+    // saying what was in it. `DestTile` has no `compact` and no `soon` prop;
+    // this pins the page so a "make it fit" or "coming soon" change cannot
+    // reintroduce either idea by hand.
     const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
     expect(cells.filter((c) => /\bcompact\b/.test(c))).toEqual([]);
+    expect(cells.filter((c) => /\bsoon\b/.test(c))).toEqual([]);
     const silent = cells
-      .filter((c) => !/\bsoon\b/.test(c))
       .filter((c) => /summary=""/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
     expect(silent).toEqual([]);
@@ -613,30 +633,19 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(src).not.toMatch(/compact\??:/);
     expect(src).not.toMatch(/cols\??:/);
     expect(src).not.toContain("grid-cols-4");
-  });
-
-  it("no Cards cell — Wallet already lists cards inline", () => {
-    expect(gridTitles(ME)).not.toContain("Cards");
-    expect(ME).not.toContain("<CardsModal");
+    // ...and no inert branch: no `soon`, `disabled`, `onClick` or `full`
+    // prop, and no <button>. A cell is a Link or it is not on the page.
+    for (const prop of ["soon", "disabled", "onClick", "full"]) {
+      expect(src, prop).not.toMatch(new RegExp(`\\b${prop}\\??:`));
+    }
+    expect(src).not.toContain("<button");
   });
 
   it("the More drawer is gone from the codebase", () => {
     // It held exactly Gift and Share; with both on the page it held nothing,
     // and an empty drawer is worse than none.
     expect(ME).not.toContain("MoreModal");
-    expect(
-      existsSync(
-        join(
-          __dirname,
-          "..",
-          "..",
-          "components",
-          "consumer",
-          "me",
-          "MoreModal.tsx",
-        ),
-      ),
-    ).toBe(false);
+    expect(existsSync(join(COMPONENTS, "me", "MoreModal.tsx"))).toBe(false);
   });
 
   it("sign out is in Settings, not in the page body", () => {
@@ -645,39 +654,16 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // page is the kind of thing that quietly comes back in a refactor.
     expect(ME).not.toContain("SignOutButton");
     expect(
-      readFileSync(
-        join(
-          __dirname,
-          "..",
-          "..",
-          "components",
-          "consumer",
-          "me",
-          "SettingsModal.tsx",
-        ),
-        "utf8",
-      ),
+      readFileSync(join(COMPONENTS, "me", "SettingsModal.tsx"), "utf8"),
     ).toContain("SignOutButton");
   });
 
-  it("no parked cell is on the grid during the MVP cut", () => {
-    // The five Soon cells were the page's own roadmap; the MVP cut took them
-    // off rather than show five dead tiles (MESITA-2077). A cell coming back
-    // as `soon` is a decision to reverse that, not a drift.
-    const parkedCells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
-      .map((m) => m[0])
-      .filter((c) => /\bsoon\b/.test(c))
-      .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(parkedCells).toEqual([]);
-  });
-
   it("Help is the only door to terms and privacy", () => {
-    // Legal has moved twice — out of Settings (MESITA-1641) into About, then
-    // into Help when the About cell was cut (MESITA-1650). It has never had
-    // two doors and must not gain one. Reading the URL CONSTANTS, not the
-    // words "terms"/"privacy": Settings still has a Privacy GROUP about the
-    // account's visibility, which has nothing to do with the policy.
-    const dir = join(__dirname, "..", "..", "components", "consumer", "me");
+    // Legal lives in Help (MESITA-1650) and must not gain a second door.
+    // Reading the URL CONSTANTS, not the words "terms"/"privacy": Settings'
+    // Export-my-data row names the privacy@ inbox, which has nothing to do
+    // with the policy.
+    const dir = join(COMPONENTS, "me");
     const settings = readFileSync(join(dir, "SettingsModal.tsx"), "utf8");
     const help = readFileSync(join(dir, "HelpModal.tsx"), "utf8");
     for (const url of ["MESITA_TERMS_URL", "MESITA_PRIVACY_URL"]) {
@@ -688,25 +674,13 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
   });
 
   it("the version has ONE source, and it is not a literal on the page", () => {
-    // It was a hardcoded string in a <p> at the bottom of Me. It now renders
-    // twice — the About cell's summary and the About sheet — and two typed
+    // It was a hardcoded string in a <p> at the bottom of Me. Two typed
     // copies of a number that changes every release drift on release one.
     //
     // Comments STRIPPED first. The note explaining why the footer is gone
     // necessarily quotes it, so a raw scan fires on its own rationale and
     // the cheapest way to green it would be deleting the rationale.
-    const help = readFileSync(
-      join(
-        __dirname,
-        "..",
-        "..",
-        "components",
-        "consumer",
-        "me",
-        "HelpModal.tsx",
-      ),
-      "utf8",
-    );
+    const help = readFileSync(join(COMPONENTS, "me", "HelpModal.tsx"), "utf8");
     const code = (src: string) =>
       src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     // It renders in Help now, not on the page (MESITA-1650).
@@ -722,23 +696,13 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
 // structurally cannot prove a redirect EXISTS: delete the entry and there is
 // simply nothing left for it to check, so it passes.
 //
-// /credits shipped standalone (#1429), went live on consumer.mesita.ai, and
-// then moved under Inbox when it became a section. The bookmarks are real. If
-// the redirect is ever dropped, this goes red instead of CI going green while
-// those links 404.
-describe("T7 — every former Wallet url still resolves after the move", () => {
-  // Wallet has moved five times: standalone /credits (#1429) -> Activity
-  // section (/inbox/credits) -> Pay section (/new-visit/wallet, 2026-09-01)
-  // -> its own tab (/wallet, 09-05) -> Pay section again (09-06) -> its own
-  // tab again (/wallet, MESITA-2050). Every old url was live in production,
-  // so every set of bookmarks is real.
-  //
-  // EACH RESOLVES IN ONE HOP, and that is why this asserts the destination
-  // rather than just the entry: pointing /credits at /new-visit/wallet would
-  // still be a working redirect and would still be a two-hop chain.
+// Every address below was live on consumer.mesita.ai, so every set of
+// bookmarks is real. If an entry is ever dropped, this goes red instead of CI
+// going green while those links 404.
+describe("T7 — every former url still resolves after the move", () => {
   it.each([
     // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
-    // container; Bookings is a sheet on Me now, so Me is where they go.
+    // container; the list is a page on Me now, so Me is where they go.
     ["/saved", "/me"],
     ["/saved/reservations", "/me/reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
@@ -753,79 +717,66 @@ describe("T7 — every former Wallet url still resolves after the move", () => {
     },
   );
 
+  // Wallet shipped under every spelling below — standalone /credits, an
+  // Activity section (/inbox/credits), a Pay section (/new-visit/wallet) and
+  // its own tab (/wallet). Every spelling lands on Pay in ONE hop — first
+  // match, as Next fires it — and that is why this asserts the destination
+  // rather than just the entry.
   it.each([
-    ["/credits", "/wallet"],
-    ["/inbox/credits", "/wallet"],
-    ["/new-visit/wallet", "/wallet"],
-    ["/new-visit/wallet/buy", "/wallet/buy"],
-    ["/new-visit/wallet/gift", "/wallet/gift"],
-    ["/new-visit/wallet/redeem", "/wallet/redeem"],
-    ["/new-visit/wallet/balance/:id", "/wallet/balance/:id"],
-  ])("keeps %s redirecting straight to %s", async (source, destination) => {
+    ["/credits", "/pay"],
+    ["/inbox/credits", "/pay"],
+    ["/new-visit/wallet", "/pay"],
+    ["/new-visit/wallet/buy", "/pay"],
+    ["/new-visit/wallet/gift", "/pay"],
+    ["/new-visit/wallet/redeem", "/pay"],
+    ["/new-visit/wallet/balance/bal_1", "/pay"],
+  ])("keeps %s redirecting straight to %s", async (address, destination) => {
     const redirects = await nextConfig.redirects!();
-    const entry = redirects.find((r) => r.source === source);
-    expect(entry, `${source} redirect was removed`).toBeDefined();
-    expect(entry!.destination).toBe(destination);
-  });
-
-  // /wallet is the live page again. A redirect whose SOURCE is a live route
-  // shadows it — the page never renders and every gate stays green.
-  it("keeps /wallet itself out of the redirect table", async () => {
-    const redirects = await nextConfig.redirects!();
-    expect(redirects.find((r) => r.source === "/wallet")).toBeUndefined();
+    const hit = redirects.find((r) => matches(r.source, address));
+    expect(hit, `${address} redirect was removed`).toBeDefined();
+    expect(hit!.destination).toBe(destination);
   });
 });
 
-// ── T9 — Wallet is a tab, and Pay is one page ───────────────────────────────
+// ── T9 — Pay is one page ────────────────────────────────────────────────────
 //
-// Wallet has been in and out of Pay three times. The Pay section row (QR ·
-// Wallet) is deleted, not emptied: a one-pill row that switches nothing is
-// chrome pretending to be a control. A change that puts Wallet back inside
-// Pay has to delete these lines to do it, which is the review moment.
-describe("T9 — Wallet is its own tab, and Pay has no section row", () => {
-  it("the Pay section row is gone from the codebase", () => {
-    expect(
-      existsSync(
-        join(
-          __dirname,
-          "..",
-          "..",
-          "components",
-          "consumer",
-          "pay",
-          "PaySectionNav.tsx",
-        ),
-      ),
-    ).toBe(false);
-    const layout = readFileSync(
-      join(SHELL, "(visit)", "new-visit", "layout.tsx"),
-      "utf8",
+// Pay is ONE page, the Soon state, and the Second Stage route trees are
+// deleted, not emptied. A change that grows Pay a child or brings a tree
+// back has to delete these lines to do it, which is the review moment.
+describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
+  it("(shell)/pay is a page with no subdirectories", () => {
+    const pay = join(SHELL, "pay");
+    expect(existsSync(join(pay, "page.tsx"))).toBe(true);
+    const children = readdirSync(pay).filter((e) =>
+      statSync(join(pay, e)).isDirectory(),
     );
-    expect(layout).not.toMatch(/<\w+SectionNav\b/);
+    expect(children).toEqual([]);
   });
 
-  it("Wallet's pages live under /wallet, outside Visit's rail", () => {
+  it("no Second Stage route tree exists", () => {
     for (const rel of [
-      [],
-      ["buy"],
+      ["(shell)", "(visit)"],
+      ["(shell)", "new-visit"],
+      ["(shell)", "wallet"],
+      ["(shell)", "visit"],
+      ["(shell)", "order"],
+      ["(shell)", "share"],
+      ["(shell)", "me", "diamond"],
+      ["(shell)", "me", "plan"],
+      ["(shell)", "me", "visits"],
+      ["(shell)", "me", "settings", "metrics"],
       ["gift"],
-      ["redeem"],
-      ["balance", "[id]"],
     ]) {
-      expect(
-        existsSync(join(SHELL, "wallet", ...rel, "page.tsx")),
-        rel.join("/"),
-      ).toBe(true);
+      expect(existsSync(join(APP_DIR, ...rel)), rel.join("/")).toBe(false);
     }
-    expect(existsSync(join(SHELL, "(visit)", "new-visit", "wallet"))).toBe(
-      false,
-    );
   });
 
-  // The layout's force-dynamic is what covers the four children; a page's own
-  // declaration never reaches below it (found the hard way on 2026-09-05).
-  it("Wallet's layout forces the whole tab dynamic", () => {
-    const layout = readFileSync(join(SHELL, "wallet", "layout.tsx"), "utf8");
-    expect(layout).toContain('export const dynamic = "force-dynamic"');
+  // /pay is the live page every Second Stage spelling lands on. A redirect
+  // whose SOURCE is a live route shadows it — the page never renders and
+  // every gate stays green.
+  it("keeps /pay itself out of the redirect table", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.find((r) => r.source === CONSUMER_ROUTES.pay)).toBeUndefined();
+    expect(redirects.find((r) => matches(r.source, CONSUMER_ROUTES.pay))).toBeUndefined();
   });
 });

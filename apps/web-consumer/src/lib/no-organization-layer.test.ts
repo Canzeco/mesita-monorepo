@@ -72,7 +72,7 @@ describe("the organization layer is gone from this app", () => {
       offenders,
       `The organization layer was removed by MESITA-1892. These still carry it:\n  ${
         offenders.join("\n  ")
-      }\n\nThe place is the tenant. A balance, a payment account and a partnership all belong\nto a place; there is nothing above it.`,
+      }\n\nThe place is the tenant. Its profile, its reservations and its config all belong\nto a place; there is nothing above it.`,
     ).toEqual([]);
   });
 

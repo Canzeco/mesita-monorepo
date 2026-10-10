@@ -49,8 +49,6 @@ export type RowTint =
   | "emerald"
   | "amber"
   | "sky"
-  | "violet"
-  | "rose"
   | "destructive";
 
 const TINT_CLASSES = {
@@ -60,8 +58,6 @@ const TINT_CLASSES = {
   emerald: "bg-muted text-muted-foreground",
   amber: "bg-muted text-muted-foreground",
   sky: "bg-muted text-muted-foreground",
-  violet: "bg-muted text-muted-foreground",
-  rose: "bg-muted text-muted-foreground",
   destructive: "bg-destructive/10 text-destructive",
 } as const satisfies Record<RowTint, string>;
 
@@ -89,13 +85,10 @@ function RowText({
   label,
   sub,
   destructive,
-  wrapSub,
 }: {
   label: string;
   sub?: string;
   destructive?: boolean;
-  /** When true, helper text wraps (privacy explanations). Default truncates. */
-  wrapSub?: boolean;
 }) {
   return (
     <span className="min-w-0 flex-1">
@@ -108,12 +101,7 @@ function RowText({
         {label}
       </span>
       {sub && (
-        <span
-          className={cn(
-            "text-muted-foreground type-label block",
-            wrapSub ? "leading-snug whitespace-normal" : "truncate",
-          )}
-        >
+        <span className="text-muted-foreground type-label block truncate">
           {sub}
         </span>
       )}
@@ -148,30 +136,6 @@ export function SettingsActionRow({
       <RowText label={label} sub={sub} destructive={destructive} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </button>
-  );
-}
-
-export function SettingsStaticRow({
-  Icon,
-  tint,
-  label,
-  sub,
-  trailing,
-}: {
-  Icon: LucideIcon;
-  tint: RowTint;
-  label: string;
-  sub?: string;
-  trailing?: ReactNode;
-}) {
-  return (
-    <div className="flex w-full items-center gap-3 px-4 py-3">
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
-      <RowText label={label} sub={sub} />
-      {trailing}
-    </div>
   );
 }
 
@@ -232,42 +196,6 @@ function Switch({ on }: { on: boolean }) {
         )}
       />
     </span>
-  );
-}
-
-// Controlled boolean row for EF-backed prefs (optimistic UI owned by parent).
-export function ToggleRow({
-  Icon,
-  tint,
-  label,
-  sub,
-  on,
-  onToggle,
-  disabled,
-}: {
-  Icon: LucideIcon;
-  tint: RowTint;
-  label: string;
-  sub?: string;
-  on: boolean;
-  onToggle: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={disabled}
-      role="switch"
-      aria-checked={on}
-      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
-    >
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
-      <RowText label={label} sub={sub} wrapSub />
-      <Switch on={on} />
-    </button>
   );
 }
 

@@ -18,7 +18,6 @@ import {
   uploadConsumerAvatar,
   validateAvatarFile,
 } from "@/lib/avatar-upload";
-import { DIAMOND_MEMBER_NUMBER_LINE } from "@/lib/consumer-identity";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import {
@@ -47,12 +46,13 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 //
 // THE MEMBER NUMBER LIVES HERE (MESITA-2043, Pato: "we don't have
 // passports"). `consumers.code` printed in exactly one place — the Passport —
-// and web-admin's invitation lookup takes it because a name can match several
-// people and the number never does. Diamond is invitation-only, so
-// deleting the Passport without rehoming this line would have hidden the one
-// string that opens the only door into Diamond. It copies in place; null is a real
-// state (`generate_consumer_code()` assigns on first profile read), so it
-// reads "Pending" and offers nothing to copy.
+// and it is the string staff and support look a guest up by, because a name
+// can match several people and the number never does. It copies in place;
+// null is a real state (`generate_consumer_code()` assigns on first profile
+// read), so it reads "Pending" and offers nothing to copy.
+
+const MEMBER_NUMBER_LINE =
+  "Give this number to staff or support when they ask who you are.";
 
 export function EditProfileSheet() {
   const supabase = useBrowserSupabase();
@@ -273,7 +273,7 @@ function EditProfileForm({
             {code ?? "Pending"}
           </span>
           <span className="text-muted-foreground mt-1 block text-xs leading-snug">
-            {DIAMOND_MEMBER_NUMBER_LINE}
+            {MEMBER_NUMBER_LINE}
           </span>
         </div>
         {code ? (

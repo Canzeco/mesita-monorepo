@@ -1,143 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import { GoogleLogo, MesitaSourceBadge } from "./BrandLogos";
+import { GoogleLogo } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
-import { cn, firstInitial } from "@/lib/utils";
-import { classBadgeClass } from "@/lib/consumer-data";
-import { DIAMOND } from "@/lib/consumer-identity";
+import { firstInitial } from "@/lib/utils";
 import type { PlaceDetail } from "@/lib/mock/place";
-import { CLASS_TEXT } from "@/lib/class-styles";
 
-// Individual review card — same skeleton for Mesita and Google, with the
-// source-specific bits (italic-serif quote vs sans, class chip vs none,
-// per-category ratings vs star row) toggled by the `kind` prop. Lives in
-// its own client file because the long-quote read-more toggle needs state.
+// One Google review card. Lives in its own client file because the
+// long-quote read-more toggle needs state.
 //
-//   [Avatar] [Name + sub]                          [Source logo]
-//   ★★★★★ · date / dined-on
-//   Overall N · Food N · Service N · Ambience N · Value N    (Mesita only)
+//   [Avatar] [Name + date]                          [Google logo]
+//   ★★★★★
 //   "Quote..." (truncated)
-//   [Read more]                                              (when truncated)
-//   [Photo thumbnail]                                        (when present)
+//   [Read more]                                     (when truncated)
+//   [Photo thumbnail]                               (when present)
 
 const LONG_QUOTE_THRESHOLD = 220;
 
-
-type MesitaPayload = {
-  kind: "mesita";
-  data: PlaceDetail["mesita_visitors"][number];
-};
-
-type GooglePayload = {
-  kind: "google";
-  data: PlaceDetail["google_reviews"][number];
-};
-
-export function ReviewCard(props: MesitaPayload | GooglePayload) {
+export function ReviewCard({
+  review,
+}: {
+  review: PlaceDetail["google_reviews"][number];
+}) {
   const [expanded, setExpanded] = useState(false);
-  if (props.kind === "mesita") {
-    const v = props.data;
-    const overall = Math.round((v.food + v.service + v.ambience + v.value) / 4);
-    const isLong = v.quote.length > LONG_QUOTE_THRESHOLD;
-    return (
-      <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
-        <Header
-          avatar={
-            <div
-              className={cn(
-                // Ink comes from the metal, not from here: Diamond is a light
-                // fill and the white wash this used to carry measured under
-                // 2:1 on it (MESITA-1142).
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold opacity-90",
-                classBadgeClass(v.class_key),
-              )}
-            >
-              {firstInitial(v.name)}
-            </div>
-          }
-          name={v.name}
-          sub={v.handle}
-          // The chip names Diamond when the reviewer is Diamond and
-          // is absent otherwise — "BRONZE" beside a name read as a rank
-          // (MESITA-2044).
-          rightChip={
-            v.class_key === "diamond" ? (
-              <span
-                className={cn(
-                  "type-meta rounded-full border border-current/30 px-1.5 py-0 font-bold tracking-wider uppercase",
-                  CLASS_TEXT[v.class_key],
-                )}
-              >
-                {DIAMOND}
-              </span>
-            ) : undefined
-          }
-          sourceLogo={<MesitaSourceBadge />}
-        />
-        <StarRow rating={overall} />
-        <p className="text-muted-foreground type-body leading-snug">
-          Overall{" "}
-          <span className="text-foreground font-semibold">{overall}</span>
-          {" · "}Food{" "}
-          <span className="text-foreground font-semibold">{v.food}</span>
-          {" · "}Service{" "}
-          <span className="text-foreground font-semibold">{v.service}</span>
-          {" · "}Ambience{" "}
-          <span className="text-foreground font-semibold">{v.ambience}</span>
-          {" · "}Value{" "}
-          <span className="text-foreground font-semibold">{v.value}</span>
-        </p>
-        <Quote
-          text={v.quote}
-          italic
-          truncated={isLong && !expanded}
-          onExpand={isLong && !expanded ? () => setExpanded(true) : undefined}
-        />
-        {v.photo_url && (
-          <Thumbnail
-            src={v.photo_url}
-            alt={`${v.name}'s photo`}
-            aspect={v.photo_aspect ?? "landscape"}
-          />
-        )}
-      </article>
-    );
-  }
-  const r = props.data;
-  const isLong = r.quote.length > LONG_QUOTE_THRESHOLD;
+  const isLong = review.quote.length > LONG_QUOTE_THRESHOLD;
   return (
     <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
       <Header
         avatar={
           <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-            {firstInitial(r.author)}
+            {firstInitial(review.author)}
           </div>
         }
-        name={r.author}
-        sub={formatReviewDate(r.date)}
+        name={review.author}
+        sub={formatReviewDate(review.date)}
         sourceLogo={<GoogleLogo />}
       />
-      <StarRow rating={r.rating} />
+      <StarRow rating={review.rating} />
       <Quote
-        text={r.quote}
+        text={review.quote}
         truncated={isLong && !expanded}
         onExpand={isLong && !expanded ? () => setExpanded(true) : undefined}
       />
-      {r.photo_url && (
+      {review.photo_url && (
         <Thumbnail
-          src={r.photo_url}
-          alt={`${r.author}'s photo`}
-          aspect={r.photo_aspect ?? "landscape"}
+          src={review.photo_url}
+          alt={`${review.author}'s photo`}
+          aspect={review.photo_aspect ?? "landscape"}
         />
       )}
     </article>
   );
 }
-
-// Brand source badges (MesitaSourceBadge, GoogleLogo) live in BrandLogos.tsx —
-// shared with the place detail page so the SVG and pink-gradient mark
-// don't drift between surfaces.
 
 /** Enricher stores ISO `published`; mocks use relative strings — show either cleanly. */
 function formatReviewDate(raw: string): string {

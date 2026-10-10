@@ -1,8 +1,8 @@
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 
-// Sharing a place — the real thing, replacing the ComingSoonModal that
-// place detail's Share button opened from #1371 to MESITA-1697.
+// Sharing a place: the OS share sheet where there is one, the clipboard
+// where there is not.
 //
 // THREE OUTCOMES, AND ALL THREE HAVE TO BE VISIBLE. The Web Share API is
 // absent on desktop Safari and every desktop Chrome without the flag, and it

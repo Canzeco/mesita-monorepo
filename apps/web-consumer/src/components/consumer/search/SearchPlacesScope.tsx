@@ -9,14 +9,13 @@ import {
 import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_ENRICHED_PIN_COLOR,
-  MAP_PARTNER_PIN_COLOR,
 } from "@/lib/map-defaults";
 import { cn } from "@/lib/utils";
 
-// Places scope — THREE NESTED SETS (Pato, 2026-09-05):
+// Places scope — TWO NESTED SETS (Pato, 2026-09-05):
 //
-//   Google Places  ⊃  Mesita Enriched Places  ⊃  Mesita Partner Places
-//      gray                    red                      yellow
+//   Google Places  ⊃  Mesita Enriched Places
+//      gray                    red
 //
 // A superset chain, so the figure is CONCENTRIC RINGS (an Euler diagram),
 // not overlapping circles. The rings are the whole point of the module:
@@ -27,13 +26,11 @@ import { cn } from "@/lib/utils";
 // Selected is a FILL, not a hairline. EACH ROW CARRIES ITS COUNT.
 
 const SCOPE_COLOR: Record<MapPlacesScope, string> = {
-  partners: MAP_PARTNER_PIN_COLOR,
   mesita: MAP_ENRICHED_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };
 
 const SCOPE_STROKE: Record<MapPlacesScope, string> = {
-  partners: "#a37e00",
   mesita: "#c4123c",
   google: "#6b7280",
 };
@@ -41,8 +38,7 @@ const SCOPE_STROKE: Record<MapPlacesScope, string> = {
 const GLYPH = 28;
 const GLYPH_RADII: Record<MapPlacesScope, number> = {
   google: 12.5,
-  mesita: 8.5,
-  partners: 4.5,
+  mesita: 7,
 };
 
 /** The chain as one 28px figure: every ring drawn, the picked one filled. */
@@ -113,8 +109,7 @@ export function SearchPlacesScope({
       <div className="flex items-center gap-2.5">
         <ScopeGlyph scope={scope} />
         <p id="places-scope-chain" className="sr-only">
-          Three nested sets: Google Places contains Mesita Enriched Places,
-          which contains Mesita Partner Places.
+          Two nested sets: Google Places contains Mesita Enriched Places.
         </p>
         <div
           role="radiogroup"
