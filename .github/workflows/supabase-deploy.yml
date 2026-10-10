@@ -11,6 +11,10 @@ name: supabase deploy
 # `supabase functions deploy` honours each function's verify_jwt from
 # config.toml, so webhooks/public endpoints keep their intended auth posture.
 #
+# The Supabase GitHub integration (Deploy to production, MESITA-2075) also
+# applies migrations and deploys the config.toml functions on merge. This job
+# stays: it is the only place retired slugs get deleted from the cloud.
+#
 # REQUIRES repo secret SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables
 # → Actions). Runs only on main, after supabase CI (lint · test) has gated the PR.
 
