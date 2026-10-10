@@ -302,6 +302,36 @@ export async function enrichPlace(
   return { ok: true, data: true };
 }
 
+// ── Google Autocomplete (Single Place › Find, MESITA-2116) ───────────────
+
+/** One Autocomplete row as admin-web-suggest-places ships it. `mesitaId`
+ *  rides only a row the EF resolved to a Mesita place. */
+export type AutocompleteHit = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  state: "not_in_mesita" | "web_listed" | "verified_partner_other" | "verified_partner_self";
+  mesitaId?: string;
+};
+
+/** Google Autocomplete for a name — the lane's `fast` mode, Autocomplete
+ *  alone, so it adds a source beside Find's Text Search instead of
+ *  repeating it. Discovery › General cuts it as it cuts every Google lane. */
+export async function autocompleteGooglePlaces(
+  input: string,
+  sessionToken: string,
+): Promise<Result<AutocompleteHit[]>> {
+  const q = input.trim();
+  if (q.length < 2) return { ok: true, data: [] };
+  const r = await efInvoke<{ predictions: AutocompleteHit[] }>("admin-web-suggest-places", {
+    input: q,
+    sessionToken,
+    mode: "fast",
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.predictions ?? [] };
+}
+
 // The create-place pipeline lives beside this file in ./create-place; this
 // "use server" wrapper is how the Crenup tab reaches it.
 export async function createPlaceFromGooglePlaceId(placeId: string) {

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { PlaceLite } from "@/lib/places-types";
-import { GoogleMatchList, type GoogleState } from "./GoogleMatches";
+import { GoogleMatchList, type GoogleSource, type GoogleState } from "./GoogleMatches";
 
 function lite(over: Partial<PlaceLite>): PlaceLite {
   return {
@@ -22,10 +22,11 @@ function lite(over: Partial<PlaceLite>): PlaceLite {
 const HELD = lite({ existsInMesita: true });
 const NEW = lite({ id: "ChIJ0000000000000000000000", displayName: "Taquería Orinoco", rating: null });
 
-function render(google: GoogleState, notes = {}) {
+function render(google: GoogleState, notes = {}, source: GoogleSource = "text") {
   return renderToStaticMarkup(
     <GoogleMatchList
       query="cafe"
+      source={source}
       google={google}
       onMesita={(p) => p.existsInMesita}
       notes={notes}
@@ -74,5 +75,19 @@ describe("Single Place › From Google", () => {
     expect(
       render({ status: "ok", result: { ...OK.result, places: [], filteredOutCount: 0 } }),
     ).toContain("Google found nothing for “cafe”.");
+  });
+
+  it("names Autocomplete in its own sentences, rows unchanged", () => {
+    expect(render({ status: "loading" }, {}, "autocomplete")).toContain(
+      "Asking Google Autocomplete for “cafe”",
+    );
+    expect(render({ status: "error", error: "quota" }, {}, "autocomplete")).toContain(
+      "Google Autocomplete failed: quota",
+    );
+    const empty = { ...OK.result, places: [], filteredOutCount: 0 };
+    expect(render({ status: "ok", result: empty }, {}, "autocomplete")).toContain(
+      "Google Autocomplete suggests nothing for “cafe”.",
+    );
+    expect(render(OK, {}, "autocomplete")).toContain("2 results · 1 on Mesita");
   });
 });
