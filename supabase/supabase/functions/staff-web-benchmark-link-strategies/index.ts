@@ -1,12 +1,14 @@
 // staff-web-benchmark-link-strategies
-// Diagnostic EF: given one or more places (name + city), runs the 5 link-discovery
+// Diagnostic EF: given one or more places (name + city), runs the link-discovery
 // strategies in linklab/strategies.ts and returns each strategy's {website, instagram}.
+// `only: ["C","G"]` runs just those (MESITA-2118) — the rest are skipped, not billed.
 // This is the SAME strategy module the local benchmark runner (scripts/linklab/run.ts)
 // exercises — so the offline leaderboard reflects exactly what this EF would produce.
 //
 // Not wired to any client; invoke with a service-role JWT for ad-hoc evaluation, e.g.
-//   POST { "places": [{ "name": "Pujol", "city": "Ciudad de México" }] }
-// Keys come from EF secrets: FIRECRAWL_KEY, PERPLEXITY_KEY, GMP_KEY.
+//   POST { "places": [{ "name": "Pujol", "city": "Ciudad de México" }], "only": ["G"] }
+// Keys come from EF secrets: FIRECRAWL_KEY, PERPLEXITY_KEY, GMP_KEY, and ANTHROPIC_API_KEY
+// (strategy G only).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -20,6 +22,7 @@ type Body = {
   name?: string;
   city?: string;
   country?: string;
+  only?: string[];
 };
 
 Deno.serve(async (req) => {
@@ -31,6 +34,7 @@ Deno.serve(async (req) => {
     firecrawl: Deno.env.get("FIRECRAWL_KEY") ?? "",
     perplexity: Deno.env.get("PERPLEXITY_KEY") ?? "",
     google: Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY") ?? "",
+    anthropic: Deno.env.get("ANTHROPIC_API_KEY") ?? "",
   };
   if (!keys.firecrawl || !keys.perplexity || !keys.google) {
     return jsonError("Missing FIRECRAWL_KEY / PERPLEXITY_KEY / GMP_KEY secret", 500);
@@ -51,15 +55,25 @@ Deno.serve(async (req) => {
   // Hard cap: at most 3 places per message/response.
   if (places.length > 3) return jsonError("Max 3 places per call", 400);
 
-  const strategies = STRATEGIES.map((s) => ({ id: s.id, name: s.name }));
+  const only = body.only?.length ? body.only.map((id) => String(id).toUpperCase()) : null;
+  const unknown = only?.filter((id) => !STRATEGIES.some((s) => s.id === id)) ?? [];
+  if (unknown.length) return jsonError(`Unknown strategy id(s): ${unknown.join(", ")}`, 400);
+  if (only?.includes("G") && !keys.anthropic) {
+    return jsonError("Strategy G needs the ANTHROPIC_API_KEY secret", 500);
+  }
+
+  const strategies = STRATEGIES.filter((s) => !only || only.includes(s.id))
+    .map((s) => ({ id: s.id, name: s.name }));
   const out = [];
   for (const p of places) {
     const ctx = await assembleContext(keys, p);
-    const results = await runAllStrategies(ctx, keys);
+    const results = await runAllStrategies(ctx, keys, only);
     out.push({
       place: p,
       google_place_id: ctx.google?.placeId ?? null,
       seed_website: ctx.seedWebsite,
+      location_line: ctx.locationLine,
+      serp_summary: ctx.serpSummary,
       results,
     });
   }

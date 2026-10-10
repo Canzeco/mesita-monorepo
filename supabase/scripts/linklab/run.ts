@@ -1,6 +1,7 @@
 // linklab benchmark runner (local, Deno).
-// Loads API keys from supabase/.env.local, resolves per-place context, runs all 5 strategies
+// Loads API keys from supabase/.env.local, resolves per-place context, runs the strategies
 // against the ground-truth set, scores website + instagram, prints a leaderboard.
+// G (Claude) also needs ANTHROPIC_API_KEY there; `--only C,G` skips the rest unbilled.
 //
 //   deno run --allow-env --allow-net --allow-read --allow-write \
 //     scripts/linklab/run.ts [--limit N] [--only A,C] [--concurrency 4] [--no-cache]
@@ -53,6 +54,11 @@ function loadKeys(): Keys {
   const firecrawl = env.FIRECRAWL_KEY ?? "";
   const perplexity = env.PERPLEXITY_KEY ?? "";
   const google = env.GMP_KEY ?? env.SUPA_GMP_KEY ?? "";
+  const anthropic = env.ANTHROPIC_API_KEY ?? "";
+  if ((!ONLY || ONLY.includes("G")) && !anthropic) {
+    console.error("Missing ANTHROPIC_API_KEY in supabase/.env.local (strategy G) — or pass --only without G");
+    Deno.exit(1);
+  }
   if (!firecrawl || !perplexity || !google) {
     console.error("Missing keys in supabase/.env.local:", {
       firecrawl: !!firecrawl,
@@ -61,7 +67,7 @@ function loadKeys(): Keys {
     });
     Deno.exit(1);
   }
-  return { firecrawl, perplexity, google };
+  return { firecrawl, perplexity, google, anthropic };
 }
 
 // ---- run --------------------------------------------------------------------
@@ -102,7 +108,7 @@ async function main() {
   const rows = await mapPool(truth, CONCURRENCY, async (t) => {
     const v: PlaceInput = { name: t.name, city: t.city, country: t.country };
     const ctx = await assembleContext(keys, v);
-    const all = await runAllStrategies(ctx, keys);
+    const all = await runAllStrategies(ctx, keys, strategyIds);
     const results: PlaceRow["results"] = {};
     for (const id of strategyIds) results[id] = { website: all[id]?.website ?? null, instagram: all[id]?.instagram ?? null };
     process_tick(t.name);
@@ -172,6 +178,9 @@ async function main() {
     perplexityAgent: 0.03, // pro-search agent dominates
     perplexitySonar: 0.006, // sonar-pro structured
     googleText: 0.032, // Places Text Search
+    claudeSearch: 0.01, // MESITA-2118: $10/1k web searches; web fetch has no per-call fee
+    claudeInputToken: 4 / 1e6, // Opus 5.5 list ($4/MTok in, $20/MTok out); cache reads billed at full rate here
+    claudeOutputToken: 20 / 1e6,
   };
   const estUsd =
     meter.firecrawlSearch * UNIT.firecrawlSearch +
@@ -179,7 +188,10 @@ async function main() {
     meter.perplexitySearch * UNIT.perplexitySearch +
     meter.perplexityAgent * UNIT.perplexityAgent +
     meter.perplexitySonar * UNIT.perplexitySonar +
-    meter.googleText * UNIT.googleText;
+    meter.googleText * UNIT.googleText +
+    meter.claudeSearches * UNIT.claudeSearch +
+    meter.claudeInputTokens * UNIT.claudeInputToken +
+    meter.claudeOutputTokens * UNIT.claudeOutputToken;
   const perPlace = rows.length ? estUsd / rows.length : 0;
   // Strategy C alone ≈ 2–3 fc-search + 1 scrape + 1 sonar (+ shared g-text once)
   const cPerPlaceUsd = 3 * UNIT.firecrawlSearch + UNIT.firecrawlScrape + UNIT.perplexitySonar;
@@ -191,6 +203,12 @@ async function main() {
       `ppx-search ${meter.perplexitySearch}  ppx-agent ${meter.perplexityAgent}  ` +
       `ppx-sonar ${meter.perplexitySonar}  g-text ${meter.googleText}  cache-hits ${meter.cacheHits}`,
   );
+  if (meter.claudeCalls) {
+    console.log(
+      `  claude calls ${meter.claudeCalls}  searches ${meter.claudeSearches}  fetches ${meter.claudeFetches}  ` +
+        `tokens in ${meter.claudeInputTokens} out ${meter.claudeOutputTokens}`,
+    );
+  }
   console.log(
     `  est $  suite ~$${estUsd.toFixed(2)}  (~$${perPlace.toFixed(3)}/place)  |  ` +
       `strategy C alone ~$${cPerPlaceUsd.toFixed(3)}/place (excl. shared Google resolve)`,
