@@ -131,36 +131,26 @@ const TARGETS: {
   {
     source: "notifications/notification-feed.ts",
     apps: {
-      "web-admin": "src/app/(app)/global-performance/notification-feed.ts",
+      "web-admin": "src/components/place-manage/notifications/notification-feed.ts",
       "web-business":
         "src/components/place-manage/notifications/notification-feed.ts",
     },
-    // Admin carries the trio twice since MESITA-2086: Global Monitor's copy
-    // above, and the one the generated place surface reaches relatively.
-    paths: ["apps/web-admin/src/components/place-manage/notifications/notification-feed.ts"],
   },
   {
     source: "notifications/notification-config.ts",
     apps: {
-      "web-admin": "src/app/(app)/global-performance/notification-config.ts",
+      "web-admin": "src/components/place-manage/notifications/notification-config.ts",
       "web-business":
         "src/components/place-manage/notifications/notification-config.ts",
     },
-    // Admin carries the trio twice since MESITA-2086: Global Monitor's copy
-    // above, and the one the generated place surface reaches relatively.
-    paths: ["apps/web-admin/src/components/place-manage/notifications/notification-config.ts"],
   },
   {
     source: "notifications/notification-enricher-phase.ts",
     apps: {
-      "web-admin":
-        "src/app/(app)/global-performance/notification-enricher-phase.ts",
+      "web-admin": "src/components/place-manage/notifications/notification-enricher-phase.ts",
       "web-business":
         "src/components/place-manage/notifications/notification-enricher-phase.ts",
     },
-    // Admin carries the trio twice since MESITA-2086: Global Monitor's copy
-    // above, and the one the generated place surface reaches relatively.
-    paths: ["apps/web-admin/src/components/place-manage/notifications/notification-enricher-phase.ts"],
   },
   // Product families are policy web-business paints — and web-admin too since
   // MESITA-2086, where Single Place renders the same catalogue. The mock
