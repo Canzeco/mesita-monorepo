@@ -1,6 +1,8 @@
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
-// One flat page: Google Search · Mesita Search · Crenup.
+// Manage › Multiple Places — one flat page: Google Search · Mesita Search ·
+// Crenup, over a pasted list. The one-place sibling is Single Place
+// (/manage-single), which runs the same actions on one place.
 //
 // CRENUP = CReate + ENrich + UPdate (decision: Pato, MESITA-2026). It replaces
 // "Intake", which named the umbrella over those three verbs and so named
@@ -14,9 +16,9 @@ export default function ManageMultipleLayout({
   return (
     <PageContainer size="5xl" className="pb-16 sm:pb-24">
       <PageHeader
-        eyebrow="Manage · Places"
-        title="Manage Places"
-        description="Google Search and Mesita Search look places up. Crenup writes them — Create, Enrich, Update. The rail jumps to each."
+        eyebrow="Manage · Multiple Places"
+        title="Multiple Places"
+        description="Many places at once. Google Search and Mesita Search look them up. Crenup writes them — Create, Enrich, Update. The rail jumps to each; one place at a time is Single Place."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>
