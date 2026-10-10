@@ -9,9 +9,11 @@ import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from
 // grants access regardless of place_members.
 //
 // These lived in the retired per-place admin console (`manage-single`) until
-// it was deleted; this page was their only surviving caller, so they moved
-// here rather than into a shared lib nothing else imports. The per-place
-// editor itself lives on in the business console (`web-business`).
+// it was deleted (MESITA-1588); this page was their only surviving caller, so
+// they moved here. Single Place (MESITA-2084) imports them from here rather
+// than owning a copy — ONE caller set, so the two pages cannot drift on what
+// a button does. The per-place EDITOR lives on in the business console
+// (`web-business`); Single Place links to it.
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2,
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
@@ -14,6 +13,8 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
+import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
+import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
 import {
   CREATION_PARENT,
   ENRICHMENT_PARENT,
@@ -55,17 +56,18 @@ const ALERTS_NAV: NavItem[] = [
 // one-item heading is a subsection we do not want. Label only: the row
 // lists WHO has access, so it is a plural noun. Route, actions and EF
 // names stay `admin-config` / `admin-web-*` — a rename stops at the
-// label. Then widest scope: the backend itself, the places Mesita
-// lists. Not Configurations; nothing here is a policy blob. Places is
-// plain "Places" now: the per-place editor left the admin console with
-// MESITA-1588 (it lives in the business console, ported with MESITA-1537),
-// so there is no second surface for a Multiple/Single qualifier to tell
-// it apart from. Invitations left the rail with MESITA-1783; the page
-// still lives at /invitations.
-const MANAGE_NAV: NavItem[] = [
+// label. Then widest scope: the backend itself, then the places Mesita
+// lists — MANY at once, then ONE (Pato, MESITA-2084: "Multiple Places /
+// Single Place"). Single Place is the one-place sibling of the bulk tool,
+// not the per-place editor MESITA-1588 deleted; that editor lives in the
+// business console and Single Place links to it. Not Configurations;
+// nothing here is a policy blob. Invitations left the rail with
+// MESITA-1783; the page still lives at /invitations.
+export const MANAGE_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
   DB_PARENT,
-  { href: "/manage-multiple", label: "Places", Icon: Building2 },
+  MULTIPLE_PLACES_PARENT,
+  SINGLE_PLACE_PARENT,
 ];
 
 // Configurations — exactly five rows (Pato, MESITA-2083: "Models, Creation,
