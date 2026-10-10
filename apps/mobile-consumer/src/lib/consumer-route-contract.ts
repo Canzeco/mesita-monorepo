@@ -8,11 +8,10 @@ import type { Href } from 'expo-router';
 // ef.ts / tokens). Any change to routes or helpers on either side MUST update
 // both files in the same PR — web/mobile IA parity is a product rule.
 //
-// Expo Router ↔ web href map (agents). The bar is Visit · Order · Wallet · Me
-// on both platforms (Pato, MESITA-2050); Visit's rail is Home · Search · Chat
-// · Favs · Pay. Web draws that rail with a route group over five URLs; here
-// every pill is its own hidden (tabs) screen, so each keeps its state when
-// the guest switches pills and ConsumerTabBar lights Visit for all five.
+// Expo Router ↔ web href map (agents). The bar is Home · Search · Pay (Soon)
+// · Me on both platforms (Pato, MESITA-2076); Pay is parked, and Wallet and
+// Order stay routable off the bar. Every Home pill is its own hidden (tabs)
+// screen, so each keeps its state when the guest switches pills.
 //
 //   web /discover/scroll  (Visit › Home)   →  Expo /(tabs)/home   (SwipeDeck —
 //       mobile has not ported Scroll's vertical deck)

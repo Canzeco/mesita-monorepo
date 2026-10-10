@@ -17,8 +17,9 @@ function RoutedTabBar({ state, navigation }: RoutedTabBarProps) {
   return <ConsumerTabBar state={state} navigation={navigation} />;
 }
 
-// Custom tab bar ports web BottomNav (MESITA-581). The bar shows FIVE tabs,
-// Home · Search · Visit · Wallet · Me (MESITA-2055).
+// Custom tab bar ports web BottomNav (MESITA-581). The bar shows FOUR tabs,
+// Home · Search · Pay (Soon) · Me (MESITA-2076); Wallet and Order stay
+// routable off the bar.
 // rail pills (home · search · chat · favs · rewards) are sibling tab routes,
 // so each pill keeps its state across switches. ConsumerTabBar's BAR list
 // decides what the bar shows and which routes light which tab; the order of
