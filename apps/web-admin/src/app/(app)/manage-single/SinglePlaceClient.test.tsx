@@ -12,6 +12,7 @@ vi.mock("@/app/(app)/manage-multiple/actions", () => ({
   deletePlace: vi.fn(),
   enrichPlace: vi.fn(),
   listAllPlaces: vi.fn(),
+  searchMesitaNames: vi.fn(),
   searchPlacesByGoogleIds: vi.fn(),
   setPlaceListed: vi.fn(),
 }));
