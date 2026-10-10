@@ -1,7 +1,6 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
-import type { MesitaConnectCountry } from "@/lib/connect-countries";
 import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -124,16 +123,6 @@ export type PlaceHit = {
 // The search EF only guarantees id/name — every other field may be absent,
 // hence the defensive `?? null` normalization below.
 type RawPlaceHit = Pick<PlaceHit, "id" | "name"> & Partial<Omit<PlaceHit, "id" | "name">>;
-
-async function fetchPlaces(query: string, limit = 50): Promise<Result<PlaceHit[]>> {
-  const r = await efInvoke<{ places: RawPlaceHit[] }>("admin-web-search-places", {
-    query,
-    limit,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: (r.data.places ?? []).map(normalizePlaceHit) };
-}
-
 function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
   const contentState = raw.content_state ?? null;
   const listingType = raw.listing_type ?? null;
@@ -199,17 +188,6 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
         : 0,
   };
 }
-
-export async function listPlaces(): Promise<Result<PlaceHit[]>> {
-  return fetchPlaces("");
-}
-
-export async function searchPlacesCatalog(query: string): Promise<Result<PlaceHit[]>> {
-  const q = (query ?? "").trim();
-  if (q.length < 2) return { ok: true, data: [] };
-  return fetchPlaces(q);
-}
-
 /** Mesita catalog lookup by Google Place IDs — read-only, no create/enrich. */
 export async function searchPlacesByGoogleIds(
   googlePlaceIds: string[],
@@ -407,25 +385,6 @@ export type AdminPlace = {
   delivery_orders_enabled?: boolean;
   [k: string]: unknown;
 };
-
-export async function getPlace(placeId: string): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ active: { place: AdminPlace } | null }>(
-    "business-web-get-overview",
-    { placeId, ticketsLimit: 0 },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  const place = r.data.active?.place ?? null;
-  if (!place) return { ok: false, error: "Place not found or not loadable." };
-  // IDENTITY ASSERT (MESITA-1537). business-web-get-overview resolves
-  // `active` as requested-id-if-a-membership ELSE places[0]. Without this
-  // check a URL naming a place you cannot see silently renders — and the
-  // one-save model WRITES — a different place you happen to own.
-  if (place.id !== placeId) {
-    return { ok: false, error: "Place not found or not loadable." };
-  }
-  return { ok: true, data: place };
-}
-
 /** The place PLUS whether this caller is a super-admin. get-overview already
  *  ships the flag (index.ts:332); the Admin tab is gated on it, so a
  *  restaurant never sees the operator internals (autoplan D1, 2026-09-06). */
@@ -487,224 +446,6 @@ export async function setPlacePlan(
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return { ok: true, data: r.data.place };
 }
-
-/** The four rail toggles' post-write truth, from business-web-set-place-rails. */
-export type PlaceRails = {
-  mesita_pay: boolean;
-  credits: boolean;
-  pickup: boolean;
-  delivery: boolean;
-};
-
-// The Capabilities tab's rail toggles — the acceptance intent bits
-// (place_profiles.mesita_pay_enabled · credits_enabled ·
-// pickup_orders_enabled · delivery_orders_enabled). Engines still gate each
-// rail — a toggle records what the place OFFERS.
-//
-// This used to call the ADMIN door of the same name, which is
-// requireSuperAdmin: the tab renders for every held role but viewer, so every
-// switch 403'd for anyone outside `public.super_admins` — that is, everyone
-// but the single account that had ever opened the page (MESITA-1736).
-// `business-web-set-place-rails` is the operator's door onto the same shared
-// write; both are a guard plus `_shared/place-rails.ts`.
-//
-// (The old name is spelled out nowhere in this package on purpose:
-// `ef-caller-acl.test.ts` is a literal scan and cannot tell a mention from a
-// call, which is the right trade for a gate that catches a name traveling
-// into a component.)
-export async function setPlaceRails(
-  placeId: string,
-  rails: Partial<PlaceRails>,
-): Promise<Result<PlaceRails>> {
-  const r = await efInvoke<{ rails: PlaceRails }>("business-web-set-place-rails", {
-    placeId,
-    ...rails,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.rails };
-}
-
-// ── Stripe Connect mirror (read-only) ────────────────────────────────────
-//
-// The connected-account state for THIS PLACE, plus the full pay-readiness
-// verdict. Mesita is a PLATFORM, not a marketplace: direct charges on the
-// place's own account — the place is merchant of record (MESITA-1545 made
-// that the organization; MESITA-1892 deleted the layer and the venue is the
-// tenant again), and Mesita never holds funds.
-// The law is supabase/functions/_shared/stripe-connect.ts and it is frozen by
-// tests.
-//
-// `refresh: true` re-reads the account from Stripe and re-upserts the mirror.
-// The Connect webhook is an optimization whose dashboard setup is a human
-// step, never a dependency — so the admin read self-heals rather than trusting
-// that every account.updated arrived.
-
-/** `place_payment_accounts` mirror row, one per PLACE (MESITA-1892; it was
- *  `organization_payment_accounts`, shared by every place a holder held).
- *  Absent = this place has never onboarded. */
-export type OrgPaymentAccount = {
-  /** "acct_…" real, or "mock_acct_<place_id>" when MOCK_CONNECT is on. */
-  stripe_account_id: string;
-  /** Which Stripe universe created it, from the key prefix or event.livemode. */
-  livemode: boolean;
-  charges_enabled: boolean;
-  details_submitted: boolean;
-  payouts_enabled: boolean;
-  /** Snapshot of requirements.currently_due; [] when clear. */
-  requirements_due: string[];
-  /** requirements.disabled_reason; null = not disabled. */
-  disabled_reason: string | null;
-};
-
-/** The three-way AND that gates a card charge. All three must hold; the UI
- *  must never imply Mesita Pay is live on `intent` alone. */
-export type PlacePayReadiness = {
-  account: OrgPaymentAccount | null;
-  /** The mirror points at an account this Stripe key cannot see. */
-  orphaned: boolean;
-  /** charges_enabled ∧ details_submitted. */
-  capability: boolean;
-  intent: boolean;
-  globalRail: boolean;
-  all: boolean;
-};
-
-
-/** What `business-web-start-payment-onboarding` hands back. */
-export type PaymentOnboardingStart = {
-  /** MOCK_CONNECT was on, or no Stripe key is configured. */
-  mock: boolean;
-  /** Stripe-hosted Account Link. null in mock mode — there is nothing to visit. */
-  url: string | null;
-  account: OrgPaymentAccount | null;
-  /** The place already has an account in a DIFFERENT country than the one
-   *  requested. The link is still valid (for the EXISTING account) — country
-   *  is per-account permanent, so it was not and cannot be changed. */
-  countryMismatch: boolean;
-  accountCountry: string | null;
-};
-
-/**
- * Create (if missing) THIS PLACE's connected account and get a Stripe-hosted
- * onboarding link. It sends `placeId` and always did: the place console never
- * carried an org id, so the EF used to resolve the holding organization
- * server-side (MESITA-1563) and 400 with `place_has_no_organization` for a
- * pooled place. There is nothing left to resolve (MESITA-1892) — the place IS
- * the account's owner — so that refusal is gone with the lookup that produced
- * it.
- *
- * The caller must hold `owner` ON THE PLACE (`requireOwner`) — deliberately
- * no super-admin exemption post place-as-merchant: holding the place is a
- * business fact, and an operator acting on one should be on its team.
- *
- * `returnUrl` / `refreshUrl` are REQUIRED here. The EF defaults to the
- * business console's `/unit/<id>/promos`, so an admin-initiated onboarding
- * would otherwise strand the operator in a console they were not using.
- *
- * Live keys are refused by the EF (`liveChargesBlocked`, MESITA-37) unless
- * STRIPE_ALLOW_LIVE is set — provisioning an account counts as provisioning
- * something that later gets charged.
- */
-export async function startPlacePaymentOnboarding(
-  placeId: string,
-  urls: {
-    returnUrl: string;
-    refreshUrl: string;
-    country: MesitaConnectCountry;
-    /** The pre-onboarding gate (MESITA-1560), mirrored here: only meaningful
-     *  on a create — a resume mints a link for an account that already
-     *  carries its answer. */
-    entityType?: string;
-  },
-): Promise<Result<PaymentOnboardingStart>> {
-  const r = await efInvoke<{
-    mock?: boolean;
-    url?: string | null;
-    account?: OrgPaymentAccount | null;
-    country_mismatch?: boolean;
-    account_country?: string | null;
-  }>("business-web-start-payment-onboarding", {
-    placeId,
-    returnUrl: urls.returnUrl,
-    refreshUrl: urls.refreshUrl,
-    country: urls.country,
-    ...(urls.entityType ? { entityType: urls.entityType } : {}),
-  });
-  // `code` rides along: "stripe_live_blocked" is an environment fact, not a
-  // failed attempt, and the row renders it differently for that reason.
-  if (!r.ok) return { ok: false, error: r.error, code: r.code };
-  return {
-    ok: true,
-    data: {
-      mock: r.data.mock === true,
-      url: r.data.url ?? null,
-      account: r.data.account ?? null,
-      countryMismatch: r.data.country_mismatch === true,
-      accountCountry: r.data.account_country ?? null,
-    },
-  };
-}
-
-/**
- * Mint a single-use Express Dashboard link for THIS PLACE's connected
- * account. Sends `placeId` and requires `owner` on the place — no super-admin
- * exemption (see `startPlacePaymentOnboarding`'s doc for why).
- *
- * Under the old Standard controller this had no reason to exist — the place
- * logged into stripe.com. Under Express (MESITA-1532) a platform-minted link
- * is the ONLY entrance, so this is how anyone reaches the account's balance,
- * payout bank account or disputes.
- *
- * The URL grants access to the account holder's Stripe data, so it is never
- * stored — it is opened and forgotten.
- */
-export async function getPlacePaymentDashboardLink(
-  placeId: string,
-): Promise<Result<{ mock: boolean; url: string | null }>> {
-  const r = await efInvoke<{ mock?: boolean; url?: string | null }>(
-    "business-web-get-payment-dashboard-link",
-    { placeId },
-  );
-  if (!r.ok) return { ok: false, error: r.error, code: r.code };
-  return {
-    ok: true,
-    data: { mock: r.data.mock === true, url: r.data.url ?? null },
-  };
-}
-
-export async function getPlacePaymentAccount(
-  placeId: string,
-  opts: { refresh?: boolean } = {},
-): Promise<Result<PlacePayReadiness>> {
-  const r = await efInvoke<{
-    account: OrgPaymentAccount | null;
-    orphaned?: boolean;
-    ready?: boolean;
-    pay_ready?: {
-      intent?: boolean;
-      global_rail?: boolean;
-      capability?: boolean;
-      all?: boolean;
-    };
-  }>("business-web-get-payment-account", {
-    placeId,
-    refresh: opts.refresh === true,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  const pr = r.data.pay_ready ?? {};
-  return {
-    ok: true,
-    data: {
-      account: r.data.account ?? null,
-      orphaned: r.data.orphaned === true,
-      capability: pr.capability === true,
-      intent: pr.intent === true,
-      globalRail: pr.global_rail === true,
-      all: pr.all === true,
-    },
-  };
-}
-
 /** List or unlist the place on Mesita — the ONLY write path to
  *  places.state, which is what the consumer RLS policy
  *  places_select_public_visible gates every guest read on. Unlisting removes
@@ -758,136 +499,6 @@ export async function setPlaceActive(
     },
   };
 }
-
-/** Rates-only strategy switch — no plan write (MESITA-912). */
-export async function setPlaceStrategy(
-  placeId: string,
-  rates: Record<string, number | null>,
-): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>(
-    "business-web-set-partnership",
-    {
-      placeId,
-      action: "strategy",
-      ...rates,
-    },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.place };
-}
-
-// ── Performance: per-place activity (read-only) ──────────────────────────
-// Real aggregates + a short reservation list + the two inbound AI phone
-// lines. Deliberately read-only: a booking is changed by CALLING a3/a4, never
-// by editing a row (Pato) — there is no write counterpart to this action.
-
-export type PlaceStats = {
-  saves: number;
-  tickets: number;
-  visits: number;
-  /** Visits marked done (state=revealed). EF also echoes as `paid` for compat. */
-  closed: number;
-  reservations: number;
-  influencedCents: number;
-  discountCents: number;
-  /** Closed visits that carry a recorded amount (total ?? subtotal). */
-  billedCount: number;
-  /** Of billedCount, how many amounts the guest typed (v3b provenance). */
-  consumerReportedCount: number;
-  avgTicketCents: number | null;
-  /** visits ÷ saves, and closed ÷ visits — the funnel's two conversions. */
-  visitRate: number | null;
-  closeRate: number | null;
-};
-
-type PlaceReservation = {
-  id: string;
-  reservedAt: string | null;
-  partySize: number | null;
-  state: string | null;
-  isTest: boolean;
-  guest: string;
-};
-
-export type PlaceFeedItem = {
-  id: string;
-  type: string;
-  occurredAt: string;
-  meta: Record<string, unknown>;
-};
-
-export type PlaceActivity = {
-  stats: PlaceStats;
-  reservations: PlaceReservation[];
-  reservationTotal: number;
-  /** The only way to change a booking — a3 answers guests, a4 answers places. */
-  lines: { guest: string; place: string };
-  generatedAt: string;
-  feed: PlaceFeedItem[];
-};
-
-export async function getPlaceActivity(
-  placeId: string,
-  opts?: { limit?: number },
-): Promise<Result<PlaceActivity>> {
-  const r = await efInvoke<{
-    summary?: {
-      saved?: number;
-      ticketsOpened?: number;
-      visits?: number;
-      honored?: number;
-      reservations?: number;
-      influencedCents?: number;
-      discountCents?: number;
-      billedCount?: number;
-      consumerReportedCount?: number;
-      avgTicketCents?: number | null;
-      visitRate?: number | null;
-      closeRate?: number | null;
-    };
-    feed?: PlaceFeedItem[];
-    reservations?: PlaceReservation[];
-    reservationTotal?: number;
-    lines?: { guest?: string; place?: string };
-    generatedAt?: string;
-  }>("business-web-get-performance", {
-    placeId,
-    feedLimit: opts?.limit,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  const s = r.data.summary ?? {};
-  const saved = s.saved ?? 0;
-  const visits = s.visits ?? 0;
-  const closed = s.honored ?? 0;
-  return {
-    ok: true,
-    data: {
-      stats: {
-        saves: saved,
-        tickets: s.ticketsOpened ?? 0,
-        visits,
-        closed,
-        reservations: s.reservations ?? 0,
-        influencedCents: s.influencedCents ?? 0,
-        discountCents: s.discountCents ?? 0,
-        billedCount: s.billedCount ?? 0,
-        consumerReportedCount: s.consumerReportedCount ?? 0,
-        avgTicketCents: s.avgTicketCents ?? null,
-        visitRate: s.visitRate ?? (saved > 0 ? Math.round((visits / saved) * 100) : null),
-        closeRate: visits > 0 ? (s.closeRate ?? Math.round((closed / visits) * 100)) : null,
-      },
-      reservations: r.data.reservations ?? [],
-      reservationTotal: r.data.reservationTotal ?? 0,
-      lines: {
-        guest: r.data.lines?.guest ?? "",
-        place: r.data.lines?.place ?? "",
-      },
-      generatedAt: r.data.generatedAt ?? new Date().toISOString(),
-      feed: r.data.feed ?? [],
-    },
-  };
-}
-
 export type MesitaPlaceReview = {
   id: string;
   food: number;
@@ -1051,9 +662,6 @@ export type PlaceEnrichmentState = {
    *  Soft context only: never a source of facts, ratings or prices. */
   serp_summary: string | null;
 };
-
-/** Per-place enrichment schedule — WHEN it re-runs (MESITA-1148).
- *  everyDays null = manual only; the cron never picks the place up. */
 export type PlaceEnrichmentSchedule = {
   everyDays: number | null;
   mode: ReenrichMode;
@@ -1089,21 +697,6 @@ export async function getPlaceEnrichment(
     },
   };
 }
-
-// Set WHEN a place re-enriches. The EF writes places.enrich_* and derives the
-// next due date; the queue_due_place_enrichments cron is what honours it.
-export async function setPlaceEnrichmentSchedule(
-  placeId: string,
-  schedule: { everyDays: number | null; mode: ReenrichMode },
-): Promise<Result<PlaceEnrichmentSchedule>> {
-  const r = await efInvoke<{ schedule: PlaceEnrichmentSchedule }>(
-    "admin-web-set-place-enrichment",
-    { placeId, everyDays: schedule.everyDays, mode: schedule.mode },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.schedule };
-}
-
 // Which slice of the Enricher pipeline a manual re-enrich re-runs:
 //   full     → research + analysis + contents (fresh gather; refreshes phone)
 //   analysis → analysis + contents, reusing stored gathered (no re-gather)
@@ -1125,128 +718,4 @@ export async function enrichPlace(
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
-}
-
-// ── Team ─────────────────────────────────────────────────────────────────
-
-export type TeamSnapshot = {
-  myRole: string | null;
-  members: {
-    memberId: string;
-    userId: string;
-    role: string;
-    fullName: string | null;
-    email: string | null;
-    createdAt: string;
-  }[];
-  pendingBusinessInvites: {
-    id: string;
-    email: string;
-    role: string;
-    token: string;
-    createdAt: string;
-    expiresAt: string;
-  }[];
-};
-
-export async function listTeam(placeId: string): Promise<Result<TeamSnapshot>> {
-  const r = await efInvoke<TeamSnapshot>("business-web-list-members", { placeId });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-export async function inviteEditor(
-  placeId: string,
-  email: string,
-  role: string,
-): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-web-invite-member", {
-    placeId,
-    email,
-    role,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-export async function updateMemberRole(
-  memberId: string,
-  role: string,
-): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-web-update-member-role", { memberId, role });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-export async function removeMember(
-  id: string,
-  kind: "editor" | "editorInvite",
-): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-web-remove-member", { id, kind });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-// ── Name Deep Search (same engine as consumer Search) ────────────────────
-
-export type PlacePredictionState =
-  | "not_in_mesita"
-  | "web_listed"
-  | "verified_partner_other"
-  | "verified_partner_self";
-
-export type PlacePrediction = {
-  placeId: string;
-  mainText: string;
-  secondaryText: string;
-  state: PlacePredictionState;
-  partner?: boolean;
-  mesitaId?: string;
-};
-
-export async function suggestPlaces(
-  input: string,
-  sessionToken: string,
-  regionCode?: string,
-): Promise<Result<PlacePrediction[]>> {
-  const q = (input ?? "").trim();
-  if (q.length < 2) return { ok: true, data: [] };
-  if (!sessionToken.trim()) return { ok: false, error: "Missing session token" };
-
-  const code = (regionCode ?? "").trim().toUpperCase();
-  const r = await efInvoke<{ predictions: PlacePrediction[] }>("admin-web-suggest-places", {
-    input: q,
-    sessionToken,
-    mode: "deep",
-    ...(code.length === 2 ? { country: code, regionCode: code } : {}),
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.predictions ?? [] };
-}
-
-// The create-place pipeline is shared with the bulk creator — see the single
-// canonical implementation in @/lib/create-place-from-google-place.
-
-// ── Check settings (MESITA-823 · MESITA-898) ─────────────────────────────
-// The optional shared 6-digit staff PIN gating check-page WRITE actions, and
-// the per-place "require bill amount" switch gating the close. Read: both
-// ride on the active place from business-web-get-overview (owner /
-// super-admin only — the columns are deliberately absent from the profiles
-// view).
-// Write: one owner-gated EF, partial updates — each card sends only its key.
-
-/** The one place-owned check-page gate (MESITA-823). The bill is always
- *  required (MESITA-1095) — this door no longer writes a switch. */
-export type CheckGates = { pin: string | null };
-
-export async function setCheckGates(
-  placeId: string,
-  gates: CheckGates,
-): Promise<Result<CheckGates>> {
-  const r = await efInvoke<{ pin: string | null }>(
-    "business-web-set-check-pin",
-    { placeId, pin: gates.pin },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: { pin: r.data.pin } };
 }

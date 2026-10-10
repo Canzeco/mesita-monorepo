@@ -112,11 +112,10 @@ describe("ProfileCompleteness chips land somewhere real", () => {
     expect(sectionsByView().profile ?? []).toContain("MenusSection");
   });
 
-  it("any check carrying a tab renders as a link, not just promos", () => {
-    // Hardcoding `c.tab === "promos"` meant a second cross-view chip fell
-    // through to the inert <span> and looked identical to a live one.
-    expect(code).toContain("if (c.tab)");
-    expect(code).not.toContain(String.raw`c.tab === "promos"`);
-    expect(code).toContain("placeSectionHref(placeId, c.tab)");
+  it("no chip links off Profile — Single Place has no other view to fix it on (MESITA-2115)", () => {
+    // The Reservations chip linked through placeSectionHref to a view the
+    // First Stage cut deleted, so it 404ed and its 10% could never clear.
+    expect(code).not.toContain("placeSectionHref");
+    expect(code).not.toContain('label: "Reservations"');
   });
 });

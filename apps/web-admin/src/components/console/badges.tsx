@@ -51,33 +51,6 @@ export function PlaceStateBadge({
   );
 }
 
-/**
- * PARTNER, ONE WORD, ONE COLOUR (MESITA-1867).
- *
- * Rendered only while the fact is true — the caller decides. There is no
- * "Not a partner" twin: on the Partner box the CTA IS the not-yet state, and
- * a muted pill beside a price and a button would be three atoms for one
- * fact.
- *
- * IT WAS VIOLET — "neither Listed's grey nor Verified's green nor a payment
- * state's amber, a different ladder, a different hue". MESITA-1936 took the
- * hues away, and the dot briefly became `bg-foreground`, which every CTA
- * button on the screen already wears: the pill's signature stopped being a
- * signature, and products-lane.test.tsx caught it.
- *
- * GOLD, because Partner IS a tier the product names out loud, which is one of
- * the three places chroma still survives here. Same token the mock's Partner
- * badge uses, so the two consoles say it the same way.
- */
-export function PartnerPill({ className }: { className?: string }) {
-  return (
-    <span className={cn(CHIP_CLASS, className)}>
-      <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--tier-gold)]" />
-      Partner
-    </span>
-  );
-}
-
 // ORG_STATE_BADGE IS GONE (MESITA-1847). It read `charges_enabled` alone and
 // said "Connected", while `StatePill` on the same screen says "Ready" only at
 // charges AND payouts AND details submitted — one account, two ladders, two

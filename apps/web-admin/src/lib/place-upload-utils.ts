@@ -1,4 +1,4 @@
-/** Place upload constraints — moved from web-business with the place surface (MESITA-2089). */
+/** Shared upload constraints — mirrors mesita-web-business place-upload-utils. */
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
