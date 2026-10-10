@@ -194,14 +194,8 @@
   "targets": {
     "web": [
       "web-admin",
-      "web-business",
-      "web-validate",
-      "web-consumer",
-      "web-landing"
+      "web-consumer"
     ],
-    "mobile": [
-      "mobile-business",
-      "mobile-consumer"
-    ]
+    "mobile": []
   }
 }

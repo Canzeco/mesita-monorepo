@@ -1,17 +1,16 @@
 // _shared/place-families-parity.test.ts
 //
-// THE FAMILY VOCABULARY HAS FOUR COPIES, AND NOTHING TYPE-CHECKS BETWEEN THEM.
+// THE FAMILY VOCABULARY HAS THREE COPIES, AND NOTHING TYPE-CHECKS BETWEEN THEM.
 //
 //   · public.place_families            — the catalog (pinned by pgTAP)
 //   · _shared/place-taxonomy.ts        — the EF twin, `FAMILIES`
 //   · apps/web-consumer/src/lib/place-families.ts
-//   · apps/mobile-consumer/src/lib/place-families.ts
 //
-// `shared/` mirrors modules BETWEEN the web apps and never into supabase;
-// mobile is a separate install root with a different linker; each Vercel
-// project builds from its own Root Directory. So a slug that exists in three
-// of the four compiles green everywhere and is wrong only on a guest's
-// screen — which is precisely what happened: mobile shipped `wellness_spa`
+// There was a fourth, apps/mobile-consumer, until MESITA-2089 deleted that
+// app. Nothing generates one copy from another, and the Vercel project builds
+// from its own Root Directory. So a slug that exists in two of the three
+// compiles green everywhere and is wrong only on a guest's screen — which is
+// precisely what happened: mobile shipped `wellness_spa`
 // (a slug the catalog dropped on 2026-08-29) and was missing `sports_fitness`
 // and `wellness_beauty`, so its Filters sheet offered a family no place can
 // carry and hid two that most places do, for two and a half weeks, with every
@@ -19,10 +18,10 @@
 //
 // The repo's stated answer for this boundary is duplicate + pin, not codegen
 // (same posture as ticket-journey-drift.test.ts). This is the pin. It lives in
-// the supabase package because mobile has no test runner at all and
-// web-consumer's CI is path-filtered to its own directory, so a mobile-only
-// edit would never run a test that lived there. Same cross-package idiom as
-// config-section-callers.test.ts next door.
+// the supabase package because two of the three copies do, and supabase CI's
+// path filter also watches apps/web-consumer/src, so an edit on either side
+// runs it. Same cross-package idiom as config-section-callers.test.ts next
+// door.
 //
 // THE DB LEG IS PINNED HERE TOO, BECAUSE pgTAP DOES NOT PIN IT.
 //
@@ -31,8 +30,8 @@
 // hardcoded array. Both are green while they disagree with each other, so
 // "FAMILIES agrees with pgTAP" was never a fact anyone checked — it was two
 // hand-maintained lists that happened to match. A migration that adds a family
-// row and updates only the pgTAP array would leave FAMILIES, web and mobile on
-// the old list with every check green: the wellness_spa failure this file
+// row and updates only the pgTAP array would leave FAMILIES and web on the
+// old list with every check green: the wellness_spa failure this file
 // exists to prevent, moved one file upstream. Labels, emoji and sort_order
 // were weaker still — pgTAP asserts only the `undefined` label, so the seven
 // guest-facing labels and emoji were compared to nothing outside TypeScript.
@@ -43,7 +42,7 @@
 //                                                  +sort_order, in order
 // The seed is what actually writes the catalog, so pinning it pins what the
 // DB will hold; the pgTAP array is what asserts the DB holds it. With both
-// joined to FAMILIES, the four copies are one chain.
+// joined to FAMILIES, the three copies are one chain.
 //
 // Every parser here throws when it matches nothing. A regex that quietly
 // returns [] is a vacuous test, which is worse than no test at all.
@@ -56,13 +55,11 @@ import { FAMILIES } from "./place-taxonomy.ts";
 
 const REPO_ROOT = new URL("../../../../", import.meta.url);
 const WEB_FAMILIES = new URL("apps/web-consumer/src/lib/place-families.ts", REPO_ROOT);
-const MOBILE_FAMILIES = new URL("apps/mobile-consumer/src/lib/place-families.ts", REPO_ROOT);
 const PGTAP = new URL("supabase/supabase/tests/database/schema_invariants.test.sql", REPO_ROOT);
 const MIGRATIONS = new URL("supabase/supabase/migrations/", REPO_ROOT);
 
-/** The three persisted discovery-filter stores — mobile has no test runner. */
+/** The two persisted discovery-filter stores. */
 const FILTER_STORES = [
-  "apps/mobile-consumer/src/lib/use-discovery-filters.ts",
   "apps/web-consumer/src/lib/use-discovery-filters.ts",
   "apps/web-consumer/src/lib/use-map-filters.ts",
 ] as const;
@@ -70,7 +67,7 @@ const FILTER_STORES = [
 type Family = { key: string; label: string; emoji: string };
 
 /**
- * These two files are hand-written twins in a fixed shape, so a regex over the
+ * The web file is a hand-written twin in a fixed shape, so a regex over the
  * literal is the honest reader: it sees what a human sees, and it fails loudly
  * (rather than silently returning []) when the shape moves.
  */
@@ -94,12 +91,8 @@ function parseFamilyKeyUnion(src: string, where: string): string[] {
   return [...union[1]!.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]!);
 }
 
-Deno.test("web and mobile ship the SAME eight families as the DB twin", async () => {
+Deno.test("web ships the SAME eight families as the DB twin", async () => {
   const web = parsePlaceFamilies(await Deno.readTextFile(WEB_FAMILIES), "web-consumer");
-  const mobile = parsePlaceFamilies(
-    await Deno.readTextFile(MOBILE_FAMILIES),
-    "mobile-consumer",
-  );
 
   // place-taxonomy.ts is the DB twin. It is joined to the real catalog by the
   // two SQL tests below (pgTAP's slug array and seed_place_families()'s INSERT
@@ -112,48 +105,34 @@ Deno.test("web and mobile ship the SAME eight families as the DB twin", async ()
     db,
     "apps/web-consumer/src/lib/place-families.ts disagrees with _shared/place-taxonomy.ts",
   );
-  assertEquals(
-    mobile,
-    db,
-    "apps/mobile-consumer/src/lib/place-families.ts disagrees with _shared/place-taxonomy.ts",
-  );
 });
 
-Deno.test("the FamilyKey unions match the arrays they type", async () => {
+Deno.test("the FamilyKey union matches the array it types", async () => {
   const webSrc = await Deno.readTextFile(WEB_FAMILIES);
-  const mobileSrc = await Deno.readTextFile(MOBILE_FAMILIES);
   const keys = FAMILIES.map((f) => f.slug as string);
 
   // Catalog order, not sorted: a union that lists them in a different order is
   // still a compile-time lie waiting to be read as the render order.
   assertEquals(parseFamilyKeyUnion(webSrc, "web-consumer"), keys);
-  assertEquals(parseFamilyKeyUnion(mobileSrc, "mobile-consumer"), keys);
 });
 
-Deno.test("both consumer apps filter on the seven, never on Undefined", async () => {
-  for (
-    const [where, url] of [
-      ["web-consumer", WEB_FAMILIES],
-      ["mobile-consumer", MOBILE_FAMILIES],
-    ] as const
-  ) {
-    const src = await Deno.readTextFile(url);
-    const derived =
-      /export const FILTERABLE_PLACE_FAMILIES[^=]*=\s*PLACE_FAMILIES\.filter\(\s*\(family\)\s*=>\s*family\.key\s*!==\s*"undefined",?\s*\)/
-        .test(src);
-    assertEquals(
-      derived,
-      true,
-      `${where}: FILTERABLE_PLACE_FAMILIES must be PLACE_FAMILIES minus "undefined", derived not retyped ` +
-        "(Pato, 2026-08-29: nobody goes out looking for an unclassified place)",
-    );
-  }
+Deno.test("the consumer app filters on the seven, never on Undefined", async () => {
+  const src = await Deno.readTextFile(WEB_FAMILIES);
+  const derived =
+    /export const FILTERABLE_PLACE_FAMILIES[^=]*=\s*PLACE_FAMILIES\.filter\(\s*\(family\)\s*=>\s*family\.key\s*!==\s*"undefined",?\s*\)/
+      .test(src);
+  assertEquals(
+    derived,
+    true,
+    `web-consumer: FILTERABLE_PLACE_FAMILIES must be PLACE_FAMILIES minus "undefined", derived not retyped ` +
+      "(Pato, 2026-08-29: nobody goes out looking for an unclassified place)",
+  );
 });
 
 Deno.test("every persisted filter store hydrates from the seven, not all eight", async () => {
-  // Mobile has no test runner, so the shape is read from source. A store that
-  // accepts a key its sheet does not render leaves the guest with a filter
-  // they can see the effect of (empty deck, lit dot) and no pill to clear.
+  // Read from source, like everything else here. A store that accepts a key
+  // its sheet does not render leaves the guest with a filter they can see the
+  // effect of (empty deck, lit dot) and no pill to clear.
   for (const rel of FILTER_STORES) {
     const src = await Deno.readTextFile(new URL(rel, REPO_ROOT));
     const decl = src.match(/const KNOWN_FAMILY_KEYS[^;]*;/);
@@ -299,9 +278,7 @@ const GATE_ROOTS = [
   "supabase/supabase/functions",
   "supabase/supabase/tests",
   "apps/web-admin/src",
-  "apps/web-business/src",
   "apps/web-consumer/src",
-  "apps/mobile-consumer/src",
   ".github/workflows",
 ];
 

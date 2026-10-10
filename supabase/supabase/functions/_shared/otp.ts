@@ -173,10 +173,10 @@ export async function redeemOtpVerification(
         500,
       );
     }
-    // TODO(MESITA-1590 cleanup): drop `projectId` once web-business's Vercel
-    // deploy has picked up the matching frontend change — the EF ships
-    // instantly but the frontend doesn't, so the currently-live build still
-    // reads this.
+    // TODO(MESITA-1590 cleanup): drop `projectId`. Its one reader was
+    // web-business's live build, and MESITA-2089 deleted that app; the
+    // surviving client (web-admin's lib/api/verifications.ts) reads
+    // `placeId`.
     return json({
       ok: true,
       placeId: verification.place_id,
@@ -226,8 +226,8 @@ export async function redeemOtpVerification(
     );
   }
 
-  // TODO(MESITA-1590 cleanup): drop `projectId` once web-business's Vercel
-  // deploy has picked up the matching frontend change.
+  // TODO(MESITA-1590 cleanup): drop `projectId` — no reader since
+  // MESITA-2089 deleted web-business (see the awaiting-admin branch above).
   return json({
     ok: true,
     placeId: verification.place_id,

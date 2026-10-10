@@ -13,7 +13,7 @@
 // the product as it is rather than proposing a different one:
 //   tips            web-consumer `TIP_PRESETS` / `DEFAULT_TIP_PCT` fallbacks
 //   consumer poll   web-consumer TicketScreen, via consumer-web-get-ticket (10s)
-//   staff poll      web-validate, via validate-web-get-ticket (not the poll EF); BASE 3s, backoff to 30s
+//   staff poll      web-validate (deleted, MESITA-2089), via validate-web-get-ticket (not the poll EF); BASE 3s, backoff to 30s
 //   pay rails       cash live; card and Credits are STAGED panels
 //   report          consumer-web-report-ticket
 //

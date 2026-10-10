@@ -986,7 +986,7 @@ Deno.test("sweep: a platform folder and a Finder alias at the fleet root are nev
   await Deno.mkdir(platformDirOf(f.main, "claude-code"), { recursive: true });
   await Deno.symlink(await Deno.makeTempDir(), join(fleetDirOf(f.main), "conductor"));
   await Deno.mkdir(join(platformDirOf(f.main, "codex"), "ghost"), { recursive: true });
-  const straggler = await rawWorktree(f, "straggler", "claude/straggler");
+  await rawWorktree(f, "straggler", "claude/straggler");
   const res = await sweep(makeEnv(f), { apply: false });
   const flagged = res.lines.filter((l) => /ORPHAN|repaired/.test(l)).join("\n");
   assert(!/claude-code\b|conductor/.test(flagged), `platform folder and alias are not orphans:\n${flagged}`);

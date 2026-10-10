@@ -1,10 +1,11 @@
 // Single Place › one place: THE BUSINESS CONSOLE'S PLACE SURFACE, rendered by
 // admin (MESITA-2086; Pato: "import the functionalities of the business app
 // to manage single page"). Every section, card and action below this layout
-// is generated from shared/place-console — the same source web-business
-// renders at /places/[id] — and this file is the admin seam: it resolves the
-// place ONCE the way business's layout does, publishes the scope, mounts the
-// shell, and draws admin's own strip of doors instead of a rail.
+// is the surface web-business rendered at /places/[id] — generated here from
+// shared/place-console until MESITA-2089 deleted that app and the generator,
+// so admin's copy is the only one — and this file is the admin seam: it
+// resolves the place ONCE the way business's layout did, publishes the scope,
+// mounts the shell, and draws admin's own strip of doors instead of a rail.
 //
 // TWO READS, BOTH SUPER-ADMIN-SAFE. `getManagePlace` is business-web-get-
 // overview, whose super-admin branch answers for any place id, member or not;

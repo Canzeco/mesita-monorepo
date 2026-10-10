@@ -1,11 +1,12 @@
-// Admin's addresses for the shared place surface (MESITA-2086). The business
-// console owns the full module — a catalogue, flat twins, a rail — and the
-// shared files reach a handful of its names by alias. This is that handful,
-// pointed at Manage › Single Place: `/manage-single/<id>/<tab|page>`.
+// Admin's addresses for the place surface (MESITA-2086). The business
+// console owned the full module — a catalogue, flat twins, a rail — and the
+// place surface reaches a handful of its names by alias. This is that
+// handful, pointed at Manage › Single Place: `/manage-single/<id>/<tab|page>`.
 //
-// SAME NAMES, SAME SIGNATURES as web-business/src/lib/console-routes.ts, so
-// a generated file compiles unchanged in both apps. Admin has no flat twins
-// and no catalogue page of its own: `places` is the Find box, `placesNew` is
+// SAME NAMES, SAME SIGNATURES as the business console's module had, which is
+// why the surface's files compiled unchanged here; web-business is deleted
+// (MESITA-2089), so this is now the only copy. Admin has no flat twins and no
+// catalogue page of its own: `places` is the Find box, `placesNew` is
 // Multiple Places (where Create lives), and `settings` is the operator's
 // Account.
 import { PLACE_BASE } from "@/lib/place-base";

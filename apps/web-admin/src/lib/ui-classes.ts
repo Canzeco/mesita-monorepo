@@ -20,9 +20,9 @@ export const STICKY_COL_CELL =
   "sticky left-0 z-10 bg-card sm:static sm:bg-transparent";
 
 // ── The business console's button vocabulary ───────────────────────────────
-// The shared place surface (shared/place-console, MESITA-2086) reaches these
-// six by alias. Same strings as web-business/src/lib/ui-classes.ts, so a
-// generated card renders the same pill in both consoles.
+// The place surface Single Place renders (MESITA-2086) reaches these six by
+// alias. They are the business console's own strings, kept verbatim when
+// MESITA-2089 deleted web-business, so the cards still render its pill.
 export const FOCUS_RING_CLASS =
   "outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 

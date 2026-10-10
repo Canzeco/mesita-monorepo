@@ -35,7 +35,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 - Supabase: MCP (`list_tables`, `list_edge_functions`, `get_edge_function`, `list_migrations`,
   `get_advisors`, `get_logs`, `execute_sql` — **SELECT only**).
 - Linear: team Mesita (`MESITA-`).
-- Vercel MCP: 5 projects (web-admin, web-business, web-consumer, web-landing, web-check).
+- Vercel MCP: 2 projects (mesita-web-admin, mesita-web-consumer).
 - GitHub via `gh`.
 - Notion MCP: 📜 **Rules** (§0–§3 + SADLC · KADLC) and 📚 **Docs** (14 flat domain
   pages). **Scope 9 only.** No connector → Scope 9 is `SKIPPED (connector unavailable)`,
@@ -255,7 +255,7 @@ reads to an operator as a control that does something.
 6.1 **Generated instruction files.** `deno task sync-rules:check` must pass — every
     `AGENTS.md` is generated from its sibling `CLAUDE.md`.
 6.2 **Typecheck + lint, every package**, not only the ones a path-filtered CI would run.
-    Cross-app breaks land silently here; check all four web apps + mobile.
+    Cross-app breaks land silently here; check both web apps.
 6.3 **Dependency hygiene.** Lockfile ↔ manifest drift · pnpm overrides living in
     `package.json` instead of `pnpm-workspace.yaml` (pnpm 10+ ignores the former) ·
     known-vulnerable deps · Node/pnpm version pins.
@@ -263,7 +263,7 @@ reads to an operator as a control that does something.
     every `Deno.env.get(...)` in EFs vs the Supabase secrets that exist ·
     `vault.secrets` names must not match n8n / serper / tripadvisor (MESITA-709).
     Names only — **never read, print, or log a secret value.**
-6.5 **Vercel wiring.** All 5 projects → `Canzeco/mesita-monorepo`, Root Directory
+6.5 **Vercel wiring.** Both projects → `Canzeco/mesita-monorepo`, Root Directory
     `apps/web-<app>`, "skip unaffected" on, last production deploy green. A wrong Git
     connection produces a *silent no-deploy*, which is why this is checked daily.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
@@ -320,8 +320,7 @@ compare the claim to the code, the way Scope 1 compares EF inventories.
 
 **Already-tracked deltas are not findings.** Before promoting ANY disagreement, check
 whether it is already known: an open Linear issue naming it · a doc that declares its own
-drift (a `SPEC vs SHIPPED` paragraph) · a documented freeze (`apps/mobile-consumer` is
-frozen; web decides and mobile is recopied later). Known → record `TRACKED (MESITA-…)`,
+drift (a `SPEC vs SHIPPED` paragraph) · a documented freeze. Known → record `TRACKED (MESITA-…)`,
 never `FINDING`. Re-reporting settled state is how a report earns being ignored; a doc
 that declares its own drift is doing its job. **Quote both values with `file:line`;** a
 grep count is not a finding. Example: `_shared/pulse-pieces.ts` vs Intake §A is TRACKED
@@ -343,7 +342,7 @@ grep count is not a finding. Example: `_shared/pulse-pieces.ts` vs Intake §A is
     Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
     Passport `_shared/class-doors.ts`, `_shared/consumer-*.ts`, `admin-web-grant-class` ·
     Rewards `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
-    Visits `*visit*`, `_shared/business-ticket-billing.ts`, `apps/web-validate` ·
+    Visits `*visit*`, `_shared/business-ticket-billing.ts` ·
     Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
     Checkout `*stripe*` · Credits — no code; a page claiming shipped machinery IS the finding ·
     Vocabulary — repo-wide banned-word sweep · Design `assets/brand/`, `**/globals.css`,

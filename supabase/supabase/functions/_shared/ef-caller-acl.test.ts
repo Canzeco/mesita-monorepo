@@ -36,19 +36,23 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
   // web-admin joined the business actor with MESITA-2086: Manage › Single
-  // Place renders the business console's place surface, GENERATED from
-  // shared/place-console into both apps, so every business-web-* call that
-  // surface makes is the same call from either console. The operator's
-  // session is a super-admin, which _shared/auth-membership.ts already
-  // admits through every requireMembership/Owner/Editor gate — the EF name
-  // still names the surface that owns the call; admin merely hosts it too.
-  business: ["web-business", "mobile-business", "web-admin"],
-  consumer: ["web-consumer", "mobile-consumer"],
-  validate: ["web-validate"],
+  // Place renders the business console's place surface. Since MESITA-2089
+  // deleted web-business and mobile-business it is the ONLY caller. The
+  // operator's session is a super-admin, which _shared/auth-membership.ts
+  // already admits through every requireMembership/Owner/Editor gate — the
+  // EF name still names the surface that owns the call; admin hosts it.
+  business: ["web-admin"],
+  consumer: ["web-consumer"],
+  // No app. web-validate was deleted (MESITA-2089) while its validate-web-*
+  // functions stay deployed until they are retired, so an EMPTY list is the
+  // honest entry: any app that starts invoking one is a new violation, not a
+  // silent pass. The key has to exist — the second test below fails on a
+  // *-web-* prefix with no entry.
+  validate: [],
   // The public gift-landing page (MESITA-1677) — a stranger with a code, no
   // account, lives as a top-level route in web-consumer (outside its own
-  // (shell) auth wall), not a separate app the way web-validate is. Same
-  // actor-per-prefix rule, one owner.
+  // (shell) auth wall), not a separate app. Same actor-per-prefix rule, one
+  // owner.
   gift: ["web-consumer"],
 };
 
@@ -66,18 +70,11 @@ const NON_APP_ACTORS = new Set(["staff"]);
  * (catches new drift) rather than a blocker on fixing the 21 that already
  * existed the day this test landed. Each is `efName:strayApp`. Fixing one
  * — reroute the caller, or rename the EF if it legitimately serves both
- * consoles — removes its line here in the same PR.
+ * consoles — removes its line here in the same PR. The eight
+ * `admin-web-*:web-business` entries left with that app (MESITA-2089).
  */
 const GRANDFATHERED_VIOLATIONS = new Set([
-  "admin-web-enrich-place:web-business",
-  "admin-web-find-place:web-business",
-  "admin-web-get-place-enrichment:web-business",
   "admin-web-reset-database:web-consumer",
-  "admin-web-search-places:web-business",
-  "admin-web-set-place-active:web-business",
-  "admin-web-set-place-enrichment:web-business",
-  "admin-web-set-place-listed:web-business",
-  "admin-web-suggest-places:web-business",
   "consumer-web-create-reservation:web-admin",
 ]);
 
@@ -126,7 +123,7 @@ function escapeRegExp(s: string): string {
  *
  * Deliberately NOT a bare substring match: this codebase's comments name
  * other functions constantly for context (e.g. "the same backend
- * apps/web-validate calls"), and a descriptive label string can legitimately
+ * apps/web-consumer calls"), and a descriptive label string can legitimately
  * mention an EF by name mid-sentence inside ITS OWN unrelated string
  * literal ("today: business-web-suggest-promo)."). Only a quote
  * immediately before AND after the name is an argument, not prose.

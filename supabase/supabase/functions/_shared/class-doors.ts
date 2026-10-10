@@ -43,7 +43,7 @@ export type ConsumerDoors = {
   /**
    * The retired reach door. ALWAYS false since MESITA-2044 — followers open
    * nothing. Kept in the shape because consumer-web-get-profile returns
-   * `doors` to web-consumer and mobile-consumer, whose types still carry it.
+   * `doors` to web-consumer, whose types still carry it.
    */
   influencer: false;
   /** Paid door — a live (active/past_due) subscription exists. Plan, not class. */

@@ -49,8 +49,8 @@ export const AGENTS_NOTICE =
 // in the tree, which is exactly where accretion would migrate next.
 //
 // Ceilings are PER PACKAGE (see TARGETS), not one number. The surfaces differ
-// ~10× in size: a single ceiling loose enough for supabase hands web-landing
-// 600 words of headroom, which stops forcing anything for most of the repo.
+// in size: a single ceiling loose enough for supabase hands web-admin ~300
+// words of headroom, which stops forcing anything there.
 // Each ceiling is ~5% above what that package needs after a from-scratch
 // rewrite, so the next appended clause trips the gate instead of sliding under
 // it. Raising one is a visible line in the table below — that visibility is
@@ -248,24 +248,6 @@ export type Target = { label: string; dir: string; quickstart: boolean; budget?:
 export const TARGETS: Target[] = [
   { label: "root", dir: repoRoot, quickstart: true },
   { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false },
-  // 450 -> 500 on 2026-09-15 (MESITA-1875), and this is the raise the budget
-  // is designed to make VISIBLE rather than prevent. The package grew a whole
-  // noun in one afternoon: a product catalogue with its own card model
-  // (`lib/products.ts`), a sub-step address (`products/pay`), a page that
-  // reads nothing because the layout publishes the matrix (`PlaceScope` /
-  // `PlaceTabGate`), and the flat `/settings` coming back from a permanent
-  // redirect. Six issues, 1869 -> 1875.
-  //
-  // THE TEST THE OTHER RAISES HAD TO MEET WAS MET FIRST: a from-scratch
-  // rewrite (MESITA-1869) plus four compression passes, one per issue, each
-  // paying for its new clause by cutting an old one. What is left is law an
-  // agent needs before its first edit — every line is a rule that has been
-  // broken at least once — not history, which is what Docs holds.
-  //
-  // If this needs a second raise, do what the web-consumer note says: move
-  // the deep knowledge to Notion Docs > Apps and leave this file the routing
-  // and primitive rules alone.
-  { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false, budget: 500 },
   // Widest consumer surface, and the budget is an override of the 450 default
   // for that reason: four tabs, SEVEN Discover modes, three Inbox sections,
   // the wallet, the seven-step ticket journey, and two section-nav looks.
@@ -283,11 +265,6 @@ export const TARGETS: Target[] = [
   // Apps, which is where deep knowledge is supposed to live, and leave this
   // file the routing and primitive rules an agent needs before its first edit.
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 680 },
-  { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
-  { label: "apps/web-validate", dir: join(repoRoot, "apps", "web-validate"), quickstart: false },
-  // Native divergences + the toolchain constraints that silently break the bundle.
-  { label: "apps/mobile-consumer", dir: join(repoRoot, "apps", "mobile-consumer"), quickstart: false, budget: 725 },
-  { label: "apps/mobile-business", dir: join(repoRoot, "apps", "mobile-business"), quickstart: false },
   // Carries the schema invariants (security_invoker, generated name, reset registry).
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 725 },
 ];
