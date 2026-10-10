@@ -52,7 +52,7 @@ import {
   MAX_NAME_MATCHES,
 } from "./single-place-lookup";
 
-type View =
+export type View =
   | { kind: "matches"; query: string; hits: PlaceHit[] }
   | { kind: "place"; hit: PlaceHit }
   // A Google Place ID Mesita does not hold yet. `google` is what Google says
@@ -440,7 +440,7 @@ function MatchList({
   );
 }
 
-function PlaceCard({ hit }: { hit: PlaceHit }) {
+export function PlaceCard({ hit }: { hit: PlaceHit }) {
   const rating =
     hit.google_stars_overall == null
       ? "—"
@@ -544,7 +544,7 @@ function PlaceCard({ hit }: { hit: PlaceHit }) {
   );
 }
 
-function AbsentCard({ view }: { view: Extract<View, { kind: "absent" }> }) {
+export function AbsentCard({ view }: { view: Extract<View, { kind: "absent" }> }) {
   const g = view.google;
   return (
     <SectionCard
