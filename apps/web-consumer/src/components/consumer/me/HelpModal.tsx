@@ -2,7 +2,7 @@
 
 // Help — the single education home for the reward program (MESITA-809).
 // Lives on Me, not on Rewards: the wallet is for doing, this is for
-// understanding. Opened from the Me > Help row.
+// understanding. Opened from the Me > Support tile.
 //
 // Numbers never live here. A static ladder quoted Aggressive defaults as
 // if they were every place's bill (MESITA-1017). The live sheet is the
@@ -12,7 +12,7 @@
 // ladder — "either you are diamond or you are not".
 //
 // MVP cut (MESITA-2078): the rewards explainer and the priced list are
-// hidden while Pay is parked. The page is titled Help and holds Legal and
+// hidden while Pay is parked. The page is titled Support (MESITA-2080) and holds Legal and
 // the version; HelpRungList stays exported so un-parking is one JSX block.
 
 import type { LucideIcon } from "lucide-react";
@@ -157,7 +157,7 @@ export function HelpRungList({ classKey }: { classKey: string }) {
 
 export function HelpModal() {
   return (
-    <MeScreen title="Help">
+    <MeScreen title="Support">
       <div className="flex flex-col gap-4">
         {/* MVP cut (MESITA-2078): the rewards explainer (instant discounts,
             the Diamond line, actions that stack) and HelpRungList are hidden

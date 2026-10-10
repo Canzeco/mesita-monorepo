@@ -4,7 +4,6 @@ import {
   CircleHelp,
   Settings as SettingsIcon,
   UserRound,
-  Gem,
   AtSign,
 } from 'lucide-react-native';
 import { ScrollView } from 'react-native';
@@ -20,10 +19,6 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import {
-  DIAMOND,
-  diamondChipA11y,
-  diamondChipLabel,
-  diamondSummary,
   identityHeaderA11y,
   instagramSummary,
 } from '@/lib/consumer-identity';
@@ -35,9 +30,13 @@ import {
 } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
-// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same grid as web:
-// Profile full-width, then Instagram · Diamond, Notifications · Reservations,
-// Settings · Help. No Stripe checkout (Apple review).
+// Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same grid as web,
+// three pairs: Profile · Instagram, Notifications · Reservations, Settings ·
+// Support (Pato, MESITA-2080). No Stripe checkout (Apple review).
+//
+// DIAMOND IS PARKED (Pato, MESITA-2080: "Diamond goes for the future too"):
+// its tile and its hero row are gone; /me/diamond still routes, so bringing it
+// back is re-adding the tile and the row.
 //
 // MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"): Wallet, Plan,
 // Visits and the five Soon cells left the grid. Their routes stay; bringing
@@ -80,9 +79,6 @@ export default function MeHub() {
         igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
       };
   const igLabel = instagramSummary(igFacts);
-  // The tile and the header chip say different things on purpose: the tile
-  // is titled "Diamond" already, the chip is a gem and a word.
-  const diamondTileSummary = diamondSummary(facts);
 
   // MVP cut (MESITA-2078): the hero's visits·saved row is hidden while Pay is
   // parked, so Me no longer fetches consumer metrics for it.
@@ -115,8 +111,6 @@ export default function MeHub() {
               handle={igFacts.igHandle}
               followers={igFacts.igFollowers}
               diamond={facts.diamond}
-              diamondLabel={diamondChipLabel(facts)}
-              diamondA11y={diamondChipA11y(facts)}
               identityA11y={identityHeaderA11y(facts)}
             />
           )}
@@ -136,8 +130,6 @@ export default function MeHub() {
               }
               href={pages.profile}
             />
-          </DestGrid>
-          <DestGrid>
             {/* `AtSign`, not `Instagram`: lucide-react-native does not ship
                 the brand glyph web uses, and `DestTile` takes a LucideIcon.
                 It is the same stand-in MockControls and VerifySocialSheet
@@ -147,12 +139,6 @@ export default function MeHub() {
               title="Instagram"
               summary={igLabel}
               href={pages.instagram}
-            />
-            <DestTile
-              Icon={Gem}
-              title={DIAMOND}
-              summary={diamondTileSummary}
-              href={pages.diamond}
             />
           </DestGrid>
           <DestGrid>
@@ -179,7 +165,7 @@ export default function MeHub() {
             />
             <DestTile
               Icon={CircleHelp}
-              title="Help"
+              title="Support"
               // MVP cut (MESITA-2078): rewards wording dropped while Pay is parked.
               summary="Questions, legal"
               href={pages.help}

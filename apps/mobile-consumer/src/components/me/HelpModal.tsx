@@ -101,7 +101,7 @@ export function HelpModal({
   asRoute?: boolean;
 }) {
   return (
-    <FullScreenSheet visible={visible} onClose={onClose} asRoute={asRoute} title="Help">
+    <FullScreenSheet visible={visible} onClose={onClose} asRoute={asRoute} title="Support">
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, gap: 16 }}

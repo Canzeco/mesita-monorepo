@@ -526,7 +526,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders seven cells: Profile full-width, then three pairs", () => {
+  it("renders six cells: three pairs", () => {
     // MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet,
     // Plan, Visits and the five Soon cells left the grid; every one of their
     // routes still exists. Before that it was Profile + seven pairs.
@@ -535,17 +535,16 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // the first cell is the one that edits it, spanning the row since the
     // Passport died (MESITA-2043).
     //
-    // INSTAGRAM, THEN DIAMOND (Pato, MESITA-2040). Two unrelated identity
-    // facts, not payment, which is why they survive the MVP cut. The ORDER is
-    // load-bearing: Instagram first, on every surface that prints them.
+    // DIAMOND IS PARKED and Help is SUPPORT (Pato, MESITA-2080: "Diamond
+    // goes for the future too. Its just only Profile Instagram /
+    // Notifications Reservations / Settings Support").
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
-      "Diamond",
       "Notifications",
       "Reservations",
       "Settings",
-      "Help",
+      "Support",
     ]);
   });
 
@@ -559,30 +558,27 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Gift",
       "Integrations",
       "Friends",
+      "Diamond",
     ]) {
       expect(gridTitles(ME), hidden).not.toContain(hidden);
     }
   });
 
-  it("Settings and Help close the page", () => {
-    // The most-reached cells in the tail (MESITA-1642), and Help is the
-    // legal and version footer, so it is last.
-    expect(gridTitles(ME).slice(-2)).toEqual(["Settings", "Help"]);
+  it("Settings and Support close the page", () => {
+    // The most-reached cells in the tail (MESITA-1642), and Support (the
+    // /me/help page) is the legal and version footer, so it is last.
+    expect(gridTitles(ME).slice(-2)).toEqual(["Settings", "Support"]);
   });
 
-  it("Profile is the one full-width row; every other row is a pair", () => {
-    // Four `DestGrid`s: Profile, then three pairs. Counting grids and spans
-    // SEPARATELY on purpose: "cells ÷ grids === 2" was true of the old
-    // four-up too, and would go on being true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(4);
-    // Profile spans (MESITA-2043) — exactly one, and it is Profile.
-    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
-    const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
-    expect(
-      cells
-        .filter((c) => /^\s*full$/m.test(c))
-        .map((c) => c.match(/title="([^"]+)"/)?.[1]),
-    ).toEqual(["Profile"]);
+  it("every row is a pair; nothing spans", () => {
+    // Three `DestGrid`s of two. Counting grids and spans SEPARATELY on
+    // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
+    // would go on being true of any row width. Profile spanned from
+    // MESITA-2043 until Diamond was parked (MESITA-2080) and Instagram moved
+    // up beside it.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(3);
+    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(6);
+    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
 

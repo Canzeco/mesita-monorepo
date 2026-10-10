@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Gem, Instagram, Phone } from "lucide-react";
+import { ChevronRight, Instagram, Phone } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { useConsumerClass } from "@/lib/class-context";
@@ -20,8 +20,13 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 //
 //   [80px photo, ringed]
 //   [name]  [instagram]
-//   [phone] [diamond]
+//   [     phone      ]
 //   ─────── band ───────
+//
+// THE DIAMOND CHIP IS PARKED (Pato, MESITA-2080: "Diamond goes for the future
+// too"), so the phone takes the second row whole. Bringing Diamond back is
+// re-adding its Link (href mePages.diamond) beside the phone. The band, ring
+// and wash still read `facts.diamond`, and the header's aria-label says it.
 //
 // TWO FACTS NOW, NOT ONE AXIS (Pato, MESITA-2040: "separate instagram and
 // diamond… those are independent"). The right column used to be Class then
@@ -66,8 +71,8 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // is unambiguous precisely because it is now unconditional.
 //
 // The band and the ring stay `aria-hidden` on the stated ground that something
-// says the fact in words. That something is the Diamond CHIP's own label,
-// inside this subtree ("Diamond: You're in", MESITA-2046).
+// says the fact in words. While the chip is parked (MESITA-2080) that is the
+// header's own aria-label ("Your Mesita identity, on the Diamond").
 //
 // NO PLAN (decision: Pato, MESITA-1619). The header prints what is EARNED
 // and PUBLIC; the plan is what you PAY. Plan is a cell in the grid below and
@@ -87,16 +92,10 @@ const TAP_TARGET_CLASS = "after:absolute after:inset-[-4px] after:content-['']";
 export function IdentityBar({
   profile,
   loading,
-  diamondSummary,
-  diamondChip,
   instagramSummary,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "You're in" or "Ask to join" — the accessible half of the chip. */
-  diamondSummary: string;
-  /** "Diamond" or "Ask to join" — what the chip shows. */
-  diamondChip: string;
   /** "@handle", "Connected", or "Connect it". */
   instagramSummary: string;
 }) {
@@ -141,13 +140,16 @@ export function IdentityBar({
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 87px
                 is the real avatar (80 + the 2px ring and 1.5px inset, both
-                sides), and the same 2x2 at its real 36px. */}
+                sides), and the same three chips at their real 36px. */}
             <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
             <div className="grid w-full grid-cols-2 gap-2">
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
-                  className="bg-muted h-9 animate-pulse rounded-full"
+                  className={cn(
+                    "bg-muted h-9 animate-pulse rounded-full",
+                    i === 2 && "col-span-2",
+                  )}
                 />
               ))}
             </div>
@@ -175,7 +177,7 @@ export function IdentityBar({
               </span>
             </span>
 
-            {/* READING ORDER: Name · Instagram / Phone · Diamond. */}
+            {/* READING ORDER: Name · Instagram / Phone. */}
             <div className="grid w-full grid-cols-2 gap-2">
               <span className={CHIP_CLASS}>
                 <span className="truncate">{name}</span>
@@ -202,7 +204,10 @@ export function IdentityBar({
                   <Instagram className="h-3 w-3 text-white" aria-hidden />
                 </span>
                 <span className="truncate">{instagramSummary}</span>
-                <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+                <ChevronRight
+                  className="h-3 w-3 shrink-0 opacity-60"
+                  aria-hidden
+                />
               </Link>
               {/* THE LOGIN PHONE (Pato, MESITA-1657: "they made login with
                   phone number").
@@ -215,37 +220,18 @@ export function IdentityBar({
 
                   "Not set" covers the window before the EF mirrors
                   auth.user.phone into consumers.phone on a new account; the
-                  chip keeps its slot so the 2x2 never reflows. */}
-              <span className={CHIP_CLASS}>
+                  chip keeps its slot so the grid never reflows. */}
+              <span className={cn(CHIP_CLASS, "col-span-2")}>
                 <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{phoneDisplay}</span>
               </span>
-              {/* NO METAL FILL on the chip, on purpose: the band and the ring
-                  are the two fill surfaces and a third inside the header turns
-                  a law about meaning into decoration. The word reads in the
-                  metal's INK instead, which is what lets the band stay
-                  aria-hidden. */}
-              <Link
-                href={CONSUMER_ROUTES.mePages.diamond}
-                aria-label={`${DIAMOND}: ${diamondSummary}`}
-                className={cn(
-                  CHIP_CLASS,
-                  TAP_TARGET_CLASS,
-                  "hover:bg-muted transition",
-                  diamond && "text-diamond",
-                )}
-              >
-                <Gem className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{diamondChip}</span>
-                <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
-              </Link>
             </div>
           </>
         )}
       </div>
 
       {/* The band — full width, colour-only, hidden from assistive tech; the
-          Diamond chip above states the fact in words. */}
+          header's aria-label states the fact in words. */}
       <div className={cn("h-2.5 w-full", metalFill)} aria-hidden />
     </header>
   );

@@ -12,7 +12,6 @@ import {
   GRADIENTS,
   SHADOW_ELEV,
 } from '@/constants/brand';
-import { Gem } from 'lucide-react-native';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
@@ -20,8 +19,11 @@ import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 // — web parity. Centered photo + IG/Diamond badges (IG leading/left —
 // MESITA-956), then five equal-height identity rows: name·sex·age / phone / IG
 // / Diamond / visits·saved. Phone shows dial flag.
-// MVP cut (MESITA-2078): the visits·saved row is hidden while Pay is parked,
-// so the card prints four rows.
+// MVP cut (MESITA-2078): the visits·saved row is hidden while Pay is parked.
+// DIAMOND IS PARKED (Pato, MESITA-2080: "Diamond goes for the future too"):
+// its row and its avatar badge are gone, so the card prints three rows and one
+// badge. The ring and wash still read `diamond`; bringing it back is re-adding
+// the row (href mePages.diamond) and the right-hand badge — web parity.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 //
 // ONE COLOUR LEFT, AND IT MEANS ONE THING (MESITA-2040, MESITA-2044).
@@ -44,7 +46,6 @@ const ROW_HEIGHT = 44;
  *  takes `GRADIENTS.pink` (an ink ramp now) and the wash takes that ink at the
  *  alphas the pink wash had. */
 const DIAMOND_BADGE = ['#bfdbfe', '#2563eb'] as const;
-const PLAIN_BADGE = ['#e5e7eb', '#9ca3af'] as const;
 const PLAIN_WASH = ['rgba(23,23,23,0.10)', 'rgba(64,64,64,0.06)'] as const;
 
 export function IdentityHeroSkeleton() {
@@ -54,7 +55,7 @@ export function IdentityHeroSkeleton() {
         <View className="h-2.5 w-16 rounded bg-muted" />
         <View className="h-[72px] w-[72px] rounded-full bg-muted" />
         <View className="w-full overflow-hidden rounded-xl bg-muted/80">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 3 }).map((_, i) => (
             <View
               key={i}
               className="items-center justify-center border-b border-border/60"
@@ -80,8 +81,6 @@ export function IdentityHero({
   igConnected,
   handle,
   followers,
-  diamondLabel,
-  diamondA11y,
   identityA11y,
 }: {
   /** Diamond. The card's only conditional colour. */
@@ -96,10 +95,6 @@ export function IdentityHero({
   igConnected: boolean;
   handle: string | null;
   followers: number;
-  /** The chip: "Diamond" or "Ask to join" — `diamondChipLabel`. */
-  diamondLabel: string;
-  /** "Diamond: You're in" / "Diamond: Ask to join". */
-  diamondA11y: string;
   /** "Your Mesita identity[, on Diamond]". */
   identityA11y: string;
 }) {
@@ -183,31 +178,6 @@ export function IdentityHero({
         </Text>
       ),
     },
-    {
-      key: 'diamond',
-      href: CONSUMER_ROUTES.mePages.diamond,
-      accessibilityLabel: diamondA11y,
-      content: (
-        <View className="flex-row items-center gap-1.5">
-          <Gem
-            color={diamond ? '#2563eb' : '#171717B3'}
-            size={14}
-            strokeWidth={2.25}
-          />
-          <Text
-            className={
-              diamond
-                ? 'font-semibold text-foreground'
-                : 'font-semibold text-muted-foreground'
-            }
-            style={{ fontSize: 13 }}
-            numberOfLines={1}
-          >
-            {diamondLabel}
-          </Text>
-        </View>
-      ),
-    },
     // MVP cut (MESITA-2078): the "N visits · $X saved" row is hidden while
     // Pay is parked.
   ];
@@ -267,9 +237,9 @@ export function IdentityHero({
             </View>
           </LinearGradient>
 
-          {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Diamond
-              right, so Instagram leads on every surface (MESITA-956, and the
-              order Pato named the two facts in MESITA-2040). */}
+          {/* Avatar sub-badge — 28px (MESITA-938), Instagram at the left
+              (MESITA-956). The Diamond badge that sat at the right is parked
+              (MESITA-2080). */}
           <LinearGradient
             colors={
               igConnected
@@ -315,30 +285,6 @@ export function IdentityHero({
             </View>
           </LinearGradient>
 
-          <LinearGradient
-            colors={diamond ? [...DIAMOND_BADGE] : [...PLAIN_BADGE]}
-            start={GRADIENT_DIAGONAL.start}
-            end={GRADIENT_DIAGONAL.end}
-            style={{
-              position: 'absolute',
-              right: -4,
-              bottom: -4,
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              borderWidth: 2,
-              borderColor: COLORS.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            accessibilityLabel={diamondA11y}
-          >
-            <Gem
-              color={diamond ? '#1e3a8a' : '#171717'}
-              size={14}
-              strokeWidth={2.5}
-            />
-          </LinearGradient>
         </View>
 
         <View
