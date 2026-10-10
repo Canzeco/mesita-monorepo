@@ -81,7 +81,7 @@ jobs:
       # called were renamed to admin-web-get-overview / admin-web-update-place
       # when the business console was deleted (MVP First Stage). A rename is a
       # new folder plus the old slug here, or the business name stays callable.
-      # The same PR retires the 110 functions no First Stage caller reaches:
+      # The same PR retires the 109 functions no First Stage caller reaches:
       # every remaining business-web-*, all validate-web-*, the Stripe webhook,
       # gift-web-preview-code, and the consumer/admin functions with no caller
       # left (credits, tickets, cards, connectors, consumer-mcp, claims,
@@ -149,7 +149,6 @@ jobs:
             business-web-get-overview
             business-web-update-place
             admin-web-ask-memo
-            admin-web-check-api-health
             admin-web-decide-place-claim
             admin-web-decide-verification
             admin-web-find-place
