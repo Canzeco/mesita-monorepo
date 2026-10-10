@@ -1,10 +1,11 @@
 import { BlurView } from "expo-blur";
-import { QrCode, Search, User, Wallet } from "lucide-react-native";
-import type { ComponentType } from "react";
+import { QrCode, Search, User } from "lucide-react-native";
+import { useState, type ComponentType } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MesitaMark } from "@/components/brand/MesitaMark";
+import { ComingSoonModal } from "@/components/ui/ComingSoonModal";
 import { COLORS } from "@/constants/brand";
 import { useReduceMotion } from "@/lib/useReduceMotion";
 
@@ -37,25 +38,29 @@ type ConsumerTabBarProps = {
   };
 };
 
-// FIVE tabs, Home · Search · Visit · Wallet · Me (Pato, MESITA-2055) — web BottomNav
-// parity. The bar is a FIXED list, not `state.routes`: the navigator holds
-// eight screens (Home rail siblings, Order, Wallet, Me) and the bar shows
-// five. Each tab names the route it opens and every route that lights it —
-// Home lights for chat and favs too, the same way web's matchPrefixes list
-// does. A screen missing from a tab's `routes` renders with NO tab lit.
+// FOUR tabs, Home · Search · Pay (Soon) · Me (Pato, MESITA-2076) — web
+// BottomNav parity. The bar is a FIXED list, not `state.routes`: the
+// navigator holds eight screens (Home rail siblings, Pay, Order, Wallet, Me)
+// and the bar shows four. Each tab names the route it opens and every route
+// that lights it — Home lights for chat and favs too, the same way web's
+// matchPrefixes list does. A screen missing from a tab's `routes` renders
+// with NO tab lit.
 //
-// Visit carries the brand mark: the leftmost tab has worn it since Home held
-// that slot, and Visit is where Home went.
+// PAY is parked: a "Soon" tag, and a tap opens ComingSoonModal instead of
+// `rewards`, so it lights nothing. WALLET left the bar; its screen stays
+// routable. Un-park Pay = drop `soon` and restore routes: ["rewards"].
 //
 // Every tab shows its plain label (Pato, 2026-08-16: "only write me, its
 // cleaner"). A tab label names a DESTINATION; state belongs on the page.
 type BarItem = {
   label: string;
   Icon: IconComponent;
-  /** The route a tap opens. For Visit that is Home, its leading pill. */
+  /** The route a tap opens. */
   target: string;
   /** Every route name that lights this tab. */
   routes: readonly string[];
+  /** Parked: tap opens ComingSoonModal, the tab wears a "Soon" tag. */
+  soon?: { title: string; body: string };
 };
 
 export const BAR: readonly BarItem[] = [
@@ -66,8 +71,16 @@ export const BAR: readonly BarItem[] = [
     routes: ["home", "chat", "favs"],
   },
   { label: "Search", Icon: Search, target: "search", routes: ["search"] },
-  { label: "Visit", Icon: QrCode, target: "rewards", routes: ["rewards"] },
-  { label: "Wallet", Icon: Wallet, target: "wallet", routes: ["wallet"] },
+  {
+    label: "Pay",
+    Icon: QrCode,
+    target: "rewards",
+    routes: [],
+    soon: {
+      title: "Pay is coming soon",
+      body: "Paying at a place with Mesita lands here shortly — thanks for waiting.",
+    },
+  },
   { label: "Me", Icon: User, target: "me", routes: ["me"] },
 ];
 
@@ -77,6 +90,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const current = state.routes[state.index]?.name;
+  const [parked, setParked] = useState<BarItem["soon"] | null>(null);
 
   return (
     <View
@@ -95,7 +109,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
       <View className="absolute inset-0 bg-card/80" pointerEvents="none" />
 
       <View className="relative flex-row items-end justify-around px-0.5 pt-2">
-        {BAR.map(({ label, Icon, target, routes }) => {
+        {BAR.map(({ label, Icon, target, routes, soon }) => {
           const focused = current != null && routes.includes(current);
           const tint = focused ? COLORS.primary : COLORS.mutedForeground;
           const stroke = focused ? 2.25 : 1.75;
@@ -108,6 +122,10 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
               accessibilityState={{ selected: focused }}
               accessibilityLabel={label}
               onPress={() => {
+                if (soon) {
+                  setParked(soon);
+                  return;
+                }
                 if (!route) return;
                 const event = navigation.emit({
                   type: "tabPress",
@@ -145,6 +163,20 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
                 }
               >
                 <Icon color={tint} size={20} strokeWidth={stroke} />
+                {soon ? (
+                  <View
+                    className="absolute rounded-full bg-foreground px-1.5"
+                    style={{ top: -4, left: 22, paddingVertical: 1 }}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      className="font-semibold uppercase text-background"
+                      style={{ fontSize: 10, letterSpacing: 0.4 }}
+                    >
+                      Soon
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               <Text
@@ -165,6 +197,14 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
 
       {/* Home-indicator affordance — matches web BottomNav. */}
       <View className="mx-auto mb-1 mt-1.5 h-1 w-32 rounded-full bg-foreground/20" />
+
+      <ComingSoonModal
+        open={parked != null}
+        onClose={() => setParked(null)}
+        title={parked?.title ?? "Coming soon"}
+        body={parked?.body}
+        icon={QrCode}
+      />
     </View>
   );
 }

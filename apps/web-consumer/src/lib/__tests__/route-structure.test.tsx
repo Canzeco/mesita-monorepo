@@ -249,18 +249,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/discover/favs", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    ["/new-visit", "Visit"],
-    ["/visit/t1", "Visit"],
-
-    // Wallet is a tab again, and its four full-screen children light it by
-    // nesting under /wallet. /credits, /inbox/credits and every
-    // /new-visit/wallet* path are redirect SOURCES, never rendered, so none
-    // of them belongs in this matrix.
-    ["/wallet", "Wallet"],
-    ["/wallet/buy", "Wallet"],
-    ["/wallet/gift", "Wallet"],
-    ["/wallet/redeem", "Wallet"],
-    ["/wallet/balance/bal_1", "Wallet"],
 
     // Me's pages, and the one detail route it still owns: a reservation is
     // reached from a place AND from Me › Reservations.
@@ -276,23 +264,33 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   // Non-overlap is currently naming luck (/rewards vs /reservation share no
   // prefix). Pin it so a future rename that creates an overlap fails here.
-  // /new-visit vs /visit is a genuine prefix hazard: "/visit".startsWith is
-  // false for "/new-visit". Both light Visit now, but /wallet vs /new-visit
-  // is the live hazard — Wallet left /new-visit/wallet for its own tab, and a
-  // stale prefix would light two tabs. Pin the cardinality.
   it("never lights two tabs at once", async () => {
     for (const [path] of MATRIX) {
       expect((await activeTabFor(path)).length, path).toBe(1);
     }
   });
+
+  // MESITA-2076 parked Pay and took Wallet off the bar. Their pages stay
+  // routable and, until Pay un-parks, light NOTHING — a parked tab drawn lit
+  // would promise a destination its tap does not open.
+  it.each([
+    "/new-visit",
+    "/visit/t1",
+    "/wallet",
+    "/wallet/buy",
+    "/wallet/balance/bal_1",
+  ])("%s lights no tab while Pay is parked", async (path) => {
+    expect(await activeTabFor(path)).toEqual([]);
+  });
 });
 
-// MESITA-2055 — the visit-optimised bar is Home · Search · Visit · Wallet · Me.
+// MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me (Pato: "BOTTOM
+// BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.").
 //
-// This REPLACES the MESITA-1609 guard (Home · Search · Pay · Me), which had
-// itself reversed MESITA-1119's. Two things MESITA-1119 cared about are
-// unchanged below: no class stamped into Me, and no Agents tab.
-describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", () => {
+// This REPLACES the MESITA-2055 guard (Home · Search · Visit · Wallet · Me).
+// Two things MESITA-1119 cared about are unchanged below: no class stamped
+// into Me, and no Agents tab.
+describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -308,18 +306,26 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Visit · Wallet · Me", async () => {
-    expect(await tabLabels()).toEqual([
-      "Home",
-      "Search",
-      "Visit",
-      "Wallet",
-      "Me",
-    ]);
+  it("is exactly Home · Search · Pay · Me", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
-  it("keeps Order off the visit-optimised bar", async () => {
-    expect(await tabLabels()).not.toContain("Order");
+  it("keeps Wallet, Visit and Order off the bar", async () => {
+    const labels = await tabLabels();
+    expect(labels).not.toContain("Wallet");
+    expect(labels).not.toContain("Visit");
+    expect(labels).not.toContain("Order");
+  });
+
+  // Pay is a button that opens ComingSoonModal, never a link to /new-visit,
+  // and it is the only tab tagged Soon.
+  it("parks Pay: a Soon-tagged button, not a link", async () => {
+    const html = await renderNav("/search");
+    const buttons = html.split("<button ").slice(1);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toMatch(/text-center">Pay</);
+    expect(buttons[0]).toMatch(/>Soon</);
+    expect(html.match(/>Soon</g)).toHaveLength(1);
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
@@ -331,7 +337,7 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
 
   // Every tab's href is a live page, never a redirect source — a tab that
   // 308s costs a hop on every tap and lights nothing while it runs.
-  it("points every tab at its own live default", async () => {
+  it("points every linked tab at its own live default", async () => {
     const html = await renderNav("/me");
     const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map(
       (m) => m[1],
@@ -339,8 +345,6 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
     expect(hrefs).toEqual([
       CONSUMER_ROUTES.discoverDefault,
       CONSUMER_ROUTES.search,
-      CONSUMER_ROUTES.newVisit.root,
-      CONSUMER_ROUTES.wallet.root,
       CONSUMER_ROUTES.me,
     ]);
     const sources = new Set(

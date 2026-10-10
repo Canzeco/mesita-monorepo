@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, Search, User, Wallet } from "lucide-react";
+import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -17,30 +17,27 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
-// FIVE visit-optimised surfaces, in this order (Pato, MESITA-2055):
+// FOUR tabs, in this order (Pato, MESITA-2076 — "hide some shit for the
+// moment and focus mvp"):
 //
-//   Home · Search · Visit · Wallet · Me
+//   Home · Search · Pay (Soon) · Me
 //
-//   VISIT is everything about going somewhere: find it (Home, Search, Chat,
-//   Favs) and pay there (Pay). Its href is Home, the rail's leading pill.
-//   ORDER is the orders vertical's door. Designed, not built — the page says
-//   so (Docs › Orders).
-//   WALLET is a tab again, at /wallet (see the route contract for its six
-//   earlier addresses).
-//   ME is unchanged.
-//
-// THE SEARCH COACHMARK IS GONE with Search's tab. It pointed a returning
-// guest's thumb at "the map moved here"; the map moved again, into a pill,
-// and a hint about a tab that no longer exists would point at Order.
+//   PAY is parked: it stays on the bar so the guest knows it is coming, and
+//   a tap opens ComingSoonModal instead of /new-visit. Its "Soon" tag is
+//   Pato's own spelling ("Pay(Soon)") and overrides the MESITA-383 no-pill
+//   rule for this one tab. /new-visit and /visit/{id} stay routable and
+//   light no tab while Pay is parked.
+//   WALLET left the bar (it was a tab from MESITA-2050/2055). /wallet and
+//   its four children stay routable; nothing on the bar lights them.
+//   Un-park Pay = drop `soon` and restore its matchPrefixes.
 //
 // Every tab shows its plain label. A tab label names a DESTINATION; state
 // (class, Diamond) belongs on the page where it can be read and acted on
 // (Pato, 2026-08-16: "only write me, its cleaner"). `route-structure.test.tsx`
 // pins the labels, in order, and their count.
 
-// Every icon is a lucide glyph except Visit's, which carries the brand mark:
-// the leftmost tab has worn it since Home held that slot, and Visit is where
-// Home went. The signature stays wider than LucideIcon so the mark fits.
+// Every icon is a lucide glyph except Home's, which carries the brand mark.
+// The signature stays wider than LucideIcon so the mark fits.
 type Item = {
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -54,8 +51,8 @@ type Item = {
    * Order is irrelevant; matching is `startsWith` over the whole list.
    */
   matchPrefixes: readonly string[];
-  // Surface is parked. Tab stays visible and tappable; tap opens
-  // ComingSoonModal instead of navigating (MESITA-383 — no "Soon" pills).
+  // Surface is parked. Tab stays visible and tappable, wears a "Soon" tag,
+  // and a tap opens ComingSoonModal instead of navigating (MESITA-2076).
   soon?: boolean;
   soonTitle?: string;
   soonBody?: string;
@@ -83,20 +80,14 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.newVisit.root,
     Icon: QrCode,
-    label: "Visit",
-    matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.newVisit,
-      CONSUMER_ROUTE_PREFIX.visit,
-    ],
-  },
-  {
-    href: CONSUMER_ROUTES.wallet.root,
-    Icon: Wallet,
-    label: "Wallet",
-    // One prefix covers the list and all four full-screen children (Buy,
-    // Gift, Redeem, one balance) — the whole point of the subroutes living
-    // in the container's namespace.
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.wallet],
+    label: "Pay",
+    // Parked: lights nothing. Un-parking restores
+    // [CONSUMER_ROUTE_PREFIX.newVisit, CONSUMER_ROUTE_PREFIX.visit].
+    matchPrefixes: [],
+    soon: true,
+    soonTitle: "Pay is coming soon",
+    soonBody:
+      "Paying at a place with Mesita lands here shortly — thanks for waiting.",
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -154,6 +145,9 @@ export function BottomNav({ userId }: { userId?: string }) {
                 >
                   <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
                     <Icon className="h-5 w-5" strokeWidth={1.75} />
+                    <span className="bg-foreground text-paper type-meta absolute -top-1 left-[calc(100%-10px)] rounded-full px-1.5 py-px leading-tight font-semibold tracking-wide whitespace-nowrap uppercase">
+                      Soon
+                    </span>
                   </span>
                   <span className="w-full truncate text-center">{label}</span>
                 </button>
@@ -200,10 +194,9 @@ export function BottomNav({ userId }: { userId?: string }) {
         onClose={() => setSoonItem(null)}
         title={soonItem?.soonTitle ?? "Coming soon"}
         body={soonItem?.soonBody}
-        // Item.Icon is deliberately wider than LucideIcon (Visit renders the
-        // brand mark), so it can't be forwarded here. No tab is parked today;
-        // when one is, give it a real lucide glyph rather than widening the
-        // modal's prop.
+        // Item.Icon is deliberately wider than LucideIcon (Home renders the
+        // brand mark), so it can't be forwarded here. Pay is the one parked
+        // tab, and QrCode is its glyph.
         icon={QrCode}
       />
     </>
