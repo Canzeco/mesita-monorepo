@@ -85,53 +85,46 @@ const TARGETS: {
   {
     source: "state-vocabulary.ts",
     apps: {
-      "web-admin": "src/lib/state-vocabulary.ts",
       "web-business": "src/lib/state-vocabulary.ts",
     },
   },
   {
     source: "format.ts",
     apps: {
-      "web-admin": "src/lib/format.ts",
       "web-business": "src/lib/format.ts",
     },
   },
   {
     source: "phone-countries.ts",
     apps: {
-      "web-admin": "src/lib/phone-countries.ts",
       "web-business": "src/lib/phone-countries.ts",
     },
   },
   {
     source: "supabase-ef.ts",
     apps: {
-      "web-admin": "src/lib/supabase-ef.ts",
       "web-business": "src/lib/supabase-ef.ts",
     },
   },
   {
     source: "promotion-score.ts",
     apps: {
-      "web-admin": "src/lib/business/promotion-score.ts",
       "web-business": "src/lib/business/promotion-score.ts",
     },
   },
   {
     source: "proxy.ts",
-    apps: { "web-admin": "src/proxy.ts", "web-business": "src/proxy.ts" },
+    apps: { "web-business": "src/proxy.ts" },
   },
   {
     source: "manage.tsx",
     apps: {
-      "web-admin": "src/components/admin-ui/manage.tsx",
       "web-business": "src/components/admin-ui/manage.tsx",
     },
   },
   {
     source: "notifications/notification-feed.ts",
     apps: {
-      "web-admin": "src/components/place-manage/notifications/notification-feed.ts",
       "web-business":
         "src/components/place-manage/notifications/notification-feed.ts",
     },
@@ -139,7 +132,6 @@ const TARGETS: {
   {
     source: "notifications/notification-config.ts",
     apps: {
-      "web-admin": "src/components/place-manage/notifications/notification-config.ts",
       "web-business":
         "src/components/place-manage/notifications/notification-config.ts",
     },
@@ -147,7 +139,6 @@ const TARGETS: {
   {
     source: "notifications/notification-enricher-phase.ts",
     apps: {
-      "web-admin": "src/components/place-manage/notifications/notification-enricher-phase.ts",
       "web-business":
         "src/components/place-manage/notifications/notification-enricher-phase.ts",
     },
@@ -158,7 +149,6 @@ const TARGETS: {
   {
     source: "product-families.ts",
     apps: {
-      "web-admin": "src/lib/product-families.ts",
       "web-business": "src/lib/product-families.ts",
     },
   },
@@ -184,7 +174,6 @@ const TARGETS: {
   {
     source: "rewards-model.ts",
     apps: {
-      "web-admin": "src/lib/rewards-model.ts",
       "web-business": "src/lib/rewards-model.ts",
       "web-consumer": "src/lib/rewards-model.ts",
       "mobile-consumer": "src/lib/rewards-model.ts",
@@ -201,7 +190,10 @@ const TARGETS: {
  *  `deno task test:shared-modules` ignores these directories for the same
  *  reason — they are vitest files, not Deno tests. */
 const DIR_TARGETS: { sourceDir: string; apps: Record<string, string> }[] = [
-  { sourceDir: "place-console", apps: { "web-admin": "src", "web-business": "src" } },
+  // web-admin left every target here with MESITA-2115: the MVP First Stage cut
+  // admin's place surface to Profile · Admin, so its copies became its own
+  // files (the same detachment MESITA-2089 finishes by deleting web-business).
+  { sourceDir: "place-console", apps: { "web-business": "src" } },
 ];
 
 async function walk(dir: string, rel = ""): Promise<string[]> {
