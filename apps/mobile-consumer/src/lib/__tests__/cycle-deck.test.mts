@@ -4,8 +4,10 @@
 // one card and then "You're caught up" — with a catalog of one place, that is
 // the whole app. Two halves, same shape as diamond-list-copy.test.mts:
 //   1. BEHAVIOUR — cycle-deck.ts has no imports, so Node loads it as-is.
-//   2. SCAN — SwipeDeck swipes the cycled deck but counts the REAL one, and
-//      keeps the engine's banded order on the ranked path.
+//   2. SCAN — ScrollFeed (MESITA-2105, which replaced SwipeDeck on the Scroll
+//      tab) scrolls the cycled deck but counts the REAL one, keeps the
+//      engine's banded order on the ranked path, and never asks the server
+//      while the mock switch is on.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -44,34 +46,44 @@ test('an empty catalog stays empty — the real empty state still shows', () => 
   assert.deepEqual(cycleDeck([]), []);
 });
 
-test('SwipeDeck swipes the cycled deck and counts the real one', () => {
-  const src = readFileSync(join(SRC, 'components', 'swipe', 'SwipeDeck.tsx'), 'utf8');
+const FEED = join(SRC, 'components', 'scroll', 'ScrollFeed.tsx');
+
+test('ScrollFeed scrolls the cycled deck and counts the real one', () => {
+  const src = readFileSync(FEED, 'utf8');
   assert.ok(src.includes('const cycled = useMemo(() => cycleDeck(deck), [deck]);'));
-  assert.ok(src.includes('places={cycled}'));
-  assert.ok(src.includes('if (idx >= cycled.length)'));
+  assert.ok(src.includes('const data: (Place | \'end\')[] = [...cycled, \'end\'];'));
   // The Filters sheet and the empty states read the REAL deck, never 50.
   assert.ok(src.includes('count: deck.length'));
   assert.ok(src.includes('if (deck.length === 0)'));
   // A repeated id needs the position in its key, or the card never remounts.
-  assert.ok(src.includes('key={`${v.id}-${idx}`}'));
+  assert.ok(src.includes('`${item.id}-${i}`'));
 });
 
 test('the ranked deck keeps the engine order — no partner float over it', () => {
-  const src = readFileSync(join(SRC, 'components', 'swipe', 'SwipeDeck.tsx'), 'utf8');
+  const src = readFileSync(FEED, 'utf8');
   const fetchStart = src.indexOf('async function fetchSwipeDeck');
   const fetchFn = src.slice(fetchStart, src.indexOf('} catch (err) {', fetchStart));
   assert.ok(fetchFn.includes('return result.deck;'));
   assert.ok(!fetchFn.includes('sortPartnersFirst('));
 });
 
-test('Start over deals the engine order again — never a shuffle', () => {
-  // The deck carries closed places behind the open ones since MESITA-2047; a
-  // shuffle on restart would deal a shut place first.
-  const src = readFileSync(join(SRC, 'components', 'swipe', 'SwipeDeck.tsx'), 'utf8');
-  const start = src.indexOf('const restart = useCallback');
-  assert.ok(start > -1);
-  const restart = src.slice(start, src.indexOf('}, [deckQuery, restarting]);', start));
-  assert.ok(restart.includes('setOverridePlaces(result.deck);'));
-  assert.ok(!restart.includes('shuffleDeck('));
-  assert.ok(!restart.includes('sortPartnersFirst('));
+test('the mock replaces the whole source and never asks the server', () => {
+  const src = readFileSync(FEED, 'utf8');
+  assert.ok(src.includes('enabled: !SCROLL_USES_MOCK,'));
+  assert.ok(
+    src.includes("(SCROLL_USES_MOCK ? mockPlaces : (deckQuery.data ?? []))"),
+  );
+});
+
+test('the twelve mock places fill a 50-card deck', async () => {
+  // The generated mock imports only a TYPE through `@/`, which Node strips.
+  const { scrollMockPlaces, isMockPlace } = await import(
+    pathToFileURL(join(SRC, 'lib', 'mock', 'scroll-places.ts')).href
+  );
+  const rows = scrollMockPlaces();
+  assert.equal(rows.length, 12);
+  assert.ok(rows.every((p: { id: string }) => isMockPlace(p)));
+  const deck = cycleDeck(rows);
+  assert.equal(deck.length, 50);
+  assert.equal(new Set(deck.map((p: { id: string }) => p.id)).size, 12);
 });

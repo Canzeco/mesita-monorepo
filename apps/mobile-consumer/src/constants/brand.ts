@@ -72,6 +72,13 @@ export const COLORS = {
   inkHover: '#404040',
   swipepanel: '#171717',
   swipepanelForeground: '#ffffff',
+  /** ON-MEDIA (MESITA-2105): chrome drawn ON a full-bleed photo — Scroll's
+   *  action discs, name and meta. Copied VALUES of web's `--on-media`,
+   *  `--on-media-muted` and `--media-glass`. White on 55% black stays at
+   *  4.74:1 over a pure-white photo. */
+  onMedia: '#ffffff',
+  onMediaMuted: 'rgba(255,255,255,0.85)',
+  mediaGlass: 'rgba(0,0,0,0.55)',
 } as const;
 
 export const GRADIENTS = {
