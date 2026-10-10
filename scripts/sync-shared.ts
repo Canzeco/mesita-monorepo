@@ -171,13 +171,16 @@ const TARGETS: {
   // app renders through, and it renders `$1,234.00` where this one renders
   // `MX$…`; the collision guard below refuses that write rather than trusting
   // a future reader to notice.
+  //
+  // MESITA-2090 retired every Edge Function that read it, so the
+  // `supabase/supabase/functions/_shared/` copy is gone; MESITA-2089 deletes
+  // this generator with the two apps left below.
   {
     source: "rewards-model.ts",
     apps: {
       "web-business": "src/lib/rewards-model.ts",
       "mobile-consumer": "src/lib/rewards-model.ts",
     },
-    paths: ["supabase/supabase/functions/_shared/rewards-model.ts"],
   },
 ];
 

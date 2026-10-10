@@ -41,7 +41,7 @@
 //   • `google_place_id` is the immutable external identity spine once set.
 //     The one caller that ever WRITES it is the create path (save-place.ts,
 //     mode: "insert"); no update call site in the codebase sets it — one
-//     (business-web-update-place) explicitly REJECTS a client that tries,
+//     (admin-web-update-place) explicitly REJECTS a client that tries,
 //     upstream of this file. writePlace() enforces the same rule at the
 //     door: `google_place_id` in an UPDATE patch against "place_profiles" or
 //     "profiles" is refused before validation even runs.
@@ -191,7 +191,7 @@ export type PlaceProfileRow = {
   reservations_enabled: boolean;
   /** Settlement acceptance INTENT BIT (Pato gates 2026-08-29): the operator's
    *  "this place accepts Mesita Pay" toggle (admin-web-set-place-rails, the
-   *  Partner tab). The future gateway engine ANDs this with the global
+   *  Partner tab, both retired in MESITA-2090 — no writer today). The future gateway engine ANDs this with the global
    *  visits_config.payCard switch and Stripe capability — never a cache of
    *  engine state. PLACES-ONLY (see PLACE_INTENT_BIT_KEYS): the
    *  profiles_update trigger enumerates its SET list and silently drops
@@ -295,7 +295,8 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "orders_enabled",
   "reservations_enabled",
   // The four acceptance intent bits, legalized for admin-web-set-place-rails
-  // (Pato gate 2026-08-29, the Partner tab toggles + Promotion score). They
+  // (retired in MESITA-2090; Pato gate 2026-08-29, the Partner tab toggles +
+  // Promotion score). They
   // are PLACES-ONLY patch keys — see PLACE_INTENT_BIT_KEYS below.
   "mesita_pay_enabled",
   "credits_enabled",
@@ -540,8 +541,8 @@ const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>([
 // Acceptance intent bits are PLACES-ONLY: the profiles view's INSTEAD OF
 // trigger (profiles_update) enumerates its SET list and predates these
 // columns, so a profiles-routed patch would silently drop them — the door
-// refuses loudly instead. Their one writer (admin-web-set-place-rails)
-// targets `table: "place_profiles"`.
+// refuses loudly instead. Their one writer (admin-web-set-place-rails,
+// retired in MESITA-2090) targeted `table: "place_profiles"`.
 const PLACE_INTENT_BIT_KEYS = new Set<string>([
   "mesita_pay_enabled", "credits_enabled",
   "pickup_orders_enabled", "delivery_orders_enabled",
@@ -848,7 +849,8 @@ export type PlaceWriteArgs =
      * A `null` value means IS NULL, not `= null`: PostgREST renders
      * `.eq(col, null)` as `col=eq.null`, which matches no row, so a claim
      * guarded on "this place is still unclaimed" would silently never
-     * apply. business-web-claim-place depends on this. */
+     * apply. business-web-claim-place depended on this (retired,
+     * MESITA-2090). */
     guard?: Record<string, string | null>;
   }
   | {

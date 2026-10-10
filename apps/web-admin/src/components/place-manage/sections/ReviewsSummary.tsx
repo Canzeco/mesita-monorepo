@@ -6,9 +6,9 @@ import { SectionCard } from "@/components/admin-ui/manage";
 
 // Reviews SUMMARY (Pato live 2026-09-01; list restored MESITA-1802).
 //
-// The aggregate tiles a place is judged on. Individual Mesita guest reviews
-// live in MesitaReviewsList below; Google reviews stay one click away on
-// Google and are not proxied here.
+// The aggregate tiles a place is judged on. Google reviews stay one click
+// away on Google and are not proxied here. The individual Mesita guest
+// reviews list is gone with Mesita reviews (MVP First Stage, MESITA-2090).
 //
 // FOUR tiles (Pato live 2026-09-02): Google · Mesita · Instagram · Facebook.
 // Scores are half the reputation an operator is asked about; reach is the

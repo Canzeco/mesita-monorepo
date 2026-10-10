@@ -244,8 +244,7 @@ export async function listAllPlaces(): Promise<
 /** Listed is the guest-visibility gate: places.state, which is what the
  *  consumer RLS policy places_select_public_visible gates every guest read
  *  on. Unlisting removes the place from browse, search, the swipe deck and
- *  any shared link at once. business-web-update-place does not accept
- *  `state`, so this is its own admin door (admin-web-set-place-listed). */
+ *  any shared link at once. Its own admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,
   listed: boolean,
@@ -263,9 +262,9 @@ export async function setPlaceListed(
 // console"). A manager claims, verifies (mock-code OTP) and owns a place
 // from the business console, then onboards Stripe to activate Partnership
 // from there too. Admin keeps read-only visibility into all three on the
-// Mesita Search catalog table; it just lost the write door. The EFs
-// themselves (admin-web-set-place-active/-verified, admin-web-set-plan)
-// are untouched — nothing else in admin called them.
+// Mesita Search catalog table; it just lost the write door. Of those EFs,
+// admin-web-set-place-verified and admin-web-set-plan were retired in
+// MESITA-2090 (no caller); admin-web-set-place-active is Single Place's.
 
 /** Soft delete: writes places.state = 'archived' — the terminal value
  *  admin-web-set-place-listed's own header reserves for this. Reversible

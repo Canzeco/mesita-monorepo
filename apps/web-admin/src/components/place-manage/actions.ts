@@ -1,25 +1,18 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
-import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
-// Single-place console. These actions serve BOTH readers of the place
-// screen: a super-admin (whose JWT email is in super_admins, so
-// _shared/auth.ts grants access to any place regardless of place_members)
-// and the operator who actually holds it.
+// Single Place's server actions. Every call is an `admin-web-*` Edge
+// Function, super-admin gated server-side: the EF name is the ACL, and this
+// console's only reader is a super-admin.
 //
-// This file used to say only two things needed admin-specific EFs — the
-// place search and `plan`. That was wrong by six, and nobody could see it,
-// because a super-admin passes every guard: the one account that had ever
-// opened this console was in `super_admins`, so calls that 403 for a real
-// operator returned 200 for the only person testing (MESITA-1736).
-//
-// The rule, from this package's CLAUDE.md: everything the console does goes
-// through `business-web-*`; `admin-web-*` belongs to the Admin tab, which
-// `places/[id]/admin/page.tsx` refuses to a non-super-admin.
-// `lib/business-console-doors.test.ts` fails on a new operator-reachable
-// admin door, and fails again when a listed one is left after it is fixed.
+// The place row and the profile save bar used to ride the business console's
+// own doors (get-overview, update-place, get-atlas-fields), because Single
+// Place rendered that console's place surface (MESITA-2086). The business
+// console is deleted in the MVP First Stage cut, so those two EFs were
+// renamed to admin-web-* and the atlas read moved to its existing admin twin
+// (MESITA-2090).
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off
@@ -239,8 +232,7 @@ export type AdminMenuItem = {
   } | null;
 };
 
-// The full place row, loaded for a super-admin via business-get-overview
-// (which returns the single requested place when the caller is super-admin).
+// The full place row, loaded for a super-admin via admin-web-get-overview.
 // Typed loosely — the editor only touches the known fields below.
 export type AdminPlace = {
   id: string;
@@ -339,7 +331,7 @@ export type AdminPlace = {
   name_embedding?: string | number[] | null;
   name_embedding_hash?: string | null;
   // ── State, super-admin overview only (MESITA-1186) ───────────────────────
-  // Computed by business-web-get-overview off _shared/place-state.ts — the
+  // Computed by admin-web-get-overview off _shared/place-state.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
   // the box and the table can never disagree. Absent (undefined) means the
   // payload predates them; the box renders "?" rather than a false "no".
@@ -374,27 +366,17 @@ export type AdminPlace = {
   content_state?: string | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
-  /** places.mesita_pay_enabled — acceptance intent bit, read via the places
-   *  side-read (never through profiles). Absent = older payload → "?". */
-  mesita_pay_enabled?: boolean;
-  /** places.credits_enabled — same contract as mesita_pay_enabled. */
-  credits_enabled?: boolean;
-  /** places.pickup_orders_enabled — order-rail intent bit, same contract. */
-  pickup_orders_enabled?: boolean;
-  /** places.delivery_orders_enabled — order-rail intent bit, same contract. */
-  delivery_orders_enabled?: boolean;
   [k: string]: unknown;
 };
-/** The place PLUS whether this caller is a super-admin. get-overview already
- *  ships the flag (index.ts:332); the Admin tab is gated on it, so a
- *  restaurant never sees the operator internals (autoplan D1, 2026-09-06). */
+/** The place PLUS whether this caller is a super-admin. admin-web-get-overview
+ *  is super-admin only, so a 200 always carries `isSuperAdmin: true`. */
 export async function getPlaceAndRole(
   placeId: string,
 ): Promise<Result<{ place: AdminPlace; isSuperAdmin: boolean }>> {
   const r = await efInvoke<{
     active: { place: AdminPlace } | null;
     isSuperAdmin?: boolean;
-  }>("business-web-get-overview", { placeId, ticketsLimit: 0 });
+  }>("admin-web-get-overview", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   const place = r.data.active?.place ?? null;
   if (!place || place.id !== placeId) {
@@ -411,47 +393,16 @@ export async function getPlaceAndRole(
 export async function updatePlace(
   patch: Record<string, unknown> & { id: string },
 ): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("business-web-update-place", patch);
+  const r = await efInvoke<{ place: AdminPlace }>("admin-web-update-place", patch);
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
 }
 
-// Plan is billing, not profile: business-web-update-place rejects any body
-// carrying a `plan` key. The operator's door is `business-web-set-partnership`
-// (MESITA-1740): join writes plan=pro internally, drop writes free, and
-// a client-chosen `plan` is refused. `rates` ride along on purpose
-// (MESITA-818/912) — the partnership and the strategy that justifies it are
-// one atomic write.
-export async function setPlacePlan(
-  placeId: string,
-  plan: PlanKey,
-  rates?: Record<string, number | null>,
-): Promise<Result<AdminPlace>> {
-  const action = plan === "free" ? "drop" : "join";
-  const r = await efInvoke<{ place: AdminPlace }>(
-    "business-web-set-partnership",
-    {
-      placeId,
-      action,
-      ...(rates ?? {}),
-    },
-  );
-  // `code` RIDES ALONG, like the two Connect actions above it. The join door
-  // 409s `place_not_partnered` when the place has no live Mesita Membership
-  // behind it (MESITA-1889), and `rejoinFailure` branches on exactly that code
-  // to say so instead of "try again". Dropping it here type-checked — the
-  // failure arm's `code` is optional — and made that branch permanently
-  // unreachable: `r.code` was `undefined` at every call site, so the one
-  // refusal a second press cannot fix printed the retry sentence anyway.
-  if (!r.ok) return { ok: false, error: r.error, code: r.code };
-  return { ok: true, data: r.data.place };
-}
 /** List or unlist the place on Mesita — the ONLY write path to
  *  places.state, which is what the consumer RLS policy
  *  places_select_public_visible gates every guest read on. Unlisting removes
  *  the place from browse, search, the swipe deck and any shared link at once.
- *  business-web-update-place does not accept `state`, so this is its own
- *  admin door (admin-web-set-place-listed). */
+ *  Its own admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,
   listed: boolean,
@@ -499,48 +450,10 @@ export async function setPlaceActive(
     },
   };
 }
-export type MesitaPlaceReview = {
-  id: string;
-  food: number;
-  service: number;
-  ambience: number;
-  value: number | null;
-  overall: number | null;
-  comments: string | null;
-  createdAt: string;
-  ticketId: string;
-  guestName: string;
-  /** check.mesita.ai link — editor/owner only; viewers get null from the EF. */
-  visitUrl: string | null;
-};
-
-export async function getPlaceReviews(
-  placeId: string,
-  opts?: { limit?: number; offset?: number },
-): Promise<
-  Result<{ reviews: MesitaPlaceReview[]; total: number }>
-> {
-  const r = await efInvoke<{
-    reviews?: MesitaPlaceReview[];
-    total?: number;
-  }>("business-web-list-reviews", {
-    placeId,
-    limit: opts?.limit,
-    offset: opts?.offset,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    data: {
-      reviews: r.data.reviews ?? [],
-      total: r.data.total ?? 0,
-    },
-  };
-}
 
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
-// Same catalog Atlas Config reads, through the operator door
-// (`business-web-get-atlas-fields` → public.place_tags).
+// Same catalog Atlas Config reads, through the same door
+// (admin-web-get-atlas-fields → _shared/atlas-fields.ts).
 
 export type PlaceTagOption = {
   slug: string;
@@ -617,7 +530,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
     categories: PlaceCategoryOption[];
     families?: PlaceFamilyOption[];
     fieldLimits?: Record<string, { max: number; note: string }>;
-  }>("business-web-get-atlas-fields", {});
+  }>("admin-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
   const fieldLimits = readPlaceFieldLimits(r.data.fieldLimits);
   return {

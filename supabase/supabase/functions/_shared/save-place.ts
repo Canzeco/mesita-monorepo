@@ -18,7 +18,8 @@
 // never leave an orphan profile. Media is NOT handled here.
 //
 // Ownership (place_members) is intentionally NOT created here — ownership
-// only lands when admin-web-decide-verification approves a claim. Listing
+// landed only when admin-web-decide-verification approved a claim, and that
+// door was retired in MESITA-2090. Listing
 // type 'partner' here is the consumer Mesita Partner badge only — it does
 // not grant plan, ownership, or a promo strategy.
 

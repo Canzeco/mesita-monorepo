@@ -77,6 +77,24 @@ jobs:
       # `mesita_pay_enabled` into one write; business-web-change-subscription
       # sold a per-place Verified subscription no app called. Their source is
       # archived under retired/edge-functions/.
+      # MESITA-2090: the two business-web functions admin's Single Place still
+      # called were renamed to admin-web-get-overview / admin-web-update-place
+      # when the business console was deleted (MVP First Stage). A rename is a
+      # new folder plus the old slug here, or the business name stays callable.
+      # The same PR retires the 110 functions no First Stage caller reaches:
+      # every remaining business-web-*, all validate-web-*, the Stripe webhook,
+      # gift-web-preview-code, and the consumer/admin functions with no caller
+      # left (credits, tickets, cards, connectors, consumer-mcp, claims,
+      # verification, notifications). Callers are now consumer · admin ·
+      # eleven · supabase only.
+      # ORDER MATTERS FOR ONE PAIR. `grep -Fqw` treats a hyphen as a word
+      # boundary, so a slug also matches any live slug it is a hyphen-bounded
+      # prefix of. If business-web-create-place were gone while
+      # business-web-create-place-api-key was still live, the grep would match
+      # the longer name, `functions delete` would fail on the absent shorter
+      # one, and `set -e` would abort the step. So the LONGER slug of a prefix
+      # pair is listed (and deleted) first; _shared/leftover-efs.test.ts pins
+      # it, and pins that no leftover slug prefixes a function still deployed.
       - name: Delete leftover retired functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -128,6 +146,118 @@ jobs:
             business-web-set-org-partnership
             business-web-update-org-member-role
             business-web-update-organization
+            business-web-get-overview
+            business-web-update-place
+            admin-web-ask-memo
+            admin-web-check-api-health
+            admin-web-decide-place-claim
+            admin-web-decide-verification
+            admin-web-find-place
+            admin-web-get-credits-spend-report
+            admin-web-get-place-activity
+            admin-web-get-place-payment-account
+            admin-web-get-place-verification
+            admin-web-grant-class
+            admin-web-list-credit-liability
+            admin-web-list-notifications
+            admin-web-list-place-claims
+            admin-web-list-verifications
+            admin-web-mint-invite-codes
+            admin-web-refund-credit-lot
+            admin-web-review-ticket-report
+            admin-web-set-place-enrichment
+            admin-web-set-place-rails
+            admin-web-set-place-verified
+            admin-web-set-plan
+            business-web-accept-invite
+            business-web-cancel-ticket
+            business-web-claim-place
+            business-web-confirm-reservation
+            business-web-create-manager
+            business-web-create-place-api-key
+            business-web-create-place
+            business-web-find-place
+            business-web-get-atlas-fields
+            business-web-get-identity
+            business-web-get-manager
+            business-web-get-payment-account
+            business-web-get-payment-dashboard-link
+            business-web-get-performance
+            business-web-get-place
+            business-web-get-verification
+            business-web-invite-member
+            business-web-list-members
+            business-web-list-place-api-keys
+            business-web-list-places
+            business-web-list-reviews
+            business-web-list-tickets
+            business-web-manage-membership
+            business-web-mark-ticket-paid
+            business-web-record-strike
+            business-web-release-place
+            business-web-remove-member
+            business-web-request-manual-review
+            business-web-revoke-place-api-key
+            business-web-send-email-otp
+            business-web-send-phone-otp
+            business-web-set-check-pin
+            business-web-set-partnership
+            business-web-set-place-rails
+            business-web-signin-email
+            business-web-start-membership
+            business-web-start-payment-onboarding
+            business-web-suggest-places
+            business-web-suggest-promo
+            business-web-update-legal-identity
+            business-web-update-member-role
+            business-web-verify-email-otp
+            business-web-verify-phone-otp
+            business-web-verify-place
+            consumer-mcp
+            consumer-web-add-card
+            consumer-web-add-favorite
+            consumer-web-apply-ticket-credits
+            consumer-web-buy-credits
+            consumer-web-cancel-credit-gift
+            consumer-web-cancel-ticket
+            consumer-web-claim-invite-code
+            consumer-web-create-connector
+            consumer-web-create-subscription
+            consumer-web-create-ticket
+            consumer-web-get-controls-config
+            consumer-web-get-discount-quote
+            consumer-web-get-metrics
+            consumer-web-get-place-activity
+            consumer-web-get-ticket
+            consumer-web-gift-credits
+            consumer-web-list-cards
+            consumer-web-list-connectors
+            consumer-web-list-credit-balances
+            consumer-web-list-credit-gifts
+            consumer-web-list-credit-places
+            consumer-web-list-favorites
+            consumer-web-list-tickets
+            consumer-web-redeem-credit-gift
+            consumer-web-remove-card
+            consumer-web-report-ticket
+            consumer-web-revoke-connector
+            consumer-web-schedule-place-creation
+            consumer-web-select-ticket-payment
+            consumer-web-set-default-card
+            consumer-web-submit-review
+            consumer-web-submit-story
+            consumer-web-submit-ticket-bill
+            consumer-web-submit-ticket-review
+            consumer-web-submit-ticket-total
+            gift-web-preview-code
+            stripe-webhook-handle-event
+            validate-web-approve-ticket
+            validate-web-get-ticket
+            validate-web-mark-paid
+            validate-web-poll-ticket
+            validate-web-request-fix
+            validate-web-scan-ticket
+            validate-web-validate-ticket
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"

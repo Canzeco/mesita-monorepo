@@ -16,16 +16,17 @@
 // far more than the 4 MESITA-1600 named by hand — spanning a real
 // architectural question (should web-business's operator actions route
 // through web-admin instead, or do some of these EFs legitimately serve two
-// consoles and need renaming?) that is explicitly NOT this test's call to
-// make. GRANDFATHERED_VIOLATIONS freezes today's known set: this fails on
-// any NEW violation from here, and shrinks as each grandfathered one gets
-// fixed — remove its line here in the same PR that fixes it.
+// consoles and need renaming?) that was explicitly NOT this test's call to
+// make; deleting web-business (MESITA-2090) answered most of it.
+// GRANDFATHERED_VIOLATIONS freezes today's known set: this fails on any NEW
+// violation from here, and shrinks as each grandfathered one gets fixed —
+// remove its line here in the same PR that fixes it.
 //
-// OUT OF SCOPE ON PURPOSE: `stripe-*` (Stripe's own webhook delivery, not
-// an app), `supabase-*` (internal cron/edgefunc caller), `eleven-*`
-// (ElevenLabs' voice-agent tool calls), and the one-off `staff-web-*`
-// benchmark EF (invoked by an ops script, not any app in `apps/`) — none
-// of these have a caller this scan can verify by reading `apps/`.
+// OUT OF SCOPE ON PURPOSE: `supabase-*` (internal cron/edgefunc caller),
+// `eleven-*` (ElevenLabs' voice-agent tool calls), and the one-off
+// `staff-web-*` benchmark EF (invoked by an ops script, not any app in
+// `apps/`) — none of these have a caller this scan can verify by reading
+// `apps/`.
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const REPO_ROOT = new URL("../../../../", import.meta.url);
@@ -35,21 +36,14 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
  */
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
-  // web-admin joined the business actor with MESITA-2086: Manage › Single
-  // Place renders the business console's place surface, GENERATED from
-  // shared/place-console into both apps, so every business-web-* call that
-  // surface makes is the same call from either console. The operator's
-  // session is a super-admin, which _shared/auth-membership.ts already
-  // admits through every requireMembership/Owner/Editor gate — the EF name
-  // still names the surface that owns the call; admin merely hosts it too.
-  business: ["web-business", "mobile-business", "web-admin"],
-  consumer: ["web-consumer", "mobile-consumer"],
-  validate: ["web-validate"],
-  // The public gift-landing page (MESITA-1677) — a stranger with a code, no
-  // account, lives as a top-level route in web-consumer (outside its own
-  // (shell) auth wall), not a separate app the way web-validate is. Same
-  // actor-per-prefix rule, one owner.
-  gift: ["web-consumer"],
+  consumer: ["web-consumer"],
+  // MESITA-2090 (MVP First Stage) retired the other three actors with every
+  // function they owned: `business` (web-business, mobile-business — its two
+  // functions admin's Single Place still called were renamed admin-web-*),
+  // `validate` (web-validate) and `gift` (the public gift page). The closed
+  // caller set is consumer · admin · eleven · supabase. Re-adding an actor
+  // takes an entry here — the second test below fails on a *-web-* prefix
+  // with none.
 };
 
 /**
@@ -66,18 +60,11 @@ const NON_APP_ACTORS = new Set(["staff"]);
  * (catches new drift) rather than a blocker on fixing the 21 that already
  * existed the day this test landed. Each is `efName:strayApp`. Fixing one
  * — reroute the caller, or rename the EF if it legitimately serves both
- * consoles — removes its line here in the same PR.
+ * consoles — removes its line here in the same PR. The eight
+ * `admin-web-*:web-business` entries left with that app (MESITA-2090).
  */
 const GRANDFATHERED_VIOLATIONS = new Set([
-  "admin-web-enrich-place:web-business",
-  "admin-web-find-place:web-business",
-  "admin-web-get-place-enrichment:web-business",
   "admin-web-reset-database:web-consumer",
-  "admin-web-search-places:web-business",
-  "admin-web-set-place-active:web-business",
-  "admin-web-set-place-enrichment:web-business",
-  "admin-web-set-place-listed:web-business",
-  "admin-web-suggest-places:web-business",
   "consumer-web-create-reservation:web-admin",
 ]);
 
@@ -126,7 +113,7 @@ function escapeRegExp(s: string): string {
  *
  * Deliberately NOT a bare substring match: this codebase's comments name
  * other functions constantly for context (e.g. "the same backend
- * apps/web-validate calls"), and a descriptive label string can legitimately
+ * apps/web-consumer calls"), and a descriptive label string can legitimately
  * mention an EF by name mid-sentence inside ITS OWN unrelated string
  * literal ("today: business-web-suggest-promo)."). Only a quote
  * immediately before AND after the name is an argument, not prose.

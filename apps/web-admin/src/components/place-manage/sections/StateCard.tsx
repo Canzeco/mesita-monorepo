@@ -79,7 +79,7 @@ import {
 //   Enriching  the Enricher pipeline is mid-flight. Live-run, not last-completed.
 //
 // Created, Listed and Enriched arrive computed on the super-admin overview
-// payload (business-web-get-overview → _shared/place-state.ts and
+// payload (admin-web-get-overview → _shared/place-state.ts and
 // _shared/crenup-ladder.ts), the same helpers the Single Place table uses, so
 // the box and the table can never disagree. That guarantee was only half true
 // until MESITA-1218: the chip read the 0-10 high-water while this box's prose

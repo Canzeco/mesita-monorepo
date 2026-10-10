@@ -114,26 +114,15 @@ const DELETE_VERB = /\.delete\s*\(/;
 
 // ── PLACE (place_profiles, profiles) — bootstrapped from a real findWriters() run ──
 const PLACE_PROFILE_UPDATE_ALLOWLIST = [
-  "_shared/ojo-engine.ts", // windowing false positive — its .from("profiles") is read-only (.select); the write-verb match in the 2000-char window is the unrelated visit_tickets .update() a few lines later
   "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("place_profiles")), listed for a future reader's clarity
   "_shared/field-correction-writer.ts", // enrichment field pins + proposal queue (MESITA-2029)
   "_shared/place-embeddings.ts",
   "_shared/save-place.ts",
   "_shared/social-followers.ts",
   "_shared/store-place-images.ts",
-  "_shared/ticket-reprice.ts",
-  "_shared/ticket-review-notify.ts",
-  "admin-web-set-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-place-active/index.ts",
-  "admin-web-set-place-verified/index.ts", // windowing false positive — .from("place_profiles") is a select; the insert writes place_verifications
-  "admin-web-set-plan/index.ts",
-  "business-web-confirm-reservation/index.ts",
-  "business-web-request-manual-review/index.ts",
-  "business-web-update-place/index.ts",
-  "validate-web-get-ticket/index.ts",
-  "consumer-web-submit-review/index.ts",
-  "consumer-web-submit-story/index.ts",
+  "admin-web-update-place/index.ts",
   "supabase-cron-enrich-place-contents/index.ts",
   "supabase-cron-enrich-place-research/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
@@ -154,61 +143,19 @@ Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist
 // dispatch (`admin.from(args.table)`), which this literal-string scan cannot
 // and should not match.
 //
-// MESITA-1892 PUT REAL WRITERS ON IT, and they are on this list on purpose
-// rather than pushed through the door. The organization layer held four
-// columns — `partnered`, `legal_name`, `rfc`, `stripe_billing_customer_id` —
-// and they landed on `places` when the tenant boundary moved. Three of the
-// four have a writer that needs something writePlace() cannot give it:
-//
-//   • `partnered` is flipped by a GUARDED update that then reports what
-//     actually moved (joined / dropped). writePlace() returns the row it
-//     wrote, not a count of what changed, so the switch would have to
-//     re-derive its own answer — and a switch that re-derives its answer is
-//     a switch that can report a join it did not perform.
-//   • `stripe_billing_customer_id` is claimed by COMPARE-AND-SET
-//     (`.is(col, null)`), which is the whole race guard: two concurrent
-//     checkouts must not mint two Stripe Customers for one place. An
-//     unconditional door write would let the loser overwrite the winner's
-//     anchor, and billing history would fork silently.
-//
-// So the rule this list now states is narrower than "everything goes through
-// the door" and more honest: a raw `.from("places")` write is allowed only
-// where the door would cost a guarantee, and each entry says which one.
+// MESITA-1892 PUT REAL WRITERS ON IT: the organization layer's columns
+// landed on `places` when the tenant boundary moved. MESITA-2090 deleted the
+// partnership switch, the Stripe webhook and the legal-identity writer with
+// the business console, which leaves one. A raw `.from("places")` write is
+// allowed only where the door would cost a guarantee, and each entry says
+// which one.
 const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [
-  // WINDOWING FALSE POSITIVE, verified by reading the source (per this
-  // file's own header rule, not assumed): business-web-verify-place touches
-  // `places` exactly once, and that once is a READ — the point of it being
-  // that the place names its own holder rather than the caller's body naming
-  // one. It writes nothing there. The write the scan's window catches is the
-  // `.from("place_verifications").insert(...)` roughly 40 lines further
-  // down, on a different table: the approved proof row, which is the only
-  // thing this function creates.
-  //
-  // COST, stated plainly: an allowlist entry exempts the whole FILE, so a
-  // future real write to `places` from this function would not be caught
-  // here. The alternative -- spacing the insert past the scan's 2000-char
-  // window -- is contorting a handler to satisfy a scanner, which is worse.
-  "business-web-verify-place/index.ts",
-  // REAL WRITERS of places.partnered, guarded update + moved count (see the
-  // section comment). The place-scoped switch and the Stripe-driven
-  // entitlement write the same bit from two directions, which is why both
-  // are here and neither owns it alone.
-  "_shared/place-partnership.ts",
-  "_shared/partner-membership.ts",
-  // REAL WRITERS of places.stripe_billing_customer_id, compare-and-set (see
-  // the section comment). `stripe-billing.ts` mints the Customer at
-  // checkout; the webhook fills the same hole from the event, for a
-  // subscription that was created outside that path.
+  // REAL WRITER of places.stripe_billing_customer_id, compare-and-set
+  // (`.is(col, null)`), which is the whole race guard: two concurrent
+  // checkouts must not mint two Stripe Customers for one place. An
+  // unconditional door write would let the loser overwrite the winner's
+  // anchor, and billing history would fork silently.
   "_shared/stripe-billing.ts",
-  "stripe-webhook-handle-event/partner-membership.ts",
-  // REAL WRITER of places.legal_name / places.rfc. NOT through writePlace()
-  // for one reason: the 23505 from `places_rfc_unique` has to reach the
-  // handler as an error OBJECT so `isDuplicateRfcError` can narrow it by
-  // constraint name and answer with the one sentence an owner can act on. A
-  // door returning `{ ok: false, error: string }` has already flattened the
-  // code away, and every other unique index on `places` would then read as
-  // "RFC taken".
-  "business-web-update-legal-identity/index.ts",
 ];
 
 Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () => {
@@ -220,12 +167,7 @@ Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () =
 // ── CONSUMER (consumers) — see the CONSUMER note in the file header ────────
 const CONSUMER_ALLOWLIST = [
   "_shared/consumer-doc.ts", // PR #1157's write door (merged)
-  "validate-web-get-ticket/index.ts",
-  "consumer-mcp/index.ts",
-  "consumer-web-create-connector/index.ts",
   "consumer-web-create-reservation/index.ts",
-  "consumer-web-create-ticket/index.ts",
-  "consumer-web-submit-story/index.ts",
 ];
 
 Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async () => {
@@ -234,35 +176,13 @@ Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async ()
   assertEquals(extra, [], `new direct writer(s) of consumers: ${extra.join(", ")}`);
 });
 
-// ── TICKET (visit_tickets) — no door this PR, ratchet only ─────────────
-// THE ticket door now exists (`_shared/ticket-doc.ts`, writeTicket,
-// MESITA-1281/#1161, merged after this PR's branch was cut) — routes 18/18
-// existing call sites. This PR's own TICKET section stays ratchet-only by
-// design (see the file header / PR body: a door without the state-machine
-// transition logic would be misleading); no reconciliation needed beyond
-// listing the new door + ojo-engine.ts below.
-const TICKET_ALLOWLIST = [
-  "_shared/ojo-engine.ts", // real writer (Ojo, MESITA-1034/#1159, merged after this ratchet's baseline scan) — annotation + state-transition updates on visit_tickets, all CAS-guarded (see the file itself)
-  "_shared/ticket-doc.ts", // THE ticket door (writeTicket, MESITA-1281/#1161)
-  "_shared/ticket-informal.ts",
-  "_shared/ticket-reprice.ts",
-  "_shared/ticket-review-notify.ts",
-  "business-web-cancel-ticket/index.ts",
-  "validate-web-approve-ticket/index.ts",
-  "validate-web-get-ticket/index.ts",
-  "validate-web-request-fix/index.ts",
-  "validate-web-scan-ticket/index.ts",
-  "validate-web-validate-ticket/index.ts",
-  "consumer-web-cancel-ticket/index.ts",
-  "consumer-web-create-ticket/index.ts",
-  "consumer-web-report-ticket/index.ts",
-  "consumer-web-select-ticket-payment/index.ts",
-  "consumer-web-submit-review/index.ts",
-  "consumer-web-submit-story/index.ts",
-  "consumer-web-submit-ticket-bill/index.ts",
-  "consumer-web-submit-ticket-review/index.ts",
-  "consumer-web-submit-ticket-total/index.ts",
-];
+// ── TICKET (visit_tickets) — ratchet only ─────────────────────────────
+// Every writer — the ticket door (`_shared/ticket-doc.ts`), Ojo, the
+// validate/consumer/business ticket functions — went with the ticket flow
+// in MESITA-2090 (MVP First Stage). The table stays until the Second Stage
+// schema drop, so the ratchet stays at zero: any new writer is a new
+// decision.
+const TICKET_ALLOWLIST: string[] = [];
 
 Deno.test("TICKET: no new writer of visit_tickets outside the allowlist", async () => {
   const found = await findWriters("visit_tickets", WRITE_VERBS);
@@ -274,8 +194,6 @@ Deno.test("TICKET: no new writer of visit_tickets outside the allowlist", async 
 const RESERVATION_ALLOWLIST = [
   "_shared/agent-tools.ts",
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280) — 28/28 call sites routed, the last 13 (supabase-edgefunc-reservation-call/index.ts) in a follow-up PR (#1169) once the write-surface research confirmed every literal value that file writes was already covered by the closed sets
-  "business-web-confirm-reservation/index.ts",
-  "consumer-mcp/index.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-update-reservation/index.ts",
@@ -303,7 +221,6 @@ Deno.test("RESERVATION: no new writer of reservation_tickets outside the allowli
 // `_shared/write-config.ts` — the door this file has allowed since it was
 // written, finally the only writer it names.
 const CONFIG_ALLOWLIST = [
-  "_shared/otp.ts",
   "_shared/save-place.ts",
   "_shared/write-config.ts", // THE app_config door (MESITA-1724) — every admin config section reads and writes here
   "consumer-web-create-reservation/index.ts",
@@ -341,9 +258,6 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // tightened later without this file silently going stale.
 const HARD_DELETE_ALLOWLIST = [
   "_shared/save-place.ts", // real: deletes the place_profiles row it just inserted, on a failed downstream step (compensating-write pattern)
-  "_shared/ticket-doc.ts", // writeTicket still exposes mode: "delete"; account close must not call it (MESITA-1250 — tickets stay)
-  "business-web-request-manual-review/index.ts", // windowing false positive — real delete() targets place_verifications (dedup-before-insert), not profiles
-  "consumer-web-submit-review/index.ts", // windowing false positive — real delete() targets consumer_review_claims (claim rollback on a failed write), not profiles or visit_tickets
 ];
 
 Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/ticket/reservation row", async () => {

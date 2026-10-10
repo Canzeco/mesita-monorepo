@@ -5,7 +5,8 @@
 // Autocomplete and Text Search never take a country — both stay Any.
 // Membership is a boolean `partner` on each row; the client paints the
 // point and never shows source section labels. Admin Manage Single Place
-// uses the same lane (deep). Business suggest still uses suggestPlaces.
+// uses the same lane (deep). Business suggest and suggestPlaces were
+// retired in MESITA-2090.
 // Word answers with TWO entities (MESITA-1403): this caller alone opts
 // into Location rows (`kind: "location"`), and `anchorPlaceId` resolves a
 // picked Location's coordinates + viewport — one Details call per pick.

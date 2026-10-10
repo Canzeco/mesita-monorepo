@@ -2,8 +2,8 @@
 //
 // Read-only Enricher vocabulary for the admin console: Families,
 // place categories, tag catalog, tag facets, and enforced field length limits.
-// Twin of `business-web-get-atlas-fields`; both are a guard plus
-// `_shared/atlas-fields.ts` (MESITA-1740).
+// A guard plus `_shared/atlas-fields.ts` (MESITA-1740). Its business twin
+// went with the business console (MESITA-2090).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";

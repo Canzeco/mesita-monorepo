@@ -131,8 +131,8 @@ Deno.serve(async (req) => {
   // under the full name (host systems key on "last name + party size"), and
   // when the place calls back, eleven-agent-get-reservation finds the booking
   // by fuzzy first/last match. A first-name-only booking is a table nobody can
-  // find. Tickets deliberately do NOT gate this way — validate-web-get-ticket
-  // falls back to the first name at the door.
+  // find. Tickets deliberately did NOT gate this way — validate-web-get-ticket
+  // fell back to the first name at the door (retired, MESITA-2090).
   if (!(consumerRow as { last_name?: string | null } | null)?.last_name) {
     return json({
       ok: false,

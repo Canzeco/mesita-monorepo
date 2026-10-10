@@ -18,18 +18,18 @@
 // `renamed-column-refs.test.ts` pins the two names that are retired TODAY
 // and goes blind the moment the next rename lands.
 //
-// The `project_id → place_id` remap lives ONLY inside ticket-doc.ts and
-// reservation-doc.ts. A handful of readers do `fromPlaceIdRow` by hand
-// (`ticket-check.ts`, `agent-tools.ts`, `consumer-web-get-ticket`) and are
-// named on those allowlists. Everyone else on the list is today's honest
-// baseline, not a claim they have been migrated.
+// The `project_id → place_id` remap lives ONLY inside reservation-doc.ts
+// (ticket-doc.ts went with the ticket functions, MESITA-2090).
+// `agent-tools.ts` does `fromPlaceIdRow` by hand and is named on its
+// allowlist. Everyone else on the list is today's honest baseline, not a
+// claim they have been migrated.
 //
 // Belt 2 — SWALLOWED ERRORS. Being on the right side of the remap and being
-// able to see your own failure are different properties. `ticket-check.ts`
-// remaps by hand and still destructures `{ data }` alone, so a failed
-// lookup behind Mesita Validate's staff page says the code is not a ticket.
-// 31 files, list only shrinks. The scan flags only the destructure that
-// omits `error`; `const r = await …` and the builder shape are not guessed.
+// able to see your own failure are different properties: `ticket-check.ts`
+// remapped by hand and still destructured `{ data }` alone, so a failed
+// lookup behind the staff ticket page said the code was not a ticket. The
+// list only shrinks. The scan flags only the destructure that omits `error`;
+// `const r = await …` and the builder shape are not guessed.
 //
 // Scan helpers duplicated from write-surface.test.ts on purpose — that
 // file's internals are regression-pinned; extracting a shared scan module
@@ -41,7 +41,11 @@ const FUNCTIONS_DIR = new URL("../", import.meta.url);
 
 /** The document doors' tables, plus the `profiles` view every place read
  *  lands on. A door exists for these, which is what makes a raw read here a
- *  decision rather than the only option. */
+ *  decision rather than the only option. `visit_tickets` is the exception:
+ *  its door (`ticket-doc.ts`) went with the ticket functions in MESITA-2090,
+ *  and the table stays here so no NEW reader appears before the Second Stage
+ *  schema drop. `place_payment_accounts` and `place_guest_customers` left the
+ *  list then too — their doors and every reader were deleted. */
 const DOORED_TABLES = [
   "visit_tickets",
   "reservation_tickets",
@@ -49,19 +53,14 @@ const DOORED_TABLES = [
   "profiles",
   "places",
   "consumers",
-  "place_payment_accounts",
-  "place_guest_customers",
 ] as const;
 
 /** The doors themselves, and the compat shim. They read these tables because
  *  that is their job. */
 const DOORS = [
-  "_shared/ticket-doc.ts",
   "_shared/reservation-doc.ts",
   "_shared/place-doc.ts",
   "_shared/consumer-doc.ts",
-  "_shared/payment-account-doc.ts",
-  "_shared/place-guest-customer-doc.ts",
   "_shared/place-id.ts",
 ];
 
@@ -140,41 +139,8 @@ function assertRatchet(table: string, found: string[], allowlist: string[]) {
 
 const VISIT_TICKET_READ_ALLOWLIST = [
   "_shared/membership.ts",
-  "_shared/ojo-engine.ts",
-  "_shared/ticket-check.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
-  "_shared/ticket-doc.ts", // THE ticket door (writeTicket)
-  "_shared/ticket-informal.ts",
-  "_shared/ticket-reprice.ts",
-  "_shared/ticket-review-notify.ts",
-  "admin-web-get-place-activity/index.ts",
-  "business-web-cancel-ticket/index.ts",
-  "business-web-get-overview/index.ts",
-  "business-web-get-performance/index.ts",
-  "business-web-list-tickets/index.ts",
-  "business-web-mark-ticket-paid/index.ts",
-  "business-web-record-strike/index.ts",
-  "business-web-suggest-promo/index.ts",
-  "consumer-web-apply-ticket-credits/index.ts",
-  "consumer-web-cancel-ticket/index.ts",
-  "consumer-web-create-ticket/index.ts",
-  "consumer-web-get-metrics/index.ts",
-  "consumer-web-get-place-activity/index.ts",
   "consumer-web-get-profile/index.ts",
-  "consumer-web-get-ticket/index.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
   "consumer-web-list-pay-notifications/index.ts",
-  "consumer-web-list-tickets/index.ts",
-  "consumer-web-report-ticket/index.ts",
-  "consumer-web-select-ticket-payment/index.ts",
-  "consumer-web-submit-story/index.ts",
-  "consumer-web-submit-ticket-bill/index.ts",
-  "consumer-web-submit-ticket-review/index.ts",
-  "consumer-web-submit-ticket-total/index.ts",
-  "stripe-webhook-handle-event/ticket-payment-intent.ts",
-  "validate-web-approve-ticket/index.ts",
-  "validate-web-mark-paid/index.ts", // net due for implied-at-place tender rows on close — MESITA-1913
-  "validate-web-poll-ticket/index.ts",
-  "validate-web-request-fix/index.ts",
-  "validate-web-validate-ticket/index.ts",
 ];
 
 Deno.test("TICKET READ: no new raw reader of visit_tickets outside the allowlist", async () => {
@@ -185,16 +151,9 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/agent-tools.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
   "_shared/config-section-reservations.ts",
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation)
-  "admin-web-get-place-activity/index.ts",
-  "business-web-confirm-reservation/index.ts",
-  "business-web-get-performance/index.ts",
-  "consumer-mcp/index.ts",
-  "consumer-mcp/profile-tool.ts",
   "consumer-web-cancel-reservation/index.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts",
-  "consumer-web-get-metrics/index.ts",
-  "consumer-web-get-place-activity/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-list-reservations/index.ts",
   "consumer-web-update-reservation/index.ts",
@@ -213,39 +172,22 @@ Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside th
 
 const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/agent-tools.ts",
-  "_shared/credits-readiness.ts",
   "_shared/discovery-place.ts",
   "_shared/mesita-name-door.ts",
-  "_shared/mesita-pay-readiness.ts",
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
   "admin-web-enrich-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
-  "admin-web-get-place-payment-account/index.ts",
-  "admin-web-list-notifications/notification-state.ts",
   "admin-web-search-places/index.ts",
-  "admin-web-set-place-enrichment/index.ts",
-  "admin-web-set-place-verified/index.ts",
-  "business-web-confirm-reservation/index.ts",
-  "business-web-get-overview/index.ts",
-  "business-web-get-payment-account/index.ts", // pay-readiness intent bit (MESITA-1740)
-  "business-web-update-place/place-social-refresh.ts",
+  "admin-web-get-overview/index.ts",
+  "admin-web-update-place/place-social-refresh.ts",
   "consumer-web-confirm-reservation/index.ts",
-  // The Credits surfaces resolve the PLACE a balance or a gift is spendable
-  // at (MESITA-1892 — they resolved the organization, which had its own name
-  // and its own pay bit). They read place_profiles for the name and the
-  // Mesita Pay intent bit; the money rows they key on carry place_id.
-  "consumer-web-list-credit-balances/index.ts",
-  "consumer-web-list-credit-gifts/index.ts",
-  "consumer-web-list-credit-places/index.ts",
-  "consumer-web-redeem-credit-gift/index.ts",
   "eleven-a1-report-outcome/index.ts",
   "eleven-a2-confirm-reservation/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "gift-web-preview-code/index.ts", // the same place lookup, unauthenticated (MESITA-1892)
   "supabase-cron-enrich-place-contents/index.ts",
   "supabase-cron-enrich-place-research/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
@@ -258,42 +200,23 @@ Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the a
 const PROFILES_READ_ALLOWLIST = [
   "_shared/consumer-search-lane.ts",
   "_shared/create-place.ts",
-  "_shared/ojo-engine.ts",
   "_shared/place-embeddings.ts",
   "_shared/place-pool.ts",
   "_shared/place-requests.ts",
   "_shared/place-slug.ts",
   "_shared/save-place.ts",
-  "_shared/suggest-places.ts",
-  "_shared/ticket-reprice.ts",
-  "_shared/ticket-review-notify.ts",
   "admin-web-delete-place/index.ts",
-  "admin-web-find-place/index.ts",
-  "admin-web-list-notifications/index.ts",
-  "admin-web-list-notifications/notification-state.ts",
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-set-place-listed/index.ts",
-  "admin-web-set-plan/index.ts",
-  "business-web-find-place/index.ts",
-  "business-web-get-overview/index.ts",
-  "business-web-request-manual-review/index.ts",
-  "business-web-send-email-otp/index.ts",
-  "business-web-send-phone-otp/index.ts",
-  "business-web-set-partnership/index.ts", // post-write place projection (MESITA-1740)
-  "business-web-suggest-promo/index.ts",
-  "consumer-mcp/index.ts",
-  "consumer-web-create-ticket/index.ts",
-  "consumer-web-get-place-activity/index.ts",
+  "admin-web-get-overview/index.ts",
   "consumer-web-get-place/index.ts",
   "consumer-web-list-catalog/index.ts",
   "consumer-web-list-pay-notifications/index.ts",
   "consumer-web-list-places/index.ts",
   "consumer-web-recommend-swipe/index.ts",
-  "consumer-web-submit-story/index.ts",
   "supabase-edgefunc-discover-places/index.ts",
   "supabase-edgefunc-search-places/index.ts",
-  "validate-web-get-ticket/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -301,31 +224,13 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 });
 
 const PLACES_READ_ALLOWLIST = [
-  "_shared/credits-readiness.ts",
   "_shared/membership-enforcement.ts",
-  "_shared/place-claim.ts",
   "_shared/reservation-places.ts",
   "_shared/stripe-billing.ts", // the PLACE's billing-customer anchor, compare-and-set (MESITA-1892 — it was the organization's)
-  "_shared/stripe-connect-prefill.ts", // the place row → Connect MCC/url/description; the legal identity it prefills from lives on `places`, not place_profiles (MESITA-1795, re-pointed by MESITA-1892)
-  "_shared/ticket-check.ts",
-  "admin-web-decide-place-claim/index.ts",
   "admin-web-delete-place/index.ts",
   "admin-web-get-place-enrichment/index.ts",
-  "admin-web-list-place-claims/index.ts",
   "admin-web-set-place-listed/index.ts",
-  "admin-web-set-plan/index.ts",
-  "business-web-get-overview/index.ts",
-  "business-web-get-place/index.ts",
-  "business-web-list-reviews/index.ts", // place-exists 404 before requireMembership; it used to resolve the org that held the place (MESITA-1892)
-  "business-web-list-places/index.ts",
-  "business-web-release-place/index.ts",
-  "business-web-set-partnership/index.ts", // current plan/rates before writePlace (MESITA-1740)
-  "_shared/partner-membership.ts", // the cascade, driven by the Mesita Membership's Stripe state (MESITA-1877)
-  "business-web-update-legal-identity/index.ts", // reads the row back after writing legal_name/rfc (MESITA-1892)
-  "business-web-update-place/index.ts",
-  "business-web-verify-place/index.ts",
   "consumer-web-create-reservation/index.ts",
-  "consumer-web-get-discount-quote/index.ts",
 ];
 
 Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", async () => {
@@ -337,58 +242,17 @@ const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
   "_shared/delete-history-free.ts",
   "_shared/stripe-billing.ts",
-  "_shared/ticket-reprice.ts",
-  "admin-web-grant-class/index.ts",
-  "consumer-mcp/index.ts",
-  "consumer-mcp/profile-tool.ts",
-  "consumer-web-create-connector/index.ts",
   "consumer-web-create-reservation/index.ts",
-  "consumer-web-create-ticket/index.ts",
-  "consumer-web-get-discount-quote/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
-  "consumer-web-submit-story/index.ts",
   "consumer-web-update-profile/index.ts",
   "eleven-a3-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
   "supabase-edgefunc-get-consumer-context/index.ts",
-  "validate-web-get-ticket/index.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {
   assertRatchet("consumers", await findReaders("consumers"), CONSUMER_READ_ALLOWLIST);
-});
-
-const PAYMENT_ACCOUNT_READ_ALLOWLIST = [
-  "_shared/credits-readiness.ts",
-  "_shared/mesita-pay-readiness.ts",
-  "_shared/payment-account-doc.ts", // THE payment-account door
-  "admin-web-get-place-payment-account/index.ts",
-  "admin-web-refund-credit-lot/index.ts",
-  "business-web-get-payment-account/index.ts",
-  "business-web-get-payment-dashboard-link/index.ts",
-  "business-web-start-payment-onboarding/index.ts",
-  "consumer-web-list-credit-places/index.ts",
-];
-
-Deno.test("PAYMENT ACCOUNT READ: no new raw reader of place_payment_accounts outside the allowlist", async () => {
-  assertRatchet(
-    "place_payment_accounts",
-    await findReaders("place_payment_accounts"),
-    PAYMENT_ACCOUNT_READ_ALLOWLIST,
-  );
-});
-
-const GUEST_CUSTOMER_READ_ALLOWLIST = [
-  "_shared/place-guest-customer-doc.ts", // THE guest-customer door — sole reader today
-];
-
-Deno.test("GUEST CUSTOMER READ: no new raw reader of place_guest_customers outside the allowlist", async () => {
-  assertRatchet(
-    "place_guest_customers",
-    await findReaders("place_guest_customers"),
-    GUEST_CUSTOMER_READ_ALLOWLIST,
-  );
 });
 
 // ── Belt 2: a raw read of a doored table may not throw its error away ────
@@ -479,11 +343,7 @@ const SWALLOWED_TODAY = [
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
   "_shared/stripe-billing.ts",
-  "_shared/ticket-check.ts",
-  "business-web-confirm-reservation/index.ts",
-  "business-web-update-place/place-social-refresh.ts",
-  "consumer-mcp/index.ts",
-  "consumer-mcp/profile-tool.ts",
+  "admin-web-update-place/place-social-refresh.ts",
   "consumer-web-confirm-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "eleven-a1-report-outcome/index.ts",
@@ -497,7 +357,6 @@ const SWALLOWED_TODAY = [
   "supabase-cron-enrich-place-research/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
-  "validate-web-poll-ticket/index.ts",
 ];
 
 Deno.test("READ SURFACE: no NEW raw read of a doored table discards its error", async () => {

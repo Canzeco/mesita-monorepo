@@ -112,7 +112,8 @@ Deno.test("no Edge Function writes place_profiles.name (it is a generated column
 // `.claude/worktrees/<ISSUE-ID>-<slug>/` — so any issue whose slug contains
 // "enrich" (a whole subsystem's worth) silently widens the Enricher scan to
 // EVERY edge function. The observed damage was two innocent files reported as
-// offenders: `business-web-update-place/index.ts` and `_shared/save-place.ts`,
+// offenders: `business-web-update-place/index.ts` (admin-web-update-place since
+// MESITA-2090) and `_shared/save-place.ts`,
 // both operator-initiated writers, which is exactly what mesita_name is FOR.
 // An agent trusting that local run either wastes a cycle or "fixes" a real
 // writer. CI never caught it because CI checks out at a clean path.
@@ -131,12 +132,12 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   // nowhere near enrichment must not be caught by the Enricher filter, no
   // matter what the checkout is called.
   const innocent = sources.find(
-    (s) => s.path === "business-web-update-place/index.ts",
+    (s) => s.path === "admin-web-update-place/index.ts",
   );
   assertEquals(
     innocent !== undefined,
     true,
-    "expected business-web-update-place/index.ts in the scan",
+    "expected admin-web-update-place/index.ts in the scan",
   );
   assertEquals(
     /enrich|cron-enrich/.test(innocent!.path),

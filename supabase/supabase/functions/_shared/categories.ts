@@ -6,7 +6,7 @@
 // time. So nothing here hardcodes the list. Every inference reads the live
 // table at run time, hands the candidate slugs to the classifier, and accepts
 // the answer only if it is one of those live slugs. Both the create path
-// (business-web-create-place) and the enrich path (the Enricher) call this
+// (_shared/create-place.ts) and the enrich path (the Enricher) call this
 // so a place's category is always a canonical slug, never free text.
 // The classifiers themselves live in categories-infer.ts and infer-families.ts.
 

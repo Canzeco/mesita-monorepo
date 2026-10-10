@@ -12,9 +12,6 @@ import {
   parseDiamondGrantKey,
 } from "./diamond.ts";
 import { RESERVATIONIST_KB_TEXT } from "./reservationist-kb.ts";
-import { buildMemoTools } from "./memo-airlock-tools.ts";
-import { buildAgentSystemPrompt } from "./memo-airlock-prompt.ts";
-import { TOOLS as CONSUMER_MCP_TOOLS } from "../consumer-mcp/tools.ts";
 
 Deno.test("isDiamond: diamond (and the legacy aura bridge) is Diamond", () => {
   assertEquals(isDiamond("diamond"), true);
@@ -63,10 +60,10 @@ Deno.test("parseDiamondGrantKey: silver, gold, bronze and junk are refused with 
 
 // ── Guest- and staff-facing copy this package owns ─────────────────────
 //
-// Every string below reaches a person (via Memo, the Reservationist or a
-// guest's own AI assistant). It FAILS if any of them grounds a model in a
-// class, a metal, a ladder, VIP, or the retired "Diamond List" (MESITA-2046).
-// Spanish is included for the Reservationist's es-MX brief.
+// Every string below reaches a person through the Reservationist. It FAILS
+// if any of them grounds a model in a class, a metal, a ladder, VIP, or the
+// retired "Diamond List" (MESITA-2046). Spanish is included for the
+// Reservationist's es-MX brief.
 
 const BANNED: [RegExp, string][] = [
   [/\bVIP\b/i, "VIP"],
@@ -95,19 +92,4 @@ function assertClean(label: string, text: string) {
 Deno.test("copy: the Reservationist brief speaks of Diamante only", () => {
   assertClean("RESERVATIONIST_KB_TEXT", RESERVATIONIST_KB_TEXT);
   assert(RESERVATIONIST_KB_TEXT.includes("Diamante"));
-});
-
-Deno.test("copy: Memo's knowledge tool and operating rules name Diamond", () => {
-  const tool = buildMemoTools().find((t) => t.name === "mesita_knowledge")!;
-  assertClean("mesita_knowledge description", tool.description);
-  assert(tool.description.includes("Diamond"));
-  const prompt = buildAgentSystemPrompt("", null);
-  const rule = prompt.split("\n").find((l) => l.includes("MESITA ITSELF"))!;
-  assertClean("Memo operating rule", rule);
-});
-
-Deno.test("copy: the consumer MCP profile tool says Diamond, not a class", () => {
-  const profile = CONSUMER_MCP_TOOLS.find((t) => t.name === "get_profile")!;
-  assertClean("get_profile description", profile.description);
-  assert(profile.description.includes("Diamond"));
 });

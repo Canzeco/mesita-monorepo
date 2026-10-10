@@ -44,9 +44,9 @@ Deno.test("resolveTicketRate: a first visit pays the Welcome cell", () => {
 });
 
 Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled upstream)", () => {
-  // The Instagram-connected gate (MESITA-909) is enforced where a story can
+  // The Instagram-connected gate (MESITA-909) was enforced where a story could
   // start (consumer-web-create-ticket seeding + consumer-web-submit-story
-  // opt-in). Once verified, the work is done — it pays regardless of the
+  // opt-in, both retired in MESITA-2090). Once verified, the work is done — it pays regardless of the
   // live class, so a reach lapse between the post and the check can't strip
   // an already-earned reward. The rate is read on the guest's OWN class row.
   assertEquals(

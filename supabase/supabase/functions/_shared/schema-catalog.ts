@@ -303,7 +303,7 @@ const PulseBlockSchema: Schema<CrenupBlock> = object({
 //
 // `place_profiles.enrichment`: the ONE-READ replacement for "RPC + fold over
 // place_enrichment_events on every request" (admin-web-search-place_profiles,
-// business-web-get-overview). `functions`/`highWater`/`blockedAt` are the
+// admin-web-get-overview). `functions`/`highWater`/`blockedAt` are the
 // exact three values `crenupHighWater`/`crenupBlockedAt` already compute from
 // the event log — this materializes their OUTPUT, kept current by
 // crenup-report.ts's `reportCrenupSteps` merging into it on every write,

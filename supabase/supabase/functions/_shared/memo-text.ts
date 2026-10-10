@@ -3,8 +3,8 @@
 // through as literal symbols. Strip the formatting markers but keep the words —
 // and keep emojis, accents (á/ñ), and ¡¿ punctuation untouched.
 //
-// Shared by the consumer concierge (consumer-web-ask-memo) and the admin
-// playground (admin-web-ask-memo) so both surfaces show the same clean prose.
+// Used by the consumer concierge (consumer-web-ask-memo). The admin
+// playground (admin-web-ask-memo) shared it until MESITA-2090 retired it.
 export function toPlainText(s: string): string {
   return s
     // Links: [text](url) → text (url)
