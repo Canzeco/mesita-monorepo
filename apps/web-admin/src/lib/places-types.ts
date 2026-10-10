@@ -31,10 +31,6 @@ export type QueryResult = {
 export type SearchResponse = {
   ok: true;
   queries: QueryResult[];
-  // The optional Nearby Search around a point (Single Place › Find,
-  // MESITA-2117): its own list, never folded into uniquePlaces. Null or
-  // absent when the request carried no point.
-  nearby?: QueryResult | null;
   uniquePlaces: PlaceLite[];
   uniqueCount: number;
   regionCode: string;

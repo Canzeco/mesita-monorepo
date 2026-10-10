@@ -25,7 +25,6 @@ type RequestBody = {
   placeIds?: string[];
   regionCode?: string;
   maxResultsPerQuery?: number;
-  nearby?: { lat?: number; lng?: number };
 };
 
 Deno.serve(async (req) => {
@@ -59,9 +58,6 @@ Deno.serve(async (req) => {
       placeIds: body.placeIds,
       regionCode: body.regionCode,
       maxResultsPerQuery: body.maxResultsPerQuery,
-      // Single Place › Find's Nearby point (MESITA-2117); the internal
-      // caller validates it.
-      nearby: body.nearby,
     },
   );
   if (!result.ok) {

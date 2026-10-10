@@ -303,11 +303,12 @@ export async function enrichPlace(
   return { ok: true, data: true };
 }
 
-// ── Google Autocomplete (Single Place › Find, MESITA-2116) ───────────────
+// ── Name searches (Single Place › Find, MESITA-2116 · MESITA-2124) ───────
 
-/** One Autocomplete row as admin-web-suggest-places ships it. `mesitaId`
- *  rides only a row the EF resolved to a Mesita place. */
-export type AutocompleteHit = {
+/** One row as admin-web-suggest-places ships it, in any mode. `placeId` is
+ *  the Google Place ID (empty on a Mesita row that has none); `mesitaId`
+ *  rides only a row resolved to — or drawn from — a Mesita place. */
+export type SuggestHit = {
   placeId: string;
   mainText: string;
   secondaryText: string;
@@ -315,22 +316,40 @@ export type AutocompleteHit = {
   mesitaId?: string;
 };
 
-/** Google Autocomplete for a name — the lane's `fast` mode, Autocomplete
- *  alone, so it adds a source beside Find's Text Search instead of
- *  repeating it. Discovery › General cuts it as it cuts every Google lane. */
-export async function autocompleteGooglePlaces(
+async function suggestPlacesIn(
+  mode: "fast" | "mesita",
   input: string,
   sessionToken: string,
-): Promise<Result<AutocompleteHit[]>> {
+): Promise<Result<SuggestHit[]>> {
   const q = input.trim();
   if (q.length < 2) return { ok: true, data: [] };
-  const r = await efInvoke<{ predictions: AutocompleteHit[] }>("admin-web-suggest-places", {
+  const r = await efInvoke<{ predictions: SuggestHit[] }>("admin-web-suggest-places", {
     input: q,
     sessionToken,
-    mode: "fast",
+    mode,
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.predictions ?? [] };
+}
+
+/** Google Places Autocomplete Search for a name — the lane's `fast` mode,
+ *  Autocomplete alone. Discovery › General cuts it as it cuts every Google
+ *  lane. */
+export async function autocompleteGooglePlaces(
+  input: string,
+  sessionToken: string,
+): Promise<Result<SuggestHit[]>> {
+  return suggestPlacesIn("fast", input, sessionToken);
+}
+
+/** Mesita Places Name Search for a name — the lane's `mesita` mode: the
+ *  name-embedding match over listed places that consumer Search runs, and
+ *  no Google call. */
+export async function searchMesitaNames(
+  input: string,
+  sessionToken: string,
+): Promise<Result<SuggestHit[]>> {
+  return suggestPlacesIn("mesita", input, sessionToken);
 }
 
 // The create-place pipeline lives beside this file in ./create-place; this
