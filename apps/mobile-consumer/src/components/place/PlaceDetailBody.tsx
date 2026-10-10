@@ -9,15 +9,15 @@ import { LinksBox } from './place-detail/links';
 import { DatesBox, TagsBox, VerificationBox } from './place-detail/meta';
 import { ProfileSummary } from './place-detail/profile';
 import { GoogleReviewsBox, MesitaReviewsBox, ReviewsSummaryBox } from './place-detail/reviews';
-import { RewardsBox } from './place-detail/rewards';
 
-type PlaceTab = 'place' | 'reviews' | 'products' | 'rewards';
+// MVP cut (MESITA-2078): the Rewards tab (RewardsBox) is hidden while Pay is
+// parked; the module stays in tree.
+type PlaceTab = 'place' | 'reviews' | 'products';
 
 const PLACE_TABS: { key: PlaceTab; label: string }[] = [
   { key: 'place', label: 'Place' },
   { key: 'reviews', label: 'Reviews' },
   { key: 'products', label: 'Products' },
-  { key: 'rewards', label: 'Rewards' },
 ];
 
 // Owns the scroll container so the tab strip can pin. The three direct
@@ -71,7 +71,6 @@ export function PlaceDetailBody({
           </>
         ) : null}
         {tab === 'products' ? <ProductsTab menus={place.menus} /> : null}
-        {tab === 'rewards' ? <RewardsBox place={place} /> : null}
       </View>
     </ScrollView>
   );

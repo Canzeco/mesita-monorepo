@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Navigation, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
-import { PromoChip } from "@/components/consumer/PromoChip";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { placeHref } from "@/lib/place-route";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
@@ -146,9 +145,10 @@ export function FavoriteTile({
                   <span className="truncate">{subtitle}</span>
                 </p>
               )}
-              {/* Opening state + reward summary. Each child self-hides when
-                  the tile lacks data (no hours table, or a place with no
-                  reward), so an info-less tile just shows its name. */}
+              {/* Opening state. Self-hides when the tile has no hours table,
+                  so an info-less tile just shows its name. MVP cut
+                  (MESITA-2078): the reward chip is hidden while Pay is
+                  parked. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 {openingLabel && (
                   <span className="type-label inline-flex items-center gap-1 font-medium">
@@ -167,7 +167,6 @@ export function FavoriteTile({
                     </span>
                   </span>
                 )}
-                <PromoChip place={place} size="sm" />
               </div>
             </div>
           </div>

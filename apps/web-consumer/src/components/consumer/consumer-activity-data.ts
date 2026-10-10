@@ -34,14 +34,10 @@ export const ACTIVITY_KIND_META: Record<
   swiped: { Icon: Heart, bg: "bg-muted", color: "text-muted-foreground" },
 };
 
+// MVP cut (MESITA-2078): the money demo rows (discount savings, the
+// Premium upgrade) are hidden while Pay is parked. The `earned` and
+// `upgraded` kinds stay so un-parking is re-adding rows.
 export const MY_ACTIVITY: ConsumerActivity[] = [
-  {
-    id: "m1",
-    kind: "earned",
-    verb: "You saved MX$340 with your discount at",
-    place: "Casa Luminar",
-    when: "yesterday",
-  },
   {
     id: "m2",
     kind: "booked",
@@ -56,24 +52,10 @@ export const MY_ACTIVITY: ConsumerActivity[] = [
     place: "Mar Verde",
     when: "3 days ago",
   },
-  {
-    id: "m4",
-    kind: "upgraded",
-    verb: "You upgraded to",
-    place: "Mesita Premium",
-    when: "1 week ago",
-  },
 ];
 
+// MVP cut (MESITA-2078): money demo rows hidden while Pay is parked.
 export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
-  {
-    id: "l1",
-    kind: "earned",
-    handle: "@maria",
-    verb: "saved MX$120 with a discount at",
-    place: "Mar Verde",
-    when: "2 min ago",
-  },
   {
     id: "l2",
     kind: "booked",
@@ -83,28 +65,12 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     when: "5 min ago",
   },
   {
-    id: "l3",
-    kind: "upgraded",
-    handle: "@sofia",
-    verb: "just upgraded to",
-    place: "Mesita Premium",
-    when: "8 min ago",
-  },
-  {
     id: "l4",
     kind: "saved",
     handle: "@diego",
     verb: "saved",
     place: "Casa Luminar",
     when: "12 min ago",
-  },
-  {
-    id: "l5",
-    kind: "earned",
-    handle: "@lucia",
-    verb: "saved MX$340 with a discount at",
-    place: "Atelier Nueve",
-    when: "18 min ago",
   },
   {
     id: "l6",

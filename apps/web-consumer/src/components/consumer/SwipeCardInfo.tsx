@@ -19,7 +19,6 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { Spinner } from "@/components/shared";
-import { PromoChip } from "./PromoChip";
 import { PartnerMark } from "./PartnerMark";
 import { isPartner } from "@/lib/promo-rates";
 
@@ -180,7 +179,8 @@ export function SwipeCardInfo({
             <span className="font-semibold">{stateLabel}</span>
           </MetaChip>
         )}
-        <PromoChip place={place} size="md" showWhenEmpty />
+        {/* MVP cut (MESITA-2078): the discount chip is hidden while Pay is
+            parked. */}
       </div>
     </div>
   );

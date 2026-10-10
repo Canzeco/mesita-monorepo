@@ -138,10 +138,11 @@ export function VerificationBox({ place }: { place: PlaceDetail }) {
           tone={isPartner ? 'partner' : 'amber'}
         />
       </View>
+      {/* MVP cut (MESITA-2078): rewards wording dropped while Pay is parked. */}
       <Text className="text-xs leading-relaxed text-muted-foreground">
         {isPartner
-          ? 'Signed up on Mesita — can run rewards and take reservations.'
-          : 'Web listing — claim to run Mesita rewards. Free for owners.'}
+          ? 'Signed up on Mesita — takes reservations.'
+          : 'Web listing — claim it to become a Mesita partner. Free for owners.'}
       </Text>
       {!isPartner ? (
         <Pressable

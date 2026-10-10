@@ -27,14 +27,13 @@ type Tile =
 const TILES = [
   { key: "places_viewed", label: "Places viewed" },
   { key: "places_saved", label: "Places saved" },
-  { key: "places_visited", label: "Places visited" },
-  { key: "rewards_claimed", label: "Rewards claimed" },
+  // MVP cut (MESITA-2078): Places visited, Rewards claimed, Total spent and
+  // Total saved are hidden while Pay is parked. The `money` tile shape stays
+  // on Tile so un-parking is re-adding rows.
   { key: "reservations_booked", label: "Reservations booked" },
   { key: "mesita_reviews", label: "Mesita reviews" },
   { key: "google_reviews", label: "Google reviews" },
   { key: "instagram_stories", label: "Instagram stories" },
-  { key: "spent_cents", label: "Total spent", money: true },
-  { key: "saved_cents", label: "Total saved", money: true },
 ] as const satisfies readonly Tile[];
 
 function formatTileValue(metrics: ConsumerMetrics, tile: Tile): string {
