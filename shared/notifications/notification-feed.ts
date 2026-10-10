@@ -165,7 +165,6 @@ export type PlaceStateFacts = {
   enriched: boolean;
   enrichCrenup: number;
   enrichCrenupTotal: number;
-  verified: boolean;
   partner: boolean;
   promoting: boolean;
   mesita_pay: boolean;
@@ -200,7 +199,6 @@ function readStateFacts(
     enriched: bool(f.enriched),
     enrichCrenup: num(f.enrichCrenup),
     enrichCrenupTotal: num(f.enrichCrenupTotal) || 10,
-    verified: bool(f.verified),
     partner: bool(f.partner),
     promoting: bool(f.promoting),
     // Acceptance bits: no stamper writes them yet — false until the engine
@@ -261,7 +259,6 @@ export function crenupStateLine(item: NotificationItem): string | null {
     if (facts.requested) parts.push("Requested");
     if (facts.enriching) parts.push("Enriching");
     if (facts.enriched) parts.push("Enriched");
-    if (facts.verified) parts.push("Verified");
     if (facts.partner) parts.push("Partnered");
     if (facts.promoting) parts.push("Rewards");
     if (facts.mesita_pay) parts.push("Mesita Pay");

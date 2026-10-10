@@ -266,19 +266,6 @@ const CASES: Record<string, SectionCase> = {
     refuse: { status: 409, contains: "out of date" },
   },
 
-  verification: {
-    // The console saves ONE switch at a time; the other two must survive.
-    valid: { config: { autoVerifyAiCall: false } },
-    assertSaved: (saved) => {
-      const c = saved.config as Row;
-      assertEquals(c.autoVerifyAiCall, false);
-      assertEquals(c.autoVerifyAiEmail, true);
-      assertEquals(c.createPlacesAsVerified, false);
-    },
-    invalid: { config: { autoVerifyAiCall: "yes" } },
-    refuse: { status: 400, contains: "must be a boolean" },
-  },
-
   visits: {
     valid: { config: { tipPresets: [10, 15, 20], defaultTipPct: 15, payCredits: true } },
     assertSaved: (saved) => {

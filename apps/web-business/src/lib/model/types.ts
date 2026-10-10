@@ -26,11 +26,9 @@
 // `lib/api/console.ts` actually import.
 
 /** PLACE state. A property of one address: Listed = Atlas found it and a
- *  guest can reach it · Verified = someone proved they operate it.
- *  Verification is granted per place (admin-web-set-place-verified), which is
- *  why it was never a fact about a holder above the place — and, since
- *  MESITA-1892, there is no holder to mistake it for. */
-export type PlaceState = "listed" | "verified";
+ *  guest can reach it. Verified (someone proved they operate it) went with
+ *  MESITA-2106: the MVP has no ownership proof. */
+export type PlaceState = "listed";
 
 /** Stripe Connect account lifecycle — not a boolean. `charges_only` means
  *  money can land but not pay out: cash-in must stay blocked there.

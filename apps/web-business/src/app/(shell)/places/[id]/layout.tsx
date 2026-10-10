@@ -88,7 +88,6 @@ export default async function PlaceLayout({
   const heading = (
     <PlaceHeading
       name={view.place.name}
-      verified={view.place.verified}
       listed={view.place.listed}
       partner={manage ? isMemberPlan(manage.place.plan) : false}
     />

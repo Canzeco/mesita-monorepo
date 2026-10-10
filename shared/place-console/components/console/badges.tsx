@@ -3,8 +3,8 @@
 // chrome, not decoration.
 //
 // Two ladders, deliberately kept apart: a PAYMENT ACCOUNT is somewhere on
-// Stripe's lifecycle (does money land, can it leave), a PLACE is Listed or
-// Verified (can a guest reach it, did someone prove they run it). Neither
+// Stripe's lifecycle (does money land, can it leave), a PLACE is Listed
+// (can a guest reach it). Neither
 // describes the other, so neither badge is reusable for the other. They were
 // two ENTITIES' ladders until MESITA-1892 — the organization's and the
 // place's — and the account is the place's own now; the distinction that
@@ -28,12 +28,10 @@ const CHIP_CLASS =
 
 const PLACE_STATE_LABEL: Record<PlaceState, string> = {
   listed: "Listed",
-  verified: "Verified",
 };
 
 const PLACE_STATE_DOT: Record<PlaceState, string> = {
   listed: "bg-muted-foreground/50",
-  verified: "bg-foreground",
 };
 
 export function PlaceStateBadge({

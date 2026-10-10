@@ -4,7 +4,7 @@ import { RefreshCw, Wand2 } from "lucide-react";
 // the one Crenup client (CrenupClient's `view`). Pato: "Models, Creation,
 // Enrichment, Discovery, Reservations".
 //
-// Creation is Models (read-only) · Create · Verification; Enrichment is
+// Creation is Models (read-only) · Create; Enrichment is
 // Enrich · Functions. What may appear in Search lives on Discovery › Map.
 // THE ROUTE PREFIX IS FROZEN: /enricher-config, atlas_* columns,
 // admin-web-*-enricher-config. Bare /enricher-config 308s to Creation.

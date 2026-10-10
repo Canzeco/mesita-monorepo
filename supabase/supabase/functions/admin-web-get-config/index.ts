@@ -3,8 +3,8 @@
 // THE admin config read. Two behaviours, one door (MESITA-1724, which folded
 // nine per-page getters in here):
 //
-//   { }                  the Crenup payload below — verification flags,
-//                        enrichment config, triggers, and the two read-only
+//   { }                  the Crenup payload below — enrichment config,
+//                        triggers, and the two read-only
 //                        meta blocks. Unchanged, and deliberately NOT a
 //                        section: there is no admin-web-get-enricher-config
 //                        because this IS the Crenup page's load.
@@ -12,13 +12,10 @@
 //                        { ok, config, updatedAt }, per
 //                        _shared/config-sections.ts.
 //
-// The Crenup payload's flags:
-//   autoVerifyAiCall  — verification auto-approve (call OTP)
-//   autoVerifyAiEmail — verification auto-approve (email OTP)
-//   (both live in the verification_config jsonb column, MESITA-1248 fold)
-//
-// `auto_verify_video`/`autoVerifyVideo` retired (MESITA-1248) — nothing ever
-// read it; see _shared/config-section-verification.ts for the full finding.
+// The payload carried autoVerifyAiCall / autoVerifyAiEmail until MESITA-2106:
+// the MVP has no business app, so no one proves ownership and the Creation
+// page lost its Verification card. verification_config stays in the row
+// until the schema PR (MESITA-2091); save-place and otp still read it.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -43,7 +40,6 @@ import {
 } from "../_shared/enrich-triggers.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { crenupPromptsMeta } from "../_shared/crenup-prompts.ts";
-import { normalizeVerificationConfig } from "../_shared/verification-config.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -68,7 +64,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("app_config")
     .select(
-      "verification_config, enrichment_config, enrichment_triggers, updated_at",
+      "enrichment_config, enrichment_triggers, updated_at",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -79,14 +75,11 @@ Deno.serve(async (req) => {
     return jsonError("app_config missing", 500);
   }
 
-  const verificationConfig = normalizeVerificationConfig(data.verification_config);
   const enrichmentConfig = normalizeEnrichmentConfig(
     (data as { enrichment_config?: unknown }).enrichment_config,
   );
 
   return jsonOk({
-    autoVerifyAiCall: verificationConfig.autoVerifyAiCall,
-    autoVerifyAiEmail: verificationConfig.autoVerifyAiEmail,
     ...enrichmentConfig,
     enrichmentTriggersMeta: enrichmentTriggersMeta(),
     // Read-only: the prompts the Enricher actually sends, imported from the same

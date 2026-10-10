@@ -48,7 +48,6 @@ export const FIXTURE_HIT: PlaceHit = {
   enrich_crenup_labels: CRENUP_STEPS.map((s) => s.label),
   enrich_crenup_blocked: { key: "reviews", index: 5, state: "failed" },
   enrich_functions: null,
-  verified: false,
   partner: false,
   promoting: false,
   promoting_level: 0,

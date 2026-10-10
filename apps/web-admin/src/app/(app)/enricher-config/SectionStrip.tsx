@@ -18,7 +18,6 @@ const STRIP_LINKS: Record<CrenupView, { id: string; label: string }[]> = {
   creation: [
     { id: "s-models", label: "Models" },
     { id: "s-create", label: "Create" },
-    { id: "s-verification", label: "Verification" },
   ],
   enrichment: [
     { id: "s-enrich", label: "Enrich" },

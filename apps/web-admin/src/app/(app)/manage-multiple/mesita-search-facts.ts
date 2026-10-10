@@ -31,7 +31,6 @@ export function factOn(
     return hit.enrich_crenup_total > 0 && hit.enrich_crenup === hit.enrich_crenup_total;
   }
   if (key === "enriching") return hit.enriching;
-  if (key === "verified") return hit.verified;
   if (key === "partner") return hit.partner;
   if (key === "promoting") return hit.promoting;
   if (key === "mesita_pay") return hit.mesita_pay;

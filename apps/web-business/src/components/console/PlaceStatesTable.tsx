@@ -49,7 +49,7 @@
 // Enriched is the EF's `isPlaceEnriched(enriched_at)` answer, read straight
 // off the row below, same as before this reversal.
 //
-// ONE COLUMN SET, PLUS ELEVEN WHEN ASKED. Partner and Verified still read "?"
+// ONE COLUMN SET, PLUS ELEVEN WHEN ASKED. Partner still reads "?"
 // on a pool row — `getAuthedUser` accepts ANY bearer token and the backend is
 // a singleton, so every consumer account can read that scope and the EF
 // withholds those facts. This component just renders what it is given.
@@ -107,7 +107,6 @@ const GENERAL_COLUMN_ORDER = [
   "requested",
   "enriching",
   "enriched",
-  "verified",
   "owned",
   "partner",
 ] as const satisfies readonly GeneralStateKey[];
@@ -247,7 +246,6 @@ function factsFor(place: ConsolePlace) {
       // definition. Feeding a value that is always discarded is what kept the
       // meter on the wire after MESITA-1637 took the columns away.
       partner: place.partner ?? false,
-      verified: place.verified ?? "unknown",
     }).map((f) => [f.key, f]),
   );
   return general;
@@ -532,9 +530,6 @@ function cellValue(
   }
   if (key === "partner") {
     return typeof place.partner === "boolean" ? place.partner : "unknown";
-  }
-  if (key === "verified") {
-    return typeof place.verified === "boolean" ? place.verified : "unknown";
   }
   const fact = facts.get(key);
   return fact ? fact.on : "unknown";

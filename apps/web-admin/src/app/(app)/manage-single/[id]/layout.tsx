@@ -11,7 +11,7 @@
 // it is the AdminPlace every section edits. `apiConsoleCatalog` is
 // business-web-list-places with scope "all", the one scope that ships a
 // super-admin every place with every fact — it is where the heading's
-// Verified/Listed/Partner and the PromosSection's tier flags come from.
+// Listed/Partner and the PromosSection's tier flags come from.
 // business-web-get-place is NOT read: it 404s a held place to a non-member,
 // and the operator is a member of nothing.
 //
@@ -73,7 +73,6 @@ export default async function AdminPlaceLayout({
             <div className="flex flex-col gap-4">
               <PlaceHeading
                 name={manage.place.name}
-                verified={row?.verified === true}
                 listed={row?.listed ?? manage.place.listed === true}
                 partner={row?.partnered === true || isMemberPlan(manage.place.plan)}
               />

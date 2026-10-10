@@ -21,10 +21,10 @@ import {
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is twelve general facts plus nine Crenup steps 0–8", () => {
+  it("is eleven general facts plus nine Crenup steps 0–8", () => {
     // Owned joined with MESITA-1608 — an organization holds this place, which
     // is not the same claim as Verified (having PROVED you hold it).
-    expect(GENERAL_STATE_COUNT).toBe(12);
+    expect(GENERAL_STATE_COUNT).toBe(11);
     expect(CRENUP_STEP_COUNT).toBe(9);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
@@ -33,7 +33,6 @@ describe("state vocabulary", () => {
       "Requested",
       "Enriching",
       "Enriched",
-      "Verified",
       "Owned",
       "Partnered",
       "Rewards",
@@ -56,7 +55,6 @@ describe("state vocabulary", () => {
   it("every general-state false reads rose — no neutral-grey exception (MESITA-1684, decision: Pato)", () => {
     expect(STATE_FACT_FALSE_TONE.owned).toBeUndefined();
     expect(STATE_FACT_FALSE_TONE.partner).toBeUndefined();
-    expect(STATE_FACT_FALSE_TONE.verified).toBeUndefined();
     expect(Object.keys(STATE_FACT_FALSE_TONE)).toEqual([]);
   });
 });

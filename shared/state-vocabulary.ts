@@ -1,7 +1,7 @@
 // State — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATES (12)   Created · Active · Listed · Enriching · Enriched ·
-//                 Verified · Owned · Partnered · Mesita Pay · Mesita Credits
+//   STATES (11)   Created · Active · Listed · Enriching · Enriched ·
+//                 Owned · Partnered · Mesita Pay · Mesita Credits
 //                 are bools (`true` / `false`). Requested is the guest request
 //                 count, 0…n — not a Yes/No. Rewards (wire key
 //                 `promoting`, formerly labeled Promoted) is 0 | 1 | 2. Never a
@@ -17,8 +17,8 @@
 //                 — the claimed list filters on it and the pool filters on its
 //                 absence — and Pato kept it anyway, so both screens render one
 //                 column set and the fact goes live the day an unfiltered list
-//                 exists. It is not Verified: holding an address and having
-//                 PROVED you hold it are different claims.
+//                 exists. Verified (somebody PROVED they hold it) left the
+//                 box with MESITA-2106: the MVP has no ownership proof.
 //   CRENUP (9)    own box: 0. Seed … 8. Embedding, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -111,7 +111,6 @@ export const GENERAL_STATE_FACTS = [
   { key: "requested", label: "Requested" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
-  { key: "verified", label: "Verified" },
   { key: "owned", label: "Owned" },
   { key: "partner", label: "Partnered" },
   { key: "promoting", label: "Rewards" },

@@ -6,8 +6,8 @@
 // 2026-08-30). One eleven-row wall made the operator read the whole list to
 // find one fact; each box now has a single job:
 //
-//   General States      is this place real, reachable, and proven?
-//                         Created · Active · Listed · Requested · Verified
+//   General States      is this place real and reachable?
+//                         Created · Active · Listed · Requested
 //   Partnership States  what does it offer commercially?
 //                         Partnered · Rewards · Mesita Pay · Mesita Credits
 //   Enrichment States   how far has the pipeline gotten? Enriched ·
@@ -26,7 +26,6 @@
 //   Requested  guest request count, 0…n — not a Yes/No
 //   Enriched   CRENUP complete — a yes, not a 0–8 high-water.
 //   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
-//   Verified   approved place_verifications
 //   Partnered  plan ≠ free
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //   Mesita Pay places.mesita_pay_enabled — cleared to accept the in-Mesita
@@ -63,7 +62,6 @@ import {
 import { listedFromState } from "../place-header-state";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
-import { methodLabel } from "../verification-config";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   effectiveStrikeCount,
@@ -99,7 +97,6 @@ import {
 //   Requested  guest request count (0…n). Independent of Listed / Enriched.
 //   Enriched   the CRENUP queue finished. A yes, not a high-water.
 //   Enriching  the Enricher pipeline is mid-flight. Live-run, not last-completed.
-//   Verified   somebody proved they own it. One-time, never lapses.
 //   Partnered  the place pays Mesita. A deal: stable, internal. Wire key `partner`.
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the
 //              only one of the eleven a guest is ever shown. Engine Dominant
@@ -111,20 +108,15 @@ import {
 // the box and the table can never disagree. That guarantee was only half true
 // until MESITA-1218: the chip read the 0-10 high-water while this box's prose
 // read a rival 0-3 stage level, and on every row they disagreed. Partner and
-// Promoted are derived here from columns on the row; Verified is a separate
-// admin read hoisted into AdminSection.
+// Promoted are derived here from columns on the row. Verified was a fifth
+// General row until MESITA-2106: the MVP has no business app, so nobody
+// proves ownership.
 //
 // `listing_type` backs NONE of them, deliberately: it stores
 // (pays ∧ strategy ≠ zero) collapsed into one enum and is re-derived only when
 // something writes the place, so it can answer neither question separately and
 // goes stale over a paused lane. Each row reads its own source instead, and the
 // box says so out loud when the stored enum disagrees.
-
-type Verification = {
-  verifiedByEmail: string | null;
-  decidedAt: string | null;
-  method: string | null;
-} | null;
 
 
 const PLAN_LABEL: Record<string, string> = {
@@ -133,16 +125,7 @@ const PLAN_LABEL: Record<string, string> = {
   ultra: "Ultra",
 };
 
-export function StateCard({
-  place,
-  verification,
-  verificationError,
-}: {
-  place: AdminPlace;
-  /** undefined while the read is in flight. */
-  verification: Verification | undefined;
-  verificationError: string | null;
-}) {
+export function StateCard({ place }: { place: AdminPlace }) {
   const plan = typeof place.plan === "string" ? place.plan : "free";
   const partner = isMemberPlan(plan);
   const promoting = isPromotingNow(place);
@@ -158,9 +141,8 @@ export function StateCard({
   const badged = place.listing_type === "partner";
 
   // The three pipeline facts ride on the super-admin overview payload. An
-  // absent key means an older payload, not a "no" — same rule Verified
-  // follows: misreporting a real place is worse than admitting the read
-  // failed.
+  // absent key means an older payload, not a "no": misreporting a real
+  // place is worse than admitting the read failed.
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const listedFromRow = listedFromState(place.state);
@@ -224,27 +206,6 @@ export function StateCard({
         ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Marking inactive also unlists.`
         : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive. Re-list is a separate write.`;
 
-  // An unknown must never render as a false negative: misreporting a real
-  // place's standing is worse than admitting the lookup failed.
-  const verified: boolean | "unknown" | "loading" = verificationError
-    ? "unknown"
-    : verification === undefined
-      ? "loading"
-      : Boolean(verification?.verifiedByEmail);
-
-  const verifiedDetail = verificationError
-    ? "Couldn't read the verification record."
-    : verification === undefined
-      ? "Checking…"
-      : verification?.verifiedByEmail
-        ? [
-            verification.method ? methodLabel(verification.method) : null,
-            verification.decidedAt ? verification.decidedAt.slice(0, 10) : null,
-          ]
-            .filter(Boolean)
-            .join(" · ") || "Ownership proven."
-        : "Nobody has proven ownership yet.";
-
   const partnerDetail =
     (PLAN_LABEL[plan] ?? plan) +
     (state === "pending"
@@ -261,7 +222,7 @@ export function StateCard({
 
   // Acceptance intent bits ride the same super-admin overview payload, read
   // off `places` by the side-read (never through profiles). Absent means an
-  // older payload — "?" rather than a false "no", the Verified rule.
+  // older payload — "?" rather than a false "no", the same rule.
   const mesitaPay: boolean | "unknown" =
     typeof place.mesita_pay_enabled === "boolean" ? place.mesita_pay_enabled : "unknown";
   const credits: boolean | "unknown" =
@@ -326,13 +287,6 @@ export function StateCard({
             chip={requestCountChip(place.request_count)}
             tint="indigo"
             detail={requestedDetail}
-          />
-          <StateRow
-            name="Verified"
-            on={verified === true}
-            chip={stateBoolChip(verified)}
-            tint="emerald"
-            detail={verifiedDetail}
           />
         </div>
       </SectionCard>

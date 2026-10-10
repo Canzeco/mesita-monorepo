@@ -27,7 +27,6 @@ const STATE_DOT: Record<StateFactKey, string> = {
   requested: TONES.amber.dot,
   enriched: TONES.rose.dot,
   enriching: TONES.emerald.dot,
-  verified: TONES.amber.dot,
   partner: TONES.indigo.dot,
   promoting: TONES.rose.dot,
   // Acceptance bits: entries keep the Record total; their segments are
