@@ -265,6 +265,7 @@ export const TARGETS: Target[] = [
   // Apps, which is where deep knowledge is supposed to live, and leave this
   // file the routing and primitive rules an agent needs before its first edit.
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 680 },
+  { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
   // Carries the schema invariants (security_invoker, generated name, reset registry).
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 725 },
 ];

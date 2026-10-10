@@ -4,21 +4,21 @@ import {
   LEGAL_SUPPORT_EMAIL,
   LegalPage,
   LegalSection,
-} from "@/components/legal/legal";
+} from "@/components/landing/legal";
 
-// /terms — server component, no client state, outside the (shell) auth wall.
+// /terms — server component, no client state (MESITA-1888).
 //
 // Every statement below describes behaviour that exists in this repo today:
-// phone + one-time-code sign-in, the age floor of 14, the catalog built from
-// public information, bookings requested by Mesita's phone agent, and account
-// deletion from Settings. Nothing here promises a timeframe, names a
-// regulator, or grants a right the code does not already implement — see the
-// draft banner.
+// phone + one-time-code sign-in, the age floor of 14, card entry on Stripe's
+// own hosted page, and account deletion from Settings. Nothing here promises a
+// timeframe, names a regulator, or grants a right the code does not already
+// implement — see the draft banner.
 
 export const metadata: Metadata = {
   title: "Terms of use",
   description:
-    "Plain-language draft of the terms for using Mesita — who can sign up, what an account is, how places and bookings work, and how to close your account.",
+    "Plain-language draft of the terms for using Mesita — who can sign up, what an account is, how places, rewards and payments work, and how to close your account.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
@@ -31,7 +31,8 @@ export default function TermsPage() {
       <LegalSection heading="What Mesita is">
         <p>
           Mesita is an app for going out. It lists restaurants, cafés and bars,
-          helps you find one, and can ask a place for a table on your behalf.
+          helps you find one, and — where a place is set up for it — lets you
+          book, order, collect rewards and pay from the same place you found it.
         </p>
         <p>
           Mesita is in development. Some parts of the app are live, some are
@@ -57,8 +58,9 @@ export default function TermsPage() {
           hands.
         </p>
         <p>
-          An account is yours personally. Use your own phone number and give us
-          information that is actually true — bookings are made in your name.
+          An account is yours personally. Use your own phone number and your own
+          payment card, and give us information that is actually true — rewards
+          and bookings are attached to it.
         </p>
       </LegalSection>
 
@@ -75,32 +77,54 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="Bookings">
+      <LegalSection heading="Rewards, credits and prices">
         <p>
-          When you ask for a table, Mesita phones the place for you with an
-          automated voice agent and passes on what the booking needs — the name
-          to expect, the party size, the date and the time. The place decides
-          whether it can hold the table, and the app shows you what it answered.
+          Reward percentages are set per place and shown in the app on that
+          place&apos;s rewards tab. What you earn on a visit is calculated from
+          the amount of that visit and the percentage in force at the time.
         </p>
         <p>
-          A booking Mesita relays is the place&apos;s booking. If plans change,
-          cancel it in the app so the place can give the table to someone else.
+          Rewards and credits are part of the app, not a bank account. What they
+          are worth, where they can be spent and how they are earned are product
+          settings, and they can change. When they do, the app shows the current
+          rules.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Paying">
+        <p>
+          Card details are typed on Stripe&apos;s own payment page, not ours.
+          Mesita never receives or stores your card number. Charges are made
+          through Stripe, and the receipt for a visit is held by the place you
+          paid.
+        </p>
+        <p>
+          If a charge looks wrong, start with the place — they rang it up. Write
+          to{" "}
+          <a
+            href={`mailto:${LEGAL_SUPPORT_EMAIL}`}
+            className="text-foreground underline underline-offset-4"
+          >
+            {LEGAL_SUPPORT_EMAIL}
+          </a>{" "}
+          and we will help you work out what happened.
         </p>
       </LegalSection>
 
       <LegalSection heading="What we ask of you">
         <p>
-          Do not sign in as someone else, and do not try to break, overload or
-          take apart the service. Do not use Mesita to harass anyone, book
-          tables you do not mean to use, or tell a place anything you know to be
-          untrue.
+          Do not sign in as someone else, do not use a card that is not yours,
+          and do not try to break, overload or take apart the service. Do not
+          use Mesita to harass anyone, and do not post anything about a place
+          that you know to be untrue.
         </p>
       </LegalSection>
 
       <LegalSection heading="Ending it">
         <p>
-          You can delete your account from the app at any time, in Settings.
-          You type DELETE to confirm, and the account is deleted.
+          You can delete your account from the app at any time, in Settings,
+          with your data. You type DELETE to confirm, and the account is
+          deleted.
         </p>
         <p>
           We can close an account that is being used to break these terms, or to

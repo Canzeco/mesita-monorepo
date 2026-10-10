@@ -28,7 +28,7 @@ export function HelpModal() {
             tint="muted"
             href={MESITA_TERMS_URL}
             label="Terms of use"
-            sub="consumer.mesita.ai/terms"
+            sub="mesita.ai/terms"
             external
           />
           <RowDivider />
@@ -37,7 +37,7 @@ export function HelpModal() {
             tint="muted"
             href={MESITA_PRIVACY_URL}
             label="Privacy policy"
-            sub="consumer.mesita.ai/privacy"
+            sub="mesita.ai/privacy"
             external
           />
         </SettingsGroup>

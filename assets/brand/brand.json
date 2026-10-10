@@ -194,7 +194,8 @@
   "targets": {
     "web": [
       "web-admin",
-      "web-consumer"
+      "web-consumer",
+      "web-landing"
     ],
     "mobile": []
   }

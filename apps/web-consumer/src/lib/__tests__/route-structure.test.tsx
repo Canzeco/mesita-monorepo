@@ -106,10 +106,6 @@ describe("T1 — every page lives inside the (shell) auth segment", () => {
     "page.tsx", // "/" — the sign-in surface itself
     "onboard/page.tsx", // pre-profile, gated on session not profile
     "auth/post-signin/page.tsx", // the redirect hop that establishes session
-    // Public legal pages: Me › Support links to them, and anyone must be able
-    // to read the terms before signing in.
-    "terms/page.tsx",
-    "privacy/page.tsx",
   ]);
 
   it("catches a route authored outside the auth wall", () => {

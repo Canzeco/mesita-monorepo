@@ -35,7 +35,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 - Supabase: MCP (`list_tables`, `list_edge_functions`, `get_edge_function`, `list_migrations`,
   `get_advisors`, `get_logs`, `execute_sql` — **SELECT only**).
 - Linear: team Mesita (`MESITA-`).
-- Vercel MCP: 2 projects (mesita-web-admin, mesita-web-consumer).
+- Vercel MCP: 3 projects (mesita-web-admin, mesita-web-consumer, mesita-web-landing).
 - GitHub via `gh`.
 - Notion MCP: 📜 **Rules** (§0–§3 + SADLC · KADLC) and 📚 **Docs** (14 flat domain
   pages). **Scope 9 only.** No connector → Scope 9 is `SKIPPED (connector unavailable)`,

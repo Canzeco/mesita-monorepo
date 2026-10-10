@@ -1,5 +1,5 @@
-# Explicit app roots only — web-admin and web-consumer. MESITA-2089 deleted the other five
-# apps (git history keeps them); a root that no longer exists must not be listed here.
+# Explicit app roots only — web-admin, web-consumer and web-landing. MESITA-2089 deleted
+# the other four apps (git history keeps them); a root that no longer exists must not be listed.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -8,5 +8,9 @@ updates:
       interval: weekly
   - package-ecosystem: npm
     directory: /apps/web-consumer
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /apps/web-landing
     schedule:
       interval: weekly

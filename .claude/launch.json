@@ -20,6 +20,16 @@
       ],
       "port": 3003,
       "autoPort": true
+    },
+    {
+      "name": "web-landing",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/web-landing && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3004"
+      ],
+      "port": 3004,
+      "autoPort": true
     }
   ]
 }
