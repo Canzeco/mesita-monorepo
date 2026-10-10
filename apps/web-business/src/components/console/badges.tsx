@@ -26,7 +26,7 @@ import type {
 /** The bordered-chip grammar every state chip on a heading wears: 11px, a
  *  dot, the card's own background. One string so a new chip cannot drift. */
 const CHIP_CLASS =
-  "border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold";
+  "border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 type-label font-semibold";
 
 const PLACE_STATE_LABEL: Record<PlaceState, string> = {
   listed: "Listed",
@@ -247,7 +247,7 @@ export function StatePill({ state }: { state: PaymentAccountState }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 type-label font-semibold",
         STATE_CLASS[state],
       )}
     >

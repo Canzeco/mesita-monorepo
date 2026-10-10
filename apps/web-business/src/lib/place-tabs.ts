@@ -14,6 +14,7 @@
 // have. `product-keys.ts` is importable for the same reason: it is vocabulary
 // with no imports of its own.
 import { PRODUCT_LABEL } from "@/lib/product-keys";
+import { PLACE_BASE } from "@/lib/place-base";
 
 // THE TAB MATRIX: Profile · Menus · Reviews · Capabilities · Rewards · Admin,
 // in the order the rail lists them under the PLACE SELECTOR (Pato, 2026-09-14:
@@ -191,7 +192,7 @@ export function tabsForAccess(access: ViewerAccess): PlaceTab[] {
  *  since MESITA-1892 there is none to ride: the place id is the whole scope,
  *  and the rail reads it off the pathname. */
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
-  return `/places/${encodeURIComponent(placeId)}/${tab}`;
+  return `${PLACE_BASE}/${encodeURIComponent(placeId)}/${tab}`;
 }
 
 /** Which view a place pathname is showing, or null if it is not one.

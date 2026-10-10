@@ -18,11 +18,13 @@
 // target lives on the view that draws the card.
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { PLACE_ROUTE_DIR } from "@/lib/place-base";
 import { join } from "node:path";
 
 const SRC = join(process.cwd(), "src");
 const SECTIONS = join(SRC, "components/place-manage/sections");
-const VIEWS = join(SRC, "app/(shell)/places/[id]");
+// The route tree differs per console (lib/place-base.ts); the sections do not.
+const VIEWS = join(SRC, PLACE_ROUTE_DIR);
 
 const read = (p: string) => readFileSync(p, "utf8");
 
@@ -33,12 +35,21 @@ function sectionsByView(): Record<string, string[]> {
   for (const view of readdirSync(VIEWS, { withFileTypes: true })) {
     if (!view.isDirectory()) continue;
     const dir = join(VIEWS, view.name);
-    const tabs = readdirSync(dir).filter((f) => /^[A-Z].*\.tsx$/.test(f));
-    const names = new Set<string>();
-    for (const t of tabs) {
-      for (const m of read(join(dir, t)).matchAll(/sections\/([A-Za-z]+)/g)) {
-        names.add(m[1]);
+    // Every file the view is made of: its own tsx files, plus the one hop a
+    // view takes into a Tab that lives in place-manage (ProfileTab,
+    // ProductLadderTab) — the Tabs moved out of the route tree with
+    // MESITA-2086 so both consoles render one source.
+    const texts = readdirSync(dir)
+      .filter((f) => f.endsWith(".tsx"))
+      .map((f) => read(join(dir, f)));
+    for (const text of [...texts]) {
+      for (const m of text.matchAll(/place-manage\/([A-Z][A-Za-z]+)"/g)) {
+        texts.push(read(join(SRC, "components/place-manage", `${m[1]}.tsx`)));
       }
+    }
+    const names = new Set<string>();
+    for (const text of texts) {
+      for (const m of text.matchAll(/sections\/([A-Za-z]+)/g)) names.add(m[1]);
     }
     if (names.size > 0) out[view.name] = [...names];
   }

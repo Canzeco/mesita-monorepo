@@ -96,7 +96,7 @@ export function ConnectStripeForm({
       <input type="hidden" name="placeId" value={placeId} />
       <input type="hidden" name="intent" value={intent} />
       {restarting && (
-        <p className="text-muted-foreground text-[12px] leading-relaxed">
+        <p className="text-muted-foreground text-xs leading-relaxed">
           This replaces the Stripe account you started and never finished.
           Nothing was submitted to Stripe, so nothing is lost — you answer these
           two again and Stripe opens on a clean form.
@@ -114,7 +114,7 @@ export function ConnectStripeForm({
             </option>
           ))}
         </select>
-        <span className="text-muted-foreground mt-1.5 block text-[12px]">
+        <span className="text-muted-foreground mt-1.5 block text-xs">
           Permanent on the Stripe account.
         </span>
       </Field>
@@ -138,7 +138,7 @@ export function ConnectStripeForm({
             </option>
           ))}
         </select>
-        <span className="text-muted-foreground mt-1.5 block text-[12px]">
+        <span className="text-muted-foreground mt-1.5 block text-xs">
           Decides what Stripe asks for.
         </span>
       </Field>
@@ -149,7 +149,7 @@ export function ConnectStripeForm({
             ? "Replace and continue to Stripe"
             : "Continue to Stripe"}
       </button>
-      <p className="text-muted-foreground text-[12px] leading-relaxed">
+      <p className="text-muted-foreground text-xs leading-relaxed">
         Stripe asks for the rest — legal name, RFC, address, bank account — in
         its own onboarding.
       </p>
@@ -247,12 +247,12 @@ export function PaymentsCard({
             waiting. Without it "Ready" is just a quieter version of the same
             unanswered question (MESITA-1643). */}
         {state === "live" && READY_CAPTION && (
-          <p className="text-muted-foreground mt-1 mb-2 text-[12px] leading-relaxed">
+          <p className="text-muted-foreground mt-1 mb-2 text-xs leading-relaxed">
             {READY_CAPTION}
           </p>
         )}
         {state === "in_review" && (
-          <p className="text-muted-foreground mt-1 mb-2 text-[12px] leading-relaxed">
+          <p className="text-muted-foreground mt-1 mb-2 text-xs leading-relaxed">
             Stripe has everything it asked for and is checking it. Nothing to do
             right now — we&apos;ll email you when it&apos;s done.
           </p>
@@ -351,14 +351,14 @@ export function PaymentsCard({
             )}
           </div>
           {restartable && (
-            <p className="text-muted-foreground text-[12px] leading-relaxed">
+            <p className="text-muted-foreground text-xs leading-relaxed">
               Picked the wrong country or legal entity? Start over replaces the
               account — Stripe can&apos;t change a country after the fact.
             </p>
           )}
           <ErrorBox title="Couldn't open the Stripe dashboard" message={dashState.error} />
           {note && !connectState.error && !dashState.error && (
-            <p className="text-muted-foreground text-[12px]">{note}</p>
+            <p className="text-muted-foreground text-xs">{note}</p>
           )}
         </div>
       )}
@@ -369,7 +369,7 @@ export function PaymentsCard({
       {isOwner && (state === "none" || orphaned) &&
         note &&
         !connectState.error && (
-        <p className="text-muted-foreground text-[12px]">{note}</p>
+        <p className="text-muted-foreground text-xs">{note}</p>
       )}
 
       {/* A failure keeps the modal up: the answers are still in the fields,

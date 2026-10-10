@@ -51,7 +51,7 @@ function StripText({ title, line }: { title: string; line: string }) {
       <h3 className="font-display text-sm font-semibold tracking-tight">
         {title}
       </h3>
-      <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug">
+      <p className="text-muted-foreground mt-0.5 truncate text-xs leading-snug">
         {line}
       </p>
     </div>
@@ -62,7 +62,7 @@ export function SoonStrip({ title, line }: { title: string; line: string }) {
   return (
     <div className={STRIP_CLASS}>
       <StripText title={title} line={line} />
-      <span className="text-muted-foreground border-border shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+      <span className="text-muted-foreground border-border shrink-0 rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
         Soon
       </span>
     </div>

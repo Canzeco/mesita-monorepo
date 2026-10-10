@@ -98,7 +98,7 @@ export function PlaceHeading({
           and this is the page — a title that does not name the page it titles
           is half a title. */}
       {viewLabel && (
-        <p className="text-muted-foreground text-[13px]">{viewLabel}</p>
+        <p className="text-muted-foreground type-body">{viewLabel}</p>
       )}
     </div>
   );

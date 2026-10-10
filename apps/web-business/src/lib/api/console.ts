@@ -212,6 +212,27 @@ export const apiConsoleViewer = cache(async function apiConsoleViewer(
 /** The portfolio alone — what every page body asks for. Reads through the
  *  request-cached viewer, so the shell's call and a page's call in the same
  *  render are still ONE Edge Function round trip (MESITA-1779). */
+/** THE WHOLE CATALOGUE, same shape as the viewer read — scope "all", which
+ *  ships every place with every fact to a caller who holds at least one place
+ *  or is a super-admin. The admin console's Single Place reads this
+ *  (MESITA-2086): its operator holds no `place_members` row, so "mine" would
+ *  be empty and `findPlace` would 404 the place it is standing on. */
+export const apiConsoleCatalog = cache(async function apiConsoleCatalog(
+  client: SupabaseClient,
+): Promise<ConsoleViewer> {
+  const { places, isSuperAdmin, membershipPrice } = await invokeEF<ConsoleViewer>(
+    client,
+    "business-web-list-places",
+    { scope: "all" },
+    "Couldn't load the catalogue.",
+  );
+  return {
+    places: (places ?? []).map((p) => ({ ...p, membership: p.membership ?? null })),
+    isSuperAdmin: isSuperAdmin === true,
+    membershipPrice: membershipPrice ?? null,
+  };
+});
+
 export const apiMyPlaces = cache(async function apiMyPlaces(
   client: SupabaseClient,
 ): Promise<ConsolePlace[]> {

@@ -57,7 +57,7 @@ export const GOOGLE_NAME_RESULTS = 20;
 export function googleOnMesita(
   place: PlaceLite,
   catalogGoogleIds: ReadonlySet<string>,
-  added: ReadonlySet<string>,
+  added: { has(googleId: string): boolean },
 ): boolean {
   return place.existsInMesita || catalogGoogleIds.has(place.id) || added.has(place.id);
 }
@@ -68,13 +68,6 @@ function fold(s: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
-}
-
-/** The business console's editor for this place — a super-admin opens any
- *  place there (business-web-get-overview's super-admin branch), which is
- *  why admin keeps no second editor. */
-export function businessConsolePlaceHref(placeId: string): string {
-  return `https://business.mesita.ai/places/${encodeURIComponent(placeId)}`;
 }
 
 export function googleMapsPlaceHref(googlePlaceId: string): string {
