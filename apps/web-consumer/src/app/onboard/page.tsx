@@ -28,7 +28,7 @@ export default async function ConsumerOnboardPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   // Where the guest was actually heading before the profile gate caught
-  // them (a shared place link, a reservation, a ticket). Threaded through
+  // them (a shared place link, a reservation). Threaded through
   // the form so finishing onboarding resumes the journey.
   const nextTarget = safeNextPath((await searchParams).next);
   const supabase = await createServerSupabase();

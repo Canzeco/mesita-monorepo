@@ -2,11 +2,11 @@
 
 // Live text-search results over the map: one merged lane (max 10), no
 // source section labels. The MARK tells the two entities apart
-// (MESITA-1404): a Place wears the membership point — gray = Google
-// Places, red = Mesita Places, yellow = Mesita Partners — and a Location
-// (a city, a region) wears a location icon instead. The two semantics
-// never share a mark: a colour that means membership cannot also mean
-// "this is not a place". Every row pick anchors the map (MESITA-1405).
+// (MESITA-1404): a Place wears the tone point — gray = Google Places, red =
+// Mesita Enriched Places — and a Location (a city, a region) wears a
+// location icon instead. The two semantics never share a mark: a colour
+// that means "we wrote a profile" cannot also mean "this is not a place".
+// Every row pick anchors the map (MESITA-1405).
 
 import { MapPin, RotateCw, SearchX } from "lucide-react";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
@@ -15,10 +15,10 @@ import { Spinner } from "@/components/shared";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   locationTypeLabel,
-  membershipColor,
-  membershipTone,
+  pinToneColor,
   predictionOnMesita,
-} from "@/lib/search-membership";
+  predictionPinTone,
+} from "./search-pins";
 import type { AddState } from "./add-state";
 
 export function SearchResultsPanel({
@@ -134,9 +134,9 @@ function SuggestionLine({
   addState: AddState | undefined;
   onPick: (prediction: PlacePrediction) => void;
 }) {
-  // Branch on `kind` BEFORE tone is ever computed: membershipTone answers
-  // a membership question, and a Location has no membership to answer for
-  // — asking would silently paint a city as a gray Google place. The
+  // Branch on `kind` BEFORE tone is ever computed: predictionPinTone answers
+  // "did we write a profile", and a Location has no profile to answer for —
+  // asking would silently paint a city as a gray Google place. The
   // accessible label is the mark's spoken half: it names the ENTITY
   // ("City"), never the absence of a profile.
   if (prediction.kind === "location") {
@@ -156,25 +156,20 @@ function SuggestionLine({
     );
   }
 
-  const tone = membershipTone(prediction);
+  const tone = predictionPinTone(prediction);
   const added = addState === "added";
-  const membershipLabel =
-    tone === "partner"
-      ? "Partner"
-      : tone === "enriched"
-        ? "Mesita profile"
-        : "No profile yet";
+  const toneLabel = tone === "enriched" ? "Mesita profile" : "No profile yet";
 
   return (
     <SuggestionRow
       prediction={prediction}
-      ariaTail={membershipLabel}
+      ariaTail={toneLabel}
       onPick={onPick}
       mark={
         <span
           aria-hidden
           className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: membershipColor(tone) }}
+          style={{ backgroundColor: pinToneColor(tone) }}
         />
       }
       added={added}

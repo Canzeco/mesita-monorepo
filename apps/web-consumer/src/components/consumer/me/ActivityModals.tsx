@@ -1,40 +1,24 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { Bell, CalendarCheck, QrCode } from "lucide-react";
+import type { ReactNode } from "react";
+import { CalendarCheck } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { NotificationsClient } from "@/components/consumer/NotificationsClient";
 import { ReservationsList } from "@/components/consumer/reservations-list";
-import { VisitsList } from "@/components/consumer/me/VisitsList";
 import { EmptyState } from "@/components/shared";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
 
-// Activity's three sections, as three full pages on Me (MESITA-1626,
-// MESITA-1789).
+// Me's two activity pages: /me/notifications and /me/reservations. Each Me
+// tile is a route (MESITA-1789), so neither page carries a section switcher —
+// the guest chose the section by tapping the tile. `/inbox/*` 308s to the
+// hub. They are NOT @modal intercepts.
 //
-// They were three nested routes under `/inbox` with a shared pill nav, which
-// is what MESITA-1609 left behind when it took Activity off the bottom bar:
-// a container with no tab, reachable only from three Me boxes that each deep-
-// linked into one of its sections. The nav row was chrome about chrome — the
-// guest had already chosen the section by tapping the box, and then landed on
-// a page whose first element asked them to choose again.
+// NOTHING HERE FETCHES. Both bodies authenticate from the session inside
+// their own Edge Function, so this file passes no id down.
 //
-// MESITA-1626 made each box a sheet. MESITA-1789 makes each box a route:
-// /me/notifications, /me/visits, /me/reservations. `/inbox/*` still 308s to
-// the hub. They are NOT @modal intercepts.
-//
-// NOTHING HERE FETCHES DIFFERENTLY. All three bodies are the same components
-// the routes rendered; only the frame changed. `useConsumerTickets` calls
-// `apiListConsumerTickets(supabase)` and only uses the id as a poll on/off
-// flag, and `fetchConsumerNotifications` names its second parameter
-// `_consumerId`. Both authenticate from the session inside their Edge
-// Function.
-//
-// THE BODY SLOT IS A FLEX COLUMN, NOT A BLOCK. MeScreen's `flush` mode is
-// the same contract the sheet had: grow, min-h-0, scroll inside the feed.
+// THE BODY SLOT IS A FLEX COLUMN, NOT A BLOCK. MeScreen's `flush` mode:
+// grow, min-h-0, scroll inside the feed — a block parent collapses EmptyState.
 
 function ActivityPage({
   title,
@@ -55,63 +39,11 @@ function ActivityPage({
   );
 }
 
-function useMeUserId(): string {
-  const supabase = useBrowserSupabase();
-  const [userId, setUserId] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { consumer } = await apiFetchConsumerProfile(supabase);
-        if (!cancelled) setUserId(consumer.id);
-      } catch {
-        // Empty id keeps the honest zero state until a retry lands.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
-  return userId;
-}
-
-/** Alerts — your own activity feed. Global activity is the Social feed's job. */
+/** Alerts — your own activity feed. */
 export function AlertsModal() {
-  const userId = useMeUserId();
   return (
     <ActivityPage title="Notifications" blurb="Notifications and updates">
-      {userId ? (
-        <NotificationsClient userId={userId} />
-      ) : (
-        <EmptyState
-          icon={Bell}
-          title="Nothing yet"
-          // MVP cut (MESITA-2078): "visits" hidden while Pay is parked.
-          description="Updates about your reservations land here."
-        />
-      )}
-    </ActivityPage>
-  );
-}
-
-/** Visits — every ticket you hold. Tapping one leaves for THE TICKET. */
-export function VisitsModal() {
-  const userId = useMeUserId();
-  return (
-    <ActivityPage
-      title="Visits"
-      blurb="Live ones first, then everything you've closed"
-    >
-      {userId ? (
-        <VisitsList userId={userId} />
-      ) : (
-        <EmptyState
-          icon={QrCode}
-          title="No visits yet"
-          description="Start a visit from Pay and it shows up here — with its QR and whatever you saved."
-          action={{ label: "Start a visit", href: CONSUMER_ROUTES.newVisit.root }}
-        />
-      )}
+      <NotificationsClient />
     </ActivityPage>
   );
 }

@@ -10,7 +10,6 @@ import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { getOpeningStateLabel } from "@/lib/place-state";
-import { isPartner } from "@/lib/promo-rates";
 import {
   cn,
   formatCompactCount,
@@ -18,7 +17,6 @@ import {
   formatRating,
 } from "@/lib/utils";
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
-import { PartnerMark } from "@/components/consumer/PartnerMark";
 import { useDoubleTap } from "./use-double-tap";
 
 // One place, one screen, TikTok's grammar (MESITA-2105, design 1A).
@@ -97,7 +95,6 @@ export function ScrollCard({
     setBurst((n) => n + 1);
   });
 
-  const partner = isPartner(place);
   const category = resolvePlaceCategoryName({
     categoryLabel: place.category_label,
     category: place.category,
@@ -166,9 +163,6 @@ export function ScrollCard({
       <div className="text-on-media pointer-events-none absolute bottom-0 left-0 right-[72px] flex flex-col gap-1 p-4 pb-5">
         <h2 className="font-display flex min-w-0 items-center gap-1.5 text-2xl leading-tight font-semibold [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]">
           <span className="truncate">{place.name}</span>
-          {partner && (
-            <PartnerMark className="text-partner h-5 w-5 shrink-0" />
-          )}
         </h2>
         {metaLine && (
           <p className="text-on-media-muted truncate text-sm font-medium">

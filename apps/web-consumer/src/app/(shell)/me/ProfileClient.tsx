@@ -16,8 +16,11 @@ import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
-import { useConsumerClass } from "@/lib/class-context";
-import { DIAMOND_PIN_SUCCESS, instagramSummary } from "@/lib/consumer-identity";
+import { useConsumerIdentity } from "@/lib/identity-context";
+import {
+  instagramSummary,
+  type ConsumerFacts,
+} from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
@@ -31,43 +34,19 @@ import { IdentityBar } from "./IdentityBar";
 //   2              Notifications · Reservations
 //   2              Settings · Support
 //
-// DIAMOND IS PARKED (Pato, MESITA-2080: "Diamond goes for the future too").
-// Its tile and its header chip are gone; /me/diamond and the invite PIN page
-// still exist, so bringing it back is re-adding the tile and the chip.
+// SIX CELLS, AND THAT IS THE WHOLE PAGE (MESITA-2087). route-structure T8
+// pins the six.
 //
-// MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet, Plan,
-// Visits and the five Soon cells (Orders, Share, Gift, Integrations, Friends)
-// left the grid: money is parked with Pay, and the rest is not built. Their
-// routes all still exist — bringing one back is re-adding its DestTile (the
-// full grid is in git history at MESITA-2076).
+// EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
+// history as overlays. DestTiles Link to /me/<box>.
 //
-// EVERY LIVE CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub
-// stacked history as overlays. DestTiles now Link to /me/<box>. Parked cells
-// stay Soon and inert. SearchResultsPanel is a different product rule and is
-// not this surface.
-//
-// THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports. its only
-// instagram and diamond"). Two independent facts — Instagram is connected
-// reach, Diamond is invitation-only and anyone can ask for one — and neither
-// leads to the other. The Passport cell, its /me/passport page and its data
-// page are deleted; /me/passport 308s to /me/profile, because the one thing
-// the Passport printed that nothing else did was the member number, and that
-// lives on Profile now.
-//
-// PROFILE PAIRS WITH INSTAGRAM. It spanned the row from MESITA-2043 until
-// Diamond was parked left Instagram without a partner (MESITA-2080).
-//
-// THE TWO FACTS ARE CELLS (Pato, MESITA-2040: "so add instagram and then
-// diamond. those are independent"). This pair was added and removed twice
-// before (MESITA-1682, MESITA-1787) when both were one ladder; they are two
-// unrelated destinations now, and a grid of destinations is where those go.
-//
-// NO CARDS CELL. Wallet lists cards inline. `/me?cards=` 308s onto /wallet
-// so Stripe's return still lands on the list.
+// THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports"). The
+// one thing the Passport printed that nothing else did was the member number,
+// and that lives on Profile now; /me/passport 308s to /me/profile.
 
 export function ProfileClient() {
   const supabase = useBrowserSupabase();
-  const { facts } = useConsumerClass();
+  const identity = useConsumerIdentity();
 
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,14 +54,14 @@ export function ProfileClient() {
   // THE CONTEXT IS SEEDED SERVER-SIDE AND THE PROFILE IS FETCHED HERE, so the
   // handle can land in either place first. The context wins when it has one —
   // a fresh connect updates it before the profile refetches — and the profile
-  // row covers the cold load. Same precedence the old `classHandle ??
-  // profile.instagram_handle` had; it just reads off `facts` now.
-  const igFacts = facts.igHandle
-    ? facts
+  // row covers the cold load.
+  const igFacts: ConsumerFacts = identity.igHandle
+    ? identity
     : {
-        ...facts,
+        ...identity,
         igHandle: profile?.instagram_handle ?? null,
-        igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
+        igConnected:
+          identity.igConnected || Boolean(profile?.instagram_handle),
       };
   const igSummary = instagramSummary(igFacts);
 
@@ -104,21 +83,12 @@ export function ProfileClient() {
     };
   }, [supabase]);
 
+  // The Instagram page reloads onto /me?instagram=success after a claim, so
+  // the server-seeded identity is fresh when the toast lands.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const state = params.get("subscription");
-    if (state === "success") {
-      toast.success("You're Mesita Premium — welcome in.");
-    } else if (state === "cancelled") {
-      toast("Checkout cancelled — you can subscribe anytime.");
-    }
     if (params.get("instagram") === "success") {
       toast.success("Instagram connected.");
-    }
-    // The PIN grants one thing now, so the toast names it rather than echoing
-    // a class label back off the query string (MESITA-2040).
-    if (params.get("invite")) {
-      toast.success(DIAMOND_PIN_SUCCESS);
     }
   }, []);
 
@@ -165,7 +135,6 @@ export function ProfileClient() {
             <DestTile
               Icon={Bell}
               title="Notifications"
-              // MVP cut (MESITA-2078): "Visits" hidden while Pay is parked.
               summary="Bookings and updates"
               href={CONSUMER_ROUTES.mePages.notifications}
             />
@@ -181,13 +150,12 @@ export function ProfileClient() {
             <DestTile
               Icon={SettingsIcon}
               title="Settings"
-              summary="Privacy, language"
+              summary="Language, account"
               href={CONSUMER_ROUTES.mePages.settings}
             />
             <DestTile
               Icon={CircleHelp}
               title="Support"
-              // MVP cut (MESITA-2078): rewards hidden while Pay is parked.
               summary="Questions, legal"
               href={CONSUMER_ROUTES.mePages.help}
             />

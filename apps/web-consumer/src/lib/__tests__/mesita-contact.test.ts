@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  MESITA_PRIVACY_URL,
-  MESITA_SITE_URL,
-  MESITA_TERMS_URL,
-} from "@/lib/mesita-contact";
+import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
 
 // The host the shipped legal rows point at (MESITA-1888).
 //
@@ -17,7 +13,7 @@ import {
 
 describe("public Mesita URLs", () => {
   it("carries no www. host", () => {
-    for (const url of [MESITA_SITE_URL, MESITA_TERMS_URL, MESITA_PRIVACY_URL]) {
+    for (const url of [MESITA_TERMS_URL, MESITA_PRIVACY_URL]) {
       expect(url).not.toContain("www.");
       expect(url.startsWith("https://mesita.ai")).toBe(true);
     }

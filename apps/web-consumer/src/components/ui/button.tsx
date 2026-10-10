@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 // migrates found `bg-pink-gradient` (globals.css: `background:
 // var(--gradient-pink)`) hand-rolled 47 times as a raw string, but only 18
 // of those are actually a clickable button or link with the gradient as its
-// WHOLE surface. The other 29 paint icon tiles, avatar story-rings, photo
-// placeholders, chat bubbles, badges, a rating-bar fill and a toggle-switch
-// track — decorative reuses of the same brand token, never a button. Those
+// WHOLE surface. The other 29 painted icon tiles, photo placeholders, chat
+// bubbles, badges and a toggle-switch track — decorative reuses of the same
+// brand token, never a button. Those
 // stay hand-rolled: wrapping a non-interactive `<div>`/`<span>` in `<Button>`
 // would hand it click/keyboard/disabled semantics it never asked for, and
 // would trip the MESITA-1220 type-role guard for no reason.

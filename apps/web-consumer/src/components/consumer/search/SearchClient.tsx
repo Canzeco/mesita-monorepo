@@ -33,8 +33,8 @@
 // stashes a prediction between the select tap and the open.
 //
 // Composition:
-//   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
-//     gray Google, blue user). Catalog pins by default; `searchPins` overlays
+//   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
+//     user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
 //   • Top overlay: the search bar (two thirds) + labelled Filters (one
 //     third: Family, Places scope, Popularity). How many is
@@ -73,7 +73,7 @@ import {
   catalogPlaceOnMesita,
   overlayPinDecision,
   predictionOnMesita,
-} from "@/lib/search-membership";
+} from "./search-pins";
 import {
   SearchMap,
   type CameraAnchor,
@@ -138,7 +138,6 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
     mainText: place.name,
     secondaryText: place.address ?? "",
     state: "not_in_mesita",
-    partner: false,
     lat: place.lat,
     lng: place.lng,
   };
@@ -219,18 +218,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, distanceCenter]);
+  // Each ring's count is cumulative — the sets nest, so a Mesita row is in
+  // the Google ring too.
   const scopeCounts = useMemo(() => {
-    let partners = 0;
     let mesita = 0;
     let google = 0;
     for (const place of nearby) {
       const ring = placeSearchScope(place);
       if (!ring) continue;
-      if (ring === "partners") partners += 1;
-      if (ring === "partners" || ring === "mesita") mesita += 1;
+      if (ring === "mesita") mesita += 1;
       google += 1;
     }
-    return { partners, mesita, google };
+    return { mesita, google };
   }, [nearby]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.

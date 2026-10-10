@@ -5,27 +5,16 @@
 //
 // Derived / not-stored fields (distance_km, open_now, price_range) get
 // sensible neutral defaults — distance is geolocation-dependent and computed
-// client-side later. The reward matrix carries only the raw per-class rates;
-// the active class is resolved at render time from the live class context,
-// so this adapter never bakes in a current_class.
+// client-side later.
 
 import type { PlaceDetail } from "@/lib/mock/place";
-import { identityForClassKey } from "@/lib/consumer-data";
 import { detectMenuKind } from "@/lib/menu-url";
 import { parseMenuNutrition } from "@/lib/nutrition";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { displayPlaceTagLabel } from "@/lib/place-tag-label";
-import {
-  buildPromoMatrixFromRow,
-  hasExplicitClassRates,
-  type PromoRateFields,
-} from "@/lib/promo-rates";
 import { relativeLabel } from "@/lib/utils";
 import { DEFAULT_CURRENCY } from "@/lib/money";
-import {
-  isOrderActionEnabled,
-  isReserveActionEnabled,
-} from "@/lib/place-profile-actions";
+import { isReserveActionEnabled } from "@/lib/place-profile-actions";
 import type { Row } from "./place-to-detail-helpers";
 import {
   arr,
@@ -58,17 +47,6 @@ export type ResolvedTag = {
   sort_order: number;
 };
 
-function promoRateFieldsFromRow(row: Row): PromoRateFields {
-  return {
-    listing_type:
-      typeof row.listing_type === "string" ? row.listing_type : null,
-    welcome_free_rate: num(row.welcome_free_rate) ?? null,
-    welcome_premium_rate: num(row.welcome_premium_rate) ?? null,
-    free_rate: num(row.free_rate) ?? null,
-    premium_rate: num(row.premium_rate) ?? null,
-  };
-}
-
 export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
   const categoryName =
     resolvePlaceCategoryName({
@@ -77,8 +55,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     }) ?? "Place";
   const currency = str(row.currency) ?? DEFAULT_CURRENCY;
   const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
-  const listingType = row.listing_type === "partner" ? "partner" : "web";
-  const promoRates = promoRateFieldsFromRow(row);
   const details = obj(row.details);
 
   const openState = computeOpenState(row.hours, str(row.timezone));
@@ -89,14 +65,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently";
 
   return {
-    // BOTH server booleans have to be carried explicitly — this adapter builds
-    // a literal and never spread the row, so `promoting` was simply absent on
-    // every PlaceDetail ever built. `isPromoting()` is fail-closed, so the
-    // whole reward surface on place detail (the header disc, the summary chip,
-    // the Rewards box) read false no matter what the server said.
-    promoting: typeof row.promoting === "boolean" ? row.promoting : null,
-    partner: typeof row.partner === "boolean" ? row.partner : null,
-    orders_enabled: isOrderActionEnabled(row),
     reservations_enabled: isReserveActionEnabled(row),
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
@@ -119,7 +87,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       neighborhoodFromAddress(str(row.address)) ??
       str(row.city) ??
       "",
-    listing_type: listingType,
     created_label: createdLabel,
     updated_label: updatedLabel,
     last_updated_label: updatedLabel,
@@ -158,14 +125,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       facet: t.facet,
     })),
 
-    mesita_reviews: {
-      food: num(row.mesita_stars_food) ?? 0,
-      service: num(row.mesita_stars_service) ?? 0,
-      ambience: num(row.mesita_stars_ambience) ?? 0,
-      value: num(row.mesita_stars_value) ?? 0,
-      overall: num(row.mesita_stars_overall) ?? 0,
-      total: num(row.mesita_review_count) ?? 0,
-    },
     google: {
       rating: num(row.google_stars_overall) ?? 0,
       count: num(row.google_review_count) ?? 0,
@@ -186,28 +145,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
         quote: str(r.text) ?? str(r.quote) ?? "",
         date: str(r.published) ?? str(r.date) ?? "",
         photo_url: str(r.photo_url),
-      }),
-    ),
-
-    // Privacy-shaped by consumer-web-get-place (MESITA-913): private accounts
-    // arrive already anonymized — never rehydrate a real name client-side.
-    mesita_visitors: arr<Record<string, unknown>>(row.mesita_visitors).map(
-      (v) => ({
-        name: str(v.name) ?? "Anonymous guest",
-        handle: str(v.handle) ?? "",
-        // The server still sends LEGACY class keys, so the bridge splits them
-        // onto the v2 axes here (MESITA-1079). Only the class half is kept:
-        // a visitor's PLAN is private and must never reach another guest.
-        class_key: identityForClassKey(str(v.class_key)).cls,
-        community: str(v.community) ?? "",
-        followers: num(v.followers) ?? 0,
-        quote: str(v.quote) ?? "",
-        food: num(v.food) ?? 0,
-        service: num(v.service) ?? 0,
-        ambience: num(v.ambience) ?? 0,
-        value: num(v.value) ?? 0,
-        photo_url: str(v.photo_url),
-        photo_aspect: undefined,
       }),
     ),
 
@@ -260,14 +197,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       })(),
     },
 
-    promo_matrix: buildPromoMatrixFromRow(promoRates, listingType),
-    promo_configured: hasExplicitClassRates(promoRates),
-    // Ticket cap — the promo applies to the first `monthly_promo_cap` of the
-    // bill (a peso amount in the place's currency), then full price. 0 = no
-    // cap. Reads the same column the business sets on the Promos page.
-    reward_cap_mxn: num(row.monthly_promo_cap) ?? 0,
-    requires_story: row.requires_story === true,
-
     long_description:
       str(row.description) ?? str(row.story) ?? str(row.pitch) ?? "",
     // Spanish About translation (MESITA-926). Empty until Enricher/admin fills it.
@@ -305,8 +234,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
           : undefined,
       established_year: num(row.established_year),
       executive_chef: str(row.executive_chef),
-      participation: listingType === "partner" ? "Partner" : "Web listing",
-      mechanic: "Discount",
     },
 
     channels: {

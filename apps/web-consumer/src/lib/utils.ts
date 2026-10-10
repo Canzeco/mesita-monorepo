@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
-import { COUNTRIES, type Country } from "@/lib/consumer-data";
 
 // `rounded-panel` is a named hero radius (`--radius-panel`), not a t-shirt
 // step. Unextended twMerge treats it as a foreign class, so Skeleton's
@@ -132,17 +131,11 @@ export function ageFromBirthday(
   return age >= 0 && age < 130 ? age : null;
 }
 
-/** Title-case the stored sex value (male/female) for display; null-safe. */
-export function formatSex(sex: string | null | undefined): string | null {
-  if (!sex) return null;
-  return sex.charAt(0).toUpperCase() + sex.slice(1);
-}
-
 /**
  * Display form of the stored phone (E.164 digits, usually without the +).
  * MX numbers ("52" + 10 digits) get the local grouping — "+52 444 549 9597";
  * anything else keeps its digits with a leading + so it never renders as a
- * raw digit run on the passport card. Null-safe for callers with no phone.
+ * raw digit run on Profile. Null-safe for callers with no phone.
  */
 export function formatPhoneDisplay(
   phone: string | null | undefined,
@@ -157,24 +150,4 @@ export function formatPhoneDisplay(
     return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   }
   return `+${digits}`;
-}
-
-/**
- * The country a phone belongs to, matched on the longest dial code so "+52"
- * never wins over a longer code that starts with it. Bare 10-digit locals are
- * Mexican (the home market, and the only length the onboarding accepts without
- * a dial code). Null when nothing matches.
- *
- * Country is INFERRED here rather than stored: `consumers` has no country
- * column, and the dial code the guest already gave us answers it.
- */
-export function phoneCountry(phone: string | null | undefined): Country | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  if (digits.length === 10) {
-    return COUNTRIES.find((c) => c.code === "MX") ?? null;
-  }
-  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
-  return sorted.find((c) => digits.startsWith(c.dial)) ?? null;
 }

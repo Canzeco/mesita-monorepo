@@ -55,7 +55,7 @@ export function Box({
   );
 }
 
-export function BoxLabel({ children }: { children: React.ReactNode }) {
+function BoxLabel({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
       {children}

@@ -10,17 +10,14 @@ import { cn } from "@/lib/utils";
 //
 // FULL PAGE, NOT A SHEET (Pato, 2026-09-12). Every DestTile on /me opened a
 // LocalSheet over the hub. That read as a card stacked on a blur, and the
-// stacked history was a second sheet, not a route. Wallet already made this
-// call for Buy/Gift/Redeem (WalletScreen); Me copies that chrome so the two
-// identity/money surfaces do not disagree about what a destination is.
+// stacked history was a second sheet, not a route.
 //
 // THE BOTTOM NAV STAYS. (shell)/layout.tsx shows it on every shell route.
 // A full-page view here owns the BODY, not the frame.
 //
 // BACK IS A HISTORY POP with a fallback, the same shape PlaceDetailPageHeader
-// and WalletScreen settled on: a guest who arrived from /me returns to their
-// scroll position; a cold load of /me/profile lands on /me rather than off
-// the end of the app.
+// settled on: a guest who arrived from /me returns to their scroll position;
+// a cold load of /me/profile lands on /me rather than off the end of the app.
 
 export function MeScreen({
   title,

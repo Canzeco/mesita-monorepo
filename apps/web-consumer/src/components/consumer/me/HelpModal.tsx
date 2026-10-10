@@ -1,168 +1,19 @@
 "use client";
 
-// Help — the single education home for the reward program (MESITA-809).
-// Lives on Me, not on Rewards: the wallet is for doing, this is for
-// understanding. Opened from the Me > Support tile.
-//
-// Numbers never live here. A static ladder quoted Aggressive defaults as
-// if they were every place's bill (MESITA-1017). The live sheet is the
-// place Rewards tab; this list is what is priced, named.
-//
-// TWO IDENTITY ROWS (MESITA-2044): Base and Diamond. No metals, no
-// ladder — "either you are diamond or you are not".
-//
-// MVP cut (MESITA-2078): the rewards explainer and the priced list are
-// hidden while Pay is parked. The page is titled Support (MESITA-2080) and holds Legal and
-// the version; HelpRungList stays exported so un-parking is one JSX block.
+// Support — Legal and the app version. Opened from the Me > Support tile
+// (titled Support since MESITA-2080).
 
-import type { LucideIcon } from "lucide-react";
-import {
-  DoorOpen,
-  FileText,
-  Gem,
-  Instagram,
-  ScrollText,
-  Store,
-  UtensilsCrossed,
-} from "lucide-react";
+import { FileText, ScrollText } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import {
-  BASE_RATE_HINT,
-  BASE_RATE_LABEL,
-  DIAMOND,
-  DIAMOND_RATE_HINT,
-} from "@/lib/consumer-identity";
-import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
 import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
 import { RowDivider, SettingsGroup, SettingsLinkRow } from "./settings-rows";
-
-type HelpRung = {
-  key: string;
-  label: string;
-  hint: string;
-  icon: LucideIcon;
-  mine: boolean;
-};
-
-function RungRow({ icon: Icon, label, hint, mine }: Omit<HelpRung, "key">) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2.5 rounded-xl px-2.5 py-2",
-        mine
-          ? "bg-pink-gradient text-white"
-          : "bg-muted/40 ring-border/50 ring-1 ring-inset",
-      )}
-    >
-      <span
-        className={cn(
-          "grid size-7 shrink-0 place-items-center rounded-lg",
-          mine ? "bg-white/20 text-white" : "bg-secondary/10 text-secondary",
-        )}
-      >
-        <Icon className="size-[14px]" strokeWidth={2.25} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "type-body flex items-center gap-1.5 truncate leading-tight font-bold",
-            mine ? "text-white" : "text-foreground",
-          )}
-        >
-          {label}
-          {mine ? (
-            <span className="type-meta shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 font-extrabold tracking-widest uppercase">
-              You
-            </span>
-          ) : null}
-        </span>
-        <span
-          className={cn(
-            "type-label mt-0.5 block truncate",
-            mine ? "text-white/80" : "text-muted-foreground",
-          )}
-        >
-          {hint}
-        </span>
-      </span>
-    </div>
-  );
-}
-
-// Everything PRICED, in engine order: Base, Diamond, Welcome, then
-// the three sharing actions. The guest's own identity row wears You.
-//
-// Free / Premium sat between the classes and Welcome until MESITA-1705. The
-// plan is not priced any more, so listing it here would tell the guest a
-// subscription changes their rate — which is now false. Premium's real perks
-// live on Me › Plan.
-export function HelpRungList({ classKey }: { classKey: string }) {
-  const onList = classKey === "diamond";
-  const rungs: HelpRung[] = [
-    {
-      key: "base",
-      label: BASE_RATE_LABEL,
-      hint: BASE_RATE_HINT,
-      icon: Store,
-      mine: !onList,
-    },
-    {
-      key: "diamond",
-      label: DIAMOND,
-      hint: DIAMOND_RATE_HINT,
-      icon: Gem,
-      mine: onList,
-    },
-    {
-      key: "welcome",
-      label: "Welcome",
-      hint: "First visit only",
-      icon: DoorOpen,
-      mine: false,
-    },
-    {
-      key: "story",
-      label: "Instagram Story",
-      hint: "Needs a connected handle",
-      icon: Instagram,
-      mine: false,
-    },
-    {
-      key: "mesita",
-      label: "Mesita Review",
-      hint: "In the app, once per place",
-      icon: UtensilsCrossed,
-      mine: false,
-    },
-  ];
-
-  return (
-    <div className="flex flex-col gap-1.5 pt-1">
-      <div className="flex items-baseline justify-between px-1 pb-1">
-        <h3 className="text-foreground text-sm font-bold tracking-tight">
-          Everything that&apos;s priced
-        </h3>
-        <span className="text-muted-foreground type-label">
-          They add together
-        </span>
-      </div>
-      {rungs.map(({ key, ...r }) => (
-        <RungRow key={key} {...r} />
-      ))}
-    </div>
-  );
-}
 
 export function HelpModal() {
   return (
     <MeScreen title="Support">
       <div className="flex flex-col gap-4">
-        {/* MVP cut (MESITA-2078): the rewards explainer (instant discounts,
-            the Diamond line, actions that stack) and HelpRungList are hidden
-            while Pay is parked. */}
-
         {/* ABOUT LIVES HERE (Pato, MESITA-1650: "Remove the about box at the
             bottom, that must go in help"). The About cell is gone from Me, so
             this sheet inherited what it held: the Legal group — which

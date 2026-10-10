@@ -3,14 +3,12 @@
 import {
   Clock,
   Facebook,
-  Globe,
   Instagram,
   MapPin,
   Navigation,
   Star,
 } from "lucide-react";
 
-import { PartnerMark } from "@/components/consumer/PartnerMark";
 import { Spinner } from "@/components/shared";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { formatPlacePriceChip } from "@/lib/place-price";
@@ -22,7 +20,6 @@ import {
   formatRating,
 } from "@/lib/utils";
 
-import { isPartner } from "@/lib/promo-rates";
 import { ProfileActions } from "./ProfileActions";
 import {
   ProfileMetaChip,
@@ -34,14 +31,10 @@ import {
 
 export function ProfileSummary({ place }: { place: PlaceDetail }) {
   // decision: Pato — name in header; photo · Google · IG · Facebook; then
-  // swipe-style tags: verification · category · price · zone · distance ·
-  // hours · reward (MESITA-561).
+  // swipe-style tags: category · price · zone · distance · hours (MESITA-561).
   // decision: Pato (live, 2026-08-03) — the stat trio is the three OUTSIDE
-  // channels: Google · Instagram · Facebook. Mesita's own review aggregate
-  // comes out for now; with almost no Mesita reviews in the wild the slot
-  // read as an empty "— / 0 Mesita" next to an 11K Google count. The reward
-  // is not a reputation number either — it lives solely as the violet
-  // PromoChip in the tag row below.
+  // channels: Google · Instagram · Facebook. They are the reputation numbers
+  // a guest already trusts, and each one has a count to stand on.
   const googleRating = formatRating(place.google.rating)!;
   const googleCount = formatCompactCount(place.google.count, false);
   const igFollowers = formatCompactCount(place.instagram.followers, false);
@@ -54,7 +47,6 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
     }) ?? null;
   const stateValue = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
-  const partner = isPartner(place);
 
   return (
     // Full-bleed white band under the top chrome so the summary reads as
@@ -87,10 +79,9 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
       </div>
 
       {/* decision: Pato — when the Enricher is still building the profile an
-          "Enriching" chip leads the row; then verification · category ·
-          price · zone · distance · hours · reward (swipe-style tags on
-          light surface). MESITA-451: moved here off the header title.
-          MESITA-561: reward chip mirrors swipe PromoChip (showWhenEmpty). */}
+          "Enriching" chip leads the row; then category · price · zone ·
+          distance · hours (swipe-style tags on light surface). MESITA-451:
+          moved here off the header title. */}
       <div className="flex flex-wrap items-center gap-1.5">
         {place.is_enriching && (
           <span
@@ -105,29 +96,6 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             Enriching
           </span>
         )}
-        {/* PARTNER LEADS THE ROW (decision: Pato). This chip and the swipe
-            card's twin now state the same fact in the same words — they used
-            to read "No reward" here and "Not Verified" there off one shared
-            `promoting` boolean, so the same place described itself two ways
-            depending on which screen you were on. What the guest EARNS is a
-            separate chip (PromoChip, below); this one is who the place is. */}
-        <ProfileMetaChip>
-          {partner ? (
-            <>
-              {/* Same mark as the swipe chip and the title, from one file. It
-                  was lucide `BadgeCheck` with `fill-current text-primary`:
-                  fill and stroke the same colour, so the check vanished into
-                  the blob (MESITA-2031). */}
-              <PartnerMark className="text-partner h-3.5 w-3.5 shrink-0" />
-              <span className="font-semibold">Partner</span>
-            </>
-          ) : (
-            <>
-              <Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-              <span className="font-semibold">Not Partner</span>
-            </>
-          )}
-        </ProfileMetaChip>
         {place.category && (
           <ProfileMetaChip>
             <span className="font-semibold">{place.category}</span>
@@ -168,8 +136,6 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             </span>
           </ProfileMetaChip>
         )}
-        {/* MVP cut (MESITA-2078): the reward chip is hidden while Pay is
-            parked. */}
       </div>
 
       <ProfileActions className="mt-5" place={place} />

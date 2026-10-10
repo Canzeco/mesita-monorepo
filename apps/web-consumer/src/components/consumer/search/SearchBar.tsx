@@ -5,10 +5,9 @@ import { Compass, Search, X } from "lucide-react";
 import { countryBarChip } from "@/lib/search-scope";
 import { cn } from "@/lib/utils";
 
-// Shared by Search and Visit (the wallet's place list, MESITA-1071).
-// Query field only. Search's Places scope + Family + Popularity
-// live in the Filters sheet, opened as a labelled third of the row. Visit
-// omits that.
+// The Search map's query field — the one search bar in the app. Query
+// field only: Places scope + Family + Popularity live in the Filters sheet,
+// opened as a labelled third of the row beside this.
 // `onOpenScope` stays as an optional far-right control for hosts that
 // still want country + location on the pill.
 type SearchBarProps = {
@@ -16,13 +15,13 @@ type SearchBarProps = {
   showClear: boolean;
   onQueryChange: (value: string) => void;
   onClear: () => void;
-  /** Defaults to the discovery wording; the wallet asks a narrower question. */
+  /** Defaults to the discovery wording. */
   placeholder?: string;
   onFocus?: () => void;
   /** Paired with onFocus by hosts that put chrome aside while the bar is live. */
   onBlur?: () => void;
   inputRef?: RefObject<HTMLInputElement | null>;
-  /** Opens the two-knob scope sheet (country + location). Omit on Visit. */
+  /** Opens the two-knob scope sheet (country + location). */
   onOpenScope?: () => void;
   /** ISO country shown on the chip; null renders the Any globe. */
   countryCode?: string | null;

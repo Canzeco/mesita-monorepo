@@ -9,18 +9,18 @@ import {
 import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_ENRICHED_PIN_COLOR,
-  MAP_PARTNER_PIN_COLOR,
 } from "@/lib/map-defaults";
 import { cn } from "@/lib/utils";
 
+// Scope — the same two nested sets the Search map draws (Google Places ⊃
+// Mesita Enriched Places), as concentric rings beside a stacked legend.
+
 const SCOPE_COLOR: Record<DiscoveryPlacesScope, string> = {
-  partners: MAP_PARTNER_PIN_COLOR,
   mesita: MAP_ENRICHED_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };
 
 const SCOPE_STROKE: Record<DiscoveryPlacesScope, string> = {
-  partners: "#a37e00",
   mesita: "#c4123c",
   google: "#6b7280",
 };
@@ -28,8 +28,7 @@ const SCOPE_STROKE: Record<DiscoveryPlacesScope, string> = {
 const GLYPH = 28;
 const GLYPH_RADII: Record<DiscoveryPlacesScope, number> = {
   google: 12.5,
-  mesita: 8.5,
-  partners: 4.5,
+  mesita: 7,
 };
 
 function ScopeGlyph({ scope }: { scope: DiscoveryPlacesScope }) {
@@ -96,8 +95,7 @@ export function DiscoveryPlacesScope({
       <div className="flex items-center gap-2.5">
         <ScopeGlyph scope={scope} />
         <p id="discovery-scope-chain" className="sr-only">
-          Three nested sets: Google Places contains Mesita Enriched Places,
-          which contains Mesita Partner Places.
+          Two nested sets: Google Places contains Mesita Enriched Places.
         </p>
         <div
           role="radiogroup"

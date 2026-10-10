@@ -131,8 +131,6 @@ export function FavoritesList({
         <EmptyState
           icon={Heart}
           title="Nothing saved yet"
-          // MVP cut (MESITA-2078): "with its discount attached" hidden while
-          // Pay is parked.
           description="Swipe right on a place and it lands here."
           action={{
             label: "Start swiping",

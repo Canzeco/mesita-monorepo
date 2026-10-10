@@ -4,9 +4,9 @@ import type { LucideIcon } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
-// Reusable "coming soon" dialog for parked surfaces (Reserve, Share, Rewards,
-// Reservations, …). Callers open it on tap instead of showing a "Soon" pill —
-// the surface stays tappable and the gate is one shared modal.
+// Reusable "coming soon" dialog for an announced-not-wired control. Callers
+// open it on tap instead of showing a "Soon" pill — the surface stays tappable
+// and the gate is one shared modal.
 export function ComingSoonModal({
   open,
   onClose,

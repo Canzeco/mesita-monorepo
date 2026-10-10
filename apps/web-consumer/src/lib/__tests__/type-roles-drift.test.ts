@@ -2,11 +2,10 @@
 //
 // There is no root pnpm workspace — web-consumer and web-admin are independent
 // install roots — so a shared module is not importable without publishing.
-// The repo's existing answer is duplicate + pin, the same mechanism
-// ticket-journey-drift uses for the frozen mobile app. `type-roles.ts` is pure
-// data with zero platform deps precisely so the copies CAN be identical, which
-// is also what will let mobile-consumer consume it on unfreeze (NativeWind has
-// no @utility layer to generate from).
+// The repo's existing answer is duplicate + pin: a test that reads both copies
+// off disk. `type-roles.ts` is pure data with zero platform deps precisely so
+// the copies CAN be identical, which is also what lets mobile-consumer consume
+// it (NativeWind has no @utility layer to generate from).
 //
 // If this fails: you edited one copy. Edit Notion Docs > Design first, then
 // BOTH copies, in that order and the same session.

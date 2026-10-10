@@ -1,35 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CalendarCheck,
-  Loader2,
-  Lock,
-  QrCode,
-  UtensilsCrossed,
-} from "lucide-react";
+import { CalendarCheck } from "lucide-react";
 
-import {
-  CREDITS_BLOCKED,
-  MONEY_ACTIONS_PARKED,
-  ORDER_BLOCKED,
-  RESERVE_BLOCKED,
-} from "@/components/consumer/place-detail/place-actions-copy";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
-import { useConsumerIdentity } from "@/lib/class-context";
-import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
-import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { cn } from "@/lib/utils";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { isPromoting } from "@/lib/promo-rates";
-import {
-  isOrderActionEnabled,
-  isReserveActionEnabled,
-} from "@/lib/place-profile-actions";
+import { isReserveActionEnabled } from "@/lib/place-profile-actions";
 
-// The place-detail action bar (MESITA-1065): Credits · Visit · Order · Reserve,
-// pinned.
+// The place-detail action bar (MESITA-1065): Reserve, pinned.
 //
 // FIXED MEANS OUTSIDE THE SCROLL CONTAINER, not `position: fixed`. Both
 // callers — PlaceDetailPageBody and PlaceDetailModalShell — are flex columns
@@ -38,25 +17,14 @@ import {
 // z-tier and no fight with BottomNav (z-40) or the slide-over (z-120), and it
 // can't escape the MobileFrame card on desktop the way `fixed` would.
 //
-// WHY THESE FOUR WORDS. They are not new vocabulary: Activity already tracks
-// Visits · Orders · Reservations and Pay owns the Credits wallet, so the bar is
-// "the things you can start here" and each one has somewhere it lands
-// afterwards. The body's row keeps the verbs that act on your relationship to
-// the PAGE (Save · Contact · Share); commitment verbs live down here.
+// WHY IT IS DOWN HERE. The body's row keeps the verbs that act on your
+// relationship to the PAGE (Save · Contact · Share); Reserve commits you to
+// being at the place, and it lands somewhere afterwards (Me › Reservations),
+// so it gets the pinned band.
 //
-// CREDITS LEADS AND IS LOCKED EVERYWHERE. It is the money you bring, so it
-// reads before the money you spend — but its engine is unbuilt, which is a
-// fact about Mesita and not about this place, so the copy says so rather than
-// letting the lock imply the place fell short (place-actions-copy.ts).
-//
-// THE CELLS STACK — icon over label, not beside it. MEASURED, not chosen: at
-// 13px semibold "Reserve" beside a 16px icon is 74.6px wide, and four cells in
-// this bar (px-4, gap-2) get only 66.0px at 320px and 79.8px at 375px. One row
-// of four would have overflowed the narrowest phones outright and cleared 375px
-// by 5px — and `type-body` is rem-based, so a guest who bumps their browser
-// font size eats even that. Stacked, the cell needs just the label: 51.3px,
-// which clears at every width with room to spare. Adding the fourth verb is
-// what forced this; nothing else about the bar changed.
+// THE CELL STACKS — icon over label. The bar has drawn Reserve alone this way
+// since MESITA-2077; a single wide cell with the glyph beside the word read
+// as a stray toolbar button rather than the page's one commitment.
 
 export function PlaceActionBar({
   place,
@@ -65,32 +33,12 @@ export function PlaceActionBar({
   place: PlaceDetail;
   className?: string;
 }) {
-  const { userId } = useConsumerIdentity();
-  const tickets = useConsumerTickets(userId);
-  const { pickPlace, startingId, error } = useStartVisit({
-    activeTickets: tickets.active,
-    onCreated: () => {
-      void tickets.refresh();
-    },
-    source: "place_action_bar",
-  });
   const [reserveOpen, setReserveOpen] = useState(false);
 
-  // Gated on the LIVE reward, not the stored badge: a paused place used to
-  // let a guest open a ticket that nothing at the table would honor.
-  const promoting = isPromoting(place);
-  const orderEnabled = isOrderActionEnabled(place);
-  const reserveEnabled = isReserveActionEnabled(place);
-  const starting = startingId === place.id;
-
-  const btn =
-    "inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 type-body font-semibold whitespace-nowrap transition active:scale-[0.99] disabled:active:scale-100";
-  const outline = "border-border bg-card text-foreground hover:bg-muted border";
-
-  // MVP cut + a walk-in place leaves no verb at all: one disabled Reserve
-  // cell would be a dead strip pinned to the screen, so the bar steps aside
-  // (MESITA-2077). The page's Save · Contact · Share still render above.
-  if (MONEY_ACTIONS_PARKED && !reserveEnabled) return null;
+  // A walk-in place leaves no verb at all: one disabled Reserve cell would be
+  // a dead strip pinned to the screen, so the bar steps aside. The page's
+  // Save · Contact · Share still render above.
+  if (!isReserveActionEnabled(place)) return null;
 
   return (
     <>
@@ -100,134 +48,17 @@ export function PlaceActionBar({
           className,
         )}
       >
-        {/* The create can fail (cold EF, dropped connection). The bar has no
-            room for a panel, but swallowing it would leave a tap that visibly
-            did nothing — one line, above the row, in place. */}
-        {error ? (
-          <p className={cn(ERROR_BOX_CLASS, "mb-2 py-1.5")}>{error}</p>
-        ) : null}
-        <div
-          className={cn(
-            "grid gap-2",
-            MONEY_ACTIONS_PARKED ? "grid-cols-1" : "grid-cols-4",
-          )}
+        <button
+          type="button"
+          onClick={() => setReserveOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={reserveOpen}
+          aria-label="Reserve a table"
+          className="border-border bg-card text-foreground hover:bg-muted type-body inline-flex w-full flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2.5 font-semibold whitespace-nowrap transition active:scale-[0.99]"
         >
-          {/* MVP cut: Credits · Visit · Order are hidden while
-              MONEY_ACTIONS_PARKED (MESITA-2077); Reserve stands alone. */}
-          {MONEY_ACTIONS_PARKED ? null : (
-            <>
-              {/* CREDITS — the balance you already hold here. Locked at every
-              place until the Credits engine lands; see CREDITS_BLOCKED. */}
-              <button
-                type="button"
-                disabled
-                aria-label={CREDITS_BLOCKED.aria}
-                title={CREDITS_BLOCKED.title}
-                className={cn(
-                  btn,
-                  "bg-muted text-muted-foreground cursor-not-allowed",
-                )}
-              >
-                <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-                Credits
-              </button>
-
-              {/* VISIT — the money action, so it's the only filled button.
-              Same one-tap contract as the Visit wallet: create at "base" and
-              land on THE TICKET; a place already holding a live ticket
-              re-opens it instead of 409-ing (useStartVisit owns both arms).
-
-              Non-partners render LOCKED rather than hidden, matching
-              PlacePickList: consumer-web-create-ticket 409s `not_partner`, so
-              an enabled button here would be a dead end — but hiding it would
-              tell the guest this place is missing a feature the app has, when
-              what's actually true is that this place isn't a partner yet. */}
-              <button
-                type="button"
-                onClick={() => pickPlace(place)}
-                disabled={!promoting || starting}
-                aria-label={
-                  promoting
-                    ? "Start a visit"
-                    : "Visits aren't available at this place yet"
-                }
-                title={
-                  promoting
-                    ? undefined
-                    : "This place isn't running a Mesita reward right now."
-                }
-                className={cn(
-                  btn,
-                  promoting
-                    ? "bg-primary text-primary-foreground shadow-glow hover:opacity-95"
-                    : "bg-muted text-muted-foreground cursor-not-allowed",
-                )}
-              >
-                {starting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                ) : promoting ? (
-                  <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                ) : (
-                  <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-                )}
-                Visit
-              </button>
-
-              {/* ORDER — locked until the order rail ships (MESITA-1155). Menus live
-              on the profile tab; this slot stays visible. */}
-              <button
-                type="button"
-                disabled={!orderEnabled}
-                aria-label={
-                  orderEnabled ? "Order at this place" : ORDER_BLOCKED.aria
-                }
-                title={orderEnabled ? undefined : ORDER_BLOCKED.title}
-                className={cn(
-                  btn,
-                  orderEnabled
-                    ? outline
-                    : "bg-muted text-muted-foreground cursor-not-allowed",
-                )}
-              >
-                {orderEnabled ? (
-                  <UtensilsCrossed
-                    className="h-4 w-4 shrink-0"
-                    strokeWidth={2.25}
-                  />
-                ) : (
-                  <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-                )}
-                Order
-              </button>
-            </>
-          )}
-
-          {/* RESERVE — offered unless this place opted out (Not / walk-in). */}
-          <button
-            type="button"
-            onClick={reserveEnabled ? () => setReserveOpen(true) : undefined}
-            disabled={!reserveEnabled}
-            aria-haspopup={reserveEnabled ? "dialog" : undefined}
-            aria-expanded={reserveEnabled ? reserveOpen : undefined}
-            aria-label={
-              reserveEnabled ? "Reserve a table" : RESERVE_BLOCKED.aria
-            }
-            title={reserveEnabled ? undefined : RESERVE_BLOCKED.title}
-            className={cn(
-              btn,
-              reserveEnabled
-                ? outline
-                : "bg-muted text-muted-foreground cursor-not-allowed",
-            )}
-          >
-            {reserveEnabled ? (
-              <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-            ) : (
-              <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-            )}
-            Reserve
-          </button>
-        </div>
+          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+          Reserve
+        </button>
       </div>
 
       <ReservationSheet

@@ -29,12 +29,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
-  partner,
   fallbackHref = CONSUMER_ROUTES.discoverDefault,
 }: {
   placeId: string;
   placeName: string;
-  partner: boolean;
   /** Where to land when there is no history to pop. */
   fallbackHref?: string;
 }) {
@@ -63,7 +61,7 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </button>
-      <PlaceDetailTitle placeName={placeName} partner={partner} />
+      <PlaceDetailTitle placeName={placeName} />
       <div className="h-9 w-9 shrink-0" aria-hidden />
     </header>
   );
