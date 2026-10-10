@@ -7,6 +7,7 @@ import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 // graph; never called (a static render runs no handlers).
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/app/(app)/manage-multiple/actions", () => ({
+  autocompleteGooglePlaces: vi.fn(),
   createPlaceFromGooglePlaceId: vi.fn(),
   deletePlace: vi.fn(),
   enrichPlace: vi.fn(),

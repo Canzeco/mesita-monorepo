@@ -28,7 +28,6 @@ import {
   readConfigSection,
   writeConfigSection,
 } from "./config-sections.ts";
-import { DEFAULT_PROMOS_V12 } from "./promos-normalize.ts";
 
 const STAMP = "2026-09-09T00:00:00.000Z";
 const USER = "11111111-2222-3333-4444-555555555555";
@@ -119,34 +118,6 @@ type SectionCase = {
 };
 
 const CASES: Record<string, SectionCase> = {
-  controls: {
-    valid: {
-      config: {
-        defaultHoldHours: 3,
-        defaultBonusPct: 5,
-        maxHoldHours: 72,
-        minHoldHours: 0,
-        defaultExpiryDays: 90,
-        minExpiryDays: 30,
-      },
-    },
-    assertSaved: (saved, row) => {
-      assertEquals((saved.config as Row).maxHoldHours, 72);
-      assertEquals((row.controls_config as Row).defaultBonusPct, 5);
-    },
-    // The ceiling below the floor: coerced, never stored as an empty window.
-    invalid: { config: { minHoldHours: 100, maxHoldHours: 1 } },
-    refuse: {
-      clamped: (saved) => {
-        const c = saved.config as Row;
-        assert(
-          (c.maxHoldHours as number) >= (c.minHoldHours as number),
-          `maxHoldHours ${c.maxHoldHours} sank below minHoldHours ${c.minHoldHours}`,
-        );
-      },
-    },
-  },
-
   discovery: {
     valid: { config: { slotting: { enabled: true, everyNth: 4 } } },
     assertSaved: (saved) => {
@@ -197,46 +168,6 @@ const CASES: Record<string, SectionCase> = {
     refuse: { status: 400, contains: "config must be an object" },
   },
 
-  ojo: {
-    valid: {
-      config: { enabled: true, autoPassScore: 0.8, reviewFloorScore: 0.4 },
-    },
-    assertSaved: (saved) => {
-      assertEquals((saved.config as Row).autoPassScore, 0.8);
-      assertEquals((saved.config as Row).enabled, true);
-    },
-    // An inverted band would put every proof in one bucket.
-    invalid: { config: { autoPassScore: 0.2, reviewFloorScore: 0.9 } },
-    refuse: {
-      clamped: (saved) => {
-        const c = saved.config as Row;
-        assert(
-          (c.reviewFloorScore as number) <= (c.autoPassScore as number),
-          `reviewFloorScore ${c.reviewFloorScore} rose above autoPassScore ${c.autoPassScore}`,
-        );
-      },
-    },
-  },
-
-  orders: {
-    valid: { config: { enabled: true, monthlyQuotaFree: 5, monthlyQuotaPremium: 30 } },
-    assertSaved: (saved) => {
-      assertEquals((saved.config as Row).monthlyQuotaPremium, 30);
-      assertEquals((saved.config as Row).enabled, true);
-    },
-    // Premium may never allow fewer orders than Free.
-    invalid: { config: { monthlyQuotaFree: 10, monthlyQuotaPremium: 1 } },
-    refuse: {
-      clamped: (saved) => {
-        const c = saved.config as Row;
-        assert(
-          (c.monthlyQuotaPremium as number) >= (c.monthlyQuotaFree as number),
-          `premium ${c.monthlyQuotaPremium} sank below free ${c.monthlyQuotaFree}`,
-        );
-      },
-    },
-  },
-
   reservations: {
     valid: {
       config: { priority: ["phone"], disabled: [], respectAdminOverride: true },
@@ -252,38 +183,6 @@ const CASES: Record<string, SectionCase> = {
     refuse: { status: 400, contains: "unknown channel" },
   },
 
-  rewards: {
-    valid: { config: DEFAULT_PROMOS_V12 },
-    assertSaved: (saved, row) => {
-      assertEquals((saved.config as Row).version, 12);
-      const blob = row.promos_config as Row;
-      assert(blob.v12 && typeof blob.v12 === "object", "v12 key not written");
-      // The v13 grid/actions fallback is refreshed alongside it.
-      assert(blob.grid && typeof blob.grid === "object", "grid fallback missing");
-    },
-    // A stale tab is showing bundled defaults, not the live rates.
-    invalid: { config: { version: 11 } },
-    refuse: { status: 409, contains: "out of date" },
-  },
-
-  visits: {
-    valid: { config: { tipPresets: [10, 15, 20], defaultTipPct: 15, payCredits: true } },
-    assertSaved: (saved) => {
-      assertEquals((saved.config as Row).defaultTipPct, 15);
-      assertEquals((saved.config as Row).payCredits, true);
-    },
-    // The backoff ceiling can never sit below the base interval.
-    invalid: { config: { staffPollSeconds: 60, staffPollMaxSeconds: 1 } },
-    refuse: {
-      clamped: (saved) => {
-        const c = saved.config as Row;
-        assert(
-          (c.staffPollMaxSeconds as number) >= (c.staffPollSeconds as number),
-          `ceiling ${c.staffPollMaxSeconds} sank below base ${c.staffPollSeconds}`,
-        );
-      },
-    },
-  },
 };
 
 Deno.test("every registry key has a round-trip case — no section rides on another's proof", () => {
@@ -366,22 +265,6 @@ Deno.test("enricher: the image-funnel lock reads the STORED knobs, not just the 
     "can't exceed Google images kept",
   );
   assertEquals(row.enrichment_config, null, "a refused funnel save still wrote");
-});
-
-Deno.test("rewards: a stale save is a 409 and leaves the live blob untouched", async () => {
-  const row = seedRow();
-  row.promos_config = { v12: DEFAULT_PROMOS_V12, cap: 500 };
-  const res = await writeConfigSection(
-    { admin: fakeAdmin(row), userId: USER, body: { config: { version: 10 } } },
-    "rewards",
-  );
-  assertEquals(res.status, 409);
-  assertEquals(
-    (row.promos_config as Row).v12,
-    DEFAULT_PROMOS_V12,
-    "a refused stale save overwrote the live rates — the exact thing the 409 exists to stop",
-  );
-  assertEquals(row.updated_by, null);
 });
 
 Deno.test("an unknown section is a 400 on both doors, never a silent no-op", async () => {

@@ -41,6 +41,8 @@ export function ImageCarousel({
   hideSlides = false,
   className,
   renderSlide,
+  tapToPage = true,
+  interactiveDots = false,
 }: {
   photos: string[];
   media?: MediaItem[];
@@ -73,8 +75,30 @@ export function ImageCarousel({
   /** Invisible slides — keeps paging + indicators while visuals live elsewhere. */
   hideSlides?: boolean;
   className?: string;
-  /** Replaces the default full-bleed slide when the parent owns layout (e.g. swipe card). */
-  renderSlide?: (idx: number, item: MediaItem) => React.ReactNode;
+  /** Replaces the default full-bleed slide when the parent owns layout (e.g.
+   *  Scroll's card). `inPreloadWindow` is the same eager/lazy answer the
+   *  default slide uses, so a custom slide can keep the preload window. */
+  renderSlide?: (
+    idx: number,
+    item: MediaItem,
+    ctx: { inPreloadWindow: boolean },
+  ) => React.ReactNode;
+  /**
+   * The invisible left/right tap zones that page on a single tap. ON by
+   * default — the place page depends on them. Scroll turns them off
+   * (MESITA-2105): there a single tap does nothing and a double-tap saves, and
+   * a zone that paged on the first tap would page twice before the save.
+   * Native mode alone does NOT remove them; they render in both modes.
+   */
+  tapToPage?: boolean;
+  /**
+   * Dots become buttons (24px hit areas in a 44px row), ←/→ page the photos
+   * from any focused element inside, the track itself is focusable, and the
+   * "n / m" counter is dropped because the dots already say where you are.
+   * OFF by default; Scroll turns it on so a mouse and a keyboard can still
+   * page once the tap zones are gone.
+   */
+  interactiveDots?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
@@ -184,9 +208,25 @@ export function ImageCarousel({
         rounded,
         className,
       )}
+      onKeyDown={
+        interactiveDots && items.length > 1
+          ? (e) => {
+              if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+              e.preventDefault();
+              e.stopPropagation();
+              pageBy(e.key === "ArrowLeft" ? -1 : 1);
+            }
+          : undefined
+      }
     >
       <div
         ref={ref}
+        tabIndex={interactiveDots && items.length > 1 ? 0 : undefined}
+        aria-label={
+          interactiveDots && items.length > 1
+            ? `${alt}, photo ${idx + 1} of ${items.length}`
+            : undefined
+        }
         onScroll={
           noNativeScroll
             ? undefined
@@ -214,7 +254,7 @@ export function ImageCarousel({
             className="relative h-full w-full flex-shrink-0 snap-center"
           >
             {renderSlide ? (
-              renderSlide(i, m)
+              renderSlide(i, m, { inPreloadWindow: isInPreloadWindow(i) })
             ) : m.type === "video" ? (
               <video
                 ref={(el) => {
@@ -278,10 +318,15 @@ export function ImageCarousel({
       )}
 
       {items.length > 1 && (
-        <CarouselPillDots count={items.length} activeIdx={idx} />
+        <CarouselPillDots
+          count={items.length}
+          activeIdx={idx}
+          label={alt}
+          onSelect={interactiveDots ? goTo : undefined}
+        />
       )}
 
-      {items.length > 1 && (
+      {items.length > 1 && tapToPage && (
         <CarouselTapZones
           onPointerDown={handleZoneDown}
           onPointerUpLeft={handleZoneUp(-1)}
@@ -291,7 +336,7 @@ export function ImageCarousel({
         />
       )}
 
-      {items.length > 1 && (
+      {items.length > 1 && !interactiveDots && (
         <CarouselSlideCounter idx={idx} count={items.length} />
       )}
     </div>

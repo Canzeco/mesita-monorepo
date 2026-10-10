@@ -5,8 +5,9 @@ import type { Place } from "@/lib/api/places";
 // Pins the Enriching signal for swipe / catalog cards.
 // consumer-web-recommend-swipe already returns content_state via
 // PLACE_PUBLIC_COLUMNS; enrichPlaceOverview must
-// map it to is_enriching so SwipeCardInfo can lead the tag row (parity with
-// place detail). Regressions here hide the chip on newly created places.
+// map it to is_enriching so a card can say the profile is still being built
+// (parity with place detail). Regressions here hide the chip on newly created
+// places.
 
 function basePlace(
   overrides: Partial<Place> & Record<string, unknown> = {},

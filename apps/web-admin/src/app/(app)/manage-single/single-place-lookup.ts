@@ -1,4 +1,4 @@
-import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
+import type { AutocompleteHit, PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import { parseGooglePlaceIds } from "@/app/(app)/manage-multiple/google-place-ids";
 import type { PlaceLite } from "@/lib/places-types";
 
@@ -50,16 +50,50 @@ export function filterCatalog(places: PlaceHit[], query: string): PlaceHit[] {
  *  is enough to find one place. */
 export const GOOGLE_NAME_RESULTS = 20;
 
+/** An Autocomplete row in the shape Find's Google lists draw. Autocomplete
+ *  carries a name and a locality, no rating and no coordinates — opening one
+ *  Mesita does not hold peeks Google by Place ID for the rest (MESITA-2116). */
+export function autocompleteToLite(hit: AutocompleteHit): PlaceLite {
+  return {
+    id: hit.placeId,
+    displayName: hit.mainText,
+    formattedAddress: hit.secondaryText,
+    lat: null,
+    lng: null,
+    rating: null,
+    userRatingCount: null,
+    existsInMesita: Boolean(hit.mesitaId) || hit.state !== "not_in_mesita",
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+/** Where Find's Nearby Search looks: the first Text Search hit that has a
+ *  point. Nearby takes coordinates, never a name, and Autocomplete rows
+ *  carry none — so no Text Search hit means no Nearby (MESITA-2117). */
+export type NearbyAnchor = { place: PlaceLite; lat: number; lng: number };
+
+export function nearbyAnchor(places: readonly PlaceLite[]): NearbyAnchor | null {
+  for (const place of places) {
+    const { lat, lng } = place;
+    if (typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { place, lat, lng };
+    }
+  }
+  return null;
+}
+
 /** Whether Mesita already holds a Google result. Three witnesses, any one
- *  is enough: the discover EF's own google_place_id join, the catalog this
- *  page read, and the Adds this page made since — the EF's flag goes stale
+ *  is enough: the discover EF's own google_place_id join, the IDs this page
+ *  knows are held (the catalog it read plus Autocomplete's resolve), and the
+ *  Adds this page made since — the EF's flag goes stale
  *  the moment Add succeeds, and is all-false when its Mesita lookup failed. */
 export function googleOnMesita(
   place: PlaceLite,
-  catalogGoogleIds: ReadonlySet<string>,
+  heldGoogleIds: ReadonlySet<string>,
   added: { has(googleId: string): boolean },
 ): boolean {
-  return place.existsInMesita || catalogGoogleIds.has(place.id) || added.has(place.id);
+  return place.existsInMesita || heldGoogleIds.has(place.id) || added.has(place.id);
 }
 
 function fold(s: string): string {
