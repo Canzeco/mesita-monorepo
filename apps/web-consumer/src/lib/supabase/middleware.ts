@@ -3,11 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 import {
   isSurface,
+  prefixPath,
   resolveSurface,
   SURFACE_COOKIE,
   type Surface,
 } from "@/lib/surface";
-import { webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
+import { WEB_HOME, webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
 
 // Routing rules. Two passes:
 //
@@ -157,15 +158,33 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   // /web is anonymous-first: no sign-in wall. Mint a Supabase anonymous
   // session so client EFs that want a bearer still get one.
+  //
+  // THE COOKIES ARE ALREADY ON `response`. signInAnonymously() runs setAll
+  // above, which writes the new session onto both the request and `response`.
+  // This block used to replace `response` with a fresh one afterwards, which
+  // threw those cookies away: the browser never kept the session, and every
+  // /web load minted another anonymous user (Bugbot on PR #1995). Middleware
+  // is the only place the session can be persisted — a Server Component
+  // cannot set cookies — so it is minted here and nowhere else.
   if (surface === "web" && !user) {
     await supabase.auth.signInAnonymously();
-    const retry = await supabase.auth.getUser();
-    if (retry.data.user) {
-      response = nextWithPathname(request);
-    }
   }
 
   const sessionUser = (await supabase.auth.getUser()).data.user;
+  // An anonymous /web session is a session, not an account: it must never
+  // pass the phone-OTP wall of /mob or the bare paths (Bugbot on PR #1995).
+  const registered = sessionUser !== null && !sessionUser.is_anonymous;
+
+  // Every early return below is a NEW response. Carry whatever setAll wrote
+  // (a fresh anonymous session, a refreshed token) onto it, or the redirect
+  // silently logs the guest out.
+  function redirectKeepingSession(dest: URL) {
+    const redirected = NextResponse.redirect(dest);
+    for (const cookie of response.cookies.getAll()) {
+      redirected.cookies.set(cookie);
+    }
+    return redirected;
+  }
 
   if (
     surface === "web" &&
@@ -175,27 +194,31 @@ export async function updateSupabaseSession(request: NextRequest) {
     const app = request.nextUrl.clone();
     app.pathname = "/web/get-the-app";
     app.search = `?next=${encodeURIComponent(browserPath + request.nextUrl.search)}`;
-    return NextResponse.redirect(app);
+    return redirectKeepingSession(app);
   }
 
   // Signed-out wall (phone OTP) — mob emulator and legacy bare paths only.
-  if (surface !== "web" && shouldGate(pathname) && !sessionUser) {
+  if (surface !== "web" && shouldGate(pathname) && !registered) {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = surface ? `/${surface}` : "/";
     signInUrl.search = `?next=${encodeURIComponent(
       browserPath + request.nextUrl.search,
     )}`;
-    return NextResponse.redirect(signInUrl);
+    return redirectKeepingSession(signInUrl);
   }
 
   // Already-signed-in bounce. We keep the user's own `?next=` intact so a
   // deep link that forced a sign-in still lands at the original target.
-  if (sessionUser && SIGNED_IN_BOUNCE.has(pathname)) {
-    if (surface === "web") {
-      const home = request.nextUrl.clone();
-      home.pathname = "/web/discover/scroll";
-      return NextResponse.redirect(home);
-    }
+  // On /web any session bounces to Home (there is no sign-in page there);
+  // elsewhere only a registered account does — an anonymous one still has to
+  // sign in.
+  if (surface === "web" && sessionUser && SIGNED_IN_BOUNCE.has(pathname)) {
+    const home = request.nextUrl.clone();
+    home.pathname = prefixPath("web", WEB_HOME);
+    home.search = "";
+    return redirectKeepingSession(home);
+  }
+  if (surface !== "web" && registered && SIGNED_IN_BOUNCE.has(pathname)) {
     const bounce = request.nextUrl.clone();
     bounce.pathname = surface
       ? `/${surface}/auth/post-signin`
@@ -208,7 +231,7 @@ export async function updateSupabaseSession(request: NextRequest) {
         ? incomingNext
         : null;
     bounce.search = safeNext ? `?next=${encodeURIComponent(safeNext)}` : "";
-    return NextResponse.redirect(bounce);
+    return redirectKeepingSession(bounce);
   }
 
   return response;

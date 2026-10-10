@@ -12,7 +12,7 @@ export function DownloadAppScreen() {
       <EmptyState
         icon={Smartphone}
         title="Get the Mesita app"
-        description="The full site is for browsing places and maps. Sign in, pay at a table, wallet, and your profile are in the iOS and Android app."
+        description="The full site is for browsing places and maps. Signing in, reservations and your profile are in the iOS and Android app."
         action={{ label: "Download Mesita", href: "https://mesita.ai" }}
       />
       <p className="type-body text-muted-foreground pb-8 text-center">

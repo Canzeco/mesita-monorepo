@@ -87,11 +87,10 @@ export default async function RootLayout({
   const surfaceHeader = requestHeaders.get("x-surface");
   const surface = isSurface(surfaceHeader) ? surfaceHeader : "web";
   const bare = requestHeaders.get("x-bare-pathname") ?? "/";
-  const preShell =
-    bare === "/" ||
-    bare.startsWith("/onboard") ||
-    bare.startsWith("/auth") ||
-    bare.startsWith("/gift");
+  // /onboard draws its own MobileFrame, so wrapping it here stacked two
+  // emulators with two banners (Bugbot, PR #1995). /gift left with the First
+  // Stage cut.
+  const preShell = bare === "/" || bare.startsWith("/auth");
   const body = surface === "mob" && preShell ? (
     <MobileFrame>{children}</MobileFrame>
   ) : (

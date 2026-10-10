@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { WebFrame } from "@/components/consumer/WebFrame";
+import { DownloadAppScreen } from "@/components/consumer/DownloadAppScreen";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
@@ -59,13 +60,22 @@ export default async function ConsumerShellLayout({
     ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
     : "";
   const supabase = await createServerSupabase();
-  let user = (await supabase.auth.getUser()).data.user;
+  const user = (await supabase.auth.getUser()).data.user;
+  // /web's anonymous session is minted in middleware, the only place its
+  // cookies can be saved. No session here means that failed (sign-ins off, or
+  // rate-limited). Sending the guest to /web would bounce straight back to
+  // Home and loop forever, so the shell says so instead (Bugbot, PR #1995).
   if (!user && surface === "web") {
-    await supabase.auth.signInAnonymously();
-    user = (await supabase.auth.getUser()).data.user;
+    return (
+      <WebFrame>
+        <DownloadAppScreen />
+      </WebFrame>
+    );
   }
-  if (!user) {
-    redirect(withNext(surface === "web" ? prefixPath("web", "/") : "/", here));
+  // An anonymous /web session is not an account: /mob still asks for the
+  // phone.
+  if (!user || (surface === "mob" && user.is_anonymous)) {
+    redirect(withNext(surface === "mob" ? prefixPath("mob", "/") : "/", here));
   }
   if (
     surface === "web" &&
@@ -125,7 +135,9 @@ export default async function ConsumerShellLayout({
   }
   // Carry the destination into onboarding so finishing the form lands the
   // guest on what they originally opened, not a generic home tab.
-  if (needsOnboarding && surface !== "web" && !user.is_anonymous) {
+  // Every registered account finishes signup, whichever surface it opened —
+  // only an anonymous browse session is exempt (Bugbot, PR #1995).
+  if (needsOnboarding && !user.is_anonymous) {
     redirect(withNext(CONSUMER_ROUTES.onboard, here));
   }
 
