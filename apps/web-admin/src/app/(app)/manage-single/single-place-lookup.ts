@@ -1,5 +1,6 @@
 import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import { parseGooglePlaceIds } from "@/app/(app)/manage-multiple/google-place-ids";
+import type { PlaceLite } from "@/lib/places-types";
 
 // Single Place takes ONE box and reads it two ways: a Google Place ID token
 // looks the place up by its identity spine (and, when it is not on Mesita,
@@ -42,6 +43,23 @@ export function filterCatalog(places: PlaceHit[], query: string): PlaceHit[] {
     }
   }
   return out;
+}
+
+/** One Google Text Search page — what a name in Find asks Google for, beside
+ *  the catalog match (MESITA-2094). The bulk page's default is 50; one page
+ *  is enough to find one place. */
+export const GOOGLE_NAME_RESULTS = 20;
+
+/** Whether Mesita already holds a Google result. Three witnesses, any one
+ *  is enough: the discover EF's own google_place_id join, the catalog this
+ *  page read, and the Adds this page made since — the EF's flag goes stale
+ *  the moment Add succeeds, and is all-false when its Mesita lookup failed. */
+export function googleOnMesita(
+  place: PlaceLite,
+  catalogGoogleIds: ReadonlySet<string>,
+  added: ReadonlySet<string>,
+): boolean {
+  return place.existsInMesita || catalogGoogleIds.has(place.id) || added.has(place.id);
 }
 
 function fold(s: string): string {

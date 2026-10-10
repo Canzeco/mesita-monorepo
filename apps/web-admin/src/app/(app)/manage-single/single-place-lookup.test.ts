@@ -3,6 +3,7 @@ import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import {
   classifyLookup,
   filterCatalog,
+  googleOnMesita,
   MAX_NAME_MATCHES,
   matchesPlace,
 } from "./single-place-lookup";
@@ -56,5 +57,29 @@ describe("filterCatalog", () => {
       hit({ id: `id-${i}`, name: `Café ${i}` }),
     );
     expect(filterCatalog(many, "café")).toHaveLength(MAX_NAME_MATCHES);
+  });
+});
+
+describe("googleOnMesita", () => {
+  const place = {
+    id: GID,
+    displayName: "Cafe Nin",
+    formattedAddress: "Calle Havre 73",
+    lat: null,
+    lng: null,
+    rating: null,
+    userRatingCount: null,
+    existsInMesita: false,
+    createdAt: null,
+    updatedAt: null,
+  };
+  const none = new Set<string>();
+  it("is false only when no witness holds it", () => {
+    expect(googleOnMesita(place, none, none)).toBe(false);
+  });
+  it("takes any one witness: the EF join, the catalog, or this page's Adds", () => {
+    expect(googleOnMesita({ ...place, existsInMesita: true }, none, none)).toBe(true);
+    expect(googleOnMesita(place, new Set([GID]), none)).toBe(true);
+    expect(googleOnMesita(place, none, new Set([GID]))).toBe(true);
   });
 });

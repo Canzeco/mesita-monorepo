@@ -14,7 +14,7 @@ export default function ManageSingleLayout({
       <PageHeader
         eyebrow="Manage · Single Place"
         title="Single Place"
-        description="One place at a time. A Google Place ID or a name finds it; the facts and the Crenup ladder read it; Create, Enrich, List, Unlist and Delete write it. Everything else is edited in the business console."
+        description="One place at a time. A Google Place ID or a name finds it — on Mesita and on Google, and a place Mesita lacks is added from the list; the facts and the Crenup ladder read it; Create, Enrich, List, Unlist and Delete write it. Everything else is edited in the business console."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>

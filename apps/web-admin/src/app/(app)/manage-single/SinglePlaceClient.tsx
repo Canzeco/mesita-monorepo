@@ -7,9 +7,10 @@
 // write goes through the bulk page's server actions — one caller set, one
 // behaviour — and everything that is not a Crenup write (fields, Active,
 // Verified, Partnered) is a door to the business console, never a second
-// editor here (MESITA-1588 · MESITA-2084).
+// editor here (MESITA-1588 · MESITA-2084). A name also searches Google, and
+// a Google place Mesita does not hold is added from the list (MESITA-2094).
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Building,
@@ -39,6 +40,12 @@ import {
 } from "@/components/admin-ui/manage";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import {
+  GoogleMatchList,
+  searchGoogleByName,
+  type GoogleRowNote,
+  type GoogleState,
+} from "./GoogleMatches";
+import {
   GENERAL_STATE_FACTS,
   OPERATOR_PROMOTING_LABEL,
   operatorPromotingLevel,
@@ -49,6 +56,7 @@ import {
   classifyLookup,
   filterCatalog,
   googleMapsPlaceHref,
+  googleOnMesita,
   MAX_NAME_MATCHES,
 } from "./single-place-lookup";
 
@@ -74,15 +82,29 @@ export function SinglePlaceClient() {
   // The catalog, read once per page life for name searches. A Crenup write
   // invalidates it, because a Create or a Delete changes what a name finds.
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
+  // From Google, for the name in the matches view. `googleSeq` drops a reply
+  // that lands after a newer Find; `added` and `googleNotes` are this page's
+  // Adds, keyed by Google Place ID.
+  const [google, setGoogle] = useState<GoogleState | null>(null);
+  const googleSeq = useRef(0);
+  const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
+  const [googleNotes, setGoogleNotes] = useState<Record<string, GoogleRowNote>>({});
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
+  const catalogGoogleIds = useMemo(
+    () => new Set((catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : []))),
+    [catalog],
+  );
 
   async function find() {
     if (isBusy || lookup.kind === "empty") return;
     setBusy("find");
     setError(null);
     setNote(null);
+    googleSeq.current += 1;
+    setGoogle(null);
+    setGoogleNotes({});
     try {
       if (lookup.kind === "google_place_id") {
         await findByGoogleId(lookup.id);
@@ -112,6 +134,12 @@ export function SinglePlaceClient() {
   }
 
   async function findByName(query: string) {
+    // Google runs beside the catalog read, not after it, and lands on its own.
+    const seq = googleSeq.current;
+    setGoogle({ status: "loading" });
+    void searchGoogleByName(query).then((g) => {
+      if (googleSeq.current === seq) setGoogle(g);
+    });
     let places = catalog;
     if (!places) {
       const r = await listAllPlaces();
@@ -122,12 +150,55 @@ export function SinglePlaceClient() {
       places = r.data.places;
       setCatalog(places);
     }
-    const hits = filterCatalog(places, query);
-    if (hits.length === 1) {
-      setView({ kind: "place", hit: hits[0] });
+    // Always the list, even for one catalog match — the Google half is why
+    // a name was typed.
+    setView({ kind: "matches", query, hits: filterCatalog(places, query) });
+  }
+
+  /** A Google row: one Mesita holds opens the place (the catalog first, else
+   *  the identity lookup); one it does not opens Not on Mesita with what
+   *  Google already said, so Create spends no second Google call. */
+  async function openGoogle(place: PlaceLite) {
+    if (isBusy) return;
+    const known = catalog?.find((p) => p.google_place_id === place.id);
+    if (known) {
+      setView({ kind: "place", hit: known });
       return;
     }
-    setView({ kind: "matches", query, hits });
+    if (!googleOnMesita(place, catalogGoogleIds, added)) {
+      setView({ kind: "absent", googleId: place.id, google: place, note: null });
+      return;
+    }
+    setBusy("find");
+    setError(null);
+    try {
+      await findByGoogleId(place.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Add mints a Google row in place and leaves the list up, so one search
+   *  can add several. Same action as Create; the row then opens the place. */
+  async function addFromGoogle(place: PlaceLite) {
+    if (googleNotes[place.id]?.state === "running") return;
+    setGoogleNotes((n) => ({ ...n, [place.id]: { state: "running", text: "Adding…" } }));
+    let rowNote: GoogleRowNote;
+    try {
+      const r = await createPlaceFromGooglePlaceId(place.id);
+      if (r.ok) {
+        setAdded((s) => new Set(s).add(place.id));
+        setCatalog(null);
+        rowNote = { state: r.alreadyExisted ? "existed" : "ok", text: createdText(r) };
+      } else {
+        rowNote = { state: "error", text: r.error };
+      }
+    } catch (err) {
+      rowNote = { state: "error", text: err instanceof Error ? err.message : "Unexpected error" };
+    }
+    setGoogleNotes((n) => ({ ...n, [place.id]: rowNote }));
   }
 
   /** Re-read the place after a write: by its Google Place ID when it has
@@ -172,14 +243,7 @@ export function SinglePlaceClient() {
           ? (found.data.find((p) => p.google_place_id === view.googleId) ?? null)
           : null;
         if (hit) setView({ kind: "place", hit });
-        setNote({
-          state: r.alreadyExisted ? "existed" : "ok",
-          text: r.alreadyExisted
-            ? "Already on Mesita — skipped create"
-            : r.enrichmentTriggered
-              ? "Created · enrich queued"
-              : "Created · enrich not queued",
-        });
+        setNote({ state: r.alreadyExisted ? "existed" : "ok", text: createdText(r) });
         return;
       }
       const { hit } = view;
@@ -208,7 +272,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches the catalog by name, address or slug."
+        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google beside it."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -250,11 +314,28 @@ export function SinglePlaceClient() {
         ) : null}
 
         {view?.kind === "matches" ? (
-          <MatchList
-            query={view.query}
-            hits={view.hits}
-            onPick={(picked) => setView({ kind: "place", hit: picked })}
-          />
+          <>
+            <ListHeading>On Mesita</ListHeading>
+            <MatchList
+              query={view.query}
+              hits={view.hits}
+              onPick={(picked) => setView({ kind: "place", hit: picked })}
+            />
+            {google ? (
+              <>
+                <ListHeading>From Google</ListHeading>
+                <GoogleMatchList
+                  query={view.query}
+                  google={google}
+                  onMesita={(p) => googleOnMesita(p, catalogGoogleIds, added)}
+                  notes={googleNotes}
+                  disabled={isBusy}
+                  onOpen={(p) => void openGoogle(p)}
+                  onAdd={(p) => void addFromGoogle(p)}
+                />
+              </>
+            ) : null}
+          </>
         ) : null}
       </SectionCard>
 
@@ -332,6 +413,19 @@ export function SinglePlaceClient() {
   );
 }
 
+function createdText(r: { alreadyExisted: boolean; enrichmentTriggered: boolean }): string {
+  if (r.alreadyExisted) return "Already on Mesita — skipped create";
+  return r.enrichmentTriggered ? "Created · enrich queued" : "Created · enrich not queued";
+}
+
+function ListHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground mt-5 type-label font-semibold tracking-wide uppercase">
+      {children}
+    </p>
+  );
+}
+
 const RUNNING_TEXT: Record<CrenupAction, string> = {
   create: "Creating…",
   enrich: "Queueing enrich…",
@@ -402,13 +496,13 @@ function MatchList({
 }) {
   if (hits.length === 0) {
     return (
-      <p className="text-muted-foreground mt-4 text-sm">
-        Nothing on Mesita matches “{query}”. Paste its Google Place ID to create it.
+      <p className="text-muted-foreground mt-2 text-sm">
+        Nothing on Mesita matches “{query}”. Add it from Google below.
       </p>
     );
   }
   return (
-    <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
+    <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border">
       <p className="text-muted-foreground border-border border-b px-4 py-2 type-label">
         {hits.length >= MAX_NAME_MATCHES
           ? `First ${MAX_NAME_MATCHES} matches — narrow the name`
