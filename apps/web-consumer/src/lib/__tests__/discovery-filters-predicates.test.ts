@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
 import {
   DISCOVERY_FILTER_DEFAULTS,
+  DISCOVERY_SCOPE_STOPS,
   applyDiscoveryFilters,
   clampReviewFloor,
   countAppliedDiscoveryFilters,
   discoveryFiltersAreActive,
   formatReviewFloor,
   hasDiscoveryPredicates,
+  parsePlacesScope,
   type DiscoveryFilters,
 } from "@/lib/discovery-filters-engine";
 
@@ -17,7 +19,6 @@ function place(over: Partial<Place> = {}): Place {
     slug: "p1",
     name: "Place",
     category: null,
-    listing_type: "web",
     ...over,
   } as Place;
 }
@@ -26,8 +27,8 @@ function filters(over: Partial<DiscoveryFilters> = {}): DiscoveryFilters {
   return { ...DISCOVERY_FILTER_DEFAULTS, ...over };
 }
 
-const partner = place({ id: "partner", partner: true, google_count: 200 });
-const listed = place({ id: "listed", partner: false, google_count: 20 });
+const busy = place({ id: "busy", google_count: 200 });
+const quiet = place({ id: "quiet", google_count: 20 });
 const googleStub = place({
   id: "google",
   googleOnly: true,
@@ -60,27 +61,44 @@ describe("Family", () => {
 });
 
 describe("Scope", () => {
-  it("partners keeps only paying places", () => {
-    const kept = applyDiscoveryFilters(
-      [partner, listed, googleStub],
-      filters({ placesScope: "partners" }),
-    );
-    expect(kept.map((p) => p.id)).toEqual(["partner"]);
+  it("is two stops, Mesita first", () => {
+    expect(DISCOVERY_SCOPE_STOPS.map((s) => s.key)).toEqual([
+      "mesita",
+      "google",
+    ]);
+    expect(DISCOVERY_FILTER_DEFAULTS.placesScope).toBe("mesita");
+  });
+
+  it("parses the two words and lands everything else on the default", () => {
+    expect(parsePlacesScope("google")).toBe("google");
+    expect(parsePlacesScope(" MESITA ")).toBe("mesita");
+    // The retired paid ring, still in a persisted v6 blob.
+    expect(parsePlacesScope("partners")).toBe("mesita");
+    expect(parsePlacesScope(undefined)).toBe("mesita");
+    expect(parsePlacesScope(3)).toBe("mesita");
   });
 
   it("mesita at default is a pass-through — the host, not the engine, drops Google stubs", () => {
-    const deck = [partner, listed, googleStub];
+    const deck = [busy, quiet, googleStub];
     expect(applyDiscoveryFilters(deck, filters({ placesScope: "mesita" }))).toBe(
       deck,
     );
   });
 
+  it("mesita with another predicate set still drops the Google stub", () => {
+    const kept = applyDiscoveryFilters(
+      [busy, quiet, googleStub],
+      filters({ placesScope: "mesita", minReviews: 10 }),
+    );
+    expect(kept.map((p) => p.id)).toEqual(["busy", "quiet"]);
+  });
+
   it("google keeps the stubs too", () => {
     const kept = applyDiscoveryFilters(
-      [partner, listed, googleStub],
+      [busy, quiet, googleStub],
       filters({ placesScope: "google" }),
     );
-    expect(kept.map((p) => p.id)).toEqual(["partner", "listed", "google"]);
+    expect(kept.map((p) => p.id)).toEqual(["busy", "quiet", "google"]);
   });
 });
 
@@ -104,36 +122,35 @@ describe("Google review floor", () => {
   it("drops places below the floor and places with no count", () => {
     const none = place({ id: "none" });
     const kept = applyDiscoveryFilters(
-      [partner, listed, none],
+      [busy, quiet, none],
       filters({ minReviews: 100 }),
     );
-    expect(kept.map((p) => p.id)).toEqual(["partner"]);
+    expect(kept.map((p) => p.id)).toEqual(["busy"]);
   });
 });
 
 describe("predicates compose", () => {
   it("a place must satisfy every set predicate", () => {
     const kept = applyDiscoveryFilters(
-      [partner, listed],
+      [busy, quiet],
       filters({
         familyKeys: ["restaurants"],
-        placesScope: "partners",
+        placesScope: "google",
         minReviews: 10,
       }),
     );
     expect(kept).toEqual([]);
     const matching = place({
       id: "hit",
-      partner: true,
       family_keys: ["restaurants"],
       google_count: 400,
     });
     expect(
       applyDiscoveryFilters(
-        [matching, listed],
+        [matching, quiet, googleStub],
         filters({
           familyKeys: ["restaurants"],
-          placesScope: "partners",
+          placesScope: "mesita",
           minReviews: 100,
         }),
       ).map((p) => p.id),

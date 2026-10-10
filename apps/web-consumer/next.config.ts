@@ -21,16 +21,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   // Static legacy → canonical redirects live here as zero-render 308s
-  // (MESITA-899). Redirects with logic (query/tab mapping — /me/[tab],
-  // /inbox aliases, /saved/*) stay as server pages. Query strings are
-  // preserved automatically. The redirect table is pinned by
-  // src/lib/__tests__/consumer-route-contract.test.ts.
+  // (MESITA-899). Redirects with logic (query mapping — /me/[tab]) stay as
+  // server pages. Query strings are preserved automatically. The redirect
+  // table is pinned by src/lib/__tests__/consumer-route-contract.test.ts;
+  // route-structure T4 proves every destination resolves in at most two hops
+  // and T7 proves the load-bearing entries exist.
+  //
+  // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
+  // never renders and typecheck, build and the whole vitest suite stay green.
+  // Nothing here may name /pay, /discover/feed, /discover/scroll,
+  // /discover/chat, /discover/favs, /search, /me or any live /me/<box>.
   async redirects() {
     return [
-      // Explore era (pre-Home). Repointed straight at the Discover default —
-      // Swipe again as of MESITA-1615, was Catalog for one day, Search before
-      // that — when /home was retired; chaining them through /home would
-      // have made these two-hop, which route-structure T4 caps at exactly 2.
+      // Explore era (pre-Home). Straight to the Discover default.
       { source: "/explore", destination: "/discover/feed", permanent: true },
       { source: "/explore/swipe", destination: "/discover/scroll", permanent: true },
       { source: "/explore/map", destination: "/discover/feed", permanent: true },
@@ -40,50 +43,52 @@ const nextConfig: NextConfig = {
         destination: "/place/:id",
         permanent: true,
       },
-      // The centre tab: /pay -> /rewards -> /new-visit. Both the /pay era AND
-      // the /rewards era forward here now; /rewards and /rewards/ticket/:id
-      // were the LIVE urls until this change, so they need the forwarding
-      // address most, and everything else in this block used to chain through
-      // them (MESITA-1062 eng review, A5).
-      // The plan moved from a page to a sheet on Me (MESITA-1129). Both the
-      // bare prefix and the /subscribe/premium URL forward — the latter was
-      // the LIVE url and is what any external link (an iOS link-out, a
-      // receipt email) would still carry.
-      { source: "/subscribe", destination: "/me/plan", permanent: true },
-      { source: "/subscribe/:plan", destination: "/me/plan", permanent: true },
-      { source: "/rewards", destination: "/new-visit", permanent: true },
-      { source: "/pay", destination: "/new-visit", permanent: true },
-      { source: "/pay/:tab", destination: "/new-visit", permanent: true },
-      { source: "/qr", destination: "/new-visit", permanent: true },
-      // A single visit. The OBJECT is still a ticket; only the URL says visit.
-      {
-        source: "/rewards/ticket/:id",
-        destination: "/visit/:id",
-        permanent: true,
-      },
-      { source: "/pay/ticket/:id", destination: "/visit/:id", permanent: true },
-      {
-        source: "/pay/tickets/:id",
-        destination: "/visit/:id",
-        permanent: true,
-      },
-      { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
-      // The retired Home hub (2026-09-01). Every leaf 308s straight to
-      // Discover's default — Swipe again as of MESITA-1615 (was Catalog for
-      // one day, Search before that; see consumer-route-contract.ts's
-      // discoverDefault comment for the full reasoning). /home/ai points here
-      // rather than chaining through /home/chat — that page is deleted, so
-      // the old chain would both dangle and cost a second hop against T4's
-      // cap of 2.
-      //
-      // NOTHING HERE MAY CHAIN THROUGH /discover/map OR /discover/search.
-      // Both segments are themselves 308s now (below), so a chained /home
-      // would cost two hops and leave zero margin under T4. The destination
-      // is the canonical mode, always.
-      //
-      // /home/favorites goes with them: FavoritesList exists under components/
-      // but nothing rendered it and it needs the parked shared-deck fetch, so
-      // there was no live surface to promote.
+      // THE SECOND STAGE (MESITA-2087). Pay is one page, the Soon state, and
+      // every address that used to hang off the centre tab lands on it: the
+      // QR place list (/new-visit), THE TICKET (/visit/:id and its /rewards,
+      // /pay and /ticket era spellings), Wallet with Buy · Gift · Redeem ·
+      // balance and its /credits, /inbox/credits and /new-visit/wallet
+      // spellings, the Order tab, and the public gift landing. Each is ONE
+      // hop. Deepest sources first so the intent survives a `:param` rewrite.
+      { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
+      { source: "/new-visit/wallet", destination: "/pay", permanent: true },
+      { source: "/new-visit", destination: "/pay", permanent: true },
+      { source: "/wallet/:path*", destination: "/pay", permanent: true },
+      { source: "/wallet", destination: "/pay", permanent: true },
+      { source: "/credits", destination: "/pay", permanent: true },
+      { source: "/inbox/credits", destination: "/pay", permanent: true },
+      { source: "/inbox/orders", destination: "/pay", permanent: true },
+      { source: "/order", destination: "/pay", permanent: true },
+      { source: "/rewards/ticket/:id", destination: "/pay", permanent: true },
+      { source: "/rewards", destination: "/pay", permanent: true },
+      { source: "/pay/ticket/:id", destination: "/pay", permanent: true },
+      { source: "/pay/tickets/:id", destination: "/pay", permanent: true },
+      { source: "/pay/:tab", destination: "/pay", permanent: true },
+      { source: "/qr", destination: "/pay", permanent: true },
+      { source: "/ticket/:id", destination: "/pay", permanent: true },
+      { source: "/visit/:id", destination: "/pay", permanent: true },
+      { source: "/gift/:code", destination: "/pay", permanent: true },
+      // Me's Second Stage boxes (MESITA-2087): the class ladder, the Diamond
+      // pair and its invite PIN, Plan and the Premium checkout, Visits,
+      // Metrics, the Passport, the referral Share deck. The `/me/[tab]`
+      // catch-all already 308s a retired ONE-segment /me address onto the
+      // hub; the two-segment ones need an entry or they 404.
+      { source: "/subscribe", destination: "/me", permanent: true },
+      { source: "/subscribe/:plan", destination: "/me", permanent: true },
+      { source: "/me/class/invite", destination: "/me", permanent: true },
+      { source: "/me/class", destination: "/me", permanent: true },
+      { source: "/me/diamond/invite", destination: "/me", permanent: true },
+      { source: "/me/diamond", destination: "/me", permanent: true },
+      { source: "/me/plan", destination: "/me", permanent: true },
+      { source: "/me/visits", destination: "/me", permanent: true },
+      { source: "/me/settings/metrics", destination: "/me/settings", permanent: true },
+      // The Passport (MESITA-2043). The member number lives on Profile.
+      { source: "/me/passport", destination: "/me/profile", permanent: true },
+      { source: "/share", destination: "/me", permanent: true },
+      { source: "/invite", destination: "/me", permanent: true },
+      // The retired Home hub (2026-09-01). Every leaf 308s straight to the
+      // Discover default. NOTHING HERE MAY CHAIN THROUGH /discover/map OR
+      // /discover/search — both are themselves 308s (below).
       { source: "/home", destination: "/discover/feed", permanent: true },
       { source: "/home/swipe", destination: "/discover/feed", permanent: true },
       { source: "/home/catalog", destination: "/discover/feed", permanent: true },
@@ -91,107 +96,27 @@ const nextConfig: NextConfig = {
       { source: "/home/ai", destination: "/discover/feed", permanent: true },
       { source: "/home/social", destination: "/discover/feed", permanent: true },
       { source: "/home/favorites", destination: "/discover/feed", permanent: true },
-      // Explicit search intent, unlike the /home* leaves above — this one
-      // stays pointed at Search's canonical route regardless of what the
-      // Discover DEFAULT is, the same way /discover/map (below) does. /search
-      // IS that canonical route now (MESITA-1616), not a legacy source —
-      // dropped from this table; see /discover/search below for the entry
-      // that replaced it.
-      // The just-shipped Search route (MESITA-1609, six days, -> MESITA-1616).
-      // Straight to the new canonical /search — never chained through
-      // /discover/map, which points here too and would make that a 2-hop
-      // path. T7 pins this entry.
+      // Search's two addresses under /discover (MESITA-1609 → MESITA-1616),
+      // straight to the canonical /search. T7 pins both.
       { source: "/discover/search", destination: "/search", permanent: true },
-      // The map's own segment, for the ~26 hours it was the live url and the
-      // Discover default (#1438 → this change). Search IS the map now, so the
-      // word moved off the list mode and onto the map itself; /search is the
-      // forwarding address — direct, not through /discover/search, which is
-      // itself a redirect source above. T7 pins this entry — T4 can validate
-      // a redirect's destination but never its absence.
       { source: "/discover/map", destination: "/search", permanent: true },
-      // The browse mode shipped as "Home" for a day (#1448 -> 2026-09-02). It
-      // was a live url that production deployed, so it forwards like the rest,
-      // STRAIGHT to /discover/catalog.
-      //
-      // ITS SIBLING /discover/feed IS GONE FROM THIS TABLE (MESITA-1621).
-      // Catalog also shipped as "Feed" for about an hour (#1447 -> #1448) and
-      // 308'd here alongside Home ever since — but /discover/feed is a REAL
-      // PAGE now, Home's Feed mode, and a redirect listed here shadows the
-      // route entirely: the page would never render. So the entry is deleted,
-      // not repointed, and Home must NOT be re-pointed through it either —
-      // that would land Catalog's bookmarks on a different mode.
-      //
-      // FEED LEFT VISIT'S RAIL (MESITA-2050) and came back AS Home
-      // (MESITA-2081), so /discover/feed is a real page again and NOT a source
-      // here. /discover/home lands on it in one hop.
+      // Catalog's day as Home, Swipe's week as the default, Catalog's own
+      // segment (MESITA-1697). Swipe's sources forward to Scroll, the deck
+      // Swipe became; every other retired Home address forwards to Home.
       { source: "/discover/home", destination: "/discover/feed", permanent: true },
-      // MESITA-1697 — the two renamed segments. Swipe's address was
-      // `discoverDefault` for a week (BottomNav's Home href, the post-signin
-      // and onboarding targets, place detail's fallback), so its bookmarks are
-      // the realest in the consumer surface. Both forward in ONE hop; every
-      // /explore* and /home* entry above was re-pointed at /discover/scroll in
-      // the same change rather than being left to chain through here.
-      //
-      // Swipe's sources forward to Scroll, the deck Swipe became; every
-      // other retired Home address forwards to Home, which is Feed now
-      // (MESITA-2081).
-      //
-      // NOTHING MAY BE ADDED FOR /discover/feed, /discover/scroll,
-      // /discover/chat OR /discover/favs. A redirect whose SOURCE is a live
-      // route shadows it entirely — the page never renders, and typecheck,
-      // build and the whole vitest suite stay green. That is exactly how
-      // /discover/feed was unreachable before MESITA-1621 deleted its entry.
-      // route-structure.test.tsx now asserts this directly.
       { source: "/discover/swipe", destination: "/discover/scroll", permanent: true },
       { source: "/discover/catalog", destination: "/discover/feed", permanent: true },
-      // The Saved tab (reservations, favorites) and the /saved/place dual path.
-      // The contract still lists these legacy sources; without entries they 404ed
-      // (MESITA-1585). One hop each, straight to the canonical surface.
+      // The Saved tab (reservations, favorites) and the /saved/place dual
+      // path (MESITA-1585). One hop each, straight to the canonical surface.
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
-      { source: "/invite", destination: "/share", permanent: true },
-      // WALLET IS A TAB AT /wallet (MESITA-2050) — its second time there.
-      // Every former address points STRAIGHT at it: standalone /credits
-      // (#1429), the Activity section /inbox/credits, and Pay's section at
-      // /new-visit/wallet with its four children. Chaining any of them through
-      // another would cost a second hop against T4's cap. T7 asserts these
-      // entries exist: T4 can only validate a redirect's DESTINATION, never
-      // its absence. There is NO `/wallet` source any more: it is the live
-      // page, and a redirect would shadow it.
-      { source: "/credits", destination: "/wallet", permanent: true },
-      { source: "/inbox/credits", destination: "/wallet", permanent: true },
-      { source: "/new-visit/wallet", destination: "/wallet", permanent: true },
-      // Four explicit children, not one `:path*` — T4 can only prove a
-      // destination resolves when it names a real page.
-      { source: "/new-visit/wallet/buy", destination: "/wallet/buy", permanent: true },
-      { source: "/new-visit/wallet/gift", destination: "/wallet/gift", permanent: true },
-      { source: "/new-visit/wallet/redeem", destination: "/wallet/redeem", permanent: true },
-      { source: "/new-visit/wallet/balance/:id", destination: "/wallet/balance/:id", permanent: true },
       { source: "/profile", destination: "/me/profile", permanent: true },
-      // The class ladder's two pages (MESITA-2040). Deepest source FIRST:
-      // Next takes the first match, and `/me/class` listed above would not
-      // swallow `/me/class/invite` (these are exact, not prefix, sources) —
-      // but the order states the intent and survives someone turning either
-      // into a `:param` form. Each is ONE hop; the invite PIN never chains
-      // through /me/diamond.
-      { source: "/me/class/invite", destination: "/me/diamond/invite", permanent: true },
-      { source: "/me/class", destination: "/me/diamond", permanent: true },
-      // The Passport (MESITA-2043). The member number lives on Profile now.
-      { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/notifications", destination: "/me/notifications", permanent: true },
-      // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). Its three sections are
-      // pages under /me now (MESITA-1789), and /inbox still 308s onto the hub
-      // in ONE hop — a bookmark of the container is not a bookmark of one
-      // section. Ordering matters: /inbox/credits sits ABOVE this and still
-      // points at Wallet, because Next takes the first match and Credits never
-      // belonged to Activity.
-      // Activity anyway (it is an instrument, not an event).
-      // Orders' Activity section (#1430 -> 2026-09-06) has a home again: the
-      // Order tab (MESITA-2050). Above the catch-all for the same reason
-      // /inbox/credits is.
-      { source: "/inbox/orders", destination: "/order", permanent: true },
+      // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). /inbox 308s onto the
+      // hub in ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and
+      // point at Pay: Next takes the first match.
       { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },
     ];

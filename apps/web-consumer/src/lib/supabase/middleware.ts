@@ -25,10 +25,10 @@ import { webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
 // Onboard pages and dashboards each do their own server-side check.
 //
 // PROTECTED_PREFIXES is a fast path, NOT the security boundary. Every route
-// under app/(shell) — which is all of these plus /search, /place,
-// /share, /filters — is walled by that layout's own getUser()
-// check. Listing the personal-data routes here just means we redirect at
-// the edge instead of paying for an SSR render first.
+// under app/(shell) — which is all of these plus /search, /place, /discover
+// and /pay — is walled by that layout's own getUser() check. Listing the
+// personal-data routes here just means we redirect at the edge instead of
+// paying for an SSR render first.
 //
 // So there is no anonymous browsing today: a shared /place/<id> link is a
 // sign-in wall. An earlier version of this comment claimed the opposite
@@ -37,9 +37,9 @@ import { webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
 // decision — it means exempting the browse routes in the (shell) layout,
 // not editing this list.
 //
-// Legacy static paths (/pay, /qr, /profile, /notifications, /ticket, /invite)
-// are NOT listed: next.config.ts redirects() 308s them to their canonical
-// destination BEFORE middleware runs, and the destination is walled here.
+// Legacy addresses (consumer-route-contract.ts › `legacy`) are NOT listed:
+// next.config.ts redirects() 308s them to their canonical destination BEFORE
+// middleware runs, and the destination is walled here.
 
 const PROTECTED_PREFIXES = [
   // Still gated although it only 308s to /me (MESITA-1626): middleware runs
@@ -47,12 +47,9 @@ const PROTECTED_PREFIXES = [
   // param pointing at what they asked for instead of at Me.
   "/inbox",
   "/me",
-  "/new-visit",
-  "/visit",
-  // The two tabs MESITA-2050 added. Wallet is personal money; Order holds
-  // nothing yet, but it is a guest's tab and gets the same fast path.
-  "/wallet",
-  "/order",
+  // The Pay tab — one page, the Soon state (MESITA-2087). A guest's tab, so
+  // it gets the same fast path as Me.
+  "/pay",
   "/reservations",
   "/reservation",
 ];

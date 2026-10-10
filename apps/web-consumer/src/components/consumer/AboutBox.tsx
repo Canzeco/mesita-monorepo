@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 //
 // THE HEADING IS "PRESENTATION" (Pato, 2026-09-05) and it carries no place
 // name. It used to read "About <name>", and the name was doing real work: on a
-// page that also carries a reward block, a bare "ABOUT" would have been read
-// as "about the reward" by the section directly above it. "Presentation" does
-// not have that ambiguity — it names the thing itself rather than pointing at
-// a subject — so the name became redundant and the `name` prop went with it.
+// page of stacked sections, a bare "ABOUT" would have been read as "about the
+// section directly above it". "Presentation" does not have that ambiguity — it
+// names the thing itself rather than pointing at a subject — so the name
+// became redundant and the `name` prop went with it.
 //
 // THE RENAME STOPS AT THE LABEL. The component, its file and its prop stay
 // AboutBox/`text`, matching how every other label change in this repo is

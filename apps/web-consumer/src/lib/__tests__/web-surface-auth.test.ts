@@ -10,10 +10,14 @@ describe("web surface auth", () => {
     expect(webRequiresRegisteredAccount("/get-the-app")).toBe(false);
   });
 
+  // First Stage routes (MESITA-2087 deleted Wallet and Visit): every account
+  // surface the guest can still reach sends an anonymous session to the app.
   it("sends account features to get-the-app", () => {
     expect(webRequiresRegisteredAccount("/me")).toBe(true);
-    expect(webRequiresRegisteredAccount("/wallet")).toBe(true);
-    expect(webRequiresRegisteredAccount("/new-visit")).toBe(true);
-    expect(webRequiresRegisteredAccount("/visit/x")).toBe(true);
+    expect(webRequiresRegisteredAccount("/me/profile")).toBe(true);
+    expect(webRequiresRegisteredAccount("/pay")).toBe(true);
+    expect(webRequiresRegisteredAccount("/reservations")).toBe(true);
+    expect(webRequiresRegisteredAccount("/reservation/x")).toBe(true);
+    expect(webRequiresRegisteredAccount("/onboard")).toBe(true);
   });
 });

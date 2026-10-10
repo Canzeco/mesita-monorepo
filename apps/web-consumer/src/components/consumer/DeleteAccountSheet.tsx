@@ -11,7 +11,7 @@ import { apiDeleteConsumerAccount } from "@/lib/api/profile";
 import { MESITA_PRIVACY_EMAIL } from "@/lib/mesita-contact";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS, SHEET_CANCEL_BUTTON_CLASS } from "@/lib/ui-classes";
 
-// Destructive confirm DIALOG for Settings → Privacy & data → Delete account.
+// Destructive confirm DIALOG for Settings → Your data → Delete account.
 //
 // A confirm is a dialog, not a sheet (decision: Pato, 2026-08-22). Sheets are
 // a fixed 80% of the card now, and this surface is a paragraph, one field and
@@ -69,8 +69,8 @@ export function DeleteAccountSheet({
         </div>
 
         <p className="text-muted-foreground type-body mt-4 leading-snug">
-          Your profile, tickets, reservations and rewards will be permanently
-          deleted, and your sign-in will stop working immediately. If you&apos;d
+          Your profile and reservations will be permanently deleted, and your
+          sign-in will stop working immediately. If you&apos;d
           rather we handle it manually, email{" "}
           <a
             href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(

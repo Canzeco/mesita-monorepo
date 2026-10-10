@@ -37,9 +37,9 @@ import type { Coords } from "@/lib/use-user-location";
 import {
   pinFillColor,
   pinStrokeColor,
-  placeMembershipTone,
-  type MembershipTone,
-} from "@/lib/search-membership";
+  placePinTone,
+  type PinTone,
+} from "./search-pins";
 
 type MapsCtor = {
   Size: new (w: number, h: number) => { width: number; height: number };
@@ -57,7 +57,7 @@ function mapsPinIcon(fillColor: string, strokeColor: string) {
   };
 }
 
-function placeIcon(tone: MembershipTone, isSelected: boolean) {
+function placeIcon(tone: PinTone, isSelected: boolean) {
   return mapsPinIcon(pinFillColor(tone), pinStrokeColor(isSelected));
 }
 
@@ -70,7 +70,7 @@ export type SearchMapPin = {
   lat: number;
   lng: number;
   title: string;
-  tone: MembershipTone;
+  tone: PinTone;
 };
 
 /**
@@ -355,14 +355,11 @@ function SearchMapCanvas({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
-              icon={placeIcon(
-                placeMembershipTone(place),
-                place.id === selectedId,
-              )}
+              icon={placeIcon(placePinTone(place), place.id === selectedId)}
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
-              // First tap selects (membership fill + black ring + rail); later tap opens.
+              // First tap selects (tone fill + black ring + rail); later tap opens.
               onClick={() =>
                 place.id === selectedId
                   ? onOpenPlace(place)

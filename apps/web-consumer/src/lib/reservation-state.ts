@@ -1,4 +1,4 @@
-// One source of truth for how each ticket lifecycle phase looks and reads.
+// One source of truth for how each reservation lifecycle phase looks and reads.
 // Shared by the list card and the detail body so a reservation never wears
 // two different faces. The phases themselves are derived in
 // lib/reservations-adapter.ts (reservationPhase).

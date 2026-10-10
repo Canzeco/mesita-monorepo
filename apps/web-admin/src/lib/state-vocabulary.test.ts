@@ -1,28 +1,22 @@
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  ENGINELESS_STATE_FACT_KEYS,
   GENERAL_STATE_COUNT,
   GENERAL_STATE_FACTS,
   CRENUP_STEP_COUNT,
   CRENUP_STEPS,
   crenupStepLabel,
   STATE_FACT_FALSE_TONE,
-  operatorPromotingLevel,
-  promotingLevelChip,
-  promotingLevelFromStrategy,
   requestCountChip,
   requestCountFromRow,
   stateBoolChip,
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is eleven general facts plus nine Crenup steps 0–8", () => {
-    // Owned joined with MESITA-1608 — somebody holds this place (the claim
-    // on `places` since MESITA-1892; an organization before that), which
-    // is not the same claim as Verified (having PROVED you hold it).
-    expect(GENERAL_STATE_COUNT).toBe(11);
+  it("is six general facts plus nine Crenup steps 0–8", () => {
+    // The MVP First Stage cut the commercial facts: Verified (MESITA-2106),
+    // then Owned · Partnered · Rewards · Mesita Pay · Mesita Credits
+    // (MESITA-2115).
+    expect(GENERAL_STATE_COUNT).toBe(6);
     expect(CRENUP_STEP_COUNT).toBe(9);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
@@ -31,11 +25,6 @@ describe("state vocabulary", () => {
       "Requested",
       "Enriching",
       "Enriched",
-      "Owned",
-      "Partnered",
-      "Rewards",
-      "Mesita Pay",
-      "Mesita Credits",
     ]);
     expect(CRENUP_STEPS.map((f) => `${f.n}. ${f.label}`)).toEqual([
       "0. Seed",
@@ -54,14 +43,7 @@ describe("state vocabulary", () => {
   });
 
   it("every general-state false reads rose — no neutral-grey exception (MESITA-1684, decision: Pato)", () => {
-    expect(STATE_FACT_FALSE_TONE.partner).toBeUndefined();
-    expect(STATE_FACT_FALSE_TONE.mesita_pay).toBeUndefined();
-    expect(STATE_FACT_FALSE_TONE.credits).toBeUndefined();
-    expect(STATE_FACT_FALSE_TONE.owned).toBeUndefined();
     expect(Object.keys(STATE_FACT_FALSE_TONE)).toEqual([]);
-    // Acceptance bits are still engineless (no chips/segments) until their
-    // engines land — that gate is unrelated to the false-tone color.
-    expect([...ENGINELESS_STATE_FACT_KEYS]).toEqual(["mesita_pay", "credits"]);
   });
 
   it("binary chips are true / false, not the fact name", () => {
@@ -70,21 +52,6 @@ describe("state vocabulary", () => {
     expect(stateBoolChip("unknown")).toBe("?");
     expect(stateBoolChip("loading")).toBe("…");
     expect(stateBoolChip(null)).toBe("?");
-  });
-
-  it("Rewards is 0 | 1 | 2 — engine Dominant displays as 2", () => {
-    expect(operatorPromotingLevel(0)).toBe(0);
-    expect(operatorPromotingLevel(1)).toBe(1);
-    expect(operatorPromotingLevel(2)).toBe(2);
-    expect(operatorPromotingLevel(3)).toBe(2);
-    expect(operatorPromotingLevel(-1)).toBe(0);
-    expect(operatorPromotingLevel(undefined)).toBe(0);
-    expect(promotingLevelChip(3)).toBe("2");
-    expect(promotingLevelFromStrategy(false, "aggressive")).toBe(0);
-    expect(promotingLevelFromStrategy(true, "conservative")).toBe(1);
-    expect(promotingLevelFromStrategy(true, "aggressive")).toBe(2);
-    expect(promotingLevelFromStrategy(true, "dominant")).toBe(2);
-    expect(promotingLevelFromStrategy(true, null)).toBe(2);
   });
 
   it("Requested is 0…n, never a Yes/No", () => {
@@ -98,30 +65,5 @@ describe("state vocabulary", () => {
     expect(requestCountChip(0)).toBe("0");
     expect(requestCountChip(4)).toBe("4");
     expect(requestCountChip(undefined)).toBe("?");
-  });
-});
-
-// A SECOND gate, deliberately.
-//
-// `deno task sync-shared:check` in rules.yml is the first: shared/ is the
-// source and both copies are generated from it (MESITA-1614). This runs in
-// each app's OWN path-filtered CI, so it still fires on a change that the
-// repo-wide workflow's filter somehow misses — and it fails on the same
-// mistake from the other direction, which is worth the four lines.
-describe("the two app copies must not drift", () => {
-  // apps/web-admin and apps/web-business each carry a byte-identical copy of
-  // this file. There is no root pnpm workspace to share it from — packages are
-  // independent install roots because mobile needs nodeLinker: hoisted — so
-  // the only thing that can hold them together is a test.
-  //
-  // It lives in BOTH packages on purpose. CI is path-filtered per package, so
-  // a guard only in web-business would never run on a web-admin-only edit,
-  // which is exactly the change that would break it.
-  it("is byte-identical to the other app copy", () => {
-    const here = readFileSync(path.join(__dirname, "./state-vocabulary.ts"), "utf8");
-    const other = path.join(__dirname, "../../../web-business/src/lib/state-vocabulary.ts");
-    // Fail loudly if the file MOVED, rather than passing vacuously.
-    expect(existsSync(other), `${other} not found — did the file move?`).toBe(true);
-    expect(readFileSync(other, "utf8")).toBe(here);
   });
 });

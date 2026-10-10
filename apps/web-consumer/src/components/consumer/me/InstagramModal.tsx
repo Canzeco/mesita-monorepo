@@ -11,38 +11,32 @@ import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { useConsumerClass } from "@/lib/class-context";
+import { useConsumerIdentity } from "@/lib/identity-context";
 import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
-import { InstagramEmulator } from "@/components/consumer/me/demo/InstagramEmulator";
-import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
-// Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
+// Instagram connect page (MESITA-936): one Why box → Connect.
 //
-// IT GRANTS NO CLASS ANY MORE (Pato, MESITA-2040: "instagram is just 1000
-// followers"). Every sentence on this screen used to end on a rung — the bar
-// and the rung both came off `REACH_ENTRY_CLASS` precisely so the copy could
-// not quote one class's threshold next to another class's name, which it had
-// done once (MESITA-1141). There is no rung to quote. The bar is the bar, it
-// lives in `INSTAGRAM_REACH_FOLLOWERS`, and this file names it once.
-//
-// TWO THINGS, STILL SEPARATE. Crossing the bar makes an account VERIFIED;
-// Story Bonus rides a connected HANDLE and always has (MESITA-909), bar or no
-// bar. Folding them would either promise the bonus only above 1,000 or call
-// every connected account verified.
+// IT GRANTS NOTHING (Pato, MESITA-2040: "instagram is just 1000 followers").
+// A connected handle is an identity fact; crossing the bar makes the account
+// VERIFIED. The bar lives in `INSTAGRAM_REACH_FOLLOWERS` and this file names
+// it once.
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
+// The follower count the claim persists until @mesita.bot can read real
+// reach. Above the bar on purpose: a connected account is verified until the
+// bot can say otherwise.
+const CLAIMED_FOLLOWERS = 5_000;
+
 const WHY_LINES = [
   `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
-  // MVP cut (MESITA-2078): the Story-earns-Rewards line is hidden while Pay
-  // is parked.
 ] as const;
 
 export function InstagramModal() {
   const supabase = useBrowserSupabase();
-  const { facts } = useConsumerClass();
-  const connected = facts.igConnected;
+  const identity = useConsumerIdentity();
+  const connected = identity.igConnected;
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -64,16 +58,13 @@ export function InstagramModal() {
     setVerifying(true);
     try {
       await apiClaimInstagram(supabase, {
-        followers: DEMO_INSTAGRAM_FOLLOWERS,
+        followers: CLAIMED_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
-      // ALWAYS A FULL RELOAD (MESITA-2040). This used to branch on the `tier`
-      // the server echoed back — a reload when the claim moved the class, a
-      // toast and a `router.back()` when it did not. The class is no longer
-      // what changed: a connected handle is a new fact on every surface that
-      // reads it, whatever the follower count, so every successful claim
-      // re-seeds from the server the same way. The old fast path also left
-      // the header chip stale on a sub-bar connect.
+      // ALWAYS A FULL RELOAD: a connected handle is a new fact on every
+      // surface that reads it, and the identity is seeded server-side by the
+      // shell layout, so every successful claim re-seeds the same way. A
+      // soft `router.back()` left the header chip stale.
       window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
     } catch (e) {
       toast(errMsg(e, "Couldn’t verify — try again."));
@@ -95,14 +86,10 @@ export function InstagramModal() {
         <p className="text-muted-foreground text-xs">
           {INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers
           verifies you.
-          {/* MVP cut (MESITA-2078): "Stories earn extra Rewards" hidden
-              while Pay is parked. */}
         </p>
       </div>
 
         <div className="flex flex-col gap-3">
-          <InstagramEmulator />
-
           {connected && (
             <section className="flex flex-col gap-2">
               <SectionEyebrow>Connected</SectionEyebrow>
@@ -249,9 +236,7 @@ function ConnectModule({
 }
 
 function CurrentConnectionCard() {
-  const { facts } = useConsumerClass();
-  const handle = facts.igHandle;
-  const verified = facts.igReach;
+  const { igHandle: handle, igReach: verified } = useConsumerIdentity();
 
   return (
     <div className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
@@ -268,8 +253,6 @@ function CurrentConnectionCard() {
           {handle ? `@${handle}` : "Instagram connected"}
         </p>
         <p className="text-muted-foreground text-xs">
-          {/* MVP cut (MESITA-2078): "Stories earn extra Rewards" hidden
-              while Pay is parked. */}
           {verified ? "Verified" : "Connected"}
         </p>
       </div>

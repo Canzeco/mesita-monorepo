@@ -36,16 +36,8 @@ export const SHEET_TITLE_CLASS =
 export const SHEET_BODY_CLASS =
   "scrollbar-hide min-h-0 flex-1 overflow-y-auto p-5";
 
-// Instagram brand badge fill used on social avatars (feed + profile modal).
-export const INSTAGRAM_BADGE_GRADIENT_CLASS =
-  "bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5]";
-
-// Multi-line text area — same border/type rhythm as INPUT_CLASS, without the
-// fixed 44px height so rows can grow with content.
-export const TEXTAREA_CLASS =
-  "w-full resize-none rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition focus:border-foreground/40";
-
-// Mesita Instagram icon tint (oklch warm→magenta) — IconCircle + verify/class UI.
+// Mesita Instagram icon tint (oklch warm→magenta) — IconCircle + the
+// Instagram identity UI.
 export const INSTAGRAM_ICON_GRADIENT_CLASS =
   "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]";
 

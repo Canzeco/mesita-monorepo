@@ -13,17 +13,17 @@ import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 
 // State-driven overlays (no route change): bottom sheets and centered
-// dialogs opened by component state — verify social, social profiles,
-// settings. Same motion language as the route modals (SlideOverShell /
-// BottomSheetShell). Discovery Filters moved to routed /filters (MESITA-905).
+// dialogs opened by component state — Contact, Delete account, Reserve.
+// Same motion language as the route modals (SlideOverShell /
+// BottomSheetShell).
 //
 // Positioning: by default these PORTAL into the MobileFrame card
 // (APP_CARD_ID) so the backdrop covers the WHOLE app — chrome bands
 // included — without `fixed` (which escapes the card on desktop and dims
 // the entire monitor). Rendering in place would anchor to whatever
-// positioned ancestor happens to be nearest (the VerifySocialSheet bug:
-// TopBar/BottomNav stayed visible and clickable). z-[130] sits above the
-// route-modal host (z-[120]) and below the Toaster (z-[140]).
+// positioned ancestor happens to be nearest, leaving TopBar/BottomNav
+// visible and clickable. z-[130] sits above the route-modal host (z-[120])
+// and below the Toaster (z-[140]).
 //
 // Presence: the parent just flips `open`. When `open` goes false the
 // overlay plays the exit transition before unmounting (or, with

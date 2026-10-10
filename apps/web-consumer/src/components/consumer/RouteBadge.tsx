@@ -14,8 +14,8 @@ import { barePath, prefixPath, type Surface } from "@/lib/surface";
  * actually QA in (the in-app preview pane, screenshot harnesses) show no
  * address bar — so the URL is invisible in a screenshot. That hurts here
  * more than in most apps, because the route carries meaning the pixels
- * don't: `/visit/[id]` vs `/reservation/[id]` light the same tab, the
- * `?mode=` segments pick a Home mode, and an `@modal` intercept looks
+ * don't: `/place/[id]` lights Home while `/reservation/[id]` lights Me, the
+ * `/discover/*` segments pick a Home mode, and an `@modal` intercept looks
  * identical to its hard twin.
  *
  * Placement follows the frame. On desktop it parks in the gutter beside

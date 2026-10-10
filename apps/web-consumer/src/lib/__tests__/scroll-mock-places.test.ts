@@ -83,12 +83,6 @@ describe("Scroll's mock places", () => {
       "mezcal-santa-lucia",
       "salon-fundidora",
     ]);
-    const partners = applyDiscoveryFilters(rows, {
-      ...base,
-      placesScope: "partners",
-    });
-    expect(partners.length).toBeGreaterThan(0);
-    expect(partners.every((r) => r.partner === true)).toBe(true);
     const busy = applyDiscoveryFilters(rows, {
       ...base,
       minReviews: 10000,

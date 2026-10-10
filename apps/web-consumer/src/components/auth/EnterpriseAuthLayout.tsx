@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgePercent, Camera, MapPin, Sparkles } from "lucide-react";
+import { CalendarCheck, Heart, MapPin, Sparkles } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { SurfaceSwitch } from "@/components/consumer/SurfaceSwitch";
 
@@ -72,31 +72,31 @@ function LandingPane() {
 
       <div className="relative z-10 flex flex-col gap-8">
         <h2 className="font-display max-w-[18ch] text-4xl leading-[1.05] font-semibold tracking-[-0.02em] xl:text-5xl">
-          Eat where you&apos;d eat anyway.{" "}
+          Find the table.{" "}
           <em className="not-italic underline decoration-white/40 underline-offset-[6px]">
-            Get paid for it.
+            Mesita books it.
           </em>
         </h2>
         <ul className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
           <ValueProp
             Icon={MapPin}
-            title="Discover real places"
-            blurb="Swipe and explore places curated for you, your city, your vibe."
-          />
-          <ValueProp
-            Icon={BadgePercent}
-            title="A discount on every visit"
-            blurb="Show your Mesita QR at the table — your discount is applied right at the bill."
-          />
-          <ValueProp
-            Icon={Camera}
-            title="One story, one boost"
-            blurb="Tag the place in your IG story to unlock the bigger reward. Easy."
+            title="Every place in your city"
+            blurb="The whole catalog — photos, hours, menus and the reviews people actually left."
           />
           <ValueProp
             Icon={Sparkles}
-            title="Premium perks"
-            blurb="Go Premium for higher discount rewards, smarter recommendations, and 10 reservations a month."
+            title="Discovery that gets you"
+            blurb="Scroll a deck, ask Memo, or search the map with filters for your vibe."
+          />
+          <ValueProp
+            Icon={CalendarCheck}
+            title="Mesita calls the place"
+            blurb="Tap Reserve and Mesita books the table for you. The answer lands in the app."
+          />
+          <ValueProp
+            Icon={Heart}
+            title="Keep what you like"
+            blurb="Save places as you go and come back to them from Favs."
           />
         </ul>
       </div>

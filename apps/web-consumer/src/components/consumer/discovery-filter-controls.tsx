@@ -77,49 +77,33 @@ export function FilterModule({
 
 // Soft borderless pill — muted at rest, brand gradient when selected.
 // min-h-11 keeps every filter control at the 44px touch floor.
-// `disabled` is for options the model knows but the product can't back yet
-// (Order, MESITA-1081) — shown rather than hidden, so the axis reads whole.
 export function Pill({
   active,
   onClick,
   children,
-  disabled = false,
   size = "md",
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
-  disabled?: boolean;
   /** "sm" packs dense sheets (Search map Filters) — every option visible, no scroll. */
   size?: "md" | "sm";
 }) {
   return (
     <button
       type="button"
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
+      onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-full font-medium whitespace-nowrap transition",
+        "flex shrink-0 items-center gap-1.5 rounded-full font-medium whitespace-nowrap transition active:scale-[0.97]",
         size === "sm" ? "type-meta min-h-8 px-3" : "type-body min-h-11 px-4",
-        disabled
-          ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed"
-          : active
-            ? "bg-pink-gradient shadow-glow-sm text-white active:scale-[0.97]"
-            : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground active:scale-[0.97]",
+        active
+          ? "bg-pink-gradient shadow-glow-sm text-white"
+          : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground",
       )}
     >
       {children}
     </button>
-  );
-}
-
-/** `soon` tag riding inside a disabled Pill — the parked half of an axis. */
-export function PillSoon() {
-  return (
-    <span className="bg-foreground/10 text-muted-foreground/70 type-meta rounded-full px-1.5 py-0.5 font-bold tracking-[0.08em] uppercase">
-      soon
-    </span>
   );
 }
 

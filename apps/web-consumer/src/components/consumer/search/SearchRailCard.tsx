@@ -74,8 +74,6 @@ export function RailCard({
           <span className="truncate text-sm leading-5 font-semibold">
             {place.name}
           </span>
-          {/* MVP cut (MESITA-2078): the "Mesita reward here" badge is hidden
-              while Pay is parked. */}
         </span>
         <p className="text-muted-foreground type-label h-4 truncate leading-4">
           {subtitle}

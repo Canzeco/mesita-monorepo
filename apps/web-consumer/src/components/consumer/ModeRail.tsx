@@ -1,33 +1,16 @@
 "use client";
 
-// The top rail of a bottom tab — one component, two rows of pills (Pato,
-// MESITA-2050: "Visit. Order. Wallet. Me. · Home(scroll). Search. Chat. Favs.
-// Pay. · Order must have Home.").
+// Home's top rail — one row of pills over /discover/*:
 //
-//   Visit   Home · Search · Chat · Favs · Pay   (MESITA-2050)
-//   Home    Home · Scroll · Chat · Favs         (today, MESITA-2081)
-//   Order   Home
+//   Home    Home · Scroll · Chat · Favs         (MESITA-2081)
 //
-// It was DiscoverModeNav, Home's rail alone. Two things changed at once:
+// It was DiscoverModeNav. It is drawn by app/(shell)/(discovery)/discover/
+// layout.tsx, so the four pills share one frame and one deck fetch, and
+// Search — its own bottom tab since MESITA-2055 — sits outside it with no
+// rail painting over the map (the MESITA-1616 bug cannot return).
 //
-//   THE RAIL SPANS THREE NAMESPACES NOW. Visit's pills live at /discover/*,
-//   /search and /new-visit, and none of those URLs moved — the rail is drawn
-//   by app/(shell)/(visit)/layout.tsx, a route group, so it can sit above all
-//   three without renaming any of them. That retires the old "segments match
-//   labels" rule for this rail: Home is /discover/feed, and Pay is
-//   /new-visit, and a label is not a route (the same rule the Pay tab has
-//   lived by through four renames).
-//
-//   SEARCH IS UNDER A RAIL AGAIN, on purpose. MESITA-1616 moved it out from
-//   under discover/layout.tsx because Home's rail painting above the map was
-//   a bug THEN — Search was its own tab. It is a pill of Visit now, so the
-//   rail above the map is the design.
-//
-// ORDER'S ROW IS ONE PILL, deliberately. A one-pill row is chrome that cannot
-// switch anything, and the Pay section row was deleted for exactly that
-// reason once. Pato asked for Home here anyway ("Order must have Home"), and
-// the row is what makes Order read as the same kind of tab as Visit: the
-// next Order mode is an append to ORDER_MODES, not a new frame.
+// A LABEL IS NOT A ROUTE: Home is /discover/feed (CatalogRails at Feed's
+// address) and Scroll is /discover/scroll (the deck, Swipe's segment).
 //
 // EVERY PILL IS AN EQUAL COLUMN: `grid-flow-col auto-cols-fr` on a
 // `w-max min-w-full` track. At rest min-w-full stretches the track to the
@@ -40,44 +23,35 @@
 //
 //   label    text@12   + 26px chrome
 //   -------  --------  -------------
-//   Search   40.9      66.9   <- widest
-//   Home     34.2      60.2
+//   Home     34.2      60.2   <- widest
+//   Scroll   33.0      59.0
 //   Chat     27.3      53.3
 //   Favs     27.6      53.6
-//   Pay      21.7      47.7
 //
-// Five columns: 5 x 66.9 + 16 = 350.5 of 359px. Fits, with ~8px to spare.
-// It fits ONLY because the icon went back to 14px: at 16px (the four-column
-// size, MESITA-1697) chrome is 28 and the track is 360.5 — one pixel over.
-// The label stays at 12px (`text-xs`); the icon gave up the two pixels
-// instead of the type. A SIXTH pill does not fit at any size worth reading.
+// Four columns: 4 x 60.2 + 12 = 252.8 of 359px. Fits, with room to spare.
+// The icon is 14px (chrome 26) rather than the 16px of MESITA-1697: the
+// budget was set when the row held five pills, and the label stays at 12px
+// (`text-xs`) so the pills read the same whatever the count.
 // route-structure.test.tsx T5b holds this arithmetic as an assertion.
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { barePath } from "@/lib/surface";
-import {
-  Flame,
-  Heart,
-  House,
-  MapPin,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { Flame, Heart, House, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-export type Mode = {
+type Mode = {
   href: string;
   label: string;
   Icon: LucideIcon;
 };
 
 // THE ORDER IS PATO'S, verbatim (MESITA-2081: "Home, Scroll, Chat, Favs").
-// Home leads and is Visit's default — the tab href is
+// Home leads and is the tab's default — the tab href is
 // CONSUMER_ROUTES.discoverDefault, which is Home's href, so the pill a guest
 // lands on is the first one they see.
 //
@@ -94,12 +68,7 @@ export const HOME_MODES: Mode[] = [
   { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },
 ];
 
-// Order remains routable, but is no longer a bottom-bar destination.
-export const ORDER_MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.order.home, label: "Home", Icon: MapPin },
-];
-
-export function ModeRail({ modes }: { modes: Mode[] }) {
+export function ModeRail() {
   const pathname = barePath(usePathname() ?? "/");
   const supabase = useBrowserSupabase();
   const activeRef = useRef<HTMLAnchorElement | null>(null);
@@ -120,10 +89,9 @@ export function ModeRail({ modes }: { modes: Mode[] }) {
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
       <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
         <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
-          {modes.map(({ href, label, Icon }) => {
+          {HOME_MODES.map(({ href, label, Icon }) => {
             // EXACT match, never startsWith: nothing under one pill's href may
-            // light it, and /new-visit is a prefix of nothing live any more
-            // only because Wallet moved to /wallet (MESITA-2050).
+            // light it.
             const isActive = pathname === href;
             return (
               <Link
@@ -132,8 +100,7 @@ export function ModeRail({ modes }: { modes: Mode[] }) {
                 ref={isActive ? activeRef : undefined}
                 aria-current={isActive ? "page" : undefined}
                 // The switch itself, not the landing — `nav_tab_tap` fires on
-                // BottomNav only. The event name predates Visit; the payload
-                // is the pill's label.
+                // BottomNav only. The payload is the pill's label.
                 onClick={() => {
                   if (!isActive)
                     trackEvent(supabase, "home_mode_view", { mode: label });

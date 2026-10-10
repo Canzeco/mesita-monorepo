@@ -63,12 +63,6 @@ describe("the frame never zooms", () => {
     expect(read("components/auth/PhoneOtpForm.tsx")).toContain(
       'data-field-size="lg"',
     );
-    // The ten-digit field moved to PinField (MESITA-1672) so the Credits gift
-    // redeem route can mount the same input; the 16px floor moved with it, and
-    // this follows the input rather than the sheet that used to hold it.
-    expect(read("components/consumer/PinField.tsx")).toContain(
-      'data-field-size="lg"',
-    );
   });
 
   it("kills double-tap zoom and sideways pan without touching the map", () => {
@@ -94,8 +88,8 @@ describe("the frame never zooms", () => {
     expect(css).toContain("-webkit-tap-highlight-color: transparent");
     expect(css).toContain("-webkit-touch-callout: none");
     // Scoped to CONTROLS. A blanket `user-select: none` would take the place
-    // names, addresses, bills and ticket codes with it — content a guest has
-    // real reasons to copy.
+    // names, addresses and reservation reference codes with it — content a
+    // guest has real reasons to copy.
     expect(css).not.toMatch(/^\s*body\s*\{[^}]*user-select:\s*none/m);
   });
 

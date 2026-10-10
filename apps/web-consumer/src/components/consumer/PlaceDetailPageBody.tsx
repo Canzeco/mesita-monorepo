@@ -5,20 +5,18 @@ import { PlaceDetailPageHeader } from "./PlaceDetailPageHeader";
 import { PlaceActionBar } from "./place-detail/PlaceActionBar";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { isPartner } from "@/lib/promo-rates";
 
 // Client wrapper for the hard-nav /place/[id] page. Mirrors the modal
 // shell's three-band layout: header · scroll area · pinned action bar. The
 // outer server page (place/[id]/page.tsx) stays server-rendered and just
 // hands the place prop down. Save · Contact · Share scroll with the body;
-// Visit · Order · Reserve are pinned (MESITA-1065).
+// Reserve is pinned (MESITA-1065).
 //
 // decision: Pato (live, MESITA-1070) — "place should not display bottom menu,
 // only the back arrow". A place is a DETAIL surface, not a tab destination:
 // the intercepted modal (how you actually arrive from swipe/favorites) already
 // covers the tab bar, so the hard-nav page was the only route showing two
-// stacked bottom bands — and a Visit button sitting directly above a Visit tab.
-// One frame, one way out: the arrow.
+// stacked bottom bands. One frame, one way out: the arrow.
 //
 // Suppressed in CSS from inside this component rather than by teaching
 // BottomNav a route list, because the pathname CANNOT distinguish the two
@@ -46,7 +44,6 @@ export function PlaceDetailPageBody({
       <PlaceDetailPageHeader
         placeId={place.id}
         placeName={place.name}
-        partner={isPartner(place)}
         fallbackHref={fallbackHref}
       />
       {/*

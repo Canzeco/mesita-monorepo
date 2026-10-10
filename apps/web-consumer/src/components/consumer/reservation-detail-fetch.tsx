@@ -23,7 +23,7 @@ type State =
 function useReservationById(id: string): { state: State; reload: () => void } {
   const supabase = useBrowserSupabase();
   const [state, setState] = useState<State>({ state: "loading" });
-  // Bumped by the detail actions (cancel / reschedule) so the ticket's phase,
+  // Bumped by the detail actions (cancel / reschedule) so the reservation's phase,
   // banner and available actions re-derive from the server, not from guesses.
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);

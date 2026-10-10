@@ -31,15 +31,12 @@ const LINKS = [
     label: "Search",
     match: [CONSUMER_ROUTES.search],
   },
+  // The same four destinations as BottomNav, in its order (MESITA-2087 First
+  // Stage cut: Visit and Wallet are gone; Pay is one Soon page).
   {
-    href: CONSUMER_ROUTES.newVisit.root,
-    label: "Visit",
-    match: [CONSUMER_ROUTE_PREFIX.newVisit, CONSUMER_ROUTE_PREFIX.visit],
-  },
-  {
-    href: CONSUMER_ROUTES.wallet.root,
-    label: "Wallet",
-    match: [CONSUMER_ROUTE_PREFIX.wallet],
+    href: CONSUMER_ROUTES.pay,
+    label: "Pay",
+    match: [CONSUMER_ROUTE_PREFIX.pay],
   },
   {
     href: CONSUMER_ROUTES.me,

@@ -45,8 +45,6 @@ describe("Enrich tab gate", () => {
     expect(showEnrichTab({ is_enriched: true })).toBe(false);
   });
 
-  // MVP cut (MESITA-2078): Rewards left the strip while Pay is parked, so
-  // the Enriched strip is three core tabs and must not name Rewards.
   it("is Enrich-only until Enriched, then the three core tabs", () => {
     expect(placeTabs(false).map((t) => t.label)).toEqual(["Enrich"]);
     expect(placeTabs(true).map((t) => t.label)).toEqual([
@@ -65,17 +63,15 @@ describe("Enrich tab gate", () => {
     expect(html).not.toContain("Overview");
     expect(html).not.toContain("Reviews");
     expect(html).not.toContain("Menus");
-    expect(html).not.toContain("Rewards");
   });
 
-  it("renders the three core tabs and not Enrich or Rewards once Enriched", () => {
+  it("renders the three core tabs and not Enrich once Enriched", () => {
     const html = renderToStaticMarkup(
       <PlaceTabBar tab="place" onChange={() => {}} enriched={true} />,
     );
     expect(html).toContain("Overview");
     expect(html).toContain("Reviews");
     expect(html).toContain("Menus");
-    expect(html).not.toContain("Rewards");
     expect(html).toContain("grid-cols-3");
     expect(html).not.toContain("Enrich");
   });

@@ -5,14 +5,12 @@ import { cn } from "@/lib/utils";
 // The KEYS are addresses (and map to places.products); only the LABELS are
 // the words a guest reads. "Menus", never "Products" (Pato 2026-08-22).
 // Enrich is first and only while the place is not Enriched (MESITA-1364).
-export type PlaceTab = "enrich" | "place" | "reviews" | "products" | "rewards";
+export type PlaceTab = "enrich" | "place" | "reviews" | "products";
 
 const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Menus" },
-  // MVP cut (MESITA-2078): the Rewards tab is hidden while Pay is parked.
-  // The "rewards" key stays on PlaceTab so un-parking is one row.
 ] as const satisfies ReadonlyArray<{ key: PlaceTab; label: string }>;
 
 const ENRICH_TAB = { key: "enrich", label: "Enrich" } as const;

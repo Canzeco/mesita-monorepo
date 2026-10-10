@@ -1,18 +1,16 @@
-// Shared brand marks used by the place detail surface.
+// Source badges for the outside channels the place detail surface quotes:
+// Google, Instagram, Facebook.
 //
 // Pure JSX — no React state, no hooks — so this module works inside both
 // server and client components without needing a "use client" boundary.
-// Previously each consumer of these glyphs (PlaceDetailBody, ReviewCard)
-// inlined them; consolidating here keeps the Google SVG paths and the
-// Mesita gradient mark in one spot.
+// The reviews summary and the review cards share these so the Google SVG
+// paths don't drift between surfaces.
 
 import { Facebook, Instagram } from "lucide-react";
 
-import { MesitaMark } from "@/components/brand/MesitaMark";
-
 // Multi-color Google "G" inside a white circle. h-8 w-8 to align with the
-// other source badges (Instagram / Facebook / Mesita) on the reviews
-// summary and individual review cards.
+// other source badges (Instagram / Facebook) on the reviews summary and
+// individual review cards.
 export function GoogleLogo() {
   return (
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white">
@@ -53,36 +51,5 @@ export function FacebookLogo() {
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1877F2]">
       <Facebook className="h-4 w-4 fill-white text-white" strokeWidth={0} />
     </div>
-  );
-}
-
-// Mesita source badge — nav glyph (`MesitaMark`) inside a pink-gradient
-// tile so it reads as part of the Google/Instagram/Facebook attribution
-// row. Named apart from `MesitaMark` (the bare poppy used in BottomNav).
-//
-// Two variants:
-//   - "sm": h-5 w-5 rounded-md — the inline brand spot in the reviews
-//     summary box.
-//   - "md": h-8 w-8 rounded-full — the source badge on individual
-//     review cards so it matches the Google/Instagram/Facebook circles.
-// Static class strings (instead of template-literal concatenation) so
-// Tailwind's class scanner can see every variant.
-export function MesitaSourceBadge({
-  variant = "md",
-}: {
-  variant?: "sm" | "md";
-}) {
-  const flame = <MesitaMark className="h-[60%] w-[60%]" />;
-  if (variant === "sm") {
-    return (
-      <span className="bg-pink-gradient flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-white">
-        {flame}
-      </span>
-    );
-  }
-  return (
-    <span className="bg-pink-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white">
-      {flame}
-    </span>
   );
 }

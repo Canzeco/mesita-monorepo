@@ -79,8 +79,7 @@ export function apiConfirmReservation(
 export type ReservationScope = "upcoming" | "past" | "all";
 
 // One row from consumer-web-list-reservations: booking metadata joined with
-// the place summary. No money fields: a booking carries no discount — the
-// reward is earned by showing up and lives on the visit ticket.
+// the place summary. No money fields.
 export type EFReservationRow = {
   id: string;
   reserved_at: string;
@@ -94,7 +93,7 @@ export type EFReservationRow = {
     // Engine outcomes: the place never answered / the call ended unclear.
     | "unreachable"
     | "unresolved";
-  /** The ticket's 8-digit reference code (null only on pre-code rows). */
+  /** The reservation's 8-digit reference code (null only on pre-code rows). */
   reference_code: string | null;
   /** Run state — the app reads these to tell `created` from `booking`. */
   attempts_state: string | null;
@@ -139,7 +138,7 @@ export function apiCancelReservation(
 
 /**
  * Reschedule (or resize) the caller's own reservation. New terms send the
- * ticket back to `booking` and Mesita calls the place again.
+ * reservation back to `booking` and Mesita calls the place again.
  */
 export function apiUpdateReservation(
   client: SupabaseClient,

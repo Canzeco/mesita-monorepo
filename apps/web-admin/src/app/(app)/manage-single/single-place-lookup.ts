@@ -68,6 +68,21 @@ export function autocompleteToLite(hit: AutocompleteHit): PlaceLite {
   };
 }
 
+/** Where Find's Nearby Search looks: the first Text Search hit that has a
+ *  point. Nearby takes coordinates, never a name, and Autocomplete rows
+ *  carry none — so no Text Search hit means no Nearby (MESITA-2117). */
+export type NearbyAnchor = { place: PlaceLite; lat: number; lng: number };
+
+export function nearbyAnchor(places: readonly PlaceLite[]): NearbyAnchor | null {
+  for (const place of places) {
+    const { lat, lng } = place;
+    if (typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { place, lat, lng };
+    }
+  }
+  return null;
+}
+
 /** Whether Mesita already holds a Google result. Three witnesses, any one
  *  is enough: the discover EF's own google_place_id join, the IDs this page
  *  knows are held (the catalog it read plus Autocomplete's resolve), and the

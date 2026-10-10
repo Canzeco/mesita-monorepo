@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 vi.mock("@/lib/supabase/browser", () => ({ useBrowserSupabase: () => ({}) }));
 
-import DiscoverScrollPage from "@/app/(shell)/(visit)/discover/scroll/page";
+import DiscoverScrollPage from "@/app/(shell)/(discovery)/discover/scroll/page";
 import { HomeDeckProvider } from "@/components/consumer/home/HomeDeckContext";
 
 // THE BLANK TAB, PINNED (MESITA-2105). Every child of the deck is absolutely

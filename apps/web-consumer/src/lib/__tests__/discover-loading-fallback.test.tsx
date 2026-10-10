@@ -43,7 +43,7 @@ describe("Home's loading fallback", () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const layout = readFileSync(
-      join(__dirname, "../../app/(shell)/(visit)/discover/layout.tsx"),
+      join(__dirname, "../../app/(shell)/(discovery)/discover/layout.tsx"),
       "utf8",
     );
     expect(layout).toContain("<Suspense fallback={<DiscoverFallback />}>");

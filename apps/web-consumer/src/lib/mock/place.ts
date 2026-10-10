@@ -1,25 +1,9 @@
-// Mock place data shaped for the place-detail screen. While /places/[id]
-// is in design-mode, every id resolves to this same fixture and the view
-// component reads from `PlaceDetail` instead of the leaner `Place` row
-// that the Edge Function will eventually return.
-//
-// When wiring real data, write an adapter that maps the EF response →
-// PlaceDetail; the view stays untouched.
-
-import type { ClassKey } from "@/lib/consumer-data";
-
-/** @deprecated Prefer `ClassKey` from `@/lib/consumer-data` — alias kept for call sites. */
-export type ConsumerClass = ClassKey;
+// The rich place shape the detail screen renders. `placeRowToDetail`
+// (lib/adapters/place-to-detail.ts) maps a consumer-web-get-place row onto
+// it; every field is null-safe on the adapter side, so the view never guards
+// against a missing column — an empty list simply hides its box.
 
 export type PlaceDetail = {
-  /** Server-computed per request (MESITA-1150): a guest gets a discount here
-   *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
-   *  stale collapsed enum and no longer decides anything a guest sees. */
-  promoting?: boolean | null;
-  /** Server-computed per request: this place PAYS Mesita. See Place.partner. */
-  partner?: boolean | null;
-  /** Description/Actions — menu on file unlocks Order. */
-  orders_enabled?: boolean;
   /** Description/Actions — false only when this place has opted out of bookings. */
   reservations_enabled?: boolean;
   // Stable identifier — matches public.places.id once the real fetch lands.
@@ -53,7 +37,6 @@ export type PlaceDetail = {
   lat: number | null;
   lng: number | null;
   zone: string;
-  listing_type: "partner" | "web";
   /** Relative "Created · …" source (from places.created_at). */
   created_label: string;
   /** Relative "Updated · …" source (enriched_at ?? created_at). */
@@ -92,15 +75,7 @@ export type PlaceDetail = {
     facet: string;
   }>;
 
-  // 3. Reviews summary
-  mesita_reviews: {
-    food: number;
-    service: number;
-    ambience: number;
-    value: number;
-    overall: number;
-    total: number;
-  };
+  // 3. External reputation — the three outside channels the summary reads.
   google: { rating: number; count: number };
   facebook: { rating: number; followers: number };
   instagram: { followers: number };
@@ -120,27 +95,7 @@ export type PlaceDetail = {
     photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
-  // 5. Mesita visitors
-  mesita_visitors: Array<{
-    name: string;
-    handle: string;
-    class_key: ConsumerClass;
-    community: string;
-    followers: number;
-    quote: string;
-    food: number;
-    service: number;
-    ambience: number;
-    value: number;
-    // Optional photo uploaded by the visitor (Instagram-story style for
-    // Mesita). Same surfacing pattern as Google reviews. photo_aspect
-    // controls the thumbnail's container ratio so portrait stories,
-    // landscape dining shots, and square food photos render natively.
-    photo_url?: string;
-    photo_aspect?: "square" | "portrait" | "landscape";
-  }>;
-
-  // 6. Menus (stored under `products`) — for restaurants the menu lives
+  // 5. Menus (stored under `products`) — for restaurants the menu lives
   // under products.menu. `url` is the Storage public URL or Drive share link;
   // `kind` drives the in-app viewer (image / PDF / Drive preview).
   products: {
@@ -160,30 +115,7 @@ export type PlaceDetail = {
     }>;
   };
 
-  // 7. Promotion — strategy identity, the four per-class promo columns mirroring
-  // mesita-supabase migration 0032 / public.places. NOT prices (MESITA-1019):
-  // the engine matches this tuple against its strategy presets, and the
-  // percentage a guest is quoted comes from consumer-web-get-discount-quote.
-  // Read them to decide WHETHER a place rewards, never by how much.
-  promo_matrix: {
-    welcome: {
-      free: number | null;
-      premium: number | null;
-    };
-    default: {
-      free: number | null;
-      premium: number | null;
-    };
-  };
-  /** Business set per-tier rates on the Promos page (not scraped legacy percent). */
-  promo_configured?: boolean;
-  reward_cap_mxn: number;
-  // When true, the reward unlocks only after the guest posts an Instagram
-  // story tagging the place (in addition to paying via QR). Drives the
-  // "Pay & Post" vs "Pay" CTA on the place Reward box.
-  requires_story?: boolean;
-
-  // 8. Long description — English (Mesita core). Spanish TMS later.
+  // 6. Long description — English (Mesita core). Spanish TMS later.
   long_description: string;
 
   // Hours / popular times
@@ -198,7 +130,7 @@ export type PlaceDetail = {
   }>;
   popular_times_featured: string; // day name to show in the Popular times card
 
-  // 9. Details (Google-Places-style metadata: category, zone, hours, etc.)
+  // 7. Details (Google-Places-style metadata: category, zone, hours, etc.)
   // Most of the extra fields below mirror what Google's Places panel
   // and OpenTable surface on their detail views — dining style, dress
   // code, parking, accessibility, amenities, executive chef. Optional
@@ -222,8 +154,6 @@ export type PlaceDetail = {
     pet_friendly?: boolean;
     established_year?: number;
     executive_chef?: string;
-    participation: string;
-    mechanic: string;
   };
   channels: {
     website_url?: string;
