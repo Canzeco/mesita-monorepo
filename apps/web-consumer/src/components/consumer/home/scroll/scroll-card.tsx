@@ -25,10 +25,9 @@ import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 // 4.5:1 contrast failure the package rules pin. A row below the photo has a
 // solid surface and cannot fail that way.
 //
-// GO IS THE ONE THAT MATTERS. It opens the Visit · Order · Reserve sheet, and
-// `useStartVisit` behind it is the only path in this app that creates a
-// ticket. Save and Share are both bookmarks in different clothes; without Go
-// this surface — the app's default screen — could not convert at all.
+// GO IS THE ONE THAT MATTERS. It opens the Go sheet, and Reserve behind it
+// is the one place action this app offers. Save and Share are both bookmarks
+// in different clothes; without Go this surface could not convert at all.
 //
 // THE NAME IS THE PROFILE LINK, and that is forced, not stylistic: the card
 // face mounts an ImageCarousel whose tap zones cover the WHOLE card whenever a

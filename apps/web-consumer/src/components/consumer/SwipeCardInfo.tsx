@@ -1,6 +1,5 @@
 import {
   Clock,
-  Globe,
   Instagram,
   MapPin,
   Navigation,
@@ -19,8 +18,6 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { Spinner } from "@/components/shared";
-import { PartnerMark } from "./PartnerMark";
-import { isPartner } from "@/lib/promo-rates";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
 export function SwipeCardInfo({
@@ -51,18 +48,6 @@ export function SwipeCardInfo({
       : null;
   const stateLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
-  // THE CARD STATES PARTNER, NOT VERIFIED (decision: Pato).
-  //
-  // It used to do neither cleanly: the disc beside the name was a component
-  // called VerifiedCheck gated on `promoting`, and the chip below it read
-  // "Not Verified" gated on `!promoting`. Two verification words over one
-  // reward boolean, and neither fact was the one being read. Verification is
-  // Mesita's own bookkeeping and is off the card entirely now.
-  //
-  // Partner is computed per request from the plan (see promo-rates.isPartner),
-  // never `listing_type` — that enum fuses paying with strategy and goes stale
-  // the moment a promo lane closes without the row being rewritten.
-  const partner = isPartner(place);
 
   return (
     <div
@@ -77,9 +62,6 @@ export function SwipeCardInfo({
         <span className={cn("min-w-0", compact && "truncate")}>
           {place.name}
         </span>
-        {partner && (
-          <PartnerMark className="text-partner drop-shadow-media h-[18px] w-[18px] shrink-0" />
-        )}
       </h2>
 
       <div
@@ -109,24 +91,6 @@ export function SwipeCardInfo({
             Enriching
           </span>
         )}
-        {/* ALWAYS RENDERED, AND FIRST. Partner is a two-state fact, so
-            showing the chip only in one state made its absence ambiguous —
-            a guest could not tell "not a partner" from "the card ran out of
-            room". */}
-        <MetaChip compact={compact}>
-          {partner ? (
-            /* The chip icon is the SAME mark as the one beside the name — it
-               was lucide `BadgeCheck` with `fill-current text-primary`, which
-               paints fill and stroke the same colour: the check disappeared
-               into the blob and the chip lost its only glyph (MESITA-2031). */
-            <PartnerMark className="text-partner h-3 w-3 shrink-0" />
-          ) : (
-            <Globe className="h-3 w-3 shrink-0 text-white/70" />
-          )}
-          <span className="font-semibold">
-            {partner ? "Partner" : "Not Partner"}
-          </span>
-        </MetaChip>
         {categoryLabel && (
           <MetaChip compact={compact}>
             <span className="font-semibold">{categoryLabel}</span>
@@ -179,8 +143,6 @@ export function SwipeCardInfo({
             <span className="font-semibold">{stateLabel}</span>
           </MetaChip>
         )}
-        {/* MVP cut (MESITA-2078): the discount chip is hidden while Pay is
-            parked. */}
       </div>
     </div>
   );

@@ -60,9 +60,9 @@ import {
 //
 // NO SKIP, DELIBERATELY. Scrolling past a card IS the skip, which is why this
 // mode can drop two of the deck's five controls and still lose nothing. What
-// it must NOT drop is Go: `useStartVisit` is the only path in the app that
-// creates a ticket, so a Home whose actions are all bookmarks is a Home that
-// cannot convert (Pato, MESITA-1697 gate, D2).
+// it must NOT drop is Go: Reserve lives behind it, and a Home whose actions
+// are all bookmarks is a Home that cannot convert (Pato, MESITA-1697 gate,
+// D2).
 //
 // `content-visibility: auto` IS NOT AN OPTIMISATION HERE, IT IS THE FEATURE.
 // Each card mounts an ImageCarousel and a hidden sizing clone of its own
@@ -90,12 +90,11 @@ export function ScrollDeck({
   const appliedCount = countAppliedDiscoveryFilters(filters);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // ONE PAIR OF SHEETS FOR THE WHOLE LIST, not one per card. GoSheet pulls the
-  // guest's tickets when it mounts, so fifty of them would be fifty ticket
-  // reads for a guest who is only scrolling. The card raises the intent and
-  // this owns the surface — and, like the stack deck, Go and Reserve SWAP
-  // rather than stack, because two sheets sliding up at the same z-tier read
-  // as a rendering bug.
+  // ONE PAIR OF SHEETS FOR THE WHOLE LIST, not one per card: fifty mounted
+  // sheets for a guest who is only scrolling is fifty times the work. The
+  // card raises the intent and this owns the surface — and, like the stack
+  // deck, Go and Reserve SWAP rather than stack, because two sheets sliding
+  // up at the same z-tier read as a rendering bug.
   const [goPlace, setGoPlace] = useState<Place | null>(null);
   const [reservePlace, setReservePlace] = useState<Place | null>(null);
 
@@ -158,9 +157,8 @@ export function ScrollDeck({
   //
   // THE EF'S ORDER IS KEPT (MESITA-2047). The deck arrives banded — open and
   // near first, then open within reach, closed within reach, other cities
-  // last — with the bought slots already placed inside each band. A client
-  // re-sort that floated promoting places used to run here and would lift a
-  // promoting CLOSED place above every open card.
+  // last. No client re-sort runs here: one would lift a CLOSED place above
+  // every open card (place-feed-grid.test.tsx refuses a `.sort(`).
   //
   // AN EMPTY LOCATED ANSWER NEVER BLANKS A GOOD SHARED DECK when the guest set
   // no filter. The engine backfills far and closed places, so an unfiltered
@@ -193,7 +191,7 @@ export function ScrollDeck({
   // trade: a feed of plausible-looking places that cannot be visited teaches
   // the reviewer nothing and quietly becomes the thing everyone demos.
   // Repeating the ONE real place is honest by construction — you can tap it,
-  // save it, and start a visit at it.
+  // save it, and reserve at it.
   //
   // TEMPORARY, and the instruction said so. When the catalog holds 50+ this
   // slice is a plain `rows.slice(0, DECK_SIZE)` and the modulo goes away;
@@ -351,8 +349,8 @@ export function ScrollDeck({
             saved={hydrated && savedIds.has(place.id)}
             onToggleSave={() => toggleSave(place)}
             onGo={() => {
-              // Go is the conversion intent; `ticket_created` fires later from
-              // useStartVisit and joins to this through the place.
+              // Go is the conversion intent. `home_card_open` joins to the
+              // reservations row by place; the booking fires no event.
               trackEvent(supabase, "home_card_open", {
                 mode: "scroll",
                 place_id: place.id,

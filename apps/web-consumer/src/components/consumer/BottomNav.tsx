@@ -4,10 +4,9 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ComponentType } from "react";
+import type { ComponentType } from "react";
 import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
@@ -17,24 +16,20 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
-// FOUR tabs, in this order (Pato, MESITA-2076 — "hide some shit for the
-// moment and focus mvp"):
+// FOUR tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
+// Home. Search. Pay(Soon). Me."):
 //
 //   Home · Search · Pay (Soon) · Me
 //
-//   PAY is parked: it stays on the bar so the guest knows it is coming, and
-//   a tap opens ComingSoonModal instead of /new-visit. Its "Soon" tag is
-//   Pato's own spelling ("Pay(Soon)") and overrides the MESITA-383 no-pill
-//   rule for this one tab. /new-visit and /visit/{id} stay routable and
-//   light no tab while Pay is parked.
-//   WALLET left the bar (it was a tab from MESITA-2050/2055). /wallet and
-//   its four children stay routable; nothing on the bar lights them.
-//   Un-park Pay = drop `soon` and restore its matchPrefixes.
+//   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
+//   everything else. just the empty page with soon."). The tab is a plain
+//   link to /pay like the other three — it lights there — and wears the Soon
+//   tag so the bar and the page make the same promise.
 //
 // Every tab shows its plain label. A tab label names a DESTINATION; state
-// (class, Diamond) belongs on the page where it can be read and acted on
-// (Pato, 2026-08-16: "only write me, its cleaner"). `route-structure.test.tsx`
-// pins the labels, in order, and their count.
+// belongs on the page where it can be read and acted on (Pato, 2026-08-16:
+// "only write me, its cleaner"). `route-structure.test.tsx` pins the labels,
+// in order, and their count.
 
 // Every icon is a lucide glyph except Home's, which carries the brand mark.
 // The signature stays wider than LucideIcon so the mark fits.
@@ -51,11 +46,10 @@ type Item = {
    * Order is irrelevant; matching is `startsWith` over the whole list.
    */
   matchPrefixes: readonly string[];
-  // Surface is parked. Tab stays visible and tappable, wears a "Soon" tag,
-  // and a tap opens ComingSoonModal instead of navigating (MESITA-2076).
+  // The destination is not built yet. The tab still navigates — its page is
+  // the Soon state — and wears a "Soon" tag (Pato's own spelling, "Pay(Soon)",
+  // overrides the MESITA-383 no-pill rule for this one tab).
   soon?: boolean;
-  soonTitle?: string;
-  soonBody?: string;
 };
 
 const ITEMS: Item[] = [
@@ -79,24 +73,18 @@ const ITEMS: Item[] = [
     matchPrefixes: [CONSUMER_ROUTES.search],
   },
   {
-    href: CONSUMER_ROUTES.newVisit.root,
+    href: CONSUMER_ROUTES.pay,
     Icon: QrCode,
     label: "Pay",
-    // Parked: lights nothing. Un-parking restores
-    // [CONSUMER_ROUTE_PREFIX.newVisit, CONSUMER_ROUTE_PREFIX.visit].
-    matchPrefixes: [],
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
     soon: true,
-    soonTitle: "Pay is coming soon",
-    soonBody:
-      "Paying at a place with Mesita lands here shortly — thanks for waiting.",
   },
   {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
     // /me/* plus reservations: /reservation/{id} is reached from a place AND
-    // from Me › Reservations, and the list is where you land back. /visit
-    // left this list for Visit (MESITA-2050).
+    // from Me › Reservations, and the list is where you land back.
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.me,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
@@ -109,100 +97,66 @@ export function BottomNav({ userId }: { userId?: string }) {
   // MESITA-1609; the prop stays so the shell layout call site doesn't churn.
   void userId;
   const pathname = usePathname();
-  const [soonItem, setSoonItem] = useState<Item | null>(null);
   const getSupabase = useLazyBrowserSupabase();
 
   return (
-    <>
-      <nav
-        // Hook for surfaces that own their whole frame and suppress the tab
-        // bar in CSS (place detail — see PlaceDetailPageBody). A data attribute
-        // rather than a route list here: whether the nav belongs on a screen is
-        // that screen's statement, and the pathname alone can't tell the
-        // hard-nav place PAGE from the intercepted place MODAL, which share it.
-        data-shell-nav=""
-        className={cn(
-          "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
-          Z_BOTTOM_NAV,
-        )}
-      >
-        <div className="flex items-end justify-around">
-          {ITEMS.map((item) => {
-            const { href, Icon, label, matchPrefixes, soon } = item;
-            const active = matchPrefixes.some((p) => pathname.startsWith(p));
-            // Parked surfaces stay tappable — open ComingSoonModal. The tag is a
-            // quiet grey chip, sentence case, cut from the glyph by a card-colour
-            // ring: the solid-ink uppercase pill out-shouted every label in the
-            // bar (Pato, MESITA-2079).
-            if (soon) {
-              return (
-                <button
-                  key={href}
-                  type="button"
-                  onClick={() => {
-                    trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
-                    setSoonItem(item);
-                  }}
-                  aria-haspopup="dialog"
-                  title={item.soonTitle ?? "Coming soon"}
-                  className="text-muted-foreground hover:text-foreground type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition"
-                >
-                  <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
-                    <Icon className="h-5 w-5 opacity-60" strokeWidth={1.75} />
-                    <span className="bg-muted text-muted-foreground ring-card type-meta absolute -top-0.5 left-[calc(100%-8px)] flex h-4 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
-                      Soon
-                    </span>
-                  </span>
-                  <span className="w-full truncate text-center">{label}</span>
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => {
-                  trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
-                }}
+    <nav
+      // Hook for surfaces that own their whole frame and suppress the tab
+      // bar in CSS (place detail — see PlaceDetailPageBody). A data attribute
+      // rather than a route list here: whether the nav belongs on a screen is
+      // that screen's statement, and the pathname alone can't tell the
+      // hard-nav place PAGE from the intercepted place MODAL, which share it.
+      data-shell-nav=""
+      className={cn(
+        "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
+        Z_BOTTOM_NAV,
+      )}
+    >
+      <div className="flex items-end justify-around">
+        {ITEMS.map(({ href, Icon, label, matchPrefixes, soon }) => {
+          const active = matchPrefixes.some((p) => pathname.startsWith(p));
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => {
+                trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
+              }}
+              className={cn(
+                "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {active && (
+                <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+              )}
+              <span
                 className={cn(
-                  "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
+                  "relative flex h-8 w-8 items-center justify-center rounded-full transition",
+                  active && "bg-primary/10 ring-primary/20 ring-1",
                 )}
               >
-                {active && (
-                  <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+                <Icon
+                  className={cn("h-5 w-5", soon && !active && "opacity-60")}
+                  strokeWidth={active ? 2.25 : 1.75}
+                />
+                {/* The tag is a quiet grey chip, sentence case, cut from the
+                    glyph by a card-colour ring: the solid-ink uppercase pill
+                    out-shouted every label in the bar (Pato, MESITA-2079). */}
+                {soon && (
+                  <span className="bg-muted text-muted-foreground ring-card type-meta absolute -top-0.5 left-[calc(100%-8px)] flex h-4 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
+                    Soon
+                  </span>
                 )}
-                <span
-                  className={cn(
-                    "relative flex h-8 w-8 items-center justify-center rounded-full transition",
-                    active && "bg-primary/10 ring-primary/20 ring-1",
-                  )}
-                >
-                  <Icon
-                    className="h-5 w-5"
-                    strokeWidth={active ? 2.25 : 1.75}
-                  />
-                </span>
-                <span className="w-full truncate text-center">{label}</span>
-              </Link>
-            );
-          })}
-        </div>
-        <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
-      </nav>
-      <ComingSoonModal
-        open={soonItem != null}
-        onClose={() => setSoonItem(null)}
-        title={soonItem?.soonTitle ?? "Coming soon"}
-        body={soonItem?.soonBody}
-        // Item.Icon is deliberately wider than LucideIcon (Home renders the
-        // brand mark), so it can't be forwarded here. Pay is the one parked
-        // tab, and QrCode is its glyph.
-        icon={QrCode}
-      />
-    </>
+              </span>
+              <span className="w-full truncate text-center">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+      <div className="bg-foreground/20 mx-auto mt-1.5 mb-1 h-1 w-32 rounded-full" />
+    </nav>
   );
 }

@@ -1,14 +1,15 @@
 // Discovery filter engine — Feed and Scroll (MESITA-1792).
 //
 // Same three guest params as the Search map (MESITA-1790), plus one extra:
-// connect current location. Nothing else. Visit/Order, Where search, distance
-// slider, When, and category chips are gone from this sheet.
+// connect current location. Nothing else. The old intent stack — Where
+// search, distance slider, When, and category chips — is gone from this
+// sheet.
 //
 //   · Family — the seven real families; empty = no constraint.
-//   · Scope          — three nested sets: Google ⊃ Mesita Enriched ⊃ Partner.
-//                      Default is the middle ring. On Feed/Scroll the pool is
-//                      listed Mesita places, so Google == all enriched; the
-//                      ring still names the same sets the map uses.
+//   · Scope          — two nested sets: Google ⊃ Mesita Enriched. Default is
+//                      the inner ring. On Feed/Scroll the pool is listed
+//                      Mesita places, so Google == all enriched; the ring
+//                      still names the same sets the map uses.
 //   · Google reviews — review-count floor 0 / 10 / 100 / 1000 / 10000.
 //                      Guest copy: 0 / 10+ / 100+ / 1K+ / 10K+. Missing
 //                      count fails a floor above 0.
@@ -19,20 +20,15 @@
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
 
-export type DiscoveryPlacesScope = "partners" | "mesita" | "google";
+export type DiscoveryPlacesScope = "mesita" | "google";
 
 export const DISCOVERY_PLACES_SCOPE_DEFAULT: DiscoveryPlacesScope = "mesita";
 
 export const DISCOVERY_SCOPE_STOPS = [
   {
-    key: "partners",
-    tick: "Mesita Partner Places",
-    hint: "Mesita Partner Places only",
-  },
-  {
     key: "mesita",
     tick: "Mesita Enriched Places",
-    hint: "Mesita Enriched Places, partners included",
+    hint: "Mesita Enriched Places only",
   },
   {
     key: "google",
@@ -72,8 +68,10 @@ export function formatReviewFloor(n: DiscoveryReviewFloor): string {
 export function parsePlacesScope(value: unknown): DiscoveryPlacesScope {
   if (typeof value === "string") {
     const key = value.trim().toLowerCase();
-    if (key === "partners" || key === "mesita" || key === "google") return key;
+    if (key === "mesita" || key === "google") return key;
   }
+  // Unknown words land on the default — including whatever ring a persisted
+  // v6 blob may still carry.
   return DISCOVERY_PLACES_SCOPE_DEFAULT;
 }
 
@@ -114,9 +112,9 @@ function googleReviewCount(place: Place): number | null {
   return typeof n === "number" && Number.isFinite(n) ? n : null;
 }
 
+/** A Google stub needs the outer ring; every Mesita row sits in both. */
 function keepPlaceForScope(place: Place, scope: DiscoveryPlacesScope): boolean {
   if (place.googleOnly || place.from_google) return scope === "google";
-  if (scope === "partners") return place.partner === true;
   return true;
 }
 

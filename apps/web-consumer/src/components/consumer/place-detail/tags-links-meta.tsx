@@ -1,18 +1,8 @@
 "use client";
 
-import {
-  BadgeCheck,
-  ChevronRight,
-  CircleHelp,
-  Clock,
-  Globe,
-  Link2,
-  Phone,
-  Tags,
-} from "lucide-react";
+import { Clock, Globe, Link2, Phone, Tags } from "lucide-react";
 
 import type { PlaceDetail } from "@/lib/mock/place";
-import { cn } from "@/lib/utils";
 
 import {
   CHANNEL_DEFS,
@@ -21,7 +11,6 @@ import {
 } from "../place-detail-links";
 import { Box } from "./box";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
-import { isPartner } from "@/lib/promo-rates";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
@@ -41,78 +30,13 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-function MetaPill({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "sky" | "amber" | "slate";
-}) {
+function MetaPill({ label }: { label: string }) {
   // TagChips language — rounded-full, leading 6px dot, soft tint.
-  const tones = {
-    sky: {
-      chip: "bg-muted text-foreground border-border",
-      dot: "bg-foreground",
-    },
-    amber: {
-      chip: "bg-muted text-foreground border-border",
-      dot: "bg-foreground",
-    },
-    slate: {
-      chip: "bg-muted text-foreground border-border",
-      dot: "bg-foreground",
-    },
-  } as const;
-  const t = tones[tone];
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold",
-        t.chip,
-      )}
-    >
-      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", t.dot)} />
+    <span className="border-border bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold">
+      <span className="bg-foreground h-1.5 w-1.5 shrink-0 rounded-full" />
       {label}
     </span>
-  );
-}
-
-export function VerificationBox({ place }: { place: PlaceDetail }) {
-  // decision: Tags-harmonic state pill + short support (MESITA-927).
-  // Never ShieldAlert for unverified — reads as a security vulnerability.
-  // MVP cut (MESITA-2078): reward wording is hidden while Pay is parked.
-  // The box states the Partner fact instead (the same `isPartner` the card
-  // and header chips read), with no reward, visit or claim-at-table copy.
-  const partner = isPartner(place);
-  return (
-    <Box
-      title="Mesita"
-      icon={partner ? BadgeCheck : CircleHelp}
-      iconColor={partner ? "text-foreground" : "text-muted-foreground"}
-    >
-      <div className="flex flex-wrap gap-2">
-        <MetaPill
-          label={partner ? "Mesita partner" : "Not a Mesita partner yet"}
-          tone={partner ? "sky" : "amber"}
-        />
-      </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        {partner
-          ? "This place partners with Mesita."
-          : "Not a Mesita partner yet. Owners claim their place — free."}
-      </p>
-      {!partner && (
-        <a
-          href="https://business.mesita.ai/add"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-full border border-border bg-muted px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-        >
-          Claim ownership — free
-          <ChevronRight className="h-3.5 w-3.5" />
-        </a>
-      )}
-    </Box>
   );
 }
 
@@ -126,8 +50,8 @@ export function DatesBox({ place }: { place: PlaceDetail }) {
   return (
     <Box title="Dates" icon={Clock} iconColor="text-muted-foreground">
       <div className="flex flex-wrap gap-2">
-        {created && <MetaPill label={`Created · ${created}`} tone="slate" />}
-        {updated && <MetaPill label={`Updated · ${updated}`} tone="slate" />}
+        {created && <MetaPill label={`Created · ${created}`} />}
+        {updated && <MetaPill label={`Updated · ${updated}`} />}
       </div>
     </Box>
   );

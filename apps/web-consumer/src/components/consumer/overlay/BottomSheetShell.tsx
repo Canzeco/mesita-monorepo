@@ -14,9 +14,9 @@ import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 
 // Route-modal bottom sheet: slides up from the bottom edge and stops short
 // of the top so the underlying surface stays visible behind a dimmed
-// backdrop. This is the chrome for "companion" route modals (Filters,
-// live-visit ticket) where the user should keep their sense of place; full
-// detail modals use SlideOverShell instead.
+// backdrop. This is the chrome for "companion" route modals where the user
+// should keep their sense of place; full detail modals use SlideOverShell
+// instead.
 //
 // Same contracts as SlideOverShell: mount from the intercepted segment's
 // layout.tsx so the enter animation plays once across the loading → page
@@ -30,7 +30,7 @@ import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 
 export function BottomSheetShell({
   children,
-  title = "Your visit",
+  title = "Details",
   hideHeader = false,
 }: {
   children: React.ReactNode;
@@ -69,10 +69,9 @@ export function BottomSheetShell({
           // The SAME panel as every state-driven sheet (decision: Pato,
           // 2026-08-22). This used to be its own recipe — 90% instead of
           // 85%, 2xl corners instead of 3xl, bg-background instead of
-          // bg-popover, a different shadow — which meant the ticket sheet
-          // and the Class sheet were visibly different objects for a reason
-          // no guest can perceive: one changes the URL and the other does
-          // not.
+          // bg-popover, a different shadow — which meant a routed sheet and
+          // a state sheet were visibly different objects for a reason no
+          // guest can perceive: one changes the URL and the other does not.
           SEMI_MODAL_PANEL_CLASS,
           "transition-transform duration-300 motion-reduce:transition-none",
           OVERLAY_EASE,

@@ -1,63 +1,26 @@
 "use client";
 
-import {
-  CalendarCheck,
-  ChevronRight,
-  Loader2,
-  Lock,
-  QrCode,
-  UtensilsCrossed,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarCheck, ChevronRight, type LucideIcon } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import {
-  CREDITS_BLOCKED,
-  MONEY_ACTIONS_PARKED,
-  ORDER_BLOCKED,
-  RESERVE_BLOCKED,
-} from "@/components/consumer/place-detail/place-actions-copy";
-import { useConsumerIdentity } from "@/lib/class-context";
-import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
-import { useStartVisit } from "@/lib/hooks/useStartVisit";
-import type { SeedPlace } from "@/lib/ticket-seed";
-import { ERROR_BOX_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { RESERVE_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
+import type { Place } from "@/lib/api/places";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import { isPromoting } from "@/lib/promo-rates";
-import {
-  isOrderActionEnabled,
-  isReserveActionEnabled,
-} from "@/lib/place-profile-actions";
+import { isReserveActionEnabled } from "@/lib/place-profile-actions";
 
 // The Go sheet (MESITA-1072) — what the deck's fifth action button opens.
 //
-// The rail used to end in a calendar wired straight to ReservationSheet: one
-// verb, and the narrowest of the ones the product actually offers. Place
-// detail already carries them all in a pinned bar (MESITA-1065) and each one
-// lands in an Activity section that exists (MESITA-1053), so the deck was
-// simply a verb behind. This catches it up without spending a sixth slot in a
-// rail that is already at its width budget.
+// The rail is icon-only and sized for five circles, so the commitment verb
+// cannot live there without shrinking the row or dropping Filter/Place. A
+// sheet also buys the verb a line of explanation, which the bar on place
+// detail has no room for — and the guest arriving from a swipe card has read
+// far less about this place than the guest who opened its detail page.
 //
-// WHY A SHEET AND NOT MORE BUTTONS. The rail is icon-only and sized for five
-// circles; the commitment verbs cannot live there without either shrinking the
-// whole row or dropping Filter/Place. A sheet also buys each verb a line of
-// explanation, which the bar on place detail has no room for — and the guest
-// arriving from a swipe card has read far less about this place than the guest
-// who opened its detail page.
-//
-// IT MIRRORS THE BAR'S COUNT ON PURPOSE. Both surfaces answer the same
-// question — what can I start here — so a sheet offering three where the bar
-// offers four would read as one of them being broken. The count is kept in
-// step through the shared copy module, which is why Credits arrived here the
-// same commit it arrived there.
-//
-// SELF-CONTAINED ON PURPOSE, not a refactor of PlaceActionBar. The part that
-// must never drift is already shared as code: useStartVisit owns the create,
-// the two-arm 409 race recovery and the seed THE TICKET paints from. What is
-// left is presentation wiring — one partner boolean and a Reserve hand-off —
-// and deduping ~30 lines of that would mean reopening a bar that shipped the
-// day before, for no behavioural gain. The one thing that would genuinely rot
-// if copied, the blocked-Order contract, is a shared constant instead.
+// IT MIRRORS THE BAR ON PURPOSE. Both surfaces answer the same question —
+// what can I start here — so they read the same gate (isReserveActionEnabled).
+// The bar hides when the answer is no; the sheet has room to say why, and
+// says it with RESERVE_BLOCKED.
 
 export function GoSheet({
   place,
@@ -65,7 +28,7 @@ export function GoSheet({
   onClose,
   onReserve,
 }: {
-  place: SeedPlace;
+  place: Place;
   open: boolean;
   onClose: () => void;
   /** Hands Reserve back to the deck, which already owns ReservationSheet.
@@ -73,106 +36,28 @@ export function GoSheet({
    *  as a rendering bug, so the deck SWAPS them rather than stacking. */
   onReserve: () => void;
 }) {
-  const { userId } = useConsumerIdentity();
-  const tickets = useConsumerTickets(userId);
-  const { pickPlace, startingId, error } = useStartVisit({
-    activeTickets: tickets.active,
-    onCreated: () => {
-      void tickets.refresh();
-    },
-    source: "go_sheet",
-  });
-  const promoting = isPromoting(place);
-  const orderEnabled = isOrderActionEnabled(place);
   const reserveEnabled = isReserveActionEnabled(place);
-  const starting = startingId === place.id;
-  // A live ticket here means the tap RE-OPENS it instead of making a second
-  // one (useStartVisit D5). The row says so up front — otherwise "Visit" reads
-  // as "spend again" to a guest who is already holding one.
-  const live = tickets.active.some((t) => t.project_id === place.id);
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={`Go to ${place.name}`}>
       <div className="p-5">
         <h2 className={SHEET_TITLE_CLASS}>Go to {place.name}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          {!MONEY_ACTIONS_PARKED
-            ? "Four ways in — pick one."
-            : reserveEnabled
-              ? "Book a table."
-              : RESERVE_BLOCKED.hint}
+          {reserveEnabled ? "Book a table." : RESERVE_BLOCKED.hint}
         </p>
 
-        {/* The create can fail (cold EF, dropped connection). Swallowing it
-              would leave a tap that visibly did nothing. */}
-        {error ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{error}</p> : null}
-
-        <div className="mt-4 flex flex-col gap-2">
-          {/* MVP cut: Credits · Visit · Order are hidden while
-              MONEY_ACTIONS_PARKED (MESITA-2077); Reserve stands alone. */}
-          {MONEY_ACTIONS_PARKED ? null : (
-            <>
-              {/* CREDITS — locked at every place until the engine lands, so the
-                hint carries the parked claim rather than blaming the place. */}
-              <GoOption
-                Icon={Lock}
-                title="Credits"
-                hint={CREDITS_BLOCKED.hint}
-                disabled
-              />
-
-              {/* VISIT — the money action, so it's the only tinted row.
-                Non-partners render LOCKED rather than hidden, matching
-                PlaceActionBar and PlacePickList: consumer-web-create-ticket
-                409s `not_partner`, so an enabled row would be a dead end —
-                but hiding it would tell the guest the app is missing a
-                feature, when the truth is this place isn't a partner yet. */}
-              <GoOption
-                Icon={starting ? Loader2 : promoting ? QrCode : Lock}
-                spin={starting}
-                title="Visit"
-                hint={
-                  !promoting
-                    ? "This place isn't running a Mesita reward right now."
-                    : live
-                      ? "You have a live ticket here — open it."
-                      : "Start your ticket and show the QR at the table."
-                }
-                onClick={() => pickPlace(place)}
-                disabled={!promoting || starting}
-                primary={promoting}
-              />
-
-              {/* ORDER — locked until the order rail ships (MESITA-1155). */}
-              <GoOption
-                Icon={orderEnabled ? UtensilsCrossed : Lock}
-                title="Order"
-                hint={
-                  orderEnabled
-                    ? "Order ahead for pickup or delivery."
-                    : ORDER_BLOCKED.hint
-                }
-                disabled={!orderEnabled}
-              />
-            </>
-          )}
-
-          {/* Parked and walk-in: the subtitle already says so, and a lone
-              disabled row under it would be a dead end (MESITA-2077). */}
-          {MONEY_ACTIONS_PARKED && !reserveEnabled ? null : (
+        {/* Walk-in: the subtitle already says so, and a lone disabled row
+            under it would be a dead end. */}
+        {reserveEnabled && (
+          <div className="mt-4 flex flex-col gap-2">
             <GoOption
-              Icon={reserveEnabled ? CalendarCheck : Lock}
+              Icon={CalendarCheck}
               title="Reserve"
-              hint={
-                reserveEnabled
-                  ? "Book a table for later."
-                  : RESERVE_BLOCKED.hint
-              }
-              onClick={reserveEnabled ? onReserve : undefined}
-              disabled={!reserveEnabled}
+              hint="Book a table for later."
+              onClick={onReserve}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </LocalSheet>
   );
@@ -187,46 +72,24 @@ function GoOption({
   title,
   hint,
   onClick,
-  disabled,
-  primary,
-  spin,
 }: {
   Icon: LucideIcon;
   title: string;
   hint: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  /** The one tinted row — Visit, when this place can actually honour it. */
-  primary?: boolean;
-  spin?: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       className={cn(
         "flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition",
         "active:scale-[0.99] motion-reduce:active:scale-100",
-        "disabled:pointer-events-none",
-        primary
-          ? "border-primary/30 bg-primary/5"
-          : "border-border bg-card hover:bg-muted",
-        disabled && !spin && "opacity-60",
+        "border-border bg-card hover:bg-muted",
       )}
     >
-      <span
-        className={cn(
-          "grid h-11 w-11 shrink-0 place-items-center rounded-xl",
-          primary
-            ? "bg-primary text-primary-foreground shadow-glow"
-            : "bg-muted text-muted-foreground",
-        )}
-      >
-        <Icon
-          className={cn("h-5 w-5", spin && "animate-spin")}
-          strokeWidth={2.25}
-        />
+      <span className="bg-muted text-muted-foreground grid h-11 w-11 shrink-0 place-items-center rounded-xl">
+        <Icon className="h-5 w-5" strokeWidth={2.25} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{title}</span>

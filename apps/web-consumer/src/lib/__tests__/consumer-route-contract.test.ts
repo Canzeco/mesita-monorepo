@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CONSUMER_ROUTES,
@@ -6,10 +8,6 @@ import {
   isModalContractPath,
   placePath,
   reservationPath,
-  visitPath,
-  ticketPath,
-  walletBalancePath,
-  giftClaimPath,
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
 import {
@@ -24,152 +22,159 @@ import {
 } from "@/lib/consumer-onboarding";
 import nextConfig from "../../../next.config";
 
-// Routing is contract, not implementation detail: five tabs, flat /me,
-// canonical /share, top-level /place — see Docs › Apps §A. These tests pin
+// Routing is contract, not implementation detail: four tabs, flat /me,
+// top-level /place and /reservation — see Docs › Apps §A. These tests pin
 // the contract, the helpers, the legacy→canonical redirect table, and the
 // middleware auth wall so a rename or a "helpful cleanup" can't silently
-// break bookmarks, QR deep links, or the signed-out gate.
+// break bookmarks, shared place links, or the signed-out gate.
 //
-// If a test here fails because you MEANT to change a route: update the mobile
-// contract (apps/mobile-consumer/src/lib/consumer-route-contract.ts) in the
-// same PR — the two files are hand-mirrored by convention.
+// FIRST STAGE (MESITA-2087). The consumer app is Citywide Catalog · Discovery
+// Engines · Reservations Agent. Every Second Stage address — Visits, Wallet,
+// Credits, Orders, Diamond, Plan, the Share deck, public gift links — is a
+// redirect SOURCE here and nothing else: no key, no helper, no page. If a test
+// here fails because you MEANT to change a route, the mobile mirror went with
+// apps/mobile-consumer (MESITA-2089); there is no twin left to keep in step.
+
+const SHELL = join(__dirname, "..", "..", "app", "(shell)");
+
+type Redirect = { source: string; destination: string };
+
+/** Next's matcher, reduced to what this table uses: `:name` is ONE segment,
+ *  `:name*` is ZERO OR MORE (path-to-regexp's `*` modifier — `/wallet/:path*`
+ *  catches bare `/wallet` too, which is why the exact `/wallet` row beneath it
+ *  never fires and why "exactly one entry" is the wrong invariant). */
+function matches(source: string, address: string): boolean {
+  const re = source
+    .split("/")
+    .slice(1)
+    .map((seg) =>
+      /^:[A-Za-z]+\*$/.test(seg)
+        ? "(?:/[^/]+)*"
+        : /^:[A-Za-z]+$/.test(seg)
+          ? "/[^/]+"
+          : `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+    )
+    .join("");
+  return new RegExp(`^${re}$`).test(address);
+}
+
+/** The entry Next would fire for `address` — the FIRST match, as it does. */
+function firstRedirect(table: Redirect[], address: string): Redirect | undefined {
+  return table.find((r) => matches(r.source, address));
+}
+
+/** A legacy prefix (`/visit/`) stands for a `:param` entry; give it a sample
+ *  id so the matcher can see it. A plain address is itself. */
+function sampleAddress(legacy: string): string {
+  return legacy.endsWith("/") ? `${legacy}sample` : legacy;
+}
+
+/** Every address the contract says RENDERS, with `:id` where a page takes
+ *  one. The redirect table may point here and nowhere else. */
+function liveAddresses(): Set<string> {
+  return new Set([
+    CONSUMER_ROUTES.onboard,
+    CONSUMER_ROUTES.search,
+    CONSUMER_ROUTES.discover,
+    ...Object.values(CONSUMER_ROUTES.discoverTabs),
+    CONSUMER_ROUTES.pay,
+    CONSUMER_ROUTES.me,
+    ...Object.values(CONSUMER_ROUTES.mePages),
+    `${CONSUMER_ROUTES.place.prefix}:id`,
+    `${CONSUMER_ROUTES.reservation.prefix}:id`,
+  ]);
+}
 
 describe("CONSUMER_ROUTES (canonical surface map)", () => {
   it("pins the exact canonical route map", () => {
     expect(CONSUMER_ROUTES).toEqual({
       onboard: "/onboard",
-      share: "/share",
       // Search's OWN top-level route (MESITA-1616) — not nested under
-      // /discover any more. See the legacy block below for the
-      // /discover/search entry that replaced it as a redirect source.
+      // /discover. See the legacy block below for the /discover/search entry
+      // that replaced it as a redirect source.
       search: "/search",
-      // NO home / homeTabs / homeDefault / favorites keys — the hub was
-      // retired 2026-09-01.
-      //
       // SEGMENTS MATCH LABELS here, the exception in this codebase: the tab
       // moved to /discover precisely so each typed mode could be a real
       // segment.
       discover: "/discover",
-      // FIVE modes, all under Home now that Search has its own route
-      // (MESITA-1616). CATALOG is the catalog rails with no search bar at
-      // all; FEED (MESITA-1621) is the same deck Swipe deals, poured into one
-      // two-column grid.
-      //
-      // `/discover/feed` IS A ROUTE AGAIN and is therefore NOT in the legacy
-      // block below any more — it 308'd to /discover/catalog for the hour the
-      // browse mode shipped under that name. A redirect shadows a real page
-      // entirely, so the two cannot both exist; the redirect lost. If this
-      // key and a `legacy.discoverFeed` ever appear together, the page is
-      // dead and only this pairing shows it.
-      // Home's four pills (MESITA-2081). FEED CAME BACK as the pill reading
-      // Home, so it is a page again and NOT in the legacy block — a page and
-      // a redirect for one path cannot coexist, so this key and
-      // `legacy.discoverFeed` must never both appear.
+      // Home's four pills (MESITA-2081). FEED is the pill reading Home, so it
+      // is a page and NOT in the legacy block — a page and a redirect for one
+      // path cannot coexist, so this key and a `legacy.discoverFeed` must
+      // never both appear.
       discoverTabs: {
         feed: "/discover/feed",
         scroll: "/discover/scroll",
         chat: "/discover/chat",
         favs: "/discover/favs",
       },
-      // Default IS the first pill (MESITA-1609/1615) — Search left this rail
-      // for its own tab, so the reason the default sat off the lead (Search's
-      // urgency, buried behind width wins) left with it. Scroll leads and is
-      // the default (MESITA-1697; Swipe held it from MESITA-1615, and Scroll
-      // is that same deck rendered vertically rather than a new mode).
-      // Activity's still-live version of this pattern (Alerts leads, bare
-      // /inbox lands on Visits) is a SEPARATE, unaffected decision.
-      // Home (Feed's address) leads again since MESITA-2081.
+      // Default IS the first pill (MESITA-1609/1615); Home leads since
+      // MESITA-2081.
       discoverDefault: "/discover/feed",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
-      // Pay is ONE page again (MESITA-2050): Wallet left for its own tab.
-      newVisit: {
-        root: "/new-visit",
-        new: "/new-visit",
-      },
-      newVisitDefault: "/new-visit",
-      // Wallet is a bottom tab (MESITA-2050). Its four children are ROUTES,
-      // not sheets and not @modal intercepts (Pato, 2026-09-08) — nothing
-      // here belongs in isModalContractPath.
-      wallet: {
-        root: "/wallet",
-        buy: "/wallet/buy",
-        gift: "/wallet/gift",
-        redeem: "/wallet/redeem",
-        balance: { prefix: "/wallet/balance/" },
-      },
-      // Order is a bottom tab (MESITA-2050), one pill: Home at the bare route.
-      order: { root: "/order", home: "/order" },
-      visit: { prefix: "/visit/" },
-      // The public gift landing link (MESITA-1677) — a stranger's entry
-      // point, no session assumed. route-structure.test.tsx T1 carries the
-      // matching auth-wall exemption.
-      giftClaim: { prefix: "/gift/" },
-      // THREE sections, and the ORDER is load-bearing: Alerts · Visits ·
-      // Reservations runs from what you're doing right now out to the
-      // passive feed. Object key order is asserted separately below, since
-      // toEqual ignores it.
-      // Orders folded into Visits (MESITA-1389, 2026-09-06) — no table, no
-      // Edge Function, no type, so there was nothing left to keep a section
-      // pointed at. Wallet left for Pay (a wallet holds instruments, Activity
-      // holds events) and Alerts leads the row now.
+      // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
+      // default, no sections: the tab links here and lights here.
+      pay: "/pay",
+      // Me's six boxes, each a route. NO diamond / diamondInvite / plan /
+      // settingsMetrics / visits — those are redirect sources in `legacy`
+      // below.
       me: "/me",
       mePages: {
         profile: "/me/profile",
         instagram: "/me/instagram",
-        diamond: "/me/diamond",
-        diamondInvite: "/me/diamond/invite",
-        plan: "/me/plan",
         settings: "/me/settings",
-        settingsMetrics: "/me/settings/metrics",
         settingsContact: "/me/settings/contact",
         help: "/me/help",
         notifications: "/me/notifications",
-        visits: "/me/visits",
         reservations: "/me/reservations",
       },
       legacy: {
         profile: "/profile",
-        // The class ladder's two pages (MESITA-2040). Both were canonical and
-        // both shipped, so the bookmarks are real.
-        meClass: "/me/class",
-        meClassInvite: "/me/class/invite",
-        // The Passport (MESITA-2043) — the member number moved to Profile.
-        mePassport: "/me/passport",
-        subscribe: "/subscribe/premium",
+        share: "/share",
         invite: "/invite",
         homeAi: "/home/ai",
-        inboxCredits: "/inbox/credits",
-        inboxOrders: "/inbox/orders",
         discoverSearch: "/discover/search",
         discoverMap: "/discover/map",
-        // NO `discoverFeed` — /discover/feed is Home's Feed mode
-        // (MESITA-1621, and the rails since MESITA-1697): a live page, not a
-        // forwarding address. This is the pairing that would expose it if a
-        // redirect for that path ever reappeared.
+        // NO `discoverFeed` — /discover/feed is Home, a live page. This is
+        // the pairing that would expose it if a redirect for that path ever
+        // reappeared.
         discoverHome: "/discover/home",
-        // The two segments MESITA-1697 renamed. `discoverSwipe` was
-        // `discoverDefault` for the week before it, so its bookmarks are the
-        // realest in the consumer surface.
         discoverSwipe: "/discover/swipe",
         discoverCatalog: "/discover/catalog",
+        // The Second Stage tab and everything under it. All land on `pay`.
+        newVisit: "/new-visit",
+        newVisitWallet: "/new-visit/wallet",
+        visitPrefix: "/visit/",
+        wallet: "/wallet",
+        credits: "/credits",
+        inboxCredits: "/inbox/credits",
+        order: "/order",
+        inboxOrders: "/inbox/orders",
+        giftClaimPrefix: "/gift/",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
-        // Pay's Wallet section (2026-09-01 -> MESITA-2050). `/wallet` is
-        // CANONICAL again, so it is not here.
-        newVisitWallet: "/new-visit/wallet",
+        payTicketPrefix: "/pay/ticket/",
+        payTicketsPrefix: "/pay/tickets/",
+        payTabPrefix: "/pay/",
+        ticketPrefix: "/ticket/",
+        qr: "/qr",
+        // Me's Second Stage boxes. All land on `me` (Metrics on Settings,
+        // the Passport on Profile).
+        meClass: "/me/class",
+        meClassInvite: "/me/class/invite",
+        meDiamond: "/me/diamond",
+        meDiamondInvite: "/me/diamond/invite",
+        mePlan: "/me/plan",
+        meVisits: "/me/visits",
+        meSettingsMetrics: "/me/settings/metrics",
+        mePassport: "/me/passport",
+        subscribe: "/subscribe/premium",
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
         inboxMineTab: "/inbox/mine",
         inboxGlobalTab: "/inbox/global",
         reservations: "/reservations",
-        placePrefix: "/place/",
-        reservationPrefix: "/reservation/",
-        ticketPrefix: "/ticket/",
-        pay: "/pay",
-        payTicketPrefix: "/pay/ticket/",
-        payTicketsPrefix: "/pay/tickets/",
         savedReservations: "/saved/reservations",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
@@ -179,85 +184,122 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
 
   it("pins the middleware prefix map", () => {
     expect(CONSUMER_ROUTE_PREFIX).toEqual({
-      // NO `discover` key (MESITA-1609, removed) — Home and Search now split
-      // that namespace and need to light DIFFERENT bottom tabs, so BottomNav
-      // matches each discoverTabs segment individually instead.
+      // NO `discover` key (MESITA-1609) — Home and Search split that
+      // namespace and light DIFFERENT bottom tabs, so BottomNav matches each
+      // discoverTabs segment individually instead. NO `search` key: an exact
+      // top-level segment with no siblings.
       place: "/place",
       reservations: "/reservations",
-      newVisit: "/new-visit",
-      visit: "/visit",
-      // The two tabs MESITA-2050 added.
-      wallet: "/wallet",
-      order: "/order",
-      // NO `inbox` key (MESITA-1626, removed): the container is gone and every
-      // /inbox address 308s to /me, so the middleware never sees one.
+      pay: "/pay",
+      // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
+      // the middleware never sees one.
       me: "/me",
       saved: "/saved",
     });
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
   });
 
-  // ACTIVITY HAS NO CONTAINER LEFT (MESITA-1626). Its three sections are
-  // pages under /me (MESITA-1789). The `inbox` object and `inboxDefault`
-  // are gone rather than kept as dead keys pointing at deleted pages.
-  //
-  // What used to live here: a pin on the section ORDER, and a pin that bare
-  // /inbox landed on Visits rather than the first section (a visit in
-  // progress is time-critical, a notification never is). The order survives
-  // as a product fact — Alerts · Visits · Bookings — and route-structure T6
-  // pins it where it is now observable, in what Me renders.
-  it("keeps no route keys for a container that no longer exists", () => {
-    expect(CONSUMER_ROUTES).not.toHaveProperty("inbox");
-    expect(CONSUMER_ROUTES).not.toHaveProperty("inboxDefault");
-    expect(CONSUMER_ROUTE_PREFIX).not.toHaveProperty("inbox");
+  // A Second Stage key that survives as "dead but typed" is how a deleted
+  // surface comes back by autocomplete.
+  it("keeps no route key for a Second Stage surface", () => {
+    for (const key of [
+      "inbox",
+      "inboxDefault",
+      "newVisit",
+      "newVisitDefault",
+      "visit",
+      "wallet",
+      "order",
+      "giftClaim",
+      "share",
+    ]) {
+      expect(CONSUMER_ROUTES, key).not.toHaveProperty(key);
+    }
+    for (const key of ["diamond", "diamondInvite", "plan", "settingsMetrics", "visits"]) {
+      expect(CONSUMER_ROUTES.mePages, key).not.toHaveProperty(key);
+    }
+    for (const key of ["inbox", "newVisit", "visit", "wallet", "order"]) {
+      expect(CONSUMER_ROUTE_PREFIX, key).not.toHaveProperty(key);
+    }
   });
 
-  // Every /inbox address a guest could still hold has to land somewhere real
-  // in ONE hop. The legacy SOURCES stay in the contract on purpose — they are
-  // what a bookmark or an old push notification carries — but nothing may
-  // point AT the container any more.
-  it("sends every /inbox address to Me in one hop, and nothing points back", async () => {
+  // Nothing in the legacy block may be a live address: a redirect whose
+  // source is a page shadows the page, and every gate stays green.
+  it("names no live address in the legacy block", () => {
+    const live = liveAddresses();
+    for (const [key, value] of Object.entries(CONSUMER_ROUTES.legacy)) {
+      const address = value.endsWith("/") ? `${value}:id` : value;
+      expect(live.has(address), `legacy.${key} = ${value} is a live page`).toBe(
+        false,
+      );
+    }
+  });
+});
+
+describe("the legacy block and the redirect table are one set", () => {
+  // Every retired address a guest could still hold — a bookmark, an old push,
+  // a QR printed last month — is caught by next.config and lands, in ONE hop,
+  // on a page the contract says renders. FIRST match, as Next fires it: the
+  // `/inbox/:path*` catch-all also covers `/inbox/credits`, and the specific
+  // entry wins only because it sits above — the full-table pin below holds
+  // that order.
+  it("catches every legacy address and lands it on a live page", async () => {
     const table = await nextConfig.redirects!();
-    const inbox = table.filter((r) => r.source.startsWith("/inbox"));
+    const live = liveAddresses();
 
-    // /inbox/credits is the one exception and it predates the container's
-    // death: Credits is an INSTRUMENT, not an event, so it went to Pay's
-    // Wallet on 2026-09-01. It must stay ABOVE the catch-all — Next takes the
-    // first match, so a catch-all listed first would swallow it and land a
-    // wallet bookmark on Me.
-    //
-    // /inbox/orders is the second exception (MESITA-2050): Orders' old
-    // Activity section has a home again, the Order tab.
-    expect(inbox.map((r) => [r.source, r.destination])).toEqual([
-      ["/inbox/credits", "/wallet"],
-      ["/inbox/orders", "/order"],
-      ["/inbox", "/me"],
-      ["/inbox/:path*", "/me"],
-    ]);
+    for (const [key, value] of Object.entries(CONSUMER_ROUTES.legacy)) {
+      // The one legacy address answered by a server page rather than a
+      // next.config entry. It is pinned as such below.
+      if (key === "reservations") continue;
 
-    // A destination pointing back into the container is a guaranteed 404 now.
-    expect(
-      table.filter((r) => r.destination.startsWith("/inbox")),
-    ).toEqual([]);
+      const hit = firstRedirect(table, sampleAddress(value));
+      expect(hit, `legacy.${key} (${value}) has no redirect`).toBeDefined();
+
+      // One hop: the destination renders. (`:id` on both sides lines up — a
+      // param destination is a param page.)
+      const dest = hit!.destination.replace(/:[A-Za-z]+/g, ":id");
+      expect(live.has(dest), `legacy.${key} → ${hit!.destination} is not a page`).toBe(true);
+    }
   });
 
-  // Pay's first section and its default AGREE, unlike Activity's. You open
-  // this tab standing in a place, and that is also the leftmost pill.
-  it("lands the Pay tab on New, which is also its first section", () => {
-    expect(CONSUMER_ROUTES.newVisitDefault).toBe(CONSUMER_ROUTES.newVisit.new);
-    expect(CONSUMER_ROUTES.newVisit.new).toBe(CONSUMER_ROUTES.newVisit.root);
+  it("answers /reservations with a server redirect page", () => {
+    const page = join(SHELL, "reservations", "page.tsx");
+    expect(existsSync(page)).toBe(true);
+    expect(readFileSync(page, "utf8")).toMatch(/redirect\(CONSUMER_ROUTES\./);
   });
 
-  // Wallet is a TAB (MESITA-2050) — the 09-05 idea again, and this time on
-  // a four-tab bar rather than a fifth tab. It is not a section of Pay and
-  // not a section of Activity. A change that moves it again has to delete
-  // these lines to do it.
-  it("keeps Wallet at its own top-level /wallet, outside Pay", () => {
-    expect(CONSUMER_ROUTES.wallet.root).toBe("/wallet");
-    expect(
-      CONSUMER_ROUTES.wallet.root.startsWith(CONSUMER_ROUTES.newVisit.root),
-    ).toBe(false);
-    expect(CONSUMER_ROUTES.newVisit).not.toHaveProperty("wallet");
+  // The other direction: every SOURCE the table catches is spoken for in the
+  // contract, so a retired address cannot be forwarded by a stray entry nobody
+  // can find from the route map. Sources with a `:param` are checked by their
+  // prefix; the `:path*` catch-alls stand for the exact entries beside them.
+  it("every redirect source is a legacy address, or a Home/Explore-era alias", async () => {
+    const table = await nextConfig.redirects!();
+    const legacy = Object.values(CONSUMER_ROUTES.legacy) as string[];
+    // Addresses that predate the contract's legacy block and are pinned by
+    // value in the table test below rather than by key.
+    const ALIASES = ["/explore", "/home", "/subscribe", "/inbox", "/saved"];
+    const spokenFor = (source: string) => {
+      const exact = source.replace(/\/:[A-Za-z]+\*?$/, "/");
+      if (legacy.includes(source)) return true;
+      if (source.includes(":") && legacy.includes(exact)) return true;
+      if (source.includes(":") && legacy.includes(exact.replace(/\/$/, ""))) return true;
+      return ALIASES.some((a) => source === a || source.startsWith(`${a}/`));
+    };
+    expect(table.filter((r) => !spokenFor(r.source)).map((r) => r.source)).toEqual([]);
+  });
+
+  // Pay is the ONE live address every Second Stage spelling lands on. If it
+  // ever becomes a source itself, the tab 308s on every tap and the page
+  // never renders — and nothing but this line notices.
+  it("never lists /pay, a tab, as a redirect source", async () => {
+    const table = await nextConfig.redirects!();
+    expect(table.find((r) => r.source === CONSUMER_ROUTES.pay)).toBeUndefined();
+    expect(firstRedirect(table, CONSUMER_ROUTES.pay)).toBeUndefined();
+    // Every live address, in fact.
+    for (const address of liveAddresses()) {
+      const concrete = address.replace(/:id$/, "sample");
+      expect(firstRedirect(table, concrete), `${address} is shadowed`).toBeUndefined();
+    }
   });
 });
 
@@ -265,50 +307,16 @@ describe("path helpers", () => {
   it("builds detail paths from ids/slugs", () => {
     expect(placePath("abc-123")).toBe("/place/abc-123");
     expect(reservationPath("r1")).toBe("/reservation/r1");
-    expect(visitPath("t1")).toBe("/visit/t1");
-    // ticketPath stays as the alias: below the URL the object is still a
-    // ticket (the DB column, the EFs and the row types all say ticket), so
-    // call sites talking about the OBJECT keep reading naturally.
-    expect(ticketPath("t1")).toBe("/visit/t1");
-    expect(walletBalancePath("bal_1")).toBe("/wallet/balance/bal_1");
-    expect(giftClaimPath("1234567890")).toBe("/gift/1234567890");
-  });
-
-  // The wallet's three static children must never be swallowed by the balance
-  // prefix. Next.js does resolve a static segment ahead of a dynamic sibling,
-  // but these are not siblings at all — that is the point of putting the id
-  // under `balance/` — and this is the assertion that would go red if someone
-  // "simplified" it back to /new-visit/wallet/[id].
-  it("keeps Buy, Gift and Redeem out of the balance id space", () => {
-    for (const href of [
-      CONSUMER_ROUTES.wallet.buy,
-      CONSUMER_ROUTES.wallet.gift,
-      CONSUMER_ROUTES.wallet.redeem,
-    ]) {
-      expect(
-        href.startsWith(CONSUMER_ROUTES.wallet.balance.prefix),
-      ).toBe(false);
-      expect(href.startsWith(`${CONSUMER_ROUTES.wallet.root}/`)).toBe(true);
-    }
-  });
-
-  // A wallet subroute is a PAGE. If one ever appears here, someone has made it
-  // an @modal intercept and undone the 2026-09-08 reversal by the back door.
-  it("keeps every wallet subroute out of the modal contract", () => {
-    for (const href of [
-      CONSUMER_ROUTES.wallet.buy,
-      CONSUMER_ROUTES.wallet.gift,
-      CONSUMER_ROUTES.wallet.redeem,
-      walletBalancePath("bal_1"),
-    ]) {
-      expect(isModalContractPath(href), href).toBe(false);
-    }
   });
 
   it("keeps every Me box page out of the modal contract", () => {
     for (const href of Object.values(CONSUMER_ROUTES.mePages)) {
       expect(isModalContractPath(href), href).toBe(false);
     }
+  });
+
+  it("keeps Pay, a full page, out of the modal contract", () => {
+    expect(isModalContractPath(CONSUMER_ROUTES.pay)).toBe(false);
   });
 });
 
@@ -321,21 +329,26 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
   ];
   const notModal = [
     "/",
-    "/home",
-    "/home/swipe",
+    "/onboard",
+    "/discover/feed",
+    "/discover/scroll",
+    "/discover/chat",
+    "/discover/favs",
     "/search",
+    "/pay",
     "/reservations",
-    "/new-visit",
-    "/wallet",
-    "/wallet/balance/bal_1",
-    "/order",
-    // THE TICKET is a full page, not a routed modal — /rewards/ticket/ used to
-    // sit in the predicate with no intercept behind it (inert). Removed with
-    // the rename rather than carried forward as an inert /visit/ branch.
-    "/visit/t1",
-    "/home/chat",
     "/me",
     "/me/profile",
+    "/me/instagram",
+    "/me/notifications",
+    "/me/reservations",
+    "/me/settings",
+    "/me/help",
+    // Second Stage spellings 308 before they could ever intercept.
+    "/new-visit",
+    "/visit/t1",
+    "/wallet",
+    "/order",
     "/me/diamond",
     "/me/plan",
     "/inbox/mine",
@@ -355,46 +368,50 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   it("pins the full redirect table", async () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toEqual([
-      // Explore era (pre-Home). Repointed at the Discover default when /home
-      // was retired — chaining through /home would make these two-hop, and
-      // T4 caps at 2. Default is Swipe again as of MESITA-1615.
+      // Explore era (pre-Home). Straight to the Discover default.
       { source: "/explore", destination: "/discover/feed", permanent: true },
       { source: "/explore/swipe", destination: "/discover/scroll", permanent: true },
       { source: "/explore/map", destination: "/discover/feed", permanent: true },
       { source: "/explore/add", destination: "/discover/feed", permanent: true },
-      {
-        source: "/explore/place/:id",
-        destination: "/place/:id",
-        permanent: true,
-      },
-      // The centre tab: /pay -> /rewards -> /new-visit. BOTH eras forward
-      // here. /rewards was the LIVE url until routing v2, so it needs the
-      // forwarding address most — everything below used to chain through it.
-      // The plan is a sheet on Me now, not a page (MESITA-1129).
-      { source: "/subscribe", destination: "/me/plan", permanent: true },
-      { source: "/subscribe/:plan", destination: "/me/plan", permanent: true },
-      { source: "/rewards", destination: "/new-visit", permanent: true },
-      { source: "/pay", destination: "/new-visit", permanent: true },
-      { source: "/pay/:tab", destination: "/new-visit", permanent: true },
-      { source: "/qr", destination: "/new-visit", permanent: true },
-      // A single visit. The OBJECT is still a ticket; only the URL says visit.
-      {
-        source: "/rewards/ticket/:id",
-        destination: "/visit/:id",
-        permanent: true,
-      },
-      { source: "/pay/ticket/:id", destination: "/visit/:id", permanent: true },
-      {
-        source: "/pay/tickets/:id",
-        destination: "/visit/:id",
-        permanent: true,
-      },
-      { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
-      // The retired Home hub (2026-09-01). Every leaf 308s to the Discover
-      // default, Swipe again as of MESITA-1615. /home/ai points straight
-      // here rather than chaining through /home/chat — that page is deleted,
-      // so the old chain would dangle AND cost a second hop against T4's cap
-      // of 2.
+      { source: "/explore/place/:id", destination: "/place/:id", permanent: true },
+      // THE SECOND STAGE (MESITA-2087): every address that hung off the
+      // centre tab lands on Pay in ONE hop. Deepest sources first.
+      { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
+      { source: "/new-visit/wallet", destination: "/pay", permanent: true },
+      { source: "/new-visit", destination: "/pay", permanent: true },
+      { source: "/wallet/:path*", destination: "/pay", permanent: true },
+      { source: "/wallet", destination: "/pay", permanent: true },
+      { source: "/credits", destination: "/pay", permanent: true },
+      { source: "/inbox/credits", destination: "/pay", permanent: true },
+      { source: "/inbox/orders", destination: "/pay", permanent: true },
+      { source: "/order", destination: "/pay", permanent: true },
+      { source: "/rewards/ticket/:id", destination: "/pay", permanent: true },
+      { source: "/rewards", destination: "/pay", permanent: true },
+      { source: "/pay/ticket/:id", destination: "/pay", permanent: true },
+      { source: "/pay/tickets/:id", destination: "/pay", permanent: true },
+      { source: "/pay/:tab", destination: "/pay", permanent: true },
+      { source: "/qr", destination: "/pay", permanent: true },
+      { source: "/ticket/:id", destination: "/pay", permanent: true },
+      { source: "/visit/:id", destination: "/pay", permanent: true },
+      { source: "/gift/:code", destination: "/pay", permanent: true },
+      // Me's Second Stage boxes. The `/me/[tab]` catch-all already 308s a
+      // retired ONE-segment /me address onto the hub; the two-segment ones
+      // need an entry or they 404.
+      { source: "/subscribe", destination: "/me", permanent: true },
+      { source: "/subscribe/:plan", destination: "/me", permanent: true },
+      { source: "/me/class/invite", destination: "/me", permanent: true },
+      { source: "/me/class", destination: "/me", permanent: true },
+      { source: "/me/diamond/invite", destination: "/me", permanent: true },
+      { source: "/me/diamond", destination: "/me", permanent: true },
+      { source: "/me/plan", destination: "/me", permanent: true },
+      { source: "/me/visits", destination: "/me", permanent: true },
+      { source: "/me/settings/metrics", destination: "/me/settings", permanent: true },
+      { source: "/me/passport", destination: "/me/profile", permanent: true },
+      { source: "/share", destination: "/me", permanent: true },
+      { source: "/invite", destination: "/me", permanent: true },
+      // The retired Home hub (2026-09-01). Every leaf 308s straight to the
+      // Discover default — never through /discover/map or /discover/search,
+      // which are themselves 308s below.
       { source: "/home", destination: "/discover/feed", permanent: true },
       { source: "/home/swipe", destination: "/discover/feed", permanent: true },
       { source: "/home/catalog", destination: "/discover/feed", permanent: true },
@@ -402,102 +419,53 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/home/ai", destination: "/discover/feed", permanent: true },
       { source: "/home/social", destination: "/discover/feed", permanent: true },
       { source: "/home/favorites", destination: "/discover/feed", permanent: true },
-      // The just-shipped Search route (MESITA-1609, six days -> MESITA-1616).
-      // Straight to the new canonical /search, never chained through
-      // /discover/map, which points here too.
+      // Search's two addresses under /discover (MESITA-1609 → 1616).
       { source: "/discover/search", destination: "/search", permanent: true },
-      // The map's segment while the rail called it Map. Search carries the
-      // map now, so this forwards straight to the canonical /search route —
-      // not through /discover/search, which is itself a redirect source
-      // above. Nothing above may CHAIN through either — every /home* and
-      // /explore* points at the mode directly, because a chain here would
-      // cost a second hop and T4 caps at exactly 2.
-      {
-        source: "/discover/map",
-        destination: "/search",
-        permanent: true,
-      },
-      // The browse mode shipped as "Home" for a day — live in production, so
-      // it forwards like any other retired url, straight to /discover/catalog.
-      //
-      // ITS SIBLING /discover/feed IS DELIBERATELY ABSENT (MESITA-1621).
-      // Catalog also spent an hour as "Feed" and 308'd here alongside Home;
-      // that segment is a real page now, and a redirect would shadow it into
-      // never rendering. This table is exhaustive — `toEqual` on the whole
-      // array — so re-adding the entry fails HERE, which is the point: the
-      // page it would break is otherwise silent.
-      //
-      // FEED LEFT VISIT'S RAIL (MESITA-2050) and came back as Home
-      // (MESITA-2081): a page again, so absent here, and /discover/home
-      // lands on it.
-      {
-        source: "/discover/home",
-        destination: "/discover/feed",
-        permanent: true,
-      },
-      // MESITA-1697's two renames. Both one hop; the /explore* and /home*
-      // entries above were re-pointed rather than left to chain through here.
-      {
-        source: "/discover/swipe",
-        destination: "/discover/scroll",
-        permanent: true,
-      },
-      {
-        source: "/discover/catalog",
-        destination: "/discover/feed",
-        permanent: true,
-      },
+      { source: "/discover/map", destination: "/search", permanent: true },
+      // Catalog's day as Home, Swipe's week as the default, Catalog's own
+      // segment (MESITA-1697). ITS SIBLING /discover/feed IS DELIBERATELY
+      // ABSENT: that segment is Home, a live page, and a redirect would shadow
+      // it into never rendering. This table is exhaustive — `toEqual` on the
+      // whole array — so re-adding the entry fails HERE, which is the point.
+      { source: "/discover/home", destination: "/discover/feed", permanent: true },
+      { source: "/discover/swipe", destination: "/discover/scroll", permanent: true },
+      { source: "/discover/catalog", destination: "/discover/feed", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
       { source: "/saved", destination: "/me", permanent: true },
       { source: "/saved/reservations", destination: "/me/reservations", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
-      { source: "/invite", destination: "/share", permanent: true },
-      // Wallet is a tab at /wallet again (MESITA-2050). Every former address
-      // points STRAIGHT at it — never at one another. Four explicit children
-      // rather than a `:path*`, so T4 can prove each destination is a page.
-      // route-structure T7 asserts these separately, because T4 can only
-      // validate a destination, never an absence.
-      { source: "/credits", destination: "/wallet", permanent: true },
-      { source: "/inbox/credits", destination: "/wallet", permanent: true },
-      { source: "/new-visit/wallet", destination: "/wallet", permanent: true },
-      { source: "/new-visit/wallet/buy", destination: "/wallet/buy", permanent: true },
-      { source: "/new-visit/wallet/gift", destination: "/wallet/gift", permanent: true },
-      { source: "/new-visit/wallet/redeem", destination: "/wallet/redeem", permanent: true },
-      {
-        source: "/new-visit/wallet/balance/:id",
-        destination: "/wallet/balance/:id",
-        permanent: true,
-      },
       { source: "/profile", destination: "/me/profile", permanent: true },
-      // Deepest source first; each is ONE hop, and the invite PIN never
-      // chains through /me/diamond (T4 caps a chain at 2).
-      { source: "/me/class/invite", destination: "/me/diamond/invite", permanent: true },
-      { source: "/me/class", destination: "/me/diamond", permanent: true },
-      { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/notifications", destination: "/me/notifications", permanent: true },
-      // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626) — its sections are
-      // sheets on Me and a sheet has no URL, so every remaining /inbox
-      // address lands on Me in ONE hop. These sit BELOW /inbox/credits on
-      // purpose: Next takes the first match, and Credits still belongs to
-      // Pay's Wallet.
-      // Orders' Activity section has a home again (MESITA-2050).
-      { source: "/inbox/orders", destination: "/order", permanent: true },
+      // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626): /inbox lands on Me in
+      // ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and point at
+      // Pay — Next takes the first match.
       { source: "/inbox", destination: "/me", permanent: true },
       { source: "/inbox/:path*", destination: "/me", permanent: true },
     ]);
   });
 
+  // Every /inbox address a guest could still hold lands somewhere real in ONE
+  // hop, and nothing points AT the container any more.
+  it("sends every /inbox address to Me or Pay in one hop, and nothing points back", async () => {
+    const table = await nextConfig.redirects!();
+    const inbox = table.filter((r) => r.source.startsWith("/inbox"));
+    // The two instrument sections (Credits, Orders) are Second Stage and go
+    // to Pay with the rest of it. They must stay ABOVE the catch-all — Next
+    // takes the first match, so a catch-all listed first would swallow them.
+    expect(inbox.map((r) => [r.source, r.destination])).toEqual([
+      ["/inbox/credits", "/pay"],
+      ["/inbox/orders", "/pay"],
+      ["/inbox", "/me"],
+      ["/inbox/:path*", "/me"],
+    ]);
+    expect(table.filter((r) => r.destination.startsWith("/inbox"))).toEqual([]);
+  });
+
   // Redirects that carry logic stay as server pages (not in next.config):
-  //   /home              → /home/swipe        (default mode)
-  //   /home/catalog|chat|social|favorites → /home/swipe (Home is Soon)
-  //   /me/[tab]          → /me (+?settings=1) (tab → modal mapping)
-  //   /inbox             → /inbox/visits      (default section)
-  //   /inbox/[tab]       → /inbox/notifications (mine, global + old aliases)
-  //   /reservations      → /inbox/reservations (list moved into Inbox)
-  //   /saved             → /inbox/reservations (legacy tab)
-  //   /saved/reservation(s)/… → /reservation(s)/…
-  //   /saved/place/[id]  → /place/[id]
+  //   /discover          → /discover/feed      (default pill)
+  //   /me/[tab]          → /me (+ query)       (retired one-segment boxes)
+  //   /reservations      → /me/reservations    (the list's old tab route)
   // Their targets are pinned via CONSUMER_ROUTES above; the pages themselves
   // are one-line redirect() calls checked by build + typecheck.
 });
@@ -510,8 +478,7 @@ describe("the AI mode is reachable by both names", () => {
     );
     // Was /home/ai -> /home/chat. That page is gone with the rest of the hub,
     // so the old chain would dangle; and even repaired it would have cost two
-    // hops (/home/ai -> /home/chat -> /search) against T4's cap of exactly 2,
-    // leaving zero margin for the next legacy alias anyone adds.
+    // hops against route-structure T4's cap of exactly 2.
     expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverDefault);
     // Every retired leaf resolves in ONE hop, for the same reason.
     const homeHops = redirects.filter((r) => r.source.startsWith("/home"));
@@ -526,38 +493,33 @@ describe("middleware auth wall (shouldGate)", () => {
   const walled = [
     "/me",
     "/me/anything",
-    "/new-visit",
-    "/visit/t1",
-    // The two tabs MESITA-2050 added, and a Wallet child.
-    "/wallet",
-    "/wallet/buy",
-    "/order",
+    // Pay is a tab: a signed-out tap gets the edge redirect with its own
+    // `next`, like every other personal surface.
+    "/pay",
     "/reservations",
     "/reservation/r1",
     "/inbox/mine",
     "/inbox/global",
   ];
   // "Ungated at middleware" — NOT "public". Everything under app/(shell)
-  // (/home, /search, /place, /share) is still walled by that
-  // layout's own getUser() check; middleware just doesn't pay for an SSR
-  // render first. Only "/" and "/onboard" are reachable signed-out.
+  // (/discover, /search, /place) is still walled by that layout's own
+  // getUser() check; middleware just doesn't pay for an SSR render first.
+  // Only "/" and "/onboard" are reachable signed-out.
   const ungatedAtMiddleware = [
     "/",
-    "/home",
-    "/home/swipe",
-    "/home/favorites",
+    "/discover/feed",
+    "/discover/favs",
     "/search",
     "/place/abc",
-    "/share",
     "/onboard",
-    // Genuinely public, not just ungated-at-middleware like the routes
-    // above it: /gift/[code] sits OUTSIDE (shell) entirely (route-structure
-    // T1's fourth exemption), so there is no getUser() wall behind this one
-    // either — a signed-out stranger really does see the page.
-    "/gift/1234567890",
     // Not gated but also unreachable as pages — next.config 308s them to a
-    // canonical destination that IS gated:
-    "/pay",
+    // canonical destination that IS gated.
+    "/new-visit",
+    "/visit/t1",
+    "/wallet",
+    "/wallet/buy",
+    "/order",
+    "/gift/1234567890",
     "/qr",
     "/rewards",
     "/rewards/ticket/t1",
@@ -565,7 +527,7 @@ describe("middleware auth wall (shouldGate)", () => {
     "/notifications",
     "/ticket/t1",
     "/invite",
-    // The plan became a sheet on Me (MESITA-1129); this 308s to /me.
+    "/share",
     "/subscribe",
     "/subscribe/premium",
   ];
@@ -578,9 +540,9 @@ describe("middleware auth wall (shouldGate)", () => {
     expect(shouldGate(p)).toBe(false);
   });
 
-  it("does not gate by loose prefix (\u201c/mesita\u201d is not \u201c/me\u201d)", () => {
+  it("does not gate by loose prefix (“/mesita” is not “/me”)", () => {
     expect(shouldGate("/mesita")).toBe(false);
-    expect(shouldGate("/rewardsy")).toBe(false);
+    expect(shouldGate("/payments")).toBe(false);
   });
 });
 
@@ -657,9 +619,9 @@ describe("consumer onboarding gates (two predicates, four call sites)", () => {
     }
     // SEX CAME BACK (MESITA-1829). It left under MESITA-1806 as "segmentation
     // nothing downstream reads to work", and this test asserted that — while
-    // the Passport was printing `age · sex · country` the whole time. The
-    // ONE field still outside the gate is the last name, which the
-    // reservation flow asks for where the guest can see why.
+    // Profile was printing `age · sex · country` the whole time. The ONE
+    // field still outside the gate is the last name, which the reservation
+    // flow asks for where the guest can see why.
     expect(consumerCanBrowse({ ...complete, last_name: null })).toBe(true);
     expect(
       consumerCanBrowse({

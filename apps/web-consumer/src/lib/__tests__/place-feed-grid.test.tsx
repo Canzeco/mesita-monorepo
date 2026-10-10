@@ -18,10 +18,10 @@
 // the drift. Do not read the assertions below as evidence that two surfaces
 // still share this grid — one does.
 //
-// Source-read rather than rendered, the same way favorites-saves-only and
-// ticket-state-drift read theirs: both surfaces paint a skeleton first
-// (`hydrated` is false until localStorage is read), so a static render would
-// assert against the loading state, not the grid.
+// Source-read rather than rendered, the same way favorites-saves-only reads
+// its: the surface paints a skeleton first (`hydrated` is false until
+// localStorage is read), so a static render would assert against the loading
+// state, not the grid.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -96,9 +96,9 @@ describe("one place-grid geometry, shared", () => {
     expect(read(rel)).toContain("className={PLACE_TILE_SKELETON_CLASS}");
   });
 
-  // Three surfaces show place tiles (Feed's rails, Favs' grid, Pay's list).
-  // A surface-only card would drift from the others on its own schedule —
-  // the heart's hit area, the opening dot, the promo chip.
+  // Two surfaces show place tiles (Feed's rails, Favs' grid). A surface-only
+  // card would drift from the other on its own schedule — the heart's hit
+  // area, the opening dot.
   it.each(SURFACES)("%s reuses FavoriteTile rather than minting a card", (
     _label,
     rel,
@@ -126,7 +126,7 @@ describe("Scroll rides the shared deck", () => {
   const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
 
   it("takes the deck as a prop", () => {
-    const page = read("app/(shell)/(visit)/discover/scroll/page.tsx");
+    const page = read("app/(shell)/(discovery)/discover/scroll/page.tsx");
     expect(page).toContain("useHomeDeck()");
     expect(scroll).not.toContain("apiListCatalog");
   });
@@ -146,20 +146,21 @@ describe("Scroll rides the shared deck", () => {
     expect(scroll).not.toContain("geoDeck ?? places");
   });
 
-  it("keeps the engine's banded order — no client promoting float over the deck", () => {
-    // A float here lifts a promoting CLOSED backfill card above open ones.
-    expect(scroll).not.toContain("isPromoting");
+  it("keeps the engine's banded order — the client never re-sorts the deck", () => {
+    // A client float here lifts a CLOSED backfill card above open ones. The
+    // engine ranks; both the deck and the boundary that fetches it hand the
+    // rows on in the order they arrived. Comments are stripped first, so a
+    // note explaining this rule cannot trip it — only a real call can.
+    const code = (src: string) =>
+      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
     expect(boundary).toContain("await apiRecommendDeck(supabase");
-    // Only the unranked list-places fallback may still float promoting rows:
-    // cut that block out and nothing left may sort by it. (The pre-2047 float
-    // sat AFTER the try/catch, so this fails on it.)
-    const s = boundary.indexOf("await apiFetchPublicPlaces(");
-    const e = boundary.indexOf("} catch (err2)");
-    expect(s).toBeGreaterThan(-1);
-    expect(e).toBeGreaterThan(s);
-    const outsideFallback = boundary.slice(0, s) + boundary.slice(e);
-    expect(outsideFallback).not.toContain("isPromoting(");
+    for (const [name, src] of [
+      ["ScrollDeck.tsx", scroll],
+      ["HomeDeckBoundary.tsx", boundary],
+    ] as const) {
+      expect(code(src), name).not.toMatch(/\.(sort|toSorted|reverse|toReversed)\(/);
+    }
   });
 
   it("records the located key when its answer lands, not when it is asked", () => {
@@ -171,14 +172,12 @@ describe("Scroll rides the shared deck", () => {
 });
 
 // NO MOCK DATA ANYWHERE IN DISCOVERY (Pato, live, 2026-09-08: "don't put
-// shitty mock data"). `lib/mock/feed-places.ts` is deleted, not parked — it
-// was the last caller's only consumer, and a plausible-looking place you
-// cannot visit teaches a reviewer nothing while quietly becoming the thing
-// everyone demos.
+// shitty mock data"). A plausible-looking place you cannot visit teaches a
+// reviewer nothing while quietly becoming the thing everyone demos.
 //
 // Scroll fills its 50-card deck by CYCLING the real rows instead. With one
 // place in the catalog that is the same place fifty times, which is honest by
-// construction: every card is tappable, savable, and can start a real visit.
+// construction: every card is tappable, savable, and opens a real place.
 describe("Discovery invents no places", () => {
   const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
   const favs = read("components/consumer/home/FavoritesList.tsx");

@@ -47,9 +47,7 @@ const eslintConfig = defineConfig([
           message:
             "Off-scale font size.\n\n" +
             "  WHY: an arbitrary px size is frozen for every guest, while a rem\n" +
-            "  size scales with their browser font-size setting. Both ticket\n" +
-            "  files once used zero named sizes, so THE TICKET ignored that\n" +
-            "  setting entirely.\n\n" +
+            "  size scales with their browser font-size setting.\n\n" +
             "  USE: text-xs/sm/base/lg/2xl... (named, already rem), or a role:\n" +
             "    type-meta     0.625rem  (10px)  dense meta, the FLOOR\n" +
             "    type-label    0.6875rem (11px)  group label\n" +

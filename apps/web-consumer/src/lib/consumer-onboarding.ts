@@ -35,10 +35,6 @@
 // Adding it to the gate re-onboards any profile that lacks it. Verified
 // against live data before shipping: 1 consumer, sex already set, 0 bounced.
 //
-// TICKETS deliberately do not gate. validate-web-get-ticket already falls back
-// to the first name for the door, so a ticket works without a last name — and
-// the guest is standing at a counter when they make one.
-//
 // Mirrored by:
 //   • supabase/functions/consumer-web-signin-phone       (routing hint = canBrowse)
 //   • supabase/functions/consumer-web-create-reservation (canBook — the REAL gate)

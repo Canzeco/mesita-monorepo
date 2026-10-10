@@ -15,9 +15,9 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
-// Live reservations list for the Inbox > Reservations section (and the
-// standalone /reservations deep link). Reads consumer-web-list-reservations
-// for the given scope and renders the parked ReservationCard rows.
+// Live reservations list: Me › Reservations (and the standalone
+// /reservations deep link). Reads consumer-web-list-reservations for the
+// given scope and renders ReservationCard rows.
 //
 // ONE FEED (Pato, 2026-08-17): the Upcoming/History split is gone, so this
 // normally runs at scope "all". The EF orders "all" ascending, which would put
@@ -77,7 +77,7 @@ export function ReservationsList({
  * Single-feed order: what's coming next, then what already happened.
  *
  * Upcoming ascends (the soonest booking is the one you need), past descends
- * (the most recent visit is the one you'd look up). A reservation counts as
+ * (the most recent booking is the one you'd look up). A reservation counts as
  * upcoming while its slot is still ahead — the same date-aware rule the EF
  * uses for its scoped queries, so the two never disagree about which side of
  * the line a booking sits on.

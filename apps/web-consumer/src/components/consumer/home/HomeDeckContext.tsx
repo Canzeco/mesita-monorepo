@@ -1,10 +1,10 @@
 "use client";
 
-// Shared Home deck context. The /home layout fetches the recommendation deck
-// ONCE (HomeDeckBoundary) and provides it here; the sub-route pages
-// (swipe / catalog / chat / social / favorites) read it via useHomeDeck() so switching
-// tabs is client navigation between siblings under the persistent layout — no
-// recommender re-fetch per tab.
+// Shared Home deck context. The /discover layout fetches the recommendation
+// deck ONCE (HomeDeckBoundary) and provides it here; Scroll, Chat and Favs
+// read it via useHomeDeck() so switching pills is client navigation between
+// siblings under the persistent layout — no recommender re-fetch per pill.
+// Home (CatalogRails) owns its own fetch.
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { Place } from "@/lib/api/places";

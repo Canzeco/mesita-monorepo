@@ -6,7 +6,10 @@ import { describe, expect, it } from "vitest";
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
-import { buildSearchMapPins, locationTypeLabel } from "@/lib/search-membership";
+import {
+  buildSearchMapPins,
+  locationTypeLabel,
+} from "@/components/consumer/search/search-pins";
 import {
   EmptySearchPrompt,
   SearchRailOverlay,
@@ -59,7 +62,7 @@ describe("Search overlays never use a fixed-height empty panel", () => {
 });
 
 describe("SearchBar scope affordance", () => {
-  it("hides the country + location chip when Visit omits onOpenScope", () => {
+  it("hides the country + location chip when a host omits onOpenScope", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -181,7 +184,6 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("placesScope");
     expect(read("SearchClient.tsx")).toContain("familyKeys");
     expect(read("SearchClient.tsx")).toContain("minReviews");
-    expect(read("SearchClient.tsx")).not.toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
     expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
     expect(read("SearchClient.tsx")).toContain("scheduleOrLoad");
@@ -204,7 +206,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     // `google: true` survives and is NOT the ring: it says this client can
-    // render a Google-only stub, which mobile and the Pay picker cannot.
+    // render a Google-only stub, which mobile cannot.
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });
@@ -269,7 +271,6 @@ describe("SearchFilterRow", () => {
     expect(rest).not.toContain("Restaurants");
     expect(rest).not.toContain("Bars");
     expect(rest).not.toContain("Now");
-    expect(rest).not.toContain("Visit");
 
     const on = renderToStaticMarkup(
       <SearchFilterRow count={3} onOpenFilters={() => {}} />,
@@ -355,7 +356,7 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
     expect(suggestArgs.join("\n")).toContain('"deep"');
     for (const args of suggestArgs) expect(args).not.toContain("filters");
     expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
-    const loading = read("../../../app/(shell)/(visit)/search/loading.tsx");
+    const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(loading).toContain("flex min-w-0 items-center gap-2");
     expect(loading).toContain("basis-1/3");
     expect(loading).not.toContain("h-12 w-12");
@@ -370,7 +371,7 @@ describe("Search map's top row is the query bar plus labelled Filters", () => {
 });
 
 describe("Search pin two-tap (select then open)", () => {
-  it("fills pins with membership color and rings the selected one", () => {
+  it("fills pins with the tone color and rings the selected one", () => {
     expect(read("SearchMap.tsx")).toContain("pinFillColor");
     expect(read("SearchMap.tsx")).toContain("pinStrokeColor");
     expect(read("SearchClient.tsx")).toContain("overlayPinDecision");
@@ -448,10 +449,9 @@ describe("Search results drop from the bar, not from the bottom", () => {
   });
 
   // MESITA-1616: Search moved to its own route, so `barFocused` became LOCAL
-  // state, not a context shared with a sibling mode rail. MESITA-2050 put a
-  // rail back above the map — Visit's, drawn by (visit)/layout.tsx — and it
-  // still does not coordinate with the bar: the rail stays put while the
-  // keyboard is up. This pins that the old cross-component coordination
+  // state, not a context shared with a sibling mode rail. Home's rail
+  // (ModeRail, drawn by discover/layout.tsx) never coordinates with the bar.
+  // This pins that the old cross-component coordination
   // (DiscoverChromeProvider) is gone, not just unused, so it can't quietly
   // regrow without a deliberate edit here.
   it("tracks bar focus locally — no shared context with the rail above it", () => {
@@ -466,7 +466,7 @@ describe("Search results drop from the bar, not from the bottom", () => {
     expect(nav).not.toContain("useDiscoverChrome");
     expect(nav).not.toContain("barFocused");
 
-    const layout = read("../../../app/(shell)/(visit)/discover/layout.tsx");
+    const layout = read("../../../app/(shell)/(discovery)/discover/layout.tsx");
     // Not a bare word check — this file's own comment explains the removal
     // and names the removed symbol, so a substring match on the word alone
     // would false-fail against its own explanation. Check for actual usage:
@@ -508,7 +508,7 @@ describe("Search results are one unlabeled lane", () => {
     expect(src).not.toMatch(/On Mesita/);
     expect(src).not.toMatch(/From Google/);
     expect(src).not.toMatch(/ON GOOGLE/i);
-    expect(src).toContain("membershipColor");
+    expect(src).toContain("pinToneColor");
     expect(src).toContain("predictions.map");
   });
 });
@@ -646,10 +646,6 @@ const RAIL_PLACE = {
   vibe: null,
   price_level: 4,
   currency: "MXN",
-  listing_type: "web",
-  state: "active",
-  fiscal_type: "informal",
-  plan: "free",
   lat: 25.67,
   lng: -100.3,
   address: null,
@@ -728,7 +724,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const overlay = read("search-catalog-overlays.tsx");
     const card = read("SearchRailCard.tsx");
     const client = read("SearchClient.tsx");
-    const loading = read("../../../app/(shell)/(visit)/search/loading.tsx");
+    const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
     expect(overlay).toContain("px-3");
@@ -790,7 +786,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
   it("keeps every rail card the same height when rows are missing", () => {
     const card = read("SearchRailCard.tsx");
     const overlay = read("search-catalog-overlays.tsx");
-    const loading = read("../../../app/(shell)/(visit)/search/loading.tsx");
+    const loading = read("../../../app/(shell)/(discovery)/search/loading.tsx");
     expect(card).toContain('RAIL_CARD_HEIGHT_CLASS = "h-24"');
     expect(card).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
     expect(overlay).toContain("RAIL_CARD_HEIGHT_CLASS");
@@ -1065,7 +1061,7 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
   });
 });
 
-describe("a Location wears the location icon, never a membership colour (MESITA-1404)", () => {
+describe("a Location wears the location icon, never a place tone (MESITA-1404)", () => {
   const rows: PlacePrediction[] = [
     {
       placeId: "loc-1",
@@ -1100,10 +1096,9 @@ describe("a Location wears the location icon, never a membership colour (MESITA-
     expect(html).toContain("Ciudad de México, CDMX, Mexico, City");
     // The place row keeps its gray dot and its place answer.
     expect(html).toContain("No profile yet");
-    // Exactly ONE membership dot renders — the city carries none, so the
-    // two semantics never share a mark (no fourth colour, no shared gray).
+    // Exactly ONE place dot renders — the city carries none, so the two
+    // semantics never share a mark (no third colour, no shared gray).
     expect(html.match(/background-color:#9ca3af/g)?.length).toBe(1);
-    expect(html).not.toContain("#ffc400");
     // No source labels, no badge, no section header — the icon says it.
     expect(html).not.toContain(">City<");
     expect(html).not.toContain(">Location<");
@@ -1114,7 +1109,9 @@ describe("a Location wears the location icon, never a membership colour (MESITA-
     const panel = read("SearchResultsPanel.tsx");
     const branchAt = panel.indexOf('prediction.kind === "location"');
     expect(branchAt).toBeGreaterThan(-1);
-    expect(branchAt).toBeLessThan(panel.indexOf("membershipTone(prediction)"));
+    expect(branchAt).toBeLessThan(
+      panel.indexOf("predictionPinTone(prediction)"),
+    );
   });
 
   it("buildSearchMapPins skips Locations — a camera destination, never a pin", () => {
@@ -1172,12 +1169,10 @@ describe("anchor helpers", () => {
       state: "web_listed",
       mesitaId: "m-1",
       mesitaSlug: "taqueria-nueva",
-      partner: true,
       enriched: true,
     })!;
     expect(row.id).toBe("m-1");
     expect(row.slug).toBe("taqueria-nueva");
-    expect(row.partner).toBe(true);
     expect(row.enriched).toBe(true);
     expect(row.googleOnly).toBeUndefined();
   });

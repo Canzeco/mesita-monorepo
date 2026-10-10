@@ -9,9 +9,8 @@ import { stateMeta } from "@/lib/reservation-state";
 import { cn, guestNoun } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";
 
-// Reservation card. Booking metadata only — and no reward surface at all:
-// a discount comes from SHOWING UP (the visit ticket snapshots its own
-// rates), never from holding a booking.
+// Reservation card. Booking metadata only: the place, the slot, the party,
+// the state and the Reservationist's note.
 
 export function ReservationCard({ r }: { r: ReservationItem }) {
   const meta = stateMeta(r.state);

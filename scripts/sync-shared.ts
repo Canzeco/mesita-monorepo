@@ -166,7 +166,7 @@ const TARGETS: {
   },
   // THE REWARD MODEL, AND THE FIRST TARGET OUTSIDE `apps/` (MESITA-2038).
   //
-  // Six consumers, because the lever percentages, the rewardable base and the
+  // Four consumers, because the lever percentages, the rewardable base and the
   // per-plan ceiling are one fact and every surface that prints money must
   // print the same one. Before this the same numbers lived in SEVEN
   // hand-maintained copies and two of them had already drifted in user-visible
@@ -176,7 +176,7 @@ const TARGETS: {
   // Deno import out of the functions root: a reach into repo-root `shared/` is
   // a bundling risk on `supabase functions deploy`, and `sync-shared:check`
   // cannot see an import. A generated copy is the same mechanism every other
-  // consumer already uses, and the one gate covers all six.
+  // consumer already uses, and the one gate covers all four.
   //
   // `format.ts` is deliberately NOT extended to the consumer apps or the mock.
   // The mock owns a hand-written `src/lib/format.ts` with six exports the whole
@@ -188,7 +188,6 @@ const TARGETS: {
     apps: {
       "web-admin": "src/lib/rewards-model.ts",
       "web-business": "src/lib/rewards-model.ts",
-      "web-consumer": "src/lib/rewards-model.ts",
       "mobile-consumer": "src/lib/rewards-model.ts",
     },
     paths: ["supabase/supabase/functions/_shared/rewards-model.ts"],

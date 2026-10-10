@@ -49,9 +49,6 @@ export function enrichPlaceOverview(v: Place): Place {
   const zone =
     str(v.zone) ?? neighborhoodFromAddress(str(v.address)) ?? str(v.city);
   const freshness = relativeLabel(str(v.enriched_at) ?? str(v.created_at));
-  // Ticket cap, in pesos — the promo applies to the first `monthly_promo_cap`
-  // of the bill, the same column the business sets on the Promos page.
-  const rewardCapMxn = num(v.monthly_promo_cap);
 
   // Only trust the live open/closed math when the row actually carries an
   // hours table — otherwise leave the fields null so the state chip hides.
@@ -91,11 +88,6 @@ export function enrichPlaceOverview(v: Place): Place {
     closes_at: (open?.closes_at || null) ?? v.closes_at ?? null,
     zone: v.zone ?? zone ?? null,
     last_updated_label: v.last_updated_label ?? freshness ?? null,
-    // The ticket cap (pesos) backs the promo chip's "first MX$… / visit"
-    // tooltip. The per-tier rate itself is resolved in PromoChip straight off
-    // the raw row columns — and only for Mesita Partners (web-listed places
-    // never offer rewards).
-    reward_cap_mxn: v.reward_cap_mxn ?? rewardCapMxn ?? null,
     is_enriching: isEnriching,
   };
 }

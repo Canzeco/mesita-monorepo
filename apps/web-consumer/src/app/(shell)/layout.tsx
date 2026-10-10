@@ -11,9 +11,8 @@ import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile, type ConsumerClass } from "@/lib/api/profile";
-import { ClassProvider } from "@/lib/class-context";
-import { DiscountQuotesProvider } from "@/lib/discount-quotes";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
+import { ConsumerIdentityProvider } from "@/lib/identity-context";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
@@ -60,45 +59,39 @@ export default async function ConsumerShellLayout({
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
-  // reads back successfully (just with null fields). Only the class is
-  // threaded into the shell now — the Profile TopBar titles itself "me" +
-  // current class rather than the display name.
+  // reads back successfully (just with null fields). The row is read ONCE
+  // here and its identity (name, photo, Instagram) is threaded into the shell
+  // through ConsumerIdentityProvider; pages never re-fetch it.
   //
   // "The EF threw" is NOT the same as "the profile is incomplete": a cold
   // start, a 500 or a dropped connection would otherwise eject a fully
   // onboarded consumer to /onboard (where the form's own fetch fails the
   // same way, so they'd be asked to re-enter data they already gave us —
   // and on the next success they'd bounce back here). On a throw we render
-  // the shell degraded (no class styling) and let each page surface its own
-  // error; the session is intact and nothing here is security-relevant.
-  // Mobile made the same call in providers/auth.tsx.
+  // the shell degraded and let each page surface its own error; the session
+  // is intact and nothing here is security-relevant.
   //
   // redirect() throws NEXT_REDIRECT, so it MUST stay outside the try —
   // otherwise the catch swallows it and reports a redirect as a failure.
-  let consumerClass: ConsumerClass | null = null;
   let instagramHandle: string | null = null;
+  let instagramFollowers: number | null = null;
   let displayName: string | null = null;
   let avatarUrl: string | null = null;
   let needsOnboarding = false;
-  // "The EF threw" is not "the guest is Bronze" (design review 2026-08-22).
-  // This layout deliberately degrades rather than ejecting, and the comment
-  // above promises each page will surface its own error. The Class sheet
-  // could not: `normalize(null)` hands it the FLOOR, so a failed read and a
-  // real Bronze account were the same state — and it asserted that state to
-  // screen readers with aria-current. Only this catch knows the difference,
-  // so it says so.
-  let classUnavailable = false;
+  // "The EF threw" is not "the guest has no Instagram" (design review
+  // 2026-08-22). This layout deliberately degrades rather than ejecting, so
+  // a failed read and an account with nothing connected would otherwise be
+  // the same state — and a surface that states the fact would assert the
+  // guess. Only this catch knows the difference, so it says so.
+  let profileUnavailable = false;
   try {
-    const { consumer: profile, consumerClass: c } =
-      await apiFetchConsumerProfile(supabase);
+    const { consumer: profile } = await apiFetchConsumerProfile(supabase);
     // The SIGNUP gate only — first name + birthday (MESITA-1806). A missing
     // last name no longer ejects anyone to /onboard; the reservation sheet
     // asks for it at the one moment it is load-bearing.
     needsOnboarding = !consumerCanBrowse(profile);
-    consumerClass = c;
     instagramHandle = profile.instagram_handle?.trim() || null;
-    // Identity for the whole shell (MESITA-1029 S1): THE TICKET's pass bar
-    // reads this from context instead of re-fetching the profile per open.
+    instagramFollowers = profile.instagram_followers_count ?? null;
     const first = profile.first_name?.trim() ?? "";
     const last = profile.last_name?.trim() ?? "";
     displayName =
@@ -111,7 +104,7 @@ export default async function ConsumerShellLayout({
       "[consumer/shell] consumer-get-profile:",
       errMsg(err, "profile fetch failed"),
     );
-    classUnavailable = true;
+    profileUnavailable = true;
   }
   // Carry the destination into onboarding so finishing the form lands the
   // guest on what they originally opened, not a generic home tab.
@@ -123,9 +116,7 @@ export default async function ConsumerShellLayout({
   //     own scroll container; never affects the chrome band.
   //   (No top status bar — the app fills the frame from the very top.)
   //
-  // The bottom nav is shown on every shell route. (Invite/Share used to hide
-  // it, which made the chrome appear to "break" when entering that surface —
-  // it's a first-class destination now, so it keeps the tabs like the rest.)
+  // The bottom nav is shown on every shell route.
 
   // The modal slot is rendered last in this relative shell wrapper.
   // Section-scoped modal routes mount absolute overlays that intentionally
@@ -141,42 +132,29 @@ export default async function ConsumerShellLayout({
       <Suspense fallback={null}>
         <PlaceGoneNotice />
       </Suspense>
-      <ClassProvider
-        consumerClass={consumerClass}
-        instagramHandle={instagramHandle}
+      <ConsumerIdentityProvider
         userId={user.id}
         displayName={displayName}
         avatarUrl={avatarUrl}
-        classUnavailable={classUnavailable}
+        instagramHandle={instagramHandle}
+        instagramFollowers={instagramFollowers}
+        profileUnavailable={profileUnavailable}
       >
-        {/* One engine-quote cache for the whole shell (MESITA-1019). Mounted
-            here, not per surface, so the promo chip resolves the same number
-            wherever it renders and a place quoted on the swipe deck is
-            already answered when the guest opens it.
-
-            `key` is the owner stamp: a quote is one guest's OWN rate, so a
-            different consumer in the same tab gets a fresh provider and an
-            empty cache instead of inheriting the previous guest's numbers. */}
-        <DiscountQuotesProvider key={user.id}>
-          <div className="relative flex flex-1 flex-col overflow-hidden">
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-              <ShellChildrenSlot>{children}</ShellChildrenSlot>
-            </div>
-            <BottomNav userId={user.id} />
-            {/* Single modal host layer above shell chrome. Keeping this as the
+        <div className="relative flex flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ShellChildrenSlot>{children}</ShellChildrenSlot>
+          </div>
+          <BottomNav userId={user.id} />
+          {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}
-            <div
-              className={cn(
-                "pointer-events-none absolute inset-0",
-                Z_ROUTE_MODAL,
-              )}
-            >
-              {modal}
-            </div>
+          <div
+            className={cn("pointer-events-none absolute inset-0", Z_ROUTE_MODAL)}
+          >
+            {modal}
           </div>
-        </DiscountQuotesProvider>
-      </ClassProvider>
+        </div>
+      </ConsumerIdentityProvider>
       <Toaster />
     </MobileFrame>
   );
