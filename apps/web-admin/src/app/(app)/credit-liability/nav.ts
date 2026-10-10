@@ -9,8 +9,9 @@ import { Landmark } from "lucide-react";
 // refund/cancel/adjust action support needs on it. "Liability" is the word
 // that says a row is READ, not tuned.
 //
-// ALERTS, not Configurations: this is a report an operator MONITORS
-// (same shape as Global Monitor), not a blob an operator TUNES.
+// A report an operator MONITORS (same shape as Global Monitor), not a blob an
+// operator TUNES — so never a Configurations row. The Alerts group that held
+// it is off the rail for now (Pato, MESITA-2114); the page still routes.
 export const CREDIT_LIABILITY_PARENT = {
   href: "/credit-liability",
   label: "Credits Liability",

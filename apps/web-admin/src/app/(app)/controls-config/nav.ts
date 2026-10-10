@@ -32,7 +32,8 @@ import { Coins } from "lucide-react";
 // Whether Credits may settle a bill at all is not here — that is
 // `visits_config.payCredits` on the Visits page, a different question (which
 // rails are open) for a different engine. What is OUTSTANDING is not here
-// either: Alerts › Credits Liability is the report, this is the policy.
+// either: Credits Liability (/credit-liability) is the report, this is the
+// policy.
 export const CONTROLS_PARENT = {
   href: "/controls-config",
   label: "Payments",

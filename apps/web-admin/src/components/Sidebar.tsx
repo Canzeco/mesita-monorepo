@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   PanelLeftClose,
   PanelLeftOpen,
-  Radar,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -21,7 +20,6 @@ import {
 } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
 
@@ -46,10 +44,9 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },
 ];
 
-const ALERTS_NAV: NavItem[] = [
-  { href: "/global-performance", label: "Global Monitor", Icon: Radar },
-  CREDIT_LIABILITY_PARENT,
-];
+// NO ALERTS GROUP (Pato, MESITA-2114: "kill the stupid alerts for the
+// moment"). Global Monitor (/global-performance) and Credits Liability
+// (/credit-liability) still route; they are just not on the rail.
 
 // Manage — the records of real things. Admins first (Pato, 2026-09-12):
 // who may operate the console is a record, not a policy blob, and a
@@ -120,7 +117,6 @@ const SIDEBAR_SECTIONS: {
   items: NavItem[];
 }[] = [
   { id: "primary", label: null, items: PRIMARY_NAV },
-  { id: "alerts", label: "Alerts", items: ALERTS_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
   { id: "testing", label: "Testing", items: TESTING_NAV },
