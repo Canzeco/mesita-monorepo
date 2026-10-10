@@ -9,9 +9,9 @@
 // layout already made the same call and already branched on it (it renders
 // `PlaceManageShell` only for a held place), so the answer travels down.
 
-import { ProfileTab } from "./ProfileTab";
+import { ProfileTab } from "@/components/place-manage/ProfileTab";
 import { PoolProfile } from "./PoolProfile";
-import { usePlaceScope } from "../PlaceScope";
+import { usePlaceScope } from "@/components/console/PlaceScope";
 
 export function PlaceProfileBody() {
   const { held } = usePlaceScope();

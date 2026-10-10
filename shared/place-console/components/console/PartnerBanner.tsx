@@ -90,12 +90,12 @@ export function PartnerBanner({
           partnership is intact and nothing has been taken away. */}
       {membership?.state === "past_due"
         ? (
-          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 type-label font-semibold text-foreground">
             Payment due
           </span>
         )
         : (
-          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground">
+          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 type-label font-semibold text-foreground">
             Active
           </span>
         )}
@@ -104,7 +104,7 @@ export function PartnerBanner({
           sentence. It disappears when the row wraps, where the wrap itself is
           the separation. */}
       <span aria-hidden className="bg-border hidden h-6 w-px sm:block" />
-      <p className="text-muted-foreground min-w-0 text-[13px] leading-snug">
+      <p className="text-muted-foreground min-w-0 type-body leading-snug">
         Product access included with your partnership. {membershipLine(
           membership,
         )}

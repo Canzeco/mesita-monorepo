@@ -135,6 +135,9 @@ const TARGETS: {
       "web-business":
         "src/components/place-manage/notifications/notification-feed.ts",
     },
+    // Admin carries the trio twice since MESITA-2086: Global Monitor's copy
+    // above, and the one the generated place surface reaches relatively.
+    paths: ["apps/web-admin/src/components/place-manage/notifications/notification-feed.ts"],
   },
   {
     source: "notifications/notification-config.ts",
@@ -143,6 +146,9 @@ const TARGETS: {
       "web-business":
         "src/components/place-manage/notifications/notification-config.ts",
     },
+    // Admin carries the trio twice since MESITA-2086: Global Monitor's copy
+    // above, and the one the generated place surface reaches relatively.
+    paths: ["apps/web-admin/src/components/place-manage/notifications/notification-config.ts"],
   },
   {
     source: "notifications/notification-enricher-phase.ts",
@@ -152,15 +158,17 @@ const TARGETS: {
       "web-business":
         "src/components/place-manage/notifications/notification-enricher-phase.ts",
     },
+    // Admin carries the trio twice since MESITA-2086: Global Monitor's copy
+    // above, and the one the generated place surface reaches relatively.
+    paths: ["apps/web-admin/src/components/place-manage/notifications/notification-enricher-phase.ts"],
   },
-  // Product families are policy web-business paints. web-admin has no
-  // catalogue. The mock console was the other copy until MESITA-2059 removed
-  // the app. The writer still loops `Object.entries(target.apps)`: one app
-  // here is a fact about what is shared now, not a rule that a target must
-  // come in a pair.
+  // Product families are policy web-business paints — and web-admin too since
+  // MESITA-2086, where Single Place renders the same catalogue. The mock
+  // console was a copy until MESITA-2059 removed the app.
   {
     source: "product-families.ts",
     apps: {
+      "web-admin": "src/lib/product-families.ts",
       "web-business": "src/lib/product-families.ts",
     },
   },
@@ -203,7 +211,7 @@ const TARGETS: {
  *  `deno task test:shared-modules` ignores these directories for the same
  *  reason — they are vitest files, not Deno tests. */
 const DIR_TARGETS: { sourceDir: string; apps: Record<string, string> }[] = [
-  { sourceDir: "place-console", apps: { "web-business": "src" } },
+  { sourceDir: "place-console", apps: { "web-admin": "src", "web-business": "src" } },
 ];
 
 async function walk(dir: string, rel = ""): Promise<string[]> {

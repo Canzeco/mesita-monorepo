@@ -82,7 +82,7 @@ export function PlaceHoldButton({
             : "Release"}
       </button>
       {state.error && (
-        <p className="text-destructive mt-1 text-[12px]">{state.error}</p>
+        <p className="text-destructive mt-1 text-xs">{state.error}</p>
       )}
     </form>
   );

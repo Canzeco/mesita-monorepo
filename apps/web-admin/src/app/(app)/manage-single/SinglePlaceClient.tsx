@@ -1,51 +1,28 @@
 "use client";
 
-// Single Place — one place, three boxes. Find reads the one box two ways
-// (a Google Place ID, or a name over the catalog); the place box is its
-// identity, its twelve General State facts and its Crenup ladder; Crenup is
-// the same five buttons Multiple Places has, aimed at this one place. Every
-// write goes through the bulk page's server actions — one caller set, one
-// behaviour — and everything that is not a Crenup write (fields, Active,
-// Verified, Partnered) is a door to the business console, never a second
-// editor here (MESITA-1588 · MESITA-2084).
+// Single Place › Find — the picker in front of the place surface
+// (MESITA-2084, MESITA-2086). One box, read two ways: a Google Place ID looks
+// the place up by its identity spine; anything else is a name search over the
+// catalogue. A hit OPENS the place at /manage-single/<id>/profile — the
+// business console's screens, generated into this app — rather than drawing a
+// second card of its facts here. An ID Mesita does not hold yet is the one
+// case this page acts on itself: Create mints it, then opens it.
 
 import { useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  Building,
-  ExternalLink,
-  Loader2,
-  Play,
-  Search,
-} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
-  deletePlace,
-  enrichPlace,
   listAllPlaces,
   searchPlacesByGoogleIds,
-  setPlaceListed,
   type PlaceHit,
 } from "@/app/(app)/manage-multiple/actions";
-import type { CrenupAction } from "@/app/(app)/manage-multiple/crenup-batch";
-import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
-import { CrenupLadder, StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
+import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import {
-  CopyIdButton,
-  GroupLabel,
-  ReadField,
-  SectionCard,
-} from "@/components/admin-ui/manage";
+import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
+import { placeHref } from "@/lib/console-routes";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import {
-  GENERAL_STATE_FACTS,
-  OPERATOR_PROMOTING_LABEL,
-  operatorPromotingLevel,
-  STATE_FACT_FALSE_TONE,
-} from "@/lib/state-vocabulary";
-import {
-  businessConsolePlaceHref,
   classifyLookup,
   filterCatalog,
   googleMapsPlaceHref,
@@ -54,7 +31,6 @@ import {
 
 export type View =
   | { kind: "matches"; query: string; hits: PlaceHit[] }
-  | { kind: "place"; hit: PlaceHit }
   // A Google Place ID Mesita does not hold yet. `google` is what Google says
   // about it (one Place-ID lookup, which consumes the Discovery › Map gate
   // like any other), so Create is informed; null when that lookup failed.
@@ -62,21 +38,22 @@ export type View =
 
 type Note = { state: BatchRowState; text: string };
 
-/** Which button is mid-flight. `find` is the lookup; the rest are Crenup. */
-type Busy = "find" | CrenupAction;
-
 export function SinglePlaceClient() {
+  const router = useRouter();
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState<Busy | null>(null);
+  const [busy, setBusy] = useState<"find" | "create" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
   const [note, setNote] = useState<Note | null>(null);
-  // The catalog, read once per page life for name searches. A Crenup write
-  // invalidates it, because a Create or a Delete changes what a name finds.
+  // The catalogue, read once per page life for name searches.
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
+
+  function open(placeId: string) {
+    router.push(placeHref(placeId));
+  }
 
   async function find() {
     if (isBusy || lookup.kind === "empty") return;
@@ -84,11 +61,8 @@ export function SinglePlaceClient() {
     setError(null);
     setNote(null);
     try {
-      if (lookup.kind === "google_place_id") {
-        await findByGoogleId(lookup.id);
-      } else {
-        await findByName(lookup.query);
-      }
+      if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
+      else await findByName(lookup.query);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -104,7 +78,7 @@ export function SinglePlaceClient() {
     }
     const hit = r.data.find((p) => p.google_place_id === googleId) ?? r.data[0] ?? null;
     if (hit) {
-      setView({ kind: "place", hit });
+      open(hit.id);
       return;
     }
     const peek = await peekGoogle(googleId);
@@ -124,73 +98,32 @@ export function SinglePlaceClient() {
     }
     const hits = filterCatalog(places, query);
     if (hits.length === 1) {
-      setView({ kind: "place", hit: hits[0] });
+      open(hits[0].id);
       return;
     }
     setView({ kind: "matches", query, hits });
   }
 
-  /** Re-read the place after a write: by its Google Place ID when it has
-   *  one, else by walking the catalog for its Mesita id. Null when the read
-   *  no longer finds it — the shape Delete leaves behind. */
-  async function reread(hit: PlaceHit): Promise<PlaceHit | null> {
-    if (hit.google_place_id) {
-      const r = await searchPlacesByGoogleIds([hit.google_place_id]);
-      if (!r.ok) throw new Error(r.error);
-      return r.data.find((p) => p.id === hit.id) ?? null;
-    }
-    const r = await listAllPlaces();
-    if (!r.ok) throw new Error(r.error);
-    setCatalog(r.data.places);
-    return r.data.places.find((p) => p.id === hit.id) ?? null;
-  }
-
-  async function run(action: CrenupAction) {
-    if (isBusy || !view || view.kind === "matches") return;
-    // Delete writes places.state = 'archived' — reversible only by a direct
-    // DB edit, never by any button here. Same confirm as the bulk page.
-    if (action === "delete") {
-      const ok = window.confirm(
-        "Delete this place? This archives it — no Undo in this console.",
-      );
-      if (!ok) return;
-    }
-    setBusy(action);
-    setError(null);
-    setNote({ state: "running", text: RUNNING_TEXT[action] });
+  async function create() {
+    if (isBusy || view?.kind !== "absent") return;
+    setBusy("create");
+    setNote({ state: "running", text: "Creating…" });
     setCatalog(null);
     try {
-      if (view.kind === "absent") {
-        if (action !== "create") return;
-        const r = await createPlaceFromGooglePlaceId(view.googleId);
-        if (!r.ok) {
-          setNote({ state: "error", text: r.error });
-          return;
-        }
-        const found = await searchPlacesByGoogleIds([view.googleId]);
-        const hit = found.ok
-          ? (found.data.find((p) => p.google_place_id === view.googleId) ?? null)
-          : null;
-        if (hit) setView({ kind: "place", hit });
-        setNote({
-          state: r.alreadyExisted ? "existed" : "ok",
-          text: r.alreadyExisted
-            ? "Already on Mesita — skipped create"
-            : r.enrichmentTriggered
-              ? "Created · enrich queued"
-              : "Created · enrich not queued",
-        });
+      const r = await createPlaceFromGooglePlaceId(view.googleId);
+      if (!r.ok) {
+        setNote({ state: "error", text: r.error });
         return;
       }
-      const { hit } = view;
-      const outcome = await writeOne(hit, action);
-      if (!outcome.ok) {
-        setNote({ state: "error", text: outcome.error });
-        return;
-      }
-      const next = await reread(hit);
-      if (next) setView({ kind: "place", hit: next });
-      setNote(outcome.note);
+      setNote({
+        state: r.alreadyExisted ? "existed" : "ok",
+        text: r.alreadyExisted
+          ? "Already on Mesita — opening it"
+          : r.enrichmentTriggered
+            ? "Created · enrich queued — opening it"
+            : "Created · enrich not queued — opening it",
+      });
+      open(r.placeId);
     } catch (err) {
       setNote({
         state: "error",
@@ -201,14 +134,12 @@ export function SinglePlaceClient() {
     }
   }
 
-  const hit = view?.kind === "place" ? view.hit : null;
-
   return (
     <div className="flex flex-col gap-5">
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches the catalog by name, address or slug."
+        subtitle="A Google Place ID looks it up by identity. Anything else searches the catalogue by name, address or slug. A hit opens the place."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -250,122 +181,21 @@ export function SinglePlaceClient() {
         ) : null}
 
         {view?.kind === "matches" ? (
-          <MatchList
-            query={view.query}
-            hits={view.hits}
-            onPick={(picked) => setView({ kind: "place", hit: picked })}
-          />
+          <MatchList query={view.query} hits={view.hits} onPick={(h) => open(h.id)} />
         ) : null}
       </SectionCard>
 
-      {hit ? <PlaceCard hit={hit} /> : null}
-      {view?.kind === "absent" ? <AbsentCard view={view} /> : null}
-
-      {view && view.kind !== "matches" ? (
-        <SectionCard
-          tint="amber"
-          title="Crenup"
-          subtitle={
-            view.kind === "absent"
-              ? "CReate mints this place from its Google Place ID. Enrich and Update need it on Mesita first."
-              : "ENrich fills it and is queued. List and Unlist toggle guest visibility, Delete archives — no Undo here."
-          }
-          icon={<Play className="h-4 w-4" />}
-        >
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            {view.kind === "absent" ? (
-              <ActionButton
-                label="Create"
-                variant="primary"
-                busy={busy === "create"}
-                disabled={isBusy}
-                onClick={() => void run("create")}
-              />
-            ) : (
-              <>
-                <ActionButton
-                  label="Enrich"
-                  variant="primary"
-                  busy={busy === "enrich"}
-                  disabled={isBusy}
-                  onClick={() => void run("enrich")}
-                />
-                <ActionButton
-                  label="List"
-                  variant="secondary"
-                  busy={busy === "list"}
-                  disabled={isBusy || view.hit.listed}
-                  onClick={() => void run("list")}
-                />
-                <ActionButton
-                  label="Unlist"
-                  variant="secondary"
-                  busy={busy === "unlist"}
-                  disabled={isBusy || !view.hit.listed}
-                  onClick={() => void run("unlist")}
-                />
-                <ActionButton
-                  label="Delete"
-                  variant="destructive"
-                  busy={busy === "delete"}
-                  disabled={isBusy}
-                  onClick={() => void run("delete")}
-                />
-              </>
-            )}
-            {note ? (
-              <span className="inline-flex items-center gap-2 text-xs">
-                <StateIcon state={note.state} />
-                <span
-                  className={
-                    note.state === "error" ? "text-destructive" : "text-muted-foreground"
-                  }
-                >
-                  {note.text}
-                </span>
-              </span>
-            ) : null}
-          </div>
-        </SectionCard>
+      {view?.kind === "absent" ? (
+        <AbsentCard
+          view={view}
+          busy={busy === "create"}
+          disabled={isBusy}
+          note={note}
+          onCreate={() => void create()}
+        />
       ) : null}
     </div>
   );
-}
-
-const RUNNING_TEXT: Record<CrenupAction, string> = {
-  create: "Creating…",
-  enrich: "Queueing enrich…",
-  list: "Listing…",
-  unlist: "Unlisting…",
-  delete: "Archiving…",
-};
-
-async function writeOne(
-  hit: PlaceHit,
-  action: CrenupAction,
-): Promise<{ ok: true; note: Note } | { ok: false; error: string }> {
-  if (action === "enrich") {
-    const r = await enrichPlace(hit.id, "full");
-    if (!r.ok) return { ok: false, error: r.error };
-    return {
-      ok: true,
-      note: { state: "enriching", text: "Re-enrich from zero — Enricher 1–8 queued" },
-    };
-  }
-  if (action === "list" || action === "unlist") {
-    const listed = action === "list";
-    const r = await setPlaceListed(hit.id, listed);
-    if (!r.ok) return { ok: false, error: r.error };
-    return { ok: true, note: { state: "ok", text: listed ? "Listed on" : "Listed off" } };
-  }
-  if (action === "delete") {
-    const r = await deletePlace(hit.id);
-    if (!r.ok) return { ok: false, error: r.error };
-    return { ok: true, note: { state: "ok", text: "Archived" } };
-  }
-  // Create on a place that is already on Mesita: the bulk page's EF answers
-  // 409 and the row reads "already on Mesita"; here the button is not drawn.
-  return { ok: false, error: "Already on Mesita" };
 }
 
 /** One Place-ID lookup on Google, through the same route Google Search
@@ -440,111 +270,19 @@ function MatchList({
   );
 }
 
-export function PlaceCard({ hit }: { hit: PlaceHit }) {
-  const rating =
-    hit.google_stars_overall == null
-      ? "—"
-      : `${hit.google_stars_overall.toFixed(1)} · ${(hit.google_review_count ?? 0).toLocaleString()} reviews`;
-  return (
-    <SectionCard
-      tint="violet"
-      title={hit.google_name || hit.name}
-      subtitle={hit.address ?? undefined}
-      icon={<Building className="h-4 w-4" />}
-      action={
-        <a
-          href={businessConsolePlaceHref(hit.id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="border-border hover:border-foreground/40 inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition"
-        >
-          Open in business console
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      }
-    >
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <ReadField label="Mesita name">{hit.name}</ReadField>
-        <ReadField label="Category">{hit.category_label ?? hit.category ?? "—"}</ReadField>
-        <ReadField label="Zone">{hit.zone ?? "—"}</ReadField>
-        <ReadField label="Google rating">{rating}</ReadField>
-        <ReadField
-          label="Mesita ID"
-          labelRight={<CopyIdButton id={hit.id} />}
-        >
-          <span className="truncate font-mono text-xs">{hit.id}</span>
-        </ReadField>
-        <ReadField
-          label="Google Place ID"
-          labelRight={
-            hit.google_place_id ? (
-              <span className="text-muted-foreground flex items-center gap-3 type-label">
-                <a
-                  href={googleMapsPlaceHref(hit.google_place_id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground inline-flex items-center gap-0.5 font-medium transition"
-                >
-                  Maps
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-                <CopyIdButton id={hit.google_place_id} />
-              </span>
-            ) : undefined
-          }
-        >
-          <span className="truncate font-mono text-xs">{hit.google_place_id ?? "—"}</span>
-        </ReadField>
-      </div>
-
-      <div className="mt-6">
-        <GroupLabel>General States</GroupLabel>
-        <dl className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-          {GENERAL_STATE_FACTS.map((f) => (
-            <div
-              key={f.key}
-              className="border-border/60 flex items-center justify-between gap-3 border-b py-1.5 text-sm"
-            >
-              <dt className="text-foreground/90">{f.label}</dt>
-              <dd className="shrink-0">
-                {f.key === "promoting" ? (
-                  <span className="tabular-nums">
-                    {operatorPromotingLevel(hit.promoting_level)}{" "}
-                    <span className="text-muted-foreground type-label">
-                      {OPERATOR_PROMOTING_LABEL[operatorPromotingLevel(hit.promoting_level)]}
-                    </span>
-                  </span>
-                ) : f.key === "requested" ? (
-                  <span
-                    className={
-                      "type-label font-semibold tabular-nums " +
-                      (hit.request_count > 0 ? "text-foreground" : "text-muted-foreground")
-                    }
-                  >
-                    {hit.request_count}
-                  </span>
-                ) : (
-                  <StatePill on={factOn(hit, f.key)} falseTone={STATE_FACT_FALSE_TONE[f.key]} />
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      {hit.enrich_crenup_labels.length > 0 ? (
-        <div className="mt-6">
-          <GroupLabel>Crenup</GroupLabel>
-          <div className="mt-3">
-            <CrenupLadder hit={hit} />
-          </div>
-        </div>
-      ) : null}
-    </SectionCard>
-  );
-}
-
-export function AbsentCard({ view }: { view: Extract<View, { kind: "absent" }> }) {
+export function AbsentCard({
+  view,
+  busy = false,
+  disabled = false,
+  note = null,
+  onCreate,
+}: {
+  view: Extract<View, { kind: "absent" }>;
+  busy?: boolean;
+  disabled?: boolean;
+  note?: Note | null;
+  onCreate?: () => void;
+}) {
   const g = view.google;
   return (
     <SectionCard
@@ -552,6 +290,17 @@ export function AbsentCard({ view }: { view: Extract<View, { kind: "absent" }> }
       title={g?.displayName ?? "Not on Mesita"}
       subtitle={g?.formattedAddress ?? "Mesita holds no place with this Google Place ID."}
       icon={<Building className="h-4 w-4" />}
+      action={
+        <button
+          type="button"
+          onClick={onCreate}
+          disabled={disabled}
+          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+          Create
+        </button>
+      }
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ReadField label="On Mesita">
@@ -582,38 +331,19 @@ export function AbsentCard({ view }: { view: Extract<View, { kind: "absent" }> }
           <span className="truncate font-mono text-xs">{view.googleId}</span>
         </ReadField>
       </div>
-      {view.note ? (
-        <p className="text-muted-foreground mt-4 text-xs">{view.note}</p>
+      <p className="text-muted-foreground mt-4 text-xs">
+        CReate mints the place from its Google Place ID and opens it. Enrich and
+        the rest live on the place.
+        {view.note ? ` ${view.note}` : ""}
+      </p>
+      {note ? (
+        <p className="mt-3 inline-flex items-center gap-2 text-xs">
+          <StateIcon state={note.state} />
+          <span className={note.state === "error" ? "text-destructive" : "text-muted-foreground"}>
+            {note.text}
+          </span>
+        </p>
       ) : null}
     </SectionCard>
-  );
-}
-
-// Same three pills as the bulk page's Crenup box: primary = the one action
-// that starts something, destructive = the one that cannot be undone here.
-function ActionButton({
-  label,
-  variant,
-  busy,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  variant: "primary" | "secondary" | "destructive";
-  busy: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  const className =
-    variant === "primary"
-      ? "bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
-      : variant === "destructive"
-        ? "border-destructive/40 text-destructive hover:bg-destructive/5 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
-        : "border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50";
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} className={className}>
-      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-      {label}
-    </button>
   );
 }

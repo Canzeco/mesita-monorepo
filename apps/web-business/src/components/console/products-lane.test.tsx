@@ -43,23 +43,24 @@ import { MesitaPayCard } from "./MesitaPayCard";
 import { SoonStrip } from "./SoonStrip";
 import { CARD_PAYMENTS_LIVE } from "./badges";
 import { Section } from "@/components/shared/Section";
+import { PLACE_ROUTE_DIR } from "@/lib/place-base";
 import type { PaymentAccountState } from "@/lib/model/types";
 
 const CARD_SRC = readFileSync(path.join(__dirname, "./PaymentsCard.tsx"), "utf8");
 const PARTNER_SRC = readFileSync(path.join(__dirname, "./PartnerCard.tsx"), "utf8");
 const PAGE_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/setup/page.tsx"),
+  path.join(__dirname, "../..", PLACE_ROUTE_DIR, "setup/page.tsx"),
   "utf8",
 );
 // Mesita Pay's controls got their own address (MESITA-1872): Pato took the
 // Section off the catalogue — *"just leave the 8 boxes and the 1 partnership
 // box shit"* — so the composition this file asserts lives one path deeper.
 const PAY_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/pay/setup/page.tsx"),
+  path.join(__dirname, "../..", PLACE_ROUTE_DIR, "pay/setup/page.tsx"),
   "utf8",
 );
 const LOADING_SRC = readFileSync(
-  path.join(__dirname, "../../app/(shell)/places/[id]/setup/loading.tsx"),
+  path.join(__dirname, "../..", PLACE_ROUTE_DIR, "setup/loading.tsx"),
   "utf8",
 );
 const LADDER_SRC = readFileSync(
@@ -228,7 +229,7 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
 
   it("the payments log moved to Activity, which is where readings live", () => {
     const activity = readFileSync(
-      path.join(__dirname, "../../app/(shell)/places/[id]/activity/page.tsx"),
+      path.join(__dirname, "../..", PLACE_ROUTE_DIR, "activity/page.tsx"),
       "utf8",
     );
     // ONCE now, not twice (MESITA-1892). The second render was the ORG
@@ -238,7 +239,7 @@ describe("the catalogue reads the dependency, not the alphabet", () => {
     expect((activity.match(/SOON_STRIPS\.payments/g) ?? []).length).toBe(1);
     // The skeleton grew with it, or every load ends in a 72px shift.
     const loading = readFileSync(
-      path.join(__dirname, "../../app/(shell)/places/[id]/activity/loading.tsx"),
+      path.join(__dirname, "../..", PLACE_ROUTE_DIR, "activity/loading.tsx"),
       "utf8",
     );
     expect(loading).toContain('"h-[220px]", "h-[72px]"');

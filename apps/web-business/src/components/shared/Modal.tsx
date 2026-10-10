@@ -88,7 +88,7 @@ export function Modal({
               {title}
             </h3>
             {description && (
-              <p className="text-muted-foreground mt-0.5 text-[12px] leading-relaxed">
+              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                 {description}
               </p>
             )}
