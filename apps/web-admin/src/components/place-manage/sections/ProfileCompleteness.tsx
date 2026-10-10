@@ -2,10 +2,6 @@
 
 import { CheckCircle2, Gauge } from "lucide-react";
 import type { AdminPlace } from "../actions";
-import { placeSectionHref } from "../nav";
-import { usePlaceContext } from "../PlaceContext";
-import { CrossTabLink } from "../ui";
-import { isServingChannel } from "./ChannelPicker";
 
 // Profile completeness banner (MESITA-586) — the one full-width element above
 // the Place-tab masonry. The score is computed ENTIRELY on the client from
@@ -31,16 +27,16 @@ type CompletenessCheck = {
    *  does nothing, silently: `scrollToSection` below bails on a null lookup
    *  with no feedback of any kind. That is what happened to Menu when
    *  MESITA-1848 moved `MenusSection` to its own address and left the id
-   *  behind (MESITA-1883). If the destination is another view, use `tab`. */
+   *  behind (MESITA-1883). Single Place is Profile · Admin since the MVP
+   *  First Stage cut (MESITA-2115), so there is no other view to link to: a
+   *  check is a scroll or an inert hint. */
   scrollId?: string;
-  /** Cross-view section id — the chip becomes a LINK through
-   *  `placeSectionHref`, which is the only kind of destination that survives
-   *  a view being split out from under it. */
-  tab?: "promos";
 };
 
-// Weights sum to exactly 100. Photos weigh most — they carry the consumer
-// card; the rest are the fields a guest actually reads.
+// Photos weigh most — they carry the consumer card; the rest are the fields a
+// guest actually reads. The score is out of the weights' total, so dropping a
+// check (Reservations left with MESITA-2115: no admin view sets a channel any
+// more) never lets an empty profile read above 0%.
 const CHECKS: readonly CompletenessCheck[] = [
   {
     label: "Name",
@@ -105,22 +101,14 @@ const CHECKS: readonly CompletenessCheck[] = [
     scrollId: "place-products",
   },
   {
-    label: "Reservations",
-    hint: "Pick a reservation channel",
-    weight: 10,
-    done: (p) => isServingChannel(p.reservation_channel),
-    // Controls — the Reservations rail box has lived there since the rails
-    // left Settings (2026-08-30); the chip pointed at the old tab until
-    // Partnership and Settings merged into Controls (2026-09-01).
-    tab: "promos",
-  },
-  {
     label: "Tags",
     hint: "Pick at least 3 tags",
     weight: 10,
     done: (p) => (p.tags?.length ?? 0) >= 3,
   },
 ];
+
+const TOTAL_WEIGHT = CHECKS.reduce((sum, c) => sum + c.weight, 0);
 
 function scrollToSection(id: string) {
   const el = document.getElementById(id);
@@ -133,9 +121,9 @@ function scrollToSection(id: string) {
 }
 
 export function ProfileCompleteness({ place }: { place: AdminPlace }) {
-  const { placeId } = usePlaceContext();
   const missing = CHECKS.filter((c) => !c.done(place));
-  const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
+  const missingWeight = missing.reduce((sum, c) => sum + c.weight, 0);
+  const pct = Math.round(100 * (1 - missingWeight / TOTAL_WEIGHT));
   const complete = missing.length === 0;
   // Pipeline state lives in place chrome (MESITA-896). When Enricher is mid-
   // flight, a quiet footnote here explains why completeness chips may lag.
@@ -212,20 +200,6 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                     >
                       {c.hint}
                     </button>
-                  );
-                }
-                // ANY tab, not just "promos" (MESITA-1883). Hardcoding the one
-                // value meant a second cross-view chip silently fell through
-                // to the inert `<span>` below instead of linking.
-                if (c.tab) {
-                  return (
-                    <CrossTabLink
-                      key={c.label}
-                      href={placeSectionHref(placeId, c.tab)}
-                      className={CHIP_CLASS + " inline-flex items-center gap-1"}
-                    >
-                      {c.hint}
-                    </CrossTabLink>
                   );
                 }
                 return (

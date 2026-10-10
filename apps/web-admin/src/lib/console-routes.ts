@@ -35,36 +35,9 @@ export const RAIL_ROWS: readonly RailRow[] = [
   { kind: "page", target: "setup" },
   { kind: "page", target: "activity" },
 ];
-
-export function placePageHref(placeId: string, page: PlacePage): string {
-  return `${PLACE_BASE}/${encodeURIComponent(placeId)}/${page}`;
-}
-
-/** The bare place address — a forwarder onto Profile, and where Stripe's
- *  stored `?connect=` return lands. */
-export function placeRootHref(placeId: string): string {
-  return `${PLACE_BASE}/${encodeURIComponent(placeId)}`;
-}
-
 export function placeHref(placeId: string): string {
   return `${PLACE_BASE}/${encodeURIComponent(placeId)}/profile`;
 }
-
-/** Find. Admin has no owned/public split to pre-filter. */
-export function placesHref(): string {
-  return SHELL_ROUTES.places;
-}
-
-export function placesNewHref(): string {
-  return SHELL_ROUTES.placesNew;
-}
-
-/** Mesita Pay's controls — the Stripe account and the switch — a sub-step
- *  of Setup, same shape as in business. */
-export function placePayHref(placeId: string): string {
-  return `${PLACE_BASE}/${encodeURIComponent(placeId)}/pay/setup`;
-}
-
 const PLACE_PATH = new RegExp(
   `^${PLACE_BASE}/([^/]+)(?:/([^/]+))?(?:/([^/]+))?/?$`,
 );
@@ -81,13 +54,6 @@ export function placePageFromPathname(pathname: string): PlacePage | null {
     ? (second as PlacePage)
     : null;
 }
-
-/** Which place a pathname is scoped to, through every depth, or null. */
-export function placeIdFromPathname(pathname: string): string | null {
-  const match = pathname.match(new RegExp(`^${PLACE_BASE}/([^/]+)(?:/.*)?$`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 /** Re-attach a page's whole query string to another path — Stripe's stored
  *  return links carry `?connect=` and must survive the forward. */
 export function withQuery(
