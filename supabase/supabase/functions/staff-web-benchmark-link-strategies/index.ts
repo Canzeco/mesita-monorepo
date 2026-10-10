@@ -5,13 +5,17 @@
 // This is the SAME strategy module the local benchmark runner (scripts/linklab/run.ts)
 // exercises — so the offline leaderboard reflects exactly what this EF would produce.
 //
-// Not wired to any client; invoke with a service-role JWT for ad-hoc evaluation, e.g.
+// Not wired to any client. Service-role bearer only (requireInternalCaller, MESITA-2118):
+// verify_jwt alone let the public anon key in, and every call spends Firecrawl /
+// Perplexity / Google / Anthropic money. Ad-hoc evaluation, e.g.
 //   POST { "places": [{ "name": "Pujol", "city": "Ciudad de México" }], "only": ["G"] }
 // Keys come from EF secrets: FIRECRAWL_KEY, PERPLEXITY_KEY, GMP_KEY, and ANTHROPIC_API_KEY
 // (strategy G only).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { readEFEnv } from "../_shared/auth.ts";
+import { requireInternalCaller } from "../_shared/internal.ts";
 import { assembleContext } from "../_shared/linklab/context.ts";
 import type { Keys } from "../_shared/linklab/providers.ts";
 import { runAllStrategies, STRATEGIES } from "../_shared/linklab/strategies.ts";
@@ -29,6 +33,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
+
+  const envRes = readEFEnv();
+  if (!envRes.ok) return envRes.response;
+  const callerRes = requireInternalCaller(req, envRes.env);
+  if (!callerRes.ok) return callerRes.response;
 
   const keys: Keys = {
     firecrawl: Deno.env.get("FIRECRAWL_KEY") ?? "",
