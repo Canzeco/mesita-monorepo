@@ -11,7 +11,7 @@
 // it is the AdminPlace every section edits. `apiConsoleCatalog` is
 // business-web-list-places with scope "all", the one scope that ships a
 // super-admin every place with every fact — it is where the heading's
-// Listed/Partner and the PromosSection's tier flags come from.
+// Listed fact comes from.
 // business-web-get-place is NOT read: it 404s a held place to a non-member,
 // and the operator is a member of nothing.
 //
@@ -23,7 +23,6 @@ import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PlaceScopeProvider } from "@/components/console/PlaceScope";
 import { PlaceTabGate } from "@/components/console/PlaceTabGate";
 import { RailScopeProvider } from "@/components/console/RailScopeContext";
-import { isMemberPlan } from "@/components/place-manage/sections/promo-state";
 import { findPlace } from "@/lib/active-place";
 import { apiConsoleCatalog, type ConsolePlace } from "@/lib/api/console";
 import { getManagePlace } from "@/lib/place-view";
@@ -73,7 +72,6 @@ export default async function AdminPlaceLayout({
               <PlaceHeading
                 name={manage.place.name}
                 listed={row?.listed ?? manage.place.listed === true}
-                partner={row?.partnered === true || isMemberPlan(manage.place.plan)}
               />
               <PlaceTabStrip placeId={id} tabs={tabs} />
               {children}

@@ -4,8 +4,6 @@ import Link from "next/link";
 import { placeHref } from "@/lib/console-routes";
 import {
   GENERAL_STATE_FACTS,
-  OPERATOR_PROMOTING_LABEL,
-  operatorPromotingLevel,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
 import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
@@ -67,18 +65,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                   {hit
                     ? GENERAL_STATE_FACTS.map((f) => (
                         <td key={f.key} className="px-3 py-3 text-center">
-                          {f.key === "promoting" ? (
-                            <span className="tabular-nums">
-                              {operatorPromotingLevel(hit.promoting_level)}{" "}
-                              <span className="text-muted-foreground type-label">
-                                {
-                                  OPERATOR_PROMOTING_LABEL[
-                                    operatorPromotingLevel(hit.promoting_level)
-                                  ]
-                                }
-                              </span>
-                            </span>
-                          ) : f.key === "requested" ? (
+                          {f.key === "requested" ? (
                             <span
                               className={
                                 "type-label font-semibold tabular-nums " +
