@@ -43,16 +43,18 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical on web. Mobile
   // already has the screen (src/app/share.tsx); this key was simply missing.
   share: '/share',
-  // VISIT'S RAIL (Pato, MESITA-2050): Home · Search · Chat · Favs · Pay.
-  // Same key names as web's contract; each value is a hidden (tabs) screen.
-  // Feed left the rail on web and never existed here.
+  // HOME'S RAIL (Pato, MESITA-2081): Home · Scroll · Chat · Favs. Same key
+  // names as web's contract; each value is a hidden (tabs) screen. `feed` is
+  // the pill reading Home (web's /discover/feed) and lives at the `home`
+  // screen; `scroll` is the deck.
   discoverTabs: {
-    scroll: '/(tabs)/home',
+    feed: '/(tabs)/home',
+    scroll: '/(tabs)/scroll',
     chat: '/(tabs)/chat',
     favs: '/(tabs)/favs',
   },
   search: '/(tabs)/search',
-  // Visit's default is its leading pill, Home — web's `/discover/scroll`.
+  // The default is the leading pill, Home — web's `/discover/feed`.
   discoverDefault: '/(tabs)/home',
   // Shared discovery Filters modal — web /filters peer (MESITA-905). Web's
   // redesigned Filters is now a bottom-overlay pill with no route of its own

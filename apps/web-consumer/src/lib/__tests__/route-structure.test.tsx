@@ -360,26 +360,30 @@ describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => 
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's, verbatim (MESITA-2050): "Home(scroll). Search. Chat.
-// Favs. Pay." and "Order must have Home."
+// The order is Pato's, verbatim (MESITA-2081): "Home, Scroll, Chat, Favs".
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Home · Chat · Favs", async () => {
+  it("is exactly Home · Scroll · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).toEqual(["Home", "Chat", "Favs"]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual([
+      "Home",
+      "Scroll",
+      "Chat",
+      "Favs",
+    ]);
   });
 
-  // Feed left the rail (MESITA-2050). Its segment is a redirect source again,
-  // and the pill must not come back pointing at a 308.
-  it("has no Feed pill, and /discover/feed forwards to Home in one hop", async () => {
+  // Feed came back as Home (MESITA-2081). Its segment is a live page again,
+  // so nothing may redirect it — a redirect source shadows the page entirely.
+  it("Home is the Feed page, and /discover/feed is not a redirect source", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).not.toContain("Feed");
+    expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverTabs.feed);
     const hop = (await nextConfig.redirects!()).find(
       (r) => r.source === "/discover/feed",
     );
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.scroll);
+    expect(hop).toBeUndefined();
     expect(
       existsSync(join(SHELL, "(visit)", "discover", "feed", "page.tsx")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
@@ -397,6 +401,9 @@ describe("T5b — Home's supporting rail", () => {
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
       Home: 34.2,
+      // Measured off the live site's Inter 600 at 12px (MESITA-2081), the
+      // same probe that reads Home at 34.15 and Search at 40.75.
+      Scroll: 33.0,
       Search: 40.9,
       Chat: 27.3,
       Favs: 27.6,
@@ -437,7 +444,7 @@ describe("T5b — Home's supporting rail", () => {
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The three /discover pills are exactly the contract's discoverTabs.
+    // The four /discover pills are exactly the contract's discoverTabs.
     expect(
       HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
@@ -448,7 +455,7 @@ describe("T5b — Home's supporting rail", () => {
   it("lands Home on its leading pill", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.scroll,
+      CONSUMER_ROUTES.discoverTabs.feed,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
     expect(HOME_MODES[0].label).toBe("Home");
@@ -456,6 +463,7 @@ describe("T5b — Home's supporting rail", () => {
 
   it("every Home pill's page lives under discover", () => {
     for (const rel of [
+      ["discover", "feed"],
       ["discover", "scroll"],
       ["discover", "chat"],
       ["discover", "favs"],

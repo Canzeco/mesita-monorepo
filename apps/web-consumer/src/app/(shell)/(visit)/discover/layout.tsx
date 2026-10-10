@@ -5,13 +5,13 @@ import { HOME_MODES, ModeRail } from "@/components/consumer/ModeRail";
 
 export const dynamic = "force-dynamic";
 
-// The deck frame for Visit's Home, Chat and Favs pills: ONE server-fetched
+// The deck frame for Visit's Home, Scroll, Chat and Favs pills: ONE server-fetched
 // recommendation deck, shared through context. The rail itself is drawn one
 // level up by (visit)/layout.tsx (MESITA-2050), because Search and Pay sit on
 // the same rail and live outside /discover.
 //
 // Because Next keeps a shared layout mounted across sibling navigations,
-// switching between Home, Chat and Favs never re-runs the fetch — all three
+// switching between Home, Scroll, Chat and Favs never re-runs the fetch — all three
 // read the same rows. Only the content area waits on the deck.
 //
 // THE CHILDREN SLOT IS A FLEX COLUMN, not a block. ScrollDeck and
