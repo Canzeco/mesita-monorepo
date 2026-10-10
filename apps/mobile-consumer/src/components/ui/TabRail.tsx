@@ -1,5 +1,5 @@
 import { type Href, useRouter } from "expo-router";
-import { Flame, Heart, MapPin, Sparkles } from "lucide-react-native";
+import { Flame, Heart, House, MapPin, Sparkles } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,10 +29,19 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // makes Order the same kind of tab as Visit. The next Order mode is an append.
 type RailItem = SegmentItem & { href: string };
 
+// Home's rail today (Pato, MESITA-2081): Home · Scroll · Chat · Favs. Home is
+// the browse surface (web's Feed, CatalogRails); Scroll is the deck.
+
 export const HOME_RAIL: readonly RailItem[] = [
   {
     key: "home",
     title: "Home",
+    Icon: House,
+    href: CONSUMER_ROUTES.discoverTabs.feed,
+  },
+  {
+    key: "scroll",
+    title: "Scroll",
     Icon: Flame,
     href: CONSUMER_ROUTES.discoverTabs.scroll,
   },

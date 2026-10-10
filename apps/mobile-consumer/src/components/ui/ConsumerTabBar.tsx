@@ -40,9 +40,9 @@ type ConsumerTabBarProps = {
 
 // FOUR tabs, Home · Search · Pay (Soon) · Me (Pato, MESITA-2076) — web
 // BottomNav parity. The bar is a FIXED list, not `state.routes`: the
-// navigator holds eight screens (Home rail siblings, Pay, Order, Wallet, Me)
+// navigator holds nine screens (Home rail siblings, Pay, Order, Wallet, Me)
 // and the bar shows four. Each tab names the route it opens and every route
-// that lights it — Home lights for chat and favs too, the same way web's
+// that lights it — Home lights for scroll, chat and favs too, the same way web's
 // matchPrefixes list does. A screen missing from a tab's `routes` renders
 // with NO tab lit.
 //
@@ -68,7 +68,7 @@ export const BAR: readonly BarItem[] = [
     label: "Home",
     Icon: MesitaMark as IconComponent,
     target: "home",
-    routes: ["home", "chat", "favs"],
+    routes: ["home", "scroll", "chat", "favs"],
   },
   { label: "Search", Icon: Search, target: "search", routes: ["search"] },
   {
