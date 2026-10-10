@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceHit } from "@/app/(app)/manage-multiple/actions";
 import {
+  autocompleteToLite,
   classifyLookup,
   filterCatalog,
   googleOnMesita,
@@ -81,5 +82,28 @@ describe("googleOnMesita", () => {
     expect(googleOnMesita({ ...place, existsInMesita: true }, none, none)).toBe(true);
     expect(googleOnMesita(place, new Set([GID]), none)).toBe(true);
     expect(googleOnMesita(place, none, new Set([GID]))).toBe(true);
+  });
+});
+
+describe("autocompleteToLite", () => {
+  const row = {
+    placeId: GID,
+    mainText: "Dos Amores Brunch & Meal",
+    secondaryText: "Parque Central, San Luis Potosí",
+    state: "not_in_mesita" as const,
+  };
+  it("draws an Autocomplete row with no rating, keyed by its Google Place ID", () => {
+    expect(autocompleteToLite(row)).toMatchObject({
+      id: GID,
+      displayName: "Dos Amores Brunch & Meal",
+      formattedAddress: "Parque Central, San Luis Potosí",
+      rating: null,
+      userRatingCount: null,
+      existsInMesita: false,
+    });
+  });
+  it("reads On Mesita off the EF's resolve: a state or a Mesita id", () => {
+    expect(autocompleteToLite({ ...row, state: "web_listed" }).existsInMesita).toBe(true);
+    expect(autocompleteToLite({ ...row, mesitaId: "0f3a" }).existsInMesita).toBe(true);
   });
 });

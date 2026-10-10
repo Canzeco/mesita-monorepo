@@ -6,7 +6,8 @@
 // everywhere, and the list says how many they removed. A row Mesita already
 // holds opens the place; a row it does not gets Add, which mints it with the
 // same action Create uses and stays in the list, so several can be added
-// from one search.
+// from one search. Google Autocomplete runs beside it as a second list
+// (MESITA-2116); `source` names which one a list is.
 
 import { ChevronRight, Globe, Loader2, Plus } from "lucide-react";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
@@ -30,6 +31,21 @@ export type GoogleState =
   | { status: "error"; error: string };
 
 export type GoogleRowNote = { state: BatchRowState; text: string };
+
+/** Which Google source a list holds — only its own sentences change. */
+export type GoogleSource = "text" | "autocomplete";
+
+const SOURCE_COPY: Record<
+  GoogleSource,
+  { loading: string; failed: string; empty: string }
+> = {
+  text: { loading: "Searching Google for", failed: "Google search failed", empty: "Google found nothing for" },
+  autocomplete: {
+    loading: "Asking Google Autocomplete for",
+    failed: "Google Autocomplete failed",
+    empty: "Google Autocomplete suggests nothing for",
+  },
+};
 
 export async function searchGoogleByName(query: string): Promise<GoogleState> {
   try {
@@ -66,6 +82,7 @@ export async function searchGoogleByName(query: string): Promise<GoogleState> {
 
 export function GoogleMatchList({
   query,
+  source = "text",
   google,
   onMesita,
   notes,
@@ -74,6 +91,7 @@ export function GoogleMatchList({
   onAdd,
 }: {
   query: string;
+  source?: GoogleSource;
   google: GoogleState;
   onMesita: (place: PlaceLite) => boolean;
   notes: Readonly<Record<string, GoogleRowNote>>;
@@ -81,16 +99,21 @@ export function GoogleMatchList({
   onOpen: (place: PlaceLite) => void;
   onAdd: (place: PlaceLite) => void;
 }) {
+  const copy = SOURCE_COPY[source];
   if (google.status === "loading") {
     return (
       <p className="text-muted-foreground mt-2 inline-flex items-center gap-2 text-sm">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Searching Google for “{query}”…
+        {copy.loading} “{query}”…
       </p>
     );
   }
   if (google.status === "error") {
-    return <p className="text-destructive mt-2 text-sm">Google search failed: {google.error}</p>;
+    return (
+      <p className="text-destructive mt-2 text-sm">
+        {copy.failed}: {google.error}
+      </p>
+    );
   }
   const { places, filteredOutCount, minRating, minUserRatingCount, mesitaLookupError } =
     google.result;
@@ -98,7 +121,9 @@ export function GoogleMatchList({
   return (
     <div className="mt-2">
       {places.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Google found nothing for “{query}”.</p>
+        <p className="text-muted-foreground text-sm">
+          {copy.empty} “{query}”.
+        </p>
       ) : (
         <div className="border-border bg-card overflow-hidden rounded-2xl border">
           <p className="text-muted-foreground border-border border-b px-4 py-2 type-label">

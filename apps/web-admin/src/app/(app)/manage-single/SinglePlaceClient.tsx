@@ -7,12 +7,14 @@
 // business console's screens, generated into this app — rather than drawing a
 // second card of its facts here. A name also searches Google beside the
 // catalogue, and a Google place Mesita does not hold is added from that list
-// (MESITA-2094). Create and Add are the only writes this page makes itself.
+// (MESITA-2094). Google Autocomplete runs beside Text Search as its own list
+// (MESITA-2116). Create and Add are the only writes this page makes itself.
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
+  autocompleteGooglePlaces,
   createPlaceFromGooglePlaceId,
   listAllPlaces,
   searchPlacesByGoogleIds,
@@ -30,6 +32,7 @@ import {
   type GoogleState,
 } from "./GoogleMatches";
 import {
+  autocompleteToLite,
   classifyLookup,
   filterCatalog,
   googleMapsPlaceHref,
@@ -59,15 +62,26 @@ export function SinglePlaceClient() {
   // that lands after a newer Find; `added` (Google Place ID → Mesita id) and
   // `googleNotes` are this page's Adds.
   const [google, setGoogle] = useState<GoogleState | null>(null);
+  // Autocomplete, the second Google list; `autoMesitaIds` are the rows the
+  // EF resolved to a Mesita place (Google Place ID → Mesita id).
+  const [auto, setAuto] = useState<GoogleState | null>(null);
+  const [autoMesitaIds, setAutoMesitaIds] = useState<ReadonlyMap<string, string>>(new Map());
   const googleSeq = useRef(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
   const [googleNotes, setGoogleNotes] = useState<Record<string, GoogleRowNote>>({});
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
-  const catalogGoogleIds = useMemo(
-    () => new Set((catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : []))),
-    [catalog],
+  // Google Place IDs this page knows Mesita holds: the catalogue's, plus
+  // what Autocomplete resolved — one set, so a row's badge and its open path
+  // read the same witnesses.
+  const heldGoogleIds = useMemo(
+    () =>
+      new Set([
+        ...(catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : [])),
+        ...autoMesitaIds.keys(),
+      ]),
+    [catalog, autoMesitaIds],
   );
 
   function open(placeId: string) {
@@ -81,6 +95,7 @@ export function SinglePlaceClient() {
     setNote(null);
     googleSeq.current += 1;
     setGoogle(null);
+    setAuto(null);
     setGoogleNotes({});
     try {
       if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
@@ -108,11 +123,18 @@ export function SinglePlaceClient() {
   }
 
   async function findByName(query: string) {
-    // Google runs beside the catalogue read, not after it, and lands on its own.
+    // Both Google sources run beside the catalogue read, not after it, and
+    // each lands on its own.
     const seq = googleSeq.current;
     setGoogle({ status: "loading" });
+    setAuto({ status: "loading" });
     void searchGoogleByName(query).then((g) => {
       if (googleSeq.current === seq) setGoogle(g);
+    });
+    void searchGoogleAutocomplete(query).then((a) => {
+      if (googleSeq.current !== seq) return;
+      setAuto(a.google);
+      setAutoMesitaIds(a.mesitaIds);
     });
     let places = catalog;
     if (!places) {
@@ -129,24 +151,29 @@ export function SinglePlaceClient() {
     setView({ kind: "matches", query, hits: filterCatalog(places, query) });
   }
 
-  /** A Google row: one Mesita holds opens the place (this page's Add, then
-   *  the catalogue, else the identity lookup); one it does not opens Not on
-   *  Mesita with what Google already said, so Create spends no second call. */
-  async function openGoogle(place: PlaceLite) {
+  /** A Google row: one Mesita holds opens the place (this page's Add, the
+   *  Autocomplete resolve, then the catalogue, else the identity lookup); one
+   *  it does not opens Not on Mesita with what Google already said, so Create
+   *  spends no second call. An Autocomplete row (`peek`) said no rating, so
+   *  it takes the identity lookup, which asks Google for the rest. */
+  async function openGoogle(place: PlaceLite, peek = false) {
     if (isBusy) return;
     const known =
-      added.get(place.id) ?? catalog?.find((p) => p.google_place_id === place.id)?.id;
+      added.get(place.id) ??
+      autoMesitaIds.get(place.id) ??
+      catalog?.find((p) => p.google_place_id === place.id)?.id;
     if (known) {
       open(known);
       return;
     }
-    if (!googleOnMesita(place, catalogGoogleIds, added)) {
+    if (!peek && !googleOnMesita(place, heldGoogleIds, added)) {
       setNote(null);
       setView({ kind: "absent", googleId: place.id, google: place, note: null });
       return;
     }
     setBusy("find");
     setError(null);
+    setNote(null);
     try {
       await findByGoogleId(place.id);
     } catch (err) {
@@ -219,7 +246,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google beside it. A hit opens the place."
+        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google Text Search and Autocomplete beside it. A hit opens the place."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -266,14 +293,29 @@ export function SinglePlaceClient() {
             <MatchList query={view.query} hits={view.hits} onPick={(h) => open(h.id)} />
             {google ? (
               <>
-                <ListHeading>From Google</ListHeading>
+                <ListHeading>From Google · Text Search</ListHeading>
                 <GoogleMatchList
                   query={view.query}
                   google={google}
-                  onMesita={(p) => googleOnMesita(p, catalogGoogleIds, added)}
+                  onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
                   notes={googleNotes}
                   disabled={isBusy}
                   onOpen={(p) => void openGoogle(p)}
+                  onAdd={(p) => void addFromGoogle(p)}
+                />
+              </>
+            ) : null}
+            {auto ? (
+              <>
+                <ListHeading>From Google · Autocomplete</ListHeading>
+                <GoogleMatchList
+                  query={view.query}
+                  source="autocomplete"
+                  google={auto}
+                  onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
+                  notes={googleNotes}
+                  disabled={isBusy}
+                  onOpen={(p) => void openGoogle(p, true)}
                   onAdd={(p) => void addFromGoogle(p)}
                 />
               </>
@@ -323,6 +365,40 @@ async function peekGoogle(
     };
   } catch (err) {
     return { place: null, note: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Google Autocomplete for a name, as a list Find can draw. One session
+ *  token per Find — Google bills an Autocomplete session, not a keystroke,
+ *  and Find asks once. Autocomplete reports no floors, so none are shown. */
+async function searchGoogleAutocomplete(
+  query: string,
+): Promise<{ google: GoogleState; mesitaIds: ReadonlyMap<string, string> }> {
+  const none = new Map<string, string>();
+  try {
+    const r = await autocompleteGooglePlaces(query, crypto.randomUUID());
+    if (!r.ok) return { google: { status: "error", error: r.error }, mesitaIds: none };
+    const mesitaIds = new Map(
+      r.data.flatMap((h) => (h.mesitaId ? [[h.placeId, h.mesitaId] as const] : [])),
+    );
+    return {
+      google: {
+        status: "ok",
+        result: {
+          places: r.data.map(autocompleteToLite),
+          minRating: 0,
+          minUserRatingCount: 0,
+          filteredOutCount: 0,
+          mesitaLookupError: null,
+        },
+      },
+      mesitaIds,
+    };
+  } catch (err) {
+    return {
+      google: { status: "error", error: err instanceof Error ? err.message : String(err) },
+      mesitaIds: none,
+    };
   }
 }
 
@@ -437,7 +513,7 @@ export function AbsentCard({
         </ReadField>
       </div>
       <p className="text-muted-foreground mt-4 text-xs">
-        CReate mints the place from its Google Place ID and opens it. Enrich and
+        Create mints the place from its Google Place ID and opens it. Enrich and
         the rest live on the place.
         {view.note ? ` ${view.note}` : ""}
       </p>
