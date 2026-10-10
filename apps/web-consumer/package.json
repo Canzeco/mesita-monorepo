@@ -13,7 +13,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@stripe/stripe-js": "^9.15.0",
+    "@stripe/stripe-js": "^10.0.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.0",
     "@vis.gl/react-google-maps": "^1.8.3",
@@ -38,7 +38,7 @@
     "eslint-config-next": "16.2.11",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5",
     "vitest": "^4.1.11"
   }
