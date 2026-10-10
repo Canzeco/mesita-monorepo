@@ -7,7 +7,6 @@ import {
   Gem,
   AtSign,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,7 +18,6 @@ import { DestGrid, DestTile } from '@/components/me/dest-tile';
 import { MockControls } from '@/components/me/MockControls';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
-import { apiFetchConsumerMetrics } from '@/lib/api/auth';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import {
   DIAMOND,
@@ -58,13 +56,11 @@ import { useAuth } from '@/providers/auth';
 // the ORDER is load-bearing: Instagram first, here and on the hero.
 
 export default function MeHub() {
-  const { profile, consumerClass, stats } = useAuth();
+  const { profile, consumerClass } = useAuth();
   const facts = useEffectiveFacts(
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const [savedCents, setSavedCents] = useState<number | null>(null);
-  const [visits, setVisits] = useState<number | null>(null);
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
@@ -88,22 +84,8 @@ export default function MeHub() {
   // is titled "Diamond" already, the chip is a gem and a word.
   const diamondTileSummary = diamondSummary(facts);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const metrics = await apiFetchConsumerMetrics();
-        if (cancelled) return;
-        setSavedCents(metrics.saved_cents);
-        setVisits(metrics.places_visited);
-      } catch {
-        if (!cancelled) setVisits(stats?.visits ?? null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [stats?.visits, profile?.id]);
+  // MVP cut (MESITA-2078): the hero's visits·saved row is hidden while Pay is
+  // parked, so Me no longer fetches consumer metrics for it.
 
   const pages = CONSUMER_ROUTES.mePages;
 
@@ -136,8 +118,6 @@ export default function MeHub() {
               diamondLabel={diamondChipLabel(facts)}
               diamondA11y={diamondChipA11y(facts)}
               identityA11y={identityHeaderA11y(facts)}
-              savedCents={savedCents}
-              visits={visits ?? stats?.visits ?? null}
             />
           )}
 
@@ -179,7 +159,8 @@ export default function MeHub() {
             <DestTile
               Icon={Bell}
               title="Notifications"
-              summary="Visits and bookings"
+              // MVP cut (MESITA-2078): visits wording dropped while Pay is parked.
+              summary="Bookings and updates"
               href={pages.notifications}
             />
             <DestTile
@@ -199,7 +180,8 @@ export default function MeHub() {
             <DestTile
               Icon={CircleHelp}
               title="Help"
-              summary="How rewards work"
+              // MVP cut (MESITA-2078): rewards wording dropped while Pay is parked.
+              summary="Questions, legal"
               href={pages.help}
             />
           </DestGrid>

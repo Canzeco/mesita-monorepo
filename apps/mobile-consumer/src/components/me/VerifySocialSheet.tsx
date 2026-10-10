@@ -24,7 +24,8 @@ const VERIFICATION_CODE_LENGTH = 8;
 // (MESITA-909), bar or no bar. Kept in lockstep with web's InstagramModal.
 const WHY_LINES = [
   `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
-  `Post a tagged Story on your visits for extra Rewards, whatever your count.`,
+  // MVP cut (MESITA-2078): the Story-for-extra-Rewards line is hidden while
+  // Pay is parked.
 ];
 
 type Props = {
@@ -79,7 +80,8 @@ export function VerifySocialSheet({ visible, onClose, asRoute = false }: Props) 
       onClose={onClose}
       asRoute={asRoute}
       title="Instagram"
-      subtitle={`${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers verifies you. Stories earn extra Rewards.`}
+      // MVP cut (MESITA-2078): "Stories earn extra Rewards" hidden while Pay is parked.
+      subtitle={`${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers verifies you.`}
     >
       <LinearGradient
         colors={[...GRADIENTS.instagram]}

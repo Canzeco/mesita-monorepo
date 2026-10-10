@@ -21,7 +21,7 @@ import {
 } from "../place-detail-links";
 import { Box } from "./box";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
-import { isPromoting } from "@/lib/promo-rates";
+import { isPartner } from "@/lib/promo-rates";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
@@ -80,27 +80,28 @@ function MetaPill({
 export function VerificationBox({ place }: { place: PlaceDetail }) {
   // decision: Tags-harmonic state pill + short support (MESITA-927).
   // Never ShieldAlert for unverified — reads as a security vulnerability.
-  // What a guest can act on is whether a reward is LIVE here — not whether
-  // the place pays Mesita, which is Mesita's business and tells them nothing.
-  const promoting = isPromoting(place);
+  // MVP cut (MESITA-2078): reward wording is hidden while Pay is parked.
+  // The box states the Partner fact instead (the same `isPartner` the card
+  // and header chips read), with no reward, visit or claim-at-table copy.
+  const partner = isPartner(place);
   return (
     <Box
       title="Mesita"
-      icon={promoting ? BadgeCheck : CircleHelp}
-      iconColor={promoting ? "text-foreground" : "text-muted-foreground"}
+      icon={partner ? BadgeCheck : CircleHelp}
+      iconColor={partner ? "text-foreground" : "text-muted-foreground"}
     >
       <div className="flex flex-wrap gap-2">
         <MetaPill
-          label={promoting ? "Runs Mesita rewards" : "No reward here yet"}
-          tone={promoting ? "sky" : "amber"}
+          label={partner ? "Mesita partner" : "Not a Mesita partner yet"}
+          tone={partner ? "sky" : "amber"}
         />
       </div>
       <p className="text-muted-foreground text-xs leading-relaxed">
-        {promoting
-          ? "Running a Mesita reward — start a visit and claim it at the table."
-          : "No reward here yet. Owners claim their place to run one — free."}
+        {partner
+          ? "This place partners with Mesita."
+          : "Not a Mesita partner yet. Owners claim their place — free."}
       </p>
-      {!promoting && (
+      {!partner && (
         <a
           href="https://business.mesita.ai/add"
           target="_blank"

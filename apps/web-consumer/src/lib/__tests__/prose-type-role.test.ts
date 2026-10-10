@@ -65,9 +65,9 @@ const SMALL_ROLES = ["type-label", "type-meta"];
 const LABEL_BY_CONTENT: Record<string, string> = {
   "components/consumer/ConsumerActivityList.tsx:49":
     "{a.when} — a timestamp beside the activity it stamps, not a sentence",
-  "components/consumer/home/FavoriteTile.tsx:131":
+  "components/consumer/home/FavoriteTile.tsx:130":
     "the rating row inside the MEASURED 4:3+4:3 tile (Docs › Design §D); its sibling category line is type-label too, and 13px here would outrank it",
-  "components/consumer/search/SearchRailCard.tsx:88":
+  "components/consumer/search/SearchRailCard.tsx:83":
     "the rail card's meta row sits in a fixed h-4/leading-4 line box — 13px does not fit a 16px box, and this is a figure row anyway",
   "components/consumer/wallet/WalletPanel.tsx:154":
     "WalletMoney's caption LABELS the 36px figure above it (MESITA-1825) and has to stay subordinate to it",

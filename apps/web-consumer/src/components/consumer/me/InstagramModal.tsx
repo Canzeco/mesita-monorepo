@@ -35,7 +35,8 @@ const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
 const WHY_LINES = [
   `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers and you're verified on Mesita — free, automatic, and nothing to apply for.`,
-  `Post a tagged Story on your visits for extra Rewards, whatever your count.`,
+  // MVP cut (MESITA-2078): the Story-earns-Rewards line is hidden while Pay
+  // is parked.
 ] as const;
 
 export function InstagramModal() {
@@ -93,7 +94,9 @@ export function InstagramModal() {
         </span>
         <p className="text-muted-foreground text-xs">
           {INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")}+ followers
-          verifies you. Stories earn extra Rewards.
+          verifies you.
+          {/* MVP cut (MESITA-2078): "Stories earn extra Rewards" hidden
+              while Pay is parked. */}
         </p>
       </div>
 
@@ -265,9 +268,9 @@ function CurrentConnectionCard() {
           {handle ? `@${handle}` : "Instagram connected"}
         </p>
         <p className="text-muted-foreground text-xs">
-          {verified
-            ? "Verified · Stories earn extra Rewards"
-            : "Stories earn extra Rewards"}
+          {/* MVP cut (MESITA-2078): "Stories earn extra Rewards" hidden
+              while Pay is parked. */}
+          {verified ? "Verified" : "Connected"}
         </p>
       </div>
     </div>

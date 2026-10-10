@@ -105,18 +105,19 @@ export function diamondHeadline(f: ConsumerFacts): string {
 
 /** The sentence under the Instagram door — the bar while it is the next thing
  *  that happens, the count once it is cleared, never both and never a class. */
+// MVP cut (MESITA-2078): reward clauses hidden while Pay is parked.
 export function instagramNote(
   f: ConsumerFacts,
   followersLabel: string,
 ): string {
   if (f.unknown) return "We couldn't read your Instagram just now.";
   if (!f.igConnected) {
-    return `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers and you're verified. Connect to post Stories for extra Rewards.`;
+    return `${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')}+ followers and you're verified.`;
   }
   if (!f.igReach) {
-    return `${followersLabel} — ${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')} verifies you. Stories already earn extra Rewards.`;
+    return `${followersLabel} — ${INSTAGRAM_REACH_FOLLOWERS.toLocaleString('en-US')} verifies you.`;
   }
-  return `${followersLabel} — verified. Post a tagged Story on any visit for extra Rewards.`;
+  return `${followersLabel} — verified.`;
 }
 
 /** The sentence under the status headline. An invitation is the ONLY way

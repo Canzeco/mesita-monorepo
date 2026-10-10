@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { Heart, Navigation } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { PromoChip } from '@/components/swipe/PromoChip';
 import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { placePath } from '@/lib/consumer-route-contract';
@@ -105,7 +104,7 @@ export function FavoriteTile({
                 </Text>
               </View>
             ) : null}
-            <PromoChip place={place} size="sm" />
+            {/* MVP cut (MESITA-2078): discount chip hidden while Pay is parked. */}
           </View>
         </View>
       </Pressable>

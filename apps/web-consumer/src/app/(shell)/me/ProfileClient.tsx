@@ -183,7 +183,8 @@ export function ProfileClient() {
             <DestTile
               Icon={Bell}
               title="Notifications"
-              summary="Visits and bookings"
+              // MVP cut (MESITA-2078): "Visits" hidden while Pay is parked.
+              summary="Bookings and updates"
               href={CONSUMER_ROUTES.mePages.notifications}
             />
             <DestTile
@@ -204,7 +205,8 @@ export function ProfileClient() {
             <DestTile
               Icon={CircleHelp}
               title="Help"
-              summary="How rewards work"
+              // MVP cut (MESITA-2078): rewards hidden while Pay is parked.
+              summary="Questions, legal"
               href={CONSUMER_ROUTES.mePages.help}
             />
           </DestGrid>

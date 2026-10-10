@@ -1,11 +1,10 @@
 import Image from "next/image";
-import { BadgeCheck, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cn, firstInitial, formatKm, formatRating } from "@/lib/utils";
-import { isPromoting } from "@/lib/promo-rates";
 
 /** Every catalog rail card is this tall. Missing subtitle / meta / hours
  *  must not shrink a neighbor — the peek strip has to line up, and the
@@ -75,12 +74,8 @@ export function RailCard({
           <span className="truncate text-sm leading-5 font-semibold">
             {place.name}
           </span>
-          {isPromoting(place) && (
-            <BadgeCheck
-              className="text-primary h-3.5 w-3.5 shrink-0"
-              aria-label="Mesita reward here"
-            />
-          )}
+          {/* MVP cut (MESITA-2078): the "Mesita reward here" badge is hidden
+              while Pay is parked. */}
         </span>
         <p className="text-muted-foreground type-label h-4 truncate leading-4">
           {subtitle}

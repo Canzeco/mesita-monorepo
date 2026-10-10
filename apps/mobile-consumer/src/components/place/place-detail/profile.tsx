@@ -17,7 +17,6 @@ import {
   ProfileMetaChip,
   ProfilePhoto,
   ProfileStat,
-  PromoMetaChip,
 } from './profile-summary-parts';
 
 export function ProfileSummary({
@@ -149,7 +148,8 @@ export function ProfileSummary({
             {stateValue}
           </Text>
         </ProfileMetaChip>
-        <PromoMetaChip place={place} />
+        {/* MVP cut (MESITA-2078): the "N% off" / "No reward" chip is hidden
+            while Pay is parked. */}
       </View>
 
       <ProfileActions place={place} onSaveToggle={onSaveToggle} />

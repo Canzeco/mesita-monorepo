@@ -11,13 +11,14 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Menus" },
-  { key: "rewards", label: "Rewards" },
+  // MVP cut (MESITA-2078): the Rewards tab is hidden while Pay is parked.
+  // The "rewards" key stays on PlaceTab so un-parking is one row.
 ] as const satisfies ReadonlyArray<{ key: PlaceTab; label: string }>;
 
 const ENRICH_TAB = { key: "enrich", label: "Enrich" } as const;
 
 export function placeTabs(enriched: boolean): readonly { key: PlaceTab; label: string }[] {
-  // Unenriched: Enrich only. Overview · Reviews · Menus · Rewards wait
+  // Unenriched: Enrich only. Overview · Reviews · Menus wait
   // until the place is Enriched (Pato, live 2026-08-29).
   return enriched ? CORE_TABS : [ENRICH_TAB];
 }
@@ -39,7 +40,7 @@ export function PlaceTabBar({
     <nav
       className={cn(
         "bg-background border-border sticky top-0 z-20 -mx-4 grid border-b px-2",
-        enriched ? "grid-cols-4" : "grid-cols-1",
+        enriched ? "grid-cols-3" : "grid-cols-1",
       )}
       aria-label="Place sections"
     >

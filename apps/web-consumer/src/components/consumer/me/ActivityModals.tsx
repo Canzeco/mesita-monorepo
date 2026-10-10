@@ -86,7 +86,8 @@ export function AlertsModal() {
         <EmptyState
           icon={Bell}
           title="Nothing yet"
-          description="Updates about your visits and reservations land here."
+          // MVP cut (MESITA-2078): "visits" hidden while Pay is parked.
+          description="Updates about your reservations land here."
         />
       )}
     </ActivityPage>

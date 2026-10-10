@@ -129,7 +129,8 @@ export function FavoritesTab() {
       <EmptyState
         icon={Heart}
         title="Nothing saved yet"
-        description="Swipe right on a place and it lands here — with its discount attached."
+        // MVP cut (MESITA-2078): discount wording dropped while Pay is parked.
+        description="Swipe right on a place and it lands here."
         action={{
           label: 'Start swiping',
           // Visit › Home is a sibling tab screen (MESITA-2050), so this is a

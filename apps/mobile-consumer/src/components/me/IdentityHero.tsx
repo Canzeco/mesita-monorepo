@@ -12,7 +12,6 @@ import {
   GRADIENTS,
   SHADOW_ELEV,
 } from '@/constants/brand';
-import { formatCurrency } from '@/lib/api/pay';
 import { Gem } from 'lucide-react-native';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
@@ -21,6 +20,8 @@ import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 // — web parity. Centered photo + IG/Diamond badges (IG leading/left —
 // MESITA-956), then five equal-height identity rows: name·sex·age / phone / IG
 // / Diamond / visits·saved. Phone shows dial flag.
+// MVP cut (MESITA-2078): the visits·saved row is hidden while Pay is parked,
+// so the card prints four rows.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 //
 // ONE COLOUR LEFT, AND IT MEANS ONE THING (MESITA-2040, MESITA-2044).
@@ -53,7 +54,7 @@ export function IdentityHeroSkeleton() {
         <View className="h-2.5 w-16 rounded bg-muted" />
         <View className="h-[72px] w-[72px] rounded-full bg-muted" />
         <View className="w-full overflow-hidden rounded-xl bg-muted/80">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <View
               key={i}
               className="items-center justify-center border-b border-border/60"
@@ -82,8 +83,6 @@ export function IdentityHero({
   diamondLabel,
   diamondA11y,
   identityA11y,
-  savedCents,
-  visits,
 }: {
   /** Diamond. The card's only conditional colour. */
   diamond: boolean;
@@ -103,8 +102,6 @@ export function IdentityHero({
   diamondA11y: string;
   /** "Your Mesita identity[, on Diamond]". */
   identityA11y: string;
-  savedCents: number | null;
-  visits: number | null;
 }) {
   const router = useRouter();
   const diamondWash = ['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const;
@@ -117,10 +114,6 @@ export function IdentityHero({
         .filter(Boolean)
         .join(' · ')
     : 'Instagram not connected';
-  const metricsLine = [
-    visits == null ? '— visits' : `${visits} visits`,
-    savedCents == null ? '— saved' : `${formatCurrency(savedCents)} saved`,
-  ].join(' · ');
 
   const flag = phoneCountryFlag(phoneRaw ?? phone);
 
@@ -215,18 +208,8 @@ export function IdentityHero({
         </View>
       ),
     },
-    {
-      key: 'metrics',
-      content: (
-        <Text
-          className="font-semibold text-foreground"
-          style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}
-          numberOfLines={1}
-        >
-          {metricsLine}
-        </Text>
-      ),
-    },
+    // MVP cut (MESITA-2078): the "N visits · $X saved" row is hidden while
+    // Pay is parked.
   ];
 
   return (

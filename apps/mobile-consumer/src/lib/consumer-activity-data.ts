@@ -72,7 +72,7 @@ export const ACTIVITY_KIND_META: Record<
   swiped: { Icon: Heart, bg: COLORS.muted, color: COLORS.foreground },
 };
 
-export const MY_ACTIVITY: ConsumerActivity[] = [
+const ALL_MY_ACTIVITY: ConsumerActivity[] = [
   {
     id: 'm1',
     kind: 'earned',
@@ -103,7 +103,7 @@ export const MY_ACTIVITY: ConsumerActivity[] = [
   },
 ];
 
-export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
+const ALL_GLOBAL_ACTIVITY: ConsumerActivity[] = [
   {
     id: 'l1',
     kind: 'earned',
@@ -153,3 +153,16 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     when: '24 min ago',
   },
 ];
+
+// MVP cut (MESITA-2078): the money rows (`earned` — "You saved MX$…" — and
+// `upgraded` — "…Mesita Premium") are hidden while Pay is parked. The rows stay
+// above; un-parking is emptying this set.
+const PARKED_KINDS: ReadonlySet<ActivityKind> = new Set(['earned', 'upgraded']);
+
+export const MY_ACTIVITY: ConsumerActivity[] = ALL_MY_ACTIVITY.filter(
+  (a) => !PARKED_KINDS.has(a.kind),
+);
+
+export const GLOBAL_ACTIVITY: ConsumerActivity[] = ALL_GLOBAL_ACTIVITY.filter(
+  (a) => !PARKED_KINDS.has(a.kind),
+);
