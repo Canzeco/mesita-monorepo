@@ -60,11 +60,12 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Home owns the recommendation deck plus Chat and Favs.
+    // Home owns its rail: Home (Feed), Scroll, Chat and Favs.
     href: CONSUMER_ROUTES.discoverDefault,
     Icon: MesitaMark,
     label: "Home",
     matchPrefixes: [
+      CONSUMER_ROUTES.discoverTabs.feed,
       CONSUMER_ROUTES.discoverTabs.scroll,
       CONSUMER_ROUTES.discoverTabs.chat,
       CONSUMER_ROUTES.discoverTabs.favs,

@@ -136,7 +136,8 @@ export function FavoritesList({
           description="Swipe right on a place and it lands here."
           action={{
             label: "Start swiping",
-            href: CONSUMER_ROUTES.discoverDefault,
+            // The deck, not Home: Home is the catalog since MESITA-2081.
+            href: CONSUMER_ROUTES.discoverTabs.scroll,
           }}
         />
       ) : (

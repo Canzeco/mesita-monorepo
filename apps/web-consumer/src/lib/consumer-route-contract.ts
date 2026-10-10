@@ -110,10 +110,13 @@ export const CONSUMER_ROUTES = {
   // reading Home sits at `/discover/scroll`, the same shape Pay has always
   // had at `/new-visit`.
   //
-  // FEED LEFT (MESITA-2050): Pato's rail does not list it. `/discover/feed`
-  // is a redirect source again (legacy.discoverFeed below), pointing at the
-  // Home pill; CatalogRails stays on disk, unrendered.
+  // FEED LEFT (MESITA-2050), AND CAME BACK AS HOME (Pato, MESITA-2081:
+  // "Home, Scroll, Chat, Favs"). The pill reading Home is CatalogRails at
+  // `/discover/feed` again; the deck under it wears its own name, Scroll.
+  // `legacy.discoverFeed` is deleted for the same reason as at MESITA-1621:
+  // a redirect whose source is a live page shadows it.
   discoverTabs: {
+    feed: "/discover/feed",
     scroll: "/discover/scroll",
     chat: "/discover/chat",
     favs: "/discover/favs",
@@ -125,7 +128,10 @@ export const CONSUMER_ROUTES = {
   // — it's just Swipe now, not Catalog. Activity's Alerts-leads/Visits-lands
   // split is UNCHANGED and is not this same argument — it stays off its lead
   // for a different, still-live reason (see inboxDefault below).
-  discoverDefault: "/discover/scroll",
+  //
+  // HOME LEADS AGAIN (MESITA-2081): the default is Feed's address, because
+  // the first pill reads Home. Scroll is one pill over.
+  discoverDefault: "/discover/feed",
   // NO `favorites` KEY, deliberately. Saved places were `/home/favorites`, a
   // redirect to the hub's Soon state — `FavoritesList` exists under
   // components/ but nothing rendered it, and it needs `deckPlaces` from the
@@ -302,10 +308,6 @@ export const CONSUMER_ROUTES = {
     // hop. `/wallet` itself is CANONICAL again and is not in this block: a
     // redirect whose source is a live route shadows the page entirely.
     newVisitWallet: "/new-visit/wallet",
-    // Feed's segment (MESITA-1621 -> MESITA-2050). It left Visit's rail, and
-    // 308s to the Home pill. The name is the THIRD time this key has existed:
-    // it was deleted at MESITA-1621 because Feed became a real page.
-    discoverFeed: "/discover/feed",
     // /discover/search's address for the six days it lived there (MESITA-1609,
     // 2026-09-06, -> MESITA-1616, 2026-09-07). Shipped to production, so the
     // bookmarks are real; forwards STRAIGHT to the new canonical `search`
@@ -318,7 +320,8 @@ export const CONSUMER_ROUTES = {
     // segment is itself a redirect source above, and chaining through it
     // would cost a second hop.
     discoverMap: "/discover/map",
-    // NO `discoverFeed` KEY any more (MESITA-1621). /discover/feed spent an
+    // NO `discoverFeed` KEY (MESITA-1621, and again MESITA-2081 — it was a
+    // redirect source from MESITA-2050 until Feed came back as Home). /discover/feed spent an
     // hour as Catalog's segment (#1447 -> #1448) and 308'd here ever since;
     // it is a REAL ROUTE now — Home's Feed mode — and a redirect would
     // shadow it. The hour-old bookmarks land on the new mode instead of
@@ -337,7 +340,7 @@ export const CONSUMER_ROUTES = {
     // consumer surface. 308s to /discover/scroll.
     discoverSwipe: "/discover/swipe",
     // Catalog's segment (2026-09-02 -> MESITA-1697). 308s to /discover/feed,
-    // which now carries the rails it used to serve.
+    // Home, which carries the rails it used to serve.
     discoverCatalog: "/discover/catalog",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.

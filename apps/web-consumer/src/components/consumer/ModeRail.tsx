@@ -4,7 +4,8 @@
 // MESITA-2050: "Visit. Order. Wallet. Me. · Home(scroll). Search. Chat. Favs.
 // Pay. · Order must have Home.").
 //
-//   Visit   Home · Search · Chat · Favs · Pay
+//   Visit   Home · Search · Chat · Favs · Pay   (MESITA-2050)
+//   Home    Home · Scroll · Chat · Favs         (today, MESITA-2081)
 //   Order   Home
 //
 // It was DiscoverModeNav, Home's rail alone. Two things changed at once:
@@ -13,7 +14,7 @@
 //   /search and /new-visit, and none of those URLs moved — the rail is drawn
 //   by app/(shell)/(visit)/layout.tsx, a route group, so it can sit above all
 //   three without renaming any of them. That retires the old "segments match
-//   labels" rule for this rail: Home is /discover/scroll, and Pay is
+//   labels" rule for this rail: Home is /discover/feed, and Pay is
 //   /new-visit, and a label is not a route (the same rule the Pay tab has
 //   lived by through four renames).
 //
@@ -55,7 +56,14 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, Heart, MapPin, Sparkles, type LucideIcon } from "lucide-react";
+import {
+  Flame,
+  Heart,
+  House,
+  MapPin,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -67,18 +75,20 @@ export type Mode = {
   Icon: LucideIcon;
 };
 
-// THE ORDER IS PATO'S, verbatim. Home leads and is Visit's default — the tab
-// href is CONSUMER_ROUTES.discoverDefault, which is Home's href, so the pill
-// a guest lands on is the first one they see.
+// THE ORDER IS PATO'S, verbatim (MESITA-2081: "Home, Scroll, Chat, Favs").
+// Home leads and is Visit's default — the tab href is
+// CONSUMER_ROUTES.discoverDefault, which is Home's href, so the pill a guest
+// lands on is the first one they see.
 //
-// Home is the Scroll deck under a new label: the flame stays, because it has
-// marked this deck since it was Swipe and the deck underneath did not
-// change. Feed (the catalog rails) is NOT here — Pato's list drops it, and
-// /discover/feed 308s to Home. CatalogRails stays on disk.
+// HOME IS FEED AGAIN, under a new label: CatalogRails at /discover/feed. It
+// left the rail at MESITA-2050, when "Home" was the deck's label.
 //
-// Pay keeps the QR glyph it wore as a bottom tab: showing the QR is the pay.
+// SCROLL IS THE DECK under its own name, keeping the flame that has marked it
+// since it was Swipe. Four pills fit the track with room to spare; T5b holds
+// the arithmetic.
 export const HOME_MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.scroll, label: "Home", Icon: Flame },
+  { href: CONSUMER_ROUTES.discoverTabs.feed, label: "Home", Icon: House },
+  { href: CONSUMER_ROUTES.discoverTabs.scroll, label: "Scroll", Icon: Flame },
   { href: CONSUMER_ROUTES.discoverTabs.chat, label: "Chat", Icon: Sparkles },
   { href: CONSUMER_ROUTES.discoverTabs.favs, label: "Favs", Icon: Heart },
 ];
