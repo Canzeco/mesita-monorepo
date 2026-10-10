@@ -61,7 +61,8 @@ describe("Help names everything priced and quotes no static percent", () => {
     expect(code).not.toContain("<HelpRungList");
     expect(code).not.toMatch(/Instant discounts|Actions add on|clamps at 100%/);
     expect(code).not.toContain("How rewards work");
-    expect(code).toContain('title="Help"');
+    // The page is titled Support since MESITA-2080; the route stays /me/help.
+    expect(code).toContain('title="Support"');
     expect(code).not.toMatch(/Elevated classes|every class above/);
   });
 
