@@ -4,7 +4,7 @@
 // (MESITA-2084, MESITA-2086). One box, read two ways: a Google Place ID looks
 // the place up by its identity spine; anything else is a name search over the
 // catalogue. A hit OPENS the place at /manage-single/<id>/profile — the
-// business console's screens, generated into this app — rather than drawing a
+// place screens admin owns (MESITA-2115) — rather than drawing a
 // second card of its facts here. A name also searches Google beside the
 // catalogue, and a Google place Mesita does not hold is added from that list
 // (MESITA-2094). Google Autocomplete runs beside Text Search as its own list

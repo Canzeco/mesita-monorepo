@@ -34,9 +34,8 @@ function sectionsByView(): Record<string, string[]> {
     if (!view.isDirectory()) continue;
     const dir = join(VIEWS, view.name);
     // Every file the view is made of: its own tsx files, plus the one hop a
-    // view takes into a Tab that lives in place-manage (ProfileTab,
-    // ProductLadderTab) — the Tabs moved out of the route tree with
-    // MESITA-2086 so both consoles render one source.
+    // view takes into a Tab that lives in place-manage (ProfileTab) — the Tab
+    // sits outside the route tree so the view and Single Place share it.
     const texts = readdirSync(dir)
       .filter((f) => f.endsWith(".tsx"))
       .map((f) => read(join(dir, f)));
