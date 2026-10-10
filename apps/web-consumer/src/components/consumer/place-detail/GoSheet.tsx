@@ -96,7 +96,11 @@ export function GoSheet({
       <div className="p-5">
         <h2 className={SHEET_TITLE_CLASS}>Go to {place.name}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          {MONEY_ACTIONS_PARKED ? "Book a table." : "Four ways in — pick one."}
+          {!MONEY_ACTIONS_PARKED
+            ? "Four ways in — pick one."
+            : reserveEnabled
+              ? "Book a table."
+              : RESERVE_BLOCKED.hint}
         </p>
 
         {/* The create can fail (cold EF, dropped connection). Swallowing it
@@ -153,15 +157,21 @@ export function GoSheet({
             </>
           )}
 
-          <GoOption
-            Icon={reserveEnabled ? CalendarCheck : Lock}
-            title="Reserve"
-            hint={
-              reserveEnabled ? "Book a table for later." : RESERVE_BLOCKED.hint
-            }
-            onClick={reserveEnabled ? onReserve : undefined}
-            disabled={!reserveEnabled}
-          />
+          {/* Parked and walk-in: the subtitle already says so, and a lone
+              disabled row under it would be a dead end (MESITA-2077). */}
+          {MONEY_ACTIONS_PARKED && !reserveEnabled ? null : (
+            <GoOption
+              Icon={reserveEnabled ? CalendarCheck : Lock}
+              title="Reserve"
+              hint={
+                reserveEnabled
+                  ? "Book a table for later."
+                  : RESERVE_BLOCKED.hint
+              }
+              onClick={reserveEnabled ? onReserve : undefined}
+              disabled={!reserveEnabled}
+            />
+          )}
         </div>
       </div>
     </LocalSheet>

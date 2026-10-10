@@ -87,6 +87,11 @@ export function PlaceActionBar({
     "inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 type-body font-semibold whitespace-nowrap transition active:scale-[0.99] disabled:active:scale-100";
   const outline = "border-border bg-card text-foreground hover:bg-muted border";
 
+  // MVP cut + a walk-in place leaves no verb at all: one disabled Reserve
+  // cell would be a dead strip pinned to the screen, so the bar steps aside
+  // (MESITA-2077). The page's Save · Contact · Share still render above.
+  if (MONEY_ACTIONS_PARKED && !reserveEnabled) return null;
+
   return (
     <>
       <div

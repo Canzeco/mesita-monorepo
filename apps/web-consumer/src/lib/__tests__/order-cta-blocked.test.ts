@@ -138,4 +138,15 @@ describe("MVP cut parks the money actions on both surfaces", () => {
       expect(parked, file).not.toMatch(/\bReserve\b/);
     }
   });
+
+  // Bugbot on #2056: a walk-in place had nothing left to offer but a disabled
+  // Reserve under "Book a table." Both surfaces must read reserveEnabled.
+  it("drops the lone disabled Reserve at walk-in places", () => {
+    expect(read("PlaceActionBar.tsx")).toContain(
+      "if (MONEY_ACTIONS_PARKED && !reserveEnabled) return null;",
+    );
+    const go = read("GoSheet.tsx");
+    expect(go).toContain("{MONEY_ACTIONS_PARKED && !reserveEnabled ? null : (");
+    expect(go).toContain(": RESERVE_BLOCKED.hint}");
+  });
 });
