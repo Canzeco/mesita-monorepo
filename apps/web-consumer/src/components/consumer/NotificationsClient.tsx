@@ -63,6 +63,9 @@ export function NotificationsClient({ userId }: { userId: string }) {
 
   usePayNotificationPoll(load, Boolean(userId));
 
+  // MVP cut (MESITA-2078): "Your bill" rows are hidden while Pay is parked.
+  const visible = rows.filter((n) => n.kind !== "bill");
+
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
@@ -94,16 +97,16 @@ export function NotificationsClient({ userId }: { userId: string }) {
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-4">
-          {rows.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
+          {visible.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
             <div className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-8 text-center text-sm">
               <Bell className="text-muted-foreground/50 mx-auto mb-3 h-10 w-10" />
               No notifications yet.
             </div>
           ) : (
             <>
-              {rows.length > 0 ? (
+              {visible.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {rows.map((n) => (
+                  {visible.map((n) => (
                     <NotificationRow key={n.id} n={n} />
                   ))}
                 </div>

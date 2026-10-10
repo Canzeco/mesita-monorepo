@@ -1,14 +1,14 @@
-import { SwipeDeck } from "@/components/swipe/SwipeDeck";
+import { CatalogTab } from "@/components/home/CatalogTab";
 import { HOME_RAIL, TabFrame } from "@/components/ui/TabRail";
 
-// Visit › Home (MESITA-2050) — web's /discover/scroll. Mobile still deals the
-// card-stack deck; web's vertical Scroll deck is not ported. The old in-screen
-// segment row (Swipe · Catalog · Memo · Social · Favorites) is gone: Chat and
-// Favs are pills of their own now, and Catalog/Social stay on disk, unmounted.
+// Home › Home (MESITA-2081) — web's /discover/feed. Web renders CatalogRails
+// there; mobile has no rails port yet, so it mounts CatalogTab, the browse
+// grid over the same shared deck query. Same job: browse, no verdict. The
+// deck moved one pill over, to Scroll.
 export default function HomeScreen() {
   return (
     <TabFrame items={HOME_RAIL} value="home">
-      <SwipeDeck />
+      <CatalogTab />
     </TabFrame>
   );
 }

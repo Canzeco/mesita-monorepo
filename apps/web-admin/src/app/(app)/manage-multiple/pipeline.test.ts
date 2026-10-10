@@ -3,63 +3,101 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { LEGACY_HASHES, PIPELINE_STEPS } from "./pipeline";
+import { LEGACY_HASHES, PIPELINE_STEPS, WRITE_BOX_ACTIONS } from "./pipeline";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PIPELINE_STEPS", () => {
-  it("is Google Search, Mesita Search, Crenup", () => {
+  it("is Google Search, Mesita Search, Create, Enrich, Update", () => {
     expect(PIPELINE_STEPS.map((s) => s.label)).toEqual([
       "Google Search",
       "Mesita Search",
-      "Crenup",
+      "Create",
+      "Enrich",
+      "Update",
     ]);
-    expect(PIPELINE_STEPS.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(new Set(PIPELINE_STEPS.map((s) => s.id)).size).toBe(3);
+    expect(PIPELINE_STEPS.map((s) => s.n)).toEqual([1, 2, 3, 4, 5]);
+    expect(new Set(PIPELINE_STEPS.map((s) => s.id)).size).toBe(5);
   });
 
-  it("routes the retired Edit hash onto Crenup", () => {
-    expect(LEGACY_HASHES["edit-states"]).toBe("crenup");
+  it("routes every retired hash onto a box that exists", () => {
+    const ids = new Set<string>(PIPELINE_STEPS.map((s) => s.id));
+    for (const dest of Object.values(LEGACY_HASHES)) expect(ids.has(dest)).toBe(true);
+    expect(LEGACY_HASHES["crenup"]).toBe("create");
+    expect(LEGACY_HASHES["bulk-enrich"]).toBe("enrich");
+    expect(LEGACY_HASHES["edit-states"]).toBe("update");
+  });
+
+  it("gives each write box its own buttons — Update is a box, never a button", () => {
+    expect(WRITE_BOX_ACTIONS).toEqual({
+      create: ["create"],
+      enrich: ["enrich"],
+      update: ["list", "unlist", "delete"],
+    });
+    const all: string[] = Object.values(WRITE_BOX_ACTIONS).flat();
+    expect(all).toHaveLength(new Set(all).size);
   });
 });
 
-describe("the page chrome names the three surfaces", () => {
-  it("keeps Google Search, Mesita Search, Crenup — Crenup is five flat actions, no Update, no EditTab", () => {
+describe("the page chrome names the five surfaces", () => {
+  it("keeps Google Search, Mesita Search and three WriteBoxes — five flat actions, no Update button, no EditTab", () => {
     const client = readFileSync(join(here, "MultiplePlacesClient.tsx"), "utf8");
-    const Crenup = readFileSync(join(here, "CrenupTab.tsx"), "utf8");
+    const box = readFileSync(join(here, "WriteBox.tsx"), "utf8");
     expect(client).toContain("SearchTab");
     expect(client).toContain("MesitaSearchTab");
-    expect(client).toContain("CrenupTab");
+    expect(client.match(/<WriteBox\b/g)).toHaveLength(3);
+    expect(client).toContain("WRITE_BOX_ACTIONS.create");
+    expect(client).toContain("WRITE_BOX_ACTIONS.enrich");
+    expect(client).toContain("WRITE_BOX_ACTIONS.update");
     expect(client).not.toContain("EditTab");
     // MESITA-1664 (decision: Pato) — "place cannot be partner from the
     // console": Active/Verified/Partnered write from web-business now
     // (claim → verify → own → Stripe onboarding), never from admin.
-    expect(Crenup).toContain('label="Create"');
-    expect(Crenup).toContain('label="Delete"');
-    expect(Crenup).toContain('label="List"');
-    expect(Crenup).toContain('label="Unlist"');
-    expect(Crenup).toContain('label="Enrich"');
-    expect(Crenup).toContain("alreadyExisted");
-    expect(Crenup).toContain("Copy failed IDs");
-    expect(Crenup).toContain("Promise.all(ids.map");
-    expect(Crenup).toContain("window.confirm");
-    expect(Crenup).toContain("deletePlace");
-    expect(Crenup).toContain("setPlaceListed");
-    expect(Crenup).not.toContain("EditTab");
-    expect(Crenup).not.toContain("UpdateFields");
-    expect(Crenup).not.toContain('label="Update"');
-    expect(Crenup).not.toContain("create_then_enrich");
-    expect(Crenup).not.toContain("create_enrich");
-    expect(Crenup).not.toContain("EditPanel");
-    expect(Crenup).not.toContain("type-eyebrow");
-    expect(Crenup).not.toContain("CONCURRENCY");
-    expect(Crenup).not.toContain("const worker = async");
-    expect(Crenup).not.toContain("Promoting");
-    expect(Crenup).not.toContain("Verified");
-    expect(Crenup).not.toContain("Partnered");
-    expect(Crenup).not.toContain("setPlaceActive");
-    expect(Crenup).not.toContain("setPlaceVerified");
-    expect(Crenup).not.toContain("setPlacePlan");
+    expect(box).toContain('label: "Create"');
+    expect(box).toContain('label: "Delete"');
+    expect(box).toContain('label: "List"');
+    expect(box).toContain('label: "Unlist"');
+    expect(box).toContain('label: "Enrich"');
+    expect(box).toContain("alreadyExisted");
+    expect(box).toContain("Copy failed IDs");
+    expect(box).toContain("Promise.all(ids.map");
+    expect(box).toContain("window.confirm");
+    expect(box).toContain("deletePlace");
+    expect(box).toContain("setPlaceListed");
+    expect(box).not.toContain("EditTab");
+    expect(box).not.toContain("UpdateFields");
+    expect(box).not.toContain('label: "Update"');
+    expect(box).not.toContain("create_then_enrich");
+    expect(box).not.toContain("create_enrich");
+    expect(box).not.toContain("EditPanel");
+    expect(box).not.toContain("type-eyebrow");
+    expect(box).not.toContain("CONCURRENCY");
+    expect(box).not.toContain("const worker = async");
+    expect(box).not.toContain("Promoting");
+    expect(box).not.toContain("Verified");
+    expect(box).not.toContain("Partnered");
+    expect(box).not.toContain("setPlaceActive");
+    expect(box).not.toContain("setPlaceVerified");
+    expect(box).not.toContain("setPlacePlan");
+  });
+
+  it("never shows the word Crenup (MESITA-2096)", () => {
+    for (const file of [
+      "layout.tsx",
+      "MultiplePlacesClient.tsx",
+      "PipelineNav.tsx",
+      "SearchTab.tsx",
+      "MesitaSearchResults.tsx",
+      "WriteBox.tsx",
+    ]) {
+      const src = readFileSync(join(here, file), "utf8");
+      const visible = src
+        .split("\n")
+        .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join("\n")
+        .match(/(["'`>][^"'`<]*\bCrenup\b[^"'`<]*)/g);
+      expect(visible, file).toBeNull();
+    }
   });
 });
 
@@ -72,7 +110,7 @@ describe("Mesita Search returns the whole catalog too", () => {
     // button's input, so requiring IDs here would defeat the point.
     expect(tab).toContain("disabled={busy}");
     // The shortcut: the run loads the shared ID box with the catalog's Google
-    // Place IDs, so Crenup is one scroll away with no paste. Capped
+    // Place IDs, so Create, Enrich and Update are one scroll away with no paste. Capped
     // where the box caps, and a place with no google_place_id is skipped.
     const run = tab.slice(
       tab.indexOf("async function runAllPlaces"),
@@ -106,13 +144,13 @@ describe("Mesita Search returns the whole catalog too", () => {
 });
 
 describe("spend calculator stays off this page", () => {
-  it("does not mount CostCalculator — Create/Enrich estimates live on Crenup", () => {
+  it("does not mount CostCalculator — Create/Enrich estimates live on Configurations", () => {
     const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
-    const crenupTab = readFileSync(join(here, "CrenupTab.tsx"), "utf8");
+    const writeBox = readFileSync(join(here, "WriteBox.tsx"), "utf8");
     const costUi = readFileSync(join(here, "search-cost.tsx"), "utf8");
     expect(searchTab).not.toContain("CostCalculator");
-    expect(crenupTab).not.toContain("computeEnrichmentCost");
-    expect(crenupTab).not.toContain("costSeed");
+    expect(writeBox).not.toContain("computeEnrichmentCost");
+    expect(writeBox).not.toContain("costSeed");
     expect(costUi).not.toContain("export function CostCalculator");
   });
 });

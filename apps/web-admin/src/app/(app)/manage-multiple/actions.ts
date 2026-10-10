@@ -9,9 +9,11 @@ import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from
 // grants access regardless of place_members.
 //
 // These lived in the retired per-place admin console (`manage-single`) until
-// it was deleted; this page was their only surviving caller, so they moved
-// here rather than into a shared lib nothing else imports. The per-place
-// editor itself lives on in the business console (`web-business`).
+// it was deleted (MESITA-1588); this page was their only surviving caller, so
+// they moved here. Single Place (MESITA-2084) imports them from here rather
+// than owning a copy — ONE caller set, so the two pages cannot drift on what
+// a button does. The per-place EDITOR lives on in the business console
+// (`web-business`); Single Place links to it.
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off
@@ -63,7 +65,7 @@ export type PlaceHit = {
   content_state: string | null;
   listing_type: string | null;
   // ── The state facts (labels: Created · Active · Listed · Requested ·
-  //    Enriching · Enriched · Verified · Partnered · Rewards ·
+  //    Enriching · Enriched · Partnered · Rewards ·
   //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
   //    (promotion · pickup · delivery). Bools except Requested (0…n),
   //    Rewards (0|1|2) and promotion (0–7). All derived (or
@@ -103,8 +105,6 @@ export type PlaceHit = {
    *  the fallback, and it alone cannot show a function that completed AFTER
    *  an earlier one failed, which is exactly the gap this map closes. */
   enrich_functions?: Record<string, EnrichFunctionState> | null;
-  /** An APPROVED place_verifications row — ownership proof, not a badge. */
-  verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
   partner: boolean;
   /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
@@ -185,7 +185,6 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // the high-water, rather than a fabricated empty map reading as "nothing
     // has run yet".
     enrich_functions: raw.enrich_functions ?? null,
-    verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
     promoting_level: raw.promoting_level ?? 0,
@@ -301,6 +300,36 @@ export async function enrichPlace(
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
+}
+
+// ── Google Autocomplete (Single Place › Find, MESITA-2116) ───────────────
+
+/** One Autocomplete row as admin-web-suggest-places ships it. `mesitaId`
+ *  rides only a row the EF resolved to a Mesita place. */
+export type AutocompleteHit = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  state: "not_in_mesita" | "web_listed" | "verified_partner_other" | "verified_partner_self";
+  mesitaId?: string;
+};
+
+/** Google Autocomplete for a name — the lane's `fast` mode, Autocomplete
+ *  alone, so it adds a source beside Find's Text Search instead of
+ *  repeating it. Discovery › General cuts it as it cuts every Google lane. */
+export async function autocompleteGooglePlaces(
+  input: string,
+  sessionToken: string,
+): Promise<Result<AutocompleteHit[]>> {
+  const q = input.trim();
+  if (q.length < 2) return { ok: true, data: [] };
+  const r = await efInvoke<{ predictions: AutocompleteHit[] }>("admin-web-suggest-places", {
+    input: q,
+    sessionToken,
+    mode: "fast",
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.predictions ?? [] };
 }
 
 // The create-place pipeline lives beside this file in ./create-place; this

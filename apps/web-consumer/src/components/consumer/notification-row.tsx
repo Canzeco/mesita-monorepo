@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { Bell, MapPin, Star } from "lucide-react";
 import type { ConsumerNotification } from "@/lib/api/notifications";
-import { formatPayMx } from "@/lib/api/pay";
 
 function kindLabel(kind: string): string {
   if (kind === "bill") return "Your bill";
@@ -16,8 +15,6 @@ function KindIcon({ kind, className }: { kind: string; className?: string }) {
 
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const p = n.bill;
-  // redeem_cents is always 0 — ignore it in UI (Rules §2).
-  const reward = p.total_reward_cents ?? p.discount_cents ?? 0;
 
   return (
     <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
@@ -46,11 +43,8 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
           <KindIcon kind={n.kind} className="h-3.5 w-3.5 shrink-0" />
           {kindLabel(n.kind)}
         </p>
-        {reward > 0 ? (
-          <p className="text-secondary mt-1 text-xs font-medium">
-            Reward {formatPayMx(reward, p.currency)}
-          </p>
-        ) : null}
+        {/* MVP cut (MESITA-2078): the "Reward MX$…" line is hidden while
+            Pay is parked. */}
         <p className="text-muted-foreground type-body mt-1">
           {new Date(n.created_at).toLocaleString(undefined, {
             month: "short",

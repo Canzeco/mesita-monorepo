@@ -10,20 +10,33 @@ import { useEffect, useState } from "react";
 // `transition-[transform,opacity]` would jump it into the margin and
 // then fade — a flash of the fake tabs (MESITA-1791). Fade opacity in
 // place. Function hashes still work from Create/Enrich step chips.
-const LINKS: { id: string; label: string }[] = [
-  { id: "s-models", label: "Models" },
-  { id: "s-create", label: "Create" },
-  { id: "s-enrich", label: "Enrich" },
-  { id: "s-functions", label: "Functions" },
-  { id: "s-verification", label: "Verification" },
-];
+// Crenup is two pages since MESITA-2083 — Creation and Enrichment — and each
+// strip lists only its own page's modules. The first id is the gate.
+export type CrenupView = "creation" | "enrichment";
 
-export function SectionStrip() {
+const STRIP_LINKS: Record<CrenupView, { id: string; label: string }[]> = {
+  creation: [
+    { id: "s-models", label: "Models" },
+    { id: "s-create", label: "Create" },
+  ],
+  enrichment: [
+    { id: "s-enrich", label: "Enrich" },
+    { id: "s-functions", label: "Functions" },
+  ],
+};
+
+const STRIP_TITLE: Record<CrenupView, string> = {
+  creation: "Creation",
+  enrichment: "Enrichment",
+};
+
+export function SectionStrip({ view }: { view: CrenupView }) {
+  const LINKS = STRIP_LINKS[view];
   const [shown, setShown] = useState(false);
   const [here, setHere] = useState<string | null>(null);
 
   useEffect(() => {
-    const first = document.getElementById("s-models");
+    const first = document.getElementById(LINKS[0].id);
     if (!first) return;
     // `main` is the only scroller (AppShell). The viewport is the wrong
     // root: Models can still intersect the window while it has already
@@ -49,7 +62,7 @@ export function SectionStrip() {
       gate.disconnect();
       spy.disconnect();
     };
-  }, []);
+  }, [LINKS]);
 
   return (
     // STICKY, NOT FIXED. `fixed` resolves against the window, so this strip
@@ -72,7 +85,7 @@ export function SectionStrip() {
       >
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 overflow-x-auto scrollbar-none px-4 py-2 sm:px-6">
         <span className="text-muted-foreground type-meta mr-1.5 font-bold tracking-wider whitespace-nowrap uppercase">
-          Crenup
+          {STRIP_TITLE[view]}
         </span>
         {LINKS.map((l) => (
           <a

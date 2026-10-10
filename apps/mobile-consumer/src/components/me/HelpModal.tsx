@@ -8,6 +8,11 @@
 //
 // TWO IDENTITY ROWS (MESITA-2044): Base and Diamond. No metals, no
 // ladder — "either you are diamond or you are not".
+//
+// MVP cut (MESITA-2078): the rewards explainer and the priced list are hidden
+// while Pay is parked. They stay in tree as `HelpRewardsBody`, unrendered, so
+// un-parking is one JSX line. The page holds Legal and the version, as web's
+// Help does.
 
 import type { LucideIcon } from 'lucide-react-native';
 import {
@@ -19,8 +24,11 @@ import {
   Store,
   UtensilsCrossed,
 } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+import { Linking, ScrollView, Text, View } from 'react-native';
 
+import { PRIVACY_URL, TERMS_URL } from '@/components/me/MeProfileSheets';
+import { LinkRow, SectionLabel } from '@/components/me/me-settings-rows';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { COLORS } from '@/constants/brand';
 import { isDiamond } from '@/lib/consumer-classes';
@@ -92,98 +100,120 @@ export function HelpModal({
   onClose: () => void;
   asRoute?: boolean;
 }) {
-  const { consumerClass } = useAuth();
-  const rows = helpRungs(consumerClass?.class ?? 'standard');
-
   return (
-    <FullScreenSheet visible={visible} onClose={onClose} asRoute={asRoute} title="Help"
-      subtitle="How rewards work">
+    <FullScreenSheet visible={visible} onClose={onClose} asRoute={asRoute} title="Support">
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, gap: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <ExplainRow
-          icon={<Percent size={18} color={COLORS.secondary} />}
-          bold="Instant discounts."
-          rest="Start a ticket, show its QR at the table — the discount comes straight off the bill. Mesita never holds your money."
-        />
-        <ExplainRow
-          icon={<Gem size={18} color={COLORS.secondary} />}
-          rest={DIAMOND_HELP_LINE}
-        />
-        <ExplainRow
-          icon={<Sparkles size={18} color={COLORS.secondary} />}
-          bold="Actions add on."
-          rest="Welcome, Instagram Story, and Mesita Review stack on your rate — not pick-one. The bill clamps at 100% and applies to the first cap-pesos. Live percents sit on each place's Rewards tab."
-        />
-
-        <View style={{ gap: 6 }}>
-          <View className="flex-row items-baseline justify-between px-1 pb-1">
-            <Text className="font-display font-bold text-foreground" style={{ fontSize: 14 }}>
-              {"Everything that's priced"}
-            </Text>
-            <Text className="text-muted-foreground" style={{ fontSize: 11 }}>
-              They add together
-            </Text>
-          </View>
-          {rows.map((seg) => {
-            const Icon = seg.Icon;
-            const isMine = seg.mine;
-            return (
-              <View
-                key={seg.key}
-                className={`flex-row items-center gap-2.5 rounded-xl px-2.5 py-2 ${
-                  isMine ? '' : 'bg-muted/40'
-                }`}
-                style={isMine ? { backgroundColor: COLORS.primary } : undefined}
-              >
-                <View
-                  className={`h-7 w-7 items-center justify-center rounded-lg ${
-                    isMine ? 'bg-white/20' : 'bg-secondary/10'
-                  }`}
-                >
-                  <Icon
-                    size={14}
-                    color={isMine ? COLORS.primaryForeground : COLORS.secondary}
-                  />
-                </View>
-                <View className="min-w-0 flex-1">
-                  <View className="flex-row items-center gap-1.5">
-                    <Text
-                      className={`font-bold ${isMine ? 'text-white' : 'text-foreground'}`}
-                      numberOfLines={1}
-                      style={{ fontSize: 12.5 }}
-                    >
-                      {seg.label}
-                    </Text>
-                    {isMine ? (
-                      <View className="rounded-full bg-white/25 px-1.5 py-0.5">
-                        <Text
-                          className="font-extrabold uppercase text-white"
-                          style={{ fontSize: 8.5, letterSpacing: 1 }}
-                        >
-                          You
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {seg.hint ? (
-                    <Text
-                      className={isMine ? 'text-white/80' : 'text-muted-foreground'}
-                      numberOfLines={1}
-                      style={{ fontSize: 11 }}
-                    >
-                      {seg.hint}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
+        {/* MVP cut (MESITA-2078): <HelpRewardsBody /> (the rewards explainer
+            and the priced list) is hidden while Pay is parked. */}
+        <View style={{ gap: 8 }}>
+          <SectionLabel>Legal</SectionLabel>
+          <LinkRow
+            title="Terms of use"
+            onPress={() => void Linking.openURL(TERMS_URL)}
+          />
+          <LinkRow
+            title="Privacy policy"
+            onPress={() => void Linking.openURL(PRIVACY_URL)}
+          />
         </View>
-
+        <Text className="text-center text-muted-foreground" style={{ fontSize: 13 }}>
+          Mesita · {Constants.expoConfig?.version ?? '—'}
+        </Text>
       </ScrollView>
     </FullScreenSheet>
+  );
+}
+
+/** The rewards explainer + priced list — parked with Pay (MESITA-2078). */
+export function HelpRewardsBody() {
+  const { consumerClass } = useAuth();
+  const rows = helpRungs(consumerClass?.class ?? 'standard');
+
+  return (
+    <>
+      <ExplainRow
+        icon={<Percent size={18} color={COLORS.secondary} />}
+        bold="Instant discounts."
+        rest="Start a ticket, show its QR at the table — the discount comes straight off the bill. Mesita never holds your money."
+      />
+      <ExplainRow
+        icon={<Gem size={18} color={COLORS.secondary} />}
+        rest={DIAMOND_HELP_LINE}
+      />
+      <ExplainRow
+        icon={<Sparkles size={18} color={COLORS.secondary} />}
+        bold="Actions add on."
+        rest="Welcome, Instagram Story, and Mesita Review stack on your rate — not pick-one. The bill clamps at 100% and applies to the first cap-pesos. Live percents sit on each place's Rewards tab."
+      />
+
+      <View style={{ gap: 6 }}>
+        <View className="flex-row items-baseline justify-between px-1 pb-1">
+          <Text className="font-display font-bold text-foreground" style={{ fontSize: 14 }}>
+            {"Everything that's priced"}
+          </Text>
+          <Text className="text-muted-foreground" style={{ fontSize: 11 }}>
+            They add together
+          </Text>
+        </View>
+        {rows.map((seg) => {
+          const Icon = seg.Icon;
+          const isMine = seg.mine;
+          return (
+            <View
+              key={seg.key}
+              className={`flex-row items-center gap-2.5 rounded-xl px-2.5 py-2 ${
+                isMine ? '' : 'bg-muted/40'
+              }`}
+              style={isMine ? { backgroundColor: COLORS.primary } : undefined}
+            >
+              <View
+                className={`h-7 w-7 items-center justify-center rounded-lg ${
+                  isMine ? 'bg-white/20' : 'bg-secondary/10'
+                }`}
+              >
+                <Icon
+                  size={14}
+                  color={isMine ? COLORS.primaryForeground : COLORS.secondary}
+                />
+              </View>
+              <View className="min-w-0 flex-1">
+                <View className="flex-row items-center gap-1.5">
+                  <Text
+                    className={`font-bold ${isMine ? 'text-white' : 'text-foreground'}`}
+                    numberOfLines={1}
+                    style={{ fontSize: 12.5 }}
+                  >
+                    {seg.label}
+                  </Text>
+                  {isMine ? (
+                    <View className="rounded-full bg-white/25 px-1.5 py-0.5">
+                      <Text
+                        className="font-extrabold uppercase text-white"
+                        style={{ fontSize: 8.5, letterSpacing: 1 }}
+                      >
+                        You
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                {seg.hint ? (
+                  <Text
+                    className={isMine ? 'text-white/80' : 'text-muted-foreground'}
+                    numberOfLines={1}
+                    style={{ fontSize: 11 }}
+                  >
+                    {seg.hint}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </>
   );
 }

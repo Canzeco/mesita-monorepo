@@ -5,17 +5,9 @@ import {
   Bell,
   CalendarCheck,
   CircleHelp,
-  Bot,
-  Footprints,
-  Gem,
-  Gift,
   Instagram,
   Settings as SettingsIcon,
-  Share2,
-  ShoppingBag,
   UserRound,
-  Users,
-  Wallet as WalletIcon,
 } from "lucide-react";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -24,32 +16,30 @@ import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
-import {
-  PREMIUM_PLAN_ICON,
-  PREMIUM_PLAN_PRICE_MXN,
-} from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import {
-  DIAMOND_PIN_SUCCESS,
-  diamondChipLabel,
-  diamondSummary,
-  instagramSummary,
-} from "@/lib/consumer-identity";
+import { DIAMOND_PIN_SUCCESS, instagramSummary } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then one full row and seven pairs:
+// The Me surface — the identity header, then three pairs (Pato, MESITA-2080:
+// "Its just only Profile Instagram / Notifications Reservations / Settings
+// Support"):
 //
-//   header         identity + the two facts; the bar IS a door (MESITA-1652)
-//   full           Profile (carries the member number)
-//   2              Instagram · Diamond
-//   2              Wallet · Plan
-//   2              Notifications · Visits
-//   2              Orders · Reservations
-//   2              Share · Gift
-//   2              Settings · Help
-//   2              Integrations · Friends
+//   header         identity + Instagram; the bar IS a door (MESITA-1652)
+//   2              Profile (carries the member number) · Instagram
+//   2              Notifications · Reservations
+//   2              Settings · Support
+//
+// DIAMOND IS PARKED (Pato, MESITA-2080: "Diamond goes for the future too").
+// Its tile and its header chip are gone; /me/diamond and the invite PIN page
+// still exist, so bringing it back is re-adding the tile and the chip.
+//
+// MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet, Plan,
+// Visits and the five Soon cells (Orders, Share, Gift, Integrations, Friends)
+// left the grid: money is parked with Pay, and the rest is not built. Their
+// routes all still exist — bringing one back is re-adding its DestTile (the
+// full grid is in git history at MESITA-2076).
 //
 // EVERY LIVE CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub
 // stacked history as overlays. DestTiles now Link to /me/<box>. Parked cells
@@ -64,21 +54,20 @@ import { IdentityBar } from "./IdentityBar";
 // the Passport printed that nothing else did was the member number, and that
 // lives on Profile now.
 //
-// PROFILE TAKES THE FULL ROW. Deleting one cell leaves fifteen, which cannot
-// pair; spanning Profile keeps the seven pairs below untouched instead of
-// reshuffling every row.
+// PROFILE PAIRS WITH INSTAGRAM. It spanned the row from MESITA-2043 until
+// Diamond was parked left Instagram without a partner (MESITA-2080).
 //
 // THE TWO FACTS ARE CELLS (Pato, MESITA-2040: "so add instagram and then
 // diamond. those are independent"). This pair was added and removed twice
 // before (MESITA-1682, MESITA-1787) when both were one ladder; they are two
 // unrelated destinations now, and a grid of destinations is where those go.
 //
-// NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
-// /wallet so Stripe's return still lands on the list.
+// NO CARDS CELL. Wallet lists cards inline. `/me?cards=` 308s onto /wallet
+// so Stripe's return still lands on the list.
 
 export function ProfileClient() {
   const supabase = useBrowserSupabase();
-  const { plan, facts } = useConsumerClass();
+  const { facts } = useConsumerClass();
 
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,8 +85,6 @@ export function ProfileClient() {
         igConnected: facts.igConnected || Boolean(profile?.instagram_handle),
       };
   const igSummary = instagramSummary(igFacts);
-  const diamondLabel = diamondSummary(facts);
-  const diamondChip = diamondChipLabel(facts);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,26 +122,22 @@ export function ProfileClient() {
     }
   }, []);
 
-  const planTile =
-    plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
-
   return (
     <div className="flex h-full flex-col">
       <IdentityBar
         profile={profile}
         loading={loading}
-        diamondSummary={diamondLabel}
-        diamondChip={diamondChip}
         instagramSummary={igSummary}
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* PROFILE LEADS (Pato, 2026-09-08), and since MESITA-2043 it
-              spans the row. Its summary is the MEMBER NUMBER — the string
-              staff look a guest up by when granting a Diamond invitation —
-              because the tile is a Link and cannot hold a copy button; the
-              copy lives on /me/profile. A null code is a real state (assigned
-              on first profile read), and a failed read claims nothing. */}
+          {/* PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT
+              (MESITA-2080). Profile's summary is the MEMBER NUMBER — the
+              string staff look a guest up by — because the tile is a Link
+              and cannot hold a copy button; the copy lives on /me/profile. A
+              null code is a real state (assigned on first profile read), and
+              a failed read claims nothing. Instagram's summary is the FACT,
+              not an invitation to read about it. */}
           <DestGrid>
             <DestTile
               Icon={UserRound}
@@ -169,42 +152,12 @@ export function ProfileClient() {
                       : "Member pending"
               }
               href={CONSUMER_ROUTES.mePages.profile}
-              full
             />
-          </DestGrid>
-
-          {/* INSTAGRAM, THEN DIAMOND — the order Pato named them
-              (MESITA-2040), and the order the header chips run in. Each
-              summary is the FACT, not an invitation to read about it: the
-              tile is the door, so the line it carries is the one thing the
-              guest would open it to check. */}
-          <DestGrid>
             <DestTile
               Icon={Instagram}
               title="Instagram"
               summary={loading ? "…" : igSummary}
               href={CONSUMER_ROUTES.mePages.instagram}
-            />
-            <DestTile
-              Icon={Gem}
-              title="Diamond"
-              summary={loading ? "…" : diamondLabel}
-              href={CONSUMER_ROUTES.mePages.diamond}
-            />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile
-              Icon={WalletIcon}
-              title="Wallet"
-              summary="Credits and cards"
-              href={CONSUMER_ROUTES.wallet.root}
-            />
-            <DestTile
-              Icon={PREMIUM_PLAN_ICON}
-              title="Plan"
-              summary={loading ? "…" : planTile}
-              href={CONSUMER_ROUTES.mePages.plan}
             />
           </DestGrid>
 
@@ -212,30 +165,16 @@ export function ProfileClient() {
             <DestTile
               Icon={Bell}
               title="Notifications"
-              summary="Visits and bookings"
+              // MVP cut (MESITA-2078): "Visits" hidden while Pay is parked.
+              summary="Bookings and updates"
               href={CONSUMER_ROUTES.mePages.notifications}
             />
-            <DestTile
-              Icon={Footprints}
-              title="Visits"
-              summary="Tickets and QRs"
-              href={CONSUMER_ROUTES.mePages.visits}
-            />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
             <DestTile
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
               href={CONSUMER_ROUTES.mePages.reservations}
             />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile Icon={Share2} title="Share" summary="" soon />
-            <DestTile Icon={Gift} title="Gift" summary="" soon />
           </DestGrid>
 
           <DestGrid>
@@ -247,15 +186,11 @@ export function ProfileClient() {
             />
             <DestTile
               Icon={CircleHelp}
-              title="Help"
-              summary="How rewards work"
+              title="Support"
+              // MVP cut (MESITA-2078): rewards hidden while Pay is parked.
+              summary="Questions, legal"
               href={CONSUMER_ROUTES.mePages.help}
             />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile Icon={Bot} title="Integrations" summary="" soon />
-            <DestTile Icon={Users} title="Friends" summary="" soon />
           </DestGrid>
         </div>
       </div>

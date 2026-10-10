@@ -1,14 +1,16 @@
 "use client";
 
+import Link from "next/link";
+import { placeHref } from "@/lib/console-routes";
 import {
   GENERAL_STATE_FACTS,
-  CRENUP_STEPS,
   OPERATOR_PROMOTING_LABEL,
   operatorPromotingLevel,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
 import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
-import { crenupCalled, factOn, type Row } from "./mesita-search-facts";
+import { factOn, type Row } from "./mesita-search-facts";
+import { CrenupLadder, StatePill } from "./PlaceFacts";
 
 export function MesitaSearchResults({ rows }: { rows: Row[] }) {
   return (
@@ -43,9 +45,14 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                     className={`max-w-[60vw] px-4 py-3 sm:max-w-[280px] ${STICKY_COL_CELL}`}
                   >
                     {hit ? (
-                      <p className="truncate font-medium">
+                      // The name is the door to Single Place (MESITA-2086):
+                      // the place surface, not a second facts card.
+                      <Link
+                        href={placeHref(hit.id)}
+                        className="block truncate font-medium underline-offset-4 hover:underline"
+                      >
                         {hit.google_name || hit.name}
-                      </p>
+                      </Link>
                     ) : (
                       <>
                         <p className="text-muted-foreground font-mono text-xs">
@@ -110,83 +117,16 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
             const hit = row.hit;
             if (!hit || hit.enrich_crenup_labels.length === 0) return null;
             return (
-              <li key={`${row.key}-Crenup`} className="px-4 py-3">
+              <li key={`${row.key}-ladder`} className="px-4 py-3">
                 <p className="text-muted-foreground type-label mb-2">
-                  Crenup · {hit.google_name || hit.name}
+                  Steps · {hit.google_name || hit.name}
                 </p>
-                {hit.enrich_crenup_blocked ? (
-                  <p className="text-muted-foreground type-label mb-2">
-                    Stopped at{" "}
-                    {hit.enrich_crenup_labels[hit.enrich_crenup_blocked.index] ??
-                      hit.enrich_crenup_blocked.key}{" "}
-                    —{" "}
-                    {hit.enrich_crenup_blocked.state === "failed"
-                      ? "the function ran and failed"
-                      : "no event yet"}
-                    .
-                  </p>
-                ) : null}
-                <div className="flex flex-wrap gap-1.5">
-                  {CRENUP_STEPS.map((fn) => {
-                    const called = crenupCalled(hit, fn);
-                    return (
-                      <span
-                        key={fn.key}
-                        className={
-                          "rounded-full px-2 py-0.5 type-label font-medium " +
-                          (called
-                            ? "bg-green-500/10 text-green-700"
-                            : "bg-muted text-muted-foreground")
-                        }
-                      >
-                        {fn.n}. {fn.label}
-                      </span>
-                    );
-                  })}
-                </div>
+                <CrenupLadder hit={hit} />
               </li>
             );
           })}
         </ul>
       ) : null}
     </div>
-  );
-}
-
-// falseTone comes from the fact vocabulary (STATE_FACT_FALSE_TONE): rose for
-// a pending debt, plain grey for a fact that is merely not true. The taxonomy
-// lives in state-vocabulary.ts, so this table cannot pick its own.
-function StatePill({
-  on,
-  falseTone = "pending",
-}: {
-  on: boolean | "unknown";
-  falseTone?: "pending" | "neutral";
-}) {
-  // "?" is its own rendering, not a shade of no: the row is saying it does not
-  // know, and a grey "no" would read as an answer.
-  if (on === "unknown") {
-    return (
-      <span
-        title="This payload does not carry that fact"
-        className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold"
-      >
-        ?
-      </span>
-    );
-  }
-  return (
-    <span
-      className={
-        "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
-        (on
-          ? "bg-green-500/10 text-green-700"
-          : falseTone === "neutral"
-            ? "text-muted-foreground bg-muted"
-            : "bg-rose-500/10 text-rose-700")
-      }
-    >
-      {on ? "yes" : "no"}
-    </span>
   );
 }

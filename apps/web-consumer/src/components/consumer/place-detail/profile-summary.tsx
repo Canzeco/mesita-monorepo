@@ -11,12 +11,10 @@ import {
 } from "lucide-react";
 
 import { PartnerMark } from "@/components/consumer/PartnerMark";
-import { PromoChip } from "@/components/consumer/PromoChip";
 import { Spinner } from "@/components/shared";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { getOpeningStateLabel } from "@/lib/place-state";
-import type { PromoChipPlace } from "@/lib/promo-rates";
 import {
   cn,
   formatCompactCount,
@@ -56,7 +54,6 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
     }) ?? null;
   const stateValue = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
-  const promoPlace = placeDetailAsPromoPlace(place);
   const partner = isPartner(place);
 
   return (
@@ -171,24 +168,11 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             </span>
           </ProfileMetaChip>
         )}
-        <PromoChip place={promoPlace} size="md" showWhenEmpty tone="light" />
+        {/* MVP cut (MESITA-2078): the reward chip is hidden while Pay is
+            parked. */}
       </div>
 
       <ProfileActions className="mt-5" place={place} />
     </section>
   );
-}
-
-/** Shim PlaceDetail → PromoChipPlace for the header reward chip. */
-function placeDetailAsPromoPlace(place: PlaceDetail): PromoChipPlace {
-  return {
-    id: place.id,
-    promoting: place.promoting,
-    welcome_free_rate: place.promo_matrix.welcome.free,
-    welcome_premium_rate: place.promo_matrix.welcome.premium,
-    free_rate: place.promo_matrix.default.free,
-    premium_rate: place.promo_matrix.default.premium,
-    reward_cap_mxn: place.reward_cap_mxn,
-    currency: place.currency,
-  };
 }

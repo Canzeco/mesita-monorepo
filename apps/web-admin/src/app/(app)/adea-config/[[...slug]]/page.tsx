@@ -5,5 +5,5 @@ import { permanentRedirect } from "next/navigation";
 // /calculator used to keep its own anchor; the calculator box went with the
 // Crenup knobs (enricher-config/page.tsx), so everything lands on the page.
 export default async function AdeaConfigLegacyRedirect() {
-  permanentRedirect("/enricher-config");
+  permanentRedirect("/enricher-config/creation");
 }

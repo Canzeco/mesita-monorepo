@@ -3,24 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2,
   PanelLeftClose,
   PanelLeftOpen,
-  Radar,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
-import { CRENUP_PARENT } from "@/app/(app)/enricher-config/nav";
+import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
+import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
+import {
+  CREATION_PARENT,
+  ENRICHMENT_PARENT,
+} from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
-import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
-import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
 
@@ -45,46 +43,35 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },
 ];
 
-const ALERTS_NAV: NavItem[] = [
-  { href: "/global-performance", label: "Global Monitor", Icon: Radar },
-  CREDIT_LIABILITY_PARENT,
-];
+// The MVP First Stage rail (MESITA-2088): Account · Manage · Configurations.
+// Alerts (Global Monitor, Credits Liability) and Testing › Billing are
+// deleted, routes and all — Pato, 2026-10-10: "kill the stupid alerts".
 
 // Manage — the records of real things. Admins first (Pato, 2026-09-12):
 // who may operate the console is a record, not a policy blob, and a
 // one-item heading is a subsection we do not want. Label only: the row
 // lists WHO has access, so it is a plural noun. Route, actions and EF
 // names stay `admin-config` / `admin-web-*` — a rename stops at the
-// label. Then widest scope: the backend itself, the places Mesita
-// lists. Not Configurations; nothing here is a policy blob. Places is
-// plain "Places" now: the per-place editor left the admin console with
-// MESITA-1588 (it lives in the business console, ported with MESITA-1537),
-// so there is no second surface for a Multiple/Single qualifier to tell
-// it apart from. Invitations left the rail with MESITA-1783; the page
-// still lives at /invitations.
-const MANAGE_NAV: NavItem[] = [
+// label. Then widest scope: the backend itself, then the places Mesita
+// lists — MANY at once, then ONE (Pato, MESITA-2084: "Multiple Places /
+// Single Place"). Single Place is the one-place sibling of the bulk tool,
+// not the per-place editor MESITA-1588 deleted. Not Configurations;
+// nothing here is a policy blob.
+export const MANAGE_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
   DB_PARENT,
-  { href: "/manage-multiple", label: "Places", Icon: Building2 },
+  MULTIPLE_PLACES_PARENT,
+  SINGLE_PLACE_PARENT,
 ];
 
-// Configurations — ordered as the product flows, not alphabetically or by age.
-// Two lifecycles end to end, a place's then a guest's:
-//   platform  which model each subsystem thinks with (Models)
-//   supply    a place's life on Crenup: the Enricher that fills its profile,
-//             plus who may prove they own a place (Verification)
-//   demand    a guest's night: how they find a place (Discovery) → how they
-//             book it (Reservations) → the journey once they sit down (Visits,
-//             the local context — Bill · Sync · Report · Visits Rewards ·
-//             Ojo) → or ordering without going at all (Orders, the remote
-//             one; its rates stay parked)
-//   proof     who reads the screenshot (Ojo) — composed onto Visits, not a
-//             rail row; blob stays ojo_config
+// Configurations — exactly five rows (Pato, MESITA-2083: "Models, Creation,
+// Enrichment, Discovery, Reservations — Only those"), ordered as the product
+// flows: which model each subsystem thinks with, then a place's life on Crenup
+// (Creation, then Enrichment), then a guest's night (how they find a place,
+// how they book it).
 //
-// Ojo is not a sidebar row: it is the proof reader for THE TICKET, so its
-// knobs live on Visits. Visits Rewards is the same shape (MESITA-1784):
-// rates a visit pays, not a rail row; /rewards-config redirects here.
-// Orders still runs ahead of a reader (Soon).
+// Visits (with Ojo and Visits Rewards), Orders and Payments were off-rail
+// pages until MESITA-2088 deleted them: the MVP has no Second Stage.
 //
 // Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
 // because it IS the chat engine. It has no editor at all — it runs on in-code
@@ -104,23 +91,16 @@ const MANAGE_NAV: NavItem[] = [
  * Anything that needs to know the set imports it. Anything that only needs to
  * NAME it points here instead of enumerating.
  */
-const CONFIGURATIONS_NAV: NavItem[] = [
+export const CONFIGURATIONS_NAV: NavItem[] = [
   // Models — four platform picks. /general-config redirects here (MESITA-1788).
-  // Ojo's policy lives on Visits; /ojo-config redirects there. Visits Rewards
-  // is the same: /rewards-config redirects to Visits.
   MODELS_PARENT,
-  // Crenup — Enricher modules plus Verification. /verification-config and
-  // /sourcing-config redirect here.
-  CRENUP_PARENT,
+  // Crenup's two halves.
+  CREATION_PARENT,
+  ENRICHMENT_PARENT,
+  // Discovery.
   FILTERS_PARENT,
-  VISITS_PARENT,
-  ORDERS_PARENT,
   RESERVATIONS_PARENT,
-  CONTROLS_PARENT,
 ];
-
-// Testing — operator tools that probe live systems rather than configure them.
-const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
 
 // The first group is deliberately unlabelled: a heading reading "Account" above
 // a lone "Account" link is the redundancy this menu is trying to shed.
@@ -130,10 +110,8 @@ const SIDEBAR_SECTIONS: {
   items: NavItem[];
 }[] = [
   { id: "primary", label: null, items: PRIMARY_NAV },
-  { id: "alerts", label: "Alerts", items: ALERTS_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
-  { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 
 function NavLink({

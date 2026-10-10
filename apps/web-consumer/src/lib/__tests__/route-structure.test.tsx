@@ -249,18 +249,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/discover/favs", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    ["/new-visit", "Visit"],
-    ["/visit/t1", "Visit"],
-
-    // Wallet is a tab again, and its four full-screen children light it by
-    // nesting under /wallet. /credits, /inbox/credits and every
-    // /new-visit/wallet* path are redirect SOURCES, never rendered, so none
-    // of them belongs in this matrix.
-    ["/wallet", "Wallet"],
-    ["/wallet/buy", "Wallet"],
-    ["/wallet/gift", "Wallet"],
-    ["/wallet/redeem", "Wallet"],
-    ["/wallet/balance/bal_1", "Wallet"],
 
     // Me's pages, and the one detail route it still owns: a reservation is
     // reached from a place AND from Me › Reservations.
@@ -276,23 +264,33 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   // Non-overlap is currently naming luck (/rewards vs /reservation share no
   // prefix). Pin it so a future rename that creates an overlap fails here.
-  // /new-visit vs /visit is a genuine prefix hazard: "/visit".startsWith is
-  // false for "/new-visit". Both light Visit now, but /wallet vs /new-visit
-  // is the live hazard — Wallet left /new-visit/wallet for its own tab, and a
-  // stale prefix would light two tabs. Pin the cardinality.
   it("never lights two tabs at once", async () => {
     for (const [path] of MATRIX) {
       expect((await activeTabFor(path)).length, path).toBe(1);
     }
   });
+
+  // MESITA-2076 parked Pay and took Wallet off the bar. Their pages stay
+  // routable and, until Pay un-parks, light NOTHING — a parked tab drawn lit
+  // would promise a destination its tap does not open.
+  it.each([
+    "/new-visit",
+    "/visit/t1",
+    "/wallet",
+    "/wallet/buy",
+    "/wallet/balance/bal_1",
+  ])("%s lights no tab while Pay is parked", async (path) => {
+    expect(await activeTabFor(path)).toEqual([]);
+  });
 });
 
-// MESITA-2055 — the visit-optimised bar is Home · Search · Visit · Wallet · Me.
+// MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me (Pato: "BOTTOM
+// BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.").
 //
-// This REPLACES the MESITA-1609 guard (Home · Search · Pay · Me), which had
-// itself reversed MESITA-1119's. Two things MESITA-1119 cared about are
-// unchanged below: no class stamped into Me, and no Agents tab.
-describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", () => {
+// This REPLACES the MESITA-2055 guard (Home · Search · Visit · Wallet · Me).
+// Two things MESITA-1119 cared about are unchanged below: no class stamped
+// into Me, and no Agents tab.
+describe("MESITA-2076 — the bar is Home · Search · Pay (Soon) · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -308,18 +306,26 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Visit · Wallet · Me", async () => {
-    expect(await tabLabels()).toEqual([
-      "Home",
-      "Search",
-      "Visit",
-      "Wallet",
-      "Me",
-    ]);
+  it("is exactly Home · Search · Pay · Me", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
-  it("keeps Order off the visit-optimised bar", async () => {
-    expect(await tabLabels()).not.toContain("Order");
+  it("keeps Wallet, Visit and Order off the bar", async () => {
+    const labels = await tabLabels();
+    expect(labels).not.toContain("Wallet");
+    expect(labels).not.toContain("Visit");
+    expect(labels).not.toContain("Order");
+  });
+
+  // Pay is a button that opens ComingSoonModal, never a link to /new-visit,
+  // and it is the only tab tagged Soon.
+  it("parks Pay: a Soon-tagged button, not a link", async () => {
+    const html = await renderNav("/search");
+    const buttons = html.split("<button ").slice(1);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toMatch(/text-center">Pay</);
+    expect(buttons[0]).toMatch(/>Soon</);
+    expect(html.match(/>Soon</g)).toHaveLength(1);
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
@@ -331,7 +337,7 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
 
   // Every tab's href is a live page, never a redirect source — a tab that
   // 308s costs a hop on every tap and lights nothing while it runs.
-  it("points every tab at its own live default", async () => {
+  it("points every linked tab at its own live default", async () => {
     const html = await renderNav("/me");
     const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map(
       (m) => m[1],
@@ -339,8 +345,6 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
     expect(hrefs).toEqual([
       CONSUMER_ROUTES.discoverDefault,
       CONSUMER_ROUTES.search,
-      CONSUMER_ROUTES.newVisit.root,
-      CONSUMER_ROUTES.wallet.root,
       CONSUMER_ROUTES.me,
     ]);
     const sources = new Set(
@@ -356,26 +360,30 @@ describe("MESITA-2055 — the bar is Home · Search · Visit · Wallet · Me", (
 // loses its selected state. This pins ORDER, COUNT, the width budget, and
 // that every pill is a real page.
 //
-// The order is Pato's, verbatim (MESITA-2050): "Home(scroll). Search. Chat.
-// Favs. Pay." and "Order must have Home."
+// The order is Pato's, verbatim (MESITA-2081): "Home, Scroll, Chat, Favs".
 describe("T5b — Home's supporting rail", () => {
-  it("is exactly Home · Chat · Favs", async () => {
+  it("is exactly Home · Scroll · Chat · Favs", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).toEqual(["Home", "Chat", "Favs"]);
+    expect(HOME_MODES.map((m) => m.label)).toEqual([
+      "Home",
+      "Scroll",
+      "Chat",
+      "Favs",
+    ]);
   });
 
-  // Feed left the rail (MESITA-2050). Its segment is a redirect source again,
-  // and the pill must not come back pointing at a 308.
-  it("has no Feed pill, and /discover/feed forwards to Home in one hop", async () => {
+  // Feed came back as Home (MESITA-2081). Its segment is a live page again,
+  // so nothing may redirect it — a redirect source shadows the page entirely.
+  it("Home is the Feed page, and /discover/feed is not a redirect source", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
-    expect(HOME_MODES.map((m) => m.label)).not.toContain("Feed");
+    expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverTabs.feed);
     const hop = (await nextConfig.redirects!()).find(
       (r) => r.source === "/discover/feed",
     );
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverTabs.scroll);
+    expect(hop).toBeUndefined();
     expect(
       existsSync(join(SHELL, "(visit)", "discover", "feed", "page.tsx")),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
@@ -393,6 +401,9 @@ describe("T5b — Home's supporting rail", () => {
     expect(navSrc).toContain('className="h-3.5 w-3.5 shrink-0"');
     const TEXT_PX: Record<string, number> = {
       Home: 34.2,
+      // Measured off the live site's Inter 600 at 12px (MESITA-2081), the
+      // same probe that reads Home at 34.15 and Search at 40.75.
+      Scroll: 33.0,
       Search: 40.9,
       Chat: 27.3,
       Favs: 27.6,
@@ -433,7 +444,7 @@ describe("T5b — Home's supporting rail", () => {
     const hrefs = HOME_MODES.map((m) => m.href);
     for (const href of hrefs) expect(pages, href).toContain(href);
     expect(new Set(HOME_MODES.map((m) => m.href)).size).toBe(HOME_MODES.length);
-    // The three /discover pills are exactly the contract's discoverTabs.
+    // The four /discover pills are exactly the contract's discoverTabs.
     expect(
       HOME_MODES.map((m) => m.href).filter((h) => h.startsWith("/discover/")),
     ).toEqual(Object.values(CONSUMER_ROUTES.discoverTabs));
@@ -444,7 +455,7 @@ describe("T5b — Home's supporting rail", () => {
   it("lands Home on its leading pill", async () => {
     const { HOME_MODES } = await import("@/components/consumer/ModeRail");
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.scroll,
+      CONSUMER_ROUTES.discoverTabs.feed,
     );
     expect(HOME_MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
     expect(HOME_MODES[0].label).toBe("Home");
@@ -452,6 +463,7 @@ describe("T5b — Home's supporting rail", () => {
 
   it("every Home pill's page lives under discover", () => {
     for (const rel of [
+      ["discover", "feed"],
       ["discover", "scroll"],
       ["discover", "chat"],
       ["discover", "favs"],
@@ -482,9 +494,11 @@ describe("T5b — Home's supporting rail", () => {
 describe("T6 — Activity's three sections are pages on Me", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
-  it("routes each box to its own /me page: notifications · visits · reservations", () => {
+  // Visits left the grid in the MVP cut (MESITA-2077); /me/visits is still a
+  // page (T1 walks it), just with no tile pointing at it.
+  it("routes each box to its own /me page: notifications · reservations", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.visits");
+    expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
     expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
@@ -520,80 +534,59 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders fifteen cells: Profile full-width, then seven pairs", () => {
-    // Seven pairs, no four-up and no tail (MESITA-1639). MESITA-1636 broke the
-    // rhythm with a four-up so the column would not read as undifferentiated,
-    // and paid for it in the only four cells on the page with no summary. The
-    // passport leads by being a different OBJECT — a document with a photo,
-    // twice the height of a cell — not by the pairs below it varying.
+  it("renders six cells: three pairs", () => {
+    // MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet,
+    // Plan, Visits and the five Soon cells left the grid; every one of their
+    // routes still exists. Before that it was Profile + seven pairs.
     //
-    // PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648: the header
-    // states the identity, so the first cell is the one that edits it. It
-    // spans the row since the Passport died (MESITA-2043: "we don't have
-    // passports"), because fifteen cells cannot pair.
+    // PROFILE LEADS (Pato, 2026-09-08): the header states the identity, so
+    // the first cell is the one that edits it, spanning the row since the
+    // Passport died (MESITA-2043).
     //
-    // INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add instagram
-    // and then diamond"). Read the history before assuming this is a revert:
-    // the pair was cells (MESITA-1650), then header chips only (MESITA-1652),
-    // then cells again (MESITA-1682), then Passport rows (MESITA-1787) — and
-    // every one of those rounds was about where ONE AXIS lives, with "the
-    // header already says the rung" as the argument against a cell. There is
-    // no rung. These are two unrelated destinations, and the ORDER is
-    // load-bearing: Instagram first, on all three surfaces that print them
-    // (header chips, this grid). The chips STAY.
-    //
-    // Still absent, each for its own reason: Metrics and Contact moved into
-    // Settings; Cards is the same `CardsModal` Pay's Wallet already opens,
-    // and Wallet is a cell right here.
+    // DIAMOND IS PARKED and Help is SUPPORT (Pato, MESITA-2080: "Diamond
+    // goes for the future too. Its just only Profile Instagram /
+    // Notifications Reservations / Settings Support").
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
-      "Diamond",
-      "Wallet",
-      "Plan",
       "Notifications",
-      "Visits",
-      "Orders",
       "Reservations",
-      "Share",
-      "Gift",
       "Settings",
-      "Help",
-      "Integrations",
-      "Friends",
+      "Support",
     ]);
   });
 
-  it("the fully-parked row sits BELOW Settings and Help", () => {
-    // Connector and Friends are both `soon`, so that row opens nothing at
-    // all. Settings and Help are the most-reached cells in the tail, so they
-    // come first — MESITA-1641 made exactly this argument and then shipped
-    // the inverse, which is why the ordering is pinned rather than merely
-    // commented (MESITA-1642). About stays last: it is the version and legal
-    // footer, the least-reached cell on the page.
-    const order = gridTitles(ME);
-    expect(order.indexOf("Settings")).toBeLessThan(
-      order.indexOf("Integrations"),
-    );
-    expect(order.indexOf("Help")).toBeLessThan(order.indexOf("Friends"));
-    expect(order.at(-1)).toBe("Friends");
+  it("hides every money and not-built door for the MVP", () => {
+    for (const hidden of [
+      "Wallet",
+      "Plan",
+      "Visits",
+      "Orders",
+      "Share",
+      "Gift",
+      "Integrations",
+      "Friends",
+      "Diamond",
+    ]) {
+      expect(gridTitles(ME), hidden).not.toContain(hidden);
+    }
   });
 
-  it("Profile is the one full-width row; every other row is a pair", () => {
-    // Eight `DestGrid`s of two. Counting grids and spans SEPARATELY on
+  it("Settings and Support close the page", () => {
+    // The most-reached cells in the tail (MESITA-1642), and Support (the
+    // /me/help page) is the legal and version footer, so it is last.
+    expect(gridTitles(ME).slice(-2)).toEqual(["Settings", "Support"]);
+  });
+
+  it("every row is a pair; nothing spans", () => {
+    // Three `DestGrid`s of two. Counting grids and spans SEPARATELY on
     // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
-    // would go on being true of any row width. Eight since Instagram and
-    // Diamond became their own pair (MESITA-2040).
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(8);
-    // About was the only spanning cell and it folded into Help (MESITA-1650).
-    // Profile spans now (MESITA-2043) — exactly one, and it is Profile.
-    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
-    const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
-    expect(
-      cells
-        .filter((c) => /^\s*full$/m.test(c))
-        .map((c) => c.match(/title="([^"]+)"/)?.[1]),
-    ).toEqual(["Profile"]);
+    // would go on being true of any row width. Profile spanned from
+    // MESITA-2043 until Diamond was parked (MESITA-2080) and Instagram moved
+    // up beside it.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(3);
+    expect([...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]).toHaveLength(6);
+    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
 
@@ -667,24 +660,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     ).toContain("SignOutButton");
   });
 
-  it("every parked cell is marked `soon`, and only those four are", () => {
-    // Nothing is hidden a tap deeper any more, so the page carries its own
-    // roadmap: five cells wear the pill. A sixth live-looking cell pointing
-    // at nothing — or one of these five quietly losing the flag — is the
-    // regression this catches. Five of thirteen is a lot; T8's own opening
-    // note says a dead cell in a grid reads as broken rather than upcoming,
-    // so treat this list growing as a signal, not a formality.
+  it("no parked cell is on the grid during the MVP cut", () => {
+    // The five Soon cells were the page's own roadmap; the MVP cut took them
+    // off rather than show five dead tiles (MESITA-2077). A cell coming back
+    // as `soon` is a decision to reverse that, not a drift.
     const parkedCells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
       .map((m) => m[0])
       .filter((c) => /\bsoon\b/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(parkedCells).toEqual([
-      "Orders",
-      "Share",
-      "Gift",
-      "Integrations",
-      "Friends",
-    ]);
+    expect(parkedCells).toEqual([]);
   });
 
   it("Help is the only door to terms and privacy", () => {

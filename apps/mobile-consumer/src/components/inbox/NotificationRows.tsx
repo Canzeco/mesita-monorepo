@@ -4,7 +4,6 @@ import { Text, View } from 'react-native';
 
 import { COLORS } from '@/constants/brand';
 import type { ConsumerNotification } from '@/lib/api/notifications';
-import { formatPayMx } from '@/lib/api/pay';
 
 function kindLabel(kind: string): string {
   if (kind === 'bill') return 'Your bill';
@@ -19,8 +18,6 @@ function KindIcon({ kind, size = 14 }: { kind: string; size?: number }) {
 
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const p = n.bill;
-  const reward =
-    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
 
   return (
     <View
@@ -87,23 +84,8 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
             {kindLabel(n.kind)}
           </Text>
         </View>
-        {reward > 0 ? (
-          <Text
-            style={{
-              marginTop: 4,
-              fontSize: 12,
-              fontFamily: 'Inter_500Medium',
-              // --secondary, still matching web notification-row's
-              // text-secondary — which went achromatic in MESITA-1936. It was
-              // crimson here, and before that an off-token sky-blue (#0284c7).
-              // The amount now out-ranks the metadata by lightness (#404040 vs
-              // the #5d5d5d kind label and timestamp) plus its weight step.
-              color: COLORS.secondary,
-            }}
-          >
-            Reward {formatPayMx(reward, p.currency)}
-          </Text>
-        ) : null}
+        {/* MVP cut (MESITA-2078): the "Reward MX$…" line is hidden while Pay
+            is parked. */}
         <Text
           style={{
             marginTop: 4,

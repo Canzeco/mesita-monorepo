@@ -13,9 +13,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { errMsg } from "@/lib/utils";
 
 import {
-  FeaturedOrdersBox,
   FeaturedReservationsBox,
-  FeaturedVisitsBox,
   InstagramStoriesBox,
 } from "./place-detail/activity";
 import { LocationBox, HoursBox } from "./place-detail/location-hours";
@@ -31,7 +29,6 @@ import {
   MesitaReviewsBox,
   ReviewsSummaryBox,
 } from "./place-detail/reviews";
-import { RewardsBox } from "./place-detail/rewards";
 import { PlaceRequestPanel } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import {
@@ -50,7 +47,7 @@ import {
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook; swipe-style tags; then Save · Contact · Share.
 //   2. Sticky tab strip — Enrich only until Enriched, then Overview ·
-//      Reviews · Menus · Rewards.
+//      Reviews · Menus (Rewards is hidden by the MVP cut, MESITA-2078).
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
@@ -137,11 +134,8 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
               stories={activity.stories}
               loading={activityLoading}
             />
-            <FeaturedVisitsBox
-              visits={activity.visits}
-              loading={activityLoading}
-            />
-            <FeaturedOrdersBox />
+            {/* MVP cut (MESITA-2078): Featured visits and Featured orders
+                are hidden while Pay is parked. */}
             <FeaturedReservationsBox
               reservations={activity.reservations}
               loading={activityLoading}
@@ -151,13 +145,8 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
         {activeTab === "products" && place.is_enriched && (
           <MenusBox place={place} />
         )}
-        {/* Reward always renders on its tab. Web listings and rate-less
-            partners get a "doesn't offer rewards" state inside RewardsBox
-            rather than an empty tab, so all three cases (web / partner-no-
-            rate / partner-with-reward) are explicit to the guest. */}
-        {activeTab === "rewards" && place.is_enriched && (
-          <RewardsBox place={place} />
-        )}
+        {/* MVP cut (MESITA-2078): the Rewards tab and its RewardsBox are
+            hidden while Pay is parked. */}
       </div>
     </div>
   );

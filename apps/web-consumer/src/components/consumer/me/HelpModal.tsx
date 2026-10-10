@@ -2,7 +2,7 @@
 
 // Help — the single education home for the reward program (MESITA-809).
 // Lives on Me, not on Rewards: the wallet is for doing, this is for
-// understanding. Opened from the Me > Help row.
+// understanding. Opened from the Me > Support tile.
 //
 // Numbers never live here. A static ladder quoted Aggressive defaults as
 // if they were every place's bill (MESITA-1017). The live sheet is the
@@ -10,28 +10,27 @@
 //
 // TWO IDENTITY ROWS (MESITA-2044): Base and Diamond. No metals, no
 // ladder — "either you are diamond or you are not".
+//
+// MVP cut (MESITA-2078): the rewards explainer and the priced list are
+// hidden while Pay is parked. The page is titled Support (MESITA-2080) and holds Legal and
+// the version; HelpRungList stays exported so un-parking is one JSX block.
 
 import type { LucideIcon } from "lucide-react";
 import {
   DoorOpen,
   FileText,
   Gem,
-  Info,
   Instagram,
-  Percent,
   ScrollText,
-  Sparkles,
   Store,
   UtensilsCrossed,
 } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { useConsumerClass } from "@/lib/class-context";
 import {
   BASE_RATE_HINT,
   BASE_RATE_LABEL,
   DIAMOND,
-  DIAMOND_HELP_LINE,
   DIAMOND_RATE_HINT,
 } from "@/lib/consumer-identity";
 import { cn } from "@/lib/utils";
@@ -157,58 +156,12 @@ export function HelpRungList({ classKey }: { classKey: string }) {
 }
 
 export function HelpModal() {
-  const { key: classKey } = useConsumerClass();
-
   return (
-    <MeScreen title="How rewards work">
+    <MeScreen title="Support">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2.5">
-          <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
-            <Info className="size-[18px]" />
-          </span>
-          <p className="text-muted-foreground text-xs">
-            Instant discounts, Diamond, and the actions that stack.
-          </p>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <span className="bg-secondary/12 text-secondary grid size-9 shrink-0 place-items-center rounded-xl">
-            <Percent className="size-[18px]" strokeWidth={2.25} />
-          </span>
-          <p className="text-muted-foreground type-body leading-relaxed">
-            <span className="text-foreground font-semibold">
-              Instant discounts.
-            </span>{" "}
-            Start a ticket, show its QR at the table — the discount comes
-            straight off the bill. Mesita never holds your money.
-          </p>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <span className="bg-pink-gradient grid size-9 shrink-0 place-items-center rounded-xl text-white">
-            <Gem className="size-[18px]" />
-          </span>
-          <p className="text-muted-foreground type-body leading-relaxed">
-            {DIAMOND_HELP_LINE}
-          </p>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <span className="bg-secondary/12 text-secondary grid size-9 shrink-0 place-items-center rounded-xl">
-            <Sparkles className="size-[18px]" strokeWidth={2.25} />
-          </span>
-          <p className="text-muted-foreground type-body leading-relaxed">
-            <span className="text-foreground font-semibold">
-              Actions add on.
-            </span>{" "}
-            Welcome, Instagram Story, and Mesita Review stack on
-            your rate — not pick-one. The bill clamps at 100% and
-            applies to the first cap-pesos. Live percents sit on each
-            place&apos;s Rewards tab.
-          </p>
-        </div>
-
-        <HelpRungList classKey={classKey} />
+        {/* MVP cut (MESITA-2078): the rewards explainer (instant discounts,
+            the Diamond line, actions that stack) and HelpRungList are hidden
+            while Pay is parked. */}
 
         {/* ABOUT LIVES HERE (Pato, MESITA-1650: "Remove the about box at the
             bottom, that must go in help"). The About cell is gone from Me, so

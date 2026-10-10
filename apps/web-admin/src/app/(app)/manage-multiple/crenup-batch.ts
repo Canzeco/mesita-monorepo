@@ -1,6 +1,8 @@
-// CRENUP = CReate + ENrich + UPdate — one box, five buttons under three
-// verbs. Update is the group name for the three writes to a place that
-// already exists (List, Unlist, Delete); it is never a button (MESITA-2026).
+// The five write actions, in three boxes: Create, Enrich, and Update — the
+// box for the three writes to a place that already exists (List, Unlist,
+// Delete). Update is never a button (MESITA-2026, MESITA-2096). The type
+// keeps its old name until the First Stage deletion settles (MESITA-2096
+// decision); the word is gone from every screen.
 //
 // Create is NOT scheduled. Fire every Google Place ID in one batch — Google
 // accepts that fan-out. Enrich IS scheduled: admin-web-enrich-place only

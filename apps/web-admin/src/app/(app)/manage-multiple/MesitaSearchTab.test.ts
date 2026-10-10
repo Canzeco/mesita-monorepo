@@ -43,7 +43,6 @@ const GAP_FIXTURE: PlaceHit = {
     description: { state: "pending", at: null, detail: null },
     embedding: { state: "pending", at: null, detail: null },
   },
-  verified: false,
   partner: false,
   promoting: false,
   promoting_level: 0,

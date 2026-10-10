@@ -170,31 +170,55 @@ describe("Scroll rides the shared deck", () => {
   });
 });
 
-// NO MOCK DATA ANYWHERE IN DISCOVERY (Pato, live, 2026-09-08: "don't put
-// shitty mock data"). `lib/mock/feed-places.ts` is deleted, not parked — it
-// was the last caller's only consumer, and a plausible-looking place you
-// cannot visit teaches a reviewer nothing while quietly becoming the thing
-// everyone demos.
-//
-// Scroll fills its 50-card deck by CYCLING the real rows instead. With one
-// place in the catalog that is the same place fifty times, which is honest by
-// construction: every card is tappable, savable, and can start a real visit.
+// ONE MOCK, ONE SWITCH, SCROLL ONLY (MESITA-2105). From 2026-09-08 Discovery
+// invented nothing (Pato: "don't put shitty mock data") and Scroll cycled the
+// real rows. On 2026-10-10 Pato reversed that for Scroll alone: "for the
+// moment use mock data written in the frontend". The design review bounded the
+// reversal, and these pins hold the bounds — Scroll's only mock is the shared
+// scroll-places file behind SCROLL_USES_MOCK, it replaces the WHOLE source
+// rather than padding the real one, it never asks the server while on, and
+// Home and Favs still invent nothing. MESITA-2095 flips the switch off and
+// restores the old absolute pin.
 describe("Discovery invents no places", () => {
   const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
   const favs = read("components/consumer/home/FavoritesList.tsx");
 
   it.each([
-    ["Scroll", "components/consumer/home/scroll/ScrollDeck.tsx"],
+    ["Home", "components/consumer/home/CatalogRails.tsx"],
     ["Favs", "components/consumer/home/FavoritesList.tsx"],
   ])("%s ships no mock deck", (_label, rel) => {
     const src = read(rel);
     expect(src).not.toContain("FEED_MOCK_PLACES");
     expect(src).not.toContain("mock/feed-places");
+    expect(src).not.toContain("mock/scroll-places");
   });
 
-  // The deck is a fixed 50 cycled from whatever is real — never padded with
-  // invented rows, and never left at length 1 where the gesture cannot happen.
-  it("Scroll cycles the real rows to a full deck", () => {
+  it("Scroll's only mock is the shared file, behind the switch", () => {
+    const mockImports = scroll.match(/from "@\/lib\/mock\/[^"]+"/g) ?? [];
+    expect(mockImports.sort()).toEqual([
+      'from "@/lib/mock/enrich-overview"',
+      'from "@/lib/mock/scroll-places"',
+    ]);
+    expect(scroll).not.toContain("mock/feed-places");
+    // The switch replaces the whole source; fake and real never share a feed.
+    expect(scroll).toContain(
+      "const source = SCROLL_USES_MOCK ? scrollMockPlaces() : (located ?? places);",
+    );
+  });
+
+  it("the located re-fetch never runs while the mock is on", () => {
+    const effect = scroll.slice(scroll.indexOf("useEffect(() => {"));
+    const firstStatement = effect
+      .split("\n")
+      .slice(1)
+      .find((line) => line.trim() && !line.trim().startsWith("//"));
+    expect(firstStatement?.trim()).toBe("if (SCROLL_USES_MOCK) return;");
+  });
+
+  // The deck is a fixed 50, cycled from its one source (the mock, or the real
+  // rows once MESITA-2095 flips the switch) — never left at length 1 where the
+  // gesture cannot happen.
+  it("Scroll cycles its rows to a full deck", () => {
     expect(scroll).toContain("const DECK_SIZE = 50;");
     expect(scroll).toContain("rows[i % rows.length]");
   });

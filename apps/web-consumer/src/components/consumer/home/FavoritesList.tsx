@@ -131,10 +131,13 @@ export function FavoritesList({
         <EmptyState
           icon={Heart}
           title="Nothing saved yet"
-          description="Swipe right on a place and it lands here — with its discount attached."
+          // MVP cut (MESITA-2078): "with its discount attached" hidden while
+          // Pay is parked.
+          description="Swipe right on a place and it lands here."
           action={{
             label: "Start swiping",
-            href: CONSUMER_ROUTES.discoverDefault,
+            // The deck, not Home: Home is the catalog since MESITA-2081.
+            href: CONSUMER_ROUTES.discoverTabs.scroll,
           }}
         />
       ) : (

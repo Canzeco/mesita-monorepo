@@ -70,6 +70,10 @@ export function InboxNotificationsSection({ userId }: { userId: string }) {
 
   usePayNotificationPoll(load, Boolean(userId));
 
+  // MVP cut (MESITA-2078): "Your bill" notifications are hidden while Pay is
+  // parked; every other kind still lists.
+  const visibleRows = rows.filter((n) => n.kind !== 'bill');
+
   return (
     <ScrollView
       className="flex-1"
@@ -94,7 +98,7 @@ export function InboxNotificationsSection({ userId }: { userId: string }) {
         </View>
       ) : (
         <View className="gap-4">
-          {rows.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
+          {visibleRows.length === 0 && MY_ACTIVITY.length === 0 && !error ? (
             <View className="items-center rounded-2xl border border-border bg-card px-4 py-8">
               <Bell
                 color={COLORS.mutedForeground}
@@ -107,9 +111,9 @@ export function InboxNotificationsSection({ userId }: { userId: string }) {
             </View>
           ) : (
             <>
-              {rows.length > 0 ? (
+              {visibleRows.length > 0 ? (
                 <View className="gap-2">
-                  {rows.map((n) => (
+                  {visibleRows.map((n) => (
                     <NotificationRow key={n.id} n={n} />
                   ))}
                 </View>

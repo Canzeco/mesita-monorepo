@@ -44,7 +44,7 @@ import { isMemberPlan } from "@/components/place-manage/sections/promo-state";
 import { placeTabHref } from "@/lib/place-tabs";
 import { PlaceTabGate } from "@/components/console/PlaceTabGate";
 import { PlaceManageShell } from "./PlaceManageShell";
-import { PlaceScopeProvider } from "./PlaceScope";
+import { PlaceScopeProvider } from "@/components/console/PlaceScope";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +88,6 @@ export default async function PlaceLayout({
   const heading = (
     <PlaceHeading
       name={view.place.name}
-      verified={view.place.verified}
       listed={view.place.listed}
       partner={manage ? isMemberPlan(manage.place.plan) : false}
     />

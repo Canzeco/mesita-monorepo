@@ -8,11 +8,10 @@ import type { Href } from 'expo-router';
 // ef.ts / tokens). Any change to routes or helpers on either side MUST update
 // both files in the same PR — web/mobile IA parity is a product rule.
 //
-// Expo Router ↔ web href map (agents). The bar is Visit · Order · Wallet · Me
-// on both platforms (Pato, MESITA-2050); Visit's rail is Home · Search · Chat
-// · Favs · Pay. Web draws that rail with a route group over five URLs; here
-// every pill is its own hidden (tabs) screen, so each keeps its state when
-// the guest switches pills and ConsumerTabBar lights Visit for all five.
+// Expo Router ↔ web href map (agents). The bar is Home · Search · Pay (Soon)
+// · Me on both platforms (Pato, MESITA-2076); Pay is parked, and Wallet and
+// Order stay routable off the bar. Every Home pill is its own hidden (tabs)
+// screen, so each keeps its state when the guest switches pills.
 //
 //   web /discover/scroll  (Visit › Home)   →  Expo /(tabs)/home   (SwipeDeck —
 //       mobile has not ported Scroll's vertical deck)
@@ -44,16 +43,18 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical on web. Mobile
   // already has the screen (src/app/share.tsx); this key was simply missing.
   share: '/share',
-  // VISIT'S RAIL (Pato, MESITA-2050): Home · Search · Chat · Favs · Pay.
-  // Same key names as web's contract; each value is a hidden (tabs) screen.
-  // Feed left the rail on web and never existed here.
+  // HOME'S RAIL (Pato, MESITA-2081): Home · Scroll · Chat · Favs. Same key
+  // names as web's contract; each value is a hidden (tabs) screen. `feed` is
+  // the pill reading Home (web's /discover/feed) and lives at the `home`
+  // screen; `scroll` is the deck.
   discoverTabs: {
-    scroll: '/(tabs)/home',
+    feed: '/(tabs)/home',
+    scroll: '/(tabs)/scroll',
     chat: '/(tabs)/chat',
     favs: '/(tabs)/favs',
   },
   search: '/(tabs)/search',
-  // Visit's default is its leading pill, Home — web's `/discover/scroll`.
+  // The default is the leading pill, Home — web's `/discover/feed`.
   discoverDefault: '/(tabs)/home',
   // Shared discovery Filters modal — web /filters peer (MESITA-905). Web's
   // redesigned Filters is now a bottom-overlay pill with no route of its own

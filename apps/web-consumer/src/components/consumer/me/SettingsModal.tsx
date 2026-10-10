@@ -175,7 +175,9 @@ export function SettingsModal() {
               tint="amber"
               storageKey={PREF_KEYS.push}
               label="Push notifications"
-              sub="Ticket updates and rewards"
+              // MVP cut (MESITA-2078): tickets and rewards hidden while Pay
+              // is parked.
+              sub="Reservations and updates"
             />
           </SettingsGroup>
 
@@ -264,7 +266,8 @@ export function SettingsModal() {
               tint="muted"
               href={CONSUMER_ROUTES.mePages.settingsMetrics}
               label="Metrics"
-              sub="Saved, visits, reviews"
+              // MVP cut (MESITA-2078): visits hidden while Pay is parked.
+              sub="Saved, reviews"
             />
             <RowDivider />
             <SettingsLinkRow

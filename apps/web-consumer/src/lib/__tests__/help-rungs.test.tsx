@@ -46,9 +46,24 @@ describe("Help names everything priced and quotes no static percent", () => {
     expect(you(on)).toBeGreaterThan(on.indexOf("Diamond"));
   });
 
-  it("says the discount line exactly, and only in Diamond's words", () => {
-    expect(SRC).toContain("DIAMOND_HELP_LINE");
-    expect(SRC).not.toMatch(/Elevated classes|every class above/);
+  // MVP cut (MESITA-2078): Help no longer renders the rewards explainer or
+  // the priced list while Pay is parked. This used to pin that the page
+  // quoted DIAMOND_HELP_LINE; it now pins that the page quotes no rate copy
+  // at all and mounts no HelpRungList (comments stripped, so the hide-site
+  // note cannot satisfy or trip it). HelpRungList itself is still pinned by
+  // the render tests above, for when Pay un-parks.
+  it("renders no rewards explainer and no priced list during the MVP cut", () => {
+    const code = SRC.replace(/\/\*[\s\S]*?\*\//g, "").replace(
+      /(^|[^:])\/\/[^\n]*/g,
+      "$1",
+    );
+    expect(code).not.toContain("DIAMOND_HELP_LINE");
+    expect(code).not.toContain("<HelpRungList");
+    expect(code).not.toMatch(/Instant discounts|Actions add on|clamps at 100%/);
+    expect(code).not.toContain("How rewards work");
+    // The page is titled Support since MESITA-2080; the route stays /me/help.
+    expect(code).toContain('title="Support"');
+    expect(code).not.toMatch(/Elevated classes|every class above/);
   });
 
   it("names NO plan rung — the plan stopped pricing anything (MESITA-1705)", () => {

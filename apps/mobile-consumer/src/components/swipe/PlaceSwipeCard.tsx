@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Clock,
-  Gift,
   MapPin,
   Navigation,
   Star,
@@ -14,14 +13,13 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { PartnerMark } from '@/components/brand/PartnerMark';
-import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import { resolveZoneLabel } from '@/lib/adapters/place-to-detail';
 import type { Place } from '@/lib/api/places';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { formatPlacePriceLevelSymbols } from '@/lib/place-price';
 import { getOpeningStateLabel } from '@/lib/place-state';
-import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import {
   firstInitial,
   formatCompactCount,
@@ -58,15 +56,6 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
   const stateLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
   const isVerified = place.listing_type === 'partner';
-  const isFirstVisit = place.is_first_visit !== false;
-  const promoPercent =
-    isVerified
-      ? resolvePromoRateFromPlaceRow(
-          place as unknown as Record<string, unknown>,
-          isFirstVisit,
-          false,
-        )
-      : null;
 
   return (
     <View className="absolute inset-0 overflow-hidden rounded-2xl bg-card">
@@ -182,46 +171,8 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
               </Text>
             </MetaChip>
           ) : null}
-          {promoPercent != null ? (
-            <LinearGradient
-              colors={[...GRADIENTS.pink]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{
-                borderRadius: 6,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              {/* FILLED glyph, matching PromoChip's affirmative exactly — the
-                  inline copy here must not drift from the component the
-                  Favorites tile renders. Opaque + border-less + filled is the
-                  trio that keeps a discount unmissable now the ramp is ink. */}
-              <Gift
-                color={COLORS.primaryForeground}
-                fill="rgba(255,255,255,0.4)"
-                size={12}
-              />
-              <Text className="text-[11.5px] font-semibold text-white">
-                Up to {promoPercent}% Discount for You
-              </Text>
-            </LinearGradient>
-          ) : isVerified ? (
-            <MetaChip>
-              {/* The discount chip above is the only OPAQUE ink chip on the
-                  card (GRADIENTS.pink is the ink ramp now) — the affirmative.
-                  This one stays an outlined MetaChip and its glyph drops to the
-                  0.7 white its siblings wear, so "no reward" reads as a state
-                  nobody acts on rather than a second offer. */}
-              <Gift color="rgba(255,255,255,0.7)" size={12} />
-              <Text className="text-[11px] font-semibold text-white">
-                No Reward for You
-              </Text>
-            </MetaChip>
-          ) : null}
+          {/* MVP cut (MESITA-2078): the discount / no-reward chip is hidden while
+              Pay is parked. */}
         </View>
       </View>
     </View>

@@ -45,22 +45,22 @@ import {
   Tag,
 } from "./blocks";
 import { CrenupSaveBar } from "./CrenupSaveBar";
-import { SectionStrip } from "./SectionStrip";
+import { SectionStrip, type CrenupView } from "./SectionStrip";
 import { clampFunnel, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
-import {
-  VerificationConfigClient,
-} from "../verification-config/VerificationConfigClient";
-import type { VerificationConfig } from "../verification-config/defaults";
+import { ENRICHMENT_PARENT } from "./nav";
 
-/** The Crenup box on Manage Places — where Create actually runs. */
-const CRENUP_BOX_HREF = "/manage-multiple#crenup";
+/** The Create box on Multiple Places — where Create actually runs. */
+const CREATE_BOX_HREF = "/manage-multiple#create";
 
 export type { CrenupSettings };
 
-// THE CRENUP PAGE. Models (read-only) · Create · Enrich · Functions · Verification.
-// Discovery-shaped. One Crenup Save for atlas_*; Verification keeps its own
-// per-switch save. Search eligibility lives on Discovery › Map — not here.
+// THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
+//   Creation    Models (read-only) · Create
+//   Enrichment  Enrich · Functions
+// Discovery-shaped. One Save for atlas_* on both. Search eligibility lives
+// on Discovery › Map. Creation had a third module, Verification, until
+// MESITA-2106: the MVP has no business app, so nobody proves ownership.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
@@ -71,14 +71,13 @@ const QUALITY_LABEL: Record<CrenupSettings["synthesisQuality"], string> = {
 };
 
 export function CrenupClient({
+  view,
   initialSettings,
   settingsUpdatedAt,
   settingsLoadError,
   prompts,
-  verificationConfig,
-  verificationUpdatedAt,
-  verificationLoadError,
 }: {
+  view: CrenupView;
   initialSettings: CrenupSettings;
   settingsUpdatedAt: string | null;
   settingsLoadError: string | null;
@@ -88,9 +87,6 @@ export function CrenupClient({
    * be worse than an absent one.
    */
   prompts: CrenupPrompt[];
-  verificationConfig: VerificationConfig;
-  verificationUpdatedAt: string | null;
-  verificationLoadError: string | null;
 }) {
   const promptFor = (key: string) => prompts.find((p) => p.key === key);
   const [settings, setSettings] = useState(initialSettings);
@@ -161,10 +157,12 @@ export function CrenupClient({
 
   return (
     <>
-      <SectionStrip />
+      <SectionStrip view={view} />
 
       {/* pb-24 keeps the last module clear of the sticky CrenupSaveBar. */}
       <div className="flex flex-col gap-4 pb-24">
+        {view === "creation" && (
+        <>
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
@@ -250,7 +248,8 @@ export function CrenupClient({
                   ),
                 },
               ]}
-              steps={chipsFor("create")}
+              // Functions lives on Enrichment, so Create's chips cross over.
+              steps={chipsFor("create", ENRICHMENT_PARENT.href)}
               estimate={
                 <FlowEstimate
                   caption="Details + Description + Embedding. One place."
@@ -276,10 +275,10 @@ export function CrenupClient({
                 the wait.
               </p>
               {/* This page CONFIGURES Create; it does not run it. The door is
-                  Manage Places, same idiom as the Models section's jump. */}
+                  Multiple Places › Create, same idiom as the Models section's jump. */}
               <p className="text-muted-foreground mt-3 text-sm">
                 <Link
-                  href={CRENUP_BOX_HREF}
+                  href={CREATE_BOX_HREF}
                   className="text-foreground font-semibold underline underline-offset-2"
                 >
                   Create a place ›
@@ -289,6 +288,11 @@ export function CrenupClient({
           </SectionCard>
         </div>
 
+        </>
+        )}
+
+        {view === "enrichment" && (
+        <>
         <div id="s-enrich" className="scroll-mt-16">
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
@@ -551,13 +555,8 @@ export function CrenupClient({
           </SectionCard>
         </div>
 
-        <div id="s-verification" className="scroll-mt-16">
-          <VerificationConfigClient
-            initialConfig={verificationConfig}
-            initialUpdatedAt={verificationUpdatedAt}
-            loadError={verificationLoadError}
-          />
-        </div>
+        </>
+        )}
       </div>
 
       <CrenupSaveBar

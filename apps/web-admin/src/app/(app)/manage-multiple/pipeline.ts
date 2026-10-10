@@ -1,28 +1,41 @@
-// Manage Places — three boxes. CRENUP = CReate + ENrich + UPdate, one box
-// for all three verbs — not three cards and not a fourth.
+import type { CrenupAction } from "./crenup-batch";
+
+// Multiple Places — five boxes, one per job. Two read, three write.
 // The sticky rail and the cards both read from here so a surface cannot
 // appear on one and vanish from the other.
 //
 // Google Search looks up Google. Mesita Search looks up Mesita (read-only).
-// Crenup is the make door and the only state write on the same Google Place
-// IDs. FIVE BUTTONS UNDER THREE VERBS: Create mints the place, Enrich fills
-// it, and Update is what List, Unlist and Delete are — writes to a place that
-// already exists. Update is never a button of its own (`crenup-batch.test.ts`
-// pins that), and there is no Create + Enrich combo.
+// Create, Enrich and Update write, each in its own box over the same Google
+// Place IDs (MESITA-2096, Pato: "just use a create box, enrich box, and
+// update box. i don't care if kinda redundant"). Create mints the place,
+// Enrich fills it, and Update is List, Unlist and Delete — writes to a place
+// that already exists. Update is a box, never a button, and there is no
+// Create + Enrich combo.
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },
   { n: 2, id: "mesita-search", label: "Mesita Search" },
-  { n: 3, id: "crenup", label: "Crenup" },
+  { n: 3, id: "create", label: "Create" },
+  { n: 4, id: "enrich", label: "Enrich" },
+  { n: 5, id: "update", label: "Update" },
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
 
-/** Retired hashes from Search / Create / Enrich and the fourth Edit card. */
+/** The buttons each write box carries, in order. */
+export const WRITE_BOX_ACTIONS = {
+  create: ["create"],
+  enrich: ["enrich"],
+  update: ["list", "unlist", "delete"],
+} as const satisfies Partial<Record<PipelineStepId, readonly CrenupAction[]>>;
+
+/** Retired hashes: the one-box era (#crenup), the old Search / Create /
+ *  Enrich tabs, and the fourth Edit card. */
 export const LEGACY_HASHES: Record<string, PipelineStepId> = {
+  crenup: "create",
   "bulk-search": "google-search",
-  "bulk-create": "crenup",
-  "bulk-enrich": "crenup",
-  "bulk-create-enrich": "crenup",
-  "edit-states": "crenup",
+  "bulk-create": "create",
+  "bulk-enrich": "enrich",
+  "bulk-create-enrich": "create",
+  "edit-states": "update",
 };

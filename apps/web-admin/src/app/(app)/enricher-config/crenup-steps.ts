@@ -73,17 +73,21 @@ function rowByKey(key: string): CrenupStepSpec {
   return row;
 }
 
-function chip(s: CrenupStepSpec): CrenupChip {
+function chip(s: CrenupStepSpec, base: string): CrenupChip {
   return {
-    href: `#${s.id}`,
+    href: `${base}#${s.id}`,
     number: s.number,
     name: s.name,
     label: `${s.number} ${s.name}`,
   };
 }
 
-export function chipsFor(flow: CrenupFlow): CrenupChip[] {
-  return CRENUP_STEP_SPECS.filter((s) => s.flows.includes(flow)).map(chip);
+/** `base` is the page that holds Functions — empty when it is this page.
+ *  Creation's chips point across at Enrichment, where the ladder lives. */
+export function chipsFor(flow: CrenupFlow, base = ""): CrenupChip[] {
+  return CRENUP_STEP_SPECS.filter((s) => s.flows.includes(flow)).map((s) =>
+    chip(s, base),
+  );
 }
 
 export function flowTag(flows: readonly CrenupFlow[]): string {
