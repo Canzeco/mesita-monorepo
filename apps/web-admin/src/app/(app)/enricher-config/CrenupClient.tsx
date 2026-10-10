@@ -45,9 +45,10 @@ import {
   Tag,
 } from "./blocks";
 import { CrenupSaveBar } from "./CrenupSaveBar";
-import { SectionStrip } from "./SectionStrip";
+import { SectionStrip, type CrenupView } from "./SectionStrip";
 import { clampFunnel, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
+import { ENRICHMENT_PARENT } from "./nav";
 import {
   VerificationConfigClient,
 } from "../verification-config/VerificationConfigClient";
@@ -58,9 +59,11 @@ const CRENUP_BOX_HREF = "/manage-multiple#crenup";
 
 export type { CrenupSettings };
 
-// THE CRENUP PAGE. Models (read-only) · Create · Enrich · Functions · Verification.
-// Discovery-shaped. One Crenup Save for atlas_*; Verification keeps its own
-// per-switch save. Search eligibility lives on Discovery › Map — not here.
+// THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
+//   Creation    Models (read-only) · Create · Verification
+//   Enrichment  Enrich · Functions
+// Discovery-shaped. One Crenup Save for atlas_* on both; Verification keeps
+// its own per-switch save. Search eligibility lives on Discovery › Map.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
@@ -71,6 +74,7 @@ const QUALITY_LABEL: Record<CrenupSettings["synthesisQuality"], string> = {
 };
 
 export function CrenupClient({
+  view,
   initialSettings,
   settingsUpdatedAt,
   settingsLoadError,
@@ -79,6 +83,7 @@ export function CrenupClient({
   verificationUpdatedAt,
   verificationLoadError,
 }: {
+  view: CrenupView;
   initialSettings: CrenupSettings;
   settingsUpdatedAt: string | null;
   settingsLoadError: string | null;
@@ -161,10 +166,12 @@ export function CrenupClient({
 
   return (
     <>
-      <SectionStrip />
+      <SectionStrip view={view} />
 
       {/* pb-24 keeps the last module clear of the sticky CrenupSaveBar. */}
       <div className="flex flex-col gap-4 pb-24">
+        {view === "creation" && (
+        <>
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
@@ -250,7 +257,8 @@ export function CrenupClient({
                   ),
                 },
               ]}
-              steps={chipsFor("create")}
+              // Functions lives on Enrichment, so Create's chips cross over.
+              steps={chipsFor("create", ENRICHMENT_PARENT.href)}
               estimate={
                 <FlowEstimate
                   caption="Details + Description + Embedding. One place."
@@ -289,6 +297,11 @@ export function CrenupClient({
           </SectionCard>
         </div>
 
+        </>
+        )}
+
+        {view === "enrichment" && (
+        <>
         <div id="s-enrich" className="scroll-mt-16">
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
@@ -551,13 +564,18 @@ export function CrenupClient({
           </SectionCard>
         </div>
 
-        <div id="s-verification" className="scroll-mt-16">
-          <VerificationConfigClient
-            initialConfig={verificationConfig}
-            initialUpdatedAt={verificationUpdatedAt}
-            loadError={verificationLoadError}
-          />
-        </div>
+        </>
+        )}
+
+        {view === "creation" && (
+          <div id="s-verification" className="scroll-mt-16">
+            <VerificationConfigClient
+              initialConfig={verificationConfig}
+              initialUpdatedAt={verificationUpdatedAt}
+              loadError={verificationLoadError}
+            />
+          </div>
+        )}
       </div>
 
       <CrenupSaveBar
