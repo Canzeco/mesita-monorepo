@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Skeleton } from "@/components/shared";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { barePath } from "@/lib/surface";
 
 // What Home's four pills show while the shared deck loads.
 //
@@ -13,7 +14,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // are card layouts on the page ground, and their rounded skeleton is right —
 // `discover-loading-fallback.test.tsx` pins both halves.
 export function DiscoverFallback() {
-  const pathname = usePathname();
+  // Bare, because the browser keeps /web or /mob in front (MESITA-2066).
+  const pathname = barePath(usePathname() ?? "/");
   if (pathname === CONSUMER_ROUTES.discoverTabs.scroll) {
     return (
       <div

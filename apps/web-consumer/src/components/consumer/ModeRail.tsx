@@ -37,6 +37,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { barePath } from "@/lib/surface";
 import { Flame, Heart, House, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics/track";
@@ -68,7 +69,7 @@ export const HOME_MODES: Mode[] = [
 ];
 
 export function ModeRail() {
-  const pathname = usePathname();
+  const pathname = barePath(usePathname() ?? "/");
   const supabase = useBrowserSupabase();
   const activeRef = useRef<HTMLAnchorElement | null>(null);
 

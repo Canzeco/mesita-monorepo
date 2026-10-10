@@ -50,7 +50,11 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 enable_signup = true
-enable_anonymous_sign_ins = false
+# ON for consumer /web (MESITA-2066): guests browse on a Supabase anonymous
+# session, no phone signup. Production's switch is the dashboard toggle
+# (Authentication › Sign In / Providers › Allow anonymous sign-ins), per the
+# note above — this line only makes the local stack match it.
+enable_anonymous_sign_ins = true
 # MFA — required only for admin sign-in, kept available so businesses can
 # enrol if they want. Admin-side enforcement lives in admin-signin-email.
 enable_manual_linking = false
