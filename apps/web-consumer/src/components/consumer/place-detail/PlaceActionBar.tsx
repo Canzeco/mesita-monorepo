@@ -1,10 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarCheck, Loader2, Lock, QrCode, UtensilsCrossed } from "lucide-react";
+import {
+  CalendarCheck,
+  Loader2,
+  Lock,
+  QrCode,
+  UtensilsCrossed,
+} from "lucide-react";
 
 import {
   CREDITS_BLOCKED,
+  MONEY_ACTIONS_PARKED,
   ORDER_BLOCKED,
   RESERVE_BLOCKED,
 } from "@/components/consumer/place-detail/place-actions-copy";
@@ -92,25 +99,35 @@ export function PlaceActionBar({
             room for a panel, but swallowing it would leave a tap that visibly
             did nothing — one line, above the row, in place. */}
         {error ? (
-          <p className={cn(ERROR_BOX_CLASS, "mb-2 py-1.5")}>
-            {error}
-          </p>
+          <p className={cn(ERROR_BOX_CLASS, "mb-2 py-1.5")}>{error}</p>
         ) : null}
-        <div className="grid grid-cols-4 gap-2">
-          {/* CREDITS — the balance you already hold here. Locked at every
+        <div
+          className={cn(
+            "grid gap-2",
+            MONEY_ACTIONS_PARKED ? "grid-cols-1" : "grid-cols-4",
+          )}
+        >
+          {/* MVP cut: Credits · Visit · Order are hidden while
+              MONEY_ACTIONS_PARKED (MESITA-2077); Reserve stands alone. */}
+          {MONEY_ACTIONS_PARKED ? null : (
+            <>
+              {/* CREDITS — the balance you already hold here. Locked at every
               place until the Credits engine lands; see CREDITS_BLOCKED. */}
-          <button
-            type="button"
-            disabled
-            aria-label={CREDITS_BLOCKED.aria}
-            title={CREDITS_BLOCKED.title}
-            className={cn(btn, "bg-muted text-muted-foreground cursor-not-allowed")}
-          >
-            <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-            Credits
-          </button>
+              <button
+                type="button"
+                disabled
+                aria-label={CREDITS_BLOCKED.aria}
+                title={CREDITS_BLOCKED.title}
+                className={cn(
+                  btn,
+                  "bg-muted text-muted-foreground cursor-not-allowed",
+                )}
+              >
+                <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+                Credits
+              </button>
 
-          {/* VISIT — the money action, so it's the only filled button.
+              {/* VISIT — the money action, so it's the only filled button.
               Same one-tap contract as the Visit wallet: create at "base" and
               land on THE TICKET; a place already holding a live ticket
               re-opens it instead of 409-ing (useStartVisit owns both arms).
@@ -120,58 +137,65 @@ export function PlaceActionBar({
               an enabled button here would be a dead end — but hiding it would
               tell the guest this place is missing a feature the app has, when
               what's actually true is that this place isn't a partner yet. */}
-          <button
-            type="button"
-            onClick={() => pickPlace(place)}
-            disabled={!promoting || starting}
-            aria-label={
-              promoting
-                ? "Start a visit"
-                : "Visits aren't available at this place yet"
-            }
-            title={
-              promoting
-                ? undefined
-                : "This place isn't running a Mesita reward right now."
-            }
-            className={cn(
-              btn,
-              promoting
-                ? "bg-primary text-primary-foreground shadow-glow hover:opacity-95"
-                : "bg-muted text-muted-foreground cursor-not-allowed",
-            )}
-          >
-            {starting ? (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-            ) : promoting ? (
-              <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-            ) : (
-              <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-            )}
-            Visit
-          </button>
+              <button
+                type="button"
+                onClick={() => pickPlace(place)}
+                disabled={!promoting || starting}
+                aria-label={
+                  promoting
+                    ? "Start a visit"
+                    : "Visits aren't available at this place yet"
+                }
+                title={
+                  promoting
+                    ? undefined
+                    : "This place isn't running a Mesita reward right now."
+                }
+                className={cn(
+                  btn,
+                  promoting
+                    ? "bg-primary text-primary-foreground shadow-glow hover:opacity-95"
+                    : "bg-muted text-muted-foreground cursor-not-allowed",
+                )}
+              >
+                {starting ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                ) : promoting ? (
+                  <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+                )}
+                Visit
+              </button>
 
-          {/* ORDER — locked until the order rail ships (MESITA-1155). Menus live
+              {/* ORDER — locked until the order rail ships (MESITA-1155). Menus live
               on the profile tab; this slot stays visible. */}
-          <button
-            type="button"
-            disabled={!orderEnabled}
-            aria-label={orderEnabled ? "Order at this place" : ORDER_BLOCKED.aria}
-            title={orderEnabled ? undefined : ORDER_BLOCKED.title}
-            className={cn(
-              btn,
-              orderEnabled
-                ? outline
-                : "bg-muted text-muted-foreground cursor-not-allowed",
-            )}
-          >
-            {orderEnabled ? (
-              <UtensilsCrossed className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-            ) : (
-              <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
-            )}
-            Order
-          </button>
+              <button
+                type="button"
+                disabled={!orderEnabled}
+                aria-label={
+                  orderEnabled ? "Order at this place" : ORDER_BLOCKED.aria
+                }
+                title={orderEnabled ? undefined : ORDER_BLOCKED.title}
+                className={cn(
+                  btn,
+                  orderEnabled
+                    ? outline
+                    : "bg-muted text-muted-foreground cursor-not-allowed",
+                )}
+              >
+                {orderEnabled ? (
+                  <UtensilsCrossed
+                    className="h-4 w-4 shrink-0"
+                    strokeWidth={2.25}
+                  />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+                )}
+                Order
+              </button>
+            </>
+          )}
 
           {/* RESERVE — offered unless this place opted out (Not / walk-in). */}
           <button

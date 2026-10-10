@@ -38,3 +38,10 @@ export const CREDITS_BLOCKED = {
   title: "Paying with Mesita Credits is coming soon.",
   hint: "Coming soon — top up and spend at the table.",
 } as const;
+
+// MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Credits, Visit
+// and Order are money or not built, and Pay is parked on the bottom bar, so
+// both surfaces that offer them (PlaceActionBar, GoSheet) draw Reserve alone
+// while this is true. Hidden, not deleted: flip it to bring all four back.
+// Typed `boolean` so the parked branches still typecheck.
+export const MONEY_ACTIONS_PARKED: boolean = true;

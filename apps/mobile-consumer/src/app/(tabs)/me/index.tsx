@@ -2,16 +2,8 @@ import {
   Bell,
   CalendarCheck,
   CircleHelp,
-  Bot,
-  Footprints,
-  Gift,
   Settings as SettingsIcon,
-  Share2,
-  ShoppingBag,
   UserRound,
-  Users,
-  Wallet as WalletIcon,
-  Crown,
   Gem,
   AtSign,
 } from 'lucide-react-native';
@@ -46,8 +38,12 @@ import {
 import { useAuth } from '@/providers/auth';
 
 // Me hub — DestTiles navigate to /me/<box> (MESITA-1789). Same grid as web:
-// Profile full-width, then seven pairs. Parked cells stay Soon. No Stripe
-// checkout (Apple review).
+// Profile full-width, then Instagram · Diamond, Notifications · Reservations,
+// Settings · Help. No Stripe checkout (Apple review).
+//
+// MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"): Wallet, Plan,
+// Visits and the five Soon cells left the grid. Their routes stay; bringing
+// one back is re-adding its DestTile.
 //
 // THERE IS NO PASSPORT (Pato, MESITA-2043: "we don't have passports. its only
 // instagram and diamond"). The cell and /me/passport are deleted; the member
@@ -181,44 +177,17 @@ export default function MeHub() {
           </DestGrid>
           <DestGrid>
             <DestTile
-              Icon={WalletIcon}
-              title="Wallet"
-              summary="Credits and cards"
-              href={CONSUMER_ROUTES.wallet.root}
-            />
-            <DestTile
-              Icon={Crown}
-              title="Plan"
-              summary="Free or Premium"
-              href={pages.plan}
-            />
-          </DestGrid>
-          <DestGrid>
-            <DestTile
               Icon={Bell}
               title="Notifications"
               summary="Visits and bookings"
               href={pages.notifications}
             />
             <DestTile
-              Icon={Footprints}
-              title="Visits"
-              summary="Tickets and QRs"
-              href={pages.visits}
-            />
-          </DestGrid>
-          <DestGrid>
-            <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
-            <DestTile
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
               href={pages.reservations}
             />
-          </DestGrid>
-          <DestGrid>
-            <DestTile Icon={Share2} title="Share" summary="" soon />
-            <DestTile Icon={Gift} title="Gift" summary="" soon />
           </DestGrid>
           <DestGrid>
             <DestTile
@@ -233,10 +202,6 @@ export default function MeHub() {
               summary="How rewards work"
               href={pages.help}
             />
-          </DestGrid>
-          <DestGrid>
-            <DestTile Icon={Bot} title="Integrations" summary="" soon />
-            <DestTile Icon={Users} title="Friends" summary="" soon />
           </DestGrid>
         </ScrollView>
       </SafeAreaView>
