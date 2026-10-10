@@ -27,9 +27,8 @@ import { isMemberPlan } from "@/components/place-manage/sections/promo-state";
 import { findPlace } from "@/lib/active-place";
 import { apiConsoleCatalog, type ConsolePlace } from "@/lib/api/console";
 import { getManagePlace } from "@/lib/place-view";
-import { tabsForAccess } from "@/lib/place-tabs";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { ADMIN_PLACE_ACCESS } from "./access";
+import { adminPlaceTabs } from "./access";
 import { PlaceManageShell } from "./PlaceManageShell";
 import { PlaceTabStrip } from "./PlaceTabStrip";
 
@@ -59,7 +58,7 @@ export default async function AdminPlaceLayout({
   const row = catalog ? findPlace(catalog.places, id) : null;
   const railPlace: ConsolePlace | null = row ? { ...row, myRole: "owner" } : null;
 
-  const tabs = tabsForAccess(ADMIN_PLACE_ACCESS);
+  const tabs = adminPlaceTabs();
   const scope = { placeId: id, tabs, held: true, view: null };
 
   return (
