@@ -16,7 +16,7 @@ export default function ManageSinglePlacePage() {
       <PageHeader
         eyebrow="Manage · Single Place"
         title="Single Place"
-        description="One place at a time. A Google Place ID or a name finds it — on Mesita and on Google, where a place Mesita lacks is added from the list — and opens it: profile, setup, activity, every product view and the Admin box, the same screens the business console draws."
+        description="One place at a time. A Google Place ID or a name finds it — on Mesita and on Google (Text Search, Autocomplete, Nearby), where a place Mesita lacks is added from the list — and opens it: profile, setup, activity, every product view and the Admin box, the same screens the business console draws."
       />
       <div className="mt-6 sm:mt-8">
         <SinglePlaceClient />

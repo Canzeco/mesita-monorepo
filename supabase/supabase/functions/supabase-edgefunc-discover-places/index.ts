@@ -21,6 +21,13 @@
 // the product caller can render "already on Mesita" badges without a
 // second round-trip.
 //
+// An optional `nearby: { lat, lng }` runs ONE Google Nearby Search (New)
+// around that point — 20 results, closest first, types from Discovery › Map
+// — through the same Map gate and Mesita join, returned on its own as
+// `nearby` (never in `queries` / `uniquePlaces`, so a bulk union does not
+// change). Single Place › Find sends the top Text Search hit's point
+// (MESITA-2117). No IP quota: only super-admin product callers reach here.
+//
 // Auth: internal caller — verify_jwt = true, so the gateway verifies the
 // service_role JWT signature; requireInternalCaller then checks role=service_role.
 //
@@ -36,10 +43,13 @@ import {
   loadDiscoveryConfig,
   type MapConfig,
 } from "../_shared/discovery-config.ts";
-import { evaluatePlaceForMap } from "../_shared/map-engine.ts";
+import { enabledNearbyTypes, evaluatePlaceForMap } from "../_shared/map-engine.ts";
+import { GOOGLE_NEARBY_MAX, searchNearbyPlaces } from "../_shared/nearby-places.ts";
 import {
   fetchPlaceLiteById,
   MAX_RESULTS_PER_QUERY,
+  nearbyHitToPlaceLite,
+  parseNearbyCenter,
   searchTextWithPagination,
   type PlaceLite,
 } from "./discover-places-search.ts";
@@ -56,6 +66,7 @@ type RequestBody = {
   placeIds?: string[];
   regionCode?: string;
   maxResultsPerQuery?: number;
+  nearby?: unknown;
 };
 
 type QueryResult = {
@@ -106,8 +117,9 @@ Deno.serve(async (req) => {
         .filter((q) => q.length >= 18),
     ),
   );
-  if (queries.length === 0 && placeIds.length === 0) {
-    return json({ ok: false, error: "queries or placeIds: empty" });
+  const nearbyCenter = parseNearbyCenter(body.nearby);
+  if (queries.length === 0 && placeIds.length === 0 && !nearbyCenter) {
+    return json({ ok: false, error: "queries, placeIds or nearby: empty" });
   }
   if (queries.length + placeIds.length > MAX_QUERIES_PER_BATCH) {
     return json({
@@ -215,6 +227,46 @@ Deno.serve(async (req) => {
     );
   }
 
+  // --- Nearby: one call around the point, the same Map gate ---
+  let nearby: QueryResult | null = null;
+  if (nearbyCenter) {
+    const label = `nearby:${nearbyCenter.lat},${nearbyCenter.lng}`;
+    const types = enabledNearbyTypes(map);
+    if (types.length === 0) {
+      nearby = {
+        query: label,
+        places: [],
+        rawCount: 0,
+        truncated: false,
+        error: "Discovery › Map has no place type on, so Nearby has nothing to ask for",
+      };
+    } else {
+      try {
+        const fetched = (
+          await searchNearbyPlaces(apiKey, nearbyCenter, {
+            types,
+            pull: GOOGLE_NEARBY_MAX,
+          })
+        ).map(nearbyHitToPlaceLite);
+        nearby = {
+          query: label,
+          places: fetched.filter((p) => passesMapFilter(p, map)),
+          rawCount: fetched.length,
+          truncated: fetched.length >= GOOGLE_NEARBY_MAX,
+          error: null,
+        };
+      } catch (err) {
+        nearby = {
+          query: label,
+          places: [],
+          rawCount: 0,
+          truncated: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+  }
+
   // --- Dedupe ---
   const seen = new Set<string>();
   const uniquePlaces: PlaceLite[] = [];
@@ -230,9 +282,10 @@ Deno.serve(async (req) => {
   // --- Enrich with Mesita existence + timestamps ---
   let mesitaLookupError: string | null = null;
   let mesitaMatchCount = 0;
-  if (uniquePlaces.length > 0) {
+  const nearbyPlaces = nearby?.places ?? [];
+  if (uniquePlaces.length > 0 || nearbyPlaces.length > 0) {
     try {
-      const ids = uniquePlaces.map((p) => p.id);
+      const ids = [...new Set([...uniquePlaces, ...nearbyPlaces].map((p) => p.id))];
       const { data, error } = await admin
         .from("profiles")
         .select("google_place_id, created_at, updated_at")
@@ -258,6 +311,7 @@ Deno.serve(async (req) => {
         };
         for (const p of uniquePlaces) applyEnrichment(p);
         for (const r of results) for (const p of r.places) applyEnrichment(p);
+        for (const p of nearbyPlaces) applyEnrichment(p);
         mesitaMatchCount = byId.size;
       }
     } catch (err) {
@@ -278,6 +332,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     queries: results,
+    nearby,
     uniquePlaces,
     uniqueCount: uniquePlaces.length,
     regionCode,

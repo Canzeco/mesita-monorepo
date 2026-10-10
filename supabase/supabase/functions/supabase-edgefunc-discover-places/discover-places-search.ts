@@ -4,6 +4,7 @@ import {
   googleErrorFromResponse,
 } from "../_shared/google-places.ts";
 import { applyPlacesCallerRegion } from "../_shared/sourcing.ts";
+import type { NearbyHit } from "../_shared/nearby-places.ts";
 
 const PAGE_SIZE = 20;
 const MAX_PAGES = 3;
@@ -142,6 +143,40 @@ export async function fetchPlaceLiteById(
     userRatingCount:
       typeof p.userRatingCount === "number" ? p.userRatingCount : null,
     primaryType: typeof p.primaryType === "string" ? p.primaryType : null,
+    existsInMesita: false,
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+// ── Nearby (Single Place › Find, MESITA-2117) ────────────────────────────
+
+/** The optional `nearby` point a request may carry, or null when it is
+ *  absent or not a real coordinate. Nearby Search takes a point, never a
+ *  name, so a malformed one is dropped rather than guessed at. */
+export function parseNearbyCenter(
+  raw: unknown,
+): { lat: number; lng: number } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const { lat, lng } = raw as { lat?: unknown; lng?: unknown };
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+/** A Nearby hit in the shape Text Search hits already have, so the Map gate
+ *  and the Mesita join treat both the same. */
+export function nearbyHitToPlaceLite(hit: NearbyHit): PlaceLite {
+  return {
+    id: hit.placeId,
+    displayName: hit.name,
+    formattedAddress: hit.address,
+    lat: hit.lat,
+    lng: hit.lng,
+    rating: hit.rating,
+    userRatingCount: hit.reviewCount,
+    primaryType: hit.primaryType,
     existsInMesita: false,
     createdAt: null,
     updatedAt: null,

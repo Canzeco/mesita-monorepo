@@ -7,7 +7,8 @@
 // holds opens the place; a row it does not gets Add, which mints it with the
 // same action Create uses and stays in the list, so several can be added
 // from one search. Google Autocomplete runs beside it as a second list
-// (MESITA-2116); `source` names which one a list is.
+// (MESITA-2116), and Nearby Search around the top Text Search hit as a third
+// (MESITA-2117); `source` names which one a list is.
 
 import { ChevronRight, Globe, Loader2, Plus } from "lucide-react";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
@@ -33,7 +34,7 @@ export type GoogleState =
 export type GoogleRowNote = { state: BatchRowState; text: string };
 
 /** Which Google source a list holds — only its own sentences change. */
-export type GoogleSource = "text" | "autocomplete";
+export type GoogleSource = "text" | "autocomplete" | "nearby";
 
 const SOURCE_COPY: Record<
   GoogleSource,
@@ -44,6 +45,12 @@ const SOURCE_COPY: Record<
     loading: "Asking Google Autocomplete for",
     failed: "Google Autocomplete failed",
     empty: "Google Autocomplete suggests nothing for",
+  },
+  // Nearby's `query` is the place it searches around, not the typed name.
+  nearby: {
+    loading: "Searching Google for places near",
+    failed: "Google Nearby failed",
+    empty: "Google Nearby finds nothing near",
   },
 };
 
@@ -72,6 +79,41 @@ export async function searchGoogleByName(query: string): Promise<GoogleState> {
         minRating: data.minRating,
         minUserRatingCount: data.minUserRatingCount,
         filteredOutCount: data.filteredOutCount,
+        mesitaLookupError: data.mesitaLookupError,
+      },
+    };
+  } catch (err) {
+    return { status: "error", error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Google Nearby Search around one point — the top Text Search hit — through
+ *  the same route, so Discovery › Map's types and floors apply and the list
+ *  counts what they hid (MESITA-2117). */
+export async function searchGoogleNearby(center: {
+  lat: number;
+  lng: number;
+}): Promise<GoogleState> {
+  try {
+    const res = await fetch("/api/bulk-search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queries: [], placeIds: [], nearby: center }),
+    });
+    const data: SearchResponse | SearchErrorResponse = await res.json();
+    if (!data.ok) {
+      return { status: "error", error: data.error || `Google Nearby failed (HTTP ${res.status})` };
+    }
+    const n = data.nearby;
+    if (!n) return { status: "error", error: "the search answered without a Nearby list" };
+    if (n.error) return { status: "error", error: n.error };
+    return {
+      status: "ok",
+      result: {
+        places: n.places,
+        minRating: data.minRating,
+        minUserRatingCount: data.minUserRatingCount,
+        filteredOutCount: Math.max(0, n.rawCount - n.places.length),
         mesitaLookupError: data.mesitaLookupError,
       },
     };

@@ -7,6 +7,7 @@ type RequestBody = {
   placeIds?: unknown;
   regionCode?: unknown;
   maxResultsPerQuery?: unknown;
+  nearby?: unknown;
 };
 
 export async function POST(req: NextRequest) {
@@ -33,6 +34,17 @@ export async function POST(req: NextRequest) {
     typeof body.regionCode === "string" ? body.regionCode.trim().toUpperCase() : "";
   const maxResultsPerQuery =
     typeof body.maxResultsPerQuery === "number" ? body.maxResultsPerQuery : 60;
+  // Single Place › Find's Nearby point (MESITA-2117). Only two finite
+  // numbers go through; the EF re-checks the range.
+  const point = body.nearby as { lat?: unknown; lng?: unknown } | null | undefined;
+  const nearby =
+    point &&
+    typeof point.lat === "number" &&
+    typeof point.lng === "number" &&
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lng)
+      ? { lat: point.lat, lng: point.lng }
+      : undefined;
 
   // Quality floors are Discovery › Map. This route
   // never forwards client minRating / minUserRatingCount.
@@ -41,6 +53,7 @@ export async function POST(req: NextRequest) {
     placeIds,
     regionCode,
     maxResultsPerQuery,
+    ...(nearby ? { nearby } : {}),
   });
 
   if (!result.ok) {

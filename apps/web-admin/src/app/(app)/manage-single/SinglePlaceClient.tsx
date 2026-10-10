@@ -8,7 +8,8 @@
 // second card of its facts here. A name also searches Google beside the
 // catalogue, and a Google place Mesita does not hold is added from that list
 // (MESITA-2094). Google Autocomplete runs beside Text Search as its own list
-// (MESITA-2116). Create and Add are the only writes this page makes itself.
+// (MESITA-2116), and Nearby Search around the top Text Search hit as a third
+// (MESITA-2117). Create and Add are the only writes this page makes itself.
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -28,6 +29,7 @@ import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/place
 import {
   GoogleMatchList,
   searchGoogleByName,
+  searchGoogleNearby,
   type GoogleRowNote,
   type GoogleState,
 } from "./GoogleMatches";
@@ -38,6 +40,8 @@ import {
   googleMapsPlaceHref,
   googleOnMesita,
   MAX_NAME_MATCHES,
+  nearbyAnchor,
+  type NearbyAnchor,
 } from "./single-place-lookup";
 
 export type View =
@@ -66,6 +70,11 @@ export function SinglePlaceClient() {
   // EF resolved to a Mesita place (Google Place ID → Mesita id).
   const [auto, setAuto] = useState<GoogleState | null>(null);
   const [autoMesitaIds, setAutoMesitaIds] = useState<ReadonlyMap<string, string>>(new Map());
+  // Nearby, the third: searched around the top Text Search hit once Text
+  // Search lands. "none" = Text Search gave no point to search around.
+  const [near, setNear] = useState<{ anchor: NearbyAnchor; google: GoogleState } | "none" | null>(
+    null,
+  );
   const googleSeq = useRef(0);
   const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
   const [googleNotes, setGoogleNotes] = useState<Record<string, GoogleRowNote>>({});
@@ -96,6 +105,7 @@ export function SinglePlaceClient() {
     googleSeq.current += 1;
     setGoogle(null);
     setAuto(null);
+    setNear(null);
     setGoogleNotes({});
     try {
       if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
@@ -129,7 +139,18 @@ export function SinglePlaceClient() {
     setGoogle({ status: "loading" });
     setAuto({ status: "loading" });
     void searchGoogleByName(query).then((g) => {
-      if (googleSeq.current === seq) setGoogle(g);
+      if (googleSeq.current !== seq) return;
+      setGoogle(g);
+      // Nearby needs a point, so it starts where Text Search lands.
+      const anchor = g.status === "ok" ? nearbyAnchor(g.result.places) : null;
+      if (!anchor) {
+        setNear("none");
+        return;
+      }
+      setNear({ anchor, google: { status: "loading" } });
+      void searchGoogleNearby({ lat: anchor.lat, lng: anchor.lng }).then((n) => {
+        if (googleSeq.current === seq) setNear({ anchor, google: n });
+      });
     });
     void searchGoogleAutocomplete(query).then((a) => {
       if (googleSeq.current !== seq) return;
@@ -246,7 +267,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google Text Search and Autocomplete beside it. A hit opens the place."
+        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google beside it: Text Search, Autocomplete, and Nearby around the top Text Search hit. A hit opens the place."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -318,6 +339,32 @@ export function SinglePlaceClient() {
                   onOpen={(p) => void openGoogle(p, true)}
                   onAdd={(p) => void addFromGoogle(p)}
                 />
+              </>
+            ) : null}
+            {google ? (
+              <>
+                <ListHeading>From Google · Nearby</ListHeading>
+                {near === null ? (
+                  <p className="text-muted-foreground mt-2 inline-flex items-center gap-2 text-sm">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Waiting for the top Text Search hit to search around…
+                  </p>
+                ) : near === "none" ? (
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    Nearby searches around the top Text Search hit, and there is none.
+                  </p>
+                ) : (
+                  <GoogleMatchList
+                    query={near.anchor.place.displayName}
+                    source="nearby"
+                    google={near.google}
+                    onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
+                    notes={googleNotes}
+                    disabled={isBusy}
+                    onOpen={(p) => void openGoogle(p)}
+                    onAdd={(p) => void addFromGoogle(p)}
+                  />
+                )}
               </>
             ) : null}
           </>

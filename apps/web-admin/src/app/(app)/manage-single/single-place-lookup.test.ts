@@ -7,6 +7,7 @@ import {
   googleOnMesita,
   MAX_NAME_MATCHES,
   matchesPlace,
+  nearbyAnchor,
 } from "./single-place-lookup";
 
 const GID = "ChIJN1t_tDeuEmsRUsoyG83frY4";
@@ -105,5 +106,29 @@ describe("autocompleteToLite", () => {
   it("reads On Mesita off the EF's resolve: a state or a Mesita id", () => {
     expect(autocompleteToLite({ ...row, state: "web_listed" }).existsInMesita).toBe(true);
     expect(autocompleteToLite({ ...row, mesitaId: "0f3a" }).existsInMesita).toBe(true);
+  });
+});
+
+describe("nearbyAnchor", () => {
+  const at = (id: string, lat: number | null, lng: number | null) => ({
+    id,
+    displayName: id,
+    formattedAddress: "",
+    lat,
+    lng,
+    rating: null,
+    userRatingCount: null,
+    existsInMesita: false,
+    createdAt: null,
+    updatedAt: null,
+  });
+  it("searches around the first Text Search hit that has a point", () => {
+    const a = nearbyAnchor([at("no-point", null, null), at("first", 22.15, -100.98), at("second", 1, 2)]);
+    expect(a).toMatchObject({ lat: 22.15, lng: -100.98 });
+    expect(a?.place.id).toBe("first");
+  });
+  it("is null when no hit has a point — no Nearby", () => {
+    expect(nearbyAnchor([])).toBeNull();
+    expect(nearbyAnchor([at("x", null, 3), at("y", Number.NaN, 1)])).toBeNull();
   });
 });
