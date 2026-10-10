@@ -33,10 +33,30 @@ async function resolveMesitaId(googleId: string): Promise<
   return { ok: true, placeId: hit.id, name: hit.google_name || hit.name };
 }
 
-export function CrenupTab({
+// One write box: Create, Enrich or Update (MESITA-2096). Each box carries its
+// own copy of the shared Google Place ID field — the same text in every box,
+// so a paste or a Google Search send reaches all three — plus its own buttons
+// and its own result list.
+
+const BUTTONS: Record<
+  CrenupAction,
+  { label: string; variant: "primary" | "secondary" | "destructive" }
+> = {
+  create: { label: "Create", variant: "primary" },
+  enrich: { label: "Enrich", variant: "primary" },
+  list: { label: "List", variant: "secondary" },
+  unlist: { label: "Unlist", variant: "secondary" },
+  delete: { label: "Delete", variant: "destructive" },
+};
+
+export function WriteBox({
+  id,
+  actions,
   text,
   onTextChange,
 }: {
+  id: string;
+  actions: readonly CrenupAction[];
   text: string;
   onTextChange: (next: string) => void;
 }) {
@@ -102,7 +122,7 @@ export function CrenupTab({
   return (
     <div className="space-y-6">
       <IdListField
-        id="crenup-place-ids"
+        id={`${id}-place-ids`}
         label="Google Place IDs"
         text={text}
         onTextChange={onTextChange}
@@ -111,47 +131,17 @@ export function CrenupTab({
       />
 
       <div>
-        <p className="text-muted-foreground text-xs">
-          CReate mints the place and runs every ID at once. ENrich fills it and
-          is queued. The last three are UPdate — List and Unlist toggle guest
-          visibility, Delete archives, no Undo here.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <ActionButton
-            label="Create"
-            variant="primary"
-            busy={running === "create"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("create")}
-          />
-          <ActionButton
-            label="Enrich"
-            variant="secondary"
-            busy={running === "enrich"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("enrich")}
-          />
-          <ActionButton
-            label="List"
-            variant="secondary"
-            busy={running === "list"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("list")}
-          />
-          <ActionButton
-            label="Unlist"
-            variant="secondary"
-            busy={running === "unlist"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("unlist")}
-          />
-          <ActionButton
-            label="Delete"
-            variant="destructive"
-            busy={running === "delete"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("delete")}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          {actions.map((action) => (
+            <ActionButton
+              key={action}
+              label={BUTTONS[action].label}
+              variant={BUTTONS[action].variant}
+              busy={running === action}
+              disabled={busy || placeIds.length === 0}
+              onClick={() => void run(action)}
+            />
+          ))}
           {done > 0 ? (
             <span className="text-muted-foreground text-xs">{summary}</span>
           ) : null}
@@ -212,12 +202,12 @@ function ResultList({
   );
 }
 
-// Primary = the one action that starts from nothing (matches the "Look up on
-// Mesita" filled pill in MesitaSearchTab). Destructive marks the one action
-// that cannot be undone from this console. Everything else assumes a place
-// already exists and is reversible, so it takes the same outline secondary
-// pill as MesitaSearchTab's "All places" — four identical black buttons read
-// as four equally important actions when they are not.
+// Primary = the Create or Enrich box's one action (matches the "Look up on Mesita" filled pill
+// in MesitaSearchTab). Destructive marks the one action that cannot be undone
+// from this console. List and Unlist share the Update box and are reversible,
+// so they take the same outline secondary pill as MesitaSearchTab's "All
+// places" — three identical black buttons read as three equally important
+// actions when they are not.
 function ActionButton({
   label,
   variant,
@@ -299,7 +289,7 @@ async function enrichOne(googleId: string): Promise<Row> {
   return {
     state: "enriching",
     name: found.name,
-    detail: "Re-enrich from zero — Enricher 1–10 queued",
+    detail: "Re-enrich from zero — steps 1–8 queued",
   };
 }
 

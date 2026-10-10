@@ -8,11 +8,11 @@
 //                         Created · Active · Listed · Requested · Verified
 //   Partnership States  what does it offer commercially?
 //                         Partnered · Rewards · Mesita Pay · Mesita Credits
-//   Crenup States       how far has the pipeline gotten? Enriched ·
+//   Enrichment States   how far has the pipeline gotten? Enriched ·
 //                         Enriching + the eleven functions — all of it in
 //                         CrenupStateCard, which OWNS the enrichment read.
 //
-// This file renders the first two; `StateRow` is exported so the Crenup box
+// This file renders the first two; `StateRow` is exported so the Enrichment States box
 // prints its two summary facts in the same shape.
 //
 // The state is Created; Seed is Crenup function 0. Wire key `seeded` /

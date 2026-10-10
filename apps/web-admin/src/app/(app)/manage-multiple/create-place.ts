@@ -1,6 +1,6 @@
 import { efInvoke } from "@/lib/supabase-ef";
 
-// Create-place helper; the Crenup tab on this page is its only caller. It
+// Create-place helper; the Create box on this page is its only caller. It
 // runs each Google Place ID through the create pipeline:
 // admin-web-create-place fetches Google data and persists the ugly
 // profile (ready, not Enriched). Enricher is not queued — Enrich /

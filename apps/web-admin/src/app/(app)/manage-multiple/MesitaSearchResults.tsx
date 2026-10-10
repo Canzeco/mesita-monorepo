@@ -117,9 +117,9 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
             const hit = row.hit;
             if (!hit || hit.enrich_crenup_labels.length === 0) return null;
             return (
-              <li key={`${row.key}-Crenup`} className="px-4 py-3">
+              <li key={`${row.key}-ladder`} className="px-4 py-3">
                 <p className="text-muted-foreground type-label mb-2">
-                  Crenup · {hit.google_name || hit.name}
+                  Steps · {hit.google_name || hit.name}
                 </p>
                 <CrenupLadder hit={hit} />
               </li>
