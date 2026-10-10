@@ -41,6 +41,7 @@ import {
   stripeSecretKeyNames,
   stripeSecretKeyProblem,
 } from "../_shared/stripe-env.ts";
+import { inactiveAccountLine, twilioFailureDetail } from "./twilio-failure.ts";
 
 // How long any single probe may take before we call it dead. Vendors that are
 // merely slow are still a problem worth surfacing, so this is deliberately
@@ -84,6 +85,16 @@ type ProbeSpec = {
      * "Healthy" during a total outage, which is worse than having no card.
      */
     verdict?: (body: unknown) => Verdict | null;
+    /**
+     * Explain a non-2xx when the vendor's own words mislead — Twilio says
+     * "authentication failed" for a suspended account. `vendorLine` is the
+     * vendor's line, for evidence. Null falls back to that line alone.
+     */
+    failDetail?: (
+      body: unknown,
+      status: number,
+      vendorLine: string,
+    ) => string | null;
   }>;
 };
 
@@ -307,11 +318,23 @@ const PROBES: ProbeSpec[] = [
         }
       }
 
+      // A parent's credentials can still READ a suspended subaccount: 200,
+      // status "suspended". That is the same outage as the 401 below.
+      const inactive = (b: unknown) => {
+        const status = str(b, "status");
+        return status !== null && status !== "active";
+      };
+
       return {
         res,
-        verdict: () => (broke ? "down" : (balanceUnknown ? "degraded" : null)),
+        verdict: (b) =>
+          inactive(b) || broke ? "down" : (balanceUnknown ? "degraded" : null),
+        // Twilio 401s every request from an inactive account, in words that
+        // read like a bad key — say which one it actually is (MESITA-2097).
+        failDetail: twilioFailureDetail,
         detail: (b) => {
           const status = str(b, "status");
+          if (inactive(b)) return inactiveAccountLine(`account ${status}.`);
           const type = str(b, "type");
           const head = [status && `account ${status}`, type]
             .filter(Boolean).join(" · ") || "Key accepted";
@@ -710,7 +733,9 @@ async function runProbe(
 
   const started = Date.now();
   try {
-    const { res, detail, verdict: verdictOf } = await spec.run(keys);
+    const { res, detail, verdict: verdictOf, failDetail } = await spec.run(
+      keys,
+    );
     const latencyMs = Date.now() - started;
     const raw = await res.text();
     let body: unknown = null;
@@ -734,13 +759,15 @@ async function runProbe(
 
     // 401/403 = the key itself is rejected; 402/429 = billing or throttling.
     // Both are "down" for our purposes, but the status code tells them apart
-    // and the vendor's message is far more useful than any wording we'd invent.
+    // and the vendor's message is usually more useful than any wording we'd
+    // invent — unless the probe knows it misleads (failDetail).
+    const vendorLine = errorLine(body, raw);
     return {
       ...base,
       verdict: res.status === 429 ? "degraded" : "down",
       httpStatus: res.status,
       latencyMs,
-      detail: errorLine(body, raw),
+      detail: failDetail?.(body, res.status, vendorLine) ?? vendorLine,
     };
   } catch (err) {
     const latencyMs = Date.now() - started;
