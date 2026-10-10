@@ -69,15 +69,16 @@ export function autocompleteToLite(hit: AutocompleteHit): PlaceLite {
 }
 
 /** Whether Mesita already holds a Google result. Three witnesses, any one
- *  is enough: the discover EF's own google_place_id join, the catalog this
- *  page read, and the Adds this page made since — the EF's flag goes stale
+ *  is enough: the discover EF's own google_place_id join, the IDs this page
+ *  knows are held (the catalog it read plus Autocomplete's resolve), and the
+ *  Adds this page made since — the EF's flag goes stale
  *  the moment Add succeeds, and is all-false when its Mesita lookup failed. */
 export function googleOnMesita(
   place: PlaceLite,
-  catalogGoogleIds: ReadonlySet<string>,
+  heldGoogleIds: ReadonlySet<string>,
   added: { has(googleId: string): boolean },
 ): boolean {
-  return place.existsInMesita || catalogGoogleIds.has(place.id) || added.has(place.id);
+  return place.existsInMesita || heldGoogleIds.has(place.id) || added.has(place.id);
 }
 
 function fold(s: string): string {

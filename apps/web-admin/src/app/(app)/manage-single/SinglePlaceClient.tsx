@@ -72,9 +72,16 @@ export function SinglePlaceClient() {
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
-  const catalogGoogleIds = useMemo(
-    () => new Set((catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : []))),
-    [catalog],
+  // Google Place IDs this page knows Mesita holds: the catalogue's, plus
+  // what Autocomplete resolved — one set, so a row's badge and its open path
+  // read the same witnesses.
+  const heldGoogleIds = useMemo(
+    () =>
+      new Set([
+        ...(catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : [])),
+        ...autoMesitaIds.keys(),
+      ]),
+    [catalog, autoMesitaIds],
   );
 
   function open(placeId: string) {
@@ -159,7 +166,7 @@ export function SinglePlaceClient() {
       open(known);
       return;
     }
-    if (!peek && !googleOnMesita(place, catalogGoogleIds, added)) {
+    if (!peek && !googleOnMesita(place, heldGoogleIds, added)) {
       setNote(null);
       setView({ kind: "absent", googleId: place.id, google: place, note: null });
       return;
@@ -290,7 +297,7 @@ export function SinglePlaceClient() {
                 <GoogleMatchList
                   query={view.query}
                   google={google}
-                  onMesita={(p) => googleOnMesita(p, catalogGoogleIds, added)}
+                  onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
                   notes={googleNotes}
                   disabled={isBusy}
                   onOpen={(p) => void openGoogle(p)}
@@ -305,7 +312,7 @@ export function SinglePlaceClient() {
                   query={view.query}
                   source="autocomplete"
                   google={auto}
-                  onMesita={(p) => googleOnMesita(p, catalogGoogleIds, added)}
+                  onMesita={(p) => googleOnMesita(p, heldGoogleIds, added)}
                   notes={googleNotes}
                   disabled={isBusy}
                   onOpen={(p) => void openGoogle(p, true)}
