@@ -206,7 +206,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     // `google: true` survives and is NOT the ring: it says this client can
-    // render a Google-only stub, which mobile cannot.
+    // render a Google-only stub; a caller that omits it gets listed rows.
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });

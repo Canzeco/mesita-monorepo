@@ -7,9 +7,6 @@
 // "Error sending confirmation OTP to provider: The 'To' number +52555...
 // is not a valid phone number. More information: https://twilio.com/..."
 // — which is both unreadable and a wasted Twilio lookup we pay for.
-//
-// Mirrored by hand in apps/mobile-consumer/src/lib/phone-otp.ts. Keep the
-// two in step (same convention as consumer-route-contract.ts).
 
 import { COUNTRY_BY_CODE } from "@/lib/consumer-data";
 

@@ -38,14 +38,8 @@
 // Mirrored by:
 //   • supabase/functions/consumer-web-signin-phone       (routing hint = canBrowse)
 //   • supabase/functions/consumer-web-create-reservation (canBook — the REAL gate)
-//   • apps/mobile-consumer/src/lib/api/auth.ts → isOnboarded / needsLastName
-// Change one, change all four.
-//
-// `ONBOARD_STEPS` below is mirrored BY HAND in one more place —
-// apps/mobile-consumer/src/app/onboard.tsx — for the same reason the gate is:
-// the two packages are independent install roots with no shared module. The
-// drift alarm for that copy lives in __tests__/onboarding-gate.test.ts and
-// greps the mobile screen for the three headlines.
+// Change one, change all three. The drift alarm for the routing hint lives in
+// __tests__/onboarding-gate.test.ts and greps the EF for the three fields.
 
 import { MIN_SIGNUP_AGE } from "@/lib/utils";
 
@@ -141,9 +135,8 @@ export function firstIncompleteOnboardStep(
  * Where the step lands when a per-step write resolves: one forward, but ONLY
  * if the guest is still on the step that write belongs to.
  *
- * Back is deliberately live during a save — it is not disabled on web, and on
- * Android the hardware Back cannot be — so "Continue, then Back" is a real
- * sequence, not a stress test. Advancing unconditionally on resolve made that
+ * Back is deliberately live during a save — it is not disabled — so
+ * "Continue, then Back" is a real sequence, not a stress test. Advancing unconditionally on resolve made that
  * sequence silently undo itself: the guest pressed Back, saw the previous
  * question, and half a second later the EF answered and yanked them forward
  * again, with no event they could connect it to.
@@ -152,9 +145,6 @@ export function firstIncompleteOnboardStep(
  * differ exactly when the guest has moved in the meantime, and then the
  * advance is dropped. The write is never dropped — the field is saved either
  * way, which is the whole point of persisting per step.
- *
- * Hand-mirrored in apps/mobile-consumer/src/app/onboard.tsx for the same
- * reason ONBOARD_STEPS is: independent install roots, no shared module.
  */
 export function stepAfterSave(from: number, current: number): number {
   return current === from ? from + 1 : current;

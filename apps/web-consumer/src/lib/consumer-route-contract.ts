@@ -7,8 +7,7 @@
 // Second Stage surface — Visits/THE TICKET, Wallet and Credits, cards, Orders,
 // Diamond/Plan/classes, the referral Share deck, public gift links — is
 // DELETED, not parked; its addresses live only in `legacy` below and 308 to
-// the nearest live page. The mobile mirror of this file goes with
-// apps/mobile-consumer (MESITA-2089); there is no twin to keep in step.
+// the nearest live page.
 
 export const CONSUMER_ROUTES = {
   onboard: "/onboard",

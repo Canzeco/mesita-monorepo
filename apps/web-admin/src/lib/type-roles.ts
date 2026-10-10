@@ -11,9 +11,8 @@
  *
  * 1. VALUES ARE REM, NEVER PX. `text-[12px]` is frozen at 12px for every
  *    guest; `text-xs` (0.75rem) scales with their browser font-size setting.
- *    Both ticket files used zero named sizes, so THE TICKET did not respond to
- *    that setting at all. Snapping an off-scale size to the nearest PX would
- *    have made the lock permanent — always snap to a rem token.
+ *    Snapping an off-scale size to the nearest PX freezes it the same way —
+ *    always snap to a rem token.
  *
  * 2. THE PREFIX IS `type-`, NEVER `text-`. web-consumer's `cn()` is
  *    `twMerge(clsx(...))`, and tailwind-merge classifies any unrecognized
@@ -23,10 +22,8 @@
  *    passes through untouched. web-admin has no cn(), so it would never
  *    reproduce there — which makes it worse, not better.
  *
- * 3. THIS FILE STAYS PLATFORM-FREE. No CSS, no React, no imports. apps/
- *    mobile-consumer is NativeWind and has no `@utility` layer; keeping the
- *    roles as plain data is what lets that app consume them when it unfreezes,
- *    the same property that lets ticket-journey.ts be byte-shared today.
+ * 3. THIS FILE STAYS PLATFORM-FREE. No CSS, no React, no imports — plain data
+ *    is what lets the two copies be byte-identical (type-roles-drift.test.ts).
  *
  * Widening the set is a NOTION edit first, then this file, in that order and
  * in the same session. A role that exists only in code is drift with a nicer

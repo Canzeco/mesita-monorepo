@@ -5,9 +5,8 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 // The consumer app's ONE shared primary-CTA primitive (MESITA-1223 item 2).
-// Shape copied from apps/web-validate's src/components/ui/button.tsx (cva +
-// asChild + a variant/size axis) — the colors are this app's own brand
-// system, not shadcn's default palette.
+// The shape is shadcn's (cva + asChild + a variant/size axis) — the colors
+// are this app's own brand system, not shadcn's default palette.
 //
 // SCOPE IS DELIBERATELY NARROW. A 2026-08-23 read of the 34 files this
 // migrates found `bg-pink-gradient` (globals.css: `background:

@@ -4,11 +4,11 @@
  * - `label_en` is Mesita core / the default chip text.
  * - `label_es` stays in the catalog for a future TMS — do not prefer it here.
  * - Do not bind chips to `mesita:pref:language` until that TMS exists
- *   (the pref still defaults to `es` on mobile).
+ *   (the pref still defaults to `es`).
  * - `slug` is the stable translation key for later.
  *
- * Keep in sync with `apps/mobile-consumer/src/lib/place-tag-label.ts` and
- * `supabase/supabase/functions/_shared/tags.ts` → `displayPlaceTagLabel`.
+ * Keep in sync with `supabase/supabase/functions/_shared/tags.ts` →
+ * `displayPlaceTagLabel`.
  */
 export function displayPlaceTagLabel(tag: {
   slug: string;
