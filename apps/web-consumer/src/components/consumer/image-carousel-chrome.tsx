@@ -43,10 +43,44 @@ export function CarouselMuteButton({
 export function CarouselPillDots({
   count,
   activeIdx,
+  onSelect,
+  label = "Photo",
 }: {
   count: number;
   activeIdx: number;
+  /** When set, each dot is a button that pages to its photo — the only way a
+   *  mouse can page a carousel whose tap zones are off (Scroll, MESITA-2105).
+   *  Absent, the dots stay a passive indicator, as everywhere else. */
+  onSelect?: (i: number) => void;
+  label?: string;
 }) {
+  if (onSelect) {
+    // A 44px row of 24px hit areas, each drawing the same pill as below.
+    return (
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-11 items-center justify-center">
+        {Array.from({ length: count }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`${label}, photo ${i + 1} of ${count}`}
+            aria-current={i === activeIdx ? "true" : undefined}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(i);
+            }}
+            className="pointer-events-auto flex h-6 min-w-6 items-center justify-center"
+          >
+            <span
+              className={cn(
+                "drop-shadow-media bg-on-media h-1.5 rounded-full transition-all duration-200",
+                i === activeIdx ? "w-5 opacity-100" : "w-1.5 opacity-60",
+              )}
+            />
+          </button>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center gap-1.5">
       {Array.from({ length: count }, (_, i) => (
