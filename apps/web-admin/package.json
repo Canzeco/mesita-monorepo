@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
-    "@supabase/supabase-js": "^2.106.0",
+    "@supabase/supabase-js": "^2.117.3",
     "@vis.gl/react-google-maps": "^1.8.3",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
