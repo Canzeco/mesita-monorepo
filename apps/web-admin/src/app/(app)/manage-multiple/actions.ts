@@ -65,7 +65,7 @@ export type PlaceHit = {
   content_state: string | null;
   listing_type: string | null;
   // ── The state facts (labels: Created · Active · Listed · Requested ·
-  //    Enriching · Enriched · Verified · Partnered · Rewards ·
+  //    Enriching · Enriched · Partnered · Rewards ·
   //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
   //    (promotion · pickup · delivery). Bools except Requested (0…n),
   //    Rewards (0|1|2) and promotion (0–7). All derived (or
@@ -105,8 +105,6 @@ export type PlaceHit = {
    *  the fallback, and it alone cannot show a function that completed AFTER
    *  an earlier one failed, which is exactly the gap this map closes. */
   enrich_functions?: Record<string, EnrichFunctionState> | null;
-  /** An APPROVED place_verifications row — ownership proof, not a badge. */
-  verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
   partner: boolean;
   /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
@@ -187,7 +185,6 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // the high-water, rather than a fabricated empty map reading as "nothing
     // has run yet".
     enrich_functions: raw.enrich_functions ?? null,
-    verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
     promoting_level: raw.promoting_level ?? 0,

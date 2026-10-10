@@ -103,7 +103,7 @@ describe("crenupStateLine", () => {
     expect(crenupStateLine(created)).not.toMatch(/new place/i);
   });
 
-  it("names Enriched · Verified · Partnered · Rewards when those facts are on", () => {
+  it("names Enriched · Partnered · Rewards when those facts are on", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -112,6 +112,7 @@ describe("crenupStateLine", () => {
           ...facts,
           enriched: true,
           enrichCrenup: 10,
+          // Old events still stamp it; Verified left the line with MESITA-2106.
           verified: true,
           partner: true,
           promoting: true,
@@ -119,7 +120,7 @@ describe("crenupStateLine", () => {
       },
     });
     expect(crenupStateLine(created)).toBe(
-      "Created · Active · Listed · Enriched · Verified · Partnered · Rewards",
+      "Created · Active · Listed · Enriched · Partnered · Rewards",
     );
   });
 

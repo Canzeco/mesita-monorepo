@@ -30,7 +30,6 @@ import { normalizeDiscoveryConfig } from "./discovery-config.ts";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
 import { normalizeOjoConfig } from "./ojo-config.ts";
 import { normalizeOrdersConfig } from "./orders-config.ts";
-import { normalizeVerificationConfig } from "./verification-config.ts";
 import { normalizeVisitsConfig } from "./visits-config.ts";
 import { writeEnricherSection } from "./config-section-enricher.ts";
 import { readModelsSection, writeModelsSection } from "./config-section-models.ts";
@@ -43,7 +42,6 @@ import {
   readRewardsSection,
   writeRewardsSection,
 } from "./config-section-rewards.ts";
-import { writeVerificationSection } from "./config-section-verification.ts";
 
 /** Raw jsonb through unchanged — the section's client owns the coercion. */
 const asIs = (raw: unknown): unknown => raw ?? null;
@@ -72,12 +70,6 @@ export const CONFIG_SECTIONS: Record<string, ConfigSection> = {
     column: "enrichment_config",
     normalize: normalizeEnrichmentConfig,
     write: writeEnricherSection,
-  },
-  // Read-merge-write: the console flips one switch at a time.
-  verification: {
-    column: "verification_config",
-    normalize: normalizeVerificationConfig,
-    write: writeVerificationSection,
   },
 
   // ── Own read AND write ───────────────────────────────────────────────────

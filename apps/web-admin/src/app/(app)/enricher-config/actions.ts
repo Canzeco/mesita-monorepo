@@ -40,8 +40,6 @@ export type CrenupPrompt = {
 };
 
 type SettingsResponse = {
-  autoVerifyAiCall: boolean;
-  autoVerifyAiEmail: boolean;
   atlasGatherGoogleImages: number;
   atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;

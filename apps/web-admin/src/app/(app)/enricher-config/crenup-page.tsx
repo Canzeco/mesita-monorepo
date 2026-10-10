@@ -3,11 +3,9 @@ import { getAtlasSettings } from "./actions";
 import { CrenupClient } from "./CrenupClient";
 import type { CrenupView } from "./SectionStrip";
 import { type CrenupSettings } from "./crenup-guards";
-import { getVerificationConfig } from "../verification-config/actions";
-import { VERIFICATION_FALLBACK } from "../verification-config/defaults";
 
 // How a place becomes a profile, as two pages (MESITA-2083):
-// Creation (Models · Create · Verification) and Enrichment (Enrich ·
+// Creation (Models · Create) and Enrichment (Enrich ·
 // Functions). Search eligibility is Discovery › Map, not here.
 //
 // One GET, seeded server-side, for either page. A failed load blocks Save so
@@ -41,10 +39,7 @@ const TITLE: Record<CrenupView, string> = {
 };
 
 export async function CrenupPage({ view }: { view: CrenupView }) {
-  const [settings, verification] = await Promise.all([
-    getAtlasSettings(),
-    getVerificationConfig(),
-  ]);
+  const settings = await getAtlasSettings();
 
   return (
     <ConfigPageLayout eyebrow={`Operations · ${TITLE[view]}`} title={TITLE[view]}>
@@ -82,11 +77,6 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
       // Read-only, straight from `_shared/crenup-prompts.ts`. No fallback: a
       // prompt the console invented would be worse than one it cannot show.
       prompts={settings.ok ? (settings.data.crenupPromptsMeta ?? []) : []}
-      verificationConfig={
-        verification.ok ? verification.config : VERIFICATION_FALLBACK
-      }
-      verificationUpdatedAt={verification.ok ? verification.updatedAt : null}
-      verificationLoadError={verification.ok ? null : verification.error}
     />
     </ConfigPageLayout>
   );

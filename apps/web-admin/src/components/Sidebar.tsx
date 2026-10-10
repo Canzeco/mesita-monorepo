@@ -101,7 +101,7 @@ export const MANAGE_NAV: NavItem[] = [
 export const CONFIGURATIONS_NAV: NavItem[] = [
   // Models — four platform picks. /general-config redirects here (MESITA-1788).
   MODELS_PARENT,
-  // Crenup's two halves. /verification-config lands on Creation.
+  // Crenup's two halves.
   CREATION_PARENT,
   ENRICHMENT_PARENT,
   // Discovery.

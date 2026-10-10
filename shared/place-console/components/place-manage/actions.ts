@@ -66,7 +66,7 @@ export type PlaceHit = {
   content_state: string | null;
   listing_type: string | null;
   // ── The state facts (labels: Created · Active · Listed · Requested ·
-  //    Enriching · Enriched · Verified · Partnered · Visit Rewards ·
+  //    Enriching · Enriched · Partnered · Visit Rewards ·
   //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
   //    (promotion · pickup · delivery). Bools except Requested (0…n),
   //    Visit Rewards (0|1|2) and promotion (0–7). All derived (or
@@ -101,8 +101,6 @@ export type PlaceHit = {
   enrich_crenup_labels: string[];
   /** Why the queue stopped where it did — null once it has finished. */
   enrich_crenup_blocked: CrenupBlock | null;
-  /** An APPROVED place_verifications row — ownership proof, not a badge. */
-  verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
   partner: boolean;
   /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
@@ -188,7 +186,6 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // No invented fallback: absent means the payload predates the field, and
     // defaulting to "missing" would claim a fact we did not read.
     enrich_crenup_blocked: raw.enrich_crenup_blocked ?? null,
-    verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
     promoting_level: raw.promoting_level ?? 0,
@@ -762,24 +759,6 @@ export async function setPlaceActive(
   };
 }
 
-/** Admin attestation of ownership proof. Verified is one-time; yes only. */
-export async function setPlaceVerified(
-  placeId: string,
-): Promise<Result<{ verified: true; alreadyVerified: boolean }>> {
-  const r = await efInvoke<{ verified?: boolean; alreadyVerified?: boolean }>(
-    "admin-web-set-place-verified",
-    { placeId },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    data: {
-      verified: true,
-      alreadyVerified: r.data.alreadyVerified === true,
-    },
-  };
-}
-
 /** Rates-only strategy switch — no plan write (MESITA-912). */
 export async function setPlaceStrategy(
   placeId: string,
@@ -1174,73 +1153,6 @@ export async function listTeam(placeId: string): Promise<Result<TeamSnapshot>> {
   const r = await efInvoke<TeamSnapshot>("business-web-list-members", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
-}
-
-/** Immutable email of who completed ownership verification (not team owners). */
-export type PlaceVerificationGlance = {
-  verifiedByEmail: string | null;
-  decidedAt: string | null;
-  method: string | null;
-  decidedVia: string | null;
-};
-
-export async function getPlaceVerification(
-  placeId: string,
-): Promise<Result<PlaceVerificationGlance>> {
-  const r = await efInvoke<PlaceVerificationGlance>(
-    "admin-web-get-place-verification",
-    // Wire key stays `projectId` — this EF's MESITA-26 alias base.
-    { projectId: placeId },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    data: {
-      verifiedByEmail: r.data.verifiedByEmail ?? null,
-      decidedAt: r.data.decidedAt ?? null,
-      method: r.data.method ?? null,
-      decidedVia: r.data.decidedVia ?? null,
-    },
-  };
-}
-
-/** One row from admin-web-list-verifications in per-place mode. */
-export type PlaceVerificationRequest = {
-  id: string;
-  method: string;
-  requester_email: string;
-  state: "pending" | "approved" | "rejected";
-  reject_reason: string | null;
-  decided_at: string | null;
-  decided_via: "auto" | "admin" | null;
-  created_at: string;
-  payload: Record<string, unknown>;
-};
-
-export async function listPlaceVerifications(
-  placeId: string,
-): Promise<Result<PlaceVerificationRequest[]>> {
-  const r = await efInvoke<{ verifications: PlaceVerificationRequest[] }>(
-    "admin-web-list-verifications",
-    // Wire key stays `projectId` — this EF's MESITA-26 alias base.
-    { projectId: placeId, limit: 50 },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.verifications ?? [] };
-}
-
-export async function decidePlaceVerification(
-  verificationId: string,
-  decision: "approved" | "rejected",
-  rejectReason: string,
-): Promise<Result<true>> {
-  const r = await efInvoke<unknown>("admin-web-decide-verification", {
-    verificationId,
-    decision,
-    rejectReason: decision === "rejected" ? rejectReason : undefined,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: true };
 }
 
 export async function inviteEditor(

@@ -69,18 +69,14 @@ const NON_APP_ACTORS = new Set(["staff"]);
  * consoles — removes its line here in the same PR.
  */
 const GRANDFATHERED_VIOLATIONS = new Set([
-  "admin-web-decide-verification:web-business",
   "admin-web-enrich-place:web-business",
   "admin-web-find-place:web-business",
   "admin-web-get-place-enrichment:web-business",
-  "admin-web-get-place-verification:web-business",
-  "admin-web-list-verifications:web-business",
   "admin-web-reset-database:web-consumer",
   "admin-web-search-places:web-business",
   "admin-web-set-place-active:web-business",
   "admin-web-set-place-enrichment:web-business",
   "admin-web-set-place-listed:web-business",
-  "admin-web-set-place-verified:web-business",
   "admin-web-suggest-places:web-business",
   "consumer-web-create-reservation:web-admin",
 ]);

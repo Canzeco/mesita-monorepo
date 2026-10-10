@@ -58,7 +58,6 @@ export function generalHeaderFacts(input: {
   partner: boolean;
   promoting?: boolean;
   promotingLevel?: number;
-  verified: boolean | "unknown";
   /** places.mesita_pay_enabled — acceptance intent bit. Absent = unknown. */
   mesitaPay?: boolean;
   /** places.credits_enabled — acceptance intent bit. Absent = unknown. */
@@ -104,12 +103,6 @@ export function generalHeaderFacts(input: {
     },
     { key: "enriching", label: "Enriching", on: enriching, chip: stateBoolChip(enriching) },
     { key: "enriched", label: "Enriched", on: enriched, chip: stateBoolChip(enriched) },
-    {
-      key: "verified",
-      label: "Verified",
-      on: input.verified,
-      chip: stateBoolChip(input.verified),
-    },
     {
       key: "partner",
       label: "Partnered",

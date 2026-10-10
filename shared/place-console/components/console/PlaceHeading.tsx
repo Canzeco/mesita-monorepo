@@ -47,14 +47,12 @@ import {
 
 export function PlaceHeading({
   name,
-  verified,
   listed,
   partner = false,
 }: {
   name: string;
-  verified: boolean;
   listed: boolean;
-  /** Partnership is a place fact, not Listed/Verified — chip beside them. */
+  /** Partnership is a place fact, not Listed — chip beside it. */
   partner?: boolean;
 }) {
   const pathname = usePathname();
@@ -85,11 +83,7 @@ export function PlaceHeading({
         >
           {name}
         </h1>
-        {verified ? (
-          <PlaceStateBadge state="verified" />
-        ) : listed ? (
-          <PlaceStateBadge state="listed" />
-        ) : null}
+        {listed ? <PlaceStateBadge state="listed" /> : null}
         {partner ? <PartnerPill /> : null}
       </div>
       {/* Which view you are in. The rail says it too, but the rail is a menu
