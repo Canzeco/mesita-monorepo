@@ -5,17 +5,10 @@ import {
   Bell,
   CalendarCheck,
   CircleHelp,
-  Bot,
-  Footprints,
   Gem,
-  Gift,
   Instagram,
   Settings as SettingsIcon,
-  Share2,
-  ShoppingBag,
   UserRound,
-  Users,
-  Wallet as WalletIcon,
 } from "lucide-react";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -24,10 +17,6 @@ import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
-import {
-  PREMIUM_PLAN_ICON,
-  PREMIUM_PLAN_PRICE_MXN,
-} from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   DIAMOND_PIN_SUCCESS,
@@ -39,17 +28,19 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then one full row and seven pairs:
+// The Me surface — the identity header, then one full row and three pairs:
 //
 //   header         identity + the two facts; the bar IS a door (MESITA-1652)
 //   full           Profile (carries the member number)
 //   2              Instagram · Diamond
-//   2              Wallet · Plan
-//   2              Notifications · Visits
-//   2              Orders · Reservations
-//   2              Share · Gift
+//   2              Notifications · Reservations
 //   2              Settings · Help
-//   2              Integrations · Friends
+//
+// MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet, Plan,
+// Visits and the five Soon cells (Orders, Share, Gift, Integrations, Friends)
+// left the grid: money is parked with Pay, and the rest is not built. Their
+// routes all still exist — bringing one back is re-adding its DestTile (the
+// full grid is in git history at MESITA-2076).
 //
 // EVERY LIVE CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub
 // stacked history as overlays. DestTiles now Link to /me/<box>. Parked cells
@@ -64,21 +55,19 @@ import { IdentityBar } from "./IdentityBar";
 // the Passport printed that nothing else did was the member number, and that
 // lives on Profile now.
 //
-// PROFILE TAKES THE FULL ROW. Deleting one cell leaves fifteen, which cannot
-// pair; spanning Profile keeps the seven pairs below untouched instead of
-// reshuffling every row.
+// PROFILE TAKES THE FULL ROW (MESITA-2043), so every row below it is a pair.
 //
 // THE TWO FACTS ARE CELLS (Pato, MESITA-2040: "so add instagram and then
 // diamond. those are independent"). This pair was added and removed twice
 // before (MESITA-1682, MESITA-1787) when both were one ladder; they are two
 // unrelated destinations now, and a grid of destinations is where those go.
 //
-// NO CARDS CELL. Wallet already lists cards inline. `/me?cards=` 308s onto
-// /wallet so Stripe's return still lands on the list.
+// NO CARDS CELL. Wallet lists cards inline. `/me?cards=` 308s onto /wallet
+// so Stripe's return still lands on the list.
 
 export function ProfileClient() {
   const supabase = useBrowserSupabase();
-  const { plan, facts } = useConsumerClass();
+  const { facts } = useConsumerClass();
 
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,9 +123,6 @@ export function ProfileClient() {
       toast.success(DIAMOND_PIN_SUCCESS);
     }
   }, []);
-
-  const planTile =
-    plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
 
   return (
     <div className="flex h-full flex-col">
@@ -195,47 +181,17 @@ export function ProfileClient() {
 
           <DestGrid>
             <DestTile
-              Icon={WalletIcon}
-              title="Wallet"
-              summary="Credits and cards"
-              href={CONSUMER_ROUTES.wallet.root}
-            />
-            <DestTile
-              Icon={PREMIUM_PLAN_ICON}
-              title="Plan"
-              summary={loading ? "…" : planTile}
-              href={CONSUMER_ROUTES.mePages.plan}
-            />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile
               Icon={Bell}
               title="Notifications"
               summary="Visits and bookings"
               href={CONSUMER_ROUTES.mePages.notifications}
             />
             <DestTile
-              Icon={Footprints}
-              title="Visits"
-              summary="Tickets and QRs"
-              href={CONSUMER_ROUTES.mePages.visits}
-            />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
-            <DestTile
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
               href={CONSUMER_ROUTES.mePages.reservations}
             />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile Icon={Share2} title="Share" summary="" soon />
-            <DestTile Icon={Gift} title="Gift" summary="" soon />
           </DestGrid>
 
           <DestGrid>
@@ -251,11 +207,6 @@ export function ProfileClient() {
               summary="How rewards work"
               href={CONSUMER_ROUTES.mePages.help}
             />
-          </DestGrid>
-
-          <DestGrid>
-            <DestTile Icon={Bot} title="Integrations" summary="" soon />
-            <DestTile Icon={Users} title="Friends" summary="" soon />
           </DestGrid>
         </div>
       </div>

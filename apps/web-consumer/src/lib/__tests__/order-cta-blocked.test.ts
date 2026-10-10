@@ -112,3 +112,41 @@ describe("GoSheet gates Order and Reserve", () => {
     expect(src).toContain("Four ways in");
   });
 });
+
+// MVP CUT (Pato, MESITA-2077). Credits · Visit · Order are money or not
+// built, so both surfaces hide them behind ONE flag and draw Reserve alone.
+// Both must read the same flag, or the bar and the sheet disagree.
+describe("MVP cut parks the money actions on both surfaces", () => {
+  it("is on", async () => {
+    const copy = await import(
+      "@/components/consumer/place-detail/place-actions-copy"
+    );
+    expect(copy.MONEY_ACTIONS_PARKED).toBe(true);
+  });
+
+  it("gates Credits, Visit and Order on the flag in the bar and the sheet", () => {
+    for (const file of ["PlaceActionBar.tsx", "GoSheet.tsx"]) {
+      const src = read(file);
+      expect(src, file).toContain("{MONEY_ACTIONS_PARKED ? null : (");
+      const parked = src.slice(
+        src.indexOf("{MONEY_ACTIONS_PARKED ? null : ("),
+        src.indexOf("</>"),
+      );
+      for (const verb of ["Credits", "Visit", "Order"]) {
+        expect(parked, `${file} ${verb}`).toMatch(new RegExp(`\\b${verb}\\b`));
+      }
+      expect(parked, file).not.toMatch(/\bReserve\b/);
+    }
+  });
+
+  // Bugbot on #2056: a walk-in place had nothing left to offer but a disabled
+  // Reserve under "Book a table." Both surfaces must read reserveEnabled.
+  it("drops the lone disabled Reserve at walk-in places", () => {
+    expect(read("PlaceActionBar.tsx")).toContain(
+      "if (MONEY_ACTIONS_PARKED && !reserveEnabled) return null;",
+    );
+    const go = read("GoSheet.tsx");
+    expect(go).toContain("{MONEY_ACTIONS_PARKED && !reserveEnabled ? null : (");
+    expect(go).toContain(": RESERVE_BLOCKED.hint}");
+  });
+});

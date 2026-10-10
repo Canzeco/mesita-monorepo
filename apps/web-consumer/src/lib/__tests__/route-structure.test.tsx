@@ -486,9 +486,11 @@ describe("T5b — Home's supporting rail", () => {
 describe("T6 — Activity's three sections are pages on Me", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
 
-  it("routes each box to its own /me page: notifications · visits · reservations", () => {
+  // Visits left the grid in the MVP cut (MESITA-2077); /me/visits is still a
+  // page (T1 walks it), just with no tile pointing at it.
+  it("routes each box to its own /me page: notifications · reservations", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.visits");
+    expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
     expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
@@ -524,73 +526,56 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders fifteen cells: Profile full-width, then seven pairs", () => {
-    // Seven pairs, no four-up and no tail (MESITA-1639). MESITA-1636 broke the
-    // rhythm with a four-up so the column would not read as undifferentiated,
-    // and paid for it in the only four cells on the page with no summary. The
-    // passport leads by being a different OBJECT — a document with a photo,
-    // twice the height of a cell — not by the pairs below it varying.
+  it("renders seven cells: Profile full-width, then three pairs", () => {
+    // MVP CUT (Pato, MESITA-2077: "hide the other stuff for mvp"). Wallet,
+    // Plan, Visits and the five Soon cells left the grid; every one of their
+    // routes still exists. Before that it was Profile + seven pairs.
     //
-    // PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648: the header
-    // states the identity, so the first cell is the one that edits it. It
-    // spans the row since the Passport died (MESITA-2043: "we don't have
-    // passports"), because fifteen cells cannot pair.
+    // PROFILE LEADS (Pato, 2026-09-08): the header states the identity, so
+    // the first cell is the one that edits it, spanning the row since the
+    // Passport died (MESITA-2043).
     //
-    // INSTAGRAM AND DIAMOND ARE CELLS (Pato, MESITA-2040: "so add instagram
-    // and then diamond"). Read the history before assuming this is a revert:
-    // the pair was cells (MESITA-1650), then header chips only (MESITA-1652),
-    // then cells again (MESITA-1682), then Passport rows (MESITA-1787) — and
-    // every one of those rounds was about where ONE AXIS lives, with "the
-    // header already says the rung" as the argument against a cell. There is
-    // no rung. These are two unrelated destinations, and the ORDER is
-    // load-bearing: Instagram first, on all three surfaces that print them
-    // (header chips, this grid). The chips STAY.
-    //
-    // Still absent, each for its own reason: Metrics and Contact moved into
-    // Settings; Cards is the same `CardsModal` Pay's Wallet already opens,
-    // and Wallet is a cell right here.
+    // INSTAGRAM, THEN DIAMOND (Pato, MESITA-2040). Two unrelated identity
+    // facts, not payment, which is why they survive the MVP cut. The ORDER is
+    // load-bearing: Instagram first, on every surface that prints them.
     expect(gridTitles(ME)).toEqual([
       "Profile",
       "Instagram",
       "Diamond",
-      "Wallet",
-      "Plan",
       "Notifications",
-      "Visits",
-      "Orders",
       "Reservations",
-      "Share",
-      "Gift",
       "Settings",
       "Help",
-      "Integrations",
-      "Friends",
     ]);
   });
 
-  it("the fully-parked row sits BELOW Settings and Help", () => {
-    // Connector and Friends are both `soon`, so that row opens nothing at
-    // all. Settings and Help are the most-reached cells in the tail, so they
-    // come first — MESITA-1641 made exactly this argument and then shipped
-    // the inverse, which is why the ordering is pinned rather than merely
-    // commented (MESITA-1642). About stays last: it is the version and legal
-    // footer, the least-reached cell on the page.
-    const order = gridTitles(ME);
-    expect(order.indexOf("Settings")).toBeLessThan(
-      order.indexOf("Integrations"),
-    );
-    expect(order.indexOf("Help")).toBeLessThan(order.indexOf("Friends"));
-    expect(order.at(-1)).toBe("Friends");
+  it("hides every money and not-built door for the MVP", () => {
+    for (const hidden of [
+      "Wallet",
+      "Plan",
+      "Visits",
+      "Orders",
+      "Share",
+      "Gift",
+      "Integrations",
+      "Friends",
+    ]) {
+      expect(gridTitles(ME), hidden).not.toContain(hidden);
+    }
+  });
+
+  it("Settings and Help close the page", () => {
+    // The most-reached cells in the tail (MESITA-1642), and Help is the
+    // legal and version footer, so it is last.
+    expect(gridTitles(ME).slice(-2)).toEqual(["Settings", "Help"]);
   });
 
   it("Profile is the one full-width row; every other row is a pair", () => {
-    // Eight `DestGrid`s of two. Counting grids and spans SEPARATELY on
-    // purpose: "cells ÷ grids === 2" was true of the old four-up too, and
-    // would go on being true of any row width. Eight since Instagram and
-    // Diamond became their own pair (MESITA-2040).
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(8);
-    // About was the only spanning cell and it folded into Help (MESITA-1650).
-    // Profile spans now (MESITA-2043) — exactly one, and it is Profile.
+    // Four `DestGrid`s: Profile, then three pairs. Counting grids and spans
+    // SEPARATELY on purpose: "cells ÷ grids === 2" was true of the old
+    // four-up too, and would go on being true of any row width.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(4);
+    // Profile spans (MESITA-2043) — exactly one, and it is Profile.
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
     const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
     expect(
@@ -671,24 +656,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     ).toContain("SignOutButton");
   });
 
-  it("every parked cell is marked `soon`, and only those four are", () => {
-    // Nothing is hidden a tap deeper any more, so the page carries its own
-    // roadmap: five cells wear the pill. A sixth live-looking cell pointing
-    // at nothing — or one of these five quietly losing the flag — is the
-    // regression this catches. Five of thirteen is a lot; T8's own opening
-    // note says a dead cell in a grid reads as broken rather than upcoming,
-    // so treat this list growing as a signal, not a formality.
+  it("no parked cell is on the grid during the MVP cut", () => {
+    // The five Soon cells were the page's own roadmap; the MVP cut took them
+    // off rather than show five dead tiles (MESITA-2077). A cell coming back
+    // as `soon` is a decision to reverse that, not a drift.
     const parkedCells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
       .map((m) => m[0])
       .filter((c) => /\bsoon\b/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(parkedCells).toEqual([
-      "Orders",
-      "Share",
-      "Gift",
-      "Integrations",
-      "Friends",
-    ]);
+    expect(parkedCells).toEqual([]);
   });
 
   it("Help is the only door to terms and privacy", () => {

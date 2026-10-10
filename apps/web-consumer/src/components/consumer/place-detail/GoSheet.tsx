@@ -13,6 +13,7 @@ import {
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   CREDITS_BLOCKED,
+  MONEY_ACTIONS_PARKED,
   ORDER_BLOCKED,
   RESERVE_BLOCKED,
 } from "@/components/consumer/place-detail/place-actions-copy";
@@ -95,7 +96,11 @@ export function GoSheet({
       <div className="p-5">
         <h2 className={SHEET_TITLE_CLASS}>Go to {place.name}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Four ways in — pick one.
+          {!MONEY_ACTIONS_PARKED
+            ? "Four ways in — pick one."
+            : reserveEnabled
+              ? "Book a table."
+              : RESERVE_BLOCKED.hint}
         </p>
 
         {/* The create can fail (cold EF, dropped connection). Swallowing it
@@ -103,56 +108,70 @@ export function GoSheet({
         {error ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{error}</p> : null}
 
         <div className="mt-4 flex flex-col gap-2">
-          {/* CREDITS — locked at every place until the engine lands, so the
+          {/* MVP cut: Credits · Visit · Order are hidden while
+              MONEY_ACTIONS_PARKED (MESITA-2077); Reserve stands alone. */}
+          {MONEY_ACTIONS_PARKED ? null : (
+            <>
+              {/* CREDITS — locked at every place until the engine lands, so the
                 hint carries the parked claim rather than blaming the place. */}
-          <GoOption
-            Icon={Lock}
-            title="Credits"
-            hint={CREDITS_BLOCKED.hint}
-            disabled
-          />
+              <GoOption
+                Icon={Lock}
+                title="Credits"
+                hint={CREDITS_BLOCKED.hint}
+                disabled
+              />
 
-          {/* VISIT — the money action, so it's the only tinted row.
+              {/* VISIT — the money action, so it's the only tinted row.
                 Non-partners render LOCKED rather than hidden, matching
                 PlaceActionBar and PlacePickList: consumer-web-create-ticket
                 409s `not_partner`, so an enabled row would be a dead end —
                 but hiding it would tell the guest the app is missing a
                 feature, when the truth is this place isn't a partner yet. */}
-          <GoOption
-            Icon={starting ? Loader2 : promoting ? QrCode : Lock}
-            spin={starting}
-            title="Visit"
-            hint={
-              !promoting
-                ? "This place isn't running a Mesita reward right now."
-                : live
-                  ? "You have a live ticket here — open it."
-                  : "Start your ticket and show the QR at the table."
-            }
-            onClick={() => pickPlace(place)}
-            disabled={!promoting || starting}
-            primary={promoting}
-          />
+              <GoOption
+                Icon={starting ? Loader2 : promoting ? QrCode : Lock}
+                spin={starting}
+                title="Visit"
+                hint={
+                  !promoting
+                    ? "This place isn't running a Mesita reward right now."
+                    : live
+                      ? "You have a live ticket here — open it."
+                      : "Start your ticket and show the QR at the table."
+                }
+                onClick={() => pickPlace(place)}
+                disabled={!promoting || starting}
+                primary={promoting}
+              />
 
-          {/* ORDER — locked until the order rail ships (MESITA-1155). */}
-          <GoOption
-            Icon={orderEnabled ? UtensilsCrossed : Lock}
-            title="Order"
-            hint={orderEnabled ? "Order ahead for pickup or delivery." : ORDER_BLOCKED.hint}
-            disabled={!orderEnabled}
-          />
+              {/* ORDER — locked until the order rail ships (MESITA-1155). */}
+              <GoOption
+                Icon={orderEnabled ? UtensilsCrossed : Lock}
+                title="Order"
+                hint={
+                  orderEnabled
+                    ? "Order ahead for pickup or delivery."
+                    : ORDER_BLOCKED.hint
+                }
+                disabled={!orderEnabled}
+              />
+            </>
+          )}
 
-          <GoOption
-            Icon={reserveEnabled ? CalendarCheck : Lock}
-            title="Reserve"
-            hint={
-              reserveEnabled
-                ? "Book a table for later."
-                : RESERVE_BLOCKED.hint
-            }
-            onClick={reserveEnabled ? onReserve : undefined}
-            disabled={!reserveEnabled}
-          />
+          {/* Parked and walk-in: the subtitle already says so, and a lone
+              disabled row under it would be a dead end (MESITA-2077). */}
+          {MONEY_ACTIONS_PARKED && !reserveEnabled ? null : (
+            <GoOption
+              Icon={reserveEnabled ? CalendarCheck : Lock}
+              title="Reserve"
+              hint={
+                reserveEnabled
+                  ? "Book a table for later."
+                  : RESERVE_BLOCKED.hint
+              }
+              onClick={reserveEnabled ? onReserve : undefined}
+              disabled={!reserveEnabled}
+            />
+          )}
         </div>
       </div>
     </LocalSheet>
