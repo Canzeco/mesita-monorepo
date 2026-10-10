@@ -20,7 +20,7 @@ export function TestingCard({
     <SectionCard
       icon={<FlaskConical className="text-secondary h-4 w-4" />}
       title="Testing"
-      subtitle="Check both before a real run."
+      subtitle="Keep both on until a real run."
     >
       <div className="border-border bg-background mt-5 rounded-xl border p-4">
         <div className="flex items-center justify-between gap-4">
