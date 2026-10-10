@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Share2, Zap } from "lucide-react";
+import { CalendarCheck, Heart, Share2 } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
@@ -31,10 +31,16 @@ import { useDoubleTap } from "./use-double-tap";
 // `bg-media-glass` disc, and white on 55% black stays at 4.74:1 even over a
 // pure-white photo.
 //
-// HIERARCHY: photo, then the name, then Go. Go is the ONE solid white disc in
-// the column — `useStartVisit` behind it is still the only path in this app
-// that creates a ticket, so the conversion must read third and nothing else
-// may compete with it.
+// HIERARCHY: photo, then the name, then Reserve. Reserve is the ONE solid white
+// disc in the column — the MVP's First Stage is reservations, so it is the
+// conversion and must read third with nothing competing (Pato, 2026-10-10:
+// "Profile, Save, Share, Reserve"; it replaced Go and its visit/order doors).
+//
+// SQUARE AND WIDE PHOTOS WEAR THE REFLECTION (Pato: "use the reflection thing
+// that swipe used to have, because squares"). A photo much wider than the card
+// would lose most of itself to `object-cover`; instead it sits uncropped in a
+// top band and a mirrored, blurred, darkened copy fills the space below, where
+// the name sits. Tall photos still cover the whole card. See ScrollSlide.
 //
 // GESTURES (design 4A): swipe sideways pages the photos (the carousel's native
 // scroller), double-tap saves, a single tap does nothing. The carousel's tap
@@ -46,19 +52,21 @@ import { useDoubleTap } from "./use-double-tap";
 // when the tap zones stopped covering the card.
 //
 // A MOCK CARD (design 3A) gets no `profileHref`: the deck hands it a toast
-// instead, and the deck — not this file — decides what Save, Share and Go do.
+// instead, and the deck — not this file — decides what Save, Share and Reserve
+// do.
 export function ScrollCard({
   place,
   index,
   total,
   near,
+  cardSize = null,
   priority = false,
   saved,
   profileHref,
   onProfile,
   onToggleSave,
   onShare,
-  onGo,
+  onReserve,
 }: {
   place: Place;
   index: number;
@@ -66,6 +74,9 @@ export function ScrollCard({
   /** Within one card of the one on screen: only these load photos eagerly
    *  (eng review R3). Everything else is `loading="lazy"`. */
   near: boolean;
+  /** The card's box (the scrollport). Unknown until measured; until then
+   *  every photo covers the card. */
+  cardSize?: { width: number; height: number } | null;
   priority?: boolean;
   saved: boolean;
   /** The place page, or null for a card that has none (a mock). */
@@ -74,7 +85,7 @@ export function ScrollCard({
   onProfile: () => void;
   onToggleSave: () => void;
   onShare: () => void;
-  onGo: () => void;
+  onReserve: () => void;
 }) {
   // A key, not a boolean: every double tap remounts the heart so the burst
   // replays even when the place is already saved.
@@ -127,6 +138,7 @@ export function ScrollCard({
             interactiveDots
             renderSlide={(i, item, { inPreloadWindow }) => (
               <ScrollSlide
+                cardSize={cardSize}
                 src={item.src}
                 alt={`${place.name}, photo ${i + 1} of ${place.photos.length}`}
                 initial={initial}
@@ -235,8 +247,8 @@ export function ScrollCard({
 
         <button
           type="button"
-          onClick={onGo}
-          aria-label={`Go to ${place.name}`}
+          onClick={onReserve}
+          aria-label={`Reserve at ${place.name}`}
           className={ACTION}
         >
           {/* THE ONE INVERTED DISC. */}
@@ -246,9 +258,9 @@ export function ScrollCard({
               "bg-on-media text-foreground backdrop-blur-none",
             )}
           >
-            <Zap className="h-6 w-6" strokeWidth={2.2} aria-hidden />
+            <CalendarCheck className="h-6 w-6" strokeWidth={2.2} aria-hidden />
           </span>
-          <span className={LABEL}>Go</span>
+          <span className={LABEL}>Reserve</span>
         </button>
       </div>
     </li>
@@ -263,11 +275,11 @@ export const SAMPLE_PLACE_TOAST = "Sample place — real places land here soon";
  * so the rule that a mock place never reaches real data lives in one place and
  * one test (design 3A, eng review 1.2):
  *
- *   mock → Save toggles in-memory state only; Profile, Share and Go toast.
- *          Nothing touches Favs, analytics, a place URL or a ticket.
- *   real → today's behaviour: the Favs store (+ first-save toast and the
- *          `home_card_save` event), the place page, the share sheet, and
- *          GoSheet behind `home_card_open`.
+ *   mock → Save toggles in-memory state only; Profile, Share and Reserve
+ *          toast. Nothing touches Favs, analytics, a place URL or a booking.
+ *   real → the Favs store (+ first-save toast and the `home_card_save`
+ *          event), the place page, the share sheet, and the reservation
+ *          sheet behind `home_card_open`.
  */
 export function scrollCardActions(
   place: Place,
@@ -284,7 +296,7 @@ export function scrollCardActions(
       props: Record<string, string | number>,
     ) => void;
     share: (place: Place) => void;
-    openGo: (place: Place) => void;
+    openReserve: (place: Place) => void;
     profileHref: (place: Place) => string;
   },
 ) {
@@ -297,7 +309,7 @@ export function scrollCardActions(
       onProfile: sample,
       onToggleSave: () => deps.setMockSaved(place.id, !saved),
       onShare: sample,
-      onGo: sample,
+      onReserve: sample,
     };
   }
   const saved = deps.savedIds.has(place.id);
@@ -312,15 +324,15 @@ export function scrollCardActions(
       }
     },
     onShare: () => deps.share(place),
-    onGo: () => {
-      // Go is the conversion intent; `ticket_created` fires later from
-      // useStartVisit and joins to this through the place.
+    onReserve: () => {
+      // Reserve is the conversion intent; the event name predates it (it
+      // tracked Go) and stays, so the funnel keeps one series.
       deps.track("home_card_open", {
         mode: "scroll",
         place_id: place.id,
         position,
       });
-      deps.openGo(place);
+      deps.openReserve(place);
     },
   };
 }
@@ -331,24 +343,77 @@ const DISC =
   "bg-media-glass flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md transition-transform active:scale-95";
 const LABEL = "drop-shadow-media text-xs font-semibold";
 
-// One slide. The default slide has no error path, and a dead photo URL would
-// render a broken image across a whole screen; this one falls back to the
-// same ink placeholder a place with no photos gets.
+/** A photo at least this much wider than the card (photo aspect ÷ card
+ *  aspect) wears the reflection instead of covering the card. The old swipe
+ *  card's number: 9:16, 3:4 and most 4:5 photos still cover a phone card;
+ *  square and wider get the band. */
+export const REFLECTION_THRESHOLD = 1.32;
+/** The reflection never gets shorter than this, so the name, the meta and
+ *  the pitch always sit on it rather than on the photo. */
+export const REFLECTION_MIN_PX = 152;
+
+/** Whether a photo of `imageRatio` (w ÷ h) wears the reflection in a card of
+ *  `card` size. */
+export function needsReflection(
+  imageRatio: number,
+  card: { width: number; height: number },
+): boolean {
+  const cardRatio = card.width / Math.max(card.height, 1);
+  return imageRatio / cardRatio >= REFLECTION_THRESHOLD;
+}
+
+/** The photo band's height: the photo uncropped at full width, held between
+ *  two floors. Never under half the card, because the reflection is a mirror
+ *  of the band and can only fill as much as the band is tall (a 3:2 photo at
+ *  its natural 260px would leave 411px below with 151px of nothing); never
+ *  over the card minus REFLECTION_MIN_PX, so the name always sits on the
+ *  reflection. A square photo shows whole; 3:2 gives up ~22% of its width. */
+export function reflectionBandHeight(
+  imageRatio: number,
+  card: { width: number; height: number },
+): number {
+  const natural = card.width / imageRatio;
+  return Math.max(
+    0,
+    Math.min(Math.max(natural, card.height / 2), card.height - REFLECTION_MIN_PX),
+  );
+}
+
+// One slide. It covers the card until it knows better: once the photo loads
+// and the card is measured, a square or wide photo switches to the reflection.
+// A dead photo URL renders the same ink placeholder as a place with no photos,
+// never a broken image across a whole screen.
 function ScrollSlide({
   src,
   alt,
   initial,
   priority,
   eager,
+  cardSize,
 }: {
   src: string;
   alt: string;
   initial: string;
   priority: boolean;
   eager: boolean;
+  cardSize: { width: number; height: number } | null;
 }) {
   const [failed, setFailed] = useState(false);
+  const [ratio, setRatio] = useState<number | null>(null);
   if (failed) return <PhotoPlaceholder initial={initial} />;
+  const loading = priority ? undefined : eager ? "eager" : "lazy";
+  if (ratio && cardSize && needsReflection(ratio, cardSize)) {
+    return (
+      <ReflectedPhoto
+        src={src}
+        alt={alt}
+        bandHeight={reflectionBandHeight(ratio, cardSize)}
+        priority={priority}
+        loading={loading}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
   return (
     <Image
       src={src}
@@ -356,11 +421,91 @@ function ScrollSlide({
       fill
       sizes="(max-width: 768px) 100vw, 480px"
       priority={priority}
-      loading={priority ? undefined : eager ? "eager" : "lazy"}
+      loading={loading}
       draggable={false}
+      onLoad={(e) => {
+        const img = e.currentTarget;
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          setRatio(img.naturalWidth / img.naturalHeight);
+        }
+      }}
       onError={() => setFailed(true)}
       className="object-cover select-none [-webkit-user-drag:none]"
     />
+  );
+}
+
+/**
+ * The photo uncropped in a top band, and below it the same photo flipped
+ * about the seam, blurred and darkened — the old swipe card's square-photo
+ * mode, carried over (its "WITC" band + reflective strip).
+ *
+ * A FLIPPED COPY, NOT `-webkit-box-reflect`: that property silently fails on
+ * iOS Safari inside composited layers and never rendered on Firefox. The copy
+ * is a box exactly the band's size placed right under it and flipped about
+ * its own centre, so its top edge shows the band's bottom edge: the seam
+ * lines up with no measurement of the image itself.
+ */
+export function ReflectedPhoto({
+  src,
+  alt,
+  bandHeight,
+  priority = false,
+  loading,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  bandHeight: number;
+  priority?: boolean;
+  loading?: "eager" | "lazy";
+  onError?: () => void;
+}) {
+  const sizes = "(max-width: 768px) 100vw, 480px";
+  return (
+    <div className="bg-foreground relative h-full w-full overflow-hidden">
+      <div
+        className="absolute inset-x-0 top-0 overflow-hidden"
+        style={{ height: bandHeight }}
+      >
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={sizes}
+          priority={priority}
+          loading={priority ? undefined : loading}
+          draggable={false}
+          onError={onError}
+          className="object-cover object-bottom select-none [-webkit-user-drag:none]"
+        />
+      </div>
+      <div
+        aria-hidden
+        data-reflection
+        className="pointer-events-none absolute inset-x-0 overflow-hidden [transform:scaleY(-1)]"
+        style={{ top: bandHeight, height: bandHeight }}
+      >
+        <Image
+          src={src}
+          alt=""
+          fill
+          sizes={sizes}
+          loading={priority ? undefined : loading}
+          draggable={false}
+          className="object-cover object-bottom select-none"
+        />
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0"
+        style={{ top: bandHeight }}
+      >
+        <div className="absolute inset-0 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/22 to-black/64" />
+      </div>
+    </div>
   );
 }
 

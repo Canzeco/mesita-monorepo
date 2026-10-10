@@ -2,8 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  REFLECTION_MIN_PX,
+  ReflectedPhoto,
   SAMPLE_PLACE_TOAST,
   ScrollCard,
+  needsReflection,
+  reflectionBandHeight,
   scrollCardActions,
 } from "@/components/consumer/home/scroll/scroll-card";
 import { scrollMockPlaces } from "@/lib/mock/scroll-places";
@@ -11,8 +15,8 @@ import type { Place } from "@/lib/api/places";
 
 // A mock card must never reach real data (MESITA-2105, design 3A): a `mock-`
 // id in Favs outlives the mock as a ghost place, one in analytics pollutes the
-// funnel, one in a URL is a 404, and one in GoSheet opens a ticket at a place
-// that does not exist. `scrollCardActions` is the one router every card goes
+// funnel, one in a URL is a 404, and one in the reservation sheet books a
+// table at a place that does not exist. `scrollCardActions` is the one router every card goes
 // through, so the rule is tested here once.
 const mock = scrollMockPlaces()[0] as Place;
 const real: Place = {
@@ -31,23 +35,23 @@ function deps(over: Partial<Parameters<typeof scrollCardActions>[2]> = {}) {
     setMockSaved: vi.fn(),
     track: vi.fn(),
     share: vi.fn(),
-    openGo: vi.fn(),
+    openReserve: vi.fn(),
     profileHref: (p: Place) => `/place/${p.slug}`,
     ...over,
   };
 }
 
 describe("a mock card's actions", () => {
-  it("toast for Profile, Share and Go, and touch nothing real", () => {
+  it("toast for Profile, Share and Reserve, and touch nothing real", () => {
     const d = deps({ isMock: true });
     const a = scrollCardActions(mock, 3, d);
     expect(a.profileHref).toBeNull();
     a.onProfile();
     a.onShare();
-    a.onGo();
+    a.onReserve();
     expect(d.toast).toHaveBeenCalledTimes(3);
     expect(d.toast).toHaveBeenCalledWith(SAMPLE_PLACE_TOAST);
-    for (const spy of [d.track, d.share, d.openGo, d.saveReal]) {
+    for (const spy of [d.track, d.share, d.openReserve, d.saveReal]) {
       expect(spy).not.toHaveBeenCalled();
     }
   });
@@ -72,19 +76,19 @@ describe("a mock card's actions", () => {
 });
 
 describe("a real card's actions", () => {
-  it("open the place page, the share sheet and GoSheet, with today's events", () => {
+  it("open the place page, the share sheet and the reservation sheet, with today's events", () => {
     const d = deps();
     const a = scrollCardActions(real, 7, d);
     expect(a.profileHref).toBe("/place/real-lupita");
     a.onShare();
     expect(d.share).toHaveBeenCalledWith(real);
-    a.onGo();
+    a.onReserve();
     expect(d.track).toHaveBeenCalledWith("home_card_open", {
       mode: "scroll",
       place_id: real.id,
       position: 7,
     });
-    expect(d.openGo).toHaveBeenCalledWith(real);
+    expect(d.openReserve).toHaveBeenCalledWith(real);
     expect(d.toast).not.toHaveBeenCalled();
   });
 
@@ -117,7 +121,7 @@ describe("the card", () => {
         onProfile={noop}
         onToggleSave={noop}
         onShare={noop}
-        onGo={noop}
+        onReserve={noop}
         {...extra}
       />,
     );
@@ -136,7 +140,7 @@ describe("the card", () => {
   it("names itself and labels every action", () => {
     const html = render(mock, { index: 4 });
     expect(html).toContain(`aria-label="${mock.name}, 5 of 50"`);
-    for (const label of [`Save ${mock.name}`, `Share ${mock.name}`, `Go to ${mock.name}`]) {
+    for (const label of [`Save ${mock.name}`, `Share ${mock.name}`, `Reserve at ${mock.name}`]) {
       expect(html).toContain(`aria-label="${label}"`);
     }
     expect(html).toContain('aria-pressed="false"');
@@ -166,3 +170,53 @@ describe("the card", () => {
     expect(html).toContain(">T</span>");
   });
 });
+
+// Square and wide photos wear the old swipe card's reflection instead of being
+// cropped to a sliver of themselves (Pato, 2026-10-10: "because squares").
+describe("the reflection", () => {
+  const phone = { width: 390, height: 671 };
+
+  it("tall photos cover the card; square and wide ones reflect", () => {
+    expect(needsReflection(9 / 16, phone)).toBe(false);
+    expect(needsReflection(3 / 4, phone)).toBe(false);
+    expect(needsReflection(1, phone)).toBe(true);
+    expect(needsReflection(3 / 2, phone)).toBe(true);
+    expect(needsReflection(16 / 9, phone)).toBe(true);
+  });
+
+  it("a square photo shows whole, and the reflection fills the rest", () => {
+    expect(reflectionBandHeight(1, phone)).toBe(390);
+  });
+
+  // The reflection is a mirror of the band, so it can only cover as much as
+  // the band is tall. A band shorter than the space below leaves a bare strip.
+  it("the reflection is never taller than the photo it mirrors", () => {
+    for (const ratio of [0.8, 1, 4 / 3, 3 / 2, 16 / 9, 3]) {
+      const band = reflectionBandHeight(ratio, phone);
+      expect(phone.height - band).toBeLessThanOrEqual(band);
+    }
+    expect(reflectionBandHeight(3 / 2, phone)).toBe(phone.height / 2);
+  });
+
+  it("the reflection never gets shorter than the name needs", () => {
+    // 4:5 at full width would be 487px tall; the floor keeps 152px below.
+    expect(reflectionBandHeight(1 / 2, phone)).toBe(phone.height - REFLECTION_MIN_PX);
+    expect(phone.height - reflectionBandHeight(0.8, phone)).toBeGreaterThanOrEqual(
+      REFLECTION_MIN_PX,
+    );
+  });
+
+  it("draws the photo once for people and once, flipped, for decoration", () => {
+    const html = renderToStaticMarkup(
+      <ReflectedPhoto src="https://images.unsplash.com/photo-1-a?w=10" alt="Lupita" bandHeight={390} />,
+    );
+    const imgs = html.match(/<img [^>]*>/g) ?? [];
+    expect(imgs).toHaveLength(2);
+    expect(imgs[0]).toContain('alt="Lupita"');
+    expect(imgs[1]).toContain('alt=""');
+    const mirror = html.slice(html.indexOf("data-reflection"));
+    expect(html).toMatch(/aria-hidden="true" data-reflection="true" class="[^"]*\[transform:scaleY\(-1\)\]/);
+    expect(mirror).toContain("top:390px;height:390px");
+  });
+});
+

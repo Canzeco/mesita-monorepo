@@ -24,7 +24,6 @@ import { EmptyState } from "@/components/shared";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { trackEvent } from "@/lib/analytics/track";
-import { GoSheet } from "@/components/consumer/place-detail/GoSheet";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -64,9 +63,9 @@ import {
 // to fire on.
 //
 // NO SKIP, DELIBERATELY. Scrolling past a card IS the skip. What it must NOT
-// drop is Go: `useStartVisit` is the only path in the app that creates a
-// ticket, so a Home whose actions are all bookmarks is a Home that cannot
-// convert (Pato, MESITA-1697 gate, D2).
+// drop is a conversion: a Home whose actions are all bookmarks cannot convert.
+// Since 2026-10-10 that is Reserve — the MVP's First Stage is reservations,
+// and Go's visit and order doors are Second Stage.
 //
 // ONLY THE CARD ON SCREEN AND ITS NEIGHBOURS LOAD PHOTOS EAGERLY (eng review
 // R3). All fifty cards are in the DOM; with the carousel in native mode each
@@ -94,13 +93,11 @@ export function ScrollDeck({
   const appliedCount = countAppliedDiscoveryFilters(filters);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // ONE PAIR OF SHEETS FOR THE WHOLE LIST, not one per card. GoSheet pulls the
-  // guest's tickets when it mounts, so fifty of them would be fifty ticket
-  // reads for a guest who is only scrolling. The card raises the intent and
-  // this owns the surface — and, like the stack deck, Go and Reserve SWAP
-  // rather than stack, because two sheets sliding up at the same z-tier read
-  // as a rendering bug.
-  const [goPlace, setGoPlace] = useState<Place | null>(null);
+  // ONE SHEET FOR THE WHOLE LIST, not one per card: the card raises the intent
+  // and this owns the surface. Reserve opens the reservation sheet directly —
+  // Go (Visit · Order · Reserve) left the card with the MVP's First Stage,
+  // where reservations are the conversion (Pato, 2026-10-10: "Profile, Save,
+  // Share, Reserve").
   const [reservePlace, setReservePlace] = useState<Place | null>(null);
 
   // A mock card's heart lives here and nowhere else (design 3A): writing a
@@ -118,6 +115,11 @@ export function ScrollDeck({
     });
   // The card on screen, from the scroll listener below (eng review R3).
   const [active, setActive] = useState(0);
+  // Every card is the scrollport's size. A photo needs that box to decide
+  // whether it can cover the card or wears the reflection (ScrollCard).
+  const [cardSize, setCardSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
 
   // THE SHARED DECK ARRIVES WITHOUT COORDINATES. HomeDeckBoundary calls
   // apiRecommendDeck with `{ limit }` only, so the EF scores it at
@@ -264,9 +266,15 @@ export function ScrollDeck({
       });
     };
     el.addEventListener("scroll", onScroll, { passive: true });
+    const measure = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setCardSize({ width, height });
+    });
+    measure.observe(el);
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", onScroll);
+      measure.disconnect();
     };
     // Re-attach when the list itself comes back: a filter that empties the
     // deck unmounts the <ul>, and a listener bound to the old node would
@@ -389,7 +397,7 @@ export function ScrollDeck({
             setMockSaved,
             track: (event, props) => trackEvent(supabase, event, props),
             share: (p) => void sharePlace(p),
-            openGo: setGoPlace,
+            openReserve: setReservePlace,
             profileHref: (p) => placeHref(p.slug ?? p.id),
           });
           return (
@@ -401,6 +409,7 @@ export function ScrollDeck({
               index={i}
               total={deck.length}
               near={Math.abs(i - active) <= 1}
+              cardSize={cardSize}
               priority={i === 0}
               {...actions}
             />
@@ -430,18 +439,6 @@ export function ScrollDeck({
       </ul>
 
       <ScrollHint show={deck.length > 1} />
-
-      {goPlace && (
-        <GoSheet
-          place={goPlace}
-          open
-          onClose={() => setGoPlace(null)}
-          onReserve={() => {
-            setReservePlace(goPlace);
-            setGoPlace(null);
-          }}
-        />
-      )}
 
       {reservePlace && (
         <ReservationSheet

@@ -3,10 +3,9 @@
 // MESITA-2047. Pato, live: "the deck must be 50 items. then it repeats. if n
 // is one, fill the 50 items deck with the same place."
 //
-// It cycles ONE source, never a mix: the real deck, or — while
-// SCROLL_USES_MOCK is on (MESITA-2105, Pato, 2026-10-10: "for the moment use
-// mock data written in the frontend") — the twelve shared mock places, which
-// replace the real deck whole and never pad it.
+// NO MOCK DATA. Repeating the one real place is honest by construction: every
+// card can be opened, saved and visited. Inventing places to pad the deck is
+// what Pato killed on sight.
 //
 // No imports, on purpose: `pnpm test` loads this file straight into Node.
 

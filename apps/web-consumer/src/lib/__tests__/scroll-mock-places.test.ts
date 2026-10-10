@@ -12,9 +12,7 @@ import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 
 // Scroll's frontend mock (MESITA-2105) is the whole feed while the switch is
 // on, so every row must carry every field a card prints and every filter
-// reads — a row missing one renders a hole on a full-screen card. This runs
-// against web's GENERATED copy; mobile's copy is byte-identical
-// (`deno task sync-shared:check`) and its own `tsc` checks the types.
+// reads — a row missing one renders a hole on a full-screen card.
 describe("Scroll's mock places", () => {
   const rows = scrollMockPlaces();
   const families = new Set(FILTERABLE_PLACE_FAMILIES.map((f) => f.key));

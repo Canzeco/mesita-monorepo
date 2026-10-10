@@ -193,18 +193,6 @@ const TARGETS: {
     },
     paths: ["supabase/supabase/functions/_shared/rewards-model.ts"],
   },
-  // SCROLL'S FRONTEND MOCK (MESITA-2105). Both consumer apps show the same
-  // twelve places on Home › Scroll while `SCROLL_USES_MOCK` is on, and the
-  // design review ruled web and mobile cannot each carry their own list. It
-  // imports `Place` through the `@/` alias, so each app's own `tsc` checks the
-  // copy against that app's type. MESITA-2095 deletes this entry with the mock.
-  {
-    source: "scroll-mock-places.ts",
-    apps: {
-      "web-consumer": "src/lib/mock/scroll-places.ts",
-      "mobile-consumer": "src/lib/mock/scroll-places.ts",
-    },
-  },
 ];
 
 /** Whole directories generated as one unit. Every file under

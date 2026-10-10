@@ -93,9 +93,6 @@ module.exports = {
         },
         // The swipe card's panel was a blue nobody names — decoration, so ink.
         swipepanel: { DEFAULT: '#171717', foreground: '#ffffff' },
-        // On-media (MESITA-2105) — string-equal with COLORS.onMedia* / mediaGlass.
-        'on-media': { DEFAULT: '#ffffff', muted: 'rgba(255,255,255,0.85)' },
-        'media-glass': 'rgba(0,0,0,0.55)',
       },
       // Web's deliberately tightened radius scale (base 0.5rem, flatter corners).
       borderRadius: {
