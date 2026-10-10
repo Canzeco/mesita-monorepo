@@ -608,8 +608,12 @@ Deno.test("the business console's copy of the terminal-reason rule has not drift
   // moment the rule is most likely to be retyped. The scan asserts the copy
   // still EXISTS somewhere in the console's api layer and that EVERY copy of
   // it matches, which is the invariant; where it lives is the console's call.
+  //
+  // The console's surface lives in web-admin now: MESITA-2086 rendered it
+  // there, and MESITA-2089 deleted web-business (and shared/, which used to
+  // generate both copies), so admin's is the only copy left to pin.
   const apiDir = new URL(
-    "../../../../apps/web-business/src/lib/api/",
+    "../../../../apps/web-admin/src/lib/api/",
     import.meta.url,
   );
   const carriers: string[] = [];
@@ -620,11 +624,11 @@ Deno.test("the business console's copy of the terminal-reason rule has not drift
     carriers.push(entry.name);
     assert(
       src.includes(`reason.startsWith("rejected.") || reason === "platform_paused"`),
-      `web-business ${entry.name}'s terminal-reason rule no longer matches _shared/stripe-connect.ts`,
+      `web-admin ${entry.name}'s terminal-reason rule no longer matches _shared/stripe-connect.ts`,
     );
   }
   assert(
     carriers.length > 0,
-    "web-business lost its copy of the terminal-reason rule",
+    "web-admin lost its copy of the terminal-reason rule",
   );
 });

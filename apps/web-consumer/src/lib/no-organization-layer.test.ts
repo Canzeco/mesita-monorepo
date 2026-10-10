@@ -1,8 +1,7 @@
 // MESITA-1892 — the organization layer does not come back to this app.
 //
-// The layer LIVED in web-business, and that app has the long version of this
-// guard (with the /orgs redirect table carved out). This app only ever READ
-// the layer, so the rule here is simply: none of its names, anywhere in code.
+// This app only ever READ the layer, so the rule here is simply: none of its
+// names, anywhere in code.
 //
 // It is worth a file despite being three lines of logic, because what this app
 // read was the part that is easiest to put back by accident — a tenant id

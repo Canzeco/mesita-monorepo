@@ -4,8 +4,7 @@
 // install roots — so a shared module is not importable without publishing.
 // The repo's existing answer is duplicate + pin: a test that reads both copies
 // off disk. `type-roles.ts` is pure data with zero platform deps precisely so
-// the copies CAN be identical, which is also what lets mobile-consumer consume
-// it (NativeWind has no @utility layer to generate from).
+// the copies CAN be identical.
 //
 // If this fails: you edited one copy. Edit Notion Docs > Design first, then
 // BOTH copies, in that order and the same session.

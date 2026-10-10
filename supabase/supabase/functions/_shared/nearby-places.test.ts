@@ -655,9 +655,9 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
 });
 
 Deno.test("places scope: three nested sets, named on the wire, widest-Mesita default", () => {
-  // The absent value is the one that matters most: mobile Search and the
-  // web Pay picker both post no scope, so it must never be the narrowest
-  // ring. "mesita" is the widest Mesita set.
+  // The absent value is the one that matters most: any caller that posts no
+  // scope lands on it, so it must never be the narrowest ring. "mesita" is
+  // the widest Mesita set.
   assertEquals(parsePlacesScope(undefined), "mesita");
   assertEquals(parsePlacesScope(null), "mesita");
   assertEquals(parsePlacesScope(""), "mesita");
@@ -728,10 +728,10 @@ Deno.test("places scope: the three rings return three DIFFERENT sets", () => {
   assertEquals(ring("partners").length < ring("mesita").length, true);
 });
 
-Deno.test("places scope: an absent scope returns today's set, for Pay and mobile", () => {
-  // apps/mobile-consumer/src/lib/api/places.ts and the web Pay picker
-  // (PlacePickList) post { lat, lng, limit } with no scope. Whatever the
-  // default resolves to, it must not narrow what those two callers see.
+Deno.test("places scope: an absent scope returns today's set", () => {
+  // A caller that posts { lat, lng, limit } with no scope must see exactly
+  // the explicit "mesita" set. The deleted mobile app (MESITA-2089) was one;
+  // web's Pay picker sends "mesita" explicitly rather than lean on this.
   const rows = [
     { id: "pe", plan: "pro", content_state: "ready" },
     { id: "ep", plan: "free", content_state: "ready" },

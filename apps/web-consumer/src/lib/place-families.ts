@@ -11,7 +11,6 @@
 //   · public.place_families
 //   · supabase/functions/_shared/place-taxonomy.ts
 //   · supabase/functions/_shared/google-type-super.ts  (Google type map)
-//   · apps/mobile-consumer/src/lib/place-families.ts   (its twin)
 // This is a HARDCODED copy in catalog order — keep it in lock-step by hand
 // (single-source codegen is a deferred issue). The pin that catches drift is
 // `supabase/functions/_shared/place-families-parity.test.ts`. Pills render

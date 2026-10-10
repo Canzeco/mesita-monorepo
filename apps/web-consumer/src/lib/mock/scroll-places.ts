@@ -17,10 +17,8 @@
 //   · The exit is MESITA-2095: flip the switch off, delete this file, restore
 //     the "invents no places" pin.
 //
-// WEB ONLY. The mobile app is being deleted for the MVP (P-MESITA-29), so the
-// mock lives here rather than in `shared/`. The rows are their own narrow type
-// and the base is deliberately untyped; `scrollMockPlaces()` spreads them into
-// `Place`, and `tsc` checks the result.
+// The rows are their own narrow type and the base is deliberately untyped;
+// `scrollMockPlaces()` spreads them into `Place`, and `tsc` checks the result.
 //
 // THE PHOTOS ARE REAL AND MATCHED. A full-bleed feed is mostly photo, so a
 // taquería cannot wear a canyon. Each URL is an Unsplash photo whose subject

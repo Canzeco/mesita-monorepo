@@ -12,17 +12,17 @@ import {
 } from "../consumer-onboarding";
 import { MIN_SIGNUP_AGE } from "../utils";
 
-// The signup gate has FOUR hand-written copies and no shared module between
-// them (the packages are independent install roots, and the EF is Deno). That
-// is exactly the shape that let MESITA-1806 remove sex from /onboard while the
-// Passport kept printing it for a week — a `.filter(Boolean)` display made the
-// hole invisible and no test failed.
+// The signup gate has hand-written copies in the Edge Functions and no shared
+// module with them (the EFs are Deno). That is exactly the shape that let
+// MESITA-1806 remove sex from /onboard while the Passport kept printing it for
+// a week — a `.filter(Boolean)` display made the hole invisible and no test
+// failed.
 //
 // So this file does two things. It pins the predicate's behaviour, and it
-// greps the other three copies for the field names, which is the only check
-// available across a package and runtime boundary. A source-text assertion is
-// blunt, but a drifting copy here costs a user a redirect loop between
-// /onboard and the shell, which is worse than blunt.
+// greps the EF routing hint for the field names, which is the only check
+// available across a runtime boundary. A source-text assertion is blunt, but
+// a drifting copy here costs a user a redirect loop between /onboard and the
+// shell, which is worse than blunt.
 
 const REPO = join(__dirname, "..", "..", "..", "..", "..");
 const read = (p: string) => readFileSync(join(REPO, p), "utf8");
@@ -125,7 +125,7 @@ describe("the three onboarding steps (MESITA-1830)", () => {
   });
 });
 
-describe("the gate's other three copies", () => {
+describe("the gate's other copies", () => {
   // Not a behavioural test — a drift alarm. Each of these files re-implements
   // the predicate by hand and names all three fields when it is in lock-step.
   it.each([
@@ -133,11 +133,6 @@ describe("the gate's other three copies", () => {
       "the Edge Function routing hint",
       "supabase/supabase/functions/consumer-web-signin-phone/index.ts",
       "onboarded:",
-    ],
-    [
-      "mobile isOnboarded",
-      "apps/mobile-consumer/src/lib/api/auth.ts",
-      "export function isOnboarded",
     ],
   ])("%s checks first_name, birthday and sex", (_name, path, anchor) => {
     const source = read(path);
@@ -151,39 +146,12 @@ describe("the gate's other three copies", () => {
     }
   });
 
-  it("mirrors the three steps on mobile, with a back that works", () => {
-    // The step list is the fifth hand-written copy of this shape (MESITA-1830)
-    // and the only one outside this package. Same failure mode as the gate: a
-    // mobile screen that quietly keeps asking all three at once diverges the
-    // IA with nothing failing. Headlines only — the deks interpolate
-    // MIN_SIGNUP_AGE, so their source text is a template literal on both
-    // sides and cannot be compared this way.
-    const source = read("apps/mobile-consumer/src/app/onboard.tsx");
-    for (const { headline } of ONBOARD_STEPS) {
-      expect(source, `mobile onboarding lost "${headline}"`).toContain(
-        headline,
-      );
-    }
-    // Android's hardware back has to step DOWN the flow, not leave it, and
-    // the dots have to announce as one progress control.
-    expect(source, "mobile back button no longer steps back").toContain(
-      "BackHandler",
-    );
-    expect(source, "mobile progress dots are not announced").toContain(
-      "progressbar",
-    );
-  });
-
-  it("asks for sex on both onboarding screens", () => {
-    for (const path of [
-      "apps/web-consumer/src/app/onboard/OnboardForm.tsx",
-      "apps/mobile-consumer/src/app/onboard.tsx",
-    ]) {
-      const source = read(path);
-      // The gate requiring a field that no form collects is precisely the
-      // failure this issue fixed; it must not come back.
-      expect(source, `${path} does not collect sex`).toMatch(/\bsex\b/i);
-      expect(source).toContain("radiogroup");
-    }
+  it("asks for sex on the onboarding screen", () => {
+    const path = "apps/web-consumer/src/app/onboard/OnboardForm.tsx";
+    const source = read(path);
+    // The gate requiring a field that no form collects is precisely the
+    // failure this issue fixed; it must not come back.
+    expect(source, `${path} does not collect sex`).toMatch(/\bsex\b/i);
+    expect(source).toContain("radiogroup");
   });
 });

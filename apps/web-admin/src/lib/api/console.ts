@@ -104,8 +104,8 @@ export type ConsolePlace = {
    *  `enriched` above stay independent of this map; they read straight off
    *  the row, same as before. Local shape rather than an import from
    *  state-enrichment.ts — same no-shared-type convention as
-   *  place-manage/actions.ts's own inline copy, so the two apps' payload
-   *  types can drift on shape without a cross-file edit forcing them apart. */
+   *  place-manage/actions.ts's own inline copy, so the two payload types
+   *  can drift on shape without a cross-file edit forcing them apart. */
   enrichFunctions?: Record<string, {
     state: "pending" | "completed" | "failed";
     at: string | null;

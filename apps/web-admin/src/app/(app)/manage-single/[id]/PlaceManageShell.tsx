@@ -2,9 +2,10 @@
 
 // The client half of the place surface in admin (MESITA-2086): owns the
 // AdminPlace state the shared sections read through PlaceContext, and the one
-// save bar. Same shape as web-business's PlaceManageShell minus
-// `PlaceNavBridge` — that bridge publishes the unsaved-edits guard to the
-// business rail, and admin's rail is not a place rail.
+// save bar. Same shape as the business console's PlaceManageShell (deleted
+// with web-business, MESITA-2089) minus `PlaceNavBridge` — that bridge
+// published the unsaved-edits guard to the business rail, and admin's rail is
+// not a place rail.
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";

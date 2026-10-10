@@ -12,8 +12,9 @@ import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from
 // it was deleted (MESITA-1588); this page was their only surviving caller, so
 // they moved here. Single Place (MESITA-2084) imports them from here rather
 // than owning a copy — ONE caller set, so the two pages cannot drift on what
-// a button does. The per-place EDITOR lives on in the business console
-// (`web-business`); Single Place links to it.
+// a button does. The per-place EDITOR is the business console's place
+// surface, which Single Place renders (MESITA-2086; web-business itself was
+// deleted, MESITA-2089).
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off
@@ -36,9 +37,9 @@ export type CrenupBlock = {
   state: "failed" | "missing";
 };
 
-/** One Crenup function's state, as the EF's shared fold ships it (mirrors
- *  web-business's EnrichFunctionState — no shared import between the two
- *  independent install roots). */
+/** One Crenup function's state, as the EF's shared fold ships it (the same
+ *  shape web-business's EnrichFunctionState had before MESITA-2089 deleted
+ *  that app). */
 export type EnrichFunctionState = {
   state: "pending" | "completed" | "failed";
   at: string | null;

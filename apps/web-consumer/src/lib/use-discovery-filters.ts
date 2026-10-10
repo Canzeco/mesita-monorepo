@@ -19,7 +19,7 @@ import { FILTERABLE_PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families"
 
 const STORAGE_KEY = "mesita_discovery_filters_v6";
 
-// Hydrate from the FILTERABLE seven, not all eight — see the mobile twin.
+// Hydrate from the FILTERABLE seven, not all eight.
 // A persisted key the sheet no longer renders is a filter the guest cannot
 // see or clear (MESITA-1857).
 const KNOWN_FAMILY_KEYS = new Set<string>(

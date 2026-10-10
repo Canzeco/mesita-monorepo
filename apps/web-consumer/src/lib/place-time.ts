@@ -9,7 +9,6 @@
 //
 // Everything below is derived from MX_OFFSET. Do NOT introduce a second
 // offset constant anywhere; import this one.
-// Mirror: apps/mobile-consumer/src/lib/place-time.ts (keep the two in sync).
 
 /** IANA fallback when a place row has no timezone stamp. Not a second Mexico offset. */
 export const FALLBACK_IANA_TZ = "UTC";

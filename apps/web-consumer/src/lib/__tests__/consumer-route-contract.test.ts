@@ -31,9 +31,7 @@ import nextConfig from "../../../next.config";
 // FIRST STAGE (MESITA-2087). The consumer app is Citywide Catalog · Discovery
 // Engines · Reservations Agent. Every Second Stage address — Visits, Wallet,
 // Credits, Orders, Diamond, Plan, the Share deck, public gift links — is a
-// redirect SOURCE here and nothing else: no key, no helper, no page. If a test
-// here fails because you MEANT to change a route, the mobile mirror went with
-// apps/mobile-consumer (MESITA-2089); there is no twin left to keep in step.
+// redirect SOURCE here and nothing else: no key, no helper, no page.
 
 const SHELL = join(__dirname, "..", "..", "app", "(shell)");
 
