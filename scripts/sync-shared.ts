@@ -25,6 +25,18 @@
 // is not independently type-checkable: each app's own `tsc` is what proves it,
 // which is exactly the check that already runs.
 //
+// AND ONE WHOLE SURFACE (MESITA-2085, Pato: "import the functionalities of the
+// business app to manage single page"). `shared/place-console/**` is the
+// business console's per-place screens — place-manage, the console place
+// cards, the console API wrappers, the product/rewards libs — generated as a
+// DIRECTORY (DIR_TARGETS below) so admin's Single Place and business's
+// `/places/[id]` render one source. It is UI, not policy, and it rides the
+// same contract: the files reach their per-app adapters through the `@/`
+// alias (`@/lib/supabase/server`, `@/lib/console-routes`, `@/lib/ui-classes`,
+// `@/lib/utils`, `@/components/ErrorNote`), and each app's own `tsc` is what
+// proves the copy. The alternative was the twin MESITA-1588 deleted for
+// drifting, so the directory target is what makes the import honest.
+//
 // WHAT DOES NOT BELONG HERE. Anything sync-brand already generates
 // (components/brand/*, brand-data.ts) — two owners for one file is a fight,
 // not a guarantee.
@@ -183,6 +195,51 @@ const TARGETS: {
   },
 ];
 
+/** Whole directories generated as one unit. Every file under
+ *  `shared/<sourceDir>/<rel>` lands at `apps/<app>/<base>/<rel>` — the same
+ *  relative path in every app, which is what lets the files import each
+ *  other by `@/` alias unchanged. Tests ride along: a `*.test.ts(x)` beside
+ *  its source is generated beside the copy and runs under that app's vitest.
+ *  `deno task test:shared-modules` ignores these directories for the same
+ *  reason — they are vitest files, not Deno tests. */
+const DIR_TARGETS: { sourceDir: string; apps: Record<string, string> }[] = [
+  { sourceDir: "place-console", apps: { "web-business": "src" } },
+];
+
+async function walk(dir: string, rel = ""): Promise<string[]> {
+  const out: string[] = [];
+  for await (const entry of Deno.readDir(dir)) {
+    const next = rel ? `${rel}/${entry.name}` : entry.name;
+    if (entry.isDirectory) out.push(...await walk(join(dir, entry.name), next));
+    else if (entry.isFile) out.push(next);
+  }
+  return out.sort();
+}
+
+/** DIR_TARGETS unrolled into the same shape as TARGETS, one entry per file. */
+async function expandDirTargets(): Promise<typeof TARGETS> {
+  const out: typeof TARGETS = [];
+  for (const dir of DIR_TARGETS) {
+    const root = join(repoRoot, "shared", dir.sourceDir);
+    let files: string[];
+    try {
+      files = await walk(root);
+    } catch {
+      console.error(`sync-shared: missing directory source shared/${dir.sourceDir}`);
+      Deno.exit(1);
+    }
+    for (const rel of files) {
+      out.push({
+        source: `${dir.sourceDir}/${rel}`,
+        apps: Object.fromEntries(
+          Object.entries(dir.apps).map(([app, base]) => [app, `${base}/${rel}`]),
+        ),
+      });
+    }
+  }
+  return out;
+}
+
 /** The first bytes of every generated copy. One definition, three readers:
  *  `notice()` writes it, the source-purity check refuses a `shared/` file that
  *  carries it, and the collision guard uses it to tell a generated destination
@@ -203,7 +260,9 @@ let drift = 0;
 let written = 0;
 const missing: string[] = [];
 
-for (const target of TARGETS) {
+const ALL_TARGETS = [...TARGETS, ...await expandDirTargets()];
+
+for (const target of ALL_TARGETS) {
   const sourcePath = join(repoRoot, "shared", target.source);
   let body: string;
   try {
@@ -280,10 +339,10 @@ if (check) {
     Deno.exit(1);
   }
   console.log(
-    `sync-shared: ${TARGETS.length} sources in sync across every target.`,
+    `sync-shared: ${ALL_TARGETS.length} sources in sync across every target.`,
   );
 } else {
   console.log(
-    `sync-shared: ${TARGETS.length} sources, ${written} file(s) written.`,
+    `sync-shared: ${ALL_TARGETS.length} sources, ${written} file(s) written.`,
   );
 }
