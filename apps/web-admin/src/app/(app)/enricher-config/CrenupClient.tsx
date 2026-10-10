@@ -54,15 +54,15 @@ import {
 } from "../verification-config/VerificationConfigClient";
 import type { VerificationConfig } from "../verification-config/defaults";
 
-/** The Crenup box on Manage Places — where Create actually runs. */
-const CRENUP_BOX_HREF = "/manage-multiple#crenup";
+/** The Create box on Multiple Places — where Create actually runs. */
+const CREATE_BOX_HREF = "/manage-multiple#create";
 
 export type { CrenupSettings };
 
 // THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
 //   Creation    Models (read-only) · Create · Verification
 //   Enrichment  Enrich · Functions
-// Discovery-shaped. One Crenup Save for atlas_* on both; Verification keeps
+// Discovery-shaped. One Save for atlas_* on both; Verification keeps
 // its own per-switch save. Search eligibility lives on Discovery › Map.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
@@ -284,10 +284,10 @@ export function CrenupClient({
                 the wait.
               </p>
               {/* This page CONFIGURES Create; it does not run it. The door is
-                  Manage Places, same idiom as the Models section's jump. */}
+                  Multiple Places › Create, same idiom as the Models section's jump. */}
               <p className="text-muted-foreground mt-3 text-sm">
                 <Link
-                  href={CRENUP_BOX_HREF}
+                  href={CREATE_BOX_HREF}
                   className="text-foreground font-semibold underline underline-offset-2"
                 >
                   Create a place ›

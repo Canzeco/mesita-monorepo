@@ -29,7 +29,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         are acceptance intent bits set on the Partner tab;
 //                         engines still gate each rail. Carries the
 //                         listing_type drift warning, which is about these rows.
-//   Crenup States       how far did the pipeline get? Enriched (last
+//   Enrichment States   how far did the pipeline get? Enriched (last
 //                         completed) · Enriching (live run) over the eleven
 //                         functions 0. Seed … 10. Embedding. OWNS the
 //                         enrichment read — StateCard no longer fetches it.

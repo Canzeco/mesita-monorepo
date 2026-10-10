@@ -6,7 +6,7 @@ import { type CrenupSettings } from "./crenup-guards";
 import { getVerificationConfig } from "../verification-config/actions";
 import { VERIFICATION_FALLBACK } from "../verification-config/defaults";
 
-// CRENUP — how a place becomes a profile, as two pages (MESITA-2083):
+// How a place becomes a profile, as two pages (MESITA-2083):
 // Creation (Models · Create · Verification) and Enrichment (Enrich ·
 // Functions). Search eligibility is Discovery › Map, not here.
 //
@@ -47,7 +47,7 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
   ]);
 
   return (
-    <ConfigPageLayout eyebrow="Operations · Crenup" title={TITLE[view]}>
+    <ConfigPageLayout eyebrow={`Operations · ${TITLE[view]}`} title={TITLE[view]}>
     <CrenupClient
       view={view}
       initialSettings={

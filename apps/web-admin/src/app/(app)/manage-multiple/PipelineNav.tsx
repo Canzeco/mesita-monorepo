@@ -16,15 +16,15 @@ import { PIPELINE_STEPS } from "./pipeline";
 // the chips as you scrolled under them. A solid fill plus the gutter bleed
 // makes it chrome.
 //
-// ONE ROW that scrolls, not a wrapped block. Three chips need ~445px, so on a
-// phone they wrapped to two lines and this bar — which is sticky, so the cost
-// is permanent — held about 90px of a ~700px viewport. They fit one line from
-// `sm` up, where the wrap never happened anyway.
+// ONE ROW that scrolls, not a wrapped block. Wrapped, the chips took two
+// lines on a phone and this bar — which is sticky, so the cost is permanent —
+// held about 90px of a ~700px viewport. The five chips scroll sideways on a
+// phone and wrap only from `sm` up.
 
 export function PipelineNav() {
   return (
     <nav
-      aria-label="Google Search, Mesita Search, Crenup"
+      aria-label={PIPELINE_STEPS.map((step) => step.label).join(", ")}
       className="border-border bg-background sticky top-0 z-20 -mx-4 mb-4 border-b px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
       <ol className="flex gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:overflow-x-visible">

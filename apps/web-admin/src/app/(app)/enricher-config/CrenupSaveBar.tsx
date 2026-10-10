@@ -27,7 +27,7 @@ export function CrenupSaveBar({
      measured against the window, so it ran under the desktop rail and
      sat on the phone's home indicator. Sticky still overlays the bottom
      of the column, so the modules keep `pb-24` or Vote threshold (and
-     Functions) sit under Save Crenup. The row stacks under `sm`: label
+     Functions) sit under Save. The row stacks under `sm`: label
      over buttons rather than three items fighting for 343px. */
   return (
     <div className="border-border bg-card/90 pb-safe sticky bottom-0 z-20 -mx-4 border-t backdrop-blur sm:-mx-6 sm:pb-0 lg:-mx-8">
@@ -77,7 +77,7 @@ export function CrenupSaveBar({
                 Saving…
               </>
             ) : (
-              "Save Crenup"
+              "Save"
             )}
           </button>
         </div>

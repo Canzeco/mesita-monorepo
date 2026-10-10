@@ -34,8 +34,8 @@ describe("Crenup section strip is wayfinding, not tabs", () => {
   });
 });
 
-describe("Crenup save bar leaves module space", () => {
-  it("keeps pb-24 so Vote threshold can scroll clear of Save Crenup", () => {
+describe("the save bar leaves module space", () => {
+  it("keeps pb-24 so Vote threshold can scroll clear of Save", () => {
     expect(client).toContain("pb-24");
     expect(client).not.toContain("gap-4 pb-4");
   });

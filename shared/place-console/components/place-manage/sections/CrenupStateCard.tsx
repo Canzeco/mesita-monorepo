@@ -17,7 +17,7 @@ import {
 } from "./state-enrichment";
 
 /**
- * Crenup States — the whole pipeline picture in one box (Pato, 2026-08-30):
+ * Enrichment States — the whole pipeline picture in one box (Pato, 2026-08-30):
  * the two SUMMARY facts (Enriching, Enriched) over the eleven functions,
  * 0. Seed … 10. Embedding, each a bool (called / not). Create 1–5 /
  * Enrich 1–10 stay Config sequences, not a third ladder.
@@ -77,11 +77,11 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
     enriched === "unknown"
       ? "Couldn't read the pipeline events."
       : enriched
-        ? "The Crenup queue finished." +
+        ? "The enrich queue finished." +
           (place.enriched_at
             ? ` Last run ${String(place.enriched_at).slice(0, 10)}.`
             : "")
-        : "The Crenup queue has not finished.";
+        : "The enrich queue has not finished.";
   const enrichingDetail = enriching
     ? "The Enricher pipeline is mid-flight — research, analysis, or contents is running."
     : "No Enricher run is in flight.";
@@ -90,7 +90,7 @@ export function CrenupStateCard({ place }: { place: AdminPlace }) {
     <SectionCard
       icon={<Sprout className="h-4 w-4" />}
       tint="violet"
-      title="Crenup States"
+      title="Enrichment States"
     >
       <div className="mt-5 flex flex-col">
         <StateRow

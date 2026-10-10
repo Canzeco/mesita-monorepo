@@ -28,7 +28,7 @@ export type DomainKey =
 
 export const DOMAINS: ReadonlyArray<{ key: DomainKey; label: string }> = [
   { key: "all", label: "All" },
-  { key: "atlas", label: "Crenup" },
+  { key: "atlas", label: "Places" },
   { key: "consumer", label: "Guests" },
   { key: "rewards", label: "Rewards" },
   { key: "reservations", label: "Reservations" },
