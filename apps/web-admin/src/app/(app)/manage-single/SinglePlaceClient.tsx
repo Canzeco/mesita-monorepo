@@ -5,10 +5,11 @@
 // the place up by its identity spine; anything else is a name search over the
 // catalogue. A hit OPENS the place at /manage-single/<id>/profile — the
 // business console's screens, generated into this app — rather than drawing a
-// second card of its facts here. An ID Mesita does not hold yet is the one
-// case this page acts on itself: Create mints it, then opens it.
+// second card of its facts here. A name also searches Google beside the
+// catalogue, and a Google place Mesita does not hold is added from that list
+// (MESITA-2094). Create and Add are the only writes this page makes itself.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
@@ -23,9 +24,16 @@ import { CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/mana
 import { placeHref } from "@/lib/console-routes";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import {
+  GoogleMatchList,
+  searchGoogleByName,
+  type GoogleRowNote,
+  type GoogleState,
+} from "./GoogleMatches";
+import {
   classifyLookup,
   filterCatalog,
   googleMapsPlaceHref,
+  googleOnMesita,
   MAX_NAME_MATCHES,
 } from "./single-place-lookup";
 
@@ -47,9 +55,20 @@ export function SinglePlaceClient() {
   const [note, setNote] = useState<Note | null>(null);
   // The catalogue, read once per page life for name searches.
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
+  // From Google, for the name in the matches view. `googleSeq` drops a reply
+  // that lands after a newer Find; `added` (Google Place ID → Mesita id) and
+  // `googleNotes` are this page's Adds.
+  const [google, setGoogle] = useState<GoogleState | null>(null);
+  const googleSeq = useRef(0);
+  const [added, setAdded] = useState<ReadonlyMap<string, string>>(new Map());
+  const [googleNotes, setGoogleNotes] = useState<Record<string, GoogleRowNote>>({});
 
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
+  const catalogGoogleIds = useMemo(
+    () => new Set((catalog ?? []).flatMap((p) => (p.google_place_id ? [p.google_place_id] : []))),
+    [catalog],
+  );
 
   function open(placeId: string) {
     router.push(placeHref(placeId));
@@ -60,6 +79,9 @@ export function SinglePlaceClient() {
     setBusy("find");
     setError(null);
     setNote(null);
+    googleSeq.current += 1;
+    setGoogle(null);
+    setGoogleNotes({});
     try {
       if (lookup.kind === "google_place_id") await findByGoogleId(lookup.id);
       else await findByName(lookup.query);
@@ -86,6 +108,12 @@ export function SinglePlaceClient() {
   }
 
   async function findByName(query: string) {
+    // Google runs beside the catalogue read, not after it, and lands on its own.
+    const seq = googleSeq.current;
+    setGoogle({ status: "loading" });
+    void searchGoogleByName(query).then((g) => {
+      if (googleSeq.current === seq) setGoogle(g);
+    });
     let places = catalog;
     if (!places) {
       const r = await listAllPlaces();
@@ -96,12 +124,64 @@ export function SinglePlaceClient() {
       places = r.data.places;
       setCatalog(places);
     }
-    const hits = filterCatalog(places, query);
-    if (hits.length === 1) {
-      open(hits[0].id);
+    // Always the list, even for one catalogue match — the Google half is why
+    // a name was typed.
+    setView({ kind: "matches", query, hits: filterCatalog(places, query) });
+  }
+
+  /** A Google row: one Mesita holds opens the place (this page's Add, then
+   *  the catalogue, else the identity lookup); one it does not opens Not on
+   *  Mesita with what Google already said, so Create spends no second call. */
+  async function openGoogle(place: PlaceLite) {
+    if (isBusy) return;
+    const known =
+      added.get(place.id) ?? catalog?.find((p) => p.google_place_id === place.id)?.id;
+    if (known) {
+      open(known);
       return;
     }
-    setView({ kind: "matches", query, hits });
+    if (!googleOnMesita(place, catalogGoogleIds, added)) {
+      setNote(null);
+      setView({ kind: "absent", googleId: place.id, google: place, note: null });
+      return;
+    }
+    setBusy("find");
+    setError(null);
+    try {
+      await findByGoogleId(place.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Add mints a Google row in place and leaves the list up, so one search
+   *  can add several. Same action as Create; the row then opens the place. */
+  async function addFromGoogle(place: PlaceLite) {
+    if (googleNotes[place.id]?.state === "running") return;
+    setGoogleNotes((n) => ({ ...n, [place.id]: { state: "running", text: "Adding…" } }));
+    let rowNote: GoogleRowNote;
+    try {
+      const r = await createPlaceFromGooglePlaceId(place.id);
+      if (r.ok) {
+        setAdded((m) => new Map(m).set(place.id, r.placeId));
+        setCatalog(null);
+        rowNote = {
+          state: r.alreadyExisted ? "existed" : "ok",
+          text: r.alreadyExisted
+            ? "Already on Mesita"
+            : r.enrichmentTriggered
+              ? "Added · enrich queued"
+              : "Added · enrich not queued",
+        };
+      } else {
+        rowNote = { state: "error", text: r.error };
+      }
+    } catch (err) {
+      rowNote = { state: "error", text: err instanceof Error ? err.message : "Unexpected error" };
+    }
+    setGoogleNotes((n) => ({ ...n, [place.id]: rowNote }));
   }
 
   async function create() {
@@ -139,7 +219,7 @@ export function SinglePlaceClient() {
       <SectionCard
         tint="sky"
         title="Find"
-        subtitle="A Google Place ID looks it up by identity. Anything else searches the catalogue by name, address or slug. A hit opens the place."
+        subtitle="A Google Place ID looks it up by identity. Anything else searches Mesita by name, address or slug, and Google beside it. A hit opens the place."
         icon={<Search className="h-4 w-4" />}
       >
         <form
@@ -181,7 +261,24 @@ export function SinglePlaceClient() {
         ) : null}
 
         {view?.kind === "matches" ? (
-          <MatchList query={view.query} hits={view.hits} onPick={(h) => open(h.id)} />
+          <>
+            <ListHeading>On Mesita</ListHeading>
+            <MatchList query={view.query} hits={view.hits} onPick={(h) => open(h.id)} />
+            {google ? (
+              <>
+                <ListHeading>From Google</ListHeading>
+                <GoogleMatchList
+                  query={view.query}
+                  google={google}
+                  onMesita={(p) => googleOnMesita(p, catalogGoogleIds, added)}
+                  notes={googleNotes}
+                  disabled={isBusy}
+                  onOpen={(p) => void openGoogle(p)}
+                  onAdd={(p) => void addFromGoogle(p)}
+                />
+              </>
+            ) : null}
+          </>
         ) : null}
       </SectionCard>
 
@@ -195,6 +292,14 @@ export function SinglePlaceClient() {
         />
       ) : null}
     </div>
+  );
+}
+
+function ListHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground mt-5 type-label font-semibold tracking-wide uppercase">
+      {children}
+    </p>
   );
 }
 
@@ -232,13 +337,13 @@ function MatchList({
 }) {
   if (hits.length === 0) {
     return (
-      <p className="text-muted-foreground mt-4 text-sm">
-        Nothing on Mesita matches “{query}”. Paste its Google Place ID to create it.
+      <p className="text-muted-foreground mt-2 text-sm">
+        Nothing on Mesita matches “{query}”. Add it from Google below.
       </p>
     );
   }
   return (
-    <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
+    <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border">
       <p className="text-muted-foreground border-border border-b px-4 py-2 type-label">
         {hits.length >= MAX_NAME_MATCHES
           ? `First ${MAX_NAME_MATCHES} matches — narrow the name`
