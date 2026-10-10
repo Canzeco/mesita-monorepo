@@ -7,10 +7,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-// Citywide Discovery. The catalog and the doors into it are ONE section now:
-// the earlier page split them into "the moat" and "eight engines", and a
-// guest does not care that they are two systems. Three doors, on Pato's
-// cut (2026-09-28): Scroll · Map · Ask.
+// Citywide Catalog and Discovery Engines. Two products, ONE section: a guest
+// does not care that they are two systems (Pato, 2026-09-28). The nav still
+// names both, so the section carries #catalog and the doors carry #discovery.
+// Three doors, on Pato's cut: Scroll · Map · Ask.
 const DOORS: { name: string; note: string; Icon: LucideIcon }[] = [
   { name: "Scroll", note: "today’s deck, one place at a time", Icon: Sparkles },
   { name: "Map", note: "the whole city, live", Icon: Map },
@@ -37,12 +37,12 @@ const SOURCES = ["Google", "Instagram", "website", "reviews"];
 
 function Discovery() {
   return (
-    <section id="discovery" className="border-border border-b">
+    <section id="catalog" className="border-border border-b">
       <div className="mx-auto w-full max-w-6xl px-5 py-20 md:py-24">
         <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
           <div className="flex flex-col gap-5">
             <p className="text-primary text-xs font-semibold tracking-[0.18em] uppercase">
-              Citywide Discovery · every place, day one
+              Citywide Catalog · every place, day one
             </p>
             <h2 className="font-display max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
               Every restaurant in the city is already on Mesita.
@@ -97,7 +97,10 @@ function Discovery() {
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div
+          id="discovery"
+          className="mt-10 grid scroll-mt-20 grid-cols-1 gap-3 sm:grid-cols-3"
+        >
           {DOORS.map(({ name, note, Icon }) => (
             <div
               key={name}

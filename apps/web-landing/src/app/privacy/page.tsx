@@ -10,8 +10,9 @@ import {
 //
 // Each paragraph maps to something the code does: the profile fields the
 // consumer profile actually carries, the browser/OS location prompt discovery
-// asks for, Stripe's hosted card page, the columns a ticket row stores, the
-// four account visibility flags, and the in-app delete. The one thing this
+// asks for, what the reservation agent tells a place, and the in-app delete.
+// The MVP takes no payments and records no visits (MESITA-2092), so cards,
+// Stripe and tickets are not on this page. The one thing this
 // page deliberately does NOT state is how long anything is kept — no retention
 // period has been decided, and a drafted number would be a promise nobody can
 // keep. Do not add one here; decide it, then write it.
@@ -19,7 +20,7 @@ import {
 export const metadata: Metadata = {
   title: "Privacy policy",
   description:
-    "Plain-language draft of what Mesita collects and why — phone sign-in, profile details, device location, what a visit records, how cards are handled by Stripe, and how to get your data or delete your account.",
+    "Plain-language draft of what Mesita collects and why — phone sign-in, profile details, device location, what a booking shares with the place, and how to get your data or delete your account.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -33,9 +34,9 @@ export default function PrivacyPage() {
       <LegalSection heading="Your phone number">
         <p>
           Signing in is your phone number and a one-time code we text you. The
-          number is how we recognise you on the next visit, so we store it. It
-          is also how the code gets to you: it is sent as an SMS through the
-          messaging provider that delivers our sign-in codes.
+          number is how we recognise you the next time you sign in, so we store
+          it. It is also how the code gets to you: it is sent as an SMS through
+          the messaging provider that delivers our sign-in codes.
         </p>
       </LegalSection>
 
@@ -47,9 +48,8 @@ export default function PrivacyPage() {
           age of 14.
         </p>
         <p>
-          A profile photo and an Instagram handle are optional. The handle is
-          there because connecting it unlocks rewards in the app; if you never
-          connect one, nothing else changes.
+          A profile photo and an Instagram handle are optional. The handle shows
+          on your profile; if you never connect one, nothing else changes.
         </p>
       </LegalSection>
 
@@ -68,40 +68,11 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="Your card">
+      <LegalSection heading="What a booking shares">
         <p>
-          Card numbers are typed on Stripe&apos;s own hosted page and are held
-          by Stripe. Mesita never receives or stores a card number; what the app
-          shows you is the brand and the last digits, which is what Stripe hands
-          back.
-        </p>
-        <p>
-          The first time you pay a particular place through Mesita, that payment
-          creates a customer record for you inside that place&apos;s own Stripe
-          account — the same thing that would happen if you checked out on their
-          website. The app tells you before that first charge.
-        </p>
-      </LegalSection>
-
-      <LegalSection heading="What a visit records">
-        <p>
-          When a place opens a ticket for you, that record holds which place it
-          was, the member of their staff who opened it, when it was opened and
-          when it was paid, the check subtotal, tip and total, the currency, the
-          reward percentage applied and the amount that earned you.
-        </p>
-        <p>
-          It is the receipt of the visit: it is what makes your rewards add up,
-          what the place sees on its own side, and what you see in your history.
-        </p>
-      </LegalSection>
-
-      <LegalSection heading="What other people see">
-        <p>
-          Your account has two visibility switches, in Settings under Privacy.
-          You can make the account private, and you can turn off whether other
-          guests see your Mesita stories. Both are yours to change whenever you
-          want.
+          When you ask Mesita to book a table, the reservation agent phones the
+          place and gives it what a booking needs: your name, how many people,
+          and the date and time.
         </p>
       </LegalSection>
 
@@ -111,13 +82,9 @@ export default function PrivacyPage() {
           of making the app work, and what reaches each of them is limited to
           what it does: our hosting and database provider runs the accounts and
           the app&apos;s data, a messaging provider delivers your sign-in code,
-          Stripe handles cards and payments, and public places data is what the
-          catalog of restaurants, cafés and bars is built from.
-        </p>
-        <p>
-          A place you actually transact with sees what that transaction needs —
-          your name, the ticket, and the customer record their own Stripe
-          account holds.
+          a voice provider carries the reservation agent&apos;s phone calls, and
+          public places data is what the catalog of restaurants, cafés and bars
+          is built from.
         </p>
       </LegalSection>
 
