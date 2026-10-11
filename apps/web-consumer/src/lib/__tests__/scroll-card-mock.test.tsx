@@ -42,14 +42,15 @@ function deps(over: Partial<Parameters<typeof scrollCardActions>[2]> = {}) {
 }
 
 describe("a mock card's actions", () => {
-  it("toast for Profile, Share and Reserve, and touch nothing real", () => {
-    const d = deps({ isMock: true });
+  // Profile opens the sample's own profile (MESITA-2142), answered locally by
+  // apiFetchPlaceDetail — it never reaches the EF. Share and Reserve still toast.
+  it("open the sample profile, toast for Share and Reserve, and touch nothing real", () => {
+    const d = deps({ isMock: true, profileHref: (p: Place) => `/place/${p.id}` });
     const a = scrollCardActions(mock, 3, d);
-    expect(a.profileHref).toBeNull();
-    a.onProfile();
+    expect(a.profileHref).toBe(`/place/${mock.id}`);
     a.onShare();
     a.onReserve();
-    expect(d.toast).toHaveBeenCalledTimes(3);
+    expect(d.toast).toHaveBeenCalledTimes(2);
     expect(d.toast).toHaveBeenCalledWith(SAMPLE_PLACE_TOAST);
     for (const spy of [d.track, d.share, d.openReserve, d.saveReal]) {
       expect(spy).not.toHaveBeenCalled();
@@ -220,3 +221,31 @@ describe("the reflection", () => {
   });
 });
 
+
+// THE SAMPLE PROFILE (MESITA-2142). A `mock-` id resolves locally to a full,
+// enriched profile built from the same row the card shows.
+describe("a sample place's profile", () => {
+  it("resolves without the EF, as an enriched profile of the same place", async () => {
+    const { apiFetchPlaceDetail } = await import("@/lib/api/places");
+    const client = {
+      functions: {
+        invoke: () => {
+          throw new Error("a sample profile must never call an EF");
+        },
+      },
+    } as unknown as Parameters<typeof apiFetchPlaceDetail>[0];
+    const detail = await apiFetchPlaceDetail(client, mock.id);
+    expect(detail?.name).toBe(mock.name);
+    expect(detail?.is_enriched).toBe(true);
+    expect(detail?.photos).toEqual(mock.photos);
+    expect(detail?.open_now).toBe(true);
+    // The card's rating and the profile's are the same number.
+    expect(detail?.google.rating).toBe(mock.google_rating);
+    expect(detail?.google.count).toBe(mock.google_count);
+  });
+
+  it("an unknown mock id is gone, not invented", async () => {
+    const { mockPlaceDetail } = await import("@/lib/mock/scroll-place-detail");
+    expect(mockPlaceDetail("mock-no-such-place")).toBeNull();
+  });
+});

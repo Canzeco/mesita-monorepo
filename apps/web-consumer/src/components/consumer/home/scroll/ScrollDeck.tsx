@@ -398,7 +398,10 @@ export function ScrollDeck({
             track: (event, props) => trackEvent(supabase, event, props),
             share: (p) => void sharePlace(p),
             openReserve: setReservePlace,
-            profileHref: (p) => placeHref(p.slug ?? p.id),
+            // A sample's profile is keyed by its `mock-` id, never its slug,
+            // so it resolves locally instead of asking the EF.
+            profileHref: (p) =>
+              placeHref(isMockPlace(p) ? p.id : (p.slug ?? p.id)),
           });
           return (
             <ScrollCard

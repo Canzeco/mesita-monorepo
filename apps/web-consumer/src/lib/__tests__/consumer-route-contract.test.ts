@@ -95,18 +95,19 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // moved to /discover precisely so each typed mode could be a real
       // segment.
       discover: "/discover",
-      // Home's three pills (MESITA-2140). Feed is OFF the rail, so its
+      // Home's four pills (MESITA-2142). Feed is OFF the rail, so its
       // address is in the legacy block instead — a page and a redirect for
       // one path cannot coexist, so a `feed` key here and
       // `legacy.discoverFeed` must never both appear.
       discoverTabs: {
+        swipe: "/discover/swipe",
         scroll: "/discover/scroll",
         chat: "/discover/chat",
         favs: "/discover/favs",
       },
-      // Default IS the first pill (MESITA-1609/1615); Scroll leads again
-      // since MESITA-2140.
-      discoverDefault: "/discover/scroll",
+      // Default IS the first pill (MESITA-1609/1615); Swipe leads since
+      // MESITA-2142.
+      discoverDefault: "/discover/swipe",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
@@ -134,7 +135,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         discoverSearch: "/discover/search",
         discoverMap: "/discover/map",
         discoverHome: "/discover/home",
-        discoverSwipe: "/discover/swipe",
         discoverCatalog: "/discover/catalog",
         // The Second Stage tab and everything under it. All land on `pay`.
         newVisit: "/new-visit",
@@ -389,7 +389,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // segment (MESITA-1697), and Catalog's /discover/feed itself, off the
       // rail again (MESITA-2140). All land on Scroll, the default pill.
       { source: "/discover/home", destination: "/discover/scroll", permanent: true },
-      { source: "/discover/swipe", destination: "/discover/scroll", permanent: true },
       { source: "/discover/catalog", destination: "/discover/scroll", permanent: true },
       { source: "/discover/feed", destination: "/discover/scroll", permanent: true },
       // The Saved tab and the /saved/place dual path (MESITA-1585).

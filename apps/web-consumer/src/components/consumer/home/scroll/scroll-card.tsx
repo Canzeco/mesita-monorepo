@@ -49,9 +49,9 @@ import { useDoubleTap } from "./use-double-tap";
 // feed links to the account behind a post. The name stopped being the link
 // when the tap zones stopped covering the card.
 //
-// A MOCK CARD (design 3A) gets no `profileHref`: the deck hands it a toast
-// instead, and the deck — not this file — decides what Save, Share and Reserve
-// do.
+// A MOCK CARD (design 3A) links to its sample profile, answered locally
+// (MESITA-2142); the deck — not this file — decides what Save, Share and
+// Reserve do, and for a sample they toast.
 export function ScrollCard({
   place,
   index,
@@ -269,8 +269,9 @@ export const SAMPLE_PLACE_TOAST = "Sample place — real places land here soon";
  * so the rule that a mock place never reaches real data lives in one place and
  * one test (design 3A, eng review 1.2):
  *
- *   mock → Save toggles in-memory state only; Profile, Share and Reserve
- *          toast. Nothing touches Favs, analytics, a place URL or a booking.
+ *   mock → Save toggles in-memory state only; Share and Reserve toast;
+ *          Profile opens the sample's own profile (MESITA-2142), answered
+ *          locally. Nothing touches Favs, analytics or a booking.
  *   real → the Favs store (+ first-save toast and the `home_card_save`
  *          event), the place page, the share sheet, and the reservation
  *          sheet behind `home_card_open`.
@@ -299,8 +300,8 @@ export function scrollCardActions(
     const saved = deps.mockSavedIds.has(place.id);
     return {
       saved,
-      profileHref: null,
-      onProfile: sample,
+      profileHref: deps.profileHref(place),
+      onProfile: () => {},
       onToggleSave: () => deps.setMockSaved(place.id, !saved),
       onShare: sample,
       onReserve: sample,

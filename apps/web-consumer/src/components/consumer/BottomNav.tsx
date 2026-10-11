@@ -55,11 +55,12 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Home owns its rail: Scroll, Chat and Favs (MESITA-2140).
+    // Home owns its rail: Swipe, Scroll, Chat and Favs (MESITA-2142).
     href: CONSUMER_ROUTES.discoverDefault,
     Icon: MesitaMark,
     label: "Home",
     matchPrefixes: [
+      CONSUMER_ROUTES.discoverTabs.swipe,
       CONSUMER_ROUTES.discoverTabs.scroll,
       CONSUMER_ROUTES.discoverTabs.chat,
       CONSUMER_ROUTES.discoverTabs.favs,

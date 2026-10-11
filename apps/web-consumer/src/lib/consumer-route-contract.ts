@@ -27,18 +27,20 @@ export const CONSUMER_ROUTES = {
   // — and the two code twins pin EACH OTHER, so it would go green. Scroll is
   // Swipe's segment, renamed (MESITA-1697).
   //
-  // HOME'S RAIL IS SCROLL · CHAT · FAVS (Pato, MESITA-2140: "it used to
-  // have home (scroll, chat, favs)"). Catalog's /discover/feed left it, as it
-  // did at MESITA-2050, and is a legacy 308 to Scroll.
+  // HOME'S RAIL IS SWIPE · SCROLL · CHAT · FAVS (Pato, MESITA-2142: "Return
+  // the swipe mode from old commits. swipe scroll chat favs"). Swipe, the
+  // card stack, is back at its own segment; Catalog's /discover/feed stays a
+  // legacy 308 to Scroll (MESITA-2140).
   discover: "/discover",
   discoverTabs: {
+    swipe: "/discover/swipe",
     scroll: "/discover/scroll",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
-  // SCROLL LEADS (MESITA-2140): the default is the deck, the first pill.
-  // route-structure T5b pins first-pill-is-default.
-  discoverDefault: "/discover/scroll",
+  // SWIPE LEADS (MESITA-2142): the default is the card stack, the first
+  // pill. route-structure T5b pins first-pill-is-default.
+  discoverDefault: "/discover/swipe",
   place: {
     prefix: "/place/",
   },
@@ -87,7 +89,6 @@ export const CONSUMER_ROUTES = {
     discoverMap: "/discover/map",
     // Catalog's day as Home, Swipe's week as the default, Catalog's segment.
     discoverHome: "/discover/home",
-    discoverSwipe: "/discover/swipe",
     discoverCatalog: "/discover/catalog",
     // The Second Stage tab and everything under it (MESITA-2087). The QR
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
