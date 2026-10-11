@@ -4,7 +4,7 @@
 // CREATE Details awaits storeFirstPlaceImage (one Google photo, now) so a
 // Created place has a thumb before Enrich Images. Enrich Images still uses
 // storePlaceImages + runInBackground for the ranked gallery, via
-// supabase-edgefunc-store-place-images (own wall clock).
+// enricher-edgefunc-store-place-images (own wall clock).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";

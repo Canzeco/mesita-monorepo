@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-enrich-place-contents (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-contents (internal / cron)
 //
 // Stage 3 (final) of the Enricher pipeline. The pg_cron poller claims
 // place_research rows at stage='contents' and fires this EF with { place_id }.
@@ -11,7 +11,7 @@
 //       places.reservation_channel/_target; voice-only, MESITA-842), then the
 //       enriched profile persisted onto the places row (direct UPDATE — this
 //       EF is already the DB layer; no HTTP hop) and the images stored via
-//       supabase-edgefunc-store-place-images
+//       enricher-edgefunc-store-place-images
 //   S8  EMBEDDING (function 8) — both vectors, persisted. Closes the queue,
 //       and only then does content_state flip to 'ready'.
 //
@@ -28,8 +28,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve supabase-cron-enrich-place-contents
-// Deploy: supabase functions deploy supabase-cron-enrich-place-contents
+// Local:  supabase functions serve enricher-cron-enrich-place-contents
+// Deploy: supabase functions deploy enricher-cron-enrich-place-contents
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
@@ -556,8 +556,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
   } else if (assets.length > 0) {
     const storeRes = await invokeInternalCaller<{ queued?: number }>(
       env,
-      "supabase-cron-enrich-place-contents",
-      "supabase-edgefunc-store-place-images",
+      "enricher-cron-enrich-place-contents",
+      "enricher-edgefunc-store-place-images",
       {
         place_id: placeId,
         assets,

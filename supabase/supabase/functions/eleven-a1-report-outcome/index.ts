@@ -30,7 +30,7 @@
 // caller's outcome report, the same rule create-place's on_create hookup uses.
 //
 // KNOWN LIMITATION, accepted rather than fixed here: the research stage EF
-// (supabase-cron-enrich-place-research) REPLACES `place_research.gathered`
+// (enricher-cron-enrich-place-research) REPLACES `place_research.gathered`
 // wholesale with only what the run's subprocesses collected — it does not
 // merge against the prior value. A subprocesses=["google"]-only run on a place
 // that was previously fully enriched would therefore drop its other gathered

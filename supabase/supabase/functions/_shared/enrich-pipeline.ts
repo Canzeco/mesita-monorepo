@@ -3,9 +3,9 @@
 // The Enricher is a PROCESS (not an agent): a cron-driven pipeline of three
 // Edge Functions over public.place_research:
 //
-//   stage 'research'  → supabase-cron-enrich-place-research   (S1–S4 gather)
-//   stage 'analysis'  → supabase-cron-enrich-place-analysis   (S5–S6 images)
-//   stage 'contents'  → supabase-cron-enrich-place-contents   (S7–S9 persist)
+//   stage 'research'  → enricher-cron-enrich-place-research   (S1–S4 gather)
+//   stage 'analysis'  → enricher-cron-enrich-place-analysis   (S5–S6 images)
+//   stage 'contents'  → enricher-cron-enrich-place-contents   (S7–S9 persist)
 //   stage 'done' | 'failed' — terminal.
 //
 // The SQL poller (run_place_enrichment_stages, pg_cron) claims pending rows
@@ -214,7 +214,7 @@ export function serveEnrichStage(
     runInBackground(
       run(admin, envRes.env, rowRes.row).catch(async (err) => {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[supabase-cron-enrich-place-${stage}]`, msg);
+        console.error(`[enricher-cron-enrich-place-${stage}]`, msg);
         // Cost-cap abort is terminal (MESITA-624) — retrying cannot unspend
         // and would burn more budget. Everything else releases for retry.
         if (isEnrichCostCapError(err)) {

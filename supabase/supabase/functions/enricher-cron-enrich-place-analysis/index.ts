@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-enrich-place-analysis (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-analysis (internal / cron)
 //
 // Stage 2 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller claims
@@ -17,8 +17,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve supabase-cron-enrich-place-analysis
-// Deploy: supabase functions deploy supabase-cron-enrich-place-analysis
+// Local:  supabase functions serve enricher-cron-enrich-place-analysis
+// Deploy: supabase functions deploy enricher-cron-enrich-place-analysis
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { COST, loadEnrichConfig, PHOTO_CEILING, VISION_MODEL, visionModelFor } from "../_shared/enrich-config.ts";

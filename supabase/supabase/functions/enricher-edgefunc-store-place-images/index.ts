@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-edgefunc-store-place-images (internal caller / async)
+// Supabase Edge Function — enricher-edgefunc-store-place-images (internal caller / async)
 //
 // Thin HTTP wrapper around _shared/store-place-images.ts. Kept as a separate EF
 // so image mirroring runs in its own wall clock (invoked by contents S9).

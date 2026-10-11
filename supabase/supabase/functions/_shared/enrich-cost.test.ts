@@ -142,7 +142,7 @@ Deno.test("a stage EF never decides anything from row.stage — loadClaimedRow p
     const stage of ["research", "analysis", "contents"] as const
   ) {
     const src = Deno.readTextFileSync(
-      new URL(`../supabase-cron-enrich-place-${stage}/index.ts`, import.meta.url),
+      new URL(`../enricher-cron-enrich-place-${stage}/index.ts`, import.meta.url),
     );
     const offenders = src.split("\n")
       .map((line, i) => [i + 1, line] as const)

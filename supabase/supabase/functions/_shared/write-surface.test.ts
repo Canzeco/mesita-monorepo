@@ -123,8 +123,8 @@ const PLACE_PROFILE_UPDATE_ALLOWLIST = [
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-update-place/index.ts",
-  "supabase-cron-enrich-place-contents/index.ts",
-  "supabase-cron-enrich-place-research/index.ts",
+  "enricher-cron-enrich-place-contents/index.ts",
+  "enricher-cron-enrich-place-research/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
