@@ -89,9 +89,9 @@ export default async function RootLayout({
   const bare = requestHeaders.get("x-bare-pathname") ?? "/";
   // /onboard draws its own MobileFrame, so wrapping it here stacked two
   // emulators with two banners (Bugbot, PR #1995). /gift left with the First
-  // Stage cut.
+  // Stage cut. Both surfaces sign in inside the phone card (MESITA-2137).
   const preShell = bare === "/" || bare.startsWith("/auth");
-  const body = surface === "mob" && preShell ? (
+  const body = preShell ? (
     <MobileFrame>{children}</MobileFrame>
   ) : (
     children

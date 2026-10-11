@@ -22,10 +22,9 @@ describe("/web is the phone emulator", () => {
     expect(shell).not.toContain("WebFrame");
   });
 
-  it("every shell return draws the phone card with the bottom menu", () => {
-    const frames = [...shell.matchAll(/<MobileFrame surface=/g)];
-    expect(frames).toHaveLength(2);
-    expect([...shell.matchAll(/<BottomNav\b/g)]).toHaveLength(2);
+  it("the shell draws the phone card with the bottom menu", () => {
+    expect([...shell.matchAll(/<MobileFrame>/g)]).toHaveLength(1);
+    expect([...shell.matchAll(/<BottomNav\b/g)]).toHaveLength(1);
   });
 
   it("no breakpoint hides the bottom menu", () => {
@@ -35,9 +34,17 @@ describe("/web is the phone emulator", () => {
     );
   });
 
-  it("the strip links to the other way in, never to itself", () => {
-    const frame = read("components/consumer/MobileFrame.tsx");
-    expect(frame).toMatch(/surface === "mob"\s*\?\s*\{ href: "\/web"/);
-    expect(frame).toMatch(/\{ href: "\/mob", label: "Sign in" \}/);
+  it("there is no anonymous-browse door left (MESITA-2137)", () => {
+    for (const gone of [
+      "components/consumer/DownloadAppScreen.tsx",
+      "components/consumer/SurfaceSwitch.tsx",
+      "lib/web-surface-auth.ts",
+      "app/(shell)/get-the-app/page.tsx",
+    ]) {
+      expect(existsSync(join(SRC, gone)), gone).toBe(false);
+    }
+    expect(read("lib/supabase/middleware.ts")).not.toContain(
+      "signInAnonymously(",
+    );
   });
 });

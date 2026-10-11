@@ -5,7 +5,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
-import { DownloadAppScreen } from "@/components/consumer/DownloadAppScreen";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
@@ -18,10 +17,6 @@ import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
 import { prefixPath } from "@/lib/surface";
-import {
-  WEB_GET_THE_APP,
-  webRequiresRegisteredAccount,
-} from "@/lib/web-surface-auth";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -53,39 +48,17 @@ export default async function ConsumerShellLayout({
   // URL. `here` is what the guest actually asked for, params included, and
   // it rides every redirect below so nothing is lost at the wall.
   const pathname = requestHeaders.get("x-pathname") ?? "";
-  const barePathname = requestHeaders.get("x-bare-pathname") ?? pathname;
   const surface = requestHeaders.get("x-surface") === "mob" ? "mob" : "web";
   const here = pathname
     ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
     : "";
   const supabase = await createServerSupabase();
   const user = (await supabase.auth.getUser()).data.user;
-  // /web's anonymous session is minted in middleware, the only place its
-  // cookies can be saved. No session here means that failed (sign-ins off, or
-  // rate-limited). Sending the guest to /web would bounce straight back to
-  // Home and loop forever, so the shell says so instead (Bugbot, PR #1995).
-  //
-  // It keeps the phone menu like every other screen (MESITA-2130): a screen
-  // with no menu is a dead end.
-  if (!user && surface === "web") {
-    return (
-      <MobileFrame surface="web" signedIn={false}>
-        <DownloadAppScreen />
-        <BottomNav />
-      </MobileFrame>
-    );
-  }
-  // An anonymous /web session is not an account: /mob still asks for the
-  // phone.
-  if (!user || (surface === "mob" && user.is_anonymous)) {
-    redirect(withNext(surface === "mob" ? prefixPath("mob", "/") : "/", here));
-  }
-  if (
-    surface === "web" &&
-    user.is_anonymous &&
-    webRequiresRegisteredAccount(barePathname)
-  ) {
-    redirect(withNext(prefixPath("web", WEB_GET_THE_APP), here));
+  // ONE WALL FOR BOTH SURFACES (MESITA-2137): no anonymous sessions, so a
+  // visitor without an account goes to its surface's phone sign-in. A
+  // leftover anonymous session from the MESITA-2066 era counts as none.
+  if (!user || user.is_anonymous) {
+    redirect(withNext(prefixPath(surface, "/"), here));
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
@@ -158,10 +131,9 @@ export default async function ConsumerShellLayout({
   //
   // ONE FRAME FOR BOTH SURFACES (Pato, MESITA-2134: "make it kinda like a
   // mobile emulator in web — fuck the sidebar menu"). /web and /mob both
-  // draw the phone card; they differ only in who may enter (anonymous browse
-  // vs phone sign-in) and in the emulator strip's one link.
+  // draw the phone card and sign in by phone; only the address differs.
   return (
-    <MobileFrame surface={surface} signedIn={!user.is_anonymous}>
+    <MobileFrame>
       {/* Runs before the children subtree hydrates the saved set, so a fresh
           consumer never inherits the previous account's localStorage-backed
           favorites / reservations (survives sign-out + DB reset). */}

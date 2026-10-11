@@ -3,12 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 import {
   isSurface,
-  prefixPath,
   resolveSurface,
   SURFACE_COOKIE,
   type Surface,
 } from "@/lib/surface";
-import { WEB_HOME, webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
 
 // Routing rules. Two passes:
 //
@@ -31,12 +29,9 @@ import { WEB_HOME, webRequiresRegisteredAccount } from "@/lib/web-surface-auth";
 // personal-data routes here just means we redirect at the edge instead of
 // paying for an SSR render first.
 //
-// So there is no anonymous browsing today: a shared /place/<id> link is a
-// sign-in wall. An earlier version of this comment claimed the opposite
-// ("deliberately public so anonymous visitors can swipe before signing
-// up"), which was aspirational, not true. Opening that up is a product
-// decision — it means exempting the browse routes in the (shell) layout,
-// not editing this list.
+// So there is no anonymous browsing: a shared /place/<id> link is a sign-in
+// wall, on /web as on /mob. MESITA-2066 opened /web on anonymous sessions;
+// MESITA-2137 closed it again (production has anonymous sign-ins off).
 //
 // Legacy addresses (consumer-route-contract.ts › `legacy`) are NOT listed:
 // next.config.ts redirects() 308s them to their canonical destination BEFORE
@@ -156,28 +151,14 @@ export async function updateSupabaseSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // /web is anonymous-first: no sign-in wall. Mint a Supabase anonymous
-  // session so client EFs that want a bearer still get one.
-  //
-  // THE COOKIES ARE ALREADY ON `response`. signInAnonymously() runs setAll
-  // above, which writes the new session onto both the request and `response`.
-  // This block used to replace `response` with a fresh one afterwards, which
-  // threw those cookies away: the browser never kept the session, and every
-  // /web load minted another anonymous user (Bugbot on PR #1995). Middleware
-  // is the only place the session can be persisted — a Server Component
-  // cannot set cookies — so it is minted here and nowhere else.
-  if (surface === "web" && !user) {
-    await supabase.auth.signInAnonymously();
-  }
-
-  const sessionUser = (await supabase.auth.getUser()).data.user;
-  // An anonymous /web session is a session, not an account: it must never
-  // pass the phone-OTP wall of /mob or the bare paths (Bugbot on PR #1995).
-  const registered = sessionUser !== null && !sessionUser.is_anonymous;
+  // NO ANONYMOUS SESSIONS (Pato, MESITA-2137: "there are no anonymous
+  // sign-ins. should not now"). /web and /mob sign in the same way, by phone,
+  // so both get the same wall. An anonymous session left over from the
+  // MESITA-2066 era is a session, not an account, and counts as signed out.
+  const registered = user !== null && !user.is_anonymous;
 
   // Every early return below is a NEW response. Carry whatever setAll wrote
-  // (a fresh anonymous session, a refreshed token) onto it, or the redirect
-  // silently logs the guest out.
+  // (a refreshed token) onto it, or the redirect silently logs the guest out.
   function redirectKeepingSession(dest: URL) {
     const redirected = NextResponse.redirect(dest);
     for (const cookie of response.cookies.getAll()) {
@@ -186,19 +167,8 @@ export async function updateSupabaseSession(request: NextRequest) {
     return redirected;
   }
 
-  if (
-    surface === "web" &&
-    webRequiresRegisteredAccount(pathname) &&
-    (!sessionUser || sessionUser.is_anonymous)
-  ) {
-    const app = request.nextUrl.clone();
-    app.pathname = "/web/get-the-app";
-    app.search = `?next=${encodeURIComponent(browserPath + request.nextUrl.search)}`;
-    return redirectKeepingSession(app);
-  }
-
-  // Signed-out wall (phone OTP) — mob emulator and legacy bare paths only.
-  if (surface !== "web" && shouldGate(pathname) && !registered) {
+  // Signed-out wall (phone OTP), on both surfaces and the bare paths.
+  if (shouldGate(pathname) && !registered) {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = surface ? `/${surface}` : "/";
     signInUrl.search = `?next=${encodeURIComponent(
@@ -209,16 +179,7 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   // Already-signed-in bounce. We keep the user's own `?next=` intact so a
   // deep link that forced a sign-in still lands at the original target.
-  // On /web any session bounces to Home (there is no sign-in page there);
-  // elsewhere only a registered account does — an anonymous one still has to
-  // sign in.
-  if (surface === "web" && sessionUser && SIGNED_IN_BOUNCE.has(pathname)) {
-    const home = request.nextUrl.clone();
-    home.pathname = prefixPath("web", WEB_HOME);
-    home.search = "";
-    return redirectKeepingSession(home);
-  }
-  if (surface !== "web" && registered && SIGNED_IN_BOUNCE.has(pathname)) {
+  if (registered && SIGNED_IN_BOUNCE.has(pathname)) {
     const bounce = request.nextUrl.clone();
     bounce.pathname = surface
       ? `/${surface}/auth/post-signin`
