@@ -2,10 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
-  Facebook,
   Gauge,
   Globe,
-  Instagram,
   ListOrdered,
   MessageSquareQuote,
   RefreshCw,
@@ -15,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { Facebook, Instagram } from "@/components/shared/SocialIcons";
 import {
   Collapsible,
   NumberField,
