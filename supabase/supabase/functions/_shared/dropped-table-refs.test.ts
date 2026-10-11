@@ -40,6 +40,14 @@
 // and that is not in live `pg_class` (tables + views — PostgREST `.from()`
 // 42P01s both). Derived 2026-09-12 from repo migrations vs the cloud catalog.
 // Recycled names (`places`, `managers`) stay out: they are live again.
+//
+// MESITA-2091 — the First Stage cut. Thirty tables go IN: claims and members,
+// verification, plans and memberships, visit tickets and their children,
+// Credits, Stripe, classes, consumer connectors, place API keys, field
+// proposals and favorites. Two of them, `managers` and
+// `place_payment_accounts`, come OUT of LIVE_AGAIN on the way: they were
+// recycled once and are now dropped for good, so a `.from()` on either is
+// the MESITA-1602 failure again. `places` is still live and stays recycled.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
@@ -54,12 +62,25 @@ const DROPPED_TABLES = [
   "business_plans",
   "businesses",
   "cashback_ledger",
+  "classes",
+  "consumer_connectors",
+  "consumer_invite_codes",
   "consumer_mcp_tokens",
   "consumer_pay_notifications",
+  "consumer_plans",
+  "consumer_review_claims",
+  "consumer_subscriptions",
   "coupons",
+  "credit_gift_redeem_events",
+  "credit_gifts",
+  "credit_ledger",
+  "credit_lots",
+  "favorites",
   "guest_make_goods",
   "guests",
   "manager_invites",
+  "managers",
+  "membership_plans",
   "membership_strikes",
   "membership_tiers",
   "org_plans",
@@ -68,7 +89,18 @@ const DROPPED_TABLES = [
   "organization_members",
   "organization_payment_accounts",
   "organizations",
+  "partner_memberships",
+  "place_api_keys",
+  "place_field_proposals",
+  "place_guest_customers",
+  "place_invites",
+  "place_members",
+  "place_payment_accounts",
+  "place_plans",
+  "place_strikes",
+  "place_subscriptions",
   "place_super_categories",
+  "place_verifications",
   "plans",
   "playground_reservations",
   "project_invites",
@@ -90,6 +122,10 @@ const DROPPED_TABLES = [
   "staff_invites",
   "staff_whatsapp_messages",
   "staff_whatsapp_sessions",
+  "stripe_events",
+  "ticket_check_events",
+  "ticket_reports",
+  "ticket_reviews",
   "tickets",
   "units",
   "venue_categories",
@@ -99,6 +135,8 @@ const DROPPED_TABLES = [
   "venue_tags",
   "venue_verifications",
   "venues",
+  "visit_ticket_payments",
+  "visit_tickets",
 ] as const;
 
 /** Ordinary words a new call site could reach for — the MESITA-1719 holes. */
@@ -116,7 +154,7 @@ const MUST_COVER = [
 ] as const;
 
 /** Recycled: vacated once, then recreated. Must never re-enter the list. */
-const LIVE_AGAIN = ["managers", "place_payment_accounts", "places"] as const;
+const LIVE_AGAIN = ["places"] as const;
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url).pathname;
 
