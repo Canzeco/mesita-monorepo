@@ -40,6 +40,6 @@ describe("Scroll's definite-height chain", () => {
   it("renders full-height cards, not just the filter disc", () => {
     const cards = html.match(/<li aria-label="[^"]+, \d+ of 50"/g) ?? [];
     expect(cards).toHaveLength(50);
-    expect(html).toContain('class="bg-foreground relative h-full w-full shrink-0 snap-start');
+    expect(html).toContain('class="bg-background relative flex h-full w-full shrink-0 snap-start');
   });
 });

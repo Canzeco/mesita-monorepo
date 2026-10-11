@@ -3,7 +3,15 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarCheck, Heart, Share2 } from "lucide-react";
+import {
+  CalendarCheck,
+  Clock,
+  Heart,
+  MapPin,
+  Navigation,
+  Share2,
+  Star,
+} from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
@@ -19,35 +27,25 @@ import {
 import { ImageCarousel } from "@/components/consumer/ImageCarousel";
 import { useDoubleTap } from "./use-double-tap";
 
-// One place, one screen, TikTok's grammar (MESITA-2105, design 1A).
+// One place, one screen, in THE SWIPE CARD'S SPLIT (Pato, MESITA-2141: "check
+// in previous commits in the swipe mode how did cards used to work, then do
+// it. like in the gray part you put the info mainly").
 //
-// THE PHOTO OWNS THE SCREEN. No card chrome, no gutter, no radius, no peek:
-// the card is the full box between the mode rail and the tab bar. This
-// replaces the 2026-09-08 card, which kept a rounded frame and an action row
-// UNDER the photo because white glyphs on a bright photo fail 4.5:1. The
-// answer to that is the glass below, not the frame: every action sits on a
-// `bg-media-glass` disc, and white on 55% black stays at 4.74:1 even over a
-// pure-white photo.
+// THE PHOTO ON TOP, THE PLACE BELOW. The old swipe card (PlaceSwipeCardFace +
+// SwipeCardInfo, deleted by MESITA-2105) split square and wide photos into a
+// photo band and a fields strip: the name, then a row of chips. This card is
+// that split for EVERY photo, on the page's own gray, so the information is
+// read on a calm ground instead of over a blurred mirror of the photo. The
+// mirror (MESITA-2105's reflection) and the full-bleed scrim are gone.
 //
-// HIERARCHY: photo, then the name, then Reserve. Reserve is the ONE solid white
-// disc in the column — the MVP's First Stage is reservations, so it is the
-// conversion and must read third with nothing competing (Pato, 2026-10-10:
-// "Profile, Save, Share, Reserve"; it replaced Go and its visit/order doors).
+// HIERARCHY: photo, then the name, then Reserve. Reserve is the ONE solid ink
+// disc in the action row — the MVP's First Stage is reservations, so it is the
+// conversion (Pato, 2026-10-10: "Profile, Save, Share, Reserve").
 //
-// SQUARE AND WIDE PHOTOS WEAR THE REFLECTION (Pato: "use the reflection thing
-// that swipe used to have, because squares"). A photo much wider than the card
-// would lose most of itself to `object-cover`; instead it sits uncropped in a
-// top band and a mirrored, blurred, darkened copy fills the space below, where
-// the name sits. Tall photos still cover the whole card. See ScrollSlide.
-//
-// GESTURES (design 4A): swipe sideways pages the photos (the carousel's native
-// scroller), double-tap saves, a single tap does nothing. The carousel's tap
-// zones are OFF here (`tapToPage={false}`) — they would page on the first tap
-// of every double tap. The dots are buttons so a mouse can still page.
-//
-// THE AVATAR IS THE PROFILE LINK now, top of the column, the way every vertical
-// feed links to the account behind a post. The name stopped being the link
-// when the tap zones stopped covering the card.
+// GESTURES (design 4A): swipe sideways on the photo pages it (the carousel's
+// native scroller), double-tap the photo saves, a single tap does nothing.
+// The carousel's tap zones are OFF (`tapToPage={false}`) — they would page on
+// the first tap of every double tap. The dots are buttons so a mouse can page.
 //
 // A MOCK CARD (design 3A) gets no `profileHref`: the deck hands it a toast
 // instead, and the deck — not this file — decides what Save, Share and Reserve
@@ -57,7 +55,6 @@ export function ScrollCard({
   index,
   total,
   near,
-  cardSize = null,
   priority = false,
   saved,
   profileHref,
@@ -72,9 +69,6 @@ export function ScrollCard({
   /** Within one card of the one on screen: only these load photos eagerly
    *  (eng review R3). Everything else is `loading="lazy"`. */
   near: boolean;
-  /** The card's box (the scrollport). Unknown until measured; until then
-   *  every photo covers the card. */
-  cardSize?: { width: number; height: number } | null;
   priority?: boolean;
   saved: boolean;
   /** The place page, or null for a card that has none (a mock). */
@@ -110,8 +104,16 @@ export function ScrollCard({
   const ratingCount =
     place.google_count != null ? formatCompactCount(place.google_count) : null;
   const openState = getOpeningStateLabel(place);
-  const metaLine = [category, price, zone, distance].filter(Boolean).join(" · ");
   const initial = place.name.trim().charAt(0).toUpperCase() || "·";
+
+  const profileBody = (
+    <>
+      <span className={cn(DISC, "font-display text-lg font-semibold")}>
+        {initial}
+      </span>
+      <span className={LABEL}>Profile</span>
+    </>
+  );
 
   return (
     // `h-full` RESOLVES because the scroller is `absolute inset-0` inside a
@@ -119,10 +121,10 @@ export function ScrollCard({
     // wrapper has quietly taken that away and the whole feed rendered nothing.
     <li
       aria-label={`${place.name}, ${index + 1} of ${total}`}
-      className="bg-foreground relative h-full w-full shrink-0 snap-start snap-always overflow-hidden"
+      className="bg-background relative flex h-full w-full shrink-0 snap-start snap-always flex-col overflow-hidden"
     >
       <div
-        className="absolute inset-0 touch-manipulation select-none"
+        className="bg-foreground relative min-h-0 flex-[11] touch-manipulation overflow-hidden select-none"
         {...doubleTap}
       >
         {place.photos.length > 0 ? (
@@ -135,7 +137,6 @@ export function ScrollCard({
             interactiveDots
             renderSlide={(i, item, { inPreloadWindow }) => (
               <ScrollSlide
-                cardSize={cardSize}
                 src={item.src}
                 alt={`${place.name}, photo ${i + 1} of ${place.photos.length}`}
                 initial={initial}
@@ -147,117 +148,143 @@ export function ScrollCard({
         ) : (
           <PhotoPlaceholder initial={initial} />
         )}
+
+        {burst > 0 && (
+          <Heart
+            key={burst}
+            aria-hidden
+            onAnimationEnd={() => setBurst(0)}
+            className="text-on-media drop-shadow-media-lg pointer-events-none absolute top-1/2 left-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 fill-current motion-safe:animate-[scroll-heart-burst_800ms_ease-out_forwards] motion-reduce:hidden"
+          />
+        )}
       </div>
 
-      <div className="bg-media-scrim pointer-events-none absolute inset-x-0 bottom-0 h-3/5" />
-
-      {burst > 0 && (
-        <Heart
-          key={burst}
-          aria-hidden
-          onAnimationEnd={() => setBurst(0)}
-          className="text-on-media drop-shadow-media-lg pointer-events-none absolute top-1/2 left-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 fill-current motion-safe:animate-[scroll-heart-burst_800ms_ease-out_forwards] motion-reduce:hidden"
-        />
-      )}
-
-      <div className="text-on-media pointer-events-none absolute bottom-0 left-0 right-[72px] flex flex-col gap-1 p-4 pb-5">
-        <h2 className="font-display flex min-w-0 items-center gap-1.5 text-2xl leading-tight font-semibold [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]">
-          <span className="truncate">{place.name}</span>
+      {/* THE GRAY PART: the place, then what to do about it. */}
+      <div className="flex min-h-0 flex-[9] flex-col gap-2.5 px-4 pt-3.5 pb-3">
+        <h2 className="font-display text-foreground truncate text-2xl leading-tight font-semibold tracking-tight">
+          {place.name}
         </h2>
-        {metaLine && (
-          <p className="text-on-media-muted truncate text-sm font-medium">
-            {metaLine}
-          </p>
-        )}
-        {(rating || openState) && (
-          <p className="text-on-media-muted truncate text-sm font-medium tabular-nums">
-            {rating && (
-              <>
-                ★ {rating}
-                {ratingCount && ` (${ratingCount})`}
-              </>
-            )}
-            {rating && openState && " · "}
-            {openState}
-          </p>
-        )}
+
+        <div className="flex max-h-[58px] flex-wrap gap-1.5 overflow-hidden">
+          {category && <Chip>{category}</Chip>}
+          {price && <Chip>{price}</Chip>}
+          {rating && (
+            <Chip>
+              <Star className="fill-foreground h-3 w-3 shrink-0" aria-hidden />
+              {rating}
+              {ratingCount && (
+                <span className="text-muted-foreground">({ratingCount})</span>
+              )}
+            </Chip>
+          )}
+          {distance && (
+            <Chip>
+              <Navigation className="h-3 w-3 shrink-0" aria-hidden />
+              {distance}
+            </Chip>
+          )}
+          {zone && (
+            <Chip>
+              <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="max-w-[160px] truncate">{zone}</span>
+            </Chip>
+          )}
+          {openState && (
+            <Chip>
+              <Clock className="h-3 w-3 shrink-0" aria-hidden />
+              {openState}
+            </Chip>
+          )}
+        </div>
+
         {place.pitch && (
-          <p className="text-on-media-muted line-clamp-2 text-sm leading-snug [@media(max-height:640px)]:hidden">
+          <p className="text-muted-foreground line-clamp-2 text-sm leading-snug [@media(max-height:700px)]:hidden">
             {place.pitch}
           </p>
         )}
-      </div>
 
-      <div className="absolute right-3 bottom-5 flex flex-col items-center gap-3 [@media(max-height:640px)]:gap-2">
-        {profileHref ? (
-          <Link
-            href={profileHref}
-            aria-label={`Open ${place.name}`}
-            className={cn(ACTION, "font-display text-lg font-semibold")}
-          >
-            <span className={DISC}>{initial}</span>
-            <span className={LABEL}>Profile</span>
-          </Link>
-        ) : (
+        <div className="mt-auto grid grid-cols-4 gap-2 pt-1">
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              aria-label={`Open ${place.name}`}
+              className={ACTION}
+            >
+              {profileBody}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onProfile}
+              aria-label={`Open ${place.name}`}
+              className={ACTION}
+            >
+              {profileBody}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={onProfile}
-            aria-label={`Open ${place.name}`}
-            className={cn(ACTION, "font-display text-lg font-semibold")}
+            onClick={onToggleSave}
+            aria-label={saved ? `Unsave ${place.name}` : `Save ${place.name}`}
+            aria-pressed={saved}
+            className={ACTION}
           >
-            <span className={DISC}>{initial}</span>
-            <span className={LABEL}>Profile</span>
+            <span className={DISC}>
+              <Heart
+                className={cn("h-5 w-5", saved && "fill-current")}
+                strokeWidth={2.1}
+                aria-hidden
+              />
+            </span>
+            <span className={LABEL}>{saved ? "Saved" : "Save"}</span>
           </button>
-        )}
 
-        <button
-          type="button"
-          onClick={onToggleSave}
-          aria-label={saved ? `Unsave ${place.name}` : `Save ${place.name}`}
-          aria-pressed={saved}
-          className={ACTION}
-        >
-          <span className={cn(DISC, saved && "scale-110")}>
-            <Heart
-              className={cn("h-6 w-6", saved && "fill-current")}
-              strokeWidth={2.1}
-              aria-hidden
-            />
-          </span>
-          <span className={LABEL}>{saved ? "Saved" : "Save"}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onShare}
-          aria-label={`Share ${place.name}`}
-          className={ACTION}
-        >
-          <span className={DISC}>
-            <Share2 className="h-6 w-6" strokeWidth={2.1} aria-hidden />
-          </span>
-          <span className={LABEL}>Share</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onReserve}
-          aria-label={`Reserve at ${place.name}`}
-          className={ACTION}
-        >
-          {/* THE ONE INVERTED DISC. */}
-          <span
-            className={cn(
-              DISC,
-              "bg-on-media text-foreground backdrop-blur-none",
-            )}
+          <button
+            type="button"
+            onClick={onShare}
+            aria-label={`Share ${place.name}`}
+            className={ACTION}
           >
-            <CalendarCheck className="h-6 w-6" strokeWidth={2.2} aria-hidden />
-          </span>
-          <span className={LABEL}>Reserve</span>
-        </button>
+            <span className={DISC}>
+              <Share2 className="h-5 w-5" strokeWidth={2.1} aria-hidden />
+            </span>
+            <span className={LABEL}>Share</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onReserve}
+            aria-label={`Reserve at ${place.name}`}
+            className={ACTION}
+          >
+            {/* THE ONE SOLID DISC. */}
+            <span
+              className={cn(
+                DISC,
+                "bg-foreground text-background border-foreground",
+              )}
+            >
+              <CalendarCheck
+                className="h-5 w-5"
+                strokeWidth={2.2}
+                aria-hidden
+              />
+            </span>
+            <span className={LABEL}>Reserve</span>
+          </button>
+        </div>
       </div>
     </li>
+  );
+}
+
+/** One fact about the place, the old swipe card's chip on the light ground. */
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="border-border bg-card text-foreground type-label inline-flex items-center gap-1 rounded-md border px-2 py-[3px] font-semibold whitespace-nowrap tabular-nums">
+      {children}
+    </span>
   );
 }
 
@@ -332,82 +359,31 @@ export function scrollCardActions(
 }
 
 const ACTION =
-  "text-on-media flex flex-col items-center gap-1 rounded-full focus-visible:ring-2 focus-visible:ring-on-media focus-visible:ring-offset-2 focus-visible:ring-offset-foreground focus-visible:outline-none";
+  "text-foreground flex flex-col items-center gap-1 rounded-full focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none";
+
 const DISC =
-  "bg-media-glass flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-md transition-transform active:scale-95";
-const LABEL = "drop-shadow-media text-xs font-semibold";
+  "border-border bg-card flex h-11 w-11 items-center justify-center rounded-full border transition-transform active:scale-95";
 
-/** A photo at least this much wider than the card (photo aspect ÷ card
- *  aspect) wears the reflection instead of covering the card. The old swipe
- *  card's number: 9:16, 3:4 and most 4:5 photos still cover a phone card;
- *  square and wider get the band. */
-const REFLECTION_THRESHOLD = 1.32;
-/** The reflection never gets shorter than this, so the name, the meta and
- *  the pitch always sit on it rather than on the photo. */
-export const REFLECTION_MIN_PX = 152;
+const LABEL = "text-xs font-semibold";
 
-/** Whether a photo of `imageRatio` (w ÷ h) wears the reflection in a card of
- *  `card` size. */
-export function needsReflection(
-  imageRatio: number,
-  card: { width: number; height: number },
-): boolean {
-  const cardRatio = card.width / Math.max(card.height, 1);
-  return imageRatio / cardRatio >= REFLECTION_THRESHOLD;
-}
-
-/** The photo band's height: the photo uncropped at full width, held between
- *  two floors. Never under half the card, because the reflection is a mirror
- *  of the band and can only fill as much as the band is tall (a 3:2 photo at
- *  its natural 260px would leave 411px below with 151px of nothing); never
- *  over the card minus REFLECTION_MIN_PX, so the name always sits on the
- *  reflection. A square photo shows whole; 3:2 gives up ~22% of its width. */
-export function reflectionBandHeight(
-  imageRatio: number,
-  card: { width: number; height: number },
-): number {
-  const natural = card.width / imageRatio;
-  return Math.max(
-    0,
-    Math.min(Math.max(natural, card.height / 2), card.height - REFLECTION_MIN_PX),
-  );
-}
-
-// One slide. It covers the card until it knows better: once the photo loads
-// and the card is measured, a square or wide photo switches to the reflection.
-// A dead photo URL renders the same ink placeholder as a place with no photos,
-// never a broken image across a whole screen.
+// One slide: the photo covers its band. A dead photo URL renders the same ink
+// placeholder as a place with no photos, never a broken image.
 function ScrollSlide({
   src,
   alt,
   initial,
   priority,
   eager,
-  cardSize,
 }: {
   src: string;
   alt: string;
   initial: string;
   priority: boolean;
   eager: boolean;
-  cardSize: { width: number; height: number } | null;
 }) {
   const [failed, setFailed] = useState(false);
-  const [ratio, setRatio] = useState<number | null>(null);
   if (failed) return <PhotoPlaceholder initial={initial} />;
   const loading = priority ? undefined : eager ? "eager" : "lazy";
-  if (ratio && cardSize && needsReflection(ratio, cardSize)) {
-    return (
-      <ReflectedPhoto
-        src={src}
-        alt={alt}
-        bandHeight={reflectionBandHeight(ratio, cardSize)}
-        priority={priority}
-        loading={loading}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
   return (
     <Image
       src={src}
@@ -417,89 +393,9 @@ function ScrollSlide({
       priority={priority}
       loading={loading}
       draggable={false}
-      onLoad={(e) => {
-        const img = e.currentTarget;
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          setRatio(img.naturalWidth / img.naturalHeight);
-        }
-      }}
       onError={() => setFailed(true)}
       className="object-cover select-none [-webkit-user-drag:none]"
     />
-  );
-}
-
-/**
- * The photo uncropped in a top band, and below it the same photo flipped
- * about the seam, blurred and darkened — the old swipe card's square-photo
- * mode, carried over (its "WITC" band + reflective strip).
- *
- * A FLIPPED COPY, NOT `-webkit-box-reflect`: that property silently fails on
- * iOS Safari inside composited layers and never rendered on Firefox. The copy
- * is a box exactly the band's size placed right under it and flipped about
- * its own centre, so its top edge shows the band's bottom edge: the seam
- * lines up with no measurement of the image itself.
- */
-export function ReflectedPhoto({
-  src,
-  alt,
-  bandHeight,
-  priority = false,
-  loading,
-  onError,
-}: {
-  src: string;
-  alt: string;
-  bandHeight: number;
-  priority?: boolean;
-  loading?: "eager" | "lazy";
-  onError?: () => void;
-}) {
-  const sizes = "(max-width: 768px) 100vw, 480px";
-  return (
-    <div className="bg-foreground relative h-full w-full overflow-hidden">
-      <div
-        className="absolute inset-x-0 top-0 overflow-hidden"
-        style={{ height: bandHeight }}
-      >
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes={sizes}
-          priority={priority}
-          loading={priority ? undefined : loading}
-          draggable={false}
-          onError={onError}
-          className="object-cover object-bottom select-none [-webkit-user-drag:none]"
-        />
-      </div>
-      <div
-        aria-hidden
-        data-reflection
-        className="pointer-events-none absolute inset-x-0 overflow-hidden [transform:scaleY(-1)]"
-        style={{ top: bandHeight, height: bandHeight }}
-      >
-        <Image
-          src={src}
-          alt=""
-          fill
-          sizes={sizes}
-          loading={priority ? undefined : loading}
-          draggable={false}
-          className="object-cover object-bottom select-none"
-        />
-      </div>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0"
-        style={{ top: bandHeight }}
-      >
-        <div className="absolute inset-0 backdrop-blur-[2px]" />
-        <div className="absolute inset-0 bg-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/22 to-black/64" />
-      </div>
-    </div>
   );
 }
 
