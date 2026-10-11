@@ -18,7 +18,7 @@ Deno.test("create fetches one Google photo and awaits a storage mirror", async (
   assertStringIncludes(create, "maxPhotos: 1");
   assertStringIncludes(create, "first Google photo");
   assertEquals(create.includes("runInBackground(storeFirstPlaceImage"), false);
-  assertEquals(create.includes("supabase-edgefunc-store-place-images"), false);
+  assertEquals(create.includes("enricher-edgefunc-store-place-images"), false);
 
   assertStringIncludes(basics, "maxPhotos?: number");
   assertStringIncludes(store, "export async function storeFirstPlaceImage");

@@ -403,7 +403,7 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 
 // ── the guard MESITA-1209 needed ──────────────────────────────────────────
 //
-// The bug: supabase-cron-enrich-place-analysis wrote a STAGE beacon as
+// The bug: enricher-cron-enrich-place-analysis wrote a STAGE beacon as
 // { step_name: "images", state: "skipped" } on the "matrix did not buy the
 // funnel" path. `images` is a function key, so the high-water reader saw a
 // non-completed function mid-ladder and stopped short of it — a cheap refresh
@@ -420,9 +420,9 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 Deno.test("no raw beacon may use a CRENUP step key as its step_name", async () => {
   const dir = new URL("../", import.meta.url);
   const stages = [
-    "supabase-cron-enrich-place-research",
-    "supabase-cron-enrich-place-analysis",
-    "supabase-cron-enrich-place-contents",
+    "enricher-cron-enrich-place-research",
+    "enricher-cron-enrich-place-analysis",
+    "enricher-cron-enrich-place-contents",
   ];
   const pieces = new Set<string>(CRENUP_LADDER);
   const offenders: string[] = [];
@@ -467,7 +467,7 @@ Deno.test("blocked: a fresh place is blocked at function 1, MISSING not failed",
 });
 
 Deno.test("blocked: a permanently-closed place is FAILED at 1, not merely absent", () => {
-  // The exact shape supabase-cron-enrich-place-research writes on
+  // The exact shape enricher-cron-enrich-place-research writes on
   // CLOSED_PERMANENTLY. High-water and reason must agree: 0, because details
   // failed — NOT 0 because nothing ran.
   const events = [{ step_name: "details", state: "failed", created_at: at(1) }];

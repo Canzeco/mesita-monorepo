@@ -19,7 +19,7 @@ const FUNCTIONS_DIR = new URL("../", import.meta.url);
 
 /**
  * A file's path relative to the functions dir, e.g.
- * `supabase-cron-enrich-place-research/index.ts`. Every path guard in this file
+ * `enricher-cron-enrich-place-research/index.ts`. Every path guard in this file
  * matches on this, never on an absolute path — see the note in walk().
  */
 function relativeToFunctions(file: URL): string {
@@ -185,7 +185,7 @@ Deno.test("the Enricher never writes mesita_name", async () => {
 
 Deno.test("contents persist drops google_place_id before the writePlace update", async () => {
   const src = await Deno.readTextFile(
-    new URL("../supabase-cron-enrich-place-contents/index.ts", import.meta.url),
+    new URL("../enricher-cron-enrich-place-contents/index.ts", import.meta.url),
   );
   assertEquals(
     /google_place_id:\s*_dropGooglePlaceId/.test(src),

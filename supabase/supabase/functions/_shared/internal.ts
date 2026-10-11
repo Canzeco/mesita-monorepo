@@ -119,7 +119,7 @@ export function requireInternalCaller(
 export async function invokeInternalCaller<T = unknown>(
   env: EFEnv,
   callerName: string, // who the product caller is, e.g. "consumer-web-recommend-swipe"
-  internalName: string, // who we're calling, e.g. "supabase-edgefunc-store-place-images"
+  internalName: string, // who we're calling, e.g. "enricher-edgefunc-store-place-images"
   body: unknown,
 ): Promise<
   | { ok: true; data: T }
