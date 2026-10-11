@@ -124,6 +124,9 @@ export const CONSUMER_ROUTES = {
     meSettingsMetrics: "/me/settings/metrics",
     mePassport: "/me/passport",
     subscribe: "/subscribe/premium",
+    // /web's anonymous dead end, deleted with anonymous sessions
+    // (MESITA-2137). It lands on Home, behind the sign-in wall.
+    getTheApp: "/get-the-app",
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",
     inboxGlobal: "/inbox/global-activity",
