@@ -40,7 +40,7 @@ describe("pin tones — enriched > everything else", () => {
     );
     // A Created / Requested stub used to paint red.
     expect(placePinTone({})).toBe("unlisted");
-    expect(placePinTone({ content_state: "queued" })).toBe("unlisted");
+    expect(placePinTone({ content_state: "generating" })).toBe("unlisted");
     expect(placePinTone({ request_count: 3 } as never)).toBe("unlisted");
     expect(placePinTone({ googleOnly: true })).toBe("unlisted");
     expect(placePinTone({ from_google: true })).toBe("unlisted");
@@ -88,7 +88,7 @@ describe("pin tones — enriched > everything else", () => {
     // quarter of the catalog on deploy.
     expect(isEnrichedPlace({ content_state: "ready" })).toBe(true);
     expect(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" })).toBe(true);
-    expect(isEnrichedPlace({ content_state: "queued" })).toBe(false);
+    expect(isEnrichedPlace({ content_state: "generating" })).toBe(false);
     expect(isEnrichedPlace({})).toBe(false);
     // The server's boolean wins over the columns, both ways.
     expect(isEnrichedPlace({ enriched: true })).toBe(true);

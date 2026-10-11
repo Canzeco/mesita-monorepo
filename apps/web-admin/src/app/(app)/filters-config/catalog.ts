@@ -44,12 +44,14 @@
 //             on the Word and Map mode boxes — so the four Soon boxes are
 //             Browse, Flexible, and both Socials ones. The source list and
 //             each mode's locked sources live in discovery-matrix.ts.
-//   SIGNALS   eight earned signals: Name · Summary · Category · Proximity ·
-//             Timing · Enriched · Popularity · Randomness. None reads money.
+//   SIGNALS   seven earned signals: Name · Category · Proximity · Timing ·
+//             Enriched · Popularity · Randomness. None reads money.
 //             Partnership and Promotion merged into Mesita Level and Social
 //             left the library (MESITA-1408); Social then left the mode list
 //             too, and is now two Sources. Mesita Level is Enriched now
 //             (MESITA-1858), and an old blob's `mesita_level` folds onto it.
+//             Summary left at MESITA-2144: no caller ever built its query
+//             vector, so it scored every place 1 and could reorder nothing.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -62,7 +64,6 @@ import { num } from "@/lib/config-coerce";
 // change a score.
 export const SIGNAL_KEYS = [
   "name",
-  "summary",
   "category",
   "proximity",
   "timing",
@@ -136,7 +137,6 @@ export type DiscoveryConfig = {
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
-  social: SocialConfig;
   chat: { prompt: string };
   swipe: SwipeConfig;
 };
@@ -146,14 +146,6 @@ export type CatalogConfig = {
   generatedCount: number;
   placesPerRail: number;
   minSeedPlaces: number;
-};
-
-export type SocialConfig = {
-  seedCount: number;
-  generatedCount: number;
-  eventsPerRail: number;
-  minSeedEvents: number;
-  horizonDays: number;
 };
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
@@ -320,12 +312,6 @@ const CATALOG_COUNT_MAX = 20;
 const CATALOG_PLACES_PER_RAIL_MIN = 4;
 const CATALOG_PLACES_PER_RAIL_MAX = 20;
 const CATALOG_MIN_SEED_PLACES_MAX = 20;
-const SOCIAL_COUNT_MAX = 20;
-const SOCIAL_EVENTS_PER_RAIL_MIN = 4;
-const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
-const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
-const SOCIAL_HORIZON_DAYS_MIN = 1;
-const SOCIAL_HORIZON_DAYS_MAX = 90;
 const MAP_MIN_POPULARITY_MAX = 1;
 /** Categorical reload pairs. Both must be true. Rail / pin pans do not count. */
 export const MAP_RELOAD_PAIRS = [
@@ -373,14 +359,6 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   generatedCount: 8,
   placesPerRail: 8,
   minSeedPlaces: 2,
-};
-
-export const DEFAULT_SOCIAL: SocialConfig = {
-  seedCount: 6,
-  generatedCount: 6,
-  eventsPerRail: 8,
-  minSeedEvents: 1,
-  horizonDays: 14,
 };
 
 // The three supers the strip always asked for stay on; the four it could not
@@ -454,8 +432,9 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   },
   category: { exact: 1, family: 0.55, miss: 0.1 },
   popularity: { priorRating: 4.2, confidence: 60, floorRating: 3 },
-  name: { unembedded: 0.4 },
-  summary: { unembedded: 0.4 },
+  // Zero params since MESITA-2144: `unembedded` was never a knob, and `name`
+  // falls back to its own 0.4 in _shared/discovery-signals.ts.
+  name: {},
   // Zero params, exact parity with the `mesita_level` row it replaces.
   enriched: {},
   randomness: {},
@@ -467,7 +446,6 @@ const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
   category: 1,
   popularity: 1,
   name: 1,
-  summary: 1,
   enriched: 1,
   randomness: 0.35,
 };
@@ -494,7 +472,6 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
-  social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
   swipe: DEFAULT_SWIPE,
 };
@@ -525,7 +502,6 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
   priorRating: { min: 0, max: 5, step: 0.1 },
   confidence: { min: 1, max: 1000, step: 1 },
   floorRating: { min: 0, max: 4.9, step: 0.1 },
-  unembedded: { min: 0, max: 1, step: 0.05 },
 };
 
 export {
@@ -553,14 +529,7 @@ export const SIGNALS: {
     key: "name",
     label: "Name",
     input: "Query × places.name_embedding (Mesita `places.name`, not `google_name`).",
-    output: "Unembedded place → unembedded, never deleted.",
-    fields: UNIT,
-  },
-  {
-    key: "summary",
-    label: "Summary",
-    input: "Query vector × places.embedding (Summary, never Presentation).",
-    output: "Unembedded place → unembedded, never deleted.",
+    output: "Unembedded place → 0.4, never deleted.",
     fields: UNIT,
   },
   {
@@ -626,9 +595,12 @@ export function resetLegacySignalWarnings(): void {
   warnedLegacyKeys.clear();
 }
 
+/**
+ * Weights only (MESITA-2144), like the EF twin: `enriched` has no params, so
+ * a params fold could only ever copy the retired bag's `{}`.
+ */
 function foldLegacySignalBag(
   raw: Record<string, unknown>,
-  scope: "weights" | "params" = "weights",
 ): Record<string, unknown> {
   const next = { ...raw };
   for (const [legacy, targets] of Object.entries(LEGACY_SIGNAL_ALIASES)) {
@@ -641,15 +613,13 @@ function foldLegacySignalBag(
         foldedTo.push(target);
       }
     }
-    const seen = `${scope}:${legacy}`;
-    if (!warnedLegacyKeys.has(seen)) {
-      warnedLegacyKeys.add(seen);
+    if (!warnedLegacyKeys.has(legacy)) {
+      warnedLegacyKeys.add(legacy);
       console.warn("[filters-config] legacy signal key", {
         key: legacy,
-        scope,
         value,
         foldedTo,
-        preserved: scope === "weights",
+        preserved: true,
       });
     }
   }
@@ -716,10 +686,9 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     };
   }
 
-  const rawParams = foldLegacySignalBag(
-    (r.params ?? {}) as Record<string, unknown>,
-    "params",
-  );
+  // No legacy fold here: a stored `params` key outside SIGNAL_KEYS,
+  // `mesita_level` included, is simply not rebuilt.
+  const rawParams = (r.params ?? {}) as Record<string, unknown>;
   const params = {} as SignalParams;
   for (const key of SIGNAL_KEYS) {
     const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
@@ -763,7 +732,6 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),
     name: coerceName(r.name),
-    social: coerceSocial(r.social),
     chat: {
       prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
@@ -815,35 +783,6 @@ function coerceCatalog(raw: unknown): CatalogConfig {
     ),
     minSeedPlaces: Math.round(
       num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
-    ),
-  };
-}
-
-function coerceSocial(raw: unknown): SocialConfig {
-  const s = (raw ?? {}) as Record<string, unknown>;
-  return {
-    seedCount: Math.round(num(s.seedCount, DEFAULT_SOCIAL.seedCount, 0, SOCIAL_COUNT_MAX)),
-    generatedCount: Math.round(
-      num(s.generatedCount, DEFAULT_SOCIAL.generatedCount, 0, SOCIAL_COUNT_MAX),
-    ),
-    eventsPerRail: Math.round(
-      num(
-        s.eventsPerRail,
-        DEFAULT_SOCIAL.eventsPerRail,
-        SOCIAL_EVENTS_PER_RAIL_MIN,
-        SOCIAL_EVENTS_PER_RAIL_MAX,
-      ),
-    ),
-    minSeedEvents: Math.round(
-      num(s.minSeedEvents, DEFAULT_SOCIAL.minSeedEvents, 1, SOCIAL_MIN_SEED_EVENTS_MAX),
-    ),
-    horizonDays: Math.round(
-      num(
-        s.horizonDays,
-        DEFAULT_SOCIAL.horizonDays,
-        SOCIAL_HORIZON_DAYS_MIN,
-        SOCIAL_HORIZON_DAYS_MAX,
-      ),
     ),
   };
 }

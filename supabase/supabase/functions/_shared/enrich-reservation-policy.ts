@@ -3,29 +3,24 @@
 //
 // The Reservationist is voice-only (Twilio + ElevenLabs). WhatsApp was dropped
 // fleet-wide (MESITA-839) — nothing calls Messages.json — so the only serving
-// channel is phone. Priority / disabled remain operator knobs on
-// app_config.reservations_config, but the eligible set is phone alone.
-// Legacy stored rows that still list whatsapp/instagram are coerced away.
+// channel is phone, and the channel order is fixed here in code. The
+// `priority` / `disabled` knobs on app_config.reservations_config ranked and
+// parked that one-channel list; they are no longer read (MESITA-2144), so the
+// policy is phone, unless respectAdminOverride keeps an operator's own pick.
 
 /** Channels a reservation endpoint may use. Voice-reachable only (MESITA-842). */
 export type ReservationChannel = "phone";
 
-/** Every channel a reservation endpoint may use. The config must rank all of them. */
+/** Every channel a reservation endpoint may use, most-preferred first. */
 export const RESERVATION_CHANNELS: readonly ReservationChannel[] = ["phone"] as const;
 
 export type ReservationsPolicy = {
-  /** Ordered, most-preferred first. Order IS the rule. */
-  priority: readonly ReservationChannel[];
-  /** Parked channels — skipped even when they're the place's only contact. */
-  disabled: readonly ReservationChannel[];
   /** True: a channel an operator picked by hand survives a re-enrich. */
   respectAdminOverride: boolean;
 };
 
-/** Used when no config row was read. Matches the phone-only column default. */
+/** Used when no config row was read. */
 export const DEFAULT_RESERVATIONS_POLICY: ReservationsPolicy = {
-  priority: RESERVATION_CHANNELS,
-  disabled: [],
   respectAdminOverride: true,
 };
 
@@ -38,37 +33,18 @@ export type ReservationCandidates = {
   phone?: string | null;
 };
 
-function isReservationChannel(v: unknown): v is ReservationChannel {
-  return v === "phone";
-}
-
 /**
  * Coerce the app_config.reservations_config jsonb into a usable policy.
  * Anything malformed falls back to the default rather than throwing — a bad row
- * must never stop the Enricher from seeding an endpoint. Legacy whatsapp /
- * instagram entries are dropped (not serving paths since MESITA-839/842).
+ * must never stop the Enricher from seeding an endpoint. Stored `priority` /
+ * `disabled` keys are ignored (MESITA-2144).
  */
 export function coerceReservationsPolicy(raw: unknown): ReservationsPolicy {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return DEFAULT_RESERVATIONS_POLICY;
   }
   const c = raw as Record<string, unknown>;
-
-  const priority: ReservationChannel[] = Array.isArray(c.priority)
-    ? c.priority.filter(isReservationChannel).filter((ch, i, a) => a.indexOf(ch) === i)
-    : [];
-  // Append any channel the row forgot to rank so it stays reachable, last.
-  for (const ch of RESERVATION_CHANNELS) {
-    if (!priority.includes(ch)) priority.push(ch);
-  }
-
-  const disabled: ReservationChannel[] = Array.isArray(c.disabled)
-    ? c.disabled.filter(isReservationChannel)
-    : [];
-
   return {
-    priority,
-    disabled,
     respectAdminOverride:
       typeof c.respectAdminOverride === "boolean" ? c.respectAdminOverride : true,
   };
@@ -80,29 +56,20 @@ function trimOrNull(v: unknown): string | null {
   return t ? t : null;
 }
 
-/** Non-empty, non-parked contact values the selector may choose from (priority order). */
+/** Non-empty contact values the selector may choose from, in channel order. */
 export function availableReservationChannels(
   candidates: ReservationCandidates,
-  policy: ReservationsPolicy = DEFAULT_RESERVATIONS_POLICY,
 ): ReservationChannel[] {
-  const out: ReservationChannel[] = [];
-  for (const channel of policy.priority) {
-    if (policy.disabled.includes(channel)) continue;
-    if (valueForReservationChannel(candidates, channel)) out.push(channel);
-  }
-  return out;
+  return RESERVATION_CHANNELS.filter((channel) =>
+    valueForReservationChannel(candidates, channel) !== null
+  );
 }
 
-/** First channel in the configured order that's actually available. */
+/** First channel in the fixed order that's actually available. */
 export function preferReservationChannel(
   available: ReservationChannel[],
-  policy: ReservationsPolicy = DEFAULT_RESERVATIONS_POLICY,
 ): ReservationChannel | null {
-  for (const channel of policy.priority) {
-    if (policy.disabled.includes(channel)) continue;
-    if (available.includes(channel)) return channel;
-  }
-  return null;
+  return RESERVATION_CHANNELS.find((channel) => available.includes(channel)) ?? null;
 }
 
 export function valueForReservationChannel(

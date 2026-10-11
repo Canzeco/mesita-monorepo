@@ -313,8 +313,9 @@ verify_jwt = true
 [functions.admin-web-suggest-places]
 verify_jwt = true
 
-# Super-admin free-text place search (name / slug / id) for the admin
-# console's Manage Single Place place picker.
+# Super-admin place lookup by Google Place IDs, or the whole catalog
+# (`all`), for the admin console's Mesita Search, Write box and Manage
+# Single Place.
 [functions.admin-web-search-places]
 verify_jwt = true
 

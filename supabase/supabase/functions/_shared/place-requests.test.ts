@@ -7,14 +7,14 @@ import {
 
 Deno.test("zero requests: listed, no auto-enrich", () => {
   assertEquals(
-    placeRequestLifecycle({ contentState: "queued", requestCount: 0 }),
+    placeRequestLifecycle({ contentState: "generating", requestCount: 0 }),
     "listed",
   );
   assertEquals(
     shouldTriggerRequestEnrichment({
       requestCount: 0,
       threshold: 3,
-      contentState: "queued",
+      contentState: "generating",
     }),
     false,
   );
@@ -43,15 +43,6 @@ Deno.test("threshold crossing: trigger when not ready and not already enriching"
       contentState: "failed",
     }),
     true,
-  );
-  assertEquals(
-    shouldTriggerRequestEnrichment({
-      requestCount: 4,
-      threshold: 3,
-      contentState: "queued",
-    }),
-    false,
-    "queued is already in-flight — do not re-seed",
   );
   assertEquals(
     shouldTriggerRequestEnrichment({

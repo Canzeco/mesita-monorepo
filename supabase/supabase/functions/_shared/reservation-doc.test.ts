@@ -42,7 +42,6 @@ Deno.test("validateReservationPatch: accepts every reservation_state enum value"
       "pending",
       "confirmed",
       "declined",
-      "no_show",
       "cancelled",
       "unreachable",
       "unresolved",
@@ -234,6 +233,13 @@ Deno.test("validateReservationPatch: rejects an unknown field (closed key set)",
 Deno.test("validateReservationPatch: rejects a state outside the enum", () => {
   assert(!validateReservationPatch({ state: "booked" }).ok);
   assert(!validateReservationPatch({ state: "" }).ok);
+});
+
+Deno.test("validateReservationPatch: rejects no_show and completed_at — no writer, leaving the schema (MESITA-2144)", () => {
+  assert(!validateReservationPatch({ state: "no_show" }).ok);
+  const res = validateReservationPatch({ completed_at: "2026-08-23T22:00:00.000Z" });
+  assert(!res.ok);
+  assertEquals(res.error, "unknown reservation field: completed_at");
 });
 
 Deno.test("validateReservationPatch: rejects party_size <= 0 and non-integers", () => {

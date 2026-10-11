@@ -111,7 +111,7 @@ Deno.test("reorderListedLanes: the enrichment fact reorders when Enriched is wei
     google_place_id: "ChIJ-lo",
     lat: 25.6701,
     lng: -100.3001,
-    content_state: "queued",
+    content_state: "generating",
   };
   const merged = mergeNearbyCatalog([lo, hi], [], CENTER, LANES);
   const enrichedOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS) };

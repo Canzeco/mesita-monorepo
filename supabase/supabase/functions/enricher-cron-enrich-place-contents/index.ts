@@ -42,6 +42,7 @@ import {
 } from "../_shared/crenup-report.ts";
 import {
   applyProfileToUpdate,
+  asProfileText,
   synthesisModelFor,
   synthesizeProfile,
 } from "../_shared/enrich-synthesis.ts";
@@ -175,6 +176,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
     ledger.charge("synthesis", synthCost);
     sources.synthesis = synthDiag;
     if (parsed) applyProfileToUpdate(place, parsed);
+    // The editorial blurb is classifier INPUT, never a place column
+    // (MESITA-2144): the LLM's English text when synthesis produced one, else
+    // Google's own blurb — the same text the spine carries on `pitch`.
+    const editorialSummary = asProfileText(parsed?.editorial_summary) ??
+      ((place.pitch ?? null) as string | null);
 
     // About first (above), then category, then tags — each step feeds the next.
     // Category + tags both ground primarily on the synthesized About.
@@ -196,7 +202,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     const classifySignals = {
       name,
       address: (place.address ?? null) as string | null,
-      editorialSummary: (place.editorial_summary ?? null) as string | null,
+      editorialSummary,
       // Prefer the About we just synthesized; fall back to IG bio when synthesis
       // produced nothing (thin harvest).
       description: aboutText || igBio || null,
@@ -277,7 +283,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
         priceLevel: typeof place.price_level === "number"
           ? place.price_level
           : null,
-        editorialSummary: (place.editorial_summary ?? null) as string | null,
+        editorialSummary,
       },
       enricherModel,
     );
@@ -333,8 +339,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // Selected Reservation Endpoint (Docs › Reservations §C / MESITA-597 / MESITA-842) —
   // seed places.reservation_channel / reservation_target for the Reservationist.
   // Voice-only: phone is the sole serving channel (WhatsApp unreachable since
-  // MESITA-839). Priority / parked knobs still live on reservations_config, but
-  // the eligible set is phone. Phone is stripped from gathered.place
+  // MESITA-839). The priority / parked knobs are retired (MESITA-2144); the
+  // channel is phone, fixed in code. Phone is stripped from gathered.place
   // (research-only write), so read the live places.phone. Skip when admin
   // already picked phone — unless respectAdminOverride is off. Legacy
   // whatsapp/instagram picks are NOT overrides (hasReservationTarget).
@@ -379,7 +385,6 @@ serveEnrichStage("contents", async (admin, env, row) => {
     const candidates = { phone: live?.phone ?? null };
     const { target, diag: reservationDiag } = selectReservationEndpoint({
       candidates,
-      policy: reservationsPolicy,
     });
     sources.reservation_endpoint = reservationDiag;
     if (target) {
@@ -440,6 +445,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // with the real reason only in meta.error (Strana, 2026-08-25).
   // Wave 040 already dropped tiktok/tripadvisor/yelp + requires_story on the
   // live row. A gathered blob that still carries them 42703s the UPDATE.
+  // country/editorial_summary/facebook_rating left the place in MESITA-2144:
+  // a blob stored before then still carries them, and writePlace refuses an
+  // unknown field, so they are stripped here like the wave-040 columns.
   const {
     id: _dropId,
     created_at: _dropCreated,
@@ -454,6 +462,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
     tripadvisor_url: _dropTripadvisor,
     yelp_url: _dropYelp,
     requires_story: _dropRequiresStory,
+    country: _dropCountry,
+    editorial_summary: _dropEditorialSummary,
+    facebook_rating: _dropFacebookRating,
     ...placeUpdate
   } = persisted as Record<string, unknown> & {
     id?: unknown;
@@ -469,6 +480,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
     tripadvisor_url?: unknown;
     yelp_url?: unknown;
     requires_story?: unknown;
+    country?: unknown;
+    editorial_summary?: unknown;
+    facebook_rating?: unknown;
   };
   if ("google_reviews" in placeUpdate) {
     placeUpdate.google_reviews = persistGoogleReviews(placeUpdate.google_reviews);

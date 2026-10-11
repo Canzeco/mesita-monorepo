@@ -17,9 +17,8 @@ import {
 // Just write it as soon"): apps/web-admin's Enrichment route is a Soon page,
 // and NOTHING writes app_config.enrichment_triggers from a UI today.
 //
-// The gates did not move. on_create and on_schedule are still LIVE emitters
-// whose resolved subprocess list gates real Apify / Firecrawl / Perplexity
-// spend — three independent audits said so, and deleting the console changed
+// The gates did not move. on_create is still a LIVE emitter whose resolved
+// subprocess list gates real Apify / Firecrawl / Perplexity spend — three independent audits said so, and deleting the console changed
 // none of it. What changed is who can flip a cell: admin-web-update-enricher-
 // config, called directly, is the last write door.
 //
@@ -35,11 +34,11 @@ Deno.test("normalize: a stored cooldownHours survives a save that renders no coo
   // cells it cares about. cooldownHours rides along untouched.
   const stored = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
   stored.on_create.cooldownHours = 72;
-  stored.on_schedule.cooldownHours = 12;
+  stored.on_visit.cooldownHours = 12;
 
   const out = normalizeEnrichmentTriggers(stored);
   assertEquals(out.on_create.cooldownHours, 72);
-  assertEquals(out.on_schedule.cooldownHours, 12);
+  assertEquals(out.on_visit.cooldownHours, 12);
 });
 
 Deno.test("normalize: an absent cooldownHours comes back at its default, never undefined", () => {
@@ -87,8 +86,6 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   // The readers, exhaustively:
   //   on_create   — create-place.ts resolves subprocessesFor(t, "on_create")
   //                 and hard-skips the first run when the row buys nothing.
-  //   on_schedule — queue_due_place_enrichments() resolves it in SQL every
-  //                 15 minutes and queues zero rows when it is disabled.
   //   on_update   — admin-web-update-place resolves it and skips the
   //                 follower refresh / the re-embed (MESITA-1188). It is the
   //                 one reader that WITHHOLDS work instead of scheduling it,
@@ -108,7 +105,6 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   assertEquals(live, [
     "on_create",
     "on_reservation_failed",
-    "on_schedule",
     "on_update",
   ]);
 });
@@ -192,7 +188,7 @@ Deno.test("on_reservation_failed: default cooldown is 24h, not 0", () => {
 
 Deno.test("subprocessesFor: a disabled live row buys nothing", () => {
   // An empty list is what create-place.ts turns into a hard skip of the
-  // first-run pipeline, and what makes the */15 scheduler queue zero rows.
+  // first-run pipeline.
   const cfg = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
   cfg.on_create.enabled = false;
 
@@ -222,11 +218,12 @@ Deno.test("subprocessesFor: an enabled row buys exactly its true cells", () => {
 // so an added RunTrigger would type-check, deploy, and then fail at INSERT — on
 // a money-spending path, at the moment a run starts. Same idiom as
 // crenup-ladder.test.ts pinning `step ~ '^S([0-9]{1,2}|X)$'` from this side.
+// `on_schedule` left the code first (MESITA-2144) and the CHECK keeps it until
+// the drop migration: a subset of the CHECK never fails an INSERT.
 Deno.test("runs: the run vocabulary matches the DB CHECK, literal for literal", () => {
   assertEquals([...RUN_TRIGGERS], [
     "on_create",
     "on_update",
-    "on_schedule",
     "on_visit",
     "on_order",
     "on_reservation_ok",
@@ -236,7 +233,7 @@ Deno.test("runs: the run vocabulary matches the DB CHECK, literal for literal", 
 });
 
 // The two vocabularies are SIBLINGS, not one list. TRIGGER_KEYS is what the
-// matrix prices — seven rows, seven cooldowns, nine checkboxes each.
+// matrix prices — six rows, six cooldowns, nine checkboxes each.
 // RUN_TRIGGERS is what the history records, and it adds `manual`, which must
 // never become a matrix row: the Run-now button clears `subprocesses` and
 // ignores cooldown, so a grid row for it would be an unenforced config.

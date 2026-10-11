@@ -4,16 +4,11 @@ import { validateProfilePatch } from "./place-doc.ts";
 
 Deno.test("Active on writes OPERATIONAL and never unlists", () => {
   assertEquals(activeWritePatch(true, "active"), { business_state: "OPERATIONAL" });
-  assertEquals(activeWritePatch(true, "lead"), { business_state: "OPERATIONAL" });
   assertEquals(activeWritePatch(true, "paused"), { business_state: "OPERATIONAL" });
 });
 
 Deno.test("Active off writes CLOSED_PERMANENTLY and unlists a listed place", () => {
   assertEquals(activeWritePatch(false, "active"), {
-    business_state: "CLOSED_PERMANENTLY",
-    state: "paused",
-  });
-  assertEquals(activeWritePatch(false, "lead"), {
     business_state: "CLOSED_PERMANENTLY",
     state: "paused",
   });

@@ -53,7 +53,6 @@ type Body = {
   synthesisQuality?: string;
   visionQuality?: string;
   perplexityPreset?: string;
-  perRunCostCapUsd?: number;
   discoverWebsiteN?: number;
   discoverInstagramN?: number;
   discoverFacebookN?: number;
@@ -216,14 +215,6 @@ export async function writeEnricherSection(
       );
     }
     next.atlasPerplexityPreset = body.perplexityPreset;
-    blobTouched = true;
-  }
-
-  if (body.perRunCostCapUsd !== undefined) {
-    if (typeof body.perRunCostCapUsd !== "number" || body.perRunCostCapUsd < 0) {
-      return jsonError("perRunCostCapUsd must be a number >= 0", 400);
-    }
-    next.atlasPerRunCostCapUsd = Math.round(body.perRunCostCapUsd * 100) / 100;
     blobTouched = true;
   }
 

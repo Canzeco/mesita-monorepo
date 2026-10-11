@@ -76,12 +76,12 @@ Deno.test("toSignalPlace sets `enriched` explicitly, from EITHER fact", () => {
   // family_keys; `place_profiles` and the `profiles` view do).
   assertEquals(toSignalPlace({ ...ROW, content_state: "ready" }).enriched, true);
   assertEquals(
-    toSignalPlace({ ...ROW, content_state: "queued", enriched_at: "2026-09-01T00:00:00Z" })
+    toSignalPlace({ ...ROW, content_state: "generating", enriched_at: "2026-09-01T00:00:00Z" })
       .enriched,
     true,
   );
   assertEquals(
-    toSignalPlace({ ...ROW, content_state: "queued", enriched_at: null }).enriched,
+    toSignalPlace({ ...ROW, content_state: "generating", enriched_at: null }).enriched,
     false,
   );
   // Never undefined: an absent fact is an answered "no", not a hole.

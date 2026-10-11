@@ -67,12 +67,10 @@ export function enrichPlaceOverview(v: Place): Place {
     currency,
   });
 
-  // Same predicate as placeRowToDetail — content_state stays queued/
-  // generating for the full pipeline; only contents lands 'ready'.
+  // Same predicate as placeRowToDetail — content_state stays generating for
+  // the full pipeline; only contents lands 'ready'.
   const contentState = str(v.content_state);
-  const isEnriching =
-    v.is_enriching ??
-    (contentState === "queued" || contentState === "generating");
+  const isEnriching = v.is_enriching ?? contentState === "generating";
 
   return {
     ...v,

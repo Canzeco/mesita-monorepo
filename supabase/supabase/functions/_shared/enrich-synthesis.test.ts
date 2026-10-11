@@ -32,10 +32,7 @@ Deno.test("applyProfileToUpdate: off-type LLM fields never throw — dropped or 
     description: [{ paragraph: "objeto" }],
     zone: 7,
     city: null,
-    established_year: "1998",
-    executive_chef: ["Ana", " Luis "],
     editorial_summary: { text: "x" },
-    details: ["not-an-object"],
     products: { menu: [] },
     popular_times: "busy",
   } as unknown as ProfileResult;
@@ -43,10 +40,6 @@ Deno.test("applyProfileToUpdate: off-type LLM fields never throw — dropped or 
   assertEquals(update.description, "objeto");
   assertEquals("zone" in update, false);
   assertEquals("city" in update, false);
-  assertEquals(update.established_year, 1998);
-  assertEquals(update.executive_chef, "Ana\n\nLuis");
-  assertEquals(update.editorial_summary, "x");
-  assertEquals("details" in update, false);
   assertEquals("products" in update, false);
   assertEquals("popular_times" in update, false);
 });
@@ -64,31 +57,30 @@ Deno.test("applyProfileToUpdate: happy path unchanged (trimmed, capped, typed)",
   applyProfileToUpdate(update, {
     description: "  Un lugar con historia.  ",
     zone: "San Pedro",
-    established_year: 2012,
-    details: { dress_code: "casual" },
     popular_times: [{ day: "Fri", range: "8-11pm" }],
   } as ProfileResult);
   assertEquals(update.description, "Un lugar con historia.");
   assertEquals(update.zone, "San Pedro");
-  assertEquals(update.established_year, 2012);
-  assertEquals(update.details, { dress_code: "casual" });
   assertEquals(update.popular_times, [{ day: "Fri", range: "8-11pm" }]);
 });
 
-Deno.test("applyProfileToUpdate: a details blob with a hallucinated key is dropped (MESITA-1247)", () => {
+// MESITA-2144: the editorial blurb stays in the LLM schema as classifier
+// INPUT (the contents stage reads it off `parsed`), but it is no longer a
+// place column — and the three retired keys never reach the patch either,
+// even when a stale model reply still carries them.
+Deno.test("applyProfileToUpdate: never writes editorial_summary or the retired profile keys", () => {
   const update: Record<string, unknown> = {};
   applyProfileToUpdate(update, {
-    details: { dress_code: "casual", made_up_field: "the LLM invented this" },
-  } as unknown as ProfileResult);
-  assertEquals("details" in update, false);
-});
-
-Deno.test("applyProfileToUpdate: a partial details blob is still written through (behaviour-preserving, MESITA-1247)", () => {
-  const update: Record<string, unknown> = {};
-  applyProfileToUpdate(update, {
+    description: "A warm brunch spot.",
+    editorial_summary: "Brunch institution.",
+    established_year: 1998,
+    executive_chef: "Ana",
     details: { dress_code: "casual" },
   } as unknown as ProfileResult);
-  assertEquals(update.details, { dress_code: "casual" });
+  assertEquals(update.description, "A warm brunch spot.");
+  for (const key of ["editorial_summary", "established_year", "executive_chef", "details"]) {
+    assertEquals(key in update, false, key);
+  }
 });
 
 Deno.test("applyProfileToUpdate: ignores description_es — English only for now", () => {

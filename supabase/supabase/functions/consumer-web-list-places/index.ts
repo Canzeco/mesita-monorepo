@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-list-places
 //
 // The MAP engine's pool. Public endpoint: returns places visible to consumers
-// (state in 'active', 'lead'). Self-contained: no calls to other functions.
+// (state 'active'). Self-contained: no calls to other functions.
 //
 // TWO CLIENTS, ON PURPOSE (MESITA-1276). The PLACES query stays on the ANON
 // client because RLS is the single source of truth for what a consumer may
@@ -117,10 +117,9 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     category: hit.primaryType,
     family_keys: familiesForGoogleType(hit.primaryType),
     category_label: null,
-    vibe: null,
     price_level: null,
     currency: "MXN",
-    state: "lead",
+    state: "active",
     lat: hit.lat,
     lng: hit.lng,
     address: hit.address || null,
@@ -144,7 +143,6 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     reddit_url: null,
     didi_food_url: null,
     google_maps_url: null,
-    email: null,
     created_at: new Date(0).toISOString(),
     google_stars_overall: hit.rating,
     google_rating: hit.rating,
@@ -216,8 +214,9 @@ Deno.serve(async (req) => {
   if (!envRes.ok) return envRes.response;
 
   // Anon client is sufficient: the places RLS policy already restricts SELECT
-  // to state in ('active', 'lead') for anon + authenticated. This is the
-  // single source of truth for what consumers are allowed to see.
+  // to listed rows for anon + authenticated (`lead` is still named there but
+  // dead, so that means state 'active'). This is the single source of truth
+  // for what consumers are allowed to see.
   const supabase = anonClient(envRes.env);
 
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or

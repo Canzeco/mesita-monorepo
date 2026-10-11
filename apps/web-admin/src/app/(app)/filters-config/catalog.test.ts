@@ -9,7 +9,6 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
-  DEFAULT_SOCIAL,
   DEFAULT_SWIPE,
   DISCOVERY_ENTITIES,
   DISCOVERY_MODE_KEYS,
@@ -45,7 +44,6 @@ describe("Discovery function APIs", () => {
     // The blend is a product of s^w, so the table order cannot move a score.
     expect([...SIGNAL_KEYS]).toEqual([
       "name",
-      "summary",
       "category",
       "proximity",
       "timing",
@@ -262,10 +260,9 @@ describe("Discovery function APIs", () => {
     }
   });
 
-  it("signals light Word Name, Chat Summary, Map without Randomness", () => {
+  it("signals light Word Name, Chat Name, Map without Randomness", () => {
     expect(modeSignalState("word", "name")).toBe("on");
-    expect(modeSignalState("word", "summary")).toBe("off");
-    expect(modeSignalState("chat", "summary")).toBe("on");
+    expect(modeSignalState("chat", "name")).toBe("on");
     expect(modeSignalState("chat", "randomness")).toBe("off");
     expect(modeSignalState("map", "proximity")).toBe("on");
     expect(modeSignalState("map", "randomness")).toBe("zero");
@@ -313,13 +310,32 @@ describe("Discovery function APIs", () => {
     expect(snapMapReloadPair(99, 40)).toEqual({ km: 4, sec: 15 });
   });
 
-  it("coerceConfig defaults social on an old blob and clamps knobs", () => {
-    expect(coerceConfig({ weights: {}, slotting: {} }).social).toEqual(DEFAULT_SOCIAL);
-    expect(coerceConfig({ social: { seedCount: 99, horizonDays: 400 } }).social).toEqual({
-      ...DEFAULT_SOCIAL,
-      seedCount: 20,
-      horizonDays: 90,
+  it("coerceConfig drops the retired social box (MESITA-2144)", () => {
+    // The tentative Social engine's knobs had no reader. A blob that still
+    // carries them comes back without them, so a whole-blob Save stops
+    // writing them.
+    const cfg = coerceConfig({
+      social: { seedCount: 6, generatedCount: 6, eventsPerRail: 8, minSeedEvents: 1, horizonDays: 14 },
     });
+    expect(cfg).not.toHaveProperty("social");
+  });
+
+  it("coerceConfig drops the retired param bags and Name's unembedded (MESITA-2144)", () => {
+    // What the live blob still stores under `params`. A bag this page keeps
+    // is a bag the next whole-blob Save writes back over the strip migration.
+    const cfg = coerceConfig({
+      params: {
+        summary: { unembedded: 0.4 },
+        name: { unembedded: 0.4 },
+        mesita_level: {},
+        proximity: { maxKm: 30 },
+      },
+    });
+    expect(cfg.params).not.toHaveProperty("summary");
+    expect(cfg.params).not.toHaveProperty("mesita_level");
+    expect(cfg.params.name).toEqual({});
+    expect(Object.keys(cfg.params).sort()).toEqual([...SIGNAL_KEYS].sort());
+    expect(cfg.params.proximity.maxKm).toBe(30);
   });
 
   it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {

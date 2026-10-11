@@ -41,8 +41,12 @@ export function isPlaceSeeded(googlePlaceId: unknown): boolean {
  * ADDING A LABEL TO content_state SILENTLY BREAKS THIS — the policy would then
  * exclude rows that `state` alone still calls listed. If you add one, either
  * add it to the policy or check content_state here.
+ *
+ * `lead` is dead (MESITA-2144): no writer sends it and no row carries it, so
+ * only `active` counts here even while the policy still names it. The
+ * profiles-view migration rebuilds the policy as `state = 'active'`.
  */
-export const LISTED_STATES: readonly string[] = ["active", "lead"];
+export const LISTED_STATES: readonly string[] = ["active"];
 
 export function isPlaceListed(state: unknown): boolean {
   return typeof state === "string" && LISTED_STATES.includes(state);
@@ -50,8 +54,7 @@ export function isPlaceListed(state: unknown): boolean {
 
 /**
  * Requested is guest demand for Enricher — never a projects.state
- * label. pending_review / pending_verification stay on the enum and stay
- * unlisted; they are not this fact.
+ * label.
  *
  * Derived: request_count > 0 and not Enriched. Enriched is
  * `places.enriched_at` (Enricher finished). Create-without-enrich stamps
@@ -76,12 +79,14 @@ export function isPlaceEnriched(enrichedAt: unknown): boolean {
   return typeof enrichedAt === "string" && enrichedAt.trim() !== "";
 }
 
-/** Enricher pipeline mid-flight. content_state generating/queued covers the
+/** Enricher pipeline mid-flight. content_state generating covers the
  *  whole run after MESITA-453 (re-enrich flips the column; never clear after
  *  research alone). Stage research|analysis|contents is the other half, read
- *  by admin-web-get-place-enrichment — notifications only have this column. */
+ *  by admin-web-get-place-enrichment — notifications only have this column.
+ *  `queued` is dead (MESITA-2144): no writer has sent it since the async
+ *  create landed on 'generating'. */
 export function isPlaceEnriching(contentState: unknown): boolean {
-  return contentState === "generating" || contentState === "queued";
+  return contentState === "generating";
 }
 
 /**

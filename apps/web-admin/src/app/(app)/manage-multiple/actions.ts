@@ -67,7 +67,7 @@ export type PlaceHit = {
   // ── The state facts (labels: Created · Active · Listed · Requested ·
   //    Enriching · Enriched). Bools except Requested (0…n). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
-  //    content_state generating/queued (MESITA-453 whole-pipeline).
+  //    content_state generating (MESITA-453 whole-pipeline).
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
@@ -78,7 +78,7 @@ export type PlaceHit = {
   requested: boolean;
   /** Guest request count — the Requested State fact, 0…n. */
   request_count: number;
-  /** Enricher pipeline mid-flight (content_state generating/queued). */
+  /** Enricher pipeline mid-flight (content_state generating). */
   enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
@@ -125,7 +125,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     google_review_count:
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
     content_state: contentState,
-    enriching: contentState === "generating" || contentState === "queued",
+    enriching: contentState === "generating",
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,

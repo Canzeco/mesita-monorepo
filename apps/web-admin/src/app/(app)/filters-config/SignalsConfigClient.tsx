@@ -1,6 +1,6 @@
 "use client";
 
-// Mesita Places Search Signals — the eight earned signals every Mesita
+// Mesita Places Search Signals — the seven earned signals every Mesita
 // Places source is ranked by (Docs > Discovery 8.3). Sources retrieve;
 // Lineup ranks; these are what it reads. Engines do not invent a second
 // scale. Mesita Level is the Enriched row now (MESITA-1858): it reads the
@@ -23,7 +23,6 @@ import {
   Clock,
   Compass,
   Dices,
-  FileText,
   MapPin,
   Sparkles,
   Star,
@@ -43,7 +42,6 @@ import {
 
 const ICONS: Record<SignalKey, typeof MapPin> = {
   name: Type,
-  summary: FileText,
   proximity: MapPin,
   timing: Clock,
   category: Tags,

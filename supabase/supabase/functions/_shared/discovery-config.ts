@@ -1,7 +1,7 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · weightsByMode · params · filters · engines · general · catalog · map · name · social · chat · swipe.
+// Keys: weights · weightsByMode · params · filters · engines · general · catalog · map · name · chat · swipe.
 // Admin: Modes (Word, Map and Scroll live, each with its own weight column) ·
 // Sources (Google types, three Google boxes, Places Lineup, Socials Soon).
 // `params` rides with `weights` — same Lineup table, different numbers.
@@ -57,8 +57,6 @@ import {
   POPULARITY_PRIOR_RATING,
   PROXIMITY_KNEE_KM,
   PROXIMITY_MAX_KM,
-  NAME_UNEMBEDDED,
-  SUMMARY_UNEMBEDDED,
   SIGNAL_KEYS,
   TIMING_CLOSED_FLOOR,
   TIMING_OPEN_SHARE,
@@ -81,16 +79,6 @@ export type CatalogConfig = {
   placesPerRail: number;
   /** Seed category must have at least this many listed places. */
   minSeedPlaces: number;
-};
-
-/** Tentative Social engine. Queries events at places, not places. No reader yet. */
-export type SocialConfig = {
-  seedCount: number;
-  generatedCount: number;
-  eventsPerRail: number;
-  minSeedEvents: number;
-  /** Look-ahead window. Events expire; places do not. */
-  horizonDays: number;
 };
 
 /**
@@ -294,7 +282,6 @@ export type DiscoveryConfig = {
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
-  social: SocialConfig;
   chat: { prompt: string };
   swipe: SwipeConfig;
 };
@@ -381,13 +368,6 @@ export const CATALOG_PLACES_PER_RAIL_MIN = 4;
 export const CATALOG_PLACES_PER_RAIL_MAX = 20;
 export const CATALOG_MIN_SEED_PLACES_MAX = 20;
 export const CATALOG_RAILS_CAP = 24;
-
-export const SOCIAL_COUNT_MAX = 20;
-export const SOCIAL_EVENTS_PER_RAIL_MIN = 4;
-export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
-export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
-export const SOCIAL_HORIZON_DAYS_MIN = 1;
-export const SOCIAL_HORIZON_DAYS_MAX = 90;
 
 export const MAP_MIN_POPULARITY_MAX = 1;
 /** Categorical reload pairs. Both must be true. Rail / pin pans do not count. */
@@ -478,14 +458,6 @@ export const DEFAULT_CATALOG: CatalogConfig = {
   minSeedPlaces: 2,
 };
 
-export const DEFAULT_SOCIAL: SocialConfig = {
-  seedCount: 6,
-  generatedCount: 6,
-  eventsPerRail: 8,
-  minSeedEvents: 1,
-  horizonDays: 14,
-};
-
 export const DEFAULT_NAME_FAST: NameFastConfig = {
   googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
@@ -542,8 +514,10 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
     confidence: POPULARITY_CONFIDENCE,
     floorRating: POPULARITY_FLOOR_RATING,
   },
-  name: { unembedded: NAME_UNEMBEDDED },
-  summary: { unembedded: SUMMARY_UNEMBEDDED },
+  // Zero params since MESITA-2144. `unembedded` was never a console knob and
+  // the live blob only ever stored NAME_UNEMBEDDED itself, which `name`
+  // falls back to on its own (discovery-signals.ts).
+  name: {},
   // Zero params, exactly as `mesita_level` had — the off-value lives as a
   // file-level constant in discovery-signals.ts. Promoting a constant to a
   // console dial later is additive; taking a dial back is not.
@@ -581,12 +555,7 @@ export const SIGNAL_PARAM_BOUNDS: Record<
     confidence: { min: 1, max: 1000, decimals: 0 },
     floorRating: { min: 0, max: 4.9, decimals: 2 },
   },
-  name: {
-    unembedded: { min: 0, max: 1, decimals: 2 },
-  },
-  summary: {
-    unembedded: { min: 0, max: 1, decimals: 2 },
-  },
+  name: {},
   enriched: {},
   randomness: {},
 };
@@ -603,7 +572,6 @@ const DEFAULT_WEIGHTS: Record<SignalKey, number> = {
   category: 1,
   popularity: 1,
   name: 1,
-  summary: 1,
   enriched: 1,
   randomness: 0.35,
 };
@@ -654,7 +622,6 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
-  social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
   swipe: DEFAULT_SWIPE,
 };
@@ -684,42 +651,6 @@ export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
         DEFAULT_CATALOG.minSeedPlaces,
         1,
         CATALOG_MIN_SEED_PLACES_MAX,
-      ),
-    ),
-  };
-}
-
-export function normalizeSocialConfig(raw: unknown): SocialConfig {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  return {
-    seedCount: Math.round(
-      num(r.seedCount, DEFAULT_SOCIAL.seedCount, 0, SOCIAL_COUNT_MAX),
-    ),
-    generatedCount: Math.round(
-      num(r.generatedCount, DEFAULT_SOCIAL.generatedCount, 0, SOCIAL_COUNT_MAX),
-    ),
-    eventsPerRail: Math.round(
-      num(
-        r.eventsPerRail,
-        DEFAULT_SOCIAL.eventsPerRail,
-        SOCIAL_EVENTS_PER_RAIL_MIN,
-        SOCIAL_EVENTS_PER_RAIL_MAX,
-      ),
-    ),
-    minSeedEvents: Math.round(
-      num(
-        r.minSeedEvents,
-        DEFAULT_SOCIAL.minSeedEvents,
-        1,
-        SOCIAL_MIN_SEED_EVENTS_MAX,
-      ),
-    ),
-    horizonDays: Math.round(
-      num(
-        r.horizonDays,
-        DEFAULT_SOCIAL.horizonDays,
-        SOCIAL_HORIZON_DAYS_MIN,
-        SOCIAL_HORIZON_DAYS_MAX,
       ),
     ),
   };
@@ -876,10 +807,13 @@ export function resetLegacySignalWarnings(): void {
  * pass, and SAY SO. Nothing logged this before MESITA-1858, which is the
  * difference between "we changed the blob" and "the operator's numbers
  * vanished and nobody knows when".
+ *
+ * WEIGHTS ONLY (MESITA-2144). It used to fold `params` too, but `enriched`
+ * has no params, so the only thing that fold could ever copy was the
+ * retired `mesita_level` bag's `{}` — onto a bag rebuilt empty regardless.
  */
 export function foldLegacySignalBag(
   raw: Record<string, unknown>,
-  scope: "weights" | "params" = "weights",
 ): Record<string, unknown> {
   const next = { ...raw };
   for (const [legacy, targets] of Object.entries(LEGACY_SIGNAL_ALIASES)) {
@@ -894,17 +828,15 @@ export function foldLegacySignalBag(
     }
     // Once per key per process: a ranking EF normalizes on EVERY request, and
     // a line per request would bury the one that matters.
-    const seen = `${scope}:${legacy}`;
-    if (!warnedLegacyKeys.has(seen)) {
-      warnedLegacyKeys.add(seen);
+    if (!warnedLegacyKeys.has(legacy)) {
+      warnedLegacyKeys.add(legacy);
       console.warn("[discovery-config] legacy signal key", {
         key: legacy,
-        scope,
         value,
         foldedTo,
         // The stored blob keeps the legacy key (the weights map is additive)
         // — this says it was READ, not that it was dropped.
-        preserved: scope === "weights",
+        preserved: true,
       });
     }
   }
@@ -987,10 +919,9 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     engines[key] = { ranked: bool(e.ranked, DISCOVERY_DEFAULTS.engines[key].ranked) };
   }
 
-  const rawParams = foldLegacySignalBag(
-    (r.params ?? {}) as Record<string, unknown>,
-    "params",
-  );
+  // No legacy fold here (see foldLegacySignalBag): a stored `params` key
+  // outside SIGNAL_KEYS, `mesita_level` included, is simply not rebuilt.
+  const rawParams = (r.params ?? {}) as Record<string, unknown>;
   const params = {} as SignalParams;
   for (const key of SIGNAL_KEYS) {
     const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
@@ -1034,7 +965,6 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     catalog: normalizeCatalogConfig(r.catalog),
     map: normalizeMapConfig(r.map),
     name: normalizeNameConfig(r.name),
-    social: normalizeSocialConfig(r.social),
     chat: {
       prompt: normalizeChatPrompt(
         ((r.chat ?? {}) as Record<string, unknown>).prompt,

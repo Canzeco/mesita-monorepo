@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
   if (mode === "full") {
     // `manual`, not a matrix trigger. The Run-now button opts out of the grid on
     // both axes — it clears `subprocesses` and ignores cooldown — so recording it
-    // as on_schedule would poison exactly the cost-attribution and cooldown
+    // as a matrix trigger would poison exactly the cost-attribution and cooldown
     // queries the run history exists to answer (MESITA-1185).
     const seed = await seedPlaceResearch(admin, placeId, googlePlaceId, "admin-web-enrich-place", {
       trigger: "manual",

@@ -49,7 +49,6 @@ export type ConsumerDoc = {
   full_name: string | null;
   sex: "male" | "female" | null;
   birthday: string | null;
-  country: string | null;
   phone: string | null;
   avatar_url: string | null;
   instagram_handle: string | null;
@@ -68,7 +67,6 @@ export const CONSUMER_PATCH_KEYS = [
   "full_name",
   "sex",
   "birthday",
-  "country",
   "phone",
   "avatar_url",
   "instagram_handle",
@@ -150,7 +148,6 @@ export function validateConsumerPatch(
       "first_name",
       "last_name",
       "full_name",
-      "country",
       "phone",
       "avatar_url",
     ] as const

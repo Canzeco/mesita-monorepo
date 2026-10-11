@@ -112,7 +112,6 @@ export type GoogleBasics = {
   address: string;
   zone: string | null;
   city: string | null;
-  country: string | null;
   timezone: string | null;
   closes_at: string | null;
   hours: WeeklyHours | null;
@@ -132,11 +131,9 @@ export type GoogleBasics = {
   uber_eats_url: string | null;
   didi_food_url: string | null;
   google_maps_url: string | null;
-  email: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
   google_reviews: { author: string; rating: number; quote: string; date: string }[] | null;
-  editorial_summary: string | null;
 };
 
 export type GoogleBasicsResult =
@@ -154,11 +151,16 @@ export type GoogleBasicsResult =
   // It is the ONE fact function 1 (pulse) reads. Liveness is a question Google
   // answers directly; every other way of guessing it (no hours? no phone?) is a
   // fact about the LISTING, not about whether the place is open for business.
+  //
+  // `editorialSummary` rides alongside for the same persist reason: it is
+  // Google's short blurb, a classifier INPUT for the create door, and no
+  // longer a `place_profiles` column (MESITA-2144).
   | {
     ok: true;
     basics: GoogleBasics;
     primaryType: string | null;
     businessStatus: string | null;
+    editorialSummary: string | null;
   }
   | { ok: false; code: string; error: string; status: number };
 
@@ -257,6 +259,7 @@ export async function fetchGoogleBasics(
     ok: true,
     primaryType: details.primaryType ?? null,
     businessStatus: details.businessStatus?.trim().toUpperCase() || null,
+    editorialSummary: details.editorialSummary?.text ?? null,
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an
@@ -273,7 +276,6 @@ export async function fetchGoogleBasics(
       address,
       zone,
       city,
-      country,
       timezone,
       closes_at: closesAt,
       hours,
@@ -293,7 +295,6 @@ export async function fetchGoogleBasics(
       uber_eats_url: channels.uber_eats_url,
       didi_food_url: channels.didi_food_url,
       google_maps_url: mapsUrl,
-      email: null,
       google_stars_overall: details.rating ?? null,
       google_review_count: details.userRatingCount ?? null,
       // MESITA-1247: mapGoogleReviews already hand-shapes this from Google's
@@ -301,7 +302,6 @@ export async function fetchGoogleBasics(
       // depth rather than a real malformation risk — validated the same
       // drop-on-failure way as the LLM-sourced jsonb columns for consistency.
       google_reviews: validatedGoogleReviews(mapGoogleReviews(details.reviews)),
-      editorial_summary: details.editorialSummary?.text ?? null,
     },
   };
 }

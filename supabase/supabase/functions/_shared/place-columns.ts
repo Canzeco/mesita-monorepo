@@ -29,7 +29,6 @@ const COLUMNS: readonly string[] = [
   "category_label",
   // Families inferred by contents enrichment. NULL until then.
   "family_keys",
-  "vibe",
   "price_level",
   // ISO 4217 code (default MXN). Every monetary amount on a place —
   // price ranges shown on the consumer detail page, future cover
@@ -75,24 +74,19 @@ const COLUMNS: readonly string[] = [
   "google_stars_overall",
   "google_review_count",
   "instagram_followers_count",
-  "facebook_rating",
   "facebook_followers",
   // Complete-place profile (migration 0039). Scalars + JSONB filled by the
   // one-run enricher; all nullable.
-  "editorial_summary",
   "zone",
   "city",
-  "established_year",
-  "executive_chef",
-  "details",
   // Generic product payload. Menus live under products.menu.
   "products",
   "google_reviews",
   "menus",
   "popular_times",
   "enriched_at",
-  // Enrichment lifecycle (places.content_state: queued | generating |
-  // ready | failed). Stays 'generating' for the FULL pipeline
+  // Enrichment lifecycle (places.content_state: generating | ready |
+  // failed). Stays 'generating' for the FULL pipeline
   // (research → analysis → contents); only contents lands 'ready'.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
   "content_state",
@@ -101,7 +95,6 @@ const COLUMNS: readonly string[] = [
   "request_count",
   // Description/Actions (Enricher step 7) — the guest Reserve CTA.
   "reservations_enabled",
-  "email",
   "created_at",
 ];
 
@@ -109,19 +102,18 @@ const COLUMNS: readonly string[] = [
 // because consumers don't need to see when the business last touched a row.
 export const PLACE_PUBLIC_COLUMNS = COLUMNS.join(", ");
 
-// The five enrichment-filled jsonb columns a LIST of place_profiles never needs —
+// The four enrichment-filled jsonb columns a LIST of place_profiles never needs —
 // each is priced for one place read (a detail page), not N per request.
 // place-columns.test.ts (MESITA-1247 guard test 7 / MESITA-1283) proves a row
 // stripped of these stays under the 50KB card budget even worst-case-stuffed.
 const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
-  "details",
   "products",
   "google_reviews",
   "menus",
   "popular_times",
 ]);
 
-// The real card projection: every public column EXCEPT the five heavy
+// The real card projection: every public column EXCEPT the four heavy
 // jsonb ones — not a hand-picked subset. Any consumer surface returning
 // MORE THAN ONE place per request (list, search, swipe/recommend) should
 // select this, not PLACE_PUBLIC_COLUMNS; a single-place detail read

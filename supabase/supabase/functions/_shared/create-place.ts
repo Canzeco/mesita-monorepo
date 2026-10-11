@@ -261,7 +261,9 @@ export async function createMinimalPlace(opts: {
           googleTypes: Array.isArray(place.google_types)
             ? place.google_types as string[]
             : null,
-          editorialSummary: (place.editorial_summary ?? null) as string | null,
+          // Google's blurb rides the envelope, not `basics` — it is a
+          // classifier input, not a place_profiles column (MESITA-2144).
+          editorialSummary: basicsRes.editorialSummary,
           priceLevel: typeof place.price_level === "number"
             ? place.price_level
             : null,

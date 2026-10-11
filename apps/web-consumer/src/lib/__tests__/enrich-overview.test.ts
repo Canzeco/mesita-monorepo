@@ -17,7 +17,6 @@ function basePlace(
     slug: "test-place",
     name: "Test Place",
     category: null,
-    vibe: null,
     price_level: null,
     currency: "MXN",
     lat: null,
@@ -40,20 +39,12 @@ function basePlace(
     reddit_url: null,
     didi_food_url: null,
     google_maps_url: null,
-    email: null,
     created_at: "2026-08-05T00:00:00Z",
     ...overrides,
   } as Place;
 }
 
 describe("enrichPlaceOverview is_enriching", () => {
-  it("is true when content_state is queued", () => {
-    const place = enrichPlaceOverview(
-      basePlace({ content_state: "queued" }),
-    );
-    expect(place.is_enriching).toBe(true);
-  });
-
   it("is true when content_state is generating", () => {
     const place = enrichPlaceOverview(
       basePlace({ content_state: "generating" }),

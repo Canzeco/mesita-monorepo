@@ -27,29 +27,11 @@ const PROFILE_SCHEMA = {
   properties: {
     zone: { type: ["string", "null"] },
     city: { type: ["string", "null"] },
-    established_year: { type: ["integer", "null"] },
-    executive_chef: { type: ["string", "null"] },
+    // A classifier INPUT only (category / families / reservations read it in
+    // the contents stage); never written onto the place (MESITA-2144).
     editorial_summary: { type: ["string", "null"] },
     description: { type: ["string", "null"] },
     mesita_name: { type: ["string", "null"] },
-    details: {
-      type: "object",
-      properties: {
-        dining_style: { type: ["string", "null"] },
-        dress_code: { type: ["string", "null"] },
-        service_options: { type: "array", items: { type: "string" } },
-        reservations: { type: ["string", "null"] },
-        payment_methods: { type: "array", items: { type: "string" } },
-        parking: { type: ["string", "null"] },
-        amenities: { type: "array", items: { type: "string" } },
-        accessibility: { type: "array", items: { type: "string" } },
-        dietary_options: { type: "array", items: { type: "string" } },
-        good_for: { type: "array", items: { type: "string" } },
-        languages: { type: "array", items: { type: "string" } },
-        kid_friendly: { type: ["boolean", "null"] },
-        pet_friendly: { type: ["boolean", "null"] },
-      },
-    },
     popular_times: {
       type: "array",
       items: {
@@ -159,7 +141,7 @@ export const PRESENTATION_INSTRUCTIONS =
   "Output a SINGLE valid JSON object (no prose, no markdown fences) matching " +
   "this shape, using null or [] when the sources don't support a field: " +
   JSON.stringify(PROFILE_SCHEMA.properties) +
-  " Text fields (zone, city, executive_chef, editorial_summary, description) " +
+  " Text fields (zone, city, editorial_summary, description) " +
   "are single JSON strings — never arrays or nested objects. " +
   "For description: separate paragraphs with blank lines " +
   "(\\n\\n); never one continuous block. Never invent ratings, reviewer " +

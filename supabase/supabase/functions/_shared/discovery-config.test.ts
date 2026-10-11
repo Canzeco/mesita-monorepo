@@ -142,7 +142,7 @@ Deno.test("both packages agree on the wired-mode column set", () => {
   );
 });
 
-Deno.test("both packages agree on the eight signal keys", () => {
+Deno.test("both packages agree on the seven signal keys", () => {
   // Mode keys and signal keys are PERSISTED. A rename on one side alone does
   // not fail a type check — it silently resets live config to defaults.
   const listed = CATALOG_SRC.match(/export const SIGNAL_KEYS = \[([^\]]*)\]/);
@@ -316,6 +316,25 @@ Deno.test("dropping a legacy key logs ONCE, structured", () => {
   assertEquals(payload.foldedTo, ["enriched"]);
   // Structured, not interpolated: a grep-able object, not a sentence.
   assertEquals(typeof payload, "object");
+});
+
+Deno.test("a stored params.mesita_level is not read at all — weights fold, params do not", () => {
+  // MESITA-2144. `enriched` has no params, so folding the retired bag onto it
+  // could only copy `{}`; the live blob still carries that `{}`, and the
+  // params fold warned about it on every cold start for nothing.
+  resetLegacySignalWarnings();
+  const original = console.warn;
+  const lines: unknown[][] = [];
+  console.warn = (...args: unknown[]) => void lines.push(args);
+  let cfg: ReturnType<typeof normalizeDiscoveryConfig>;
+  try {
+    cfg = normalizeDiscoveryConfig({ params: { mesita_level: {} } });
+  } finally {
+    console.warn = original;
+  }
+  assertEquals(lines.length, 0);
+  assertEquals(cfg.params.enriched, {});
+  assertEquals("mesita_level" in cfg.params, false);
 });
 
 // ── Per-mode exponents (MESITA-1859) ────────────────────────────────────────

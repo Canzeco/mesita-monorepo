@@ -83,7 +83,6 @@ export type AdminPlace = {
   timezone: string | null;
   description: string | null;
   phone: string | null;
-  email: string | null;
   hours: Record<string, { open: string; close: string }[]> | null;
   photos: string[] | null;
   tags: string[] | null;
@@ -132,7 +131,7 @@ export type AdminPlace = {
   // payload predates them; the box renders "?" rather than a false "no".
   /** google_place_id present — the identity spine every enrichment run needs. */
   seeded?: boolean;
-  /** places.state ∈ (active, lead) — a guest can reach the place at all. */
+  /** places.state = active — a guest can reach the place at all. */
   listed?: boolean;
   /** Derived has-demand for filters. State chip is request_count. */
   requested?: boolean;
@@ -254,7 +253,6 @@ export type PlaceTagOption = {
   label_es: string;
   label_en: string;
   facet: string;
-  section: string;
   sort_order: number;
 };
 

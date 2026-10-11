@@ -34,7 +34,7 @@ describe("placeSearchScope", () => {
     expect(
       placeSearchScope(place({ enriched_at: "2026-08-01T00:00:00Z" })),
     ).toBe("mesita");
-    expect(placeSearchScope(place({ content_state: "queued" }))).toBeNull();
+    expect(placeSearchScope(place({ content_state: "generating" }))).toBeNull();
     expect(placeSearchScope(place({ googleOnly: true }))).toBe("google");
     expect(placeSearchScope(place({ from_google: true }))).toBe("google");
     expect(placeSearchScope(place())).toBeNull();

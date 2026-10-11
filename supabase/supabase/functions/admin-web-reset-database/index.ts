@@ -10,8 +10,7 @@
 // which the SQL function re-seeds after the wipe.
 //
 // Three guards before anything runs:
-//   1. Caller's JWT identity — email OR phone — must be in
-//      public.super_admins.
+//   1. Caller's JWT email must be in public.super_admins.
 //   2. Body must carry { confirm: "RESET" } — a typed phrase so a stray
 //      click or replayed request can't trigger a wipe.
 //   3. In SQL: an EMPTY public.super_admins refuses the wipe outright. The

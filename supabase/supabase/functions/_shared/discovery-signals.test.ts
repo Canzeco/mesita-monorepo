@@ -11,7 +11,7 @@ import {
   PROXIMITY_MAX_KM,
   randomness,
   name,
-  summary,
+  NAME_UNEMBEDDED,
   SIGNAL_KEYS,
   SIGNALS,
   timing,
@@ -51,7 +51,6 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
     { lat: CDMX.lat, lng: CDMX.lng },
     { lat: Number.NaN, lng: Number.NaN },
     { categories: ["taqueria"], families: ["food"] },
-    { queryVector: [1, 0, 0] },
     { queryNameVector: [1, 0, 0] },
   ];
   for (const key of SIGNAL_KEYS) {
@@ -67,13 +66,12 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library names the same eight signals as SIGNAL_KEYS", () => {
-  assertEquals(SIGNAL_KEYS.length, 8);
+Deno.test("the library names the same seven signals as SIGNAL_KEYS", () => {
+  assertEquals(SIGNAL_KEYS.length, 7);
   // Docs > Discovery section 8.3 order. Presentation only: the blend is a
   // product of s^w, so nothing downstream may read a signal by index.
   assertEquals([...SIGNAL_KEYS], [
     "name",
-    "summary",
     "category",
     "proximity",
     "timing",
@@ -270,8 +268,8 @@ Deno.test("popularity prior is an operator knob", () => {
 Deno.test("name abstains without a name query vector", () => {
   assertEquals(name(place({ nameEmbedding: [1, 0, 0] }), {}), NEUTRAL);
   assertEquals(name(place({ nameEmbedding: [1, 0, 0] }), { queryNameVector: [] }), NEUTRAL);
-  // Sharing Summary's query vector is not a Name query.
-  assertEquals(name(place({ nameEmbedding: [1, 0, 0] }), { queryVector: [1, 0, 0] }), NEUTRAL);
+  // The Summary vector is not a Name query.
+  assertEquals(name(place({ embedding: [1, 0, 0] }), { queryNameVector: [1, 0, 0] }), NAME_UNEMBEDDED);
 });
 
 Deno.test("name ranks a matching vector above an opposing one", () => {
@@ -284,41 +282,24 @@ Deno.test("name ranks a matching vector above an opposing one", () => {
   assertAlmostEquals(opp, 0, 1e-9);
 });
 
-// ── Summary ──────────────────────────────────────────────────────────────────
-
-Deno.test("summary abstains without a query vector", () => {
-  assertEquals(summary(place({ embedding: [1, 0, 0] }), {}), NEUTRAL);
-  assertEquals(summary(place({ embedding: [1, 0, 0] }), { queryVector: [] }), NEUTRAL);
-  assertEquals(summary(place({ embedding: [1, 0, 0] }), { queryNameVector: [1, 0, 0] }), NEUTRAL);
-});
-
-Deno.test("summary ranks a matching vector above an opposing one", () => {
-  const q = [1, 0, 0];
-  const same = summary(place({ embedding: [1, 0, 0] }), { queryVector: q });
-  const orth = summary(place({ embedding: [0, 1, 0] }), { queryVector: q });
-  const opp = summary(place({ embedding: [-1, 0, 0] }), { queryVector: q });
-  assertAlmostEquals(same, 1, 1e-9);
-  assertAlmostEquals(orth, 0.5, 1e-9);
-  assertAlmostEquals(opp, 0, 1e-9);
-});
-
-Deno.test("summary reads a pgvector string as readily as an array", () => {
-  const fromString = summary(place({ embedding: "[1,0,0]" }), { queryVector: [1, 0, 0] });
+Deno.test("name reads a pgvector string as readily as an array", () => {
+  const fromString = name(place({ nameEmbedding: "[1,0,0]" }), { queryNameVector: [1, 0, 0] });
   assertAlmostEquals(fromString, 1, 1e-9);
 });
 
 Deno.test("an unembedded place loses to an embedded one without being deleted", () => {
   const q = [1, 0, 0];
-  const gap = summary(place({ embedding: null }), { queryVector: q });
-  const hit = summary(place({ embedding: [1, 0, 0] }), { queryVector: q });
+  const gap = name(place({ nameEmbedding: null }), { queryNameVector: q });
+  const hit = name(place({ nameEmbedding: [1, 0, 0] }), { queryNameVector: q });
   assert(gap > 0 && gap < hit, `expected 0 < ${gap} < ${hit}`);
+  assertEquals(gap, NAME_UNEMBEDDED);
   // A dimension mismatch is the same kind of gap, never a crash.
-  assertEquals(summary(place({ embedding: [1, 0] }), { queryVector: q }), gap);
+  assertEquals(name(place({ nameEmbedding: [1, 0] }), { queryNameVector: q }), gap);
 });
 
-Deno.test("summary unembedded floor is an operator knob", () => {
+Deno.test("name's unembedded floor still bends when a param bag carries one", () => {
   const q = [1, 0, 0];
-  assertEquals(summary(place({ embedding: null }), { queryVector: q }, { unembedded: 0.2 }), 0.2);
+  assertEquals(name(place({ nameEmbedding: null }), { queryNameVector: q }, { unembedded: 0.2 }), 0.2);
 });
 
 // ── Enriched ──────────────────────────────────────────────

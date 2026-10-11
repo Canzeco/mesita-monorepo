@@ -1,11 +1,14 @@
 import { ENRICH_DESCRIPTION_MAX } from "./enrich-config.ts";
-import { PlaceDetailsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
+import { PopularTimesSchema } from "./place-jsonb-schemas.ts";
 
 export type ProfileResult = {
   zone?: string | null;
   city?: string | null;
-  established_year?: number | null;
-  executive_chef?: string | null;
+  /**
+   * The LLM's English blurb. A classifier INPUT the contents stage reads off
+   * `parsed` — NOT applied by applyProfileToUpdate, because it is no longer a
+   * place_profiles column (MESITA-2144).
+   */
   editorial_summary?: string | null;
   /** Canonical Presentation — always English (Mesita core language). */
   description?: string | null;
@@ -15,7 +18,6 @@ export type ProfileResult = {
    * applyProfileToUpdate — only the mesita-name-door may land it (gate D2).
    */
   mesita_name?: string | null;
-  details?: Record<string, unknown> | null;
   popular_times?: unknown[] | null;
 };
 
@@ -95,37 +97,20 @@ export function applyProfileToUpdate(
   if (zone && !update.zone) update.zone = zone;
   const city = asProfileText(parsed.city);
   if (city && !update.city) update.city = city;
-  const year = typeof parsed.established_year === "number"
-    ? parsed.established_year
-    : typeof parsed.established_year === "string"
-      ? parseInt(parsed.established_year, 10)
-      : NaN;
-  if (Number.isInteger(year)) update.established_year = year;
-  const chef = asProfileText(parsed.executive_chef);
-  if (chef) update.executive_chef = chef;
-  const editorial = asProfileText(parsed.editorial_summary);
-  if (editorial) update.editorial_summary = editorial;
   // Canonical Presentation — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {
     update.description = formatDescriptionParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
   }
+  // products.menu is no longer synthesised — the website (its only source) is no
+  // longer scraped. Existing menus on the place are left untouched.
   // MESITA-1247: validate before it lands on the row. json_object mode only
   // *describes* the schema to the model — it can and does return off-type or
   // extra fields — so a malformed blob is dropped rather than trusted, per
   // this function's own rule above ("only sets a field when synthesis
   // actually produced a USABLE value" — a shape the validator rejects isn't
   // usable). Writes back the ORIGINAL parsed value on success, not the
-  // schema's normalized output — object() always returns every shape key
-  // (nullable ones as explicit null), which would silently reshape a
-  // legitimate partial object into a wider one; this only needs a gate, not
-  // a rewrite, and a byte-identical write is the smaller behaviour change.
-  if (parsed.details && typeof parsed.details === "object" && !Array.isArray(parsed.details)) {
-    const validated = PlaceDetailsSchema.parse(parsed.details);
-    if (validated.ok) update.details = parsed.details;
-  }
-  // products.menu is no longer synthesised — the website (its only source) is no
-  // longer scraped. Existing menus on the place are left untouched.
+  // schema's normalized output.
   if (Array.isArray(parsed.popular_times) && parsed.popular_times.length > 0) {
     const validated = PopularTimesSchema.parse(parsed.popular_times);
     if (validated.ok) update.popular_times = parsed.popular_times;

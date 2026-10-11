@@ -1,29 +1,26 @@
 // Unit tests — the Reservations Config strict save gate (MESITA-805).
 //
 // The second of the two STRICT whole-blob config gates (the other is
-// the since-deleted admin-web-update-lineup-config). Strict + whole-blob means any key the admin
-// page stops sending 400s the entire page — the failure mode MESITA-804 hit on
-// /lineup-config (MESITA-804). These tests pin the contract so the same drift is caught here
-// by CI instead of by an operator clicking Save.
+// the since-deleted admin-web-update-lineup-config). Strict + whole-blob means any key the gate
+// REQUIRES and the admin page stops sending 400s the entire page — the failure
+// mode MESITA-804 hit on /lineup-config (MESITA-804). These tests pin the contract so the same
+// drift is caught here by CI instead of by an operator clicking Save.
 //
-// The live tripwire: `priority` must rank EVERY channel in RESERVATION_CHANNELS.
-// That rule is deliberate — a channel silently dropped from the array would be
-// indistinguishable from one never wired — so it must NOT be loosened. It does
-// mean adding a channel to RESERVATION_CHANNELS without also adding it to the
-// admin catalog's CHANNEL_KEYS breaks every save. The completeness test below fails
-// the moment those two lists diverge.
+// The retired keys (MESITA-2144): `priority`, `disabled`, `attempts` and
+// `testCall.consumerNumber`. The deployed console still posts all four with
+// every save, so the gate must keep ACCEPTING them, malformed or not, and must
+// never write them back.
 
-import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { RESERVATION_CHANNELS } from "./enrich-reservation-endpoint.ts";
+import { assert, assertEquals } from "jsr:@std/assert@1";
 import { normalizeConfig } from "./reservations-config-normalize.ts";
 
-// The blob the admin console posts, built from the EF's own channel list so it
-// cannot drift out of sync with the source of truth.
-function canonicalBlob() {
+const RETIRED = ["priority", "disabled", "attempts"] as const;
+
+// The blob the deployed admin console posts, retired keys included.
+function consoleBlob() {
   return {
-    // Phone-only eligible set (MESITA-842) — nothing to park.
-    priority: [...RESERVATION_CHANNELS],
-    disabled: [],
+    priority: ["phone"],
+    disabled: [] as string[],
     respectAdminOverride: true,
     testCall: { enabled: false, number: "", consumerNumber: "" },
     attempts: 2,
@@ -32,64 +29,66 @@ function canonicalBlob() {
 }
 
 Deno.test("normalizeConfig: the blob the admin console posts is accepted", () => {
-  const r = normalizeConfig(canonicalBlob());
-  assert(r.ok, `canonical blob rejected: ${r.ok ? "" : r.error}`);
+  const r = normalizeConfig(consoleBlob());
+  assert(r.ok, `console blob rejected: ${r.ok ? "" : r.error}`);
+});
+
+Deno.test("normalizeConfig: the retired keys are accepted and never written back", () => {
+  const r = normalizeConfig(consoleBlob());
+  assert(r.ok);
+  for (const key of RETIRED) {
+    assertEquals(key in r.value, false, `${key} was written back`);
+  }
+  assertEquals("consumerNumber" in r.value.testCall, false, "consumerNumber was written back");
 });
 
 Deno.test("normalizeConfig: output round-trips — its own clean value is accepted again", () => {
-  const first = normalizeConfig(canonicalBlob());
+  const first = normalizeConfig(consoleBlob());
   assert(first.ok);
   const second = normalizeConfig(first.value);
   assert(second.ok, `gate rejected its own output: ${second.ok ? "" : second.error}`);
   assertEquals(second.value, first.value);
 });
 
-Deno.test("normalizeConfig: priority must rank EVERY channel (the drift tripwire)", () => {
-  // This is what breaks if a channel is added EF-side and the admin catalog's
-  // CHANNEL_KEYS list is not updated in the same change.
-  const short = canonicalBlob();
-  short.priority = short.priority.slice(0, -1);
-  const r = normalizeConfig(short);
-  assert(!r.ok);
-  assertStringIncludes(r.error, "must rank every channel");
+Deno.test("normalizeConfig: respectAdminOverride is the one required key", () => {
+  const missing = consoleBlob() as Record<string, unknown>;
+  delete missing.respectAdminOverride;
+  assert(!normalizeConfig(missing).ok, "dropping respectAdminOverride was accepted — gate went lenient?");
+
+  const wrongType = { ...consoleBlob(), respectAdminOverride: "yes" };
+  assert(!normalizeConfig(wrongType).ok);
 });
 
-Deno.test("normalizeConfig: the three required keys are load-bearing", () => {
-  for (const key of ["priority", "disabled", "respectAdminOverride"] as const) {
-    const blob = canonicalBlob() as Record<string, unknown>;
-    delete blob[key];
-    const r = normalizeConfig(blob);
-    assert(!r.ok, `dropping ${key} was accepted — gate went lenient?`);
-  }
-});
-
-Deno.test("normalizeConfig: optional keys may be omitted (older admin builds)", () => {
-  // testCall / attempts / unlimitedReservations are optional ON PURPOSE so a
-  // shipped-but-stale admin build keeps saving. Guard that promise.
-  for (const key of ["testCall", "attempts", "unlimitedReservations", "reminder"] as const) {
-    const blob = canonicalBlob() as Record<string, unknown>;
+Deno.test("normalizeConfig: optional keys may be omitted (older and newer admin builds)", () => {
+  // The retired keys are optional so the console can stop sending them; the
+  // rest are optional ON PURPOSE so a shipped-but-stale admin build keeps
+  // saving. Guard both promises.
+  for (
+    const key of [...RETIRED, "testCall", "unlimitedReservations", "reminder"] as const
+  ) {
+    const blob = consoleBlob() as Record<string, unknown>;
     delete blob[key];
     const r = normalizeConfig(blob);
     assert(r.ok, `omitting optional ${key} was rejected: ${r.ok ? "" : r.error}`);
   }
 });
 
-Deno.test("normalizeConfig: unknown channels and a fully-parked set are rejected", () => {
-  const bogus = canonicalBlob() as Record<string, unknown>;
-  bogus.priority = [...RESERVATION_CHANNELS, "carrier-pigeon"];
-  assert(!normalizeConfig(bogus).ok);
-
-  const allParked = {
-    ...canonicalBlob(),
-    disabled: [...RESERVATION_CHANNELS] as string[],
-  };
-  const r = normalizeConfig(allParked);
-  assert(!r.ok);
-  assertStringIncludes(r.error, "cannot park every channel");
+Deno.test("normalizeConfig: retired keys are ignored even when malformed", () => {
+  // Nothing reads them, so a value the old gate refused (an unknown channel, a
+  // fully parked list, a junk guest line) no longer 400s the save.
+  const r = normalizeConfig({
+    ...consoleBlob(),
+    priority: ["carrier-pigeon"],
+    disabled: ["phone"],
+    attempts: 99,
+    testCall: { enabled: false, number: "", consumerNumber: 42 },
+  });
+  assert(r.ok, `a retired key was still validated: ${r.ok ? "" : r.error}`);
+  assertEquals(r.value.testCall, { enabled: false, number: "" });
 });
 
 Deno.test("normalizeConfig: an enabled test-call override needs a real number", () => {
-  const blob = canonicalBlob();
+  const blob = consoleBlob();
   blob.testCall = { enabled: true, number: "", consumerNumber: "" };
   assert(!normalizeConfig(blob).ok);
 
@@ -98,25 +97,17 @@ Deno.test("normalizeConfig: an enabled test-call override needs a real number", 
 });
 
 Deno.test("normalizeConfig: reminder defaults OFF when omitted, and refuses a bad shape", () => {
-  const omitted = normalizeConfig(canonicalBlob());
+  const omitted = normalizeConfig(consoleBlob());
   assert(omitted.ok);
   assertEquals(omitted.value.reminder, { enabled: false });
 
-  const on = canonicalBlob() as Record<string, unknown>;
+  const on = consoleBlob() as Record<string, unknown>;
   on.reminder = { enabled: true };
   const r = normalizeConfig(on);
   assert(r.ok);
   assertEquals(r.value.reminder, { enabled: true });
 
-  const bad = canonicalBlob() as Record<string, unknown>;
+  const bad = consoleBlob() as Record<string, unknown>;
   bad.reminder = true;
   assert(!normalizeConfig(bad).ok);
-});
-
-Deno.test("normalizeConfig: attempts is fixed at 2 whatever the client sends", () => {
-  const blob = canonicalBlob() as Record<string, unknown>;
-  blob.attempts = 99;
-  const r = normalizeConfig(blob);
-  assert(r.ok);
-  assertEquals(r.value.attempts, 2);
 });

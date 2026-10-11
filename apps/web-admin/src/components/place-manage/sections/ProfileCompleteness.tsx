@@ -124,8 +124,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
   const complete = missing.length === 0;
   // Pipeline state lives in place chrome (MESITA-896). When Enricher is mid-
   // flight, a quiet footnote here explains why completeness chips may lag.
-  const enriching =
-    place.content_state === "generating" || place.content_state === "queued";
+  const enriching = place.content_state === "generating";
 
   return (
     <section className="border-border bg-card shadow-card mb-4 rounded-2xl border p-5 sm:p-6 lg:mb-5">

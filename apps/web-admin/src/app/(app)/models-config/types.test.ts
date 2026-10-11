@@ -22,18 +22,24 @@ describe("coerceModelsConfig", () => {
     expect(coerceModelsConfig(null)).toEqual(DEFAULT_MODELS_CONFIG);
   });
 
-  it("falls back to the default for an unknown enricher.perplexity", () => {
-    const cfg = coerceModelsConfig({ enricher: { perplexity: "not-a-model" } });
-    expect(cfg.enricher.perplexity).toBe(DEFAULT_MODELS_CONFIG.enricher.perplexity);
-  });
-
-  it("drops a stored memo.perplexity — Memo has no Perplexity leg", () => {
-    const cfg = coerceModelsConfig({ memo: { model: "gpt-4o", perplexity: "sonar" } });
-    expect(cfg.memo).toEqual({ model: "gpt-4o" });
+  it("drops the dead keys a stored blob may still carry, so a save never sends them back", () => {
+    const cfg = coerceModelsConfig({
+      v: 1,
+      supabase: { model: "gpt-4.1" },
+      ojo: { model: "gpt-4o" },
+      enricher: { model: "gpt-4.1-mini", perplexity: "sonar" },
+      memo: { model: "gpt-4o", perplexity: "sonar" },
+    });
+    expect(cfg).toEqual({
+      v: 1,
+      enricher: { model: "gpt-4.1-mini" },
+      embeddings: DEFAULT_MODELS_CONFIG.embeddings,
+      memo: { model: "gpt-4o" },
+    });
   });
 
   it("is idempotent, so a save never drifts a value it did not touch", () => {
-    const raw = { supabase: { model: "gpt-4.1" }, ojo: { model: "gpt-4o" }, memo: { model: "x-1" } };
+    const raw = { enricher: { model: "gpt-4.1" }, memo: { model: "x-1" } };
     const once = coerceModelsConfig(raw);
     expect(coerceModelsConfig(once)).toEqual(once);
   });
@@ -42,9 +48,7 @@ describe("coerceModelsConfig", () => {
 describe("withMemo", () => {
   it("changes Memo's model and leaves every other key byte-equal", () => {
     const cfg = coerceModelsConfig({
-      supabase: { model: "gpt-4.1" },
-      ojo: { model: "gpt-4o" },
-      enricher: { model: "gpt-4.1-mini", perplexity: "sonar" },
+      enricher: { model: "gpt-4.1-mini" },
       embeddings: { model: "text-embedding-3-large" },
     });
     const next = withMemo(cfg, { model: "gpt-4o" });

@@ -39,7 +39,6 @@ export type SubprocessKey =
 export type TriggerKey =
   | "on_create"
   | "on_update"
-  | "on_schedule"
   | "on_visit"
   | "on_order"
   | "on_reservation_ok"
@@ -60,7 +59,6 @@ export const SUBPROCESS_KEYS: SubprocessKey[] = [
 export const TRIGGER_KEYS: TriggerKey[] = [
   "on_create",
   "on_update",
-  "on_schedule",
   "on_visit",
   "on_order",
   "on_reservation_ok",
@@ -68,12 +66,12 @@ export const TRIGGER_KEYS: TriggerKey[] = [
 ];
 
 /**
- * What a RUN can be provoked by — the matrix's seven, plus `manual` (MESITA-1185).
+ * What a RUN can be provoked by — the matrix's six, plus `manual` (MESITA-1185).
  *
  * `manual` is deliberately NOT a TriggerKey. The Run-now button opts OUT of the
  * matrix on both axes: it clears `subprocesses` to null ("run everything",
  * because explicit operator intent outranks the grid) and it ignores cooldown.
- * Adding it to TriggerKey would draw a phantom eighth row in the console grid
+ * Adding it to TriggerKey would draw a phantom seventh row in the console grid
  * carrying nine checkboxes and a cooldown the button must ignore — an unenforced
  * config, which is the house definition of a bug.
  *
@@ -81,6 +79,11 @@ export const TRIGGER_KEYS: TriggerKey[] = [
  * matrix PRICES, RUN_TRIGGERS is what the history RECORDS. This list is pinned
  * against the DB CHECK by a test, the same way crenup-ladder.test.ts pins the
  * `step ~ '^S([0-9]{1,2}|X)$'` constraint from TypeScript.
+ *
+ * `on_schedule` left both lists in MESITA-2144: the per-place schedule had no
+ * writer since MESITA-2090, so the 15-minute cron queued nothing. The CHECK
+ * keeps the literal until the drop migration rebuilds it, which is safe — this
+ * list only has to be a subset of what Postgres accepts.
  */
 export const RUN_TRIGGERS = [...TRIGGER_KEYS, "manual"] as const;
 
@@ -197,12 +200,6 @@ export const TRIGGER_META: Record<
     // fixed the record — the one way this system loses information.
     staged: false,
   },
-  on_schedule: {
-    label: "On schedule",
-    blurb:
-      "Per-place decay refresh, every enrich_every_days. The expensive one.",
-    staged: false,
-  },
   on_visit: {
     label: "On visit",
     blurb:
@@ -241,9 +238,8 @@ export type TriggerRow = {
    * bug. The mechanism is real and atomic — `open_place_enrichment_run`
    * compares this against `max(started_at)` for the pair under an advisory
    * lock — but every caller alive today passes 0 deliberately: `on_create`
-   * fires once per place, `on_schedule`'s cadence IS `places.enrich_every_days`
-   * and a second window would fight it, and `manual` is explicit operator
-   * intent. So the number round-trips and reaches no enforcement site.
+   * fires once per place and `manual` is explicit operator intent. So the
+   * number round-trips and reaches no enforcement site.
    *
    * It stops being staged when the first event-driven emitter lands
    * (MESITA-1189) and passes it. The console draws no cooldown control; the
@@ -314,17 +310,6 @@ export const ENRICHMENT_TRIGGERS_DEFAULTS: EnrichmentTriggersConfig = {
     "embedding",
   ]),
   on_update: row(0, ["social", "embedding"]),
-  on_schedule: row(24, [
-    "google",
-    "reviews",
-    "serp",
-    "links",
-    "social",
-    "images",
-    "synthesis",
-    "photos",
-    "embedding",
-  ]),
   on_visit: row(168, ["google"]),
   on_order: row(168, ["google"]),
   on_reservation_ok: row(336, ["google"]),

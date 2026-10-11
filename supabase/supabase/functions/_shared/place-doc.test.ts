@@ -59,20 +59,32 @@ Deno.test("validatePlaceProfilePatch: accepts reservations_enabled as a boolean 
   assertEquals(bad.error, "reservations_enabled must be a boolean");
 });
 
+// MESITA-2144: these columns stop being written ahead of their DROP. The door
+// refuses them by name, so a writer that still sends one fails loudly here
+// instead of 42703-ing once the column is gone.
+Deno.test("validatePlaceProfilePatch: rejects every column MESITA-2144 retires", () => {
+  for (
+    const key of [
+      "vibe",
+      "email",
+      "country",
+      "details",
+      "editorial_summary",
+      "established_year",
+      "executive_chef",
+      "facebook_rating",
+      "enrich_every_days",
+      "enrich_mode",
+      "enrich_next_at",
+    ]
+  ) {
+    const res = validatePlaceProfilePatch({ [key]: null });
+    assert(!res.ok, key);
+    assertEquals(res.error, `unknown place field: ${key}`);
+  }
+});
+
 // ── validatePlaceProfilePatch: accept ──────────────────────────────────────────────
-
-Deno.test("validatePlaceProfilePatch: accepts a narrow enrichment-schedule patch", () => {
-  const res = validatePlaceProfilePatch({
-    enrich_every_days: 30,
-    enrich_mode: "full",
-    enrich_next_at: "2026-09-22T00:00:00Z",
-  });
-  assert(res.ok);
-});
-
-Deno.test("validatePlaceProfilePatch: accepts null enrich_every_days (schedule cleared)", () => {
-  assert(validatePlaceProfilePatch({ enrich_every_days: null }).ok);
-});
 
 Deno.test("validatePlaceProfilePatch: accepts business_state + business_state_at together", () => {
   const res = validatePlaceProfilePatch({
@@ -88,7 +100,7 @@ Deno.test("validatePlaceProfilePatch: accepts business_state = null (Google was 
 
 Deno.test("validatePlaceProfilePatch: accepts star ratings at the boundaries (0 and 5) and null", () => {
   assert(validatePlaceProfilePatch({ google_stars_overall: 0 }).ok);
-  assert(validatePlaceProfilePatch({ facebook_rating: 5 }).ok);
+  assert(validatePlaceProfilePatch({ google_stars_overall: 5 }).ok);
   assert(validatePlaceProfilePatch({ google_stars_overall: null }).ok);
 });
 
@@ -140,25 +152,21 @@ Deno.test("validatePlaceProfilePatch: accepts jsonb fields as object, array, or 
   assert(validatePlaceProfilePatch({ products: null }).ok);
 });
 
-// MESITA-1247 reconciliation: details/google_reviews/popular_times are no
+// MESITA-1247 reconciliation: google_reviews/popular_times are no
 // longer opaque jsonb here — place-jsonb-schemas.ts (PR #1163) is folded
 // into this door so EVERY caller of writePlace gets the same content
 // validation the enrich-synthesis-profile.ts/enrich-google-basics.ts call
 // sites already had inline, not just those two.
-Deno.test("validatePlaceProfilePatch: details/google_reviews/popular_times accept null (clearing the column)", () => {
-  assert(validatePlaceProfilePatch({ details: null }).ok);
+Deno.test("validatePlaceProfilePatch: google_reviews/popular_times accept null (clearing the column)", () => {
   assert(validatePlaceProfilePatch({ google_reviews: null }).ok);
   assert(validatePlaceProfilePatch({ popular_times: null }).ok);
 });
 
-Deno.test("validatePlaceProfilePatch: details/google_reviews/popular_times accept a real partial shape", () => {
-  assert(validatePlaceProfilePatch({ details: { dress_code: "casual" } }).ok);
+Deno.test("validatePlaceProfilePatch: google_reviews/popular_times accept a real partial shape", () => {
   assert(validatePlaceProfilePatch({ popular_times: [{ day: "Mon", range: "12-3pm" }] }).ok);
 });
 
 Deno.test("validatePlaceProfilePatch: rejects a hallucinated key or wrong-typed field inside the jsonb blobs", () => {
-  const badDetails = validatePlaceProfilePatch({ details: { dress_code: "casual", vibe: "cozy" } });
-  assert(!badDetails.ok);
   const badReview = validatePlaceProfilePatch({ google_reviews: [{ text: "great" }] });
   assert(!badReview.ok, "a review missing author/rating/quote/date must be rejected, not passed through opaque");
   const badPopular = validatePlaceProfilePatch({ popular_times: [{ day: "Mon" }] });
@@ -166,7 +174,7 @@ Deno.test("validatePlaceProfilePatch: rejects a hallucinated key or wrong-typed 
 });
 
 // MESITA-1249: place_profiles.enrichment (the materialized progress meter) — NOT
-// nullable, unlike details/google_reviews/popular_times above, since the
+// nullable, unlike google_reviews/popular_times above, since the
 // column carries a NOT NULL default. Full accept/reject coverage lives in
 // schema-catalog.test.ts next to EnrichmentMapSchema itself; these two just
 // prove the door actually wires that schema in for the "enrichment" key.
@@ -215,23 +223,13 @@ Deno.test("validatePlaceProfilePatch: rejects an unknown field (closed key set)"
   assertEquals(res.error, "unknown place field: is_admin");
 });
 
-Deno.test("validatePlaceProfilePatch: rejects enrich_every_days outside 1..365", () => {
-  assert(!validatePlaceProfilePatch({ enrich_every_days: 0 }).ok);
-  assert(!validatePlaceProfilePatch({ enrich_every_days: 366 }).ok);
-});
-
-Deno.test("validatePlaceProfilePatch: rejects an enrich_mode outside the closed set, and null", () => {
-  assert(!validatePlaceProfilePatch({ enrich_mode: "partial" }).ok);
-  assert(!validatePlaceProfilePatch({ enrich_mode: null }).ok);
-});
-
 Deno.test("validatePlaceProfilePatch: rejects a business_state outside the closed set", () => {
   assert(!validatePlaceProfilePatch({ business_state: "TEMPORARILY_CLOSED" }).ok);
 });
 
 Deno.test("validatePlaceProfilePatch: rejects a star rating outside 0..5", () => {
   assert(!validatePlaceProfilePatch({ google_stars_overall: -0.1 }).ok);
-  assert(!validatePlaceProfilePatch({ facebook_rating: 5.1 }).ok);
+  assert(!validatePlaceProfilePatch({ google_stars_overall: 5.1 }).ok);
 });
 
 Deno.test("validatePlaceProfilePatch: rejects a negative count", () => {
@@ -275,7 +273,8 @@ Deno.test("validatePlaceProfilePatch: rejects google_place_id of the wrong type"
 
 Deno.test("validatePlacePatch: accepts a state transition within the closed enum", () => {
   assert(validatePlacePatch({ state: "active" }).ok);
-  assert(validatePlacePatch({ state: "pending_verification" }).ok);
+  assert(validatePlacePatch({ state: "paused" }).ok);
+  assert(validatePlacePatch({ state: "archived" }).ok);
 });
 
 Deno.test("validatePlacePatch: accepts slug + currency together", () => {
@@ -283,9 +282,19 @@ Deno.test("validatePlacePatch: accepts slug + currency together", () => {
 });
 
 Deno.test("validatePlacePatch: accepts the content_state ladder", () => {
-  for (const s of ["queued", "generating", "ready", "failed"]) {
+  for (const s of ["generating", "ready", "failed"]) {
     assert(validatePlacePatch({ content_state: s }).ok, s);
   }
+});
+
+// MESITA-2144: the enums still carry these labels until the profiles-view
+// migration drops them, but no writer sends one — so the door refuses them,
+// and a straggler fails here rather than 22P02-ing after the drop.
+Deno.test("validatePlacePatch: rejects the dead place_state and content_state labels", () => {
+  for (const s of ["lead", "pending_review", "pending_verification"]) {
+    assert(!validatePlacePatch({ state: s }).ok, s);
+  }
+  assert(!validatePlacePatch({ content_state: "queued" }).ok);
 });
 
 // ── validatePlacePatch: reject ────────────────────────────────────────────
@@ -364,7 +373,7 @@ Deno.test("writePlace: an invalid places patch never reaches the DB", async () =
     patch: invalidPatch,
   });
   assert(!res.ok);
-  assertEquals(res.error, "content_state must be one of queued, generating, ready, failed");
+  assertEquals(res.error, "content_state must be one of generating, ready, failed");
 });
 
 Deno.test("writePlace: refuses to update google_place_id, before validation even runs", async () => {

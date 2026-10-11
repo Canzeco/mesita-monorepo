@@ -27,7 +27,6 @@ export type Place = {
   /** Family from the EF. Exactly one when classified. */
   family_keys?: string[];
   category_label?: string | null;
-  vibe: string | null;
   price_level: number | null;
   // ISO 4217 code from public.places.currency (default "MXN"). Every
   // monetary amount on this place — price ranges, future cover charges —
@@ -54,13 +53,12 @@ export type Place = {
   reddit_url: string | null;
   didi_food_url: string | null;
   google_maps_url: string | null;
-  email: string | null;
   created_at: string;
 
   // ── Overview parity (optional) ────────────────────────────────────
   //
   // The swipe / catalog cards used to show only what's strictly on the
-  // places row (name, vibe, category, price_level, closes_at).
+  // places row (name, category, price_level, closes_at).
   // The "all info on the tinder card too" checkpoint widens that to
   // mirror the place-detail overview grid. Every field below is
   // optional because the recommend-swipe / list-places EFs don't return
@@ -81,7 +79,7 @@ export type Place = {
   zone?: string | null;
   /**
    * True while Enricher is still building the profile
-   * (`places.content_state` ∈ {queued, generating}). Drives the
+   * (`places.content_state` = generating). Drives the
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
   is_enriching?: boolean;
@@ -108,7 +106,7 @@ export type Place = {
   timezone?: string | null;
   city?: string | null;
   enriched_at?: string | null;
-  /** Enricher pipeline state (`queued` / `generating` / `ready` / …). */
+  /** Enricher pipeline state (`generating` / `ready` / `failed`). */
   content_state?: string | null;
   /** Consumer Requests count. Requested on the map is count > 0 and not ready. */
   request_count?: number | null;

@@ -162,7 +162,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
   "admin-web-enrich-place/index.ts",
-  "admin-web-get-place-enrichment/index.ts",
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-update-place/place-social-refresh.ts",

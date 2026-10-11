@@ -74,8 +74,8 @@ Deno.test("planCatalogRails is empty when both counts are zero", () => {
 
 Deno.test("matchIlike keeps token hits and drops zeroes", () => {
   const rows = [
-    { name: "Taco Naco", vibe: "late night" },
-    { name: "Quiet Room", vibe: "fine dining" },
+    { name: "Taco Naco", description: "late night" },
+    { name: "Quiet Room", description: "fine dining" },
   ];
   const hit = matchIlike(rows, "late night tacos", 8);
   assertEquals(hit.map((r) => r.name), ["Taco Naco"]);

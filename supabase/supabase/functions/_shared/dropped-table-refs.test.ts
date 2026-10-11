@@ -48,6 +48,10 @@
 // `place_payment_accounts`, come OUT of LIVE_AGAIN on the way: they were
 // recycled once and are now dropped for good, so a `.from()` on either is
 // the MESITA-1602 failure again. `places` is still live and stays recycled.
+//
+// MESITA-2144 — the residue cut. `place_name_history` goes IN ahead of its
+// drop: admin-web-search-places lost its free-text mode, the only reader, so
+// the table can leave the schema once that Edge Function has redeployed.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
@@ -95,6 +99,7 @@ const DROPPED_TABLES = [
   "place_guest_customers",
   "place_invites",
   "place_members",
+  "place_name_history",
   "place_payment_accounts",
   "place_plans",
   "place_strikes",
