@@ -82,3 +82,10 @@ Deno.test("leftover: the delete step matches the whole slug cell, never part of 
     "the delete loop no longer matches the `| slug |` cell exactly",
   );
 });
+
+Deno.test("leftover: a slug the registry lists but delete cannot find does not abort the step", async () => {
+  const text = await Deno.readTextFile(DEPLOY_WORKFLOW);
+  // Run 38097168472: the listing showed consumer-web-list-credit-gifts,
+  // delete answered "does not exist", and set -e stopped every slug after it.
+  assertEquals(text.includes('grep -q "does not exist"'), true, "the already-gone branch is missing");
+});
