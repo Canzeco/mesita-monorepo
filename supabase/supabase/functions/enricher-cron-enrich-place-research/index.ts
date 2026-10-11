@@ -14,8 +14,8 @@
 //       concurrently instead of GMaps blocking IG/FB.
 //   S3  channel discovery (channels ONLY): per-source Firecrawl Search gather
 //       (S4) → one Resolver pass ("Review & Select Links", Perplexity Agent) at S5. No
-//       website-footer scraping. Phone + email are NOT web-searched — they come
-//       from Mesita input or the Google spine, and enrichment never clobbers a
+//       website-footer scraping. Phone is NOT web-searched — it comes from
+//       Mesita input or the Google spine, and enrichment never clobbers a
 //       Mesita-entered contact.
 //   S4  parallel gathers: Instagram (Apify + identity judge) ‖ Facebook (Apify),
 //       concurrent with the background GMaps scrape from S2
@@ -240,10 +240,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
 
   // ━━━ S3 — channel discovery (channels ONLY) ━━━
-  // Phone + email are NOT discovered here: they come from Mesita input (a
-  // business editing its own Place) or the Google identity spine, never from a
-  // web search. See enrich-channel-discovery.ts. Below we take care never to
-  // OVERWRITE a Mesita-entered phone/email with a null (partial-update contract).
+  // Phone is NOT discovered here: it comes from Mesita input (a business
+  // editing its own Place) or the Google identity spine, never from a web
+  // search. See enrich-channel-discovery.ts. Below we take care never to
+  // OVERWRITE a Mesita-entered phone with a null (partial-update contract).
   let resolvedInstagram = basics.instagram_url;
   let resolvedFacebook = basics.facebook_url;
   let resolvedWebsite = basics.website_url;
@@ -299,7 +299,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   place.uber_eats_url = resolvedUberEats;
 
   // ━━━ Contacts — phone is persisted HERE, in the research stage only ━━━
-  // Phone + email come from Mesita input or the Google spine, never a web search.
+  // Phone comes from Mesita input or the Google spine, never a web search.
   // Only a full re-enrich runs the research stage; the lighter re-enrich modes
   // (analysis / contents only) reuse the STORED `gathered` payload. So if phone
   // rode `gathered.place` into the contents stage, every lighter re-run would
@@ -307,7 +307,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // DIRECTLY to places here — i.e. only when research actually re-runs (full
   // re-enrich = override) — and stripped from `gathered.place` so the contents
   // stage never touches it. A null Google phone is never written (it would clobber
-  // a Mesita-entered number). Email is never written by the enricher at all.
+  // a Mesita-entered number).
   //
   // Corrections (MESITA-1190) — a pinned phone outranks the Google spine.
   // `phone` is a CorrectableField and the Reservationist calling a place is
@@ -346,7 +346,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
     }
   }
   delete place.phone;
-  delete place.email;
   // WhatsApp is a MANUAL field — the who-can-edit matrix (Atlas §A) puts it
   // beside Email and Menus, never enriched. But `enrich-google-basics`
   // classifies `details.websiteUri` through `classifyLinks`, so a Google
@@ -354,7 +353,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // — and rides `gathered.place` into the contents stage, which UPDATEs
   // `places` wholesale. A business-entered WhatsApp was being overwritten,
   // almost always with null, since the classifier yields null for an ordinary
-  // website. Same clobber phone and email are guarded against above.
+  // website. Same clobber phone is guarded against above.
   delete place.whatsapp_url;
 
   // ━━━ Names — refresh the cached Google label, nothing else ━━━
@@ -466,7 +465,6 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
   if (igR?.igFollowers != null) place.instagram_followers_count = igR.igFollowers;
   if (fbR?.fbFollowers != null) place.facebook_followers = fbR.fbFollowers;
-  if (fbR?.fbRating != null) place.facebook_rating = fbR.fbRating;
   if (igR?.verifiedInstagramUrl) place.instagram_url = igR.verifiedInstagramUrl;
 
   // Leniency fallback (MESITA-120): when the IG scraper never got a real look

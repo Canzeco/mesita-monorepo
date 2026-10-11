@@ -533,7 +533,6 @@ const RAIL_PLACE = {
   slug: "cosmo",
   name: "Cosmo San Pedro",
   category: "Nightclub",
-  vibe: null,
   price_level: 4,
   currency: "MXN",
   lat: 25.67,
@@ -556,7 +555,6 @@ const RAIL_PLACE = {
   reddit_url: null,
   didi_food_url: null,
   google_maps_url: null,
-  email: null,
   created_at: "2026-08-01T00:00:00Z",
 } as Place;
 

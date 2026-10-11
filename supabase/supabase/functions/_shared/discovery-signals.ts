@@ -8,8 +8,8 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE EIGHT: Name · Summary · Proximity · Timing · Category ·
-// Enriched · Popularity · Randomness. Every one reads a fact about the place
+// THERE ARE SEVEN: Name · Proximity · Timing · Category · Enriched ·
+// Popularity · Randomness. Every one reads a fact about the place
 // or about the caller. None reads money: no plan, rate, strategy or live
 // discount reaches this library, and nothing after the blend reorders on one.
 //
@@ -31,11 +31,14 @@
 // signal-shaped line; a bare Level would collide exactly there.
 //
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
-// (`places.embedding` — the Summary blurb, never Presentation). Social left
-// the library — it permanently abstained because Social Lineup never wrote
-// a place-level index. Social Lineup is still Soon, and Social itself left
-// the mode list (discovery-matrix.ts) — its retrieval survives only as two
-// sources there, and `module` is retired along with it. Neither is a signal.
+// (`places.embedding`), and Summary left too (MESITA-2144): no caller ever
+// built its query vector, so it abstained at 1 for every place — a constant
+// that could not reorder anything, on a mask (Chat) no engine reads. Social
+// left the library — it permanently abstained because Social Lineup never
+// wrote a place-level index. Social Lineup is still Soon, and Social itself
+// left the mode list (discovery-matrix.ts) — its retrieval survives only as
+// two sources there, and `module` is retired along with it. Neither is a
+// signal.
 //
 // NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
 // the identity element of the blend is 1 — a signal with s=1 drops out of the
@@ -65,8 +68,8 @@ import { cosineSim, parseVector } from "./embeddings-vector.ts";
 import { CRENUP_TOTAL } from "./crenup-ladder.ts";
 
 /**
- * The eight earned signals, in Notion Docs > Discovery section 8.3 order:
- * what the caller ASKED FOR first (name, summary, category), then what the
+ * The seven earned signals, in Notion Docs > Discovery section 8.3 order:
+ * what the caller ASKED FOR first (name, category), then what the
  * world is (proximity, timing), then where the place sits with us
  * (enriched, popularity), then the tie-breaker.
  *
@@ -75,7 +78,6 @@ import { CRENUP_TOTAL } from "./crenup-ladder.ts";
  */
 export const SIGNAL_KEYS = [
   "name",
-  "summary",
   "category",
   "proximity",
   "timing",
@@ -123,7 +125,11 @@ export type SignalPlace = {
   family_keys?: string[] | null;
   rating: number | null;
   user_ratings_total: number | null;
-  /** Summary vector (`places.embedding`). Never Presentation. */
+  /**
+   * Summary vector (`places.embedding`). NO SIGNAL READS IT since Summary
+   * left (MESITA-2144); the projection still carries it because Scroll and
+   * Catalog select the column anyway (`DISCOVERY_EXTRA_COLUMNS`).
+   */
   embedding: unknown;
   /** Name vector (`places.name_embedding`). */
   nameEmbedding?: unknown;
@@ -157,9 +163,7 @@ export type SignalIntent = {
   categories?: string[] | null;
   /** Family keys the guest asked for, e.g. ["food"]. */
   families?: string[] | null;
-  /** Summary / intent query vector. Summary reads this; Name does not. */
-  queryVector?: number[] | null;
-  /** Name query vector. Name reads this; Summary does not. */
+  /** Name query vector. Only Name reads it. */
   queryNameVector?: number[] | null;
   /** Injectable clock, so every signal is testable without the wall clock. */
   now?: Date;
@@ -370,7 +374,7 @@ export function popularity(
 /**
  * Guest name query vs `places.name_embedding`. Deep Search already ranks
  * Mesita lanes by this cosine; the Lineup exposes the same index as a
- * weightable signal. It does not share Summary's query vector.
+ * weightable signal.
  *
  * Cosine lands in [-1, 1] and is remapped to [0, 1].
  *
@@ -401,32 +405,7 @@ export function name(
   return vectorScore(place.nameEmbedding, intent.queryNameVector, unembedded);
 }
 
-// ── 6. Summary ───────────────────────────────────────────────────────────────
-
-/**
- * Intent vs the place's SUMMARY embedding (`places.embedding`) — never the
- * Presentation. Docs › Discovery §C: About is the narrative a guest reads,
- * Summary is the machine blurb; we embed the second one, and the enrichment
- * queue's semantic `summary` function is what writes it. That Crenup stamp
- * is a different word from this signal.
- *
- * No query vector → NEUTRAL (the caller asked nothing).
- * No place vector → 0.4. The place has not been embedded yet, which is an
- * enrichment gap; it should lose to an embedded place on a Summary query
- * without being deleted from the deck.
- */
-export const SUMMARY_UNEMBEDDED = 0.4;
-
-export function summary(
-  place: SignalPlace,
-  intent: SignalIntent,
-  params?: SignalParamBag,
-): number {
-  const unembedded = clamp01(pnum(params, "unembedded", SUMMARY_UNEMBEDDED));
-  return vectorScore(place.embedding, intent.queryVector, unembedded);
-}
-
-// ── 7. Enriched ──────────────────────────────────────────────────────────────
+// ── 6. Enriched ──────────────────────────────────────────────────────────────
 
 /**
  * Did Mesita do the work on this place.
@@ -501,7 +480,7 @@ export function enriched(
   return clamp01(place.enriched === true ? 1 : ENRICHED_OFF);
 }
 
-// ── 8. Randomness ────────────────────────────────────────────────────────────
+// ── 7. Randomness ────────────────────────────────────────────────────────────
 
 /**
  * The only signal that reads nothing about the place.
@@ -532,7 +511,6 @@ export type SignalFn = (
  */
 export const SIGNALS: Record<SignalKey, SignalFn> = {
   name,
-  summary,
   proximity,
   timing,
   category,

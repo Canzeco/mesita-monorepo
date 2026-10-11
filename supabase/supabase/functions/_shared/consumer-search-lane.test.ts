@@ -296,7 +296,7 @@ Deno.test("orderDeepLineup: the enrichment gradient reorders two rows the pool A
   const hi = withHighWater(listed("hi", "Hi", QUERY, "ready"), CRENUP_TOTAL);
   const lo = withHighWater(listed("lo", "Lo", QUERY, "ready"), 2);
   // A row that never got admitted anywhere still floors below both.
-  const un = listed("un", "Un", QUERY, "queued");
+  const un = listed("un", "Un", QUERY, "generating");
   const enrichedOnly = weights(0);
   enrichedOnly.enriched = 2;
   assertEquals(
@@ -320,8 +320,6 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   assertEquals(src.includes("includedRegionCodes"), false);
   assertEquals(src.includes("rankByBlend"), true);
   assertEquals(src.includes("queryNameVector"), true);
-  assertEquals(src.includes("queryVector:"), false);
-  assertEquals(src.includes("queryVector,"), false);
 });
 
 Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita skips it", () => {

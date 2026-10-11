@@ -38,7 +38,7 @@ export type SavePlaceOutcome =
   | { ok: true; saved: SavedPlace }
   | { ok: false; status: number; body: Record<string, unknown> };
 
-const CONTENT_STATES = new Set(["queued", "generating", "ready", "failed"]);
+const CONTENT_STATES = new Set(["generating", "ready", "failed"]);
 
 export async function savePlaceData(
   admin: SupabaseClient,

@@ -88,7 +88,6 @@ export type EFReservationRow = {
     | "pending"
     | "confirmed"
     | "declined"
-    | "no_show"
     | "cancelled"
     // Engine outcomes: the place never answered / the call ended unclear.
     | "unreachable"
@@ -102,7 +101,6 @@ export type EFReservationRow = {
   call_attempts: number | null;
   notes: string | null;
   confirmed_at: string | null;
-  completed_at: string | null;
   cancelled_at: string | null;
   created_at: string;
   /** MESITA-787 — whether a2 may ring the guest. */

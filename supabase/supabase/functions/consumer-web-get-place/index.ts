@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-get-place
 //
 // Public. Returns a single place by id (uuid) or slug, plus the business
-// authority info needed for the detail page (vibe / channels / etc.).
+// authority info needed for the detail page (channels / hours / etc.).
 // Anon-readable but the places RLS policy still gates which rows ship.
 //
 // Caller: consumer. Verb: get. Noun: place. (Per the new <caller>-<verb>-<noun>

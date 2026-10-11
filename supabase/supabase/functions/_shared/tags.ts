@@ -31,7 +31,6 @@ export type PlaceTag = {
   label_es: string;
   label_en: string;
   facet: string;
-  section: string;
   sort_order: number;
 };
 
@@ -75,7 +74,7 @@ export const TAG_FACETS: readonly TagFacet[] = [
   { slug: "values", emoji: "🌱", label_es: "Valores", label_en: "Values" },
 ];
 
-const TAG_COLUMNS = "slug, label_es, label_en, facet, section, sort_order";
+const TAG_COLUMNS = "slug, label_es, label_en, facet, sort_order";
 
 // Reads the full, live tag vocabulary ordered by sort_order. Returns [] on
 // error so callers degrade gracefully rather than failing over a tag lookup.

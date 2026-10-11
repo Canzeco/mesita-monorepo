@@ -112,7 +112,7 @@ Deno.test("EnrichmentMapSchema: rejects an unknown top-level key", () => {
     functions: {},
     highWater: 0,
     blockedAt: null,
-    everyDays: 30, // MESITA-1249 deliberately did not fold the schedule in
+    everyDays: 30, // the schedule was never folded in, and is retired (MESITA-2144)
   });
   assert(!r.ok);
 });

@@ -34,9 +34,10 @@
 //     reaches Postgres.
 //
 // THE INVARIANTS, and why each is real (not invented):
-//   - state, if set, is one of the reservation_state enum's 7 values
-//     (pending/confirmed/declined/no_show/cancelled/unreachable/unresolved)
-//     — the exact Postgres enum type, read live via pg_enum.
+//   - state, if set, is one of the reservation_state enum's 6 values
+//     (pending/confirmed/declined/cancelled/unreachable/unresolved) — the
+//     exact Postgres enum type, read live via pg_enum. `no_show` had no
+//     writer and leaves the enum in MESITA-2144.
 //   - party_size, if set, is a positive integer — the exact DB CHECK
 //     (reservation_tickets_party_size_check: party_size > 0).
 //   - consumer_notify, if set, is 'call' | 'app' — the exact DB CHECK
@@ -110,7 +111,6 @@ export type ReservationState =
   | "pending"
   | "confirmed"
   | "declined"
-  | "no_show"
   | "cancelled"
   | "unreachable"
   | "unresolved";
@@ -190,7 +190,6 @@ export type ReservationDoc = {
   state: ReservationState;
   notes: string | null;
   confirmed_at: string | null;
-  completed_at: string | null;
   cancelled_at: string | null;
   call_attempts: number;
   last_conversation_id: string | null;
@@ -248,7 +247,6 @@ export const RESERVATION_PATCH_KEYS = [
   "state",
   "notes",
   "confirmed_at",
-  "completed_at",
   "cancelled_at",
   "call_attempts",
   "last_conversation_id",
@@ -317,7 +315,6 @@ const STATE_VALUES = new Set<string>([
   "pending",
   "confirmed",
   "declined",
-  "no_show",
   "cancelled",
   "unreachable",
   "unresolved",
@@ -447,7 +444,6 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
   for (
     const key of [
       "confirmed_at",
-      "completed_at",
       "cancelled_at",
       "last_called_at",
       "callback_at",

@@ -16,7 +16,6 @@ export type ConsumerProfile = {
   last_name: string | null;
   sex: string | null;
   birthday: string | null;
-  country: string | null;
   phone: string | null;
   // Claimed Instagram username (MESITA-74) — normalized, no leading @.
   instagram_handle: string | null;

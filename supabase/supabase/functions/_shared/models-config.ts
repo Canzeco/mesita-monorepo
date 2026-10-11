@@ -10,10 +10,9 @@
 //                                       rewrote every stored row.
 //   memo       : { model }              OpenAI main (Discovery chat)
 //
-// The stored blob still carries `supabase`, `ojo` and `enricher.perplexity`
-// (the admin whole-blob save writes them back); nothing reads them, and
-// MESITA-2091 owns dropping them. A stored `memo.perplexity` is unread too, and
-// the next Models save drops it (MESITA-2136).
+// A stored blob may still carry `supabase`, `ojo`, `enricher.perplexity` and
+// `memo.perplexity`. Nothing reads them, the Models save no longer writes them
+// (config-section-models.ts), and the next save drops them (MESITA-2144).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 

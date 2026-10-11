@@ -62,7 +62,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { runInBackground } from "../_shared/background.ts";
-import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
+import { ATTEMPTS, coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import {
   consumerFromNumber,
   resolveElevenLabsKey,
@@ -1658,7 +1658,7 @@ Deno.serve(async (req) => {
     run_id: runId,
     claimed_at: new Date().toISOString(),
     next_attempt_at: null,
-    attempts_planned: cfg.attempts,
+    attempts_planned: ATTEMPTS,
     place_phone: businessNumber,
     consumer_phone: consumerNumber || null,
     // A stale verdict from a previous negotiation round must never be read
@@ -1685,7 +1685,7 @@ Deno.serve(async (req) => {
     runIntents({
       admin,
       reservationId,
-      attemptsPlanned: cfg.attempts,
+      attemptsPlanned: ATTEMPTS,
       attemptsDone: typeof r.call_attempts === "number" ? r.call_attempts : 0,
       priorAttempts: Array.isArray(r.attempts) ? (r.attempts as ReservationAttempt[]) : [],
       placeHours: place?.hours ?? null,

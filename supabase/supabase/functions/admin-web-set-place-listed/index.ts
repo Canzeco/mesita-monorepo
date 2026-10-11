@@ -17,9 +17,11 @@
 //     state IN ('active','lead') AND content_state IN (...)
 //
 // The content_state leg allows all four labels of its enum, so `state`
-// alone decides. Unlisting therefore removes the place from every guest
-// surface at once — browse, search, the swipe deck, a shared link — because
-// they all read through that one policy with the anon key.
+// alone decides — and `lead` is a dead label no writer sends (MESITA-2144),
+// so listed means `active` (place-state.ts isPlaceListed). Unlisting
+// therefore removes the place from every guest surface at once — browse,
+// search, the swipe deck, a shared link — because they all read through that
+// one policy with the anon key.
 //
 // Body:     { placeId | projectId, listed: boolean }
 // Response: { ok: true, listed, state, place }
@@ -31,13 +33,6 @@
 // either would hide the place; paused is the reversible one and this is a
 // toggle. `archived` reads as terminal and is left to whatever eventually
 // handles real deletion.
-//
-// KNOWN NARROWING: `lead` is also a listed state, so unlisting a lead place
-// and re-listing it lands on 'active' — the lead/active distinction does not
-// survive the round trip. That is deliberate rather than overlooked: carrying
-// the prior value would need somewhere to store it, and nothing in the product
-// distinguishes the two today (every row is 'active'). Revisit if lead ever
-// starts meaning something a guest can tell apart.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -55,9 +50,8 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
+import { isPlaceListed } from "../_shared/place-state.ts";
 
-/** The states the consumer RLS policy treats as reachable. */
-const LISTED_STATES = ["active", "lead"] as const;
 /** Where an unlist lands — outside the visible set, and reversible. */
 const UNLISTED_STATE = "paused";
 /** Where a re-list lands. */
@@ -101,12 +95,10 @@ Deno.serve(async (req) => {
   if (!current) return json({ ok: false, error: "Place not found" }, 404);
 
   const currentState = (current as { state: string | null }).state ?? "";
-  const alreadyListed = (LISTED_STATES as readonly string[]).includes(
-    currentState,
-  );
+  const alreadyListed = isPlaceListed(currentState);
 
   // Already where the caller wants it — report success without a write, so a
-  // double-click or a stale toggle cannot demote a 'lead' place to 'active'.
+  // double-click or a stale toggle is a no-op.
   if (alreadyListed === listed) {
     const { data: place, error: readError } = await admin
       .from("profiles")

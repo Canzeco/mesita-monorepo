@@ -28,7 +28,6 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     atlasSynthesisQuality: "economy",
     atlasVisionQuality: "economy",
     atlasPerplexityPreset: "pro-search",
-    atlasPerRunCostCapUsd: 1,
     atlasDiscoverWebsiteN: 5,
     atlasDiscoverInstagramN: 7,
     atlasDiscoverFacebookN: 3,
@@ -49,7 +48,6 @@ Deno.test("normalizeEnrichmentConfig: out-of-range ints clamp to the old CHECKs"
     atlasAnalyzeInstagramImages: 31,
     atlasSaveTotalImages: 20,
     atlasDiscoverWebsiteN: 11,
-    atlasPerRunCostCapUsd: -3.333,
     atlasRequestThreshold: 0,
   });
   assertEquals(out.atlasGatherGoogleImages, 10);
@@ -60,7 +58,6 @@ Deno.test("normalizeEnrichmentConfig: out-of-range ints clamp to the old CHECKs"
   assertEquals(out.atlasAnalyzeInstagramImages, 30);
   assertEquals(out.atlasSaveTotalImages, 10);
   assertEquals(out.atlasDiscoverWebsiteN, 10);
-  assertEquals(out.atlasPerRunCostCapUsd, 0);
   assertEquals(out.atlasRequestThreshold, 1);
   assertEquals(normalizeEnrichmentConfig({ atlasRequestThreshold: 999 }).atlasRequestThreshold, 100);
 });
@@ -80,8 +77,11 @@ Deno.test("normalizeEnrichmentConfig: extra keys are dropped", () => {
   const out = normalizeEnrichmentConfig({
     atlasGatherGoogleImages: 4,
     leftoverScalar: 1,
+    // Retired by MESITA-2144; the live row still carries it until step 2.
+    atlasPerRunCostCapUsd: 1,
   });
   assertEquals(out.atlasGatherGoogleImages, 4);
   assertEquals("leftoverScalar" in out, false);
+  assertEquals("atlasPerRunCostCapUsd" in out, false);
   assertEquals(Object.keys(out).sort(), Object.keys(DEFAULT_ENRICHMENT_CONFIG).sort());
 });

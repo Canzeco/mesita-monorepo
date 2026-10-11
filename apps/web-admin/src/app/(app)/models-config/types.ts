@@ -13,12 +13,10 @@
 // Shown read-only: embeddings.model (place search index) and enricher.model
 // (the Enricher's sorting/tagging model, and what the photos row's cheaper
 // tier runs — enricher-cron-enrich-place-analysis swaps it in for economy).
-// Not shown and DEAD in First Stage: supabase.model, ojo.model and
-// enricher.perplexity. models_config is still saved WHOLE, so they are written
-// back as their coerced values; coercion also drops unknown keys (a stored
-// memo.perplexity among them — Memo has no Perplexity leg, MESITA-2136) and
-// resets a Perplexity value outside PERPLEXITY_OPTIONS to its default.
-// MESITA-2091 owns deleting the dead keys.
+// models_config is saved WHOLE, as exactly these three models plus `v`.
+// Coercion drops every other key, so the dead supabase.model, ojo.model,
+// enricher.perplexity and memo.perplexity a stored blob may still carry are
+// never sent back (MESITA-2136, MESITA-2144).
 
 import type { PerplexityPreset } from "../enricher-config/actions";
 import { COST_RATES } from "../enricher-config/cost-model";
@@ -49,11 +47,9 @@ export const ENRICHER_PERPLEXITY_PRESETS: readonly {
 // keys are live.
 export type ModelsConfig = {
   v: number;
-  supabase: { model: string };
-  enricher: { model: string; perplexity: string };
+  enricher: { model: string };
   embeddings: { model: string };
   memo: { model: string };
-  ojo: { model: string };
 };
 
 // OpenAI chat catalog for the Discovery chat model.
@@ -71,24 +67,13 @@ export const OPENAI_CHAT_MODELS = [
   "gpt-5.6-sol",
 ] as const;
 
-// Perplexity values accepted in the blob's enricher leg ("off" = none).
-const PERPLEXITY_OPTIONS = [
-  "off",
-  "sonar",
-  "sonar-pro",
-  "sonar-reasoning",
-  "sonar-reasoning-pro",
-] as const;
-
 // Defaults — mirror the migration's app_config.models_config seed. The server
 // coerces a null/partial blob to them; the page never SHOWS them as live.
 export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   v: 1,
-  supabase: { model: "gpt-4o-mini" },
-  enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  enricher: { model: "gpt-4o-mini" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini" },
-  ojo: { model: "gpt-4o" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
@@ -98,21 +83,12 @@ export function coerceModelsConfig(raw: unknown): ModelsConfig {
     (r[k] && typeof r[k] === "object" ? r[k] : {}) as Record<string, unknown>;
   const str = (v: unknown, fb: string): string =>
     typeof v === "string" && v.trim().length > 0 ? v.trim() : fb;
-  const perp = (v: unknown, fb: string): string => {
-    const s = typeof v === "string" ? v.trim() : "";
-    return (PERPLEXITY_OPTIONS as readonly string[]).includes(s) ? s : fb;
-  };
   const d = DEFAULT_MODELS_CONFIG;
   return {
     v: 1,
-    supabase: { model: str(obj("supabase").model, d.supabase.model) },
-    enricher: {
-      model: str(obj("enricher").model, d.enricher.model),
-      perplexity: perp(obj("enricher").perplexity, d.enricher.perplexity),
-    },
+    enricher: { model: str(obj("enricher").model, d.enricher.model) },
     embeddings: { model: str(obj("embeddings").model, d.embeddings.model) },
     memo: { model: str(obj("memo").model, d.memo.model) },
-    ojo: { model: str(obj("ojo").model, d.ojo.model) },
   };
 }
 

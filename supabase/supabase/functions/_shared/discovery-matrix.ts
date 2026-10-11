@@ -50,7 +50,6 @@ export const DISCOVERY_MODE_SIGNALS: Record<
   ],
   chat: [
     "name",
-    "summary",
     "category",
     "proximity",
     "timing",

@@ -83,8 +83,8 @@ Deno.test("isEnrichedPlace counts ready OR a stamped enriched_at, never one alon
     isEnrichedPlace({ content_state: "ready", enriched_at: null }),
     true,
   );
-  assertEquals(isEnrichedPlace({ content_state: "queued" }), false);
   assertEquals(isEnrichedPlace({ content_state: "generating" }), false);
+  assertEquals(isEnrichedPlace({ content_state: "failed" }), false);
   assertEquals(isEnrichedPlace({}), false);
   assertEquals(isEnrichedPlace(null), false);
 });

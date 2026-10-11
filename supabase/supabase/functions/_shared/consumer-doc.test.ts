@@ -29,7 +29,6 @@ Deno.test("validateConsumerPatch: accepts a well-formed profile patch", () => {
     full_name: "Ana García",
     sex: "female",
     birthday: "2000-05-14",
-    country: "MX",
     phone: "+525512345678",
     avatar_url: null,
   });
@@ -73,6 +72,12 @@ Deno.test("validateConsumerPatch: rejects an unknown field (closed key set)", ()
   assert(!res.ok);
   const res2 = validateConsumerPatch({ is_admin: true });
   assert(!res2.ok);
+});
+
+Deno.test("validateConsumerPatch: rejects country — nothing reads or writes it (MESITA-2144)", () => {
+  const res = validateConsumerPatch({ country: "MX" });
+  assert(!res.ok);
+  assertEquals(res.error, "unknown consumer field: country");
 });
 
 Deno.test("validateConsumerPatch: rejects a malformed code", () => {

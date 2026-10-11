@@ -8,13 +8,12 @@ export function isEnriching(state: PlaceEnrichmentState | null): boolean {
   if (stage === "research" || stage === "analysis" || stage === "contents") {
     return true;
   }
-  const contentState = state?.content_state ?? null;
-  return contentState === "generating" || contentState === "queued";
+  return (state?.content_state ?? null) === "generating";
 }
 
-/** Same predicate as `_shared/place-state.ts::isPlaceListed` and the
- *  consumer RLS policy: only `active` and `lead` are reachable. */
-const LISTED_STATES = ["active", "lead"] as const;
+/** Same predicate as `_shared/place-state.ts::isPlaceListed`: only `active`
+ *  is reachable. */
+const LISTED_STATES = ["active"] as const;
 
 export function listedFromState(state: unknown): boolean | "unknown" {
   if (typeof state !== "string" || state === "") return "unknown";

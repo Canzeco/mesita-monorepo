@@ -54,7 +54,6 @@ type AtlasConfigResponse = {
   atlasSynthesisQuality: SynthesisQuality;
   atlasVisionQuality: SynthesisQuality;
   atlasPerplexityPreset: PerplexityPreset;
-  atlasPerRunCostCapUsd: number;
   atlasDiscoverWebsiteN: number;
   atlasDiscoverInstagramN: number;
   atlasDiscoverFacebookN: number;

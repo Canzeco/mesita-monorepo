@@ -162,7 +162,10 @@ Deno.test("a blob from before this change reads back with the new sections defau
   const cfg = normalizeDiscoveryConfig(old);
   // The operator's own values survive...
   assertEquals(cfg.weights.proximity, 2);
-  assertEquals(cfg.weights.summary, 1);
+  // ...the retired Summary exponent as inert storage only (MESITA-2144): the
+  // weights map is additive, and no signal key binds it any more...
+  assertEquals((cfg.weights as unknown as Record<string, number>).summary, 1);
+  assertEquals((SIGNAL_KEYS as readonly string[]).includes("summary"), false);
   assertEquals(cfg.weights.name, 1);
   assertEquals(cfg.weights.enriched, 1);
   assertEquals("slotting" in cfg, false);
@@ -173,7 +176,6 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
   assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
   assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
-  assertEquals(cfg.social, DISCOVERY_DEFAULTS.social);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
   assertEquals(cfg.swipe, DISCOVERY_DEFAULTS.swipe);
 });
@@ -240,8 +242,29 @@ Deno.test("signal params clamp and an old blob without params stays default-shap
   assertEquals(cfg.params.proximity.kneeKm, 0.1);
   assertEquals(cfg.params.proximity.missingGeo, 1);
   assertEquals(cfg.params.popularity.confidence, 1);
-  assertEquals(cfg.params.summary.unembedded, DISCOVERY_DEFAULTS.params.summary.unembedded);
-  assertEquals(cfg.params.name.unembedded, DISCOVERY_DEFAULTS.params.name.unembedded);
+  assertEquals(cfg.params.name, DISCOVERY_DEFAULTS.params.name);
+});
+
+// What the live blob still stores under `params` (MESITA-2144): the retired
+// Summary bag, Name's `unembedded` at its own fallback, and the empty
+// `mesita_level` bag. None of it may come back from a normalize, or the next
+// Save writes it straight back over the migration that strips it.
+Deno.test("the retired param bags and Name's unembedded do not survive a normalize", () => {
+  const cfg = normalizeDiscoveryConfig({
+    params: {
+      summary: { unembedded: 0.4 },
+      name: { unembedded: 0.4 },
+      mesita_level: {},
+      proximity: { maxKm: 30 },
+    },
+  });
+  const params = cfg.params as unknown as Record<string, unknown>;
+  assertEquals("summary" in params, false);
+  assertEquals("mesita_level" in params, false);
+  assertEquals(cfg.params.name, {});
+  assertEquals(Object.keys(cfg.params).sort(), [...SIGNAL_KEYS].sort());
+  // The live bag beside them is untouched.
+  assertEquals(cfg.params.proximity.maxKm, 30);
 });
 
 Deno.test("filters clamp, and minRating keeps one decimal", () => {
@@ -265,16 +288,13 @@ Deno.test("engines are rebuilt from the code list, so a retired key cannot survi
   assertEquals(cfg.engines.swipe.ranked, false);
 });
 
-Deno.test("social knobs default on an old blob and clamp", () => {
-  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(missing.social, DISCOVERY_DEFAULTS.social);
-  const clamped = normalizeDiscoveryConfig({
-    social: { seedCount: 99, eventsPerRail: 1, minSeedEvents: 0, horizonDays: 400 },
+// The tentative Social engine's box had no reader (MESITA-2144). A blob that
+// still carries it must come back without it, like `slotting` before it.
+Deno.test("the retired social box does not survive a normalize", () => {
+  const cfg = normalizeDiscoveryConfig({
+    social: { seedCount: 6, generatedCount: 6, eventsPerRail: 8, minSeedEvents: 1, horizonDays: 14 },
   });
-  assertEquals(clamped.social.seedCount, 20);
-  assertEquals(clamped.social.eventsPerRail, 4);
-  assertEquals(clamped.social.minSeedEvents, 1);
-  assertEquals(clamped.social.horizonDays, 90);
+  assertEquals("social" in cfg, false);
 });
 
 Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () => {

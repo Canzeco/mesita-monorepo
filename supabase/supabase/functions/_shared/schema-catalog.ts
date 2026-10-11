@@ -208,16 +208,11 @@ const PulseBlockSchema: Schema<CrenupBlock> = object({
 // instead of re-deriving it from scratch on every read.
 //
 // DELIBERATELY NOT in this shape: `everyDays`/`mode`/`nextAt`/`lastRunAt`
-// (the schedule). The issue that named this map asked for those too, but
-// `place_profiles.enrich_every_days`/`enrich_mode`/`enrich_next_at` are read AND
-// WRITTEN directly by `queue_due_place_enrichments`, a live PL/pgSQL cron
-// function — the exact class of change (a rename/restructure a stored
-// function body doesn't auto-follow) that caused this repo's own documented
-// 2-day enrichment outage (MESITA-1143). Folding the meter (a pure read-path
-// win, zero cron risk) and folding the schedule (a real risk to a fragile
-// live function) are two different shapes of change; this ships the first
-// and leaves the second an explicit, separate decision. The three scalar
-// columns are unchanged and still the source of truth for scheduling.
+// (the schedule). The issue that named this map asked for those too, but the
+// per-place schedule lived in its own columns, driven by a PL/pgSQL cron, and
+// was never folded. It is retired now: no writer since MESITA-2090, no reader
+// since MESITA-2144, and the columns drop with the cron. A schedule key here
+// is still an unknown key the schema refuses.
 export type EnrichmentMap = {
   functions: FunctionStateMap;
   highWater: number;

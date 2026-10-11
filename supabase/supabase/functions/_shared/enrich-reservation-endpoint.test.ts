@@ -15,11 +15,9 @@ import {
   valueForReservationChannel,
 } from "./enrich-reservation-endpoint.ts";
 
-Deno.test("default policy is phone-only, nothing parked (MESITA-842)", () => {
+Deno.test("phone is the only channel; the default policy keeps operator picks (MESITA-842)", () => {
   assertEquals([...RESERVATION_CHANNELS], ["phone"]);
-  assertEquals([...DEFAULT_RESERVATIONS_POLICY.priority], ["phone"]);
-  assertEquals([...DEFAULT_RESERVATIONS_POLICY.disabled], []);
-  assertEquals(DEFAULT_RESERVATIONS_POLICY.respectAdminOverride, true);
+  assertEquals(DEFAULT_RESERVATIONS_POLICY, { respectAdminOverride: true });
 });
 
 Deno.test("availableReservationChannels: phone when present, else empty", () => {
@@ -78,7 +76,7 @@ Deno.test("reservationTargetPatch: two typed columns, no blob merge", () => {
 Deno.test("selectReservationEndpoint: phone when present, else null", () => {
   assertEquals(
     selectReservationEndpoint({ candidates: {} }),
-    { target: null, diag: { ok: false, reason: "no_candidates", disabled: [] } },
+    { target: null, diag: { ok: false, reason: "no_candidates" } },
   );
 
   const phoneWins = selectReservationEndpoint({
@@ -95,40 +93,37 @@ Deno.test("selectReservationEndpoint: phone when present, else null", () => {
   assertEquals(noPhone.diag.reason, "no_candidates");
 });
 
-// ── Reservations Config policy (MESITA-623 / MESITA-842) ──
+// ── Reservations Config policy (MESITA-623 / MESITA-842 / MESITA-2144) ──
 
-Deno.test("coerceReservationsPolicy: malformed rows fall back; legacy channels drop", () => {
+Deno.test("coerceReservationsPolicy: malformed rows fall back; only respectAdminOverride is read", () => {
   assertEquals(coerceReservationsPolicy(null), DEFAULT_RESERVATIONS_POLICY);
   assertEquals(coerceReservationsPolicy("nope"), DEFAULT_RESERVATIONS_POLICY);
   assertEquals(coerceReservationsPolicy([]), DEFAULT_RESERVATIONS_POLICY);
 
-  // Legacy whatsapp/instagram are dropped; phone is appended so it stays reachable.
+  // The retired priority / disabled keys a stored row may still carry are ignored.
   const legacy = coerceReservationsPolicy({
     priority: ["instagram", "whatsapp", "email", "phone"],
     disabled: ["whatsapp", "instagram", "sms"],
     respectAdminOverride: false,
   });
-  assertEquals([...legacy.priority], ["phone"]);
-  assertEquals([...legacy.disabled], []);
-  assertEquals(legacy.respectAdminOverride, false);
+  assertEquals(legacy, { respectAdminOverride: false });
 
   // A row missing respectAdminOverride keeps the operator-wins default.
   assertEquals(coerceReservationsPolicy({ priority: [], disabled: [] }).respectAdminOverride, true);
 });
 
-Deno.test("selectReservationEndpoint: a parked phone never wins", () => {
-  const policy = {
-    priority: ["phone"] as const,
-    disabled: ["phone"] as const,
+Deno.test("selectReservationEndpoint: a stored disabled: [phone] no longer parks the phone", () => {
+  // A row that parked phone, the only channel, used to make the Enricher seed
+  // nothing. That knob is retired: phone wins whenever the place has one.
+  const policy = coerceReservationsPolicy({
+    priority: ["phone"],
+    disabled: ["phone"],
     respectAdminOverride: true,
-  };
-  const onlyParked = selectReservationEndpoint({
-    candidates: { phone: "+52 55 1111" },
-    policy,
   });
-  assertEquals(onlyParked.target, null);
-  assertEquals(onlyParked.diag.reason, "no_candidates");
-
-  assertEquals(availableReservationChannels({ phone: "+52 55" }, policy), []);
-  assertEquals(preferReservationChannel(["phone"], policy), null);
+  assertEquals(policy, { respectAdminOverride: true });
+  const phone = selectReservationEndpoint({
+    candidates: { phone: "+52 55 1111" },
+  });
+  assertEquals(phone.target, { channel: "phone", value: "+52 55 1111" });
+  assertEquals(availableReservationChannels({ phone: "+52 55" }), ["phone"]);
 });

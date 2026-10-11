@@ -11,9 +11,8 @@ import { SIGNAL_KEYS } from "./discovery-signals.ts";
 
 Deno.test("Mesita Places Search signals match the admin matrix", () => {
   assertEquals(modeSignalState("word", "name"), "on");
-  assertEquals(modeSignalState("word", "summary"), "off");
   assertEquals(modeSignalState("word", "enriched"), "off");
-  assertEquals(modeSignalState("chat", "summary"), "on");
+  assertEquals(modeSignalState("chat", "name"), "on");
   assertEquals(modeSignalState("chat", "randomness"), "off");
   assertEquals(modeSignalState("map", "proximity"), "on");
   assertEquals(modeSignalState("map", "randomness"), "zero");
@@ -33,7 +32,6 @@ Deno.test("weightsForMode zeros off and Map randomness against defaults", () => 
   const map = weightsForMode("map", DISCOVERY_DEFAULTS.weights);
   assertEquals(map.randomness, 0);
   assertEquals(map.name, 0);
-  assertEquals(map.summary, 0);
   assertEquals(map.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(map.enriched, DISCOVERY_DEFAULTS.weights.enriched);
   const word = weightsForMode("word", DISCOVERY_DEFAULTS.weights);

@@ -13,7 +13,6 @@ export type PlaceProfileRow = {
   slug: string;
   name: string;
   category: string | null;
-  vibe: string | null;
   price_level: number | null;
   state: string;
   lat: number | null;

@@ -37,14 +37,13 @@ export async function refreshSocialFollowers(opts: SocialFollowersRefresh): Prom
     opts.facebookUrl === undefined
       ? Promise.resolve(null)
       : opts.facebookUrl === null
-        ? Promise.resolve({ fbFollowers: null, fbRating: null })
+        ? Promise.resolve({ fbFollowers: null })
         : gatherFacebook({ apifyKey, facebookUrl: opts.facebookUrl }),
   ]);
 
   if (opts.instagramUrl !== undefined) update.instagram_followers_count = ig;
   if (opts.facebookUrl !== undefined) {
     update.facebook_followers = fb?.fbFollowers ?? null;
-    update.facebook_rating = fb?.fbRating ?? null;
   }
   if (Object.keys(update).length === 0) return;
 

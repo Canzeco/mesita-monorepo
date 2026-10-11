@@ -41,7 +41,6 @@ function reservationPhase(row: EFReservationRow): ReservationState {
     case "declined":
     case "unreachable":
     case "unresolved":
-    case "no_show":
       return "failed";
     case "confirmed":
       return slotPassed(row.reserved_at) ? "passed" : "confirmed";
@@ -92,8 +91,6 @@ function noteFor(
           return "The place didn't answer Mesita's calls. Try again or pick another time.";
         case "unresolved":
           return "The call didn't reach a clear answer — Mesita follows up.";
-        case "no_show":
-          return "Marked as a no-show.";
         default:
           return "This booking didn't go through.";
       }

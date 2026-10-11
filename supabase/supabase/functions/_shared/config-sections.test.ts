@@ -151,30 +151,41 @@ const CASES: Record<string, SectionCase> = {
   },
 
   models: {
-    valid: { config: { supabase: { model: "gpt-4o" } } },
+    // An older console still sends the dead `supabase` / `ojo` keys
+    // (MESITA-2144): the save lands, and they are not written back.
+    valid: {
+      config: { memo: { model: "gpt-4o" }, supabase: { model: "gpt-4o" }, ojo: { model: "gpt-4o" } },
+    },
     assertSaved: (saved, row) => {
-      assertEquals(((saved.config as Row).supabase as Row).model, "gpt-4o");
+      assertEquals(((saved.config as Row).memo as Row).model, "gpt-4o");
       // This section alone returns no updatedAt — the console's coerce owns it.
       assertEquals("updatedAt" in saved, false);
-      assertEquals((row.models_config as Row).v, 1);
+      const stored = row.models_config as Row;
+      assertEquals(stored.v, 1);
+      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "v"]);
+      assertEquals(stored.enricher, { model: "gpt-4o-mini" });
     },
     invalid: { config: "not an object" },
     refuse: { status: 400, contains: "config must be an object" },
   },
 
   reservations: {
+    // The deployed console still posts the retired priority / disabled /
+    // attempts keys (MESITA-2144): the save lands, and they are not written back.
     valid: {
-      config: { priority: ["phone"], disabled: [], respectAdminOverride: true },
+      config: { priority: ["phone"], disabled: [], respectAdminOverride: true, attempts: 2 },
     },
     assertSaved: (saved, row) => {
-      assertEquals((saved.config as Row).priority, ["phone"]);
-      // attempts is fixed at 2 by protocol whatever the client sent.
-      assertEquals((row.reservations_config as Row).attempts, 2);
+      assertEquals((saved.config as Row).respectAdminOverride, true);
+      const stored = row.reservations_config as Row;
+      for (const key of ["priority", "disabled", "attempts"]) {
+        assertEquals(key in stored, false, `${key} was written back`);
+      }
     },
     invalid: {
-      config: { priority: ["carrier-pigeon"], disabled: [], respectAdminOverride: true },
+      config: { respectAdminOverride: "yes" },
     },
-    refuse: { status: 400, contains: "unknown channel" },
+    refuse: { status: 400, contains: "respectAdminOverride must be a boolean" },
   },
 
 };

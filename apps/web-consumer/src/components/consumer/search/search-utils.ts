@@ -81,7 +81,6 @@ export function anchorPlaceFromPrediction(
     name: prediction.mainText,
     category: null,
     category_label: null,
-    vibe: null,
     price_level: null,
     currency: "MXN",
     enriched: prediction.enriched ?? false,
@@ -105,7 +104,6 @@ export function anchorPlaceFromPrediction(
     reddit_url: null,
     didi_food_url: null,
     google_maps_url: null,
-    email: null,
     created_at: new Date(0).toISOString(),
     ...(onMesita ? {} : { googleOnly: true, from_google: true }),
   } as Place;

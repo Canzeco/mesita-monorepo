@@ -598,7 +598,7 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
 
   assertEquals(isEnrichedListedRow({ content_state: "ready" }), true);
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
-  assertEquals(isEnrichedListedRow({ content_state: "queued" }), false);
+  assertEquals(isEnrichedListedRow({ content_state: "generating" }), false);
   assertEquals(isEnrichedListedRow({}), false);
 });
 

@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await adminClient(envRes.env)
     .from("consumer_notifications")
-    .select("id, consumer_id, kind, state, payload, created_at, resolved_at")
+    .select("id, consumer_id, kind, payload, created_at")
     .eq("consumer_id", consumerId)
     .in("kind", [...RESERVATION_NOTIFICATION_KINDS])
     .order("created_at", { ascending: false })

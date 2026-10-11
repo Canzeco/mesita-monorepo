@@ -2,21 +2,19 @@
 //
 // Seeds places.reservation_channel / reservation_target for the Reservationist
 // (typed columns since MESITA-1208 — routing left the products jsonb).
-// Priority among available profile contacts is an OPERATOR KNOB, not a constant:
-// it lives at app_config.reservations_config and is authored on the admin
-// console's Reservations Config page (MESITA-623). Callers pass the policy in;
-// DEFAULT_RESERVATIONS_POLICY is phone-only (MESITA-842) — the Reservationist is
+// The channel is phone, the only one (MESITA-842) — the Reservationist is
 // voice-reachable only; WhatsApp/Instagram are not serving paths (MESITA-839).
-// Never writes fallbacks. No LLM — the order is the product rule.
+// The Reservations Config knobs that ranked and parked channels (MESITA-623)
+// are no longer read (MESITA-2144); respectAdminOverride, the one left, is
+// applied by the caller. Never writes fallbacks. No LLM — the order is the
+// product rule.
 
 import {
   availableReservationChannels,
   buildReservationTarget,
-  DEFAULT_RESERVATIONS_POLICY,
   preferReservationChannel,
   type ReservationCandidates,
   type ReservationTarget,
-  type ReservationsPolicy,
 } from "./enrich-reservation-policy.ts";
 
 export {
@@ -36,35 +34,28 @@ export {
 } from "./enrich-reservation-policy.ts";
 
 /**
- * Select the reservation contact channel for Enricher seeding.
- * Priority + parked channels come from the policy (Reservations Config); the
- * default is phone only. Sync + deterministic (no LLM). Admin override is
- * handled by the caller via hasReservationTarget before invoking this.
+ * Select the reservation contact channel for Enricher seeding: the first
+ * channel in RESERVATION_CHANNELS the place has a contact for. Sync +
+ * deterministic (no LLM). Admin override is handled by the caller via
+ * hasReservationTarget + policy.respectAdminOverride before invoking this.
  */
 export function selectReservationEndpoint(input: {
   candidates: ReservationCandidates;
-  policy?: ReservationsPolicy;
 }): { target: ReservationTarget | null; diag: Record<string, unknown> } {
-  const policy = input.policy ?? DEFAULT_RESERVATIONS_POLICY;
-  const available = availableReservationChannels(input.candidates, policy);
+  const available = availableReservationChannels(input.candidates);
   if (available.length === 0) {
-    return {
-      target: null,
-      diag: { ok: false, reason: "no_candidates", disabled: policy.disabled },
-    };
+    return { target: null, diag: { ok: false, reason: "no_candidates" } };
   }
 
-  const channel = preferReservationChannel(available, policy);
+  const channel = preferReservationChannel(available);
   if (!channel) {
     return { target: null, diag: { ok: false, reason: "fallback_empty" } };
   }
 
   const target = buildReservationTarget(channel, input.candidates);
-  const via = available.length === 1
-    ? "sole_candidate"
-    : `priority_${policy.priority.join("_")}`;
+  const via = available.length === 1 ? "sole_candidate" : "channel_order";
   return {
     target,
-    diag: { ok: !!target, channel, via, available, disabled: policy.disabled },
+    diag: { ok: !!target, channel, via, available },
   };
 }

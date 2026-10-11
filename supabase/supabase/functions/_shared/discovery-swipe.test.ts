@@ -67,7 +67,6 @@ Deno.test("swipe mask matches the locked matrix", () => {
     ),
   );
   assertEquals(swipe.name, 0);
-  assertEquals(swipe.summary, 0);
   assertEquals(swipe.enriched, DISCOVERY_DEFAULTS.weights.enriched);
   assertEquals(swipe.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(swipe.randomness, DISCOVERY_DEFAULTS.weights.randomness);

@@ -37,7 +37,6 @@ const project = (r: Row): SignalPlace => ({
 
 const WEIGHTS_OFF: SignalWeights = {
   name: 0,
-  summary: 0,
   proximity: 0,
   timing: 0,
   category: 0,

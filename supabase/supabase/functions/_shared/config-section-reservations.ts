@@ -1,18 +1,19 @@
 // _shared/config-section-reservations.ts — the `reservations` section.
 //
 // Was admin-web-get-reservations-config / admin-web-update-reservations-config
-// (MESITA-1724 collapse). The reservation-endpoint policy on
-// app_config.reservations_config: the ordered channel priority (phone only —
-// MESITA-842; voice-reachable), the parked channels, and whether an operator's
-// hand-picked channel survives a re-enrich. See
+// (MESITA-1724 collapse). The Reservationist knobs on
+// app_config.reservations_config: whether an operator's hand-picked channel
+// survives a re-enrich, test mode, the abuse limits, the reminder leg and the
+// cap escape hatch. The channel itself is phone, fixed in code (MESITA-842);
+// the priority / disabled knobs that ranked it are retired (MESITA-2144). See
 // 20260715120000_reservations_config.sql +
 // 20260805105000_reservations_phone_only.
 //
 // READ owns a handler because the page is fed by TWO queries — the policy, and
 // the needs-attention feed below. WRITE owns one because its normalizer
-// REFUSES rather than coerces (`priority` is an ordered list that must rank
-// every channel; a partial merge of an ordering is meaningless), and the saved
-// row is echoed raw rather than re-normalized.
+// REFUSES rather than coerces (an enabled test-call override with no plausible
+// number must 400, never quietly clamp into ringing the wrong phone), and the
+// saved row is echoed raw rather than re-normalized.
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { jsonError, jsonOk } from "./http.ts";
 import { readAppConfig, writeAppConfig } from "./write-config.ts";

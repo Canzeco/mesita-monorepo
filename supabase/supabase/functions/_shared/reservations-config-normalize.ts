@@ -1,14 +1,10 @@
-import { RESERVATION_CHANNELS } from "./enrich-reservation-endpoint.ts";
 // Single source of truth for the safe test-call default, shared with the
 // read-path coercion so both directions agree (MESITA-739).
-import { TEST_CALL_SEED } from "./reservations-config.ts";
+import { TEST_CALL_SEED, type TestCall } from "./reservations-config.ts";
 
 type ReservationsConfig = {
-  priority: string[];
-  disabled: string[];
   respectAdminOverride: boolean;
-  testCall: { enabled: boolean; number: string; consumerNumber: string };
-  attempts: number;
+  testCall: TestCall;
   /** Testing escape hatch: ignore the monthly reservation cap (reservation-cap.ts). */
   unlimitedReservations: boolean;
   /** Abuse/cost guards — every unit of abuse here is a metered phone call. */
@@ -21,11 +17,12 @@ type ReservationsConfig = {
   reminder: { enabled: boolean };
 };
 
-const KNOWN = new Set<string>(RESERVATION_CHANNELS);
-
-// FIXED at 2 by protocol — not configurable. Any attempts value a client sends
-// is accepted and ignored so older admin builds keep saving cleanly.
-const ATTEMPTS = 2;
+// RETIRED KEYS (MESITA-2144): `priority` and `disabled` (they ranked and parked
+// a one-channel list; enrich-reservation-policy.ts no longer reads them),
+// `attempts` (fixed at 2 by protocol — ATTEMPTS in reservations-config.ts) and
+// `testCall.consumerNumber` (the retired Playground's guest line). The deployed
+// admin build still posts all four with every whole-blob save, so they are
+// ACCEPTED and dropped — never validated, never written back.
 
 // A leading + and 8–15 digits. Mirrors looksLikePhone in the admin catalog. The
 // real validity check is placing the call — this only stops an obvious typo.
@@ -34,9 +31,9 @@ function looksLikePhone(v: string): boolean {
 }
 
 // Coerce the whole policy. Returns an error string on invalid input — the row is
-// never touched on a partial or unknown-channel body. `testCall` + `attempts` are
-// OPTIONAL: a body that omits them (the pre-agent admin build) defaults them, so
-// deploying this stays backward-compatible with the currently-shipped page.
+// never touched on a malformed body. `respectAdminOverride` is the one REQUIRED
+// key; every other knob is OPTIONAL and defaults when omitted, so deploying this
+// stays backward-compatible with the currently-shipped page.
 export function normalizeConfig(
   raw: unknown,
 ): { ok: true; value: ReservationsConfig } | { ok: false; error: string } {
@@ -44,43 +41,6 @@ export function normalizeConfig(
     return { ok: false, error: "config must be an object" };
   }
   const c = raw as Record<string, unknown>;
-
-  if (!Array.isArray(c.priority)) {
-    return { ok: false, error: "config.priority must be an array" };
-  }
-  const priority: string[] = [];
-  for (const ch of c.priority) {
-    if (typeof ch !== "string" || !KNOWN.has(ch)) {
-      return { ok: false, error: `config.priority has unknown channel "${String(ch)}"` };
-    }
-    if (!priority.includes(ch)) priority.push(ch);
-  }
-  // The list is the eligible set as well as the order, so it must be complete —
-  // parking a channel is what `disabled` is for. Otherwise a channel silently
-  // dropped from the array would be indistinguishable from one never wired.
-  if (priority.length !== RESERVATION_CHANNELS.length) {
-    return {
-      ok: false,
-      error: `config.priority must rank every channel (${RESERVATION_CHANNELS.join(", ")})`,
-    };
-  }
-
-  if (!Array.isArray(c.disabled)) {
-    return { ok: false, error: "config.disabled must be an array" };
-  }
-  const disabled: string[] = [];
-  for (const ch of c.disabled) {
-    if (typeof ch !== "string" || !KNOWN.has(ch)) {
-      return { ok: false, error: `config.disabled has unknown channel "${String(ch)}"` };
-    }
-    if (!disabled.includes(ch)) disabled.push(ch);
-  }
-  if (disabled.length === RESERVATION_CHANNELS.length) {
-    return {
-      ok: false,
-      error: "config.disabled cannot park every channel — no place could be booked",
-    };
-  }
 
   if (typeof c.respectAdminOverride !== "boolean") {
     return { ok: false, error: "config.respectAdminOverride must be a boolean" };
@@ -97,9 +57,8 @@ export function normalizeConfig(
   //
   // When PRESENT it must be well-formed, and an ENABLED override must carry a
   // plausible number (so we can't ship a "route every call to nowhere" state).
-  // consumerNumber is the Playground's guest-side test line: optional, and
-  // E.164 when non-empty ('' = unset).
-  let testCall = { ...TEST_CALL_SEED };
+  // A sent consumerNumber is ignored (RETIRED KEYS above).
+  let testCall: TestCall = { ...TEST_CALL_SEED };
   if (c.testCall !== undefined) {
     if (!c.testCall || typeof c.testCall !== "object" || Array.isArray(c.testCall)) {
       return { ok: false, error: "config.testCall must be an object" };
@@ -118,21 +77,8 @@ export function normalizeConfig(
         error: "config.testCall.number must be an E.164 phone (e.g. +5215512345678) while the override is on",
       };
     }
-    if (t.consumerNumber !== undefined && typeof t.consumerNumber !== "string") {
-      return { ok: false, error: "config.testCall.consumerNumber must be a string" };
-    }
-    const consumerNumber = typeof t.consumerNumber === "string" ? t.consumerNumber.trim() : "";
-    if (consumerNumber && !looksLikePhone(consumerNumber)) {
-      return {
-        ok: false,
-        error: "config.testCall.consumerNumber must be an E.164 phone (e.g. +5215512345678) or empty",
-      };
-    }
-    testCall = { enabled: t.enabled, number, consumerNumber };
+    testCall = { enabled: t.enabled, number };
   }
-
-  // attempts — fixed. Whatever the client sent (or didn't), the row stores 2.
-  const attempts = ATTEMPTS;
 
   // unlimitedReservations — optional, defaults OFF so an older admin build that
   // omits the field can never silently switch the cap off. Testing-only knob.
@@ -186,11 +132,8 @@ export function normalizeConfig(
   return {
     ok: true,
     value: {
-      priority,
-      disabled,
       respectAdminOverride: c.respectAdminOverride,
       testCall,
-      attempts,
       unlimitedReservations,
       limits,
       reminder,

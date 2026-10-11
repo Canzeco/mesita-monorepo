@@ -14,10 +14,10 @@ Deno.test("seeded: a blank or missing google_place_id is not seeded", () => {
   assertEquals(isPlaceSeeded("ChIJN1t_tDeuEmsRUsoyG83frY4"), true);
 });
 
-Deno.test("listed: only active and lead are reachable by a guest", () => {
+Deno.test("listed: only active is reachable by a guest", () => {
   assertEquals(isPlaceListed("active"), true);
-  assertEquals(isPlaceListed("lead"), true);
-  for (const s of ["paused", "archived", "pending_review", "pending_verification", null]) {
+  // `lead` is a dead label (MESITA-2144): still on the enum, never listed.
+  for (const s of ["paused", "archived", "lead", null]) {
     assertEquals(isPlaceListed(s), false);
   }
 });
@@ -33,7 +33,7 @@ Deno.test("listed: a missing or non-string state is never listed", () => {
 
 Deno.test("requested: count > 0 and not ready; Enriched wins", () => {
   assertEquals(
-    isPlaceRequested({ requestCount: 1, contentState: "queued" }),
+    isPlaceRequested({ requestCount: 1, contentState: "generating" }),
     true,
   );
   assertEquals(
@@ -41,7 +41,7 @@ Deno.test("requested: count > 0 and not ready; Enriched wins", () => {
     true,
   );
   assertEquals(
-    isPlaceRequested({ requestCount: 0, contentState: "queued" }),
+    isPlaceRequested({ requestCount: 0, contentState: "generating" }),
     false,
   );
   assertEquals(
@@ -49,15 +49,14 @@ Deno.test("requested: count > 0 and not ready; Enriched wins", () => {
     false,
   );
   assertEquals(
-    isPlaceRequested({ requestCount: null, contentState: "queued" }),
+    isPlaceRequested({ requestCount: null, contentState: "generating" }),
     false,
   );
   assertEquals(isPlaceRequested({}), false);
 });
 
-Deno.test("enriching: generating or queued is mid-flight", () => {
+Deno.test("enriching: only generating is mid-flight", () => {
   assertEquals(isPlaceEnriching("generating"), true);
-  assertEquals(isPlaceEnriching("queued"), true);
   assertEquals(isPlaceEnriching("ready"), false);
   assertEquals(isPlaceEnriching("failed"), false);
   assertEquals(isPlaceEnriching(null), false);
@@ -89,7 +88,6 @@ Deno.test("enriched: a stamp on places.enriched_at, never content_state", () => 
 
 Deno.test("profile ready: only content_state ready is a usable profile", () => {
   assertEquals(isPlaceProfileReady("ready"), true);
-  assertEquals(isPlaceProfileReady("queued"), false);
   assertEquals(isPlaceProfileReady("generating"), false);
   assertEquals(isPlaceProfileReady("failed"), false);
   assertEquals(isPlaceProfileReady(null), false);

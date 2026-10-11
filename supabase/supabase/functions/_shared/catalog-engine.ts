@@ -91,11 +91,10 @@ export function planCatalogRails(
 
 export function ilikeHaystack(row: {
   name?: string | null;
-  vibe?: string | null;
   description?: string | null;
   category_label?: string | null;
 }): string {
-  return [row.name, row.vibe, row.description, row.category_label]
+  return [row.name, row.description, row.category_label]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();

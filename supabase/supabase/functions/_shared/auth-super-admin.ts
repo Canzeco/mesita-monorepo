@@ -8,35 +8,27 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { AuthedUser } from "./auth.ts";
 import { json } from "./http.ts";
 
+// The allowlist is keyed by email, its PK: admin-web-grant-admin writes an
+// email and nothing else identifies an operator. A session without one (a
+// phone-only consumer) can never be on it, so it costs no lookup.
 export async function checkSuperAdmin(
   admin: SupabaseClient,
   user: AuthedUser,
 ): Promise<boolean> {
-  type SaRow = { email: string; phone: string | null; user_id: string | null };
-  let saRow: SaRow | null = null;
+  if (!user.emailLower) return false;
 
-  if (user.emailLower) {
-    const { data } = await admin
-      .from("super_admins")
-      .select("email, phone, user_id")
-      .eq("email", user.emailLower)
-      .maybeSingle();
-    saRow = (data as SaRow | null) ?? null;
-  }
-  if (!saRow && user.phone) {
-    const { data } = await admin
-      .from("super_admins")
-      .select("email, phone, user_id")
-      .eq("phone", user.phone)
-      .maybeSingle();
-    saRow = (data as SaRow | null) ?? null;
-  }
+  type SaRow = { email: string; user_id: string | null };
+  const { data } = await admin
+    .from("super_admins")
+    .select("email, user_id")
+    .eq("email", user.emailLower)
+    .maybeSingle();
+  const saRow = (data as SaRow | null) ?? null;
   if (!saRow) return false;
 
   if (saRow.user_id == null) {
     // Fire-and-forget; the next call picks up the backfilled uuid. Target
-    // the matched row by its email PK (always present) so the write is
-    // unambiguous regardless of which identity matched.
+    // the matched row by its email PK.
     void admin
       .from("super_admins")
       .update({ user_id: user.id })
@@ -48,7 +40,8 @@ export async function checkSuperAdmin(
 
 // 403s unless the caller is in `public.super_admins`. The 401 for "no
 // identity on session" stays explicit because every admin EF wants to
-// distinguish "I don't know who you are" from "I know but you can't".
+// distinguish "I don't know who you are" from "I know but you can't". A
+// phone-only session is someone we know, so it gets the 403.
 export async function requireSuperAdmin(
   admin: SupabaseClient,
   user: AuthedUser,

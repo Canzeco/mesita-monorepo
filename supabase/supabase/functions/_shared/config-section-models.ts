@@ -1,10 +1,10 @@
 // _shared/config-section-models.ts — the `models` section's read and write.
 //
 // Was admin-web-get-models-config / admin-web-update-models-config
-// (MESITA-1724 collapse). One { provider, model } per subsystem (supabase /
-// enricher / embeddings / memo / ojo) as ONE jsonb blob on
-// app_config.models_config. NULL means "no blob yet → the client falls back to
-// its DEFAULTS". See 20260726000000_models_config.sql for the column + shape.
+// (MESITA-1724 collapse). One { model } per subsystem (enricher / embeddings /
+// memo) as ONE jsonb blob on app_config.models_config. NULL means "no blob yet
+// → the client falls back to its DEFAULTS". See 20260726000000_models_config.sql
+// for the column + shape.
 //
 // The READ is its own handler because it is the one section that returns no
 // `updatedAt` and no normalizer: the console's coerceModelsConfig owns the
@@ -15,11 +15,12 @@
 // always saves its full form, so partial patches would only invite drift.
 //
 // The MAIN model is always OpenAI (a chat model, or an embedding model under
-// the `embeddings` key). Perplexity is NEVER a main model; `enricher.perplexity`
-// is the blob's only Perplexity key ("off" disables it). Memo has no
-// Perplexity leg, so the validator no longer writes `memo.perplexity`
-// (MESITA-2136): it rebuilds the blob from the keys below, so a stored one is
-// dropped on the next save and never read before that.
+// the `embeddings` key). The blob has no Perplexity key — the Enricher's search
+// preset is enrichment_config.atlasPerplexityPreset. `supabase.model`,
+// `ojo.model`, `enricher.perplexity` and `memo.perplexity` had no reader
+// (MESITA-2136, MESITA-2144). The validator rebuilds the blob from the keys
+// below and ignores everything else, so an older console that still sends them
+// saves cleanly and a stored copy is dropped on the next save.
 //
 // `embeddings` WAS `lineup` (MESITA-1216) — the name outlived the engine
 // MESITA-1048 deleted, and the key never ordered anything: it picks the
@@ -39,25 +40,12 @@ import { readAppConfig, writeAppConfig } from "./write-config.ts";
 import { appConfigMissing } from "./config-section-base.ts";
 import type { ConfigSection, SectionWriteContext } from "./config-section-base.ts";
 
-const PERPLEXITY_OPTIONS = [
-  "off",
-  "sonar",
-  "sonar-pro",
-  "sonar-reasoning",
-  "sonar-reasoning-pro",
-] as const;
-
 // Defaults — mirror the reshape migration so a partial or garbage body still
 // yields a complete, well-formed blob.
 const DEFAULT = {
-  supabase: { model: "gpt-4o-mini" },
-  enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  enricher: { model: "gpt-4o-mini" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini" },
-  // MESITA-1034: gpt-4o, not gpt-4o-mini. Nothing reads `ojo` (or `supabase`,
-  // or `enricher.perplexity`) any more; the keys stay in the stored blob until
-  // MESITA-2091 drops them.
-  ojo: { model: "gpt-4o" },
 };
 
 function obj(v: unknown): Record<string, unknown> {
@@ -72,11 +60,6 @@ function cleanModel(v: unknown, fallback: string): string {
     : fallback;
 }
 
-function cleanPerplexity(v: unknown, fallback: string): string {
-  const s = typeof v === "string" ? v.trim() : "";
-  return (PERPLEXITY_OPTIONS as readonly string[]).includes(s) ? s : fallback;
-}
-
 /** Structural validation → a clean, complete blob (never trusts client shape). */
 export function validateModelsConfig(
   raw: unknown,
@@ -87,24 +70,14 @@ export function validateModelsConfig(
   const r = raw as Record<string, unknown>;
   const config = {
     v: 1,
-    supabase: {
-      model: cleanModel(obj(r.supabase).model, DEFAULT.supabase.model),
-    },
     enricher: {
       model: cleanModel(obj(r.enricher).model, DEFAULT.enricher.model),
-      perplexity: cleanPerplexity(
-        obj(r.enricher).perplexity,
-        DEFAULT.enricher.perplexity,
-      ),
     },
     embeddings: {
       model: cleanModel(obj(r.embeddings).model, DEFAULT.embeddings.model),
     },
     memo: {
       model: cleanModel(obj(r.memo).model, DEFAULT.memo.model),
-    },
-    ojo: {
-      model: cleanModel(obj(r.ojo).model, DEFAULT.ojo.model),
     },
   };
   return { ok: true, config };

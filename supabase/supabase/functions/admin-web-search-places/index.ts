@@ -1,14 +1,13 @@
 // Supabase Edge Function — admin-web-search-places
 //
-// Super-admin place search for the admin console's "Manage Single Place"
-// place picker. Takes a free-text query and returns matching Mesita places
-// (by display name / cached Google name / slug, or an exact id paste). The operator
-// picks one, and the admin console then drives that place through the
-// admin-web-* place EFs.
+// Super-admin place lookup for the admin console. Returns Mesita places by
+// Google Place ID (Mesita Search's paste, the Write box, Manage Single
+// Place); the admin console then drives a place through the admin-web-*
+// place EFs.
 //
-// Four read modes, checked in this order: `all` (the WHOLE catalog, for
-// Mesita Search's All places button), `googlePlaceIds` (a paste), an empty
-// query (recent places), and free text. Every mode shapes the same row.
+// Two read modes, checked in this order: `all` (the WHOLE catalog, for
+// Mesita Search's All places button) and `googlePlaceIds` (a paste). Both
+// shape the same row.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 // verify_jwt = true gates non-bearer callers at the gateway.
@@ -31,20 +30,12 @@ import {
   type EnrichmentMap,
   type FunctionState,
 } from "../_shared/schema-catalog.ts";
-import {
-  mergePlaceRowsById,
-  placeIdsMatchingNameHistory,
-} from "../_shared/place-name-history.ts";
 
 type Body = {
-  query?: unknown;
   limit?: unknown;
   googlePlaceIds?: unknown;
   all?: unknown;
 };
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ALL mode. PostgREST caps one response at db.max_rows (1000), so the whole
 // catalog is walked in pages rather than asked for in a single limit. The
@@ -69,10 +60,9 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  // ALL wins over every other mode: it takes no input, so a stray query or
-  // paste alongside it can only be leftover state from the last run.
+  // ALL wins over the paste: it takes no input, so a stray paste alongside
+  // it can only be leftover state from the last run.
   const all = bodyRes.body.all === true;
-  const q = typeof bodyRes.body.query === "string" ? bodyRes.body.query.trim() : "";
   const googlePlaceIds = Array.isArray(bodyRes.body.googlePlaceIds)
     ? [
       ...new Set(
@@ -83,12 +73,14 @@ Deno.serve(async (req) => {
       ),
     ].slice(0, 250)
     : [];
+  // No input, no read: an empty body never meant "some places".
+  if (!all && googlePlaceIds.length === 0) {
+    return json({ ok: false, error: "googlePlaceIds or all is required" }, 400);
+  }
   const limit =
     typeof bodyRes.body.limit === "number" && Number.isInteger(bodyRes.body.limit)
-      ? Math.min(Math.max(bodyRes.body.limit, 1), googlePlaceIds.length > 0 ? 250 : 50)
-      : googlePlaceIds.length > 0
-      ? Math.min(googlePlaceIds.length, 250)
-      : 25;
+      ? Math.min(Math.max(bodyRes.body.limit, 1), 250)
+      : Math.min(googlePlaceIds.length, 250);
 
   // The catalog table is the PIPELINE in one row — seeded → active → listed →
   // enriching → enriched. Everything except the id-scoped enrichment read
@@ -99,8 +91,8 @@ Deno.serve(async (req) => {
   const cols =
     "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
-  // Only ALL mode reports it: elsewhere the count of a filtered read is the
-  // number of rows already returned, and a second query would say nothing.
+  // Only ALL mode reports it: a paste's count is the number of rows already
+  // returned, and a second query would say nothing.
   let total: number | null = null;
 
   if (all) {
@@ -135,7 +127,7 @@ Deno.serve(async (req) => {
         sensitivity: "base",
       })
     );
-  } else if (googlePlaceIds.length > 0) {
+  } else {
     const { data, error } = await admin
       .from("profiles")
       .select(cols)
@@ -143,73 +135,6 @@ Deno.serve(async (req) => {
       .limit(limit);
     if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
     rows = (data ?? []) as Record<string, unknown>[];
-  } else if (q.length === 0) {
-    // Empty query — browse recent places for the catalog landing state.
-    const { data, error } = await admin
-      .from("profiles")
-      .select(cols)
-      .order("updated_at", { ascending: false })
-      .limit(limit);
-    if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    rows = (data ?? []) as Record<string, unknown>[];
-  } else if (UUID_RE.test(q)) {
-    // Exact id paste — return that one place.
-    const { data, error } = await admin.from("profiles").select(cols).eq("id", q).maybeSingle();
-    if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    rows = data ? [data as Record<string, unknown>] : [];
-  } else if (q.length < 2) {
-    return json({ ok: false, error: "query must be at least 2 characters" }, 400);
-  } else {
-    // Free-text: match the display name OR the cached Google label OR the slug.
-    // `name` is generated from mesita_name → google_name, so the first leg
-    // already covers an operator override; the google_name leg is what still
-    // finds a place by the Google string after an operator renamed it.
-    // Strip characters that break the PostgREST or() grammar (comma / parens),
-    // then escape LIKE wildcards so the remaining text matches literally.
-    const safe = q.replace(/[,()"]/g, " ").trim();
-    const escaped = safe.replace(/[%_\\]/g, (m) => `\\${m}`);
-    const pattern = `%${escaped}%`;
-    const [{ data, error }, historyIds] = await Promise.all([
-      admin
-        .from("profiles")
-        .select(cols)
-        .or(
-          `name.ilike."${pattern}",google_name.ilike."${pattern}",slug.ilike."${pattern}"`,
-        )
-        .order("updated_at", { ascending: false })
-        .limit(limit),
-      placeIdsMatchingNameHistory(admin, pattern),
-    ]);
-    if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    rows = (data ?? []) as Record<string, unknown>[];
-    const have = new Set(
-      rows.map((r) => typeof r.id === "string" ? r.id : "").filter(Boolean),
-    );
-    const missing = historyIds.filter((id) => !have.has(id));
-    if (missing.length > 0) {
-      const { data: extra, error: extraErr } = await admin
-        .from("profiles")
-        .select(cols)
-        .in("id", missing);
-      if (extraErr) {
-        return json({ ok: false, error: `search_failed: ${extraErr.message}` }, 500);
-      }
-      rows = mergePlaceRowsById(
-        rows as Array<Record<string, unknown> & { id: string }>,
-        (extra ?? []) as Array<Record<string, unknown> & { id: string }>,
-        limit,
-      );
-    }
-    // Prefer Mesita-name hits ahead of google-only / slug hits (one row per id).
-    const qLower = safe.toLowerCase();
-    rows.sort((a, b) => {
-      const aMesita = typeof a.name === "string" &&
-        a.name.toLowerCase().includes(qLower);
-      const bMesita = typeof b.name === "string" &&
-        b.name.toLowerCase().includes(qLower);
-      if (aMesita !== bMesita) return aMesita ? -1 : 1;
-      return 0;
-    });
   }
 
   // ── One id-scoped read for the flag that is NOT on profiles. ──

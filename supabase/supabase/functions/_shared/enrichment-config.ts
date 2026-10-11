@@ -10,6 +10,10 @@
 // Ranges re-encode the CHECKs that used to sit on the scalar columns. The
 // image-funnel lock (analyze ≤ keep per source · save ≤ analyzed total) stays
 // write-path only, same as before.
+//
+// atlasPerRunCostCapUsd is gone (MESITA-2144): no run ever read it once the
+// dollar abort was retired. A stored copy is unknown here, so it is dropped on
+// the next write, the same as any other leftover key.
 
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { asRecord } from "./config-coerce.ts";
@@ -45,7 +49,6 @@ export type EnrichmentConfig = {
   atlasSynthesisQuality: string;
   atlasVisionQuality: string;
   atlasPerplexityPreset: string;
-  atlasPerRunCostCapUsd: number;
   atlasDiscoverWebsiteN: number;
   atlasDiscoverInstagramN: number;
   atlasDiscoverFacebookN: number;
@@ -70,7 +73,6 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasSynthesisQuality: "economy",
   atlasVisionQuality: "economy",
   atlasPerplexityPreset: "pro-search",
-  atlasPerRunCostCapUsd: 1,
   atlasDiscoverWebsiteN: 5,
   atlasDiscoverInstagramN: 5,
   atlasDiscoverFacebookN: 5,
@@ -84,11 +86,6 @@ function intIn(v: unknown, min: number, max: number, fallback: number): number {
   if (n < min) return min;
   if (n > max) return max;
   return n;
-}
-
-function money(v: unknown, fallback: number): number {
-  const n = typeof v === "number" && Number.isFinite(v) ? v : fallback;
-  return Math.max(0, Math.round(n * 100) / 100);
 }
 
 function quality(v: unknown, fallback: string): string {
@@ -130,7 +127,6 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     atlasSynthesisQuality: quality(r.atlasSynthesisQuality, d.atlasSynthesisQuality),
     atlasVisionQuality: quality(r.atlasVisionQuality, d.atlasVisionQuality),
     atlasPerplexityPreset: preset(r.atlasPerplexityPreset, d.atlasPerplexityPreset),
-    atlasPerRunCostCapUsd: money(r.atlasPerRunCostCapUsd, d.atlasPerRunCostCapUsd),
     atlasDiscoverWebsiteN: intIn(r.atlasDiscoverWebsiteN, 0, 10, d.atlasDiscoverWebsiteN),
     atlasDiscoverInstagramN: intIn(r.atlasDiscoverInstagramN, 0, 10, d.atlasDiscoverInstagramN),
     atlasDiscoverFacebookN: intIn(r.atlasDiscoverFacebookN, 0, 10, d.atlasDiscoverFacebookN),

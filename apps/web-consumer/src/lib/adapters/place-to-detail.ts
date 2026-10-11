@@ -42,7 +42,6 @@ export type ResolvedTag = {
   label_es: string;
   label_en: string;
   facet: string;
-  section: string;
   sort_order: number;
 };
 
@@ -67,7 +66,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
     category: categoryName,
-    vibe: str(row.vibe) ?? "",
     price_level: priceLevel,
     price_range: derivePriceRange(row),
     currency,
@@ -89,11 +87,10 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     updated_label: updatedLabel,
     last_updated_label: updatedLabel,
     // Enrichment still in flight for the WHOLE pipeline (research → analysis →
-    // contents). places.content_state stays 'queued'/'generating' until the
-    // contents stage lands 'ready' — never clear Enriching after research alone
+    // contents). places.content_state stays 'generating' until the contents
+    // stage lands 'ready' — never clear Enriching after research alone
     // (MESITA-453). 'ready'/'failed' both read as done.
-    is_enriching:
-      row.content_state === "queued" || row.content_state === "generating",
+    is_enriching: row.content_state === "generating",
     is_profile_ready: row.is_profile_ready === true ||
       row.content_state === "ready",
     is_enriched: row.is_enriched === true ||
@@ -127,10 +124,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       rating: num(row.google_stars_overall) ?? 0,
       count: num(row.google_review_count) ?? 0,
     },
-    facebook: {
-      rating: num(row.facebook_rating) ?? 0,
-      followers: num(row.facebook_followers) ?? 0,
-    },
+    facebook: { followers: num(row.facebook_followers) ?? 0 },
     instagram: { followers: num(row.instagram_followers_count) ?? 0 },
 
     // Enricher (enricher-cron-enrich-place-*) stores each review as
@@ -226,6 +220,5 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     },
 
     phone: str(row.phone),
-    email: str(row.email),
   };
 }

@@ -13,7 +13,6 @@ export type PlaceDetail = {
   // 1. Summary
   name: string;
   category: string;
-  vibe: string;
   price_level: 1 | 2 | 3 | 4;
   // The place's own per-person numeric range (e.g. "MX$200–300"), or ""
   // when it has none. Quick-view surfaces (swipe / catalog / map) render
@@ -44,8 +43,8 @@ export type PlaceDetail = {
   last_updated_label: string;
   // True while the Enricher is still building this place's profile across the
   // FULL pipeline (research → analysis → contents). Driven by
-  // places.content_state ∈ {queued, generating} — stays generating until
-  // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
+  // places.content_state = generating — it stays generating until contents
+  // lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
   /** Viewable profile (content_state ready). Ugly Create profiles are ready. */
   is_profile_ready: boolean;
@@ -75,8 +74,9 @@ export type PlaceDetail = {
   }>;
 
   // 3. External reputation — the three outside channels the summary reads.
+  // Google carries a rating and a count; Facebook and Instagram carry reach.
   google: { rating: number; count: number };
-  facebook: { rating: number; followers: number };
+  facebook: { followers: number };
   instagram: { followers: number };
 
   // 4. Google reviews
@@ -148,5 +148,4 @@ export type PlaceDetail = {
   };
 
   phone?: string;
-  email?: string;
 };

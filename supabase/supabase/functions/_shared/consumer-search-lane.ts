@@ -803,7 +803,9 @@ async function fetchEmbedPool(
   const base = admin
     .from("profiles")
     .select(EMBED_COLUMNS)
-    .in("state", ["active", "lead"])
+    // Listed = `active`; `lead` is a dead label (MESITA-2144) that a filter
+    // must not name once the enum drops it — Postgres would 22P02 the read.
+    .eq("state", "active")
     .not("name_embedding", "is", null);
   let query = applyGeneralGateQuery(
     base as unknown as GeneralGateQuery,
@@ -1061,7 +1063,7 @@ async function fetchListedByGoogleIds(
     // General inputs.
     .select(EMBED_COLUMNS)
     .in("google_place_id", placeIds)
-    .in("state", ["active", "lead"]);
+    .eq("state", "active");
   if (error) {
     console.error("[consumer-search-lane] enrich:", error.message);
     return [];

@@ -1,7 +1,7 @@
-// DISCOVERY BLEND — how the eight earned signals compose (Docs › Discovery
+// DISCOVERY BLEND — how the seven earned signals compose (Docs › Discovery
 // §A, MESITA-1196).
 //
-// ONE PASS. blend() is the product of `s^w` across the eight signals in
+// ONE PASS. blend() is the product of `s^w` across the seven signals in
 // discovery-signals.ts, and rankByBlend() sorts a pool by it. Nothing runs
 // after the sort and nothing reorders on money: the order a guest is served
 // is the order the signals earned, ties broken by incoming order.
@@ -28,8 +28,8 @@
 // the library returns a hard 0 except Proximity past its maximum — see the
 // deletion-vs-demotion note in discovery-signals.ts.
 //
-// THE PRODUCT IS NOT NORMALIZED and does not need to be. Eight signals near 0.8
-// multiply to ~0.17, which looks alarming and means nothing: only the ORDER is
+// THE PRODUCT IS NOT NORMALIZED and does not need to be. Seven signals near 0.8
+// multiply to ~0.21, which looks alarming and means nothing: only the ORDER is
 // consumed. Taking a geometric mean (the nth root) would rescale every score
 // identically and change no comparison, at the cost of a pow() per place. The
 // raw product is kept so `score` in a debug payload is the literal thing the
@@ -58,7 +58,7 @@ export type SignalParamsByKey = Partial<Record<SignalKey, SignalParamBag>>;
  * `parts` records what each signal CONTRIBUTED, which for a disabled signal is
  * NEUTRAL — not what it would have said if it were on. That distinction is
  * load-bearing in both directions: a disabled signal is never CALLED (so a
- * pool of a thousand places does not pay for eight signals when the operator
+ * pool of a thousand places does not pay for seven signals when the operator
  * switched four off, and Randomness cannot spend a `Math.random()` whose value
  * is thrown away), and the debug payload therefore reports the blend that
  * actually ran rather than a hypothetical one. A part that reads 1 means "this

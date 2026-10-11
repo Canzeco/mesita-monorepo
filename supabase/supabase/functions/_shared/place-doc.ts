@@ -64,11 +64,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { nullable } from "./doc-schema.ts";
-import {
-  GoogleReviewsSchema,
-  PlaceDetailsSchema,
-  PopularTimesSchema,
-} from "./place-jsonb-schemas.ts";
+import { GoogleReviewsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
 
 // ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
@@ -100,7 +96,6 @@ export type PlaceProfileRow = {
   category: string | null;
   /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
   family_keys: string[] | null;
-  vibe: string | null;
   price_level: number | null;
   lat: number | null;
   lng: number | null;
@@ -123,7 +118,6 @@ export type PlaceProfileRow = {
   reddit_url: string | null;
   google_maps_url: string | null;
   didi_food_url: string | null;
-  email: string | null;
   hours: unknown | null;
   /** pgvector literal, e.g. "[0.1,0.2,...]" — always a string on the JS side. */
   embedding: string | null;
@@ -131,7 +125,6 @@ export type PlaceProfileRow = {
   /** MESITA-1238: name-only vector. Same literal shape as `embedding`. */
   name_embedding: string | null;
   name_embedding_hash: string | null;
-  country: string | null;
   description: string | null;
   menu_pdf_url: string | null;
   tags: string[];
@@ -141,14 +134,9 @@ export type PlaceProfileRow = {
   menu_pdf_name: string | null;
   enriched_at: string | null;
   enrichment_sources: unknown | null;
-  editorial_summary: string | null;
   zone: string | null;
   city: string | null;
-  established_year: number | null;
-  executive_chef: string | null;
-  facebook_rating: number | null;
   facebook_followers: number | null;
-  details: unknown | null;
   google_reviews: unknown | null;
   menus: unknown | null;
   popular_times: unknown | null;
@@ -157,9 +145,6 @@ export type PlaceProfileRow = {
   embedding_source_text: string | null;
   google_name: string | null;
   mesita_name: string | null;
-  enrich_every_days: number | null;
-  enrich_mode: "full" | "analysis" | "contents";
-  enrich_next_at: string | null;
   /** MESITA-1249: the materialized meter — see EnrichmentMapSchema. */
   enrichment: unknown;
   reservation_channel: ServingChannel | null;
@@ -174,7 +159,6 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
   "family_keys",
-  "vibe",
   "price_level",
   "lat",
   "lng",
@@ -197,13 +181,11 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "reddit_url",
   "google_maps_url",
   "didi_food_url",
-  "email",
   "hours",
   "embedding",
   "embedding_source_hash",
   "name_embedding",
   "name_embedding_hash",
-  "country",
   "description",
   "menu_pdf_url",
   "tags",
@@ -213,14 +195,9 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "menu_pdf_name",
   "enriched_at",
   "enrichment_sources",
-  "editorial_summary",
   "zone",
   "city",
-  "established_year",
-  "executive_chef",
-  "facebook_rating",
   "facebook_followers",
-  "details",
   "google_reviews",
   "menus",
   "popular_times",
@@ -229,9 +206,6 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "embedding_source_text",
   "google_name",
   "mesita_name",
-  "enrich_every_days",
-  "enrich_mode",
-  "enrich_next_at",
   "enrichment",
   "reservation_channel",
   "reservation_target",
@@ -263,8 +237,8 @@ export type PlaceRow = {
   created_at: string;
   updated_at: string;
   slug: string;
-  state: "lead" | "active" | "paused" | "archived" | "pending_review" | "pending_verification";
-  content_state: "queued" | "generating" | "ready" | "failed";
+  state: "active" | "paused" | "archived";
+  content_state: "generating" | "ready" | "failed";
   currency: string;
 };
 
@@ -322,24 +296,21 @@ function isNonNullEnum<T extends string>(v: unknown, legal: ReadonlySet<T>): v i
 // ── place_profiles_* field groups (mirrors the live CHECK constraints named) ───────
 
 const PLACE_PLAIN_STRING_KEYS = new Set<string>([
-  "category", "vibe", "address", "timezone", "closes_at", "phone", "pitch",
+  "category", "address", "timezone", "closes_at", "phone", "pitch",
   "story", "website_url", "instagram_url", "facebook_url",
   "whatsapp_url", "opentable_url", "resy_url", "uber_eats_url", "x_url",
   "threads_url", "reddit_url", "google_maps_url",
-  "didi_food_url", "email", "embedding_source_hash", "country", "description",
-  "menu_pdf_url", "menu_pdf_name", "editorial_summary",
-  "zone", "city", "executive_chef", "category_label",
+  "didi_food_url", "embedding_source_hash", "description",
+  "menu_pdf_url", "menu_pdf_name",
+  "zone", "city", "category_label",
   "embedding_source_text", "google_name", "mesita_name",
   "reservation_target", "embedding", "name_embedding",
   "name_embedding_hash", "google_place_id",
-  "enriched_at", "business_state_at", "enrich_next_at",
+  "enriched_at", "business_state_at",
 ]);
-const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng", "established_year"]);
-// place_profiles_google_stars_overall_check / place_profiles_facebook_rating_check
-// — 0..5 inclusive, null allowed.
-const PLACE_STAR_RATING_KEYS = new Set<string>([
-  "google_stars_overall", "facebook_rating",
-]);
+const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng"]);
+// place_profiles_google_stars_overall_check — 0..5 inclusive, null allowed.
+const PLACE_STAR_RATING_KEYS = new Set<string>(["google_stars_overall"]);
 // place_profiles_google_review_count_check / place_profiles_instagram_followers_count_check
 // / place_profiles_facebook_followers_check — >= 0, null allowed (a raw `col >= 0`
 // CHECK still passes NULL under Postgres 3-valued logic).
@@ -347,14 +318,14 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
   "google_review_count", "instagram_followers_count", "facebook_followers",
 ]);
 // hours/enrichment_sources/menus/products stay opaque (isJsonish) — no
-// schema exists for their internal shape yet. details/google_reviews/
-// popular_times moved OUT of this set (MESITA-1247 reconciliation, see
+// schema exists for their internal shape yet. google_reviews/popular_times
+// moved OUT of this set (MESITA-1247 reconciliation, see
 // PLACE_SCHEMA_JSON_KEYS below): place-jsonb-schemas.ts already validates
 // their content, and PR #1163 first shipped that validation only at two
 // caller-side gates (enrich-synthesis-profile.ts, enrich-google-basics.ts)
 // plus a competing, uncalled `update-place.ts` door — folding the same
 // schemas in HERE, at the one real door, closes the gap for every OTHER
-// caller these three fields would otherwise pass through unvalidated (this
+// caller these fields would otherwise pass through unvalidated (this
 // door's own PLACE/PROFILE surfaces, save-place.ts's create insert, and
 // any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
@@ -365,7 +336,6 @@ const PLACE_JSON_KEYS = new Set<string>([
 // (place-jsonb-schemas.ts's own schemas reject bare `null`, by design, since
 // they are also used where absence already means "don't touch this field").
 const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean; error?: string } }> = {
-  details: nullable(PlaceDetailsSchema),
   google_reviews: nullable(GoogleReviewsSchema),
   popular_times: nullable(PopularTimesSchema),
   // NOT nullable — place_profiles.enrichment is NOT NULL with a default (MESITA-1249).
@@ -380,7 +350,6 @@ const PLACE_STRING_ARRAY_KEYS = new Set<string>(["photos", "tags"]);
 // same day).
 const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>(["reservations_enabled"]);
 const BUSINESS_STATE_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
-const ENRICH_MODE_VALUES = new Set(["full", "analysis", "contents"]);
 
 function checkPlaceProfileField(key: string, v: unknown): string | null {
   if (PLACE_PROFILE_BOOLEAN_KEYS.has(key)) {
@@ -417,14 +386,6 @@ function checkPlaceProfileField(key: string, v: unknown): string | null {
     // place_profiles_price_level_check
     case "price_level":
       return isNullableRange(v, 1, 4) ? null : "price_level must be between 1 and 4, or null";
-    // place_profiles_enrich_every_days_range
-    case "enrich_every_days":
-      return isNullableRange(v, 1, 365) ? null
-        : "enrich_every_days must be between 1 and 365, or null";
-    // place_profiles_enrich_mode_kind — NOT NULL
-    case "enrich_mode":
-      return isNonNullEnum(v, ENRICH_MODE_VALUES) ? null
-        : "enrich_mode must be one of full, analysis, contents";
     // place_profiles_business_state_check
     case "business_state":
       return v === null || (typeof v === "string" && BUSINESS_STATE_VALUES.has(v)) ? null
@@ -483,10 +444,11 @@ export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchVali
 
 const PLACE_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
 
-const STATE_VALUES = new Set([
-  "lead", "active", "paused", "archived", "pending_review", "pending_verification",
-]);
-const CONTENT_STATE_VALUES = new Set(["queued", "generating", "ready", "failed"]);
+// The live enums still carry lead / pending_review / pending_verification and
+// queued until the profiles-view migration drops them; no writer sends one, so
+// the door refuses them now (MESITA-2144).
+const STATE_VALUES = new Set(["active", "paused", "archived"]);
+const CONTENT_STATE_VALUES = new Set(["generating", "ready", "failed"]);
 
 function checkPlaceField(key: string, v: unknown): string | null {
   if (PLACE_NOTNULL_STRING_KEYS.has(key)) {

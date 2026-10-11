@@ -35,10 +35,20 @@
 // TESTS ARE NOT SCANNED. A test that names a dropped column is asserting it is
 // gone, and deploys nothing.
 //
-// ONE NAME IS AMBIGUOUS. `claimed_at` leaves `places` but stays on
-// `reservation_tickets`, where the reservation call claims its row. It is
-// judged only where the statement's `.from()` says which table it is, so a
-// column-list constant naming it is not judged at all.
+// SOME NAMES ARE AMBIGUOUS. `claimed_at` leaves `places` but stays on
+// `reservation_tickets`, where the reservation call claims its row. A name in
+// LIVE_ELSEWHERE is judged only where the statement's `.from()` says which
+// table it is, so a column-list constant naming it is not judged at all.
+//
+// MESITA-2144 — the residue cut. A second exact list, RESIDUE_DROPPED_COLUMNS,
+// names what the residue drops take off five tables. Its Edge Function half
+// lands first, so this scan proves no deployed code still names one of them
+// before any DROP applies. It shares the scan, not the counts: the First Stage
+// list above stays the migration's own. Four of its names are live on another
+// table — `state`, `phone`, `email`, `section` — and join LIVE_ELSEWHERE.
+// `country` does not: both tables that carry it lose it, and the `profiles`
+// view that projects it loses it with the view rebuild, so it is judged
+// everywhere.
 //
 // WHY A NAME LIST AND NOT A SCHEMA DIFF: the same reason dropped-table-refs
 // gives. The list is the migration's own, it is exact, and it cannot misfire
@@ -129,14 +139,51 @@ const DROPPED_COLUMNS = {
   profiles: ["tiktok_url", "tripadvisor_url", "yelp_url", "requires_story"],
 } as const satisfies Record<string, readonly string[]>;
 
-type DroppingTable = keyof typeof DROPPED_COLUMNS;
+/** MESITA-2144 — exactly what the residue cut drops, per table. The
+ *  `profiles` view's copies of the place_profiles names go with the view
+ *  rebuild. */
+const RESIDUE_DROPPED_COLUMNS = {
+  place_profiles: [
+    "vibe",
+    "email",
+    "country",
+    "details",
+    "editorial_summary",
+    "established_year",
+    "executive_chef",
+    "facebook_rating",
+    "enrich_every_days",
+    "enrich_mode",
+    "enrich_next_at",
+  ],
+  reservation_tickets: ["completed_at"],
+  consumer_notifications: ["state", "resolved_at"],
+  consumers: ["country"],
+  super_admins: ["phone"],
+  place_tags: ["section"],
+} as const satisfies Record<string, readonly string[]>;
 
-/** Dropped from one table, live on another: judged only with a known table. */
+/** Dropped from one table, live on another: judged only with a known table.
+ *  The value is where the name stays live. */
 const LIVE_ELSEWHERE: Record<string, readonly string[]> = {
   claimed_at: ["reservation_tickets"],
+  email: ["super_admins"],
+  phone: ["consumers", "place_profiles", "profiles"],
+  section: ["place_categories"],
+  state: ["place_research", "places", "profiles", "reservation_tickets"],
 };
 
-const DROPPED = new Set<string>(Object.values(DROPPED_COLUMNS).flat());
+/** Every dropping table's columns, both cuts merged. */
+const DROPPED_BY_TABLE = new Map<string, Set<string>>();
+for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS]) {
+  for (const [table, cols] of Object.entries(list)) {
+    const set = DROPPED_BY_TABLE.get(table) ?? new Set<string>();
+    for (const col of cols) set.add(col);
+    DROPPED_BY_TABLE.set(table, set);
+  }
+}
+
+const DROPPED = new Set<string>([...DROPPED_BY_TABLE.values()].flatMap((s) => [...s]));
 
 /** Constants whose strings are column names by this codebase's convention. */
 const COLUMN_LIST_NAME = /(?:COLUMNS|COLS|SELECT|PATCH_KEYS)(?:_ARRAY)?$/;
@@ -442,8 +489,7 @@ function droppedOn(column: string, table: string | null): boolean {
   if (!DROPPED.has(column)) return false;
   if (!(column in LIVE_ELSEWHERE)) return true;
   if (table === null) return false;
-  return (DROPPED_COLUMNS[table as DroppingTable] as readonly string[] | undefined)
-    ?.includes(column) ?? false;
+  return DROPPED_BY_TABLE.get(table)?.has(column) ?? false;
 }
 
 /** The table the statement around `index` reads from, when a literal says. */
@@ -664,6 +710,31 @@ Deno.test("DROPPED_COLUMNS is the migration's list, no more and no less", () => 
   }
 });
 
+Deno.test("RESIDUE_DROPPED_COLUMNS is the MESITA-2144 cut, no more and no less", () => {
+  const counts = Object.fromEntries(
+    Object.entries(RESIDUE_DROPPED_COLUMNS).map(([table, cols]) => [table, cols.length]),
+  );
+  assertEquals(counts, {
+    place_profiles: 11,
+    reservation_tickets: 1,
+    consumer_notifications: 2,
+    consumers: 1,
+    super_admins: 1,
+    place_tags: 1,
+  });
+  for (const [table, cols] of Object.entries(RESIDUE_DROPPED_COLUMNS)) {
+    assertEquals(new Set(cols).size, cols.length, `${table} lists a column twice`);
+  }
+  // A name live elsewhere is still dropped somewhere, and never from a table
+  // it is listed as live on.
+  for (const [col, liveOn] of Object.entries(LIVE_ELSEWHERE)) {
+    assertEquals(DROPPED.has(col), true, `${col} is in LIVE_ELSEWHERE but dropped nowhere`);
+    for (const table of liveOn) {
+      assertEquals(DROPPED_BY_TABLE.get(table)?.has(col) ?? false, false, `${col} is live on ${table}`);
+    }
+  }
+});
+
 Deno.test("the scan fires on every shape it claims, and on nothing else", () => {
   const files = memoryFiles({
     "/v/_shared/cols.ts": [
@@ -730,14 +801,41 @@ Deno.test("the scan fires on every shape it claims, and on nothing else", () => 
   );
 });
 
-Deno.test("no Edge Function or script names a column the First Stage cut drops", () => {
+Deno.test("the residue names judge by table where they are live elsewhere", () => {
+  const files = memoryFiles({
+    "/v/fn/index.ts": [
+      `const PLACE_COLUMNS = ["id", "vibe", "email", "phone"];`,
+      `await admin.from("super_admins").select("email, phone, user_id").eq("email", e);`,
+      `await admin.from("consumers").select("id, phone, country");`,
+      `await admin.from("place_tags").select("slug, section");`,
+      `await admin.from("place_categories").select("slug, section").order("section");`,
+      `await admin.from("consumer_notifications").select("id, state, resolved_at");`,
+      `await admin.from("places").select("id, state").eq("state", "active");`,
+      `await admin.from("place_profiles").update({ email: null, phone: "1" }).eq("id", id);`,
+      `await admin.from("reservation_tickets").select("id, state, completed_at, confirmed_at");`,
+    ].join("\n"),
+  });
+  const named = findDroppedColumnRefs(files, ["/v/fn/index.ts"]).map((h) => h.replace(/ \(.*\)$/, ""));
+  assertEquals(named, [
+    `/v/fn/index.ts:1 -> "vibe"`,
+    `/v/fn/index.ts:2 -> "phone"`,
+    `/v/fn/index.ts:3 -> "country"`,
+    `/v/fn/index.ts:4 -> "section"`,
+    `/v/fn/index.ts:6 -> "resolved_at"`,
+    `/v/fn/index.ts:6 -> "state"`,
+    `/v/fn/index.ts:8 -> "email"`,
+    `/v/fn/index.ts:9 -> "completed_at"`,
+  ]);
+});
+
+Deno.test("no Edge Function or script names a column the First Stage or residue cut drops", () => {
   const paths = [...walk(FUNCTIONS_DIR), ...walk(SCRIPTS_DIR)].sort();
   const offenders = findDroppedColumnRefs(diskFiles(), paths);
   assertEquals(
     offenders,
     [],
-    `These name a column 20261011000000_first_stage_schema_cut.sql drops, and will throw 42703 once it applies:\n  ${
+    `These name a column 20261011000000_first_stage_schema_cut.sql or the MESITA-2144 residue cut drops, and will throw 42703 once it applies:\n  ${
       offenders.join("\n  ")
-    }\n\nRemove the column from the query, the patch and the column list together. If a column in DROPPED_COLUMNS is being kept after all, it comes out of the migration and this list in the same PR.`,
+    }\n\nRemove the column from the query, the patch and the column list together. If a column in DROPPED_COLUMNS or RESIDUE_DROPPED_COLUMNS is being kept after all, it comes out of the migration and its list in the same PR.`,
   );
 });

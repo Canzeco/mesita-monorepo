@@ -19,7 +19,7 @@
 //
 //   Created    google_place_id present (identity spine)
 //   Active     Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
-//   Listed     places.state ∈ (active, lead)
+//   Listed     places.state = active
 //   Requested  guest request count, 0…n — not a Yes/No
 //   Enriched   CRENUP complete — a yes, not a 0–8 high-water.
 //   Enriching  Enricher pipeline mid-flight (live run). Independent of Enriched.
@@ -65,11 +65,10 @@ import {
 // Chips never repeat the row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
-//   Listed     a guest can reach the place AT ALL. places.state ∈
-//              (active, lead) is what the consumer RLS policy
-//              places_select_public_visible gates on — its content_state
-//              leg is a tautology (all four labels of the enum are allowed),
-//              so state alone decides. Docs › Atlas is right that Listed
+//   Listed     a guest can reach the place AT ALL. places.state = active
+//              is what the consumer RLS policy places_select_public_visible
+//              gates on — its content_state leg allows every label, so state
+//              alone decides. Docs › Atlas is right that Listed
 //              is not a RUNG — nothing progresses through it — but it is not a
 //              constant either: Unlist writes `paused` and every guest surface
 //              stops resolving it. Read it from `state`, never from a merged
@@ -115,11 +114,9 @@ export function StateCard({ place }: { place: AdminPlace }) {
       ? "Couldn't read the place's listing state."
       : placeState === "active"
         ? "active — on every consumer surface, and in the discovery pool."
-        : placeState === "lead"
-          ? "lead — reachable by link and by search, but discovery pools active places only."
-          : placeState
-            ? `${placeState} — no guest surface resolves this place; the RLS policy stops the read.`
-            : "No state on the row.";
+        : placeState
+          ? `${placeState} — no guest surface resolves this place; the RLS policy stops the read.`
+          : "No state on the row.";
   const listedDetail = listedDetailBase;
 
   const requestedDetail =

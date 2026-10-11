@@ -16,9 +16,9 @@
 // hidden: the exponents live in one table, and a dead proximity/stars/log
 // multiplier beside a live per-mode Proximity exponent would read as a
 // second, competing dial.
-// The guest category-filter default stays on the blob and gets no control —
-// nothing reads it, and the empty-state rule this card just left forbids
-// staging a dead knob.
+// The unread guest category-filter default went with them: a copy still
+// sitting in the stored blob binds to nothing, and the normalizer drops it on
+// the next Save rather than staging a dead knob here.
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Clock, GalleryHorizontalEnd, MapPin, Star } from "lucide-react";

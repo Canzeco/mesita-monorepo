@@ -367,7 +367,6 @@ const ROWS: ScrollMockRow[] = [
 // checked against this app's `Place` for what it supplies, not for what the
 // base alone would have to satisfy.
 const MOCK_BASE = {
-  vibe: null,
   currency: "MXN",
   phone: null,
   story: null,
@@ -383,7 +382,6 @@ const MOCK_BASE = {
   reddit_url: null,
   didi_food_url: null,
   google_maps_url: null,
-  email: null,
   created_at: "2026-10-10T00:00:00.000Z",
   is_enriching: false,
 };
