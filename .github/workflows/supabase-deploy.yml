@@ -257,6 +257,10 @@ jobs:
             validate-web-scan-ticket
             validate-web-validate-ticket
             staff-web-benchmark-link-strategies
+            supabase-cron-enrich-place-research
+            supabase-cron-enrich-place-analysis
+            supabase-cron-enrich-place-contents
+            supabase-edgefunc-store-place-images
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"
