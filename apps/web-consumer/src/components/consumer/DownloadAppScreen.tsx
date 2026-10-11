@@ -24,7 +24,7 @@ export function DownloadAppScreen() {
         </Link>
         {" · "}
         <Link href="/mob" className="text-primary font-medium">
-          Phone emulator
+          Sign in
         </Link>
       </p>
     </div>

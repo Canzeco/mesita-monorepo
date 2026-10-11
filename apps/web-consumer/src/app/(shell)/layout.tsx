@@ -5,7 +5,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
-import { WebFrame } from "@/components/consumer/WebFrame";
 import { DownloadAppScreen } from "@/components/consumer/DownloadAppScreen";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
@@ -66,14 +65,14 @@ export default async function ConsumerShellLayout({
   // rate-limited). Sending the guest to /web would bounce straight back to
   // Home and loop forever, so the shell says so instead (Bugbot, PR #1995).
   //
-  // It keeps the phone menu below md like every other /web screen
-  // (MESITA-2130): a screen with no menu at phone width is a dead end.
+  // It keeps the phone menu like every other screen (MESITA-2130): a screen
+  // with no menu is a dead end.
   if (!user && surface === "web") {
     return (
-      <WebFrame>
+      <MobileFrame surface="web" signedIn={false}>
         <DownloadAppScreen />
-        <BottomNav className="md:hidden" />
-      </WebFrame>
+        <BottomNav />
+      </MobileFrame>
     );
   }
   // An anonymous /web session is not an account: /mob still asks for the
@@ -156,10 +155,13 @@ export default async function ConsumerShellLayout({
   // The modal slot is rendered last in this relative shell wrapper.
   // Section-scoped modal routes mount absolute overlays that intentionally
   // cover BOTH top bar and bottom nav while preserving the underlying shell.
-  const Frame = surface === "mob" ? MobileFrame : WebFrame;
-
+  //
+  // ONE FRAME FOR BOTH SURFACES (Pato, MESITA-2134: "make it kinda like a
+  // mobile emulator in web — fuck the sidebar menu"). /web and /mob both
+  // draw the phone card; they differ only in who may enter (anonymous browse
+  // vs phone sign-in) and in the emulator strip's one link.
   return (
-    <Frame>
+    <MobileFrame surface={surface} signedIn={!user.is_anonymous}>
       {/* Runs before the children subtree hydrates the saved set, so a fresh
           consumer never inherits the previous account's localStorage-backed
           favorites / reservations (survives sign-out + DB reset). */}
@@ -181,10 +183,7 @@ export default async function ConsumerShellLayout({
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>
           </div>
-          <BottomNav
-            userId={user.id}
-            className={surface === "web" ? "md:hidden" : undefined}
-          />
+          <BottomNav userId={user.id} />
           {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}
@@ -196,6 +195,6 @@ export default async function ConsumerShellLayout({
         </div>
       </ConsumerIdentityProvider>
       <Toaster />
-    </Frame>
+    </MobileFrame>
   );
 }

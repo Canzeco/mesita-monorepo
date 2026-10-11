@@ -120,6 +120,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       mePages: {
         profile: "/me/profile",
         instagram: "/me/instagram",
+        plan: "/me/plan",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         help: "/me/help",
@@ -162,7 +163,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meClassInvite: "/me/class/invite",
         meDiamond: "/me/diamond",
         meDiamondInvite: "/me/diamond/invite",
-        mePlan: "/me/plan",
         meVisits: "/me/visits",
         meSettingsMetrics: "/me/settings/metrics",
         mePassport: "/me/passport",
@@ -213,7 +213,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     ]) {
       expect(CONSUMER_ROUTES, key).not.toHaveProperty(key);
     }
-    for (const key of ["diamond", "diamondInvite", "plan", "settingsMetrics", "visits"]) {
+    for (const key of ["diamond", "diamondInvite", "settingsMetrics", "visits"]) {
       expect(CONSUMER_ROUTES.mePages, key).not.toHaveProperty(key);
     }
     for (const key of ["inbox", "newVisit", "visit", "wallet", "order"]) {
@@ -338,6 +338,7 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/me",
     "/me/profile",
     "/me/instagram",
+    "/me/plan",
     "/me/notifications",
     "/me/reservations",
     "/me/settings",
@@ -348,7 +349,6 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/wallet",
     "/order",
     "/me/diamond",
-    "/me/plan",
     "/inbox/mine",
     "/subscribe/premium",
   ];
@@ -401,7 +401,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/class", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
       { source: "/me/diamond", destination: "/me", permanent: true },
-      { source: "/me/plan", destination: "/me", permanent: true },
       { source: "/me/visits", destination: "/me", permanent: true },
       { source: "/me/settings/metrics", destination: "/me/settings", permanent: true },
       { source: "/me/passport", destination: "/me/profile", permanent: true },

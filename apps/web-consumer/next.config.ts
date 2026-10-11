@@ -79,7 +79,6 @@ const nextConfig: NextConfig = {
       { source: "/me/class", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
       { source: "/me/diamond", destination: "/me", permanent: true },
-      { source: "/me/plan", destination: "/me", permanent: true },
       { source: "/me/visits", destination: "/me", permanent: true },
       { source: "/me/settings/metrics", destination: "/me/settings", permanent: true },
       // The Passport (MESITA-2043). The member number lives on Profile.

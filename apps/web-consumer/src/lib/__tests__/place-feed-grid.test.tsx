@@ -185,7 +185,7 @@ describe("Discovery invents no places", () => {
   const favs = read("components/consumer/home/FavoritesList.tsx");
 
   it.each([
-    ["Home", "components/consumer/home/CatalogRails.tsx"],
+    ["Catalog", "components/consumer/home/CatalogRails.tsx"],
     ["Favs", "components/consumer/home/FavoritesList.tsx"],
   ])("%s ships no mock deck", (_label, rel) => {
     const src = read(rel);

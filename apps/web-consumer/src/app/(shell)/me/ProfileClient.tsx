@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarCheck,
   CircleHelp,
+  Gem,
   Instagram,
   Settings as SettingsIcon,
   UserRound,
@@ -25,17 +26,17 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { IdentityBar } from "./IdentityBar";
 
-// The Me surface — the identity header, then three pairs (Pato, MESITA-2080:
-// "Its just only Profile Instagram / Notifications Reservations / Settings
-// Support"):
+// The Me surface — the identity header, then seven cells in Pato's order
+// (MESITA-2134: "profile and instagram and plan and notifications and
+// reservations and settings and support"):
 //
 //   header         identity + Instagram; the bar IS a door (MESITA-1652)
 //   2              Profile (carries the member number) · Instagram
-//   2              Notifications · Reservations
-//   2              Settings · Support
+//   2              Plan · Notifications
+//   2              Reservations · Settings
+//   1              Support
 //
-// SIX CELLS, AND THAT IS THE WHOLE PAGE (MESITA-2087). route-structure T8
-// pins the six.
+// SEVEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
 //
 // EVERY CELL IS A ROUTE (Pato, MESITA-1789). Sheets over this hub stacked
 // history as overlays. DestTiles Link to /me/<box>.
@@ -131,28 +132,40 @@ export function ProfileClient() {
             />
           </DestGrid>
 
+          {/* PATO'S ORDER, verbatim (MESITA-2134): profile, instagram,
+              plan, notifications, reservations, settings, support. Seven
+              tiles, so Support sits alone on the last row. */}
           <DestGrid>
+            <DestTile
+              Icon={Gem}
+              title="Plan"
+              summary="Free"
+              href={CONSUMER_ROUTES.mePages.plan}
+            />
             <DestTile
               Icon={Bell}
               title="Notifications"
               summary="Bookings and updates"
               href={CONSUMER_ROUTES.mePages.notifications}
             />
+          </DestGrid>
+
+          <DestGrid>
             <DestTile
               Icon={CalendarCheck}
               title="Reservations"
               summary="Upcoming and past"
               href={CONSUMER_ROUTES.mePages.reservations}
             />
-          </DestGrid>
-
-          <DestGrid>
             <DestTile
               Icon={SettingsIcon}
               title="Settings"
               summary="Language, account"
               href={CONSUMER_ROUTES.mePages.settings}
             />
+          </DestGrid>
+
+          <DestGrid>
             <DestTile
               Icon={CircleHelp}
               title="Support"
