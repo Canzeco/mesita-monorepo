@@ -1,4 +1,4 @@
-import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import { ENRICHER_TIER_MODELS, type SynthesisQuality } from "@/lib/synthesis-quality";
 import type { CrenupSettings } from "./crenup-guards";
 
 // Cost estimate — the pure model behind the calculator + the inline cost card.
@@ -22,7 +22,7 @@ import type { CrenupSettings } from "./crenup-guards";
 //   • Firecrawl pricing: /search 2 credits / 10 results (~$0.0008/credit, Std).
 //   • Perplexity pricing: Agent API web-search $0.005/call + sonar tokens.
 //   • OpenAI pricing: gpt-4o $2.50/$10 per 1M in/out · gpt-4o-mini $0.15/$0.60.
-const COST_RATES = {
+export const COST_RATES = {
   // Google — Places API (New), Place Details. Field mask requests reviews +
   // editorialSummary + generativeSummary + reviewSummary → billed at the
   // Enterprise+Atmosphere SKU ($25/1k), NOT Pro ($17/1k).
@@ -42,7 +42,7 @@ const COST_RATES = {
   visionStandard: 0.008, // gpt-4o vision, one image
   sort: 0.001, // gpt-4o-mini text sort / short judge
   synthEconomy: 0.002, // gpt-4o-mini synthesis (~1000-word Presentation)
-  synthStandard: 0.028, // gpt-4o synthesis (standard & high)
+  synthStandard: 0.028, // gpt-4o synthesis (standard)
 } as const;
 
 // The five link-discovery channels, in config order. Each channel with a
@@ -303,7 +303,7 @@ export function computeEnrichmentCost({
     },
     {
       label: "Image descriptions",
-      detail: imageModel === "economy" ? "gpt-4o-mini vision" : "gpt-4o vision",
+      detail: `${ENRICHER_TIER_MODELS[imageModel]} vision`,
       pricing:
         imageModel === "economy" ? "~$0.001 / image" : "~$0.008 / image",
       note: `Analyze ${gAnalyze} Google + ${igAnalyze} Instagram = ${visionImgs} image${visionImgs === 1 ? "" : "s"} × ${money(visionCostPer)}, described in parallel (${visionRounds} round${visionRounds === 1 ? "" : "s"})`,
@@ -326,7 +326,7 @@ export function computeEnrichmentCost({
     },
     {
       label: `Presentation synthesis — ${quality}`,
-      detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o",
+      detail: ENRICHER_TIER_MODELS[quality],
       pricing: quality === "economy" ? "$0.15/$0.60 per 1M" : "$2.50/$10 per 1M",
       note: "~1000-word Presentation from gathered sources (no web)",
       cost: synthCost,

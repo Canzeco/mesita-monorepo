@@ -1,4 +1,5 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { normalizeTier } from "@/lib/synthesis-quality";
 import { getAtlasSettings } from "./actions";
 import { CrenupClient } from "./CrenupClient";
 import type { CrenupView } from "./SectionStrip";
@@ -59,8 +60,8 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
                 settings.data.atlasAnalyzeInstagramImages,
               imageAnalysisPrompt: settings.data.atlasImageAnalysisPrompt,
               imageSortingPrompt: settings.data.atlasImageSortingPrompt,
-              synthesisQuality: settings.data.atlasSynthesisQuality,
-              visionQuality: settings.data.atlasVisionQuality ?? "economy",
+              synthesisQuality: normalizeTier(settings.data.atlasSynthesisQuality),
+              visionQuality: normalizeTier(settings.data.atlasVisionQuality),
               perplexityPreset:
                 settings.data.atlasPerplexityPreset ?? "pro-search",
               discoverWebsiteN: settings.data.atlasDiscoverWebsiteN,

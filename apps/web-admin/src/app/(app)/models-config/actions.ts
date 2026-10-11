@@ -2,37 +2,32 @@
 
 // Server actions for Models Config. Thin wrappers over the admin-web-* Edge
 // Functions via the Result-style efInvoke (never throws) — same contract as the
-// Memo / Atlas config actions.
+// other config pages.
 //
-// Backed by the `models` section of admin-web-get-config /
-// admin-web-update-config, which read and write the models_config jsonb blob
-// on the public.app_config
-// singleton. Live binding (MESITA-941): readers bind supabase / enricher.model /
-// lineup / memo.* via _shared/models-config.ts; enricher.perplexity in the blob
-// is still staged (Enricher uses atlas_perplexity_preset). Enricher text/image
-// quality + search preset are atlas_* columns saved via the enricher section
-// from this page (MESITA-1811). No client ever touches the DB.
+// models_config: the `models` section of admin-web-get-config /
+// admin-web-update-config (whole blob). The Enricher's three picks live on
+// enrichment_config and go through the `enricher` section as a PATCH of only
+// the changed fields (MESITA-2126). Tiers are normalized here, on the way in
+// and on the way out, so a stored legacy "high" never reaches the page and
+// never makes it look dirty. No client ever touches the DB.
 //
 // Types + catalogs live in ./types (not here) — "use server" modules may only
 // export async functions to the client.
 
 import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
-import type { SynthesisQuality } from "@/lib/synthesis-quality";
+import { normalizeTier } from "@/lib/synthesis-quality";
 import {
   updateAtlasConfig,
   type PerplexityPreset,
 } from "../enricher-config/actions";
 import {
   coerceModelsConfig,
-  DEFAULT_ENRICHER_MODEL_SETTINGS,
   type EnricherModelSettings,
   type ModelsConfig,
 } from "./types";
 
-type GetModelsConfigResult = ActionResult<{ data: ModelsConfig }>;
-
-export async function getModelsConfig(): Promise<GetModelsConfigResult> {
+export async function getModelsConfig(): Promise<ActionResult<{ data: ModelsConfig }>> {
   const r = await efInvoke<{ config: unknown }>(
     "admin-web-get-config",
     { section: "models" },
@@ -42,11 +37,9 @@ export async function getModelsConfig(): Promise<GetModelsConfigResult> {
   return { ok: true, data: coerceModelsConfig(r.data.config) };
 }
 
-type UpdateModelsConfigResult = ActionResult<{ data: ModelsConfig }>;
-
 export async function updateModelsConfig(
   config: ModelsConfig,
-): Promise<UpdateModelsConfigResult> {
+): Promise<ActionResult<{ data: ModelsConfig }>> {
   const r = await efInvoke<{ config: unknown }>(
     "admin-web-update-config",
     { section: "models", config },
@@ -56,45 +49,33 @@ export async function updateModelsConfig(
 }
 
 type AtlasModelFields = {
-  atlasSynthesisQuality: SynthesisQuality;
-  atlasVisionQuality: SynthesisQuality;
-  atlasPerplexityPreset: PerplexityPreset;
+  atlasSynthesisQuality?: unknown;
+  atlasVisionQuality?: unknown;
+  atlasPerplexityPreset?: PerplexityPreset | null;
 };
 
-type GetEnricherModelSettingsResult = ActionResult<{ data: EnricherModelSettings }>;
-
-/** Enricher quality tiers + search preset — atlas_* on enrichment_config. */
-export async function getEnricherModelSettings(): Promise<GetEnricherModelSettingsResult> {
-  const r = await efInvoke<AtlasModelFields>("admin-web-get-config", {});
-  if (!r.ok) return { ok: false, error: r.error };
-  const d = DEFAULT_ENRICHER_MODEL_SETTINGS;
+function toSettings(d: AtlasModelFields): EnricherModelSettings {
   return {
-    ok: true,
-    data: {
-      synthesisQuality: r.data.atlasSynthesisQuality ?? d.synthesisQuality,
-      visionQuality: r.data.atlasVisionQuality ?? d.visionQuality,
-      perplexityPreset: r.data.atlasPerplexityPreset ?? d.perplexityPreset,
-    },
+    synthesisQuality: normalizeTier(d.atlasSynthesisQuality),
+    visionQuality: normalizeTier(d.atlasVisionQuality),
+    perplexityPreset: d.atlasPerplexityPreset ?? "pro-search",
   };
 }
 
-type UpdateEnricherModelSettingsResult = ActionResult<{ data: EnricherModelSettings }>;
-
-export async function updateEnricherModelSettings(
-  settings: EnricherModelSettings,
-): Promise<UpdateEnricherModelSettingsResult> {
-  const r = await updateAtlasConfig({
-    synthesisQuality: settings.synthesisQuality,
-    visionQuality: settings.visionQuality,
-    perplexityPreset: settings.perplexityPreset,
-  });
+/** Enricher quality tiers + search preset — enrichment_config, tiers normalized. */
+export async function getEnricherModelSettings(): Promise<
+  ActionResult<{ data: EnricherModelSettings }>
+> {
+  const r = await efInvoke<AtlasModelFields>("admin-web-get-config", {});
   if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    data: {
-      synthesisQuality: r.data.atlasSynthesisQuality,
-      visionQuality: r.data.atlasVisionQuality ?? "economy",
-      perplexityPreset: r.data.atlasPerplexityPreset ?? "pro-search",
-    },
-  };
+  return { ok: true, data: toSettings(r.data) };
+}
+
+/** PATCH only the fields that changed; returns the stored settings, normalized. */
+export async function updateEnricherModelSettings(
+  patch: Partial<EnricherModelSettings>,
+): Promise<ActionResult<{ data: EnricherModelSettings }>> {
+  const r = await updateAtlasConfig(patch);
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: toSettings(r.data) };
 }

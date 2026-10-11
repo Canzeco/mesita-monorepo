@@ -14,7 +14,6 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { formatShortDate } from "@/lib/format";
 import Link from "next/link";
 import {
   Collapsible,
@@ -39,7 +38,6 @@ import {
   FlowPanel,
   FunctionModule,
   KnobElsewhere,
-  ModelRow,
   NoKnobs,
   PromptDisclosure,
   Tag,
@@ -56,7 +54,7 @@ const CREATE_BOX_HREF = "/manage-multiple#create";
 export type { CrenupSettings };
 
 // THE CRENUP PAGES (MESITA-2083: two rail rows, two pages, one client).
-//   Creation    Models (read-only) · Create
+//   Creation    Models (a link to /models-config) · Create
 //   Enrichment  Enrich · Functions
 // Discovery-shaped. One Save for atlas_* on both. Search eligibility lives
 // on Discovery › Map. Creation had a third module, Verification, until
@@ -64,11 +62,6 @@ export type { CrenupSettings };
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
-const QUALITY_LABEL: Record<CrenupSettings["synthesisQuality"], string> = {
-  economy: "economy",
-  standard: "standard",
-  high: "high",
-};
 
 export function CrenupClient({
   view,
@@ -167,47 +160,16 @@ export function CrenupClient({
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
             title="Models"
-            subtitle="Read-only reference — configure on Models."
           >
-            <div className="mt-4">
-              <ModelRow
-                label="Text"
-                hint="9 · Description, image-rank"
+            <p className="text-muted-foreground mt-4 text-sm">
+              Which AI model each step uses is set on{" "}
+              <Link
+                href={MODELS_PARENT.href}
+                className="text-foreground font-semibold underline underline-offset-2"
               >
-                <span className="text-sm font-medium">
-                  {QUALITY_LABEL[settings.synthesisQuality]}
-                </span>
-              </ModelRow>
-              <ModelRow label="Image" hint="6 · Images">
-                <span className="text-sm font-medium">
-                  {QUALITY_LABEL[settings.visionQuality]}
-                </span>
-              </ModelRow>
-              <ModelRow
-                label="Search"
-                hint="3 · Serp · 4 · Links"
-              >
-                <span className="text-sm font-medium">
-                  {settings.perplexityPreset}
-                </span>
-              </ModelRow>
-              <ModelRow label="Embeddings" hint="locked · Embedding">
-                <span className="text-sm">text-embedding-3-small</span>
-              </ModelRow>
-              <p className="text-muted-foreground mt-3 text-sm">
-                <Link
-                  href={MODELS_PARENT.href}
-                  className="text-foreground font-semibold underline underline-offset-2"
-                >
-                  Configure on Models ›
-                </Link>
-              </p>
-              {settingsStamp && (
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Enricher settings last changed {formatShortDate(settingsStamp)}
-                </p>
-              )}
-            </div>
+                Models ›
+              </Link>
+            </p>
           </SectionCard>
         </div>
 

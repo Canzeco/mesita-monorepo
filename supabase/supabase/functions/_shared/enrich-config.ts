@@ -17,16 +17,18 @@ export const VISION_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 
 // Synthesis model by the admin 'synthesis quality' param. Synthesis reads only
 // the gathered source material (no web) — that's why it's OpenAI, not Perplexity
-// (which would re-search and drift). GPT-5.x not yet on the API, so 'high' maps
-// to the best available today.
+// (which would re-search and drift). Two tiers (MESITA-2126): the third, 'high',
+// ran the same gpt-4o as 'standard', so it was retired; a stored 'high' is read
+// as 'standard' (enrichment-config.ts). Literals, not VISION_MODEL, because the
+// admin Models page pins its ENRICHER_TIER_MODELS copy to these strings from
+// both packages (enrich-tiers.test.ts here, lib/synthesis-quality.test.ts there).
 export const QUALITY_MODEL: Record<string, string> = {
-  economy: VISION_MODEL,
+  economy: "gpt-4o-mini",
   standard: "gpt-4o",
-  high: "gpt-4o",
 };
 
 // Resolve the per-image vision model from the admin 'Image model' knob
-// (same economy/standard/high scale as synthesis).
+// (same economy/standard scale as synthesis).
 export function visionModelFor(quality: string): string {
   return QUALITY_MODEL[quality] ?? VISION_MODEL;
 }

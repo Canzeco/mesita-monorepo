@@ -1,7 +1,6 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Models — platform-wide model picks (MESITA-1788). models_config blob plus
-// Enricher atlas_* quality tiers (MESITA-1811).
+// Models — the AI model behind each job (MESITA-2126 remake of MESITA-1788).
 export default function ModelsConfigLayout({
   children,
 }: {
@@ -11,7 +10,7 @@ export default function ModelsConfigLayout({
     <ConfigPageLayout
       eyebrow="Operations · Models"
       title="Models"
-      description="Which model each subsystem thinks with — platform picks, Enricher quality tiers, and the locked embedding model."
+      description="The AI model behind each job Mesita runs. A change applies from the next run."
     >
       {children}
     </ConfigPageLayout>
