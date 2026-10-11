@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-enrich-place-research (internal / cron)
+// Supabase Edge Function — enricher-cron-enrich-place-research (internal / cron)
 //
 // Stage 1 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller
@@ -31,8 +31,8 @@
 //
 // Contract: verify_jwt=true; requireInternalCaller gates the service-role bearer.
 //
-// Local:  supabase functions serve supabase-cron-enrich-place-research
-// Deploy: supabase functions deploy supabase-cron-enrich-place-research
+// Local:  supabase functions serve enricher-cron-enrich-place-research
+// Deploy: supabase functions deploy enricher-cron-enrich-place-research
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { instagramHandleFromUrl } from "../_shared/apify.ts";
@@ -327,7 +327,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // `phone` is a CorrectableField and the Reservationist calling a place is
   // exactly how we learn the listed number is dead, so this write is the second
   // of the two persist doors that must stand down for a pin. (The other is S8
-  // in supabase-cron-enrich-place-contents, which owns hours/address/website/
+  // in enricher-cron-enrich-place-contents, which owns hours/address/website/
   // closes_at/reservation endpoint.) Pins live in `places.enrichment_sources`,
   // which this stage never writes, so a plain read is enough here.
   if (basics.phone) {

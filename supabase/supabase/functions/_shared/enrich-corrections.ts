@@ -18,8 +18,8 @@
 // ━━━ WHAT IS BUILT (MESITA-1190) ━━━
 // The PIN HALF is live. `readFieldPins` / `carryFieldPins` / `stripPinnedColumns`
 // are wired into the two EFs that persist enriched facts onto `place_profiles`:
-// supabase-cron-enrich-place-research (phone) and
-// supabase-cron-enrich-place-contents (everything else). A pin that exists is
+// enricher-cron-enrich-place-research (phone) and
+// enricher-cron-enrich-place-contents (everything else). A pin that exists is
 // obeyed today.
 //
 // ━━━ WHAT IS NOT ━━━

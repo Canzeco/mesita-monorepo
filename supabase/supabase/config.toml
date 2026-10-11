@@ -135,8 +135,8 @@ verify_jwt = true
 
 # Async media persistence worker — stores source metadata immediately and mirrors
 # source images to Supabase Storage in background. Internal-only; invoked by
-# supabase-cron-enrich-place-contents (S9) so mirroring runs in its own wall clock.
-[functions.supabase-edgefunc-store-place-images]
+# enricher-cron-enrich-place-contents (S9) so mirroring runs in its own wall clock.
+[functions.enricher-edgefunc-store-place-images]
 verify_jwt = true
 
 # Reservationist "attempt 1": places the outbound reservation call via ElevenLabs
@@ -189,13 +189,13 @@ verify_jwt = true
 # The pg_cron poller (run_place_enrichment_stages) claims pending rows and
 # fires one net.http_post per row with the Vault service-role bearer; each EF
 # acks immediately and works in an EdgeRuntime background task. Internal-only.
-[functions.supabase-cron-enrich-place-research]
+[functions.enricher-cron-enrich-place-research]
 verify_jwt = true
 
-[functions.supabase-cron-enrich-place-analysis]
+[functions.enricher-cron-enrich-place-analysis]
 verify_jwt = true
 
-[functions.supabase-cron-enrich-place-contents]
+[functions.enricher-cron-enrich-place-contents]
 verify_jwt = true
 
 # --- Consumer ---
@@ -292,7 +292,7 @@ verify_jwt = true
 
 # LIVE admin create path — seeds the minimal 'generating' place in-process
 # (_shared/save-place.ts) and queues deep enrichment (place_research →
-# supabase-cron-enrich-place-*). Operator JWT + super_admins allowlist.
+# enricher-cron-enrich-place-*). Operator JWT + super_admins allowlist.
 [functions.admin-web-check-api-health]
 verify_jwt = true
 [functions.admin-web-create-place]

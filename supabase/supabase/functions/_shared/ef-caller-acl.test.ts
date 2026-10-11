@@ -23,8 +23,9 @@
 // remove its line here in the same PR that fixes it.
 //
 // OUT OF SCOPE ON PURPOSE: `supabase-*` (internal cron/edgefunc caller),
-// and `eleven-*` (ElevenLabs' voice-agent tool calls) — neither has a caller
-// this scan can verify by reading `apps/`.
+// `enricher-*` (the Crenup pipeline stages, called by the enrichment poller and
+// each other) and `eleven-*` (ElevenLabs' voice-agent tool calls) — none has a
+// caller this scan can verify by reading `apps/`.
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const REPO_ROOT = new URL("../../../../", import.meta.url);
@@ -39,7 +40,7 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
   // function they owned: `business` (web-business, mobile-business — its two
   // functions admin's Single Place still called were renamed admin-web-*),
   // `validate` (web-validate) and `gift` (the public gift page). The closed
-  // caller set is consumer · admin · eleven · supabase. Re-adding an actor
+  // caller set is consumer · admin · enricher · eleven · supabase. Re-adding an actor
   // takes an entry here — the second test below fails on a *-web-* prefix
   // with none.
 };

@@ -12,7 +12,7 @@
 //                                 PATCH through the enricher section.
 // Shown read-only: embeddings.model (place search index) and enricher.model
 // (the Enricher's sorting/tagging model, and what the photos row's cheaper
-// tier runs — supabase-cron-enrich-place-analysis swaps it in for economy).
+// tier runs — enricher-cron-enrich-place-analysis swaps it in for economy).
 // Not shown and DEAD in First Stage: supabase.model, ojo.model and
 // enricher.perplexity. models_config is still saved WHOLE, so they are written
 // back as their coerced values; coercion also drops unknown keys and resets a
