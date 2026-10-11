@@ -63,10 +63,6 @@ export const SHEET_GRABBER_CLASS =
 // min-[360px]:grid-cols-2` and fell to one column on a 320px phone — the
 // exact drift these constants exist to make impossible, and the reason a
 // breakpoint must never come back here.
-//
-// CatalogRails is deliberately NOT a caller: horizontal rails under category
-// headings are a different layout answering a different question, not a third
-// copy of this one.
 export const PLACE_GRID_CLASS = "grid grid-cols-2 gap-2";
 
 // The scroll column a PLACE_GRID_CLASS grid sits in. Skeletons use the grid

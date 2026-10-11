@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-// The discovery engines' group: Home's four modes and Search. Home and Search
+// The discovery engines' group: Home's three modes and Search. Home and Search
 // are separate bottom tabs (MESITA-2055), so this shared frame draws no rail.
 //
-// A ROUTE GROUP, so no URL moved: the pages live at /discover/feed,
-// /discover/scroll, /discover/chat, /discover/favs and /search, and the
+// A ROUTE GROUP, so no URL moved: the pages live at /discover/scroll,
+// /discover/chat, /discover/favs and /search, and the
 // group adds nothing to any of them. It exists only so ONE layout can give
 // two namespaces that share no path segment the same flex frame.
 //

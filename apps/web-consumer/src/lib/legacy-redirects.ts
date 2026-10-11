@@ -9,7 +9,7 @@
 //
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
-// Nothing here may name /pay, /discover/feed, /discover/scroll,
+// Nothing here may name /pay, /discover/scroll,
 // /discover/chat, /discover/favs, /search, /me or any live /me/<box>.
 //
 // BARE ONLY. next.config.ts serves every entry twice: as written, and as a
@@ -26,14 +26,14 @@ export type Redirect = {
 
 export const LEGACY_REDIRECTS: Redirect[] = [
   // Explore era (pre-Home). Straight to the Discover default.
-  { source: "/explore", destination: "/discover/feed", permanent: true },
+  { source: "/explore", destination: "/discover/scroll", permanent: true },
   {
     source: "/explore/swipe",
     destination: "/discover/scroll",
     permanent: true,
   },
-  { source: "/explore/map", destination: "/discover/feed", permanent: true },
-  { source: "/explore/add", destination: "/discover/feed", permanent: true },
+  { source: "/explore/map", destination: "/discover/scroll", permanent: true },
+  { source: "/explore/add", destination: "/discover/scroll", permanent: true },
   {
     source: "/explore/place/:id",
     destination: "/place/:id",
@@ -70,7 +70,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/subscribe", destination: "/me", permanent: true },
   { source: "/subscribe/:plan", destination: "/me", permanent: true },
   // /web's anonymous "Get the app" screen (MESITA-2137): Home, behind the wall.
-  { source: "/get-the-app", destination: "/discover/feed", permanent: true },
+  { source: "/get-the-app", destination: "/discover/scroll", permanent: true },
   { source: "/me/class/invite", destination: "/me", permanent: true },
   { source: "/me/class", destination: "/me", permanent: true },
   { source: "/me/diamond/invite", destination: "/me", permanent: true },
@@ -88,13 +88,13 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // The retired Home hub (2026-09-01). Every leaf 308s straight to the
   // Discover default. NOTHING HERE MAY CHAIN THROUGH /discover/map OR
   // /discover/search — both are themselves 308s (below).
-  { source: "/home", destination: "/discover/feed", permanent: true },
-  { source: "/home/swipe", destination: "/discover/feed", permanent: true },
-  { source: "/home/catalog", destination: "/discover/feed", permanent: true },
-  { source: "/home/chat", destination: "/discover/feed", permanent: true },
-  { source: "/home/ai", destination: "/discover/feed", permanent: true },
-  { source: "/home/social", destination: "/discover/feed", permanent: true },
-  { source: "/home/favorites", destination: "/discover/feed", permanent: true },
+  { source: "/home", destination: "/discover/scroll", permanent: true },
+  { source: "/home/swipe", destination: "/discover/scroll", permanent: true },
+  { source: "/home/catalog", destination: "/discover/scroll", permanent: true },
+  { source: "/home/chat", destination: "/discover/scroll", permanent: true },
+  { source: "/home/ai", destination: "/discover/scroll", permanent: true },
+  { source: "/home/social", destination: "/discover/scroll", permanent: true },
+  { source: "/home/favorites", destination: "/discover/scroll", permanent: true },
   // Search's two addresses under /discover (MESITA-1609 → MESITA-1616),
   // straight to the canonical /search. T7 pins both.
   { source: "/discover/search", destination: "/search", permanent: true },
@@ -102,7 +102,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // Catalog's day as Home, Swipe's week as the default, Catalog's own
   // segment (MESITA-1697). Swipe's sources forward to Scroll, the deck
   // Swipe became; every other retired Home address forwards to Home.
-  { source: "/discover/home", destination: "/discover/feed", permanent: true },
+  { source: "/discover/home", destination: "/discover/scroll", permanent: true },
   {
     source: "/discover/swipe",
     destination: "/discover/scroll",
@@ -110,7 +110,14 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   },
   {
     source: "/discover/catalog",
-    destination: "/discover/feed",
+    destination: "/discover/scroll",
+    permanent: true,
+  },
+  // CATALOG LEFT HOME'S RAIL AGAIN (MESITA-2140): Pato's rail is Scroll ·
+  // Chat · Favs, as before MESITA-2081, and the deck is the default.
+  {
+    source: "/discover/feed",
+    destination: "/discover/scroll",
     permanent: true,
   },
   // The Saved tab (reservations, favorites) and the /saved/place dual
