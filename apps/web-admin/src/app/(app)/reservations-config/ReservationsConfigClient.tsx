@@ -7,9 +7,8 @@
 // stuff"). ONE box: Testing, plus a Needs Attention card only when something
 // needs attention. No Calls card, no fleet strip, no workflow diagram.
 //
-// STOP RENDERING, NEVER STOP CARRYING: `attempts` (fixed at 2 by protocol), the
-// phone-only channel shape, the legacy `consumerNumber`, `limits` (kill switch +
-// daily caps), `reminder` and `respectAdminOverride` have no controls — the
+// STOP RENDERING, NEVER STOP CARRYING: `limits` (kill switch + daily caps),
+// `reminder` and `respectAdminOverride` have no controls — the
 // Edge Functions still read them at their seeds — and save spreads the whole
 // object so they survive a write.
 //
@@ -24,11 +23,6 @@ import { getReservationsConfig, updateReservationsConfig } from "./actions";
 import { looksLikePhone, type NeedsAttentionRow, type ReservationsConfig } from "./catalog";
 import { NeedsAttentionCard } from "./NeedsAttentionCard";
 import { TestingCard } from "./TestingCard";
-
-const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
-  priority: ["phone"],
-  disabled: [],
-};
 
 export function ReservationsConfigClient({
   initialConfig,
@@ -64,7 +58,6 @@ export function ReservationsConfigClient({
     saveWith(async (c) => {
       const payload: ReservationsConfig = {
         ...c,
-        ...PHONE_ONLY_CHANNELS,
         testCall: { ...c.testCall, number: c.testCall.number.trim() },
       };
       return updateReservationsConfig(payload);

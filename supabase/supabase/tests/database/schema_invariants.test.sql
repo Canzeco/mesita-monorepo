@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(105);
+select plan(113);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -576,7 +576,7 @@ select has_column(
 
 select has_column(
   'public', 'app_config', 'memo_config',
-  'app_config.memo_config holds Memo greeting/instructions/legacy model keys'
+  'app_config.memo_config holds Memo greeting/instructions'
 );
 
 -- ━━━ app_config — the Second Stage blobs are gone ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1158,6 +1158,82 @@ select is(
 );
 
 rollback to savepoint before_profiles_write_probe;
+
+-- ━━━ The schema residue is gone (MESITA-2145) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--
+-- What the First Stage cut and the dead-code sweep left with no reader:
+-- the name history, the per-place schedule, eight place fields, a handful of
+-- small columns, five enum labels and the dead app_config keys.
+
+select hasnt_table('public', 'place_name_history',
+  'place_name_history is gone (its only reader was a dead search mode)');
+
+select is(
+  (select count(*)::bigint from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('queue_due_place_enrichments', 'place_name_history_capture')),
+  0::bigint,
+  'the schedule queue and the name-history trigger function are gone'
+);
+
+select is(
+  (select count(*)::bigint from information_schema.columns
+    where table_schema = 'public'
+      and (table_name, column_name) in (
+        ('place_profiles', 'vibe'), ('place_profiles', 'email'),
+        ('place_profiles', 'country'), ('place_profiles', 'details'),
+        ('place_profiles', 'editorial_summary'), ('place_profiles', 'established_year'),
+        ('place_profiles', 'executive_chef'), ('place_profiles', 'facebook_rating'),
+        ('place_profiles', 'enrich_every_days'), ('place_profiles', 'enrich_mode'),
+        ('place_profiles', 'enrich_next_at'),
+        ('consumer_notifications', 'state'), ('consumer_notifications', 'resolved_at'),
+        ('consumers', 'country'), ('super_admins', 'phone'),
+        ('place_tags', 'section'), ('reservation_tickets', 'completed_at'))),
+  0::bigint,
+  'the seventeen residue columns are gone'
+);
+
+select is(
+  (select array_agg(enumlabel::text order by enumsortorder) from pg_enum
+    where enumtypid = 'public.place_state'::regtype),
+  array['active', 'paused', 'archived'],
+  'place_state is active / paused / archived (lead and the review labels are gone)'
+);
+
+select is(
+  (select array_agg(enumlabel::text order by enumsortorder) from pg_enum
+    where enumtypid = 'public.content_state'::regtype),
+  array['generating', 'ready', 'failed'],
+  'content_state is generating / ready / failed (queued is gone)'
+);
+
+select is(
+  (select array_agg(enumlabel::text order by enumsortorder) from pg_enum
+    where enumtypid = 'public.reservation_state'::regtype),
+  array['pending', 'confirmed', 'declined', 'cancelled', 'unreachable', 'unresolved'],
+  'reservation_state has no no_show'
+);
+
+select ok(
+  (select pg_get_expr(polqual, polrelid) !~ '(lead|queued)'
+     from pg_policy
+    where polrelid = 'public.places'::regclass
+      and polname = 'places_select_public_visible'),
+  'places_select_public_visible exists and names no retired label'
+);
+
+select ok(
+  (select not (reservations_config ?| array['disabled', 'priority', 'attempts'])
+      and reservations_config #> '{testCall,consumerNumber}' is null
+      and not (models_config ?| array['supabase', 'ojo'])
+      and models_config #> '{memo,perplexity}' is null
+      and not (memo_config ?| array['provider', 'openaiModel', 'webGrounding', 'perplexityModel'])
+      and not (discovery_config ?| array['social', 'slotting'])
+      and discovery_config #> '{weights,summary}' is null
+      and not (enrichment_config ? 'atlasPerRunCostCapUsd')
+     from public.app_config where id = 1),
+  'no dead app_config key survives'
+);
 
 select * from finish();
 

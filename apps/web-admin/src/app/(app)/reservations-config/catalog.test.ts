@@ -2,19 +2,17 @@ import { describe, expect, it } from "vitest";
 import { coerceConfig, DEFAULT_CONFIG } from "./catalog";
 
 describe("coerceConfig", () => {
-  it("dedupes priority, ranks every channel once and drops legacy whatsapp", () => {
-    const cfg = coerceConfig({ priority: ["phone", "phone", "whatsapp"] });
-    expect(cfg.priority).toEqual(["phone"]);
-  });
-
-  it("appends a channel the row forgot to rank", () => {
-    expect(coerceConfig({ priority: ["whatsapp"] }).priority).toEqual(["phone"]);
-  });
-
-  it("pins attempts to the protocol value whatever the row stores", () => {
-    expect(coerceConfig({ attempts: 7 }).attempts).toBe(DEFAULT_CONFIG.attempts);
-    expect(coerceConfig({ attempts: 7 }).attempts).toBe(2);
-    expect(coerceConfig({}).attempts).toBe(2);
+  it("drops the retired keys a stored row may still carry", () => {
+    const cfg = coerceConfig({
+      priority: ["phone"],
+      disabled: ["phone"],
+      attempts: 7,
+      testCall: { enabled: false, number: "+525555555555", consumerNumber: "+520000000000" },
+    }) as Record<string, unknown>;
+    expect(cfg).not.toHaveProperty("priority");
+    expect(cfg).not.toHaveProperty("disabled");
+    expect(cfg).not.toHaveProperty("attempts");
+    expect(cfg.testCall).toEqual({ enabled: false, number: "+525555555555" });
   });
 
   it("falls back to the seed for a limit of 0, -1 or NaN", () => {
