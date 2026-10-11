@@ -63,9 +63,9 @@
 //     normalizes every write into (see its header: prose-string entries were
 //     retired because nothing could tell a place's own offer from a new
 //     guest idea).
-//   - attempts, if set, is an array of the {n, started_at, conversation_id,
-//     result} shape supabase-edgefunc-reservation-call's own AttemptEntry
-//     type already defines and is the only writer of.
+//   - attempts, if set, is an array of ReservationAttempt ({n, started_at,
+//     conversation_id, result}); supabase-edgefunc-reservation-call is its
+//     only writer.
 //
 // WHAT THIS VALIDATOR DELIBERATELY DOES NOT DO: couple `state` to
 // `reported_verdict`/`alternatives`/`outcome_note` in one invariant. Per this
@@ -171,7 +171,7 @@ export type ReservationAlternative = {
   note?: string;
 };
 
-/** One placement attempt — mirrors supabase-edgefunc-reservation-call's AttemptEntry. */
+/** One placement attempt, written by supabase-edgefunc-reservation-call. */
 export type ReservationAttempt = {
   n: number;
   started_at: string;

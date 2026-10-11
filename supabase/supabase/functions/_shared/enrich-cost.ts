@@ -12,47 +12,13 @@ export type EnrichCostSnapshot = {
   charges: EnrichCostCharge[];
 };
 
-/** Kept so existing fail-path type checks compile. Nothing throws this now. */
-export class EnrichCostCapError extends Error {
-  readonly spentUsd: number;
-  readonly capUsd: number;
-  readonly lastCharge: string;
-  readonly charges: EnrichCostCharge[];
-  readonly kind: "exceeded" | "blocked";
-
-  constructor(
-    ledger: EnrichCostLedger,
-    lastCharge: string,
-    kind: "exceeded" | "blocked" = "exceeded",
-  ) {
-    const spent = ledger.spentUsd;
-    super(`enricher_cost_cap: retired — last ${lastCharge} spent $${spent.toFixed(3)}`);
-    this.name = "EnrichCostCapError";
-    this.spentUsd = spent;
-    this.capUsd = Number.POSITIVE_INFINITY;
-    this.lastCharge = lastCharge;
-    this.charges = [...ledger.charges];
-    this.kind = kind;
-  }
-}
-
 export class EnrichCostLedger {
   spentUsd: number;
   charges: EnrichCostCharge[];
-  readonly capUsd = Number.POSITIVE_INFINITY;
 
   constructor(prior?: EnrichCostSnapshot | null) {
     this.spentUsd = prior && Number.isFinite(prior.spentUsd) ? Math.max(0, prior.spentUsd) : 0;
     this.charges = prior?.charges ? [...prior.charges] : [];
-  }
-
-  remaining(): number {
-    return Number.POSITIVE_INFINITY;
-  }
-
-  /** No-op: a dollar cap does not gate paid calls. */
-  assertCanAfford(_usd: number, _key: string): void {
-    return;
   }
 
   /** Record a completed paid call. Never throws. */
@@ -67,10 +33,7 @@ export class EnrichCostLedger {
   }
 }
 
-export function createEnrichCostLedger(
-  _capUsd?: number,
-  prior?: EnrichCostSnapshot | null,
-): EnrichCostLedger {
+export function createEnrichCostLedger(prior?: EnrichCostSnapshot | null): EnrichCostLedger {
   return new EnrichCostLedger(prior);
 }
 
@@ -157,10 +120,4 @@ export function discoverySearchCost(cfg: Pick<EnrichConfig, "discoverCandidates"
  */
 export function runOwnsGatherSpend(entryStage: string | null | undefined): boolean {
   return entryStage !== "analysis" && entryStage !== "contents";
-}
-
-export function isEnrichCostCapError(err: unknown): err is EnrichCostCapError {
-  return err instanceof EnrichCostCapError ||
-    (typeof err === "object" && err !== null &&
-      (err as { name?: string }).name === "EnrichCostCapError");
 }

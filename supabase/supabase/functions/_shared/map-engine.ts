@@ -34,8 +34,6 @@ import {
 } from "./sourcing.ts";
 import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
-export type { NearbyTypeKey };
-
 export type ListedMapRow = {
   google_place_id?: string | null;
   google_stars_overall?: number | null;
@@ -165,7 +163,6 @@ export function listedClearsMapPopularity(
 export function googleHitClearsMapFloors(
   hit: NearbyHit,
   map: MapConfig,
-  _params?: SignalParamBag,
 ): boolean {
   if (map.minRating > 0) {
     if (hit.rating == null || hit.rating < map.minRating) return false;
@@ -190,7 +187,7 @@ export function admitMapCatalog<T extends ListedMapRow>(
     listedClearsMapPopularity(row, map, params)
   );
   const admittedGoogle = google.filter((hit) =>
-    googleHitClearsMapFloors(hit, map, params)
+    googleHitClearsMapFloors(hit, map)
   );
   return { listed: admittedListed, google: admittedGoogle };
 }

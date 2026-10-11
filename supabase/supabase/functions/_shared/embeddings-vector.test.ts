@@ -9,10 +9,6 @@ import {
 import {
   placeEmbeddingFacts,
   placeNameEmbedText,
-  placeSourceText,
-  rankByNameCosine,
-  shouldEmbed,
-  shouldEmbedName,
   type EmbeddablePlace,
 } from "./embeddings-vector.ts";
 
@@ -39,13 +35,6 @@ Deno.test("placeEmbeddingFacts never mentions tags", () => {
   assertStringIncludes(facts, "Category: seafood");
   assertStringIncludes(facts, "Location: Roma Norte, CDMX");
   assertEquals(facts.toLowerCase().includes("tag"), false);
-});
-
-Deno.test("placeSourceText prefers stored on-update blurb", () => {
-  const text = placeSourceText(sample({
-    embedding_source_text: "Contramar is a lively seafood spot in Roma Norte.",
-  }));
-  assertEquals(text, "Contramar is a lively seafood spot in Roma Norte.");
 });
 
 Deno.test("composeEmbeddingBlurb is short and tag-free", () => {
@@ -85,45 +74,4 @@ Deno.test("placeNameEmbedText is the resolved name, not the summary", () => {
   const facts = placeEmbeddingFacts(sample());
   assertEquals(facts.includes("Famous tuna"), true);
   assertEquals(placeNameEmbedText(sample()).includes("Famous"), false);
-});
-
-Deno.test("shouldEmbedName only when the name vector is missing", () => {
-  assertEquals(shouldEmbedName(sample()), true);
-  assertEquals(
-    shouldEmbedName(sample({
-      name_embedding: "[0.1,0.2]",
-      name_embedding_hash: "abc",
-    })),
-    false,
-  );
-  assertEquals(shouldEmbedName(sample({ name: "   " })), false);
-});
-
-Deno.test("rankByNameCosine reads name_embedding, not embedding", () => {
-  const query = [1, 0];
-  const ranked = rankByNameCosine([
-    { id: "summary-only", embedding: [1, 0], name_embedding: [0, 1] },
-    { id: "name-match", embedding: [0, 1], name_embedding: [1, 0] },
-  ], query);
-  assertEquals(ranked[0].id, "name-match");
-});
-
-Deno.test("shouldEmbed when vector or human text missing", () => {
-  assertEquals(shouldEmbed(sample()), true);
-  assertEquals(
-    shouldEmbed(sample({
-      embedding: "[0.1,0.2]",
-      embedding_source_hash: "abc",
-      embedding_source_text: null,
-    })),
-    true,
-  );
-  assertEquals(
-    shouldEmbed(sample({
-      embedding: "[0.1,0.2]",
-      embedding_source_hash: "abc",
-      embedding_source_text: "A short blurb.",
-    })),
-    false,
-  );
 });

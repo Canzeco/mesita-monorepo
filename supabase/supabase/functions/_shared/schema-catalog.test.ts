@@ -10,52 +10,29 @@
 // the PRs that build the aggregate validators.
 //
 // Guard test 2 names three closed key sets — "class, function, channel".
-// Function (FUNCTION_STATE_KEYS below) and channel (ChannelSet alias test
-// below, plus channels.test.ts's tiktok/tripadvisor/yelp retirement coverage)
-// live here. There is no class set left to close: a consumer carries no class.
+// Function lives here (FunctionStateMap below); channel is channels.test.ts's
+// tiktok/tripadvisor/yelp retirement coverage. There is no class set left to
+// close: a consumer carries no class.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { CRENUP_EXTRAS, CRENUP_LADDER, type CrenupStep } from "./crenup-ladder.ts";
+import { CRENUP_LADDER } from "./crenup-ladder.ts";
 import {
   EnrichmentMapSchema,
   FUNCTION_STATE_KEYS,
   FunctionStateMapSchema,
   foldFunctionStateMap,
-  isFunctionState,
-  isMoney,
   operatorFunctionStates,
   crenupBlockedAtFromMap,
   crenupHighWaterFromMap,
   toFunctionState,
-  type ChannelSet,
-  type ChannelSetKey,
   type FunctionState,
   type FunctionStateMap,
-  type Money,
 } from "./schema-catalog.ts";
-import type { ChannelKey, Channels } from "./channels.ts";
 
 // ── Closed-key-sets: FunctionState is indexed by CrenupStep, and nothing else ──
 
-Deno.test("FUNCTION_STATE_KEYS is exactly CRENUP_LADDER + CRENUP_EXTRAS, in that order", () => {
-  const expected: readonly CrenupStep[] = [...CRENUP_LADDER, ...CRENUP_EXTRAS];
-  assertEquals(FUNCTION_STATE_KEYS, expected);
-});
-
-Deno.test("FUNCTION_STATE_KEYS has 8 members — Details through Embedding", () => {
-  assertEquals(CRENUP_LADDER.length, 8);
-  assertEquals(CRENUP_EXTRAS.length, 0);
-  assertEquals(FUNCTION_STATE_KEYS.length, 8);
-});
-
-Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never overlap", () => {
-  const seen = new Set(FUNCTION_STATE_KEYS);
-  assertEquals(seen.size, FUNCTION_STATE_KEYS.length);
-});
-
-// The runtime tests above only prove the key LIST is right; this proves the
-// compile-time belt — TypeScript rejects a key outside CrenupStep — actually
-// holds (MESITA-1247 guard test 2, function leg, compile-time half).
+// The compile-time belt — TypeScript rejects a key outside CrenupStep —
+// actually holds (MESITA-1247 guard test 2, function leg).
 Deno.test("FunctionStateMap rejects a key outside CrenupStep at compile time", () => {
   const map: FunctionStateMap = { details: { state: "pending", at: null, detail: null } };
   // @ts-expect-error — "bogus" is not a CrenupStep; FunctionStateMap must reject it
@@ -63,66 +40,6 @@ Deno.test("FunctionStateMap rejects a key outside CrenupStep at compile time", (
   // @ts-expect-error — `pulse` is a RETIRED rung (MESITA-2027), not a CrenupStep
   map.pulse = { state: "pending", at: null, detail: null };
   assertEquals(map.details?.state, "pending");
-});
-
-// ChannelSet is a straight alias, not a copy — assert the two types accept
-// the identical value shape rather than merely having identical field names.
-Deno.test("ChannelSet accepts exactly what Channels accepts (alias, not a copy)", () => {
-  const real: Channels = {
-    website_url: "https://example.com",
-    instagram_url: null,
-    facebook_url: null,
-    x_url: null,
-    threads_url: null,
-    reddit_url: null,
-    whatsapp_url: null,
-    opentable_url: null,
-    resy_url: null,
-    uber_eats_url: null,
-    didi_food_url: null,
-    google_maps_url: null,
-  };
-  const viaCatalog: ChannelSet = real;
-  assertEquals(viaCatalog, real);
-
-  const key: ChannelSetKey = "instagram_url";
-  const sameKey: ChannelKey = key;
-  assertEquals(sameKey, "instagram_url");
-});
-
-// ── Money ────────────────────────────────────────────────────────────────
-
-Deno.test("isMoney: accepts integer cents + non-empty currency", () => {
-  const m: Money = { cents: 100000, currency: "MXN" };
-  assert(isMoney(m));
-});
-
-Deno.test("isMoney: rejects a float, a missing currency, and a non-object", () => {
-  assert(!isMoney({ cents: 100.5, currency: "MXN" }), "float cents");
-  assert(!isMoney({ cents: 100000, currency: "" }), "empty currency");
-  assert(!isMoney({ cents: 100000 }), "missing currency");
-  assert(!isMoney(null));
-  assert(!isMoney("MX$1,000"));
-});
-
-// ── FunctionState ────────────────────────────────────────────────────────
-
-Deno.test("isFunctionState: accepts all three states, rejects a fourth", () => {
-  const pending: FunctionState = { state: "pending", at: null, detail: null };
-  const completed: FunctionState = {
-    state: "completed",
-    at: "2026-08-23T00:00:00Z",
-    detail: "6 photos saved",
-  };
-  const failed: FunctionState = {
-    state: "failed",
-    at: "2026-08-23T00:00:00Z",
-    detail: "timeout",
-  };
-  assert(isFunctionState(pending));
-  assert(isFunctionState(completed));
-  assert(isFunctionState(failed));
-  assert(!isFunctionState({ state: "skipped", at: null, detail: null }));
 });
 
 // ── The materialized enrichment state map (MESITA-1249) ────────────────────

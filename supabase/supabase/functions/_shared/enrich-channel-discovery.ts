@@ -30,7 +30,7 @@ import {
   pickInstagram,
   pickWebsite,
 } from "./channels.ts";
-import { firecrawlSearch } from "./firecrawl.ts";
+import { firecrawlSearch } from "./firecrawl-search.ts";
 import { callPerplexityAgent } from "./perplexity-agent.ts";
 import { dedup } from "./parse-utils.ts";
 import {

@@ -186,7 +186,6 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/consumer-search-lane.ts",
   "_shared/create-place.ts",
   "_shared/place-embeddings.ts",
-  "_shared/place-pool.ts",
   "_shared/place-requests.ts",
   "_shared/place-slug.ts",
   "_shared/save-place.ts",
@@ -200,7 +199,6 @@ const PROFILES_READ_ALLOWLIST = [
   "consumer-web-list-places/index.ts",
   "consumer-web-recommend-swipe/index.ts",
   "supabase-edgefunc-discover-places/index.ts",
-  "supabase-edgefunc-search-places/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -221,14 +219,12 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
-  "_shared/delete-history-free.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
   "consumer-web-update-profile/index.ts",
   "eleven-a3-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "supabase-edgefunc-get-consumer-context/index.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

@@ -5,7 +5,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { mexicoZone, type WeeklyHours } from "./local-time.ts";
-import { demoteClosed, isOpenAt, openScore } from "./local-time-open.ts";
+import { isOpenAt } from "./local-time-open.ts";
 
 // Fri 6pm–2am (overnight), plus a same-day lunch shift on Saturday.
 const HOURS: WeeklyHours = {
@@ -54,36 +54,6 @@ Deno.test("isOpenAt: malformed range times are skipped, not crashed", () => {
   };
   assertEquals(isOpenAt(bad, "saturday", 14 * 60), true); // matched the valid range
   assertEquals(isOpenAt(bad, "saturday", 20 * 60), false); // valid range closed, bad one ignored
-});
-
-Deno.test("openScore: open first, unknown neutral, closed last", () => {
-  assertEquals(openScore(true), 1);
-  assertEquals(openScore(null), 0);
-  assertEquals(openScore(undefined), 0);
-  assertEquals(openScore(false), -1);
-});
-
-Deno.test("demoteClosed: stable partition open > unknown > closed", () => {
-  type Row = { id: string; hours: WeeklyHours | null; lng: number | null };
-  const openHours: WeeklyHours = { monday: [{ open: "00:00", close: "23:59" }] }; // ~24h Mon
-  const closedHours: WeeklyHours = { sunday: [{ open: "09:00", close: "10:00" }] }; // not Mon
-  // A pool where the incoming (relevance) order interleaves states. We can't
-  // pin the wall-clock, but 24h-Monday vs no-Monday still partition relative to
-  // *whatever* day it is only when it's Monday — so assert structural
-  // properties instead: unknowns keep neutral, ordering within a bucket is
-  // preserved, and the sort is stable.
-  const rows: Row[] = [
-    { id: "a-unknown", hours: null, lng: -99 },
-    { id: "b-unknown", hours: {}, lng: -99 },
-    { id: "c-unknown", hours: null, lng: -99 },
-  ];
-  // All unknown → order must be preserved exactly (stable, all score 0).
-  const out = demoteClosed(rows, (r) => r.hours, (r) => r.lng).map((r) => r.id);
-  assertEquals(out, ["a-unknown", "b-unknown", "c-unknown"]);
-  // Referenced so the intent of the fixtures is documented even though the
-  // wall-clock-dependent buckets aren't asserted here (isOpenAt covers those).
-  assertEquals(typeof openHours.monday, "object");
-  assertEquals(typeof closedHours.sunday, "object");
 });
 
 Deno.test("mexicoZone: longitude bands", () => {

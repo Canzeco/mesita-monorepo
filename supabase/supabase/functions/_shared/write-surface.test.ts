@@ -7,44 +7,14 @@
 //     building this file: a plain `.from("app_config").update(` grep found
 //     0 writers where this windowed scan found 19, because the real code is
 //     virtually all multi-line chains), are the frozen ALLOWLIST baseline.
-//     This test fails only on a NEW file writing an aggregate table outside
-//     its door and that baseline — migrating an allowlisted caller onto its
-//     door only ever SHRINKS the allowlist, never breaks this test.
+//     This test fails on a NEW file writing an aggregate table outside its
+//     door and that baseline.
 //  2. Guard test 4's refusal half: a hard DELETE on an aggregate's own row,
 //     ratcheted the same way. The visibility half is consumers.deleted_at
 //     plus `_shared/delete-history-free.ts` (MESITA-1250).
 //
-// CONSUMER note: PR #1157 (merged 2026-08-23, same issue) already built a
-// comprehensive consumer validator + write door — `_shared/consumer-doc.ts`,
-// `ConsumerDoc`/`validateConsumerPatch`/`writeConsumer` — and routed its
-// own survey's 7 call sites through it. This PR does not build a second,
-// competing consumer door — that would contradict deliverable 3 ("the ONLY
-// exported mutation function"). The allowlist below is bootstrapped from a
-// real scan taken AFTER #1157 landed, and still finds 6 files besides
-// consumer-doc.ts itself writing `consumers` directly — #1157's routing
-// covered its own survey's call sites, not the full closure of every
-// `.from("consumers")` write in the tree. Freezing that honestly (not
-// pretending the door is the sole writer when the scan says otherwise) is
-// what this ratchet is for; migrating those 6 onto the door is follow-up
-// work, not a claim this comment makes.
-//
-// RECONCILIATION (2026-08-23, same day, after this PR's own branch was cut):
-// three more child issues split off this same parent (MESITA-1247 §21:58)
-// landed on main before this PR did — MESITA-1279/1280/1281 shipped real,
-// comprehensive doors for PLACE/RESERVATION/TICKET (`place-doc.ts`
-// writePlace, `reservation-doc.ts` writeReservation, `ticket-doc.ts`
-// writeTicket), each routing most or all of its aggregate's existing call
-// sites. `place-doc.ts`/`ticket-doc.ts`/`ojo-engine.ts`/`reservation-doc.ts`
-// are added to the allowlists below — new files now writing their
-// aggregate's table directly, which is exactly what a door (or, for
-// ojo-engine.ts, a pre-existing shipped writer this ratchet's baseline
-// simply predates) is supposed to do. See each entry's own comment for
-// which is which. `update-place.ts` (this PR's own PLACE door) is REMOVED
-// from the allowlist below — deleted in this reconciliation as a second,
-// competing PLACE door now that `place-doc.ts` is the real one; its jsonb
-// content schemas (place-jsonb-schemas.ts) were folded into place-doc.ts's
-// validator instead, per the coordination comment on this PR
-// (github.com/Canzeco/mesita-monorepo/pull/1163#issuecomment-5388875090).
+// Every allowlist is the exact set a findWriters() run finds today, and each
+// test also fails on a STALE entry, so a door migration must prune its line.
 //
 // Scan helpers duplicated from place-name-writes.test.ts on purpose — that
 // file's internals are regression-pinned (MESITA-1075's relative-path fix);
@@ -92,8 +62,7 @@ function stripLineComments(src: string): string {
  *  multi-line chains. Deliberately imprecise (same tradeoff
  *  place-name-writes.test.ts accepts): the window can catch an unrelated
  *  write/delete on a DIFFERENT table that happens to follow within 2000
- *  chars — verified this actually happens for two DELETE entries below
- *  (see the allowlist comments). That is an acceptable false-positive rate
+ *  chars. That is an acceptable false-positive rate
  *  for a ratchet whose job is "does anything NEW show up", not a claim of
  *  surgical precision. */
 async function findWriters(table: string, verbs: RegExp): Promise<string[]> {
@@ -112,26 +81,27 @@ async function findWriters(table: string, verbs: RegExp): Promise<string[]> {
 const WRITE_VERBS = /\.(insert|update|upsert)\s*\(/;
 const DELETE_VERB = /\.delete\s*\(/;
 
-// ── PLACE (place_profiles, profiles) — bootstrapped from a real findWriters() run ──
+function assertRatchet(found: string[], allowlist: string[], what: string) {
+  const extra = found.filter((f) => !allowlist.includes(f));
+  assertEquals(extra, [], `new direct ${what}: ${extra.join(", ")}`);
+  const stale = allowlist.filter((f) => !found.includes(f));
+  assertEquals(
+    stale,
+    [],
+    `allowlist names a file that is no longer a ${what}: ${stale.join(", ")} — delete these lines`,
+  );
+}
+
+// ── PLACE (place_profiles, profiles) ─────────────────────────────────────
+// `_shared/place-doc.ts` (writePlace) is THE place door; this literal-string
+// scan cannot see it (the table is a parameterized arg), so it is not listed.
 const PLACE_PROFILE_UPDATE_ALLOWLIST = [
-  "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("place_profiles")), listed for a future reader's clarity
   "_shared/field-correction-writer.ts", // enrichment field pins (MESITA-2029)
-  "_shared/place-embeddings.ts",
-  "_shared/save-place.ts",
-  "_shared/social-followers.ts",
-  "_shared/store-place-images.ts",
-  "admin-web-set-place-listed/index.ts",
-  "admin-web-set-place-active/index.ts",
-  "admin-web-update-place/index.ts",
-  "enricher-cron-enrich-place-contents/index.ts",
-  "enricher-cron-enrich-place-research/index.ts",
-  "supabase-edgefunc-reservation-call/index.ts",
 ];
 
 Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist", async () => {
   const found = new Set([...await findWriters("place_profiles", WRITE_VERBS), ...await findWriters("profiles", WRITE_VERBS)]);
-  const extra = [...found].filter((f) => !PLACE_PROFILE_UPDATE_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of place_profiles/profiles: ${extra.join(", ")}`);
+  assertRatchet([...found].sort(), PLACE_PROFILE_UPDATE_ALLOWLIST, "writer of place_profiles/profiles");
 });
 
 // ── PLACE ROW (places) — MESITA-1284: this table was missing from every
@@ -148,66 +118,37 @@ Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist
 const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [];
 
 Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () => {
-  const found = await findWriters("places", WRITE_VERBS);
-  const extra = found.filter((f) => !PLACE_ROW_UPDATE_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of places: ${extra.join(", ")}`);
+  assertRatchet(await findWriters("places", WRITE_VERBS), PLACE_ROW_UPDATE_ALLOWLIST, "writer of places");
 });
 
-// ── CONSUMER (consumers) — see the CONSUMER note in the file header ────────
+// ── CONSUMER (consumers) ─────────────────────────────────────────────────
 const CONSUMER_ALLOWLIST = [
-  "_shared/consumer-doc.ts", // PR #1157's write door (merged)
-  "consumer-web-create-reservation/index.ts",
+  "_shared/consumer-doc.ts", // THE consumer door (PR #1157)
 ];
 
 Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async () => {
-  const found = await findWriters("consumers", WRITE_VERBS);
-  const extra = found.filter((f) => !CONSUMER_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of consumers: ${extra.join(", ")}`);
+  assertRatchet(await findWriters("consumers", WRITE_VERBS), CONSUMER_ALLOWLIST, "writer of consumers");
 });
 
 // ── RESERVATION (reservation_tickets) ───────────────────────────────────
 const RESERVATION_ALLOWLIST = [
-  "_shared/agent-tools.ts",
-  "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280) — 28/28 call sites routed, the last 13 (supabase-edgefunc-reservation-call/index.ts) in a follow-up PR (#1169) once the write-surface research confirmed every literal value that file writes was already covered by the closed sets
-  "consumer-web-confirm-reservation/index.ts",
-  "consumer-web-create-reservation/index.ts",
-  "consumer-web-update-reservation/index.ts",
-  "eleven-a1-report-outcome/index.ts",
-  "eleven-a2-confirm-reservation/index.ts",
+  "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280)
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
 Deno.test("RESERVATION: no new writer of reservation_tickets outside the allowlist", async () => {
-  const found = await findWriters("reservation_tickets", WRITE_VERBS);
-  const extra = found.filter((f) => !RESERVATION_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of reservation_tickets: ${extra.join(", ")}`);
+  assertRatchet(await findWriters("reservation_tickets", WRITE_VERBS), RESERVATION_ALLOWLIST, "writer of reservation_tickets");
 });
 
 // ── CONFIG (app_config) ─────────────────────────────────────────────────
-//
-// MESITA-1724 shrank this list by eleven: the admin console's ten config
-// writers were `admin-web-update-<page>-config/index.ts`, each with its own
-// `.from("app_config").update()`, and one of them was listed TWICE
-// (`admin-web-update-reservations-config/index.ts`, a copy-paste in the
-// bootstrap scan that made the allowlist look one entry longer than the tree
-// it froze). They are now sections of admin-web-update-config, dispatched
-// through `_shared/config-sections.ts` and writing through
-// `_shared/write-config.ts` — the door this file has allowed since it was
-// written, finally the only writer it names.
 const CONFIG_ALLOWLIST = [
-  "_shared/save-place.ts",
   "_shared/write-config.ts", // THE app_config door (MESITA-1724) — every admin config section reads and writes here
-  "consumer-web-create-reservation/index.ts",
-  "consumer-web-update-reservation/index.ts",
-  "supabase-edgefunc-reservation-call/index.ts",
   "supabase-edgefunc-sync-reservationist/index.ts",
 ];
 
 Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () => {
-  const found = await findWriters("app_config", WRITE_VERBS);
-  const extra = found.filter((f) => !CONFIG_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of app_config: ${extra.join(", ")}`);
+  assertRatchet(await findWriters("app_config", WRITE_VERBS), CONFIG_ALLOWLIST, "writer of app_config");
 });
 
 // ── Guard test 4, refusal half ──────────────────────────────────────────
@@ -223,18 +164,15 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // satellite table, not the aggregate row itself. An entry that is only that
 // says so in its comment, naming the real target, so a future reader is not
 // misled and the scan can be tightened later without this file going stale.
-const HARD_DELETE_ALLOWLIST = [
-  "_shared/save-place.ts", // real: deletes the place_profiles row it just inserted, on a failed downstream step (compensating-write pattern)
-];
+const HARD_DELETE_ALLOWLIST: string[] = [];
 
 Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/reservation row", async () => {
   const tables = ["place_profiles", "profiles", "consumers", "reservation_tickets", "places"];
   const found = new Set<string>();
   for (const t of tables) for (const f of await findWriters(t, DELETE_VERB)) found.add(f);
-  const extra = [...found].filter((f) => !HARD_DELETE_ALLOWLIST.includes(f));
-  assertEquals(
-    extra,
-    [],
-    `new hard delete on an aggregate row: ${extra.join(", ")} — MESITA-1250 owns the soft-delete replacement`,
+  assertRatchet(
+    [...found].sort(),
+    HARD_DELETE_ALLOWLIST,
+    "hard delete on an aggregate row (MESITA-1250 owns the soft-delete replacement)",
   );
 });

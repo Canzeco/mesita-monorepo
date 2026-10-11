@@ -1,14 +1,11 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  anyFilterActive,
   applyDiscoveryFilters,
   trimToRadius,
   type FilterableQuery,
 } from "./discovery-filters.ts";
 import {
-  DEFAULT_MAP_SUPERS,
   DISCOVERY_DEFAULTS,
-  SUPER_PARAM_KEYS,
   normalizeDiscoveryConfig,
   WIRED_ENGINE_KEYS,
   type DiscoveryFilters,
@@ -154,22 +151,12 @@ Deno.test("the trim keeps a row with no geo rather than silently dropping it", (
   assertEquals(trimToRadius(rows, latOf, lngOf, 5, CDMX).map((r) => r.id), ["unlocated"]);
 });
 
-// ── The summary helper ───────────────────────────────────────────────────────
-
-Deno.test("anyFilterActive is true on the defaults, because the gate ships on", () => {
-  assert(anyFilterActive(DISCOVERY_DEFAULTS.filters));
-  assert(!anyFilterActive(filters({ requireReady: false })));
-  assert(anyFilterActive(filters({ requireReady: false, minRating: 0.1 })));
-  assert(anyFilterActive(filters({ requireReady: false, minReviews: 1 })));
-  assert(anyFilterActive(filters({ requireReady: false, maxDistanceKm: 1 })));
-});
-
 // ── The config, now that it carries four sections ────────────────────────────
 
 Deno.test("a blob from before this change reads back with the new sections defaulted", () => {
   // Exactly what the previous migration stored: weights + slotting only.
   const old = {
-    weights: { proximity: 2, timing: 1, category: 1, popularity: 1, semantic: 1, randomness: 0.35 },
+    weights: { proximity: 2, timing: 1, category: 1, popularity: 1, summary: 1, randomness: 0.35 },
     slotting: { enabled: true, everyNth: 7 },
   };
   const cfg = normalizeDiscoveryConfig(old);
@@ -198,14 +185,12 @@ Deno.test("swipe knobs default on an old blob and clamp", () => {
     swipe: {
       radiusKm: 99,
       closingBufferMin: -4,
-      categoryFilter: "yes",
       minReviews: -1,
       savedAt: "not-a-date",
     },
   });
   assertEquals(clamped.swipe.radiusKm, 50);
   assertEquals(clamped.swipe.closingBufferMin, 0);
-  assertEquals(clamped.swipe.categoryFilter, false);
   assertEquals(clamped.swipe.minReviews, 0);
   assertEquals(clamped.swipe.savedAt, null);
   assertEquals(
@@ -242,21 +227,6 @@ Deno.test("the retired swipe ranking knobs do not survive a normalize", () => {
   }
   // The admission knobs beside them are untouched.
   assertEquals(swipe.radiusKm, 7);
-});
-
-Deno.test("normalize folds semantic weight and params onto summary", () => {
-  const cfg = normalizeDiscoveryConfig({
-    weights: { semantic: 2.4, proximity: 1 },
-    params: { semantic: { unembedded: 0.15 } },
-  });
-  assertEquals(cfg.weights.summary, 2.4);
-  assertEquals(cfg.params.summary.unembedded, 0.15);
-  assertEquals(cfg.weights.name, 1);
-  assertEquals(cfg.weights.enriched, 1);
-  const kept = normalizeDiscoveryConfig({
-    weights: { semantic: 2, summary: 0.5 },
-  });
-  assertEquals(kept.weights.summary, 0.5);
 });
 
 Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
@@ -307,13 +277,6 @@ Deno.test("social knobs default on an old blob and clamp", () => {
   assertEquals(clamped.social.horizonDays, 90);
 });
 
-Deno.test("only WIRED engines are storable — an unwired one has no knob to persist", () => {
-  // The registry the console renders is longer than this list on purpose; if
-  // an engine ever gains a key here without being wired, the console would
-  // offer a toggle the engine ignores.
-  assertEquals([...WIRED_ENGINE_KEYS], ["swipe"]);
-});
-
 Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () => {
   assertEquals(normalizeDiscoveryConfig({ chat: { prompt: "  Be Memo.  " } }).chat.prompt, "  Be Memo.  ");
   assertEquals(normalizeDiscoveryConfig({}).chat.prompt, "");
@@ -333,7 +296,7 @@ Deno.test("map knobs default on an old blob and clamp", () => {
       reloadMinKm: 99,
       reloadMinSec: 40,
       googleFill: "yes",
-      types: { restaurant: false, ghost: true },
+      supers: { restaurants: false },
     },
   });
   assertEquals(clamped.map.minRating, 5);
@@ -349,88 +312,6 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(clamped.map.googleFill, true);
   assertEquals(clamped.map.supers.restaurants, false);
   assertEquals(clamped.map.supers.cafes_bakeries, true);
-});
-
-Deno.test("the console never asks how many — every set cap is dropped on read", () => {
-  // How many is the GUEST's question (Filters sheet), asked once
-  // (Pato, 2026-08-29). A legacy blob carrying the retired knobs must
-  // not resurrect them on the config the EFs read.
-  const legacy = normalizeDiscoveryConfig({
-    map: { partnerCount: 99, notPartnerCount: 6, mesitaCount: 12, googleCount: 8 },
-  });
-  for (const dead of ["partnerCount", "notPartnerCount", "mesitaCount", "googleCount"]) {
-    assertEquals(dead in legacy.map, false);
-  }
-});
-
-Deno.test("the category param is seven Supers, and the ordered cap is gone", () => {
-  // MESITA-1695 retired `general.categoryCount`. It was an index cap over an
-  // ordered Google-slug list, so a stored 5 silently forced four whole Supers
-  // off. A legacy blob carrying it must not resurrect it.
-  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(SUPER_PARAM_KEYS.length, 7);
-  assertEquals("categoryCount" in missing.general, false);
-  const legacy = normalizeDiscoveryConfig({ general: { categoryCount: 5 } });
-  assertEquals("categoryCount" in legacy.general, false);
-  for (const key of SUPER_PARAM_KEYS) {
-    assertEquals(missing.map.supers[key], DEFAULT_MAP_SUPERS[key], key);
-  }
-});
-
-Deno.test("a pre-1695 blob folds Google slugs up into Supers", () => {
-  // THE LIVE BLOB: five slugs true, everything else absent. The fold has to
-  // land on exactly the three F&B Supers, or production Nearby calls change
-  // shape on the first read after deploy.
-  const folded = normalizeDiscoveryConfig({
-    map: {
-      types: {
-        restaurant: true,
-        bar: true,
-        night_club: true,
-        cafe: true,
-        bakery: true,
-      },
-    },
-    name: {
-      // Everything the pre-1695 strip defaulted ON, turned off except bakery.
-      fast: {
-        types: {
-          restaurant: false,
-          bar: false,
-          night_club: false,
-          cafe: false,
-          bakery: true,
-        },
-      },
-      deep: { types: { museum: true } },
-    },
-  });
-  assertEquals(folded.map.supers, {
-    restaurants: true,
-    cafes_bakeries: true,
-    bars_nightlife: true,
-    experiences: false,
-    culture_arts: false,
-    sports_fitness: false,
-    wellness_beauty: false,
-  });
-  // One slug on is enough for its Super: no console could ever turn `cafe` on
-  // and `bakery` off, so half a Super was never reachable.
-  assertEquals(folded.name.fast.supers.cafes_bakeries, true);
-  assertEquals(folded.name.fast.supers.restaurants, false);
-  assertEquals(folded.name.fast.supers.bars_nightlife, false);
-  // An ABSENT slug keeps its pre-1695 default rather than reading false —
-  // `deep` here stored only `museum`, so the three F&B Supers stay on exactly
-  // as they were, and culture_arts joins them.
-  assertEquals(folded.name.deep.supers.culture_arts, true);
-  assertEquals(folded.name.deep.supers.restaurants, true);
-  assertEquals(folded.name.deep.supers.bars_nightlife, true);
-  assertEquals(folded.name.deep.supers.sports_fitness, false);
-  // The new key wins whenever it is present, legacy or not.
-  const both = normalizeDiscoveryConfig({
-    map: { supers: { restaurants: false }, types: { restaurant: true } },
-  });
-  assertEquals(both.map.supers.restaurants, false);
 });
 
 Deno.test("map.pinCount is the operator's How many, snapped to a stop", () => {
@@ -483,7 +364,6 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
     mesitaCount: 3,
     autoCount: 3,
     googleCount: 3,
-    count: 9,
     supers: DISCOVERY_DEFAULTS.map.supers,
   });
   const clamped = normalizeDiscoveryConfig({
@@ -501,7 +381,6 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(clamped.name.deep.googleCount, 20);
   assertEquals(clamped.name.deep.autoCount, 0);
   assertEquals(clamped.name.fast.googleCount, 20);
-  assertEquals(clamped.name.deep.count, 9);
   const missingAuto = normalizeDiscoveryConfig({
     name: { deep: { googleCount: 40 } },
   });

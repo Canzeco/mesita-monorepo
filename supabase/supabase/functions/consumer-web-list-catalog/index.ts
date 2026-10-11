@@ -38,7 +38,7 @@ type Body = {
   lat?: number;
   lng?: number;
   /**
-   * The guest's four discovery predicates (MESITA-1697). Feed grew a filter
+   * The guest's discovery predicates (MESITA-1697). Feed grew a filter
    * control when it absorbed Catalog's body, and this is where that control
    * lands.
    *
@@ -52,8 +52,7 @@ type Body = {
    * This is the same cut-before-you-rank rule discovery-predicates.ts states
    * and consumer-web-recommend-swipe already follows; Catalog was simply the
    * one engine that had no way to express it. Omitting the field keeps the
-   * operator pool exactly as before, which is what every deployed Expo binary
-   * sends.
+   * operator pool exactly as before.
    */
   predicates?: unknown;
 };
@@ -118,16 +117,13 @@ Deno.serve(async (req) => {
   ) as PlaceProfileRow[];
 
   // GUEST PREDICATES CUT THE POOL, before rails are planned or filled. Rail
-  // OCCUPANCY is computed from the cut pool too, so a category whose only
-  // places are closed right now stops producing a heading at all rather than
-  // producing an empty one.
+  // OCCUPANCY is computed from the cut pool too, so a category whose places
+  // all fall outside the guest's family or review floor stops producing a
+  // heading at all rather than producing an empty one.
   const guestPredicates = readDeckPredicates(body.predicates);
   const pool = applyDeckPredicates(
     withinRadius as unknown as Record<string, unknown>[],
     guestPredicates,
-    geo.lat !== null && geo.lng !== null
-      ? { lat: geo.lat, lng: geo.lng }
-      : null,
   ) as unknown as PlaceProfileRow[];
 
   const occupied = occupiedFromRows(pool, cfg.catalog.minSeedPlaces);

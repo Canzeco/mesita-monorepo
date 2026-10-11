@@ -47,10 +47,6 @@ import {
   stripPlacesPrefix,
 } from "./google-places.ts";
 import {
-  googleTypeFilterForSupers,
-  type PredictionState,
-} from "./suggest-places-helpers.ts";
-import {
   applyPlacesAutocompleteRegion,
   applyPlacesTextSearchRegion,
 } from "./sourcing.ts";
@@ -59,6 +55,7 @@ import {
   loadDiscoveryConfig,
   type MapConfig,
   type NameConfig,
+  SUPER_PARAM_KEYS,
   type SuperParamKey,
 } from "./discovery-config.ts";
 import {
@@ -109,6 +106,17 @@ export type SuggestPlacesMode = "fast" | "deep" | "mesita";
 
 /** Word's two entities: a place, or a region/city from Autocomplete. */
 export type LaneKind = "place" | "location";
+
+type PredictionState =
+  | "not_in_mesita"
+  | "web_listed"
+  | "verified_partner_other"
+  | "verified_partner_self";
+
+/** Google is skipped when every Super is off. */
+function anySuperOn(supers: Record<SuperParamKey, boolean>): boolean {
+  return SUPER_PARAM_KEYS.some((k) => supers[k]);
+}
 
 export type LaneItem = {
   placeId: string;
@@ -207,11 +215,6 @@ export function laneDedupeKeys(item: {
   return keys;
 }
 
-export type NameDeepLanes = {
-  mesita: LaneItem[];
-  google: LaneItem[];
-};
-
 export type NameDeepQueries = {
   autocomplete: LaneItem[];
   text: LaneItem[];
@@ -280,8 +283,6 @@ export type ConsumerSearchArgs = {
   sessionToken?: string;
   lat?: number | null;
   lng?: number | null;
-  /** Ignored. Autocomplete and Text Search stay Any. */
-  country?: string | null;
   /** Default fast — pickers and older clients stay Autocomplete. */
   mode?: SuggestPlacesMode | string | null;
   /**
@@ -511,7 +512,7 @@ async function runFastSearch(
   locations: boolean,
 ): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
   const cap = Math.min(name.fast.count, name.fast.googleCount);
-  if (cap <= 0 || googleTypeFilterForSupers(name.fast.supers) === "skip") {
+  if (cap <= 0 || !anySuperOn(name.fast.supers)) {
     return [];
   }
   const gate = mapWithSupers(map, name.fast.supers);
@@ -579,25 +580,10 @@ async function stampAutocompleteLane(
   return weaveStampedAutocomplete(items, stamped);
 }
 
-/** After resolve: Mesita listed, leftover Google stubs. */
-export function splitResolvedNameHits(items: LaneItem[]): NameDeepLanes {
-  const mesita: LaneItem[] = [];
-  const google: LaneItem[] = [];
-  for (const item of items) {
-    if (item.mesitaId) mesita.push(item);
-    else if (item.state === "not_in_mesita") google.push(item);
-  }
-  return { mesita, google };
-}
-
 function takeLane(items: LaneItem[], cap: number): LaneItem[] {
   if (cap <= 0) return [];
   return items.slice(0, cap);
 }
-
-// The strip lives in google-places.ts; re-exported only because
-// consumer-search-lane.test.ts imports it from here.
-export { stripPlacesPrefix };
 
 /** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
 export function deepModuleFlags(args: {
@@ -629,7 +615,7 @@ async function runDeepSearch(
 ): Promise<LaneItem[]> {
   const deep = name.deep;
   const gate = mapWithSupers(map, deep.supers);
-  const typesOn = googleTypeFilterForSupers(deep.supers) !== "skip";
+  const typesOn = anySuperOn(deep.supers);
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   const { wantAuto, wantText, wantMesita } = deepModuleFlags({
     autoCount: deep.autoCount,
@@ -802,7 +788,7 @@ async function embedQueryVector(
 
 const EMBED_COLUMNS =
   "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, business_state, google_review_count, name_embedding, embedding";
-/** In-process cosine budget — same order as recall-places, not every vector. */
+/** In-process cosine budget — a bounded pool, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
 

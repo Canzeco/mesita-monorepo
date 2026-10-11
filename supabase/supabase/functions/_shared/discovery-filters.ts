@@ -114,8 +114,3 @@ export function trimToRadius<R>(
     return haversineKm(geo.lat as number, geo.lng as number, lat, lng) <= maxDistanceKm;
   });
 }
-
-/** True when any filter is doing work — the console renders this as a summary. */
-export function anyFilterActive(f: DiscoveryFilters): boolean {
-  return f.requireReady || f.minRating > 0 || f.minReviews > 0 || f.maxDistanceKm > 0;
-}

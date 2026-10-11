@@ -28,9 +28,7 @@ import {
 } from "./discovery-config.ts";
 import {
   ENRICHED_OFF,
-  SIGNAL_BLURBS,
   SIGNAL_KEYS,
-  SIGNAL_LABELS,
   SIGNALS,
 } from "./discovery-signals.ts";
 import {
@@ -68,16 +66,6 @@ Deno.test("only Enriched is capped — every other signal keeps the uniform ceil
     if (key === "enriched") continue;
     assertEquals(weightMaxFor(key), WEIGHT_MAX, `${key} should keep WEIGHT_MAX`);
   }
-});
-
-Deno.test("the retired mesita_level key carries no ceiling of its own", () => {
-  // It is not a SignalKey any more. If this ever comes back true, the split
-  // was reverted halfway and the alias fold is masking it.
-  assertEquals(
-    (SIGNAL_WEIGHT_MAX as Record<string, number | undefined>).mesita_level,
-    undefined,
-  );
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
 });
 
 Deno.test("a console write above Enriched's ceiling is clamped, not accepted", () => {
@@ -176,8 +164,6 @@ Deno.test("every Record<SignalKey, ...> map in this package has full key coverag
   const expected = [...SIGNAL_KEYS].sort();
   const maps: Record<string, Record<string, unknown>> = {
     SIGNALS,
-    SIGNAL_LABELS,
-    SIGNAL_BLURBS,
     DEFAULT_SIGNAL_PARAMS,
     SIGNAL_PARAM_BOUNDS,
     "DISCOVERY_DEFAULTS.weights": DISCOVERY_DEFAULTS.weights,

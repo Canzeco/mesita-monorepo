@@ -66,7 +66,6 @@ export type AuthedUser = {
   email: string | null;
   emailLower: string | null;
   phone: string | null;
-  appRole: string | null;
   // The underlying Supabase user object — never null on the success
   // path because getAuthedUser bails before returning if data.user is
   // missing.
@@ -80,9 +79,6 @@ function shapeAuthedUser(raw: User): AuthedUser {
     email: raw.email ?? null,
     emailLower: raw.email?.toLowerCase() ?? null,
     phone: raw.phone ?? null,
-    appRole: ((raw.app_metadata as Record<string, unknown> | null)?.role as
-      | string
-      | undefined) ?? null,
     raw,
   };
 }
@@ -91,7 +87,7 @@ export async function getAuthedUser(
   req: Request,
   env: EFEnv,
 ): Promise<
-  | { ok: true; user: AuthedUser; userClient: SupabaseClient }
+  | { ok: true; user: AuthedUser }
   | { ok: false; response: Response }
 > {
   const authHeader = req.headers.get("Authorization") ?? "";
@@ -111,34 +107,32 @@ export async function getAuthedUser(
       response: json({ ok: false, error: "Invalid session" }, 401),
     };
   }
-  return { ok: true, userClient, user: shapeAuthedUser(data.user) };
+  return { ok: true, user: shapeAuthedUser(data.user) };
 }
 
 // Anonymous-OK variant for public facades (discovery decks, catalog,
 // place suggestions) where a signed-in caller gets personalization but an
 // anonymous caller is still served. Never returns a 401: a missing or
-// invalid bearer simply yields `user: null`. When a valid session IS
-// present, the RLS-scoped `userClient` is returned so the handler can read
-// the caller's own rows.
+// invalid bearer simply yields `user: null`.
 //
-//   const { user, userClient } = await getOptionalAuthedUser(req, env);
-//   if (user && userClient) { /* personalize */ }
+//   const { user } = await getOptionalAuthedUser(req, env);
+//   if (user) { /* personalize */ }
 export async function getOptionalAuthedUser(
   req: Request,
   env: EFEnv | AnonEnv,
-): Promise<{ user: AuthedUser | null; userClient: SupabaseClient | null }> {
+): Promise<{ user: AuthedUser | null }> {
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
-    return { user: null, userClient: null };
+    return { user: null };
   }
   const userClient = createClient(env.url, env.anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
   const { data, error } = await userClient.auth.getUser();
   if (error || !data.user) {
-    return { user: null, userClient: null };
+    return { user: null };
   }
-  return { user: shapeAuthedUser(data.user), userClient };
+  return { user: shapeAuthedUser(data.user) };
 }
 
 // ─── Admin client ───────────────────────────────────────────────────

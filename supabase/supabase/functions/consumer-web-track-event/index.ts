@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-track-event
 //
 // MESITA-1387: the consumer app has zero instrumentation, so every IA call
-// (four tabs, Wallet inside Pay, the nav restructure) was decided on taste.
+// (the tabs, the nav restructure) was decided on taste.
 // This is the whole pipeline — no vendor account, no key, nothing an agent
 // would have to create — a row in consumer_analytics_events per call.
 //
@@ -23,26 +23,10 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 // Add a new event here before a client ships it.
 const ALLOWED_EVENTS = new Set([
   "nav_tab_tap",
-  "wallet_open",
-  "balance_card_tap",
-  "ticket_created",
-  // MESITA-1619 — the plan page opening (Me's Plan tile). Mirrored in
-  // web-consumer's AnalyticsEvent union.
-  "plan_open",
-  // MESITA-1674 — the Wallet's real balance list is paginated (twenty places
-  // is a named design case; it named twenty organizations until MESITA-1892
-  // made the place the thing a balance belongs to); this is the only new
-  // interaction the read adds. NO DOUBLE QUOTES IN THIS BLOCK: web-consumer's
-  // analytics-events-paired.test.ts scrapes every quoted string inside this
-  // literal as an event name, comments included.
-  "wallet_load_more_tap",
-  // MESITA-1697 — Home's modes, finally instrumented. See track.ts.
+  // MESITA-1697 — Home's modes. See track.ts.
   "home_mode_view",
   "home_card_open",
   "home_card_save",
-  // MESITA-1694 — Search-tab coach mark dismiss. Mirrored in web-consumer's
-  // AnalyticsEvent union. Payload.reason is timer or tap.
-  "search_coachmark_dismiss",
 ]);
 
 type Body = { event?: string; payload?: Record<string, unknown> };

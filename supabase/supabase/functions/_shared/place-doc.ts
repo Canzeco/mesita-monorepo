@@ -40,11 +40,10 @@
 //     never given the key to violate.
 //   • `google_place_id` is the immutable external identity spine once set.
 //     The one caller that ever WRITES it is the create path (save-place.ts,
-//     mode: "insert"); no update call site in the codebase sets it — one
-//     (admin-web-update-place) explicitly REJECTS a client that tries,
-//     upstream of this file. writePlace() enforces the same rule at the
-//     door: `google_place_id` in an UPDATE patch against "place_profiles" or
-//     "profiles" is refused before validation even runs.
+//     mode: "insert"); no update call site in the codebase sets it.
+//     writePlace() enforces the rule at the door: `google_place_id` in an
+//     UPDATE patch against "place_profiles" or "profiles" is refused before
+//     validation even runs.
 //   • `profiles` is a view, not a base table — see the header above.
 //
 // THE INVARIANTS below mirror LIVE Postgres CHECK constraints (pulled via

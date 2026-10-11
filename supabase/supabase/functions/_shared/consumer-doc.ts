@@ -102,7 +102,13 @@ export type ConsumerValidationResult =
   | { ok: false; error: string };
 
 const SEX_VALUES = new Set(["male", "female"]);
+// Consumer QR codes: sequential 8 digits, canonical form 0000-0000 … 9999-9999.
 const CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
+
+export function isCanonicalConsumerCode(code: string): boolean {
+  return CODE_RE.test(code);
+}
+
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
 
 function isNullableString(v: unknown): v is string | null {

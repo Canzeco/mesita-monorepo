@@ -37,8 +37,6 @@ Deno.test("parseName: a half sent blank is still rejected", () => {
 Deno.test("parseName: patches that don't touch the name pass through", () => {
   assertEquals(parseName({ birthday: "1990-04-02" }, null, null).ok, true);
   assertEquals(parseName({ avatar_url: null }, null, null).ok, true);
-  // Legacy single-field clients still allowed — they don't set first/last.
-  assertEquals(parseName({ full_name: "Ana Ruiz" }, null, null).ok, true);
 });
 
 Deno.test("buildProfilePatch: name pair also refreshes full_name", () => {
@@ -50,8 +48,6 @@ Deno.test("buildProfilePatch: name pair also refreshes full_name", () => {
       fullName: "Ana Ruiz",
       sex: null,
       birthday: null,
-      country: null,
-      phone: null,
     },
   );
   assertEquals(res.ok, true);
@@ -72,8 +68,6 @@ Deno.test("buildProfilePatch: an empty body is nothing to update", () => {
       fullName: null,
       sex: null,
       birthday: null,
-      country: null,
-      phone: null,
     },
   );
   assertEquals(res.ok, false);
@@ -132,8 +126,6 @@ Deno.test("buildProfilePatch: avatar_url alone", () => {
       fullName: null,
       sex: null,
       birthday: null,
-      country: null,
-      phone: null,
       avatarUrl: url,
     },
   );

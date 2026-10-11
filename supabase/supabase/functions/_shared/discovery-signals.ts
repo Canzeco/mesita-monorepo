@@ -219,9 +219,9 @@ export function proximity(
  *
  * `open` dominates because it is the one a guest feels immediately — a closed
  * door ends the visit — but a closed place scores 0.2 rather than 0, because
- * the house rule is DEMOTE, DON'T HIDE (the same rule `demoteClosed` encodes
- * for Memo). Zero in a multiplicative blend is not a demotion, it is deletion,
- * and a place that opens in twenty minutes should still be reachable.
+ * the house rule is DEMOTE, DON'T HIDE. Zero in a multiplicative blend is not
+ * a demotion, it is deletion, and a place that opens in twenty minutes should
+ * still be reachable.
  *
  * No usable hours → the open half abstains at NEUTRAL rather than guessing
  * closed. `isOpenAt` already distinguishes "no data" (null) from "nothing is
@@ -414,8 +414,6 @@ export function name(
  * No place vector → 0.4. The place has not been embedded yet, which is an
  * enrichment gap; it should lose to an embedded place on a Summary query
  * without being deleted from the deck.
- *
- * Old blobs stored this as `semantic`. normalize() folds that key here.
  */
 export const SUMMARY_UNEMBEDDED = 0.4;
 
@@ -541,28 +539,4 @@ export const SIGNALS: Record<SignalKey, SignalFn> = {
   popularity,
   enriched,
   randomness,
-};
-
-/** Operator-facing names. The admin weights table renders these. */
-export const SIGNAL_LABELS: Record<SignalKey, string> = {
-  name: "Name",
-  summary: "Summary",
-  proximity: "Proximity",
-  timing: "Timing",
-  category: "Category",
-  popularity: "Popularity",
-  enriched: "Enriched",
-  randomness: "Randomness",
-};
-
-/** One line each, for the same table. What the signal asks, not how it works. */
-export const SIGNAL_BLURBS: Record<SignalKey, string> = {
-  name: "The query name against the place's name vector.",
-  summary: "The query against the place's Summary vector — never Presentation.",
-  proximity: "How far is it, bent through a log curve — close counts hard, far counts gently.",
-  timing: "Is it open, and is this its hour — read in the place's own local time.",
-  category: "Does the type answer what the guest asked for.",
-  popularity: "Rating shrunk toward the catalog mean by review volume.",
-  enriched: "Did Mesita do the work on this place — a written profile, not a raw Google row.",
-  randomness: "Reads nothing about the place. Keeps the deck from freezing.",
 };

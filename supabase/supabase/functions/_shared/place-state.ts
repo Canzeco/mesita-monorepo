@@ -41,10 +41,6 @@ export function isPlaceSeeded(googlePlaceId: unknown): boolean {
  * ADDING A LABEL TO content_state SILENTLY BREAKS THIS — the policy would then
  * exclude rows that `state` alone still calls listed. If you add one, either
  * add it to the policy or check content_state here.
- *
- * Not to be confused with the discovery pool: _shared/place-pool.ts is
- * stricter still (state='active' only), so a `lead` place is reachable by link
- * and search but never pooled for Memo's RAG leg.
  */
 export const LISTED_STATES: readonly string[] = ["active", "lead"];
 

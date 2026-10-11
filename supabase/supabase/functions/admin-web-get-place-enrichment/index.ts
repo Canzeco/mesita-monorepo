@@ -151,5 +151,5 @@ Deno.serve(async (req) => {
     lastEnrichedAt: profileRow?.enriched_at ?? null,
   };
 
-  return json({ ok: true, media, state, schedule, count: rows.length });
+  return json({ ok: true, media, state, schedule });
 });

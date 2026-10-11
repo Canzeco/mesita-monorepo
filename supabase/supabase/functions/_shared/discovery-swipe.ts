@@ -84,8 +84,8 @@ export function swipeOpenThrough(
 //
 // QUALITY FLOORS AND GUEST PREDICATES STAY EXCLUSIONS. Ready, the review floor
 // and the Map type batteries decide what a Mesita card IS; a guest's own
-// filter (including a legacy binary's "open now") is a promise to that guest.
-// Neither is tiered — only the two gates that answer "right here, right now".
+// filter is a promise to that guest. Neither is tiered — only the two gates
+// that answer "right here, right now".
 
 /** Where a place sits against Scroll's soft gates. */
 export type SwipeTier =
@@ -177,8 +177,8 @@ export function swipeDistanceKm(
  * except `beyond`, which is sorted nearest-first: Proximity is a flat 0 past
  * reach, so it would otherwise come out in whatever order PostgREST returned.
  *
- * NO GEO → EVERYTHING IS NEAR. Every deployed Expo binary and web's shared
- * deck send no coordinates, and there is no radius without a centre.
+ * NO GEO → EVERYTHING IS NEAR. Web's shared deck sends no coordinates, and
+ * there is no radius without a centre.
  * WITH GEO, AN UNLOCATED ROW IS `unplaced`: it cannot prove it is near, and
  * the boxed pool query could never have returned it anyway.
  */
@@ -394,7 +394,6 @@ export function swipeLineupWeights(
 }
 
 export type SwipeRankOpts = {
-  categories?: string[];
   families?: string[];
   now?: Date;
   random?: () => number;
@@ -419,7 +418,6 @@ export function rankSwipeDeck<T>(
     {
       lat: geo?.lat ?? null,
       lng: geo?.lng ?? null,
-      categories: opts?.categories,
       families: opts?.families,
       now: opts?.now,
       random: opts?.random,

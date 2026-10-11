@@ -3,7 +3,6 @@ import {
   activeFieldPins,
   carryFieldPins,
   CORRECTABLE_FIELD_COLUMNS,
-  CORRECTION_PIN_DAYS,
   FIELD_PINS_KEY,
   type FieldPins,
   buildFieldPin,
@@ -133,10 +132,6 @@ Deno.test("identity and generated prose are not correctable", () => {
       `${forbidden} must never be pinnable`,
     );
   }
-});
-
-Deno.test("an applied correction outranks the Enricher for 90 days", () => {
-  assertEquals(CORRECTION_PIN_DAYS, 90);
 });
 
 Deno.test("correctableFieldsInPatch maps reservation columns to one field", () => {

@@ -1,7 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   REMINDER_LEAD_MS,
-  REMINDER_MAX_ATTEMPTS,
   reminderCallAt,
   reminderParkPatch,
 } from "./reservation-reminder.ts";
@@ -16,10 +15,6 @@ Deno.test("lead: parks exactly 3 h before the slot when that instant is callable
   assert(r !== null);
   assertEquals(r.at.getTime(), slot.getTime() - REMINDER_LEAD_MS);
   assert(r.reason.includes("3 h"));
-});
-
-Deno.test("cap: one attempt, never a retry ladder", () => {
-  assertEquals(REMINDER_MAX_ATTEMPTS, 1);
 });
 
 Deno.test("missed lead: confirming inside the 3 h window skips", () => {

@@ -1,7 +1,7 @@
 // MESITA-1712 — no Edge Function may name a retired COLUMN in a query.
 //
-// `visit_tickets.project_id` became `place_id` (and `ticket_code` became
-// `check_code`) in 20260825005000_rename_project_id_to_place_id.sql. Two raw
+// `visit_tickets.project_id` became `place_id` in
+// 20260825005000_rename_project_id_to_place_id.sql. Two raw
 // selects were written after that migration and never got the memo:
 //
 //   stripe-webhook-handle-event/ticket-payment-intent.ts — the Mesita Pay
@@ -44,7 +44,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 
 /** Renamed columns. The old name is dead everywhere except the compat seam. */
-const RETIRED_COLUMNS = ["project_id", "ticket_code"] as const;
+const RETIRED_COLUMNS = ["project_id"] as const;
 
 /** Names this guard cannot judge: the seam itself, and this file. */
 const EXEMPT = ["_shared/place-id.ts", "_shared/renamed-column-refs.test.ts"];

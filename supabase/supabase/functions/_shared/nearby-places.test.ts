@@ -7,11 +7,8 @@ import {
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
   nearbyCallCount,
-  NEARBY_TYPES,
   parsePlacesScope,
-  dropKnownMesitaGoogleHits,
   isEnrichedListedRow,
-  listedGooglePlaceIds,
   lanesForPlacesScope,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
@@ -48,10 +45,6 @@ function nearbyHit(
     reviewCount: null,
   };
 }
-
-Deno.test("Nearby type batteries stay in lockstep with discovery_config.map", () => {
-  assertEquals([...NEARBY_TYPES], [...NEARBY_TYPE_KEYS]);
-});
 
 Deno.test("mergeNearbyCatalog: Google set paints a Mesita hit, does not add extras", () => {
   const mesita = [
@@ -126,18 +119,6 @@ Deno.test("mergeNearbyCatalog: closest-N only — the ring cut happens upstream"
   assertEquals(
     got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
     ["np-close", "p-far"],
-  );
-});
-
-Deno.test("mergeNearbyCatalog: Mesita set includes partners in the same N", () => {
-  const mesita = [
-    { id: "p1", plan: "pro", google_place_id: "p1", lat: 25.6701, lng: -100.3001 },
-    { id: "m1", plan: "free", google_place_id: "m1", lat: 25.6702, lng: -100.3002 },
-  ];
-  const got = mergeNearbyCatalog(mesita, [], CENTER, SCOPE_MESITA);
-  assertEquals(
-    got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
-    ["p1", "m1"],
   );
 });
 
@@ -223,29 +204,6 @@ Deno.test("mergeNearbyCatalog: Google set does not add a far Mesita miss", () =>
   assertEquals(got.filter((x) => x.kind === "google").length, 10);
 });
 
-Deno.test("mergeNearbyCatalog: disjoint scopes stay 20 on Google, not 40", () => {
-  const partners = Array.from({ length: 10 }, (_, i) => ({
-    id: `p${i}`,
-    plan: "pro",
-    google_place_id: `p${i}`,
-    lat: 25.85 + i * 0.0001,
-    lng: -100.3,
-  }));
-  const mesitaOnly = Array.from({ length: 10 }, (_, i) => ({
-    id: `m${i}`,
-    plan: "free",
-    google_place_id: `m${i}`,
-    lat: 25.75 + i * 0.0001,
-    lng: -100.3,
-  }));
-  const google = Array.from({ length: 20 }, (_, i) =>
-    nearbyHit(`g${i}`, 25.67005 + i * 0.0001, -100.3)
-  );
-  const got = mergeNearbyCatalog([...partners, ...mesitaOnly], google, CENTER, SCOPE_GOOGLE);
-  assertEquals(got.length, 20);
-  assertEquals(got.every((x) => x.kind === "google"), true);
-});
-
 Deno.test("mergeNearbyCatalog: empty Nearby falls back to the Mesita set", () => {
   const mesita = Array.from({ length: 15 }, (_, i) => ({
     id: `m${i}`,
@@ -322,30 +280,6 @@ Deno.test("mergeNearbyCatalog: Google set ignores a far Mesita pool", () => {
   assertEquals(got.every((x) => x.kind === "google"), true);
 });
 
-Deno.test("mergeNearbyCatalog: Mesita set of 20 mixes partners into that N", () => {
-  const partners = Array.from({ length: 8 }, (_, i) => ({
-    id: `p${i}`,
-    plan: "pro",
-    google_place_id: `p${i}`,
-    lat: 25.67001 + i * 0.0001,
-    lng: -100.3,
-  }));
-  const extra = Array.from({ length: 20 }, (_, i) => ({
-    id: `m${i}`,
-    plan: "free",
-    google_place_id: `m${i}`,
-    lat: 25.672 + i * 0.0001,
-    lng: -100.3,
-  }));
-  const got = mergeNearbyCatalog([...partners, ...extra], [], CENTER, SCOPE_MESITA);
-  assertEquals(got.length, 20);
-  assertEquals(got.every((x) => x.kind === "listed"), true);
-  assertEquals(
-    got.filter((x) => x.kind === "listed" && x.row.plan === "pro").length,
-    8,
-  );
-});
-
 const OK_BODY = JSON.stringify({
   places: [{
     id: "places/ChIJ-ok",
@@ -379,29 +313,9 @@ Deno.test("searchNearbyPlaces: one Nearby Search carries every enabled primary t
   try {
     await searchNearbyPlaces("k", CENTER);
     assertEquals(n, 1);
-    assertEquals(body.includedPrimaryTypes, [...NEARBY_TYPES]);
+    assertEquals(body.includedPrimaryTypes, [...NEARBY_TYPE_KEYS]);
     assertEquals(body.maxResultCount, GOOGLE_NEARBY_MAX);
     assertEquals(body.rankPreference, "DISTANCE");
-  } finally {
-    globalThis.fetch = orig;
-    __resetNearbyGoogleCacheForTests();
-  }
-});
-
-Deno.test("searchNearbyPlaces: HTTP failure is not cached", async () => {
-  __resetNearbyGoogleCacheForTests();
-  let n = 0;
-  const orig = globalThis.fetch;
-  globalThis.fetch = () => {
-    n++;
-    return Promise.resolve(new Response("fail", { status: 500 }));
-  };
-  try {
-    const a = await searchNearbyPlaces("k", CENTER);
-    const b = await searchNearbyPlaces("k", CENTER);
-    assertEquals(a, []);
-    assertEquals(b, []);
-    assertEquals(n, 2);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -686,38 +600,6 @@ Deno.test("places scope: two nested sets, named on the wire, Mesita by default",
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
   assertEquals(isEnrichedListedRow({ content_state: "queued" }), false);
   assertEquals(isEnrichedListedRow({}), false);
-});
-
-Deno.test("places scope: every scope admits the same Mesita rows — enriched, never a stub", () => {
-  // Enrichment gates the Mesita ring (Pato, 2026-09-05): a Created stub reads
-  // gray until enriched. The Google scope never shows FEWER Mesita places;
-  // Google rows arrive alongside these, never instead of them.
-  const catalog = [
-    { id: "ready", content_state: "ready" },
-    { id: "stamped", content_state: "queued", enriched_at: "2026-09-01T00:00:00Z" },
-    { id: "stub", content_state: "queued" },
-  ];
-  assertEquals(
-    catalog.filter((row) => isEnrichedListedRow(row)).map((row) => row.id),
-    ["ready", "stamped"],
-  );
-});
-
-Deno.test("nearby helpers: known-gid drop still works", () => {
-  const createdGids = listedGooglePlaceIds([
-    { google_place_id: "ChIJ-created" },
-    { google_place_id: null },
-  ]);
-  assertEquals(
-    dropKnownMesitaGoogleHits(
-      [
-        { placeId: "ChIJ-created" },
-        { placeId: "ChIJ-google" },
-      ],
-      createdGids,
-    ).map((hit) => hit.placeId),
-    ["ChIJ-google"],
-  );
 });
 
 

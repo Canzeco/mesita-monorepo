@@ -6,8 +6,6 @@ type MediaUpdateBody = {
   photos?: unknown;
   menu_pdf_url?: unknown;
   menu_pdf_name?: unknown;
-  product_catalog_url?: unknown;
-  product_catalog_name?: unknown;
   products?: (Record<string, unknown> & { menu?: unknown }) | null;
 };
 
@@ -127,24 +125,8 @@ export function applyMediaUpdates(
       update.menu_pdf_url = raw.trim();
     }
   }
-  if ("product_catalog_url" in body) {
-    const raw = body.product_catalog_url;
-    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update.menu_pdf_url = null;
-    } else if (!isUrl(raw)) {
-      return json({
-        ok: false,
-        error: "product_catalog_url must be a valid https:// URL",
-      }, 400);
-    } else {
-      update.menu_pdf_url = raw.trim();
-    }
-  }
   if ("menu_pdf_name" in body) {
     update.menu_pdf_name = optString(body.menu_pdf_name, MENU_NAME_MAX);
-  }
-  if ("product_catalog_name" in body) {
-    update.menu_pdf_name = optString(body.product_catalog_name, MENU_NAME_MAX);
   }
 
   if ("products" in body) {

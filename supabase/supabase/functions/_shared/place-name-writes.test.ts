@@ -7,9 +7,8 @@
 // (place_profiles.Insert still carries `name?: string`), so TypeScript will not catch
 // it either. This scan is the only check that runs before deploy.
 //
-// It also pins the two rules that replaced the old sticky-sync design:
-//   * the Enricher writes google_name and NEVER mesita_name
-//   * _shared/place-display-name.ts is gone and stays gone
+// It also pins the rule that replaced the old sticky-sync design: the
+// Enricher writes google_name and NEVER mesita_name.
 //
 // See the phase 1/2 migrations (20260809201500, 20260809203000) for the model.
 
@@ -200,25 +199,4 @@ Deno.test("contents persist drops google_place_id before the writePlace update",
     true,
     "Wave 040 dropped those URL columns. A gathered leftover must not ride the UPDATE.",
   );
-});
-
-Deno.test("place-display-name.ts stays deleted", async () => {
-  let exists = true;
-  try {
-    await Deno.stat(new URL("place-display-name.ts", import.meta.url));
-  } catch {
-    exists = false;
-  }
-  assertEquals(
-    exists,
-    false,
-    "Display resolution lives in the generated `place_profiles.name` column. A second " +
-      "resolver in TypeScript can drift from it.",
-  );
-
-  const importers: string[] = [];
-  for (const { path, text } of await tsSources()) {
-    if (/place-display-name/.test(text)) importers.push(path);
-  }
-  assertEquals(importers, [], `stale imports of place-display-name.ts`);
 });

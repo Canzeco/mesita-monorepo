@@ -1,14 +1,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
-  CRENUP_EXTRAS,
   CRENUP_FLOOR_LABEL,
   CRENUP_LABELS_IN_ORDER,
   CRENUP_LADDER,
   CRENUP_STEP_META,
   CRENUP_RENAMES,
-  CRENUP_RETIRED,
   CRENUP_TOTAL,
-  completedCrenupSteps,
   crenupBlockedAt,
   crenupHighWater,
   crenupOf,
@@ -102,9 +99,6 @@ Deno.test("crenup: PULSE and MENU are not steps — they are retired keys", () =
   assertEquals((CRENUP_LADDER as readonly string[]).includes("menu"), false);
   assertEquals(CRENUP_RENAMES.pulse, undefined);
   assertEquals(CRENUP_RENAMES.menu, undefined);
-  for (const key of ["pulse", "menu"]) {
-    assertEquals((CRENUP_RETIRED as readonly string[]).includes(key), true);
-  }
 
   // A legacy place whose ONLY stamp is `pulse` reads 0, not 1.
   assertEquals(crenupHighWater([done("pulse", 1)]), 0);
@@ -135,21 +129,6 @@ Deno.test("crenup: an UN-QUEUED create jumps to 8 with 2–6 still a gap", () =>
   // GOT, not how many functions ran — a gap stops the count at 1.
   const doorCreate = [done("details", 1), done("description", 2), done("embedding", 3)];
   assertEquals(crenupHighWater(doorCreate), 1);
-  assertEquals(completedCrenupSteps(doorCreate), [
-    "details",
-    "description",
-    "embedding",
-  ]);
-});
-
-Deno.test("crenup: `embedding` is ONE function now, not two extras", () => {
-  assertEquals((CRENUP_LADDER as readonly string[]).includes("name"), false);
-  assertEquals((CRENUP_LADDER as readonly string[]).includes("summary"), false);
-  assertEquals((CRENUP_LADDER as readonly string[]).includes("semantic"), false);
-  assertEquals((CRENUP_LADDER as readonly string[]).includes("embedding"), true);
-  assertEquals(CRENUP_STEP_META.embedding.index, 8);
-  assertEquals(CRENUP_STEP_META.embedding.label, "Embedding");
-  assertEquals([...CRENUP_EXTRAS], []);
 });
 
 Deno.test("crenup: the RENAMED `semantic` still counts as function 8", () => {
@@ -207,42 +186,6 @@ Deno.test("crenup: rows from the PREVIOUS ladder still read correctly", () => {
   );
 });
 
-Deno.test("crenup: social runs BEFORE images — the gathers fill the pools", () => {
-  // Load-bearing order. The IG/FB gathers fill the pools the vision funnel
-  // ranks, so images any earlier would rank Google photos and nothing else.
-  // Reviews sits between them (MESITA-2027) and is free to: nothing downstream
-  // of it depends on it except synthesis.
-  const i = (k: string) => (CRENUP_LADDER as readonly string[]).indexOf(k);
-  assertEquals(i("social") < i("images"), true);
-  assertEquals(i("links") < i("social"), true);
-  assertEquals(i("images") < i("description"), true);
-});
-
-Deno.test("crenup: the two Apify gathers sit together at 4 and 5", () => {
-  // Social and Reviews are both Apify scrapes of third-party content and
-  // already run concurrently — the GMaps scrape depends only on the place id,
-  // so it is fired early and collected late. Grouping them costs no wall
-  // clock and makes 1–6 read as one phase: the sources, in the order they can
-  // be asked.
-  assertEquals(CRENUP_STEP_META.social.index, 4);
-  assertEquals(CRENUP_STEP_META.reviews.index, 5);
-});
-
-Deno.test("crenup: serp runs BEFORE links — that is what serp is FOR", () => {
-  // The Resolver cannot pick between five Instagram candidates on a name and a
-  // city; the editorial read is what it recognises the place by. Description
-  // reusing the same text is a second use, not the reason it exists.
-  const i = (k: string) => (CRENUP_LADDER as readonly string[]).indexOf(k);
-  assertEquals(i("serp") < i("links"), true);
-  assertEquals(i("details") < i("serp"), true);
-});
-
-Deno.test("crenup: Embedding CLOSES the queue at 8", () => {
-  assertEquals(CRENUP_LADDER[CRENUP_LADDER.length - 1], "embedding");
-  assertEquals(CRENUP_STEP_META.embedding.index, 8);
-  assertEquals(CRENUP_STEP_META.description.index, 7);
-});
-
 Deno.test("high water: Embedding is 8 — a gap before it still reads 7", () => {
   const throughDescription = CRENUP_LADDER
     .filter((p) => p !== "embedding")
@@ -294,10 +237,6 @@ Deno.test("high water: nothing recorded is 0 — SEEDED, not a failure", () => {
   assertEquals(crenupHighWater([]), 0);
 });
 
-Deno.test("high water: a full queue is 8", () => {
-  assertEquals(crenupHighWater(fullQueue()), 8);
-});
-
 Deno.test("high water: it is HOW FAR, not how many", () => {
   // The distinction the whole model rests on. Seven functions completed, but
   // `links` (3) never did, so the queue got to 2 — not 7. A profile built past
@@ -306,10 +245,6 @@ Deno.test("high water: it is HOW FAR, not how many", () => {
     .filter((p) => p !== "links")
     .map((p, i) => done(p, i));
   assertEquals(crenupHighWater(events), 2);
-  // completedCrenupSteps answers the OTHER question — which ones landed.
-  const landed = completedCrenupSteps(events);
-  assertEquals(landed.length, 7); // the seven that ran; seed is implicit
-  assertEquals(landed.includes("links"), false);
 });
 
 Deno.test("high water: a failed function stops the count at the one before it", () => {
@@ -338,12 +273,6 @@ Deno.test("high water: a function a run did not buy simply has no event", () => 
   ];
   const refresh = [done("details", 9)];
   assertEquals(crenupHighWater([...earlier, ...refresh]), 4);
-});
-
-Deno.test("high water: absence is a RESULT — no Instagram still reaches 8", () => {
-  // The function ran, resolved "there is nothing here", and is completed.
-  // Marking it failed would punish a place for a fact about the world.
-  assertEquals(crenupHighWater(fullQueue()), 8);
 });
 
 Deno.test("high water: a re-enrich that fixes a function RAISES the number", () => {

@@ -8,8 +8,8 @@
 // (movie_theater the category is culture+experiences; the Google type
 // picks experiences). Verified against the live Table A reference
 // (478 types) on 2026-08-29.
-// Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes /
-// includedType slugs sent to Nearby, Autocomplete, and Text Search.
+// Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes slugs
+// sent to Nearby. Autocomplete and Text Search send no types.
 //
 // The `*_venue` keys below (event_venue, go_karting_venue, live_music_venue,
 // wedding_venue) are Google's own Table A type slugs, not ours — `venue` is
@@ -522,25 +522,6 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "zoo": "experiences",
 };
 
-/** Derived from GOOGLE_TYPE_SUPER — one source, no second hand-kept list. */
-export const GOOGLE_TYPES_BY_SUPER: Record<SuperOrOther, readonly string[]> = (() => {
-  const grouped: Record<SuperOrOther, string[]> = {
-    restaurants: [],
-    bars_nightlife: [],
-    cafes_bakeries: [],
-    sports_fitness: [],
-    wellness_beauty: [],
-    experiences: [],
-    culture_arts: [],
-    other: [],
-  };
-  for (const [type, superKey] of Object.entries(GOOGLE_TYPE_SUPER)) {
-    grouped[superKey].push(type);
-  }
-  for (const list of Object.values(grouped)) list.sort();
-  return grouped;
-})();
-
 const GUEST_SUPERS = new Set<string>([
   "restaurants",
   "bars_nightlife",
@@ -576,7 +557,6 @@ export function superForGoogleType(
 }
 
 const NEARBY_TYPE_CAP = 50;
-const AUTOCOMPLETE_TYPE_CAP = 5;
 
 /** Nearby `includedPrimaryTypes` — union of Super search batteries, max 50. */
 export function nearbyTypesForSupers(
@@ -594,17 +574,4 @@ export function nearbyTypesForSupers(
     }
   }
   return out;
-}
-
-/** Autocomplete `includedPrimaryTypes` — first 5 of the Nearby union. */
-export function autocompleteTypesForSupers(
-  supers: readonly string[],
-): string[] {
-  return nearbyTypesForSupers(supers).slice(0, AUTOCOMPLETE_TYPE_CAP);
-}
-
-/** Text Search `includedType` — one slug. First battery of the Super. */
-export function textSearchTypeForSuper(superSlug: string): string | null {
-  if (!isGuestSuper(superSlug)) return null;
-  return GOOGLE_SEARCH_TYPES[superSlug][0] ?? null;
 }

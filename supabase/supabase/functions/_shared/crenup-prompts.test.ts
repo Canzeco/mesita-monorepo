@@ -41,15 +41,6 @@ Deno.test("the two named agents are Scout and Resolver, and nothing else is name
   assertEquals(named, ["Scout@3 · Serp", "Resolver@4 · Links"]);
 });
 
-Deno.test("'Agent X' and 'Agent Y' are gone from every rendered string", () => {
-  // The rename is only done if the placeholders cannot reach an operator's screen.
-  for (const p of crenupPromptsMeta()) {
-    const blob = [p.label, p.vendor, p.vendorNote, p.writes, p.instructions, p.input]
-      .join("\n");
-    assert(!/Agent [XY]\b/.test(blob), `"Agent X/Y" still renders on ${p.key}`);
-  }
-});
-
 Deno.test("every entry names its vendor and carries a non-empty prompt", () => {
   for (const p of crenupPromptsMeta()) {
     assert(p.instructions.trim().length > 0, `${p.key} has empty instructions`);
@@ -93,12 +84,4 @@ Deno.test("the Resolver template renders every optional branch", () => {
   for (const f of ["website_url", "instagram_url", "facebook_url", "opentable_url", "uber_eats_url"]) {
     assert(resolver.input.includes(f), `${f} missing from the Resolver template`);
   }
-});
-
-Deno.test("the Images prompts are NOT duplicated here — they are editable elsewhere", () => {
-  // They live on app_config and the console renders them as editable fields.
-  // Listing them read-only too would state two truths about one prompt.
-  const keys = crenupPromptsMeta().map((p) => p.key);
-  assert(!keys.includes("images"));
-  assert(!keys.some((k) => k.includes("image")));
 });

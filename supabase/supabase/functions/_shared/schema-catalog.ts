@@ -6,16 +6,13 @@
 // scattered across the codebase, so the validators that come next compose
 // them instead of re-typing them per aggregate.
 //
-// TWO of the three are aliases of ALREADY-LAW code, on purpose. The Notion
-// spec names ChannelSet "already law in _shared/channels.ts — the proof",
-// and the same is true of the enrichment ladder: reinventing either here
-// would be exactly the kind of duplicate-source-of-truth this catalog exists
-// to prevent. Import the real thing; do not re-type it.
+// The enrichment ladder's key set is ALREADY-LAW code (crenup-ladder.ts), on
+// purpose: reinventing it here would be exactly the kind of
+// duplicate-source-of-truth this catalog exists to prevent. Import the real
+// thing; do not re-type it.
 
-import type { ChannelKey, Channels } from "./channels.ts";
 import {
   CRENUP_EXTRA_ALIASES,
-  CRENUP_EXTRAS,
   CRENUP_LADDER,
   CRENUP_TOTAL,
   crenupBlockedAt,
@@ -25,42 +22,6 @@ import {
   type CrenupStep,
 } from "./crenup-ladder.ts";
 import { enumOf, nullable, num, object, refine, str, type Schema } from "./doc-schema.ts";
-
-// ── Money ────────────────────────────────────────────────────────────────
-//
-// The canonical in-code money value: an integer minor-unit amount plus its
-// currency, always together — the codebase has never let one travel without
-// the other. This is the VALUE shape, not a row shape: a DB column keeps its
-// own name, because one row can carry several money values that need distinct
-// names; this is what a function returns or a validator produces once it has
-// picked one out.
-export type Money = {
-  /** Integer minor units (centavos for MXN). Never a float. */
-  cents: number;
-  /** Uppercase ISO 4217, e.g. "MXN". */
-  currency: string;
-};
-
-export function isMoney(v: unknown): v is Money {
-  if (typeof v !== "object" || v === null) return false;
-  const m = v as Record<string, unknown>;
-  return (
-    typeof m.cents === "number" &&
-    Number.isInteger(m.cents) &&
-    typeof m.currency === "string" &&
-    m.currency.length > 0
-  );
-}
-
-// ── ChannelSet ───────────────────────────────────────────────────────────
-//
-// A straight re-export. channels.ts's `ChannelKey` union + `Channels` record
-// already IS this sub-schema — closed key set, one column per channel, the
-// exact shape §C asks for. Aliased here under the catalog's name so a
-// validator composing sub-schemas finds it in one place; the type itself
-// still lives, and is still maintained, in channels.ts.
-export type ChannelSetKey = ChannelKey;
-export type ChannelSet = Channels;
 
 // ── FunctionState ────────────────────────────────────────────────────────
 //
@@ -95,26 +56,13 @@ export type FunctionState = {
 /** The closed key set FunctionState is indexed by — every CRENUP step, no other. */
 export type FunctionStateMap = Partial<Record<CrenupStep, FunctionState>>;
 
-export function isFunctionState(v: unknown): v is FunctionState {
-  if (typeof v !== "object" || v === null) return false;
-  const f = v as Record<string, unknown>;
-  return (
-    (f.state === "pending" || f.state === "completed" || f.state === "failed") &&
-    (f.at === null || typeof f.at === "string") &&
-    (f.detail === null || typeof f.detail === "string")
-  );
-}
-
 /**
  * The closed set of keys FunctionState may be indexed by, re-derived from
  * crenup-ladder.ts rather than hand-typed — the same derivation discipline
  * CRENUP_STEP_META already enforces (MESITA-1222: an index written down
  * beside its source drifts; one derived from it cannot).
  */
-export const FUNCTION_STATE_KEYS: readonly CrenupStep[] = [
-  ...CRENUP_LADDER,
-  ...CRENUP_EXTRAS,
-];
+export const FUNCTION_STATE_KEYS: readonly CrenupStep[] = CRENUP_LADDER;
 
 export const FunctionStateSchema: Schema<FunctionState> = object({
   state: enumOf(["pending", "completed", "failed"] as const),

@@ -20,7 +20,6 @@ function user(overrides: Partial<AuthedUser> = {}): AuthedUser {
     email: "ops@example.com",
     emailLower: "ops@example.com",
     phone: null,
-    appRole: null,
     ...overrides,
   } as AuthedUser;
 }

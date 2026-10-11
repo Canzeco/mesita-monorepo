@@ -201,7 +201,6 @@ export async function closeEnrichmentRun(
     stage?: string | null;
     costUsd?: number | null;
     charges?: unknown;
-    meta?: Record<string, unknown>;
   } = {},
 ): Promise<void> {
   if (!runId) return;
@@ -212,7 +211,6 @@ export async function closeEnrichmentRun(
     p_stage: opts.stage ?? null,
     p_cost_usd: opts.costUsd ?? null,
     p_charges: opts.charges ?? null,
-    p_meta: opts.meta ?? null,
   });
   // Best-effort by design: the janitor reconciles anything this misses, so a
   // failed close must never take down the terminal path it is reporting on.
@@ -295,13 +293,7 @@ export async function failResearchRow(
   admin: SupabaseClient,
   placeId: string,
   errorMsg: string,
-  run: {
-    runId?: string | null;
-    stage?: string | null;
-    costUsd?: number | null;
-    charges?: unknown;
-    meta?: Record<string, unknown>;
-  } = {},
+  run: { runId?: string | null; stage?: string | null } = {},
 ): Promise<void> {
   const { error } = await admin
     .from("place_research")
@@ -314,9 +306,6 @@ export async function failResearchRow(
     // update overwrites `place_research.stage` with 'failed' — after which
     // nothing in the schema can say which stage it was.
     stage: run.stage ?? null,
-    costUsd: run.costUsd ?? null,
-    charges: run.charges ?? null,
-    meta: run.meta,
   });
   const placeRes = await writePlace(admin, {
     table: "places",

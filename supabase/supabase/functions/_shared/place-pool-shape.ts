@@ -1,7 +1,6 @@
-// Shared place/consumer shapes and two tiny helpers used by the place-reading
-// EFs. Was `recommender-pool-shape.ts` until MESITA-1048. Lives next to
-// place-pool.ts (the candidate-pool query) so callers can import types without
-// pulling the Supabase query path.
+// The shared place shape and two tiny helpers used by the place-reading
+// EFs (consumer-web-recommend-swipe, consumer-web-list-catalog). Was
+// `recommender-pool-shape.ts` until MESITA-1048.
 
 import type { WeeklyHours } from "./local-time.ts";
 import { withFamilyKeys } from "./place-family-keys.ts";
@@ -34,18 +33,9 @@ export type PlaceProfileRow = {
   city: string | null;
   photos: string[] | null;
   [key: string]: unknown;
-  // Paid OpenAI vector. Read by the cosine rank in Memo's RAG leg; never
-  // returned to a client.
+  // Paid OpenAI vector. Read by Catalog's cosine rank and the swipe summary's
+  // `embedded` count; never returned to a client.
   embedding: unknown | null;
-};
-
-// Minimal consumer-context shape. Anonymous requests pass null.
-export type ConsumerProfile = {
-  full_name: string | null;
-  country: string | null;
-  birthday: string | null;
-  sex: string | null;
-  tier?: string | null;
 };
 
 export function clampPositive(v: unknown, def: number, max: number): number {

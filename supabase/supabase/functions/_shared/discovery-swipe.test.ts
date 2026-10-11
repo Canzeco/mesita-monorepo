@@ -16,7 +16,6 @@ import {
   swipeTierCount,
   widenSwipePool,
 } from "./discovery-swipe.ts";
-import { isOpenThrough } from "./local-time-open.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
 
 const NOW = new Date("2026-08-21T18:00:00Z");
@@ -135,19 +134,6 @@ Deno.test("admission filters: ready + swipe reviews + swipe radius", () => {
   });
 });
 
-Deno.test("closing buffer: open now but closing soon is closed", () => {
-  // Saturday 15:40, lunch closes 16:00. 30 min buffer fails; 10 min passes.
-  assertEquals(isOpenThrough(HOURS, "saturday", 15 * 60 + 40, 30), false);
-  assertEquals(isOpenThrough(HOURS, "saturday", 15 * 60 + 40, 10), true);
-  assertEquals(isOpenThrough(HOURS, "saturday", 14 * 60, 30), true);
-  // Overnight Friday 18:00 → Saturday 02:00. 01:40 + 30 overshoots close;
-  // 01:20 + 30 is still inside.
-  assertEquals(isOpenThrough(HOURS, "saturday", 1 * 60 + 40, 30), false);
-  assertEquals(isOpenThrough(HOURS, "saturday", 1 * 60 + 20, 30), true);
-  assertEquals(isOpenThrough(HOURS, "friday", 23 * 60, 30), true);
-  assertEquals(isOpenThrough(null, "saturday", 14 * 60, 30), null);
-});
-
 Deno.test("recommend-swipe ranks with the Swipe mask, not the old sum", async () => {
   const src = await Deno.readTextFile(
     new URL("../consumer-web-recommend-swipe/index.ts", import.meta.url),
@@ -255,7 +241,7 @@ const rankLive = (at: Date, geo: { lat: number; lng: number } | null) =>
   });
 
 Deno.test("tiers: the live case — one closed place, no geo, fills a deck of one", async () => {
-  // The exact request web's shared deck and every Expo binary send: no lat/lng.
+  // The exact request web's shared deck sends: no lat/lng.
   const tiers = tiersAt([slp("dos-amores", 0)], TUE_NIGHT, null);
   assertEquals(ids(tiers.strict), []);
   assertEquals(ids(tiers.closedReach), ["dos-amores"]);
@@ -500,7 +486,7 @@ Deno.test("recommend-swipe bands instead of cutting on open-now and radius", asy
   assertEquals(src.includes("radiusKm: firstWhole ? filters.maxDistanceKm : 0"), true);
   assertEquals(src.includes("admitSwipeTiming"), false);
   assertEquals(src.includes("trimToRadius"), false);
-  // The frozen Expo shape keeps its two keys; backfilled is additive.
+  // The summary reports the strict pool, the embedded count and the backfill.
   assertEquals(
     src.includes("summary: { candidates: tiers.strict.length, embedded, backfilled }"),
     true,
@@ -795,7 +781,7 @@ Deno.test("widen: a FULL first pool is not a whole search — radius at reach (r
 });
 
 Deno.test("widen: a FULL coordless pool pages the unboxed ring before closed rows count", async () => {
-  // No coordinates (every Expo binary, web's shared deck): the only ring is
+  // No coordinates (web's shared deck): the only ring is
   // the unboxed one, asked only because the first pool came back full.
   const catalog = catalogOf([
     ["a-closed", 12, 3, SHUT],

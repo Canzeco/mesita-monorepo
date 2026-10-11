@@ -7,14 +7,13 @@ import {
   googleMapsRunCost,
   googleSpineCost,
   instagramRunCost,
-  isEnrichCostCapError,
   runOwnsGatherSpend,
   synthesisRunCost,
   visionRunCost,
 } from "./enrich-cost.ts";
 
 Deno.test("ledger: charges accumulate and snapshot", () => {
-  const ledger = createEnrichCostLedger(1.0);
+  const ledger = createEnrichCostLedger();
   ledger.charge("a", 0.1);
   ledger.charge("b", 0.25);
   assertEquals(ledger.spentUsd, 0.35);
@@ -27,23 +26,6 @@ Deno.test("ledger: charges accumulate and snapshot", () => {
   });
 });
 
-Deno.test("ledger: a dollar cap does not abort a run", () => {
-  const ledger = createEnrichCostLedger(0.05);
-  ledger.charge("seed", 0.04);
-  ledger.assertCanAfford(0.02, "next");
-  ledger.charge("over", 0.02);
-  assertEquals(ledger.spentUsd, 0.06);
-  assertEquals(ledger.charges.length, 2);
-  assertEquals(isEnrichCostCapError(new Error("nope")), false);
-});
-
-Deno.test("ledger: cap 0 still records paid steps", () => {
-  const ledger = createEnrichCostLedger(0);
-  ledger.assertCanAfford(COST.perplexity, "serp");
-  ledger.charge("serp", COST.perplexity);
-  assertEquals(ledger.spentUsd, COST.perplexity);
-});
-
 Deno.test("ledger: resumes from prior snapshot across stages", () => {
   // The ledger rounds every running total to 4 decimals, so a charge carrying
   // a 5th (the GMaps run does: the actor-start fee is $0.00005) lands rounded.
@@ -53,9 +35,9 @@ Deno.test("ledger: resumes from prior snapshot across stages", () => {
   const gmapsBooked = Math.round(gmaps * 1e4) / 1e4;
   assertEquals(gmapsBooked, 0.0611);
 
-  const research = createEnrichCostLedger(1.0);
+  const research = createEnrichCostLedger();
   research.charge("gmaps", gmaps);
-  const analysis = createEnrichCostLedger(1.0, research.snapshot());
+  const analysis = createEnrichCostLedger(research.snapshot());
   assertEquals(analysis.spentUsd, gmapsBooked);
   analysis.charge("sort", COST.sort);
   assertEquals(analysis.spentUsd, Math.round((gmapsBooked + COST.sort) * 1e4) / 1e4);
@@ -64,7 +46,7 @@ Deno.test("ledger: resumes from prior snapshot across stages", () => {
 Deno.test("helpers: google spine / IG / vision / synth / discovery", () => {
   const spine = googleSpineCost(2);
   assertEquals(spine, COST.googleDetails + COST.googleTimezone + COST.googlePhoto * 2);
-  const ledger = createEnrichCostLedger(1.0);
+  const ledger = createEnrichCostLedger();
   chargeGoogleSpine(ledger, 2);
   // Ledger rounds to 4dp — compare the booked amount, not the raw float sum.
   assertEquals(ledger.spentUsd, Math.round(spine * 10_000) / 10_000);

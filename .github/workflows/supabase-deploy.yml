@@ -67,7 +67,7 @@ jobs:
       # would have restored the old behaviour. The window is closed now.
       # MESITA-1722: the three pre-monorepo ghosts. These never had a folder
       # or a config block in this repo at all, so nothing but this list can
-      # reach them; their source is archived under retired/edge-functions/.
+      # reach them.
       # MESITA-1723: four functions with no caller left. `functions deploy`
       # only ever ADDS, so a folder deleted in the repo stays callable in the
       # cloud forever unless its slug is named here — the third of the three
@@ -75,8 +75,7 @@ jobs:
       # MESITA-1889: the two entitlement doors the org Mesita Membership
       # replaced. business-web-set-org-partnership coupled `partnered` and
       # `mesita_pay_enabled` into one write; business-web-change-subscription
-      # sold a per-place Verified subscription no app called. Their source is
-      # archived under retired/edge-functions/.
+      # sold a per-place Verified subscription no app called.
       # MESITA-2090: the two business-web functions admin's Single Place still
       # called were renamed to admin-web-get-overview / admin-web-update-place
       # when the business console was deleted (MVP First Stage). A rename is a
@@ -87,6 +86,9 @@ jobs:
       # left (credits, tickets, cards, connectors, consumer-mcp, claims,
       # verification, notifications). Callers are now consumer · admin ·
       # eleven · supabase only.
+      # MESITA-2136: no caller left (memo's recall/search/context legs).
+      # consumer-web-ask-memo became a stateless OpenAI turn and only
+      # supabase-edgefunc-get-memo-config still serves it.
       # THE LOOKUP MATCHES THE WHOLE SLUG CELL. `supabase functions list`
       # prints a `|`-separated table; the old `grep -Fqw` treated a hyphen as a
       # word boundary, so a retired slug also matched any live slug it was a
@@ -261,6 +263,9 @@ jobs:
             supabase-cron-enrich-place-analysis
             supabase-cron-enrich-place-contents
             supabase-edgefunc-store-place-images
+            supabase-edgefunc-recall-places
+            supabase-edgefunc-search-places
+            supabase-edgefunc-get-consumer-context
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"

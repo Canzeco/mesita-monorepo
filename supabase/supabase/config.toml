@@ -156,29 +156,15 @@ verify_jwt = true
 
 # --- Memo's data surface (the agent holds NO database client) ---
 #
-# Memo reads Mesita ONLY through these four endpoints, called via
-# _shared/memo-data.ts from consumer-web-ask-memo. Each owns its SELECT and
-# projects to a public shape, so Memo's reach is a closed set you can
-# enumerate instead of an open service-role query capability. All read-only —
-# there is deliberately no write endpoint here to add a tool for.
+# Memo reads Mesita ONLY through the endpoint below, called via
+# _shared/memo-data.ts from consumer-web-ask-memo. It owns its SELECT and
+# returns a fixed shape, so Memo's reach is a closed set you can enumerate
+# instead of an open service-role query capability. Read-only — there is
+# deliberately no write endpoint here to add a tool for. MESITA-2136 retired
+# the recall / search / consumer-context endpoints: no caller was left once
+# ask-memo became a stateless OpenAI turn.
 
-# Memo's RAG leg: pool near the caller → embed intent → cosine rank → public
-# cards. Embedding vectors and OPENAI_KEY never leave this function. Renamed
-# from -recall-lineup by MESITA-1048; the cosine relevance itself is unchanged.
-[functions.supabase-edgefunc-recall-places]
-verify_jwt = true
-
-# Public catalog lookup by name (status ∈ active,lead) and/or by Google place id
-# (identity join for on-Mesita badging).
-[functions.supabase-edgefunc-search-places]
-verify_jwt = true
-
-# The signed-in consumer's persona CLAUSE ("named Ana, 28 years old, female").
-# Composed here so full name, birthday and sex never cross into a model context.
-[functions.supabase-edgefunc-get-consumer-context]
-verify_jwt = true
-
-# Memo's own config: persona instructions + model. Read side only —
+# Memo's own config: greeting, persona instructions and model. Read side only —
 # Chat persona writes stay on admin-web-update-config's `discovery` section.
 [functions.supabase-edgefunc-get-memo-config]
 verify_jwt = true
@@ -209,17 +195,17 @@ verify_jwt = false
 
 # Memo — the consumer AI concierge (Mesita's third agent, alongside the
 # Enricher/Atlas and the Reservationist). Public like the catalog reads:
-# decision — the concierge answers signed-out visitors, and it only READS
-# (Perplexity + Google Places + profiles). Auth is read optionally for
-# personalisation via getOptionalAuthedUser; RLS still gates place visibility.
+# decision — the concierge answers signed-out visitors. Each message is one
+# stateless OpenAI turn over the thread the client resends; it reads no auth,
+# no catalog and no profile, and holds no database client. Greeting, persona
+# and model come from supabase-edgefunc-get-memo-config.
 [functions.consumer-web-ask-memo]
 verify_jwt = false
 
 # Home › Scroll deck. Admits ready listed places, bands them open-and-near
 # first (never empties on open-now or radius, MESITA-2047), then ranks each
-# band with Places Lineup under the Scroll column. The slug and the
-# {ok, deck, summary} shape are frozen because deployed Expo binaries call it.
-# JWT still required.
+# band with Places Lineup under the Scroll column. web-consumer's Home deck
+# calls it. JWT still required.
 [functions.consumer-web-recommend-swipe]
 verify_jwt = true
 
@@ -285,8 +271,9 @@ verify_jwt = true
 # Each EF re-checks the caller's JWT email against public.super_admins
 # before doing anything privileged.
 
-# Per-caller identity door over _shared/identity.ts (the endpoint name IS
-# the ACL). The old shared auth-get-identity door was deleted in MESITA-59.
+# Admin's per-caller identity door (the endpoint name IS the ACL): returns
+# the caller's email and whether it is on public.super_admins. The old shared
+# auth-get-identity door was deleted in MESITA-59.
 [functions.admin-web-get-identity]
 verify_jwt = true
 

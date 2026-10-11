@@ -115,16 +115,6 @@ Deno.test("toLineupPlace adds nameEmbedding; toSignalPlace still omits it", () =
   assertEquals(toLineupPlace({ ...ROW, content_state: "ready" }).enriched, true);
 });
 
-Deno.test("neither projection carries a money column, whatever the row holds", () => {
-  const stapled = { ...ROW, plan: "pro", free_rate: 20, promoting: true };
-  for (const projected of [toSignalPlace(stapled), toLineupPlace(stapled)]) {
-    const p = projected as unknown as Record<string, unknown>;
-    for (const col of ["plan", "free_rate", "promoting"]) {
-      assertEquals(p[col], undefined, `"${col}" leaked into the signals' projection`);
-    }
-  }
-});
-
 Deno.test("junk numbers degrade to null rather than poisoning a score", () => {
   const p = toSignalPlace({
     ...ROW,

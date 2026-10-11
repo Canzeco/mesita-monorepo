@@ -42,7 +42,6 @@
 // remainder ordered). The teardown migration says as much in its own comment.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import {
   CATEGORY_EXACT,
   CATEGORY_FAMILY,
@@ -226,8 +225,6 @@ export type NameDeepConfig = {
   autoCount: number;
   /** Google Text Search cap. Independent query. */
   googleCount: number;
-  /** Legacy blob field. Queries concat; the union is not sliced. */
-  count: number;
   supers: Record<SuperParamKey, boolean>;
 };
 
@@ -261,17 +258,12 @@ export type GeneralConfig = {
  * retired two-signal SUM, and had sat here unread since the blend replaced it.
  * A dead `weightProximity` beside a live per-mode Proximity exponent reads as
  * a second, competing dial — so they are deleted from the type, the defaults
- * and the normalizer, which drops them from the blob on the next save.
- *
- * `categoryFilter` is the sixth unread field. It stays on the blob and gets no
- * control (the ConfigSoon law forbids staging a knob nobody reads); deleting
- * it is a one-line follow-up.
+ * and the normalizer, which drops them from the blob on the next save. The
+ * unread `categoryFilter` went the same way.
  */
 export type SwipeConfig = {
   radiusKm: number;
   closingBufferMin: number;
-  /** Guest category-filter default. Off keeps the feed open. UNREAD. */
-  categoryFilter: boolean;
   minReviews: number;
   /** ISO time of the last Scroll-slice save. Null until the first Save. */
   savedAt: string | null;
@@ -430,7 +422,6 @@ export const NAME_LANE_COUNT_MAX = 20;
 export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
-export const NAME_DEEP_COUNT_DEFAULT = 9;
 /**
  * The three stops the Nearby box offers. 20 is one Google request; 40 and 60
  * are 2 and 3, because Nearby Search (New) caps `maxResultCount` at 20 and
@@ -505,7 +496,6 @@ export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
-  count: NAME_DEEP_COUNT_DEFAULT,
   supers: DEFAULT_MAP_SUPERS,
 };
 
@@ -526,7 +516,6 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 export const DEFAULT_SWIPE: SwipeConfig = {
   radiusKm: 5,
   closingBufferMin: 30,
-  categoryFilter: false,
   minReviews: 1,
   savedAt: null,
 };
@@ -742,54 +731,19 @@ export function normalizeChatPrompt(raw: unknown): string {
 }
 
 /**
- * The five Google slugs the strip defaulted ON before MESITA-1683 grew the
- * list and MESITA-1695 replaced it. A tombstone, read only when folding a
- * stored blob that predates the Super params.
- */
-const LEGACY_TYPE_DEFAULTS = new Set<string>([
-  "restaurant",
-  "bar",
-  "night_club",
-  "cafe",
-  "bakery",
-]);
-
-/**
- * The seven Super params, with the pre-MESITA-1695 blob folded in.
- *
- * A stored blob written before the rename carries `types`, keyed by Google
- * slug. A Super is on iff ANY slug in its battery was on, which reproduces the
- * live blob exactly: it held `restaurant, bar, night_club, cafe, bakery` true
- * and `categoryCount: 5`, which forced every other key off anyway. The blob is
- * jsonb normalized on every read, so there is no migration to run.
- *
- * Half a Super was never reachable: no console ever shipped a control that
- * could turn `cafe` on and `bakery` off, so ANY is the honest fold.
+ * The seven Super params. A blob with no boolean Super key reads the defaults;
+ * otherwise a missing or non-boolean key falls back to its own default.
  */
 export function normalizeSuperParams(
   raw: unknown,
-  legacyTypes?: unknown,
 ): Record<SuperParamKey, boolean> {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const out = {} as Record<SuperParamKey, boolean>;
-  if (SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
-    for (const key of SUPER_PARAM_KEYS) {
-      out[key] = bool(r[key], DEFAULT_MAP_SUPERS[key]);
-    }
-    return out;
-  }
-  const legacy = (legacyTypes ?? {}) as Record<string, unknown>;
-  if (!NEARBY_TYPE_KEYS.some((key) => typeof legacy[key] === "boolean")) {
+  if (!SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
     return { ...DEFAULT_MAP_SUPERS };
   }
-  // An absent slug takes the PRE-1695 default, not `false`: a blob that stored
-  // only `{ restaurant: true }` still ran with bar, night_club, cafe and
-  // bakery on, and folding it to restaurants-only would silently narrow live
-  // Nearby calls on the first read after deploy.
+  const out = {} as Record<SuperParamKey, boolean>;
   for (const key of SUPER_PARAM_KEYS) {
-    out[key] = GOOGLE_SEARCH_TYPES[key].some((type) =>
-      bool(legacy[type], LEGACY_TYPE_DEFAULTS.has(type))
-    );
+    out[key] = bool(r[key], DEFAULT_MAP_SUPERS[key]);
   }
   return out;
 }
@@ -832,7 +786,7 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
         ),
       ),
       count: fastCount,
-      supers: normalizeSuperParams(fast.supers, fast.types),
+      supers: normalizeSuperParams(fast.supers),
     },
     deep: {
       mesitaCount: Math.round(
@@ -844,10 +798,7 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       googleCount: Math.round(
         num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
       ),
-      count: Math.round(
-        num(deep.count, DEFAULT_NAME_DEEP.count, 0, NAME_LANE_COUNT_MAX),
-      ),
-      supers: normalizeSuperParams(deep.supers, deep.types),
+      supers: normalizeSuperParams(deep.supers),
     },
   };
 }
@@ -872,7 +823,6 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
         SWIPE_CLOSING_BUFFER_MAX,
       ),
     ),
-    categoryFilter: bool(r.categoryFilter, DEFAULT_SWIPE.categoryFilter),
     minReviews: Math.round(num(r.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
     savedAt: normalizeSavedAt(r.savedAt),
   };
@@ -880,7 +830,7 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
 
 export function normalizeMapConfig(raw: unknown): MapConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const supers = normalizeSuperParams(r.supers, r.types);
+  const supers = normalizeSuperParams(r.supers);
   const reload = snapMapReloadPair(r.reloadMinKm, r.reloadMinSec);
   return {
     minRating: Math.round(
@@ -903,7 +853,6 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
  * Retired signal keys an old blob may still carry, and what each one now
  * means.
  *
- *   semantic      → summary    (MESITA-1408, the Semantic split)
  *   mesita_level  → enriched   (MESITA-1858)
  *
  * An operator who turned Mesita Level up meant "where the place sits with us
@@ -912,7 +861,6 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
  * explicitly-set new key always wins over the alias.
  */
 export const LEGACY_SIGNAL_ALIASES: Record<string, readonly SignalKey[]> = {
-  semantic: ["summary"],
   mesita_level: ["enriched"],
 };
 

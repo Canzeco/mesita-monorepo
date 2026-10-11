@@ -2,17 +2,10 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   jsonError,
   jsonOk,
-  methodNotAllowed,
   readJson,
   readJsonOr,
   rejectUnlessMethods,
 } from "./http.ts";
-
-Deno.test("methodNotAllowed returns 405 + canonical body", async () => {
-  const res = methodNotAllowed();
-  assertEquals(res.status, 405);
-  assertEquals(await res.json(), { ok: false, error: "Method not allowed" });
-});
 
 Deno.test("rejectUnlessMethods allows listed verbs", () => {
   const req = new Request("https://x", { method: "GET" });

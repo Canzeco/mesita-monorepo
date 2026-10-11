@@ -4,18 +4,12 @@ import {
   applyPlacesCallerRegion,
   applyPlacesTextSearchRegion,
   familiesForGoogleType,
-  familyForGoogleType,
   parseCldrRegionCode,
 } from "./sourcing.ts";
 
-Deno.test("familyForGoogleType maps known types", () => {
-  assertEquals(familyForGoogleType("mexican_restaurant"), "restaurants");
-  assertEquals(familyForGoogleType("night_club"), "bars_nightlife");
-  assertEquals(familyForGoogleType("gas_station"), null);
-});
-
-Deno.test("familiesForGoogleType returns restaurants only for gastropub", () => {
+Deno.test("familiesForGoogleType: gastropub is restaurants only, gas_station is none", () => {
   assertEquals(familiesForGoogleType("gastropub"), ["restaurants"]);
+  assertEquals(familiesForGoogleType("gas_station"), []);
 });
 
 Deno.test("familiesForGoogleType accepts _restaurant alias", () => {

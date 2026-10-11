@@ -1,45 +1,22 @@
-// Shared Enricher place field limits — mirrored in admin-web-update-place and
-// the business Place editor. Surfaced read-only in admin-web-get-atlas-fields.
-//
-// `unit` drives the admin card's format: "chars" → "N chars", "words" → "N
-// words", "count" → "Up to N", "range" → "min–max". `min` is only set for range
-// fields (today just price_level); every other field's floor is implicitly
-// 0/none.
+// Shared Enricher place field limits — enforced by the Enricher, the create
+// door and admin-web-update-place, and shipped to the admin Profile editor by
+// admin-web-get-atlas-fields (which reads placeName, description, tagsPerPlace
+// and photos).
 
 export const ENRICH_FIELD_LIMITS = {
-  placeName: { max: 80, unit: "chars", note: "Business Place editor" },
-  // The business editor's own overwrite ceiling — see descriptionEnricherMax
-  // for what a fresh Enricher synthesis may write before any manual edit.
-  description: {
-    max: 2000,
-    unit: "chars",
-    note: "Presentation overwrite via the Place editor (admin-web-update-place). A freshly-enriched place can exceed this — see \"Description (Enricher synthesis)\".",
-  },
-  // The Enricher's own synthesis ceiling (enrich-synthesis-profile.ts) —
-  // ENRICH_DESCRIPTION_MAX = 1,000-word target × 7. Not the same limit as the
-  // business editor's 2,000-char overwrite cap above; a place enriched today
-  // and never hand-edited can carry up to this many characters.
-  descriptionEnricherMax: {
-    max: 7000,
-    unit: "chars",
-    note: "places.description as freshly written by an Enricher run, before any business-editor overwrite (7,000 = 1,000-word target × 7).",
-  },
+  placeName: { max: 80 },
+  // The Place editor's overwrite ceiling (admin-web-update-place). A freshly
+  // enriched place can exceed it: the Enricher's own synthesis ceiling is
+  // ENRICH_DESCRIPTION_MAX (1,000-word target × 7, enrich-config.ts).
+  description: { max: 2000 },
   // The Semantic Summary that OpenAI embeds (places.embedding_source_text) —
   // NOT the Presentation. One of the three enrichment texts, and the only one
-  // the INDEX reads (`_shared/crenup-ladder.ts`). Enforced at word boundaries in
-  // place-embeddings.ts (never a mid-word char slice).
-  embeddingSourceText: {
-    max: 60,
-    unit: "words",
-    note: "places.embedding_source_text — the Semantic Summary the index reads (On-Create / On-Update / lazy backfill). Hard 60-word ceiling, truncated on word boundaries.",
-  },
-  tagsPerPlace: {
-    max: 20,
-    unit: "count",
-    note: "Enricher always writes exactly 20 tags; business editor allows up to 20 (places.tags)",
-  },
-  tagCatalogSize: { max: 200, unit: "count", note: "Controlled tags in place_tags (Atlas taxonomy)" },
-  tagSlugLength: { max: 40, unit: "chars", note: "Per-tag slug length cap" },
+  // the INDEX reads (`_shared/crenup-ladder.ts`). Words, enforced at word
+  // boundaries in place-embeddings.ts (never a mid-word char slice).
+  embeddingSourceText: { max: 60 },
+  // The Enricher always writes exactly 20 tags; the editor allows up to 20.
+  tagsPerPlace: { max: 20 },
+  tagSlugLength: { max: 40 },
   // Mirrors app_config.enrichment_config.atlasSaveTotalImages (1–10; DB CHECK 0–10). Set
   // through the `enricher` config section, which is the only writer left now
   // that the admin Enrichment page renders no knobs. Lowering this number is
@@ -48,37 +25,9 @@ export const ENRICH_FIELD_LIMITS = {
   // storage-mirror step (store-place-images.ts / PHOTO_CEILING) separately
   // hard-caps the persisted array at 50 regardless of this setting — the two
   // are not the same knob.
-  photos: {
-    max: 10,
-    unit: "count",
-    note: "places.photos array (hero + gallery) — mirrors app_config.enrichment_config.atlasSaveTotalImages (1–10, DB max 10); a separate storage-mirror step (PHOTO_CEILING=50) caps the array at 50 regardless.",
-  },
+  photos: { max: 10 },
   // Hard Apify scrape ceiling (EF wall-clock + cost). Live gather count is
   // app_config.enrichment_config.atlasGatherReviews (0–100); this is the profile-spec max the
   // pipeline may never exceed.
-  googleReviews: {
-    max: 100,
-    unit: "count",
-    note: "places.google_reviews — Apify scrape cap (Places API ~5; Mesita EF/cost safety bound)",
-  },
-  phone: {
-    max: 40,
-    unit: "chars",
-    note: "Place editor / admin-web-update-place — must start with a country code (E.164-shaped, e.g. +52…).",
-  },
-  email: {
-    max: 254,
-    unit: "chars",
-    note: "Place editor / admin-web-update-place — standard email-shape check.",
-  },
-  // DB CHECK, not just an EF-layer validation — the strongest enforcement of
-  // any field on this page. Google native: the Enricher writes it from Google
-  // Places' own 1–4 price level; admin-web-update-place rejects manual
-  // writes outright.
-  priceLevel: {
-    min: 1,
-    max: 4,
-    unit: "range",
-    note: "place_profiles_price_level_check (DB CHECK) — Google Places only; the EF rejects manual writes.",
-  },
+  googleReviews: { max: 100 },
 } as const;

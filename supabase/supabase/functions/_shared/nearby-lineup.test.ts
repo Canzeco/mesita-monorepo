@@ -222,7 +222,6 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   assertEquals(src.includes("searchPower >="), false);
   assertEquals(lanesForPlacesScope("mesita", 60).googleCount, 0);
   assertEquals(lanesForPlacesScope("google", 60).googleCount > 0, true);
-  assertEquals(googleBranch.includes("dropKnownMesitaGoogleHits"), false);
   const listedOnly = src.slice(
     src.indexOf("if (!googleFill)"),
     src.indexOf("let googleHits"),

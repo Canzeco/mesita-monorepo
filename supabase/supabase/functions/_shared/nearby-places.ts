@@ -38,11 +38,6 @@ export const CATALOG_NEARBY_HARD_MAX = 60;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
 
-// DERIVED, never a second list. This was its own five-key literal and drifted
-// out of lockstep the moment discovery_config grew (MESITA-1683); the test
-// below that pinned them together is now true by construction.
-export const NEARBY_TYPES = NEARBY_TYPE_KEYS;
-
 export type NearbyHit = {
   placeId: string;
   name: string;
@@ -258,7 +253,6 @@ export function peekCachedNearbyPlaces(
 }
 
 export type SearchNearbyOpts = {
-  radiusM?: number;
   /**
    * Max places to pull from Google: 20, 40 or 60 (`discovery_config.map.googlePull`).
    * Google bills Nearby in pages of 20; 40 and 60 are 2 and 3 billed requests
@@ -290,7 +284,7 @@ function nearbyTypesKey(types: readonly string[]): string {
 
 function nearbyCellKey(
   center: { lat: number; lng: number },
-  types: readonly string[] = NEARBY_TYPES,
+  types: readonly string[] = NEARBY_TYPE_KEYS,
   pull: number = GOOGLE_NEARBY_MAX,
 ): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
@@ -309,7 +303,7 @@ const SUPER_SEARCH_TYPE_SET = new Set<string>(
 );
 
 function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
-  if (!types) return NEARBY_TYPES;
+  if (!types) return NEARBY_TYPE_KEYS;
   return types.filter((t) => SUPER_SEARCH_TYPE_SET.has(t));
 }
 
@@ -326,16 +320,13 @@ function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
-  opts: SearchNearbyOpts | number = {},
+  opts: SearchNearbyOpts = {},
 ): Promise<NearbyHit[]> {
-  const parsed = typeof opts === "number"
-    ? { radiusM: opts, beforeFanout: undefined, types: undefined, pull: undefined }
-    : opts;
-  const radius = parsed.radiusM ?? GOOGLE_NEARBY_RADIUS_M;
-  const beforeFanout = parsed.beforeFanout;
-  const types = resolveNearbyTypes(parsed.types);
+  const radius = GOOGLE_NEARBY_RADIUS_M;
+  const beforeFanout = opts.beforeFanout;
+  const types = resolveNearbyTypes(opts.types);
   if (types.length === 0) return [];
-  const pull = parsed.pull ?? GOOGLE_NEARBY_MAX;
+  const pull = opts.pull ?? GOOGLE_NEARBY_MAX;
   const pages = nearbyCallCount(pull);
   const key = nearbyCellKey(center, types, pull);
   const hit = nearbyCache.get(key);
@@ -536,25 +527,6 @@ export function isEnrichedListedRow(row: {
   enriched_at?: string | null;
 }): boolean {
   return row.content_state === "ready" || Boolean(row.enriched_at);
-}
-
-/** Place IDs already on a listed row — paint helpers, not a second query. */
-export function listedGooglePlaceIds(
-  rows: Array<{ google_place_id?: string | null }>,
-): Set<string> {
-  const ids = new Set<string>();
-  for (const row of rows) {
-    if (row.google_place_id) ids.add(row.google_place_id);
-  }
-  return ids;
-}
-
-export function dropKnownMesitaGoogleHits<T extends { placeId: string }>(
-  google: T[],
-  known: Set<string>,
-): T[] {
-  if (known.size === 0) return google;
-  return google.filter((hit) => !known.has(hit.placeId));
 }
 
 export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
