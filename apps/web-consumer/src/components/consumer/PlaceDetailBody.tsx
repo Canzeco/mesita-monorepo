@@ -6,6 +6,7 @@ import { AboutBox } from "@/components/consumer/AboutBox";
 import type { PlaceDetail } from "@/lib/mock/place";
 
 import { LocationBox, HoursBox } from "./place-detail/location-hours";
+import { PopularTimesBox } from "./place-detail/popular-times";
 import { MediaBox } from "./place-detail/media";
 import { MenusBox } from "./place-detail/menus";
 import { ProfileSummary } from "./place-detail/profile-summary";
@@ -56,6 +57,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             {/* decision: Pato — Location first, then Time stacked (not side by side) */}
             <LocationBox place={place} />
             <HoursBox place={place} />
+            <PopularTimesBox place={place} />
             <LinksBox place={place} />
             <AboutBox text={place.long_description} />
             <TagsBox place={place} />
